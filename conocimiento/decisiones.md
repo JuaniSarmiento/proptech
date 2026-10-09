@@ -493,6 +493,24 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   - Coincidencia a favor de Alberto: B06 usa Decimal, igual que su documento de arquitectura (ver D-039).
 - **Quién**: Juani.
 
+## D-045 · El MVP se construye en 15 cambios de OPSX
+
+- **Fecha**: 09/10/2026
+- **Decisión**: OpenSpec quedó inicializado en el repositorio (`openspec/`, idioma español, con
+  `conocimiento/` como fuente de verdad en su configuración). Se saltea el paso de generar una base de
+  conocimiento automática: la base es `conocimiento/`. El MVP se divide, como propuesta inicial, en:
+  - **M1 · Liquida**: 1 `base-del-proyecto`, 2 `acceso-y-aislamiento`, 3 `configuracion-del-edificio`,
+    4 `importacion-desde-excel`, 5 `motor-de-cuenta-corriente`, 6 `gastos-y-cargos`,
+    7 `liquidacion-y-emision`.
+  - **M2 · Cobra**: 8 `pagos-informados`, 9 `extracto-bancario`, 10 `morosidad`,
+    11 `portal-del-vecino`, 12 `vista-del-consejo`, 13 `avisos-por-email`.
+  - **M3 · Piloto**: 14 `lectura-de-facturas`, 15 `piloto-en-paralelo`.
+  Cada cambio pasa por el ciclo completo antes de arrancar el siguiente. Un explore general sobre
+  todo el MVP confirma el orden y las dependencias; después, explore por cambio sólo si hace falta.
+- **Pendiente**: el resultado del explore general puede ajustar esta lista (se registrará como
+  decisión nueva).
+- **Quién**: Juani.
+
 ---
 
 ## Preguntas abiertas

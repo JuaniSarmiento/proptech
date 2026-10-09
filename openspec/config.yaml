@@ -1,0 +1,48 @@
+schema: spec-driven
+
+context: |
+  Language: es
+  All artifacts must be written in es (español rioplatense, sin guiones largos).
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Proyecto: PropTech (koris). Plataforma para administrar edificios en propiedad horizontal en
+  Mendoza: liquidación de expensas, cuenta corriente, pagos por comprobante y portal del vecino.
+  El MVP arranca por edificios; barrios privados después.
+
+  FUENTE DE VERDAD: la carpeta conocimiento/ del repositorio. Leerla antes de cualquier artefacto:
+  - conocimiento/mvp.md: objetivo, usuarios, historias con criterios de aceptación, hitos M1-M3.
+  - conocimiento/reglas-de-negocio.md: reglas R01-R16, cada una con sus tests mínimos.
+  - conocimiento/decisiones.md: decisiones D-001 en adelante (sólo se agrega) y preguntas abiertas.
+  - conocimiento/glosario.md: nombres del dominio, en español; el código usa estos mismos.
+  - conocimiento/proyecto-final.md: fases posteriores al MVP.
+  Si un artefacto contradice conocimiento/, gana conocimiento/ o se propone una decisión nueva.
+
+  Stack: Next.js (App Router) + TypeScript; FastAPI + SQLAlchemy + Alembic; PostgreSQL con
+  Row-Level Security (SET LOCAL); Redis + worker ARQ; Caddy; Docker Compose en un VPS.
+  Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
+  gastos, liquidacion, cuenta_corriente, pagos, avisos, compartido), proptech_api, proptech_worker;
+  web/; infra/; config/parametros.yaml.
+
+  Reglas no negociables: la plata nunca pasa por PropTech; montos en centavos enteros (R07, a
+  validar con Alberto frente a Decimal); la cuenta corriente sólo agrega movimientos (R08); el
+  complejo sale del login, nunca del cliente (R10); intereses simples (R03); TDD estricto en el
+  núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana antes de
+  escribir código); nunca secretos ni datos personales reales en el repo (es público).
+
+rules:
+  proposal:
+    - Citar las historias (HU-...), reglas (R..) y decisiones (D-...) de conocimiento/ que el cambio cubre.
+    - "Incluir una sección '## Knowledge Base Impact' que nombre cada archivo de conocimiento/ que el cambio afecta y si necesita REWRITE o APPEND; si no afecta ninguno, escribir 'none' y una línea de por qué."
+    - Incluir una sección de qué queda fuera del cambio.
+  tasks:
+    - Cada regla de negocio que toque el cambio tiene su tarea de test antes que la de implementación.
+    - Tareas chicas, de no más de medio día cada una.
+
+operations:
+  apply:
+    guidance:
+      - TDD estricto: ver el test fallar antes de escribir el código que lo hace pasar.
+      - No tocar cobros ni cuenta corriente sin aprobación explícita de Juani.
+  archive:
+    guidance:
+      - Actualizar conocimiento/ según la sección Knowledge Base Impact; decisiones nuevas sólo se agregan.
