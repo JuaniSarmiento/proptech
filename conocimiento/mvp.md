@@ -213,11 +213,11 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | **M2 · Cobra** | A6, A7, A8, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
 | **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
 
-## Cambios de OPSX (D-045, ajustados por D-047)
+## Cambios de OPSX (detalle y fichas en `roadmap.md`)
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1 `base-del-proyecto` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10 `morosidad` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 

@@ -23,6 +23,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
+| `conocimiento/roadmap.md` | **Los 16 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani**. Si
@@ -38,8 +39,7 @@ original de la especificación se descartó (D-002) y no se usa.
 - Al 09/10/2026 **no hay código**. El MVP arranca por **edificios** (D-027, pedido de Alberto).
   La base de conocimiento está cerrada salvo dos preguntas abiertas: cuál es el edificio piloto
   (P1) y el precio (P8).
-- Próximo paso: el ciclo OPSX (`openspec init` y `/opsx:explore`) sobre `conocimiento/mvp.md`,
-  con el OK de Juani.
+- Próximo paso: el cambio 1a (`infraestructura-base`) según `conocimiento/roadmap.md`.
 
 ## Reglas que no se negocian
 

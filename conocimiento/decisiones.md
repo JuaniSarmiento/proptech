@@ -560,6 +560,22 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   porque el desarrollo es de Juani.
 - **Quién**: Juani.
 
+## D-049 · Roadmap de 16 cambios y push al cerrar cada cambio
+
+- **Fecha**: 09/10/2026
+- **Decisión**: el plan queda escrito en `roadmap.md`, con una ficha por cambio que sirve de entrada
+  al propose. Ajustes sobre D-047, decididos por Claude con delegación de Juani después del borrador
+  del explore:
+  - El cambio 1 se parte en **1a `infraestructura-base`** y **1b `arranque-del-sistema`**.
+  - El reparto por mayor resto (R07) es una función pública del cambio 4; el cambio 6 la usa para R01.
+  - Decimal queda cerrado por D-046; a Alberto sólo se le informa.
+  - El cambio 9 va después del 8; el 6 deja la lectura de facturas para el 14.
+  - El cambio 4 depende también del 2 (persistir con el tenant fijado).
+- **Push**: Juani autoriza commit y push a `main` al archivar cada cambio con el OK del auditor
+  ("queda perfecto, commit y push"). Ajusta la regla general de preguntar siempre, sólo para este
+  proyecto y sólo en ese momento del ciclo.
+- **Quién**: Juani, con las decisiones de detalle delegadas a Claude.
+
 ---
 
 ## Preguntas abiertas

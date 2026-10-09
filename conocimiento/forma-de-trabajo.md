@@ -56,10 +56,11 @@ El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani
 
 ## Reglas del proceso
 
-- **De a un cambio por vez**, en el orden de `mvp.md`. El siguiente arranca recién cuando el anterior
+- **De a un cambio por vez**, en el orden de `roadmap.md`, que tiene la ficha de cada uno. El siguiente arranca recién cuando el anterior
   está archivado.
 - **Ningún agente lanza otros agentes.**
-- **Git**: sin ramas, todo sobre `main`, porque trabaja una sola persona. Se commitea al archivar
-  cada cambio (después del OK del auditor). **El push al repositorio público se pregunta siempre.**
+- **Git**: sin ramas, todo sobre `main`, porque trabaja una sola persona. Al archivar cada cambio,
+  con el OK del auditor, se commitea y se pushea a `main` sin preguntar (autorizado por Juani,
+  D-049). Cualquier otro push se pregunta.
 - **El repositorio es público**: nunca secretos ni datos personales reales, ni en código ni en tests.
 - **Nada se da por probado sin la salida del comando** que lo prueba, y de esta versión del código.

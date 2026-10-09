@@ -19,7 +19,8 @@ context: |
 
   Stack: Next.js (App Router) + TypeScript; FastAPI + SQLAlchemy + Alembic; PostgreSQL con
   Row-Level Security (SET LOCAL); Redis + worker ARQ; Caddy; Docker Compose en un VPS.
-  Plan de cambios: conocimiento/mvp.md (D-045, D-047). Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
+  Plan de cambios y fichas: conocimiento/roadmap.md (arrancar cada propose desde su ficha).
+  Forma de trabajo: conocimiento/forma-de-trabajo.md. Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
   gastos, liquidacion, cuenta_corriente, pagos, avisos, compartido), proptech_api, proptech_worker;
   web/; infra/; config/parametros.yaml.
 
