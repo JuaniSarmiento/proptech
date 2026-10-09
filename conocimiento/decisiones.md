@@ -545,6 +545,20 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   8. El PDF de la expensa cuenta como interfaz: pasa por la skill impeccable.
 - **Quién**: Claude, por delegación explícita de Juani.
 
+## D-048 · Forma de trabajo: orquestador y agentes en secuencia, aprueba el auditor
+
+- **Fecha**: 09/10/2026
+- **Decisión**: Juani trabaja solo. Cada cambio sigue un ciclo secuencial que orquesta Claude:
+  proponer, construir (un agente codea con TDD), romper (otro agente intenta romperlo y deja las
+  fallas como tests), auditar (otro agente revisa lo que hizo y pensó cada uno) y archivar. **Un
+  cambio está aprobado cuando el auditor da el OK.** Detalle en `forma-de-trabajo.md`.
+- **Agregado por Claude, a confirmar**: Juani aprueba la propuesta de los cambios críticos; tope de
+  tres vueltas antes de frenar y consultar; una rama por cambio, con push a `main` siempre consultado.
+- **Descartado**: el esquema completo de la configuración global (senior en cada fase, tres pases
+  adversariales independientes, especialistas por capa), por costo; y PRs revisados por Alberto,
+  porque el desarrollo es de Juani.
+- **Quién**: Juani.
+
 ---
 
 ## Preguntas abiertas

@@ -23,6 +23,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
+| `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani**. Si
 cambia una decisión, se escribe una decisión nueva; nunca se edita una vieja.
