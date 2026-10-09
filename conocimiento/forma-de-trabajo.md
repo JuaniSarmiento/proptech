@@ -59,8 +59,7 @@ El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani
 - **De a un cambio por vez**, en el orden de `mvp.md`. El siguiente arranca recién cuando el anterior
   está archivado.
 - **Ningún agente lanza otros agentes.**
-- **Git**: cada cambio se trabaja en una rama `cambio/NN-nombre` (por ejemplo,
-  `cambio/01-base-del-proyecto`). Esa rama se puede pushear sin preguntar. Después del OK del auditor
-  se integra en `main`; **el push a `main` se pregunta siempre**.
+- **Git**: sin ramas, todo sobre `main`, porque trabaja una sola persona. Se commitea al archivar
+  cada cambio (después del OK del auditor). **El push al repositorio público se pregunta siempre.**
 - **El repositorio es público**: nunca secretos ni datos personales reales, ni en código ni en tests.
 - **Nada se da por probado sin la salida del comando** que lo prueba, y de esta versión del código.

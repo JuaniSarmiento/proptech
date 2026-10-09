@@ -552,8 +552,9 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   proponer, construir (un agente codea con TDD), romper (otro agente intenta romperlo y deja las
   fallas como tests), auditar (otro agente revisa lo que hizo y pensó cada uno) y archivar. **Un
   cambio está aprobado cuando el auditor da el OK.** Detalle en `forma-de-trabajo.md`.
-- **Agregado por Claude, a confirmar**: Juani aprueba la propuesta de los cambios críticos; tope de
-  tres vueltas antes de frenar y consultar; una rama por cambio, con push a `main` siempre consultado.
+- **Agregado por Claude**: Juani aprueba la propuesta de los cambios críticos; tope de tres vueltas
+  antes de frenar y consultar. **Sin ramas** (Juani: "si lo trabajo yo nomás"): todo sobre `main`,
+  commit al archivar cada cambio y push siempre consultado.
 - **Descartado**: el esquema completo de la configuración global (senior en cada fase, tres pases
   adversariales independientes, especialistas por capa), por costo; y PRs revisados por Alberto,
   porque el desarrollo es de Juani.
