@@ -1,0 +1,15 @@
+{
+	admin off
+}
+
+{$PROPTECH_SITIO} {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header -Server
+}

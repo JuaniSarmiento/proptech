@@ -1,0 +1,4 @@
+title = "gitleaks config — PropTech"
+
+[extend]
+useDefault = true

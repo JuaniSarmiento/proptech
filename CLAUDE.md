@@ -36,10 +36,12 @@ original de la especificación se descartó (D-002) y no se usa.
 
 ## Estado
 
-- Al 09/10/2026 **no hay código**. El MVP arranca por **edificios** (D-027, pedido de Alberto).
-  La base de conocimiento está cerrada salvo dos preguntas abiertas: cuál es el edificio piloto
-  (P1) y el precio (P8).
-- Próximo paso: el cambio 1a (`infraestructura-base`) según `conocimiento/roadmap.md`.
+- **Cambio 1a `infraestructura-base` archivado** (09/10/2026): el proyecto levanta con
+  `cd infra && docker compose up --build` (ver README), con CI en GitHub Actions. Todavía no hay
+  dominio: sólo el esqueleto y `/api/salud`.
+- **Próximo**: cambio 1b `arranque-del-sistema` según `conocimiento/roadmap.md`. Antes de cada cambio,
+  constructor y rompedor leen `conocimiento/lecciones.md`.
+- Preguntas abiertas: el edificio piloto (P1) y el precio (P8).
 
 ## Reglas que no se negocian
 

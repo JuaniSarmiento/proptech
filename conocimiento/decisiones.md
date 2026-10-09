@@ -576,6 +576,42 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   proyecto y sólo en ese momento del ciclo.
 - **Quién**: Juani, con las decisiones de detalle delegadas a Claude.
 
+## D-050 · Lecciones aprendidas y escalado del ciclo por riesgo
+
+- **Fecha**: 09/10/2026
+- **Decisión**: se crea `lecciones.md`, de sólo agregar: el auditor propone en cada veredicto lo que el
+  ciclo enseñó y el orquestador lo registra al archivar; constructor y rompedor lo leen antes de cada
+  cambio. Además, el ciclo se escala por riesgo: completo para los cambios críticos, los que tocan
+  plata y la infraestructura; una pasada única de romper y auditar para los chicos o de sólo lectura.
+  Detalle en `forma-de-trabajo.md`.
+- **Por qué**: en el cambio 1a el auditor encontró dos bugs que el constructor y el rompedor no vieron,
+  y hicieron falta tres vueltas. Con las lecciones de entrada, el rompedor ataca esos puntos ciegos
+  desde la primera vuelta. El ciclo completo cuesta mucho para cambios chicos.
+- **Quién**: Juani (propuesta de Claude).
+
+## D-051 · Herramientas y versiones de la infraestructura base (cambio 1a)
+
+- **Fecha**: 09/10/2026
+- **Decisión** (detalle en `openspec/changes/archive/*-infraestructura-base/design.md`, D1 a D11):
+  - **Python 3.14** con **uv**; FastAPI 0.143, SQLAlchemy 2.1, Alembic 1.20, psycopg 3.3,
+    pydantic-settings 2.15. **Ruff** (lint y formato), **mypy estricto** con el plugin de pydantic,
+    **pytest** con **testcontainers** (PostgreSQL real, la misma imagen que Compose).
+  - **Node 24** con **pnpm**; Next.js 16.4, React 19.3, **TypeScript 6.0.3** (no 7, por compatibilidad
+    con Next), **Biome** (lint y formato), **Vitest** 5 con Vite fijado en 7.3.7.
+  - Imágenes con versión de parche exacta: `postgres:18.6-trixie`, `caddy:2.11.7-alpine`,
+    `python:3.14.8-slim-trixie`, `node:24.21.0-alpine`. Contenedores sin root.
+  - **GitHub Actions** con acciones fijadas por SHA, jobs `backend`, `web`, `humo` y `secretos`
+    (gitleaks 8.30.1) y un **canario** que prueba que el CI falla con un test roto sin pushear uno.
+  - Compose con nombre de proyecto `proptech`, migraciones como servicio aparte, sólo Caddy con puertos
+    públicos, red `interna` sin salida a Internet.
+- **Descartado**: services de PostgreSQL de GitHub Actions (obligaban a publicar el puerto en local),
+  Postgres en Alpine, TypeScript 7, ESLint y Prettier (reemplazados por Biome), pushear un test roto
+  para probar el CI.
+- **Notas para cambios siguientes**: separar web y base de red en el cambio 2; ocultar los encabezados
+  `Via` y `X-Powered-By` y revisar HEAD en el cambio 2; comillas en `pg_isready` y el test tautológico
+  del fixture en el 1b.
+- **Quién**: proponente y constructor del cambio 1a, aprobado por el auditor (vuelta 4).
+
 ---
 
 ## Preguntas abiertas

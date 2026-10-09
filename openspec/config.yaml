@@ -42,7 +42,7 @@ rules:
 operations:
   apply:
     guidance:
-      - TDD estricto: ver el test fallar antes de escribir el código que lo hace pasar.
+      - "TDD estricto: ver el test fallar antes de escribir el código que lo hace pasar."
       - No tocar cobros ni cuenta corriente sin aprobación explícita de Juani.
   archive:
     guidance:

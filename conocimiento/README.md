@@ -24,6 +24,7 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
 | 6 | [`roadmap.md`](roadmap.md) | Los 16 cambios del MVP en orden, con una ficha por cambio que es la entrada de cada propose | Se reescribe |
 | 7 | [`forma-de-trabajo.md`](forma-de-trabajo.md) | Cómo se construye cada cambio: orquestador, constructor, rompedor y auditor | Se reescribe |
+| 8 | [`lecciones.md`](lecciones.md) | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen el constructor y el rompedor antes de empezar | **Sólo se agrega** |
 
 **Por qué dos formas de actualizar**: lo que describe cómo es el sistema hoy se reescribe para que
 nunca convivan dos versiones; lo que cuenta cómo llegamos acá sólo se agrega, para no perder el

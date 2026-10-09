@@ -11,7 +11,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 
 | # | Cambio | Hito | Depende de | Explore propio | Crítico | Tamaño |
 |---|---|---|---|---|---|---|
-| 1a | `infraestructura-base` | M1 | ninguno | no | no | mediano |
+| 1a | `infraestructura-base` ✅ | M1 | ninguno | no | no | mediano |
 | 1b | `arranque-del-sistema` | M1 | 1a | no | no | mediano |
 | 2 | `acceso-y-aislamiento` | M1 | 1b | **sí** | **sí** | grande |
 | 3 | `configuracion-del-edificio` | M1 | 2 | no | no | mediano |
