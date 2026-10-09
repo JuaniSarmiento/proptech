@@ -9,9 +9,9 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
-- **Complejo**: la comunidad que se administra. Puede ser un **barrio privado** (o country) o un **edificio** en propiedad horizontal. En el modelo de datos de la especificación se llamaba `consorcios`.
+- **Complejo**: la comunidad que se administra. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). En el modelo de datos de la especificación se llamaba `consorcios`.
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.
-- **Unidad funcional (UF)**: el objeto sobre el que se liquida la expensa. En un barrio es un **lote** (manzana y número); en un edificio, un departamento (piso y letra). Su identificador sólo es único dentro de su complejo.
+- **Unidad funcional (UF)**: el objeto sobre el que se liquida la expensa. En un edificio, un departamento (piso y letra), una cochera, una baulera o un local; en un barrio, un **lote** (manzana y número). Su identificador sólo es único dentro de su complejo.
 - **Tipo de unidad**: departamento, cochera, baulera o local en un edificio; lote en un barrio. Cada una tiene su coeficiente y se liquida por separado.
 - **Estado de la unidad**: baldío, en obra, habitado o desocupado. Se usa en barrios; en edificios está desactivado.
 - **Propietario**: el titular de la unidad. **Inquilino**: quien la ocupa sin ser titular. **Usuario**: la persona que entra al sistema; una misma persona puede tener varias unidades.
@@ -21,7 +21,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Administrador**: opera el complejo y es el comprador de PropTech.
 - **Consejo** o **comisión directiva**: propietarios que controlan las cuentas y autorizan gastos.
 - **Vecino**: propietario o inquilino que usa el portal.
-- **Intendente** (barrio) o **encargado** (edificio): personal que reporta novedades y da conformidad de trabajos. En el MVP, su sueldo entra como gasto desde el recibo del contador (D-028).
+- **Encargado** (edificio) o **intendente** (barrio): personal que reporta novedades y da conformidad de trabajos. En el MVP, su sueldo entra como gasto desde el recibo del contador (D-028).
 - **Proveedor**: quien presta un servicio y factura al complejo.
 
 ## Gastos y reparto
@@ -32,7 +32,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
 - **Expensa ordinaria**: la de la operación habitual. **Expensa extraordinaria**: la de una obra o necesidad puntual.
 - **Coeficiente**: la proporción con la que una unidad participa de un grupo de reparto. La suma de los coeficientes de un grupo es 1 (100%).
-- **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo barrio tiene al menos el grupo "Generales" (R01).
+- **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo complejo tiene al menos el grupo "Generales" (R01).
 - **Factor por estado**: el porcentaje con que una unidad participa del reparto según su estado (por ejemplo, baldío al 50%). La diferencia la absorben las demás unidades del grupo (R02).
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
 - **Prorrateo**: repartir un gasto entre las unidades según su coeficiente, su superficie o en partes iguales.
@@ -56,8 +56,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Pago informado**: un pago que el vecino declaró subiendo su comprobante. No afecta la deuda (R11).
 - **Pago confirmado**: un pago informado que el administrador aprobó. Recién ahí se imputa (R11).
 - **Pago rechazado**: un pago informado que el administrador descartó, con motivo visible para el vecino.
-- **Número de operación**: el identificador de la transferencia en el comprobante. No se repite dentro de un barrio (R11).
-- **Extracto**: el listado de movimientos de la cuenta bancaria del barrio, que el administrador sube para validar los pagos informados.
+- **Número de operación**: el identificador de la transferencia en el comprobante. No se repite dentro de un complejo (R11).
+- **Extracto**: el listado de movimientos de la cuenta bancaria del consorcio, que el administrador sube para validar los pagos informados.
 - **Acreditación**: el momento en que la plata llega a la cuenta del complejo.
 - **Imputación**: asignar un pago, total o parcialmente, a una o varias obligaciones. Un pago puede tener varias imputaciones.
 - **Pago parcial**: cubre parte de una obligación; queda un residual pendiente.
@@ -67,10 +67,10 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## Facturas de proveedores
 
-- **Factura**: el comprobante que emite un proveedor al barrio. Origina un gasto. No confundir con el comprobante de pago del vecino.
+- **Factura**: el comprobante que emite un proveedor al consorcio. Origina un gasto. No confundir con el comprobante de pago del vecino.
 - **QR de ARCA**: el código obligatorio de toda factura electrónica. Contiene fecha, CUIT del emisor, punto de venta, tipo y número de comprobante, importe, moneda, receptor y código de autorización (R12).
 - **CAE**: el código de autorización que ARCA otorga a cada factura electrónica.
-- **Factura duplicada**: la que repite CUIT del emisor, punto de venta, tipo y número dentro del mismo barrio (R12).
+- **Factura duplicada**: la que repite CUIT del emisor, punto de venta, tipo y número dentro del mismo complejo (R12).
 
 ## Mora
 
