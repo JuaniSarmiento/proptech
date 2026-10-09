@@ -151,7 +151,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Quién**: Juani. La redistribución del factor la propuso Claude al registrar la regla: sin ella
   el barrio no cubre sus gastos.
 
-## D-015 · Redondeo por mayor resto y saldo inicial con o sin detalle
+## D-015 · Redondeo por mayor resto y saldo inicial con o sin detalle · *representación en centavos reemplazada por D-046*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: montos en centavos enteros, reparto con el método del mayor resto para que la suma
@@ -510,6 +510,40 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Pendiente**: el resultado del explore general puede ajustar esta lista (se registrará como
   decisión nueva).
 - **Quién**: Juani.
+
+## D-046 · Los montos son Decimal, no centavos enteros
+
+- **Fecha**: 09/10/2026
+- **Decisión**: todo importe es `Decimal` en Python (construido siempre desde texto, nunca desde
+  `float`), `NUMERIC(14,2)` en PostgreSQL y texto en el JSON (`"20000.00"`). El frontend nunca calcula
+  montos, sólo los formatea. El reparto sigue siendo por mayor resto (R07). **Reemplaza la
+  representación en centavos de D-015 y D-039.**
+- **Descartado**: centavos enteros. Igual de correctos, pero distintos de lo que eligieron el
+  documento de arquitectura de Alberto y el código original.
+- **Por qué**: hay que decidirlo antes del primer cambio porque toca todas las tablas con plata, y
+  conviene arrancar alineados con Alberto, que va a trabajar a la par. Es además más legible.
+- **Quién**: Claude, por delegación explícita de Juani ("como vos lo veas mejor").
+
+## D-047 · Ajustes al plan de cambios después del explore general
+
+- **Fecha**: 09/10/2026
+- **Decisión**: se aceptan las propuestas del explore general
+  (`openspec/exploraciones/2026-10-09-estructura-del-mvp.md`):
+  1. `motor-de-cuenta-corriente` pasa a ser el cambio 4 e `importacion-desde-excel` el 5, porque el
+     saldo inicial (R09) genera obligaciones y créditos que define el motor. **Ajusta a D-045.**
+  2. El método de login se decide en el *design* de `acceso-y-aislamiento` (cambio 2). **Precisa a D-039.**
+  3. La gestión del edificio piloto (P1) arranca ya, en paralelo al cambio 1.
+  4. `base-del-proyecto` incluye: CI que corre los tests en cada push, `config/parametros.yaml` y su
+     lector, un edificio de ejemplo como datos semilla, logs estructurados con número de seguimiento
+     y backups automáticos. Si al proponerlo queda demasiado grande, se parte en dos.
+  5. `liquidacion-y-emision` sigue siendo un cambio, con sus tareas en dos bloques: preliquidación
+     (sin efectos) y emisión (con efectos).
+  6. Explore propio antes del propose para `acceso-y-aislamiento`, `motor-de-cuenta-corriente` y
+     `liquidacion-y-emision`; los demás van directo a propose.
+  7. El *design* de `liquidacion-y-emision` resuelve qué pasa si falla el encolado del PDF después de
+     emitir (sin outbox): como mínimo, un estado por emisión y una forma de reprocesar.
+  8. El PDF de la expensa cuenta como interfaz: pasa por la skill impeccable.
+- **Quién**: Claude, por delegación explícita de Juani.
 
 ---
 

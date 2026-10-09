@@ -98,16 +98,18 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Regla**: la deuda vieja vive en sus obligaciones originales; la expensa nueva la **muestra**
   como saldo anterior pero no genera un débito nuevo por ella (análisis H06).
 
-## R07 · Precisión y redondeo · Vigente (D-015)
+## R07 · Precisión y redondeo · Vigente (D-015, D-046)
 
-- **Representación**: todos los montos en **centavos enteros**. Nunca `float`.
+- **Representación** (D-046): todo importe es `Decimal` en Python, construido desde texto
+  (`Decimal("0.10")`, nunca `Decimal(0.1)`), `NUMERIC(14,2)` en la base y texto en el JSON. Nunca
+  `float`. El frontend no calcula montos: sólo los formatea.
 - **Reparto**: cada parte se redondea al centavo; la diferencia hasta el total exacto se asigna de
   a un centavo a las unidades con mayor fracción descartada (método del mayor resto). En empate,
   por orden de identificador de la unidad, para que el resultado sea determinista.
 - **Garantía**: la suma de las partes es siempre igual al gasto, al centavo; ninguna unidad se
   aparta más de un centavo de su parte exacta.
 - **Intereses**: se calculan con precisión completa y se redondean al centavo una sola vez, al registrarse.
-- **Tests mínimos**: $1.000.000 entre 150 unidades suma exacto; empate de fracciones es
+- **Tests mínimos**: un `float` en un monto hace fallar la prueba; $1.000.000 entre 150 unidades suma exacto; empate de fracciones es
   determinista; un reparto entre 1 unidad devuelve el total.
 
 ## R08 · Correcciones · Vigente (D-016)

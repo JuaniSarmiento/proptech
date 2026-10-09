@@ -19,12 +19,12 @@ context: |
 
   Stack: Next.js (App Router) + TypeScript; FastAPI + SQLAlchemy + Alembic; PostgreSQL con
   Row-Level Security (SET LOCAL); Redis + worker ARQ; Caddy; Docker Compose en un VPS.
-  Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
+  Plan de cambios: conocimiento/mvp.md (D-045, D-047). Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
   gastos, liquidacion, cuenta_corriente, pagos, avisos, compartido), proptech_api, proptech_worker;
   web/; infra/; config/parametros.yaml.
 
-  Reglas no negociables: la plata nunca pasa por PropTech; montos en centavos enteros (R07, a
-  validar con Alberto frente a Decimal); la cuenta corriente sólo agrega movimientos (R08); el
+  Reglas no negociables: la plata nunca pasa por PropTech; montos en Decimal desde texto,
+  NUMERIC(14,2), texto en JSON, nunca float (R07, D-046); la cuenta corriente sólo agrega movimientos (R08); el
   complejo sale del login, nunca del cliente (R10); intereses simples (R03); TDD estricto en el
   núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana antes de
   escribir código); nunca secretos ni datos personales reales en el repo (es público).

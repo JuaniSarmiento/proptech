@@ -48,7 +48,8 @@ original de la especificación se descartó (D-002) y no se usa.
   aprobación de Juani antes de escribir código ahí.
 - **TDD estricto en el núcleo**: cada regla R01 a R16 tiene sus tests mínimos escritos en
   `reglas-de-negocio.md`; se ven fallar antes de escribir el código.
-- **Montos en centavos enteros**, nunca `float`; reparto por mayor resto (R07).
+- **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;
+  el frontend no calcula montos; reparto por mayor resto (R07, D-046).
 - **La cuenta corriente sólo agrega movimientos**; una corrección es un movimiento nuevo con motivo (R08).
 - **El barrio sale del login**, nunca de un parámetro del cliente; Row-Level Security como segundo candado (R10).
 - **Intereses simples**, sin capitalización (art. 770 del CCyC) (R03).

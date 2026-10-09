@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-044). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-047). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R16) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. **Se reescribe**
 > cuando cambia una decisión.
@@ -213,13 +213,15 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | **M2 · Cobra** | A6, A7, A8, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
 | **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
 
-## Cambios de OPSX (D-045, propuesta inicial)
+## Cambios de OPSX (D-045, ajustados por D-047)
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1 `base-del-proyecto` · 2 `acceso-y-aislamiento` · 3 `configuracion-del-edificio` · 4 `importacion-desde-excel` · 5 `motor-de-cuenta-corriente` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` |
+| **M1** | 1 `base-del-proyecto` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10 `morosidad` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
+
+ⓔ = lleva su propio explore antes del propose. En paralelo al cambio 1: conseguir los datos del edificio piloto (P1).
 
 ## Observaciones del análisis que cierra cada hito
 
@@ -228,7 +230,7 @@ marcó 48 observaciones. Así se reparten:
 
 | Hito | Observaciones | Cómo |
 |---|---|---|
-| **M1** | H01, H02, H03, H04, H05, H06, H09, H10, H11, H12, H13, H14, H15, H16, H20, H43, H44, H45 | Migraciones ordenadas, aislamiento con RLS, cuenta corriente de movimientos con imputaciones, intereses simples registrados al emitir, centavos enteros, login y permisos reales, secretos fuera del repo, importación validada y atómica |
+| **M1** | H01, H02, H03, H04, H05, H06, H09, H10, H11, H12, H13, H14, H15, H16, H20, H43, H44, H45 | Migraciones ordenadas, aislamiento con RLS, cuenta corriente de movimientos con imputaciones, intereses simples registrados al emitir, montos en Decimal, login y permisos reales, secretos fuera del repo, importación validada y atómica |
 | **M2** | H07, H08, H28, H41, H42 | Excedentes como crédito, extracto en lugar de rendiciones de recaudadores, avisos con destinatarios reales y sin duplicados, morosidad calculada desde imputaciones |
 | **M3** | H21, H22, H46, H48 | Lectura por QR y borrador obligatorio, duplicados frenados, restauración de backup probada, piloto como evidencia antes de hablar de producción |
 | **Fuera del MVP** | H17, H18, H19, H23 a H27, H29 a H40, H47 | Módulos que no entran (reservas, accesos, comunicación, cálculo de sueldos, asambleas, compras, activos) o el modelo comercial (P8, sin definir) |
@@ -265,6 +267,6 @@ el MVP sigue en su forma (D-035 a D-039):
 | Tema | Documento de Alberto | MVP | Por qué |
 |---|---|---|---|
 | Permisos | ~15 áreas con 3 niveles | Titular, colaborador, consejo y vecino, con las mismas tres capas | Lo mínimo para validar (D-037) |
-| Montos | Decimal (NUMERIC 14,2) | Centavos enteros | Las dos son correctas; a validar con Alberto (D-039) |
+| Montos | Decimal (NUMERIC 14,2) | Decimal (NUMERIC 14,2), igual que su documento | Alineado con Alberto (D-046) |
 | Cifrado con índice ciego, outbox, copiloto, bandeja de WhatsApp | Incluidos | Después del MVP | Alcance (D-039) |
 | Login | Clerk para el personal, enlace mágico para vecinos | Se define en el primer change de OPSX | No se decidió todavía (D-039) |
