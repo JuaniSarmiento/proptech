@@ -2,7 +2,7 @@
 
 > Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-063). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
-> (R01 a R16) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. **Se reescribe**
+> (R01 a R31) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. **Se reescribe**
 > cuando cambia una decisión.
 
 ## Objetivo

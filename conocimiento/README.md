@@ -22,7 +22,7 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 | 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-063 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
 | 4 | [`glosario.md`](glosario.md) | El idioma común. El código usa estos mismos nombres, en español | Se reescribe |
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
-| 6 | [`roadmap.md`](roadmap.md) | Los 16 cambios del MVP en orden, con una ficha por cambio que es la entrada de cada propose | Se reescribe |
+| 6 | [`roadmap.md`](roadmap.md) | Los 17 cambios del MVP en orden (1a, 1b, 1c y 2 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |
 | 7 | [`forma-de-trabajo.md`](forma-de-trabajo.md) | Cómo se construye cada cambio: orquestador, constructor, rompedor y auditor | Se reescribe |
 | 8 | [`lecciones.md`](lecciones.md) | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen el constructor y el rompedor antes de empezar | **Sólo se agrega** |
 

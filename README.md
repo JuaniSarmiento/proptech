@@ -6,16 +6,19 @@ vecino. Proyecto de Alberto Cortez (también conocido como **koris**) y Juan Ign
 
 ## Estado
 
-Diseño del MVP cerrado (octubre de 2026). El MVP arranca por **edificios**. El cambio
-`infraestructura-base` deja el sistema completo arrancando con un comando y el CI corriendo en
-cada push; todavía no hay ninguna regla de negocio implementada.
+Diseño del MVP cerrado (octubre de 2026). El MVP arranca por **edificios**. Construidos y
+archivados: **1a `infraestructura-base`** (el sistema completo arranca con un comando y el CI corre en
+cada push) y **1b `arranque-del-sistema`** (configuración, tipo `Dinero` exacto, parámetros y
+edificio de ejemplo validados). Propuesto: **1c `cola-logs-y-respaldos`**. Todavía no hay
+liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
+([`conocimiento/roadmap.md`](conocimiento/roadmap.md)).
 
 ## Estructura
 
 | Carpeta | Qué tiene |
 |---|---|
 | [`conocimiento/`](conocimiento/) | **La base de conocimiento del MVP**: objetivo, historias de usuario, reglas de negocio, decisiones, glosario y fases. Es la fuente de verdad: empezá por su [README](conocimiento/README.md) |
-| `config/` | Parámetros iniciales del sistema (próximamente: `parametros.yaml`) |
+| `config/` | `parametros.yaml` (valores con que arranca cada edificio) y `semilla/` (edificio de ejemplo) |
 | `openspec/` | Cambios del ciclo OPSX |
 | `web/` | Frontend en Next.js |
 | `backend/` | API en FastAPI, worker y dominio compartido (`proptech_core`, `proptech_api`, `proptech_worker`) |
