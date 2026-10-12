@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-047). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-063). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R16) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. **Se reescribe**
 > cuando cambia una decisión.
@@ -53,6 +53,9 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
   entonces quedan disponibles para los gastos de mi edificio sin afectar a otros edificios.
 - Dado un edificio con liquidaciones emitidas, cuando cambio la tasa o el porcentaje del fondo de
   reserva, entonces las liquidaciones ya emitidas no cambian y el cambio rige desde la próxima.
+- Dado un edificio, cuando configuro el interés, entonces elijo entre un único vencimiento (R03,
+  default) o el esquema de primer y segundo vencimiento con recargo escalonado (R26), pendiente de
+  confirmar con Alberto si el piloto lo usa (ProTecc G4, Q9).
 
 **HU-A2 · Cargar el edificio desde un Excel**
 Como administrador, quiero cargar las unidades desde un Excel (piso, departamento, tipo de unidad,
@@ -76,6 +79,12 @@ en la liquidación.
 - Dada una factura ya cargada, cuando la subo otra vez, entonces el sistema la frena como duplicada.
 - Dada una factura cuyo receptor no es el CUIT del consorcio, cuando la subo, entonces el sistema
   me avisa antes de confirmar.
+- Dada una factura leída por IA con un monto que se aparta mucho del historial de ese proveedor en
+  el edificio, cuando la subo, entonces queda marcada para que la revise con más cuidado antes de
+  aprobarla (R23, propuesta, ProTecc A2).
+- Dada una nota de crédito de un proveedor, cuando la cargo asociada a su factura, entonces se
+  descuenta del gasto antes de prorratear y su monto no puede superar el de esa factura (R22,
+  ProTecc H1).
 - Dado cualquier gasto en borrador, entonces no entra en la liquidación hasta que lo apruebo.
 
 **HU-A3b · Cargar cargos particulares**
@@ -101,8 +110,17 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
 - Dada una preliquidación revisada, cuando emito, entonces se genera una obligación por unidad y
   período, con su PDF, y la persona de contacto recibe un email avisando.
 - Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide.
+- Dada una liquidación emitida pero todavía no distribuida (ningún email salió y ningún vecino la
+  vio en el portal), cuando la anulo con un motivo, entonces se borra sin dejar movimiento, como si
+  no se hubiera emitido (R17, ProTecc A5). Una vez distribuida, no se puede anular: se corrige con un
+  ajuste (R08).
+- Dada una falla del extracto bancario o del servicio de IA el día de emitir, cuando emito,
+  entonces la liquidación sale igual, por el camino manual que corresponda (R24, principio P6 de
+  Alberto, ProTecc A4).
 - Dada una unidad con deuda anterior, entonces su expensa nueva muestra el saldo anterior sin
   volver a cobrarlo (R06), y los intereses del período se registran como débito con su detalle (R03).
+- Dada la boleta de cualquier unidad, entonces incluye un código corto de esa unidad para que el
+  vecino lo escriba en el concepto de su transferencia (R19, ProTecc A1/E3).
 
 **HU-A6 · Confirmar pagos informados**
 Como administrador, quiero una bandeja con los comprobantes que subieron los vecinos para
@@ -115,6 +133,12 @@ confirmarlos o rechazarlos, y que al confirmar se imputen solos.
   favor (R05).
 - Dado un vecino con un departamento y una cochera, cuando informa un pago, entonces elige a qué
   unidad corresponde o lo reparte entre ellas.
+- Dado un pago confirmado que el banco devuelve (cheque rechazado, contracargo), cuando lo marco
+  como revertido con un motivo, entonces se registra un contra-movimiento que vuelve a subir la
+  deuda y la unidad se reevalúa para morosidad (R18, ProTecc D4).
+- Dado un pago confirmado en la unidad equivocada, cuando uso el asistente de reimputación hacia la
+  unidad correcta, entonces se generan los dos movimientos enlazados en una sola operación y las dos
+  unidades se reevalúan para morosidad (R25, propuesta, ProTecc B2).
 
 **HU-A7 · Validar con el extracto del banco**
 Como administrador, quiero subir el extracto del banco y que el sistema me marque qué comprobantes
@@ -123,18 +147,40 @@ coinciden con un movimiento y qué movimientos no tienen comprobante.
   "coincide" o "no encontrado" (importe y fecha, y CUIT de origen si el banco lo informa).
 - Dado un movimiento del banco sin comprobante, entonces aparece como fondo pendiente de identificar.
 - Dado un movimiento del banco ya usado para confirmar un pago, entonces no puede confirmar otro.
+- Dado un movimiento que coincide por el código de unidad en el concepto o por el CBU histórico de
+  esa unidad, entonces aparece en la bandeja como sugerencia de confianza alta, y confirmo con un
+  clic; el sistema nunca lo asigna solo (R19, principio P3 de Alberto, ProTecc A1/E3).
 
 **HU-A8 · Ver la morosidad**
 Como administrador, quiero ver quién debe, cuánto y desde cuándo.
 - Dado el edificio, cuando abro morosidad, entonces veo por unidad la deuda vencida, la antigüedad
   de la deuda más vieja y los intereses, calculados desde las imputaciones (nunca desde una marca
   de "pagada").
+- Dada una unidad con dos o más liquidaciones vencidas con saldo impago, entonces aparece marcada
+  como **moroso crítico** (R20, ProTecc M1); no hay bloqueo de amenities porque las reservas no
+  están en el MVP.
+- Dada una unidad marcada "en gestión judicial", entonces no recibe recordatorios automáticos de
+  mora y no cuenta como moroso crítico (R31, propuesta, ProTecc G2).
+- Dado un recargo por mora que el vecino discute, cuando el administrador lo condona con un motivo,
+  entonces se registra un movimiento de condonación que neutraliza el recargo sin borrarlo, visible
+  para el vecino (R29, propuesta, falta decidir quién aprueba, ProTecc B5).
 - Dada la lista, cuando la exporto, entonces obtengo un Excel con los mismos números.
 
 **HU-A9 · Corregir un error**
 Como administrador, quiero corregir un pago o un cargo mal registrado sin perder el historial.
 - Dado un movimiento equivocado, cuando lo corrijo, entonces se agrega un movimiento nuevo con
   motivo y responsable, y el original sigue visible (R08).
+
+**HU-A10 · Emitir un certificado de libre deuda**
+Como administrador, quiero generar un certificado de deuda de una unidad para una venta, para que
+el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21, ProTecc G3).
+- Dada una unidad sin saldo pendiente ni plan de pago, cuando genero el certificado con una fecha de
+  corte, entonces el sistema muestra "libre de deuda" con saldo cero a esa fecha y yo lo firmo.
+- Dada una unidad con saldo pendiente, cuando genero el certificado, entonces muestra el saldo a la
+  fecha de corte y, si hay pagos informados todavía no confirmados, los lista aparte como "en
+  revisión", sin restarlos del saldo.
+- Dado un certificado ya generado, entonces nunca incluye una estimación de gastos del período en
+  curso: sólo la deuda liquidada a la fecha de corte.
 
 ### Vecino
 
@@ -176,6 +222,10 @@ Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos c
 Como vecino, quiero recibir un email antes del vencimiento y otro si quedé en mora.
 - Dada una expensa que vence en dos días, entonces recibo un aviso por email una sola vez.
 - Dado un pago confirmado antes del aviso, entonces no recibo el aviso de mora.
+- Dado un aviso que cae en sábado, domingo o feriado, entonces sale el primer día hábil siguiente
+  (R27, propuesta, ProTecc W3).
+- Dado un contacto cuyo email no tiene formato válido o cuyo envío rebota, entonces el administrador
+  ve esa unidad en una lista de "unidades sin contacto válido" (R28, propuesta, ProTecc W4).
 
 ### Consejo
 
@@ -210,7 +260,7 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | Hito | Historias | Se demuestra cuando |
 |---|---|---|
 | **M1 · Liquida** | A1, A2, A3 (carga manual), A3b, A4, A5, A9 | Con los datos del edificio piloto, el sistema reproduce su última liquidación al centavo |
-| **M2 · Cobra** | A6, A7, A8, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
+| **M2 · Cobra** | A6, A7, A8, A10, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
 | **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
 
 ## Cambios de OPSX (detalle y fichas en `roadmap.md`)
@@ -237,10 +287,14 @@ marcó 48 observaciones. Así se reparten:
 
 ## Cómo se valida
 
-1. **Tests unitarios** de las reglas R01 a R16: cada regla con sus tests mínimos, escritos antes que el código.
+1. **Tests unitarios** de las reglas R01 a R31: cada regla con sus tests mínimos, escritos antes que el código.
 2. **Tests de integración** contra PostgreSQL real, incluidos dos pagos simultáneos de la misma unidad.
 3. **Test de aceptación de M1**: la última liquidación del edificio piloto, reproducida al centavo.
 4. **Mes en paralelo (M3)**: el cierre de PropTech coincide con el método actual del piloto.
+5. **Métricas de soporte, después del MVP**: el principio P8 de Alberto ("cada problema se mide")
+   queda sin mecanismo en el MVP. No hay entidad de excepción ni métricas todavía; cuando se
+   construyan (ver `proyecto-final.md`, fase F6), son las que deciden si conviene pasar a la Etapa 2
+   de identificación de pagos (CVU por unidad) de DEC-10.
 
 ## Diferencias con la especificación original
 

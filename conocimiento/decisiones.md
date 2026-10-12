@@ -645,6 +645,178 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   limpiar); `Dinero` acepta ceros de más (`1.0000` → `1.00`).
 - **Quién**: proponente y constructor del 1b, aprobado por el auditor (vuelta 4).
 
+## D-054 · El MVP sigue siendo el nuestro; los documentos de Alberto aportan dolores y el motor de reglas
+
+- **Fecha**: 12/10/2026
+- **Decisión**: el MVP sigue siendo sólo edificios y el de `mvp.md`. El documento de Alberto "ProTecc,
+  problemas operativos y reglas v3.5" (10/10/2026) se usa como fuente de **dolores y problemas**: se
+  analizan sus 42 casos, se resuelven los que tocan al MVP y se integran a la base de conocimiento; lo
+  que excede el MVP (barrios, egresos y otros) va a `proyecto-final.md`. Después se investiga el motor
+  de reglas de negocio que pidió Alberto y cómo integrarlo. Mientras tanto no se escribe código.
+- **Fuentes**: `especificacion/documentos-alberto/` (fuera del repositorio público).
+- **Quién**: Juani.
+
+## D-055 · Ventana de anulación de una liquidación emitida y no distribuida · ajusta R08/D-016
+
+- **Fecha**: 12/10/2026
+- **Decisión**: una liquidación emitida se puede anular sólo si todavía no fue distribuida: no
+  salió el primer email de aviso y ningún vecino la vio en el portal. La anulación queda registrada
+  con motivo y responsable. Desde el momento en que se distribuye, rige R08/D-016 sin excepciones:
+  todo error se corrige con un movimiento nuevo. Detalle en R17.
+- **Descartado**: anular en cualquier momento después de emitida (contradice R08 de lleno); exigir
+  siempre el ajuste del mes siguiente aunque el error se detecte antes de que cualquier vecino la vea.
+- **Por qué**: es el único punto donde el documento de Alberto choca con nuestra decisión D-016. La
+  ventana acotada (emitida y todavía no vista por nadie) no abre la puerta a editar en silencio lo
+  que un vecino ya vio; protege la misma transparencia que D-016 buscaba, sin la rigidez de esperar
+  un mes por un error que nadie llegó a ver.
+- **Fuente**: `openspec/exploraciones/2026-10-12-dolores-protecc.md` (caso ProTecc A5, pregunta Q10
+  de Alberto).
+- **Quién**: Juani.
+
+## D-056 · Estado "revertido" para un pago confirmado que el banco devuelve
+
+- **Fecha**: 12/10/2026
+- **Decisión**: se agrega el estado **revertido** a R11, para un pago confirmado que el banco
+  rechaza o devuelve (cheque rechazado, contracargo, transferencia revertida). Se registra como un
+  movimiento de reversión (débito) que referencia al pago original; el pago original nunca se borra
+  ni pasa a "rechazado". La unidad se reevalúa para morosidad. Detalle en R18.
+- **Descartado**: tratarlo sólo como una corrección genérica de R08, sin estado propio.
+- **Por qué**: aplica a edificios igual que a barrios (un cheque se puede rechazar en cualquiera) y
+  le da trazabilidad al vecino y al administrador sobre qué pasó realmente con ese pago.
+- **Fuente**: análisis citado (caso ProTecc D4).
+- **Quién**: Juani.
+
+## D-057 · Código de unidad en el concepto y CBU histórico, como sugerencias de alta confianza
+
+- **Fecha**: 12/10/2026
+- **Decisión**: se adoptan dos mecanismos de R11: la boleta sugiere al vecino un código corto de su
+  unidad para escribirlo en el concepto de la transferencia, y el sistema recuerda el CBU que pagó
+  una unidad la última vez. Los dos entran a la bandeja de confirmación como sugerencias de
+  confianza alta; ninguno asigna un pago en forma automática (principio P3 de Alberto). Detalle en
+  R19.
+- **Descartado**: esperar a medir con extractos reales antes de adoptarlos; construir ya la cola de
+  excepciones completa con sugerencias ordenadas por confianza (queda para después del MVP, ver
+  `proyecto-final.md`).
+- **Por qué**: son baratos (no tocan el modelo de datos decidido ni el diseño de la boleta más que
+  agregar un código) y reducen directamente los casos A1 y E3 de Alberto.
+- **Fuente**: análisis citado (sección 3, casos ProTecc A1 y E3).
+- **Quién**: Juani.
+
+## D-058 · "Moroso crítico" se define por antigüedad, sin bloqueo de amenities
+
+- **Fecha**: 12/10/2026
+- **Decisión**: una unidad es **moroso crítico** cuando tiene dos o más liquidaciones vencidas con
+  saldo impago. Quedan excluidas las unidades con un plan de pago al día o con la deuda en gestión
+  judicial, **si esos conceptos existen en el MVP**; hoy no existen (no hay plan de pago ni marca de
+  gestión judicial en `mvp.md`), así que la exclusión queda anotada como límite conocido hasta que
+  esos conceptos se construyan (ver R31 y `proyecto-final.md`, G1). No hay bloqueo de reservas de
+  amenities: las reservas no están en el MVP. Detalle en R20.
+- **Descartado**: una fórmula por monto de deuda (se rompe porque la expensa cambia de mes a mes y
+  los pagos parciales la confunden, el mismo problema que Alberto marca en su v2); esperar a que el
+  piloto lo pida.
+- **Por qué**: es una consulta sobre datos que el MVP ya tiene (cuenta corriente, liquidaciones);
+  sirve para priorizar cobranza desde el primer mes sin construir nada nuevo.
+- **Fuente**: análisis citado (caso ProTecc M1, DEC-07/DEC-08 de Alberto).
+- **Quién**: Juani.
+
+## D-059 · El certificado de libre deuda por venta de unidad entra al MVP
+
+- **Fecha**: 12/10/2026
+- **Decisión**: se agrega el certificado de libre deuda (o de deuda, si corresponde) para la venta
+  de una unidad. Se genera desde la cuenta corriente con una fecha de corte, muestra el saldo a esa
+  fecha e informa los pagos en revisión por separado, sin restarlos del saldo; lo firma el
+  administrador. Nunca incluye una estimación de gastos del período en curso. Entra al cambio 10
+  `morosidad` del roadmap (justificación en `roadmap.md`: se apoya en la misma cuenta corriente que
+  ya alimenta la vista de morosidad, sin agregar una dependencia nueva). Detalle en R21.
+- **Descartado**: dejarlo fuera del MVP y seguir resolviéndolo a mano, como hace hoy cualquier
+  administrador sin sistema.
+- **Por qué**: Alberto lo marca como frecuente y urgente en edificios reales (compraventas); es
+  barato de construir sobre una cuenta corriente que el MVP ya tiene.
+- **Fuente**: análisis citado (caso ProTecc G3).
+- **Quién**: Juani.
+
+## D-060 · Investigar los requisitos legales de la liquidación en Mendoza antes del design del cambio 7
+
+- **Fecha**: 12/10/2026
+- **Decisión**: antes de cerrar el *design* de `liquidacion-y-emision` (cambio 7), se investiga qué
+  exige la normativa de Mendoza para una expensa. Alberto cita como referencia la Ley 941 de CABA,
+  que no aplica en Mendoza; hay que relevar qué rige acá. Se agrega como prerrequisito del cambio 7
+  en `roadmap.md`.
+- **Descartado**: asumir que no hay requisitos especiales y corregir recién si aparece un reclamo.
+- **Por qué**: es una tarea de investigación chica y barata, comparada con el costo de rehacer la
+  plantilla de la expensa (que pasa por la skill impeccable) después de ya estar emitiendo con ella.
+- **Fuente**: análisis citado (caso ProTecc H4, pregunta Q12 de Alberto).
+- **Quién**: Juani.
+
+## D-061 · La nota de crédito es una entidad asociada a la factura que corrige
+
+- **Fecha**: 12/10/2026
+- **Decisión**: una nota de crédito queda asociada a la factura de proveedor que corrige y su monto
+  no puede superar el de esa factura; se descuenta del gasto antes de prorratear, dentro del mismo
+  grupo de reparto. Entra al cambio 6 `gastos-y-cargos`. Detalle en R22.
+- **Descartado**: cargarla como un gasto negativo suelto, sin asociarla a la factura original (más
+  simple, pero pierde la trazabilidad que R08 pide para toda corrección).
+- **Por qué**: evita cobrarle de más a los vecinos por un gasto que el proveedor ya corrigió.
+- **Fuente**: análisis citado (caso ProTecc H1, 12.13).
+- **Quién**: Juani.
+
+## D-062 · Centavos identificadores por unidad quedan para después del MVP
+
+- **Fecha**: 12/10/2026
+- **Decisión**: se posterga la asignación de centavos únicos por unidad en el monto de la boleta.
+  Queda en `proyecto-final.md`, condicionada a responder primero la pregunta Q2 de Alberto (qué
+  traen los extractos de los bancos de Mendoza) y Q18 (cómo convive con el prorrateo y el recargo),
+  y a medir primero cuánto bajan los casos A1 y E3 los mecanismos ya adoptados en D-057.
+- **Descartado**: adelantarlo ya, aceptando el riesgo de diseñarlo sin esa validación.
+- **Por qué**: toca R07 (redondeo) y el diseño de la boleta, y el propio documento de Alberto lo
+  condiciona a una métrica que todavía no existe (el 20% de pagos sin identificar de DEC-10).
+- **Fuente**: análisis citado (sección 3).
+- **Quién**: Juani.
+
+## D-063 · Integración de los dolores de ProTecc (resumen)
+
+- **Fecha**: 12/10/2026
+- **Decisión**: se integran a la base de conocimiento los 42 casos del documento de Alberto
+  "ProTecc, problemas operativos y reglas v3.5" (10/10/2026), según el análisis
+  `openspec/exploraciones/2026-10-12-dolores-protecc.md`:
+  - **Entraron al MVP, decididos por Juani**: la ventana de anulación (D-055, R17), el estado
+    revertido (D-056, R18), el código de unidad y el CBU histórico (D-057, R19), el moroso crítico
+    por antigüedad (D-058, R20), el certificado de libre deuda (D-059, R21), la investigación de los
+    requisitos legales de Mendoza antes del cambio 7 (D-060) y la nota de crédito asociada a la
+    factura (D-061, R22).
+  - **Entraron al MVP como propuesta, sin validar todavía con un administrador o contador**: los
+    nueve huecos restantes del catálogo de 42 casos (ProTecc A2, A4, B2, G4, W3, W4, B5, D3, G2), como
+    R23 a R31 en `reglas-de-negocio.md`, con sus criterios en las historias de usuario y su lugar en
+    el roadmap. Ninguno de los nueve reabre una decisión vigente; se agregan como reglas en estado
+    Propuesta o Pendiente, igual que R03 hoy.
+  - **Quedaron para después del MVP, en `proyecto-final.md`**: los centavos identificadores (D-062),
+    el pago en efectivo con recibo (ProTecc D5), las fallas y riesgos de WhatsApp (ProTecc W1, W2,
+    W5), el plan de pago o convenio de deuda (ProTecc G1), la conciliación completa de caja y banco
+    (ProTecc H3), los fondos como subcuentas independientes (ProTecc C3, ya fuera por D-023/D-031) y
+    la excepción como entidad con sus métricas y la cola de sugerencias completa con dos señales
+    independientes (principios P3 y P8 de Alberto, DEC-12).
+  - **No se tocó ninguna decisión vigente**: donde Alberto propone algo distinto de lo ya decidido
+    (centavos identificadores, cola de sugerencias completa), se posterga en vez de reabrir lo
+    decidido.
+- **Fuente**: `openspec/exploraciones/2026-10-12-dolores-protecc.md`.
+- **Quién**: Juani.
+
+## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta
+
+- **Fecha**: 12/10/2026
+- **Decisión**: la arquitectura incorpora desde ya un **puerto de políticas** en `proptech_core`: toda
+  regla propia de cada edificio (recargos, multas, bonificaciones, cargos por estado, criterios de
+  morosidad, alertas antes de emitir) entra por ahí. Recibe hechos y devuelve acciones propuestas con
+  montos como texto `Dinero`; el núcleo valida todo lo que sale y corta en seco si algo no cierra, y
+  cada acción se registra como movimiento con motivo (el motor decide qué, el núcleo decide cómo). En
+  el MVP el puerto se implementa con los menús cerrados de `parametros.yaml`. Un motor de terceros
+  (GoRules ZEN u otro) se enchufa detrás del mismo puerto cuando lleguen amenities o planes de pago.
+- **Descartado**: llevar toda la lógica a un motor (el núcleo financiero R03 a R08 y R10 queda en
+  código con tests); adoptar GoRules ya: la prueba del 12/10 mostró que trabaja con `float` y que ante
+  un error de tipo saltea la regla en silencio y aplica la siguiente.
+- **Fuente**: `openspec/exploraciones/2026-10-12-motor-de-reglas.md`.
+- **Quién**: Juani, a partir del pedido de Alberto (12/10).
+
 ---
 
 ## Preguntas abiertas
@@ -659,3 +831,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [x] **P6 · Stack**: definido (D-020).
 - [x] **P7 · Equipo**: Juani programa (D-022).
 - [ ] **P8 · Precio y modelo comercial**: sin definir. Punto de partida: la landing de Alberto (ARS 2.900 por unidad, Profesional 4.200, 10 fundadores con migración gratis) (D-035). Sin definir todavía (08/10). El documento de Alberto lo presenta como tema abierto, con los datos de mercado como referencia.
+- [ ] **P9 · Qué traen los extractos bancarios en Mendoza** (Q2 del documento de Alberto, prioridad 0
+  para él): si cada banco informa el CBU o el nombre de quien transfirió y el concepto completo.
+  Condiciona directamente R19 (código de unidad y CBU histórico) y el *design* del cambio 9
+  `extracto-bancario`. Se responde probando con extractos reales de los bancos que usan los
+  administradores de Mendoza (D-063). 12/10: Juani no lo sabe; se le pregunta a Alberto.

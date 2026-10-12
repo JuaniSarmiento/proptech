@@ -46,6 +46,9 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
 - **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
 - **Vencimiento**: la fecha a partir de la cual corre la mora.
+- **Certificado de libre deuda**: la constancia, para una venta, del saldo de una unidad a una fecha
+  de corte. Lo firma el administrador; nunca incluye una estimación de gastos del período en curso
+  (R21).
 
 ## Cuenta corriente y pagos
 
@@ -56,6 +59,15 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Pago informado**: un pago que el vecino declaró subiendo su comprobante. No afecta la deuda (R11).
 - **Pago confirmado**: un pago informado que el administrador aprobó. Recién ahí se imputa (R11).
 - **Pago rechazado**: un pago informado que el administrador descartó, con motivo visible para el vecino.
+- **Pago revertido**: un pago confirmado que el banco devuelve después (cheque rechazado, contracargo,
+  transferencia revertida). Nunca se borra ni pasa a rechazado: queda en estado revertido y genera un
+  contra-movimiento que vuelve a subir la deuda (R18).
+- **CBU histórico**: el CBU que confirmó el último pago de una unidad. El sistema lo recuerda y lo
+  sugiere el mes siguiente, nunca lo asigna solo (R19).
+- **Código de unidad**: el código corto de una unidad que la boleta sugiere escribir en el concepto
+  de la transferencia, para identificar el pago sin tocar el modelo de datos (R19).
+- **Reimputación**: dos movimientos enlazados que corrigen un pago confirmado en la unidad
+  equivocada: restan en la unidad donde se cargó por error y suman como crédito en la correcta (R25).
 - **Número de operación**: el identificador de la transferencia en el comprobante. No se repite dentro de un complejo (R11).
 - **Extracto**: el listado de movimientos de la cuenta bancaria del consorcio, que el administrador sube para validar los pagos informados.
 - **Acreditación**: el momento en que la plata llega a la cuenta del complejo.
@@ -71,12 +83,24 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **QR de ARCA**: el código obligatorio de toda factura electrónica. Contiene fecha, CUIT del emisor, punto de venta, tipo y número de comprobante, importe, moneda, receptor y código de autorización (R12).
 - **CAE**: el código de autorización que ARCA otorga a cada factura electrónica.
 - **Factura duplicada**: la que repite CUIT del emisor, punto de venta, tipo y número dentro del mismo complejo (R12).
+- **Nota de crédito**: el comprobante de un proveedor que corrige una factura ya cargada. Queda
+  asociada a esa factura y su monto no puede superarla; se descuenta del gasto antes de prorratear
+  (R22).
 
 ## Mora
 
 - **Mora**: atraso en el pago después del vencimiento.
 - **Interés por mora**: el recargo que genera la mora, según la política del complejo.
 - **Anatocismo**: cobrar intereses sobre intereses. El art. 770 del Código Civil y Comercial lo limita.
+- **Moroso crítico**: una unidad con dos o más liquidaciones vencidas con saldo impago, calculado
+  desde las imputaciones. Se define por antigüedad, nunca por monto (R20). En el MVP no bloquea
+  amenities porque las reservas no están en el alcance.
+- **Gestión judicial**: marca de una unidad cuya deuda ya está en manos del abogado del complejo.
+  Frena los recordatorios automáticos de mora y la saca del cálculo de moroso crítico (R31).
+- **Condonación de interés**: un movimiento que neutraliza un recargo por mora, total o parcialmente,
+  con motivo obligatorio. Nunca borra el recargo original (R29).
+- **Ventana de anulación**: el período acotado en que una liquidación emitida se puede anular en vez
+  de corregir: mientras esté emitida y todavía no distribuida a ningún vecino (R17).
 
 ## Cobro y conciliación
 

@@ -246,3 +246,187 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: los subtotales por categoría suman el total del bloque; un mismo concepto puede
   ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
   un gasto sin categoría no se puede aprobar.
+
+## R17 · Ventana de anulación antes de distribuir · Vigente (D-055) · refina R08
+
+- **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
+  todavía no distribuida. Se considera distribuida desde que sale el primer email de aviso al
+  responsable de pago, o desde que alguien la ve en el portal, lo que pase primero.
+- **Anulación**: requiere motivo obligatorio y queda registrada con responsable y fecha. No genera
+  ninguna obligación ni movimiento de cuenta corriente (como si nunca se hubiera emitido).
+- **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
+  error se corrige con un movimiento nuevo (ajuste).
+- **Tests mínimos**: anular antes del primer envío borra la obligación sin dejar movimiento; intentar
+  anular después de que un vecino la vio en el portal lo rechaza; la anulación sin motivo se
+  rechaza; una liquidación anulada permite volver a emitir el período.
+
+## R18 · Estado "revertido" de un pago confirmado · Vigente (D-056) · extiende R11
+
+- **Regla**: un pago **confirmado** (o conciliado) puede pasar a **revertido** cuando el banco lo
+  rechaza o lo devuelve después de confirmado (cheque rechazado, contracargo, transferencia
+  revertida). El pago original nunca se borra ni pasa a "rechazado".
+- **Efecto**: se registra un movimiento de **reversión de pago** (débito) que referencia al pago
+  original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
+- **Morosidad**: al revertirse un pago, la unidad se reevalúa contra R20 (moroso crítico).
+- **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
+  original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
+  revertir vuelve a evaluar la morosidad de la unidad.
+
+## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
+
+- **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
+  en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
+  vecino lo use.
+- **CBU histórico**: cuando el administrador confirma un pago, el sistema guarda qué CBU lo originó,
+  asociado a esa unidad. El mes siguiente, un movimiento del mismo CBU es una sugerencia para esa
+  unidad.
+- **Nunca asigna solo**: los dos mecanismos sólo generan una **sugerencia de confianza alta** en la
+  bandeja de confirmación (HU-A6, HU-A7); el administrador siempre confirma con un clic (principio
+  P3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
+- **Tests mínimos**: un movimiento con el código de la unidad en el concepto aparece como sugerencia
+  de esa unidad; un CBU que ya pagó por una unidad sugiere esa unidad el mes siguiente; ninguno de
+  los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
+  genera sugerencia.
+
+## R20 · Moroso crítico por antigüedad · Vigente (D-058)
+
+- **Definición**: una unidad es **moroso crítico** cuando tiene **dos o más liquidaciones vencidas
+  con saldo impago**, calculado desde las imputaciones (nunca desde una marca de "pagada").
+- **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
+  mes a mes y los pagos parciales la confunden).
+- **Exclusiones**: quedan excluidas las unidades con un plan de pago al día o con la deuda en
+  gestión judicial, **si esos conceptos existen en el MVP**. Hoy no existen (ver R31 y
+  `proyecto-final.md`, G1): mientras no se construyan, la exclusión no se puede aplicar y queda
+  anotada como límite conocido de esta regla.
+- **Sin bloqueo de amenities**: las reservas de espacios comunes no están en el MVP, así que no hay
+  ningún bloqueo asociado a esta marca.
+- **Tests mínimos**: una unidad con una sola liquidación vencida no es moroso crítico; dos vencidas
+  con saldo, sí; un pago parcial que no cubre ninguna por completo sigue contando esa liquidación
+  como vencida; revertir un pago (R18) puede volver a marcar moroso crítico a una unidad.
+
+## R21 · Certificado de libre deuda · Vigente (D-059)
+
+- **Qué es**: un certificado que resume la deuda de una unidad a una fecha de corte, para que el
+  escribano pueda escriturar una venta sin esperar a que el administrador revise la cuenta a mano.
+- **Contenido**: identificador único, fecha de corte, saldo de la unidad a esa fecha (calculado desde
+  la cuenta corriente, nunca estimado), y los pagos informados todavía no confirmados, listados por
+  separado como "en revisión" sin restarlos del saldo.
+- **Nunca estima**: no incluye ningún gasto del período en curso que todavía no se liquidó.
+- **Firma**: lo firma el administrador titular.
+- **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
+  con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
+  sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de
+  corte.
+
+## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12
+
+- **Regla**: una nota de crédito de un proveedor queda **asociada a la factura que corrige** y su
+  monto **no puede superar** el de esa factura.
+- **Efecto en el gasto**: se descuenta del gasto antes de prorratear, dentro del mismo grupo de
+  reparto de la factura original (no es un gasto negativo suelto).
+- **Duplicados**: el control de factura duplicada de R12 (`cuit + ptoVta + tipoCmp + nroCmp`) suma el
+  **tipo de comprobante**, porque una factura y su nota de crédito pueden compartir número al
+  numerarse por separado.
+- **Tests mínimos**: una nota de crédito menor al monto de la factura reduce el gasto repartido; una
+  nota de crédito que supera el monto de su factura se rechaza; una nota de crédito sin factura
+  asociada se rechaza; una factura y su nota de crédito con el mismo número no se marcan como
+  duplicadas entre sí.
+
+## R23 · Control de monto atípico contra el historial del proveedor · Propuesta (ProTecc A2)
+
+- **Qué resuelve**: una factura leída por IA con un monto mal leído (por ejemplo, $38.900 en vez de
+  $389.000).
+- **Propuesta**: antes de aprobar un gasto leído por IA, comparar su importe contra el historial de
+  ese proveedor en el edificio (últimos períodos) y marcarlo para revisión manual si se aparta mucho
+  de lo habitual.
+- **Falta decidir**: el umbral de "atípico" y si se valida con un administrador o contador antes de
+  fijarlo.
+- **Tests mínimos** (a definir con el umbral): un monto dentro de lo habitual no se marca; un monto
+  muy por encima o por debajo del historial se marca para revisión; un proveedor sin historial previo
+  no genera falso positivo por falta de datos.
+
+## R24 · Modo degradado de emisión · Propuesta (ProTecc A4, principio P6)
+
+- **Qué resuelve**: que la emisión de la liquidación no dependa de un servicio externo (lectura del
+  extracto, IA de facturas). Si ese servicio falla el día de emitir, la liquidación tiene que poder
+  salir igual.
+- **Propuesta**: si falla la IA al leer una factura, el gasto queda marcado "sin IA" para carga
+  manual, sin bloquear la emisión de los demás gastos ya aprobados; si falla la lectura del
+  extracto, la preliquidación y la emisión siguen sin él (la conciliación se hace después).
+- **Falta decidir**: el detalle se resuelve en el *design* del cambio 7 `liquidacion-y-emision`
+  (D-047 punto 7 ya pedía definir qué pasa si falla el encolado del PDF; esta regla agrega qué pasa
+  si falla el extracto o la IA el día de emitir).
+- **Tests mínimos** (a definir en el design): emitir con la IA caída no bloquea la liquidación;
+  emitir sin el extracto procesado no bloquea la liquidación (sólo posterga la conciliación).
+
+## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
+
+- **Qué resuelve**: un pago confirmado en la unidad equivocada (el vecino de 7A cargó el pago a 7B).
+- **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
+  de **reimputación** enlazados: uno que resta en la unidad equivocada (restituye la deuda) y otro
+  que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
+  original. Se reevalúa la morosidad (R20) de las dos unidades.
+- **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
+  un paso, no se aplica ninguno; las dos unidades se reevalúan contra R20 después de reimputar.
+
+## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
+
+- **Qué resuelve**: Alberto describe un esquema de primer y segundo vencimiento con un recargo que
+  escala entre uno y otro, distinto del interés simple continuo desde un único vencimiento que ya
+  tiene R03.
+- **Pendiente**: preguntarle a Alberto si el edificio piloto usa este esquema antes de tocar R03, que
+  ya está marcada "falta validar". No se decide sin esa respuesta.
+- **Tests mínimos**: a definir si se confirma el esquema.
+
+## R27 · Aviso que cae en fin de semana o feriado · Propuesta (ProTecc W3)
+
+- **Qué resuelve**: un vencimiento o un recordatorio que cae en fin de semana o feriado.
+- **Propuesta**: si la fecha del aviso cae en sábado, domingo o feriado, se envía el primer día hábil
+  siguiente, dentro del horario que defina el cambio 13 `avisos-por-email`.
+- **Tests mínimos**: un aviso que cae en domingo se reprograma al lunes (o al primer día hábil); un
+  aviso en día hábil no se mueve.
+
+## R28 · Validación de contactos y unidades sin contacto válido · Propuesta (ProTecc W4)
+
+- **Qué resuelve**: un email inválido o inexistente que hace que ningún aviso llegue, sin que nadie
+  se entere.
+- **Propuesta**: validar el formato del contacto al cargarlo; si un envío rebota, marcar el contacto
+  como inválido y mostrar al administrador una lista de "unidades sin contacto válido".
+- **Tests mínimos**: un contacto con formato inválido se rechaza al cargarlo; un envío que rebota
+  marca el contacto como inválido; la lista de unidades sin contacto válido incluye esa unidad.
+
+## R29 · Condonación de intereses · Propuesta (ProTecc B5, Q1)
+
+- **Qué resuelve**: un recargo por mora que el vecino discute y el administrador decide perdonar,
+  total o parcialmente.
+- **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
+  **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
+  vecino (P7) y para el consejo.
+- **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
+  auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
+  sin esa respuesta.
+- **Tests mínimos** (a definir con la aprobación): una condonación genera el movimiento de crédito
+  sin borrar el recargo; el vecino ve el motivo; la unidad se reevalúa contra R20 después de
+  condonar.
+
+## R30 · Umbral mínimo de saldos por redondeo · Propuesta (ProTecc D3) · extiende R07
+
+- **Qué resuelve**: saldos chicos (a favor o en contra) que quedan de intereses o pagos parciales,
+  por debajo de lo que tiene sentido reclamar o devolver.
+- **Propuesta**: definir un umbral mínimo (por ejemplo, configurable por edificio) por debajo del
+  cual el saldo no genera reclamo de cobranza ni devolución automática, y se arrastra con R06 hasta
+  que se acumula o se liquida junto con otro movimiento.
+- **Falta decidir**: el valor del umbral y si es fijo o configurable por edificio.
+- **Tests mínimos** (a definir con el umbral): un saldo por debajo del umbral no dispara un aviso de
+  mora; un saldo por encima sigue el camino normal de R03/R20.
+
+## R31 · Marca de gestión judicial · Propuesta (ProTecc G2)
+
+- **Qué resuelve**: una deuda que ya está en manos del abogado del consorcio, donde un recordatorio
+  automático de mora puede interferir con el juicio.
+- **Propuesta**: marcar una unidad como "en gestión judicial" suspende los recordatorios automáticos
+  de mora (HU-V6) y la excluye del cálculo de moroso crítico (R20), igual que un plan de pago al día.
+  Las consultas de esa unidad se derivan al administrador.
+- **Tests mínimos**: una unidad marcada no recibe el aviso automático de mora; no cuenta como moroso
+  crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
+  cálculos.
