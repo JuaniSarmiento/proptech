@@ -817,6 +817,23 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: `openspec/exploraciones/2026-10-12-motor-de-reglas.md`.
 - **Quién**: Juani, a partir del pedido de Alberto (12/10).
 
+## D-065 · Motor de reglas propio en forma de catálogo de plantillas *(propuesta, a validar con Alberto)*
+
+- **Fecha**: 12/10/2026
+- **Decisión propuesta**: el puerto de políticas (D-064) se implementa con un **motor propio de
+  plantillas**: cada tipo de regla (intereses, fondo de reserva, cargo por estado, moroso crítico,
+  alertas antes de emitir, bonificación por pronto pago, cargo recurrente del reglamento) es una pieza
+  de código con parámetros validados, los datos que necesita, la acción que propone y sus tests. Cada
+  edificio activa y ajusta las suyas; cada cambio de configuración es una versión con fecha y autor, y
+  cada liquidación guarda las versiones que usó. Una regla que no puede calcularse genera una alerta
+  que bloquea la emisión. Se construye dentro de los cambios 3, 7 y 10 del roadmap.
+- **Descartado**: GoRules ZEN para el MVP (punto flotante y errores silenciosos) y un motor genérico
+  propio con lenguaje libre (es un producto en sí mismo y trae el mismo riesgo de errores silenciosos).
+- **Pendiente**: que Alberto valide el enfoque, el catálogo inicial y quién configura las reglas; recién
+  entonces se actualizan las fichas 3, 7 y 10 del roadmap.
+- **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
+- **Quién**: Juani.
+
 ---
 
 ## Preguntas abiertas
