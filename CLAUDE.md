@@ -39,7 +39,8 @@ original de la especificación se descartó (D-002) y no se usa.
 - **Cambio 1a `infraestructura-base` archivado** (09/10/2026): el proyecto levanta con
   `cd infra && docker compose up --build` (ver README), con CI en GitHub Actions. Todavía no hay
   dominio: sólo el esqueleto y `/api/salud`.
-- **Próximo**: cambio 1b `arranque-del-sistema` según `conocimiento/roadmap.md`. Antes de cada cambio,
+- **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
+- **Próximo**: cambio 1c `cola-logs-y-respaldos` (ya propuesto, en `openspec/changes/`). Antes de cada cambio,
   constructor y rompedor leen `conocimiento/lecciones.md`.
 - Preguntas abiertas: el edificio piloto (P1) y el precio (P8).
 

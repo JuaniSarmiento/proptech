@@ -4,6 +4,7 @@ from fastapi import APIRouter, FastAPI
 
 from proptech_api import salud
 from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.parametros import leer_parametros
 
 
 def crear_app() -> FastAPI:
@@ -12,7 +13,10 @@ def crear_app() -> FastAPI:
     # esto, Configuracion() se construye recién dentro del verificador de salud,
     # su excepción queda atrapada por el `except Exception` genérico del
     # endpoint y un error de configuración se confunde con la base caída.
-    Configuracion()
+    configuracion = Configuracion()
+    # Idem con los parámetros del sistema (D6): un archivo inválido también
+    # termina el arranque acá, nombrando cada campo con problemas.
+    leer_parametros(configuracion.proptech_parametros)
 
     app = FastAPI(title="PropTech API")
     router_api = APIRouter(prefix="/api")

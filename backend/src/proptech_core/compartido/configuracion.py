@@ -1,5 +1,7 @@
 """Configuración del sistema: una sola fuente de verdad, por variables de entorno (H45)."""
 
+from pathlib import Path
+
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
@@ -9,7 +11,27 @@ class ConfiguracionInvalida(Exception):
     """Falta o es inválida alguna variable de entorno de configuración."""
 
 
-class _ConfiguracionBase(BaseSettings):
+def _mensaje_configuracion_invalida(error: ValidationError) -> str:
+    """Arma el mensaje de `ConfiguracionInvalida` nombrando cada variable con
+    problemas, sin incluir nunca el valor recibido (ni acá ni en `error`
+    mismo, que no se imprime en ningún lado)."""
+    faltantes = sorted({str(e["loc"][0]).upper() for e in error.errors() if e["type"] == "missing"})
+    invalidas = sorted(
+        {str(e["loc"][0]).upper() for e in error.errors() if e["type"] != "missing" and e["loc"]}
+    )
+    partes = []
+    if faltantes:
+        partes.append(f"falta configurar: {', '.join(faltantes)}")
+    if invalidas:
+        partes.append(f"valor inválido en: {', '.join(invalidas)}")
+    return "; ".join(partes) if partes else "variables de entorno inválidas"
+
+
+class _ConfiguracionBaseDeDatosBase(BaseSettings):
+    """Sólo las variables de PostgreSQL. Alembic (`migraciones/env.py`) y
+    cualquier proceso que sólo hable con la base arrancan con esto, sin
+    acoplarse a Redis ni a los parámetros del sistema (D11, tarea 6.1)."""
+
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     postgres_host: str
@@ -27,38 +49,47 @@ class _ConfiguracionBase(BaseSettings):
         return valor
 
 
-class Configuracion:
-    """Variables de conexión a PostgreSQL.
+class _ConfiguracionBase(_ConfiguracionBaseDeDatosBase):
+    """Variables de proceso completas: además de PostgreSQL, Redis y la ruta
+    del archivo de parámetros del sistema. Las usan la API y el worker."""
+
+    redis_host: str
+    redis_port: int = Field(default=6379, ge=1, le=65535)
+    redis_password: str
+    proptech_parametros: str
+
+    @field_validator("redis_host", "redis_password", "proptech_parametros")
+    @classmethod
+    def _no_vacio_ni_blanco_ampliada(cls, valor: str) -> str:
+        if not valor.strip():
+            raise ValueError("no puede estar vacío ni ser sólo espacios")
+        return valor
+
+    @field_validator("proptech_parametros")
+    @classmethod
+    def _archivo_de_parametros_existe(cls, valor: str) -> str:
+        if not Path(valor).is_file():
+            raise ValueError("el archivo no existe o no se puede leer")
+        return valor
+
+
+class ConfiguracionBaseDeDatos:
+    """Variables de conexión a PostgreSQL, y sólo esas (D11).
 
     Entran sólo por variables de entorno, nunca con valores por defecto para
     el password: si falta, se nombra la variable de entorno (no el campo
-    interno) y nunca se imprime ningún valor.
+    interno) y nunca se imprime ningún valor. La usa Alembic
+    (`migraciones/env.py`): un trabajo de migraciones no tiene por qué
+    conocer Redis ni el archivo de parámetros del sistema.
     """
 
     def __init__(self) -> None:
         try:
-            base = _ConfiguracionBase()
+            base = _ConfiguracionBaseDeDatosBase()
         except ValidationError as error:
-            # Cualquier error (falta, vacía, mal tipada, puerto fuera de rango) nombra
-            # la variable de entorno responsable; nunca se incluye el valor recibido
-            # (ni acá ni en `error` mismo, que no se imprime en ningún lado).
-            faltantes = sorted(
-                {str(e["loc"][0]).upper() for e in error.errors() if e["type"] == "missing"}
-            )
-            invalidas = sorted(
-                {
-                    str(e["loc"][0]).upper()
-                    for e in error.errors()
-                    if e["type"] != "missing" and e["loc"]
-                }
-            )
-            partes = []
-            if faltantes:
-                partes.append(f"falta configurar: {', '.join(faltantes)}")
-            if invalidas:
-                partes.append(f"valor inválido en: {', '.join(invalidas)}")
-            detalle = "; ".join(partes) if partes else "variables de entorno inválidas"
-            raise ConfiguracionInvalida(f"Configuración inválida — {detalle}") from None
+            raise ConfiguracionInvalida(
+                f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"
+            ) from None
         self.postgres_host = base.postgres_host
         self.postgres_port = base.postgres_port
         self.postgres_user = base.postgres_user
@@ -76,3 +107,27 @@ class Configuracion:
             database=self.postgres_db,
         )
         return url.render_as_string(hide_password=False)
+
+
+class Configuracion(ConfiguracionBaseDeDatos):
+    """Variables de proceso completas: PostgreSQL, Redis y la ruta del
+    archivo de parámetros del sistema. La usan la API y el worker, que sí
+    hablan con Redis y leen los parámetros; Alembic usa `ConfiguracionBaseDeDatos`.
+    """
+
+    def __init__(self) -> None:
+        try:
+            base = _ConfiguracionBase()
+        except ValidationError as error:
+            raise ConfiguracionInvalida(
+                f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"
+            ) from None
+        self.postgres_host = base.postgres_host
+        self.postgres_port = base.postgres_port
+        self.postgres_user = base.postgres_user
+        self.postgres_password = base.postgres_password
+        self.postgres_db = base.postgres_db
+        self.redis_host = base.redis_host
+        self.redis_port = base.redis_port
+        self.redis_password = base.redis_password
+        self.proptech_parametros = base.proptech_parametros

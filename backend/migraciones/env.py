@@ -1,4 +1,8 @@
-"""Entorno de Alembic. La URL sale de Configuracion, nunca de alembic.ini."""
+"""Entorno de Alembic. La URL sale de ConfiguracionBaseDeDatos, nunca de alembic.ini.
+
+Alembic sólo necesita las variables de PostgreSQL: usa `ConfiguracionBaseDeDatos`,
+no `Configuracion`, para no acoplar el trabajo de migraciones a Redis ni al
+archivo de parámetros del sistema (D11, tarea 6.1)."""
 
 from logging.config import fileConfig
 
@@ -6,7 +10,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from proptech_core.compartido.base_de_datos import Base
-from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.configuracion import ConfiguracionBaseDeDatos
 
 config = context.config
 
@@ -17,7 +21,9 @@ target_metadata = Base.metadata
 
 
 def _url() -> str:
-    return Configuracion().url_sqlalchemy()
+    # Sólo las variables de PostgreSQL (D11, tarea 6.1): Alembic no necesita
+    # Redis ni el archivo de parámetros del sistema.
+    return ConfiguracionBaseDeDatos().url_sqlalchemy()
 
 
 def run_migrations_offline() -> None:

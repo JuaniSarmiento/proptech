@@ -96,16 +96,15 @@ def test_imagenes_de_dockerfiles_tienen_version_de_parche_sin_latest() -> None:
         assert _version_de_parche_valida(imagen), f"{imagen} no tiene versión de parche"
 
 
-def test_imagen_del_fixture_coincide_con_la_de_compose_db() -> None:
-    from tests.conftest import IMAGEN_POSTGRES_PARA_TESTS
-
-    imagenes_compose = _imagenes_de_compose()
-    imagen_compose_db = imagenes_compose.get("db")
-    assert imagen_compose_db is not None, "compose.yaml no tiene servicio db"
-    assert IMAGEN_POSTGRES_PARA_TESTS == imagen_compose_db, (
-        f"la imagen del fixture ({IMAGEN_POSTGRES_PARA_TESTS}) difiere de la de "
-        f"compose.yaml servicio db ({imagen_compose_db})"
+def test_conftest_no_tiene_una_imagen_de_postgres_escrita_a_mano() -> None:
+    """D12: el fixture deriva la imagen de compose.yaml; no hay una constante
+    de imagen escrita a mano en tests/conftest.py (el test tautológico que
+    comparaba la constante con sí misma nunca podía fallar, D-051)."""
+    conftest = (Path(__file__).resolve().parents[1] / "conftest.py").read_text()
+    assert re.search(r':\s*["\'][0-9]+\.[0-9]', conftest) is None, (
+        "conftest.py parece tener una versión de imagen escrita a mano"
     )
+    assert "_leer_imagen_de_compose" in conftest
 
 
 def test_patron_version_de_parche_rechaza_tags_de_dos_numeros_sin_excepcion() -> None:

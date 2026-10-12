@@ -21,7 +21,7 @@ services:
     volumes:
       - datos_postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?falta POSTGRES_USER} -d ${POSTGRES_DB:?falta POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -57,6 +57,12 @@ services:
       POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
+      PROPTECH_PARAMETROS: /app/config/parametros.yaml
+    volumes:
+      - ../config:/app/config:ro
     depends_on:
       db:
         condition: service_healthy

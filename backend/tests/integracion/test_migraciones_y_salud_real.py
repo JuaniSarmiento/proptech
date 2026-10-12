@@ -16,7 +16,7 @@ pytestmark = pytest.mark.integracion
 def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
     import os
 
-    return {
+    entorno = {
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
@@ -24,6 +24,14 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
         "POSTGRES_PASSWORD": contenedor.password,
         "POSTGRES_DB": contenedor.dbname,
     }
+    # 6.1/D11: Alembic no depende de Redis ni de los parámetros del sistema.
+    # Se borran explícitamente (no basta con no setearlas: el fixture de
+    # integración las deja puestas en el entorno del proceso de pytest, y
+    # `**os.environ` las heredaría en silencio) para probar que el trabajo
+    # de migraciones corre sin ellas.
+    for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
+        entorno.pop(variable, None)
+    return entorno
 
 
 def _version_actual(contenedor: PostgresContainer) -> str:

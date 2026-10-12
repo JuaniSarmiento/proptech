@@ -29,6 +29,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Qué pasó**: primero, una variable faltante dejaba arrancar la API y el error se disfrazaba de base
   caída. El arreglo cubrió sólo el caso "falta": con la contraseña vacía o el puerto en `abc`, el
   problema volvía.
+- **Ocurrencias**: cambio 1b, vuelta 2 (se arreglaron los dígitos Unicode y quedó el salto de línea final en los mismos patrones); cambio 1b, vuelta 3 (claves no texto en la semilla).
 - **Regla**: toda configuración se prueba **faltante, vacía, en blanco, con tipo equivocado y fuera de
   rango**, y el error tiene que nombrar cada variable con problema **sin mostrar nunca su valor**. Un
   arreglo cierra la familia de errores, no el caso puntual.
@@ -71,3 +72,30 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: todo lo que borra (volúmenes, contenedores, bases) apunta a un identificador propio de
   PropTech, nunca a uno derivado de una ruta genérica.
 - **Aplica a**: constructor.
+
+## L-007 · El mensaje de error de una librería también es una salida
+
+- **Origen**: cambio 1b, auditoría de la vuelta 2.
+- **Qué pasó**: el lector de YAML reenviaba el texto del error de PyYAML, que incluye la línea rota del
+  archivo: el contenido terminaba en el mensaje, aunque el diseño decía que no.
+- **Regla**: nunca reenviar `str(error)` de un tercero sin probar que no repite la entrada. Se informa
+  la posición y una descripción propia.
+- **Aplica a**: constructor y rompedor.
+
+## L-008 · Validar texto con coincidencia completa y sólo ASCII
+
+- **Origen**: cambio 1b, rompedor y auditoría de la vuelta 2.
+- **Qué pasó**: los patrones con `^...$` aceptaban un salto de línea final y los que usaban `\d` sin la
+  bandera ASCII aceptaban dígitos de otros alfabetos; `Decimal()` los normalizaba sin avisar.
+- **Regla**: todo texto externo se valida con `fullmatch` (o `\A...\Z`) y `re.ASCII`, y se prueba con
+  espacios, tabulaciones, saltos de línea al principio y al final, y dígitos no ASCII.
+- **Aplica a**: constructor y rompedor.
+
+## L-009 · Un arreglo en un módulo se aplica y se prueba en su gemelo
+
+- **Origen**: cambio 1b, auditoría de la vuelta 3.
+- **Qué pasó**: el lector de parámetros atrapaba una clave que no era texto en la raíz; el lector de la
+  semilla, con la misma forma, dejaba escapar un `TypeError` con traceback.
+- **Regla**: si dos módulos comparten forma (los dos lectores de YAML, dos endpoints parecidos, dos
+  importadores), cada defecto que se arregla en uno lleva su test en el otro.
+- **Aplica a**: constructor y rompedor.

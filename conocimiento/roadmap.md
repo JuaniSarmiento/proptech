@@ -12,8 +12,9 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 | # | Cambio | Hito | Depende de | Explore propio | Crítico | Tamaño |
 |---|---|---|---|---|---|---|
 | 1a | `infraestructura-base` ✅ | M1 | ninguno | no | no | mediano |
-| 1b | `arranque-del-sistema` | M1 | 1a | no | no | mediano |
-| 2 | `acceso-y-aislamiento` | M1 | 1b | **sí** | **sí** | grande |
+| 1b | `arranque-del-sistema` ✅ | M1 | 1a | no | no | mediano |
+| 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano (puede partirse en 1d) |
+| 2 | `acceso-y-aislamiento` | M1 | 1c | **sí** | **sí** | grande |
 | 3 | `configuracion-del-edificio` | M1 | 2 | no | no | mediano |
 | 4 | `motor-de-cuenta-corriente` | M1 | 2 | **sí** | **sí** | grande |
 | 5 | `importacion-desde-excel` | M1 | 3, 4 | no | no | mediano |
@@ -34,7 +35,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 **Camino al test de M1** (reproducir la última liquidación del piloto al centavo):
 
 ```
-Código:  1a → 1b → 2 → 3 → 4 → 5 → 6 → 7 ──┐
+Código:  1a → 1b → 1c → 2 → 3 → 4 → 5 → 6 → 7 ──┐
                                             ├──► TEST M1
 Datos:   pedirle a Alberto los datos del piloto (P1), desde ya ──┘
 ```
@@ -64,26 +65,22 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: `docker compose up` levanta todo desde un clon limpio; el endpoint de salud
   responde a través de Caddy; el CI está en verde y falla a propósito con un test roto.
 
-### 1b · `arranque-del-sistema`
+### 1b · `arranque-del-sistema` ✅
 
-- **Objetivo**: dejar listas las piezas transversales que usan todos los cambios siguientes.
-- **Decisiones**: D-038, D-042, D-046, D-047 (punto 4).
-- **Entra**: Redis y el worker ARQ (con una tarea de prueba, reintentos espaciados e idempotencia);
-  `config/parametros.yaml` con los valores iniciales de D-042 y su lector validado; tipo `Dinero`
-  sobre `Decimal` en `proptech_core/compartido` (sólo la representación: construir desde texto,
-  serializar como texto, rechazar `float`); logs estructurados en JSON con número de seguimiento
-  (`request_id`) que viaja de la web a la API, a la base y al worker; backups automáticos de
-  PostgreSQL fuera del contenedor; datos semilla de un edificio de ejemplo (sólo lo que el esquema
-  permita a esta altura; se completa en 3).
-- **No entra**: el reparto por mayor resto (4); usuarios y login (2).
-- **Depende de**: 1a. **Habilita**: 2.
-- **Decidir en el design**: dónde se guardan los backups y cada cuánto; formato del log.
-- **Que intente romper el rompedor**: un `parametros.yaml` mal formado o con una tasa negativa; un
-  `float` colado en un monto; una tarea del worker que se ejecuta dos veces; un pedido sin
-  `request_id` o con uno malicioso; datos personales en los logs.
-- **Terminado cuando**: el worker reintenta una tarea que falla y no la duplica; el lector rechaza
-  parámetros inválidos con un mensaje claro; un monto `float` hace fallar un test; el backup se
-  genera solo.
+- **Objetivo**: las piezas transversales que todos los cambios usan (re-alcanzado por D-052).
+- **Decisiones**: D-042, D-046, D-052, D-053.
+- **Entró**: configuración con las variables de Redis y el archivo de parámetros conectadas en Compose;
+  migraciones que dependen sólo de PostgreSQL; tipo `Dinero` sobre `Decimal`; `config/parametros.yaml`
+  con su lector validado; el edificio de ejemplo como archivo validado y su comando de verificación.
+- **Pasó a 1c**: Redis y el worker, logs y número de seguimiento, respaldos, `/salud-web`, humo y README.
+- **Habilita**: 1c.
+
+### 1c · `cola-logs-y-respaldos`
+
+- **Objetivo**: la cola de trabajos, los logs con número de seguimiento y los respaldos, separados del 1b (D-052).
+- **Entra**: lo que el 1b tenía en sus secciones 6 a 12 (ver `openspec/changes/cola-logs-y-respaldos/`).
+- **Depende de**: 1b. **Habilita**: 2.
+- **Terminado cuando**: lo que diga su propuesta; si supera unas 20 tareas, se parte en 1d.
 
 ### 2 · `acceso-y-aislamiento` · crítico · explore propio
 
@@ -95,7 +92,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
   límite de pedidos en el login.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
-- **Depende de**: 1b. **Habilita**: 3, 4.
+- **Depende de**: 1c. **Habilita**: 3, 4.
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
   mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
   D-043); dónde vive cada uno de los tres controles; cómo fija el tenant el worker.
@@ -115,7 +112,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
   desactivar); configuración de intereses y fondo de reserva tomada de `parametros.yaml` al crear;
-  completar los datos semilla del edificio de ejemplo.
+  **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b).
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7).
 - **Depende de**: 2. **Habilita**: 5, 6.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia).

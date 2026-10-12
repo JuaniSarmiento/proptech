@@ -75,3 +75,52 @@ def test_api_depende_de_migraciones_completadas() -> None:
 def test_postgres_password_interpolada_con_obligatoriedad() -> None:
     texto = COMPOSE.read_text()
     assert "POSTGRES_PASSWORD:?" in texto.replace(" ", "")
+
+
+def test_healthcheck_db_usa_variables_del_contenedor_entrecomilladas() -> None:
+    """D-051/D11: el healthcheck debe leer POSTGRES_USER y POSTGRES_DB del entorno
+    del propio contenedor (ya seteados en `environment:`), entrecomillados, en vez
+    de re-interpolar con sintaxis de Compose sin comillas (rompe con espacios o
+    valores vacíos, L-002)."""
+    servicios = _compose()["services"]
+    test = servicios["db"]["healthcheck"]["test"]
+    comando = test[-1] if isinstance(test, list) else test
+    assert 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"' in comando, comando
+
+
+# --- 6.2: el stack arranca de verdad (D11/D6) ---
+
+
+def test_api_recibe_variables_de_redis_obligatorias() -> None:
+    """La API (D11) exige REDIS_HOST, REDIS_PORT y REDIS_PASSWORD; Compose
+    tiene que pasárselas, la contraseña con obligatoriedad (`:?`) igual que
+    las de PostgreSQL (sin Redis desplegado todavía en 1b, nadie se conecta:
+    sólo se valida la forma de la variable)."""
+    entorno = _compose()["services"]["api"]["environment"]
+    assert entorno.get("REDIS_HOST")
+    assert entorno.get("REDIS_PORT")
+    assert "REDIS_PASSWORD:?" in str(entorno.get("REDIS_PASSWORD", "")).replace(" ", "")
+
+
+def test_api_recibe_la_ruta_de_parametros_y_monta_config_de_solo_lectura() -> None:
+    """D6: `PROPTECH_PARAMETROS=/app/config/parametros.yaml` y `config/` montada
+    de sólo lectura, para que el lector encuentre el archivo del repositorio."""
+    api = _compose()["services"]["api"]
+    assert api["environment"].get("PROPTECH_PARAMETROS") == "/app/config/parametros.yaml"
+    volumenes = [str(v) for v in api.get("volumes", [])]
+    assert any("../config:/app/config:ro" in v for v in volumenes), volumenes
+
+
+def test_migraciones_no_recibe_variables_de_redis_ni_parametros() -> None:
+    """D11, tarea 6.1: el trabajo de migraciones sólo necesita PostgreSQL."""
+    entorno = _compose()["services"]["migraciones"].get("environment", {})
+    variables_de_mas = [clave for clave in entorno if clave.startswith("REDIS_")]
+    assert variables_de_mas == [], variables_de_mas
+    assert "PROPTECH_PARAMETROS" not in entorno
+
+
+def test_env_example_tiene_redis_password() -> None:
+    """`.env.example` tiene que traer `REDIS_PASSWORD`, si no `${REDIS_PASSWORD:?...}`
+    deja sin arrancar a quien copie el archivo y no sepa que falta (D11)."""
+    texto = (RAIZ / "infra" / ".env.example").read_text()
+    assert "REDIS_PASSWORD=" in texto

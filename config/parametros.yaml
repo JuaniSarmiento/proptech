@@ -1,0 +1,35 @@
+version: 1
+intereses:
+  tasa_mensual: "3.00"
+  dias_de_gracia: 0
+  forma_de_calculo: proporcional_por_dia
+fondo_de_reserva:
+  porcentaje: "0.00"
+categorias_de_gasto:
+  - { clave: encargado,      nombre: "Encargado y cargas sociales" }
+  - { clave: seguridad,      nombre: "Seguridad" }
+  - { clave: limpieza,       nombre: "Limpieza" }
+  - { clave: ascensor,       nombre: "Ascensor" }
+  - { clave: mantenimiento,  nombre: "Mantenimiento" }
+  - { clave: servicios,      nombre: "Servicios" }
+  - { clave: seguros,        nombre: "Seguros" }
+  - { clave: administracion, nombre: "Administración" }
+  - { clave: varios,         nombre: "Varios" }
+grupos_de_reparto:
+  - { clave: generales, nombre: "Generales", metodo: coeficiente, alcance: todas_las_unidades }
+  - { clave: ascensor,  nombre: "Ascensor",  metodo: coeficiente, alcance: a_elegir,
+      descripcion: "Sin planta baja ni locales" }
+  - { clave: cocheras,  nombre: "Cocheras",  metodo: coeficiente, alcance: a_elegir }
+  - { clave: servicios_centrales, nombre: "Servicios centrales", metodo: coeficiente, alcance: a_elegir }
+tipos_de_unidad:
+  - { clave: departamento, nombre: "Departamento" }
+  - { clave: cochera,      nombre: "Cochera" }
+  - { clave: baulera,      nombre: "Baulera" }
+  - { clave: local,        nombre: "Local" }
+estados_de_unidad:
+  habilitados: false
+  estados:
+    - { clave: baldio,     nombre: "Baldío",     factor: "100.00", cargo_fijo: "0.00" }
+    - { clave: en_obra,    nombre: "En obra",    factor: "100.00", cargo_fijo: "0.00" }
+    - { clave: habitado,   nombre: "Habitado",   factor: "100.00", cargo_fijo: "0.00" }
+    - { clave: desocupado, nombre: "Desocupado", factor: "100.00", cargo_fijo: "0.00" }

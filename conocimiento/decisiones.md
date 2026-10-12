@@ -612,6 +612,39 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   del fixture en el 1b.
 - **Quién**: proponente y constructor del cambio 1a, aprobado por el auditor (vuelta 4).
 
+## D-052 · El cambio 1b se parte: arranque mínimo en 1b, cola, logs y respaldos aparte
+
+- **Fecha**: 09/10/2026
+- **Decisión**: el cambio 1b tenía 90 tareas y el constructor completó sólo la primera parte con
+  evidencia. Se parte en:
+  - **1b `arranque-del-sistema`**: configuración (incluidas las variables de Redis, conectadas ya en
+    Compose), tipo `Dinero`, `parametros.yaml` con su lector validado y el edificio de ejemplo como
+    archivo validado (se carga en la base en el cambio 3). Las migraciones dependen sólo de PostgreSQL.
+  - **1c `cola-logs-y-respaldos`**: logs estructurados con número de seguimiento de punta a punta,
+    Redis y el worker ARQ con idempotencia, `/salud-web`, respaldos con prueba de restauración, humo y README.
+  - **Propuesta pendiente**: si 1c supera lo que entra en una vuelta del constructor (unas 20 tareas),
+    se parte otra vez dejando respaldos, humo y README como 1d.
+- **Por qué**: un ciclo tiene que poder revisarse entero; un rompedor y un auditor sobre 90 tareas es
+  donde se escapan los errores.
+- **Quién**: Juani.
+
+## D-053 · Elecciones del cambio 1b (arranque del sistema)
+
+- **Fecha**: 11/10/2026
+- **Decisión** (detalle en `openspec/changes/archive/*-arranque-del-sistema/design.md`):
+  - `Configuracion` exige también `REDIS_*` y `PROPTECH_PARAMETROS`; las migraciones usan
+    `ConfiguracionBaseDeDatos`, que sólo depende de PostgreSQL.
+  - `Dinero` sobre `Decimal`: sólo desde texto con coincidencia completa y dígitos ASCII, sin
+    aritmética; `TipoDinero` como `NUMERIC(14,2)`; `desde_decimal` rechaza en vez de redondear.
+  - `parametros.yaml` y la semilla se leen con un cargador propio que rechaza claves duplicadas y
+    claves que no son texto, limita el tamaño a 1 MiB, convierte cualquier falla del parser en un error
+    propio con línea y columna, y nunca repite valores (las claves sí pueden aparecer, son la ruta).
+  - El edificio de ejemplo es un archivo validado (`config/semilla/edificio-ejemplo.yaml`, 13
+    unidades); se carga en la base en el cambio 3.
+- **Notas**: `leer_parametros` tiene un `except TypeError` que hoy no se alcanza (código muerto a
+  limpiar); `Dinero` acepta ceros de más (`1.0000` → `1.00`).
+- **Quién**: proponente y constructor del 1b, aprobado por el auditor (vuelta 4).
+
 ---
 
 ## Preguntas abiertas

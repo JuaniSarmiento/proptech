@@ -1,0 +1,20 @@
+version: 1
+edificio: { nombre: "Edificio Ejemplo", localidad: "Mendoza" }
+unidades:
+  - { identificador: "L-PB", tipo: local,        piso: "PB", coeficiente: "0.080000", superficie_m2: "45.00" }
+  - { identificador: "1A",   tipo: departamento, piso: "1",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "1B",   tipo: departamento, piso: "1",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "2A",   tipo: departamento, piso: "2",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "2B",   tipo: departamento, piso: "2",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "3A",   tipo: departamento, piso: "3",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "3B",   tipo: departamento, piso: "3",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "4A",   tipo: departamento, piso: "4",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "4B",   tipo: departamento, piso: "4",  coeficiente: "0.100000", superficie_m2: "60.00" }
+  - { identificador: "C1",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "C2",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "C3",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "B1",   tipo: baulera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "4.00" }
+grupos:
+  generales: todas
+  ascensor: ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"]
+  cocheras: ["C1", "C2", "C3"]
