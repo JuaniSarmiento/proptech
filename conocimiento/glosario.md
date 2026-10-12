@@ -46,6 +46,10 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
 - **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
 - **Vencimiento**: la fecha a partir de la cual corre la mora.
+- **Puerto de políticas**: la única entrada por la que el reglamento propio de cada edificio llega a la liquidación. Recibe hechos y devuelve acciones propuestas; el núcleo las valida y las registra (D-064, `motor-de-reglas.md`).
+- **Plantilla (de regla)**: un tipo de regla que fabricamos y probamos (intereses, fondo de reserva, bonificación por pronto pago...). El administrador la activa y ajusta sus parámetros; no escribe reglas (D-065, propuesta).
+- **Acción propuesta**: lo que devuelve una plantilla: un cargo, una bonificación o una alerta, con monto en texto y motivo. No es un movimiento hasta que el núcleo la valida.
+- **Versión de reglas**: la configuración de plantillas de un edificio en un momento dado. Cada cambio crea una nueva; cada liquidación guarda las que usó.
 - **Certificado de libre deuda**: la constancia, para una venta, del saldo de una unidad a una fecha
   de corte. Lo firma el administrador; nunca incluye una estimación de gastos del período en curso
   (R21).

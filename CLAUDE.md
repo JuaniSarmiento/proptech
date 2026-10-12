@@ -24,6 +24,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
 | `conocimiento/roadmap.md` | **Los 17 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
+| `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y el motor propio de plantillas (D-065, a validar con Alberto): contrato, catálogo, versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani**. Si
