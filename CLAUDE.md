@@ -44,11 +44,12 @@ original de la especificación se descartó (D-002) y no se usa.
 - **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
 - **Próximo**: cambio 1c `cola-logs-y-respaldos` (ya propuesto, en `openspec/changes/`). Antes de cada cambio,
   constructor y rompedor leen `conocimiento/lecciones.md`.
-- Preguntas abiertas (al final de `decisiones.md`): el edificio piloto (P1), el precio (P8), los
+- Preguntas abiertas (la lista P, al final de `decisiones.md`; es la lista completa): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
-  (P15), la parte de las unidades del consorcio (P16), el IVA (P17) y el vecino con unidades en dos
-  administraciones (P18).
+  (P15), la parte de las unidades del consorcio (P16), el IVA (P17), el vecino con unidades en dos
+  administraciones (P18), el doble vencimiento (P19), quién aprueba una condonación (P20), los umbrales
+  de R23 y R30 (P21) quién usa el editor de reglas (P22) y los permisos por acción (P23).
 
 ## Reglas que no se negocian
 

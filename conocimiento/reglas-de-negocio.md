@@ -276,10 +276,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 - **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
   todavía no distribuida. Estados: borrador, emitida, distribuida y anulada (sólo desde emitida).
-- **Anulación** (D-073): es un **cambio de estado**, no un borrado. La liquidación pasa de emitida a
-  anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se modifica ni se
-  borra: el saldo de cada unidad se calcula sólo con las obligaciones de liquidaciones no anuladas, así
-  que la deuda queda igual que antes de emitir.
+- **Anulación** (D-073, D-079): es un **cambio de estado**, no un borrado. La liquidación pasa de
+  emitida a anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se
+  modifica ni se borra: el saldo de cada unidad excluye **todo movimiento generado por la emisión
+  anulada** (obligaciones, intereses, bonificaciones), así que la deuda queda igual que antes de emitir
+  y volver a emitir no duplica nada.
 - **Distribuida** (D-074): una liquidación pasa a distribuida cuando el administrador la **distribuye**
   (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
   el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
@@ -288,13 +289,14 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   error se corrige con un movimiento nuevo (ajuste).
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
   emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
-  intentar anular una liquidación distribuida (por la acción "distribuir", por un email o por una vista
+  anular y volver a emitir no cobra dos veces el interés de la deuda vieja; intentar anular una
+  liquidación distribuida (por la acción "distribuir", por un email o por una vista
   en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
   emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
 
 ## R18 · Estado "revertido" de un pago confirmado · Vigente (D-056) · extiende R11
 
-- **Regla**: un pago **confirmado** (o conciliado) puede pasar a **revertido** cuando el banco lo
+- **Regla**: un pago **confirmado** puede pasar a **revertido** cuando el banco lo
   rechaza o lo devuelve después de confirmado (cheque rechazado, contracargo, transferencia
   revertida). El pago original nunca se borra ni pasa a "rechazado".
 - **Efecto**: se registra un movimiento de **reversión de pago** (débito) que referencia al pago
@@ -442,7 +444,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   total o parcialmente.
 - **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
   **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
-  vecino (P7) y para el consejo.
+  vecino (principio P7 de Alberto) y para el consejo.
 - **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
   auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
   sin esa respuesta.
@@ -509,16 +511,17 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Control | Se dispara cuando | Nivel | Cambio |
   |---|---|---|---|
   | Saldos iniciales sin validar | El edificio es nuevo y la migración no está confirmada (R09) | Bloqueante | 7 |
-  | Factura duplicada | Dos gastos con el mismo proveedor, punto de venta y número de comprobante | Bloqueante | 7 |
-  | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 14 |
-  | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 14 |
+  | Factura duplicada | Dos gastos con el mismo CUIT del proveedor, punto de venta, tipo y número de comprobante (la clave de R12) | Bloqueante | 7 |
+  | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
+  | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
   | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
   | Unidades sin contacto válido | Alguna unidad no tiene un email válido (R28) | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
-  | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 6 |
-  | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos del período | Bloqueante | 6 |
+  | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
+  | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos del período | Bloqueante | 7 (el 6 expone la consulta) |
 
-  Cada control entra con el cambio que construye lo que revisa. El extracto es advertencia y no
+  La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
+  contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no
   bloqueante porque en el MVP es una ayuda: los pagos entran por comprobante (D-017, R24).
 - **Fuera del MVP**: medidores (D-026), diferencia entre caja y banco (D-023) y conexión de WhatsApp.
   Se suman a la lista cuando existan esas funciones.

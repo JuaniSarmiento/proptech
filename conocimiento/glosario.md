@@ -20,6 +20,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 ## Las personas
 
 - **Administrador**: opera el complejo y es el comprador de PropTech.
+- **Administrador titular**: quien manda en la administración (D-037). **Colaborador**: personal de la administración, sólo en los edificios que le asignan, con permiso de ver o editar. Qué puede hacer cada uno, acción por acción: ver P23.
 - **Consejo** o **comisión directiva**: propietarios que controlan las cuentas y autorizan gastos.
 - **Vecino**: propietario o inquilino que usa el portal.
 - **Encargado** (edificio) o **intendente** (barrio): personal que reporta novedades y da conformidad de trabajos. En el MVP, su sueldo entra como gasto desde el recibo del contador (D-028).
@@ -27,7 +28,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## Gastos y reparto
 
-- **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe y un centro de costo. Tiene cuatro estados: **borrador** (cargado sin aprobar), **sin IA** (la lectura automática falló y espera carga manual), **en revisión** (la IA leyó con alertas) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación (D-075).
+- **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe, una categoría (R16) y un grupo de reparto (R01). Tiene cuatro estados: **borrador** (cargado sin aprobar), **sin IA** (la lectura automática falló y espera carga manual), **en revisión** (la IA leyó con alertas) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación (D-075).
 - **Categoría de gasto**: en qué se gasta la plata (seguridad, limpieza, ascensor...). La define el administrador; ordena la expensa y los reportes, no cambia los cálculos (R16). No confundir con el grupo de reparto, que dice quién paga.
 - **Archivo de parámetros**: `config/parametros.yaml`, con los valores con que arranca cada edificio nuevo (D-042).
 - **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
@@ -38,7 +39,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
 - **Prorrateo**: repartir un gasto entre las unidades según su coeficiente, su superficie o en partes iguales.
 - **Fondo de reserva**: en el MVP, un porcentaje sobre la expensa ordinaria que se cobra como línea propia (R15). El sistema no lleva su saldo acumulado.
-- **Centro de costo**: clasifica el gasto (seguridad, parquización, administración...). **Fondo**: indica de dónde sale y adónde va la plata (operativo, de reserva, de obras). No son lo mismo.
+- **Categoría de gasto** (antes "centro de costo"): en qué se gasta (seguridad, limpieza, administración...). **Fondo**: de dónde sale y adónde va la plata (operativo, de reserva, de obras). No son lo mismo; en el MVP el fondo de reserva es sólo un concepto de la expensa (D-031).
 
 ## Liquidación
 
@@ -47,7 +48,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
 - **Distribución** (o liquidación distribuida): el momento en que la liquidación llega a los vecinos, por la acción "distribuir" del administrador, el primer email o la primera vista en el portal. Desde ahí no se puede anular (R17, D-074).
 - **Anulación**: pasar una liquidación emitida y no distribuida a anulada. Es un cambio de estado: no borra movimientos y la deuda queda como antes de emitir (D-073).
-- **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
+- **Obligación**: lo que una unidad debe por un período, con el capital desglosado en ordinario y extraordinario (R13). Los cargos particulares van dentro de la ordinaria (R14) y los intereses se registran como débitos aparte (R03).
+- **Liquidación**: el cálculo de todo un período para un edificio. Se preliquida, se emite y se distribuye. **Expensa** (o boleta): lo que le toca a una unidad en una liquidación, con su PDF.
 - **Vencimiento**: la fecha a partir de la cual corre la mora. Si cae en un día inhábil, se corre al primer día hábil siguiente (R35, propuesta).
 - **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos de su grupo antes de repartir (R38, propuesta).
 - **Unidad del consorcio**: una unidad que pertenece al propio consorcio, como la portería. No genera intereses (R39, propuesta).

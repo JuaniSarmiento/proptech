@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-078). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-079). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
@@ -53,8 +53,9 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
   reserva y con los estados de unidad desactivados (R01, R02, R03, R15, R16).
 - Dadas las categorías precargadas, cuando agrego "Seguridad nocturna" o renombro "Limpieza",
   entonces quedan disponibles para los gastos de mi edificio sin afectar a otros edificios.
-- Dado un edificio con liquidaciones emitidas, cuando cambio la tasa o el porcentaje del fondo de
-  reserva, entonces las liquidaciones ya emitidas no cambian y el cambio rige desde la próxima.
+- Dado un edificio, cuando cambio la tasa o el porcentaje del fondo de reserva, entonces queda una
+  versión nueva de la configuración con fecha y autor, y la anterior se conserva. *Que una liquidación
+  ya emitida no cambie se prueba en el cambio 7, que es el que emite.*
 - Dado un edificio, cuando configuro el interés, entonces queda un único vencimiento con interés
   simple (R03).
 - *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
@@ -78,7 +79,9 @@ propietario, contacto, coeficiente, saldo inicial) para no tipearlo a mano.
 Como administrador, quiero cargar los gastos del mes a mano o subiendo la factura, para que entren
 en la liquidación.
 - Dado un gasto cargado a mano, cuando lo guardo, entonces queda en borrador con proveedor,
-  concepto, categoría, período, importe, grupo de reparto y si es ordinario o extraordinario.
+  concepto, categoría, período, importe, grupo de reparto y si es ordinario o extraordinario; si tengo
+  la factura, también su punto de venta, tipo y número, para que el control de duplicados funcione
+  (R12, R34).
 - Dado el sueldo del encargado, cuando lo cargo desde el recibo que liquidó el contador (sueldo y
   cargas sociales), entonces entra como un gasto más del grupo que corresponda (D-028).
 - Dada una factura electrónica con QR, cuando la subo, entonces el monto, el CUIT del proveedor y
@@ -108,8 +111,10 @@ que se generen deudas.
 - Dados los gastos aprobados del período, cuando pido la preliquidación, entonces veo lo que paga
   cada unidad, desglosado por grupo de reparto, ordinaria y extraordinaria, fondo de reserva,
   cargos particulares e intereses.
-- Dada una preliquidación, entonces la suma de lo asignado a las unidades es igual a la suma de los
-  gastos más el fondo de reserva, al centavo (R07, R15).
+- Dada una preliquidación, entonces lo **prorrateado** entre las unidades es igual, al centavo, a los
+  gastos aprobados del período menos sus notas de crédito y los ingresos del consorcio, más el fondo
+  de reserva (R07, R15, R22, R38). Los cargos particulares, los intereses y las bonificaciones se
+  suman aparte, unidad por unidad, y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.
 
 **HU-A5 · Emitir la liquidación**
@@ -313,7 +318,8 @@ marcó 48 observaciones. Así se reparten:
 
 ## Cómo se valida
 
-1. **Tests unitarios** de las reglas R01 a R41: cada regla con sus tests mínimos, escritos antes que el código.
+1. **Tests unitarios** de cada regla vigente: sus tests mínimos, escritos antes que el código. Las
+   propuestas suman los suyos cuando se validan.
 2. **Tests de integración** contra PostgreSQL real, incluidos dos pagos simultáneos de la misma unidad.
 3. **Test de aceptación de M1**: la última liquidación del edificio piloto, reproducida al centavo.
 4. **Mes en paralelo (M3)**: el cierre de PropTech coincide con el método actual del piloto.

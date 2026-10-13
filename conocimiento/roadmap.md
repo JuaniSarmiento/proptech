@@ -47,7 +47,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 ## M1 · Liquida
 
-### 1a · `infraestructura-base`
+### 1a · `infraestructura-base` ✅
 
 - **Objetivo**: que el proyecto arranque entero con un comando y que los tests corran solos en cada push.
 - **Decisiones**: D-020, D-036, D-038, D-040, D-043, D-046.
@@ -87,7 +87,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: que cada persona entre y vea sólo lo suyo, aunque el código tenga un error.
 - **Historias**: HU-V1 (entrada del vecino). **Reglas**: R10; auditoría de cada acción sensible (D-016).
-- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039.
+- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076. Se resuelve en su explore: P18.
 - **Entra**: login del personal y del vecino; los cuatro roles (titular, colaborador, consejo,
   vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
@@ -121,8 +121,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente de
   confirmar con Alberto, ProTecc G4, Q9) en vez del vencimiento único de R03.
 - **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1; una unidad repetida;
-  borrar una categoría con gastos; cambiar la tasa y ver si toca algo ya emitido; editar la
-  configuración de otro edificio.
+  cambiar la tasa y que se pierda la versión anterior; editar la configuración de otro edificio.
 - **Terminado cuando**: se cumplen los criterios de HU-A1; un edificio nuevo arranca con los valores
   de `parametros.yaml`; cambiar el archivo no altera edificios existentes.
 
@@ -139,9 +138,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   pública de `proptech_core` (la usa el cambio 6); correcciones con contra-asiento; dos fechas por
   pago (registro y valor); caso de uso de saldo inicial (con detalle por período o total único);
   bloqueo para pagos simultáneos de la misma unidad; umbral mínimo para saldos chicos de redondeo
-  (R30, propuesta, ProTecc D3); **la función pura de moroso crítico** (R20, D-074), como consulta sobre
-  el libro que usan los cambios 8, 10a y 10b; el saldo se calcula sólo con obligaciones de
-  liquidaciones no anuladas (D-073).
+  (R30, propuesta: entra si se valida y se fija el umbral, ProTecc D3); **la función pura de moroso crítico** (R20, D-074), como consulta sobre
+  el libro que usan los cambios 8, 10a y 10b; el saldo excluye todo movimiento generado por una
+  emisión anulada (D-073, D-079). La anulación en sí se construye en el cambio 7: acá se prueba con
+  una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
 - **Depende de**: 2. **Habilita**: 5, 6, 7.
 - **Decidir en el design** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
@@ -179,10 +179,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: cargar los gastos del mes y los cargos de cada unidad, listos para liquidar.
 - **Historias**: HU-A3 (carga manual, incluido el sueldo del encargado), HU-A3b. **Reglas**: R01
-  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16; propuestas:
-  R38 (ingresos del consorcio) y los controles de R34 "gasto mensual obligatorio faltante" e
-  "ingresos mayores que los gastos".
-- **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041, D-075.
+  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16, R22; propuestas:
+  R38 (ingresos del consorcio) y las **consultas** que usan los controles de R34 "gasto mensual
+  obligatorio faltante" e "ingresos mayores que los gastos" (el control en sí lo arma el cambio 7).
+- **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041, D-061, D-075, D-078.
 - **Entra**: proveedores; gastos con sus **cuatro estados** (borrador, sin IA, en revisión y aprobado,
   D-075), con categoría, grupo y tipo ordinario o extraordinario (acá la carga es manual: los estados
   sin IA y en revisión se usan desde el cambio 14, pero ya existen y se prueban); sueldo del encargado como gasto; cargos particulares sueltos o importados desde
@@ -192,18 +192,19 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Depende de**: 3, 4. **Habilita**: 7, 14.
 - **Que intente romper el rompedor**: un gasto sin categoría que se aprueba; un cargo particular que
   termina repartido entre todos; un gasto de otro edificio; un importe con tres decimales; aprobar
-  dos veces el mismo gasto; una nota de crédito que supera el monto de su factura; una nota de
-  crédito sin factura asociada.
+  dos veces el mismo gasto; borrar una categoría con gastos (sólo se desactiva, R16); una nota de
+  crédito que supera el monto de su factura; una nota de crédito sin factura asociada.
 - **Terminado cuando**: se cumplen los criterios de HU-A3 (manual) y HU-A3b; un gasto en borrador,
   sin IA o en revisión no aparece en ningún cálculo; sólo el aprobado entra.
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
-- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R24, R33, R34; propuestas: R35
+- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R33, R34; propuestas: R35
   (vencimiento corrido en el PDF), R37 (bonificación por pronto pago), R38 (bloque de ingresos en la
   expensa), R40 (períodos en orden).
-- **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-069, D-073, D-074, D-075.
+- **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
+  D-073, D-074, D-075, D-078, D-079.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos
     particulares e intereses, agrupado por ordinaria y extraordinaria y por categoría; no escribe deuda.
@@ -215,8 +216,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
     **puerto de distribución** registra el evento para que después lo llamen el portal (11) y el email
     (13). Después de distribuida, sólo se corrige con un ajuste (R08).
   - **Controles antes de emitir** (R34, D-069): la lista con bloqueantes y advertencias, la emisión
-    con alertas aceptadas y su registro, y los dos controles de este cambio (saldos iniciales sin
-    validar y factura duplicada). Los demás controles los suma el cambio que construye lo que revisan.
+    con alertas aceptadas y su registro, y los controles sobre los gastos: saldos iniciales sin
+    validar, factura duplicada, gastos en revisión (bloqueante), gastos sin IA (advertencia) y, sobre
+    las consultas que expone el cambio 6, gasto mensual obligatorio faltante e ingresos mayores que
+    los gastos. Los controles de pagos, extracto y contactos los suman los cambios 8, 9 y 13.
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
@@ -224,7 +227,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
 - **Depende de**: 5, 6. **Habilita**: 8, 10a, 11, 12, 13 y el test de M1.
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
-  el PDF (H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
+  el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
 - **Decidir en el design** (y en su explore): la frontera de la transacción; **qué pasa si falla el
   encolado del PDF después de emitir** (como mínimo, estado por emisión y una forma de reprocesar);
   **qué pasa si falla el extracto bancario o el servicio de IA el día de emitir** (R24, principio P6
@@ -232,7 +235,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   advertencia, y los "en revisión" bloquean salvo aceptación (D-075). Los tests de R24 arman a mano
   gastos en esos estados, sin esperar a los cambios 9 y 14.
 - **Que intente romper el rompedor**: emitir dos veces el mismo período; una preliquidación que
-  escribe algo; la suma de las unidades que no da el total de gastos más el fondo; Redis caído justo
+  escribe algo; lo prorrateado que no da los gastos menos notas de crédito e ingresos, más el fondo; Redis caído justo
   después de emitir; renombrar una categoría después de emitir; anular una liquidación después de
   que fue distribuida; anular sin motivo; anular y que algún movimiento del libro cambie; distribuir
   dos veces; emitir con un bloqueo activo sin aceptarlo; aceptar una alerta sin que quede
@@ -248,8 +251,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 8 · `pagos-informados` · crítico
 
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
-- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R34.
-- **Decisiones**: D-017, D-018, D-029, D-069, D-070, D-074.
+- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34.
+- **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
   con la fecha de la transferencia usando el motor del cambio 4; repartir un pago entre varias
@@ -257,8 +260,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   sugerencia de alta confianza en la bandeja (R19, ProTecc A1/E3); estado **revertido** para un pago
   confirmado que el banco devuelve, con su contra-movimiento (R18, ProTecc D4); asistente de
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
-  propuesta, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
+  propuesta: entra si se valida, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
   (D-070); el control "pagos sin asignar" en la lista antes de emitir, como advertencia (R34).
+- **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
+  pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **No entra**: el cruce con el extracto (9).
 - **Depende de**: 7. **Habilita**: 9, 10a, 13.
 - **Moroso crítico**: después de revertir o reimputar, los tests usan la función de R20 del cambio 4
@@ -281,7 +286,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   control "extracto incompleto" en la lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8.
 - **Prerrequisito**: responder qué traen los extractos de los bancos que usan los administradores
-  de Mendoza (CBU o nombre del originante, concepto completo): es la pregunta Q2 de Alberto,
+  de Mendoza (CBU o nombre del originante, concepto completo): es la pregunta P9 (Q2 de Alberto),
   prioridad 0 de su documento, y condiciona si R19 (código de unidad y CBU histórico) funciona como
   está pensado (D-063).
 - **Que intente romper el rompedor**: formatos de distintos bancos; el mismo extracto dos veces; dos
@@ -307,7 +312,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: las operaciones de morosidad que escriben en la cuenta corriente o tienen peso legal.
 - **Historias**: HU-A10 (certificado de libre deuda), HU-A11 (condonación y gestión judicial).
-  **Reglas**: R21, R29 (propuesta), R31 (propuesta), R41 (propuesta, va con R31). **Decisiones**: D-059,
+  **Reglas**: R21, R29 (propuesta), R31 (propuesta), R41 (propuesta, va con R31; entra si se valida). **Decisiones**: D-059,
   D-074, D-077, D-078.
 - **Entra**: condonación de interés como movimiento con motivo, sin borrar el recargo original (R29,
   falta decidir quién aprueba, ProTecc B5, Q1); marca de "gestión judicial" por unidad que frena los
@@ -356,13 +361,13 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Historias**: HU-V6. **Reglas**: R27, R28, R34.
 - **Entra**: puerto de email con su adaptador; aviso de vencimiento y de mora; un aviso por evento,
   con clave de idempotencia; no avisar a quien ya pagó; un aviso que cae en sábado, domingo o
-  feriado se reprograma al primer día hábil siguiente (R27, propuesta, ProTecc W3); validar el
+  feriado se reprograma al primer día hábil siguiente (R27, propuesta: entra si se valida, ProTecc W3); validar el
   contacto al cargarlo y, si un envío rebota, mostrar al administrador la lista de "unidades sin
-  contacto válido" (R28, propuesta, ProTecc W4); el control "unidades sin contacto válido" en la
+  contacto válido" (R28, propuesta: entra si se valida, ProTecc W4); el control "unidades sin contacto válido" en la
   lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8 y 10b (la consulta de gestión judicial, D-078).
-- **Gestión judicial**: una unidad marcada en gestión judicial no recibe avisos automáticos de mora
-  (R31); este cambio lo prueba.
+- **Gestión judicial**: si R31 se valida y el 10b la construye, una unidad marcada en gestión judicial
+  no recibe avisos automáticos de mora; este cambio lo prueba.
 - **Distribución** (D-074): cuando sale el primer email de una liquidación, el cambio 13 llama al puerto
   de distribución del cambio 7.
 - **Decidir en el design**: el proveedor de email (detrás de un puerto, sin costo o el más barato, D-043).
@@ -385,10 +390,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   revisión, D-075);
   registro del costo de cada llamada a la IA; control de monto atípico contra el historial de ese
   proveedor en el edificio, para marcar para revisión una factura que la IA pudo leer mal (R23,
-  propuesta, falta el umbral, ProTecc A2); las facturas se descargan con links firmados y con
-  vencimiento (D-070); el control "facturas leídas por IA con alertas" en la lista antes de emitir,
-  como bloqueante (R34).
-- **Depende de**: 6.
+  propuesta: entra si se valida y se fija el umbral, ProTecc A2); las facturas se descargan con links firmados y con
+  vencimiento (D-070); la lectura deja cada gasto en el estado que corresponde (sin IA o en revisión),
+  y los controles del cambio 7 lo toman sin cambios;
+- **Depende de**: 6 y 7 (controles y links firmados).
 - **Decidir en el design**: el proveedor de IA (puede ser el mismo del cambio 8).
 - **Que intente romper el rompedor**: el ejemplo oficial de ARCA; una factura en dólares; una sin QR;
   una con instrucciones escondidas para la IA; la misma factura dos veces; un monto leído diez veces
@@ -417,6 +422,6 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
-- **D-066 · Motor de reglas (GoRules ZEN + editor visual)**: suma trabajo a los cambios 3 y 7;
-  sus fichas se actualizan en el propose de cada uno (detalle en `motor-de-reglas.md`).
+- **P19, P21 y P22**: el doble vencimiento, los umbrales y quién usa el editor de reglas, antes de los
+  cambios 3, 4 y 14.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

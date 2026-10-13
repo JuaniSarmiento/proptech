@@ -105,7 +105,7 @@ hechos (los arma el núcleo)            respuesta del motor
 edificio, período                      { "aplica": true,
 unidad, estado de la unidad              "tipo": "bonificacion",
 dia_pago: 3                              "monto": "7630.042",
-deuda: "76300.42"                        "motivo": "pago el día 3, límite día 5" }
+ordinaria_del_periodo: "76300.42"        "motivo": "pago el día 3, límite día 5" }
 periodos_vencidos: 0
 ```
 

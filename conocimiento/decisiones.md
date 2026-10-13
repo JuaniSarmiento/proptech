@@ -26,7 +26,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   declarada). Corregirlo cuesta más que escribirlo bien con tests.
 - **Quién**: Juani.
 
-## D-003 · El MVP se construye en tres hitos demostrables
+## D-003 · El MVP se construye en tres hitos demostrables · *corregida en parte por D-017*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: **M1 Liquida** (decisiones, base, importación, motor financiero, liquidación),
@@ -37,7 +37,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   está mal pensado, aparece en el primer mes y no en el tercero.
 - **Quién**: Juani.
 
-## D-004 · Un barrio piloto real desde el inicio
+## D-004 · Un barrio piloto real desde el inicio · *corregida en parte por D-027 y D-033*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: el piloto se consigue en la fase 0, no al final. Su padrón, sus facturas y su
@@ -63,7 +63,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la API oficial de WhatsApp exige verificar el negocio ante Meta y cotizar con un proveedor.
 - **Quién**: Juani.
 
-## D-007 · La base de conocimiento son cinco archivos
+## D-007 · La base de conocimiento son cinco archivos · *corregida: la base hoy tiene diez archivos*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: `mvp.md`, `proyecto-final.md` y `reglas-de-negocio.md` describen cómo es el
@@ -87,7 +87,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   antes de tener clientes.
 - **Quién**: Juani.
 
-## D-009 · Usuarios del MVP: administrador, vecino y consejo en sólo lectura
+## D-009 · Usuarios del MVP: administrador, vecino y consejo en sólo lectura · *ampliada por D-037*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: tres roles. **Administrador** (opera todo), **vecino** (su unidad: deuda,
@@ -208,7 +208,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   decodificando su ejemplo.
 - **Quién**: Juani.
 
-## D-020 · Stack del MVP
+## D-020 · Stack del MVP · *corregida en parte por D-036 y D-038*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: backend en Python + FastAPI + SQLAlchemy sobre PostgreSQL; sin Redis en el MVP.
@@ -221,7 +221,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: es el stack que Juani ya usó en AI-Native, y el que proponía la especificación.
 - **Quién**: Juani.
 
-## D-021 · Arquitectura: monolito modular, hexagonal por módulo, en español
+## D-021 · Arquitectura: monolito modular, hexagonal por módulo, en español · *corregida en parte por D-040, D-046 y D-076*
 
 - **Fecha**: 08/10/2026
 - **Decisión**:
@@ -249,7 +249,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Decisión**: el desarrollo del MVP lo hace Juani. El roadmap se planifica para un solo desarrollador.
 - **Quién**: Juani.
 
-## D-023 · Tesorería y contabilidad integral quedan fuera del MVP
+## D-023 · Tesorería y contabilidad integral quedan fuera del MVP · *corregida en parte por D-031*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: el MVP lleva la cuenta corriente de cada unidad, no el saldo de caja del barrio,
@@ -408,7 +408,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   espera no escala ni con un edificio de 40 unidades. Juani: "no es algo de otro mundo".
 - **Quién**: Juani.
 
-## D-039 · Del resto del documento de Alberto se mantiene lo ya acordado · *corregida en parte por D-047*
+## D-039 · Del resto del documento de Alberto se mantiene lo ya acordado · *corregida en parte por D-046 y D-047*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: para lo demás rigen las decisiones previas. En particular:
@@ -524,7 +524,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   conviene arrancar alineados con Alberto, que va a trabajar a la par. Es además más legible.
 - **Quién**: Claude, por delegación explícita de Juani ("como vos lo veas mejor").
 
-## D-047 · Ajustes al plan de cambios después del explore general
+## D-047 · Ajustes al plan de cambios después del explore general · *corregida en parte por D-049*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: se aceptan las propuestas del explore general
@@ -702,7 +702,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: análisis citado (sección 3, casos ProTecc A1 y E3).
 - **Quién**: Juani.
 
-## D-058 · "Moroso crítico" se define por antigüedad, sin bloqueo de amenities
+## D-058 · "Moroso crítico" se define por antigüedad, sin bloqueo de amenities · *corregida en parte por D-078*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: una unidad es **moroso crítico** cuando tiene dos o más liquidaciones vencidas con
@@ -773,7 +773,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: análisis citado (sección 3).
 - **Quién**: Juani.
 
-## D-063 · Integración de los dolores de ProTecc (resumen)
+## D-063 · Integración de los dolores de ProTecc (resumen) · *corregida en parte por D-075*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: se integran a la base de conocimiento los 42 casos del documento de Alberto
@@ -1067,6 +1067,28 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   resolver) y R24 no tenía un cambio donde probarse antes del 14.
 - **Quién**: Juani, a partir de la revisión final de la base.
 
+## D-079 · Correcciones de la segunda revisión completa (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Anular excluye todo lo que generó la emisión** (corrige a D-073): el saldo excluye todo movimiento
+    generado por una emisión anulada (obligaciones, intereses, bonificaciones), no sólo sus
+    obligaciones. Si no, anular y volver a emitir cobraba dos veces el interés de la deuda vieja.
+  - **La cuenta de la preliquidación**: lo prorrateado entre las unidades es igual a los gastos
+    aprobados menos notas de crédito e ingresos, más el fondo de reserva; los cargos particulares,
+    intereses y bonificaciones se suman aparte, unidad por unidad (HU-A4).
+  - **Los controles sobre los gastos nacen en el cambio 7**, incluidos los de gastos sin IA y en
+    revisión y los que usan consultas del cambio 6; el 14 sólo deja cada gasto en su estado (corrige el
+    reparto de R34 de D-071 y D-075). Así ningún cambio prueba algo que se construye después.
+  - **Factura duplicada** usa la clave completa de R12 (CUIT, punto de venta, tipo y número), para no
+    confundir una factura con su nota de crédito.
+  - **Fichas de los cambios 3 y 4**: lo que necesita una liquidación emitida o anulada se prueba en el 7,
+    o con datos armados en el test.
+  - **Las propuestas en las fichas** dicen "entra si se valida": no son alcance comprometido.
+- **Por qué**: la segunda revisión completa de la base encontró estos huecos; son correcciones, no
+  cambios de criterio.
+- **Quién**: Juani, a partir de la revisión.
+
 ---
 
 ## Preguntas abiertas
@@ -1115,4 +1137,15 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P18 · El vecino con unidades en dos administraciones** (D-076): identidad global con
   membresías por administración, o una cuenta por administración. Se resuelve en el explore del
   cambio 2, antes de diseñar el login.
+- [ ] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
+  vencimiento con recargo escalonado en vez del vencimiento único de R03. Afecta el test de M1. Se
+  responde con Alberto antes del cambio 3.
+- [ ] **P20 · Quién aprueba una condonación** (R29, Q1 de Alberto): el titular solo, con auditoría, o el
+  consejo por encima de un umbral. Antes del cambio 10b.
+- [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
+- [ ] **P22 · Quién usa el editor de reglas** (D-066, `motor-de-reglas.md`): propuesta en dos niveles,
+  valores para el titular y estructura para el equipo. Antes del cambio 3.
+- [ ] **P23 · Permisos por acción**: qué rol puede emitir, distribuir, anular una liquidación, confirmar
+  y revertir pagos, condonar, dar de baja una deuda y aceptar alertas. D-037 fija los roles pero no
+  cada acción. Antes del cambio 2.
 
