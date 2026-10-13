@@ -115,6 +115,9 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
 - Dada una preliquidación revisada, cuando emito, entonces se genera una obligación por unidad y
   período, con su PDF, y la persona de contacto recibe un email avisando.
 - Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide.
+- Dada una preliquidación con un control bloqueante (por ejemplo, una factura cargada dos veces),
+  cuando intento emitir, entonces el sistema me lo muestra y no emite, salvo que acepte esa alerta de
+  forma explícita; la aceptación queda registrada (R34).
 - Dada una liquidación emitida pero todavía no distribuida (ningún email salió y ningún vecino la
   vio en el portal), cuando la anulo con un motivo, entonces se borra sin dejar movimiento, como si
   no se hubiera emitido (R17, ProTecc A5). Una vez distribuida, no se puede anular: se corrige con un

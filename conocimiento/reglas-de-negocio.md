@@ -465,3 +465,34 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   texto se rechaza; una respuesta vacía se rechaza; una respuesta correcta se registra con su regla y
   versión en el motivo.
 
+## R34 · Controles antes de emitir y emisión con alertas aceptadas · Vigente (D-069)
+
+- **Qué resuelve**: emitir con un problema que nadie vio (saldos sin validar, una factura cargada dos
+  veces, pagos sin asignar que hacen figurar moroso a quien pagó).
+- **Cómo funciona**: al preliquidar y al emitir, el sistema corre una lista de controles. Cada uno es
+  **bloqueante** (no se puede emitir) o **advertencia** (se puede emitir y se muestra). Cada alerta
+  dice qué pasa y dónde.
+- **Emisión con alertas aceptadas**: con un bloqueo activo, el administrador puede emitir igual sólo
+  si confirma de forma explícita qué alertas acepta. Queda registrado quién, cuándo y cuáles. Es
+  distinto del modo degradado (R24), que cubre la caída de un servicio externo.
+- **Una diferencia nunca se tapa**: no se carga un movimiento inventado para que un control dé bien.
+- **Controles del MVP**:
+
+  | Control | Se dispara cuando | Nivel | Cambio |
+  |---|---|---|---|
+  | Saldos iniciales sin validar | El edificio es nuevo y la migración no está confirmada (R09) | Bloqueante | 7 |
+  | Factura duplicada | Dos gastos con el mismo proveedor, punto de venta y número de comprobante | Bloqueante | 7 |
+  | Facturas leídas por IA con alertas | Hay gastos en revisión por alertas de la lectura automática | Bloqueante | 14 |
+  | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
+  | Unidades sin contacto válido | Alguna unidad no tiene un email válido (R28) | Advertencia | 13 |
+  | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
+
+  Cada control entra con el cambio que construye lo que revisa. El extracto es advertencia y no
+  bloqueante porque en el MVP es una ayuda: los pagos entran por comprobante (D-017, R24).
+- **Fuera del MVP**: medidores (D-026), diferencia entre caja y banco (D-023) y conexión de WhatsApp.
+  Se suman a la lista cuando existan esas funciones.
+- **Tests mínimos**: un bloqueo activo impide emitir; aceptarlo de forma explícita permite emitir y
+  deja registro con usuario, fecha y alertas; una advertencia no impide emitir; una factura cargada
+  dos veces dispara el bloqueo con proveedor, número y monto; un edificio sin saldos confirmados no
+  emite su primera liquidación sin aceptar la alerta; ningún control genera movimientos.
+

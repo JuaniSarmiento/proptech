@@ -890,6 +890,21 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   no la importación.
 - **Quién**: Juani, a partir del material de Alberto.
 
+## D-069 · Controles antes de emitir con dos niveles y emisión con alertas aceptadas
+
+- **Fecha**: 13/10/2026
+- **Decisión**: antes de emitir, el sistema corre una lista de controles, cada uno bloqueante o
+  advertencia. Con un bloqueo activo se puede emitir sólo aceptando la alerta de forma explícita, y la
+  aceptación queda registrada. Una diferencia nunca se tapa con un movimiento inventado. Detalle y
+  lista del MVP en R34; se construye en el cambio 7 y cada control entra con su cambio.
+- **Por qué**: es el pedido de Alberto (ProTecc v3.5, secciones 7.2 y 12.5): lo que salva al
+  administrador el día que algo sale mal. La exploración del 12/10 ya lo recomendaba para el MVP.
+- **Adaptado al MVP**: de su lista quedan afuera medidores (D-026), diferencia entre caja y banco
+  (D-023) y WhatsApp, porque esas funciones no están en el MVP. El extracto incompleto pasa de
+  bloqueante a advertencia, porque en el MVP el extracto es una ayuda y no el camino de los pagos
+  (D-017).
+- **Quién**: Juani, a partir del material de Alberto.
+
 ---
 
 ## Preguntas abiertas

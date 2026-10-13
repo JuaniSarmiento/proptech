@@ -186,8 +186,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
-- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16.
-- **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8).
+- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R34.
+- **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-069.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos
     particulares e intereses, agrupado por ordinaria y extraordinaria y por categoría; no escribe deuda.
@@ -195,6 +195,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
     período en una sola transacción, encola el PDF y el email en el worker; permite anular mientras
     la liquidación no fue distribuida (ningún email salió ni ningún vecino la vio), con motivo
     registrado (R17, ProTecc A5, D-055); después de distribuida sólo se corrige con un ajuste (R08).
+  - **Controles antes de emitir** (R34, D-069): la lista con bloqueantes y advertencias, la emisión
+    con alertas aceptadas y su registro, y los dos controles de este cambio (saldos iniciales sin
+    validar y factura duplicada). Los demás controles los suma el cambio que construye lo que revisan.
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
@@ -208,7 +211,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Que intente romper el rompedor**: emitir dos veces el mismo período; una preliquidación que
   escribe algo; la suma de las unidades que no da el total de gastos más el fondo; Redis caído justo
   después de emitir; renombrar una categoría después de emitir; anular una liquidación después de
-  que un vecino ya la vio en el portal; anular sin motivo.
+  que un vecino ya la vio en el portal; anular sin motivo; emitir con un bloqueo activo sin aceptarlo; aceptar una alerta sin que quede
+  registro.
 - **Terminado cuando**: se cumplen HU-A4 y HU-A5; **con los datos del piloto, reproduce su última
   liquidación al centavo** (test de aceptación de M1; si los datos todavía no están, se corre con el
   edificio de ejemplo y M1 queda pendiente de ese test).
