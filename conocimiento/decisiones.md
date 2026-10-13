@@ -920,6 +920,38 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   agregarlo después obliga a cambiar cada descarga.
 - **Quién**: Juani, a partir del material de Alberto.
 
+## D-071 · Diez huecos del catálogo de 100 casos de Alberto, resueltos como propuestas
+
+- **Fecha**: 13/10/2026
+- **Origen**: el documento de Alberto con 100 casos de negocio y de borde (13/10). La mayoría ya estaba
+  en la base o quedó fuera del MVP a propósito. Diez eran huecos reales.
+- **Decisión**: cada hueco queda resuelto en la base como **propuesta**, a validar con Alberto o con un
+  administrador: vencimiento en día inhábil (R35, caso 25); tasa propia para la extraordinaria (R36,
+  caso 26); condiciones de la bonificación por pronto pago, incluido que una multa nunca se bonifica
+  (R37, casos 5, 14 y 43); ingresos del consorcio (R38, casos 42 y 49); unidades del propio consorcio
+  (R39, caso 33); períodos en orden (R40, caso 94); baja de deuda incobrable (R41, caso 78); control de
+  gasto mensual obligatorio faltante (R34, caso 96); IVA incluido en el gasto (R12, caso 97).
+- **Descartado del documento**: redondear hacia arriba a favor del consorcio (caso 11; choca con R07,
+  la suma da exacta); capitalizar intereses (caso 31; prohibido por el art. 770 salvo orden judicial);
+  repartir por días la deuda en una venta (caso 86; es la pregunta P11 y su respuesta no está validada);
+  presentar el libre deuda como de "validez jurídica absoluta" (caso 100; lo firma el administrador,
+  R21). Lo de medidores, dólares, tesorería, débito automático y rendiciones de cobranza ya estaba
+  fuera del MVP (D-023, D-026, D-017).
+- **Quién**: Juani, a partir del material de Alberto.
+
+## D-072 · No se suman MinIO ni APScheduler
+
+- **Fecha**: 13/10/2026
+- **Decisión**: los links firmados y con vencimiento (D-070) los genera el propio backend, sin un
+  servidor de archivos aparte. Las tareas programadas (avisos, cierres, intereses) van en el worker ARQ
+  ya decidido (D-038), que también programa tareas por fecha.
+- **Por qué**: la edición libre de MinIO quedó archivada en abril de 2026, sin actualizaciones y con
+  fallas de seguridad conocidas sin parchear (verificado el 13/10). APScheduler duplicaría lo que ya
+  hace ARQ y, corriendo dentro de la API con varios procesos, puede ejecutar dos veces la misma tarea.
+- **Queda para después**: Apprise, para avisos por varios canales (por ejemplo, alertas internas por
+  Telegram), si hace falta más allá del email.
+- **Quién**: Juani, a partir del documento de herramientas de Alberto.
+
 ---
 
 ## Preguntas abiertas
@@ -957,4 +989,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P14 · Plazo de entrega del certificado de libre deuda** (Q11 de Alberto): R21 define quién
   lo firma y qué incluye, pero no en cuántos días hay que entregarlo. Se responde con Alberto o con la
   normativa aplicable en Mendoza.
+- [ ] **P15 · Ingresos mayores que los gastos** (R38): qué pasa si en un mes los ingresos de un grupo
+  superan sus gastos: crédito para el mes siguiente, fondo de reserva u otra cosa. Mientras tanto, la
+  emisión se frena. Se responde con Alberto.
+- [ ] **P16 · La parte de las unidades del consorcio** (R39): si su parte de cada gasto se reparte entre
+  las demás unidades o se registra como gasto del consorcio. Se responde con Alberto, según el
+  reglamento.
+- [ ] **P17 · IVA de los consorcios** (R12): confirmar con un contador que el consorcio registra los
+  gastos con el IVA incluido.
 

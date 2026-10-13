@@ -45,9 +45,12 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Preliquidación**: el cálculo provisorio que el administrador revisa antes de emitir. No genera deuda.
 - **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
 - **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
-- **Vencimiento**: la fecha a partir de la cual corre la mora.
+- **Vencimiento**: la fecha a partir de la cual corre la mora. Si cae en un día inhábil, se corre al primer día hábil siguiente (R35, propuesta).
+- **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos de su grupo antes de repartir (R38, propuesta).
+- **Unidad del consorcio**: una unidad que pertenece al propio consorcio, como la portería. No genera intereses (R39, propuesta).
+- **Baja de deuda**: dar por perdida una deuda incobrable, con respaldo, sin borrar los movimientos (R41, propuesta).
 - **Puerto de políticas**: la única entrada por la que el reglamento propio de cada edificio llega a la liquidación. Recibe hechos y devuelve acciones propuestas; el núcleo las valida y las registra (D-064, `motor-de-reglas.md`).
-- **Regla (del motor)**: una regla propia de un edificio, dibujada en el editor visual (jdm-editor) y guardada en formato JDM; la ejecuta GoRules ZEN. Decide qué corresponde y puede calcular, siempre devolviendo la plata como texto; el redondeo al centavo lo hace el núcleo (D-066, D-067). No confundir con las reglas de negocio R01 a R34, que viven en código.
+- **Regla (del motor)**: una regla propia de un edificio, dibujada en el editor visual (jdm-editor) y guardada en formato JDM; la ejecuta GoRules ZEN. Decide qué corresponde y puede calcular, siempre devolviendo la plata como texto; el redondeo al centavo lo hace el núcleo (D-066, D-067). No confundir con las reglas de negocio R01 a R41, que viven en código.
 - **Validador (de reglas)**: el control propio que revisa cada regla al guardarla y cada respuesta del motor al evaluarla. Si algo no cumple el contrato, bloquea la emisión (D-066).
 - **Acción propuesta**: lo que devuelve el motor: un cargo, una bonificación o una alerta, con monto en texto y motivo. No es un movimiento hasta que el núcleo la valida.
 - **Versión de reglas**: las reglas de un edificio en un momento dado. Cada cambio crea una nueva; cada liquidación guarda las que usó.

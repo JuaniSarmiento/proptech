@@ -107,7 +107,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
 - **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (desactivado), R03 (su
-  configuración), R15 (porcentaje), R16 (categorías).
+  configuración), R15 (porcentaje), R16 (categorías); propuestas: R35 (feriados en parámetros), R36
+  (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
 - **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042.
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
@@ -129,7 +130,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: el corazón de la plata: que cada peso de deuda viva en un solo lugar y nunca se pierda un centavo.
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05, R06, R07, R08, R09 (el caso de uso
   de saldo inicial), R13 (orden de imputación por tipo).
-- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068.
+- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068. Propuestas que tocan este
+  cambio: R35 (intereses desde el día hábil), R36 (tasa propia de la extraordinaria), R39 (sin
+  intereses para unidades del consorcio).
 - **Entra**: libro de movimientos de sólo agregar, sin campo saldo; obligaciones, pagos e
   imputaciones; intereses simples calculados al registrarse; reparto por **mayor resto** como función
   pública de `proptech_core` (la usa el cambio 6); correcciones con contra-asiento; dos fechas por
@@ -172,7 +175,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: cargar los gastos del mes y los cargos de cada unidad, listos para liquidar.
 - **Historias**: HU-A3 (carga manual, incluido el sueldo del encargado), HU-A3b. **Reglas**: R01
-  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16.
+  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16; propuestas:
+  R38 (ingresos del consorcio) y los controles de R34 "gasto mensual obligatorio faltante" e
+  "ingresos mayores que los gastos".
 - **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041.
 - **Entra**: proveedores; gastos en borrador y aprobados con categoría, grupo y tipo ordinario o
   extraordinario; sueldo del encargado como gasto; cargos particulares sueltos o importados desde
@@ -190,7 +195,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
-- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R34.
+- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R34; propuestas: R35
+  (vencimiento corrido en el PDF), R37 (bonificación por pronto pago), R38 (bloque de ingresos en la
+  expensa), R40 (períodos en orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-069.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos

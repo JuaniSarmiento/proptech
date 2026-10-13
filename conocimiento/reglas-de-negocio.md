@@ -61,6 +61,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Días de gracia | entero desde 0 | 0 |
   | Forma de cálculo | proporcional por día de atraso · mes entero al pasar el vencimiento | proporcional por día |
 
+- **Propuestas relacionadas**: vencimiento en día inhábil (R35) y tasa propia para la extraordinaria
+  (R36).
 - **Cuándo se registra**: al emitir la liquidación siguiente, como un débito con su detalle
   (obligación, días, tasa, base). El número no cambia cada vez que el vecino entra al portal.
 - **Historia**: cada liquidación guarda la configuración con la que se calculó. Cambiar la tasa
@@ -178,6 +180,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 ## R12 · Registro de gastos desde facturas · Vigente (D-019)
 
+- **IVA** *(propuesta, D-071, P17)*: el gasto se registra por el **total de la factura, con el IVA
+  incluido**, porque el consorcio en general no lo descuenta: para él es parte del costo. Si algún
+  consorcio fuera responsable inscripto, eso se trata aparte y fuera del MVP. A confirmar con un
+  contador.
 - **Primero el QR de ARCA.** Toda factura electrónica lleva un QR con el texto
   `https://www.arca.gob.ar/fe/qr/?p={JSON en Base64}` (las anteriores al cambio de nombre dicen
   `afip.gob.ar`: se aceptan los dos). Especificación oficial, versión 1, publicada en
@@ -486,6 +492,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
   | Unidades sin contacto válido | Alguna unidad no tiene un email válido (R28) | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
+  | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 6 |
+  | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos del período | Bloqueante | 6 |
 
   Cada control entra con el cambio que construye lo que revisa. El extracto es advertencia y no
   bloqueante porque en el MVP es una ayuda: los pagos entran por comprobante (D-017, R24).
@@ -495,4 +503,92 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   deja registro con usuario, fecha y alertas; una advertencia no impide emitir; una factura cargada
   dos veces dispara el bloqueo con proveedor, número y monto; un edificio sin saldos confirmados no
   emite su primera liquidación sin aceptar la alerta; ningún control genera movimientos.
+
+## R35 · Vencimiento en día inhábil · Propuesta (D-071)
+
+- **Qué resuelve**: un vencimiento que cae sábado, domingo o feriado, cuando el vecino no puede hacer
+  todos los trámites y los bancos no acreditan igual que un día hábil.
+- **Propuesta**: si el vencimiento cae en un día inhábil, se corre al primer día hábil siguiente, y los
+  intereses (R03) cuentan desde ese día. El PDF de la expensa muestra la fecha ya corrida.
+- **Feriados**: los nacionales se cargan en `parametros.yaml` por año; cada edificio puede sumar
+  feriados provinciales o de Mendoza.
+- **Tests mínimos**: un vencimiento en domingo pasa al lunes; un pago el lunes no genera interés; un
+  vencimiento en un feriado seguido de fin de semana pasa al siguiente día hábil; un día hábil normal
+  no se mueve.
+
+## R36 · Tasa propia para la expensa extraordinaria · Propuesta (D-071)
+
+- **Qué resuelve**: la asamblea que aprueba una obra puede fijar un interés por mora distinto para esas
+  cuotas que para la expensa ordinaria.
+- **Propuesta**: R03 suma una opción al menú de cada edificio: la extraordinaria usa la misma tasa que la
+  ordinaria (default) o una tasa propia. Siempre interés simple, igual que R03.
+- **Tests mínimos**: sin tasa propia, la extraordinaria usa la de la ordinaria; con tasa propia, cada
+  capital genera interés con su tasa; un pago parcial sigue el orden de R04 y cada parte deja de
+  generar interés con su propia tasa.
+
+## R37 · Condiciones de la bonificación por pronto pago · Propuesta (D-071)
+
+- **Qué resuelve**: dejar escrito cuándo corresponde la bonificación por pronto pago (regla del motor,
+  `motor-de-reglas.md`), para que dos edificios no la interpreten distinto.
+- **Propuesta** (son los valores por defecto de la regla; cada edificio los ajusta en el editor):
+  - Se bonifica sólo la **expensa ordinaria del período**. Nunca la extraordinaria, los intereses ni
+    los cargos particulares, y en especial **nunca una multa**.
+  - Sólo si la unidad **no tenía deuda vencida** de períodos anteriores al día del pago.
+  - Sólo si el pago **cubre el total de la ordinaria** del período antes del día límite. Un pago
+    parcial no bonifica.
+  - Vale la fecha de la transferencia, no la de la confirmación (R11).
+- **Tests mínimos**: un pago total antes del límite bonifica; un pago parcial no; una unidad con deuda
+  anterior no bonifica aunque pague a término; una multa del período no se bonifica; un pago el día
+  límite bonifica y uno al día siguiente no.
+
+## R38 · Ingresos del consorcio · Propuesta (D-071)
+
+- **Qué resuelve**: lo que el consorcio cobra (alquiler de una cochera o baulera común, de la terraza
+  para una antena, el uso del SUM por terceros) tiene que bajar lo que pagan todos. Hoy la base sólo
+  tiene gastos.
+- **Propuesta**: el administrador registra un **ingreso** con concepto, importe, período, grupo de
+  reparto y respaldo. Al liquidar, los ingresos aprobados se restan del total de gastos de su grupo, y
+  sobre el neto se aplica el reparto de R01 y R07. La expensa los muestra en un bloque propio,
+  "Ingresos", con su detalle.
+- **Si quien paga es un vecino** (por ejemplo, alquila una cochera común): se le carga como cargo
+  particular a su unidad (R14) y el mismo importe entra como ingreso del consorcio.
+- **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos del grupo. Hasta
+  decidirlo, el sistema lo frena con una alerta bloqueante (R34) en vez de emitir expensas negativas.
+- **Tests mínimos**: un ingreso baja el total a repartir de su grupo y no el de otros grupos; el reparto
+  del neto sigue sumando exacto; un ingreso en borrador no entra; un ingreso mayor que los gastos frena
+  la emisión.
+
+## R39 · Unidades del propio consorcio · Propuesta (D-071)
+
+- **Qué resuelve**: unidades que son del consorcio (la portería, un departamento propio que se
+  alquila). El consorcio no puede cobrarse intereses a sí mismo.
+- **Propuesta**: una unidad marcada como "del consorcio" **no genera intereses**, no recibe
+  bonificaciones, no cuenta como moroso crítico (R20) y no recibe avisos de mora.
+- **Pendiente** (P16): cómo se trata su parte de cada gasto: si se reparte entre las demás unidades o
+  si se registra como gasto del consorcio. Depende del reglamento; se valida con Alberto.
+- **Tests mínimos**: una unidad del consorcio con saldo vencido no genera interés; no aparece en la
+  lista de morosos; desmarcarla la vuelve a tratar como cualquier unidad desde el período siguiente.
+
+## R40 · Los períodos se liquidan en orden · Propuesta (D-071)
+
+- **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
+  intereses.
+- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido. Única
+  excepción: el primer período después de la migración (R09), que arranca desde los saldos
+  iniciales confirmados.
+- **Tests mínimos**: con abril sin emitir, preliquidar mayo se rechaza con un mensaje claro; con abril
+  emitido, mayo se preliquida; el primer período después de la migración se puede emitir.
+
+## R41 · Baja de deuda incobrable · Propuesta (D-071)
+
+- **Qué resuelve**: una deuda que el consorcio da por perdida (por ejemplo, después de un remate que no
+  alcanzó a cubrirla) y que la asamblea decide dar de baja.
+- **Propuesta**: el administrador titular registra una **baja de deuda** sobre la unidad, con motivo y
+  el respaldo adjunto (acta de asamblea u orden judicial). Es un movimiento nuevo (R08): la deuda
+  original no se borra y la baja queda en un reporte propio de deudas dadas de baja. Sólo el titular
+  puede hacerlo.
+- **Alcance**: va junto con la marca de gestión judicial (R31); se decide si entra al MVP cuando se
+  valide R31.
+- **Tests mínimos**: la baja deja el saldo en cero sin borrar movimientos; sin respaldo adjunto se
+  rechaza; un colaborador no puede registrarla; aparece en el reporte de bajas.
 

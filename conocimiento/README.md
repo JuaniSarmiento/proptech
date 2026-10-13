@@ -20,8 +20,8 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 | Orden | Archivo | Qué tiene | Cómo se actualiza |
 |---|---|---|---|
 | 1 | [`mvp.md`](mvp.md) | Objetivo, usuarios, historias de usuario con criterios de aceptación, alcance, hitos y diferencias con la especificación original y con la arquitectura de koris | Se reescribe |
-| 2 | [`reglas-de-negocio.md`](reglas-de-negocio.md) | Las reglas de cálculo (R01 a R34), cada una con su estado (vigente, propuesta o pendiente) y los tests mínimos que la verifican | Se reescribe |
-| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-070 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
+| 2 | [`reglas-de-negocio.md`](reglas-de-negocio.md) | Las reglas de cálculo (R01 a R41), cada una con su estado (vigente, propuesta o pendiente) y los tests mínimos que la verifican | Se reescribe |
+| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-072 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
 | 4 | [`glosario.md`](glosario.md) | El idioma común. El código usa estos mismos nombres, en español | Se reescribe |
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
 | 6 | [`roadmap.md`](roadmap.md) | Los 17 cambios del MVP en orden (1a, 1b, 1c y 2 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |

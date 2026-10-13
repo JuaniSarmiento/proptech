@@ -1,8 +1,8 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-070). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-072). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
-> (R01 a R34) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
+> (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
 > reglas, GoRules ZEN con su editor visual (`motor-de-reglas.md`, D-064, D-066, D-067). **Se
 > reescribe** cuando cambia una decisión.
@@ -303,7 +303,7 @@ marcó 48 observaciones. Así se reparten:
 
 ## Cómo se valida
 
-1. **Tests unitarios** de las reglas R01 a R34: cada regla con sus tests mínimos, escritos antes que el código.
+1. **Tests unitarios** de las reglas R01 a R41: cada regla con sus tests mínimos, escritos antes que el código.
 2. **Tests de integración** contra PostgreSQL real, incluidos dos pagos simultáneos de la misma unidad.
 3. **Test de aceptación de M1**: la última liquidación del edificio piloto, reproducida al centavo.
 4. **Mes en paralelo (M3)**: el cierre de PropTech coincide con el método actual del piloto.
