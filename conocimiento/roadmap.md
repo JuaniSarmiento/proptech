@@ -167,7 +167,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   unidad con una sola liquidación vencida que la función de R20 marca como moroso crítico.
 - **Terminado cuando**: pasan los tests mínimos de R03 a R08 y R20, los del caso de uso de saldo
   inicial de R09 y los de imputación de R13 (los de R09 sobre el borrador y el importador son del cambio
-  5, y los de R13 sobre bloques y multas, de los cambios 6 y 7); hay pruebas de propiedades del
+  5, los de R13 sobre bloques y multas, de los cambios 6 y 7, y el de R20 con un pago revertido, del
+  cambio 8); hay pruebas de propiedades del
   mayor resto (la suma siempre da exacta); el test de concurrencia contra PostgreSQL real pasa; un
   intento de modificar un movimiento rebota.
 
@@ -175,11 +176,11 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: cargar un edificio real desde su Excel sin tipear nada.
 - **Historias**: HU-A2. **Reglas**: R09.
-- **Decisiones**: D-015, D-029, D-068.
+- **Decisiones**: D-015, D-029, D-068, D-082, D-083.
 - **Entra**: plantilla de Excel con una hoja opcional de saldos por período (unidad, concepto,
-  período, monto, interés acumulado; R09, D-082), y la acción "sin saldos previos" para un edificio
-  nuevo; la hoja principal con piso, departamento, tipo, propietario, contacto, coeficiente y saldo
-  inicial; validación fila por fila con informe de errores; carga atómica (todo o nada); detección
+  período, vencimiento, monto, interés acumulado; R09, D-082), y la acción "sin saldos previos" para un edificio
+  nuevo; la hoja principal con piso, departamento, tipo, propietario, contacto, coeficiente, saldo
+  inicial (sólo capital) e interés devengado (que no genera interés, D-083); validación fila por fila con informe de errores; carga atómica (todo o nada); detección
   de reimportación; saldos en un **borrador** que no toca la cuenta corriente, comparado **unidad por
   unidad** contra el listado del administrador, con aceptación registrada de las diferencias y cierre
   del importador al confirmar (D-068); saldos iniciales usando el caso de uso del cambio 4.

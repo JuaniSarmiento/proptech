@@ -104,9 +104,8 @@ sin error. Se maneja con tres capas (R33):
 hechos (los arma el núcleo)            respuesta del motor
 edificio, período                      { "aplica": true,
 unidad, estado de la unidad              "tipo": "bonificacion",
-fecha_transferencia: 3 (al confirmar)    "monto": "7630.042",
-ordinaria_del_periodo: "76300.42"        "motivo": "pago el día 3, límite día 5" }
-periodos_vencidos: 0
+dia_pago: 3                              "porcentaje": "10.00",
+periodos_vencidos: 0                     "motivo": "pago el día 3, límite día 5" }
 ```
 
 1. El núcleo arma los datos del mes de cada unidad, con tipos fijos y completos.
@@ -114,6 +113,11 @@ periodos_vencidos: 0
 3. El validador revisa la respuesta.
 4. El núcleo redondea al centavo (R07) y registra cada movimiento con un motivo que dice qué regla y
    qué versión lo generó.
+
+Con qué dato se evalúa la bonificación (D-085): **al emitir** (cambio 7), con `dia_pago` igual al día
+límite, para calcular el importe con descuento que muestra el PDF; **al confirmar un pago** (cambio
+8), con el día de la transferencia. El motor devuelve el **porcentaje** como texto y el núcleo calcula
+el monto sobre la ordinaria prorrateada (R37) y lo redondea. Así ningún dato falta al emitir (R33).
 
 Reglas del contrato:
 

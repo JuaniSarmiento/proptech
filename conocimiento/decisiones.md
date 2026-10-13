@@ -858,7 +858,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   explore del cambio 3.
 - **Quién**: Alberto (pedido del 12/10, "vamos con lo que te paso"); Juani acepta.
 
-## D-067 · ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio
+## D-067 · ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio · *corregida en parte por D-085*
 
 - **Fecha**: 13/10/2026
 - **Corrige a D-064 y D-066**: decían que ZEN "trabaja con `float`". Es falso. La prueba del 13/10 con
@@ -1135,7 +1135,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   definiciones de detalle, sin cambio de criterio.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
-## D-082 · Definiciones de plata de la cuarta revisión (13/10) · *corregida en parte por D-083*
+## D-082 · Definiciones de plata de la cuarta revisión (13/10) · *corregida en parte por D-083 y D-084*
 
 - **Fecha**: 13/10/2026
 - **Decisión** (las que tocan montos quedan a validar con un administrador, como R03):
@@ -1179,7 +1179,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   anteriores.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
-## D-084 · Correcciones de la sexta revisión completa (13/10)
+## D-084 · Correcciones de la sexta revisión completa (13/10) · *corregida en parte por D-085*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1193,6 +1193,23 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     distribuido, y una liquidación anulada se puede volver a emitir.
   - Los casos de negocio sin definir que encontró la revisión pasan a la lista (P33 a P41).
 - **Por qué**: la sexta revisión completa; sólo un hallazgo afectaba plata.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
+
+## D-085 · Correcciones de la séptima revisión completa (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **El ajuste de interés de R11 sigue al interés**: si se anula la emisión que registró el interés que
+    compensa, el ajuste queda excluido con él, sin contra-movimiento, aunque esa anulación haga caer
+    también la imputación del pago. Sólo se revierte con contra-movimiento cuando el pago se revierte o
+    se reimputa.
+  - **La regla de bonificación devuelve un porcentaje**, y el núcleo calcula el monto. Al emitir se
+    evalúa con el día límite, para el importe con descuento del PDF; al confirmar un pago, con el día de
+    la transferencia. Así no falta ningún dato al emitir (R33).
+  - **La plantilla de Excel** suma la columna de interés devengado (que no genera interés) y el
+    vencimiento en la hoja por período.
+  - **Una factura sin QR** queda en revisión, con la nota "sin QR".
+- **Por qué**: la séptima revisión completa no encontró hallazgos graves; éstos eran los medios.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
@@ -1233,7 +1250,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   lo firma y qué incluye, pero no en cuántos días hay que entregarlo. Se responde con Alberto o con la
   normativa aplicable en Mendoza.
 - [ ] **P15 · Ingresos mayores que los gastos** (R38): qué pasa si en un mes los ingresos de un grupo
-  superan sus gastos: crédito para el mes siguiente, fondo de reserva u otra cosa. Mientras tanto, la
+  superan sus gastos ordinarios: crédito para el mes siguiente, fondo de reserva u otra cosa. Mientras tanto, la
   emisión se frena. Se responde con Alberto.
 - [ ] **P16 · La parte de las unidades del consorcio** (R39): si su parte de cada gasto se reparte entre
   las demás unidades o se registra como gasto del consorcio. Se responde con Alberto, según el

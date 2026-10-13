@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-084). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-085). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -64,7 +64,8 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
 
 **HU-A2 · Cargar el edificio desde un Excel**
 Como administrador, quiero cargar las unidades desde un Excel (piso, departamento, tipo de unidad,
-propietario, contacto, coeficiente, saldo inicial) para no tipearlo a mano.
+propietario, contacto, coeficiente, saldo inicial e interés ya devengado, y opcionalmente el detalle
+por período con su vencimiento) para no tipearlo a mano.
 - Dado un Excel válido, cuando lo importo, entonces se crean todas las unidades (departamentos,
   cocheras, bauleras, locales) con sus saldos y la suma importada coincide con la del archivo (R09).
 - Dado un Excel con errores (coeficientes de un grupo que se apartan de 1 más que la tolerancia de R01,
@@ -298,7 +299,7 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | Hito | Historias | Se demuestra cuando |
 |---|---|---|
 | **M1 · Liquida** | A1, A2, A3 (carga manual), A3b, A4, A5, A9 | Con los datos del edificio piloto, el sistema reproduce su última liquidación al centavo |
-| **M2 · Cobra** | A6, A7, A8, A10, A11, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
+| **M2 · Cobra** | A6, A7, A8, A10, A11 (propuesta), V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
 | **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
 
 ## Cambios de OPSX (detalle y fichas en `roadmap.md`)

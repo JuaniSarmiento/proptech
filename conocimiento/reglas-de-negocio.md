@@ -189,9 +189,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082), **enlazado a ese pago y a la emisión cuyo interés compensa**: si el pago se revierte, se
-  reimputa o su imputación cae por una anulación, el ajuste se revierte con él (D-083); y si se anula la
-  emisión que registró ese interés, el ajuste queda excluido junto con ese interés (D-084).
+  (D-082), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
+  (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
+  contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
+  se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).
 - **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
   marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
   CUIT de origen cuando el banco lo informa) o no.
@@ -228,14 +229,15 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 - **La IA completa lo que el QR no trae**: el concepto (seguridad, jardinería...), el período del
   servicio y el grupo de reparto sugerido. Si la factura no tiene QR legible, la IA lee todo y el
-  gasto queda marcado como "sin QR" para que el administrador lo revise con más cuidado.
+  gasto queda **en revisión** (D-075), con la nota "sin QR", para que el administrador lo revise con
+  más cuidado (D-085).
 - **Factura duplicada**: `cuit + ptoVta + tipoCmp + nroCmp` no se repite dentro del complejo. Se frena al cargarla.
 - **Receptor equivocado**: si `nroDocRec` existe y no es el CUIT del complejo, se avisa antes de confirmar.
 - **Nunca aprobado sin confirmación**: ningún dato leído (por QR o por IA) entra en la liquidación sin
   que el administrador confirme el gasto. Según cómo salió la lectura, el gasto queda en borrador, sin
   IA o en revisión (D-075). La IA no inventa datos ausentes: los marca como faltantes.
 - **Tests mínimos**: decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
-  duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda marcado.
+  duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda en revisión con la nota "sin QR".
 
 ## R13 · Expensa ordinaria y extraordinaria · Vigente (D-024)
 
@@ -325,7 +327,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
   emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
   anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una
-  emisión que se anula queda como crédito a favor; intentar anular una
+  emisión que se anula queda como crédito a favor; anular la emisión cuyo interés compensaba un ajuste
+  de R11 excluye los dos y la unidad no queda debiendo ni con crédito de más; intentar anular una
   liquidación distribuida (por la acción "distribuir", por un email o por una vista
   en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
   emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
