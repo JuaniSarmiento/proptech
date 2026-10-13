@@ -186,13 +186,13 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-No es un cambio aparte; se construye en el 6b (D-087) y se usa en el 7 y el 8; sus fichas en `roadmap.md` ya lo
-recogen. El propose de cada uno baja el detalle.
+Tiene un cambio propio, el 6b (D-087), y se usa en el 7 y el 8; sus fichas en `roadmap.md` lo recogen
+y el propose de cada uno baja el detalle.
 
 | Cambio | Qué agrega |
 |---|---|
-| 6b · `motor-de-reglas` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend; las reglas se cargan desde el cambio 7 |
-| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, el importe con descuento de la bonificación para el PDF y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
+| 6b · `motor-de-reglas` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y el mecanismo de "repetir el mes pasado" contra datos de prueba; las reglas se cargan desde el cambio 7 |
+| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, el importe con descuento de la bonificación para el PDF y cargo recurrente; repetir el mes pasado con datos reales antes de activar una regla; la preliquidación muestra qué regla generó cada línea |
 | 8 · `pagos-informados` | Al confirmar un pago, consulta la regla de bonificación por pronto pago y registra la bonificación (R37) |
 
 ## Pendiente

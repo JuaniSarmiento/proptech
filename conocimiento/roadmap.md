@@ -159,7 +159,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Depende de**: 1d. **Habilita**: 3, 4.
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
   mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
-  D-043); dónde vive cada uno de los tres controles; cómo fija el tenant el worker.
+  D-043); dónde vive cada uno de los tres controles (el worker ya tiene su forma de fijar el tenant en el plan de
+  RLS de arriba).
 - **Que intente romper el rompedor**: ver un edificio de otra administración tipeando la URL o
   mandando otro `tenant_id`; consultar la base sin fijar el tenant; que un `SET` sin `LOCAL` contagie
   el tenant al pedido siguiente; un colaborador entrando a un edificio no asignado; un vecino
@@ -232,7 +233,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: pasan los tests mínimos de R03 a R08 y R20, los del caso de uso de saldo
   inicial de R09 y los de imputación de R13 (los de R09 sobre el borrador y el importador son del cambio
   5, los de R13 sobre bloques y multas, de los cambios 6 y 7, y el de R20 con un pago revertido, del
-  cambio 8); hay pruebas de propiedades del
+  cambio 8). Los tests de R05 con condonación o ajuste de interés y los de R06 con una expensa arman
+  esos créditos y esa expensa a mano en el test, igual que la emisión anulada; los cambios 7, 8 y 10b
+  los repiten con lo real; hay pruebas de propiedades del
   mayor resto (la suma siempre da exacta); el test de concurrencia contra PostgreSQL real pasa; un
   intento de modificar un movimiento rebota.
 
@@ -288,16 +291,17 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Reglas**: R33 (datos completos y tipados antes del motor). **Decisiones**: D-064, D-066, D-067,
   D-080, D-085, D-087. Detalle en `motor-de-reglas.md`.
 - **Entra**: el módulo `politicas`, el puerto de políticas, el adaptador de GoRules ZEN, el validador en
-  sus dos momentos, las reglas versionadas por edificio, el editor (jdm-editor) en el frontend con sus
-  dos niveles (P22) y "repetir el mes pasado" contra datos de prueba. Sin reglas concretas: llegan en el 7.
+  sus dos momentos, las reglas versionadas por edificio, el editor (jdm-editor) en el frontend con el
+  esquema de permisos que defina P22 (propuesta: dos niveles) y "repetir el mes pasado" contra datos de prueba. Sin reglas concretas: llegan en el 7.
 - **Prerrequisito del explore**: bajar y revisar el demo BRE, y probar jdm-editor con React 19.3 y
   `antd` 5.21.2 (pendientes de `motor-de-reglas.md`).
 - **Depende de**: 3. **Habilita**: 7.
 - **Que intente romper el rompedor**: un dato mal tipado que hace caer la tabla a la fila por defecto;
   una respuesta vacía; una regla que devuelve plata como número; editar la estructura con permiso de
   sólo valores; leer las reglas de otra administración.
-- **Terminado cuando**: los tests mínimos de R33 pasan contra ZEN real y una regla de prueba se guarda,
-  se versiona y se evalúa de punta a punta.
+- **Terminado cuando**: los tests mínimos de R33 pasan contra ZEN real como rechazo del validador (que
+  la respuesta frene la emisión se prueba en el 7, que construye la emisión), y una regla de prueba se
+  guarda, se versiona y se evalúa de punta a punta.
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
@@ -326,7 +330,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
   - **Reglas del motor del cambio 7** (`motor-de-reglas.md`): controles propios del edificio y
-    "repetir el mes pasado" antes de activar una regla; si se validan, el importe con descuento de la
+    el uso de "repetir el mes pasado" (construido en el 6b) con datos reales antes de activar una regla; si se validan, el importe con descuento de la
     bonificación para el PDF (R37) y el cargo recurrente del reglamento (R14).
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
@@ -472,7 +476,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 13 · `avisos-por-email`
 
 - **Objetivo**: avisar antes del vencimiento y en mora, sin molestar de más.
-- **Historias**: HU-V6. **Reglas**: R27, R28, R34.
+- **Historias**: HU-V6. **Reglas**: R34.
+- **Propuestas** (entran si se validan): R27 (aviso corrido al día hábil), R28 (contactos válidos), R30 y
+  R39 (ver abajo).
 - **Entra**: puerto de email con su adaptador; aviso de vencimiento y de mora; un aviso por evento,
   con clave de idempotencia; no avisar a quien ya pagó; un aviso que cae en sábado, domingo o
   feriado se reprograma al primer día hábil siguiente (R27, propuesta: entra si se valida, ProTecc W3); validar el
@@ -501,6 +507,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: que el administrador cargue una factura con una foto.
 - **Historias**: HU-A3 (factura con QR e IA). **Reglas**: R12, R16, R34.
 - **Decisiones**: D-019, D-069, D-070.
+- **Propuestas** (entran si se validan): R23 (control de monto atípico, con su umbral, P21).
 - **Entra**: lectura del QR de ARCA (los dos dominios); la IA completa concepto, período, categoría
   y grupo; factura duplicada frenada; aviso si el receptor no es el consorcio; nunca aprobado sin confirmación (borrador, sin IA o en
   revisión, D-075);
@@ -542,8 +549,12 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
-- **P24 a P41**: casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual
+- **P24 a P34 y P36 a P41** (P35 ya está resuelta, D-086): casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual
   se decide.
-- **P19, P21 y P22**: el doble vencimiento, los umbrales y quién usa el editor de reglas, antes de los
-  cambios 3, 4 y 14.
+- **P19**: el doble vencimiento, antes del cambio 3.
+- **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
+- **P22**: quién usa el editor de reglas, antes del 6b.
+- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4.
+- **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
+  visibilidad al repositorio y del primer despliegue.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

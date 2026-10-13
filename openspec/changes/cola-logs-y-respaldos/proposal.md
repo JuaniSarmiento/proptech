@@ -15,7 +15,7 @@ habilita al cambio 1d.
 
 Decisiones que cubre: **D-038** (Redis y worker ARQ con reintentos espaciados e idempotencia),
 **D-047 punto 4** en su parte de logs estructurados con número de seguimiento (los backups automáticos
-de ese punto van en el 1d) y **D-087** (la partición y las lecciones L-007 a L-009). No toca ninguna
+de ese punto van en el 1d) y **D-087** (la partición y las lecciones L-007 a L-009) y **D-052** (la regla de partir un cambio grande). No toca ninguna
 regla de negocio (R..) ni historia (HU-..): es infraestructura.
 
 ## Gobernanza

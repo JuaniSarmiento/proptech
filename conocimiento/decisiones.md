@@ -1027,7 +1027,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cuenta por administración?
 - **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
 
-## D-077 · El cambio 10 se parte en 10a y 10b, y el cambio 5 pasa a pedir aprobación
+## D-077 · El cambio 10 se parte en 10a y 10b, y el cambio 5 pasa a pedir aprobación · *corregida en parte por D-087 y D-088*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1229,7 +1229,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   entidad que nacía en el 7.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
 
-## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10)
+## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10) · *corregida en parte por D-088*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1257,6 +1257,20 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la auditoría de Alberto del 13/10 encontró que el diseño avanzaba más rápido que el
   código y propuso estos ajustes.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
+
+## D-088 · El roadmap tiene 20 cambios, y el 1c queda en 29 tareas
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **El roadmap tiene 20 cambios**: los 18 de D-077, más el 6b (motor de reglas) y el 1d (respaldos y
+    restauración), los dos de D-087. Corrige la cuenta de D-087, que decía 19.
+  - **El 1c queda en 29 tareas, como excepción registrada** a la regla de partir pasadas unas veinte
+    (D-052, `openspec/config.yaml`). El alcance es el del corte de D-087 (logs, request_id, cola, worker y
+    web, unas 23 tareas); lo que sumó tareas fue cumplir la otra regla, tareas de medio día como
+    máximo, más la sección de cierre que pide L-003. Si en la construcción se traba, el corte natural es
+    sacar la web y el proxy a un cambio propio.
+- **Por qué**: la revisión final después de la auditoría de Alberto marcó las dos cosas.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
 

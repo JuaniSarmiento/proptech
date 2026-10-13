@@ -290,7 +290,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   genera cada período para ciertas unidades (por ejemplo, un canon por cochera). Entra en la expensa
   como cualquier cargo particular. Tests: el cargo aparece cada período en las unidades indicadas y
   en ninguna otra; apagar la regla lo deja de generar desde el período siguiente.
-- **Créditos particulares** (una bonificación, una devolución) no son cargos negativos: se registran
+- **Créditos particulares** (una bonificación excepcional, una devolución; no la bonificación por pronto
+  pago de R37, que tiene su propio destino en R05) no son cargos negativos: se registran
   como corrección (R08).
 - **Tests mínimos**: un cargo particular sólo afecta a su unidad; no cambia lo que pagan los demás;
   la importación desde Excel rechaza unidades inexistentes; un cargo en borrador no entra.
