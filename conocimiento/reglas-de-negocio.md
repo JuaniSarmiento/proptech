@@ -382,7 +382,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   mismo CBU es una sugerencia para esa unidad.
 - **Nunca asigna solo**: los dos mecanismos sólo generan una **sugerencia de confianza alta** en la
   bandeja de confirmación (HU-A6, HU-A7); el administrador siempre confirma con un clic (principio
-  P3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
+  3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
 - **Tests mínimos**: un movimiento con el código de la unidad en el concepto aparece como sugerencia
   de esa unidad; un CBU que ya pagó por una unidad sugiere esa unidad el mes siguiente; ninguno de
   los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
