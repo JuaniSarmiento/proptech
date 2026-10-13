@@ -817,7 +817,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: `openspec/exploraciones/2026-10-12-motor-de-reglas.md`.
 - **Quién**: Juani, a partir del pedido de Alberto (12/10).
 
-## D-065 · Motor de reglas propio en forma de catálogo de plantillas *(propuesta, a validar con Alberto)*
+## D-065 · Motor de reglas propio en forma de catálogo de plantillas · *reemplazada por D-066*
 
 - **Fecha**: 12/10/2026
 - **Decisión propuesta**: el puerto de políticas (D-064) se implementa con un **motor propio de
@@ -833,6 +833,30 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   entonces se actualizan las fichas 3, 7 y 10 del roadmap.
 - **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
 - **Quién**: Juani.
+
+## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio
+
+- **Fecha**: 12/10/2026
+- **Decisión**: el puerto de políticas (D-064) se implementa con **GoRules ZEN** (`zen-engine`) y su
+  editor visual **jdm-editor**, como en el material que pasó Alberto (demo BRE de la cátedra del
+  Mgter. Ing. Carlos Martínez: FastAPI + ZEN, React + jdm-editor). Se adelanta al MVP lo que D-064
+  dejaba para después. Las condiciones que lo hacen apto para plata:
+  - **El motor decide, no calcula**: las reglas devuelven decisiones, porcentajes como texto,
+    banderas y motivos; nunca una cuenta sobre un monto. Los montos los calcula el núcleo con
+    `Dinero` (D-046).
+  - **Validador propio en dos momentos**: al guardar una regla (rechaza aritmética sobre campos de
+    plata y salidas que no cumplen el contrato) y al evaluarla (toda respuesta fuera de contrato o
+    vacía bloquea la emisión con alerta, nunca se toma como "no hay regla").
+  - **Reglas en la base, por edificio y versionadas**, con fecha y autor; cada liquidación guarda
+    las versiones que usó. No archivos en disco como en el demo.
+  - Detalle en `motor-de-reglas.md`.
+- **Reemplaza a D-065**: Alberto prefiere no construir un motor propio (12/10).
+- **Riesgo aceptado**: ZEN usa `float` y saltea en silencio una regla con error de tipo (prueba del
+  12/10). Se mitiga con las condiciones de arriba; el validador es nuestro y es obligatorio.
+- **Pendiente**: quién usa el editor en el MVP (propuesta: sólo el equipo de PropTech) y cómo se
+  comparan montos dentro de una regla sin `float` (propuesta: en centavos enteros); se cierran en el
+  explore del cambio 3.
+- **Quién**: Alberto (pedido del 12/10, "vamos con lo que te paso"); Juani acepta.
 
 ---
 

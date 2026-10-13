@@ -5,151 +5,176 @@ Cómo entra al sistema el reglamento propio de cada edificio sin programar un ed
 
 ## Estado
 
-- **Puerto de políticas** (D-064): **decidido**.
-- **Motor propio de plantillas** (D-065): **propuesta, falta que la valide Alberto**. Hasta entonces
-  no se escribe código del motor y las fichas 3, 7 y 10 de `roadmap.md` no cambian.
-- Fuentes: `openspec/exploraciones/2026-10-12-motor-de-reglas.md` (incluye la prueba de GoRules) y el
-  PDF "PropTech · Motor de reglas" entregado a Alberto (fuera del repositorio).
+- **Puerto de políticas** (D-064): decidido.
+- **GoRules ZEN + editor visual jdm-editor detrás del puerto, con validador propio** (D-066):
+  decidido el 12/10, a pedido de Alberto. Reemplaza al motor propio de plantillas (D-065).
+- Todavía **no se escribe código** del motor. Los detalles abiertos se cierran en el explore del
+  cambio 3.
+- Fuentes: `openspec/exploraciones/2026-10-12-motor-de-reglas.md` (prueba de GoRules con montos
+  reales) y el demo BRE que pasó Alberto (FastAPI + ZEN, React + jdm-editor; fuera del repositorio).
 
 ## La idea en una línea
 
-El administrador no escribe reglas: elige de un **catálogo de plantillas** que nosotros fabricamos y
-probamos, activa las que dice el reglamento de su edificio y ajusta los números.
+Las reglas de cada edificio se **dibujan** en un editor visual como un grafo (entrada, tabla de
+decisión, salida), se guardan como JSON (formato JDM) y el motor ZEN las ejecuta cuando se arma la
+liquidación. El motor **decide** qué corresponde; el núcleo **calcula** la plata y la registra.
 
-Ejemplo: el reglamento dice que quien paga antes del día 5 tiene 10% de descuento. El administrador
-activa la plantilla *Bonificación por pronto pago*, carga `10` y `5`, y guarda. Desde la próxima
-liquidación se aplica sola. Nadie escribió código.
+Ejemplo: el reglamento dice que quien paga antes del día 5 tiene 10% de descuento. En el editor se
+arma una tabla: si `dia_pago <= 5`, entonces `bonificacion = "10.00"` y `motivo = "pronto pago"`. El
+núcleo recibe ese `"10.00"`, calcula el descuento con `Dinero` y lo registra.
 
-## Por qué así y no otra cosa
+## Las dos herramientas
 
-| | GoRules ZEN | Motor genérico propio | Plantillas propias |
-|---|---|---|---|
-| Plata exacta | No: trabaja con punto flotante | Sí, si se hace bien | Sí |
-| Errores visibles | No: ante un error de tipo saltea la regla en silencio | Depende de nosotros | Sí: bloquean la emisión |
-| Flexibilidad | Total | Total | La del catálogo |
-| Costo de construir | Bajo, más un validador propio | Alto: es un producto en sí | Bajo, crece de a una plantilla |
-| Riesgo para el MVP | Alto | Alto | Bajo |
-
-Lo que se resigna: el administrador no puede inventar una regla que no esté en el catálogo, la tiene
-que pedir, y cada plantilla nueva es trabajo nuestro con sus tests.
+| | Qué es | Dónde corre |
+|---|---|---|
+| **ZEN Engine** (`zen-engine`) | El motor: recibe datos y un grafo JDM, devuelve el resultado. Escrito en Rust, se usa desde Python | Dentro del backend, en `proptech_core` |
+| **jdm-editor** (`@gorules/jdm-editor`) | El editor visual: una librería React para armar los grafos y exportarlos como JDM. Trae un simulador para probar con datos sueltos | En el frontend Next.js, área de administración |
 
 ## Qué cambia en la arquitectura
 
-**Poco.** El motor es un módulo más de `proptech_core` y no suma infraestructura: ni servicio, ni
-base, ni contenedor nuevo.
+**Poco**, porque el puerto ya estaba decidido: lo que cambia es qué hay detrás.
 
 | Pieza | Dónde | Qué es |
 |---|---|---|
 | Módulo `politicas` | `backend/src/proptech_core/politicas/` | Mismo formato que el resto (D-040): `dominio/`, `aplicacion/`, `puertos.py`, `adaptadores/` |
-| Puerto `MotorDePoliticas` | `politicas/puertos.py` | Lo único que ven los demás módulos. Nadie importa una plantilla directo |
-| Catálogo | `politicas/dominio/` | Una plantilla por tipo de regla, con sus parámetros, su cálculo y sus tests |
-| Configuración por edificio | tabla nueva en la base | Qué plantillas usa cada edificio y con qué valores, con versión |
-| Valores iniciales | `config/parametros.yaml` | Los defaults de cada plantilla, como hoy (D-042) |
+| Puerto `MotorDePoliticas` | `politicas/puertos.py` | Lo único que ven los demás módulos |
+| Adaptador ZEN | `politicas/adaptadores/` | El único lugar que importa `zen-engine`. Si ZEN deja de convenir, se cambia el adaptador y nada más |
+| Validador | `politicas/dominio/` | Nuestro. Revisa las reglas al guardarlas y cada respuesta del motor |
+| Reglas por edificio | tabla nueva en la base | El JDM de cada regla, por edificio, con versión, fecha y autor |
+| Editor | `web/`, área de administración | jdm-editor como componente de cliente. Exige `antd` 5.21.2 fijo |
 
-**Lo que no cambia**: el núcleo financiero sigue en código con sus tests. La imputación (R04), los
-pagos parciales (R05), el reparto sin perder centavos (R07), la cuenta corriente que sólo agrega
-movimientos (R08) y el aislamiento entre edificios (R10) **no pasan al motor**.
+**No se suma infraestructura**: ZEN corre dentro del proceso de Python, sin servicio ni contenedor
+aparte.
+
+**Lo que no cambia**: el núcleo financiero sigue en código con sus tests. Los intereses simples
+(R03), la imputación (R04), los pagos parciales (R05), el reparto sin perder centavos (R07), la
+cuenta corriente que sólo agrega movimientos (R08) y el aislamiento entre edificios (R10) **no pasan
+al motor** (D-064).
+
+## Los dos problemas de ZEN y cómo se manejan
+
+La prueba del 12/10 encontró dos problemas. Siguen ahí: no los arregla nadie más que nosotros.
+
+### 1. Usa `float`
+
+El paquete de PyPI trabaja los números como `float`. Si una regla hace `monto * 0.90`, el resultado
+sale con error de redondeo.
+
+**Cómo se maneja: el motor decide, no calcula.**
+
+- Las reglas devuelven **literales**: porcentajes y montos fijos como texto (`"10.00"`,
+  `"20000.00"`), banderas y motivos. La prueba mostró que un literal de texto sale idéntico a como
+  entró.
+- **Ninguna regla hace una cuenta sobre un campo de plata.** El validador lo rechaza al guardar.
+- Toda cuenta de plata la hace el núcleo con `Dinero` (D-046).
+- Para **comparar** montos dentro de una regla (por ejemplo "si la deuda supera $100.000"), la
+  propuesta es pasar el monto en **centavos enteros**: un `float` representa enteros exactos hasta
+  2^53, muy por encima de cualquier monto real. *Pendiente: confirmarlo con una prueba en el
+  explore del cambio 3.*
+
+### 2. Saltea en silencio una regla con error
+
+Si un dato llega con un tipo inesperado, ZEN no avisa: saltea esa fila de la tabla y aplica la
+siguiente, o la regla por defecto. Puede terminar en una expensa mal cobrada sin que nadie lo note.
+
+**Cómo se maneja: un validador propio en dos momentos.**
+
+| Momento | Qué revisa | Si falla |
+|---|---|---|
+| **Al guardar** una regla | Que no haya cuentas sobre campos de plata; que las salidas tengan los campos y tipos del contrato; que la regla por defecto no devuelva un campo de entrada sin validar | No se guarda, y el editor dice qué está mal |
+| **Al evaluar** en la liquidación | Que la respuesta cumpla el contrato: campos presentes, tipos correctos, montos legibles con `Dinero`, no vacía | **Bloquea la emisión** con una alerta que dice qué regla y qué unidad. Nunca se toma como "no hay regla" |
+
+Además, el núcleo arma los datos de entrada con tipos fijos antes de llamar al motor, así ZEN nunca
+recibe un tipo inesperado.
 
 ## El contrato: hechos adentro, propuestas afuera
 
 ```
-hechos (los da el núcleo)              acciones propuestas (devuelve la plantilla)
-edificio, período                      [ { tipo: "bonificacion",
-unidad, estado de la unidad                concepto: "pronto_pago",
-deuda y antigüedad                         monto: "7630.04",
-fecha del pago                             motivo: "pago el día 3, límite día 5" } ]
-monto base: "76300.42"
+hechos (los arma el núcleo)            respuesta del motor (sólo literales)
+edificio, período                      { "aplica": true,
+unidad, estado de la unidad              "tipo": "bonificacion",
+dia_pago: 3                              "porcentaje": "10.00",
+deuda_centavos: 7630042                  "motivo": "pago el día 3, límite día 5" }
+periodos_vencidos: 0
 ```
 
-1. **El núcleo pasa los datos** del mes de cada unidad.
-2. **Cada plantilla activa propone** cargos, bonificaciones o alertas, con el monto como texto
-   `Dinero` y siempre con su motivo.
-3. **El núcleo valida cada propuesta** (formato, signo, que el monto se pueda leer con `Dinero`) y la
-   registra como movimiento con su motivo, que incluye la plantilla y la versión que la generó.
-
-El motor decide **qué** corresponde; el núcleo decide **cómo** se registra. Ninguna plantilla escribe
-plata por su cuenta.
+1. El núcleo arma los datos del mes de cada unidad, con tipos fijos.
+2. El motor evalúa las reglas activas del edificio y devuelve decisiones.
+3. El validador revisa la respuesta.
+4. El núcleo calcula los montos con `Dinero` y los registra como movimientos, con un motivo que dice
+   qué regla y qué versión los generó.
 
 Reglas del contrato:
 
-- Los hechos salen siempre de datos del núcleo, **nunca de la salida de otra plantilla**. Cada
-  plantilla se evalúa sola; no hay reglas encadenadas.
-- Montos y porcentajes viajan como texto, nunca como `float` (D-046).
-- La salida de una plantilla que no cumple el contrato es **un fallo**, nunca "no hay regla".
+- Los datos de entrada salen siempre del núcleo, **nunca de la salida de otra regla**.
+- **Toda respuesta trae su motivo** (R08).
+- Una respuesta fuera de contrato es **un fallo**, nunca "no aplica".
 
-## El catálogo del MVP
+## Qué reglas pasan por el motor en el MVP
 
-| Plantilla | Qué configura el administrador | Origen | Cambio |
+| Regla | Qué decide el motor | Qué calcula el núcleo | Cambio |
 |---|---|---|---|
-| Intereses por mora | Tasa mensual, días de gracia, por día o mes entero. Siempre interés simple | R03 (ya existe) | 3 |
-| Fondo de reserva | Porcentaje sobre la ordinaria | R15 (ya existe) | 3 |
-| Cargo por estado de la unidad | Factor y cargo fijo por estado. Apagada en edificios (D-030) | R02 (ya existe) | 3 |
-| Alertas antes de emitir | Qué controles bloquean la emisión y cuáles sólo avisan | ProTecc | 7 |
-| Bonificación por pronto pago | Porcentaje y día límite. Apagada por defecto | Alberto (propuesta) | 7 |
-| Cargo recurrente del reglamento | Concepto, monto y a qué unidades (ej.: canon por cochera) | Propuesta | 7 |
-| Moroso crítico | Cuántas liquidaciones vencidas lo definen | R20 (D-058) | 10 |
-
-Las tres primeras ya están decididas como menús cerrados: pasar a plantilla no cambia lo que hacen,
-sólo cómo se enchufan.
+| Intereses por mora | Tasa y días de gracia que corresponden | El interés simple (R03) | 3 |
+| Fondo de reserva | Porcentaje sobre la ordinaria | El monto (R15) | 3 |
+| Cargo por estado de la unidad | Factor y cargo fijo por estado. Apagada en edificios (D-030) | El cargo (R02) | 3 |
+| Alertas antes de emitir | Qué controles bloquean y cuáles sólo avisan | Ejecuta los controles | 7 |
+| Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | El descuento | 7 |
+| Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
+| Moroso crítico | Si una unidad lo es, según cuántas liquidaciones vencidas tiene | Nada: es una marca (R20) | 10 |
 
 **Fuera del MVP**: bloqueo de amenities a morosos, planes de pago y multas con escalas o
-reincidencia. Cuando lleguen se suman al catálogo; si alguno no entra en una plantilla, recién ahí se
-evalúa un motor libre **detrás del mismo puerto**.
+reincidencia. Con el motor ya instalado, se suman como reglas nuevas en el editor, siempre que
+respeten el contrato.
 
 ## Versiones y auditoría
 
-- Cada vez que un edificio activa, apaga o cambia una plantilla se guarda una **versión nueva** con
-  fecha y autor. Las versiones viejas no se editan.
-- **Cada liquidación guarda qué versión de cada plantilla usó.** Si en abril el descuento pasa del 10%
-  al 15%, la expensa de marzo se sigue explicando con el 10%. Es la misma garantía que ya da D-010
-  para la tasa de interés.
-- No hace falta tabla de auditoría aparte: el motivo de cada movimiento (R08) ya dice qué plantilla y
-  qué versión lo generó.
-- La configuración es un dato del edificio como cualquier otro: se lee con el mismo aislamiento por
-  identidad y Row-Level Security (R10).
+- Cada vez que se guarda una regla de un edificio queda una **versión nueva** con fecha y autor. Las
+  viejas no se editan.
+- **Cada liquidación guarda qué versión de cada regla usó.** Si en abril el descuento pasa del 10% al
+  15%, la expensa de marzo se sigue explicando con el 10% (misma garantía que D-010).
+- El motivo de cada movimiento (R08) dice qué regla y qué versión lo generó: no hace falta una tabla
+  de auditoría aparte.
+- Las reglas son datos del edificio: se leen con el mismo aislamiento por identidad y Row-Level
+  Security (R10). Cada evaluación de ZEN es una llamada aislada, sin estado compartido.
 
-## Ver antes de emitir
+## Antes de activar una regla
 
-La **preliquidación** muestra, línea por línea, qué plantilla generó cada cargo o bonificación y por
-qué. El administrador ve el efecto de una regla nueva antes de que le llegue a un vecino.
+- **Simulador del editor**: prueba la regla con datos sueltos, ya viene con jdm-editor.
+- **Repetir el mes pasado** (lo construimos nosotros): correr la regla nueva contra los datos reales
+  de la última liquidación del edificio y mostrar la diferencia con lo que se cobró, sin tocar ningún
+  movimiento.
+- La **preliquidación** muestra, línea por línea, qué regla generó cada cargo o bonificación.
 
-## Si algo falla
+## Quién usa el editor
 
-| Caso | Qué hace el sistema |
-|---|---|
-| Una plantilla no puede calcular (falta un dato, valor inválido) | Alerta que **bloquea la emisión** y dice qué plantilla y qué unidad. Nunca la saltea |
-| La propuesta no cumple el contrato | Igual: bloqueo con alerta. Es un fallo del motor, no "no hay regla" |
-| El edificio no tiene la plantilla activa | Caso normal: se usa el default documentado (sin descuento, sin recargo extra) |
-| El administrador carga un parámetro fuera de rango | El formulario lo rechaza y dice qué campo está mal |
+*Pendiente.* Propuesta para el MVP: **sólo el equipo de PropTech**, configurando las reglas por el
+administrador. Una regla mal dibujada le cobra mal a todo un edificio, y el editor permite armar
+cosas que el validador tiene que atajar. Abrírselo al titular se decide después, con experiencia
+real.
 
 ## Qué tan difícil es
 
-- **Las plantillas son lo fácil.** Cada una es una regla con parámetros validados y tests escritos
-  antes, igual que R01 a R31.
-- **Lo difícil son las versiones.** Que cada liquidación quede atada a la configuración con la que se
-  calculó, sin excepciones. Si eso falla, una expensa vieja deja de poder explicarse.
-- **El riesgo es de alcance.** Si se pide que el administrador escriba reglas libres, eso es otro
-  producto y trae los mismos errores silenciosos por los que se descartó GoRules. El catálogo cerrado
-  es lo que mantiene el riesgo bajo.
+- **Instalar ZEN y el editor es fácil**: el demo de Alberto ya muestra cómo se conectan.
+- **Lo difícil es lo que el demo no tiene**: el validador, las reglas en la base por edificio con
+  versiones, y repetir el mes pasado. Eso es todo nuestro.
+- **El riesgo es confiar en el editor.** Que dibujar una regla sea fácil no la hace correcta. El
+  validador y la prueba contra el mes pasado no son opcionales.
 
-## Dónde entra en el roadmap *(si Alberto lo valida)*
+## Dónde entra en el roadmap
 
-No es un cambio aparte; se reparte en tres que ya existen:
+No es un cambio aparte; se reparte en tres que ya existen. Las fichas de `roadmap.md` se actualizan
+en el propose de cada uno.
 
 | Cambio | Qué agrega |
 |---|---|
-| 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el catálogo, el versionado y las plantillas de intereses, fondo de reserva y cargo por estado |
-| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, bonificación por pronto pago y cargo recurrente; la preliquidación muestra qué plantilla generó cada línea |
-| 10 · `morosidad` | La plantilla de moroso crítico |
+| 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y las reglas de intereses, fondo de reserva y cargo por estado |
+| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, bonificación por pronto pago y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
+| 10 · `morosidad` | La regla de moroso crítico |
 
-Los tres cambios crecen. Cuánto, se estima en el propose de cada uno, no antes.
+## Pendiente
 
-## Para validar con Alberto
-
-- [ ] El enfoque: plantillas propias detrás del puerto, en vez de GoRules o un motor genérico.
-- [ ] El catálogo inicial; en particular si la bonificación por pronto pago y el cargo recurrente
-  entran al MVP.
-- [ ] Quién configura las reglas al principio: el administrador desde un formulario, o nosotros por
-  él los primeros meses.
-- [ ] Qué reglas reales tiene el reglamento del edificio piloto (P1): es la prueba de que el catálogo
-  alcanza.
+- [ ] Confirmar con una prueba que los montos en centavos enteros se comparan sin error dentro de
+  ZEN (explore del cambio 3).
+- [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 3.
+- [ ] Decidir quién usa el editor en el MVP.
+- [ ] Probar jdm-editor dentro de Next.js con `antd` 5.21.2.

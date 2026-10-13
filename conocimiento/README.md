@@ -24,7 +24,7 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
 | 6 | [`roadmap.md`](roadmap.md) | Los 17 cambios del MVP en orden (1a, 1b, 1c y 2 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |
 | 7 | [`forma-de-trabajo.md`](forma-de-trabajo.md) | Cómo se construye cada cambio: orquestador, constructor, rompedor y auditor | Se reescribe |
-| 8 | [`motor-de-reglas.md`](motor-de-reglas.md) | Cómo entra el reglamento de cada edificio: el puerto de políticas y el catálogo de plantillas (propuesta a validar con Alberto) | Se reescribe |
+| 8 | [`motor-de-reglas.md`](motor-de-reglas.md) | Cómo entra el reglamento de cada edificio: el puerto de políticas, GoRules ZEN con su editor visual y el validador propio | Se reescribe |
 | 9 | [`lecciones.md`](lecciones.md) | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen el constructor y el rompedor antes de empezar | **Sólo se agrega** |
 
 **Por qué dos formas de actualizar**: lo que describe cómo es el sistema hoy se reescribe para que

@@ -354,6 +354,6 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
-- **D-065 · Motor de plantillas**: si Alberto lo valida, suma trabajo a los cambios 3, 7 y 10 y se
-  actualizan sus fichas (detalle en `motor-de-reglas.md`). Hasta entonces las fichas no cambian.
+- **D-066 · Motor de reglas (GoRules ZEN + editor visual)**: suma trabajo a los cambios 3, 7 y 10;
+  sus fichas se actualizan en el propose de cada uno (detalle en `motor-de-reglas.md`).
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

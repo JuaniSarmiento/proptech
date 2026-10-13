@@ -47,9 +47,10 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
 - **Vencimiento**: la fecha a partir de la cual corre la mora.
 - **Puerto de políticas**: la única entrada por la que el reglamento propio de cada edificio llega a la liquidación. Recibe hechos y devuelve acciones propuestas; el núcleo las valida y las registra (D-064, `motor-de-reglas.md`).
-- **Plantilla (de regla)**: un tipo de regla que fabricamos y probamos (intereses, fondo de reserva, bonificación por pronto pago...). El administrador la activa y ajusta sus parámetros; no escribe reglas (D-065, propuesta).
-- **Acción propuesta**: lo que devuelve una plantilla: un cargo, una bonificación o una alerta, con monto en texto y motivo. No es un movimiento hasta que el núcleo la valida.
-- **Versión de reglas**: la configuración de plantillas de un edificio en un momento dado. Cada cambio crea una nueva; cada liquidación guarda las que usó.
+- **Regla (del motor)**: una regla propia de un edificio, dibujada en el editor visual (jdm-editor) y guardada en formato JDM; la ejecuta GoRules ZEN. Decide qué corresponde, nunca calcula plata (D-066). No confundir con las reglas de negocio R01 a R31, que viven en código.
+- **Validador (de reglas)**: el control propio que revisa cada regla al guardarla y cada respuesta del motor al evaluarla. Si algo no cumple el contrato, bloquea la emisión (D-066).
+- **Acción propuesta**: lo que devuelve el motor: un cargo, una bonificación o una alerta, con monto en texto y motivo. No es un movimiento hasta que el núcleo la valida.
+- **Versión de reglas**: las reglas de un edificio en un momento dado. Cada cambio crea una nueva; cada liquidación guarda las que usó.
 - **Certificado de libre deuda**: la constancia, para una venta, del saldo de una unidad a una fecha
   de corte. Lo firma el administrador; nunca incluye una estimación de gastos del período en curso
   (R21).

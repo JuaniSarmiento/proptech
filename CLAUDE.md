@@ -24,7 +24,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
 | `conocimiento/roadmap.md` | **Los 17 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
-| `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y el motor propio de plantillas (D-065, a validar con Alberto): contrato, catálogo, versiones, fallas y dónde entra en el roadmap | Se reescribe |
+| `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066): contrato, cómo se maneja el float, versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani**. Si
@@ -75,7 +75,8 @@ original de la especificación se descartó (D-002) y no se usa.
   `aplicacion`. Frontend en `web/`, despliegue en `infra/`.
 - **Puerto de políticas** (D-064): las reglas propias de cada edificio entran por un puerto en
   `proptech_core` que devuelve acciones propuestas; el núcleo valida y registra. En el MVP se
-  implementa con los menús cerrados de `parametros.yaml`; un motor de terceros va detrás del puerto.
+  implementa con GoRules ZEN y su editor visual (D-066): el motor decide, nunca calcula plata, y un
+  validador propio bloquea la emisión ante cualquier respuesta fuera de contrato.
 - **Tests**: unitarios (reglas, sin base), integración (PostgreSQL real en Docker), aceptación
   (la liquidación del piloto al centavo).
 - **Despliegue**: VPS con Docker y Caddy (D-043). PDFs con WeasyPrint, avisos por email.
