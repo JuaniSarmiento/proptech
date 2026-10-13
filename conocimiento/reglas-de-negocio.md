@@ -95,12 +95,29 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Regla**: cada imputación se registra; el residual de cada obligación se calcula a partir
   de sus imputaciones, nunca con una marca de "pagada" (análisis H04). El excedente queda como
   crédito a favor y se compensa en la siguiente liquidación (H07).
+- **Créditos que no son pagos** (D-086, resuelve P35): bajan el residual con una imputación propia,
+  igual que un pago, y cada uno va a un destino fijo:
+  - **Condonación** (R29): al interés que condona.
+  - **Ajuste de interés** (R11): al interés que compensa.
+  - **Bonificación** (R37): a la ordinaria del período bonificado.
+  - **Corrección** (R08) y **reimputación** (R25): con el orden de R04, como un pago.
+  - **Baja de deuda** (R41): a todas las obligaciones impagas de la unidad, con R04.
+  El residual de una obligación es su importe menos todas sus imputaciones, sean de pagos o de
+  créditos.
+- **Tests mínimos**: un pago parcial deja el residual exacto de cada obligación; un pago mayor que la
+  deuda deja el excedente como crédito a favor; el crédito a favor se imputa con R04 en la liquidación
+  siguiente; una condonación baja sólo el residual del interés condonado; un ajuste de interés baja sólo
+  el interés que compensa; ninguna obligación queda con residual negativo.
 
 ## R06 · Saldo arrastrado · Vigente (D-012)
 
 - **Qué define**: cómo se muestra la deuda vieja en la expensa nueva sin cobrarla dos veces.
 - **Regla**: la deuda vieja vive en sus obligaciones originales; la expensa nueva la **muestra**
   como saldo anterior pero no genera un débito nuevo por ella (análisis H06).
+- **Tests mínimos**: una unidad con deuda de marzo ve en la expensa de abril el saldo anterior y su
+  deuda total es la suma de las dos obligaciones, sin duplicar la de marzo; pagar la de marzo la saca
+  del saldo anterior en la expensa siguiente; el saldo anterior que muestra la expensa coincide con el
+  calculado desde el libro a la fecha de emisión.
 
 ## R07 · Precisión y redondeo · Vigente (D-015, D-046)
 
@@ -124,6 +141,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 - **Regla**: ningún movimiento de la cuenta corriente se edita ni se borra. Una corrección es
   un movimiento nuevo con motivo, responsable y referencia al que corrige (análisis H03, H16).
+- **Tests mínimos**: un UPDATE o un DELETE sobre un movimiento rebota en la base, también por SQL
+  directo; una corrección sin motivo se rechaza; una corrección referencia al movimiento que corrige y
+  los dos quedan visibles; el saldo después de una corrección es el correcto.
 
 ## R09 · Saldo inicial al migrar · Vigente (D-015, D-068)
 
@@ -247,7 +267,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   La expensa del vecino los muestra en bloques separados, con su subtotal.
 - **Imputación**: dentro del período, intereses, después ordinaria, después extraordinaria (R04).
 - **Ordinaria prorrateada** (D-081): la parte de cada unidad en los gastos ordinarios de sus grupos,
-  neta de notas de crédito (R22) e ingresos (R38). No incluye cargos particulares, intereses ni el
+  neta de notas de crédito (R22) e ingresos (R38; mientras R38 sea propuesta, no hay ingresos que restar). No incluye cargos particulares, intereses ni el
   fondo de reserva. Es la base del fondo de reserva (R15) y de la bonificación por pronto pago (R37).
   Ejemplo: una unidad con $40.000 de ordinaria prorrateada, una multa de $5.000 y un fondo del 5%
   paga $40.000 + $2.000 de fondo + $5.000 de multa = $47.000.
@@ -439,7 +459,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   muy por encima o por debajo del historial se marca para revisión; un proveedor sin historial previo
   no genera falso positivo por falta de datos.
 
-## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio P6)
+## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio 6 de Alberto)
 
 - **Qué resuelve**: que la emisión de la liquidación no dependa de un servicio externo (lectura del
   extracto, IA de facturas). Si ese servicio falla el día de emitir, la liquidación tiene que poder
@@ -500,7 +520,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   total o parcialmente.
 - **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
   **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
-  vecino (principio P7 de Alberto) y para el consejo.
+  vecino (principio 7 de Alberto) y para el consejo.
 - **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
   auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
   sin esa respuesta.
@@ -581,6 +601,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
   | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos **ordinarios** del período | Bloqueante (duro) | 7 (el 6 expone la consulta) |
 
+  Las filas marcadas como propuesta entran sólo si se valida la regla que revisan.
   La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
   contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no
   bloqueante porque en el MVP es una ayuda: los pagos entran por comprobante (D-017, R24).

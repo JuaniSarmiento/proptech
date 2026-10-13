@@ -23,7 +23,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `conocimiento/roadmap.md` | **Los 18 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
+| `conocimiento/roadmap.md` | **Los 19 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
 | `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN (calcula con decimales exactos) y su riesgo real (tablas que caen en silencio a la fila por defecto), versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `conocimiento/lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
@@ -42,15 +42,17 @@ original de la especificación se descartó (D-002) y no se usa.
   `cd infra && docker compose up --build` (ver README), con CI en GitHub Actions. Todavía no hay
   dominio: sólo el esqueleto y `/api/salud`.
 - **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
-- **Próximo**: cambio 1c `cola-logs-y-respaldos` (ya propuesto, en `openspec/changes/`). Antes de cada cambio,
+- **Próximo**: cambio 1c `cola-logs-y-respaldos`: propuesto en `openspec/changes/`, con la primera tarea
+  (la medición de partida) hecha, y a re-proponer partido en 1c y 1d (D-087). Antes de cada cambio,
   constructor y rompedor leen `conocimiento/lecciones.md`.
 - Preguntas abiertas (la lista P, al final de `decisiones.md`; es la lista completa): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
   (P15), la parte de las unidades del consorcio (P16), el IVA (P17), el vecino con unidades en dos
   administraciones (P18), el doble vencimiento (P19), quién aprueba una condonación (P20), los umbrales
-  de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) y los casos de borde
-  para decidir antes de su cambio (P24 a P41).
+  de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) los casos de borde
+  para decidir antes de su cambio (P24 a P41), la validación de los valores de plata (P42), el
+  contenido derivado de ProTecc (P43) y la licencia (P44).
 
 ## Reglas que no se negocian
 
@@ -58,6 +60,7 @@ original de la especificación se descartó (D-002) y no se usa.
   el vecino informa con su comprobante y el administrador confirma (D-017, R11).
 - **Cobros y cuenta corriente son dominio CRITICAL** (governance global): se propone y se espera
   aprobación de Juani antes de escribir código ahí.
+- **Reglas congeladas hasta M1** (D-087): nada de R42 en adelante; lo nuevo va como pregunta abierta.
 - **TDD estricto en el núcleo**: cada regla vigente tiene sus tests mínimos escritos en
   `reglas-de-negocio.md`; se ven fallar antes de escribir el código.
 - **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;

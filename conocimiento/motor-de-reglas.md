@@ -11,7 +11,7 @@ Cómo entra al sistema el reglamento propio de cada edificio sin programar un ed
 - **GoRules ZEN + editor visual jdm-editor detrás del puerto, con validador propio** (D-066):
   decidido el 12/10, a pedido de Alberto. Reemplaza al motor propio de plantillas (D-065).
 - Todavía **no se escribe código** del motor. Los detalles abiertos se cierran en el explore del
-  cambio 3.
+  cambio 6b (D-087).
 - Fuentes: `openspec/exploraciones/2026-10-12-motor-de-reglas.md` (prueba de GoRules con montos
   reales) y el demo BRE que pasó Alberto (FastAPI + ZEN, React + jdm-editor; fuera del repositorio).
 
@@ -186,18 +186,18 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-No es un cambio aparte; se reparte en tres que ya existen, y sus fichas en `roadmap.md` ya lo
+No es un cambio aparte; se construye en el 6b (D-087) y se usa en el 7 y el 8; sus fichas en `roadmap.md` ya lo
 recogen. El propose de cada uno baja el detalle.
 
 | Cambio | Qué agrega |
 |---|---|
-| 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend; las reglas se cargan desde el cambio 7 |
+| 6b · `motor-de-reglas` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend; las reglas se cargan desde el cambio 7 |
 | 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, el importe con descuento de la bonificación para el PDF y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
 | 8 · `pagos-informados` | Al confirmar un pago, consulta la regla de bonificación por pronto pago y registra la bonificación (R37) |
 
 ## Pendiente
 
-- [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 3.
+- [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 6b.
 - [ ] Acordar con Alberto quién usa el editor: valores para el titular, estructura para el equipo.
 - [ ] Confirmar en gorules.io que el copiloto de IA y el servidor MCP son de la plataforma paga y no
   de las librerías libres (la investigación del 13/10 dice que sí, desde unos €500 por mes).

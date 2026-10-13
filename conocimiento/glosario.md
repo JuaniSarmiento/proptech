@@ -31,7 +31,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe, una categoría (R16) y un grupo de reparto (R01). Tiene cuatro estados: **borrador** (cargado sin aprobar), **sin IA** (la lectura automática falló y espera carga manual), **en revisión** (la IA leyó con alertas) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación (D-075).
 - **Categoría de gasto** (antes "centro de costo"): en qué se gasta la plata (seguridad, limpieza, ascensor...). La define el administrador; ordena la expensa y los reportes, no cambia los cálculos (R16). No confundir con el grupo de reparto, que dice quién paga.
 - **Archivo de parámetros**: `config/parametros.yaml`, con los valores con que arranca cada edificio nuevo (D-042).
-- **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
+- **Gasto común**: se reparte entre varias unidades. **Cargo particular**: se carga a una sola unidad (por ejemplo, la limpieza del quincho que usó, R14).
 - **Expensa ordinaria**: la de la operación habitual. **Expensa extraordinaria**: la de una obra o necesidad puntual.
 - **Coeficiente**: la proporción con la que una unidad participa de un grupo de reparto. La suma de los coeficientes de un grupo es 1 (100%), con una tolerancia de ±0,0001 (R01).
 - **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo complejo tiene al menos el grupo "Generales" (R01).
@@ -123,3 +123,12 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Conciliación**: cruzar los movimientos del banco o del recaudador con los pagos e imputaciones.
 - **Rendición**: el archivo que entrega un recaudador con los pagos que cobró.
 - **Fondo pendiente de identificar**: un pago recibido que todavía no se pudo asignar a una unidad.
+
+## Términos de las reglas de plata
+
+- **Mayor resto**: el método de reparto que redondea cada parte al centavo y asigna los centavos que faltan, de a uno, a las unidades con mayor fracción descartada. La suma da siempre exacta (R07).
+- **Ajuste de interés**: el crédito que se registra al confirmar un pago cuando una emisión ya había cobrado interés por días posteriores a la transferencia. Queda enlazado al pago y a esa emisión (R11).
+- **Bonificación por pronto pago**: el descuento sobre la ordinaria prorrateada para quien paga todo lo del período hasta el día límite. Se registra al confirmar el pago (R37, propuesta).
+- **Control bloqueante**: un control antes de emitir que impide emitir; si es **duro**, no se puede aceptar (saldos iniciales sin validar, factura duplicada, ingresos mayores que los gastos). Una **advertencia** sólo avisa (R34).
+- **Gasto mensual obligatorio**: un gasto que tiene que aparecer todos los meses (el abono del ascensor, el seguro); si falta, hay una advertencia antes de emitir (R34, propuesta; dónde se marca: P37).
+- **Doble vencimiento**: el esquema de primer y segundo vencimiento con recargo escalonado, alternativa a R03 que todavía no se decidió (R26, P19).

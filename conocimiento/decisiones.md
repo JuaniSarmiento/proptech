@@ -834,7 +834,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
 - **Quién**: Juani.
 
-## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067 y D-080; la propuesta de quién usa el editor pasó a dos niveles (P22)*
+## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067, D-080 y D-087; la propuesta de quién usa el editor pasó a dos niveles (P22)*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: el puerto de políticas (D-064) se implementa con **GoRules ZEN** (`zen-engine`) y su
@@ -1089,7 +1089,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cambios de criterio.
 - **Quién**: Juani, a partir de la revisión.
 
-## D-080 · Cuatro definiciones pendientes de la segunda revisión · *corregida en parte por D-081 y D-083*
+## D-080 · Cuatro definiciones pendientes de la segunda revisión · *corregida en parte por D-081, D-083 y D-087*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1212,6 +1212,52 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la séptima revisión completa no encontró hallazgos graves; éstos eran los medios.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
+## D-086 · Cómo bajan la deuda los créditos que no son pagos, y el contrato mínimo de emisión
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Créditos que no son pagos** (resuelve P35): cada uno baja el residual con una imputación propia y
+    un destino fijo: la condonación, al interés que condona; el ajuste de interés, al interés que
+    compensa; la bonificación, a la ordinaria del período bonificado; la corrección y la reimputación,
+    con el orden de R04, como un pago; la baja de deuda, a todas las obligaciones impagas con R04. El
+    residual es el importe menos todas las imputaciones (R05; a validar con un administrador).
+  - **R05, R06 y R08 tienen sus tests mínimos**, que faltaban aunque eran vigentes.
+  - **Contrato mínimo de emisión en el cambio 4**: la entidad emisión con identificador, período,
+    edificio y estado, y cada movimiento referencia la emisión que lo generó; el 7 la completa.
+- **Por qué**: la auditoría de Alberto del 13/10 marcó que las reglas centrales de la cuenta corriente,
+  dominio CRITICAL, estaban incompletas antes del cambio 4, y que el 4 dependía en silencio de una
+  entidad que nacía en el 7.
+- **Quién**: Juani, a partir de la auditoría de Alberto.
+
+## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Reglas congeladas**: no se agregan reglas nuevas (R42 en adelante) hasta cerrar el hito M1. Lo
+    nuevo que aparezca va como pregunta abierta. Las fichas del roadmap listan las reglas vigentes y,
+    en una línea aparte, las propuestas que entran si se validan.
+  - **El motor de reglas sale del cambio 3 a un cambio propio, el 6b**, justo antes del 7, que es el que
+    lo usa. El 6b lleva explore propio (el demo BRE y la compatibilidad de jdm-editor con React 19.3
+    son su prerrequisito). El roadmap pasa de 18 a 19 cambios. Corrige a D-080 en este punto.
+  - **Gobernanza**: el cambio 3 (configuración versionada de intereses) y el 12 (vista del consejo, cuyo
+    riesgo es mostrar datos de más) pasan a HIGH: se propone y se espera la revisión de Juani.
+  - **Plan de Row-Level Security**, escrito en la ficha del cambio 2: dos roles de base, la columna
+    `administracion_id` en toda tabla de una administración, RLS forzada con una política de lectura y
+    escritura, y el valor fijado por transacción desde la identidad autenticada (o por tarea en el
+    worker).
+  - **El cambio 1c se re-propone partido en 1c y 1d**: el 1c con logs, request_id, Redis, worker y web;
+    el 1d con respaldos, restauración, humo y README, con la aprobación HIGH escrita en su propuesta. Se
+    suman las lecciones L-007 a L-009 a sus tareas.
+  - **Las preguntas abiertas mantienen la letra P**; los principios de Alberto se citan como
+    "principio N de Alberto", sin letra, para no confundirlos.
+  - **Lo de código de la auditoría** (que `Dinero` se pueda copiar y serializar, declarar pydantic, las
+    cabeceras de seguridad, los volúmenes de Caddy, el CI en los pull requests, los tipos Porcentaje y
+    Superficie, la convención de nombres de la base y el engine único del endpoint de salud) queda
+    anotado para cuando se retome el código: Alberto pidió terminar primero la documentación.
+- **Por qué**: la auditoría de Alberto del 13/10 encontró que el diseño avanzaba más rápido que el
+  código y propuso estos ajustes.
+- **Quién**: Juani, a partir de la auditoría de Alberto.
+
 ---
 
 ## Preguntas abiertas
@@ -1267,7 +1313,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   consejo por encima de un umbral. Antes del cambio 10b.
 - [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
 - [ ] **P22 · Quién usa el editor de reglas** (D-066, `motor-de-reglas.md`): propuesta en dos niveles,
-  valores para el titular y estructura para el equipo. Antes del cambio 3.
+  valores para el titular y estructura para el equipo. Antes del cambio 6b.
 - [ ] **P23 · Permisos por acción**: qué rol puede emitir, distribuir, anular una liquidación, confirmar
   y revertir pagos, condonar, dar de baja una deuda y aceptar alertas. D-037 fija los roles pero no
   cada acción. Antes del cambio 2.
@@ -1294,9 +1340,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   edificio o cargado al emitir. Antes del cambio 3.
 - [ ] **P34 · Hasta qué fecha calcula el interés cada emisión**: la de emisión, el cierre del período o
   el vencimiento siguiente (R03). Antes del cambio 4.
-- [ ] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos** (ajuste,
-  condonación, bonificación, corrección, reimputación, baja), del que dependen R05, R20, R29 y R41.
-  Antes del cambio 4.
+- [x] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos**: con una
+  imputación propia y un destino fijo por tipo de crédito (D-086, R05).
 - [ ] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
   se aprueba después: si entra en el período siguiente. Antes del cambio 6.
 - [ ] **P37 · Dónde y quién marca un "gasto mensual obligatorio"** (categoría, proveedor o gasto). Antes
@@ -1308,4 +1353,13 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P40 · Número de operación único por complejo**: si la clave incluye el banco, porque dos bancos
   pueden repetir número (R11). Antes del cambio 8.
 - [ ] **P41 · Aviso de mora a un vecino con un pago informado y sin confirmar**. Antes del cambio 13.
+- [ ] **P42 · Validar los valores de plata con un administrador o contador de Mendoza**: los defaults
+  de R03 (tasa, gracia, forma de cálculo) y las definiciones de D-082 y D-086 marcadas "a validar".
+  Antes del cambio 4. (P4 quedó cerrada como decisión, pero esta validación sigue pendiente.)
+- [ ] **P43 · El contenido derivado de ProTecc en el repositorio público**: la exploración de dolores y
+  las reglas citan el documento privado ProTecc v3.5. Confirmar con Alberto que puede ser público, o
+  sacarlo del repositorio. Antes de dar visibilidad al repositorio.
+- [ ] **P44 · Licencia y política de seguridad del repositorio**: el repo es público y no tiene
+  LICENSE ni SECURITY.md. Decidir con Alberto si se reserva el código o se licencia, y cómo se reporta
+  una vulnerabilidad. Antes del primer despliegue público.
 

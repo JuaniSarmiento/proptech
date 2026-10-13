@@ -21,10 +21,10 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 |---|---|---|---|
 | 1 | [`mvp.md`](mvp.md) | Objetivo, usuarios, historias de usuario con criterios de aceptación, alcance, hitos y diferencias con la especificación original y con la arquitectura de koris | Se reescribe |
 | 2 | [`reglas-de-negocio.md`](reglas-de-negocio.md) | Las reglas de cálculo (R01 a R41), cada una con su estado (vigente, propuesta o pendiente) y los tests mínimos que la verifican | Se reescribe |
-| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-085 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
+| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-087 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
 | 4 | [`glosario.md`](glosario.md) | El idioma común. El código usa estos mismos nombres, en español | Se reescribe |
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
-| 6 | [`roadmap.md`](roadmap.md) | Los 18 cambios del MVP en orden (1a, 1b, 1c, 2 a 9, 10a, 10b y 11 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |
+| 6 | [`roadmap.md`](roadmap.md) | Los 19 cambios del MVP en orden (1a, 1b, 1c, 2 a 6, 6b, 7 a 9, 10a, 10b y 11 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |
 | 7 | [`forma-de-trabajo.md`](forma-de-trabajo.md) | Cómo se construye cada cambio: orquestador, constructor, rompedor y auditor | Se reescribe |
 | 8 | [`motor-de-reglas.md`](motor-de-reglas.md) | Cómo entra el reglamento de cada edificio: el puerto de políticas, GoRules ZEN con su editor visual y el validador propio | Se reescribe |
 | 9 | [`lecciones.md`](lecciones.md) | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen el constructor y el rompedor antes de empezar | **Sólo se agrega** |

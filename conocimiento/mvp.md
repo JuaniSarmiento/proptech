@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-085). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-087). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -176,7 +176,7 @@ coinciden con un movimiento y qué movimientos no tienen comprobante.
   advertencia "extracto incompleto" (R34).
 - Dado un movimiento que coincide por el código de unidad en el concepto o por el CBU histórico de
   esa unidad, entonces aparece en la bandeja como sugerencia de confianza alta, y confirmo con un
-  clic; el sistema nunca lo asigna solo (R19, principio P3 de Alberto, ProTecc A1/E3).
+  clic; el sistema nunca lo asigna solo (R19, principio 3 de Alberto, ProTecc A1/E3).
 
 **HU-A8 · Ver la morosidad**
 Como administrador, quiero ver quién debe, cuánto y desde cuándo.
@@ -306,7 +306,7 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` ⓔ · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 6b `motor-de-reglas` ⓔ · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 
@@ -331,7 +331,7 @@ marcó 48 observaciones. Así se reparten:
 2. **Tests de integración** contra PostgreSQL real, incluidos dos pagos simultáneos de la misma unidad.
 3. **Test de aceptación de M1**: la última liquidación del edificio piloto, reproducida al centavo.
 4. **Mes en paralelo (M3)**: el cierre de PropTech coincide con el método actual del piloto.
-5. **Métricas de soporte, después del MVP**: el principio P8 de Alberto ("cada problema se mide")
+5. **Métricas de soporte, después del MVP**: el principio 8 de Alberto ("cada problema se mide")
    queda sin mecanismo en el MVP. No hay entidad de excepción ni métricas todavía; cuando se
    construyan (ver `proyecto-final.md`, fase F6), son las que deciden si conviene pasar a la Etapa 2
    de identificación de pagos (CVU por unidad) de DEC-10.
