@@ -143,11 +143,18 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
   diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
 
-## R10 · Aislamiento entre complejos · Vigente (D-016)
+## R10 · Aislamiento entre administraciones y alcance por edificio · Vigente (D-016, D-076)
 
-- **Regla**: todo dato pertenece a un complejo y ninguna consulta, archivo, caché o proceso
-  devuelve datos de otro. El complejo sale de la identidad autenticada, nunca de un parámetro que
-  manda el cliente (análisis H02, H14, H27).
+- **Regla**: todo dato pertenece a una **administración** (el tenant, el cliente que paga) y ninguna
+  consulta, archivo, caché o proceso devuelve datos de otra. La administración sale de la identidad
+  autenticada, nunca de un parámetro que manda el cliente (análisis H02, H14, H27). Row-Level
+  Security es el segundo candado.
+- **Alcance por edificio**: dentro de su administración, cada persona ve sólo los complejos que le
+  corresponden según su rol (D-037): el titular, todos; el colaborador, los asignados; el consejo, el
+  suyo; el vecino, sus unidades. Fuera de alcance responde 404.
+- **Tests mínimos**: un pedido con el identificador de otra administración no devuelve nada; una
+  consulta a la base sin fijar la administración no devuelve filas; un colaborador no ve un edificio
+  no asignado de su propia administración; un vecino no ve la unidad de otro vecino.
 
 ## R11 · Registro de pagos en el MVP · Vigente (D-017)
 
@@ -266,18 +273,25 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
   un gasto sin categoría no se puede aprobar.
 
-## R17 · Ventana de anulación antes de distribuir · Vigente (D-055) · refina R08
+## R17 · Ventana de anulación antes de distribuir · Vigente (D-055, D-073, D-074) · refina R08
 
 - **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
-  todavía no distribuida. Se considera distribuida desde que sale el primer email de aviso al
-  responsable de pago, o desde que alguien la ve en el portal, lo que pase primero.
-- **Anulación**: requiere motivo obligatorio y queda registrada con responsable y fecha. No genera
-  ninguna obligación ni movimiento de cuenta corriente (como si nunca se hubiera emitido).
+  todavía no distribuida. Estados: borrador, emitida, distribuida y anulada (sólo desde emitida).
+- **Anulación** (D-073): es un **cambio de estado**, no un borrado. La liquidación pasa de emitida a
+  anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se modifica ni se
+  borra: el saldo de cada unidad se calcula sólo con las obligaciones de liquidaciones no anuladas, así
+  que la deuda queda igual que antes de emitir.
+- **Distribuida** (D-074): una liquidación pasa a distribuida cuando el administrador la **distribuye**
+  (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
+  el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
+  puerto.
 - **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
   error se corrige con un movimiento nuevo (ajuste).
-- **Tests mínimos**: anular antes del primer envío borra la obligación sin dejar movimiento; intentar
-  anular después de que un vecino la vio en el portal lo rechaza; la anulación sin motivo se
-  rechaza; una liquidación anulada permite volver a emitir el período.
+- **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
+  emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
+  intentar anular una liquidación distribuida (por la acción "distribuir", por un email o por una vista
+  en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
+  emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
 
 ## R18 · Estado "revertido" de un pago confirmado · Vigente (D-056) · extiende R11
 
@@ -286,10 +300,12 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   revertida). El pago original nunca se borra ni pasa a "rechazado".
 - **Efecto**: se registra un movimiento de **reversión de pago** (débito) que referencia al pago
   original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
-- **Morosidad**: al revertirse un pago, la unidad se reevalúa contra R20 (moroso crítico).
+- **Morosidad**: al revertirse un pago, la unidad puede pasar a cumplir R20 (moroso crítico), que se
+  calcula siempre desde el libro (D-074).
 - **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
   original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
-  revertir vuelve a evaluar la morosidad de la unidad.
+  después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
+  vencidas con saldo.
 
 ## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
 
@@ -307,10 +323,13 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
   genera sugerencia.
 
-## R20 · Moroso crítico por antigüedad · Vigente (D-058)
+## R20 · Moroso crítico por antigüedad · Vigente (D-058, D-074)
 
 - **Definición**: una unidad es **moroso crítico** cuando tiene **dos o más liquidaciones vencidas
   con saldo impago**, calculado desde las imputaciones (nunca desde una marca de "pagada").
+- **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
+  el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
+  cambio 10a se encarga del listado, la exportación y la presentación.
 - **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
   mes a mes y los pagos parciales la confunden).
 - **Exclusiones**: quedan excluidas las unidades con un plan de pago al día o con la deuda en
@@ -364,19 +383,22 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   muy por encima o por debajo del historial se marca para revisión; un proveedor sin historial previo
   no genera falso positivo por falta de datos.
 
-## R24 · Modo degradado de emisión · Propuesta (ProTecc A4, principio P6)
+## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio P6)
 
 - **Qué resuelve**: que la emisión de la liquidación no dependa de un servicio externo (lectura del
   extracto, IA de facturas). Si ese servicio falla el día de emitir, la liquidación tiene que poder
   salir igual.
-- **Propuesta**: si falla la IA al leer una factura, el gasto queda marcado "sin IA" para carga
-  manual, sin bloquear la emisión de los demás gastos ya aprobados; si falla la lectura del
-  extracto, la preliquidación y la emisión siguen sin él (la conciliación se hace después).
-- **Falta decidir**: el detalle se resuelve en el *design* del cambio 7 `liquidacion-y-emision`
-  (D-047 punto 7 ya pedía definir qué pasa si falla el encolado del PDF; esta regla agrega qué pasa
-  si falla el extracto o la IA el día de emitir).
-- **Tests mínimos** (a definir en el design): emitir con la IA caída no bloquea la liquidación;
-  emitir sin el extracto procesado no bloquea la liquidación (sólo posterga la conciliación).
+- **Estados del gasto** (D-075): **borrador** (no entra en ningún cálculo); **sin IA** (la lectura
+  automática falló y espera carga manual: no entra en el cálculo y dispara la advertencia "hay N
+  facturas sin cargar" de R34); **en revisión** (la IA leyó con alertas: dispara el bloqueante de R34);
+  **aprobado** (entra en el cálculo).
+- **Regla**: si falla la IA al leer una factura, el gasto queda **sin IA** y la emisión de los demás
+  gastos aprobados sigue. Si falla la lectura del extracto, la preliquidación y la emisión siguen sin
+  él (la conciliación se hace después). Lo que falte del encolado del PDF después de emitir se decide
+  en el design del cambio 7 (D-047, punto 7).
+- **Tests mínimos**: emitir con la IA caída no bloquea la liquidación; un gasto sin IA no entra en el
+  cálculo y dispara la advertencia; un gasto en revisión dispara el bloqueante; emitir sin el extracto
+  procesado no bloquea la liquidación (sólo posterga la conciliación).
 
 ## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
 
@@ -384,9 +406,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
   de **reimputación** enlazados: uno que resta en la unidad equivocada (restituye la deuda) y otro
   que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
-  original. Se reevalúa la morosidad (R20) de las dos unidades.
+  original. Después, cada una de las dos unidades puede pasar a cumplir o dejar de cumplir R20, que se
+  calcula desde el libro (D-074).
 - **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
-  un paso, no se aplica ninguno; las dos unidades se reevalúan contra R20 después de reimputar.
+  un paso, no se aplica ninguno; después de reimputar, la función de R20 da el resultado correcto
+  para las dos unidades.
 
 ## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
 
@@ -425,8 +449,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
   sin esa respuesta.
 - **Tests mínimos** (a definir con la aprobación): una condonación genera el movimiento de crédito
-  sin borrar el recargo; el vecino ve el motivo; la unidad se reevalúa contra R20 después de
-  condonar.
+  sin borrar el recargo; el vecino ve el motivo; después de condonar, la función de R20 da el
+  resultado correcto para la unidad.
 
 ## R30 · Umbral mínimo de saldos por redondeo · Propuesta (ProTecc D3) · extiende R07
 
@@ -488,7 +512,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   |---|---|---|---|
   | Saldos iniciales sin validar | El edificio es nuevo y la migración no está confirmada (R09) | Bloqueante | 7 |
   | Factura duplicada | Dos gastos con el mismo proveedor, punto de venta y número de comprobante | Bloqueante | 7 |
-  | Facturas leídas por IA con alertas | Hay gastos en revisión por alertas de la lectura automática | Bloqueante | 14 |
+  | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 14 |
+  | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 14 |
   | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
   | Unidades sin contacto válido | Alguna unidad no tiene un email válido (R28) | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |

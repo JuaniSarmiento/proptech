@@ -132,7 +132,9 @@ Reglas del contrato:
 | Alertas antes de emitir | Qué controles bloquean y cuáles sólo avisan | Ejecuta los controles | 7 |
 | Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | El descuento | 7 |
 | Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
-| Moroso crítico | Si una unidad lo es, según cuántas liquidaciones vencidas tiene | Nada: es una marca (R20) | 10 |
+
+**El moroso crítico no pasa por el motor**: R20 lo define fijo (dos o más liquidaciones vencidas con
+saldo) y lo calcula una función pura del cambio 4 sobre el libro (D-074).
 
 **Fuera del MVP**: bloqueo de amenities a morosos, planes de pago y multas con escalas o
 reincidencia. Con el motor ya instalado, se suman como reglas nuevas en el editor, siempre que
@@ -186,7 +188,6 @@ en el propose de cada uno.
 |---|---|
 | 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y las reglas de intereses, fondo de reserva y cargo por estado |
 | 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, bonificación por pronto pago y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
-| 10 · `morosidad` | La regla de moroso crítico |
 
 ## Pendiente
 

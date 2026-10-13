@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-072). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-077). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
@@ -115,14 +115,16 @@ que se generen deudas.
 **HU-A5 · Emitir la liquidación**
 Como administrador, quiero emitir la liquidación del mes y que cada unidad reciba su comprobante.
 - Dada una preliquidación revisada, cuando emito, entonces se genera una obligación por unidad y
-  período, con su PDF, y la persona de contacto recibe un email avisando.
+  período, con su PDF. El aviso por email llega con HU-V6 (cambio 13).
+- Dada una liquidación emitida, cuando la distribuyo, entonces queda distribuida y ya no se puede
+  anular (D-074).
 - Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide.
 - Dada una preliquidación con un control bloqueante (por ejemplo, una factura cargada dos veces),
   cuando intento emitir, entonces el sistema me lo muestra y no emite, salvo que acepte esa alerta de
   forma explícita; la aceptación queda registrada (R34).
-- Dada una liquidación emitida pero todavía no distribuida (ningún email salió y ningún vecino la
-  vio en el portal), cuando la anulo con un motivo, entonces se borra sin dejar movimiento, como si
-  no se hubiera emitido (R17, ProTecc A5). Una vez distribuida, no se puede anular: se corrige con un
+- Dada una liquidación emitida pero todavía no distribuida, cuando la anulo con un motivo, entonces
+  pasa a anulada, la deuda de cada unidad queda igual que antes de emitir y ningún movimiento se
+  borra (R17, D-073, ProTecc A5). Una vez distribuida, no se puede anular: se corrige con un
   ajuste (R08).
 - Dada una falla del extracto bancario o del servicio de IA el día de emitir, cuando emito,
   entonces la liquidación sale igual, por el camino manual que corresponda (R24, principio P6 de
@@ -145,10 +147,11 @@ confirmarlos o rechazarlos, y que al confirmar se imputen solos.
   unidad corresponde o lo reparte entre ellas.
 - Dado un pago confirmado que el banco devuelve (cheque rechazado, contracargo), cuando lo marco
   como revertido con un motivo, entonces se registra un contra-movimiento que vuelve a subir la
-  deuda y la unidad se reevalúa para morosidad (R18, ProTecc D4).
+  deuda; si ahora tiene dos o más liquidaciones vencidas, pasa a ser moroso crítico (R18, R20,
+  ProTecc D4).
 - Dado un pago confirmado en la unidad equivocada, cuando uso el asistente de reimputación hacia la
-  unidad correcta, entonces se generan los dos movimientos enlazados en una sola operación y las dos
-  unidades se reevalúan para morosidad (R25, propuesta, ProTecc B2).
+  unidad correcta, entonces se generan los dos movimientos enlazados en una sola operación y el
+  moroso crítico de las dos unidades queda bien calculado (R25, R20, propuesta, ProTecc B2).
 
 **HU-A7 · Validar con el extracto del banco**
 Como administrador, quiero subir el extracto del banco y que el sistema me marque qué comprobantes
@@ -284,7 +287,7 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | Hito | Cambios, en orden |
 |---|---|
 | **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
-| **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10 `morosidad` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
+| **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 
 ⓔ = lleva su propio explore antes del propose. En paralelo al cambio 1: conseguir los datos del edificio piloto (P1).

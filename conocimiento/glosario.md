@@ -9,7 +9,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
-- **Complejo**: la comunidad que se administra. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). En el modelo de datos de la especificación se llamaba `consorcios`.
+- **Administración**: el cliente que paga PropTech: una empresa o persona que administra uno o varios complejos. Es el **tenant**: todo dato pertenece a una administración y ninguna ve los datos de otra (R10, D-076).
+- **Complejo**: la comunidad que se administra, siempre dentro de una administración. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). Es un **alcance**: cada persona ve los complejos que le permite su rol (D-037, D-076). En el modelo de datos de la especificación se llamaba `consorcios`.
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.
 - **Unidad funcional (UF)**: el objeto sobre el que se liquida la expensa. En un edificio, un departamento (piso y letra), una cochera, una baulera o un local; en un barrio, un **lote** (manzana y número). Su identificador sólo es único dentro de su complejo.
 - **Tipo de unidad**: departamento, cochera, baulera o local en un edificio; lote en un barrio. Cada una tiene su coeficiente y se liquida por separado.
@@ -26,7 +27,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## Gastos y reparto
 
-- **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe y un centro de costo. Pasa por **borrador** (cargado o leído por IA) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación.
+- **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe y un centro de costo. Tiene cuatro estados: **borrador** (cargado sin aprobar), **sin IA** (la lectura automática falló y espera carga manual), **en revisión** (la IA leyó con alertas) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación (D-075).
 - **Categoría de gasto**: en qué se gasta la plata (seguridad, limpieza, ascensor...). La define el administrador; ordena la expensa y los reportes, no cambia los cálculos (R16). No confundir con el grupo de reparto, que dice quién paga.
 - **Archivo de parámetros**: `config/parametros.yaml`, con los valores con que arranca cada edificio nuevo (D-042).
 - **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
@@ -44,6 +45,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Período**: el mes que se liquida.
 - **Preliquidación**: el cálculo provisorio que el administrador revisa antes de emitir. No genera deuda.
 - **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
+- **Distribución** (o liquidación distribuida): el momento en que la liquidación llega a los vecinos, por la acción "distribuir" del administrador, el primer email o la primera vista en el portal. Desde ahí no se puede anular (R17, D-074).
+- **Anulación**: pasar una liquidación emitida y no distribuida a anulada. Es un cambio de estado: no borra movimientos y la deuda queda como antes de emitir (D-073).
 - **Obligación**: lo que una unidad debe por un período, desglosado en capital, gastos particulares e intereses.
 - **Vencimiento**: la fecha a partir de la cual corre la mora. Si cae en un día inhábil, se corre al primer día hábil siguiente (R35, propuesta).
 - **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos de su grupo antes de repartir (R38, propuesta).

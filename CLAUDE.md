@@ -23,7 +23,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `conocimiento/roadmap.md` | **Los 17 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
+| `conocimiento/roadmap.md` | **Los 18 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
 | `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN (calcula con decimales exactos) y su riesgo real (tablas que caen en silencio a la fila por defecto), versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `conocimiento/lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
@@ -47,7 +47,8 @@ original de la especificación se descartó (D-002) y no se usa.
 - Preguntas abiertas (al final de `decisiones.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
-  (P15), la parte de las unidades del consorcio (P16) y el IVA (P17).
+  (P15), la parte de las unidades del consorcio (P16), el IVA (P17) y el vecino con unidades en dos
+  administraciones (P18).
 
 ## Reglas que no se negocian
 
@@ -60,7 +61,8 @@ original de la especificación se descartó (D-002) y no se usa.
 - **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;
   el frontend no calcula montos; reparto por mayor resto (R07, D-046).
 - **La cuenta corriente sólo agrega movimientos**; una corrección es un movimiento nuevo con motivo (R08).
-- **El barrio sale del login**, nunca de un parámetro del cliente; Row-Level Security como segundo candado (R10).
+- **La administración sale del login**, nunca de un parámetro del cliente: es el tenant, y Row-Level
+  Security es el segundo candado. El edificio es un alcance dentro de ella, controlado por rol (R10, D-076).
 - **Intereses simples**, sin capitalización (art. 770 del CCyC) (R03).
 - **Nunca secretos ni datos personales reales en el repo.** Los comprobantes y facturas de prueba
   se arman con datos inventados.

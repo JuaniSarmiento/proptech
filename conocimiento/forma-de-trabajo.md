@@ -32,7 +32,7 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
 1. **Proponer.** El proponente escribe `proposal.md`, `design.md` y `tasks.md`, con las historias,
    reglas y decisiones que cubre y la sección "Knowledge Base Impact". En los cambios marcados con ⓔ
    en `mvp.md`, antes corre un explore. **Juani aprueba la propuesta de los cambios críticos**
-   (acceso, cuenta corriente, liquidación y pagos); en los demás sigue el orquestador.
+   (acceso, cuenta corriente, importación desde Excel, liquidación, pagos y 10b, D-077); en los demás sigue el orquestador.
 2. **Construir.** El constructor implementa las tareas en orden, con TDD, y devuelve qué hizo, qué
    comandos corrió y su salida.
 3. **Romper.** El rompedor recibe el cambio terminado y trata de romperlo. Si encuentra fallas, vuelve
@@ -49,8 +49,8 @@ orquestador frena y le presenta a Juani el problema con opciones. No se sigue it
 
 | Tipo de cambio | Ciclo |
 |---|---|
-| **Toca plata** (2, 4, 5, 6, 7, 8 y 9 del roadmap; de esos, los críticos 2, 4, 7 y 8 además llevan la aprobación de Juani antes de codear) | Completo: constructor, rompedor y auditor por separado |
-| **Chico o de sólo lectura** (10, 12, 13) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
+| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de Juani antes de codear, D-077) | Completo: constructor, rompedor y auditor por separado |
+| **Chico o de sólo lectura** (10a, 12, 13) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
 | **Infraestructura y el resto** (1a, 1b, 3, 11, 14, 15) | Completo |
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.

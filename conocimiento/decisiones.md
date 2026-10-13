@@ -162,7 +162,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   pierden los intereses viejos).
 - **Quién**: Juani.
 
-## D-016 · Correcciones como movimientos nuevos y aislamiento por identidad
+## D-016 · Correcciones como movimientos nuevos y aislamiento por identidad · *corregida en parte por D-076*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: la cuenta corriente no se edita ni se borra; un error se corrige con un movimiento
@@ -656,7 +656,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuentes**: `especificacion/documentos-alberto/` (fuera del repositorio público).
 - **Quién**: Juani.
 
-## D-055 · Ventana de anulación de una liquidación emitida y no distribuida · ajusta R08/D-016
+## D-055 · Ventana de anulación de una liquidación emitida y no distribuida · ajusta R08/D-016 · *corregida en parte por D-073*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: una liquidación emitida se puede anular sólo si todavía no fue distribuida: no
@@ -673,7 +673,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   de Alberto).
 - **Quién**: Juani.
 
-## D-056 · Estado "revertido" para un pago confirmado que el banco devuelve
+## D-056 · Estado "revertido" para un pago confirmado que el banco devuelve · *corregida en parte por D-074*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: se agrega el estado **revertido** a R11, para un pago confirmado que el banco
@@ -952,6 +952,99 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   Telegram), si hace falta más allá del email.
 - **Quién**: Juani, a partir del documento de herramientas de Alberto.
 
+## D-073 · Anular una liquidación es un cambio de estado, no un borrado
+
+- **Fecha**: 13/10/2026
+- **Decisión**: anular una liquidación emitida y todavía no distribuida (R17) **no borra ningún
+  movimiento**. La liquidación pasa de *emitida* a *anulada*, con motivo, responsable y fecha. El
+  saldo de cada unidad se calcula sólo con las obligaciones de liquidaciones que no están anuladas, y
+  el período queda libre para volver a emitirse. El estado de la liquidación se guarda como su propia
+  secuencia de eventos de sólo agregar (emitida, distribuida, anulada), coherente con el libro de la
+  cuenta corriente (R08).
+- **Corrige a R17 y D-055**: el test "anular borra la obligación sin dejar movimiento" contradecía el
+  libro de sólo agregar del cambio 4, donde modificar o borrar un movimiento rebota. Las dos cosas no
+  podían ser ciertas a la vez.
+- **Por qué**: lo que el administrador necesita es que la deuda vuelva a quedar como antes de emitir,
+  no que desaparezca la evidencia de que emitió. Con el estado queda rastro de por qué un período se
+  emitió dos veces; con el borrado, no.
+- **Descartado**: permitir borrados en el libro sólo para este caso (la garantía de sólo agregar deja
+  de valer) y guardar el estado como una columna que se sobrescribe (pierde la historia).
+- **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
+## D-074 · La distribución es un concepto propio del cambio 7, y el moroso crítico es una función del cambio 4
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Distribución**: el cambio 7 define la máquina de estados de la liquidación (borrador, emitida,
+    distribuida, y anulada sólo desde emitida), un **puerto para registrar la distribución** y una
+    acción manual del administrador, **"distribuir"**. Con eso el cambio 7 se construye y se prueba
+    solo. Después, el cambio 11 llama a ese puerto la primera vez que un vecino abre la liquidación, y
+    el 13 cuando sale el primer email. Ninguno redefine nada: se enchufan. El cambio 7 encola el PDF,
+    no el email.
+  - **Moroso crítico**: R20 ya se calcula desde las imputaciones, nunca desde una marca guardada, así
+    que no hay nada que "reevaluar": su resultado se deriva del libro cada vez que se pide. La función
+    pura de R20 se construye en el **cambio 4**, como consulta sobre el libro; el cambio 10 se queda con
+    el listado, la exportación y la presentación. R18, R25 y R29 dicen "la unidad pasa a cumplir R20"
+    en lugar de "se reevalúa".
+- **Por qué**: el cambio 7 dependía de eventos (el primer email, la primera vista en el portal) que
+  recién existen en los cambios 13 y 11, y R18 y R25 (cambio 8) dependían de R20 (cambio 10). Las dos
+  eran dependencias hacia adelante: no se podían probar en su cambio.
+- **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
+## D-075 · Los estados del gasto separan la IA caída de la IA con dudas
+
+- **Fecha**: 13/10/2026
+- **Decisión**: un gasto tiene cuatro estados, de punta a punta:
+  - **borrador**: cargado y sin aprobar. No entra en ningún cálculo.
+  - **sin IA**: la lectura automática falló y espera carga manual. No entra en el cálculo y dispara una
+    **advertencia** antes de emitir ("hay N facturas sin cargar"). La liquidación puede salir (R24),
+    pero nadie se olvida de ellas.
+  - **en revisión**: la IA leyó con alertas (un CUIT ilegible, un total que no cierra, un monto
+    atípico). Dispara el **bloqueante** de R34, que el administrador puede levantar aceptándolo de
+    forma explícita.
+  - **aprobado**: entra en el cálculo.
+  R24 pasa a vigente.
+- **Por qué**: R24 prometía que la caída de la IA no frena la emisión y R34 bloquea las facturas con
+  alertas, pero ningún texto definía los estados que separan esos dos casos. Sin ellos, un gasto "sin
+  IA" podía bloquear lo que R24 prometió no bloquear, o quedar afuera de la liquidación en silencio.
+- **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
+## D-076 · El tenant es la administración; el edificio es un alcance dentro de ella
+
+- **Fecha**: 13/10/2026
+- **Decisión**: el **tenant** (el dueño de los datos, sobre el que se construye el aislamiento con
+  Row-Level Security) es la **administración**: el cliente que paga PropTech. El **complejo** (un
+  edificio, y más adelante un barrio) es un **alcance dentro de la administración**, que se controla
+  con permisos por rol (D-037). Son dos candados distintos: el aislamiento entre administraciones y el
+  alcance por edificio.
+- **Corrige**: R10 hablaba de "aislamiento entre complejos", D-016 y `CLAUDE.md` decían "el barrio
+  sale del login" (un resto de cuando el MVP era para barrios). D-037 ya tenía la forma correcta.
+- **Por qué**: un administrador real maneja muchos edificios. Si el tenant fuera el edificio, tendría
+  que "cambiar de tenant" en cada uno, y la política de la base no podría expresar "este colaborador
+  ve los edificios 3 y 7 de su administración".
+- **Pendiente para el explore del cambio 2** (P18): un vecino con unidades en edificios de dos
+  administraciones distintas, ¿tiene una identidad global con membresías por administración, o una
+  cuenta por administración?
+- **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
+## D-077 · El cambio 10 se parte en 10a y 10b, y el cambio 5 pasa a pedir aprobación
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **10a · `morosidad`**: el listado de deudores, la exportación y la presentación del moroso
+    crítico, que ya viene calculado desde el cambio 4 (D-074). Es de sólo lectura: ciclo de una pasada.
+  - **10b · `condonacion-judicial-y-libre-deuda`**: la condonación de intereses (R29), la marca de
+    gestión judicial (R31) y el certificado de libre deuda (R21). Escribe en la cuenta corriente o
+    tiene peso legal: **ciclo completo y aprobación de Juani antes de codear**.
+  - **El cambio 5** (importación desde Excel) también pasa a pedir la aprobación de Juani antes de
+    codear, porque sus saldos iniciales escriben en la cuenta corriente.
+  El roadmap pasa de 17 a 18 cambios; los números de los demás no cambian.
+- **Por qué**: la tabla de escalado ponía al 10 como "chico o de sólo lectura", pero adentro tenía
+  movimientos de crédito, una marca que cambia el cálculo de morosidad y un documento con peso legal.
+  Partirlo además aísla R29, que todavía espera saber quién aprueba una condonación (Q1), sin frenar el
+  resto.
+- **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
 ---
 
 ## Preguntas abiertas
@@ -997,4 +1090,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   reglamento.
 - [ ] **P17 · IVA de los consorcios** (R12): confirmar con un contador que el consorcio registra los
   gastos con el IVA incluido.
+- [ ] **P18 · El vecino con unidades en dos administraciones** (D-076): identidad global con
+  membresías por administración, o una cuenta por administración. Se resuelve en el explore del
+  cambio 2, antes de diseñar el login.
 
