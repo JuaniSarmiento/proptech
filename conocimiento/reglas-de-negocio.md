@@ -19,7 +19,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   paga**; la categoría (R16) dice **en qué se gastó**. Son independientes.
 - **Default**: un complejo nuevo arranca con un grupo "Generales", todas las unidades, por coeficiente.
 - **Validación** (D-082, a validar con un administrador): los coeficientes de un grupo suman 1 con
-  una tolerancia de ±0,0001. Dentro de la tolerancia se aceptan con una advertencia, y el reparto usa
+  una tolerancia de ±0,0001, con el borde incluido (0,9999 y 1,0001 se aceptan). Dentro de la tolerancia
+  se aceptan con una advertencia, y el reparto usa
   cada coeficiente dividido por la suma real, así el total sigue exacto con R07. Fuera de la tolerancia,
   la carga se rechaza con el informe de la diferencia.
 - **Historia**: la liquidación guarda la composición de cada grupo usada en ese período.
@@ -188,8 +189,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082), **enlazado a ese pago**: si el pago se revierte, se reimputa o su imputación cae por una
-  anulación, el ajuste se revierte con él (D-083).
+  (D-082), **enlazado a ese pago y a la emisión cuyo interés compensa**: si el pago se revierte, se
+  reimputa o su imputación cae por una anulación, el ajuste se revierte con él (D-083); y si se anula la
+  emisión que registró ese interés, el ajuste queda excluido junto con ese interés (D-084).
 - **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
   marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
   CUIT de origen cuando el banco lo informa) o no.
@@ -309,7 +311,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Anulación** (D-073, D-079): es un **cambio de estado**, no un borrado. La liquidación pasa de
   emitida a anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se
   modifica ni se borra: el saldo de cada unidad excluye **todo movimiento generado por la emisión
-  anulada** (sus obligaciones y los intereses que registró), así que la deuda queda igual que antes de emitir
+  anulada** (sus obligaciones, los intereses que registró y los ajustes de interés que los compensaban,
+  R11), así que la deuda queda igual que antes de emitir
   y volver a emitir no duplica nada. Si antes de anular se había imputado un pago a esas obligaciones,
   la imputación deja de valer y el pago vuelve como **crédito a favor** de la unidad, que se imputa con
   R04 en la nueva emisión (D-081).
@@ -664,7 +667,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 - **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
   intereses.
-- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido. Única
+- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido o
+  distribuido (una liquidación anulada no cuenta). Única
   excepción: el primer período después de la migración (R09), que arranca desde los saldos
   iniciales confirmados.
 - **Tests mínimos**: con abril sin emitir, preliquidar mayo se rechaza con un mensaje claro; con abril

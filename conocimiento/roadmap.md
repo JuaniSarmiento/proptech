@@ -16,7 +16,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 | 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano (puede partirse en 1d) |
 | 2 | `acceso-y-aislamiento` | M1 | 1c | **sí** | **sí** | grande |
 | 3 | `configuracion-del-edificio` | M1 | 2 | **sí** (D-080) | no | grande |
-| 4 | `motor-de-cuenta-corriente` | M1 | 2 | **sí** | **sí** | grande |
+| 4 | `motor-de-cuenta-corriente` | M1 | 2, 3 | **sí** | **sí** | grande |
 | 5 | `importacion-desde-excel` | M1 | 3, 4 | no | **sí** (D-077) | mediano |
 | 6 | `gastos-y-cargos` | M1 | 3, 4 | no | no | mediano |
 | 7 | `liquidacion-y-emision` | M1 | 5, 6 | **sí** | **sí** | grande |
@@ -92,7 +92,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Entra**: login del personal y del vecino; los cuatro roles (titular, colaborador, consejo,
   vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
-  límite de pedidos en el login.
+  límite de pedidos en el login; las notas de seguridad que dejó el 1a (D-051): separar la red de la
+  web de la de la base, ocultar los encabezados `Via` y `X-Powered-By` y revisar las respuestas a HEAD.
 - **Tablas mínimas** (D-082): para probar el acceso, este cambio crea lo mínimo de administración,
   complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
   edificio.
@@ -126,7 +127,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   semilla y su validador suman ese campo, y el edificio de ejemplo queda "sin saldos previos"; el
   cambio 5 usa ese estado.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7).
-- **Depende de**: 2. **Habilita**: 5, 6.
+- **Depende de**: 2. **Habilita**: 4, 5, 6.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
   si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
 - **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1; una unidad repetida;
@@ -153,7 +154,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   emisión anulada (D-073, D-079). La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
-- **Depende de**: 2. **Habilita**: 5, 6, 7.
+- **Depende de**: 2 y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
+  **Habilita**: 5, 6, 7.
+- **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
+  `leer_parametros` y verificar con un test que `Dinero` rechaza ceros de más (`1.0000`).
 - **Decidir en el design** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
   cuenta durante una imputación; el desempate determinista del mayor resto.
 - **Que intente romper el rompedor**: dos pagos simultáneos a la misma unidad; un pago parcial
@@ -448,7 +452,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
-- **P24 a P32**: casos de borde de la quinta revisión, cada uno con el cambio antes del cual se decide.
+- **P24 a P41**: casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual
+  se decide.
 - **P19, P21 y P22**: el doble vencimiento, los umbrales y quién usa el editor de reglas, antes de los
   cambios 3, 4 y 14.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

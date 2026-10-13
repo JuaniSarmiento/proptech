@@ -49,8 +49,8 @@ original de la especificación se descartó (D-002) y no se usa.
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
   (P15), la parte de las unidades del consorcio (P16), el IVA (P17), el vecino con unidades en dos
   administraciones (P18), el doble vencimiento (P19), quién aprueba una condonación (P20), los umbrales
-  de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) y nueve casos de borde
-  para decidir antes de su cambio (P24 a P32).
+  de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) y los casos de borde
+  para decidir antes de su cambio (P24 a P41).
 
 ## Reglas que no se negocian
 

@@ -524,7 +524,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   conviene arrancar alineados con Alberto, que va a trabajar a la par. Es además más legible.
 - **Quién**: Claude, por delegación explícita de Juani ("como vos lo veas mejor").
 
-## D-047 · Ajustes al plan de cambios después del explore general · *corregida en parte por D-049*
+## D-047 · Ajustes al plan de cambios después del explore general · *corregida en parte por D-049 y D-080*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: se aceptan las propuestas del explore general
@@ -589,7 +589,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   desde la primera vuelta. El ciclo completo cuesta mucho para cambios chicos.
 - **Quién**: Juani (propuesta de Claude).
 
-## D-051 · Herramientas y versiones de la infraestructura base (cambio 1a)
+## D-051 · Herramientas y versiones de la infraestructura base (cambio 1a) · *sus notas para el cambio 2 quedaron en su ficha*
 
 - **Fecha**: 09/10/2026
 - **Decisión** (detalle en `openspec/changes/archive/*-infraestructura-base/design.md`, D1 a D11):
@@ -628,7 +628,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   donde se escapan los errores.
 - **Quién**: Juani.
 
-## D-053 · Elecciones del cambio 1b (arranque del sistema)
+## D-053 · Elecciones del cambio 1b (arranque del sistema) · *sus notas quedaron en la ficha del cambio 4*
 
 - **Fecha**: 11/10/2026
 - **Decisión** (detalle en `openspec/changes/archive/*-arranque-del-sistema/design.md`):
@@ -1159,7 +1159,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   impiden probar un cambio.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
-## D-083 · Correcciones de la quinta revisión completa (13/10)
+## D-083 · Correcciones de la quinta revisión completa (13/10) · *corregida en parte por D-084*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1177,6 +1177,22 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     (P24 a P32), cada uno con el cambio antes del cual se decide.
 - **Por qué**: la quinta revisión completa encontró estas contradicciones, efecto de correcciones
   anteriores.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
+
+## D-084 · Correcciones de la sexta revisión completa (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **El ajuste de interés de R11 se enlaza también a la emisión cuyo interés compensa**: si esa
+    emisión se anula, el ajuste queda excluido junto con el interés, y no sobrevive como crédito de más.
+  - **El cambio 4 depende del 2 y del 3**, porque usa el menú de intereses versionado y las marcas que
+    construye el 3.
+  - **La ficha del cambio 2 recoge las notas de seguridad del 1a** (D-051) y **la del 4, las del 1b**
+    (D-053).
+  - **Tolerancia de coeficientes con el borde incluido**; R40 cuenta como emitido un período
+    distribuido, y una liquidación anulada se puede volver a emitir.
+  - Los casos de negocio sin definir que encontró la revisión pasan a la lista (P33 a P41).
+- **Por qué**: la sexta revisión completa; sólo un hallazgo afectaba plata.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
@@ -1257,4 +1273,22 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   interés, o un saldo por debajo del umbral de R30. Antes del cambio 4.
 - [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
   fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
+- [ ] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
+  edificio o cargado al emitir. Antes del cambio 3.
+- [ ] **P34 · Hasta qué fecha calcula el interés cada emisión**: la de emisión, el cierre del período o
+  el vencimiento siguiente (R03). Antes del cambio 4.
+- [ ] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos** (ajuste,
+  condonación, bonificación, corrección, reimputación, baja), del que dependen R05, R20, R29 y R41.
+  Antes del cambio 4.
+- [ ] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
+  se aprueba después: si entra en el período siguiente. Antes del cambio 6.
+- [ ] **P37 · Dónde y quién marca un "gasto mensual obligatorio"** (categoría, proveedor o gasto). Antes
+  del cambio 6.
+- [ ] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): la de la
+  transferencia o la de la nueva emisión. Antes del cambio 7.
+- [ ] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye.
+  Antes del cambio 7.
+- [ ] **P40 · Número de operación único por complejo**: si la clave incluye el banco, porque dos bancos
+  pueden repetir número (R11). Antes del cambio 8.
+- [ ] **P41 · Aviso de mora a un vecino con un pago informado y sin confirmar**. Antes del cambio 13.
 

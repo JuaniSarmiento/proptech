@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-083). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-084). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -126,7 +126,8 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
   período, con su PDF. El aviso por email llega con HU-V6 (cambio 13).
 - Dada una liquidación emitida, cuando la distribuyo, entonces queda distribuida y ya no se puede
   anular (D-074).
-- Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide.
+- Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide, salvo que
+  esa liquidación esté anulada (R17).
 - Dada una preliquidación con un control bloqueante aceptable (por ejemplo, facturas leídas por IA
   con alertas), cuando intento emitir, entonces el sistema me lo muestra y no emite, salvo que acepte esa alerta de
   forma explícita; la aceptación queda registrada (R34).
