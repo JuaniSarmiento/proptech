@@ -546,7 +546,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 ## R34 · Controles antes de emitir y emisión con alertas aceptadas · Vigente (D-069)
 
 - **Qué resuelve**: emitir con un problema que nadie vio (saldos sin validar, una factura cargada dos
-  veces, pagos sin asignar que hacen figurar moroso a quien pagó).
+  veces, pagos sin confirmar que hacen figurar moroso a quien pagó).
 - **Cómo funciona**: al preliquidar y al emitir, el sistema corre una lista de controles. Cada uno es
   **bloqueante** (no se puede emitir) o **advertencia** (se puede emitir y se muestra). Cada alerta
   dice qué pasa y dónde.
