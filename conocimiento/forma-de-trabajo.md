@@ -51,7 +51,7 @@ orquestador frena y le presenta a Juani el problema con opciones. No se sigue it
 |---|---|
 | **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de Juani antes de codear, D-077) | Completo: constructor, rompedor y auditor por separado |
 | **Chico o de sólo lectura** (10a, 12, 13) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
-| **Infraestructura y el resto** (1a, 1b, 3, 11, 14, 15) | Completo |
+| **Infraestructura y el resto** (1a, 1b, 1c, 3, 11, 14, 15) | Completo |
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
 

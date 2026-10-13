@@ -75,7 +75,8 @@ original de la especificación se descartó (D-002) y no se usa.
 - **Frontend**: Next.js (App Router) + TypeScript, áreas de titular/colaborador, consejo y vecino,
   instalable como PWA. El servidor de Next guarda el token; el navegador nunca lo ve (D-036). Sin app nativa. Toda interfaz pasa por la skill **impeccable**.
 - **Monolito modular** (D-040): `backend/src/proptech_core` con los módulos `complejos`, `acceso`,
-  `gastos`, `liquidacion`, `cuenta_corriente`, `pagos`, `avisos` y `compartido`, cada uno con
+  `gastos`, `liquidacion`, `cuenta_corriente`, `pagos`, `avisos`, `politicas` (el motor de reglas,
+  `motor-de-reglas.md`) y `compartido`, cada uno con
   `dominio/` (reglas puras) · `aplicacion/` (casos de uso) · `puertos.py` · `adaptadores/`. Lo usan
   `proptech_api` (routers FastAPI) y `proptech_worker` (tareas). Los módulos se hablan sólo por
   `aplicacion`. Frontend en `web/`, despliegue en `infra/`.

@@ -196,7 +196,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   sin QR, uno sin datos de origen y ambos con motivo "Varios".
 - **Quién**: Juani.
 
-## D-019 · Las facturas se leen primero por el QR de ARCA y la IA completa el resto
+## D-019 · Las facturas se leen primero por el QR de ARCA y la IA completa el resto · *corregida en parte por D-075*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: el monto, el proveedor y el identificador de la factura salen del QR oficial; la IA
@@ -408,7 +408,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   espera no escala ni con un edificio de 40 unidades. Juani: "no es algo de otro mundo".
 - **Quién**: Juani.
 
-## D-039 · Del resto del documento de Alberto se mantiene lo ya acordado
+## D-039 · Del resto del documento de Alberto se mantiene lo ya acordado · *corregida en parte por D-047*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: para lo demás rigen las decisiones previas. En particular:
@@ -493,7 +493,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   - Coincidencia a favor de Alberto: B06 usa Decimal, igual que su documento de arquitectura (ver D-039).
 - **Quién**: Juani.
 
-## D-045 · El MVP se construye en 15 cambios de OPSX
+## D-045 · El MVP se construye en 15 cambios de OPSX · *corregida por D-049, D-052 y D-077*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: OpenSpec quedó inicializado en el repositorio (`openspec/`, idioma español, con
@@ -560,7 +560,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   porque el desarrollo es de Juani.
 - **Quién**: Juani.
 
-## D-049 · Roadmap de 16 cambios y push al cerrar cada cambio
+## D-049 · Roadmap de 16 cambios y push al cerrar cada cambio · *corregida en parte por D-052 y D-077*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: el plan queda escrito en `roadmap.md`, con una ficha por cambio que sirve de entrada
@@ -612,7 +612,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   del fixture en el 1b.
 - **Quién**: proponente y constructor del cambio 1a, aprobado por el auditor (vuelta 4).
 
-## D-052 · El cambio 1b se parte: arranque mínimo en 1b, cola, logs y respaldos aparte
+## D-052 · El cambio 1b se parte: arranque mínimo en 1b, cola, logs y respaldos aparte · *corregida en parte por D-077*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: el cambio 1b tenía 90 tareas y el constructor completó sólo la primera parte con
@@ -719,7 +719,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: análisis citado (caso ProTecc M1, DEC-07/DEC-08 de Alberto).
 - **Quién**: Juani.
 
-## D-059 · El certificado de libre deuda por venta de unidad entra al MVP
+## D-059 · El certificado de libre deuda por venta de unidad entra al MVP · *corregida en parte por D-077*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: se agrega el certificado de libre deuda (o de deuda, si corresponde) para la venta
@@ -1044,6 +1044,28 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   Partirlo además aísla R29, que todavía espera saber quién aprueba una condonación (Q1), sin frenar el
   resto.
 - **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
+
+## D-078 · Ajustes de coherencia tras la revisión final del 13/10
+
+- **Fecha**: 13/10/2026
+- **Decisión**: la revisión completa de la base, después de D-073 a D-077, encontró huecos que esas
+  decisiones dejaban abiertos. Se resuelven así:
+  - **HU-A11** (nueva): la condonación (R29) y la gestión judicial (R31) salen de HU-A8, que queda de
+    sólo lectura para el cambio 10a, y pasan a una historia propia del cambio 10b.
+  - **Gestión judicial y avisos**: el 10b expone la marca como consulta; el cambio 13 la usa para
+    saltear los avisos de mora y lo prueba. El 13 pasa a depender del 8 y del 10b, para que ningún
+    test dependa de un cambio posterior.
+  - **Exclusión en R20**: el 10b agrega la exclusión por gestión judicial a la función de moroso crítico
+    del cambio 4. El plan de pago sigue fuera del MVP.
+  - **Estados del gasto**: los cuatro estados de D-075 los crea el cambio 6. El cambio 7 prueba R24
+    armando gastos sin IA y en revisión a mano, sin esperar a los cambios 9 y 14.
+  - **Niveles de los controles**: el nivel de cada control de R34 es un piso fijo. Un edificio puede
+    sumar controles propios o subir una advertencia a bloqueante desde el motor, pero nunca bajar un
+    bloqueante de R34.
+- **Por qué**: sin estos ajustes, el cambio 10a no se podía terminar sin escribir en la cuenta
+  corriente, el 10b dependía del 13 (una dependencia hacia adelante, el problema que D-074 vino a
+  resolver) y R24 no tenía un cambio donde probarse antes del 14.
+- **Quién**: Juani, a partir de la revisión final de la base.
 
 ---
 

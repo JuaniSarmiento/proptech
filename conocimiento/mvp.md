@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-077). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-078). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
@@ -28,7 +28,7 @@ el cierre da igual al centavo.
 
 | Rol | Qué hace |
 |---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; único que cierra liquidaciones y anula pagos |
+| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; único que cierra liquidaciones, anula liquidaciones y revierte pagos |
 | **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
 | **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
 | **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
@@ -126,9 +126,11 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
   pasa a anulada, la deuda de cada unidad queda igual que antes de emitir y ningún movimiento se
   borra (R17, D-073, ProTecc A5). Una vez distribuida, no se puede anular: se corrige con un
   ajuste (R08).
-- Dada una falla del extracto bancario o del servicio de IA el día de emitir, cuando emito,
-  entonces la liquidación sale igual, por el camino manual que corresponda (R24, principio P6 de
-  Alberto, ProTecc A4).
+- Dados gastos que la IA no pudo leer (estado "sin IA"), cuando emito, entonces la liquidación sale
+  sin ellos y veo la advertencia "hay N facturas sin cargar"; dados gastos que la IA leyó con alertas
+  ("en revisión"), entonces no emito salvo que acepte la alerta (R24, R34, D-075, ProTecc A4).
+- Dado que el extracto del banco no está procesado, cuando emito, entonces la liquidación sale igual
+  y veo la advertencia "extracto incompleto" (R24, R34).
 - Dada una unidad con deuda anterior, entonces su expensa nueva muestra el saldo anterior sin
   volver a cobrarlo (R06), y los intereses del período se registran como débito con su detalle (R03).
 - Dada la boleta de cualquier unidad, entonces incluye un código corto de esa unidad para que el
@@ -172,12 +174,16 @@ Como administrador, quiero ver quién debe, cuánto y desde cuándo.
 - Dada una unidad con dos o más liquidaciones vencidas con saldo impago, entonces aparece marcada
   como **moroso crítico** (R20, ProTecc M1); no hay bloqueo de amenities porque las reservas no
   están en el MVP.
-- Dada una unidad marcada "en gestión judicial", entonces no recibe recordatorios automáticos de
-  mora y no cuenta como moroso crítico (R31, propuesta, ProTecc G2).
-- Dado un recargo por mora que el vecino discute, cuando el administrador lo condona con un motivo,
-  entonces se registra un movimiento de condonación que neutraliza el recargo sin borrarlo, visible
-  para el vecino (R29, propuesta, falta decidir quién aprueba, ProTecc B5).
 - Dada la lista, cuando la exporto, entonces obtengo un Excel con los mismos números.
+
+**HU-A11 · Condonar intereses y marcar la gestión judicial** *(propuesta, cambio 10b, D-078)*
+Como administrador, quiero condonar un recargo discutido y marcar las unidades que están en juicio,
+para que el sistema las trate como corresponde.
+- Dado un recargo por mora que el vecino discute, cuando lo condono con un motivo, entonces se
+  registra un movimiento de condonación que neutraliza el recargo sin borrarlo, visible para el
+  vecino (R29, propuesta, falta decidir quién aprueba, ProTecc B5).
+- Dada una unidad que marco "en gestión judicial", entonces deja de contar como moroso crítico
+  (R31, propuesta, ProTecc G2), y los avisos automáticos de mora del cambio 13 la saltean.
 
 **HU-A9 · Corregir un error**
 Como administrador, quiero corregir un pago o un cargo mal registrado sin perder el historial.
@@ -187,7 +193,7 @@ Como administrador, quiero corregir un pago o un cargo mal registrado sin perder
 **HU-A10 · Emitir un certificado de libre deuda**
 Como administrador, quiero generar un certificado de deuda de una unidad para una venta, para que
 el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21, ProTecc G3).
-- Dada una unidad sin saldo pendiente ni plan de pago, cuando genero el certificado con una fecha de
+- Dada una unidad sin saldo pendiente, cuando genero el certificado con una fecha de
   corte, entonces el sistema muestra "libre de deuda" con saldo cero a esa fecha y yo lo firmo.
 - Dada una unidad con saldo pendiente, cuando genero el certificado, entonces muestra el saldo a la
   fecha de corte y, si hay pagos informados todavía no confirmados, los lista aparte como "en
@@ -226,7 +232,8 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
   precarga monto, fecha y número de operación, y yo los reviso antes de enviar (R11).
 - Dado un número de operación ya usado en el edificio, cuando subo ese comprobante, entonces el
   sistema lo frena.
-- Dado un pago informado, entonces veo su estado: informado, confirmado o rechazado con motivo.
+- Dado un pago informado, entonces veo su estado: informado, confirmado, rechazado con motivo o
+  revertido (R18).
 
 **HU-V5 · Descargar comprobantes**
 Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos confirmados.
@@ -258,13 +265,13 @@ de mi edificio sin poder modificar nada.
 ## Alcance
 
 **Entra**: configuración del edificio, alta desde Excel con tipos de unidad (departamento, cochera,
-baulera, local), archivo de parámetros iniciales, categorías de gasto parametrizables, gastos manuales y desde factura (QR de ARCA más IA, siempre en borrador), sueldo
+baulera, local), archivo de parámetros iniciales, categorías de gasto parametrizables, gastos manuales y desde factura (QR de ARCA más IA, nunca aprobados sin la confirmación del administrador), sueldo
 del encargado cargado como gasto, expensa ordinaria y extraordinaria, fondo de reserva como
 concepto de liquidación, cargos particulares, reglas propias de cada edificio con el motor de reglas, preliquidación,
 controles antes de emitir con alertas aceptadas, emisión con PDF y links de descarga firmados, cuenta corriente con
 imputaciones e intereses, pagos por comprobante con confirmación del administrador, ayuda del
 extracto bancario, morosidad, correcciones, portal del vecino con todas sus unidades juntas, vista
-del consejo, avisos por email, login real, roles, aislamiento entre edificios, auditoría y backups
+del consejo, avisos por email, login real, roles, aislamiento entre administraciones y alcance por edificio, auditoría y backups
 probados.
 
 **No entra**: barrios privados en producción, cálculo del sueldo del encargado (escala SUTERH),
@@ -279,14 +286,14 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 | Hito | Historias | Se demuestra cuando |
 |---|---|---|
 | **M1 · Liquida** | A1, A2, A3 (carga manual), A3b, A4, A5, A9 | Con los datos del edificio piloto, el sistema reproduce su última liquidación al centavo |
-| **M2 · Cobra** | A6, A7, A8, A10, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
+| **M2 · Cobra** | A6, A7, A8, A10, A11, V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
 | **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
 
 ## Cambios de OPSX (detalle y fichas en `roadmap.md`)
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 
@@ -330,7 +337,7 @@ posterga, para validarlo con él:
 | Coeficientes | Tres fijos por unidad | Grupos de reparto definidos por edificio | Cubre más casos con el mismo trabajo (D-013) |
 | Lectura de facturas | Todo con IA | Primero el QR de ARCA, IA para el resto | Monto exacto y más barato (D-019) |
 | Fondos y tesorería | Fondo operativo, de reserva y de obras con su saldo | Fondo de reserva sólo como concepto de la expensa, sin saldo de caja | Lo que el vecino paga se refleja; el saldo acumulado no hace falta para liquidar (D-031) |
-| Roles | Inquilino, contador, proveedor, encargado, guardia | Administrador, vecino y consejo | Lo mínimo para validar (D-009, D-032) |
+| Roles | Inquilino, contador, proveedor, encargado, guardia | Titular, colaborador, consejo y vecino | Lo mínimo para validar (D-009, D-032, D-037) |
 | Consumo de agua | Por rangos de litros | Cargo particular importado por Excel | Cubre el caso sin construir medidores (D-026) |
 | Código | 48 fragmentos | Descartado | Errores verificados (D-002) |
 
@@ -342,4 +349,4 @@ el MVP sigue en su forma (D-035 a D-039):
 | Permisos | ~15 áreas con 3 niveles | Titular, colaborador, consejo y vecino, con las mismas tres capas | Lo mínimo para validar (D-037) |
 | Montos | Decimal (NUMERIC 14,2) | Decimal (NUMERIC 14,2), igual que su documento | Alineado con Alberto (D-046) |
 | Cifrado con índice ciego, outbox, copiloto, bandeja de WhatsApp | Incluidos | Después del MVP | Alcance (D-039) |
-| Login | Clerk para el personal, enlace mágico para vecinos | Se define en el primer change de OPSX | No se decidió todavía (D-039) |
+| Login | Clerk para el personal, enlace mágico para vecinos | Se define en el design del cambio 2 | No se decidió todavía (D-039) |

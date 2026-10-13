@@ -7,8 +7,6 @@ porqué del cambio va a `decisiones.md`.
 Estados: **Pendiente** (no decidida) · **Propuesta** (hay una propuesta, falta validarla con un
 administrador o contador) · **Vigente** (decidida y registrada en `decisiones.md`).
 
-> Se completa en la charla de la pregunta P4.
-
 ---
 
 ## R01 · Prorrateo de gastos · Vigente (D-013)
@@ -212,8 +210,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   gasto queda marcado como "sin QR" para que el administrador lo revise con más cuidado.
 - **Factura duplicada**: `cuit + ptoVta + tipoCmp + nroCmp` no se repite dentro del complejo. Se frena al cargarla.
 - **Receptor equivocado**: si `nroDocRec` existe y no es el CUIT del complejo, se avisa antes de confirmar.
-- **Siempre borrador**: ningún dato leído (por QR o por IA) entra en la liquidación sin que el
-  administrador confirme el gasto. La IA no inventa datos ausentes: los marca como faltantes.
+- **Nunca aprobado sin confirmación**: ningún dato leído (por QR o por IA) entra en la liquidación sin
+  que el administrador confirme el gasto. Según cómo salió la lectura, el gasto queda en borrador, sin
+  IA o en revisión (D-075). La IA no inventa datos ausentes: los marca como faltantes.
 - **Tests mínimos**: decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
   duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda marcado.
 
@@ -332,10 +331,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   cambio 10a se encarga del listado, la exportación y la presentación.
 - **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
   mes a mes y los pagos parciales la confunden).
-- **Exclusiones**: quedan excluidas las unidades con un plan de pago al día o con la deuda en
-  gestión judicial, **si esos conceptos existen en el MVP**. Hoy no existen (ver R31 y
-  `proyecto-final.md`, G1): mientras no se construyan, la exclusión no se puede aplicar y queda
-  anotada como límite conocido de esta regla.
+- **Exclusiones**: quedan excluidas las unidades con la deuda en **gestión judicial** (R31), cuando el
+  cambio 10b construya esa marca y la agregue a esta función (D-078). El plan de pago está fuera del
+  MVP (`proyecto-final.md`, G1), así que esa exclusión queda como límite conocido.
 - **Sin bloqueo de amenities**: las reservas de espacios comunes no están en el MVP, así que no hay
   ningún bloqueo asociado a esta marca.
 - **Tests mínimos**: una unidad con una sola liquidación vencida no es moroso crítico; dos vencidas

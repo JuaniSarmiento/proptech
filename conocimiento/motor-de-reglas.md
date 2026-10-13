@@ -51,7 +51,7 @@ aparte.
 
 **Lo que no cambia**: el núcleo financiero sigue en código con sus tests. Los intereses simples
 (R03), la imputación (R04), los pagos parciales (R05), el reparto sin perder centavos (R07), la
-cuenta corriente que sólo agrega movimientos (R08) y el aislamiento entre edificios (R10) **no pasan
+cuenta corriente que sólo agrega movimientos (R08) y el aislamiento entre administraciones (R10) **no pasan
 al motor** (D-064).
 
 ## Lo que hace bien ZEN y lo que no
@@ -129,7 +129,7 @@ Reglas del contrato:
 | Intereses por mora | Tasa y días de gracia que corresponden | El interés simple (R03) | 3 |
 | Fondo de reserva | Porcentaje sobre la ordinaria | El monto (R15) | 3 |
 | Cargo por estado de la unidad | Factor y cargo fijo por estado. Apagada en edificios (D-030) | El cargo (R02) | 3 |
-| Alertas antes de emitir | Qué controles bloquean y cuáles sólo avisan | Ejecuta los controles | 7 |
+| Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 7 |
 | Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | El descuento | 7 |
 | Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
 
@@ -181,7 +181,7 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-No es un cambio aparte; se reparte en tres que ya existen. Las fichas de `roadmap.md` se actualizan
+No es un cambio aparte; se reparte en dos que ya existen. Las fichas de `roadmap.md` se actualizan
 en el propose de cada uno.
 
 | Cambio | Qué agrega |

@@ -64,7 +64,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 ## Cuenta corriente y pagos
 
 - **Cuenta corriente**: el historial de débitos y créditos de una unidad. El saldo sale de ahí, nunca se guarda suelto.
-- **Débito**: aumenta lo que la unidad debe (emisión, interés, cargo). **Crédito**: lo disminuye (pago, nota de crédito).
+- **Débito**: aumenta lo que la unidad debe (emisión, interés, cargo). **Crédito**: lo disminuye (pago, corrección, condonación). La nota de crédito de un proveedor no es un crédito de la unidad: reduce el gasto antes de prorratear (R22).
 - **Pago**: plata que entra para una unidad. Tiene una fecha real y un canal.
 - **Comprobante de pago**: la captura o el PDF de una transferencia que sube el vecino. No es una factura.
 - **Pago informado**: un pago que el vecino declaró subiendo su comprobante. No afecta la deuda (R11).
@@ -107,9 +107,9 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
   desde las imputaciones. Se define por antigüedad, nunca por monto (R20). En el MVP no bloquea
   amenities porque las reservas no están en el alcance.
 - **Gestión judicial**: marca de una unidad cuya deuda ya está en manos del abogado del complejo.
-  Frena los recordatorios automáticos de mora y la saca del cálculo de moroso crítico (R31).
+  Frena los recordatorios automáticos de mora y la saca del cálculo de moroso crítico (R31, propuesta).
 - **Condonación de interés**: un movimiento que neutraliza un recargo por mora, total o parcialmente,
-  con motivo obligatorio. Nunca borra el recargo original (R29).
+  con motivo obligatorio. Nunca borra el recargo original (R29, propuesta).
 - **Ventana de anulación**: el período acotado en que una liquidación emitida se puede anular en vez
   de corregir: mientras esté emitida y todavía no distribuida a ningún vecino (R17).
 
