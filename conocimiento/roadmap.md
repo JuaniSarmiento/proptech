@@ -198,6 +198,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   - **Controles antes de emitir** (R34, D-069): la lista con bloqueantes y advertencias, la emisión
     con alertas aceptadas y su registro, y los dos controles de este cambio (saldos iniciales sin
     validar y factura duplicada). Los demás controles los suma el cambio que construye lo que revisan.
+  - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
+    dirección pública; este cambio arma el mecanismo que reusan los demás.
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
@@ -283,11 +285,12 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: que el vecino entienda su expensa y pague desde el celular.
 - **Historias**: HU-V1 (pantallas), HU-V2, HU-V3, HU-V5. **Reglas**: R16 (presentación).
 - **Entra**: todas las unidades de la persona juntas; deuda y vencimiento; expensa por ordinaria,
-  extraordinaria y categoría, con la comparación contra el mes anterior; descarga de PDFs; app
-  instalable. Pasa por la skill impeccable.
+  extraordinaria y categoría, con la comparación contra el mes anterior; descarga de PDFs con links
+  firmados y con vencimiento (D-070); app instalable. Pasa por la skill impeccable.
 - **Depende de**: 10. **Habilita**: 12.
 - **Que intente romper el rompedor**: ver la unidad de otro vecino; números distintos a los del
-  administrador; un iPhone sin instalar la app; pantalla de 320 px.
+  administrador; un iPhone sin instalar la app; pantalla de 320 px; abrir un link de descarga
+  vencido, modificado o de otra unidad.
 - **Terminado cuando**: se cumplen HU-V1, V2, V3 y V5.
 
 ### 12 · `vista-del-consejo`

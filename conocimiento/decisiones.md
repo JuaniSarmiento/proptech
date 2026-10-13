@@ -905,6 +905,21 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   (D-017).
 - **Quién**: Juani, a partir del material de Alberto.
 
+## D-070 · Links de descarga firmados y con vencimiento
+
+- **Fecha**: 13/10/2026
+- **Decisión**: ningún archivo del sistema (PDF de expensas, comprobantes de pago, facturas) tiene una
+  dirección pública. Cada descarga usa un link **firmado**, que deja de funcionar si alguien lo
+  modifica, y que **vence** entre un minuto y una hora. Un link vencido, modificado o pedido por quien
+  no tiene acceso a esa unidad responde "no encontrado", sin decir si el archivo existe. El mecanismo
+  se arma en el cambio 7 (PDF de la expensa) y lo reusan el 8 (comprobantes), el 11 (portal) y el 14
+  (facturas).
+- **Por qué**: un link fijo que se reenvía por mail o en el grupo del edificio deja ver la deuda y los
+  datos de una unidad. Es pedido de Alberto (arquitectura de koris, "candados en capas"), que lo pone
+  entre sus prioridades de calidad, después de la plata. Hacerlo desde el principio cuesta poco;
+  agregarlo después obliga a cambiar cada descarga.
+- **Quién**: Juani, a partir del material de Alberto.
+
 ---
 
 ## Preguntas abiertas
