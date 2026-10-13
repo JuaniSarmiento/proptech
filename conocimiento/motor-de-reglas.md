@@ -147,10 +147,15 @@ respeten el contrato.
 
 ## Quién usa el editor
 
-*Pendiente.* Propuesta para el MVP: **sólo el equipo de PropTech**, configurando las reglas por el
-administrador. Una regla mal dibujada le cobra mal a todo un edificio, y el editor permite armar
-cosas que el validador tiene que atajar. Abrírselo al titular se decide después, con experiencia
-real.
+*Pendiente, a acordar con Alberto.* Propuesta para el MVP, en dos niveles:
+
+| Qué se toca | Quién | Por qué |
+|---|---|---|
+| **Valores** de una regla que ya existe: tasas, días, porcentajes, montos fijos | El administrador titular | Es lo que cambia en una asamblea (por ejemplo, el interés pasa del 4% al 6%). Cambiar un número en una tabla probada es de bajo riesgo, y el validador lo revisa igual |
+| **Estructura** de una regla: condiciones, nodos, salidas, reglas nuevas | El equipo de PropTech | Una regla mal dibujada le cobra mal a todo un edificio, y el editor permite armar cosas que el validador tiene que atajar |
+
+Falta verificar si jdm-editor permite un modo "sólo valores". Si no lo permite, los valores se
+cambian desde un formulario propio que reescribe la tabla.
 
 ## Qué tan difícil es
 
@@ -176,5 +181,7 @@ en el propose de cada uno.
 - [ ] Confirmar con una prueba que los montos en centavos enteros se comparan sin error dentro de
   ZEN (explore del cambio 3).
 - [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 3.
-- [ ] Decidir quién usa el editor en el MVP.
+- [ ] Acordar con Alberto quién usa el editor: valores para el titular, estructura para el equipo.
+- [ ] Verificar si el copiloto de IA (reglas en lenguaje natural) y el servidor MCP que menciona
+  GoRules vienen en las librerías libres (`zen-engine`, `jdm-editor`) o sólo en su plataforma paga.
 - [ ] Probar jdm-editor dentro de Next.js con `antd` 5.21.2.
