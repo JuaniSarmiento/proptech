@@ -129,7 +129,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: el corazón de la plata: que cada peso de deuda viva en un solo lugar y nunca se pierda un centavo.
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05, R06, R07, R08, R09 (el caso de uso
   de saldo inicial), R13 (orden de imputación por tipo).
-- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046.
+- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068.
 - **Entra**: libro de movimientos de sólo agregar, sin campo saldo; obligaciones, pagos e
   imputaciones; intereses simples calculados al registrarse; reparto por **mayor resto** como función
   pública de `proptech_core` (la usa el cambio 6); correcciones con contra-asiento; dos fechas por
@@ -152,17 +152,21 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: cargar un edificio real desde su Excel sin tipear nada.
 - **Historias**: HU-A2. **Reglas**: R09.
-- **Decisiones**: D-015, D-029.
+- **Decisiones**: D-015, D-029, D-068.
 - **Entra**: plantilla de Excel (piso, departamento, tipo, propietario, contacto, coeficiente, saldo
   inicial); validación fila por fila con informe de errores; carga atómica (todo o nada); detección
-  de reimportación; saldos iniciales usando el caso de uso del cambio 4.
+  de reimportación; saldos en un **borrador** que no toca la cuenta corriente, comparado **unidad por
+  unidad** contra el listado del administrador, con aceptación registrada de las diferencias y cierre
+  del importador al confirmar (D-068); saldos iniciales usando el caso de uso del cambio 4.
 - **No entra**: importar gastos o cargos (6).
 - **Depende de**: 3, 4. **Habilita**: 7 y el test de M1.
 - **Que intente romper el rompedor**: un archivo con columnas cambiadas de lugar, celdas vacías,
   números con coma y con punto, coeficientes que suman 0,9999; el mismo archivo subido dos veces; un
-  archivo enorme; un archivo que no es Excel.
+  archivo enorme; un archivo que no es Excel; dos errores de signo opuesto en dos unidades que dan el
+  total correcto; importar de nuevo con el importador cerrado.
 - **Terminado cuando**: se cumplen los criterios de HU-A2; un archivo con un solo error no carga
-  nada y lo informa; la suma importada coincide con la del archivo.
+  nada y lo informa; la suma importada coincide con la del archivo; cada diferencia por unidad se
+  muestra aunque el total coincida.
 
 ### 6 · `gastos-y-cargos`
 
@@ -226,8 +230,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 8 · `pagos-informados` · crítico
 
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
-- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11.
-- **Decisiones**: D-017, D-018, D-029.
+- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R34.
+- **Decisiones**: D-017, D-018, D-029, D-069, D-070.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
   con la fecha de la transferencia usando el motor del cambio 4; repartir un pago entre varias
@@ -235,23 +239,26 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   sugerencia de alta confianza en la bandeja (R19, ProTecc A1/E3); estado **revertido** para un pago
   confirmado que el banco devuelve, con su contra-movimiento (R18, ProTecc D4); asistente de
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
-  propuesta, ProTecc B2).
+  propuesta, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
+  (D-070); el control "pagos sin asignar" en la lista antes de emitir, como advertencia (R34).
 - **No entra**: el cruce con el extracto (9).
 - **Depende de**: 7. **Habilita**: 9, 10, 13.
 - **Decidir en el design**: el proveedor de IA para leer comprobantes (detrás de un puerto).
 - **Que intente romper el rompedor**: el mismo comprobante dos veces o para dos unidades; un
   comprobante de otro edificio; una confirmación tardía que genera intereses; doble clic en confirmar;
   una imagen con texto que intenta darle órdenes a la IA; revertir un pago que no está confirmado;
-  reimputar y que falle a mitad de camino (no tiene que dejar un solo movimiento aplicado).
+  reimputar y que falle a mitad de camino (no tiene que dejar un solo movimiento aplicado); abrir el
+  comprobante de otra unidad con un link modificado o vencido.
 - **Terminado cuando**: se cumplen HU-A6 y HU-V4; la fecha que cuenta para los intereses es la de la
   transferencia.
 
 ### 9 · `extracto-bancario`
 
 - **Objetivo**: que el administrador valide los pagos informados contra el banco.
-- **Historias**: HU-A7. **Reglas**: R11.
+- **Historias**: HU-A7. **Reglas**: R11, R34.
 - **Entra**: subir el extracto en CSV o Excel; un adaptador por banco y formato; marcar coincidencias;
-  movimientos sin comprobante como fondos pendientes; un movimiento no confirma dos pagos.
+  movimientos sin comprobante como fondos pendientes; un movimiento no confirma dos pagos; el
+  control "extracto incompleto" en la lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8.
 - **Prerrequisito**: responder qué traen los extractos de los bancos que usan los administradores
   de Mendoza (CBU o nombre del originante, concepto completo): es la pregunta Q2 de Alberto,
@@ -305,12 +312,13 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 13 · `avisos-por-email`
 
 - **Objetivo**: avisar antes del vencimiento y en mora, sin molestar de más.
-- **Historias**: HU-V6.
+- **Historias**: HU-V6. **Reglas**: R27, R28, R34.
 - **Entra**: puerto de email con su adaptador; aviso de vencimiento y de mora; un aviso por evento,
   con clave de idempotencia; no avisar a quien ya pagó; un aviso que cae en sábado, domingo o
   feriado se reprograma al primer día hábil siguiente (R27, propuesta, ProTecc W3); validar el
   contacto al cargarlo y, si un envío rebota, mostrar al administrador la lista de "unidades sin
-  contacto válido" (R28, propuesta, ProTecc W4).
+  contacto válido" (R28, propuesta, ProTecc W4); el control "unidades sin contacto válido" en la
+  lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8.
 - **Decidir en el design**: el proveedor de email (detrás de un puerto, sin costo o el más barato, D-043).
 - **Que intente romper el rompedor**: el worker que se cae a mitad del envío; dos avisos el mismo día;
@@ -325,13 +333,15 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 14 · `lectura-de-facturas`
 
 - **Objetivo**: que el administrador cargue una factura con una foto.
-- **Historias**: HU-A3 (factura con QR e IA). **Reglas**: R12, R16.
-- **Decisiones**: D-019.
+- **Historias**: HU-A3 (factura con QR e IA). **Reglas**: R12, R16, R34.
+- **Decisiones**: D-019, D-069, D-070.
 - **Entra**: lectura del QR de ARCA (los dos dominios); la IA completa concepto, período, categoría
   y grupo; factura duplicada frenada; aviso si el receptor no es el consorcio; siempre en borrador;
   registro del costo de cada llamada a la IA; control de monto atípico contra el historial de ese
   proveedor en el edificio, para marcar para revisión una factura que la IA pudo leer mal (R23,
-  propuesta, falta el umbral, ProTecc A2).
+  propuesta, falta el umbral, ProTecc A2); las facturas se descargan con links firmados y con
+  vencimiento (D-070); el control "facturas leídas por IA con alertas" en la lista antes de emitir,
+  como bloqueante (R34).
 - **Depende de**: 6.
 - **Decidir en el design**: el proveedor de IA (puede ser el mismo del cambio 8).
 - **Que intente romper el rompedor**: el ejemplo oficial de ARCA; una factura en dólares; una sin QR;

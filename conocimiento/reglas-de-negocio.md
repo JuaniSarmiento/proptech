@@ -452,11 +452,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   anterior y con el crédito a favor; cómo se relaciona con el certificado de libre deuda (R21).
 - **Tests mínimos**: a definir cuando se responda P11.
 
-## R33 · Datos completos y tipados antes de consultar el motor de reglas · Propuesta (D-066, D-067)
+## R33 · Datos completos y tipados antes de consultar el motor de reglas · Vigente (D-066, D-067)
 
 - **Qué resuelve**: las tablas de decisión de ZEN eligen la fila por defecto en silencio si un dato
   llega con tipo incorrecto o falta (prueba del 13/10).
-- **Propuesta**: el núcleo arma los datos de cada unidad con tipos fijos y verifica que estén todos
+- **Regla**: el núcleo arma los datos de cada unidad con tipos fijos y verifica que estén todos
   antes de llamar al motor; la respuesta pasa por el validador (`motor-de-reglas.md`). Cualquier
   dato faltante, mal tipado o respuesta fuera de contrato bloquea la emisión con una alerta que dice
   qué regla y qué unidad.

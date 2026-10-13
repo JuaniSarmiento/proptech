@@ -24,8 +24,9 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
 | `conocimiento/roadmap.md` | **Los 17 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
-| `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066): contrato, cómo se maneja el float, versiones, fallas y dónde entra en el roadmap | Se reescribe |
+| `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN (calcula con decimales exactos) y su riesgo real (tablas que caen en silencio a la fila por defecto), versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
+| `conocimiento/lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani**. Si
 cambia una decisión, se escribe una decisión nueva; nunca se edita una vieja.
@@ -43,7 +44,9 @@ original de la especificación se descartó (D-002) y no se usa.
 - **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
 - **Próximo**: cambio 1c `cola-logs-y-respaldos` (ya propuesto, en `openspec/changes/`). Antes de cada cambio,
   constructor y rompedor leen `conocimiento/lecciones.md`.
-- Preguntas abiertas: el edificio piloto (P1) y el precio (P8).
+- Preguntas abiertas (al final de `decisiones.md`): el edificio piloto (P1), el precio (P8), los
+  extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
+  ante la AAIP (P12), el acceso de soporte (P13) y el plazo del libre deuda (P14).
 
 ## Reglas que no se negocian
 

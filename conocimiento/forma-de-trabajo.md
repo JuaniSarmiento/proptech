@@ -49,7 +49,7 @@ orquestador frena y le presenta a Juani el problema con opciones. No se sigue it
 
 | Tipo de cambio | Ciclo |
 |---|---|
-| **Crítico o que toca plata** (2, 4, 5, 6, 7, 8 y 9 del roadmap) | Completo: constructor, rompedor y auditor por separado |
+| **Toca plata** (2, 4, 5, 6, 7, 8 y 9 del roadmap; de esos, los críticos 2, 4, 7 y 8 además llevan la aprobación de Juani antes de codear) | Completo: constructor, rompedor y auditor por separado |
 | **Chico o de sólo lectura** (10, 12, 13) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
 | **Infraestructura y el resto** (1a, 1b, 3, 11, 14, 15) | Completo |
 
