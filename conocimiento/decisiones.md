@@ -875,6 +875,21 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   fijos y el validador (R33).
 - **Quién**: Juani, a partir del aviso de Alberto (12/10) y la prueba del 13/10.
 
+## D-068 · El saldo inicial se compara unidad por unidad, no sólo el total
+
+- **Fecha**: 13/10/2026
+- **Decisión**: al migrar un edificio, los saldos importados quedan en un borrador y se comparan
+  unidad por unidad contra el saldo de cada unidad según el administrador; el total queda como
+  control adicional. Las diferencias se corrigen o se aceptan con registro. Al confirmar, el
+  importador se cierra y los errores posteriores se corrigen con ajustes con motivo (R08). Detalle
+  en R09.
+- **Por qué**: con un solo total, dos errores de signo opuesto se compensan y nadie se entera. Es una
+  corrección que Alberto hizo en su propio documento (ProTecc v3.5, sección 12.2).
+- **Descartado**: comparar sólo el total (lo que decía R09 hasta hoy); bloquear la confirmación hasta
+  que no quede ninguna diferencia, porque a veces la diferencia la tiene el Excel del administrador y
+  no la importación.
+- **Quién**: Juani, a partir del material de Alberto.
+
 ---
 
 ## Preguntas abiertas

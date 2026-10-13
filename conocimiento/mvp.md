@@ -67,6 +67,10 @@ propietario, contacto, coeficiente, saldo inicial) para no tipearlo a mano.
   cuando lo importo, entonces no se carga nada y recibo un informe fila por fila con cada error.
 - Dado un edificio ya importado, cuando subo el mismo Excel otra vez, entonces el sistema lo
   detecta y no duplica unidades ni saldos.
+- Dado un borrador de saldos y mi listado de saldos por unidad, cuando los comparo, entonces veo
+  cada unidad que no coincide con su diferencia, aunque el total dé igual (R09).
+- Dadas diferencias, cuando las acepto igual, entonces la aceptación queda registrada y recién ahí
+  puedo confirmar los saldos.
 
 **HU-A3 · Cargar gastos**
 Como administrador, quiero cargar los gastos del mes a mano o subiendo la factura, para que entren

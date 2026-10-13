@@ -119,7 +119,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Regla**: ningún movimiento de la cuenta corriente se edita ni se borra. Una corrección es
   un movimiento nuevo con motivo, responsable y referencia al que corrige (análisis H03, H16).
 
-## R09 · Saldo inicial al migrar · Vigente (D-015)
+## R09 · Saldo inicial al migrar · Vigente (D-015, D-068)
 
 - **Con detalle por período** (si el complejo lo tiene): se carga cada obligación vieja con su
   período y vencimiento; los intereses viejos se calculan con R03 como cualquier otra.
@@ -127,8 +127,19 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   migración; los intereses corren desde ahí.
 - **Crédito a favor**: entra como crédito y se compensa en la primera liquidación.
 - **Trazabilidad**: cada saldo inicial guarda el archivo y la fila de origen.
+- **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
+  cuenta corriente. El sistema lo compara **unidad por unidad** contra el saldo de cada unidad según
+  el administrador, y muestra cada diferencia con su unidad. El total se compara también, como
+  control adicional. Sin diferencias, se habilita "Confirmar saldos". Con diferencias, el
+  administrador las corrige o las acepta igual, y la aceptación queda registrada (quién, cuándo y qué
+  diferencias).
+- **Después de confirmar**: el importador se cierra para ese edificio. Un saldo inicial mal cargado
+  se corrige con un ajuste con motivo (R08), nunca reabriendo la migración.
 - **Tests mínimos**: saldo con detalle genera sus obligaciones; total único genera una sola;
-  crédito negativo entra como crédito; la suma importada coincide con el archivo de origen.
+  crédito negativo entra como crédito; la suma importada coincide con el archivo de origen; dos
+  errores de signo opuesto en dos unidades (+10.000 y -10.000) dan el total correcto y aun así
+  aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
+  diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
 
 ## R10 · Aislamiento entre complejos · Vigente (D-016)
 
