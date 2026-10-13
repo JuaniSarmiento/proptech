@@ -306,7 +306,7 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 6b `motor-de-reglas` ⓔ · 7 `liquidacion-y-emision` ⓔ |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 6b `motor-de-reglas` ⓔ · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 

@@ -1,11 +1,13 @@
 ## Context
 
 Ver `proposal.md` (Why). Este cambio es la segunda mitad del `arranque-del-sistema` original, que se
-partió en dos (ver `design.md` de `arranque-del-sistema`, "División del cambio"). Las decisiones se
-mudaron sin cambios de contenido y **conservan sus números (D1 a D4, D7 a D9, D12)** para que se
-puedan rastrear; D5, D6, D10 y D11 viven en `arranque-del-sistema`.
+partió en dos (ver `design.md` de `arranque-del-sistema`, "División del cambio"), y que la auditoría
+de Alberto del 13/10 volvió a partir (D-087): **este diseño (1c) conserva D1 a D4, D7, D8 y D12**;
+**D9 (respaldos) se mudó sin cambios de fondo a `respaldos-y-restauracion` (1d)**, que además define
+el humo ampliado y el README. Los números se conservan para que se puedan rastrear; D5, D6, D10 y D11
+viven en `arranque-del-sistema`. D13 es nueva (los errores de terceros, L-007).
 
-Estado de partida esperado, con `arranque-del-sistema` archivado:
+Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
 
 - `infra/compose.yaml` (proyecto `proptech`): `db` (healthcheck entrecomillado), `migraciones`, `api`,
   `web`, `caddy`; redes `borde` e `interna` (`internal: true`). `api` ya recibe `REDIS_HOST`,
@@ -13,39 +15,42 @@ Estado de partida esperado, con `arranque-del-sistema` archivado:
 - `backend/`: `Configuracion` con Redis y `PROPTECH_PARAMETROS` (D11 de 1b), con la parte de
   PostgreSQL separada para Alembic; `leer_parametros` llamado en `crear_app()`; `Dinero`, `TipoDinero`,
   `leer_semilla` y su comando. Migración `0001` vacía. `/api/salud` con verificador de base inyectable
-  y `connect_timeout=2`.
+  y `connect_timeout=2`. Cuatro tests de arranque de la API como proceso aparte
+  (`tests/unitarios/test_arranque_api*.py`), que el worker replica (L-009).
 - Tests: fixture de PostgreSQL que deriva la imagen de Compose y test de integración que compara la
   imagen del contenedor real (D12 de 1b). Nada de Redis.
 - La web es un esqueleto de Next.js 16 sin llamadas a la API. CI: jobs `backend`, `web`, `humo` y
-  `secretos`.
+  `secretos`. `infra/ci/humo.sh` levanta con `docker compose up --build -d --wait`.
 
-**Si `arranque-del-sistema` no está archivado** cuando arranque el constructor, este cambio no empieza:
-depende de su tarea 6.2 (Compose ya pasa la configuración a la API).
+**Si `arranque-del-sistema` no está archivado** cuando arranque el constructor, este cambio no empieza.
 
 ## Cómo aplica cada lección
 
 | Lección | Dónde se aplica en este cambio |
 |---|---|
-| L-001 (apagada, que no responde y lenta, con cota de tiempo) | Redis en los tres estados contra contenedor real (D4, tareas 3.3 y 3.4); base pausada durante un trabajo (4.5); `/salud-web` con la API colgada (5.2); humo con Redis pausado (7.3). Cada test afirma su cota. |
-| L-002 (faltante, vacía, en blanco, tipo, rango; nombra la variable sin el valor) | Arranque del worker (4.6) y configuración de respaldos (6.1). |
-| L-003 (contar tests contra la línea de base) | Tarea 1.1 anota la línea de base; 8.1 compara. |
-| L-004 (dos revisores por el mismo camino no son dos) | Para el rompedor: el humo y los tests de integración cubren el `request_id` por caminos distintos (pedido directo, por la web, por el worker); atacar por uno que no sea esos. |
-| L-005 (verde es todo el workflow) | Cada tarea cierra con lint, formato, tipos y tests del lado tocado; 8.1 corre el workflow entero, humo incluido. |
-| L-006 (lo destructivo apunta a `proptech`) | `restaurar.sh` rechaza destinos sin prefijo `proptech_` o iguales a la base en uso (D9); el humo usa `-p proptech`. |
+| L-001 (apagada, que no responde y lenta, con cota de tiempo) | Redis en los tres estados contra contenedor real (D4, tarea 4.4); salud con Redis detenido y pausado (4.6); base pausada durante un trabajo (5.7); `/salud-web` con la API colgada y con la conexión rechazada (6.3). Cada test afirma su cota. |
+| L-002 (faltante, vacía, en blanco, tipo, rango; nombra la variable sin el valor) | Arranque del worker (5.8). |
+| L-003 (contar tests contra la línea de base) | 1.1 anota la línea de base; 7.1 compara. |
+| L-004 (dos revisores por el mismo camino no son dos) | Para el rompedor: los tests cubren el `request_id` por el middleware con `TestClient`, por la ruta de la web con `fetch` simulado y por el worker en proceso; el de punta a punta por el proxy es del humo del 1d. Atacar por un camino que no sea esos (por ejemplo, un endpoint `def` que abre su propia sesión, o dos pedidos concurrentes que comparten conexión del pool). |
+| L-005 (verde es todo el workflow) | Cada tarea cierra con lint, formato, tipos y tests del lado tocado; 7.1 corre el workflow entero, humo incluido. |
+| L-006 (lo destructivo apunta a `proptech`) | Los tests que detienen o pausan Redis o PostgreSQL lo hacen sobre contenedores propios del test, nunca sobre el de sesión ni sobre el stack de Compose (D12; 4.4, 5.7). |
+| L-007 (el error de una librería también es una salida) | D7 y D13: el formatter no copia mensajes de excepción (2.2); `ColaNoDisponible` tiene mensaje propio (4.4); la salud no repite el error (4.5); el 500 inesperado (3.3); los eventos de reintento (5.3); el trabajo `pickle` rechazado (5.6); el arranque del worker (5.8); `/salud-web` (6.3). Cada uno con un test de marcador. |
+| L-008 (fullmatch y sólo ASCII) | Validación del `request_id` en Python y TypeScript (D8; 3.1, 6.1) y `fallar_veces` entero estricto (5.4). |
+| L-009 (un arreglo en un módulo se prueba en su gemelo) | Gemelos de este cambio: el validador del `request_id` en Python y en TypeScript (una sola tabla de casos, 3.1 y 6.1); el verificador de base y el de cola de `/api/salud` (4.5); el arranque de la API y el del worker (5.8 replica los cuatro tests); `/api/salud` y `/salud-web` (los dos sin texto de error en el cuerpo, 4.5 y 6.3). |
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Que los cambios 2 a 15 encuentren resueltas, probadas y con una sola forma: la cola con reintentos e
-  idempotencia, el log, el `request_id` y el backup.
+- Que los cambios 1d a 15 encuentren resueltas, probadas y con una sola forma: la cola con reintentos
+  e idempotencia, el log y el `request_id`.
 - Que cada pieza falle cerrada y rápido ante sus dependencias rotas, con un error que diga qué pasó.
 
 **Non-Goals:**
 
 - Diseñar el modelo de tenant del worker (cambio 2).
 - Monitoreo, métricas o alertas externas; página de estado pública.
-- Copia de backups fuera del servidor y su cifrado (con el despliegue).
+- Respaldos, restauración, humo ampliado y README (1d, D-087).
 - Logs estructurados de la web y de Caddy (ver D7).
 
 ## Decisions
@@ -212,6 +217,20 @@ navegador ──► Caddy ─────────────► API ──�
   Todo productor genera UUID (Caddy, `crypto.randomUUID()`, `uuid.uuid4()`), así que validar contra
   ese patrón exacto descarta cualquier valor malicioso y además cabe en `application_name` (63
   caracteres) con el prefijo.
+- **Cómo se valida (L-008)**: en Python, `re.fullmatch` con `flags=re.ASCII` y la expresión
+  `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`; en TypeScript, la
+  misma expresión anclada con `^...$` y sin la bandera `m`. **Se valida antes de normalizar**: nunca
+  se recorta ni se pasa a minúsculas un valor para después aceptarlo, porque `strip()` se come el salto
+  de línea final y `lower()` de Unicode puede convertir un carácter ajeno. Clases `[0-9a-fA-F]`
+  explícitas en vez de `\d` o de `re.IGNORECASE`.
+- **Una sola tabla de casos (L-009)**: `config/contratos/request-id.json`, con los válidos (y su forma
+  normalizada) y los inválidos (con su motivo). La leen el test de pytest y el de Vitest, y cada uno
+  exige que haya al menos un caso de cada motivo obligatorio (vacío, largo, sin guiones, llaves,
+  espacio, tabulación, salto de línea al principio y al final, dígito no ASCII, ancho completo,
+  `<script>`, comillas, inyección SQL, mayúsculas), así nadie la vacía sin que falle un test. Vive en
+  `config/` porque los dos scripts de test (`test-backend.sh` y `test-web.sh`) corren en el host con el
+  repositorio entero; no es configuración de ejecución y ningún proceso la lee en producción.
+  **Descartado**: duplicar los casos en cada lado (el defecto que L-009 describe).
 - **Caddy**: `request_header X-Request-ID {http.request.uuid}` en el sitio (pisa siempre lo que mande
   el cliente) y `header X-Request-ID {http.request.uuid}` para devolverlo. **Por qué pisar**: un
   valor elegido por el cliente sirve para ensuciar los logs o hacerse pasar por otro pedido; el que
@@ -222,7 +241,12 @@ navegador ──► Caddy ─────────────► API ──�
   (`export const dynamic = "force-dynamic"`) hace `fetch` a `${PROPTECH_URL_API_INTERNA}/api/salud`
   con esa cabecera y `AbortSignal.timeout(2000)`, y responde
   `{"web": "ok", "api": "ok" | "degradado" | "sin_conexion" | "sin_configurar"}` con 200 si la API dio
-  200 y 503 si no. Variable `PROPTECH_URL_API_INTERNA=http://api:8000`, fija en Compose (no es
+  200 y 503 si no. **Contrato** (spec "Contrato de respuesta de /salud-web"): exactamente esos dos
+  campos, `Content-Type: application/json`, `api` derivado sólo del código de estado (200 es `ok`,
+  cualquier otro es `degradado`, sin leer el cuerpo de la API); `sin_conexion` ante timeout o conexión
+  rechazada; `sin_configurar` sin la variable, sin llamar a `fetch`; el mismo `X-Request-ID` que se
+  reenvió va en la respuesta; nunca el texto del error ni la dirección interna (L-007). Variable
+  `PROPTECH_URL_API_INTERNA=http://api:8000`, fija en Compose (no es
   secreto). Es la única llamada de la web a la API en este cambio; la usan las páginas reales desde el
   cambio 2. **Descartado** mostrar el estado en la página: es interfaz y pediría pasar por impeccable
   por una línea de texto.
@@ -243,51 +267,25 @@ navegador ──► Caddy ─────────────► API ──�
   argumento antes de correr y la limpia al terminar; los logs y el `application_name` lo toman de ahí.
   Si el argumento falta o es inválido, se genera uno y se loguea `request_id_reemplazado`.
 
-### D9 · Backups: dónde, cada cuánto y cómo salen del contenedor
+### D13 · Los errores de terceros no salen (L-007)
 
-- **Servicio `respaldos`** en Compose con `image: postgres:18.6-trixie` (el `pg_dump` de la misma
-  versión que el servidor), `entrypoint: ["/usr/local/bin/respaldar.sh"]` montado desde
-  `infra/respaldos/respaldar.sh:ro`, red `interna` únicamente, sin `ports`, `user:
-  "${PROPTECH_UID:?falta PROPTECH_UID}:${PROPTECH_GID:?falta PROPTECH_GID}"`, `HOME=/tmp`, y
-  `${PROPTECH_DIR_RESPALDOS:?falta PROPTECH_DIR_RESPALDOS}:/respaldos` montado.
-- **Cómo sale sin red**: la red `interna` no tiene salida y no la necesita. El dump viaja de `db` a
-  `respaldos` por la red interna (libpq) y queda en `/respaldos`, que es una **carpeta del host**
-  montada (bind mount). El archivo existe en el disco del host apenas se escribe; no hay copia por
-  red ni puerto abierto. **Por qué bind mount y no un volumen con nombre**: `docker compose down -v`
-  borra los volúmenes con nombre (lo hace el propio humo) y se llevaría los backups junto con la base;
-  una carpeta del host no la toca.
-- **Dónde**: `PROPTECH_DIR_RESPALDOS`. En `.env.example`, `./datos-respaldos` (relativo a `infra/`,
-  agregado a `.gitignore`). En el VPS, una ruta fuera del repositorio. Corre con el uid/gid del
-  usuario del host para que los archivos sean suyos y no de un uid 999 que el host no conoce.
-- **Cada cuánto**: uno al arrancar el servicio y después cada `RESPALDO_INTERVALO_SEGUNDOS`
-  (default 86400). Diario alcanza para el volumen del MVP; el de arranque hace que "el backup se
-  genera solo" se pueda comprobar en el humo sin esperar un día. **Descartado** cron en el contenedor:
-  la imagen de PostgreSQL no lo trae y sumar un paquete por un `sleep` no se justifica.
-- **Formato y nombre**: `pg_dump --format=custom` a `proptech-AAAAMMDDTHHMMSSZ.dump.parcial`, luego
-  `pg_restore --list` sobre el archivo (verifica que se puede leer) y `mv` atómico a `.dump`. `umask
-  077`: sólo el dueño lee. Después escribe `.ultimo-ok` con la hora (epoch).
-- **Retención**: `RESPALDO_CONSERVAR` (default 14, dos semanas). Se borra lo que excede, más viejo
-  primero, **sólo** archivos que cumplen `proptech-*.dump`, y sólo después de un backup correcto.
-  `.parcial` huérfanos de un ciclo anterior se borran al arrancar.
-- **Fallas**: si `pg_dump` o la verificación fallan, se borra el `.parcial`, se loguea
-  `respaldo_fallido` con nivel `error` y se espera al próximo ciclo sin terminar el proceso.
-- **Validación de su configuración** (L-002) al arrancar: intervalo entero 60..604800, conservar
-  entero 1..365, carpeta existente y escribible; el error nombra la variable, nunca la contraseña.
-- **Salud**: `respaldar.sh --salud` falla si `.ultimo-ok` no existe o es más viejo que 1,5 intervalos;
-  healthcheck con `start_period: 120s`.
-- **Logs** del script: líneas JSON con los mismos campos base (`ts`, `nivel`, `servicio:"respaldos"`,
-  `evento`, `componente`), escritas con `printf` y valores fijos (nombre de archivo, duración), nunca
-  la salida de `pg_dump`.
-- **Testeable sin Docker**: `respaldar.sh --una-vez` corre un ciclo y termina. Los tests de pytest lo
-  ejecutan con `pg_dump`/`pg_restore` falsos en el `PATH` para cubrir nombre, atomicidad, retención,
-  falla y configuración inválida.
-- **Restauración** `infra/respaldos/restaurar.sh <archivo> [base_destino]`: corre en el host, usa
-  `docker compose -p proptech exec -T db`, destino por defecto `proptech_restauracion`, **rechaza**
-  un destino igual a `POSTGRES_DB` o sin el prefijo `proptech_` (L-006), hace `dropdb --if-exists` y
-  `createdb` del destino y `pg_restore --no-owner` por la entrada estándar. El humo lo corre y
-  compara la revisión de Alembic de la base restaurada con la de la base en uso.
-- **Fuera**: copia fuera del servidor y cifrado (Alberto: "copias cifradas todos los días, guardadas
-  fuera del servidor"). Se decide con el despliegue; queda en Riesgos.
+- Regla: ningún `str(error)` de redis-py, ARQ, psycopg o SQLAlchemy se copia a un log, a un error
+  propio o a una respuesta. Lo que sale es el tipo (`tipo_error`), la ubicación (`traza`, D7) y una
+  descripción propia.
+- Dónde podría colarse y cómo se cierra:
+  - **Formatter** (D7): usa `record.msg`, descarta `record.args` y no incluye el mensaje de la
+    excepción. Cubre también los logs de ARQ y uvicorn, que pasan por los handlers que reemplaza
+    `configurar_logs`.
+  - **`ColaNoDisponible`**: se levanta con un mensaje fijo (`"cola no disponible"`) y `from None`
+    para que el traceback no encadene el error de redis-py.
+  - **Verificadores de salud**: devuelven sólo `ok` o `sin_conexion`.
+  - **Arranque del worker**: reutiliza los mensajes de `Configuracion` y `leer_parametros`, que ya
+    nombran la variable o el campo sin el valor (1b); nunca reenvía el error de pydantic o de PyYAML.
+  - **Trabajo rechazado** (`pickle` u otro formato): el evento se loguea por plantilla, sin el
+    contenido crudo del trabajo.
+  - **`/salud-web`**: el `catch` mapea a un estado fijo, nunca a `error.message`.
+- Cada punto tiene un test con un marcador en el mensaje del error de terceros que afirma que el
+  marcador no aparece en la salida.
 
 ### D12 · Tests de integración con Redis real
 
@@ -316,29 +314,30 @@ navegador ──► Caddy ─────────────► API ──�
   con un evento propio.
 - [La contraseña de Redis queda visible en `docker inspect` del servicio] → Igual que la de PostgreSQL
   en el entorno; quien accede al daemon de Docker ya es dueño de la máquina.
-- [Backups en el mismo disco que la base] → Protegen de un error humano o una migración rota, no de
-  perder el servidor. La copia fuera del servidor y el cifrado se deciden con el despliegue; hasta
-  entonces no hay datos reales (el piloto no empezó).
-- [El uid/gid del host como usuario del servicio de respaldos] → En el CI el runner no es 1000; el
-  humo exporta `PROPTECH_UID=$(id -u)` y `PROPTECH_GID=$(id -g)` antes de levantar.
 - [`trabajos_hechos` crece sin límite] → Una fila por trabajo; al volumen del MVP son miles por año.
   Se poda cuando moleste, nunca antes de que pase el `keep_result` de ARQ.
 
-- [Tamaño del cambio] → 32 tareas, con logs, cola, worker, web y respaldos en una sola vuelta. 1b
-  mostró que una vuelta del constructor cubre unas 20. Si se quiere evitar otra división a mitad de
-  camino, el corte natural es después de la sección 5 (`request_id` de punta a punta) y dejar
-  respaldos, humo y README (secciones 6 y 7) en un cambio aparte.
+- [Tamaño del cambio] → 29 tareas, por encima de las "unas veinte" de `openspec/config.yaml`. Es el
+  corte que fijó D-087 (secciones 1 a 5 del cambio original, 23 tareas) más el cierre, con las tareas
+  de logs, cola y worker partidas para que ninguna supere medio día y con las lecciones L-007 a L-009
+  sumadas. El próximo corte natural sería sacar la web y el proxy (sección 6) a otro cambio; no se hace
+  sin decisión de Juani.
+- [El 1c se archiva sin el humo ampliado] → Los escenarios de punta a punta por el proxy (el
+  `request_id` elegido por el cliente, de la web a la API, el worker con un reintento dentro del stack,
+  Redis pausado detrás de Caddy) se verifican acá por partes: tests de la configuración de Caddy y
+  Compose, de la ruta de la web con `fetch` simulado, del middleware y del worker en proceso. El humo
+  existente sí levanta Redis y el worker y espera que estén saludables. La verificación de punta a
+  punta la hace el humo del 1d (D-087), que no empieza sin el 1c archivado.
 
 ## Migration Plan
 
 - Migración `0002` crea `trabajos_hechos`; su `downgrade` la borra. Probada ida y vuelta sobre base
   vacía (como `0001`).
-- Para volver atrás: revertir el commit y `docker compose -p proptech down -v`. La carpeta de respaldos
-  del host queda; se borra a mano si se quiere.
-- Al actualizar una copia local existente: copiar las variables nuevas de `.env.example` a `.env` y
-  crear la carpeta de respaldos. Compose nombra la que falte.
+- Para volver atrás: revertir el commit y `docker compose -p proptech down -v`.
+- Al actualizar una copia local existente no hace falta tocar `.env`: este cambio no suma variables
+  (`REDIS_PASSWORD` ya está desde 1b y `PROPTECH_URL_API_INTERNA` es fija en Compose).
 
 ## Open Questions
 
-Ninguna que cambie las specs o las tareas. Pendientes de la etapa de despliegue: destino y cifrado de
-la copia fuera del servidor; logs estructurados de Caddy y de la web.
+Ninguna que cambie las specs o las tareas. Pendiente de la etapa de despliegue: logs estructurados de
+Caddy y de la web.

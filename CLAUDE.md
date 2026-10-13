@@ -23,7 +23,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `conocimiento/roadmap.md` | **Los 19 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
+| `conocimiento/roadmap.md` | **Los 20 cambios en orden**, con la ficha de cada uno: arrancá cada propose desde su ficha | Se reescribe |
 | `conocimiento/motor-de-reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN (calcula con decimales exactos) y su riesgo real (tablas que caen en silencio a la fila por defecto), versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `conocimiento/forma-de-trabajo.md` | **Cómo se hace cada cambio**: vos orquestás; constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `conocimiento/lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
@@ -42,8 +42,9 @@ original de la especificación se descartó (D-002) y no se usa.
   `cd infra && docker compose up --build` (ver README), con CI en GitHub Actions. Todavía no hay
   dominio: sólo el esqueleto y `/api/salud`.
 - **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
-- **Próximo**: cambio 1c `cola-logs-y-respaldos`: propuesto en `openspec/changes/`, con la primera tarea
-  (la medición de partida) hecha, y a re-proponer partido en 1c y 1d (D-087). Antes de cada cambio,
+- **Próximo**: cambio 1c `cola-logs-y-respaldos` (logs, cola, worker y web; la primera tarea, la
+  medición de partida, está hecha) y después el 1d `respaldos-y-restauracion` (HIGH, espera la
+  aprobación de Juani). Los dos están propuestos en `openspec/changes/` (D-087). Antes de cada cambio,
   constructor y rompedor leen `conocimiento/lecciones.md`.
 - Preguntas abiertas (la lista P, al final de `decisiones.md`; es la lista completa): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción

@@ -32,8 +32,15 @@ registrada su clave en la base. Ninguna ruta pública MUST permitir encolarla.
 
 #### Scenario: Cantidad de fallas fuera de rango
 
-- **WHEN** se intenta encolar la tarea de prueba con -1 u 11 fallas simuladas
+- **WHEN** se intenta encolar la tarea de prueba con -1 u 11 fallas simuladas, o con un valor que no es
+  un entero (texto, booleano o número con decimales)
 - **THEN** el encolado se rechaza con un error que nombra el campo y no se encola nada
+
+#### Scenario: Sin ruta pública para la tarea de prueba
+
+- **WHEN** se recorren las rutas registradas en la API
+- **THEN** ninguna permite encolar la tarea de prueba; sólo se encola desde código o desde el comando
+  dentro del contenedor
 
 ### Requirement: Reintentos espaciados sólo para errores pasajeros
 
@@ -114,7 +121,8 @@ trabajos con un formato capaz de ejecutar código (como `pickle`). Los montos MU
 ### Requirement: Cola que no responde
 
 Encolar un trabajo SHALL fallar con un error propio de "cola no disponible" en a lo sumo 3 segundos
-cuando Redis está caído, no responde o responde más lento que el límite. La API MUST arrancar y
+cuando Redis está caído, no responde o responde más lento que el límite. El mensaje de ese error MUST
+ser propio y MUST NOT repetir el texto del error del cliente de Redis ni de ARQ. La API MUST arrancar y
 responder aunque Redis no esté disponible.
 
 #### Scenario: Redis caído
@@ -133,11 +141,22 @@ responder aunque Redis no esté disponible.
 - **THEN** el encolado se completa; y cuando tarda más que el límite, falla con "cola no disponible"
   dentro de la cota
 
+#### Scenario: La API arranca sin Redis
+
+- **WHEN** la API arranca con Redis inalcanzable
+- **THEN** arranca, no intenta conectarse a Redis al importar la aplicación y `GET /api/salud` responde
+
 ### Requirement: El worker no arranca con configuración o parámetros inválidos
 
 El worker SHALL validar al arrancar la misma configuración que la API (variables de la base, de Redis
 y `PROPTECH_PARAMETROS`) y leer el archivo de parámetros con el lector validado, y MUST terminar con
-un error que nombre cada variable o campo con problema, sin mostrar ninguna contraseña.
+un error que nombre cada variable o campo con problema, sin mostrar ninguna contraseña. Cada caso de
+arranque que la API ya prueba MUST tener su test equivalente en el worker.
+
+#### Scenario: Worker sin una variable obligatoria
+
+- **WHEN** el worker arranca sin `POSTGRES_PASSWORD`
+- **THEN** el proceso termina con un error que nombra la variable
 
 #### Scenario: Worker con variables de Redis rotas
 
@@ -146,5 +165,7 @@ un error que nombre cada variable o campo con problema, sin mostrar ninguna cont
 
 #### Scenario: Worker con parámetros inválidos
 
-- **WHEN** el worker arranca con un archivo de parámetros que tiene la tasa negativa
-- **THEN** el proceso termina con un error que nombra `intereses.tasa_mensual`
+- **WHEN** el worker arranca con un archivo de parámetros que tiene la tasa negativa, o con
+  `PROPTECH_PARAMETROS` faltante o vacía
+- **THEN** el proceso termina con un error que nombra `intereses.tasa_mensual` o `PROPTECH_PARAMETROS`,
+  según el caso

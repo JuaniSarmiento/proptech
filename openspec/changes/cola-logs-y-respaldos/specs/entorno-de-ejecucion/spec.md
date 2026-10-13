@@ -2,31 +2,29 @@
 
 ### Requirement: Arranque completo con un comando
 
-El sistema SHALL levantarse entero (proxy, web, API, worker, base de datos, Redis, respaldos y
-migraciones) con `docker compose up` ejecutado en `infra/`, desde un clon limpio del repositorio,
-siguiendo sólo los pasos del README, sin instalar en el host nada más que Docker con Compose.
+El sistema SHALL levantarse entero (proxy, web, API, worker, base de datos, Redis y migraciones) con
+`docker compose up` ejecutado en `infra/`, desde un clon limpio del repositorio, siguiendo sólo los
+pasos del README, sin instalar en el host nada más que Docker con Compose.
 
 #### Scenario: Clon limpio siguiendo el README
 
 - **WHEN** una persona clona el repositorio en una máquina con Docker, copia `infra/.env.example` a
-  `infra/.env`, crea la carpeta de respaldos como indica el README y ejecuta
-  `docker compose up --build` en `infra/`
-- **THEN** todos los servicios de larga vida (proxy, web, API, worker, base, Redis y respaldos) quedan
-  en estado saludable y el trabajo de migraciones termina con código de salida 0
+  `infra/.env` y ejecuta `docker compose up --build` en `infra/`
+- **THEN** todos los servicios de larga vida (proxy, web, API, worker, base y Redis) quedan en estado
+  saludable y el trabajo de migraciones termina con código de salida 0
 
 #### Scenario: Falta el archivo de entorno
 
 - **WHEN** se ejecuta `docker compose up` en `infra/` sin `infra/.env` o sin una variable obligatoria
-  como la contraseña de la base, la de Redis o la carpeta de respaldos
+  como la contraseña de la base o la de Redis
 - **THEN** Compose se niega a arrancar y el mensaje nombra la variable que falta, en lugar de
   arrancar con un valor por defecto
 
 ### Requirement: El proxy es la única puerta pública
 
 Sólo el proxy SHALL publicar puertos hacia el host, y sólo el 80 y el 443. La base de datos, Redis, la
-API, el worker, la web y el servicio de respaldos MUST NOT publicar ningún puerto y MUST ser
-alcanzables únicamente desde la red interna de Compose. La base de datos y Redis MUST estar en una
-red sin salida a Internet.
+API, el worker y la web MUST NOT publicar ningún puerto y MUST ser alcanzables únicamente desde la red
+interna de Compose. La base de datos y Redis MUST estar en una red sin salida a Internet.
 
 #### Scenario: Puertos publicados del stack levantado
 
@@ -84,16 +82,21 @@ conexión, el usuario, el host de la base o de Redis, trazas de error ni version
 - **THEN** la respuesta es 503 con cuerpo `{"estado": "degradado", "base": "ok", "cola": "sin_conexion"}`
   en menos de 4 segundos
 
+#### Scenario: La base y la cola no responden
+
+- **WHEN** la base y Redis están detenidos y se hace `GET /api/salud`
+- **THEN** la respuesta es 503 con cuerpo
+  `{"estado": "degradado", "base": "sin_conexion", "cola": "sin_conexion"}`
+
 ### Requirement: Configuración sólo por variables de entorno y sin secretos en el repositorio
 
 Toda configuración que varía entre entornos (cadena de conexión, contraseñas de la base y de Redis,
-dirección del sitio, ruta del archivo de parámetros, carpeta y frecuencia de respaldos) SHALL leerse
-de variables de entorno. El repositorio MUST incluir sólo `.env.example` con valores de ejemplo no
-válidos como credencial real, y MUST NOT versionar ningún archivo `.env` real ni la carpeta de
-respaldos. Las imágenes construidas MUST NOT contener archivos `.env`. Toda variable obligatoria que
-falte, esté vacía, en blanco, tenga un tipo equivocado o esté fuera de rango MUST hacer terminar al
-proceso con un error que nombre cada variable con problema sin mostrar nunca su valor. El trabajo de
-migraciones MUST necesitar sólo las variables de la base.
+dirección del sitio, ruta del archivo de parámetros) SHALL leerse de variables de entorno. El
+repositorio MUST incluir sólo `.env.example` con valores de ejemplo no válidos como credencial real, y
+MUST NOT versionar ningún archivo `.env` real. Las imágenes construidas MUST NOT contener archivos
+`.env`. Toda variable obligatoria que falte, esté vacía, en blanco, tenga un tipo equivocado o esté
+fuera de rango MUST hacer terminar al proceso con un error que nombre cada variable con problema sin
+mostrar nunca su valor. El trabajo de migraciones MUST necesitar sólo las variables de la base.
 
 #### Scenario: Archivo de entorno ignorado
 
@@ -134,23 +137,17 @@ migraciones MUST necesitar sólo las variables de la base.
 - **WHEN** se lee la configuración de Compose
 - **THEN** la API y el worker reciben las variables de Redis (la contraseña desde el archivo de
   entorno, obligatoria) y la ruta del archivo de parámetros, con la carpeta `config/` montada de sólo
-  lectura, y `.env.example` incluye valores de ejemplo para la contraseña de Redis y las variables de
-  respaldos
-
-#### Scenario: Carpeta de respaldos ignorada
-
-- **WHEN** existe la carpeta local de respaldos con archivos y se consulta el estado de git
-- **THEN** git no lista ningún backup como archivo a versionar
+  lectura, y `.env.example` incluye un valor de ejemplo para la contraseña de Redis
 
 ### Requirement: Contenedores sin privilegios de root
 
-Los procesos de la API, la web, el worker, Redis y el servicio de respaldos SHALL correr dentro de sus
-contenedores con un usuario sin privilegios de root.
+Los procesos de la API, la web, el worker y Redis SHALL correr dentro de sus contenedores con un
+usuario sin privilegios de root.
 
 #### Scenario: Usuario del proceso
 
 - **WHEN** se consulta el usuario efectivo del proceso principal de los contenedores de la API, la
-  web, el worker, Redis y respaldos
+  web, el worker y Redis
 - **THEN** no es root (uid distinto de 0)
 
 ## ADDED Requirements

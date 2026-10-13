@@ -13,8 +13,9 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 |---|---|---|---|---|---|---|
 | 1a | `infraestructura-base` ✅ | M1 | ninguno | no | no | mediano |
 | 1b | `arranque-del-sistema` ✅ | M1 | 1a | no | no | mediano |
-| 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano (puede partirse en 1d) |
-| 2 | `acceso-y-aislamiento` | M1 | 1c | **sí** | **sí** | grande |
+| 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano |
+| 1d | `respaldos-y-restauracion` | M1 | 1c | no | no (HIGH, D-087) | chico |
+| 2 | `acceso-y-aislamiento` | M1 | 1d | **sí** | **sí** | grande |
 | 3 | `configuracion-del-edificio` | M1 | 2 | no | no (HIGH, D-087) | mediano |
 | 4 | `motor-de-cuenta-corriente` | M1 | 2, 3 | **sí** | **sí** | grande |
 | 5 | `importacion-desde-excel` | M1 | 3, 4 | no | **sí** (D-077) | mediano |
@@ -37,7 +38,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 **Camino al test de M1** (reproducir la última liquidación del piloto al centavo):
 
 ```
-Código:  1a → 1b → 1c → 2 → 3 → 4 → 5 → 6 → 7 ──┐
+Código:  1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 6b → 7 ──┐
                                             ├──► TEST M1
 Datos:   pedirle a Alberto los datos del piloto (P1), desde ya ──┘
 ```
@@ -79,10 +80,59 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 ### 1c · `cola-logs-y-respaldos`
 
-- **Objetivo**: la cola de trabajos, los logs con número de seguimiento y los respaldos, separados del 1b (D-052).
-- **Entra**: lo que el 1b tenía en sus secciones 6 a 12 (ver `openspec/changes/cola-logs-y-respaldos/`).
-- **Depende de**: 1b. **Habilita**: 2.
-- **Terminado cuando**: lo que diga su propuesta; si supera unas 20 tareas, se parte en 1d.
+- **Objetivo**: la cola de trabajos con su worker, los logs estructurados y el número de seguimiento
+  de punta a punta, que todos los cambios siguientes dan por existentes (D-052). Partido del 1d por la
+  auditoría de Alberto (D-087); el nombre conserva "respaldos" porque el CLI de OpenSpec no renombra
+  cambios, pero los respaldos son del 1d.
+- **Decisiones**: D-038, D-047 (punto 4, logs con número de seguimiento), D-052, D-087.
+- **Gobernanza**: MEDIUM. Ciclo completo, sin aprobación previa de Juani.
+- **Entra**: logs en JSON con una lista cerrada de campos y sin el texto de los errores de terceros
+  (L-007); `request_id` validado con coincidencia completa y sólo ASCII, con una sola tabla de casos
+  para la API y la web (L-008, L-009), que viaja por Caddy, la web, la API, PostgreSQL y el worker;
+  Redis; worker ARQ con reintentos espaciados, idempotencia (tabla `trabajos_hechos`) y los mismos
+  tests de arranque que la API (L-009); `/api/salud` con la cola; `/salud-web` con su contrato de
+  respuesta; rotación de logs. 29 tareas en `openspec/changes/cola-logs-y-respaldos/`.
+- **No entra**: respaldos, restauración, el humo ampliado y el README (1d); tareas reales del worker
+  (7, 13, 14); el tenant del worker (2).
+- **Depende de**: 1b. **Habilita**: 1d.
+- **Que intente romper el rompedor**: un `request_id` que pase la validación de un lado y no del otro;
+  un valor con salto de línea, espacios o dígitos de otro alfabeto que se cuele en un log; el
+  `application_name` pegado al pedido siguiente del pool; un trabajo que se ejecute dos veces o que
+  quede a medias; Redis congelado que cuelgue la API o el worker; el texto de un error de Redis, ARQ
+  o psycopg en un log o una respuesta; un trabajo con `pickle` que se ejecute.
+- **Terminado cuando**: las 29 tareas están hechas con su test visto en rojo, la corrida equivalente
+  al CI está en verde con el humo existente (que espera a Redis y al worker saludables) y el auditor da
+  el OK. La verificación de punta a punta por el proxy queda para el humo del 1d.
+
+### 1d · `respaldos-y-restauracion` · HIGH (D-087)
+
+- **Objetivo**: que exista siempre un backup reciente de la base fuera de Docker, generado solo, y que
+  cada corrida del CI pruebe que se restaura; y que el humo verifique de punta a punta lo del 1c.
+- **Decisiones**: D-043, D-047 (punto 4, backups automáticos), D-087. Avanza H46 (restauración
+  probada) de M3.
+- **Gobernanza HIGH** (D-087): borra bases (`dropdb` en la restauración), escribe en el disco del host
+  (bind mount) y suma un servicio con la contraseña de la base. Se propone y se espera la aprobación de
+  Juani antes de construir.
+- **Entra**: servicio `respaldos` con `pg_dump` al arrancar y cada día, acotado por un límite de tiempo
+  (L-001), en una carpeta del host a salvo de `docker compose down -v`, con 14 copias y salud por
+  antigüedad; validación de su configuración con dígitos ASCII y sin ceros a la izquierda (L-002,
+  L-008); `restaurar.sh` con el destino validado por `^proptech_[a-z0-9_]{1,50}$` y distinto de la base
+  en uso, siempre sobre el proyecto `proptech` (L-006), sin repetir la salida de las herramientas
+  (L-007); humo ampliado (Redis, worker, `request_id` de punta a punta, Redis pausado, backup,
+  restauración y semilla); README. 17 tareas en `openspec/changes/respaldos-y-restauracion/`.
+- **No entra**: copia fuera del servidor y cifrado (con el despliegue); restaurar sobre la base en
+  uso; backups de Redis; alertas externas.
+- **Depende de**: 1c. **Habilita**: 2.
+- **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
+  punto y coma, mayúsculas, salto de línea, más de 63 caracteres o igual a `POSTGRES_DB`); una
+  retención que borre un archivo ajeno de la carpeta; un volcado que se cuelgue con la base pausada;
+  una configuración con `060`, espacios o dígitos de otro alfabeto que pase; la contraseña o la salida
+  de `pg_dump` en el log; un backup a medio escribir con nombre final; que el backup no sobreviva a
+  `docker compose down -v`.
+- **Terminado cuando**: Juani aprobó la propuesta; las 17 tareas están hechas con su test visto en
+  rojo; el humo genera el backup solo, lo restaura en `proptech_restauracion` con la misma revisión de
+  Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; y el auditor
+  da el OK.
 
 ### 2 · `acceso-y-aislamiento` · crítico · explore propio
 
@@ -106,7 +156,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
   edificio.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
-- **Depende de**: 1c. **Habilita**: 3, 4.
+- **Depende de**: 1d. **Habilita**: 3, 4.
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
   mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
   D-043); dónde vive cada uno de los tres controles; cómo fija el tenant el worker.

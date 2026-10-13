@@ -29,9 +29,11 @@ MUST NOT romperse en varias líneas aunque un valor contenga saltos de línea.
 
 Los logs MUST NOT contener cuerpos de pedidos o respuestas, query strings, encabezados (salvo el
 `request_id`), cookies, tokens, contraseñas, cadenas de conexión, el texto de los mensajes de
-excepción ni los argumentos interpolados de un mensaje. Ante un error inesperado, el log MUST
-registrar el tipo de error y la ubicación en el código, y la respuesta MUST ser 500 con sólo un
-código de error y el `request_id`.
+excepción ni los argumentos interpolados de un mensaje. Esto vale también para los errores de las
+bibliotecas de terceros (el cliente de Redis, ARQ, psycopg y SQLAlchemy): su texto MUST NOT llegar a
+un log, a un mensaje de error propio ni a una respuesta sin un test que pruebe que no repite la
+entrada. Ante un error inesperado, el log MUST registrar el tipo de error y la ubicación en el código,
+y la respuesta MUST ser 500 con sólo un código de error y el `request_id`.
 
 #### Scenario: Query string con un dato personal
 
@@ -49,11 +51,21 @@ código de error y el `request_id`.
 - **THEN** la respuesta es 500 con `{"error": "interno", "request_id": "<id>"}`, el log registra el
   tipo de error con nivel de error y ni la respuesta ni el log contienen el mensaje de la excepción
 
+#### Scenario: Error de un tercero con datos en su mensaje
+
+- **WHEN** el cliente de Redis, ARQ o psycopg lanzan un error cuyo mensaje contiene un marcador (como
+  un host, un parámetro de SQL o el contenido de un trabajo)
+- **THEN** el marcador no aparece en ninguna línea de log, ni en el mensaje de "cola no disponible",
+  ni en el error de arranque del worker, ni en la respuesta de la API
+
 ### Requirement: Número de seguimiento validado
 
-Un `request_id` válido SHALL ser un UUID en su forma canónica de 36 caracteres. Todo componente que
-recibe uno MUST validarlo; si falta o es inválido, MUST generar uno nuevo en lugar de propagarlo. Se
-normaliza a minúsculas.
+Un `request_id` válido SHALL ser un UUID en su forma canónica de 36 caracteres (`8-4-4-4-12`, sólo
+dígitos ASCII y letras `a-f` o `A-F`). Todo componente que recibe uno MUST validarlo con coincidencia
+completa sobre el texto entero y sólo con caracteres ASCII, antes de cualquier normalización; si falta
+o es inválido, MUST generar uno nuevo en lugar de propagarlo. Un valor válido se normaliza a
+minúsculas después de validarlo. La API y la web MUST aceptar y rechazar exactamente los mismos
+valores, probados con una sola tabla de casos compartida.
 
 #### Scenario: Pedido sin número de seguimiento
 
@@ -67,6 +79,23 @@ normaliza a minúsculas.
   `<script>`, comillas o una inyección SQL)
 - **THEN** lo descarta, genera uno nuevo, lo devuelve en la respuesta y ninguna línea de log contiene
   el valor recibido
+
+#### Scenario: UUID con espacios, tabulaciones, saltos de línea o dígitos no ASCII
+
+- **WHEN** llega un UUID válido con un espacio o una tabulación alrededor, con un salto de línea al
+  principio o al final, o con uno de sus dígitos reemplazado por un dígito de otro alfabeto o una letra
+  de ancho completo
+- **THEN** se rechaza y se genera uno nuevo; nunca se recorta ni se normaliza para aceptarlo
+
+#### Scenario: UUID en mayúsculas
+
+- **WHEN** llega un UUID canónico escrito en mayúsculas
+- **THEN** se acepta y se propaga en minúsculas
+
+#### Scenario: Mismos casos en la web y en la API
+
+- **WHEN** corren los tests de validación del `request_id` de la API y de la web
+- **THEN** los dos leen la misma tabla de casos y dan el mismo resultado para cada entrada
 
 ### Requirement: El número de seguimiento viaja por cada salto
 
@@ -113,3 +142,54 @@ detalles internos.
 
 - **WHEN** la API está detenida o no responde y se hace `GET /salud-web`
 - **THEN** la respuesta llega en menos de 3 segundos con la API marcada como sin conexión
+
+### Requirement: Contrato de respuesta de /salud-web
+
+`GET /salud-web` SHALL responder siempre con `Content-Type: application/json` y un cuerpo con
+exactamente dos campos: `web`, que vale `"ok"`, y `api`, que vale uno de `"ok"`, `"degradado"`,
+`"sin_conexion"` o `"sin_configurar"`. El código de estado MUST ser 200 sólo cuando `api` vale `"ok"`,
+y 503 en cualquier otro caso. El valor de `api` MUST derivarse sólo del código de estado de la
+respuesta de la API (200 es `"ok"`, cualquier otro código es `"degradado"`), sin interpretar su cuerpo;
+si la API no contesta dentro de 2 segundos o la conexión falla, es `"sin_conexion"`; si falta la
+dirección interna de la API, es `"sin_configurar"`. La respuesta MUST llevar en `X-Request-ID` el mismo
+número de seguimiento que se reenvió a la API, y MUST NOT incluir texto de errores, direcciones
+internas ni el cuerpo de la respuesta de la API.
+
+#### Scenario: API saludable
+
+- **WHEN** la API responde 200 a la consulta de salud
+- **THEN** `/salud-web` responde 200 con exactamente `{"web": "ok", "api": "ok"}`, `Content-Type`
+  JSON y en `X-Request-ID` el mismo valor que se reenvió a la API
+
+#### Scenario: API degradada
+
+- **WHEN** la API responde 503
+- **THEN** `/salud-web` responde 503 con `{"web": "ok", "api": "degradado"}`
+
+#### Scenario: API con un error inesperado
+
+- **WHEN** la API responde 500 o cualquier código distinto de 200 y 503, con el cuerpo que sea
+- **THEN** `/salud-web` responde 503 con `{"web": "ok", "api": "degradado"}` y el cuerpo de la API no
+  aparece en la respuesta
+
+#### Scenario: Conexión rechazada
+
+- **WHEN** la conexión con la API se rechaza al instante
+- **THEN** `/salud-web` responde 503 con `{"web": "ok", "api": "sin_conexion"}`
+
+#### Scenario: API que no contesta
+
+- **WHEN** la API acepta la conexión y no contesta
+- **THEN** `/salud-web` corta a los 2 segundos y responde 503 con `{"web": "ok", "api": "sin_conexion"}`
+
+#### Scenario: Sin dirección de la API
+
+- **WHEN** la web corre sin `PROPTECH_URL_API_INTERNA`
+- **THEN** `/salud-web` responde 503 con `{"web": "ok", "api": "sin_configurar"}` sin intentar ninguna
+  conexión
+
+#### Scenario: Error con datos en su mensaje
+
+- **WHEN** la consulta a la API falla con un error cuyo mensaje contiene un marcador (como la dirección
+  interna)
+- **THEN** el marcador no aparece en la respuesta de `/salud-web`
