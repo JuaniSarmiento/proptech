@@ -127,8 +127,8 @@ Reglas del contrato:
 | Regla | Qué decide el motor | Qué hace el núcleo | Cambio |
 |---|---|---|---|
 | Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 7 |
-| Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | En el 7 calcula el importe con descuento para el PDF; en el 8, al confirmar el pago, registra la bonificación (R37, D-080) | 7 y 8 |
-| Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
+| Bonificación por pronto pago *(propuesta, R37)* | Si aplica y qué porcentaje. Apagada por defecto | En el 7 calcula el importe con descuento para el PDF; en el 8, al confirmar el pago, registra la bonificación (R37, D-080) | 7 y 8 |
+| Cargo recurrente del reglamento *(propuesta, R14)* | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
 
 **Los intereses, el fondo de reserva y el cargo por estado no pasan por el motor** (D-080): son menús
 cerrados de la configuración del edificio (R03, R15, R02, D-010), con su versión en cada liquidación.

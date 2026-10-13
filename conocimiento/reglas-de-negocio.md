@@ -132,11 +132,13 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   el administrador lo trae, en su columna, y R03 corre sólo desde la fecha de migración. Así no se
   cobra dos veces.
 - **Sólo con un total**: se carga una obligación "saldo inicial" con vencimiento en la fecha de
-  migración; los intereses corren desde ahí.
+  migración; los intereses corren desde ahí, sólo sobre el capital. Si el administrador trae interés ya
+  devengado, va en una columna aparte que **no genera interés** (R03, D-083).
 - **Edificio sin saldos previos** (D-082): un edificio nuevo, creado a mano o el de ejemplo, se
   confirma con "sin saldos previos", que cierra el importador con todas las unidades en cero. Así el
   control duro de R34 no lo bloquea para siempre. El edificio de ejemplo trae esa confirmación en la
-  semilla.
+  semilla: el cambio 3 suma a la semilla y a su validador el **estado de migración** del edificio
+  (pendiente, confirmada o sin saldos previos, D-083).
 - **Crédito a favor**: entra como crédito y se compensa en la primera liquidación.
 - **Trazabilidad**: cada saldo inicial guarda el archivo y la fila de origen.
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
@@ -186,7 +188,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082).
+  (D-082), **enlazado a ese pago**: si el pago se revierte, se reimputa o su imputación cae por una
+  anulación, el ajuste se revierte con él (D-083).
 - **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
   marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
   CUIT de origen cuando el banco lo informa) o no.
@@ -333,8 +336,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
 - **Morosidad**: al revertirse un pago, la unidad puede pasar a cumplir R20 (moroso crítico), que se
   calcula siempre desde el libro (D-074).
-- **Bonificación**: si el pago tenía una bonificación por pronto pago enlazada (R37), se revierte con él
-  (D-082).
+- **Movimientos enlazados**: si el pago tenía una bonificación por pronto pago (R37) o un ajuste de
+  interés (R11) enlazados, se revierten con él (D-082, D-083).
 - **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
   original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
   después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
@@ -560,11 +563,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
   | Control | Se dispara cuando | Nivel | Cambio |
   |---|---|---|---|
-  | Saldos iniciales sin validar | El edificio es nuevo y la migración no está confirmada (R09) | Bloqueante | 7 |
-  | Factura duplicada | Dos gastos con el mismo CUIT del proveedor, punto de venta, tipo y número de comprobante (la clave de R12) | Bloqueante | 7 |
+  | Saldos iniciales sin validar | El edificio es nuevo y su estado de migración no es confirmada ni sin saldos previos (R09) | Bloqueante (duro) | 7 |
+  | Factura duplicada | Dos gastos con el mismo CUIT del proveedor, punto de venta, tipo y número de comprobante (la clave de R12) | Bloqueante (duro) | 7 |
   | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
   | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
-  | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
+  | Pagos sin confirmar | Hay pagos informados todavía sin confirmar: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
   | Unidades sin contacto válido *(propuesta, R28)* | Alguna unidad no tiene un email válido | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
@@ -615,8 +618,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   - Se bonifica sólo la **ordinaria prorrateada del período** (R13). Nunca la extraordinaria, los intereses ni
     los cargos particulares, y en especial **nunca una multa**.
   - Sólo si la unidad **no tenía deuda vencida** de períodos anteriores al día del pago.
-  - Sólo si el pago **cubre todo lo que la unidad debe del período, con el descuento ya aplicado** a la
-    ordinaria prorrateada, antes del día límite. Un pago menor no bonifica.
+  - Sólo si la transferencia es **hasta el día límite inclusive** y **cubre todo lo que la unidad debe
+    del período** (ordinaria, extraordinaria, fondo y cargos particulares), con el descuento aplicado sólo
+    a la ordinaria prorrateada (D-083). Un pago menor no bonifica.
   - Vale la fecha de la transferencia, no la de la confirmación (R11).
 - **Cuándo se registra** (D-080): **al confirmar el pago** (cambio 8), como un movimiento de
   bonificación con su motivo, en la misma operación que la imputación y **enlazado a ese pago**

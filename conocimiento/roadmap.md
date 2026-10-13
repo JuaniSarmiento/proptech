@@ -113,7 +113,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
 - **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (desactivado), R03 (su
   configuración), R15 (porcentaje), R16 (categorías); R33 (datos tipados para el motor); propuestas, que entran si se validan: R35
-  (feriados en parámetros), R36 (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
+  (calendario de feriados del sistema), R36 (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
 - **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-064, D-066, D-067, D-080.
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
@@ -121,7 +121,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   `parametros.yaml` al crear, con versión (D-010, D-080); **la base del motor de reglas**: el módulo
   `politicas`, el puerto, el adaptador de ZEN, el validador, las reglas versionadas por edificio y el
   editor en el frontend (`motor-de-reglas.md`, D-066, D-067); las reglas concretas llegan en el 7;
-  **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b).
+  **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b);
+  el **estado de migración del edificio** (pendiente, confirmada o sin saldos previos, R09, D-083): la
+  semilla y su validador suman ese campo, y el edificio de ejemplo queda "sin saldos previos"; el
+  cambio 5 usa ese estado.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7).
 - **Depende de**: 2. **Habilita**: 5, 6.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
@@ -136,7 +139,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: el corazón de la plata: que cada peso de deuda viva en un solo lugar y nunca se pierda un centavo.
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05, R06, R07, R08, R09 (el caso de uso
   de saldo inicial), R13 (orden de imputación por tipo).
-- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068, D-073, D-074. Propuestas que tocan este
+- **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068, D-073, D-074, D-080, D-081,
+  D-082. Propuestas que tocan este
   cambio, si se validan: R35 (intereses desde el día hábil), R36 (tasa propia de la extraordinaria), R39 (sin
   intereses ni moroso crítico para unidades del consorcio).
 - **Entra**: libro de movimientos de sólo agregar, sin campo saldo; obligaciones, pagos e
@@ -157,7 +161,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   corrección; intereses sobre intereses; un reparto que pierde o gana un centavo; editar o borrar un
   movimiento por SQL directo; una obligación de una liquidación anulada que sigue sumando al saldo; una
   unidad con una sola liquidación vencida que la función de R20 marca como moroso crítico.
-- **Terminado cuando**: los tests mínimos de R03 a R09, R13 y R20 pasan; hay pruebas de propiedades del
+- **Terminado cuando**: pasan los tests mínimos de R03 a R08 y R20, los del caso de uso de saldo
+  inicial de R09 y los de imputación de R13 (los de R09 sobre el borrador y el importador son del cambio
+  5, y los de R13 sobre bloques y multas, de los cambios 6 y 7); hay pruebas de propiedades del
   mayor resto (la suma siempre da exacta); el test de concurrencia contra PostgreSQL real pasa; un
   intento de modificar un movimiento rebota.
 
@@ -212,7 +218,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   (vencimiento corrido en el PDF), R37 (los dos importes en el PDF y la regla en el motor), R38 (bloque de ingresos en la
   expensa), R40 (períodos en orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
-  D-073, D-074, D-075, D-078, D-079.
+  D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos
     particulares e intereses, agrupado por ordinaria y extraordinaria y por categoría; no escribe deuda.
@@ -230,9 +236,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
     los gastos. Los controles de pagos, extracto y contactos los suman los cambios 8, 9 y 13.
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
-  - **Reglas del motor del cambio 7** (`motor-de-reglas.md`): controles propios del edificio, el
-    importe con descuento de la bonificación para el PDF, el cargo recurrente del reglamento (R14) y
-    "repetir el mes pasado" antes de activar una regla.
+  - **Reglas del motor del cambio 7** (`motor-de-reglas.md`): controles propios del edificio y
+    "repetir el mes pasado" antes de activar una regla; si se validan, el importe con descuento de la
+    bonificación para el PDF (R37) y el cargo recurrente del reglamento (R14).
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
@@ -265,7 +271,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta, si se valida:
   la bonificación por pronto pago se registra al confirmar el pago, D-080); R39 (propuesta: las
   unidades del consorcio no reciben bonificación).
-- **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074.
+- **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074, D-080, D-082, D-083.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
   con la fecha de la transferencia usando el motor del cambio 4; repartir un pago entre varias
@@ -274,7 +280,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   confirmado que el banco devuelve, con su contra-movimiento (R18, ProTecc D4); asistente de
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
   propuesta: entra si se valida, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
-  (D-070); el control "pagos sin asignar" en la lista antes de emitir, como advertencia (R34).
+  (D-070); el control "pagos sin confirmar" en la lista antes de emitir, como advertencia (R34).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **No entra**: el cruce con el extracto (9).
@@ -439,6 +445,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
 - **P18 y P23**: el vecino en dos administraciones y los permisos por acción, antes del cambio 2.
+- **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
+- **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
+- **P20**: quién aprueba una condonación, antes del 10b.
+- **P24 a P32**: casos de borde de la quinta revisión, cada uno con el cambio antes del cual se decide.
 - **P19, P21 y P22**: el doble vencimiento, los umbrales y quién usa el editor de reglas, antes de los
   cambios 3, 4 y 14.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

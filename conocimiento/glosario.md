@@ -33,7 +33,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Archivo de parámetros**: `config/parametros.yaml`, con los valores con que arranca cada edificio nuevo (D-042).
 - **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
 - **Expensa ordinaria**: la de la operación habitual. **Expensa extraordinaria**: la de una obra o necesidad puntual.
-- **Coeficiente**: la proporción con la que una unidad participa de un grupo de reparto. La suma de los coeficientes de un grupo es 1 (100%).
+- **Coeficiente**: la proporción con la que una unidad participa de un grupo de reparto. La suma de los coeficientes de un grupo es 1 (100%), con una tolerancia de ±0,0001 (R01).
 - **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo complejo tiene al menos el grupo "Generales" (R01).
 - **Factor por estado**: el porcentaje con que una unidad participa del reparto según su estado (por ejemplo, baldío al 50%). La diferencia la absorben las demás unidades del grupo (R02).
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
@@ -52,7 +52,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Obligación**: lo que una unidad debe por un período, con el capital desglosado en ordinario y extraordinario (R13). Los cargos particulares van dentro de la ordinaria (R14) y los intereses se registran como débitos aparte (R03).
 - **Liquidación**: el cálculo de todo un período para un edificio. Se preliquida, se emite y se distribuye. **Expensa** (o boleta): lo que le toca a una unidad en una liquidación, con su PDF.
 - **Vencimiento**: la fecha a partir de la cual corre la mora. Si cae en un día inhábil, se corre al primer día hábil siguiente (R35, propuesta).
-- **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos de su grupo antes de repartir (R38, propuesta).
+- **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos ordinarios de su grupo antes de repartir (R38, propuesta).
 - **Unidad del consorcio**: una unidad que pertenece al propio consorcio, como la portería. No genera intereses (R39, propuesta).
 - **Baja de deuda**: dar por perdida una deuda incobrable, con respaldo, sin borrar los movimientos (R41, propuesta).
 - **Puerto de políticas**: la única entrada por la que el reglamento propio de cada edificio llega a la liquidación. Recibe hechos y devuelve acciones propuestas; el núcleo las valida y las registra (D-064, `motor-de-reglas.md`).
@@ -76,8 +76,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Pago revertido**: un pago confirmado que el banco devuelve después (cheque rechazado, contracargo,
   transferencia revertida). Nunca se borra ni pasa a rechazado: queda en estado revertido y genera un
   contra-movimiento que vuelve a subir la deuda (R18).
-- **CBU histórico**: el CBU que confirmó el último pago de una unidad. El sistema lo recuerda y lo
-  sugiere el mes siguiente, nunca lo asigna solo (R19).
+- **CBU histórico**: los CBU que pagaron cada unidad, guardados cuando se conocen. Al cruzar el
+  extracto, un movimiento de uno de esos CBU se sugiere para esa unidad; nunca se asigna solo (R19).
 - **Código de unidad**: el código corto de una unidad que la boleta sugiere escribir en el concepto
   de la transferencia, para identificar el pago sin tocar el modelo de datos (R19).
 - **Reimputación**: dos movimientos enlazados que corrigen un pago confirmado en la unidad

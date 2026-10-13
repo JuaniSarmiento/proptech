@@ -1,10 +1,11 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-082). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-083). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
-> de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
-> reglas, GoRules ZEN con su editor visual (`motor-de-reglas.md`, D-064, D-066, D-067). **Se
+> de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
+> reglas, GoRules ZEN con su editor visual (`motor-de-reglas.md`, D-064, D-066, D-067); los intereses y
+> el fondo de reserva son menús cerrados de la configuración (D-080). **Se
 > reescribe** cuando cambia una decisión.
 
 ## Objetivo
@@ -28,7 +29,7 @@ el cierre da igual al centavo.
 
 | Rol | Qué hace |
 |---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; único que emite, distribuye y anula liquidaciones y revierte pagos (el detalle por acción es P23) |
+| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; las acciones exclusivas del titular se definen en P23 |
 | **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
 | **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
 | **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
@@ -66,7 +67,8 @@ Como administrador, quiero cargar las unidades desde un Excel (piso, departament
 propietario, contacto, coeficiente, saldo inicial) para no tipearlo a mano.
 - Dado un Excel válido, cuando lo importo, entonces se crean todas las unidades (departamentos,
   cocheras, bauleras, locales) con sus saldos y la suma importada coincide con la del archivo (R09).
-- Dado un Excel con errores (coeficientes que no suman 1, unidades repetidas, columnas faltantes),
+- Dado un Excel con errores (coeficientes de un grupo que se apartan de 1 más que la tolerancia de R01,
+  unidades repetidas, columnas faltantes),
   cuando lo importo, entonces no se carga nada y recibo un informe fila por fila con cada error.
 - Dado un edificio ya importado, cuando subo el mismo Excel otra vez, entonces el sistema lo
   detecta y no duplica unidades ni saldos.
@@ -113,7 +115,7 @@ que se generen deudas.
   cargos particulares e intereses.
 - Dada una preliquidación, entonces lo **prorrateado** entre las unidades es igual, al centavo, a los
   gastos aprobados del período menos sus notas de crédito y los ingresos del consorcio, más el fondo
-  de reserva (R07, R15, R22, R38). Los cargos particulares (incluidos los recurrentes del motor, R14) y los intereses se suman aparte,
+  de reserva (R07, R15, R22, R38). Los cargos particulares (incluidos los recurrentes del motor, R14, si se validan) y los intereses se suman aparte,
   unidad por unidad (la bonificación por pronto pago no es parte de la liquidación: se registra al
   confirmar el pago, R37), y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.

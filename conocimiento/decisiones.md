@@ -45,7 +45,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Descartado**: construir con datos inventados y buscar piloto al terminar.
 - **Quién**: Juani. **Pendiente**: quién es el piloto (ver preguntas abiertas).
 
-## D-005 · La plata nunca pasa por una cuenta de PropTech
+## D-005 · La plata nunca pasa por una cuenta de PropTech · *corregida en parte por D-017*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: los cobros van directo a la cuenta del consorcio. PropTech sólo recibe los datos
@@ -656,7 +656,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuentes**: `especificacion/documentos-alberto/` (fuera del repositorio público).
 - **Quién**: Juani.
 
-## D-055 · Ventana de anulación de una liquidación emitida y no distribuida · ajusta R08/D-016 · *corregida en parte por D-073*
+## D-055 · Ventana de anulación de una liquidación emitida y no distribuida · ajusta R08/D-016 · *corregida en parte por D-073 y D-074*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: una liquidación emitida se puede anular sólo si todavía no fue distribuida: no
@@ -801,7 +801,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: `openspec/exploraciones/2026-10-12-dolores-protecc.md`.
 - **Quién**: Juani.
 
-## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta · *corregida en parte por D-066 y D-067*
+## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta · *corregida en parte por D-066, D-067, D-074 y D-080*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: la arquitectura incorpora desde ya un **puerto de políticas** en `proptech_core`: toda
@@ -1089,7 +1089,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cambios de criterio.
 - **Quién**: Juani, a partir de la revisión.
 
-## D-080 · Cuatro definiciones pendientes de la segunda revisión · *corregida en parte por D-081*
+## D-080 · Cuatro definiciones pendientes de la segunda revisión · *corregida en parte por D-081 y D-083*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1135,7 +1135,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   definiciones de detalle, sin cambio de criterio.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
-## D-082 · Definiciones de plata de la cuarta revisión (13/10)
+## D-082 · Definiciones de plata de la cuarta revisión (13/10) · *corregida en parte por D-083*
 
 - **Fecha**: 13/10/2026
 - **Decisión** (las que tocan montos quedan a validar con un administrador, como R03):
@@ -1157,6 +1157,26 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   - **El cambio 2 crea las tablas mínimas** que necesita para probar el acceso; el 3 las completa.
 - **Por qué**: la cuarta revisión completa encontró estos casos sin definir; todos afectan un monto o
   impiden probar un cambio.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
+
+## D-083 · Correcciones de la quinta revisión completa (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Bonificación por pronto pago**: la transferencia vale hasta el día límite inclusive y tiene que
+    cubrir todo lo que la unidad debe del período, con el descuento aplicado sólo a la ordinaria
+    prorrateada (R37). Corrige la redacción de D-080.
+  - **El ajuste de interés de R11 queda enlazado a su pago** y se revierte con él, igual que la
+    bonificación (R11, R18).
+  - **Estado de migración del edificio** (pendiente, confirmada o sin saldos previos): lo agrega el
+    cambio 3 a la semilla y a su validador; el edificio de ejemplo queda "sin saldos previos" y el
+    cambio 5 usa ese estado (R09).
+  - **Saldo inicial de total único**: el interés corre sólo sobre el capital; el interés que traiga el
+    administrador va en una columna aparte que no genera interés (R09, R03).
+  - Los casos de negocio sin definir que encontró la revisión pasan a la lista de preguntas abiertas
+    (P24 a P32), cada uno con el cambio antes del cual se decide.
+- **Por qué**: la quinta revisión completa encontró estas contradicciones, efecto de correcciones
+  anteriores.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
@@ -1218,4 +1238,23 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P23 · Permisos por acción**: qué rol puede emitir, distribuir, anular una liquidación, confirmar
   y revertir pagos, condonar, dar de baja una deuda y aceptar alertas. D-037 fija los roles pero no
   cada acción. Antes del cambio 2.
+- [ ] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
+  propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3.
+- [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
+  liquidada): qué pasa si el reparto daría negativo, y en qué bloque cae si la factura era
+  extraordinaria. Antes del cambio 6.
+- [ ] **P26 · Anular un período con el siguiente ya emitido**: si se permite y qué pasa con el
+  siguiente. Antes del cambio 7.
+- [ ] **P27 · La bonificación después de anular y volver a emitir**: si el pago que la había ganado la
+  recupera en la nueva emisión. Antes de los cambios 7 y 8.
+- [ ] **P28 · Bonificación y fondo de reserva**: si el descuento también achica el fondo, que se calcula
+  sobre la misma base. Antes del cambio 7.
+- [ ] **P29 · Interés sobre un pago revertido o reimputado**: si corre desde el vencimiento original.
+  Antes del cambio 8.
+- [ ] **P30 · Un mismo CBU que paga varias unidades** de la misma persona: qué unidad se sugiere. Antes
+  del cambio 9.
+- [ ] **P31 · Moroso crítico y saldos chicos**: si cuenta como vencida una liquidación cuyo saldo es sólo
+  interés, o un saldo por debajo del umbral de R30. Antes del cambio 4.
+- [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
+  fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
 
