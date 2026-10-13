@@ -949,3 +949,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
   del piloto, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
   del 13/10; no está confirmado con un abogado.
+- [ ] **P13 · Acceso de soporte a la cuenta de un cliente** (ProTecc 7.3 y arquitectura de Alberto):
+  cuando alguien de PropTech necesite entrar a la cuenta de un administrador para ayudarlo, el acceso
+  tiene que ser explícito, temporal y registrado, nunca con la contraseña del administrador. Hoy el
+  soporte es sólo Juani (D-022), así que no bloquea el MVP; se decide antes de sumar a otra persona al
+  soporte o al tener el primer cliente externo.
+- [ ] **P14 · Plazo de entrega del certificado de libre deuda** (Q11 de Alberto): R21 define quién
+  lo firma y qué incluye, pero no en cuántos días hay que entregarlo. Se responde con Alberto o con la
+  normativa aplicable en Mendoza.
+
