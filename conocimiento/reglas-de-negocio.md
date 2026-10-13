@@ -129,7 +129,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 - **Con detalle por período** (si el complejo lo tiene): se carga cada obligación vieja con su
   período, concepto y vencimiento desde una hoja opcional de la plantilla (unidad, concepto, período,
-  monto, interés acumulado). **El interés anterior a la migración no se recalcula** (D-082): entra como
+  vencimiento, monto, interés acumulado). **El interés anterior a la migración no se recalcula** (D-082, a validar con un administrador): entra como
   el administrador lo trae, en su columna, y R03 corre sólo desde la fecha de migración. Así no se
   cobra dos veces.
 - **Sólo con un total**: se carga una obligación "saldo inicial" con vencimiento en la fecha de
@@ -150,7 +150,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   diferencias).
 - **Después de confirmar**: el importador se cierra para ese edificio. Un saldo inicial mal cargado
   se corrige con un ajuste con motivo (R08), nunca reabriendo la migración.
-- **Tests mínimos**: saldo con detalle genera sus obligaciones; total único genera una sola;
+- **Tests mínimos**: el interés acumulado que trae el administrador entra tal cual y no genera
+  interés; el interés corre sólo desde la fecha de migración; saldo con detalle genera sus obligaciones; total único genera una sola;
   crédito negativo entra como crédito; la suma importada coincide con el archivo de origen; dos
   errores de signo opuesto en dos unidades (+10.000 y -10.000) dan el total correcto y aun así
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
@@ -189,7 +190,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
+  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
   (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
   contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
   se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).
@@ -415,11 +416,12 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Efecto en el gasto**: se descuenta del gasto antes de prorratear, dentro del mismo grupo de
   reparto de la factura original (no es un gasto negativo suelto). Si la factura ya se liquidó en un
   período emitido, la nota de crédito se descuenta en el período en que se carga, dentro del mismo
-  grupo: nunca reabre una liquidación emitida (D-082).
+  grupo: nunca reabre una liquidación emitida (D-082, a validar con un administrador).
 - **Duplicados**: el control de factura duplicada de R12 usa la clave `cuit + ptoVta + tipoCmp + nroCmp`,
   que incluye el **tipo de comprobante** porque una factura y su nota de crédito pueden compartir número
   al numerarse por separado.
-- **Tests mínimos**: una nota de crédito menor al monto de la factura reduce el gasto repartido; una
+- **Tests mínimos**: una nota de crédito de una factura liquidada en un período ya emitido se descuenta en el período en
+  que se carga y no cambia la liquidación emitida; una nota de crédito menor al monto de la factura reduce el gasto repartido; una
   nota de crédito que supera el monto de su factura se rechaza; una nota de crédito sin factura
   asociada se rechaza; una factura y su nota de crédito con el mismo número no se marcan como
   duplicadas entre sí.

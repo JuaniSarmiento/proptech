@@ -151,7 +151,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   bloqueo para pagos simultáneos de la misma unidad; umbral mínimo para saldos chicos de redondeo
   (R30, propuesta: entra si se valida y se fija el umbral, ProTecc D3); **la función pura de moroso crítico** (R20, D-074), como consulta sobre
   el libro que usan los cambios 8, 10a y 10b; el saldo excluye todo movimiento generado por una
-  emisión anulada (D-073, D-079). La anulación en sí se construye en el cambio 7: acá se prueba con
+  emisión anulada, incluidos los ajustes de interés que la compensaban (D-073, D-079, D-084, D-085). La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
 - **Depende de**: 2 y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
@@ -201,7 +201,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16, R22; propuestas, si se
   validan: R38 (ingresos del consorcio) y las **consultas** que usan los controles de R34 "gasto mensual
   obligatorio faltante" e "ingresos mayores que los gastos" (el control en sí lo arma el cambio 7).
-- **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041, D-061, D-075, D-078.
+- **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041, D-061, D-075, D-078, D-082.
 - **Entra**: proveedores; gastos con sus **cuatro estados** (borrador, sin IA, en revisión y aprobado,
   D-075), con categoría, grupo y tipo ordinario o extraordinario (acá la carga es manual: los estados
   sin IA y en revisión se usan desde el cambio 14, pero ya existen y se prueban); sueldo del encargado como gasto; cargos particulares sueltos o importados desde
@@ -223,7 +223,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   (vencimiento corrido en el PDF), R37 (los dos importes en el PDF y la regla en el motor), R38 (bloque de ingresos en la
   expensa), R40 (períodos en orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
-  D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082.
+  D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082, D-084, D-085.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos
     particulares e intereses, agrupado por ordinaria y extraordinaria y por categoría; no escribe deuda.
@@ -262,6 +262,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   que fue distribuida; anular sin motivo; anular y que algún movimiento del libro cambie; distribuir
   dos veces; emitir con un bloqueo activo sin aceptarlo; aceptar una alerta sin que quede
   registro.
+- **Ajuste de interés y anulación**: el test de R17 que excluye un ajuste de R11 se arma acá con un
+  ajuste cargado a mano en el test, y el cambio 8 lo repite con el ajuste real (D-084, D-085).
 - **Terminado cuando**: se cumplen HU-A4 y HU-A5; **con los datos del piloto, reproduce su última
   liquidación al centavo** (test de aceptación de M1; si los datos todavía no están, se corre con el
   edificio de ejemplo y M1 queda pendiente de ese test).
@@ -276,7 +278,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta, si se valida:
   la bonificación por pronto pago se registra al confirmar el pago, D-080); R39 (propuesta: las
   unidades del consorcio no reciben bonificación).
-- **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074, D-080, D-082, D-083.
+- **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074, D-080, D-082, D-083, D-084,
+  D-085.
+- **Ajuste de interés**: el ajuste de R11 nace acá; el test de R17 que lo excluye al anular su emisión
+  se corre acá con el ajuste real.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
   con la fecha de la transferencia usando el motor del cambio 4; repartir un pago entre varias

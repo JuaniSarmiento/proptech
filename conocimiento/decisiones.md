@@ -576,7 +576,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   proyecto y sólo en ese momento del ciclo.
 - **Quién**: Juani, con las decisiones de detalle delegadas a Claude.
 
-## D-050 · Lecciones aprendidas y escalado del ciclo por riesgo
+## D-050 · Lecciones aprendidas y escalado del ciclo por riesgo · *escrita antes de la cuarta vuelta del 1a (D-051)*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: se crea `lecciones.md`, de sólo agregar: el auditor propone en cada veredicto lo que el
@@ -834,7 +834,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
 - **Quién**: Juani.
 
-## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067 y D-080*
+## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067 y D-080; la propuesta de quién usa el editor pasó a dos niveles (P22)*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: el puerto de políticas (D-064) se implementa con **GoRules ZEN** (`zen-engine`) y su
@@ -1110,7 +1110,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la segunda revisión encontró que la base decía dos cosas sobre cada uno de estos puntos.
 - **Quién**: Juani, que delegó la decisión el 13/10 siguiendo las recomendaciones de la revisión.
 
-## D-081 · Correcciones de la tercera revisión completa (13/10)
+## D-081 · Correcciones de la tercera revisión completa (13/10) · *corregida en parte por D-085*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
