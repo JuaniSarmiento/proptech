@@ -93,6 +93,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
   límite de pedidos en el login.
+- **Tablas mínimas** (D-082): para probar el acceso, este cambio crea lo mínimo de administración,
+  complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
+  edificio.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
 - **Depende de**: 1c. **Habilita**: 3, 4.
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
@@ -163,8 +166,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: cargar un edificio real desde su Excel sin tipear nada.
 - **Historias**: HU-A2. **Reglas**: R09.
 - **Decisiones**: D-015, D-029, D-068.
-- **Entra**: plantilla de Excel (piso, departamento, tipo, propietario, contacto, coeficiente, saldo
-  inicial); validación fila por fila con informe de errores; carga atómica (todo o nada); detección
+- **Entra**: plantilla de Excel con una hoja opcional de saldos por período (unidad, concepto,
+  período, monto, interés acumulado; R09, D-082), y la acción "sin saldos previos" para un edificio
+  nuevo; la hoja principal con piso, departamento, tipo, propietario, contacto, coeficiente y saldo
+  inicial; validación fila por fila con informe de errores; carga atómica (todo o nada); detección
   de reimportación; saldos en un **borrador** que no toca la cuenta corriente, comparado **unidad por
   unidad** contra el listado del administrador, con aceptación registrada de las diferencias y cierre
   del importador al confirmar (D-068); saldos iniciales usando el caso de uso del cambio 4.
@@ -225,6 +230,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
     los gastos. Los controles de pagos, extracto y contactos los suman los cambios 8, 9 y 13.
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
+  - **Reglas del motor del cambio 7** (`motor-de-reglas.md`): controles propios del edificio, el
+    importe con descuento de la bonificación para el PDF, el cargo recurrente del reglamento (R14) y
+    "repetir el mes pasado" antes de activar una regla.
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
@@ -255,7 +263,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
 - **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta, si se valida:
-  la bonificación por pronto pago se registra al confirmar el pago, D-080).
+  la bonificación por pronto pago se registra al confirmar el pago, D-080); R39 (propuesta: las
+  unidades del consorcio no reciben bonificación).
 - **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
@@ -371,6 +380,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   contacto válido" (R28, propuesta: entra si se valida, ProTecc W4); el control "unidades sin contacto válido" en la
   lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8 y 10b (la consulta de gestión judicial, D-078).
+- **Propuestas que también se prueban acá, si se validan**: R30 (no avisar mora por saldos debajo del
+  umbral) y R39 (las unidades del consorcio no reciben avisos de mora).
 - **Gestión judicial**: si R31 se valida y el 10b la construye, una unidad marcada en gestión judicial
   no recibe avisos automáticos de mora; este cambio lo prueba.
 - **Distribución** (D-074): cuando sale el primer email de una liquidación, el cambio 13 llama al puerto

@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-081). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-082). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
@@ -113,7 +113,7 @@ que se generen deudas.
   cargos particulares e intereses.
 - Dada una preliquidación, entonces lo **prorrateado** entre las unidades es igual, al centavo, a los
   gastos aprobados del período menos sus notas de crédito y los ingresos del consorcio, más el fondo
-  de reserva (R07, R15, R22, R38). Los cargos particulares y los intereses se suman aparte,
+  de reserva (R07, R15, R22, R38). Los cargos particulares (incluidos los recurrentes del motor, R14) y los intereses se suman aparte,
   unidad por unidad (la bonificación por pronto pago no es parte de la liquidación: se registra al
   confirmar el pago, R37), y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.
@@ -207,7 +207,8 @@ el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21,
   fecha de corte y, si hay pagos informados todavía no confirmados, los lista aparte como "en
   revisión", sin restarlos del saldo.
 - Dado un certificado ya generado, entonces nunca incluye una estimación de gastos del período en
-  curso: sólo la deuda liquidada a la fecha de corte.
+  curso: sólo la deuda liquidada a la fecha de corte, más una línea aparte con el interés corrido
+  hasta esa fecha, calculado y sin registrar (R21, D-081).
 
 ### Vecino
 

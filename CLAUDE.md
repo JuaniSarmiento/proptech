@@ -19,7 +19,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | Archivo | Qué tiene | Cómo se actualiza |
 |---|---|---|
 | `conocimiento/mvp.md` | Objetivo, usuarios, historias con criterios de aceptación, alcance, hitos M1 a M3, diferencias con la spec | Se reescribe |
-| `conocimiento/reglas-de-negocio.md` | R01 a R41 (con estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla es un test** | Se reescribe |
+| `conocimiento/reglas-de-negocio.md` | R01 a R41 (con estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla vigente es un test** | Se reescribe |
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |

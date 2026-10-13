@@ -18,8 +18,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Cada gasto se asigna a un grupo** y se reparte sólo entre sus unidades. El grupo dice **quién
   paga**; la categoría (R16) dice **en qué se gastó**. Son independientes.
 - **Default**: un complejo nuevo arranca con un grupo "Generales", todas las unidades, por coeficiente.
-- **Validación**: los coeficientes de un grupo suman 1. La tolerancia y dónde va la diferencia de
-  redondeo se definen en R07.
+- **Validación** (D-082, a validar con un administrador): los coeficientes de un grupo suman 1 con
+  una tolerancia de ±0,0001. Dentro de la tolerancia se aceptan con una advertencia, y el reparto usa
+  cada coeficiente dividido por la suma real, así el total sigue exacto con R07. Fuera de la tolerancia,
+  la carga se rechaza con el informe de la diferencia.
 - **Historia**: la liquidación guarda la composición de cada grupo usada en ese período.
 - **Grupos típicos de un edificio**: Generales (todas las unidades), Ascensor (sin planta baja ni
   locales), Cocheras, Servicios centrales. En barrios: Generales, Pileta, Obra calle 5.
@@ -65,8 +67,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   (obligación, días, tasa, base). El número no cambia cada vez que el vecino entra al portal.
 - **Historia**: cada liquidación guarda la configuración con la que se calculó. Cambiar la tasa
   no altera liquidaciones ya emitidas.
-- **Tests mínimos**: pago parcial reduce la base; días de gracia no generan interés; cambio de
-  tasa entre períodos; nunca hay interés calculado sobre un interés.
+- **Tests mínimos**: pago parcial reduce la base; días de gracia no generan interés; un pago después
+  de los días de gracia genera interés desde el vencimiento; cambio de tasa entre períodos; nunca hay
+  interés calculado sobre un interés.
 
 ## R04 · Orden de imputación · Vigente (D-011)
 
@@ -103,6 +106,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Representación** (D-046): todo importe es `Decimal` en Python, construido desde texto
   (`Decimal("0.10")`, nunca `Decimal(0.1)`), `NUMERIC(14,2)` en la base y texto en el JSON. Nunca
   `float`. El frontend no calcula montos: sólo los formatea.
+- **Coeficientes que no suman exacto 1**: ver R01 (tolerancia ±0,0001; se reparte proporcional a la
+  suma real).
 - **Reparto**: cada parte se redondea al centavo; la diferencia hasta el total exacto se asigna de
   a un centavo a las unidades con mayor fracción descartada (método del mayor resto). En empate,
   por orden de identificador de la unidad, para que el resultado sea determinista.
@@ -122,9 +127,16 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 ## R09 · Saldo inicial al migrar · Vigente (D-015, D-068)
 
 - **Con detalle por período** (si el complejo lo tiene): se carga cada obligación vieja con su
-  período y vencimiento; los intereses viejos se calculan con R03 como cualquier otra.
+  período, concepto y vencimiento desde una hoja opcional de la plantilla (unidad, concepto, período,
+  monto, interés acumulado). **El interés anterior a la migración no se recalcula** (D-082): entra como
+  el administrador lo trae, en su columna, y R03 corre sólo desde la fecha de migración. Así no se
+  cobra dos veces.
 - **Sólo con un total**: se carga una obligación "saldo inicial" con vencimiento en la fecha de
   migración; los intereses corren desde ahí.
+- **Edificio sin saldos previos** (D-082): un edificio nuevo, creado a mano o el de ejemplo, se
+  confirma con "sin saldos previos", que cierra el importador con todas las unidades en cero. Así el
+  control duro de R34 no lo bloquea para siempre. El edificio de ejemplo trae esa confirmación en la
+  semilla.
 - **Crédito a favor**: entra como crédito y se compensa en la primera liquidación.
 - **Trazabilidad**: cada saldo inicial guarda el archivo y la fila de origen.
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
@@ -171,7 +183,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   confirmarse se imputa con R04.
 - **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
 - **Fecha del pago**: la fecha real de la transferencia (del comprobante, validada contra el
-  extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03).
+  extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
+  transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
+  se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
+  (D-082).
 - **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
   marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
   CUIT de origen cuando el banco lo informa) o no.
@@ -181,7 +196,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   BNA+ y Mercado Pago. Nunca comprobantes reales con datos personales en el repositorio.
 - **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
   confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
-  tarde no genera intereses por los días de demora del administrador.
+  tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
+  emisión que cobró interés por días posteriores a la transferencia genera el ajuste exacto.
 
 ## R12 · Registro de gastos desde facturas · Vigente (D-019)
 
@@ -230,7 +246,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Escala**: la separación queda guardada porque más adelante importa quién paga cada una
   (en Argentina, la extraordinaria suele corresponder al propietario y no al inquilino).
 - **Tests mínimos**: un gasto extraordinario aparece en su bloque; los subtotales suman el total;
-  un pago parcial cubre primero la ordinaria.
+  un pago parcial cubre primero la ordinaria; la ordinaria prorrateada no incluye una multa del
+  período (el ejemplo de $47.000).
 
 ## R14 · Cargos particulares · Vigente (D-025)
 
@@ -241,6 +258,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   importa en lote desde un Excel (unidad, concepto, importe). Queda en borrador hasta aprobarlo.
 - **Liquidación**: los aprobados del período entran en la expensa de esa unidad, como líneas propias
   dentro de la parte ordinaria, sin afectar el reparto de los demás.
+- **Cargos recurrentes del reglamento** *(propuesta, D-082)*: un cargo particular que la regla del motor
+  genera cada período para ciertas unidades (por ejemplo, un canon por cochera). Entra en la expensa
+  como cualquier cargo particular. Tests: el cargo aparece cada período en las unidades indicadas y
+  en ninguna otra; apagar la regla lo deja de generar desde el período siguiente.
 - **Créditos particulares** (una bonificación, una devolución) no son cargos negativos: se registran
   como corrección (R08).
 - **Tests mínimos**: un cargo particular sólo afecta a su unidad; no cambia lo que pagan los demás;
@@ -255,7 +276,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Imputación**: forma parte de la ordinaria (R04, R13).
 - **Sin tesorería**: el sistema no lleva el saldo acumulado del fondo ni el saldo de caja (D-023).
 - **Historia**: cada liquidación guarda el porcentaje usado.
-- **Tests mínimos**: con 0% no aparece la línea; con 5% cada unidad paga el 5% de su ordinaria;
+- **Tests mínimos**: con 0% no aparece la línea; con 5% cada unidad paga el 5% de su ordinaria
+  prorrateada, sin contar sus cargos particulares;
   la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas.
 
 ## R16 · Categorías de gasto · Vigente (D-041)
@@ -277,7 +299,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
   un gasto sin categoría no se puede aprobar.
 
-## R17 · Ventana de anulación antes de distribuir · Vigente (D-055, D-073, D-074) · refina R08
+## R17 · Ventana de anulación antes de distribuir · Vigente (D-055, D-073, D-074, D-079, D-081) · refina R08
 
 - **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
   todavía no distribuida. Estados: borrador, emitida, distribuida y anulada (sólo desde emitida).
@@ -311,6 +333,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
 - **Morosidad**: al revertirse un pago, la unidad puede pasar a cumplir R20 (moroso crítico), que se
   calcula siempre desde el libro (D-074).
+- **Bonificación**: si el pago tenía una bonificación por pronto pago enlazada (R37), se revierte con él
+  (D-082).
 - **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
   original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
   después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
@@ -353,7 +377,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   ningún bloqueo asociado a esta marca.
 - **Tests mínimos**: una unidad con una sola liquidación vencida no es moroso crítico; dos vencidas
   con saldo, sí; un pago parcial que no cubre ninguna por completo sigue contando esa liquidación
-  como vencida; revertir un pago (R18) puede volver a marcar moroso crítico a una unidad.
+  como vencida; revertir un pago (R18) puede volver a marcar moroso crítico a una unidad; una unidad
+  migrada con dos períodos vencidos en el saldo inicial es moroso crítico; un saldo inicial de total
+  único cuenta como una sola liquidación vencida.
 
 ## R21 · Certificado de libre deuda · Vigente (D-059)
 
@@ -370,14 +396,17 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
   con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
   sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de
-  corte.
+  corte; con un corte posterior al vencimiento, muestra el interés corrido en una línea aparte sin
+  registrarlo en la cuenta corriente.
 
 ## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12
 
 - **Regla**: una nota de crédito de un proveedor queda **asociada a la factura que corrige** y su
   monto **no puede superar** el de esa factura.
 - **Efecto en el gasto**: se descuenta del gasto antes de prorratear, dentro del mismo grupo de
-  reparto de la factura original (no es un gasto negativo suelto).
+  reparto de la factura original (no es un gasto negativo suelto). Si la factura ya se liquidó en un
+  período emitido, la nota de crédito se descuenta en el período en que se carga, dentro del mismo
+  grupo: nunca reabre una liquidación emitida (D-082).
 - **Duplicados**: el control de factura duplicada de R12 usa la clave `cuit + ptoVta + tipoCmp + nroCmp`,
   que incluye el **tipo de comprobante** porque una factura y su nota de crédito pueden compartir número
   al numerarse por separado.
@@ -536,10 +565,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
   | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
   | Pagos sin asignar | Hay pagos informados sin confirmar o sin unidad: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
-  | Unidades sin contacto válido | Alguna unidad no tiene un email válido (R28) | Advertencia | 13 |
+  | Unidades sin contacto válido *(propuesta, R28)* | Alguna unidad no tiene un email válido | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
-  | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos del período | Bloqueante | 7 (el 6 expone la consulta) |
+  | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos **ordinarios** del período | Bloqueante (duro) | 7 (el 6 expone la consulta) |
 
   La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
   contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no
@@ -548,9 +577,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   Se suman a la lista cuando existan esas funciones.
 - **Tests mínimos**: un bloqueo activo impide emitir; aceptarlo de forma explícita permite emitir y
   deja registro con usuario, fecha y alertas; una advertencia no impide emitir; una factura cargada
-  dos veces dispara el bloqueo con proveedor, número y monto y no se puede aceptar; un edificio sin
+  dos veces dispara el bloqueo con proveedor, número y monto y no se puede aceptar; "ingresos mayores que
+  los gastos" no se puede aceptar; un edificio sin
   saldos confirmados no emite su primera liquidación, y aceptar esa alerta se rechaza: la emisión
-  recién sigue cuando se confirman los saldos; ningún control genera movimientos.
+  recién sigue cuando se confirman los saldos o se confirma "sin saldos previos" (R09); ningún control
+  genera movimientos.
 
 ## R35 · Vencimiento en día inhábil · Propuesta (D-071)
 
@@ -558,8 +589,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   todos los trámites y los bancos no acreditan igual que un día hábil.
 - **Propuesta**: si el vencimiento cae en un día inhábil, se corre al primer día hábil siguiente, y los
   intereses (R03) cuentan desde ese día. El PDF de la expensa muestra la fecha ya corrida.
-- **Feriados**: los nacionales se cargan en `parametros.yaml` por año; cada edificio puede sumar
-  feriados provinciales o de Mendoza.
+- **Feriados** (D-082): los nacionales viven en un **calendario del sistema**, común a todos los
+  edificios y actualizable cada año sin tocar la configuración de cada edificio (no en
+  `parametros.yaml`, que sólo se copia al crear). Cada edificio puede sumar feriados provinciales o
+  locales.
 - **Tests mínimos**: un vencimiento en domingo pasa al lunes; un pago el lunes no genera interés; un
   vencimiento en un feriado seguido de fin de semana pasa al siguiente día hábil; un día hábil normal
   no se mueve.
@@ -586,12 +619,14 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
     ordinaria prorrateada, antes del día límite. Un pago menor no bonifica.
   - Vale la fecha de la transferencia, no la de la confirmación (R11).
 - **Cuándo se registra** (D-080): **al confirmar el pago** (cambio 8), como un movimiento de
-  bonificación con su motivo, en la misma operación que la imputación. La expensa (cambio 7) muestra
+  bonificación con su motivo, en la misma operación que la imputación y **enlazado a ese pago**
+  (D-082). Si el pago se revierte (R18), se reimputa (R25) o su imputación deja de valer por una
+  anulación (R17), la bonificación se revierte con él, con un contra-movimiento. La expensa (cambio 7) muestra
   los dos importes: "si pagás hasta el día X: $Y" y el total sin descuento.
 - **Tests mínimos**: un pago del importe con descuento antes del límite bonifica y deja la ordinaria
   saldada; un pago menor no; una unidad con deuda anterior no bonifica aunque pague a término; una
   multa del período no se bonifica; un pago el día límite bonifica y uno al día siguiente no; el PDF
-  muestra los dos importes.
+  muestra los dos importes; revertir un pago bonificado devuelve la deuda completa.
 
 ## R38 · Ingresos del consorcio · Propuesta (D-071)
 
@@ -599,12 +634,12 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   para una antena, el uso del SUM por terceros) tiene que bajar lo que pagan todos. Hoy la base sólo
   tiene gastos.
 - **Propuesta**: el administrador registra un **ingreso** con concepto, importe, período, grupo de
-  reparto y respaldo. Al liquidar, los ingresos aprobados se restan del total de gastos de su grupo, y
-  sobre el neto se aplica el reparto de R01 y R07. La expensa los muestra en un bloque propio,
+  reparto y respaldo. Al liquidar, los ingresos aprobados se restan de los **gastos ordinarios** de su
+  grupo (nunca de la extraordinaria), y sobre el neto se aplica el reparto de R01 y R07 (D-082). La expensa los muestra en un bloque propio,
   "Ingresos", con su detalle.
 - **Si quien paga es un vecino** (por ejemplo, alquila una cochera común): se le carga como cargo
   particular a su unidad (R14) y el mismo importe entra como ingreso del consorcio.
-- **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos del grupo. Hasta
+- **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos ordinarios del grupo. Hasta
   decidirlo, el sistema lo frena con un control duro de R34, que no se puede aceptar (D-080).
 - **Tests mínimos**: un ingreso baja el total a repartir de su grupo y no el de otros grupos; el reparto
   del neto sigue sumando exacto; un ingreso en borrador no entra; un ingreso mayor que los gastos frena

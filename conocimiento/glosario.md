@@ -38,7 +38,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Factor por estado**: el porcentaje con que una unidad participa del reparto según su estado (por ejemplo, baldío al 50%). La diferencia la absorben las demás unidades del grupo (R02).
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
 - **Prorrateo**: repartir un gasto entre las unidades según su coeficiente, su superficie o en partes iguales.
-- **Fondo de reserva**: en el MVP, un porcentaje sobre la expensa ordinaria que se cobra como línea propia (R15). El sistema no lleva su saldo acumulado.
+- **Fondo de reserva**: en el MVP, un porcentaje sobre la **ordinaria prorrateada** que se cobra como línea propia (R15).
+- **Ordinaria prorrateada**: la parte de cada unidad en los gastos ordinarios de sus grupos, neta de notas de crédito e ingresos; sin cargos particulares, intereses ni fondo. Es la base del fondo de reserva y de la bonificación (R13, D-081). El sistema no lleva su saldo acumulado.
 - **Fondo**: de dónde sale y adónde va la plata (operativo, de reserva, de obras). No son lo mismo; en el MVP el fondo de reserva es sólo un concepto de la expensa (D-031).
 
 ## Liquidación

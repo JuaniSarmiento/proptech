@@ -22,7 +22,7 @@ decisión, salida), se guardan como JSON (formato JDM) y el motor ZEN las ejecut
 liquidación. El motor **decide y puede calcular**, devolviendo la plata como texto; el núcleo
 **redondea y registra**.
 
-Ejemplo: el reglamento dice que quien paga antes del día 5 tiene 10% de descuento. En el editor se
+Ejemplo: el reglamento dice que quien paga hasta el día 5 inclusive tiene 10% de descuento. En el editor se
 arma una tabla: si `dia_pago <= 5`, entonces `bonificacion = "10.00"` y `motivo = "pronto pago"`. El
 núcleo recibe ese `"10.00"`, calcula el descuento y lo registra.
 
@@ -182,8 +182,8 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-No es un cambio aparte; se reparte en tres que ya existen. Las fichas de `roadmap.md` se actualizan
-en el propose de cada uno.
+No es un cambio aparte; se reparte en tres que ya existen, y sus fichas en `roadmap.md` ya lo
+recogen. El propose de cada uno baja el detalle.
 
 | Cambio | Qué agrega |
 |---|---|

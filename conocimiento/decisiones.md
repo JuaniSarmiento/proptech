@@ -327,7 +327,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   desactivada por default en edificios.
 - **Quién**: Juani (recomendación de Claude).
 
-## D-031 · Fondo de reserva como concepto de la expensa, sin tesorería
+## D-031 · Fondo de reserva como concepto de la expensa, sin tesorería · *corregida en parte por D-081*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: cada edificio configura un porcentaje de fondo de reserva sobre la expensa ordinaria,
@@ -493,7 +493,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   - Coincidencia a favor de Alberto: B06 usa Decimal, igual que su documento de arquitectura (ver D-039).
 - **Quién**: Juani.
 
-## D-045 · El MVP se construye en 15 cambios de OPSX · *corregida por D-049, D-052 y D-077*
+## D-045 · El MVP se construye en 15 cambios de OPSX · *corregida por D-047, D-049, D-052 y D-077*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: OpenSpec quedó inicializado en el repositorio (`openspec/`, idioma español, con
@@ -801,7 +801,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: `openspec/exploraciones/2026-10-12-dolores-protecc.md`.
 - **Quién**: Juani.
 
-## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta · *corregida en parte por D-067*
+## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta · *corregida en parte por D-066 y D-067*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: la arquitectura incorpora desde ya un **puerto de políticas** en `proptech_core`: toda
@@ -1067,7 +1067,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   resolver) y R24 no tenía un cambio donde probarse antes del 14.
 - **Quién**: Juani, a partir de la revisión final de la base.
 
-## D-079 · Correcciones de la segunda revisión completa (13/10) · *corregida en parte por D-080*
+## D-079 · Correcciones de la segunda revisión completa (13/10) · *corregida en parte por D-080 y D-081*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1135,6 +1135,30 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   definiciones de detalle, sin cambio de criterio.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
+## D-082 · Definiciones de plata de la cuarta revisión (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión** (las que tocan montos quedan a validar con un administrador, como R03):
+  - **La bonificación queda enlazada a su pago**: si el pago se revierte, se reimputa o su imputación cae
+    por una anulación, la bonificación se revierte con un contra-movimiento (R37, R18).
+  - **Interés ya registrado por días posteriores a la transferencia**: al confirmar el pago se registra
+    solo un ajuste por el interés de más (R11).
+  - **El interés anterior a la migración no se recalcula**: entra como lo trae el administrador, en una
+    columna de la hoja opcional de saldos por período, y R03 corre desde la migración (R09).
+  - **Edificio sin saldos previos**: se confirma con esa acción, que cierra el importador en cero; así el
+    control duro de saldos iniciales no lo bloquea (R09, R34).
+  - **Tolerancia de coeficientes**: ±0,0001, con advertencia y reparto proporcional a la suma real (R01,
+    R07).
+  - **Los ingresos se restan de los gastos ordinarios** de su grupo, nunca de la extraordinaria (R38).
+  - **Nota de crédito de una factura ya liquidada**: se descuenta en el período en que se carga, sin
+    reabrir el emitido (R22).
+  - **Feriados nacionales en un calendario del sistema**, actualizable cada año (R35).
+  - **Cargos recurrentes del reglamento** como cargos particulares generados por el motor (R14).
+  - **El cambio 2 crea las tablas mínimas** que necesita para probar el acceso; el 3 las completa.
+- **Por qué**: la cuarta revisión completa encontró estos casos sin definir; todos afectan un monto o
+  impiden probar un cambio.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
+
 ---
 
 ## Preguntas abiertas
@@ -1143,10 +1167,10 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 
 - [ ] **P1 · Piloto** (ahora un edificio, D-033): quién es, qué datos puede dar (padrón, facturas, última liquidación) y cuándo. *08/10: Juani no lo sabe; se le pregunta a Alberto. Mientras tanto se diseña con un edificio de ejemplo, pero M1 no se da por cumplido sin datos reales.*
 - [x] **P2 · Tipo de complejo del MVP**: edificios primero, diseño preparado para barrios (D-027, reemplaza D-008).
-- [x] **P3 · Usuarios y roles del MVP**: administrador, vecino y consejo en sólo lectura (D-009).
+- [x] **P3 · Usuarios y roles del MVP**: titular, colaborador, consejo en sólo lectura y vecino (D-009, D-037).
 - [x] **P4 · Política financiera**: decidida (D-010 a D-015). R08 y R10 vigentes (D-016). **Falta validar los defaults con un administrador o contador de Mendoza.**
 - [x] **P5 · Medios de cobro del MVP**: comprobante + OK del administrador, extracto como ayuda (D-017). La consulta UIF queda como requisito antes de integrar Mercado Pago.
-- [x] **P6 · Stack**: definido (D-020).
+- [x] **P6 · Stack**: definido (D-020, ajustado por D-036 y D-038).
 - [x] **P7 · Equipo**: Juani programa (D-022).
 - [ ] **P8 · Precio y modelo comercial**: sin definir. Punto de partida: la landing de Alberto (ARS 2.900 por unidad, Profesional 4.200, 10 fundadores con migración gratis) (D-035). Sin definir todavía (08/10). El documento de Alberto lo presenta como tema abierto, con los datos de mercado como referencia.
 - [ ] **P9 · Qué traen los extractos bancarios en Mendoza** (Q2 del documento de Alberto, prioridad 0
