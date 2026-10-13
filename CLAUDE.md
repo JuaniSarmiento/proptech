@@ -19,7 +19,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | Archivo | Qué tiene | Cómo se actualiza |
 |---|---|---|
 | `conocimiento/mvp.md` | Objetivo, usuarios, historias con criterios de aceptación, alcance, hitos M1 a M3, diferencias con la spec | Se reescribe |
-| `conocimiento/reglas-de-negocio.md` | R01 a R31 (con estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla es un test** | Se reescribe |
+| `conocimiento/reglas-de-negocio.md` | R01 a R33 (con estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla es un test** | Se reescribe |
 | `conocimiento/decisiones.md` | D-001 en adelante, con lo descartado y el porqué; preguntas abiertas al final | **Sólo se agrega** |
 | `conocimiento/glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `conocimiento/proyecto-final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
@@ -51,7 +51,7 @@ original de la especificación se descartó (D-002) y no se usa.
   el vecino informa con su comprobante y el administrador confirma (D-017, R11).
 - **Cobros y cuenta corriente son dominio CRITICAL** (governance global): se propone y se espera
   aprobación de Juani antes de escribir código ahí.
-- **TDD estricto en el núcleo**: cada regla vigente (R01 a R31) tiene sus tests mínimos escritos en
+- **TDD estricto en el núcleo**: cada regla vigente (R01 a R33) tiene sus tests mínimos escritos en
   `reglas-de-negocio.md`; se ven fallar antes de escribir el código.
 - **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;
   el frontend no calcula montos; reparto por mayor resto (R07, D-046).
@@ -75,8 +75,9 @@ original de la especificación se descartó (D-002) y no se usa.
   `aplicacion`. Frontend en `web/`, despliegue en `infra/`.
 - **Puerto de políticas** (D-064): las reglas propias de cada edificio entran por un puerto en
   `proptech_core` que devuelve acciones propuestas; el núcleo valida y registra. En el MVP se
-  implementa con GoRules ZEN y su editor visual (D-066): el motor decide, nunca calcula plata, y un
-  validador propio bloquea la emisión ante cualquier respuesta fuera de contrato.
+  implementa con GoRules ZEN y su editor visual (D-066): el motor devuelve la plata como texto, el
+  núcleo redondea y registra (D-067), y un validador propio bloquea la emisión ante cualquier
+  respuesta fuera de contrato.
 - **Tests**: unitarios (reglas, sin base), integración (PostgreSQL real en Docker), aceptación
   (la liquidación del piloto al centavo).
 - **Despliegue**: VPS con Docker y Caddy (D-043). PDFs con WeasyPrint, avisos por email.

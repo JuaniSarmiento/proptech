@@ -109,6 +109,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Garantía**: la suma de las partes es siempre igual al gasto, al centavo; ninguna unidad se
   aparta más de un centavo de su parte exacta.
 - **Intereses**: se calculan con precisión completa y se redondean al centavo una sola vez, al registrarse.
+- **Modo de redondeo**: *pendiente (P10)*. Bancario o medio hacia arriba; hasta decidirlo, ningún
+  test fija el resultado de un caso que termine exactamente en medio centavo.
 - **Tests mínimos**: un `float` en un monto hace fallar la prueba; $1.000.000 entre 150 unidades suma exacto; empate de fracciones es
   determinista; un reparto entre 1 unidad devuelve el total.
 
@@ -430,3 +432,25 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: una unidad marcada no recibe el aviso automático de mora; no cuenta como moroso
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
   cálculos.
+
+## R32 · Cambio de titular a mitad de período · Pendiente (P11)
+
+- **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
+  anterior. Hoy ninguna regla dice a quién se le imputa cada cosa ni qué ve cada uno en el portal.
+- **A definir**: si la expensa del período sigue a la unidad o a la persona; qué pasa con la deuda
+  anterior y con el crédito a favor; cómo se relaciona con el certificado de libre deuda (R21).
+- **Tests mínimos**: a definir cuando se responda P11.
+
+## R33 · Datos completos y tipados antes de consultar el motor de reglas · Propuesta (D-066, D-067)
+
+- **Qué resuelve**: las tablas de decisión de ZEN eligen la fila por defecto en silencio si un dato
+  llega con tipo incorrecto o falta (prueba del 13/10).
+- **Propuesta**: el núcleo arma los datos de cada unidad con tipos fijos y verifica que estén todos
+  antes de llamar al motor; la respuesta pasa por el validador (`motor-de-reglas.md`). Cualquier
+  dato faltante, mal tipado o respuesta fuera de contrato bloquea la emisión con una alerta que dice
+  qué regla y qué unidad.
+- **Tests mínimos**: un dato numérico que llega como texto bloquea la emisión y no aplica la fila por
+  defecto; un dato faltante bloquea la emisión; una respuesta con un monto como número en vez de
+  texto se rechaza; una respuesta vacía se rechaza; una respuesta correcta se registra con su regla y
+  versión en el motivo.
+

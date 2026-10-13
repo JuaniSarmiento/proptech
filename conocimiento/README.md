@@ -9,17 +9,19 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 
 ## Estado
 
-- **Etapa**: diseño cerrado, sin código todavía (octubre de 2026).
+- **Etapa**: construcción. Cambios 1a `infraestructura-base` y 1b `arranque-del-sistema` archivados
+  (09 y 11/10/2026); el próximo es el 1c `cola-logs-y-respaldos`. Ver `roadmap.md`.
 - **El MVP arranca por edificios**; los barrios privados son la fase siguiente.
-- **Preguntas abiertas**: cuál es el edificio piloto y el precio. Ver el final de `decisiones.md`.
+- **Preguntas abiertas**: el edificio piloto, el precio, el modo de redondeo y el cambio de titular,
+  entre otras. Ver el final de `decisiones.md`.
 
 ## Cómo leerla
 
 | Orden | Archivo | Qué tiene | Cómo se actualiza |
 |---|---|---|---|
 | 1 | [`mvp.md`](mvp.md) | Objetivo, usuarios, historias de usuario con criterios de aceptación, alcance, hitos y diferencias con la especificación original y con la arquitectura de koris | Se reescribe |
-| 2 | [`reglas-de-negocio.md`](reglas-de-negocio.md) | Las reglas de cálculo (R01 a R31), cada una con su estado (vigente, propuesta o pendiente) y los tests mínimos que la verifican | Se reescribe |
-| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-063 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
+| 2 | [`reglas-de-negocio.md`](reglas-de-negocio.md) | Las reglas de cálculo (R01 a R33), cada una con su estado (vigente, propuesta o pendiente) y los tests mínimos que la verifican | Se reescribe |
+| 3 | [`decisiones.md`](decisiones.md) | Las decisiones (D-001 a D-067 y en adelante) con su fecha, lo que se descartó, el porqué y quién decidió; preguntas abiertas al final | **Sólo se agrega** |
 | 4 | [`glosario.md`](glosario.md) | El idioma común. El código usa estos mismos nombres, en español | Se reescribe |
 | 5 | [`proyecto-final.md`](proyecto-final.md) | Las fases posteriores al MVP, cada una con su condición para arrancar | Se reescribe |
 | 6 | [`roadmap.md`](roadmap.md) | Los 17 cambios del MVP en orden (1a, 1b, 1c y 2 a 15), con una ficha por cambio que es la entrada de cada propose | Se reescribe |

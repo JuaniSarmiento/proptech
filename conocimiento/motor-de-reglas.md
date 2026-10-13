@@ -6,6 +6,8 @@ Cómo entra al sistema el reglamento propio de cada edificio sin programar un ed
 ## Estado
 
 - **Puerto de políticas** (D-064): decidido.
+- **Corrección del 13/10** (D-067): ZEN calcula con decimales exactos; lo que había que cuidar no era
+  el `float` sino las tablas que caen en silencio.
 - **GoRules ZEN + editor visual jdm-editor detrás del puerto, con validador propio** (D-066):
   decidido el 12/10, a pedido de Alberto. Reemplaza al motor propio de plantillas (D-065).
 - Todavía **no se escribe código** del motor. Los detalles abiertos se cierran en el explore del
@@ -17,11 +19,12 @@ Cómo entra al sistema el reglamento propio de cada edificio sin programar un ed
 
 Las reglas de cada edificio se **dibujan** en un editor visual como un grafo (entrada, tabla de
 decisión, salida), se guardan como JSON (formato JDM) y el motor ZEN las ejecuta cuando se arma la
-liquidación. El motor **decide** qué corresponde; el núcleo **calcula** la plata y la registra.
+liquidación. El motor **decide y puede calcular**, devolviendo la plata como texto; el núcleo
+**redondea y registra**.
 
 Ejemplo: el reglamento dice que quien paga antes del día 5 tiene 10% de descuento. En el editor se
 arma una tabla: si `dia_pago <= 5`, entonces `bonificacion = "10.00"` y `motivo = "pronto pago"`. El
-núcleo recibe ese `"10.00"`, calcula el descuento con `Dinero` y lo registra.
+núcleo recibe ese `"10.00"`, calcula el descuento y lo registra.
 
 ## Las dos herramientas
 
@@ -51,68 +54,77 @@ aparte.
 cuenta corriente que sólo agrega movimientos (R08) y el aislamiento entre edificios (R10) **no pasan
 al motor** (D-064).
 
-## Los dos problemas de ZEN y cómo se manejan
+## Lo que hace bien ZEN y lo que no
 
-La prueba del 12/10 encontró dos problemas. Siguen ahí: no los arregla nadie más que nosotros.
+Prueba del 13/10 con `zen-engine` 2.1.3 (corrige lo que decía la prueba del 12/10; D-067).
 
-### 1. Usa `float`
+### Los números: calcula con decimales exactos
 
-El paquete de PyPI trabaja los números como `float`. Si una regla hace `monto * 0.90`, el resultado
-sale con error de redondeo.
+```
+0.1 + 0.2                                  -> 0.3     (Python con float da 0.30000000000000004)
+1.1 * 1.1                                  -> 1.21    (Python con float da 1.2100000000000002)
+string(number("100") / 3)                  -> "33.333333333333333333333333333"
+string(number("999999999999.99") * 1.05)   -> "1049999999999.9895"
+number("SECRETO-123") * 0.9                -> error (no sigue en silencio)
+```
 
-**Cómo se maneja: el motor decide, no calcula.**
+ZEN **calcula por dentro con decimales exactos**. El `float` aparece sólo al devolver un número a
+Python. Por eso:
 
-- Las reglas devuelven **literales**: porcentajes y montos fijos como texto (`"10.00"`,
-  `"20000.00"`), banderas y motivos. La prueba mostró que un literal de texto sale idéntico a como
-  entró.
-- **Ninguna regla hace una cuenta sobre un campo de plata.** El validador lo rechaza al guardar.
-- Toda cuenta de plata la hace el núcleo con `Dinero` (D-046).
-- Para **comparar** montos dentro de una regla (por ejemplo "si la deuda supera $100.000"), la
-  propuesta es pasar el monto en **centavos enteros**: un `float` representa enteros exactos hasta
-  2^53, muy por encima de cualquier monto real. *Pendiente: confirmarlo con una prueba en el
-  explore del cambio 3.*
+- **Una regla puede calcular**, siempre que devuelva el resultado **como texto con `string(...)`**.
+  El validador rechaza al guardar cualquier salida de plata que no sea texto.
+- **El redondeo al centavo nunca lo hace el motor.** El núcleo lo aplica una sola vez, al registrar,
+  con el modo de R07 (pendiente, P10). Así `"86.4192"` llega entero y el núcleo decide cómo queda.
+- Los montos entran al motor como texto y la regla los convierte con `number(...)`. Una conversión
+  imposible tira error, y el error bloquea la emisión.
 
-### 2. Saltea en silencio una regla con error
+### Las tablas de decisión: caen en silencio a la fila por defecto
 
-Si un dato llega con un tipo inesperado, ZEN no avisa: saltea esa fila de la tabla y aplica la
-siguiente, o la regla por defecto. Puede terminar en una expensa mal cobrada sin que nadie lo note.
+```
+tabla dia_pago <= 5 -> "10.00", si no -> "0.00"
+{"dia_pago": 3}     -> "10.00"
+{"dia_pago": "3"}   -> "0.00"   (texto en vez de número: no avisa)
+{}                  -> "0.00"   (falta el dato: no avisa)
+```
 
-**Cómo se maneja: un validador propio en dos momentos.**
+Es el riesgo real de ZEN: un dato mal tipado o ausente hace que la tabla elija la fila por defecto,
+sin error. Se maneja con tres capas (R33):
 
-| Momento | Qué revisa | Si falla |
-|---|---|---|
-| **Al guardar** una regla | Que no haya cuentas sobre campos de plata; que las salidas tengan los campos y tipos del contrato; que la regla por defecto no devuelva un campo de entrada sin validar | No se guarda, y el editor dice qué está mal |
-| **Al evaluar** en la liquidación | Que la respuesta cumpla el contrato: campos presentes, tipos correctos, montos legibles con `Dinero`, no vacía | **Bloquea la emisión** con una alerta que dice qué regla y qué unidad. Nunca se toma como "no hay regla" |
-
-Además, el núcleo arma los datos de entrada con tipos fijos antes de llamar al motor, así ZEN nunca
-recibe un tipo inesperado.
+1. **El núcleo arma los datos de entrada con tipos fijos** y verifica que estén todos antes de
+   llamar al motor. ZEN nunca recibe un tipo inesperado ni un dato faltante.
+2. **Validador al guardar**: salidas con los campos y tipos del contrato; plata siempre como texto;
+   la fila por defecto no devuelve un campo de entrada sin validar.
+3. **Validador al evaluar**: campos presentes, tipos correctos, montos legibles, respuesta no vacía.
+   Si falla, **bloquea la emisión** con una alerta que dice qué regla y qué unidad. Nunca se toma
+   como "no hay regla".
 
 ## El contrato: hechos adentro, propuestas afuera
 
 ```
-hechos (los arma el núcleo)            respuesta del motor (sólo literales)
+hechos (los arma el núcleo)            respuesta del motor
 edificio, período                      { "aplica": true,
 unidad, estado de la unidad              "tipo": "bonificacion",
-dia_pago: 3                              "porcentaje": "10.00",
-deuda_centavos: 7630042                  "motivo": "pago el día 3, límite día 5" }
+dia_pago: 3                              "monto": "7630.042",
+deuda: "76300.42"                        "motivo": "pago el día 3, límite día 5" }
 periodos_vencidos: 0
 ```
 
-1. El núcleo arma los datos del mes de cada unidad, con tipos fijos.
-2. El motor evalúa las reglas activas del edificio y devuelve decisiones.
+1. El núcleo arma los datos del mes de cada unidad, con tipos fijos y completos.
+2. El motor evalúa las reglas activas del edificio.
 3. El validador revisa la respuesta.
-4. El núcleo calcula los montos con `Dinero` y los registra como movimientos, con un motivo que dice
-   qué regla y qué versión los generó.
+4. El núcleo redondea al centavo (R07) y registra cada movimiento con un motivo que dice qué regla y
+   qué versión lo generó.
 
 Reglas del contrato:
 
 - Los datos de entrada salen siempre del núcleo, **nunca de la salida de otra regla**.
 - **Toda respuesta trae su motivo** (R08).
+- **Toda plata sale como texto**; nunca un número.
 - Una respuesta fuera de contrato es **un fallo**, nunca "no aplica".
 
 ## Qué reglas pasan por el motor en el MVP
 
-| Regla | Qué decide el motor | Qué calcula el núcleo | Cambio |
+| Regla | Qué decide el motor | Qué hace el núcleo | Cambio |
 |---|---|---|---|
 | Intereses por mora | Tasa y días de gracia que corresponden | El interés simple (R03) | 3 |
 | Fondo de reserva | Porcentaje sobre la ordinaria | El monto (R15) | 3 |
@@ -178,10 +190,9 @@ en el propose de cada uno.
 
 ## Pendiente
 
-- [ ] Confirmar con una prueba que los montos en centavos enteros se comparan sin error dentro de
-  ZEN (explore del cambio 3).
 - [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 3.
 - [ ] Acordar con Alberto quién usa el editor: valores para el titular, estructura para el equipo.
-- [ ] Verificar si el copiloto de IA (reglas en lenguaje natural) y el servidor MCP que menciona
-  GoRules vienen en las librerías libres (`zen-engine`, `jdm-editor`) o sólo en su plataforma paga.
-- [ ] Probar jdm-editor dentro de Next.js con `antd` 5.21.2.
+- [ ] Confirmar en gorules.io que el copiloto de IA y el servidor MCP son de la plataforma paga y no
+  de las librerías libres (la investigación del 13/10 dice que sí, desde unos €500 por mes).
+- [ ] Probar jdm-editor dentro de Next.js con `antd` 5.21.2 y React 19.3: nadie verificó que sean
+  compatibles. Si no lo son, hay que elegir entre bajar React o subir `antd`.

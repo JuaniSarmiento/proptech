@@ -801,7 +801,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Fuente**: `openspec/exploraciones/2026-10-12-dolores-protecc.md`.
 - **Quién**: Juani.
 
-## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta
+## D-064 · Puerto de políticas desde ahora; motor de reglas de terceros cuando haga falta · *corregida en parte por D-067*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: la arquitectura incorpora desde ya un **puerto de políticas** en `proptech_core`: toda
@@ -834,7 +834,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
 - **Quién**: Juani.
 
-## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio
+## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: el puerto de políticas (D-064) se implementa con **GoRules ZEN** (`zen-engine`) y su
@@ -858,6 +858,23 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   explore del cambio 3.
 - **Quién**: Alberto (pedido del 12/10, "vamos con lo que te paso"); Juani acepta.
 
+## D-067 · ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio
+
+- **Fecha**: 13/10/2026
+- **Corrige a D-064 y D-066**: decían que ZEN "trabaja con `float`". Es falso. La prueba del 13/10 con
+  `zen-engine` 2.1.3 muestra que calcula por dentro con decimales exactos (`0.1 + 0.2` da `0.3`;
+  `string(number("100") / 3)` da `"33.333333333333333333333333333"`); el `float` aparece sólo al
+  devolver un número a Python. La prueba del 12/10 vio ese `float` de salida y lo tomó como el
+  cálculo. Alberto lo había señalado ("funcionan los decimales").
+- **Decisión**: una regla **puede calcular plata** siempre que la devuelva como texto con
+  `string(...)`; el validador rechaza cualquier salida de plata que no sea texto. El redondeo al
+  centavo lo hace el núcleo, una sola vez, al registrar (R07). Se cae la propuesta de pasar montos en
+  centavos enteros: ya no hace falta.
+- **Lo que sigue en pie**: las tablas de decisión eligen la fila por defecto en silencio si un dato
+  llega con tipo incorrecto o falta (confirmado el 13/10). Lo cubren los datos de entrada con tipos
+  fijos y el validador (R33).
+- **Quién**: Juani, a partir del aviso de Alberto (12/10) y la prueba del 13/10.
+
 ---
 
 ## Preguntas abiertas
@@ -877,3 +894,13 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
   Condiciona directamente R19 (código de unidad y CBU histórico) y el *design* del cambio 9
   `extracto-bancario`. Se responde probando con extractos reales de los bancos que usan los
   administradores de Mendoza (D-063). 12/10: Juani no lo sabe; se le pregunta a Alberto.
+- [ ] **P10 · Modo de redondeo al centavo**: R07 y D-046 dicen "al centavo, una sola vez" pero no
+  cómo: redondeo bancario (`0.125` da `0.12`) o medio hacia arriba (`0.125` da `0.13`). Cambia a qué
+  unidad le toca el centavo sobrante y cómo cierra cada interés. Se responde con un contador o
+  administrador de Mendoza. Detectado en la auditoría del 13/10.
+- [ ] **P11 · Cambio de titular a mitad de período**: quién responde por la expensa del período en
+  curso y por la deuda anterior cuando una unidad se vende o cambia de titular (R32). Se responde con
+  Alberto y un administrador. Detectado en la auditoría del 13/10.
+- [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
+  del piloto, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
+  del 13/10; no está confirmado con un abogado.

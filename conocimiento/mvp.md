@@ -53,9 +53,10 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
   entonces quedan disponibles para los gastos de mi edificio sin afectar a otros edificios.
 - Dado un edificio con liquidaciones emitidas, cuando cambio la tasa o el porcentaje del fondo de
   reserva, entonces las liquidaciones ya emitidas no cambian y el cambio rige desde la próxima.
-- Dado un edificio, cuando configuro el interés, entonces elijo entre un único vencimiento (R03,
-  default) o el esquema de primer y segundo vencimiento con recargo escalonado (R26), pendiente de
-  confirmar con Alberto si el piloto lo usa (ProTecc G4, Q9).
+- Dado un edificio, cuando configuro el interés, entonces queda un único vencimiento con interés
+  simple (R03).
+- *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
+  escalonado (R26) entra acá si Alberto confirma que el piloto lo usa (ProTecc G4, Q9).
 
 **HU-A2 · Cargar el edificio desde un Excel**
 Como administrador, quiero cargar las unidades desde un Excel (piso, departamento, tipo de unidad,
@@ -217,6 +218,11 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
 
 **HU-V5 · Descargar comprobantes**
 Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos confirmados.
+- Dado un período emitido de mi unidad, cuando pido su PDF, entonces descargo el mismo comprobante
+  que se emitió, con el código de la unidad.
+- Dado un período todavía no emitido, entonces no aparece para descargar.
+- Dado que pido el detalle de pagos, entonces veo sólo los confirmados de mis unidades, nunca los de
+  otra unidad ni los que siguen informados o fueron rechazados (R10, R11).
 
 **HU-V6 · Recibir avisos**
 Como vecino, quiero recibir un email antes del vencimiento y otro si quedé en mora.
