@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-080). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-081). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (intereses, fondo de reserva, bonificaciones, alertas) entran por el motor de
@@ -28,7 +28,7 @@ el cierre da igual al centavo.
 
 | Rol | Qué hace |
 |---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; único que cierra liquidaciones, anula liquidaciones y revierte pagos |
+| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; único que emite, distribuye y anula liquidaciones y revierte pagos (el detalle por acción es P23) |
 | **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
 | **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
 | **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
@@ -113,8 +113,9 @@ que se generen deudas.
   cargos particulares e intereses.
 - Dada una preliquidación, entonces lo **prorrateado** entre las unidades es igual, al centavo, a los
   gastos aprobados del período menos sus notas de crédito y los ingresos del consorcio, más el fondo
-  de reserva (R07, R15, R22, R38). Los cargos particulares, los intereses y las bonificaciones se
-  suman aparte, unidad por unidad, y el total de la liquidación es la suma de todo eso.
+  de reserva (R07, R15, R22, R38). Los cargos particulares y los intereses se suman aparte,
+  unidad por unidad (la bonificación por pronto pago no es parte de la liquidación: se registra al
+  confirmar el pago, R37), y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.
 
 **HU-A5 · Emitir la liquidación**
@@ -124,8 +125,8 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
 - Dada una liquidación emitida, cuando la distribuyo, entonces queda distribuida y ya no se puede
   anular (D-074).
 - Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide.
-- Dada una preliquidación con un control bloqueante (por ejemplo, una factura cargada dos veces),
-  cuando intento emitir, entonces el sistema me lo muestra y no emite, salvo que acepte esa alerta de
+- Dada una preliquidación con un control bloqueante aceptable (por ejemplo, facturas leídas por IA
+  con alertas), cuando intento emitir, entonces el sistema me lo muestra y no emite, salvo que acepte esa alerta de
   forma explícita; la aceptación queda registrada (R34).
 - Dada una liquidación emitida pero todavía no distribuida, cuando la anulo con un motivo, entonces
   pasa a anulada, la deuda de cada unidad queda igual que antes de emitir y ningún movimiento se
@@ -135,7 +136,7 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
   sin ellos y veo la advertencia "hay N facturas sin cargar"; dados gastos que la IA leyó con alertas
   ("en revisión"), entonces no emito salvo que acepte la alerta (R24, R34, D-075, ProTecc A4).
 - Dado que el extracto del banco no está procesado, cuando emito, entonces la liquidación sale igual
-  y veo la advertencia "extracto incompleto" (R24, R34).
+  (R24).
 - Dada una unidad con deuda anterior, entonces su expensa nueva muestra el saldo anterior sin
   volver a cobrarlo (R06), y los intereses del período se registran como débito con su detalle (R03).
 - Dada la boleta de cualquier unidad, entonces incluye un código corto de esa unidad para que el
@@ -167,6 +168,8 @@ coinciden con un movimiento y qué movimientos no tienen comprobante.
   "coincide" o "no encontrado" (importe y fecha, y CUIT de origen si el banco lo informa).
 - Dado un movimiento del banco sin comprobante, entonces aparece como fondo pendiente de identificar.
 - Dado un movimiento del banco ya usado para confirmar un pago, entonces no puede confirmar otro.
+- Dado que el extracto del período no está completo, cuando preliquido o emito, entonces veo la
+  advertencia "extracto incompleto" (R34).
 - Dado un movimiento que coincide por el código de unidad en el concepto o por el CBU histórico de
   esa unidad, entonces aparece en la bandeja como sugerencia de confianza alta, y confirmo con un
   clic; el sistema nunca lo asigna solo (R19, principio P3 de Alberto, ProTecc A1/E3).

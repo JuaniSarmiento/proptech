@@ -57,7 +57,7 @@ original de la especificación se descartó (D-002) y no se usa.
   el vecino informa con su comprobante y el administrador confirma (D-017, R11).
 - **Cobros y cuenta corriente son dominio CRITICAL** (governance global): se propone y se espera
   aprobación de Juani antes de escribir código ahí.
-- **TDD estricto en el núcleo**: cada regla vigente (R01 a R41) tiene sus tests mínimos escritos en
+- **TDD estricto en el núcleo**: cada regla vigente tiene sus tests mínimos escritos en
   `reglas-de-negocio.md`; se ven fallar antes de escribir el código.
 - **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;
   el frontend no calcula montos; reparto por mayor resto (R07, D-046).

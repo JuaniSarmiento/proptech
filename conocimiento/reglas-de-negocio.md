@@ -56,7 +56,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   | Opción | Valores | Default |
   |---|---|---|
   | Tasa mensual | porcentaje | 3% |
-  | Días de gracia | entero desde 0 | 0 |
+  | Días de gracia | entero desde 0; si se superan, el interés corre desde el vencimiento (D-081) | 0 |
   | Forma de cálculo | proporcional por día de atraso · mes entero al pasar el vencimiento | proporcional por día |
 
 - **Propuestas relacionadas**: vencimiento en día inhábil (R35) y tasa propia para la extraordinaria
@@ -222,6 +222,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Una obligación por unidad y período**, con el capital desglosado en ordinario y extraordinario.
   La expensa del vecino los muestra en bloques separados, con su subtotal.
 - **Imputación**: dentro del período, intereses, después ordinaria, después extraordinaria (R04).
+- **Ordinaria prorrateada** (D-081): la parte de cada unidad en los gastos ordinarios de sus grupos,
+  neta de notas de crédito (R22) e ingresos (R38). No incluye cargos particulares, intereses ni el
+  fondo de reserva. Es la base del fondo de reserva (R15) y de la bonificación por pronto pago (R37).
+  Ejemplo: una unidad con $40.000 de ordinaria prorrateada, una multa de $5.000 y un fondo del 5%
+  paga $40.000 + $2.000 de fondo + $5.000 de multa = $47.000.
 - **Escala**: la separación queda guardada porque más adelante importa quién paga cada una
   (en Argentina, la extraordinaria suele corresponder al propietario y no al inquilino).
 - **Tests mínimos**: un gasto extraordinario aparece en su bloque; los subtotales suman el total;
@@ -243,10 +248,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 
 ## R15 · Fondo de reserva · Vigente (D-031)
 
-- **Configurable por edificio**: un porcentaje sobre la expensa ordinaria del período. Default: 0%
+- **Configurable por edificio**: un porcentaje sobre la **ordinaria prorrateada** del período (R13). Default: 0%
   (sin fondo de reserva).
 - **En la liquidación**: aparece como línea propia de la expensa de cada unidad, calculada sobre su
-  ordinaria y redondeada con R07; la suma de las partes da exacto el total del fondo del período.
+  ordinaria prorrateada y redondeada con R07; la suma de las partes da exacto el total del fondo del período.
 - **Imputación**: forma parte de la ordinaria (R04, R13).
 - **Sin tesorería**: el sistema no lleva el saldo acumulado del fondo ni el saldo de caja (D-023).
 - **Historia**: cada liquidación guarda el porcentaje usado.
@@ -279,8 +284,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Anulación** (D-073, D-079): es un **cambio de estado**, no un borrado. La liquidación pasa de
   emitida a anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se
   modifica ni se borra: el saldo de cada unidad excluye **todo movimiento generado por la emisión
-  anulada** (obligaciones, intereses, bonificaciones), así que la deuda queda igual que antes de emitir
-  y volver a emitir no duplica nada.
+  anulada** (sus obligaciones y los intereses que registró), así que la deuda queda igual que antes de emitir
+  y volver a emitir no duplica nada. Si antes de anular se había imputado un pago a esas obligaciones,
+  la imputación deja de valer y el pago vuelve como **crédito a favor** de la unidad, que se imputa con
+  R04 en la nueva emisión (D-081).
 - **Distribuida** (D-074): una liquidación pasa a distribuida cuando el administrador la **distribuye**
   (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
   el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
@@ -289,7 +296,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   error se corrige con un movimiento nuevo (ajuste).
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
   emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
-  anular y volver a emitir no cobra dos veces el interés de la deuda vieja; intentar anular una
+  anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una
+  emisión que se anula queda como crédito a favor; intentar anular una
   liquidación distribuida (por la acción "distribuir", por un email o por una vista
   en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
   emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
@@ -313,9 +321,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
   en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
   vecino lo use.
-- **CBU histórico**: cuando el administrador confirma un pago, el sistema guarda qué CBU lo originó,
-  asociado a esa unidad. El mes siguiente, un movimiento del mismo CBU es una sugerencia para esa
-  unidad.
+- **CBU histórico**: cuando el administrador confirma un pago y el CBU de origen se conoce (porque lo
+  trae el comprobante o porque el pago se cruzó con el extracto), el sistema lo guarda asociado a esa
+  unidad (cambio 8). La sugerencia por CBU aparece al cruzar el extracto (cambio 9): un movimiento del
+  mismo CBU es una sugerencia para esa unidad.
 - **Nunca asigna solo**: los dos mecanismos sólo generan una **sugerencia de confianza alta** en la
   bandeja de confirmación (HU-A6, HU-A7); el administrador siempre confirma con un clic (principio
   P3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
@@ -337,7 +346,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
   mes a mes y los pagos parciales la confunden).
 - **Exclusiones**: quedan excluidas las unidades con la deuda en **gestión judicial** (R31), cuando el
-  cambio 10b construya esa marca y la agregue a esta función (D-078). El plan de pago está fuera del
+  cambio 10b construya esa marca y la agregue a esta función (D-078), y las **unidades del consorcio** (R39), si
+  se valida. El plan de pago está fuera del
   MVP (`proyecto-final.md`, G1), así que esa exclusión queda como límite conocido.
 - **Sin bloqueo de amenities**: las reservas de espacios comunes no están en el MVP, así que no hay
   ningún bloqueo asociado a esta marca.
@@ -353,6 +363,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   la cuenta corriente, nunca estimado), y los pagos informados todavía no confirmados, listados por
   separado como "en revisión" sin restarlos del saldo.
 - **Nunca estima**: no incluye ningún gasto del período en curso que todavía no se liquidó.
+- **Interés corrido** (D-081): si la fecha de corte es posterior a un vencimiento, el certificado informa
+  en una línea aparte el interés corrido hasta esa fecha según R03, calculado y sin registrarlo en la
+  cuenta corriente (se registra con la emisión siguiente).
 - **Firma**: lo firma el administrador titular.
 - **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
   con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
@@ -365,9 +378,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   monto **no puede superar** el de esa factura.
 - **Efecto en el gasto**: se descuenta del gasto antes de prorratear, dentro del mismo grupo de
   reparto de la factura original (no es un gasto negativo suelto).
-- **Duplicados**: el control de factura duplicada de R12 (`cuit + ptoVta + tipoCmp + nroCmp`) suma el
-  **tipo de comprobante**, porque una factura y su nota de crédito pueden compartir número al
-  numerarse por separado.
+- **Duplicados**: el control de factura duplicada de R12 usa la clave `cuit + ptoVta + tipoCmp + nroCmp`,
+  que incluye el **tipo de comprobante** porque una factura y su nota de crédito pueden compartir número
+  al numerarse por separado.
 - **Tests mínimos**: una nota de crédito menor al monto de la factura reduce el gasto repartido; una
   nota de crédito que supera el monto de su factura se rechaza; una nota de crédito sin factura
   asociada se rechaza; una factura y su nota de crédito con el mismo número no se marcan como
@@ -471,7 +484,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Qué resuelve**: una deuda que ya está en manos del abogado del consorcio, donde un recordatorio
   automático de mora puede interferir con el juicio.
 - **Propuesta**: marcar una unidad como "en gestión judicial" suspende los recordatorios automáticos
-  de mora (HU-V6) y la excluye del cálculo de moroso crítico (R20), igual que un plan de pago al día.
+  de mora (HU-V6) y la excluye del cálculo de moroso crítico (R20).
   Las consultas de esa unidad se derivan al administrador.
 - **Tests mínimos**: una unidad marcada no recibe el aviso automático de mora; no cuenta como moroso
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
@@ -508,10 +521,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Emisión con alertas aceptadas**: con un bloqueo activo (salvo los controles duros), el administrador puede emitir igual sólo
   si confirma de forma explícita qué alertas acepta. Queda registrado quién, cuándo y cuáles. Es
   distinto del modo degradado (R24), que cubre la caída de un servicio externo.
-- **Controles duros** (D-080): "saldos iniciales sin validar" e "ingresos mayores que los gastos" **no
-  se pueden aceptar**: la emisión sólo sigue cuando se resuelven. Emitir sin los saldos iniciales
+- **Controles duros** (D-080, D-081): "saldos iniciales sin validar", "ingresos mayores que los
+  gastos" y "factura duplicada" **no se pueden aceptar**: la emisión sólo sigue cuando se resuelven. Emitir sin los saldos iniciales
   confirmados dejaría la deuda vieja afuera del libro (R09, R40), y emitir con ingresos mayores que los
-  gastos daría expensas negativas (R38). El resto de los bloqueantes se puede aceptar con registro.
+  gastos daría expensas negativas (R38). **Factura duplicada** también es duro (D-081): con la clave
+  completa de R12 es la misma factura, y aceptarla repartiría el gasto dos veces. El resto de los bloqueantes se puede aceptar con registro.
 - **Una diferencia nunca se tapa**: no se carga un movimiento inventado para que un control dé bien.
 - **Controles del MVP**:
 
@@ -534,8 +548,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   Se suman a la lista cuando existan esas funciones.
 - **Tests mínimos**: un bloqueo activo impide emitir; aceptarlo de forma explícita permite emitir y
   deja registro con usuario, fecha y alertas; una advertencia no impide emitir; una factura cargada
-  dos veces dispara el bloqueo con proveedor, número y monto; un edificio sin saldos confirmados no
-  emite su primera liquidación sin aceptar la alerta; ningún control genera movimientos.
+  dos veces dispara el bloqueo con proveedor, número y monto y no se puede aceptar; un edificio sin
+  saldos confirmados no emite su primera liquidación, y aceptar esa alerta se rechaza: la emisión
+  recién sigue cuando se confirman los saldos; ningún control genera movimientos.
 
 ## R35 · Vencimiento en día inhábil · Propuesta (D-071)
 
@@ -564,11 +579,11 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Qué resuelve**: dejar escrito cuándo corresponde la bonificación por pronto pago (regla del motor,
   `motor-de-reglas.md`), para que dos edificios no la interpreten distinto.
 - **Propuesta** (son los valores por defecto de la regla; cada edificio los ajusta en el editor):
-  - Se bonifica sólo la **expensa ordinaria del período**. Nunca la extraordinaria, los intereses ni
+  - Se bonifica sólo la **ordinaria prorrateada del período** (R13). Nunca la extraordinaria, los intereses ni
     los cargos particulares, y en especial **nunca una multa**.
   - Sólo si la unidad **no tenía deuda vencida** de períodos anteriores al día del pago.
-  - Sólo si el pago **cubre la ordinaria del período con el descuento ya aplicado** antes del día
-    límite. Un pago menor no bonifica.
+  - Sólo si el pago **cubre todo lo que la unidad debe del período, con el descuento ya aplicado** a la
+    ordinaria prorrateada, antes del día límite. Un pago menor no bonifica.
   - Vale la fecha de la transferencia, no la de la confirmación (R11).
 - **Cuándo se registra** (D-080): **al confirmar el pago** (cambio 8), como un movimiento de
   bonificación con su motivo, en la misma operación que la imputación. La expensa (cambio 7) muestra

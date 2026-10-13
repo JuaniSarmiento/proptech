@@ -56,14 +56,14 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   del BCRA. Aun sin custodia, la UIF podría alcanzar a quien facilita el inicio del pago.
 - **Quién**: Juani.
 
-## D-006 · Recordatorios por email en el MVP *(propuesta, sin confirmar)*
+## D-006 · Recordatorios por email en el MVP *(propuesta, sin confirmar)* · *confirmada: los avisos por email entran en el cambio 13*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: los avisos de vencimiento y mora salen por email. WhatsApp queda para después.
 - **Por qué**: la API oficial de WhatsApp exige verificar el negocio ante Meta y cotizar con un proveedor.
 - **Quién**: Juani.
 
-## D-007 · La base de conocimiento son cinco archivos · *corregida: la base hoy tiene diez archivos*
+## D-007 · La base de conocimiento son cinco archivos · *corregida: la base hoy tiene diez archivos (ver `README.md`)*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: `mvp.md`, `proyecto-final.md` y `reglas-de-negocio.md` describen cómo es el
@@ -545,7 +545,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   8. El PDF de la expensa cuenta como interfaz: pasa por la skill impeccable.
 - **Quién**: Claude, por delegación explícita de Juani.
 
-## D-048 · Forma de trabajo: orquestador y agentes en secuencia, aprueba el auditor
+## D-048 · Forma de trabajo: orquestador y agentes en secuencia, aprueba el auditor · *corregida en parte por D-049*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: Juani trabaja solo. Cada cambio sigue un ciclo secuencial que orquesta Claude:
@@ -834,7 +834,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Documento**: "PropTech · Motor de reglas" (PDF entregado a Alberto, fuera del repositorio).
 - **Quién**: Juani.
 
-## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067*
+## D-066 · GoRules ZEN con editor visual detrás del puerto de políticas, con validador propio · *corregida en parte por D-067 y D-080*
 
 - **Fecha**: 12/10/2026
 - **Decisión**: el puerto de políticas (D-064) se implementa con **GoRules ZEN** (`zen-engine`) y su
@@ -890,7 +890,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   no la importación.
 - **Quién**: Juani, a partir del material de Alberto.
 
-## D-069 · Controles antes de emitir con dos niveles y emisión con alertas aceptadas
+## D-069 · Controles antes de emitir con dos niveles y emisión con alertas aceptadas · *corregida en parte por D-078, D-080 y D-081*
 
 - **Fecha**: 13/10/2026
 - **Decisión**: antes de emitir, el sistema corre una lista de controles, cada uno bloqueante o
@@ -920,7 +920,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   agregarlo después obliga a cambiar cada descarga.
 - **Quién**: Juani, a partir del material de Alberto.
 
-## D-071 · Diez huecos del catálogo de 100 casos de Alberto, resueltos como propuestas
+## D-071 · Diez huecos del catálogo de 100 casos de Alberto, resueltos como propuestas · *corregida en parte por D-079*
 
 - **Fecha**: 13/10/2026
 - **Origen**: el documento de Alberto con 100 casos de negocio y de borde (13/10). La mayoría ya estaba
@@ -952,7 +952,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   Telegram), si hace falta más allá del email.
 - **Quién**: Juani, a partir del documento de herramientas de Alberto.
 
-## D-073 · Anular una liquidación es un cambio de estado, no un borrado
+## D-073 · Anular una liquidación es un cambio de estado, no un borrado · *corregida en parte por D-079 y D-081*
 
 - **Fecha**: 13/10/2026
 - **Decisión**: anular una liquidación emitida y todavía no distribuida (R17) **no borra ningún
@@ -971,7 +971,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   de valer) y guardar el estado como una columna que se sobrescribe (pierde la historia).
 - **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
 
-## D-074 · La distribución es un concepto propio del cambio 7, y el moroso crítico es una función del cambio 4
+## D-074 · La distribución es un concepto propio del cambio 7, y el moroso crítico es una función del cambio 4 · *corregida en parte por D-077*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -991,7 +991,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   eran dependencias hacia adelante: no se podían probar en su cambio.
 - **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
 
-## D-075 · Los estados del gasto separan la IA caída de la IA con dudas
+## D-075 · Los estados del gasto separan la IA caída de la IA con dudas · *corregida en parte por D-079*
 
 - **Fecha**: 13/10/2026
 - **Decisión**: un gasto tiene cuatro estados, de punta a punta:
@@ -1067,7 +1067,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   resolver) y R24 no tenía un cambio donde probarse antes del 14.
 - **Quién**: Juani, a partir de la revisión final de la base.
 
-## D-079 · Correcciones de la segunda revisión completa (13/10)
+## D-079 · Correcciones de la segunda revisión completa (13/10) · *corregida en parte por D-080*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1089,7 +1089,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cambios de criterio.
 - **Quién**: Juani, a partir de la revisión.
 
-## D-080 · Cuatro definiciones pendientes de la segunda revisión
+## D-080 · Cuatro definiciones pendientes de la segunda revisión · *corregida en parte por D-081*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1109,6 +1109,31 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   motor (D-065 y D-066 los habían heredado del catálogo de plantillas).
 - **Por qué**: la segunda revisión encontró que la base decía dos cosas sobre cada uno de estos puntos.
 - **Quién**: Juani, que delegó la decisión el 13/10 siguiendo las recomendaciones de la revisión.
+
+## D-081 · Correcciones de la tercera revisión completa (13/10)
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **La bonificación por pronto pago no es parte de la liquidación**: se registra sólo al confirmar el
+    pago (cambio 8, D-080). En el cambio 7 la regla del motor sólo calcula el importe con descuento que
+    muestra el PDF. Corrige a D-079, que la sumaba al total de la liquidación y a lo que excluye una
+    anulación.
+  - **Factura duplicada es un control duro**, junto con los dos de D-080: con la clave completa de R12 es
+    la misma factura, y aceptarla repartiría el gasto dos veces.
+  - **Ordinaria prorrateada**: la parte de cada unidad en los gastos ordinarios de sus grupos, neta de
+    notas de crédito e ingresos, sin cargos particulares, intereses ni fondo. Es la base del fondo de
+    reserva y de la bonificación (R13, R15, R37).
+  - **Pago imputado a una emisión que se anula**: la imputación deja de valer y el pago vuelve como
+    crédito a favor, que se imputa en la nueva emisión (R17).
+  - **Libre deuda con interés corrido**: el certificado informa en una línea aparte el interés corrido
+    hasta la fecha de corte, calculado y sin registrar (R21).
+  - **Días de gracia**: si se superan, el interés corre desde el vencimiento (R03; a validar con un
+    administrador junto con el resto de R03).
+  - **El extracto incompleto** se prueba en el cambio 9 (HU-A7), y la **sugerencia por CBU histórico**
+    también (R19): en el cambio 8 sólo se guarda el CBU cuando se conoce.
+- **Por qué**: la tercera revisión completa de la base encontró estos puntos; son correcciones y
+  definiciones de detalle, sin cambio de criterio.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
 

@@ -29,7 +29,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 ## Gastos y reparto
 
 - **Gasto**: un comprobante de proveedor asociado a un período, un concepto, un importe, una categoría (R16) y un grupo de reparto (R01). Tiene cuatro estados: **borrador** (cargado sin aprobar), **sin IA** (la lectura automática falló y espera carga manual), **en revisión** (la IA leyó con alertas) y **aprobado** (confirmado por el administrador). Sólo el aprobado entra en la liquidación (D-075).
-- **Categoría de gasto**: en qué se gasta la plata (seguridad, limpieza, ascensor...). La define el administrador; ordena la expensa y los reportes, no cambia los cálculos (R16). No confundir con el grupo de reparto, que dice quién paga.
+- **Categoría de gasto** (antes "centro de costo"): en qué se gasta la plata (seguridad, limpieza, ascensor...). La define el administrador; ordena la expensa y los reportes, no cambia los cálculos (R16). No confundir con el grupo de reparto, que dice quién paga.
 - **Archivo de parámetros**: `config/parametros.yaml`, con los valores con que arranca cada edificio nuevo (D-042).
 - **Gasto común**: se reparte entre varias unidades. **Gasto particular**: se carga a una sola (por ejemplo, la limpieza del quincho que usó).
 - **Expensa ordinaria**: la de la operación habitual. **Expensa extraordinaria**: la de una obra o necesidad puntual.
@@ -39,7 +39,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
 - **Prorrateo**: repartir un gasto entre las unidades según su coeficiente, su superficie o en partes iguales.
 - **Fondo de reserva**: en el MVP, un porcentaje sobre la expensa ordinaria que se cobra como línea propia (R15). El sistema no lleva su saldo acumulado.
-- **Categoría de gasto** (antes "centro de costo"): en qué se gasta (seguridad, limpieza, administración...). **Fondo**: de dónde sale y adónde va la plata (operativo, de reserva, de obras). No son lo mismo; en el MVP el fondo de reserva es sólo un concepto de la expensa (D-031).
+- **Fondo**: de dónde sale y adónde va la plata (operativo, de reserva, de obras). No son lo mismo; en el MVP el fondo de reserva es sólo un concepto de la expensa (D-031).
 
 ## Liquidación
 
@@ -121,4 +121,4 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Referencia de pago**: el dato que liga un pago con su unidad y período (en Mercado Pago, `external_reference`).
 - **Conciliación**: cruzar los movimientos del banco o del recaudador con los pagos e imputaciones.
 - **Rendición**: el archivo que entrega un recaudador con los pagos que cobró.
-- **Fondo pendiente de conciliación**: un pago recibido que todavía no se pudo asignar a una unidad.
+- **Fondo pendiente de identificar**: un pago recibido que todavía no se pudo asignar a una unidad.

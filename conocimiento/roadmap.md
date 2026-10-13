@@ -27,7 +27,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 | 11 | `portal-del-vecino` | M2 | 10a | no | no | mediano |
 | 12 | `vista-del-consejo` | M2 | 11 | no | no | chico |
 | 13 | `avisos-por-email` | M2 | 8, 10b | no | no | chico |
-| 14 | `lectura-de-facturas` | M3 | 6 | no | no | mediano |
+| 14 | `lectura-de-facturas` | M3 | 6, 7 | no | no | mediano |
 | 15 | `piloto-en-paralelo` | M3 | todos + datos del piloto | no | no | mediano |
 
 **Crítico**: Juani aprueba la propuesta antes de que se codee. **Explore propio**: se corre un
@@ -87,7 +87,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: que cada persona entre y vea sólo lo suyo, aunque el código tenga un error.
 - **Historias**: HU-V1 (entrada del vecino). **Reglas**: R10; auditoría de cada acción sensible (D-016).
-- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076. Se resuelve en su explore: P18.
+- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076. Se resuelven en su explore: P18 (el vecino en dos
+  administraciones) y P23 (permisos por acción, que definen cada 403).
 - **Entra**: login del personal y del vecino; los cuatro roles (titular, colaborador, consejo,
   vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
@@ -108,8 +109,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
 - **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (desactivado), R03 (su
-  configuración), R15 (porcentaje), R16 (categorías); R33 (datos tipados para el motor); propuestas: R35 (feriados en parámetros), R36
-  (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
+  configuración), R15 (porcentaje), R16 (categorías); R33 (datos tipados para el motor); propuestas, que entran si se validan: R35
+  (feriados en parámetros), R36 (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
 - **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-064, D-066, D-067, D-080.
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
@@ -121,8 +122,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7).
 - **Depende de**: 2. **Habilita**: 5, 6.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
-  si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente de
-  confirmar con Alberto, ProTecc G4, Q9) en vez del vencimiento único de R03.
+  si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
 - **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1; una unidad repetida;
   cambiar la tasa y que se pierda la versión anterior; editar la configuración de otro edificio.
 - **Terminado cuando**: se cumplen los criterios de HU-A1; un edificio nuevo arranca con los valores
@@ -134,8 +134,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05, R06, R07, R08, R09 (el caso de uso
   de saldo inicial), R13 (orden de imputación por tipo).
 - **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068, D-073, D-074. Propuestas que tocan este
-  cambio: R35 (intereses desde el día hábil), R36 (tasa propia de la extraordinaria), R39 (sin
-  intereses para unidades del consorcio).
+  cambio, si se validan: R35 (intereses desde el día hábil), R36 (tasa propia de la extraordinaria), R39 (sin
+  intereses ni moroso crítico para unidades del consorcio).
 - **Entra**: libro de movimientos de sólo agregar, sin campo saldo; obligaciones, pagos e
   imputaciones; intereses simples calculados al registrarse; reparto por **mayor resto** como función
   pública de `proptech_core` (la usa el cambio 6); correcciones con contra-asiento; dos fechas por
@@ -182,8 +182,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: cargar los gastos del mes y los cargos de cada unidad, listos para liquidar.
 - **Historias**: HU-A3 (carga manual, incluido el sueldo del encargado), HU-A3b. **Reglas**: R01
-  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16, R22; propuestas:
-  R38 (ingresos del consorcio) y las **consultas** que usan los controles de R34 "gasto mensual
+  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R13, R14, R16, R22; propuestas, si se
+  validan: R38 (ingresos del consorcio) y las **consultas** que usan los controles de R34 "gasto mensual
   obligatorio faltante" e "ingresos mayores que los gastos" (el control en sí lo arma el cambio 7).
 - **Decisiones**: D-013, D-024, D-025, D-026, D-028, D-041, D-061, D-075, D-078.
 - **Entra**: proveedores; gastos con sus **cuatro estados** (borrador, sin IA, en revisión y aprobado,
@@ -203,7 +203,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
-- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R33, R34; propuestas: R35
+- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R33, R34; propuestas, si se validan: R35
   (vencimiento corrido en el PDF), R37 (los dos importes en el PDF y la regla en el motor), R38 (bloque de ingresos en la
   expensa), R40 (períodos en orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
@@ -228,7 +228,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
-- **Depende de**: 5, 6. **Habilita**: 8, 10a, 11, 12, 13 y el test de M1.
+- **Depende de**: 5, 6. **Habilita**: 8, 10a, 11, 12, 13, 14 y el test de M1.
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
 - **Decidir en el design** (y en su explore): la frontera de la transacción; **qué pasa si falla el
@@ -254,14 +254,14 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 8 · `pagos-informados` · crítico
 
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
-- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta:
+- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta, si se valida:
   la bonificación por pronto pago se registra al confirmar el pago, D-080).
 - **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
   con la fecha de la transferencia usando el motor del cambio 4; repartir un pago entre varias
-  unidades de la misma persona; recordar el CBU que confirmó el último pago de cada unidad, como
-  sugerencia de alta confianza en la bandeja (R19, ProTecc A1/E3); estado **revertido** para un pago
+  unidades de la misma persona; guardar el CBU de origen de cada pago confirmado cuando se conoce
+  (R19, ProTecc A1/E3; la sugerencia por CBU llega con el extracto, cambio 9); estado **revertido** para un pago
   confirmado que el banco devuelve, con su contra-movimiento (R18, ProTecc D4); asistente de
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
   propuesta: entra si se valida, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
@@ -286,7 +286,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: que el administrador valide los pagos informados contra el banco.
 - **Historias**: HU-A7. **Reglas**: R11, R34.
 - **Entra**: subir el extracto en CSV o Excel; un adaptador por banco y formato; marcar coincidencias;
-  movimientos sin comprobante como fondos pendientes; un movimiento no confirma dos pagos; el
+  movimientos sin comprobante como fondos pendientes; un movimiento no confirma dos pagos;
+  sugerencias de confianza alta por código de unidad o por CBU histórico (R19); el
   control "extracto incompleto" en la lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8.
 - **Prerrequisito**: responder qué traen los extractos de los bancos que usan los administradores
@@ -316,10 +317,10 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: las operaciones de morosidad que escriben en la cuenta corriente o tienen peso legal.
 - **Historias**: HU-A10 (certificado de libre deuda), HU-A11 (condonación y gestión judicial).
-  **Reglas**: R21, R29 (propuesta), R31 (propuesta), R41 (propuesta, va con R31; entra si se valida). **Decisiones**: D-059,
+  **Reglas**: R21; propuestas que entran si se validan: R29, R31, R41 (va con R31). **Decisiones**: D-059,
   D-074, D-077, D-078.
 - **Entra**: condonación de interés como movimiento con motivo, sin borrar el recargo original (R29,
-  falta decidir quién aprueba, ProTecc B5, Q1); marca de "gestión judicial" por unidad que frena los
+  falta decidir quién aprueba: P20, ProTecc B5); marca de "gestión judicial" por unidad que frena los
   recordatorios automáticos y la saca del cálculo de moroso crítico (R31, ProTecc G2); **certificado de
   libre deuda** por venta de unidad, con fecha de corte, saldo calculado desde la cuenta corriente y
   pagos en revisión listados aparte (R21, ProTecc G3). La marca de gestión judicial se expone como
@@ -426,6 +427,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
+- **P18 y P23**: el vecino en dos administraciones y los permisos por acción, antes del cambio 2.
 - **P19, P21 y P22**: el doble vencimiento, los umbrales y quién usa el editor de reglas, antes de los
   cambios 3, 4 y 14.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

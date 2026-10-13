@@ -104,7 +104,7 @@ sin error. Se maneja con tres capas (R33):
 hechos (los arma el núcleo)            respuesta del motor
 edificio, período                      { "aplica": true,
 unidad, estado de la unidad              "tipo": "bonificacion",
-dia_pago: 3                              "monto": "7630.042",
+fecha_transferencia: 3 (al confirmar)    "monto": "7630.042",
 ordinaria_del_periodo: "76300.42"        "motivo": "pago el día 3, límite día 5" }
 periodos_vencidos: 0
 ```
@@ -127,7 +127,7 @@ Reglas del contrato:
 | Regla | Qué decide el motor | Qué hace el núcleo | Cambio |
 |---|---|---|---|
 | Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 7 |
-| Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | El descuento | 7 |
+| Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | En el 7 calcula el importe con descuento para el PDF; en el 8, al confirmar el pago, registra la bonificación (R37, D-080) | 7 y 8 |
 | Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
 
 **Los intereses, el fondo de reserva y el cargo por estado no pasan por el motor** (D-080): son menús
@@ -182,13 +182,14 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-No es un cambio aparte; se reparte en dos que ya existen. Las fichas de `roadmap.md` se actualizan
+No es un cambio aparte; se reparte en tres que ya existen. Las fichas de `roadmap.md` se actualizan
 en el propose de cada uno.
 
 | Cambio | Qué agrega |
 |---|---|
 | 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend; las reglas se cargan desde el cambio 7 |
-| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, bonificación por pronto pago y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
+| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, el importe con descuento de la bonificación para el PDF y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
+| 8 · `pagos-informados` | Al confirmar un pago, consulta la regla de bonificación por pronto pago y registra la bonificación (R37) |
 
 ## Pendiente
 
