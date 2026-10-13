@@ -858,7 +858,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   explore del cambio 3.
 - **Quién**: Alberto (pedido del 12/10, "vamos con lo que te paso"); Juani acepta.
 
-## D-067 · ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio · *corregida en parte por D-085*
+## D-067 · ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio
 
 - **Fecha**: 13/10/2026
 - **Corrige a D-064 y D-066**: decían que ZEN "trabaja con `float`". Es falso. La prueba del 13/10 con
