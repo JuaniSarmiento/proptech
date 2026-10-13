@@ -331,6 +331,9 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
   el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
   cambio 10a se encarga del listado, la exportación y la presentación.
+- **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
+  cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
+  una sola.
 - **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
   mes a mes y los pagos parciales la confunden).
 - **Exclusiones**: quedan excluidas las unidades con la deuda en **gestión judicial** (R31), cuando el
@@ -502,9 +505,13 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Cómo funciona**: al preliquidar y al emitir, el sistema corre una lista de controles. Cada uno es
   **bloqueante** (no se puede emitir) o **advertencia** (se puede emitir y se muestra). Cada alerta
   dice qué pasa y dónde.
-- **Emisión con alertas aceptadas**: con un bloqueo activo, el administrador puede emitir igual sólo
+- **Emisión con alertas aceptadas**: con un bloqueo activo (salvo los controles duros), el administrador puede emitir igual sólo
   si confirma de forma explícita qué alertas acepta. Queda registrado quién, cuándo y cuáles. Es
   distinto del modo degradado (R24), que cubre la caída de un servicio externo.
+- **Controles duros** (D-080): "saldos iniciales sin validar" e "ingresos mayores que los gastos" **no
+  se pueden aceptar**: la emisión sólo sigue cuando se resuelven. Emitir sin los saldos iniciales
+  confirmados dejaría la deuda vieja afuera del libro (R09, R40), y emitir con ingresos mayores que los
+  gastos daría expensas negativas (R38). El resto de los bloqueantes se puede aceptar con registro.
 - **Una diferencia nunca se tapa**: no se carga un movimiento inventado para que un control dé bien.
 - **Controles del MVP**:
 
@@ -560,12 +567,16 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   - Se bonifica sólo la **expensa ordinaria del período**. Nunca la extraordinaria, los intereses ni
     los cargos particulares, y en especial **nunca una multa**.
   - Sólo si la unidad **no tenía deuda vencida** de períodos anteriores al día del pago.
-  - Sólo si el pago **cubre el total de la ordinaria** del período antes del día límite. Un pago
-    parcial no bonifica.
+  - Sólo si el pago **cubre la ordinaria del período con el descuento ya aplicado** antes del día
+    límite. Un pago menor no bonifica.
   - Vale la fecha de la transferencia, no la de la confirmación (R11).
-- **Tests mínimos**: un pago total antes del límite bonifica; un pago parcial no; una unidad con deuda
-  anterior no bonifica aunque pague a término; una multa del período no se bonifica; un pago el día
-  límite bonifica y uno al día siguiente no.
+- **Cuándo se registra** (D-080): **al confirmar el pago** (cambio 8), como un movimiento de
+  bonificación con su motivo, en la misma operación que la imputación. La expensa (cambio 7) muestra
+  los dos importes: "si pagás hasta el día X: $Y" y el total sin descuento.
+- **Tests mínimos**: un pago del importe con descuento antes del límite bonifica y deja la ordinaria
+  saldada; un pago menor no; una unidad con deuda anterior no bonifica aunque pague a término; una
+  multa del período no se bonifica; un pago el día límite bonifica y uno al día siguiente no; el PDF
+  muestra los dos importes.
 
 ## R38 · Ingresos del consorcio · Propuesta (D-071)
 
@@ -579,7 +590,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Si quien paga es un vecino** (por ejemplo, alquila una cochera común): se le carga como cargo
   particular a su unidad (R14) y el mismo importe entra como ingreso del consorcio.
 - **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos del grupo. Hasta
-  decidirlo, el sistema lo frena con una alerta bloqueante (R34) en vez de emitir expensas negativas.
+  decidirlo, el sistema lo frena con un control duro de R34, que no se puede aceptar (D-080).
 - **Tests mínimos**: un ingreso baja el total a repartir de su grupo y no el de otros grupos; el reparto
   del neto sigue sumando exacto; un ingreso en borrador no entra; un ingreso mayor que los gastos frena
   la emisión.

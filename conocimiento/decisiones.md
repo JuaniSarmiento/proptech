@@ -1089,6 +1089,27 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cambios de criterio.
 - **Quién**: Juani, a partir de la revisión.
 
+## D-080 · Cuatro definiciones pendientes de la segunda revisión
+
+- **Fecha**: 13/10/2026
+- **Decisión**:
+  - **Intereses, fondo de reserva y cargo por estado son menús de configuración, no reglas del
+    motor**, como decidió D-010 (menú cerrado, sin fórmula libre). El motor queda para las reglas
+    propias de cada edificio (bonificaciones, cargos recurrentes, controles propios). El cambio 3
+    construye la base del motor (módulo, puerto, adaptador, validador, versiones y editor), pasa a
+    tener explore propio y a tamaño grande; las reglas concretas llegan en el 7.
+  - **Dos controles duros**: "saldos iniciales sin validar" e "ingresos mayores que los gastos" no se
+    pueden aceptar. El resto de los bloqueantes de R34 sí, con registro.
+  - **La bonificación por pronto pago se registra al confirmar el pago** (cambio 8), si la transferencia
+    es anterior al día límite y cubre la ordinaria con el descuento aplicado. La expensa muestra los dos
+    importes. Así, quien paga el importe con descuento no queda como un pago parcial.
+  - **El moroso crítico cuenta la deuda migrada**: cada período vencido cargado con detalle cuenta como
+    una liquidación vencida; un saldo inicial de total único cuenta como una.
+- **Corrige**: `motor-de-reglas.md`, que ponía la tasa, el fondo y el cargo por estado como reglas del
+  motor (D-065 y D-066 los habían heredado del catálogo de plantillas).
+- **Por qué**: la segunda revisión encontró que la base decía dos cosas sobre cada uno de estos puntos.
+- **Quién**: Juani, que delegó la decisión el 13/10 siguiendo las recomendaciones de la revisión.
+
 ---
 
 ## Preguntas abiertas

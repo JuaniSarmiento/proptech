@@ -126,12 +126,13 @@ Reglas del contrato:
 
 | Regla | Qué decide el motor | Qué hace el núcleo | Cambio |
 |---|---|---|---|
-| Intereses por mora | Tasa y días de gracia que corresponden | El interés simple (R03) | 3 |
-| Fondo de reserva | Porcentaje sobre la ordinaria | El monto (R15) | 3 |
-| Cargo por estado de la unidad | Factor y cargo fijo por estado. Apagada en edificios (D-030) | El cargo (R02) | 3 |
 | Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 7 |
 | Bonificación por pronto pago | Si aplica y qué porcentaje. Apagada por defecto | El descuento | 7 |
 | Cargo recurrente del reglamento | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
+
+**Los intereses, el fondo de reserva y el cargo por estado no pasan por el motor** (D-080): son menús
+cerrados de la configuración del edificio (R03, R15, R02, D-010), con su versión en cada liquidación.
+El motor queda para las reglas propias de cada edificio.
 
 **El moroso crítico no pasa por el motor**: R20 lo define fijo (dos o más liquidaciones vencidas con
 saldo) y lo calcula una función pura del cambio 4 sobre el libro (D-074).
@@ -165,7 +166,7 @@ respeten el contrato.
 
 | Qué se toca | Quién | Por qué |
 |---|---|---|
-| **Valores** de una regla que ya existe: tasas, días, porcentajes, montos fijos | El administrador titular | Es lo que cambia en una asamblea (por ejemplo, el interés pasa del 4% al 6%). Cambiar un número en una tabla probada es de bajo riesgo, y el validador lo revisa igual |
+| **Valores** de una regla que ya existe: días, porcentajes, montos fijos | El administrador titular | Es lo que cambia en una asamblea (por ejemplo, la bonificación pasa del 10% al 15%). La tasa de interés no está acá: es un menú de configuración (D-080). Cambiar un número en una tabla probada es de bajo riesgo, y el validador lo revisa igual |
 | **Estructura** de una regla: condiciones, nodos, salidas, reglas nuevas | El equipo de PropTech | Una regla mal dibujada le cobra mal a todo un edificio, y el editor permite armar cosas que el validador tiene que atajar |
 
 Falta verificar si jdm-editor permite un modo "sólo valores". Si no lo permite, los valores se
@@ -186,7 +187,7 @@ en el propose de cada uno.
 
 | Cambio | Qué agrega |
 |---|---|
-| 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y las reglas de intereses, fondo de reserva y cargo por estado |
+| 3 · `configuracion-del-edificio` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend; las reglas se cargan desde el cambio 7 |
 | 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, bonificación por pronto pago y cargo recurrente; repetir el mes pasado; la preliquidación muestra qué regla generó cada línea |
 
 ## Pendiente

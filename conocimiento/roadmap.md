@@ -15,7 +15,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 | 1b | `arranque-del-sistema` ✅ | M1 | 1a | no | no | mediano |
 | 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano (puede partirse en 1d) |
 | 2 | `acceso-y-aislamiento` | M1 | 1c | **sí** | **sí** | grande |
-| 3 | `configuracion-del-edificio` | M1 | 2 | no | no | mediano |
+| 3 | `configuracion-del-edificio` | M1 | 2 | **sí** (D-080) | no | grande |
 | 4 | `motor-de-cuenta-corriente` | M1 | 2 | **sí** | **sí** | grande |
 | 5 | `importacion-desde-excel` | M1 | 3, 4 | no | **sí** (D-077) | mediano |
 | 6 | `gastos-y-cargos` | M1 | 3, 4 | no | no | mediano |
@@ -104,16 +104,19 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: hay tests contra PostgreSQL real que intentan cruzar administraciones y
   fallan cerrados; cada rol ve exactamente lo de D-037; la auditoría registra cada acción sensible.
 
-### 3 · `configuracion-del-edificio`
+### 3 · `configuracion-del-edificio` · explore propio
 
 - **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
 - **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (desactivado), R03 (su
   configuración), R15 (porcentaje), R16 (categorías); R33 (datos tipados para el motor); propuestas: R35 (feriados en parámetros), R36
   (tasa de la extraordinaria), R39 (marca de unidad del consorcio).
-- **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042.
+- **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-064, D-066, D-067, D-080.
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
-  desactivar); configuración de intereses y fondo de reserva tomada de `parametros.yaml` al crear;
+  desactivar); configuración de intereses y fondo de reserva como **menús cerrados** tomados de
+  `parametros.yaml` al crear, con versión (D-010, D-080); **la base del motor de reglas**: el módulo
+  `politicas`, el puerto, el adaptador de ZEN, el validador, las reglas versionadas por edificio y el
+  editor en el frontend (`motor-de-reglas.md`, D-066, D-067); las reglas concretas llegan en el 7;
   **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b).
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7).
 - **Depende de**: 2. **Habilita**: 5, 6.
@@ -201,7 +204,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R33, R34; propuestas: R35
-  (vencimiento corrido en el PDF), R37 (bonificación por pronto pago), R38 (bloque de ingresos en la
+  (vencimiento corrido en el PDF), R37 (los dos importes en el PDF y la regla en el motor), R38 (bloque de ingresos en la
   expensa), R40 (períodos en orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
   D-073, D-074, D-075, D-078, D-079.
@@ -251,7 +254,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 8 · `pagos-informados` · crítico
 
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
-- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34.
+- **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R25 (propuesta), R34; R37 (propuesta:
+  la bonificación por pronto pago se registra al confirmar el pago, D-080).
 - **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074.
 - **Entra**: subir comprobante; lectura con IA que precarga monto, fecha y número de operación;
   número de operación único por edificio; bandeja de confirmación y rechazo con motivo; imputación
