@@ -30,7 +30,7 @@ Estado de partida esperado, con el 1c archivado:
 **Si el 1c no está archivado** cuando arranque el constructor, este cambio no empieza: depende de su
 worker, su comando de prueba y su `request_id` para el humo, y de su texto de las specs.
 
-**Gobernanza HIGH** (proposal.md): no se construye sin la aprobación de Juani escrita en la propuesta.
+**Gobernanza HIGH** (proposal.md): no se construye sin la aprobación escrita y fechada de uno de los dos socios (Juani o Alberto) en la propuesta (D-094).
 
 ## Cómo aplica cada lección
 

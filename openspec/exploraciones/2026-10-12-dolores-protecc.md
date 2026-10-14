@@ -5,7 +5,7 @@
 > 10/10/2026) contra nuestra base de conocimiento (`mvp.md`, `reglas-de-negocio.md`,
 > `decisiones.md`, `glosario.md`, `proyecto-final.md`). Responde a D-054: el MVP sigue siendo el
 > nuestro, sólo edificios; este documento junta los dolores y problemas de Alberto para decidir
-> cuáles tocan al MVP y cuáles van a `proyecto-final.md`. No se tocó código ni `conocimiento/`.
+> cuáles tocan al MVP y cuáles van a `proyecto-final.md`. No se tocó código ni la base de conocimiento (entonces `conocimiento/`, hoy `knowledge-base/`).
 >
 > Convención: cada fila cita de dónde sale (HU-X, R0X, D-0XX, o el ID de Alberto). Donde no hay
 > cita posible porque es una lectura mía del cruce, va marcado **(propuesta)**.

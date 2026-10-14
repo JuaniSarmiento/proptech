@@ -1,53 +1,20 @@
-# MVP de PropTech
+# Funcionalidades
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-092). **El MVP arranca por
-> edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
-> (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
-> de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
-> reglas, GoRules ZEN con su editor visual (`motor-de-reglas.md`, D-064, D-066, D-067); los intereses y
-> el fondo de reserva son menús cerrados de la configuración (D-080). **Se
-> reescribe** cuando cambia una decisión.
-
-## Objetivo
-
-Que un administrador de edificios en propiedad horizontal **liquide y cobre su edificio de punta
-a punta, mejor que con su Excel**.
-
-**Se da por cumplido cuando** un edificio piloto corre un mes en paralelo con su método actual y
-el cierre da igual al centavo.
-
-## Para quién
-
-- **Tipo de complejo**: edificios en propiedad horizontal (D-027). El modelo soporta barrios
-  privados desde el día uno (estados de lote, cargos por estado), pero no se configuran ni se
-  prueban en el MVP.
-- **Desarrollo**: Juani, como único desarrollador (D-022).
-- **Piloto**: un edificio con contacto directo de Alberto (D-033). Mientras no estén sus datos se
-  diseña con un edificio de ejemplo; M1 no se cumple sin datos reales.
-
-## Usuarios (D-009, D-037)
-
-| Rol | Qué hace |
-|---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; las acciones exclusivas del titular se definen en P23 |
-| **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
-| **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
-| **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
-
-El inquilino como rol separado queda para después del MVP; en edificios es frecuente, así que se
-valida con el piloto que la persona de contacto alcance (D-032).
+Historias de usuario del MVP, organizadas por **épica** (el actor) y después por historia, en el
+formato propio del proyecto (**HU-\***, no se renumera a `US-NNN`, D-093). Formato de los criterios:
+**dado** (situación) · **cuando** (acción) · **entonces** (resultado observable). El detalle de cada
+regla citada vive en `05_reglas_de_negocio.md`.
 
 ---
 
-## Historias de usuario
+## Épica: Administrador
 
-Formato de los criterios: **dado** (situación) · **cuando** (acción) · **entonces** (resultado observable).
+### HU-A1 · Configurar el edificio
 
-### Administrador
-
-**HU-A1 · Configurar el edificio**
 Como administrador, quiero configurar las reglas de mi edificio (intereses, grupos de reparto,
 categorías de gasto, fondo de reserva) para que el sistema liquide como dice su reglamento.
+
+**Criterios de aceptación**:
 - Dado un edificio nuevo, cuando lo creo, entonces arranca con los valores del archivo de
   parámetros (D-042): 3% mensual simple, 0 días de gracia, cálculo proporcional por día, un grupo
   "Generales" con todas las unidades por coeficiente, las categorías precargadas, sin fondo de
@@ -62,10 +29,15 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
 - *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
   escalonado (R26) entra acá si Alberto confirma que el piloto lo usa (ProTecc G4, Q9).
 
-**HU-A2 · Cargar el edificio desde un Excel**
+**Reglas relacionadas**: R01, R02, R03, R15, R16 (R26, propuesta, a confirmar).
+
+### HU-A2 · Cargar el edificio desde un Excel
+
 Como administrador, quiero cargar las unidades desde un Excel (piso, departamento, tipo de unidad,
 propietario, contacto, coeficiente, saldo inicial e interés ya devengado, y opcionalmente el detalle
 por período con su vencimiento) para no tipearlo a mano.
+
+**Criterios de aceptación**:
 - Dado un Excel válido, cuando lo importo, entonces se crean todas las unidades (departamentos,
   cocheras, bauleras, locales) con sus saldos y la suma importada coincide con la del archivo (R09).
 - Dado un Excel con errores (coeficientes de un grupo que se apartan de 1 más que la tolerancia de R01,
@@ -78,9 +50,14 @@ por período con su vencimiento) para no tipearlo a mano.
 - Dadas diferencias, cuando las acepto igual, entonces la aceptación queda registrada y recién ahí
   puedo confirmar los saldos.
 
-**HU-A3 · Cargar gastos**
+**Reglas relacionadas**: R09.
+
+### HU-A3 · Cargar gastos
+
 Como administrador, quiero cargar los gastos del mes a mano o subiendo la factura, para que entren
 en la liquidación.
+
+**Criterios de aceptación**:
 - Dado un gasto cargado a mano, cuando lo guardo, entonces queda en borrador con proveedor,
   concepto, categoría, período, importe, grupo de reparto y si es ordinario o extraordinario; si tengo
   la factura, también su punto de venta, tipo y número, para que el control de duplicados funcione
@@ -100,17 +77,27 @@ en la liquidación.
   ProTecc H1).
 - Dado cualquier gasto en borrador, entonces no entra en la liquidación hasta que lo apruebo.
 
-**HU-A3b · Cargar cargos particulares**
+**Reglas relacionadas**: R12, R16, R22, R34 (R23, propuesta).
+
+### HU-A3b · Cargar cargos particulares
+
 Como administrador, quiero cargarle un importe a una unidad puntual (o importar varios desde un
 Excel), para cobrar el uso del SUM, una multa o un consumo.
+
+**Criterios de aceptación**:
 - Dado un cargo particular aprobado, cuando liquido, entonces aparece sólo en la expensa de esa
   unidad y no cambia lo que pagan las demás (R14).
 - Dado un gasto marcado como extraordinario, cuando liquido, entonces la expensa lo muestra en su
   propio bloque con subtotal (R13).
 
-**HU-A4 · Revisar la preliquidación**
+**Reglas relacionadas**: R13, R14.
+
+### HU-A4 · Revisar la preliquidación
+
 Como administrador, quiero ver una preliquidación antes de emitir, para corregir errores antes de
 que se generen deudas.
+
+**Criterios de aceptación**:
 - Dados los gastos aprobados del período, cuando pido la preliquidación, entonces veo lo que paga
   cada unidad, desglosado por grupo de reparto, ordinaria y extraordinaria, fondo de reserva,
   cargos particulares e intereses.
@@ -121,8 +108,13 @@ que se generen deudas.
   confirmar el pago, R37), y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.
 
-**HU-A5 · Emitir la liquidación**
+**Reglas relacionadas**: R07, R15, R22, R38 (R14, R37, propuestas).
+
+### HU-A5 · Emitir la liquidación
+
 Como administrador, quiero emitir la liquidación del mes y que cada unidad reciba su comprobante.
+
+**Criterios de aceptación**:
 - Dada una preliquidación revisada, cuando emito, entonces se genera una obligación por unidad y
   período, con su PDF. El aviso por email llega con HU-V6 (cambio 13).
 - Dada una liquidación emitida, cuando la distribuyo, entonces queda distribuida y ya no se puede
@@ -146,9 +138,14 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
 - Dada la boleta de cualquier unidad, entonces incluye un código corto de esa unidad para que el
   vecino lo escriba en el concepto de su transferencia (R19, ProTecc A1/E3).
 
-**HU-A6 · Confirmar pagos informados**
+**Reglas relacionadas**: R03, R06, R08, R17, R19, R24, R34.
+
+### HU-A6 · Confirmar pagos informados
+
 Como administrador, quiero una bandeja con los comprobantes que subieron los vecinos para
 confirmarlos o rechazarlos, y que al confirmar se imputen solos.
+
+**Criterios de aceptación**:
 - Dado un pago informado, cuando lo confirmo, entonces se imputa con R04 usando la fecha de la
   transferencia, no la de mi confirmación (R11).
 - Dado un pago informado, cuando lo rechazo con un motivo, entonces no afecta la deuda y el vecino
@@ -165,9 +162,14 @@ confirmarlos o rechazarlos, y que al confirmar se imputen solos.
   unidad correcta, entonces se generan los dos movimientos enlazados en una sola operación y el
   moroso crítico de las dos unidades queda bien calculado (R25, R20, propuesta, ProTecc B2).
 
-**HU-A7 · Validar con el extracto del banco**
+**Reglas relacionadas**: R04, R05, R11, R18, R20 (R25, propuesta).
+
+### HU-A7 · Validar con el extracto del banco
+
 Como administrador, quiero subir el extracto del banco y que el sistema me marque qué comprobantes
 coinciden con un movimiento y qué movimientos no tienen comprobante.
+
+**Criterios de aceptación**:
 - Dado un extracto en CSV o Excel, cuando lo subo, entonces cada pago informado queda marcado como
   "coincide" o "no encontrado" (importe y fecha, y CUIT de origen si el banco lo informa).
 - Dado un movimiento del banco sin comprobante, entonces aparece como fondo pendiente de identificar.
@@ -178,8 +180,13 @@ coinciden con un movimiento y qué movimientos no tienen comprobante.
   esa unidad, entonces aparece en la bandeja como sugerencia de confianza alta, y confirmo con un
   clic; el sistema nunca lo asigna solo (R19, principio 3 de Alberto, ProTecc A1/E3).
 
-**HU-A8 · Ver la morosidad**
+**Reglas relacionadas**: R11, R19, R34.
+
+### HU-A8 · Ver la morosidad
+
 Como administrador, quiero ver quién debe, cuánto y desde cuándo.
+
+**Criterios de aceptación**:
 - Dado el edificio, cuando abro morosidad, entonces veo por unidad la deuda vencida, la antigüedad
   de la deuda más vieja y los intereses, calculados desde las imputaciones (nunca desde una marca
   de "pagada").
@@ -188,23 +195,24 @@ Como administrador, quiero ver quién debe, cuánto y desde cuándo.
   están en el MVP.
 - Dada la lista, cuando la exporto, entonces obtengo un Excel con los mismos números.
 
-**HU-A11 · Condonar intereses y marcar la gestión judicial** *(propuesta, cambio 10b, D-078)*
-Como administrador, quiero condonar un recargo discutido y marcar las unidades que están en juicio,
-para que el sistema las trate como corresponde.
-- Dado un recargo por mora que el vecino discute, cuando lo condono con un motivo, entonces se
-  registra un movimiento de condonación que neutraliza el recargo sin borrarlo, visible para el
-  vecino (R29, propuesta, falta decidir quién aprueba, ProTecc B5).
-- Dada una unidad que marco "en gestión judicial", entonces deja de contar como moroso crítico
-  (R31, propuesta, ProTecc G2), y los avisos automáticos de mora del cambio 13 la saltean.
+**Reglas relacionadas**: R20.
 
-**HU-A9 · Corregir un error**
+### HU-A9 · Corregir un error
+
 Como administrador, quiero corregir un pago o un cargo mal registrado sin perder el historial.
+
+**Criterios de aceptación**:
 - Dado un movimiento equivocado, cuando lo corrijo, entonces se agrega un movimiento nuevo con
   motivo y responsable, y el original sigue visible (R08).
 
-**HU-A10 · Emitir un certificado de libre deuda**
+**Reglas relacionadas**: R08.
+
+### HU-A10 · Emitir un certificado de libre deuda
+
 Como administrador, quiero generar un certificado de deuda de una unidad para una venta, para que
 el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21, ProTecc G3).
+
+**Criterios de aceptación**:
 - Dada una unidad sin saldo pendiente, cuando genero el certificado con una fecha de
   corte, entonces el sistema muestra "libre de deuda" con saldo cero a esa fecha y yo lo firmo.
 - Dada una unidad con saldo pendiente, cuando genero el certificado, entonces muestra el saldo a la
@@ -214,24 +222,55 @@ el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21,
   curso: sólo la deuda liquidada a la fecha de corte, más una línea aparte con el interés corrido
   hasta esa fecha, calculado y sin registrar (R21, D-081).
 
-### Vecino
+**Reglas relacionadas**: R21.
 
-**HU-V1 · Entrar al portal**
+### HU-A11 · Condonar intereses y marcar la gestión judicial *(propuesta, cambio 10b, D-078)*
+
+Como administrador, quiero condonar un recargo discutido y marcar las unidades que están en juicio,
+para que el sistema las trate como corresponde.
+
+**Criterios de aceptación**:
+- Dado un recargo por mora que el vecino discute, cuando lo condono con un motivo, entonces se
+  registra un movimiento de condonación que neutraliza el recargo sin borrarlo, visible para el
+  vecino (R29, propuesta, falta decidir quién aprueba, ProTecc B5).
+- Dada una unidad que marco "en gestión judicial", entonces deja de contar como moroso crítico
+  (R31, propuesta, ProTecc G2), y los avisos automáticos de mora del cambio 13 la saltean.
+
+**Reglas relacionadas**: R29, R31 (ambas propuestas).
+
+---
+
+## Épica: Vecino
+
+### HU-V1 · Entrar al portal
+
 Como vecino, quiero entrar desde el celular con mi email para ver lo de mis unidades.
+
+**Criterios de aceptación**:
 - Dado un vecino registrado como contacto de una o varias unidades, cuando entra, entonces ve todas
   las suyas juntas (por ejemplo, su departamento y su cochera) y nunca las de otro vecino ni las de
   otro edificio (R10, D-029).
 - Dado un vecino con iPhone, cuando entra por primera vez, entonces el portal le ofrece instalarlo
   en la pantalla de inicio.
 
-**HU-V2 · Ver cuánto debo**
+**Reglas relacionadas**: R10.
+
+### HU-V2 · Ver cuánto debo
+
 Como vecino, quiero ver cuánto debo y cuándo vence.
+
+**Criterios de aceptación**:
 - Dadas mis unidades, cuando entro, entonces veo el total a pagar por unidad y en conjunto, el
   vencimiento, la deuda anterior y el crédito a favor si lo hay, y los números coinciden con los del
   administrador.
 
-**HU-V3 · Entender mi expensa**
+**Reglas relacionadas**: R05, R06.
+
+### HU-V3 · Entender mi expensa
+
 Como vecino, quiero entender en qué se gastó la plata y por qué cambió mi expensa.
+
+**Criterios de aceptación**:
 - Dada una liquidación emitida, cuando la abro, entonces veo los gastos en dos bloques (ordinaria
   y extraordinaria) y, dentro de cada uno, agrupados por categoría (encargado, seguridad, limpieza,
   ascensor, servicios) con su subtotal y su porcentaje; además, mi parte de cada grupo de reparto,
@@ -239,8 +278,13 @@ Como vecino, quiero entender en qué se gastó la plata y por qué cambió mi ex
 - Dadas dos liquidaciones seguidas, entonces veo cuánto cambió mi expensa y qué conceptos explican
   la diferencia.
 
-**HU-V4 · Informar un pago**
+**Reglas relacionadas**: R16.
+
+### HU-V4 · Informar un pago
+
 Como vecino, quiero subir el comprobante de mi transferencia y ver si el administrador lo confirmó.
+
+**Criterios de aceptación**:
 - Dado un comprobante de BNA+, Mercado Pago u otro banco, cuando lo subo, entonces el sistema
   precarga monto, fecha y número de operación, y yo los reviso antes de enviar (R11).
 - Dado un número de operación ya usado en el edificio, cuando subo ese comprobante, entonces el
@@ -248,16 +292,26 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
 - Dado un pago informado, entonces veo su estado: informado, confirmado, rechazado con motivo o
   revertido (R18).
 
-**HU-V5 · Descargar comprobantes**
+**Reglas relacionadas**: R11, R18.
+
+### HU-V5 · Descargar comprobantes
+
 Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos confirmados.
+
+**Criterios de aceptación**:
 - Dado un período emitido de mi unidad, cuando pido su PDF, entonces descargo el mismo comprobante
   que se emitió, con el código de la unidad.
 - Dado un período todavía no emitido, entonces no aparece para descargar.
 - Dado que pido el detalle de pagos, entonces veo sólo los confirmados de mis unidades, nunca los de
   otra unidad ni los que siguen informados o fueron rechazados (R10, R11).
 
-**HU-V6 · Recibir avisos**
+**Reglas relacionadas**: R10, R11.
+
+### HU-V6 · Recibir avisos
+
 Como vecino, quiero recibir un email antes del vencimiento y otro si quedé en mora.
+
+**Criterios de aceptación**:
 - Dada una expensa que vence en dos días, entonces recibo un aviso por email una sola vez.
 - Dado un pago confirmado antes del aviso, entonces no recibo el aviso de mora.
 - Dado un aviso que cae en sábado, domingo o feriado, entonces sale el primer día hábil siguiente
@@ -265,102 +319,19 @@ Como vecino, quiero recibir un email antes del vencimiento y otro si quedé en m
 - Dado un contacto cuyo email no tiene formato válido o cuyo envío rebota, entonces el administrador
   ve esa unidad en una lista de "unidades sin contacto válido" (R28, propuesta, ProTecc W4).
 
-### Consejo
-
-**HU-C1 · Controlar las cuentas**
-Como miembro del consejo de propietarios, quiero ver la morosidad, los gastos y las liquidaciones
-de mi edificio sin poder modificar nada.
-- Dado un usuario del consejo, cuando entra, entonces ve los mismos números que el administrador
-  en morosidad, gastos aprobados y liquidaciones emitidas, y ningún botón de acción.
+**Reglas relacionadas**: R27, R28 (ambas propuestas).
 
 ---
 
-## Alcance
+## Épica: Consejo
 
-**Entra**: configuración del edificio, alta desde Excel con tipos de unidad (departamento, cochera,
-baulera, local), archivo de parámetros iniciales, categorías de gasto parametrizables, gastos manuales y desde factura (QR de ARCA más IA, nunca aprobados sin la confirmación del administrador), sueldo
-del encargado cargado como gasto, expensa ordinaria y extraordinaria, fondo de reserva como
-concepto de liquidación, cargos particulares, reglas propias de cada edificio con el motor de reglas, preliquidación,
-controles antes de emitir con alertas aceptadas, emisión con PDF y links de descarga firmados, cuenta corriente con
-imputaciones e intereses, pagos por comprobante con confirmación del administrador, ayuda del
-extracto bancario, morosidad, correcciones, portal del vecino con todas sus unidades juntas, vista
-del consejo, avisos por email, login real, roles, aislamiento entre administraciones y alcance por edificio, auditoría y backups
-probados.
+### HU-C1 · Controlar las cuentas
 
-**No entra**: barrios privados en producción, cálculo del sueldo del encargado (escala SUTERH),
-inquilino como rol, Mercado Pago y otros medios de cobro integrados (MODO, débito, Red Link,
-Rapipago, SIRO), reservas del SUM, bot de WhatsApp, consultas de reglamento con IA, asambleas,
-órdenes de compra, tableros complejos, tesorería (saldo de caja y saldo acumulado del fondo de
-reserva), contabilidad integral, cálculo de consumos por medidor (se cargan como cargos
-particulares). El historial de activos y Mercado Pago van en la v1.1.
+Como miembro del consejo de propietarios, quiero ver la morosidad, los gastos y las liquidaciones
+de mi edificio sin poder modificar nada.
 
-## Hitos
+**Criterios de aceptación**:
+- Dado un usuario del consejo, cuando entra, entonces ve los mismos números que el administrador
+  en morosidad, gastos aprobados y liquidaciones emitidas, y ningún botón de acción.
 
-| Hito | Historias | Se demuestra cuando |
-|---|---|---|
-| **M1 · Liquida** | A1, A2, A3 (carga manual), A3b, A4, A5, A9 | Con los datos del edificio piloto, el sistema reproduce su última liquidación al centavo |
-| **M2 · Cobra** | A6, A7, A8, A10, A11 (propuesta), V1 a V6, C1 | Un vecino informa un pago, el administrador lo confirma en un clic y queda imputado con la fecha correcta |
-| **M3 · Piloto** | A3 (factura con QR e IA) | Un mes completo en paralelo con el método actual y el cierre coincide |
-
-## Cambios de OPSX (detalle y fichas en `roadmap.md`)
-
-| Hito | Cambios, en orden |
-|---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
-| **M2** | 8 `pagos-informados` · 6b `motor-de-reglas` ⓔ · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
-| **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
-
-ⓔ = lleva su propio explore antes del propose. En paralelo al cambio 1: conseguir los datos del edificio piloto (P1).
-
-## Observaciones del análisis que cierra cada hito
-
-El análisis de coherencia de la especificación (`../especificacion/analisis/Analisis_de_coherencia.md`)
-marcó 48 observaciones. Así se reparten:
-
-| Hito | Observaciones | Cómo |
-|---|---|---|
-| **M1** | H01, H02, H03, H04, H05, H06, H09, H10, H11, H12, H13, H14, H15, H16, H20, H43, H44, H45 | Migraciones ordenadas, aislamiento con RLS, cuenta corriente de movimientos con imputaciones, intereses simples registrados al emitir, montos en Decimal, login y permisos reales, secretos fuera del repo, importación validada y atómica |
-| **M2** | H07, H08, H28, H41, H42 | Excedentes como crédito, extracto en lugar de rendiciones de recaudadores, avisos con destinatarios reales y sin duplicados, morosidad calculada desde imputaciones |
-| **M3** | H21, H22, H46, H48 | Lectura por QR y borrador obligatorio, duplicados frenados, restauración de backup probada, piloto como evidencia antes de hablar de producción |
-| **Fuera del MVP** | H17, H18, H19, H23 a H27, H29 a H40, H47 | Módulos que no entran (reservas, accesos, comunicación, cálculo de sueldos, asambleas, compras, activos) o el modelo comercial (P8, sin definir) |
-
-## Cómo se valida
-
-1. **Tests unitarios** de cada regla vigente: sus tests mínimos, escritos antes que el código. Las
-   propuestas suman los suyos cuando se validan.
-2. **Tests de integración** contra PostgreSQL real, incluidos dos pagos simultáneos de la misma unidad.
-3. **Test de aceptación de M1**: la última liquidación del edificio piloto, reproducida al centavo.
-4. **Mes en paralelo (M3)**: el cierre de PropTech coincide con el método actual del piloto.
-5. **Métricas de soporte, después del MVP**: el principio 8 de Alberto ("cada problema se mide")
-   queda sin mecanismo en el MVP. No hay entidad de excepción ni métricas todavía; cuando se
-   construyan (ver `proyecto-final.md`, fase F6), son las que deciden si conviene pasar a la Etapa 2
-   de identificación de pagos (CVU por unidad) de DEC-10.
-
-## Diferencias con la especificación original
-
-La especificación de Alberto (`../especificacion/`) es la base. Esto es lo que el MVP cambia o
-posterga, para validarlo con él:
-
-| Tema | Especificación | MVP | Por qué |
-|---|---|---|---|
-| Por dónde empezar | Barrios privados primero | Edificios primero | Pedido de Alberto: el contacto con edificios es más directo (D-027) |
-| Medios de cobro | Recaudadores (Red Link, SIRO), Mercado Pago, MODO, CVU por unidad, rendiciones bancarias | Comprobante del vecino + confirmación del administrador | Valida el producto sin la consulta legal UIF ni integraciones (D-017). Posterga la comisión por procesamiento como ingreso |
-| Sueldo del encargado | Liquidación completa con escala SUTERH | Se carga como gasto desde el recibo del contador | Es un módulo con riesgo laboral alto; el contador ya lo liquida hoy (D-028) |
-| Historial de activos | Requerimiento explícito, parte de la visión | v1.1, apenas validado el MVP | Primero la plata tiene que funcionar (D-003) |
-| Intereses | 3% mensual con capitalización diaria | Interés simple, configurable por edificio | Art. 770 del CCyC (D-010) |
-| Coeficientes | Tres fijos por unidad | Grupos de reparto definidos por edificio | Cubre más casos con el mismo trabajo (D-013) |
-| Lectura de facturas | Todo con IA | Primero el QR de ARCA, IA para el resto | Monto exacto y más barato (D-019) |
-| Fondos y tesorería | Fondo operativo, de reserva y de obras con su saldo | Fondo de reserva sólo como concepto de la expensa, sin saldo de caja | Lo que el vecino paga se refleja; el saldo acumulado no hace falta para liquidar (D-031) |
-| Roles | Inquilino, contador, proveedor, encargado, guardia | Titular, colaborador, consejo y vecino | Lo mínimo para validar (D-009, D-032, D-037) |
-| Consumo de agua | Por rangos de litros | Cargo particular importado por Excel | Cubre el caso sin construir medidores (D-026) |
-| Código | 48 fragmentos | Descartado | Errores verificados (D-002) |
-
-Y respecto del documento de arquitectura de Alberto (`../especificacion/arquitectura-alberto/`), que
-el MVP sigue en su forma (D-035 a D-039):
-
-| Tema | Documento de Alberto | MVP | Por qué |
-|---|---|---|---|
-| Permisos | ~15 áreas con 3 niveles | Titular, colaborador, consejo y vecino, con las mismas tres capas | Lo mínimo para validar (D-037) |
-| Montos | Decimal (NUMERIC 14,2) | Decimal (NUMERIC 14,2), igual que su documento | Alineado con Alberto (D-046) |
-| Cifrado con índice ciego, outbox, copiloto, bandeja de WhatsApp | Incluidos | Después del MVP | Alcance (D-039) |
-| Login | Clerk para el personal, enlace mágico para vecinos | Se define en el design del cambio 2 | No se decidió todavía (D-039) |
+**Reglas relacionadas**: R10 (alcance por edificio, sólo lectura).

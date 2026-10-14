@@ -16,3 +16,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Active Stack v1: registro local de skills, no versionado (se regenera por máquina)
+.atl/

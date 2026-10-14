@@ -1,13 +1,14 @@
 # Exploración: estructura del MVP (orden, dependencias, cortes, riesgos)
 
-> Explore mode. No se escribió código ni se tocó `conocimiento/`. Lo que sigue son hallazgos y
+> Explore mode. No se escribió código ni se tocó la base de conocimiento (entonces `conocimiento/`,
+> hoy `knowledge-base/`). Lo que sigue son hallazgos y
 > propuestas para que Juani decida; nada de esto es una decisión tomada.
 
 **Fecha**: 2026-10-09
 **Disparador**: D-045 pide un explore general sobre los 15 cambios de OPSX antes de arrancar,
 para confirmar orden y dependencias.
 
-**Fuentes leídas**: `conocimiento/mvp.md`, `reglas-de-negocio.md`, `decisiones.md` (D-001 a D-045
+**Fuentes leídas**: `knowledge-base/01_vision_y_objetivos.md` (entonces `conocimiento/mvp.md`), `reglas-de-negocio.md`, `decisiones.md` (D-001 a D-045
 y preguntas abiertas), `glosario.md`, `proyecto-final.md`, `README.md`, `CLAUDE.md`,
 `openspec/config.yaml`, `especificacion/arquitectura-alberto/arquitectura_koris_a_lo_criollo.md`
 completo, y de `especificacion/analisis/Analisis_de_coherencia.md` los títulos de las 48
@@ -251,7 +252,7 @@ El resto puede ir directo a `/opsx:propose` sin explore dedicado.
 
 ---
 
-## 9. Propuestas de decisión (para que Juani las acepte o las descarte; nada de esto se escribió en `conocimiento/`)
+## 9. Propuestas de decisión (para que Juani las acepte o las descarte; nada de esto se escribió en la base de conocimiento)
 
 1. **Invertir el orden de `importacion-desde-excel` y `motor-de-cuenta-corriente`** dentro de M1
    (sección 1 y 2 de este documento).

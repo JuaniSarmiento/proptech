@@ -11,7 +11,8 @@ expensa. Arranca en Mendoza y por los edificios (D-027); los barrios privados se
 núcleo esté probado.
 
 La especificación original describe 19 módulos (`../especificacion/funcionalidades/`). El MVP
-(`mvp.md`) cubre el núcleo financiero; el resto se ordena en las fases de abajo.
+(`01_vision_y_objetivos.md`, `03_actores_y_roles.md` y `06_funcionalidades.md`) cubre el núcleo
+financiero; el resto se ordena en las fases de abajo.
 
 ## Regla general para pasar de fase
 
@@ -23,7 +24,7 @@ correcto vale más que cualquier funcionalidad nueva.**
 
 | Fase | Contenido | Módulos de la spec | Criterio de entrada |
 |---|---|---|---|
-| **MVP** | Edificios: liquidación, cuenta corriente, pagos por comprobante, portal, consejo, avisos | 01 a 05, 08, 15 y 17 parciales | Decisiones cerradas (este archivo y `decisiones.md`) |
+| **MVP** | Edificios: liquidación, cuenta corriente, pagos por comprobante, portal, consejo, avisos | 01 a 05, 08, 15 y 17 parciales | Decisiones cerradas (este archivo y `09_decisiones_y_supuestos.md`) |
 | **v1.1 · Pago integrado** | Mercado Pago por consorcio: link o QR que llega directo a su cuenta y se imputa solo | 04 | MVP validado en el piloto **y** consulta legal UIF resuelta (D-005, D-017) |
 | **v1.1 · Mantenimiento** | Ficha de cada equipo, intervenciones vinculadas a la factura, aviso de reincidencia y de garantía | 13 | MVP validado; facturas ya cargadas por QR (R12) para vincularlas |
 | **v1.2 · Barrios privados** | Activar estados de unidad (baldío, en obra), cargos por estado, grupos típicos de barrio y un barrio piloto | 02, 03 | MVP validado en edificios; el modelo ya lo soporta (D-027) |

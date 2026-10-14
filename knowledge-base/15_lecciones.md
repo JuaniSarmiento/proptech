@@ -131,9 +131,9 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   "del worker en general", pero el dueño real es el primer cambio que de hecho ejercita esa pieza con
   algo que importa (el cambio 7, primera tarea real del worker), no el cambio donde se encontró el
   hallazgo ni el que suena más relacionado a simple vista.
-- **Regla**: antes de poner un dueño a un ítem de deuda, revisar `roadmap.md` y preguntar qué cambio
-  es el primero que de verdad necesita que esa pieza esté resuelta. Asignarlo a cualquier otro deja la
-  deuda sin dueño real: nadie la mira hasta que ya rompió algo.
+- **Regla**: antes de poner un dueño a un ítem de deuda, revisar `CHANGES.md` y `12_fichas_de_changes.md`
+  y preguntar qué cambio es el primero que de verdad necesita que esa pieza esté resuelta. Asignarlo a
+  cualquier otro deja la deuda sin dueño real: nadie la mira hasta que ya rompió algo.
 - **Aplica a**: auditor.
 
 ## L-013 · Mutar para ver el rojo, sin commit, exige una copia previa y decirlo

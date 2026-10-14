@@ -2,14 +2,40 @@
 
 Cómo se comporta el sistema con la plata. **Cada regla vigente se convierte en uno o más tests**
 antes de que exista el código que la cumple. **Se reescribe** cuando una regla cambia; el
-porqué del cambio va a `decisiones.md`.
+porqué del cambio va a `09_decisiones_y_supuestos.md`.
 
 Estados: **Pendiente** (no decidida) · **Propuesta** (hay una propuesta, falta validarla con un
-administrador o contador) · **Vigente** (decidida y registrada en `decisiones.md`). Una vigente cuyos
+administrador o contador) · **Vigente** (decidida y registrada en `09_decisiones_y_supuestos.md`). Una vigente cuyos
 valores o criterios de plata no revisó todavía nadie del rubro lleva además **a validar (P42)** en el
 título (D-089): se construye igual, pero sus números pueden cambiar después de esa revisión.
 
+Las reglas se agrupan por dominio (adaptación al formato v1 de Active Stack, D-093); **los
+identificadores no se renumeran**: siguen siendo R01 a R41 en el orden en que se decidieron, cada uno
+dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre dominios.
+
 ---
+
+## Dominio: Acceso y aislamiento
+
+## R10 · Aislamiento entre administraciones y alcance por edificio · Vigente (D-016, D-076)
+
+- **Regla**: todo dato pertenece a una **administración** (el tenant, el cliente que paga) y ninguna
+  consulta, archivo, caché o proceso devuelve datos de otra. La administración sale de la identidad
+  autenticada, nunca de un parámetro que manda el cliente (análisis H02, H14, H27). Row-Level
+  Security es el segundo candado.
+- **Alcance por edificio**: dentro de su administración, cada persona ve sólo los complejos que le
+  corresponden según su rol (D-037): el titular, todos; el colaborador, los asignados; el consejo, el
+  suyo; el vecino, sus unidades. Fuera de alcance responde 404.
+- **Tests mínimos**: un pedido con el identificador de otra administración no devuelve nada; una
+  consulta a la base sin fijar la administración no devuelve filas; un colaborador no ve un edificio
+  no asignado de su propia administración; un vecino no ve la unidad de otro vecino; una escritura con
+  el identificador de otra administración se rechaza; el worker sin administración fijada no lee nada;
+  un link firmado de otra administración responde "no encontrado"; el consejo ve sólo su edificio y
+  no puede escribir.
+
+---
+
+## Dominio: Complejos (configuración del edificio)
 
 ## R01 · Prorrateo de gastos · Vigente (D-013) · a validar (P42)
 
@@ -51,6 +77,63 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
 - **Tests mínimos**: complejo con defaults reparte igual que sin estados; baldío al 50% paga la mitad
   y el total sigue cubierto; canon de obra aparece como débito aparte; cambio de estado después de
   emitir no modifica esa liquidación.
+
+## R15 · Fondo de reserva · Vigente (D-031)
+
+- **Configurable por edificio**: un porcentaje sobre la **ordinaria prorrateada** del período (R13). Default: 0%
+  (sin fondo de reserva).
+- **En la liquidación**: aparece como línea propia de la expensa de cada unidad, calculada sobre su
+  ordinaria prorrateada y redondeada con R07; la suma de las partes da exacto el total del fondo del período.
+- **Imputación**: forma parte de la ordinaria (R04, R13).
+- **Sin tesorería**: el sistema no lleva el saldo acumulado del fondo ni el saldo de caja (D-023).
+- **Historia**: cada liquidación guarda el porcentaje usado.
+- **Tests mínimos**: con 0% no aparece la línea; con 5% cada unidad paga el 5% de su ordinaria
+  prorrateada, sin contar sus cargos particulares;
+  la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas.
+
+## R16 · Categorías de gasto · Vigente (D-041)
+
+- **Qué es**: la clasificación de un gasto según en qué se gasta (encargado y cargas sociales,
+  seguridad, limpieza, ascensor, mantenimiento, servicios, seguros, administración, varios).
+- **Parametrizable**: cada edificio arranca con las categorías del archivo de parámetros (D-042) y el
+  administrador puede crear, renombrar, ordenar y desactivar las suyas. Una categoría con gastos no
+  se borra: se desactiva.
+- **Cada gasto tiene una categoría obligatoria**, además de su grupo de reparto (R01) y su tipo
+  ordinario o extraordinario (R13). La IA sugiere la categoría al leer la factura (R12) y el
+  administrador la confirma.
+- **No cambia los cálculos**: la categoría sólo ordena la presentación y los reportes.
+- **Presentación**: la expensa (PDF y portal) muestra dos bloques, ordinaria y extraordinaria; dentro
+  de cada uno, los gastos agrupados por categoría con su subtotal y el porcentaje que representa.
+- **Historia**: la liquidación guarda el nombre de la categoría vigente al emitir; renombrarla después
+  no cambia expensas ya emitidas.
+- **Tests mínimos**: los subtotales por categoría suman el total del bloque; un mismo concepto puede
+  ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
+  un gasto sin categoría no se puede aprobar.
+
+## R36 · Tasa propia para la expensa extraordinaria · Propuesta (D-071)
+
+- **Qué resuelve**: la asamblea que aprueba una obra puede fijar un interés por mora distinto para esas
+  cuotas que para la expensa ordinaria.
+- **Propuesta**: R03 suma una opción al menú de cada edificio: la extraordinaria usa la misma tasa que la
+  ordinaria (default) o una tasa propia. Siempre interés simple, igual que R03.
+- **Tests mínimos**: sin tasa propia, la extraordinaria usa la de la ordinaria; con tasa propia, cada
+  capital genera interés con su tasa; un pago parcial sigue el orden de R04 y cada parte deja de
+  generar interés con su propia tasa.
+
+## R39 · Unidades del propio consorcio · Propuesta (D-071)
+
+- **Qué resuelve**: unidades que son del consorcio (la portería, un departamento propio que se
+  alquila). El consorcio no puede cobrarse intereses a sí mismo.
+- **Propuesta**: una unidad marcada como "del consorcio" **no genera intereses**, no recibe
+  bonificaciones, no cuenta como moroso crítico (R20) y no recibe avisos de mora.
+- **Pendiente** (P16): cómo se trata su parte de cada gasto: si se reparte entre las demás unidades o
+  si se registra como gasto del consorcio. Depende del reglamento; se valida con Alberto.
+- **Tests mínimos**: una unidad del consorcio con saldo vencido no genera interés; no aparece en la
+  lista de morosos; desmarcarla la vuelve a tratar como cualquier unidad desde el período siguiente.
+
+---
+
+## Dominio: Cuenta corriente
 
 ## R03 · Intereses por mora · Vigente (D-010) · a validar (P42)
 
@@ -180,58 +263,29 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
   diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
 
-## R10 · Aislamiento entre administraciones y alcance por edificio · Vigente (D-016, D-076)
+## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
 
-- **Regla**: todo dato pertenece a una **administración** (el tenant, el cliente que paga) y ninguna
-  consulta, archivo, caché o proceso devuelve datos de otra. La administración sale de la identidad
-  autenticada, nunca de un parámetro que manda el cliente (análisis H02, H14, H27). Row-Level
-  Security es el segundo candado.
-- **Alcance por edificio**: dentro de su administración, cada persona ve sólo los complejos que le
-  corresponden según su rol (D-037): el titular, todos; el colaborador, los asignados; el consejo, el
-  suyo; el vecino, sus unidades. Fuera de alcance responde 404.
-- **Tests mínimos**: un pedido con el identificador de otra administración no devuelve nada; una
-  consulta a la base sin fijar la administración no devuelve filas; un colaborador no ve un edificio
-  no asignado de su propia administración; un vecino no ve la unidad de otro vecino; una escritura con
-  el identificador de otra administración se rechaza; el worker sin administración fijada no lee nada;
-  un link firmado de otra administración responde "no encontrado"; el consejo ve sólo su edificio y
-  no puede escribir.
+- **Qué resuelve**: Alberto describe un esquema de primer y segundo vencimiento con un recargo que
+  escala entre uno y otro, distinto del interés simple continuo desde un único vencimiento que ya
+  tiene R03.
+- **Pendiente**: preguntarle a Alberto si el edificio piloto usa este esquema antes de tocar R03, que
+  ya está marcada "falta validar". No se decide sin esa respuesta.
+- **Tests mínimos**: a definir si se confirma el esquema.
 
-## R11 · Registro de pagos en el MVP · Vigente (D-017) · a validar (P42)
+## R30 · Umbral mínimo de saldos por redondeo · Propuesta (ProTecc D3) · extiende R07
 
-- **Origen**: el vecino sube el comprobante desde el portal (o el administrador lo carga por él).
-  Queda como **pago informado**, sin efecto sobre la deuda.
-- **A qué unidad corresponde**: a la del vecino que lo sube (identidad autenticada, R10). Si la
-  persona es contacto de varias unidades (departamento y cochera), elige una o reparte el pago
-  entre ellas; cada parte se imputa en su unidad con R04. No se
-  depende del comprobante: muchos no muestran el origen (BNA+ sólo muestra el destinatario) y el
-  campo "motivo" suele decir "Varios".
-- **Lectura**: cada banco o billetera tiene su formato y no traen QR. La IA lee el comprobante y
-  precarga monto, fecha y hora, y número de operación; el vecino revisa y confirma esos datos.
-- **Número de operación único**: no puede repetirse dentro del complejo. Un comprobante subido dos
-  veces, o para dos unidades, se frena al subirlo.
-- **Confirmación**: sólo el administrador lo pasa a **confirmado**. Nunca es automático. Al
-  confirmarse se imputa con R04.
-- **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
-- **Fecha del pago**: la fecha real de la transferencia (del comprobante, validada contra el
-  extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
-  transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
-  se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
-  (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
-  contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
-  se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).
-- **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
-  marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
-  CUIT de origen cuando el banco lo informa) o no.
-  También muestra movimientos del banco sin comprobante, como fondos pendientes de identificar.
-- **Duplicados**: un mismo movimiento del banco no puede confirmar dos pagos.
-- **Datos de prueba**: comprobantes de ejemplo con datos inventados, en los formatos reales de
-  BNA+ y Mercado Pago. Nunca comprobantes reales con datos personales en el repositorio.
-- **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
-  confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
-  tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
-  emisión que cobró interés por días posteriores a la transferencia genera el ajuste exacto; un pago
-  repartido entre el departamento y la cochera imputa cada parte en su unidad con R04.
+- **Qué resuelve**: saldos chicos (a favor o en contra) que quedan de intereses o pagos parciales,
+  por debajo de lo que tiene sentido reclamar o devolver.
+- **Propuesta**: definir un umbral mínimo (por ejemplo, configurable por edificio) por debajo del
+  cual el saldo no genera reclamo de cobranza ni devolución automática, y se arrastra con R06 hasta
+  que se acumula o se liquida junto con otro movimiento.
+- **Falta decidir**: el valor del umbral y si es fijo o configurable por edificio.
+- **Tests mínimos** (a definir con el umbral): un saldo por debajo del umbral no dispara un aviso de
+  mora; un saldo por encima sigue el camino normal de R03/R20.
+
+---
+
+## Dominio: Gastos y cargos
 
 ## R12 · Registro de gastos desde facturas · Vigente (D-019)
 
@@ -304,141 +358,6 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
 - **Tests mínimos**: un cargo particular sólo afecta a su unidad; no cambia lo que pagan los demás;
   la importación desde Excel rechaza unidades inexistentes; un cargo en borrador no entra.
 
-## R15 · Fondo de reserva · Vigente (D-031)
-
-- **Configurable por edificio**: un porcentaje sobre la **ordinaria prorrateada** del período (R13). Default: 0%
-  (sin fondo de reserva).
-- **En la liquidación**: aparece como línea propia de la expensa de cada unidad, calculada sobre su
-  ordinaria prorrateada y redondeada con R07; la suma de las partes da exacto el total del fondo del período.
-- **Imputación**: forma parte de la ordinaria (R04, R13).
-- **Sin tesorería**: el sistema no lleva el saldo acumulado del fondo ni el saldo de caja (D-023).
-- **Historia**: cada liquidación guarda el porcentaje usado.
-- **Tests mínimos**: con 0% no aparece la línea; con 5% cada unidad paga el 5% de su ordinaria
-  prorrateada, sin contar sus cargos particulares;
-  la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas.
-
-## R16 · Categorías de gasto · Vigente (D-041)
-
-- **Qué es**: la clasificación de un gasto según en qué se gasta (encargado y cargas sociales,
-  seguridad, limpieza, ascensor, mantenimiento, servicios, seguros, administración, varios).
-- **Parametrizable**: cada edificio arranca con las categorías del archivo de parámetros (D-042) y el
-  administrador puede crear, renombrar, ordenar y desactivar las suyas. Una categoría con gastos no
-  se borra: se desactiva.
-- **Cada gasto tiene una categoría obligatoria**, además de su grupo de reparto (R01) y su tipo
-  ordinario o extraordinario (R13). La IA sugiere la categoría al leer la factura (R12) y el
-  administrador la confirma.
-- **No cambia los cálculos**: la categoría sólo ordena la presentación y los reportes.
-- **Presentación**: la expensa (PDF y portal) muestra dos bloques, ordinaria y extraordinaria; dentro
-  de cada uno, los gastos agrupados por categoría con su subtotal y el porcentaje que representa.
-- **Historia**: la liquidación guarda el nombre de la categoría vigente al emitir; renombrarla después
-  no cambia expensas ya emitidas.
-- **Tests mínimos**: los subtotales por categoría suman el total del bloque; un mismo concepto puede
-  ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
-  un gasto sin categoría no se puede aprobar.
-
-## R17 · Ventana de anulación antes de distribuir · Vigente (D-055, D-073, D-074, D-079, D-081) · refina R08
-
-- **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
-  todavía no distribuida. Estados: borrador, emitida, distribuida y anulada (sólo desde emitida).
-- **Anulación** (D-073, D-079): es un **cambio de estado**, no un borrado. La liquidación pasa de
-  emitida a anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se
-  modifica ni se borra: el saldo de cada unidad excluye **todo movimiento generado por la emisión
-  anulada** (sus obligaciones, los intereses que registró y los ajustes de interés que los compensaban,
-  R11), así que la deuda queda igual que antes de emitir
-  y volver a emitir no duplica nada. Si antes de anular se había imputado un pago a esas obligaciones,
-  la imputación deja de valer y el pago vuelve como **crédito a favor** de la unidad, que se imputa con
-  R04 en la nueva emisión (D-081).
-- **Distribuida** (D-074): una liquidación pasa a distribuida cuando el administrador la **distribuye**
-  (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
-  el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
-  puerto.
-- **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
-  error se corrige con un movimiento nuevo (ajuste).
-- **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
-  emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
-  anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una
-  emisión que se anula queda como crédito a favor; anular la emisión cuyo interés compensaba un ajuste
-  de R11 excluye los dos y la unidad no queda debiendo ni con crédito de más; intentar anular una
-  liquidación distribuida (por la acción "distribuir", por un email o por una vista
-  en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
-  emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
-
-## R18 · Estado "revertido" de un pago confirmado · Vigente (D-056) · extiende R11
-
-- **Regla**: un pago **confirmado** puede pasar a **revertido** cuando el banco lo
-  rechaza o lo devuelve después de confirmado (cheque rechazado, contracargo, transferencia
-  revertida). El pago original nunca se borra ni pasa a "rechazado".
-- **Efecto**: se registra un movimiento de **reversión de pago** (débito) que referencia al pago
-  original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
-- **Morosidad**: al revertirse un pago, la unidad puede pasar a cumplir R20 (moroso crítico), que se
-  calcula siempre desde el libro (D-074).
-- **Movimientos enlazados**: si el pago tenía una bonificación por pronto pago (R37) o un ajuste de
-  interés (R11) enlazados, se revierten con él (D-082, D-083).
-- **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
-  original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
-  después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
-  vencidas con saldo; revertir un pago con bonificación o ajuste de interés enlazados revierte también
-  esos movimientos.
-
-## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
-
-- **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
-  en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
-  vecino lo use.
-- **CBU histórico**: cuando el administrador confirma un pago y el CBU de origen se conoce (porque lo
-  trae el comprobante o porque el pago se cruzó con el extracto), el sistema lo guarda asociado a esa
-  unidad (cambio 8). La sugerencia por CBU aparece al cruzar el extracto (cambio 9): un movimiento del
-  mismo CBU es una sugerencia para esa unidad.
-- **Nunca asigna solo**: los dos mecanismos sólo generan una **sugerencia de confianza alta** en la
-  bandeja de confirmación (HU-A6, HU-A7); el administrador siempre confirma con un clic (principio
-  3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
-- **Tests mínimos**: un movimiento con el código de la unidad en el concepto aparece como sugerencia
-  de esa unidad; un CBU que ya pagó por una unidad sugiere esa unidad el mes siguiente; ninguno de
-  los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
-  genera sugerencia.
-
-## R20 · Moroso crítico por antigüedad · Vigente (D-058, D-074)
-
-- **Definición**: una unidad es **moroso crítico** cuando tiene **dos o más liquidaciones vencidas
-  con saldo impago**, calculado desde las imputaciones (nunca desde una marca de "pagada").
-- **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
-  el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
-  cambio 10a se encarga del listado, la exportación y la presentación.
-- **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
-  cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
-  una sola.
-- **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
-  mes a mes y los pagos parciales la confunden).
-- **Exclusiones**: quedan excluidas las unidades con la deuda en **gestión judicial** (R31), cuando el
-  cambio 10b construya esa marca y la agregue a esta función (D-078), y las **unidades del consorcio** (R39), si
-  se valida. El plan de pago está fuera del
-  MVP (`proyecto-final.md`, G1), así que esa exclusión queda como límite conocido.
-- **Sin bloqueo de amenities**: las reservas de espacios comunes no están en el MVP, así que no hay
-  ningún bloqueo asociado a esta marca.
-- **Tests mínimos**: una unidad con una sola liquidación vencida no es moroso crítico; dos vencidas
-  con saldo, sí; un pago parcial que no cubre ninguna por completo sigue contando esa liquidación
-  como vencida; revertir un pago (R18) puede volver a marcar moroso crítico a una unidad; una unidad
-  migrada con dos períodos vencidos en el saldo inicial es moroso crítico; un saldo inicial de total
-  único cuenta como una sola liquidación vencida.
-
-## R21 · Certificado de libre deuda · Vigente (D-059)
-
-- **Qué es**: un certificado que resume la deuda de una unidad a una fecha de corte, para que el
-  escribano pueda escriturar una venta sin esperar a que el administrador revise la cuenta a mano.
-- **Contenido**: identificador único, fecha de corte, saldo de la unidad a esa fecha (calculado desde
-  la cuenta corriente, nunca estimado), y los pagos informados todavía no confirmados, listados por
-  separado como "en revisión" sin restarlos del saldo.
-- **Nunca estima**: no incluye ningún gasto del período en curso que todavía no se liquidó.
-- **Interés corrido** (D-081): si la fecha de corte es posterior a un vencimiento, el certificado informa
-  en una línea aparte el interés corrido hasta esa fecha según R03, calculado y sin registrarlo en la
-  cuenta corriente (se registra con la emisión siguiente).
-- **Firma**: lo firma el administrador titular.
-- **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
-  con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
-  sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de
-  corte; con un corte posterior al vencimiento, muestra el interés corrido en una línea aparte sin
-  registrarlo en la cuenta corriente.
-
 ## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12 · a validar (P42)
 
 - **Regla**: una nota de crédito de un proveedor queda **asociada a la factura que corrige** y su
@@ -469,6 +388,54 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
   muy por encima o por debajo del historial se marca para revisión; un proveedor sin historial previo
   no genera falso positivo por falta de datos.
 
+## R38 · Ingresos del consorcio · Propuesta (D-071)
+
+- **Qué resuelve**: lo que el consorcio cobra (alquiler de una cochera o baulera común, de la terraza
+  para una antena, el uso del SUM por terceros) tiene que bajar lo que pagan todos. Hoy la base sólo
+  tiene gastos.
+- **Propuesta**: el administrador registra un **ingreso** con concepto, importe, período, grupo de
+  reparto y respaldo. Al liquidar, los ingresos aprobados se restan de los **gastos ordinarios** de su
+  grupo (nunca de la extraordinaria), y sobre el neto se aplica el reparto de R01 y R07 (D-082). La expensa los muestra en un bloque propio,
+  "Ingresos", con su detalle.
+- **Si quien paga es un vecino** (por ejemplo, alquila una cochera común): se le carga como cargo
+  particular a su unidad (R14) y el mismo importe entra como ingreso del consorcio.
+- **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos ordinarios del grupo. Hasta
+  decidirlo, el sistema lo frena con un control duro de R34, que no se puede aceptar (D-080).
+- **Tests mínimos**: un ingreso baja el total a repartir de su grupo y no el de otros grupos; el reparto
+  del neto sigue sumando exacto; un ingreso en borrador no entra; un ingreso mayor que los gastos frena
+  la emisión.
+
+---
+
+## Dominio: Liquidación y emisión
+
+## R17 · Ventana de anulación antes de distribuir · Vigente (D-055, D-073, D-074, D-079, D-081) · refina R08
+
+- **Regla**: una liquidación **emitida** se puede **anular** sólo mientras esté en estado emitida y
+  todavía no distribuida. Estados: borrador, emitida, distribuida y anulada (sólo desde emitida).
+- **Anulación** (D-073, D-079): es un **cambio de estado**, no un borrado. La liquidación pasa de
+  emitida a anulada, con motivo obligatorio, responsable y fecha. Ningún movimiento del libro se
+  modifica ni se borra: el saldo de cada unidad excluye **todo movimiento generado por la emisión
+  anulada** (sus obligaciones, los intereses que registró y los ajustes de interés que los compensaban,
+  R11), así que la deuda queda igual que antes de emitir
+  y volver a emitir no duplica nada. Si antes de anular se había imputado un pago a esas obligaciones,
+  la imputación deja de valer y el pago vuelve como **crédito a favor** de la unidad, que se imputa con
+  R04 en la nueva emisión (D-081).
+- **Distribuida** (D-074): una liquidación pasa a distribuida cuando el administrador la **distribuye**
+  (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
+  el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
+  puerto.
+- **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
+  error se corrige con un movimiento nuevo (ajuste).
+- **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
+  emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
+  anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una
+  emisión que se anula queda como crédito a favor; anular la emisión cuyo interés compensaba un ajuste
+  de R11 excluye los dos y la unidad no queda debiendo ni con crédito de más; intentar anular una
+  liquidación distribuida (por la acción "distribuir", por un email o por una vista
+  en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
+  emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
+
 ## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio 6 de Alberto)
 
 - **Qué resuelve**: que la emisión de la liquidación no dependa de un servicio externo (lectura del
@@ -486,94 +453,12 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
   cálculo y dispara la advertencia; un gasto en revisión dispara el bloqueante; emitir sin el extracto
   procesado no bloquea la liquidación (sólo posterga la conciliación).
 
-## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
-
-- **Qué resuelve**: un pago confirmado en la unidad equivocada (el vecino de 7A cargó el pago a 7B).
-- **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
-  de **reimputación** enlazados: uno que resta en la unidad equivocada (restituye la deuda) y otro
-  que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
-  original. Después, cada una de las dos unidades puede pasar a cumplir o dejar de cumplir R20, que se
-  calcula desde el libro (D-074).
-- **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
-  un paso, no se aplica ninguno; después de reimputar, la función de R20 da el resultado correcto
-  para las dos unidades.
-
-## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
-
-- **Qué resuelve**: Alberto describe un esquema de primer y segundo vencimiento con un recargo que
-  escala entre uno y otro, distinto del interés simple continuo desde un único vencimiento que ya
-  tiene R03.
-- **Pendiente**: preguntarle a Alberto si el edificio piloto usa este esquema antes de tocar R03, que
-  ya está marcada "falta validar". No se decide sin esa respuesta.
-- **Tests mínimos**: a definir si se confirma el esquema.
-
-## R27 · Aviso que cae en fin de semana o feriado · Propuesta (ProTecc W3)
-
-- **Qué resuelve**: un vencimiento o un recordatorio que cae en fin de semana o feriado.
-- **Propuesta**: si la fecha del aviso cae en sábado, domingo o feriado, se envía el primer día hábil
-  siguiente, dentro del horario que defina el cambio 13 `avisos-por-email`.
-- **Tests mínimos**: un aviso que cae en domingo se reprograma al lunes (o al primer día hábil); un
-  aviso en día hábil no se mueve.
-
-## R28 · Validación de contactos y unidades sin contacto válido · Propuesta (ProTecc W4)
-
-- **Qué resuelve**: un email inválido o inexistente que hace que ningún aviso llegue, sin que nadie
-  se entere.
-- **Propuesta**: validar el formato del contacto al cargarlo; si un envío rebota, marcar el contacto
-  como inválido y mostrar al administrador una lista de "unidades sin contacto válido".
-- **Tests mínimos**: un contacto con formato inválido se rechaza al cargarlo; un envío que rebota
-  marca el contacto como inválido; la lista de unidades sin contacto válido incluye esa unidad.
-
-## R29 · Condonación de intereses · Propuesta (ProTecc B5, Q1)
-
-- **Qué resuelve**: un recargo por mora que el vecino discute y el administrador decide perdonar,
-  total o parcialmente.
-- **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
-  **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
-  vecino (principio 7 de Alberto) y para el consejo.
-- **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
-  auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
-  sin esa respuesta.
-- **Tests mínimos** (a definir con la aprobación): una condonación genera el movimiento de crédito
-  sin borrar el recargo; el vecino ve el motivo; después de condonar, la función de R20 da el
-  resultado correcto para la unidad.
-
-## R30 · Umbral mínimo de saldos por redondeo · Propuesta (ProTecc D3) · extiende R07
-
-- **Qué resuelve**: saldos chicos (a favor o en contra) que quedan de intereses o pagos parciales,
-  por debajo de lo que tiene sentido reclamar o devolver.
-- **Propuesta**: definir un umbral mínimo (por ejemplo, configurable por edificio) por debajo del
-  cual el saldo no genera reclamo de cobranza ni devolución automática, y se arrastra con R06 hasta
-  que se acumula o se liquida junto con otro movimiento.
-- **Falta decidir**: el valor del umbral y si es fijo o configurable por edificio.
-- **Tests mínimos** (a definir con el umbral): un saldo por debajo del umbral no dispara un aviso de
-  mora; un saldo por encima sigue el camino normal de R03/R20.
-
-## R31 · Marca de gestión judicial · Propuesta (ProTecc G2)
-
-- **Qué resuelve**: una deuda que ya está en manos del abogado del consorcio, donde un recordatorio
-  automático de mora puede interferir con el juicio.
-- **Propuesta**: marcar una unidad como "en gestión judicial" suspende los recordatorios automáticos
-  de mora (HU-V6) y la excluye del cálculo de moroso crítico (R20).
-  Las consultas de esa unidad se derivan al administrador.
-- **Tests mínimos**: una unidad marcada no recibe el aviso automático de mora; no cuenta como moroso
-  crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
-  cálculos.
-
-## R32 · Cambio de titular a mitad de período · Pendiente (P11)
-
-- **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
-  anterior. Hoy ninguna regla dice a quién se le imputa cada cosa ni qué ve cada uno en el portal.
-- **A definir**: si la expensa del período sigue a la unidad o a la persona; qué pasa con la deuda
-  anterior y con el crédito a favor; cómo se relaciona con el certificado de libre deuda (R21).
-- **Tests mínimos**: a definir cuando se responda P11.
-
 ## R33 · Datos completos y tipados antes de consultar el motor de reglas · Vigente (D-066, D-067)
 
 - **Qué resuelve**: las tablas de decisión de ZEN eligen la fila por defecto en silencio si un dato
   llega con tipo incorrecto o falta (prueba del 13/10).
 - **Regla**: el núcleo arma los datos de cada unidad con tipos fijos y verifica que estén todos
-  antes de llamar al motor; la respuesta pasa por el validador (`motor-de-reglas.md`). Cualquier
+  antes de llamar al motor; la respuesta pasa por el validador (`13_motor_de_reglas.md`). Cualquier
   dato faltante, mal tipado o respuesta fuera de contrato bloquea la emisión con una alerta que dice
   qué regla y qué unidad.
 - **Tests mínimos**: un dato numérico que llega como texto bloquea la emisión y no aplica la fila por
@@ -639,20 +524,108 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
   vencimiento en un feriado seguido de fin de semana pasa al siguiente día hábil; un día hábil normal
   no se mueve.
 
-## R36 · Tasa propia para la expensa extraordinaria · Propuesta (D-071)
+## R40 · Los períodos se liquidan en orden · Propuesta (D-071)
 
-- **Qué resuelve**: la asamblea que aprueba una obra puede fijar un interés por mora distinto para esas
-  cuotas que para la expensa ordinaria.
-- **Propuesta**: R03 suma una opción al menú de cada edificio: la extraordinaria usa la misma tasa que la
-  ordinaria (default) o una tasa propia. Siempre interés simple, igual que R03.
-- **Tests mínimos**: sin tasa propia, la extraordinaria usa la de la ordinaria; con tasa propia, cada
-  capital genera interés con su tasa; un pago parcial sigue el orden de R04 y cada parte deja de
-  generar interés con su propia tasa.
+- **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
+  intereses.
+- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido o
+  distribuido (una liquidación anulada no cuenta). Única
+  excepción: el primer período después de la migración (R09), que arranca desde los saldos
+  iniciales confirmados.
+- **Tests mínimos**: con abril sin emitir, preliquidar mayo se rechaza con un mensaje claro; con abril
+  emitido, mayo se preliquida; el primer período después de la migración se puede emitir.
+
+---
+
+## Dominio: Pagos
+
+## R11 · Registro de pagos en el MVP · Vigente (D-017) · a validar (P42)
+
+- **Origen**: el vecino sube el comprobante desde el portal (o el administrador lo carga por él).
+  Queda como **pago informado**, sin efecto sobre la deuda.
+- **A qué unidad corresponde**: a la del vecino que lo sube (identidad autenticada, R10). Si la
+  persona es contacto de varias unidades (departamento y cochera), elige una o reparte el pago
+  entre ellas; cada parte se imputa en su unidad con R04. No se
+  depende del comprobante: muchos no muestran el origen (BNA+ sólo muestra el destinatario) y el
+  campo "motivo" suele decir "Varios".
+- **Lectura**: cada banco o billetera tiene su formato y no traen QR. La IA lee el comprobante y
+  precarga monto, fecha y hora, y número de operación; el vecino revisa y confirma esos datos.
+- **Número de operación único**: no puede repetirse dentro del complejo. Un comprobante subido dos
+  veces, o para dos unidades, se frena al subirlo.
+- **Confirmación**: sólo el administrador lo pasa a **confirmado**. Nunca es automático. Al
+  confirmarse se imputa con R04.
+- **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
+- **Fecha del pago**: la fecha real de la transferencia (del comprobante, validada contra el
+  extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
+  transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
+  se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
+  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
+  (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
+  contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
+  se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).
+- **Ayuda del extracto**: el administrador sube el extracto del banco (CSV o Excel) y el sistema
+  marca para cada pago informado si encontró un movimiento coincidente (importe y fecha, más el
+  CUIT de origen cuando el banco lo informa) o no.
+  También muestra movimientos del banco sin comprobante, como fondos pendientes de identificar.
+- **Duplicados**: un mismo movimiento del banco no puede confirmar dos pagos.
+- **Datos de prueba**: comprobantes de ejemplo con datos inventados, en los formatos reales de
+  BNA+ y Mercado Pago. Nunca comprobantes reales con datos personales en el repositorio.
+- **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
+  confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
+  tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
+  emisión que cobró interés por días posteriores a la transferencia genera el ajuste exacto; un pago
+  repartido entre el departamento y la cochera imputa cada parte en su unidad con R04.
+
+## R18 · Estado "revertido" de un pago confirmado · Vigente (D-056) · extiende R11
+
+- **Regla**: un pago **confirmado** puede pasar a **revertido** cuando el banco lo
+  rechaza o lo devuelve después de confirmado (cheque rechazado, contracargo, transferencia
+  revertida). El pago original nunca se borra ni pasa a "rechazado".
+- **Efecto**: se registra un movimiento de **reversión de pago** (débito) que referencia al pago
+  original, con motivo obligatorio (por ejemplo, "cheque rechazado, fondos insuficientes").
+- **Morosidad**: al revertirse un pago, la unidad puede pasar a cumplir R20 (moroso crítico), que se
+  calcula siempre desde el libro (D-074).
+- **Movimientos enlazados**: si el pago tenía una bonificación por pronto pago (R37) o un ajuste de
+  interés (R11) enlazados, se revierten con él (D-082, D-083).
+- **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
+  original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
+  después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
+  vencidas con saldo; revertir un pago con bonificación o ajuste de interés enlazados revierte también
+  esos movimientos.
+
+## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
+
+- **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
+  en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
+  vecino lo use.
+- **CBU histórico**: cuando el administrador confirma un pago y el CBU de origen se conoce (porque lo
+  trae el comprobante o porque el pago se cruzó con el extracto), el sistema lo guarda asociado a esa
+  unidad (cambio 8). La sugerencia por CBU aparece al cruzar el extracto (cambio 9): un movimiento del
+  mismo CBU es una sugerencia para esa unidad.
+- **Nunca asigna solo**: los dos mecanismos sólo generan una **sugerencia de confianza alta** en la
+  bandeja de confirmación (HU-A6, HU-A7); el administrador siempre confirma con un clic (principio
+  3 de Alberto). El primer pago de un CBU nuevo no tiene sugerencia por este mecanismo.
+- **Tests mínimos**: un movimiento con el código de la unidad en el concepto aparece como sugerencia
+  de esa unidad; un CBU que ya pagó por una unidad sugiere esa unidad el mes siguiente; ninguno de
+  los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
+  genera sugerencia.
+
+## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
+
+- **Qué resuelve**: un pago confirmado en la unidad equivocada (el vecino de 7A cargó el pago a 7B).
+- **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
+  de **reimputación** enlazados: uno que resta en la unidad equivocada (restituye la deuda) y otro
+  que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
+  original. Después, cada una de las dos unidades puede pasar a cumplir o dejar de cumplir R20, que se
+  calcula desde el libro (D-074).
+- **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
+  un paso, no se aplica ninguno; después de reimputar, la función de R20 da el resultado correcto
+  para las dos unidades.
 
 ## R37 · Condiciones de la bonificación por pronto pago · Propuesta (D-071)
 
 - **Qué resuelve**: dejar escrito cuándo corresponde la bonificación por pronto pago (regla del motor,
-  `motor-de-reglas.md`), para que dos edificios no la interpreten distinto.
+  `13_motor_de_reglas.md`), para que dos edificios no la interpreten distinto.
 - **Propuesta** (son los valores por defecto de la regla; cada edificio los ajusta en el editor):
   - Se bonifica sólo la **ordinaria prorrateada del período** (R13). Nunca la extraordinaria, los intereses ni
     los cargos particulares, y en especial **nunca una multa**.
@@ -671,44 +644,84 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
   multa del período no se bonifica; un pago el día límite bonifica y uno al día siguiente no; el PDF
   muestra los dos importes; revertir un pago bonificado devuelve la deuda completa.
 
-## R38 · Ingresos del consorcio · Propuesta (D-071)
+---
 
-- **Qué resuelve**: lo que el consorcio cobra (alquiler de una cochera o baulera común, de la terraza
-  para una antena, el uso del SUM por terceros) tiene que bajar lo que pagan todos. Hoy la base sólo
-  tiene gastos.
-- **Propuesta**: el administrador registra un **ingreso** con concepto, importe, período, grupo de
-  reparto y respaldo. Al liquidar, los ingresos aprobados se restan de los **gastos ordinarios** de su
-  grupo (nunca de la extraordinaria), y sobre el neto se aplica el reparto de R01 y R07 (D-082). La expensa los muestra en un bloque propio,
-  "Ingresos", con su detalle.
-- **Si quien paga es un vecino** (por ejemplo, alquila una cochera común): se le carga como cargo
-  particular a su unidad (R14) y el mismo importe entra como ingreso del consorcio.
-- **Pendiente** (P15): qué pasa si en un mes los ingresos superan los gastos ordinarios del grupo. Hasta
-  decidirlo, el sistema lo frena con un control duro de R34, que no se puede aceptar (D-080).
-- **Tests mínimos**: un ingreso baja el total a repartir de su grupo y no el de otros grupos; el reparto
-  del neto sigue sumando exacto; un ingreso en borrador no entra; un ingreso mayor que los gastos frena
-  la emisión.
+## Dominio: Morosidad y gestión de deuda
 
-## R39 · Unidades del propio consorcio · Propuesta (D-071)
+## R20 · Moroso crítico por antigüedad · Vigente (D-058, D-074)
 
-- **Qué resuelve**: unidades que son del consorcio (la portería, un departamento propio que se
-  alquila). El consorcio no puede cobrarse intereses a sí mismo.
-- **Propuesta**: una unidad marcada como "del consorcio" **no genera intereses**, no recibe
-  bonificaciones, no cuenta como moroso crítico (R20) y no recibe avisos de mora.
-- **Pendiente** (P16): cómo se trata su parte de cada gasto: si se reparte entre las demás unidades o
-  si se registra como gasto del consorcio. Depende del reglamento; se valida con Alberto.
-- **Tests mínimos**: una unidad del consorcio con saldo vencido no genera interés; no aparece en la
-  lista de morosos; desmarcarla la vuelve a tratar como cualquier unidad desde el período siguiente.
+- **Definición**: una unidad es **moroso crítico** cuando tiene **dos o más liquidaciones vencidas
+  con saldo impago**, calculado desde las imputaciones (nunca desde una marca de "pagada").
+- **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
+  el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
+  cambio 10a se encarga del listado, la exportación y la presentación.
+- **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
+  cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
+  una sola.
+- **No es por monto**: una fórmula por monto de deuda no se usa (se rompe porque la expensa cambia de
+  mes a mes y los pagos parciales la confunden).
+- **Exclusiones**: quedan excluidas las unidades con la deuda en **gestión judicial** (R31), cuando el
+  cambio 10b construya esa marca y la agregue a esta función (D-078), y las **unidades del consorcio** (R39), si
+  se valida. El plan de pago está fuera del
+  MVP (`16_proyecto_final.md`, G1), así que esa exclusión queda como límite conocido.
+- **Sin bloqueo de amenities**: las reservas de espacios comunes no están en el MVP, así que no hay
+  ningún bloqueo asociado a esta marca.
+- **Tests mínimos**: una unidad con una sola liquidación vencida no es moroso crítico; dos vencidas
+  con saldo, sí; un pago parcial que no cubre ninguna por completo sigue contando esa liquidación
+  como vencida; revertir un pago (R18) puede volver a marcar moroso crítico a una unidad; una unidad
+  migrada con dos períodos vencidos en el saldo inicial es moroso crítico; un saldo inicial de total
+  único cuenta como una sola liquidación vencida.
 
-## R40 · Los períodos se liquidan en orden · Propuesta (D-071)
+## R21 · Certificado de libre deuda · Vigente (D-059)
 
-- **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
-  intereses.
-- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido o
-  distribuido (una liquidación anulada no cuenta). Única
-  excepción: el primer período después de la migración (R09), que arranca desde los saldos
-  iniciales confirmados.
-- **Tests mínimos**: con abril sin emitir, preliquidar mayo se rechaza con un mensaje claro; con abril
-  emitido, mayo se preliquida; el primer período después de la migración se puede emitir.
+- **Qué es**: un certificado que resume la deuda de una unidad a una fecha de corte, para que el
+  escribano pueda escriturar una venta sin esperar a que el administrador revise la cuenta a mano.
+- **Contenido**: identificador único, fecha de corte, saldo de la unidad a esa fecha (calculado desde
+  la cuenta corriente, nunca estimado), y los pagos informados todavía no confirmados, listados por
+  separado como "en revisión" sin restarlos del saldo.
+- **Nunca estima**: no incluye ningún gasto del período en curso que todavía no se liquidó.
+- **Interés corrido** (D-081): si la fecha de corte es posterior a un vencimiento, el certificado informa
+  en una línea aparte el interés corrido hasta esa fecha según R03, calculado y sin registrarlo en la
+  cuenta corriente (se registra con la emisión siguiente).
+- **Firma**: lo firma el administrador titular.
+- **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
+  con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
+  sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de
+  corte; con un corte posterior al vencimiento, muestra el interés corrido en una línea aparte sin
+  registrarlo en la cuenta corriente.
+
+## R29 · Condonación de intereses · Propuesta (ProTecc B5, Q1)
+
+- **Qué resuelve**: un recargo por mora que el vecino discute y el administrador decide perdonar,
+  total o parcialmente.
+- **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
+  **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
+  vecino (principio 7 de Alberto) y para el consejo.
+- **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
+  auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
+  sin esa respuesta.
+- **Tests mínimos** (a definir con la aprobación): una condonación genera el movimiento de crédito
+  sin borrar el recargo; el vecino ve el motivo; después de condonar, la función de R20 da el
+  resultado correcto para la unidad.
+
+## R31 · Marca de gestión judicial · Propuesta (ProTecc G2)
+
+- **Qué resuelve**: una deuda que ya está en manos del abogado del consorcio, donde un recordatorio
+  automático de mora puede interferir con el juicio.
+- **Propuesta**: marcar una unidad como "en gestión judicial" suspende los recordatorios automáticos
+  de mora (HU-V6) y la excluye del cálculo de moroso crítico (R20).
+  Las consultas de esa unidad se derivan al administrador.
+- **Tests mínimos**: una unidad marcada no recibe el aviso automático de mora; no cuenta como moroso
+  crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
+  cálculos.
+
+## R32 · Cambio de titular a mitad de período · Pendiente (P11)
+
+- **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
+  anterior. Hoy ninguna regla dice a quién se le imputa cada cosa ni qué ve cada uno en el portal.
+- **A definir**: si la expensa del período sigue a la unidad o a la persona; qué pasa con la deuda
+  anterior y con el crédito a favor; cómo se relaciona con el certificado de libre deuda (R21).
+- **Tests mínimos**: a definir cuando se responda P11.
 
 ## R41 · Baja de deuda incobrable · Propuesta (D-071)
 
@@ -723,3 +736,23 @@ título (D-089): se construye igual, pero sus números pueden cambiar después d
 - **Tests mínimos**: la baja deja el saldo en cero sin borrar movimientos; sin respaldo adjunto se
   rechaza; un colaborador no puede registrarla; aparece en el reporte de bajas.
 
+---
+
+## Dominio: Avisos
+
+## R27 · Aviso que cae en fin de semana o feriado · Propuesta (ProTecc W3)
+
+- **Qué resuelve**: un vencimiento o un recordatorio que cae en fin de semana o feriado.
+- **Propuesta**: si la fecha del aviso cae en sábado, domingo o feriado, se envía el primer día hábil
+  siguiente, dentro del horario que defina el cambio 13 `avisos-por-email`.
+- **Tests mínimos**: un aviso que cae en domingo se reprograma al lunes (o al primer día hábil); un
+  aviso en día hábil no se mueve.
+
+## R28 · Validación de contactos y unidades sin contacto válido · Propuesta (ProTecc W4)
+
+- **Qué resuelve**: un email inválido o inexistente que hace que ningún aviso llegue, sin que nadie
+  se entere.
+- **Propuesta**: validar el formato del contacto al cargarlo; si un envío rebota, marcar el contacto
+  como inválido y mostrar al administrador una lista de "unidades sin contacto válido".
+- **Tests mínimos**: un contacto con formato inválido se rechaza al cargarlo; un envío que rebota
+  marca el contacto como inválido; la lista de unidades sin contacto válido incluye esa unidad.

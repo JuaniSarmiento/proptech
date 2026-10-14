@@ -9,7 +9,7 @@ que construyó el 1c (worker, `request_id`, Redis) y el README explica cómo lev
 
 Es el cambio **1d** del roadmap, que nace de partir `cola-logs-y-respaldos` en dos por la auditoría de
 Alberto del 13/10 (**D-087**): el 1c quedó con logs, `request_id`, Redis, worker y web; este se queda
-con respaldos, restauración, humo y README. Arranca desde la ficha `1d` de `conocimiento/roadmap.md` y
+con respaldos, restauración, humo y README. Arranca desde la ficha `1d` de `knowledge-base/12_fichas_de_changes.md` y
 habilita al cambio 2.
 
 Decisiones que cubre: **D-047 punto 4** en su parte de backups automáticos, **D-087** (la partición,
@@ -28,13 +28,13 @@ backup probada) de M3. No toca ninguna regla de negocio (R..) ni historia (HU-..
   Docker.
 - **Servicio nuevo** en el stack que se conecta a la base con su contraseña.
 
-**Se propone y se espera la aprobación de Juani antes de construir.** El constructor no arranca hasta
-que la línea de abajo tenga la fecha y la firma escritas por Juani. Una decisión delegada (como D-088,
-en la que Juani delegó las decisiones del 13/10) **no reemplaza esta aprobación**: delegar cómo se
-resuelve una auditoría no es aprobar que se construya un cambio HIGH. Ningún agente completa esta
-línea.
+**Se propone y se espera la aprobación de uno de los dos socios (Juani o Alberto) antes de
+construir** (D-094). El constructor no arranca hasta que la línea de abajo tenga la fecha y la firma
+escritas por uno de los dos. Una decisión delegada (como D-088, en la que Juani delegó las decisiones
+del 13/10) **no reemplaza esta aprobación**: delegar cómo se resuelve una auditoría no es aprobar que
+se construya un cambio HIGH. Ningún agente completa esta línea.
 
-- Aprobación de Juani: **pendiente**, con fecha y firma escrita por Juani.
+- Aprobación: **pendiente**, con fecha y firma escrita por uno de los dos socios (Juani o Alberto).
 
 ## What Changes
 
@@ -80,7 +80,7 @@ línea.
 
 ## Lecciones que aplican
 
-Se leyó `conocimiento/lecciones.md` entero (L-001 a L-009). El detalle está en `design.md` ("Cómo
+Se leyó `knowledge-base/15_lecciones.md` entero (L-001 a L-009). El detalle está en `design.md` ("Cómo
 aplica cada lección"); en resumen:
 
 | Lección | Tareas |
@@ -110,13 +110,13 @@ aplica cada lección"); en resumen:
 
 ## Knowledge Base Impact
 
-- `conocimiento/decisiones.md`: **APPEND**. Una decisión con las elecciones de este cambio (backups
+- `knowledge-base/09_decisiones_y_supuestos.md`: **APPEND**. Una decisión con las elecciones de este cambio (backups
   diarios con `pg_dump` en formato custom desde la imagen de PostgreSQL, carpeta del host por bind
   mount, 14 copias, límite por volcado, destino de restauración con expresión cerrada).
-- `conocimiento/roadmap.md`: **REWRITE** de la ficha 1d (marcarla ✅).
-- `conocimiento/glosario.md`: **APPEND** de "respaldo (backup)" y "restauración", si no están.
-- `conocimiento/lecciones.md`: lo propone el auditor al cerrar; este cambio no lo escribe.
-- `conocimiento/reglas-de-negocio.md` y `conocimiento/mvp.md`: none. No cambia ninguna regla ni
+- `CHANGES.md`: **REWRITE** del estado del cambio 1d (marcarlo `[x]`).
+- `knowledge-base/11_glosario.md`: **APPEND** de "respaldo (backup)" y "restauración", si no están.
+- `knowledge-base/15_lecciones.md`: lo propone el auditor al cerrar; este cambio no lo escribe.
+- `knowledge-base/05_reglas_de_negocio.md` y `knowledge-base/06_funcionalidades.md`: none. No cambia ninguna regla ni
   historia.
 
 ## Impact

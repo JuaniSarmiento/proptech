@@ -2,9 +2,9 @@
 
 > **Aviso (13/10)**: lo que esta exploración dice sobre que ZEN "usa float" quedó corregido por D-067:
 > ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio. El diseño
-> vigente está en `conocimiento/motor-de-reglas.md`.
+> vigente está en `knowledge-base/13_motor_de_reglas.md`.
 
-> Explore mode. No se escribió código ni se tocó `conocimiento/`. Lo que sigue son hallazgos y
+> Explore mode. No se escribió código ni se tocó `knowledge-base/` (entonces `conocimiento/`). Lo que sigue son hallazgos y
 > una propuesta de diseño para que Juani decida; nada de esto es una decisión tomada.
 
 **Fecha**: 12/10/2026
@@ -12,7 +12,7 @@
 cómo integrarlo"). Responde también a la propuesta de Alberto en
 `especificacion/documentos-alberto/motor-de-reglas.md`.
 
-**Fuentes leídas del repo**: `conocimiento/reglas-de-negocio.md` (R01 a R16), `decisiones.md`
+**Fuentes leídas del repo**: `knowledge-base/05_reglas_de_negocio.md` (R01 a R16; entonces `conocimiento/reglas-de-negocio.md`), `decisiones.md`
 (D-010, D-014, D-021, D-040, D-046, D-054 completo), `forma-de-trabajo.md`, `lecciones.md` (L-002,
 L-007, L-008, L-009), `openspec/changes/archive/2026-10-11-arranque-del-sistema/design.md` (tipo
 `Dinero`, `parametros.yaml`), `especificacion/documentos-alberto/motor-de-reglas.md` (propuesta de

@@ -1,12 +1,13 @@
 # Forma de trabajo
 
 Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proceso; el porqué va a
-`decisiones.md` (D-048).
+`09_decisiones_y_supuestos.md` (D-048).
 
 ## Quiénes
 
-- **Juani**: el único desarrollador y dueño del proyecto. Decide el alcance, aprueba las propuestas
-  de los cambios críticos y recibe el veredicto final.
+- **Juani**: dueño del proyecto y desarrollador. Desde el 14/10/2026 Alberto también programa; cada cambio lo programa uno solo (D-022, D-093). Decide el alcance y recibe el veredicto
+  final de sus propios cambios. Las propuestas CRITICAL y HIGH las puede aprobar él o Alberto, por
+  escrito y con fecha (D-094).
 - **Claude, el orquestador**: la sesión que habla con Juani. No escribe código: arma cada pedido,
   lanza los agentes de a uno, lee lo que devuelven, decide el paso siguiente y le cuenta a Juani.
 - **Los agentes**, cada uno con un solo trabajo y sin ver las conclusiones de los otros salvo lo que
@@ -17,7 +18,7 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
 | **Proponente** | Escribe la propuesta, el diseño y las tareas del cambio en `openspec/changes/` | opus | Sólo los artefactos del cambio |
 | **Constructor** | Implementa las tareas con TDD estricto: ve fallar cada test antes de escribir el código | sonnet | Sí |
 | **Rompedor** | Intenta romper lo construido: entradas límite, pagos simultáneos, otro edificio, datos raros, errores de red. Cada falla que encuentra la deja como un test que falla y la reproducción | sonnet | Sólo tests nuevos, nunca el código |
-| **Auditor** | Lee lo que hizo y pensó cada uno (informes, diff, tests, salida de los comandos) y verifica el cambio contra su propuesta y contra `conocimiento/`. Da el veredicto | opus | No |
+| **Auditor** | Lee lo que hizo y pensó cada uno (informes, diff, tests, salida de los comandos) y verifica el cambio contra su propuesta y contra `knowledge-base/`. Da el veredicto | opus | No |
 
 ## El ciclo de cada cambio
 
@@ -31,8 +32,9 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
 
 1. **Proponer.** El proponente escribe `proposal.md`, `design.md` y `tasks.md`, con las historias,
    reglas y decisiones que cubre y la sección "Knowledge Base Impact". En los cambios marcados con ⓔ
-   en `mvp.md`, antes corre un explore. **Juani aprueba la propuesta de los cambios críticos**
-   (acceso, cuenta corriente, importación desde Excel, liquidación, pagos y 10b, D-077); en los demás sigue el orquestador.
+   en `01_vision_y_objetivos.md`, antes corre un explore. **La propuesta de los cambios críticos la
+   aprueba Juani o Alberto, por escrito y con fecha** (acceso, cuenta corriente, importación desde
+   Excel, liquidación, pagos y 10b, D-077, D-094); en los demás sigue el orquestador.
 2. **Construir.** El constructor implementa las tareas en orden, con TDD, y devuelve qué hizo, qué
    comandos corrió y su salida.
 3. **Romper.** El rompedor recibe el cambio terminado y trata de romperlo. Si encuentra fallas, vuelve
@@ -41,7 +43,7 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
    vuelve al paso 2, va directo al paso 4 con su informe final.
 4. **Auditar.** El auditor revisa todo y responde **OK** o **NO con motivos**. Si es NO, vuelve al
    paso 2. **Un cambio está aprobado cuando el auditor da el OK.**
-5. **Archivar.** Se actualiza `conocimiento/` según el "Knowledge Base Impact" (lo vigente se
+5. **Archivar.** Se actualiza `knowledge-base/` según el "Knowledge Base Impact" (lo vigente se
    reescribe, las decisiones se agregan), se archiva el cambio en OpenSpec y se commitea.
 
 **Tope de vueltas (D-092)**: si entre construir, romper y auditar se dan tres vueltas sin llegar al
@@ -71,18 +73,18 @@ informe.
 
 | Tipo de cambio | Ciclo |
 |---|---|
-| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de Juani antes de codear, D-077) | Completo: constructor, rompedor y auditor por separado |
+| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de uno de los dos socios antes de codear, D-077, D-094) | Completo: constructor, rompedor y auditor por separado |
 | **Chico o de sólo lectura** (10a, 12, 13; el 12 con revisión previa por ser HIGH) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
-| **Infraestructura y el resto** (1a, 1b, 1c, 1d, 3, 6b, 11, 14, 15; el 1d, el 3 y el 12 son HIGH: se propone y se espera la revisión de Juani, D-087) | Completo |
+| **Infraestructura y el resto** (1a, 1b, 1c, 1d, 3, 6b, 11, 14, 15; el 1d, el 3 y el 12 son HIGH: se propone y se espera la revisión de uno de los dos socios, D-087, D-094) | Completo |
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
 
 ## Lecciones
 
-Antes de empezar cada cambio, **el constructor y el rompedor leen `lecciones.md`**: es la lista de
+Antes de empezar cada cambio, **el constructor y el rompedor leen `15_lecciones.md`**: es la lista de
 ataques y puntos ciegos que ya nos costaron una vuelta. **El auditor cierra su veredicto con una
 sección LECCIONES** (lo que este ciclo enseñó, como regla general, o "ninguna") y el orquestador las
-agrega a `lecciones.md` al archivar.
+agrega a `15_lecciones.md` al archivar.
 
 ## Lo que cada agente devuelve
 
@@ -95,10 +97,12 @@ El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani
 
 ## Reglas del proceso
 
-- **De a un cambio por vez**, en el orden de `roadmap.md`, que tiene la ficha de cada uno. El siguiente arranca recién cuando el anterior
+- **De a un cambio por vez**, en el orden de `CHANGES.md`, con la ficha detallada de cada uno en
+  `12_fichas_de_changes.md`. El siguiente arranca recién cuando el anterior
   está archivado.
 - **Ningún agente lanza otros agentes.**
-- **Git**: sin ramas, todo sobre `main`, porque trabaja una sola persona. Al archivar cada cambio,
+- **Git**: sin ramas, todo sobre `main`; así se decidió cuando trabajaba una sola persona. Con dos
+  desarrolladores (D-093), el criterio de ramas o turnos está abierto (P47). Al archivar cada cambio,
   con el OK del auditor, se commitea y se pushea a `main` sin preguntar (autorizado por Juani,
   D-049). Cualquier otro push se pregunta.
 - **El repositorio es público**: nunca secretos ni datos personales reales, ni en código ni en tests.

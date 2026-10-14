@@ -1,55 +1,19 @@
-# Roadmap de ejecución del MVP
+# Fichas detalladas de los changes
 
-El plan cambio por cambio, del primero al último. Cada ficha es **la entrada del `/opsx:propose`**
-de ese cambio: el proponente parte de acá y de los archivos que la ficha cita. **Se reescribe**
-cuando cambia el plan; el porqué va a `decisiones.md` (D-045, D-047, D-049).
+Extra de Active Stack v1 (D-093): el detalle completo de cada cambio del roadmap, sin el estado (que
+vive sólo en `CHANGES.md`, la fuente única para saber qué está hecho). Cada ficha es **la entrada del
+`/opsx:propose`** de ese cambio: el proponente parte de acá y de los archivos que la ficha cita. **Se
+reescribe** cuando cambia el plan; el porqué va a `09_decisiones_y_supuestos.md` (D-045, D-047,
+D-049).
 
-El ciclo de cada cambio está en `forma-de-trabajo.md`: proponer, construir, romper, auditar y
+El ciclo de cada cambio está en `14_forma_de_trabajo.md`: proponer, construir, romper, auditar y
 archivar con commit y push. Un cambio arranca cuando el anterior está archivado.
-
-## Resumen
-
-| # | Cambio | Hito | Depende de | Explore propio | Crítico | Tamaño |
-|---|---|---|---|---|---|---|
-| 1a | `infraestructura-base` ✅ | M1 | ninguno | no | no | mediano |
-| 1b | `arranque-del-sistema` ✅ | M1 | 1a | no | no | mediano |
-| 1c | `cola-logs-y-respaldos` ✅ | M1 | 1b | no | no | mediano |
-| 1d | `respaldos-y-restauracion` | M1 | 1c | no | no (HIGH, D-087) | chico |
-| 2 | `acceso-y-aislamiento` | M1 | 1d | **sí** | **sí** | grande |
-| 3 | `configuracion-del-edificio` | M1 | 2 | no | no (HIGH, D-087) | mediano |
-| 4 | `motor-de-cuenta-corriente` | M1 | 2, 3 | **sí** | **sí** | grande |
-| 5 | `importacion-desde-excel` | M1 | 3, 4 | no | **sí** (D-077) | mediano |
-| 6 | `gastos-y-cargos` | M1 | 3, 4 | no | no | mediano |
-| 7 | `liquidacion-y-emision` | M1 | 5, 6 | **sí** | **sí** | grande |
-| 8 | `pagos-informados` | M2 | 7 | no | **sí** | mediano |
-| 6b | `motor-de-reglas` | M2 | 7, 8 | **sí** (D-087) | no | mediano |
-| 9 | `extracto-bancario` | M2 | 8 | no | no | chico |
-| 10a | `morosidad` | M2 | 8 | no | no | chico |
-| 10b | `condonacion-judicial-y-libre-deuda` | M2 | 10a | no | **sí** (D-077) | chico |
-| 11 | `portal-del-vecino` | M2 | 10a | no | no | mediano |
-| 12 | `vista-del-consejo` | M2 | 11 | no | no (HIGH, D-087) | chico |
-| 13 | `avisos-por-email` | M2 | 8, 10b | no | no | chico |
-| 14 | `lectura-de-facturas` | M3 | 6, 7 | no | no | mediano |
-| 15 | `piloto-en-paralelo` | M3 | todos + datos del piloto | no | no | mediano |
-
-**Crítico**: Juani aprueba la propuesta antes de que se codee. **Explore propio**: se corre un
-`/opsx:explore` del cambio antes del propose.
-
-**Camino al test de M1** (reproducir la última liquidación del piloto al centavo):
-
-```
-Código:  1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 7 ──┐
-                                            ├──► TEST M1
-Datos:   pedirle a Alberto los datos del piloto (P1), desde ya ──┘
-```
-
-Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por cumplido.
 
 ---
 
 ## M1 · Liquida
 
-### 1a · `infraestructura-base` ✅
+### 1a · `infraestructura-base`
 
 - **Objetivo**: que el proyecto arranque entero con un comando y que los tests corran solos en cada push.
 - **Decisiones**: D-020, D-036, D-038, D-040, D-043, D-046.
@@ -68,7 +32,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: `docker compose up` levanta todo desde un clon limpio; el endpoint de salud
   responde a través de Caddy; el CI está en verde y falla a propósito con un test roto.
 
-### 1b · `arranque-del-sistema` ✅
+### 1b · `arranque-del-sistema`
 
 - **Objetivo**: las piezas transversales que todos los cambios usan (re-alcanzado por D-052).
 - **Decisiones**: D-042, D-046, D-052, D-053.
@@ -78,14 +42,14 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Pasó a 1c**: Redis y el worker, logs y número de seguimiento, respaldos, `/salud-web`, humo y README.
 - **Habilita**: 1c.
 
-### 1c · `cola-logs-y-respaldos` ✅
+### 1c · `cola-logs-y-respaldos`
 
 - **Objetivo**: la cola de trabajos con su worker, los logs estructurados y el número de seguimiento
   de punta a punta, que todos los cambios siguientes dan por existentes (D-052). Partido del 1d por la
   auditoría de Alberto (D-087); el nombre conserva "respaldos" porque el CLI de OpenSpec no renombra
   cambios, pero los respaldos son del 1d.
 - **Decisiones**: D-038, D-047 (punto 4, logs con número de seguimiento), D-052, D-087, D-090, D-091.
-- **Gobernanza**: MEDIUM. Ciclo completo, sin aprobación previa de Juani.
+- **Gobernanza**: MEDIUM. Ciclo completo, sin aprobación previa de los socios.
 - **Entró**: logs en JSON con una lista cerrada de campos y sin el texto de los errores de terceros
   (L-007), con las dos excepciones conocidas de ARQ y los eventos fijos `excepcion_como_mensaje` y
   `traceback_crudo_descartado` (D-091); `request_id` validado con coincidencia completa y sólo ASCII,
@@ -111,9 +75,9 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   cada corrida del CI pruebe que se restaura; y que el humo verifique de punta a punta lo del 1c.
 - **Decisiones**: D-043, D-047 (punto 4, backups automáticos), D-087. Avanza H46 (restauración
   probada) de M3.
-- **Gobernanza HIGH** (D-087): borra bases (`dropdb` en la restauración), escribe en el disco del host
+- **Gobernanza HIGH** (D-087, D-094): borra bases (`dropdb` en la restauración), escribe en el disco del host
   (bind mount) y suma un servicio con la contraseña de la base. Se propone y se espera la aprobación de
-  Juani antes de construir.
+  uno de los dos socios (Juani o Alberto) antes de construir.
 - **Entra**: servicio `respaldos` con `pg_dump` al arrancar y cada día, acotado por un límite de tiempo
   (L-001), en una carpeta del host a salvo de `docker compose down -v`, con 14 copias y salud por
   antigüedad; validación de su configuración con dígitos ASCII y sin ceros a la izquierda (L-002,
@@ -134,14 +98,14 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   excepción usa su `__str__`); confianza baja en que valga la pena antes de ver un caso real en los
   logs del humo ampliado.
 - **Depende de**: 1c. **Habilita**: 2.
-- **Bloqueado por**: la aprobación escrita y fechada de Juani en su propuesta (D-088 no la reemplaza).
+- **Bloqueado por**: la aprobación escrita y fechada de uno de los dos socios en su propuesta (D-088 no la reemplaza).
 - **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
   punto y coma, mayúsculas, salto de línea, más de 63 caracteres o igual a `POSTGRES_DB`); una
   retención que borre un archivo ajeno de la carpeta; un volcado que se cuelgue con la base pausada;
   una configuración con `060`, espacios o dígitos de otro alfabeto que pase; la contraseña o la salida
   de `pg_dump` en el log; un backup a medio escribir con nombre final; que el backup no sobreviva a
   `docker compose down -v`.
-- **Terminado cuando**: Juani aprobó la propuesta; las 19 tareas están hechas con su test visto en
+- **Terminado cuando**: uno de los dos socios aprobó la propuesta; las 19 tareas están hechas con su test visto en
   rojo; el humo genera el backup solo, lo restaura en `proptech_restauracion` con la misma revisión de
   Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; y el auditor
   da el OK.
@@ -199,8 +163,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Propuestas** (entran si se validan): R35 (calendario de feriados del sistema), R36 (tasa de la
   extraordinaria), R39 (marca de unidad del consorcio).
 - **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-080, D-087.
-- **Gobernanza HIGH** (D-087): guarda la configuración versionada de intereses, que cambia montos. Se
-  propone y se espera la revisión de Juani antes de construir.
+- **Gobernanza HIGH** (D-087, D-094): guarda la configuración versionada de intereses, que cambia montos. Se
+  propone y se espera la revisión de uno de los dos socios antes de construir.
 - **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
   grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
   desactivar); configuración de intereses y fondo de reserva como **menús cerrados** tomados de
@@ -422,13 +386,13 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: dejar andando la base del motor de reglas cuando haya reglas validadas que lo necesiten
   (D-087, D-089). Está fuera del camino a M1: ninguna regla vigente pasa por el motor.
 - **Reglas**: R33 (datos completos y tipados antes del motor). **Decisiones**: D-064, D-066, D-067,
-  D-080, D-085, D-087. Detalle en `motor-de-reglas.md`.
+  D-080, D-085, D-087. Detalle en `13_motor_de_reglas.md`.
 - **Entra**: el módulo `politicas`, el puerto de políticas, el adaptador de GoRules ZEN, el validador en
   sus dos momentos, las reglas versionadas por edificio, el editor (jdm-editor) en el frontend con el
   esquema de permisos que defina P22 (propuesta: dos niveles) y "repetir el mes pasado" contra datos de prueba. Migra al motor las reglas que se hayan validado y construido como código simple en el 7 y el 8
   (cargo recurrente R14, bonificación R37), y suma los controles propios del edificio (R34).
 - **Prerrequisito del explore**: bajar y revisar el demo BRE, y probar jdm-editor con React 19.3 y
-  `antd` 5.21.2 (pendientes de `motor-de-reglas.md`).
+  `antd` 5.21.2 (pendientes de `13_motor_de_reglas.md`).
 - **Depende de**: 7 y 8. **Habilita**: la migración al motor de las reglas propias que se hayan
   construido como código simple (R14, R37) y los controles propios del edificio.
 - **Bloqueado por**: P22.
@@ -486,7 +450,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   pagos en revisión listados aparte (R21, ProTecc G3). La marca de gestión judicial se expone como
   consulta para que la usen el cambio 13 (avisos) y la **exclusión en la función de R20**, que este
   cambio agrega a la función del cambio 4 (D-078).
-- **Ciclo**: completo, con aprobación de Juani antes de codear (D-077). Si R29 sigue sin saber quién
+- **Ciclo**: completo, con aprobación de uno de los dos socios antes de codear (D-077, D-094). Si R29 sigue sin saber quién
   aprueba una condonación, esa parte se separa y el resto avanza.
 - **Depende de**: 10a. **Habilita**: 13.
 - **Bloqueado por**: P14, P20 y P32.
@@ -623,26 +587,3 @@ suena más obvio.
   encargado de un mes, y la liquidación de ese mes (P1).
 - [x] Contarle a Alberto que los montos van en Decimal, como en su documento (D-046).
 - [x] Repositorio limpio y OpenSpec listo.
-
-## Preguntas abiertas que afectan el roadmap
-
-- **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
-- **P8 · Precio**: no afecta ningún cambio.
-- **P18 y P23**: el vecino en dos administraciones y los permisos por acción, antes del cambio 2.
-- **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
-- **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
-- **P20**: quién aprueba una condonación, antes del 10b.
-- **P24 a P34 y P36 a P41** (P35 ya está resuelta, D-086): casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual
-  se decide.
-- **P19**: el doble vencimiento, antes del cambio 3.
-- **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
-- **P22**: quién usa el editor de reglas, antes del 6b.
-- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4 (junto con
-  P10, P17, P19, P24 y P33, en una sola sesión).
-- **P12, P14 y P16**: la inscripción ante la AAIP (antes del 8), el plazo del libre deuda (antes del 10b)
-  y la parte de las unidades del consorcio (antes del 3).
-- **P45 y P46**: validar la propuesta de valor con administradores (antes de M2) y los nombres propios
-  en el repositorio público.
-- **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
-  visibilidad al repositorio y del primer despliegue.
-- **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

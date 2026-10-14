@@ -20,12 +20,14 @@ PASO 3 · Decidir de a una cosa por vez
 No construyas nada todavía. Presentá las decisiones que cambian el producto, una por una, cada una con tu recomendación, la alternativa descartada y el porqué. Esperá la respuesta antes de seguir. Temas típicos: por dónde empezar, usuarios y roles, reglas de negocio (con ejemplos en números), qué entra y qué no en el MVP, stack, arquitectura y piloto.
 
 PASO 4 · Armar la base de conocimiento
-Con lo decidido, escribí los archivos de la base de conocimiento (en PropTech hoy son nueve, en `conocimiento/`):
-1. mvp.md: objetivo, criterio de éxito medible, usuarios, historias con criterios de aceptación (dado / cuando / entonces), alcance (entra y no entra), hitos demostrables y diferencias con el material original.
-2. reglas-de-negocio.md: cada regla con su estado y los tests mínimos que la verifican.
-3. decisiones.md: registro de sólo agregar (fecha, decisión, descartado, por qué, quién) y preguntas abiertas.
-4. glosario.md: el idioma común; el código usa estos nombres.
-5. proyecto-final.md: la visión completa en fases, cada una con su condición para arrancar.
+Con lo decidido, escribí los archivos de la base de conocimiento (en PropTech hoy son dieciséis, en `knowledge-base/`, formato Active Stack v1):
+1. 01_vision_y_objetivos.md: objetivo, criterio de éxito medible, usuarios, alcance (entra y no entra), hitos demostrables y diferencias con el material original.
+2. 06_funcionalidades.md: historias con criterios de aceptación (dado / cuando / entonces).
+3. 05_reglas_de_negocio.md: cada regla con su estado y los tests mínimos que la verifican.
+4. 09_decisiones_y_supuestos.md: registro de sólo agregar (fecha, decisión, descartado, por qué, quién) y supuestos.
+5. 10_preguntas_abiertas.md: preguntas abiertas e inconsistencias.
+6. 11_glosario.md: el idioma común; el código usa estos nombres.
+7. 16_proyecto_final.md: la visión completa en fases, cada una con su condición para arrancar.
 
 PASO 5 · Escribir el documento para quien decide
 Estructura: portada; resumen en una página (qué es, qué hace el MVP, cómo sabemos que funciona, qué necesitamos de vos); el problema y la solución con un ejemplo concreto; el MVP por usuario; las reglas en simple con ejemplos en números; roadmap por hitos con su forma de trabajo; el proyecto completo por fases; mercado y competencia; cambios respecto del material original; riesgos y próximos pasos.

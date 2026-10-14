@@ -1,0 +1,68 @@
+{
+  "version": 4,
+  "step": "done",
+  "owner": "active-orchestrator",
+  "nota": "Este archivo sólo documenta. La base de conocimiento, el roadmap y los agentes de este repositorio se escribieron a mano (D-093), no con kb-creator/roadmap-generator/agent-instruction. No correr active-orchestrator (ni elegir 'Regenerar'), kb-creator, roadmap-generator, agent-instruction, openspec init ni openspec update sobre este repo: ver CLAUDE.md / AGENTS.md, sección Reglas Duras.",
+  "kb": {
+    "created_by": "manual (Juani, con Claude; adaptado a Active Stack v1 el 14/10/2026, D-093)",
+    "source": "interactive",
+    "discovery": {
+      "system_type": "SaaS de administración de edificios en propiedad horizontal (y después barrios privados)",
+      "domain": "Property management / PropTech, liquidación de expensas",
+      "scale": "MVP para un solo administrador piloto, multi-tenant por administración desde el diseño",
+      "stack": [
+        "Next.js (App Router) + TypeScript",
+        "FastAPI + SQLAlchemy + Alembic",
+        "PostgreSQL con Row-Level Security",
+        "Redis + worker ARQ",
+        "Caddy",
+        "Docker Compose en un VPS"
+      ],
+      "needs_infra": true,
+      "problem": "Un administrador liquida y cobra expensas a mano con Excel y WhatsApp; PropTech ordena ese ciclo de punta a punta."
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/11_glosario.md",
+      "knowledge-base/12_fichas_de_changes.md",
+      "knowledge-base/13_motor_de_reglas.md",
+      "knowledge-base/14_forma_de_trabajo.md",
+      "knowledge-base/15_lecciones.md",
+      "knowledge-base/16_proyecto_final.md",
+      "knowledge-base/README.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "manual (Juani, con Claude; roadmap-generator no se corrió sobre este repo)",
+    "changes_file": "CHANGES.md"
+  },
+  "skills": {
+    "created_by": "n/a: find-skill no se corrió sobre este repo",
+    "recommended": [],
+    "installed": []
+  },
+  "agents": {
+    "created_by": "manual (Juani, con Claude; agent-instruction no se corrió sobre este repo)",
+    "files": ["CLAUDE.md", "AGENTS.md"],
+    "reglas_applied": [
+      "nunca active-orchestrator ni Regenerar",
+      "nunca kb-creator, roadmap-generator, agent-instruction",
+      "nunca openspec init ni openspec update",
+      "openspec fijado en 1.13.0",
+      "gobernanza CRITICAL/HIGH aprobada por cualquiera de los dos socios (D-094)"
+    ]
+  },
+  "registry": {
+    "created_by": "n/a: skill-registry no se corrió sobre este repo (.atl/ en .gitignore)",
+    "file": null
+  }
+}

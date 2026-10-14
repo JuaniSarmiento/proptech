@@ -1,7 +1,7 @@
 # Motor de reglas
 
 Cómo entra al sistema el reglamento propio de cada edificio sin programar un edificio por vez.
-**Se reescribe** cuando cambia el diseño; el porqué de cada cambio va a `decisiones.md`.
+**Se reescribe** cuando cambia el diseño; el porqué de cada cambio va a `09_decisiones_y_supuestos.md`.
 
 ## Estado
 

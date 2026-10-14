@@ -13,15 +13,16 @@ cada push), **1b `arranque-del-sistema`** (configuración, tipo `Dinero` exacto,
 edificio de ejemplo validados) y **1c `cola-logs-y-respaldos`** (Redis, worker con reintentos e
 idempotencia, logs en JSON y número de seguimiento de punta a punta; cerrado con OK con deuda
 anotada). Propuesto: **1d `respaldos-y-restauracion`** (el próximo, espera la aprobación escrita de
-Juani). Todavía no hay
+uno de los dos socios). Todavía no hay
 liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
-([`conocimiento/roadmap.md`](conocimiento/roadmap.md)).
+([`CHANGES.md`](CHANGES.md), con el detalle de cada cambio en
+[`knowledge-base/12_fichas_de_changes.md`](knowledge-base/12_fichas_de_changes.md)).
 
 ## Estructura
 
 | Carpeta | Qué tiene |
 |---|---|
-| [`conocimiento/`](conocimiento/) | **La base de conocimiento del MVP**: objetivo, historias de usuario, reglas de negocio, decisiones, glosario y fases. Es la fuente de verdad: empezá por su [README](conocimiento/README.md) |
+| [`knowledge-base/`](knowledge-base/) | **La base de conocimiento del MVP**: visión, actores, reglas de negocio, decisiones, glosario y fases. Es la fuente de verdad: empezá por su [README](knowledge-base/README.md) |
 | `config/` | `parametros.yaml` (valores con que arranca cada edificio) y `semilla/` (edificio de ejemplo) |
 | `openspec/` | Cambios del ciclo OPSX |
 | `web/` | Frontend en Next.js |
@@ -29,7 +30,7 @@ liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 | `infra/` | Docker Compose, Caddy y los scripts de CI |
 
 La estructura completa y su porqué están en la decisión D-040 de
-[`conocimiento/decisiones.md`](conocimiento/decisiones.md).
+[`knowledge-base/09_decisiones_y_supuestos.md`](knowledge-base/09_decisiones_y_supuestos.md).
 
 ## Cómo levantarlo
 
@@ -72,11 +73,22 @@ Los mismos comandos de test que usa el CI están en `infra/ci/test-backend.sh` y
 
 ## Cómo se trabaja
 
-1. Nada se programa sin estar escrito antes en `conocimiento/` y en un cambio de OPSX.
+1. Nada se programa sin estar escrito antes en `knowledge-base/` y en un cambio de OPSX.
 2. El núcleo financiero se construye con TDD: cada regla de
-   [`reglas-de-negocio.md`](conocimiento/reglas-de-negocio.md) tiene sus tests antes que el código.
+   [`05_reglas_de_negocio.md`](knowledge-base/05_reglas_de_negocio.md) tiene sus tests antes que el código.
 3. Si algo contradice la base de conocimiento, se para y se decide: una decisión nueva en
-   `decisiones.md`, nunca una edición de una vieja.
+   `09_decisiones_y_supuestos.md`, nunca una edición de una vieja.
+
+## Trabajar con Active Stack
+
+Este repositorio ya tiene su base de conocimiento, su roadmap y sus reglas escritos a mano. Si vas a
+trabajar acá con Active Stack v1 (Alberto) o con el método propio del proyecto (Juani), empezá por
+[`AGENTS.md`](AGENTS.md): tiene el stack, qué leer antes de codear, las reglas duras (incluido qué
+herramientas de fundación **no correr nunca** en este repo) y el flujo de trabajo de los dos ciclos.
+
+El instalador de Active Stack v1 deja la última versión de OpenSpec. Este repo usa la 1.13.0 (las
+skills de `.claude/skills/` se generaron con ella): después de instalar, fijala con
+`npm install -g @fission-ai/openspec@1.13.0` y no corras `openspec update`.
 
 ## Stack
 

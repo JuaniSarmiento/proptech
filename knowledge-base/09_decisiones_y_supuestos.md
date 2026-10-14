@@ -1,8 +1,9 @@
-# Decisiones
+# Decisiones y Supuestos
 
 Registro de cómo llegamos a lo que hay. **Sólo se agrega, nunca se borra**: si una decisión
 cambia, se escribe una nueva que la reemplaza y se marca la vieja como `reemplazada por D-0XX`.
-Lo vigente se refleja en `mvp.md`, `reglas-de-negocio.md` y `proyecto-final.md`.
+Lo vigente se refleja en `01_vision_y_objetivos.md`, `05_reglas_de_negocio.md` y
+`16_proyecto_final.md`.
 
 Formato: fecha · decisión · alternativa descartada · por qué · quién decidió.
 
@@ -63,7 +64,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la API oficial de WhatsApp exige verificar el negocio ante Meta y cotizar con un proveedor.
 - **Quién**: Juani.
 
-## D-007 · La base de conocimiento son cinco archivos · *corregida: la base hoy tiene diez archivos (ver `README.md`)*
+## D-007 · La base de conocimiento son cinco archivos · *corregida: la base hoy tiene diez archivos (ver `README.md`); corregida en parte por D-093*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: `mvp.md`, `proyecto-final.md` y `reglas-de-negocio.md` describen cómo es el
@@ -1371,113 +1372,82 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   orquestador ni del auditor.
 - **Quién**: Juani, 14/10/2026 (pedido explícito de cambio de método, durante el cierre del 1c).
 
----
+## D-093 · Se adopta la estructura de Active Stack v1 · corrige en parte a D-007
 
-## Preguntas abiertas
+- **Fecha**: 14/10/2026
+- **Decisión**: el repositorio pasa de `conocimiento/` (diez archivos con nombres descriptivos) a
+  `knowledge-base/` con los diez archivos canónicos de Active Stack v1 (`01_vision_y_objetivos.md` a
+  `10_preguntas_abiertas.md`, más extras `11_` en adelante) y `README.md` como índice. **Corrige a
+  D-007** en la forma de la base (que ya había pasado de cinco a diez archivos): la base sigue
+  teniendo diez archivos de fondo, pero ahora con los nombres y la estructura de secciones que exige
+  la v1, para que Alberto pueda trabajar con `openspec` y el ciclo OPSX de la
+  v1 sobre este mismo repositorio.
+  - **Ningún ID se renumera**: las reglas (R01-R41), las decisiones (D-001 en adelante), las
+    preguntas (P1-P46), las historias (HU-\*) y las lecciones (L-001-L-013) conservan su numeración
+    original. La v1 usa sus propios prefijos (RN, DD, US, SU, IN) para proyectos nuevos; acá, donde ya
+    había un esquema con historia propia, prevalece el esquema existente.
+  - **Fuente única**: `conocimiento/` deja de existir. Todo lo que señalaba a esa carpeta (el lector
+    funcional de `openspec/config.yaml`, `CLAUDE.md`, `AGENTS.md`, `README.md`,
+    `prompt-documento-mvp.md`, los links internos de la base, el change activo
+    `respaldos-y-restauracion`, las exploraciones y la nota del vault) pasa a apuntar a
+    `knowledge-base/`. Las menciones de `conocimiento/` dentro de decisiones ya escritas (D-001 a
+    D-092) **no se tocan**: son historia y esta base nunca se reescribe hacia atrás; son justamente
+    las menciones históricas que esta decisión documenta.
+  - **Juani sigue con su propio método** (constructor, rompedor, auditor en secuencia,
+    `14_forma_de_trabajo.md`) sobre este mismo repositorio; Alberto usa el ciclo OPSX de Active Stack
+    v1 (`/opsx:explore`, `/opsx:propose`, `/opsx:apply`, `/opsx:verify`, `/opsx:archive`). Los dos
+    ciclos terminan en el mismo lugar: `openspec archive` y una actualización de `knowledge-base/`.
+  - **Qué no se corre nunca en este repositorio**: `active-orchestrator` (tampoco elegir
+    "Regenerar" si lo pregunta), `kb-creator`, `roadmap-generator`, `agent-instruction`,
+    `openspec init` ni `openspec update`. La base ya existe y está escrita a mano; correr cualquiera
+    de esas herramientas la pisa o la regenera con contenido que no es el nuestro. El detalle completo
+    va en `CLAUDE.md`/`AGENTS.md`, sección "Reglas duras".
+  - **openspec fijado en 1.13.0**: Alberto instala `npm install -g @fission-ai/openspec@1.13.0`, sin
+    rango abierto. La versión pública de npm hoy (1.14.1) y cualquier futura siguen adelante; un
+    `openspec update` en este repo reescribe `.claude/skills/openspec-*` y `.claude/commands/opsx/*`
+    con una versión más nueva, que puede no coincidir con las skills ya versionadas acá.
+- **Descartado**: mantener `conocimiento/` con sus nombres actuales y escribir sólo una capa de
+  traducción para la v1 (deja dos fuentes de verdad parcialmente superpuestas, que es exactamente el
+  problema que D-016 y el principio de "fuente única" vienen evitando en todo lo demás del proyecto).
+- **Por qué**: Alberto va a trabajar con Active Stack v1 sobre este repositorio y la v1 no detecta la
+  fundación por el contenido de los artefactos: sólo mira si existe `openspec/` y un
+  `CLAUDE.md`/`AGENTS.md` "completo". Sin esta adaptación, la primera vez que Alberto (o cualquier
+  instalación de la v1) corra su flujo de arranque, va a ofrecer correr `active-orchestrator` sobre un
+  repositorio que ya tiene meses de decisiones y 20 cambios planificados, con el riesgo real de pisar
+  `.claude/skills/openspec-*` si alguien elige "Regenerar".
+- **Quién**: Juani, 14/10/2026 (preparación del repositorio para que Alberto empiece a usar Active
+  Stack v1).
 
-Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva arriba.
+## D-094 · Gobernanza compartida entre los dos socios para CRITICAL y HIGH
 
-- [ ] **P1 · Piloto** (ahora un edificio, D-033): quién es, qué datos puede dar (padrón, facturas, última liquidación) y cuándo. *08/10: Juani no lo sabe; se le pregunta a Alberto. Mientras tanto se diseña con un edificio de ejemplo, pero M1 no se da por cumplido sin datos reales.*
-- [x] **P2 · Tipo de complejo del MVP**: edificios primero, diseño preparado para barrios (D-027, reemplaza D-008).
-- [x] **P3 · Usuarios y roles del MVP**: titular, colaborador, consejo en sólo lectura y vecino (D-009, D-037).
-- [x] **P4 · Política financiera**: decidida (D-010 a D-015). R08 y R10 vigentes (D-016). **Falta validar los defaults con un administrador o contador de Mendoza.**
-- [x] **P5 · Medios de cobro del MVP**: comprobante + OK del administrador, extracto como ayuda (D-017). La consulta UIF queda como requisito antes de integrar Mercado Pago.
-- [x] **P6 · Stack**: definido (D-020, ajustado por D-036 y D-038).
-- [x] **P7 · Equipo**: Juani programa (D-022).
-- [ ] **P8 · Precio y modelo comercial**: sin definir. Punto de partida: la landing de Alberto (ARS 2.900 por unidad, Profesional 4.200, 10 fundadores con migración gratis) (D-035). Sin definir todavía (08/10). El documento de Alberto lo presenta como tema abierto, con los datos de mercado como referencia.
-- [ ] **P9 · Qué traen los extractos bancarios en Mendoza** (Q2 del documento de Alberto, prioridad 0
-  para él): si cada banco informa el CBU o el nombre de quien transfirió y el concepto completo.
-  Condiciona directamente R19 (código de unidad y CBU histórico) y el *design* del cambio 9
-  `extracto-bancario`. Se responde probando con extractos reales de los bancos que usan los
-  administradores de Mendoza (D-063). 12/10: Juani no lo sabe; se le pregunta a Alberto.
-- [ ] **P10 · Modo de redondeo al centavo**: R07 y D-046 dicen "al centavo, una sola vez" pero no
-  cómo: redondeo bancario (`0.125` da `0.12`) o medio hacia arriba (`0.125` da `0.13`). Cambia a qué
-  unidad le toca el centavo sobrante y cómo cierra cada interés. Se responde con un contador o
-  administrador de Mendoza. Detectado en la auditoría del 13/10.
-- [ ] **P11 · Cambio de titular a mitad de período**: quién responde por la expensa del período en
-  curso y por la deuda anterior cuando una unidad se vende o cambia de titular (R32). Se responde con
-  Alberto y un administrador. Detectado en la auditoría del 13/10.
-- [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
-  del piloto, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
-  del 13/10; no está confirmado con un abogado.
-- [ ] **P13 · Acceso de soporte a la cuenta de un cliente** (ProTecc 7.3 y arquitectura de Alberto):
-  cuando alguien de PropTech necesite entrar a la cuenta de un administrador para ayudarlo, el acceso
-  tiene que ser explícito, temporal y registrado, nunca con la contraseña del administrador. Hoy el
-  soporte es sólo Juani (D-022), así que no bloquea el MVP; se decide antes de sumar a otra persona al
-  soporte o al tener el primer cliente externo.
-- [ ] **P14 · Plazo de entrega del certificado de libre deuda** (Q11 de Alberto): R21 define quién
-  lo firma y qué incluye, pero no en cuántos días hay que entregarlo. Se responde con Alberto o con la
-  normativa aplicable en Mendoza.
-- [ ] **P15 · Ingresos mayores que los gastos** (R38): qué pasa si en un mes los ingresos de un grupo
-  superan sus gastos ordinarios: crédito para el mes siguiente, fondo de reserva u otra cosa. Mientras tanto, la
-  emisión se frena. Se responde con Alberto.
-- [ ] **P16 · La parte de las unidades del consorcio** (R39): si su parte de cada gasto se reparte entre
-  las demás unidades o se registra como gasto del consorcio. Se responde con Alberto, según el
-  reglamento.
-- [ ] **P17 · IVA de los consorcios** (R12): confirmar con un contador que el consorcio registra los
-  gastos con el IVA incluido.
-- [ ] **P18 · El vecino con unidades en dos administraciones** (D-076): identidad global con
-  membresías por administración, o una cuenta por administración. Se resuelve en el explore del
-  cambio 2, antes de diseñar el login.
-- [ ] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
-  vencimiento con recargo escalonado en vez del vencimiento único de R03. Afecta el test de M1. Se
-  responde con Alberto antes del cambio 3.
-- [ ] **P20 · Quién aprueba una condonación** (R29, Q1 de Alberto): el titular solo, con auditoría, o el
-  consejo por encima de un umbral. Antes del cambio 10b.
-- [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
-- [ ] **P22 · Quién usa el editor de reglas** (D-066, `motor-de-reglas.md`): propuesta en dos niveles,
-  valores para el titular y estructura para el equipo. Antes del cambio 6b.
-- [ ] **P23 · Permisos por acción**: qué rol puede emitir, distribuir, anular una liquidación, confirmar
-  y revertir pagos, condonar, dar de baja una deuda y aceptar alertas. D-037 fija los roles pero no
-  cada acción. Antes del cambio 2.
-- [ ] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
-  propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3.
-- [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
-  liquidada): qué pasa si el reparto daría negativo, y en qué bloque cae si la factura era
-  extraordinaria. Antes del cambio 6.
-- [ ] **P26 · Anular un período con el siguiente ya emitido**: si se permite y qué pasa con el
-  siguiente. Antes del cambio 7.
-- [ ] **P27 · La bonificación después de anular y volver a emitir**: si el pago que la había ganado la
-  recupera en la nueva emisión. Antes de los cambios 7 y 8.
-- [ ] **P28 · Bonificación y fondo de reserva**: si el descuento también achica el fondo, que se calcula
-  sobre la misma base. Antes del cambio 7.
-- [ ] **P29 · Interés sobre un pago revertido o reimputado**: si corre desde el vencimiento original.
-  Antes del cambio 8.
-- [ ] **P30 · Un mismo CBU que paga varias unidades** de la misma persona: qué unidad se sugiere. Antes
-  del cambio 9.
-- [ ] **P31 · Moroso crítico y saldos chicos**: si cuenta como vencida una liquidación cuyo saldo es sólo
-  interés, o un saldo por debajo del umbral de R30. Antes del cambio 4.
-- [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
-  fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
-- [ ] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
-  edificio o cargado al emitir. Antes del cambio 3.
-- [ ] **P34 · Hasta qué fecha calcula el interés cada emisión**: la de emisión, el cierre del período o
-  el vencimiento siguiente (R03). Antes del cambio 4.
-- [x] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos**: con una
-  imputación propia y un destino fijo por tipo de crédito (D-086, R05).
-- [ ] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
-  se aprueba después: si entra en el período siguiente. Antes del cambio 6.
-- [ ] **P37 · Dónde y quién marca un "gasto mensual obligatorio"** (categoría, proveedor o gasto). Antes
-  del cambio 6.
-- [ ] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): la de la
-  transferencia o la de la nueva emisión. Antes del cambio 7.
-- [ ] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye.
-  Antes del cambio 7.
-- [ ] **P40 · Número de operación único por complejo**: si la clave incluye el banco, porque dos bancos
-  pueden repetir número (R11). Antes del cambio 8.
-- [ ] **P41 · Aviso de mora a un vecino con un pago informado y sin confirmar**. Antes del cambio 13.
-- [ ] **P42 · Validar los valores de plata con un administrador o contador de Mendoza**: los defaults
-  de R03 (tasa, gracia, forma de cálculo) y las definiciones de D-082 y D-086 marcadas "a validar".
-  Antes del cambio 4. (P4 quedó cerrada como decisión, pero esta validación sigue pendiente.)
-- [ ] **P43 · El contenido derivado de ProTecc en el repositorio público**: la exploración de dolores y
-  las reglas citan el documento privado ProTecc v3.5. Confirmar con Alberto que puede ser público, o
-  sacarlo del repositorio. Antes de dar visibilidad al repositorio.
-- [ ] **P44 · Licencia y política de seguridad del repositorio**: el repo es público y no tiene
-  LICENSE ni SECURITY.md. Decidir con Alberto si se reserva el código o se licencia, y cómo se reporta
-  una vulnerabilidad. Antes del primer despliegue público.
-- [ ] **P45 · Validar la propuesta de valor y el precio**: entre 3 y 5 entrevistas con administradores de
-  Mendoza, frente a los ARS 2.950 por unidad de los líderes. Antes de M2.
-- [ ] **P46 · Nombres propios en el repositorio público**: `CLAUDE.md`, el README y decisiones.md nombran
-  a la familia de Alberto y a un docente. Confirmar que lo aprueban o sacar los nombres. Antes de dar
-  visibilidad al repositorio.
+- **Fecha**: 14/10/2026
+- **Decisión**: los cambios de nivel **CRITICAL** y **HIGH** los puede aprobar **cualquiera de los
+  dos socios, Juani o Alberto**, dejándolo **por escrito y con fecha** en la propuesta del cambio (el
+  mismo lugar donde hoy queda la aprobación de Juani, por ejemplo en `respaldos-y-restauracion` para
+  HIGH o en los cambios críticos del roadmap para CRITICAL). No hace falta que apruebe el que no
+  programa ese cambio puntual: alcanza con que uno de los dos lo haga constar, con su nombre y la
+  fecha.
+  - Se actualiza `openspec/config.yaml` (la gobernanza citada en `context` y en `rules`) y
+    `14_forma_de_trabajo.md` donde describe quién aprueba los cambios críticos.
+  - El resto del esquema no cambia: MEDIUM se implementa con checkpoints y sin aprobación previa;
+    LOW es autónomo si pasan los tests; el tope de tres vueltas y el cambio de método después de él
+    (D-092) siguen iguales.
+- **Descartado**: que sólo Juani apruebe (es el esquema de D-049/D-077, pensado para cuando programaba
+  sólo él) y que cada socio apruebe únicamente lo que programa (deja sin aprobador a un cambio CRITICAL
+  que programe el otro, si el primero no está disponible).
+- **Por qué**: con Alberto trabajando cambios propios sobre el mismo repositorio, exigir siempre la
+  aprobación de Juani específicamente frena cambios CRITICAL o HIGH que Alberto puede evaluar y
+  aprobar él mismo con el mismo criterio de socio. La gobernanza sigue siendo humana y explícita
+  (nunca un agente la completa, D-087): sólo se amplía quién puede ser ese humano.
+- **Quién**: Juani, 14/10/2026 (acordado para que Alberto pueda trabajar con autonomía real sobre sus
+  propios cambios).
 
+## Supuestos
+
+*(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había
+registrado antes con este formato. Lo que se daba por cierto sin verificar vive disperso dentro de
+cada decisión, marcado "a validar" o "pendiente"; ver especialmente las reglas marcadas "a validar
+(P42)" en `05_reglas_de_negocio.md` y las preguntas abiertas en `10_preguntas_abiertas.md`. Un
+supuesto nuevo se agrega acá como `SU-01`, con su origen, el riesgo si es falso y cómo validarlo; no
+se migran retroactivamente los existentes para no inventar un origen que no quedó registrado como
+tal en su momento.)*

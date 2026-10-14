@@ -9,23 +9,30 @@ context: |
   Mendoza: liquidación de expensas, cuenta corriente, pagos por comprobante y portal del vecino.
   El MVP arranca por edificios; barrios privados después.
 
-  FUENTE DE VERDAD: la carpeta conocimiento/ del repositorio. Leerla antes de cualquier artefacto:
-  - conocimiento/mvp.md: objetivo, usuarios, historias con criterios de aceptación, hitos M1-M3.
-  - conocimiento/reglas-de-negocio.md: reglas R01-R41, con estado vigente, propuesta o pendiente;
+  FUENTE DE VERDAD: la carpeta knowledge-base/ del repositorio. Leerla antes de cualquier artefacto:
+  - knowledge-base/01_vision_y_objetivos.md: objetivo, usuarios, alcance, hitos M1-M3.
+  - knowledge-base/02_descripcion_general.md: stack con versiones, integraciones y API.
+  - knowledge-base/03_actores_y_roles.md: actores, RBAC y rutas públicas.
+  - knowledge-base/04_modelo_de_datos.md: entidades existentes y planificadas, ERD y semilla.
+  - knowledge-base/06_funcionalidades.md: historias HU-* con criterios de aceptación y reglas relacionadas.
+  - knowledge-base/07_flujos_principales.md: flujos de punta a punta con sus casos de error.
+  - knowledge-base/08_arquitectura_propuesta.md: patrones, estructura, seguridad y variables de entorno.
+  - knowledge-base/05_reglas_de_negocio.md: reglas R01-R41, agrupadas por dominio, con estado vigente, propuesta o pendiente;
     cada regla vigente trae sus tests mínimos. Una propuesta sólo entra si se valida.
-  - conocimiento/decisiones.md: decisiones D-001 en adelante (sólo se agrega; las corregidas llevan la
-    marca en el título) y, al final, las preguntas abiertas con el cambio antes del cual se deciden.
-  - conocimiento/glosario.md: nombres del dominio, en español; el código usa estos mismos.
-  - conocimiento/roadmap.md: los cambios en orden, con la ficha de cada uno.
-  - conocimiento/motor-de-reglas.md: el puerto de políticas y GoRules ZEN (D-064, D-066, D-067, D-080).
-  - conocimiento/forma-de-trabajo.md y conocimiento/lecciones.md: cómo se construye cada cambio y lo
-    que enseñaron los anteriores (leer lecciones.md entero antes de proponer).
-  - conocimiento/proyecto-final.md: fases posteriores al MVP.
-  Si un artefacto contradice conocimiento/, gana conocimiento/ o se propone una decisión nueva.
+  - knowledge-base/09_decisiones_y_supuestos.md: decisiones D-001 en adelante (sólo se agrega; las corregidas llevan la
+    marca en el título) y supuestos (SU).
+  - knowledge-base/10_preguntas_abiertas.md: inconsistencias (IN) y las preguntas abiertas con el cambio antes del cual se deciden.
+  - knowledge-base/11_glosario.md: nombres del dominio, en español; el código usa estos mismos.
+  - CHANGES.md: los cambios en orden, con su estado; knowledge-base/12_fichas_de_changes.md: la ficha detallada de cada uno.
+  - knowledge-base/13_motor_de_reglas.md: el puerto de políticas y GoRules ZEN (D-064, D-066, D-067, D-080).
+  - knowledge-base/14_forma_de_trabajo.md y knowledge-base/15_lecciones.md: cómo se construye cada cambio y lo
+    que enseñaron los anteriores (leer 15_lecciones.md entero antes de proponer).
+  - knowledge-base/16_proyecto_final.md: fases posteriores al MVP.
+  Si un artefacto contradice knowledge-base/, gana knowledge-base/ o se propone una decisión nueva.
 
   Stack: Next.js (App Router) + TypeScript; FastAPI + SQLAlchemy + Alembic; PostgreSQL con
   Row-Level Security (SET LOCAL); Redis + worker ARQ; Caddy; Docker Compose en un VPS.
-  Arrancar cada propose desde su ficha en conocimiento/roadmap.md.
+  Arrancar cada propose desde su ficha en knowledge-base/12_fichas_de_changes.md y CHANGES.md.
   Estructura (D-040): backend/src/proptech_core (dominio compartido por módulos: complejos, acceso,
   gastos, liquidacion, cuenta_corriente, pagos, avisos, politicas (el motor de reglas) y compartido),
   proptech_api, proptech_worker; web/; infra/; config/parametros.yaml.
@@ -34,16 +41,16 @@ context: |
   NUMERIC(14,2), texto en JSON, nunca float (R07, D-046); la cuenta corriente sólo agrega movimientos (R08); el
   tenant es la administración y sale del login, nunca del cliente; el edificio es un alcance dentro de
   ella, controlado por rol (R10, D-076); intereses simples (R03); TDD estricto en el
-  núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana antes de
-  escribir código); nunca secretos ni datos personales reales en el repo (es público).
+  núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana de uno de los
+  dos socios, Juani o Alberto, antes de escribir código, D-094); nunca secretos ni datos personales reales en el repo (es público).
 
 rules:
   proposal:
-    - Citar las historias (HU-...), reglas (R..) y decisiones (D-...) de conocimiento/ que el cambio cubre.
-    - "Incluir una sección '## Knowledge Base Impact' que nombre cada archivo de conocimiento/ que el cambio afecta y si necesita REWRITE o APPEND; si no afecta ninguno, escribir 'none' y una línea de por qué."
+    - Citar las historias (HU-...), reglas (R..) y decisiones (D-...) de knowledge-base/ que el cambio cubre.
+    - "Incluir una sección '## Knowledge Base Impact' que nombre cada archivo de knowledge-base/ que el cambio afecta y si necesita REWRITE o APPEND; si no afecta ninguno, escribir 'none' y una línea de por qué."
     - Incluir una sección de qué queda fuera del cambio.
-    - Declarar el nivel de gobernanza del cambio (CRITICAL, HIGH, MEDIUM o LOW) y, si es CRITICAL o HIGH, pedir la aprobación de Juani antes de construir.
-    - Citar las lecciones de conocimiento/lecciones.md que aplican y cómo las cubre cada tarea.
+    - Declarar el nivel de gobernanza del cambio (CRITICAL, HIGH, MEDIUM o LOW) y, si es CRITICAL o HIGH, pedir la aprobación de uno de los dos socios (Juani o Alberto), por escrito y con fecha, antes de construir (D-094).
+    - Citar las lecciones de knowledge-base/15_lecciones.md que aplican y cómo las cubre cada tarea.
   tasks:
     - Cada regla de negocio que toque el cambio tiene su tarea de test antes que la de implementación.
     - Tareas chicas, de no más de medio día cada una; un cambio de más de unas veinte tareas se parte.
@@ -53,7 +60,7 @@ operations:
   apply:
     guidance:
       - "TDD estricto: ver el test fallar antes de escribir el código que lo hace pasar."
-      - No tocar cobros ni cuenta corriente sin aprobación explícita de Juani.
+      - No tocar cobros ni cuenta corriente sin aprobación explícita de uno de los dos socios (Juani o Alberto, D-094).
   archive:
     guidance:
-      - Actualizar conocimiento/ según la sección Knowledge Base Impact; decisiones nuevas sólo se agregan.
+      - Actualizar knowledge-base/ según la sección Knowledge Base Impact; decisiones nuevas sólo se agregan.
