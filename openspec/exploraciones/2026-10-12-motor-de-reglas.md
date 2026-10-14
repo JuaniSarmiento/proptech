@@ -1,5 +1,9 @@
 # Exploración: motor de reglas de negocio (enfoque híbrido)
 
+> **Aviso (13/10)**: lo que esta exploración dice sobre que ZEN "usa float" quedó corregido por D-067:
+> ZEN calcula con decimales exactos; el riesgo real son las tablas que caen en silencio. El diseño
+> vigente está en `conocimiento/motor-de-reglas.md`.
+
 > Explore mode. No se escribió código ni se tocó `conocimiento/`. Lo que sigue son hallazgos y
 > una propuesta de diseño para que Juani decida; nada de esto es una decisión tomada.
 

@@ -20,7 +20,7 @@ PASO 3 · Decidir de a una cosa por vez
 No construyas nada todavía. Presentá las decisiones que cambian el producto, una por una, cada una con tu recomendación, la alternativa descartada y el porqué. Esperá la respuesta antes de seguir. Temas típicos: por dónde empezar, usuarios y roles, reglas de negocio (con ejemplos en números), qué entra y qué no en el MVP, stack, arquitectura y piloto.
 
 PASO 4 · Armar la base de conocimiento
-Con lo decidido, escribí cinco archivos:
+Con lo decidido, escribí los archivos de la base de conocimiento (en PropTech hoy son nueve, en `conocimiento/`):
 1. mvp.md: objetivo, criterio de éxito medible, usuarios, historias con criterios de aceptación (dado / cuando / entonces), alcance (entra y no entra), hitos demostrables y diferencias con el material original.
 2. reglas-de-negocio.md: cada regla con su estado y los tests mínimos que la verifican.
 3. decisiones.md: registro de sólo agregar (fecha, decisión, descartado, por qué, quién) y preguntas abiertas.

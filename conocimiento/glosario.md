@@ -132,3 +132,18 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Control bloqueante**: un control antes de emitir que impide emitir; si es **duro**, no se puede aceptar (saldos iniciales sin validar, factura duplicada, ingresos mayores que los gastos). Una **advertencia** sólo avisa (R34).
 - **Gasto mensual obligatorio**: un gasto que tiene que aparecer todos los meses (el abono del ascensor, el seguro); si falta, hay una advertencia antes de emitir (R34, propuesta; dónde se marca: P37).
 - **Doble vencimiento**: el esquema de primer y segundo vencimiento con recargo escalonado, alternativa a R03 que todavía no se decidió (R26, P19).
+
+## Términos técnicos
+
+- **Libro de movimientos**: la cuenta corriente de cada unidad, donde los movimientos sólo se agregan (R08).
+- **Residual**: lo que queda impago de una obligación: su importe menos todas sus imputaciones (R05).
+- **Saldo arrastrado**: la deuda vieja que la expensa nueva muestra sin volver a cobrarla (R06).
+- **Fecha valor**: la fecha de la transferencia, que es la que cuenta para los intereses, distinta de la fecha en que se confirma el pago (R11).
+- **Link firmado**: un enlace de descarga que vence y deja de funcionar si se modifica (D-070).
+- **Cargo recurrente**: un cargo particular que se repite cada período para ciertas unidades (R14, propuesta).
+- **Worker**: el proceso que hace de fondo el trabajo lento (PDFs, emails, IA), tomándolo de la cola de Redis.
+- **Idempotencia**: que repetir una tarea no duplique su efecto.
+- **request_id**: el número de seguimiento que acompaña cada pedido en los logs.
+- **RLS** (Row-Level Security): el filtro de PostgreSQL que deja a cada administración ver sólo sus filas (R10).
+- **Respaldo y restauración**: la copia diaria de la base y la forma de volver a cargarla en otra base para probarla (cambio 1d).
+

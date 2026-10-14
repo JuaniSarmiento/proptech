@@ -20,9 +20,9 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 | 4 | `motor-de-cuenta-corriente` | M1 | 2, 3 | **sí** | **sí** | grande |
 | 5 | `importacion-desde-excel` | M1 | 3, 4 | no | **sí** (D-077) | mediano |
 | 6 | `gastos-y-cargos` | M1 | 3, 4 | no | no | mediano |
-| 6b | `motor-de-reglas` | M1 | 3 | **sí** (D-087) | no | mediano |
-| 7 | `liquidacion-y-emision` | M1 | 5, 6, 6b | **sí** | **sí** | grande |
+| 7 | `liquidacion-y-emision` | M1 | 5, 6 | **sí** | **sí** | grande |
 | 8 | `pagos-informados` | M2 | 7 | no | **sí** | mediano |
+| 6b | `motor-de-reglas` | M2 | 7, 8 | **sí** (D-087) | no | mediano |
 | 9 | `extracto-bancario` | M2 | 8 | no | no | chico |
 | 10a | `morosidad` | M2 | 8 | no | no | chico |
 | 10b | `condonacion-judicial-y-libre-deuda` | M2 | 10a | no | **sí** (D-077) | chico |
@@ -38,7 +38,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 **Camino al test de M1** (reproducir la última liquidación del piloto al centavo):
 
 ```
-Código:  1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 6b → 7 ──┐
+Código:  1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 7 ──┐
                                             ├──► TEST M1
 Datos:   pedirle a Alberto los datos del piloto (P1), desde ya ──┘
 ```
@@ -123,6 +123,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **No entra**: copia fuera del servidor y cifrado (con el despliegue); restaurar sobre la base en
   uso; backups de Redis; alertas externas.
 - **Depende de**: 1c. **Habilita**: 2.
+- **Bloqueado por**: la aprobación escrita y fechada de Juani en su propuesta (D-088 no la reemplaza).
 - **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
   punto y coma, mayúsculas, salto de línea, más de 63 caracteres o igual a `POSTGRES_DB`); una
   retención que borre un archivo ajeno de la carpeta; un volcado que se cuelgue con la base pausada;
@@ -157,6 +158,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   edificio.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
 - **Depende de**: 1d. **Habilita**: 3, 4.
+- **Bloqueado por**: P18 y P23 (D-076, D-087).
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
   mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
   D-043); dónde vive cada uno de los tres controles (el worker ya tiene su forma de fijar el tenant en el plan de
@@ -171,7 +173,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ### 3 · `configuracion-del-edificio` · HIGH
 
 - **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
-- **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (desactivado), R03 (su
+- **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (sólo el campo de estado, desactivado; la regla se construye con barrios, D-089), R03 (su
   configuración), R15 (porcentaje), R16 (categorías).
 - **Propuestas** (entran si se validan): R35 (calendario de feriados del sistema), R36 (tasa de la
   extraordinaria), R39 (marca de unidad del consorcio).
@@ -185,9 +187,12 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b);
   el **estado de migración del edificio** (pendiente, confirmada o sin saldos previos, R09, D-083): la
   semilla y su validador suman ese campo, y el edificio de ejemplo queda "sin saldos previos"; el
-  cambio 5 usa ese estado.
+  cambio 5 usa ese estado; **alinear el validador de la semilla con R01** (tolerancia de ±0,0001) y con
+  la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
+  coeficiente por unidad.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
-- **Depende de**: 2. **Habilita**: 4, 5, 6, 6b.
+- **Depende de**: 2. **Habilita**: 4, 5, 6.
+- **Bloqueado por**: P16, P19, P24 y P33.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
   si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
 - **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1; una unidad repetida;
@@ -221,6 +226,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
 - **Depende de**: 2 y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
   **Habilita**: 5, 6, 7.
+- **Bloqueado por**: P10, P11, P21, P31, P34 y P42 (la sesión con un contador o administrador).
 - **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
   `leer_parametros` y verificar con un test que `Dinero` rechaza ceros de más (`1.0000`).
 - **Decidir en el design** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
@@ -253,6 +259,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   del importador al confirmar (D-068); saldos iniciales usando el caso de uso del cambio 4.
 - **No entra**: importar gastos o cargos (6).
 - **Depende de**: 3, 4. **Habilita**: 7 y el test de M1.
+- **Bloqueado por**: P24 (coeficientes de grupos parciales).
 - **Que intente romper el rompedor**: un archivo con columnas cambiadas de lugar, celdas vacías,
   números con coma y con punto, coeficientes que suman 0,9999; el mismo archivo subido dos veces; un
   archivo enorme; un archivo que no es Excel; dos errores de signo opuesto en dos unidades que dan el
@@ -278,6 +285,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   esa factura (R22, ProTecc H1).
 - **No entra**: la lectura de facturas por QR e IA (14): acá la carga es manual.
 - **Depende de**: 3, 4. **Habilita**: 7, 14.
+- **Bloqueado por**: P15, P17, P25, P36 y P37.
 - **Que intente romper el rompedor**: un gasto sin categoría que se aprueba; un cargo particular que
   termina repartido entre todos; un gasto de otro edificio; un importe con tres decimales; aprobar
   dos veces el mismo gasto; borrar una categoría con gastos (sólo se desactiva, R16); una nota de
@@ -285,30 +293,12 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: se cumplen los criterios de HU-A3 (manual) y HU-A3b; un gasto en borrador,
   sin IA o en revisión no aparece en ningún cálculo; sólo el aprobado entra.
 
-### 6b · `motor-de-reglas` · explore propio
-
-- **Objetivo**: dejar andando la base del motor de reglas justo antes del cambio que lo usa (D-087).
-- **Reglas**: R33 (datos completos y tipados antes del motor). **Decisiones**: D-064, D-066, D-067,
-  D-080, D-085, D-087. Detalle en `motor-de-reglas.md`.
-- **Entra**: el módulo `politicas`, el puerto de políticas, el adaptador de GoRules ZEN, el validador en
-  sus dos momentos, las reglas versionadas por edificio, el editor (jdm-editor) en el frontend con el
-  esquema de permisos que defina P22 (propuesta: dos niveles) y "repetir el mes pasado" contra datos de prueba. Sin reglas concretas: llegan en el 7.
-- **Prerrequisito del explore**: bajar y revisar el demo BRE, y probar jdm-editor con React 19.3 y
-  `antd` 5.21.2 (pendientes de `motor-de-reglas.md`).
-- **Depende de**: 3. **Habilita**: 7.
-- **Que intente romper el rompedor**: un dato mal tipado que hace caer la tabla a la fila por defecto;
-  una respuesta vacía; una regla que devuelve plata como número; editar la estructura con permiso de
-  sólo valores; leer las reglas de otra administración.
-- **Terminado cuando**: los tests mínimos de R33 pasan contra ZEN real como rechazo del validador (que
-  la respuesta frene la emisión se prueba en el 7, que construye la emisión), y una regla de prueba se
-  guarda, se versiona y se evalúa de punta a punta.
-
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
-- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R33, R34.
-- **Propuestas** (entran si se validan): R14 (cargo recurrente del motor), R35 (vencimiento corrido en
-  el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
+- **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
+- **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
+  (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
   D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082, D-084, D-085.
@@ -329,18 +319,19 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
     los gastos. Los controles de pagos, extracto y contactos los suman los cambios 8, 9 y 13.
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
-  - **Reglas del motor del cambio 7** (`motor-de-reglas.md`): controles propios del edificio y
-    el uso de "repetir el mes pasado" (construido en el 6b) con datos reales antes de activar una regla; si se validan, el importe con descuento de la
-    bonificación para el PDF (R37) y el cargo recurrente del reglamento (R14).
+  - **Reglas propias del edificio sin motor** (D-089): si se validan, el importe con descuento de la
+    bonificación para el PDF (R37) y el cargo recurrente del reglamento (R14) se construyen como código
+    simple; el 6b los migra al motor después.
   - Plantilla del PDF de la expensa (pasa por la skill impeccable), con el código corto de la unidad
     en el concepto sugerido de la transferencia (R19, ProTecc A1/E3).
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
-- **Depende de**: 5, 6 y 6b. **Habilita**: 8, 10a, 11, 12, 13, 14 y el test de M1.
+- **Depende de**: 5, 6. **Habilita**: 6b, 8, 10a, 11, 12, 13, 14 y el test de M1.
+- **Bloqueado por**: P26, P27, P28, P38 y P39, y la normativa de la expensa en Mendoza (D-060).
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
 - **Decidir en el design** (y en su explore): la frontera de la transacción; **qué pasa si falla el
   encolado del PDF después de emitir** (como mínimo, estado por emisión y una forma de reprocesar);
-  **qué pasa si falla el extracto bancario o el servicio de IA el día de emitir** (R24, principio 6 de Alberto
+  **qué pasa si falla el extracto bancario o el servicio de IA el día de emitir** (R24, principio 6
   de Alberto, ProTecc A4): la liquidación sale igual; los gastos "sin IA" no entran y generan una
   advertencia, y los "en revisión" bloquean salvo aceptación (D-075). Los tests de R24 arman a mano
   gastos en esos estados, sin esperar a los cambios 9 y 14.
@@ -365,7 +356,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Objetivo**: que el vecino informe su pago con el comprobante y el administrador lo confirme en un clic.
 - **Historias**: HU-A6, HU-V4. **Reglas**: R05, R11, R18, R19, R34.
 - **Propuestas** (entran si se validan): R25 (reimputación), R37 (la bonificación por pronto pago se
-  registra al confirmar el pago, D-080), R39 (las unidades del consorcio no reciben bonificación).
+  registra al confirmar el pago, D-080, como código simple hasta el 6b), R39 (las unidades del consorcio no reciben bonificación).
 - **Decisiones**: D-017, D-018, D-029, D-056, D-057, D-069, D-070, D-074, D-080, D-082, D-083, D-084,
   D-085.
 - **Ajuste de interés**: el ajuste de R11 nace acá; el test de R17 que lo excluye al anular su emisión
@@ -382,7 +373,8 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **No entra**: el cruce con el extracto (9).
-- **Depende de**: 7. **Habilita**: 9, 10a, 13.
+- **Depende de**: 7. **Habilita**: 6b, 9, 10a, 13.
+- **Bloqueado por**: P12, P27, P29 y P40, y la elección del proveedor de IA (datos de comprobantes con CBU y CUIT).
 - **Moroso crítico**: después de revertir o reimputar, los tests usan la función de R20 del cambio 4
   (D-074): la unidad pasa a cumplirla o deja de cumplirla, sin esperar al cambio 10a.
 - **Decidir en el design**: el proveedor de IA para leer comprobantes (detrás de un puerto).
@@ -394,6 +386,29 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Terminado cuando**: se cumplen HU-A6 y HU-V4; la fecha que cuenta para los intereses es la de la
   transferencia.
 
+### 6b · `motor-de-reglas` · explore propio
+
+- **Objetivo**: dejar andando la base del motor de reglas cuando haya reglas validadas que lo necesiten
+  (D-087, D-089). Está fuera del camino a M1: ninguna regla vigente pasa por el motor.
+- **Reglas**: R33 (datos completos y tipados antes del motor). **Decisiones**: D-064, D-066, D-067,
+  D-080, D-085, D-087. Detalle en `motor-de-reglas.md`.
+- **Entra**: el módulo `politicas`, el puerto de políticas, el adaptador de GoRules ZEN, el validador en
+  sus dos momentos, las reglas versionadas por edificio, el editor (jdm-editor) en el frontend con el
+  esquema de permisos que defina P22 (propuesta: dos niveles) y "repetir el mes pasado" contra datos de prueba. Migra al motor las reglas que se hayan validado y construido como código simple en el 7 y el 8
+  (cargo recurrente R14, bonificación R37), y suma los controles propios del edificio (R34).
+- **Prerrequisito del explore**: bajar y revisar el demo BRE, y probar jdm-editor con React 19.3 y
+  `antd` 5.21.2 (pendientes de `motor-de-reglas.md`).
+- **Depende de**: 7 y 8. **Habilita**: la migración al motor de las reglas propias que se hayan
+  construido como código simple (R14, R37) y los controles propios del edificio.
+- **Bloqueado por**: P22.
+- **Que intente romper el rompedor**: un dato mal tipado que hace caer la tabla a la fila por defecto;
+  una respuesta vacía; una regla que devuelve plata como número; editar la estructura con permiso de
+  sólo valores; leer las reglas de otra administración.
+- **Terminado cuando**: los tests mínimos de R33 pasan contra ZEN real como rechazo del validador (y que una
+  respuesta inválida frene la emisión, que ya existe desde el 7), y una regla de prueba se
+  guarda, se versiona y se evalúa de punta a punta; una regla migrada da los mismos importes que su
+  versión en código simple.
+
 ### 9 · `extracto-bancario`
 
 - **Objetivo**: que el administrador valide los pagos informados contra el banco.
@@ -403,6 +418,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   sugerencias de confianza alta por código de unidad o por CBU histórico (R19); el
   control "extracto incompleto" en la lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8.
+- **Bloqueado por**: P9 y P30.
 - **Prerrequisito**: responder qué traen los extractos de los bancos que usan los administradores
   de Mendoza (CBU o nombre del originante, concepto completo): es la pregunta P9 (Q2 de Alberto),
   prioridad 0 de su documento, y condiciona si R19 (código de unidad y CBU histórico) funciona como
@@ -442,6 +458,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Ciclo**: completo, con aprobación de Juani antes de codear (D-077). Si R29 sigue sin saber quién
   aprueba una condonación, esa parte se separa y el resto avanza.
 - **Depende de**: 10a. **Habilita**: 13.
+- **Bloqueado por**: P14, P20 y P32.
 - **Que intente romper el rompedor**: una condonación que borra el recargo; condonar sin motivo; una
   unidad en gestión judicial que sigue contando como moroso crítico; un
   certificado de libre deuda que incluye una estimación del período en curso; generar el certificado
@@ -486,6 +503,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   contacto válido" (R28, propuesta: entra si se valida, ProTecc W4); el control "unidades sin contacto válido" en la
   lista antes de emitir, como advertencia (R34, D-069).
 - **Depende de**: 8 y 10b (la consulta de gestión judicial, D-078).
+- **Bloqueado por**: P41.
 - **Propuestas que también se prueban acá, si se validan**: R30 (no avisar mora por saldos debajo del
   umbral) y R39 (las unidades del consorcio no reciben avisos de mora).
 - **Gestión judicial**: si R31 se valida y el 10b la construye, una unidad marcada en gestión judicial
@@ -517,6 +535,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   vencimiento (D-070); la lectura deja cada gasto en el estado que corresponde (sin IA o en revisión),
   y los controles del cambio 7 lo toman sin cambios;
 - **Depende de**: 6 y 7 (controles y links firmados).
+- **Bloqueado por**: P12, P21 y la elección del proveedor de IA.
 - **Decidir en el design**: el proveedor de IA (puede ser el mismo del cambio 8).
 - **Que intente romper el rompedor**: el ejemplo oficial de ARCA; una factura en dólares; una sin QR;
   una con instrucciones escondidas para la IA; la misma factura dos veces; un monto leído diez veces
@@ -529,10 +548,24 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Entra**: carga de los datos reales del piloto; un mes completo en paralelo; comparación al
   centavo; prueba de restauración de un backup; evidencia de aislamiento entre administraciones y alcance por edificio.
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
+- **Bloqueado por**: P1 (el edificio piloto) y P12.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró
   con éxito.
 
 ---
+
+## Deuda técnica de las auditorías del 13/10
+
+Lo que dejaron las auditorías de código de Alberto, con el cambio que lo resuelve (D-089). Lo del 1c y
+el 1d ya está en sus tareas.
+
+| Deuda | Cambio |
+|---|---|
+| `Dinero` copiable y serializable (`__reduce__`, `__copy__`, `__deepcopy__`), pyyaml 6.0.3, rechazo de float y Decimal al encolar, logs de ARQ sin argumentos, logs de error de Caddy, Alembic sin apagar loggers, red de egreso del worker, SecretStr, un solo engine y su pool, uvicorn sin log de acceso y con `--proxy-headers`, línea de base sobre un clon con historial | 1c |
+| Restauración con `-U` y la ruta del `.env`, retención que no borra el ciclo en curso, rechazo de uid 0, shellcheck en el CI, `-p proptech` en el humo | 1d |
+| Cabeceras de seguridad en Caddy y CSP en Next, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, Dependabot, roles de PostgreSQL para RLS (migrador y aplicación), endurecimiento de contenedores, tabla de variables del README | 2 |
+| `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
+| Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
 
 ## Pendientes de arranque
 
@@ -554,7 +587,12 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **P19**: el doble vencimiento, antes del cambio 3.
 - **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
 - **P22**: quién usa el editor de reglas, antes del 6b.
-- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4.
+- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4 (junto con
+  P10, P17, P19, P24 y P33, en una sola sesión).
+- **P12, P14 y P16**: la inscripción ante la AAIP (antes del 8), el plazo del libre deuda (antes del 10b)
+  y la parte de las unidades del consorcio (antes del 3).
+- **P45 y P46**: validar la propuesta de valor con administradores (antes de M2) y los nombres propios
+  en el repositorio público.
 - **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
   visibilidad al repositorio y del primer despliegue.
 - **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.

@@ -320,7 +320,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   contacto y, al informar un pago, el vecino elige a qué unidad va o lo reparte.
 - **Quién**: Juani (recomendación de Claude).
 
-## D-030 · El estado de unidad queda apagado en edificios
+## D-030 · El estado de unidad queda apagado en edificios · *ampliada por D-089*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: la regla R02 (factor y cargo por estado) sigue en el sistema para los barrios,
@@ -1229,7 +1229,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   entidad que nacía en el 7.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
 
-## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10) · *corregida en parte por D-088*
+## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10) · *corregida en parte por D-088 y D-089*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1271,6 +1271,25 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     sacar la web y el proxy a un cambio propio.
 - **Por qué**: la revisión final después de la auditoría de Alberto marcó las dos cosas.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
+
+## D-089 · Documentación de la tercera auditoría de Alberto (13/10) y congelamiento de la base
+
+- **Fecha**: 14/10/2026
+- **Decisión**:
+  - **El motor de reglas (6b) sale del camino a M1**: va después del 7 y el 8. Ninguna regla vigente
+    pasa por el motor; si R37 o R14 se validan antes, se construyen como código simple y el 6b las migra.
+    Corrige a D-087 en este punto.
+  - **"Vigente" se separa de "a validar"**: las reglas vigentes cuyos valores o criterios de plata no
+    revisó nadie del rubro (R01, R03, R05, R09, R11, R22) llevan "a validar (P42)" en el título.
+  - **R02 se construye con barrios** (v1.2): en el MVP sólo queda el campo de estado desactivado.
+  - **Cada ficha del roadmap tiene "Bloqueado por"**, con las preguntas que la frenan.
+  - **Tests mínimos completados** en R01 (tolerancia), R03 (mes entero), R10 (escritura cruzada,
+    worker, links y consejo), R11 (pago repartido), R12 (QR corrupto) y R18 (movimientos enlazados).
+  - **Deuda técnica de las auditorías** en una tabla del roadmap, cada ítem con su cambio.
+  - **La base queda congelada**: no se reabre salvo por hallazgos que salgan del código o por las
+    respuestas a las preguntas abiertas (pedido de la auditoría, M1).
+- **Por qué**: la tercera auditoría de Alberto del 13/10.
+- **Quién**: Juani, a partir de la auditoría de Alberto.
 
 ---
 
@@ -1376,4 +1395,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva a
 - [ ] **P44 · Licencia y política de seguridad del repositorio**: el repo es público y no tiene
   LICENSE ni SECURITY.md. Decidir con Alberto si se reserva el código o se licencia, y cómo se reporta
   una vulnerabilidad. Antes del primer despliegue público.
+- [ ] **P45 · Validar la propuesta de valor y el precio**: entre 3 y 5 entrevistas con administradores de
+  Mendoza, frente a los ARS 2.950 por unidad de los líderes. Antes de M2.
+- [ ] **P46 · Nombres propios en el repositorio público**: `CLAUDE.md`, el README y decisiones.md nombran
+  a la familia de Alberto y a un docente. Confirmar que lo aprueban o sacar los nombres. Antes de dar
+  visibilidad al repositorio.
 

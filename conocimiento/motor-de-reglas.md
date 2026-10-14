@@ -130,9 +130,9 @@ Reglas del contrato:
 
 | Regla | Qué decide el motor | Qué hace el núcleo | Cambio |
 |---|---|---|---|
-| Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 7 |
-| Bonificación por pronto pago *(propuesta, R37)* | Si aplica y qué porcentaje. Apagada por defecto | En el 7 calcula el importe con descuento para el PDF; en el 8, al confirmar el pago, registra la bonificación (R37, D-080) | 7 y 8 |
-| Cargo recurrente del reglamento *(propuesta, R14)* | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 7 |
+| Alertas antes de emitir | Controles propios del edificio que se suman a los de R34, o subir una advertencia a bloqueante. Nunca bajar un bloqueante de R34 (D-078) | Ejecuta los controles | 6b |
+| Bonificación por pronto pago *(propuesta, R37)* | Si aplica y qué porcentaje. Apagada por defecto | En el 7 calcula el importe con descuento para el PDF; en el 8, al confirmar el pago, registra la bonificación (R37, D-080) | 6b (antes, código simple en el 7 y el 8) |
+| Cargo recurrente del reglamento *(propuesta, R14)* | Concepto, monto fijo y a qué unidades (ej.: canon por cochera) | El movimiento | 6b (antes, código simple en el 7) |
 
 **Los intereses, el fondo de reserva y el cargo por estado no pasan por el motor** (D-080): son menús
 cerrados de la configuración del edificio (R03, R15, R02, D-010), con su versión en cada liquidación.
@@ -186,14 +186,15 @@ cambian desde un formulario propio que reescribe la tabla.
 
 ## Dónde entra en el roadmap
 
-Tiene un cambio propio, el 6b (D-087), y se usa en el 7 y el 8; sus fichas en `roadmap.md` lo recogen
-y el propose de cada uno baja el detalle.
+Tiene un cambio propio, el 6b, **después del 7 y el 8 y fuera del camino a M1** (D-087, D-089): ninguna
+regla vigente pasa por el motor. Si R37 o R14 se validan antes, el 7 y el 8 las construyen como código
+simple y el 6b las migra al motor.
 
 | Cambio | Qué agrega |
 |---|---|
-| 6b · `motor-de-reglas` | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y el mecanismo de "repetir el mes pasado" contra datos de prueba; las reglas se cargan desde el cambio 7 |
-| 7 · `liquidacion-y-emision` | La liquidación consulta el puerto y guarda las versiones usadas; alertas antes de emitir, el importe con descuento de la bonificación para el PDF y cargo recurrente; repetir el mes pasado con datos reales antes de activar una regla; la preliquidación muestra qué regla generó cada línea |
-| 8 · `pagos-informados` | Al confirmar un pago, consulta la regla de bonificación por pronto pago y registra la bonificación (R37) |
+| 6b · `motor-de-reglas` (después del 8) | El módulo `politicas`, el puerto, el adaptador ZEN, el validador, las reglas versionadas en la base, el editor en el frontend y el mecanismo de "repetir el mes pasado" contra datos de prueba; migra las reglas que el 7 y el 8 construyeron como código simple y suma los controles propios |
+| 7 · `liquidacion-y-emision` | Sin motor. Si se validan, el importe con descuento de la bonificación y el cargo recurrente como código simple |
+| 8 · `pagos-informados` | Sin motor. Si se valida R37, registra la bonificación al confirmar el pago, como código simple |
 
 ## Pendiente
 

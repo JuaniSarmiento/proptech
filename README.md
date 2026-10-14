@@ -6,10 +6,11 @@ vecino. Proyecto de Alberto Cortez (también conocido como **koris**) y Juan Ign
 
 ## Estado
 
-Diseño del MVP cerrado (octubre de 2026). El MVP arranca por **edificios**. Construidos y
+Base de conocimiento cerrada y congelada para el primer hito (octubre de 2026), con preguntas abiertas
+que se responden antes de cada cambio. El MVP arranca por **edificios**. Construidos y
 archivados: **1a `infraestructura-base`** (el sistema completo arranca con un comando y el CI corre en
 cada push) y **1b `arranque-del-sistema`** (configuración, tipo `Dinero` exacto, parámetros y
-edificio de ejemplo validados). Propuesto: **1c `cola-logs-y-respaldos`**. Todavía no hay
+edificio de ejemplo validados). Propuestos: **1c `cola-logs-y-respaldos`** (el próximo) y **1d `respaldos-y-restauracion`**. Todavía no hay
 liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 ([`conocimiento/roadmap.md`](conocimiento/roadmap.md)).
 

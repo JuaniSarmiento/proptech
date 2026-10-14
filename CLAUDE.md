@@ -53,7 +53,8 @@ original de la especificación se descartó (D-002) y no se usa.
   administraciones (P18), el doble vencimiento (P19), quién aprueba una condonación (P20), los umbrales
   de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) los casos de borde
   para decidir antes de su cambio (P24 a P41), la validación de los valores de plata (P42), el
-  contenido derivado de ProTecc (P43) y la licencia (P44).
+  contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a administradores (P45) y los
+  nombres propios en el repo (P46).
 
 ## Reglas que no se negocian
 
@@ -61,7 +62,8 @@ original de la especificación se descartó (D-002) y no se usa.
   el vecino informa con su comprobante y el administrador confirma (D-017, R11).
 - **Cobros y cuenta corriente son dominio CRITICAL** (governance global): se propone y se espera
   aprobación de Juani antes de escribir código ahí.
-- **Reglas congeladas hasta M1** (D-087): nada de R42 en adelante; lo nuevo va como pregunta abierta.
+- **Base congelada** (D-087, D-089): nada de R42 en adelante y la base no se reabre salvo por hallazgos
+  del código o respuestas a las preguntas abiertas.
 - **TDD estricto en el núcleo**: cada regla vigente tiene sus tests mínimos escritos en
   `reglas-de-negocio.md`; se ven fallar antes de escribir el código.
 - **Montos en `Decimal`** (desde texto), `NUMERIC(14,2)` en la base y texto en el JSON; nunca `float`;

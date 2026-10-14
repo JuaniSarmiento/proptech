@@ -5,11 +5,13 @@ antes de que exista el código que la cumple. **Se reescribe** cuando una regla 
 porqué del cambio va a `decisiones.md`.
 
 Estados: **Pendiente** (no decidida) · **Propuesta** (hay una propuesta, falta validarla con un
-administrador o contador) · **Vigente** (decidida y registrada en `decisiones.md`).
+administrador o contador) · **Vigente** (decidida y registrada en `decisiones.md`). Una vigente cuyos
+valores o criterios de plata no revisó todavía nadie del rubro lleva además **a validar (P42)** en el
+título (D-089): se construye igual, pero sus números pueden cambiar después de esa revisión.
 
 ---
 
-## R01 · Prorrateo de gastos · Vigente (D-013)
+## R01 · Prorrateo de gastos · Vigente (D-013) · a validar (P42)
 
 - **Grupos de reparto**: cada complejo define sus grupos (por ejemplo "Generales", "Pileta",
   "Obra calle 5"). Cada grupo tiene:
@@ -27,9 +29,10 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Grupos típicos de un edificio**: Generales (todas las unidades), Ascensor (sin planta baja ni
   locales), Cocheras, Servicios centrales. En barrios: Generales, Pileta, Obra calle 5.
 - **Tests mínimos**: gasto general entre todos; gasto de un grupo parcial no toca a los demás;
-  partes iguales; la suma repartida es igual al gasto, al centavo.
+  partes iguales; la suma repartida es igual al gasto, al centavo; coeficientes que suman 0,9999 se
+  aceptan con advertencia y el total sigue exacto; coeficientes que suman 0,9998 se rechazan.
 
-## R02 · Estado de la unidad · Vigente (D-014) · desactivada por default en edificios (D-030)
+## R02 · Estado de la unidad · Vigente (D-014) · desactivada en edificios (D-030) · se construye con barrios (v1.2, D-089)
 
 - **Estados**: baldío, en obra, habitado, desocupado.
 - **Configurable por complejo, por estado** (menú cerrado):
@@ -49,7 +52,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   y el total sigue cubierto; canon de obra aparece como débito aparte; cambio de estado después de
   emitir no modifica esa liquidación.
 
-## R03 · Intereses por mora · Vigente (D-010) · falta validar con un administrador
+## R03 · Intereses por mora · Vigente (D-010) · a validar (P42)
 
 - **Tipo**: interés **simple**, siempre. No se cobra interés sobre interés (art. 770 del Código
   Civil y Comercial). No es configurable.
@@ -70,7 +73,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   no altera liquidaciones ya emitidas.
 - **Tests mínimos**: pago parcial reduce la base; días de gracia no generan interés; un pago después
   de los días de gracia genera interés desde el vencimiento; cambio de tasa entre períodos; nunca hay
-  interés calculado sobre un interés.
+  interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo.
 
 ## R04 · Orden de imputación · Vigente (D-011)
 
@@ -89,7 +92,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: el ejemplo de arriba; pago parcial cubre intereses y ordinaria antes que extraordinaria; pago que cubre exacto un período; pago que cancela
   todo y deja crédito; dos pagos simultáneos de la misma unidad.
 
-## R05 · Pagos parciales y excedentes · Vigente (D-012)
+## R05 · Pagos parciales y excedentes · Vigente (D-012, D-086) · a validar (P42)
 
 - **Qué define**: qué queda después de un pago que no cubre o que supera la deuda.
 - **Regla**: cada imputación se registra; el residual de cada obligación se calcula a partir
@@ -145,7 +148,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   directo; una corrección sin motivo se rechaza; una corrección referencia al movimiento que corrige y
   los dos quedan visibles; el saldo después de una corrección es el correcto.
 
-## R09 · Saldo inicial al migrar · Vigente (D-015, D-068)
+## R09 · Saldo inicial al migrar · Vigente (D-015, D-068) · a validar (P42)
 
 - **Con detalle por período** (si el complejo lo tiene): se carga cada obligación vieja con su
   período, concepto y vencimiento desde una hoja opcional de la plantilla (unidad, concepto, período,
@@ -188,9 +191,12 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   suyo; el vecino, sus unidades. Fuera de alcance responde 404.
 - **Tests mínimos**: un pedido con el identificador de otra administración no devuelve nada; una
   consulta a la base sin fijar la administración no devuelve filas; un colaborador no ve un edificio
-  no asignado de su propia administración; un vecino no ve la unidad de otro vecino.
+  no asignado de su propia administración; un vecino no ve la unidad de otro vecino; una escritura con
+  el identificador de otra administración se rechaza; el worker sin administración fijada no lee nada;
+  un link firmado de otra administración responde "no encontrado"; el consejo ve sólo su edificio y
+  no puede escribir.
 
-## R11 · Registro de pagos en el MVP · Vigente (D-017)
+## R11 · Registro de pagos en el MVP · Vigente (D-017) · a validar (P42)
 
 - **Origen**: el vecino sube el comprobante desde el portal (o el administrador lo carga por él).
   Queda como **pago informado**, sin efecto sobre la deuda.
@@ -224,7 +230,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
   confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
   tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
-  emisión que cobró interés por días posteriores a la transferencia genera el ajuste exacto.
+  emisión que cobró interés por días posteriores a la transferencia genera el ajuste exacto; un pago
+  repartido entre el departamento y la cochera imputa cada parte en su unidad con R04.
 
 ## R12 · Registro de gastos desde facturas · Vigente (D-019)
 
@@ -258,7 +265,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   que el administrador confirme el gasto. Según cómo salió la lectura, el gasto queda en borrador, sin
   IA o en revisión (D-075). La IA no inventa datos ausentes: los marca como faltantes.
 - **Tests mínimos**: decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
-  duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda en revisión con la nota "sin QR".
+  duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda en revisión con la nota "sin QR"; un QR corrupto o de versión desconocida
+  deja el gasto en revisión con su aviso.
 
 ## R13 · Expensa ordinaria y extraordinaria · Vigente (D-024)
 
@@ -369,7 +377,8 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
 - **Tests mínimos**: revertir un pago confirmado genera el contra-movimiento y sube la deuda; el pago
   original sigue visible con su nuevo estado; revertir un pago que no está confirmado se rechaza;
   después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
-  vencidas con saldo.
+  vencidas con saldo; revertir un pago con bonificación o ajuste de interés enlazados revierte también
+  esos movimientos.
 
 ## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
 
@@ -430,7 +439,7 @@ administrador o contador) · **Vigente** (decidida y registrada en `decisiones.m
   corte; con un corte posterior al vencimiento, muestra el interés corrido en una línea aparte sin
   registrarlo en la cuenta corriente.
 
-## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12
+## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12 · a validar (P42)
 
 - **Regla**: una nota de crédito de un proveedor queda **asociada a la factura que corrige** y su
   monto **no puede superar** el de esa factura.

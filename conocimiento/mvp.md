@@ -1,6 +1,6 @@
 # MVP de PropTech
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-088). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-089). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `reglas-de-negocio.md`; los términos, en `glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -306,8 +306,8 @@ particulares). El historial de activos y Mercado Pago van en la v1.1.
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 6b `motor-de-reglas` ⓔ · 7 `liquidacion-y-emision` ⓔ |
-| **M2** | 8 `pagos-informados` · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
+| **M2** | 8 `pagos-informados` · 6b `motor-de-reglas` ⓔ · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 
 ⓔ = lleva su propio explore antes del propose. En paralelo al cambio 1: conseguir los datos del edificio piloto (P1).
