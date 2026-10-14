@@ -1,14 +1,31 @@
 """Configuración del sistema: una sola fuente de verdad, por variables de entorno (H45)."""
 
+import re
 from pathlib import Path
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
 
 class ConfiguracionInvalida(Exception):
     """Falta o es inválida alguna variable de entorno de configuración."""
+
+
+#: Sólo dígitos ASCII (L-008): pydantic en modo laxo convierte `'5\n'`,
+#: `' 5'`, `'\t5'` (espacio en blanco alrededor) y `'5.0'` (parte decimal
+#: exacta) a `5` sin avisar, y `'5_0'` a `50` (el separador de miles de
+#: `int()`), un valor totalmente distinto del que parece. `REDIS_PORT` y los
+#: `DB_POOL_*` (D18, M14) son los enteros que vienen de una variable de
+#: entorno de texto; `fullmatch` + `re.ASCII` corta las cinco formas antes
+#: de que pydantic las convierta.
+_PATRON_ENTERO_ASCII = re.compile(r"[0-9]+", flags=re.ASCII)
+
+
+def _entero_ascii_estricto(valor: object) -> object:
+    if isinstance(valor, str) and not _PATRON_ENTERO_ASCII.fullmatch(valor):
+        raise ValueError("no es un entero válido (sólo dígitos ASCII, sin signo ni separadores)")
+    return valor
 
 
 def _mensaje_configuracion_invalida(error: ValidationError) -> str:
@@ -37,14 +54,32 @@ class _ConfiguracionBaseDeDatosBase(BaseSettings):
     postgres_host: str
     postgres_port: int = Field(default=5432, ge=1, le=65535)
     postgres_user: str
-    postgres_password: str
+    postgres_password: SecretStr
     postgres_db: str
 
-    @field_validator("postgres_host", "postgres_user", "postgres_password", "postgres_db")
+    @field_validator("postgres_port", mode="before")
+    @classmethod
+    def _postgres_port_entero_ascii_estricto(cls, valor: object) -> object:
+        """Gemelo de `_enteros_ascii_estrictos` en `_ConfiguracionBase`
+        (L-009, vuelta 3 F10b): `postgres_port` vive en esta clase base (la
+        que también usa Alembic) y se le había aplicado el validador de L-008
+        sólo a `redis_port` y los `db_pool_*`, nunca a este gemelo."""
+        return _entero_ascii_estricto(valor)
+
+    @field_validator("postgres_host", "postgres_user", "postgres_db")
     @classmethod
     def _no_vacio_ni_blanco(cls, valor: str) -> str:
         """Una variable presente pero vacía/con sólo espacios no es un valor válido."""
         if not valor.strip():
+            raise ValueError("no puede estar vacío ni ser sólo espacios")
+        return valor
+
+    @field_validator("postgres_password")
+    @classmethod
+    def _password_no_vacio_ni_blanco(cls, valor: SecretStr) -> SecretStr:
+        """Igual que `_no_vacio_ni_blanco`, pero sobre el valor secreto: un
+        `SecretStr` no tiene `.strip()` directo (D18)."""
+        if not valor.get_secret_value().strip():
             raise ValueError("no puede estar vacío ni ser sólo espacios")
         return valor
 
@@ -55,13 +90,42 @@ class _ConfiguracionBase(_ConfiguracionBaseDeDatosBase):
 
     redis_host: str
     redis_port: int = Field(default=6379, ge=1, le=65535)
-    redis_password: str
+    redis_password: SecretStr
     proptech_parametros: str
 
-    @field_validator("redis_host", "redis_password", "proptech_parametros")
+    # Parámetros del pool del engine (D18, M14): opcionales con default, así
+    # no se suma ninguna variable obligatoria a `.env`. Cuando vienen, se
+    # validan con las cinco formas de L-002 (faltante usa el default; vacía,
+    # en blanco, con tipo equivocado y fuera de rango nombran la variable).
+    db_pool_pre_ping: bool = True
+    db_pool_size: int = Field(default=5, ge=1, le=50)
+    db_pool_recycle_s: int = Field(default=1800, ge=60, le=86400)
+    db_pool_timeout_s: int = Field(default=5, ge=1, le=60)
+    db_connect_timeout_s: int = Field(default=2, ge=1, le=30)
+
+    @field_validator(
+        "redis_port",
+        "db_pool_size",
+        "db_pool_recycle_s",
+        "db_pool_timeout_s",
+        "db_connect_timeout_s",
+        mode="before",
+    )
+    @classmethod
+    def _enteros_ascii_estrictos(cls, valor: object) -> object:
+        return _entero_ascii_estricto(valor)
+
+    @field_validator("redis_host", "proptech_parametros")
     @classmethod
     def _no_vacio_ni_blanco_ampliada(cls, valor: str) -> str:
         if not valor.strip():
+            raise ValueError("no puede estar vacío ni ser sólo espacios")
+        return valor
+
+    @field_validator("redis_password")
+    @classmethod
+    def _redis_password_no_vacio_ni_blanco(cls, valor: SecretStr) -> SecretStr:
+        if not valor.get_secret_value().strip():
             raise ValueError("no puede estar vacío ni ser sólo espacios")
         return valor
 
@@ -97,11 +161,16 @@ class ConfiguracionBaseDeDatos:
         self.postgres_db = base.postgres_db
 
     def url_sqlalchemy(self) -> str:
-        """Arma la URL de conexión escapando caracteres especiales del password."""
+        """Arma la URL de conexión escapando caracteres especiales del password.
+
+        Único lugar, junto con `conexion_redis.py` (4.4), con permiso de leer
+        el valor real de un secreto (D18): el test `test_get_secret_value_...`
+        exige que `get_secret_value` no aparezca en ningún otro archivo.
+        """
         url = URL.create(
             drivername="postgresql+psycopg",
             username=self.postgres_user,
-            password=self.postgres_password,
+            password=self.postgres_password.get_secret_value(),
             host=self.postgres_host,
             port=self.postgres_port,
             database=self.postgres_db,
@@ -131,3 +200,8 @@ class Configuracion(ConfiguracionBaseDeDatos):
         self.redis_port = base.redis_port
         self.redis_password = base.redis_password
         self.proptech_parametros = base.proptech_parametros
+        self.db_pool_pre_ping = base.db_pool_pre_ping
+        self.db_pool_size = base.db_pool_size
+        self.db_pool_recycle_s = base.db_pool_recycle_s
+        self.db_pool_timeout_s = base.db_pool_timeout_s
+        self.db_connect_timeout_s = base.db_connect_timeout_s

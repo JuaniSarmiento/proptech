@@ -37,13 +37,35 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
    comandos corrió y su salida.
 3. **Romper.** El rompedor recibe el cambio terminado y trata de romperlo. Si encuentra fallas, vuelve
    al paso 2 con los tests que fallan. Si no encuentra nada, lo dice en una línea con lo que probó.
+   **Salvo que ya se dieron tres vueltas** (tope de vueltas, D-092, más abajo): ahí el rompedor no
+   vuelve al paso 2, va directo al paso 4 con su informe final.
 4. **Auditar.** El auditor revisa todo y responde **OK** o **NO con motivos**. Si es NO, vuelve al
    paso 2. **Un cambio está aprobado cuando el auditor da el OK.**
 5. **Archivar.** Se actualiza `conocimiento/` según el "Knowledge Base Impact" (lo vigente se
    reescribe, las decisiones se agregan), se archiva el cambio en OpenSpec y se commitea.
 
-**Tope de vueltas**: si entre construir, romper y auditar se dan tres vueltas sin llegar al OK, el
-orquestador frena y le presenta a Juani el problema con opciones. No se sigue iterando a ciegas.
+**Tope de vueltas (D-092)**: si entre construir, romper y auditar se dan tres vueltas sin llegar al
+OK, el rompedor **ya no vuelve al constructor**. En vez de eso: el rompedor entrega su informe final
+con el diagnóstico de cada hallazgo (severidad, si lo demostró, impacto hoy y a futuro, recomendación)
+directo al auditor; el auditor separa lo que bloquea de lo que es deuda aceptable y da su veredicto
+sobre esa base; el veredicto llega **textual** a Juani (ver "Lo que cada agente devuelve"), que decide
+si se cierra con la deuda anotada o se pide otra vuelta. No se sigue iterando a ciegas entre
+constructor y rompedor.
+
+**La corrida de cierre va después de la última vuelta (D-092, L-010)**: la tarea de cierre (7.1 o la
+que corresponda, L-003) se corre **después de la última vuelta de correcciones**, nunca antes. Si el
+código cambia después de esa corrida, la corrida queda vencida aunque siga en verde y hay que
+repetirla sobre el código final.
+
+**El auditor lee los informes originales (D-092)**: nunca un resumen armado por el orquestador. El
+orquestador puede transcribirlos para pasarlos de un agente a otro, pero el auditor trabaja sobre lo
+que cada agente escribió, no sobre una síntesis.
+
+**Mutar para ver el rojo sin commitear (D-092, L-013)**: mientras un cambio no está commiteado, no
+hay `git diff` posible contra "el código antes de mutarlo". Antes de mutar código a propósito (para
+una prueba de mutación, por ejemplo), sacar una copia previa (`git stash`, o un commit local temporal
+que se descarta después) y comparar con un diff real contra esa copia antes de seguir. Decirlo en el
+informe.
 
 ## Escalado por riesgo
 

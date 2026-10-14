@@ -15,7 +15,11 @@ from proptech_core.compartido.configuracion import ConfiguracionBaseDeDatos
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False (D7, M16): el default (True) deshabilita
+    # en silencio todo logger creado antes de correr las migraciones (los
+    # tests de integración que ya llamaron a configurar_logs, o la API si
+    # algún día migra al arrancar), incluidos los de proptech_core.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

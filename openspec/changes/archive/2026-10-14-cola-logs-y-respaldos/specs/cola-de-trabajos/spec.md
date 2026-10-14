@@ -64,6 +64,15 @@ nivel de error, sin efecto parcial en la base.
 - **THEN** el worker la ejecuta 5 veces, el último evento del log es "agotado" con nivel de error y la
   base no registra la clave
 
+**Límite conocido (F2c)**: "la base no registra la clave" vale mientras la base no quede congelada
+más de aproximadamente 37 segundos (la ventana de los cinco intentos y sus esperas). Si la base queda
+congelada más que eso, el hilo del primer intento, que sigue corriendo en segundo plano porque
+`asyncio.wait_for` corta la espera y nunca el hilo, puede confirmar su efecto cuando la base vuelve,
+después de que el trabajo ya quedó marcado agotado. Hoy el efecto de la tarea de prueba es vacío y no
+se nota; el cambio 7, que registra la primera tarea del worker con un efecto real, es quien tiene que
+cerrar este límite del lado de la base (un corte de servidor: `statement_timeout` o equivalente) antes
+de que ese riesgo tenga una tarea real detrás.
+
 #### Scenario: Error que no es pasajero
 
 - **WHEN** una tarea falla con un error que no es pasajero

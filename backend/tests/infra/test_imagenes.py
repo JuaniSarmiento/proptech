@@ -107,6 +107,15 @@ def test_conftest_no_tiene_una_imagen_de_postgres_escrita_a_mano() -> None:
     assert "_leer_imagen_de_compose" in conftest
 
 
+def test_conftest_deriva_tambien_la_imagen_de_redis_de_compose() -> None:
+    """4.2: el fixture de Redis (`redis_contenedor`) tampoco escribe su imagen
+    a mano; usa la misma `_leer_imagen_de_compose` que PostgreSQL."""
+    conftest = (Path(__file__).resolve().parents[1] / "conftest.py").read_text()
+    assert '_leer_imagen_de_compose("redis")' in conftest, (
+        "conftest.py no deriva la imagen de redis desde compose.yaml"
+    )
+
+
 def test_patron_version_de_parche_rechaza_tags_de_dos_numeros_sin_excepcion() -> None:
     """Regresión del auditor: python:3.14-slim y caddy:2.11-alpine no declaran parche
     (tercer número) y el patrón anterior los aceptaba por error."""

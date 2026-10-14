@@ -99,3 +99,53 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: si dos módulos comparten forma (los dos lectores de YAML, dos endpoints parecidos, dos
   importadores), cada defecto que se arregla en uno lleva su test en el otro.
 - **Aplica a**: constructor y rompedor.
+
+## L-010 · La corrida de cierre va después de la última vuelta, nunca en la primera
+
+- **Origen**: cambio 1c, cierre (auditoría de la vuelta 3, 14/10).
+- **Qué pasó**: la corrida equivalente al CI (la tarea de cierre, L-003) se puede correr temprano y
+  quedar en verde, pero si el código sigue cambiando después (nuevas correcciones de una vuelta
+  siguiente), esa corrida ya no describe el código final.
+- **Regla**: la corrida equivalente al CI que cierra un cambio se hace **después de la última
+  vuelta de correcciones**, nunca antes. Si el código cambia después de esa corrida, la corrida queda
+  **vencida** aunque siga en verde: hay que repetirla sobre el código final.
+- **Aplica a**: constructor y auditor.
+
+## L-011 · Un plazo que abandona un hilo no cancela su transacción
+
+- **Origen**: cambio 1c, cierre (hallazgo F2c del rompedor, vuelta 3).
+- **Qué pasó**: `asyncio.wait_for(asyncio.to_thread(...))` corta la ESPERA del event loop, no el
+  hilo: no hay forma de matar un hilo de Python desde afuera. Si la base queda congelada más tiempo
+  que todos los reintentos, el hilo del primer intento sigue corriendo en segundo plano y puede
+  confirmar su efecto después de que el trabajo ya quedó marcado agotado.
+- **Regla**: un timeout del lado del cliente (`wait_for`, `asyncio.timeout`) acota cuánto se espera
+  una respuesta, nunca si la operación de fondo sigue corriendo. Para una operación con un efecto que
+  importa (escribir en la base, mandar un email), el corte tiene que estar del lado del servidor
+  (`statement_timeout` de PostgreSQL o equivalente) o en el hilo mismo, no sólo en quien espera.
+- **Aplica a**: constructor y rompedor.
+
+## L-012 · La deuda se asigna al primer cambio que usa la pieza, no al más obvio
+
+- **Origen**: cambio 1c, cierre (tabla de deuda del veredicto, 14/10).
+- **Qué pasó**: varios hallazgos de la auditoría (F2c, F12b, `repr(RedisSettings)`) parecían deuda
+  "del worker en general", pero el dueño real es el primer cambio que de hecho ejercita esa pieza con
+  algo que importa (el cambio 7, primera tarea real del worker), no el cambio donde se encontró el
+  hallazgo ni el que suena más relacionado a simple vista.
+- **Regla**: antes de poner un dueño a un ítem de deuda, revisar `roadmap.md` y preguntar qué cambio
+  es el primero que de verdad necesita que esa pieza esté resuelta. Asignarlo a cualquier otro deja la
+  deuda sin dueño real: nadie la mira hasta que ya rompió algo.
+- **Aplica a**: auditor.
+
+## L-013 · Mutar para ver el rojo, sin commit, exige una copia previa y decirlo
+
+- **Origen**: cambio 1c, cierre (constructor, verificación B2 de mutación).
+- **Qué pasó**: con nada commiteado en el repo, no hay `git diff` posible contra "el código antes de
+  la mutación": un `git diff` sobre un archivo sin trackear no compara nada. El constructor resolvió
+  sacando una copia a un directorio temporal antes de cada mutación y comparando con `diff` contra esa
+  copia, y lo dejó dicho explícitamente en vez de asumir que `git diff` alcanzaba.
+- **Regla**: mientras un cambio no está commiteado, mutar código a propósito para ver un rojo exige
+  sacar una copia previa (`git stash`, o un commit local temporal que se descarta después) y un diff
+  real contra esa copia antes de seguir. Decirlo en el informe: una garantía contra una copia propia es
+  más débil que `git diff` contra un commit conocido, y el que lee el informe tiene que saber cuál de
+  las dos está mirando.
+- **Aplica a**: constructor y rompedor.

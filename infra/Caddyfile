@@ -1,8 +1,27 @@
 {
 	admin off
+
+	# Logger por defecto con los registros de error del proxy (M26, D7): sin
+	# log de acceso, pero un reverse_proxy que no llega a destino sí escribe
+	# un registro de error, y ese registro incluye el pedido entero. Se
+	# filtran la URI (con su query string) y los encabezados.
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+				request>headers delete
+			}
+		}
+	}
 }
 
 {$PROPTECH_SITIO} {
+	# Pisa siempre el X-Request-ID que mande el cliente (D8): un valor
+	# elegido por el cliente serviría para ensuciar los logs o hacerse
+	# pasar por otro pedido.
+	request_header X-Request-ID {http.request.uuid}
+
 	handle /api/* {
 		reverse_proxy api:8000
 	}
@@ -12,4 +31,7 @@
 	}
 
 	header -Server
+	# El que necesite correlacionar del lado del cliente lee el de la
+	# respuesta (D8).
+	header X-Request-ID {http.request.uuid}
 }

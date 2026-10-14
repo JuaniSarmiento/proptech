@@ -42,10 +42,14 @@ original de la especificación se descartó (D-002) y no se usa.
   `cd infra && docker compose up --build` (ver README), con CI en GitHub Actions. Todavía no hay
   dominio: sólo el esqueleto y `/api/salud`.
 - **Cambio 1b `arranque-del-sistema` archivado** (11/10/2026): configuración, `Dinero`, parámetros y semilla validada.
-- **Próximo**: cambio 1c `cola-logs-y-respaldos` (logs, cola, worker y web; la primera tarea, la
-  medición de partida, está hecha) y después el 1d `respaldos-y-restauracion` (HIGH, espera la
-  aprobación de Juani). Los dos están propuestos en `openspec/changes/` (D-087). Antes de cada cambio,
-  constructor y rompedor leen `conocimiento/lecciones.md`.
+- **Cambio 1c `cola-logs-y-respaldos` archivado** (14/10/2026): Redis, worker ARQ con reintentos e
+  idempotencia, logs estructurados en JSON, número de seguimiento (`request_id`) de punta a punta,
+  `/api/salud` con la cola y `/salud-web`. Cerrado con **OK con deuda anotada** (D-091); la deuda
+  queda en `conocimiento/roadmap.md` ("Deuda técnica de las auditorías del 13/10"), con dueño por
+  ítem (mayormente el cambio 7, antes de su primera tarea real).
+- **Próximo**: cambio 1d `respaldos-y-restauracion` (HIGH, espera la aprobación escrita de Juani antes
+  de construir), propuesto en `openspec/changes/` (D-087). Antes de cada cambio, constructor y
+  rompedor leen `conocimiento/lecciones.md`.
 - Preguntas abiertas (la lista P, al final de `decisiones.md`; es la lista completa): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos

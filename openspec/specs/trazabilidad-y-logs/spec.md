@@ -1,10 +1,11 @@
-## Purpose
+# trazabilidad-y-logs Specification
 
+## Purpose
 Define cómo se reconstruye la historia de un pedido: el formato de los logs, qué campos pueden
 aparecer y cuáles nunca, y cómo el número de seguimiento (`request_id`) viaja de la web a la API, a
 la base y al worker.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Logs en JSON con una lista cerrada de campos
 
@@ -13,6 +14,11 @@ campos `ts` (UTC, ISO 8601 con milisegundos), `nivel`, `servicio`, `logger`, `ev
 exista, `request_id`. Cualquier otro campo MUST pertenecer a una lista cerrada definida en el diseño;
 un campo fuera de la lista MUST descartarse y contarse en `campos_descartados`. Una línea de log
 MUST NOT romperse en varias líneas aunque un valor contenga saltos de línea.
+
+**Excepción conocida**: antes del `on_startup` del worker, mientras ARQ todavía tiene su propio
+handler (el que `configurar_logs` reemplaza), escribe dos líneas fijas sin este formato: el conteo de
+funciones registradas y las estadísticas de la conexión a Redis. Ninguna de las dos lleva datos de un
+trabajo ni de un pedido; son del arranque de la biblioteca, antes de que el formato propio exista.
 
 #### Scenario: Línea de un pedido atendido
 

@@ -124,3 +124,137 @@ def test_env_example_tiene_redis_password() -> None:
     deja sin arrancar a quien copie el archivo y no sepa que falta (D11)."""
     texto = (RAIZ / "infra" / ".env.example").read_text()
     assert "REDIS_PASSWORD=" in texto
+
+
+# --- 4.1: servicio Redis (D1) ---
+
+
+def test_redis_imagen_8_10_2_trixie() -> None:
+    servicios = _compose()["services"]
+    assert "redis" in servicios, "falta el servicio redis"
+    assert servicios["redis"]["image"] == "redis:8.10.2-trixie"
+
+
+def test_redis_solo_en_red_interna_sin_ports() -> None:
+    datos = _compose()
+    redis = datos["services"]["redis"]
+    assert "ports" not in redis, "redis no debe publicar puertos hacia el host"
+    redes = redis.get("networks")
+    assert redes == ["interna"] or redes == {"interna": None} or list(redes) == ["interna"], redes
+
+
+def test_redis_volumen_con_nombre_datos_redis_en_slash_data() -> None:
+    datos = _compose()
+    assert "datos_redis" in datos.get("volumes", {}), "falta el volumen con nombre datos_redis"
+    volumenes = [str(v) for v in datos["services"]["redis"].get("volumes", [])]
+    assert any("datos_redis:/data" in v for v in volumenes), volumenes
+
+
+def test_redis_command_appendonly_y_maxmemory_policy_noeviction() -> None:
+    comando = _compose()["services"]["redis"]["command"]
+    texto = " ".join(comando) if isinstance(comando, list) else str(comando)
+    assert "--appendonly" in texto and "yes" in texto, texto
+    assert "--maxmemory-policy noeviction" in texto, texto
+
+
+def test_redis_command_requirepass_obligatoria_y_primer_argumento_redis_server() -> None:
+    comando = _compose()["services"]["redis"]["command"]
+    assert isinstance(comando, list), comando
+    assert comando[0] == "redis-server", (
+        f"el primer argumento debe ser redis-server (así el entrypoint baja a uid redis), "
+        f"es {comando[0]!r}"
+    )
+    texto = " ".join(comando)
+    assert "--requirepass" in texto, texto
+    assert "REDIS_PASSWORD:?" in texto.replace(" ", ""), texto
+
+
+def test_redis_healthcheck_con_rediscli_auth_y_doble_dolar() -> None:
+    healthcheck = _compose()["services"]["redis"]["healthcheck"]
+    test = healthcheck["test"]
+    comando = test[-1] if isinstance(test, list) else test
+    assert "REDISCLI_AUTH=" in comando, comando
+    assert "$${REDIS_PASSWORD}" in comando, comando
+
+
+# --- 5.10: servicio worker y su red de salida (D2, M18) ---
+
+
+def test_worker_usa_la_imagen_de_api_con_comando_arq() -> None:
+    servicios = _compose()["services"]
+    assert "worker" in servicios, "falta el servicio worker"
+    worker = servicios["worker"]
+    api = servicios["api"]
+    assert worker.get("image") == "proptech-backend:local"
+    assert worker.get("image") == api.get("image")
+    comando = worker.get("command")
+    comando_texto = " ".join(comando) if isinstance(comando, list) else str(comando)
+    assert comando_texto == "arq proptech_worker.ajustes.AjustesDelWorker"
+
+
+def test_worker_healthcheck_arq_check() -> None:
+    healthcheck = _compose()["services"]["worker"]["healthcheck"]
+    test = healthcheck["test"]
+    comando_texto = " ".join(test) if isinstance(test, list) else str(test)
+    assert "arq" in comando_texto and "--check" in comando_texto, comando_texto
+    assert "proptech_worker.ajustes.AjustesDelWorker" in comando_texto
+
+
+def test_worker_sin_ports() -> None:
+    worker = _compose()["services"]["worker"]
+    assert "ports" not in worker, "worker no debe publicar puertos hacia el host"
+
+
+def test_worker_en_red_interna_y_en_salida_worker_sin_internal() -> None:
+    datos = _compose()
+    worker = datos["services"]["worker"]
+    redes = worker.get("networks")
+    nombres_redes = set(redes)
+    assert nombres_redes == {"interna", "salida_worker"}, nombres_redes
+
+    assert "salida_worker" in datos["networks"], "falta declarar la red salida_worker"
+    salida_worker = datos["networks"]["salida_worker"] or {}
+    assert salida_worker.get("internal") is not True
+
+
+def test_salida_worker_no_tiene_ningun_otro_servicio() -> None:
+    """M18: ni la base, ni Redis, ni la API están en `salida_worker` (si no,
+    quedarían alcanzables desde una red con salida a Internet)."""
+    servicios = _compose()["services"]
+    for nombre in ("db", "redis", "api"):
+        redes = servicios[nombre].get("networks", [])
+        nombres_redes = set(redes)
+        assert "salida_worker" not in nombres_redes, f"{nombre} está en salida_worker"
+
+
+def test_worker_depende_de_db_y_redis_saludables_y_migraciones_completado() -> None:
+    depends_on = _compose()["services"]["worker"].get("depends_on", {})
+    for nombre in ("db", "redis"):
+        assert nombre in depends_on, f"worker no depende de {nombre}"
+        condicion = depends_on[nombre]
+        assert isinstance(condicion, dict) and condicion.get("condition") == "service_healthy"
+    assert "migraciones" in depends_on
+    condicion_migraciones = depends_on["migraciones"]
+    assert (
+        isinstance(condicion_migraciones, dict)
+        and condicion_migraciones.get("condition") == "service_completed_successfully"
+    )
+
+
+def test_worker_monta_config_de_solo_lectura_y_recibe_parametros_y_redis() -> None:
+    worker = _compose()["services"]["worker"]
+    assert worker["environment"].get("PROPTECH_PARAMETROS") == "/app/config/parametros.yaml"
+    volumenes = [str(v) for v in worker.get("volumes", [])]
+    assert any("../config:/app/config:ro" in v for v in volumenes), volumenes
+
+    entorno = worker["environment"]
+    assert entorno.get("REDIS_HOST")
+    assert entorno.get("REDIS_PORT")
+    assert "REDIS_PASSWORD:?" in str(entorno.get("REDIS_PASSWORD", "")).replace(" ", "")
+    assert "POSTGRES_PASSWORD:?" in str(entorno.get("POSTGRES_PASSWORD", "")).replace(" ", "")
+
+
+def test_worker_tiene_ancla_de_rotacion_de_logs() -> None:
+    worker = _compose()["services"]["worker"]
+    assert "logging" in worker, "worker no declara rotación de logs (x-logs)"
+    assert worker["logging"]["driver"] == "json-file"

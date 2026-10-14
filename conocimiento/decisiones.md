@@ -1310,6 +1310,67 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   dejarla para después era abrir un cambio sólo para tocar los mismos archivos otra vez.
 - **Quién**: Juani, que delegó las decisiones el 13/10.
 
+## D-091 · Las elecciones de código del cierre del 1c (14/10)
+
+- **Fecha**: 14/10/2026
+- **Decisión**:
+  - **Versiones**: imagen de Redis `redis:8.10.2-trixie`, `arq==0.28.0`, `redis[hiredis]>=5.3.1,<6`
+    (ARQ exige `<6`); quedaron fijadas en `backend/pyproject.toml`.
+  - **JSON en vez de `pickle`** para serializar los trabajos de la cola: el default de ARQ es
+    `pickle`, y quien pudiera escribir en Redis ejecutaría código en el worker.
+  - **Formato del log**: una línea JSON por evento, con una lista cerrada de campos. Dos excepciones
+    conocidas: las dos líneas que ARQ escribe antes del `on_startup` del worker, sin datos de un
+    trabajo (conteo de funciones, estadísticas de la conexión a Redis); y los eventos fijos
+    `excepcion_como_mensaje` (cuando `record.msg` es la excepción misma) y
+    `traceback_crudo_descartado` (cuando el mensaje ya es un traceback formateado como texto), que
+    reemplazan el mensaje original para que nunca se cuele el texto de una excepción de terceros.
+  - **`request_id`**: UUID, que Caddy pisa siempre (nunca el que elige el cliente), con una tabla de
+    casos (`config/contratos/request-id.json`) compartida entre los tests de pytest y de Vitest.
+  - **Idempotencia** con la tabla técnica `trabajos_hechos` (clave primaria, una sola transacción con
+    el efecto).
+  - **Desvíos de diseño aceptados en la construcción**: `/salud-web` usa `AbortController` + `setTimeout`
+    propios en vez de `AbortSignal.timeout` (los temporizadores falsos de Vitest no disparan ese
+    mecanismo interno); `validarRequestId` queda exportado en la web para probarlo solo contra la
+    tabla de casos; el verificador de cola de `/api/salud` crea un cliente de Redis nuevo por pedido
+    (a diferencia del engine único de base); el prefijo `/api` se fijó en `salud.router`
+    (`APIRouter(prefix="/api")`) y se sacó el `router_api` intermedio; `_ruta_de` lee el atributo
+    interno de FastAPI `scope["fastapi"]["effective_route_context"].path_format` (FastAPI fijado
+    `<0.144`, con un test que detecta si deja de existir); `COTA_OPERACION_S = 1.5` como cota fija y
+    genérica (con su advertencia: no sirve para una tarea larga, cota por tarea en el cambio 7);
+    `url_sqlalchemy()` sigue devolviendo `str` con la contraseña interpolada en vez del objeto `URL`
+    renderizado sólo en el borde que había pedido Alberto (M12 a medias, deuda para el cambio 2).
+  - **Cierre**: el auditor dio **OK con deuda anotada** (la tabla de deuda técnica del roadmap, con
+    F2c y F12b entre otras); Juani aceptó esa tabla.
+- **Por qué**: dejar registradas las elecciones de código de este cambio para que el cambio 7 y los
+  que lo siguen no las reinventen ni las contradigan sin saberlo.
+- **Quién**: Juani, a partir del veredicto del auditor del 14/10.
+
+## D-092 · Cambio de método después del tope de vueltas
+
+- **Fecha**: 14/10/2026
+- **Decisión**:
+  - **Después de la tercera vuelta** entre constructor y rompedor sin llegar al OK, el rompedor **ya
+    no vuelve al constructor**: entrega su informe final, con el diagnóstico de cada hallazgo
+    (severidad, si lo demostró, impacto hoy y a futuro, recomendación), directo al auditor.
+  - **El auditor separa lo que bloquea de lo que es deuda aceptable** y da su veredicto sobre esa
+    base, en vez de pedir otra vuelta de construcción.
+  - **El veredicto llega textual a Juani** (el orquestador no lo resume ni lo suaviza, como ya decía
+    `forma-de-trabajo.md`), y es **Juani quien decide** si se cierra con la deuda anotada o se pide
+    otra vuelta.
+  - **La corrida equivalente al CI (la tarea de cierre, L-003) se hace después de la última vuelta de
+    correcciones, nunca antes**: si el código cambia después de esa corrida, la corrida queda vencida
+    aunque siga en verde.
+  - **El auditor lee los informes originales** de cada agente (constructor, rompedor), no un resumen
+    armado por el orquestador.
+  - **Mientras nada está commiteado**, mutar código a propósito para ver un rojo exige sacar una copia
+    previa (o un `git stash` o un commit local temporal) y un diff que compare contra esa copia antes
+    de seguir: sin eso no hay forma de probar que el código volvió a ser el mismo.
+- **Por qué**: con el tope de tres vueltas de `forma-de-trabajo.md`, el rompedor podía seguir devolviendo
+  trabajo al constructor sin llegar nunca al auditor; separar bloqueante de deuda es exactamente el
+  criterio del auditor, y la decisión de cerrar con deuda o seguir iterando es de Juani, no del
+  orquestador ni del auditor.
+- **Quién**: Juani, 14/10/2026 (pedido explícito de cambio de método, durante el cierre del 1c).
+
 ---
 
 ## Preguntas abiertas

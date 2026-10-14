@@ -1,16 +1,34 @@
 name: proptech
 
+x-logs: &logs
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
 networks:
   borde:
   interna:
     internal: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  # Salida a Internet sólo para el worker (M18): los proveedores de email e
+  # IA de cambios posteriores la necesitan. Sin `internal`, y ningún otro
+  # servicio está en ella: la base y Redis siguen alcanzables sólo desde
+  # `interna`.
+  salida_worker:
 
 volumes:
   datos_postgres:
+  datos_redis:
 
 services:
   db:
+    <<: *logs
     image: postgres:18.6-trixie
+    command: ["postgres", "-c", "log_line_prefix=%m [%p] %q%a "]
     restart: unless-stopped
     networks:
       - interna
@@ -27,6 +45,7 @@ services:
       retries: 10
 
   migraciones:
+    <<: *logs
     build:
       context: ../backend
     image: proptech-backend:local
@@ -44,7 +63,41 @@ services:
       db:
         condition: service_healthy
 
+  redis:
+    <<: *logs
+    image: redis:8.10.2-trixie
+    # Primer argumento "redis-server" (no "sh -c ..."): así el entrypoint de
+    # la imagen baja a usuario redis (uid 999) con gosu; con sh -c correría
+    # como root (D1). appendonly: los trabajos sobreviven a un reinicio.
+    # noeviction: Redis nunca descarta trabajos para hacer lugar.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
+    restart: unless-stopped
+    networks:
+      - interna
+    environment:
+      # Sólo para que el healthcheck (que corre dentro del contenedor) pueda
+      # leer $REDIS_PASSWORD; la contraseña real que arranca redis-server ya
+      # quedó fija en el comando de arriba.
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
+    volumes:
+      - datos_redis:/data
+    healthcheck:
+      # $$ evita que Compose interpole acá (y lo deje en docker inspect del
+      # healthcheck); lo expande el shell del contenedor con su propio entorno.
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
+    <<: *logs
     build:
       context: ../backend
     image: proptech-backend:local
@@ -61,6 +114,11 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
       PROPTECH_PARAMETROS: /app/config/parametros.yaml
+      # Única IP de la que la API acepta encabezados X-Forwarded-* (D17): la
+      # dirección fija de caddy en la red interna, nunca "*" ni una subred
+      # entera (si no, cualquier contenedor de la red podría mentir su IP de
+      # origen).
+      FORWARDED_ALLOW_IPS: "172.28.0.254"
     volumes:
       - ../config:/app/config:ro
     depends_on:
@@ -74,13 +132,55 @@ services:
       timeout: 5s
       retries: 10
 
+  worker:
+    <<: *logs
+    build:
+      context: ../backend
+    image: proptech-backend:local
+    command: ["arq", "proptech_worker.ajustes.AjustesDelWorker"]
+    restart: unless-stopped
+    networks:
+      - interna
+      - salida_worker
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
+      PROPTECH_PARAMETROS: /app/config/parametros.yaml
+    volumes:
+      - ../config:/app/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migraciones:
+        condition: service_completed_successfully
+    healthcheck:
+      # El default de ARQ es una hora; sin health_check_interval el chequeo
+      # nunca fallaría a tiempo (D2, AjustesDelWorker.health_check_interval=30).
+      test: ["CMD", "arq", "--check", "proptech_worker.ajustes.AjustesDelWorker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   web:
+    <<: *logs
     build:
       context: ../web
     image: proptech-web:local
     restart: unless-stopped
     networks:
       - interna
+    environment:
+      # No es secreto (D8): el nombre del servicio en la red interna de
+      # Compose, fijo.
+      PROPTECH_URL_API_INTERNA: http://api:8000
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"]
       interval: 5s
@@ -88,14 +188,17 @@ services:
       retries: 10
 
   caddy:
+    <<: *logs
     image: caddy:2.11.7-alpine
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     networks:
-      - borde
-      - interna
+      borde:
+      interna:
+        # Dirección fija (D17): es la que la API acepta en FORWARDED_ALLOW_IPS.
+        ipv4_address: 172.28.0.254
     environment:
       PROPTECH_SITIO: "${PROPTECH_SITIO:?falta PROPTECH_SITIO}"
     volumes:

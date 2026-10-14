@@ -1,0 +1,72 @@
+{
+  "validos": [
+    {
+      "entrada": "3f2c1a00-0001-4001-8001-000000000001",
+      "normalizado": "3f2c1a00-0001-4001-8001-000000000001",
+      "motivo": "minusculas"
+    },
+    {
+      "entrada": "3F2C1A00-0001-4001-8001-000000000001",
+      "normalizado": "3f2c1a00-0001-4001-8001-000000000001",
+      "motivo": "mayusculas"
+    }
+  ],
+  "invalidos": [
+    {
+      "entrada": "",
+      "motivo": "vacio"
+    },
+    {
+      "entrada": "3f2c1a00-0001-4001-8001-00000000000",
+      "motivo": "largo_35"
+    },
+    {
+      "entrada": "3f2c1a00-0001-4001-8001-0000000000011",
+      "motivo": "largo_37"
+    },
+    {
+      "entrada": "3f2c1a00000140018001000000000001",
+      "motivo": "sin_guiones"
+    },
+    {
+      "entrada": "{3f2c1a00-0001-4001-8001-000000000001}",
+      "motivo": "llaves"
+    },
+    {
+      "entrada": " 3f2c1a00-0001-4001-8001-000000000001 ",
+      "motivo": "espacio_alrededor"
+    },
+    {
+      "entrada": "\t3f2c1a00-0001-4001-8001-000000000001\t",
+      "motivo": "tabulacion_alrededor"
+    },
+    {
+      "entrada": "\n3f2c1a00-0001-4001-8001-000000000001",
+      "motivo": "salto_de_linea_inicio"
+    },
+    {
+      "entrada": "3f2c1a00-0001-4001-8001-000000000001\n",
+      "motivo": "salto_de_linea_final"
+    },
+    {
+      "entrada": "٣f2c1a00-0001-4001-8001-000000000001",
+      "motivo": "digito_no_ascii"
+    },
+    {
+      "entrada": "3ｆ2c1a00-0001-4001-8001-000000000001",
+      "motivo": "letra_ancho_completo"
+    },
+    {
+      "entrada": "<script>alert(1)</script>",
+      "motivo": "script"
+    },
+    {
+      "entrada": "\"3f2c1a00-0001-4001-8001-000000000001\"",
+      "motivo": "comillas"
+    },
+    {
+      "entrada": "' OR 1=1 --",
+      "motivo": "inyeccion_sql"
+    }
+  ]
+}

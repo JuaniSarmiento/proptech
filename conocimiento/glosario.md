@@ -142,8 +142,10 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Link firmado**: un enlace de descarga que vence y deja de funcionar si se modifica (D-070).
 - **Cargo recurrente**: un cargo particular que se repite cada período para ciertas unidades (R14, propuesta).
 - **Worker**: el proceso que hace de fondo el trabajo lento (PDFs, emails, IA), tomándolo de la cola de Redis.
+- **Trabajo / tarea del worker**: una unidad de trabajo encolada en Redis para que el worker la ejecute aparte de la API (por ejemplo, la tarea de prueba del cambio 1c); se identifica con su clave de idempotencia y su número de seguimiento.
 - **Idempotencia**: que repetir una tarea no duplique su efecto.
-- **request_id**: el número de seguimiento que acompaña cada pedido en los logs.
+- **Clave de idempotencia**: el identificador propio de una tarea (armado por quien la encola, a partir de datos estables de la operación, nunca de la hora) que la cola y la base usan para no ejecutarla ni registrarla dos veces.
+- **Número de seguimiento (`request_id`)**: el identificador (UUID) que acompaña cada pedido de punta a punta (Caddy, la web, la API, la base y el worker) y que aparece en cada línea de log para reconstruir su historia.
 - **RLS** (Row-Level Security): el filtro de PostgreSQL que deja a cada administración ver sólo sus filas (R10).
 - **Respaldo y restauración**: la copia diaria de la base y la forma de volver a cargarla en otra base para probarla (cambio 1d).
 

@@ -13,7 +13,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 |---|---|---|---|---|---|---|
 | 1a | `infraestructura-base` ✅ | M1 | ninguno | no | no | mediano |
 | 1b | `arranque-del-sistema` ✅ | M1 | 1a | no | no | mediano |
-| 1c | `cola-logs-y-respaldos` | M1 | 1b | no | no | mediano |
+| 1c | `cola-logs-y-respaldos` ✅ | M1 | 1b | no | no | mediano |
 | 1d | `respaldos-y-restauracion` | M1 | 1c | no | no (HIGH, D-087) | chico |
 | 2 | `acceso-y-aislamiento` | M1 | 1d | **sí** | **sí** | grande |
 | 3 | `configuracion-del-edificio` | M1 | 2 | no | no (HIGH, D-087) | mediano |
@@ -78,31 +78,32 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Pasó a 1c**: Redis y el worker, logs y número de seguimiento, respaldos, `/salud-web`, humo y README.
 - **Habilita**: 1c.
 
-### 1c · `cola-logs-y-respaldos`
+### 1c · `cola-logs-y-respaldos` ✅
 
 - **Objetivo**: la cola de trabajos con su worker, los logs estructurados y el número de seguimiento
   de punta a punta, que todos los cambios siguientes dan por existentes (D-052). Partido del 1d por la
   auditoría de Alberto (D-087); el nombre conserva "respaldos" porque el CLI de OpenSpec no renombra
   cambios, pero los respaldos son del 1d.
-- **Decisiones**: D-038, D-047 (punto 4, logs con número de seguimiento), D-052, D-087.
+- **Decisiones**: D-038, D-047 (punto 4, logs con número de seguimiento), D-052, D-087, D-090, D-091.
 - **Gobernanza**: MEDIUM. Ciclo completo, sin aprobación previa de Juani.
-- **Entra**: logs en JSON con una lista cerrada de campos y sin el texto de los errores de terceros
-  (L-007); `request_id` validado con coincidencia completa y sólo ASCII, con una sola tabla de casos
-  para la API y la web (L-008, L-009), que viaja por Caddy, la web, la API, PostgreSQL y el worker;
-  Redis; worker ARQ con reintentos espaciados, idempotencia (tabla `trabajos_hechos`) y los mismos
-  tests de arranque que la API (L-009); `/api/salud` con la cola; `/salud-web` con su contrato de
-  respuesta; rotación de logs. 35 tareas en `openspec/changes/cola-logs-y-respaldos/` (D-090).
-- **No entra**: respaldos, restauración, el humo ampliado y el README (1d); tareas reales del worker
+- **Entró**: logs en JSON con una lista cerrada de campos y sin el texto de los errores de terceros
+  (L-007), con las dos excepciones conocidas de ARQ y los eventos fijos `excepcion_como_mensaje` y
+  `traceback_crudo_descartado` (D-091); `request_id` validado con coincidencia completa y sólo ASCII,
+  con una sola tabla de casos para la API y la web (L-008, L-009), que viaja por Caddy, la web, la
+  API, PostgreSQL y el worker; Redis protegido y persistente; worker ARQ con reintentos espaciados,
+  idempotencia (tabla `trabajos_hechos`) y los mismos tests de arranque que la API (L-009); `/api/salud`
+  con la cola; `/salud-web` con su contrato de respuesta; rotación de logs; `Dinero` copiable y
+  serializable; contraseñas como `SecretStr`; un único engine por proceso con su pool. 35 tareas en
+  `openspec/changes/archive/2026-10-14-cola-logs-y-respaldos/` (D-090), las 35 hechas.
+- **No entró**: respaldos, restauración, el humo ampliado y el README (1d); tareas reales del worker
   (7, 13, 14); el tenant del worker (2).
 - **Depende de**: 1b. **Habilita**: 1d.
-- **Que intente romper el rompedor**: un `request_id` que pase la validación de un lado y no del otro;
-  un valor con salto de línea, espacios o dígitos de otro alfabeto que se cuele en un log; el
-  `application_name` pegado al pedido siguiente del pool; un trabajo que se ejecute dos veces o que
-  quede a medias; Redis congelado que cuelgue la API o el worker; el texto de un error de Redis, ARQ
-  o psycopg en un log o una respuesta; un trabajo con `pickle` que se ejecute.
-- **Terminado cuando**: las 35 tareas están hechas con su test visto en rojo, la corrida equivalente
-  al CI está en verde con el humo existente (que espera a Redis y al worker saludables) y el auditor da
-  el OK. La verificación de punta a punta por el proxy queda para el humo del 1d.
+- **Cierre (14/10/2026)**: el auditor dio **OK con deuda anotada** (D-091); Juani aceptó la tabla. La
+  deuda queda en "Deuda técnica de las auditorías del 13/10" más abajo, con dueño por ítem: F2c (base
+  congelada con efecto tardío) y F12b (excepciones de terceros envueltas) y `repr(RedisSettings)` al
+  cambio 7; F13 (`/salud-web` con dependencia congelada), `salud_degradada` duplicado y F7c (parseo de
+  traceback crudo con formas muy particulares) al 1d; M12 a medias (URL de base como `str`) al cambio 2.
+  La verificación de punta a punta por el proxy queda para el humo del 1d.
 
 ### 1d · `respaldos-y-restauracion` · HIGH (D-087)
 
@@ -122,6 +123,16 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   restauración y semilla); README. 19 tareas en `openspec/changes/respaldos-y-restauracion/` (D-090).
 - **No entra**: copia fuera del servidor y cifrado (con el despliegue); restaurar sobre la base en
   uso; backups de Redis; alertas externas.
+- **Deuda del 1c, con dueño este cambio** (D-091): **F13**, `/salud-web` informa `sin_conexion` cuando
+  una dependencia está congelada en vez de lenta (la API tarda 2,005 s y la web corta a 2,000 s):
+  resolverlo con verificadores en paralelo con un plazo total menor a 2 s, o subiendo la cota de la
+  web; cumple la letra de la spec del 1c y todavía nadie lo consume, así que no bloquea, pero el humo
+  ampliado de este cambio es quien primero lo ejercita de punta a punta. **`salud_degradada`
+  duplicado**: el log de la base pausada escribe dos líneas por cada pedido colgado; sólo ensucia los
+  logs, se limpia junto con el humo ampliado. **F7c**: el parseo de un traceback crudo todavía puede
+  sacar datos raros a `tipo_error`/`traza` con formas muy particulares (y un `msg` que no es una
+  excepción usa su `__str__`); confianza baja en que valga la pena antes de ver un caso real en los
+  logs del humo ampliado.
 - **Depende de**: 1c. **Habilita**: 2.
 - **Bloqueado por**: la aprobación escrita y fechada de Juani en su propuesta (D-088 no la reemplaza).
 - **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
@@ -156,6 +167,16 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **Tablas mínimas** (D-082): para probar el acceso, este cambio crea lo mínimo de administración,
   complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
   edificio.
+- **`trabajos_hechos` y el tenant del worker** (D-091, deuda del 1c): la tabla `trabajos_hechos` del
+  1c nace sin `administracion_id`. Este cambio decide si la suma (según el plan de RLS de arriba) y,
+  si la suma, cómo el worker la fija por tarea: el `request_id` ya viaja en cada trabajo encolado
+  (1c), pero el `request_id` identifica el pedido, no la administración; hace falta decidir si el
+  dato de tenant viaja como otro argumento validado de la tarea (como ya hace el resto de `encolar`,
+  D2 del 1c) o se deriva de otro lado.
+- **M12 a medias** (D-091, deuda del 1c, impacto bajo): `url_sqlalchemy()` sigue devolviendo un `str`
+  con la contraseña interpolada, no el objeto `sqlalchemy.engine.URL` renderizado sólo en el borde que
+  había pedido Alberto. Si este cambio toca `configuracion.py` o `env.py` de Alembic por otro motivo,
+  cerrar esto de paso.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
 - **Depende de**: 1d. **Habilita**: 3, 4.
 - **Bloqueado por**: P18 y P23 (D-076, D-087).
@@ -327,6 +348,16 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
 - **Depende de**: 5, 6. **Habilita**: 6b, 8, 10a, 11, 12, 13, 14 y el test de M1.
 - **Bloqueado por**: P26, P27, P28, P38 y P39, y la normativa de la expensa en Mendoza (D-060).
+- **Deuda del 1c, con dueño este cambio (D-091, L-011, L-012)**: **F2c es bloqueante antes de
+  registrar la primera tarea real del worker** (el encolado del PDF de la expensa, que es la primera
+  vez que el worker tiene un efecto real): hoy `asyncio.wait_for` sólo corta la espera, no el hilo que
+  corre la operación de base, y si la base queda congelada más que la ventana de reintentos, el hilo
+  del primer intento puede confirmar su efecto después de que el trabajo ya se marcó agotado. Se
+  resuelve con un corte del lado de la base (`statement_timeout` o equivalente) y una cota propia por
+  tarea, no la `COTA_OPERACION_S` genérica del 1c. También quedan a cargo de este cambio, sin ser
+  bloqueantes: F12b (el `sys.excepthook` del worker no cubre una excepción de terceros envuelta por
+  otra capa) y que `repr(RedisSettings)` no muestre la contraseña (no se demostró que llegue a un log,
+  pero tampoco está resuelto).
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
 - **Decidir en el design** (y en su explore): la frontera de la transacción; **qué pasa si falla el
@@ -566,6 +597,25 @@ el 1d ya está en sus tareas (D-090).
 | Cabeceras de seguridad en Caddy y CSP en Next, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, Dependabot, roles de PostgreSQL para RLS (migrador y aplicación), endurecimiento de contenedores, tabla de variables del README | 2 |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
+
+### Deuda del cierre del 1c (auditoría del 14/10, D-091)
+
+La que dejó el rompedor en su vuelta final del 1c, aceptada por Juani como "OK con deuda anotada".
+Dueño asignado por el primer cambio que de verdad necesita que esté resuelta (L-012), no por el que
+suena más obvio.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | 7 (bloqueante antes de registrar su primera tarea real) |
+| F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | 7 |
+| `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | 7 |
+| F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | 1d |
+| `salud_degradada` duplicado (dos líneas por pedido colgado) | Sólo ensucia los logs | 1d |
+| F7c: el parseo de un traceback crudo saca datos a `tipo_error`/`traza` con formas muy particulares | Formas muy raras, confianza baja | 1d |
+| F3b: `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`) | FastAPI fijado `<0.144` y un test lo detecta | quien suba FastAPI |
+| M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2 |
+| Redis congelado frena el worker mientras dura | Se recupera solo | aceptar, sin dueño |
+| `POSTGRES_PORT` y `REDIS_PORT` estrictos (cambia el comportamiento laxo del 1b) | En línea con L-008 | aceptar, sin dueño |
 
 ## Pendientes de arranque
 

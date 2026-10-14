@@ -91,6 +91,20 @@ class Dinero:
     def __setattr__(self, name: str, value: Any) -> None:
         raise AttributeError("Dinero es inmutable")
 
+    def __reduce__(self) -> tuple[type[Dinero], tuple[str]]:
+        """Pickle (D16): reconstruye desde `a_texto()`, así la carga pasa de
+        nuevo por la validación de `__init__` (L-008) en vez de asignar el
+        estado interno con `setattr`, que `__setattr__` bloquea."""
+        return (Dinero, (self.a_texto(),))
+
+    def __copy__(self) -> Dinero:
+        """Inmutable: una copia superficial es el mismo objeto (D16)."""
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Dinero:
+        """Inmutable: una copia profunda también es el mismo objeto (D16)."""
+        return self
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Dinero):
             return NotImplemented

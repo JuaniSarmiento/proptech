@@ -59,7 +59,10 @@ def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
         capture_output=True,
         text=True,
     )
-    assert "0001" in _version_actual(postgres_contenedor)
+    # No se fija a "0001": la migración 0002 (cambio 1c, tarea 5.1) agregó una
+    # revisión después, y "head" avanza con cada migración nueva. Lo que este
+    # test afirma es que "upgrade head" deja la base en la punta de la cadena.
+    assert "(head)" in _version_actual(postgres_contenedor)
 
     subprocess.run(
         ["uv", "run", "alembic", "downgrade", "base"],
@@ -75,16 +78,22 @@ def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
 def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
     postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from proptech_api.salud import _verificador_real
+    from proptech_api.salud import _verificador_con_engine
+    from proptech_core.compartido.base_de_datos import crear_engine
+    from proptech_core.compartido.configuracion import Configuracion
 
     env = _alembic_env(postgres_contenedor)
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)
 
-    inicio = time.monotonic()
-    assert _verificador_real() is True
-    assert time.monotonic() - inicio < 5
+    engine_contenedor = crear_engine(Configuracion())
+    try:
+        inicio = time.monotonic()
+        assert _verificador_con_engine(engine_contenedor)() is True
+        assert time.monotonic() - inicio < 5
+    finally:
+        engine_contenedor.dispose()
 
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -93,6 +102,10 @@ def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
     monkeypatch.setenv("POSTGRES_HOST", "127.0.0.1")
     monkeypatch.setenv("POSTGRES_PORT", str(puerto_libre))
 
-    inicio = time.monotonic()
-    assert _verificador_real() is False
-    assert time.monotonic() - inicio < 5
+    engine_sin_servidor = crear_engine(Configuracion())
+    try:
+        inicio = time.monotonic()
+        assert _verificador_con_engine(engine_sin_servidor)() is False
+        assert time.monotonic() - inicio < 5
+    finally:
+        engine_sin_servidor.dispose()

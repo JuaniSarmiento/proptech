@@ -120,6 +120,30 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
   el valor. **Por qué**: con el serializador JSON un `float` viaja sin error y llega al worker como
   número binario (el defecto que R07 y D-046 prohíben); un `Decimal` haría fallar `json.dumps` con un
   `TypeError` cuyo mensaje repite el valor (L-007).
+- **Blindaje del CLI de ARQ (D7, D13, F12, vuelta 3)**: `arq/cli.py` siempre corre
+  `logging.config.dictConfig(default_log_config(...))` al arrancar, después de importar
+  `proptech_worker.ajustes` y antes de `Worker.main()` (antes de `on_startup`). Con la config por
+  default de ARQ eso reemplaza el handler del logger `arq` por uno de texto plano que interpola los
+  argumentos del trabajo; si Redis es inalcanzable, ahí se logea el error de conexión de redis-py
+  (host, puerto, mensaje) varias veces, sin pasar por `FormateadorJSON`. **En vez de tocar el
+  `command` del servicio `worker` en Compose** (que un test exige literal, sin `--custom-log-dict`),
+  se pisa `arq.cli.default_log_config` al importar `ajustes.py` para que devuelva una config
+  `dictConfig` propia, con el mismo formatter JSON que usa el resto del worker. El `import` de
+  `proptech_worker.ajustes` corre siempre antes de ese `dictConfig` (el CLI primero importa
+  `worker_settings`, después configura logging), así que el pisado ya está en su lugar a tiempo.
+- **`sys.excepthook` acotado a cuatro paquetes (D13, F12, vuelta 3)**: el CLI de ARQ no atrapa el
+  error de `create_pool` cuando los reintentos de conexión a Redis se agotan, y ese traceback (que el
+  `excepthook` default de Python imprime directo a `stderr`) lleva el mensaje de redis-py con host y
+  puerto. `ajustes.py` reemplaza `sys.excepthook` por una función que, si el tipo de la excepción es
+  de uno de los cuatro paquetes de D13 (`redis`, `arq`, `psycopg`, `sqlalchemy`, por el nombre del
+  módulo) y no es `KeyboardInterrupt`, la logea como cualquier otra (vía el formatter, pasando la
+  excepción misma como `msg`): sólo `tipo_error` y `traza`, nunca su mensaje. Cualquier otra
+  excepción (en particular las propias, que ya nombran la variable o el campo sin su valor) sigue el
+  camino normal a `stderr` sin pasar por acá. **Límite declarado (F12b)**: esto cubre la excepción tal
+  como la lanza el paquete; una excepción de terceros envuelta por otra capa (encadenada con `from`,
+  un `ExceptionGroup`, o un `OSError` genérico que no pertenece a ninguno de los cuatro módulos) no
+  entra en el chequeo por nombre de módulo y sigue el camino normal. Sin un camino real hoy que
+  produzca ese envoltorio; deuda para el cambio 7 si aparece uno.
 
 ### D3 · Reintentos e idempotencia
 
@@ -163,6 +187,18 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
    clave. No se resuelve acá.
 - La clave la arma quien encola, a partir de datos estables de la operación (nunca la hora).
 - `trabajos_hechos` no lleva `tenant_id`: el cambio 2 decide (está en "Fuera del cambio").
+- **Otro límite declarado (F2c, vuelta 3)**: `asyncio.wait_for` (D18, `COTA_OPERACION_S`) corta la
+  espera del event loop, nunca el hilo que corre la operación de base; si la base queda congelada más
+  tiempo que todos los reintentos juntos (ARQ ya marcó el trabajo `tarea_agotada`), el hilo del
+  primer intento, que sigue vivo en segundo plano, puede confirmar su `INSERT` en `trabajos_hechos`
+  después de ese agotamiento (ver la spec de `cola-de-trabajos`, "Límite conocido"). Acá no importa
+  porque el efecto de `tarea_de_prueba` es vacío. **Este patrón no se copia para una tarea con efecto
+  real** (un email, un movimiento de plata, una reserva confirmada): ahí una confirmación tardía
+  después de `tarea_agotada` es un efecto que nadie espera y que nadie va a reintentar ni revisar. El
+  cambio 7, antes de registrar la primera tarea real del worker, tiene que resolverlo del lado de la
+  base (un corte de servidor: `statement_timeout`/`lock_timeout` de PostgreSQL o el `connect_args` de
+  libpq que corresponda) más una cota propia por tarea; acotar sólo la espera del lado del cliente no
+  alcanza.
 
 **Tarea de prueba** `tarea_de_prueba(ctx, *, request_id, clave, fallar_veces)`: valida
 `0 <= fallar_veces <= 10` al encolar (en el modelo de argumentos) y otra vez al ejecutar; si
@@ -185,6 +221,10 @@ código o desde `python -m proptech_worker.prueba encolar` dentro del contenedor
 - Código síncrono de la API (endpoints `def`) encola con `anyio.from_thread.run(cola.encolar, ...)`.
 - `/api/salud` suma un verificador de cola inyectable: cliente síncrono de redis-py con
   `socket_connect_timeout=2` y `socket_timeout=2`, `PING`, y cualquier excepción es `sin_conexion`.
+  **El verificador crea un cliente de Redis nuevo por pedido** (`obtener_verificador_de_cola`), a
+  diferencia del engine único de base de D18: un cliente sincrónico de redis-py no mantiene un pool
+  caro de conexiones como SQLAlchemy, así que no hace falta guardarlo en el lifespan; cada pedido abre
+  y cierra el suyo.
 - Los tres estados se prueban contra el contenedor real (D12): **apagado** (contenedor detenido),
   **que no responde** (contenedor pausado con la API de Docker) y **lento** (`DEBUG SLEEP` con
   `--enable-debug-command yes`, sólo en el contenedor de test: por debajo del límite completa, por
@@ -195,8 +235,35 @@ código o desde `python -m proptech_worker.prueba encolar` dentro del contenedor
 - **Biblioteca estándar `logging`** con un `Formatter` propio en `proptech_core/compartido/logs.py`,
   sin dependencias. `configurar_logs(servicio)` reemplaza los handlers de la raíz, `uvicorn`,
   `uvicorn.error` y `arq` por uno a `stdout` con ese formatter. Se llama en `crear_app()` (uvicorn ya
-  configuró los suyos antes de importar la app; se pisan) y en el `on_startup` del worker. Uvicorn
-  corre con `--no-access-log`: su log de acceso incluye la query string.
+  configuró los suyos antes de importar la app; se pisan) y al importar `proptech_worker.ajustes`;
+  además, el `on_startup` del worker la vuelve a llamar, pero **condicional**: sólo si el logger `arq`
+  ya no tiene el handler JSON propio. **Por qué puede perderlo**: el CLI de ARQ (`arq
+  proptech_worker.ajustes.AjustesDelWorker`, el comando del servicio `worker`) llama siempre
+  `logging.config.dictConfig(default_log_config(...))` al arrancar, después de importar este módulo y
+  antes de que `Worker.main()` corra `on_startup`; con la config por default de ARQ eso pisaría el
+  handler JSON por uno de texto plano. D2 ya blinda ese camino pisando
+  `arq.cli.default_log_config` para que devuelva la misma config JSON (ver abajo), así que en el CLI
+  real el handler nunca se pierde; `on_startup` reconfigura igual, por si algo más (un test en proceso
+  que no pasa por el CLI, u otra reconfiguración) lo hubiera pisado antes. Reconfigurar siempre, sin la
+  condición, rompería a los tests que capturan los logs redirigiendo el `.stream` del handler ya
+  puesto, porque `configurar_logs` nunca reutiliza el objeto del handler viejo. Uvicorn corre con
+  `--no-access-log`: su log de acceso incluye la query string.
+  **Dos líneas fijas de ARQ sin pasar por este diseño**: `Worker.main()` loguea "Starting worker for %d
+  functions: %s" y las estadísticas de la conexión a Redis (versión, memoria, clientes, claves) **antes**
+  de llamar a `on_startup`; ninguna de las dos lleva datos de un trabajo ni de un pedido, sólo el
+  conteo de funciones registradas y el estado de Redis, así que se aceptan tal cual (spec de
+  `trazabilidad-y-logs`, "Excepción conocida").
+  **Evento fijo `excepcion_como_mensaje`**: cuando `record.msg` es la excepción misma, no una
+  plantilla (lo hacen `uvicorn/server.py` y `config.py` con `logger.error(exc)`, F7b), el formatter no
+  puede usarla como `evento` porque su `str()` es el mensaje de la excepción; en vez de eso usa el
+  evento fijo `excepcion_como_mensaje` y saca `tipo_error`/`traza` de la excepción misma, nunca de su
+  texto (D13). **Traceback crudo**: cuando el mensaje ya es un traceback formateado como texto (lo hace
+  Starlette en `lifespan.startup.failed`, que uvicorn logea sin `exc_info`), el formatter lo reconoce
+  por la marca `"Traceback (most recent call last):"`, descarta el mensaje entero (evento fijo
+  `traceback_crudo_descartado`) y reconstruye `tipo_error` buscando, de atrás para adelante, la primera
+  línea que `fullmatch`ea un nombre de excepción (`[A-Za-z_][\w.]*` terminado en `Error`, `Exception`,
+  `Warning`, `Exit` o `Interrupt`, con `re.ASCII`): una línea de continuación del mensaje (con espacios,
+  guiones, sin forma de identificador) nunca matchea esa expresión, aunque tenga dos puntos.
 - **Una línea JSON por evento** (`json.dumps(..., ensure_ascii=False)`; los saltos de línea quedan
   escapados), claves en este orden:
 
@@ -280,11 +347,20 @@ navegador ──► Caddy ─────────────► API ──�
   el cliente) y `header X-Request-ID {http.request.uuid}` para devolverlo. **Por qué pisar**: un
   valor elegido por el cliente sirve para ensuciar los logs o hacerse pasar por otro pedido; el que
   necesite correlacionar del lado del cliente lee el de la respuesta.
-- **Web**: `web/src/lib/seguimiento.ts` exporta `requestIdDe(cabeceras: Headers): string` (devuelve
-  el `x-request-id` entrante si es UUID válido, si no `crypto.randomUUID()`) y
-  `cabecerasHaciaLaApi(cabeceras)`. La ruta `web/src/app/salud-web/route.ts`
+- **Web**: `web/src/lib/seguimiento.ts` exporta `validarRequestId(valor: string): string | null`
+  (la misma expresión de más arriba, anclada) y `requestIdDe(cabeceras: Headers): string` (devuelve
+  el `x-request-id` entrante si `validarRequestId` lo acepta, si no `crypto.randomUUID()`) y
+  `cabecerasHaciaLaApi(cabeceras)`. **`validarRequestId` queda exportado** (no sólo usado adentro de
+  `requestIdDe`) porque el test de la tabla de casos compartida (3.1, 6.1) necesita probar el
+  validador solo, con cada caso de `request-id.json`, sin pasar por `requestIdDe` ni por sus efectos
+  (generar un UUID nuevo). La ruta `web/src/app/salud-web/route.ts`
   (`export const dynamic = "force-dynamic"`) hace `fetch` a `${PROPTECH_URL_API_INTERNA}/api/salud`
-  con esa cabecera y `AbortSignal.timeout(2000)`, y responde
+  con esa cabecera y un límite de 2 segundos (`LIMITE_MS`) implementado con `AbortController` propio y
+  `setTimeout(() => controlador.abort(), LIMITE_MS)`, **no** `AbortSignal.timeout(2000)`: Vitest usa
+  temporizadores falsos en los tests de esta ruta y `AbortSignal.timeout` arma su propio temporizador
+  interno por fuera de los que Vitest controla, así que nunca dispara bajo `vi.useFakeTimers()` y el
+  test quedaría esperando un abort real. Con `setTimeout` propio, el test avanza el reloj falso y lo
+  ve disparar. Responde
   `{"web": "ok", "api": "ok" | "degradado" | "sin_conexion" | "sin_configurar"}` con 200 si la API dio
   200 y 503 si no. **Contrato** (spec "Contrato de respuesta de /salud-web"): exactamente esos dos
   campos, `Content-Type: application/json`, `api` derivado sólo del código de estado (200 es `ok`,
@@ -295,6 +371,20 @@ navegador ──► Caddy ─────────────► API ──�
   secreto). Es la única llamada de la web a la API en este cambio; la usan las páginas reales desde el
   cambio 2. **Descartado** mostrar el estado en la página: es interfaz y pediría pasar por impeccable
   por una línea de texto.
+- **La plantilla de la ruta (`_ruta_de`, `proptech_api/seguimiento.py`)**: `scope["route"].path_format`
+  sólo trae la ruta relativa al router que la declara; con `include_router(prefix=...)` (el patrón de
+  "routers por dominio") FastAPI 0.143 resuelve el prefijo de forma perezosa y no lo funde ahí. La ruta
+  ya fundida con el prefijo vive en
+  `scope["fastapi"]["effective_route_context"].path_format`, que FastAPI calcula una vez por
+  combinación de router y cachea en esa clave; si no está (una ruta declarada directo en `app`, sin
+  router con prefijo), `path_format` del route ya trae el camino completo y alcanza como respaldo.
+  **Es un atributo interno de FastAPI**, no de su API pública: el test que lo ejerce queda documentado
+  como riesgo de romperse al subir de versión (ver Risks); por eso FastAPI está fijado `<0.144` y un
+  test dedicado lo detecta si cambia. **El prefijo `/api` se movió a `salud.router`**
+  (`APIRouter(prefix="/api")`, en vez de pasarlo en `app.include_router(salud.router, prefix="/api")`
+  como antes, y sin el `router_api` intermedio que existía para agrupar el prefijo): fijado en el
+  router mismo, `path_format` ya lo trae desde que la ruta se define, sin depender de en qué nivel de
+  `include_router` quedó el prefijo.
 - **API**: middleware **ASGI puro** (no `BaseHTTPMiddleware`) en `proptech_api/seguimiento.py`: lee
   `X-Request-ID`, valida o genera, fija la `ContextVar` `request_id_actual` (en
   `proptech_core/compartido/seguimiento.py`), agrega el encabezado a la respuesta, loguea
@@ -384,6 +474,26 @@ navegador ──► Caddy ─────────────► API ──�
   `env.py` de Alembic) y `conexion_redis.py` (D4). `Configuracion` es una clase común: el test cubre
   `repr`, `str` y `vars()`. Un test recorre el código fuente y exige que no aparezca en otro
   lado. Los validadores de vacía y en blanco se mantienen sobre el valor secreto.
+  **M12 a medias**: `url_sqlalchemy()` devuelve un `str` con la contraseña ya interpolada (lo que
+  usan el engine y `env.py` de Alembic para construirlo), no el objeto `sqlalchemy.engine.URL`
+  renderizado sólo al convertirlo a texto en el borde, que era el pedido original de Alberto.
+  **Alternativa elegida y qué se descartó**: se eligió el `str` porque Alembic (`env.py`) espera
+  ese tipo en `config.set_main_option("sqlalchemy.url", ...)` y cambiar a un objeto `URL` ahí exige
+  tocar también cómo Alembic arma su engine; se descartó por ahora armar el objeto `URL` y
+  renderizarlo recién en el borde (lo que cerraría el pedido entero) porque el impacto de dejarlo así
+  es bajo (la contraseña ya no vive en el `repr`/`str` de `Configuracion`, que era el riesgo que M12
+  buscaba cerrar) y tocar Alembic no estaba en el alcance de este cambio. Deuda para el cambio 2.
+- **`COTA_OPERACION_S = 1.5` (D3, F2b y F2c)**: cota propia de la operación de base que corre en el
+  hilo de `tarea_de_prueba` (`asyncio.wait_for(asyncio.to_thread(...), timeout=COTA_OPERACION_S)`),
+  menor que cualquier `job_timeout` configurado (120 s en producción, D2) con margen; nace **adentro**
+  de `reintentable` para que un `TimeoutError` acá se reintente o agote con su propio evento, en vez
+  de que ARQ dé el trabajo por fallado desde afuera cuando vence `job_timeout`.
+  **Advertencia declarada**: esta cota, fija y genérica, no sirve para una tarea larga (un PDF, una
+  llamada a un proveedor externo): el cambio 7, o quien agregue la primera tarea cuya operación de
+  base sea más lenta que un `INSERT` simple, tiene que definir una cota propia por tarea, no reusar
+  esta constante. Además, `asyncio.wait_for` corta la espera del event loop, nunca el hilo que sigue
+  corriendo en segundo plano (F2c, ver la spec de `cola-de-trabajos`, "Límite conocido"): por sí sola
+  no alcanza para una tarea con efecto real, que necesita además un corte del lado de la base.
 - **Un único engine por proceso (M13)**: hoy `/api/salud` crea y descarta un engine en cada pedido. Se
   crea uno solo en el lifespan de `crear_app()`, se guarda en `app.state` y se descarta al cerrar; el
   verificador de base lo recibe inyectado. Una verificación fallida loguea `salud_degradada` con
@@ -402,6 +512,15 @@ navegador ──► Caddy ─────────────► API ──�
   obligatoria a `.env`; cuando vienen, se validan con las cinco formas de L-002. Los usan el engine de la
   API y el del worker (gemelos, L-009). **Descartado** ponerlos en `config/parametros.yaml`: ese
   archivo es de parámetros del negocio (D-042), no de conexión.
+- **Rechazo estricto de puertos (L-008)**: `_entero_ascii_estricto` (`configuracion.py`) exige
+  `fullmatch` contra `[0-9]+` con `re.ASCII` antes de que pydantic convierta el valor a entero. Se
+  aplica a los `DB_POOL_*` nuevos de este punto y, de paso, a `POSTGRES_PORT` y `REDIS_PORT`, que ya
+  existían desde 1b: pydantic en modo laxo aceptaba `'5\n'`, `' 5'`, `'5.0'` o `'5_0'` (el separador de
+  miles de `int()`) y los convertía sin avisar a un entero distinto del que parecía. **Cambia el
+  comportamiento del 1b**: un valor de puerto que antes pasaba laxo ahora se rechaza. Aceptado y
+  anotado como tal, en línea con L-008 (toda entrada externa valida con coincidencia completa y sólo
+  ASCII): es la misma regla que ya regía para el resto de los enteros de configuración, aplicada
+  también a los dos puertos que quedaron afuera cuando se escribió 1b.
 
 ## Risks / Trade-offs
 

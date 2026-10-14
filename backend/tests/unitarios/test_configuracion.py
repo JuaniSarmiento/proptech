@@ -182,28 +182,6 @@ def test_multiples_variables_rotas_a_la_vez_se_nombran_todas(
     assert "POSTGRES_USER" in mensaje
 
 
-def test_puerto_con_espacios_alrededor_se_acepta_recortado(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
-
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": " 5432 "})
-
-    configuracion = Configuracion()
-
-    assert configuracion.postgres_port == 5432
-
-
-def test_puerto_con_signo_mas_se_acepta(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
-
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": "+5432"})
-
-    configuracion = Configuracion()
-
-    assert configuracion.postgres_port == 5432
-
-
 def test_puerto_con_ceros_a_la_izquierda_se_acepta(monkeypatch: pytest.MonkeyPatch) -> None:
     from proptech_core.compartido.configuracion import Configuracion
 
@@ -214,15 +192,26 @@ def test_puerto_con_ceros_a_la_izquierda_se_acepta(monkeypatch: pytest.MonkeyPat
     assert configuracion.postgres_port == 5432
 
 
-def test_puerto_como_string_de_float_exacto_se_acepta(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Regresión: pydantic acepta "5432.0" para un campo int porque el float es exacto."""
-    from proptech_core.compartido.configuracion import Configuracion
+@pytest.mark.parametrize(
+    "valor_laxo",
+    ["5432\n", " 5432", "5_432", "+5432", "5432.0"],
+    ids=["salto_de_linea", "espacio", "guion_bajo", "signo_mas", "punto_flotante"],
+)
+def test_puerto_laxo_se_rechaza(monkeypatch: pytest.MonkeyPatch, valor_laxo: str) -> None:
+    """Vuelta 3 (F10b; L-008, L-009, gemelo de `test_redis_port_laxo_se_rechaza`):
+    `POSTGRES_PORT` vive en `_ConfiguracionBaseDeDatosBase` (la que también usa
+    Alembic) y no tenía el validador de enteros ASCII estrictos que ya tienen
+    `REDIS_PORT` y los `DB_POOL_*`; estas formas pasaban por `int()`/pydantic
+    laxo sin avisar (hasta la vuelta 2 este mismo archivo las documentaba como
+    "se_acepta")."""
+    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": "5432.0"})
+    _set_base(monkeypatch, overrides={"POSTGRES_PORT": valor_laxo})
 
-    configuracion = Configuracion()
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        Configuracion()
 
-    assert configuracion.postgres_port == 5432
+    assert "POSTGRES_PORT" in str(exc_info.value)
 
 
 def test_puerto_vacio_se_rechaza_y_no_usa_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -375,6 +364,25 @@ def test_redis_port_fuera_de_rango_se_nombra(monkeypatch: pytest.MonkeyPatch, pu
     assert "REDIS_PORT" in str(exc_info.value)
 
 
+@pytest.mark.parametrize(
+    "valor_laxo",
+    ["5\n", " 5", "\t5", "5.0", "5_0"],
+    ids=["salto_de_linea", "espacio", "tabulacion", "punto_flotante", "guion_bajo"],
+)
+def test_redis_port_laxo_se_rechaza(monkeypatch: pytest.MonkeyPatch, valor_laxo: str) -> None:
+    """Ataque del rompedor (vuelta 2, F10; L-008, gemelo de DB_POOL_*): estas
+    formas pasan por `int()`/pydantic laxo sin avisar; `'5_0'` ni siquiera da
+    5: Python lo lee como el entero 50."""
+    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
+
+    monkeypatch.setenv("REDIS_PORT", valor_laxo)
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        Configuracion()
+
+    assert "REDIS_PORT" in str(exc_info.value)
+
+
 def test_proptech_parametros_archivo_inexistente_se_nombra(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -421,7 +429,7 @@ def test_configuracion_expone_valores_de_redis_y_parametros(
 
     assert configuracion.redis_host == "redis"
     assert configuracion.redis_port == 6380
-    assert configuracion.redis_password == "clave"
+    assert configuracion.redis_password.get_secret_value() == "clave"
     assert configuracion.proptech_parametros == str(ruta)
 
 
@@ -445,7 +453,7 @@ def test_configuracion_base_de_datos_no_necesita_redis_ni_parametros(
     assert configuracion.postgres_host == "db"
     assert configuracion.postgres_port == 5432
     assert configuracion.postgres_user == "proptech"
-    assert configuracion.postgres_password == "pass"
+    assert configuracion.postgres_password.get_secret_value() == "pass"
     assert configuracion.postgres_db == "proptech"
 
 
