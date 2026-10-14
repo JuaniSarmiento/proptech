@@ -6,7 +6,8 @@ El CI SHALL levantar el stack completo con Compose y verificar que `GET /api/sal
 proxy responde 200 con la base y la cola conectadas, que el único servicio con puertos publicados es
 el proxy, que el worker está saludable y completa un trabajo con un reintento, que el `request_id`
 asignado por el proxy aparece en el log de la API tanto en un pedido directo como en uno que pasa por
-la web, que un backup se generó solo, que ese backup se restaura en una base aparte y que sobrevive a
+la web, que con Redis pausado `/salud-web` informa la API como degradada y no como sin conexión, que
+un backup se generó solo, que ese backup se restaura en una base aparte y que sobrevive a
 `docker compose down -v`. Todo comando destructivo del humo MUST apuntar al proyecto de Compose
 `proptech` o a bases con el prefijo `proptech_`.
 
@@ -25,9 +26,10 @@ la web, que un backup se generó solo, que ese backup se restaura en una base ap
 
 #### Scenario: Redis pausado en el humo
 
-- **WHEN** el humo pausa Redis y consulta `GET /api/salud` a través del proxy
-- **THEN** la respuesta es 503 con `"cola": "sin_conexion"` en menos de 4 segundos, y Redis se
-  despausa aunque la verificación falle
+- **WHEN** el humo pausa Redis y consulta `GET /api/salud` y `GET /salud-web` a través del proxy
+- **THEN** `/api/salud` responde 503 con `"cola": "sin_conexion"` en menos de 4 segundos,
+  `/salud-web` responde 503 con `{"web": "ok", "api": "degradado"}` (la API contestó dentro del límite
+  de la web, no `"sin_conexion"`), y Redis se despausa aunque la verificación falle
 
 ## ADDED Requirements
 
