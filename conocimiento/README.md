@@ -13,7 +13,8 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
   (09 y 11/10/2026); el próximo es el 1c `cola-logs-y-respaldos`. Ver `roadmap.md`.
 - **El MVP arranca por edificios**; los barrios privados son la fase siguiente.
 - **Preguntas abiertas**: el edificio piloto, el precio, el modo de redondeo y el cambio de titular,
-  entre otras. Ver el final de `decisiones.md`.
+  entre otras. Ver el final de `decisiones.md`; las que dependen de Alberto, con contexto y propuesta,
+  están en [`preguntas-para-alberto.md`](preguntas-para-alberto.md).
 
 ## Cómo leerla
 
@@ -28,6 +29,7 @@ contradice estos archivos, el error está en el código o hay que tomar una deci
 | 7 | [`forma-de-trabajo.md`](forma-de-trabajo.md) | Cómo se construye cada cambio: orquestador, constructor, rompedor y auditor | Se reescribe |
 | 8 | [`motor-de-reglas.md`](motor-de-reglas.md) | Cómo entra el reglamento de cada edificio: el puerto de políticas, GoRules ZEN con su editor visual y el validador propio | Se reescribe |
 | 9 | [`lecciones.md`](lecciones.md) | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen el constructor y el rompedor antes de empezar | **Sólo se agrega** |
+| 10 | [`preguntas-para-alberto.md`](preguntas-para-alberto.md) | Las preguntas abiertas que sólo Alberto puede contestar, por urgencia, con opciones, propuesta y hoja de respuesta | Se reescribe: cada respuesta sale de acá y entra como decisión |
 
 **Por qué dos formas de actualizar**: lo que describe cómo es el sistema hoy se reescribe para que
 nunca convivan dos versiones; lo que cuenta cómo llegamos acá sólo se agrega, para no perder el
