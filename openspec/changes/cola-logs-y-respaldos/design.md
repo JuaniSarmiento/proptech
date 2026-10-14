@@ -92,7 +92,7 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
 
 - Servicio `worker` con `image: proptech-backend:local` (la misma que construye `api`) y
   `command: ["arq", "proptech_worker.ajustes.AjustesDelWorker"]`. Depende de `db` y `redis`
-  saludables y de `migraciones` completado. Redes: sólo `interna`. Healthcheck:
+  saludables y de `migraciones` completado. Redes: `interna` y `salida_worker` (ver abajo, M18). Healthcheck:
   `["CMD", "arq", "--check", "proptech_worker.ajustes.AjustesDelWorker"]` con
   `health_check_interval = 30` (el default de ARQ es una hora y el chequeo nunca fallaría a tiempo).
   `stop_grace_period: 30s`.
@@ -179,6 +179,9 @@ código o desde `python -m proptech_worker.prueba encolar` dentro del contenedor
   `asyncio.timeout(2.5)`. Ante timeout o error de conexión descarta el pool (el siguiente intento
   reconecta) y levanta `ColaNoDisponible`. Así la API **arranca aunque Redis esté caído**, como ya
   arrancaba con la base caída, y `/api/salud` lo informa.
+- **Conexión a Redis en un solo módulo**: `proptech_core/compartido/conexion_redis.py` es el único que lee
+  `redis_password` con `get_secret_value()` (D18). De ahí toman su conexión el adaptador ARQ, el
+  verificador de cola de `/api/salud` y los `RedisSettings` del worker.
 - Código síncrono de la API (endpoints `def`) encola con `anyio.from_thread.run(cola.encolar, ...)`.
 - `/api/salud` suma un verificador de cola inyectable: cliente síncrono de redis-py con
   `socket_connect_timeout=2` y `socket_timeout=2`, `PING`, y cualquier excepción es `sin_conexion`.
@@ -376,9 +379,10 @@ navegador ──► Caddy ─────────────► API ──�
 ### D18 · Contraseñas como secreto y un único engine por proceso (M12, M13, M14)
 
 - **`SecretStr` (M12)**: `postgres_password` y `redis_password` pasan a `SecretStr` en
-  `Configuracion`. `repr`, `str` y `model_dump` muestran `**********`. El valor se lee con
-  `get_secret_value()` sólo en el borde: `url_sqlalchemy()` al crear el engine (y en `env.py` de
-  Alembic) y el adaptador de Redis. Un test recorre el código fuente y exige que no aparezca en otro
+  `Configuracion`. `repr` y `str` muestran `**********`. El valor se lee con
+  `get_secret_value()` sólo en el borde: `url_sqlalchemy()` en `configuracion.py` (que usan el engine y
+  `env.py` de Alembic) y `conexion_redis.py` (D4). `Configuracion` es una clase común: el test cubre
+  `repr`, `str` y `vars()`. Un test recorre el código fuente y exige que no aparezca en otro
   lado. Los validadores de vacía y en blanco se mantienen sobre el valor secreto.
 - **Un único engine por proceso (M13)**: hoy `/api/salud` crea y descarta un engine en cada pedido. Se
   crea uno solo en el lifespan de `crear_app()`, se guarda en `app.state` y se descarta al cerrar; el
@@ -422,8 +426,7 @@ navegador ──► Caddy ─────────────► API ──�
   lecciones L-007 a L-009 sumadas. La tercera auditoría del socio (13/10) sumó seis: la línea de base
   sobre un clon con historial (1.2), PyYAML (1.3), las contraseñas como secreto (3.5), el engine único
   (3.6), `Dinero` copiable (4.3) y los logs de ARQ (5.7); el resto de sus pedidos entró como casos de
-  tareas existentes. La nueva cifra necesita su propia decisión en `conocimiento/decisiones.md` (D-088
-  dice 29). El próximo corte natural sigue siendo sacar la web y el proxy (sección 6) a otro cambio; no
+  tareas existentes. La cifra quedó registrada en D-090 (14/10), que corrige a D-088. El próximo corte natural sigue siendo sacar la web y el proxy (sección 6) a otro cambio; no
   se hace sin decisión de Juani.
 - [El 1c se archiva sin el humo ampliado] → Los escenarios de punta a punta por el proxy (el
   `request_id` elegido por el cliente, de la web a la API, el worker con un reintento dentro del stack,
@@ -444,5 +447,4 @@ navegador ──► Caddy ─────────────► API ──�
 ## Open Questions
 
 Ninguna que cambie las specs o las tareas. Pendiente de la etapa de despliegue: logs estructurados de
-la web y de Caddy (los de error de Caddy ya se filtran, D7). Pendiente de registrar en
-`conocimiento/decisiones.md`: la cifra de 35 tareas (ver Risks).
+la web y de Caddy (los de error de Caddy ya se filtran, D7). La cifra de 35 tareas quedó registrada en D-090.

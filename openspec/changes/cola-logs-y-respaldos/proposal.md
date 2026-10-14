@@ -28,7 +28,7 @@ orquestador le muestra las decisiones no obvias que aparezcan al construir.
 
 **Tamaño: 35 tareas** (`tasks.md`; la 1.1 ya está hecha). D-088 registró 29 como excepción; la tercera
 auditoría del socio (13/10) sumó seis tareas y varios casos a tareas existentes (ver `design.md`,
-Risks). La cifra nueva necesita su decisión en `conocimiento/decisiones.md`.
+Risks). La cifra quedó registrada en D-090 (14/10), que corrige a D-088.
 
 ## What Changes
 
@@ -102,7 +102,7 @@ Se leyó `conocimiento/lecciones.md` entero (L-001 a L-009). Cómo las cubre cad
 | L-006 · lo destructivo apunta a `proptech` | 3.6, 4.5 y 5.8: los tests que detienen o pausan usan contenedores propios del test, nunca el de sesión ni el de Compose |
 | L-007 · el error de una librería también es una salida | 2.2, 3.3, 3.5, 3.6, 4.4, 4.5, 4.6, 5.3, 5.6, 5.7, 5.9, 6.3, 6.4 |
 | L-008 · `fullmatch` y sólo ASCII | 3.1 y 6.1 (validación del `request_id` con su tabla de casos), 4.3 (`Dinero` reconstruido desde su texto), 5.4 (`fallar_veces` entero estricto) |
-| L-009 · el arreglo de un módulo se prueba en su gemelo | 3.1 y 6.1 (una tabla para Python y TypeScript), 4.6 (los dos verificadores de salud), 5.9 (los cuatro tests de arranque de la API, replicados en el worker), 3.6 (el pool de la API y el del worker con los mismos parámetros) |
+| L-009 · el arreglo de un módulo se prueba en su gemelo | 3.1 y 6.1 (una tabla para Python y TypeScript), 4.6 (los dos verificadores de salud), 5.9 (los cuatro tests de arranque de la API, replicados en el worker), 3.6 y 5.5 (el pool de la API y el del worker con los mismos parámetros) |
 
 ## Fuera del cambio
 
