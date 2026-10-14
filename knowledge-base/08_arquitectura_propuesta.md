@@ -17,7 +17,9 @@ proptech/
 ├── knowledge-base/           # esta base (Active Stack v1, D-093)
 ├── openspec/                 # cambios del ciclo OPSX
 ├── config/
-│   └── parametros.yaml       # valores con que arranca cada edificio nuevo (D-042)
+│   ├── parametros.yaml       # valores con que arranca cada edificio nuevo (D-042)
+│   ├── semilla/              # edificio-ejemplo.yaml (D-053)
+│   └── contratos/            # request-id.json (contrato de `request_id`, L-008)
 ├── web/                      # Next.js (App Router), áreas (admin) (consejo) (vecino)
 ├── backend/
 │   └── src/
@@ -77,10 +79,10 @@ repositorio es público (`.env` está en `.gitignore`; `infra/.env.example` sól
 | `REDIS_PORT` | API, worker | Opcional (default `6379`) | 6379 | Puerto de Redis |
 | `REDIS_PASSWORD` | `redis`, API, worker | Obligatoria (`:?falta REDIS_PASSWORD`) | sin default | Contraseña de Redis (`SecretStr`; `redis-server` arranca con `--requirepass`) |
 | `PROPTECH_PARAMETROS` | API, worker | Obligatoria (el archivo tiene que existir y ser legible) | Compose la fija en `/app/config/parametros.yaml` | Ruta al archivo de parámetros del sistema (D-042) |
-| `FORWARDED_ALLOW_IPS` | API (uvicorn, `--proxy-headers`) | Fijada por Compose, no por `.env` | `172.28.0.254` (la IP fija de `caddy` en la red `interna`, D17) | Única IP de la que la API acepta encabezados `X-Forwarded-*` |
+| `FORWARDED_ALLOW_IPS` | API (uvicorn, `--proxy-headers`) | Fijada por Compose, no por `.env` | `172.28.0.254` (la IP fija de `caddy` en la red `interna`, D17 del design del 1c) | Única IP de la que la API acepta encabezados `X-Forwarded-*` |
 | `PROPTECH_SITIO` | `caddy` | Obligatoria (`:?falta PROPTECH_SITIO`) | sin default | Dominio o URL que sirve Caddy (`http://localhost` en local; el dominio real en producción, con HTTPS automático) |
 | `PROPTECH_URL_API_INTERNA` | `web` | Fijada por Compose | `http://api:8000` | URL interna con la que el servidor de Next llama a la API; nunca la ve el navegador (D-036) |
-| `DB_POOL_PRE_PING` | API, worker | Opcional | `true` | Verifica la conexión del pool antes de usarla (D18, M14) |
+| `DB_POOL_PRE_PING` | API, worker | Opcional | `true` | Verifica la conexión del pool antes de usarla (D18 del design del 1c, M14 de la auditoría de Alberto del 13/10) |
 | `DB_POOL_SIZE` | API, worker | Opcional (1 a 50) | 5 | Tamaño del pool del engine de SQLAlchemy |
 | `DB_POOL_RECYCLE_S` | API, worker | Opcional (60 a 86400) | 1800 | Segundos antes de reciclar una conexión del pool |
 | `DB_POOL_TIMEOUT_S` | API, worker | Opcional (1 a 60) | 5 | Segundos de espera por una conexión libre del pool |

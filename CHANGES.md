@@ -165,7 +165,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   con migración vacía, esqueleto FastAPI con `/api/salud`, esqueleto Next.js, CI con tests y linter,
   `.env.example` sin secretos, sólo Caddy con puertos públicos
 - **Dependencias**: ninguna
-- **Governance**: BAJO
+- **Governance**: no declarado (archivado); su propuesta no declara nivel de gobernanza
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §1a
   - `knowledge-base/02_descripcion_general.md` §Arquitectura general
@@ -179,7 +179,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   que dependen sólo de PostgreSQL, tipo `Dinero` sobre `Decimal`, `config/parametros.yaml` con su
   lector validado, edificio de ejemplo validado
 - **Dependencias**: C-01
-- **Governance**: BAJO
+- **Governance**: no declarado (archivado); su propuesta no declara nivel de gobernanza
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §1b
   - `knowledge-base/09_decisiones_y_supuestos.md` (D-042, D-046, D-052, D-053)
@@ -285,7 +285,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura
 - **Dependencias**: C-06, C-07
-- **Governance**: MEDIO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §6
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Gastos y cargos
@@ -312,8 +312,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ## FASE 4 — M2 Cobra
 
-> Los changes C-11 y C-19 pueden proponerse en paralelo una vez cerrado C-10. C-12, C-13 y C-14
-> pueden proponerse en paralelo una vez cerrado C-11.
+> C-11 y C-19 podrían proponerse en paralelo una vez cerrado C-10, y C-12, C-13 y C-14 una vez cerrado
+> C-11, si se resuelve P47 (ramas o turnos con dos desarrolladores). Hoy se trabaja de a un cambio por
+> vez (`knowledge-base/14_forma_de_trabajo.md`).
 
 ### [C-11] `pagos-informados` · 8
 - **Estado**: `[ ]` pendiente (CRITICAL)
@@ -335,7 +336,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: módulo `politicas`, puerto de políticas, adaptador GoRules ZEN, validador en sus dos
   momentos, reglas versionadas por edificio, editor jdm-editor en el frontend
 - **Dependencias**: C-10, C-11
-- **Governance**: BAJO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §6b
   - `knowledge-base/13_motor_de_reglas.md`
@@ -349,7 +350,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: subir extracto en CSV o Excel, adaptador por banco, marcar coincidencias, fondos
   pendientes de identificar, sugerencias de confianza alta por código de unidad o CBU histórico
 - **Dependencias**: C-11
-- **Governance**: MEDIO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §9
   - `knowledge-base/06_funcionalidades.md` §HU-A7
@@ -363,7 +364,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: listado por unidad desde las imputaciones, exportación a Excel, presentación del
   moroso crítico (sólo lectura, no escribe en la cuenta corriente)
 - **Dependencias**: C-11
-- **Governance**: BAJO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §10a
   - `knowledge-base/05_reglas_de_negocio.md` §R20
@@ -390,7 +391,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: todas las unidades de la persona juntas, deuda y vencimiento, expensa por ordinaria y
   extraordinaria con comparación contra el mes anterior, descarga de PDFs, app instalable
 - **Dependencias**: C-14
-- **Governance**: BAJO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §11
   - `knowledge-base/06_funcionalidades.md` §HU-V1 a HU-V5
@@ -415,7 +416,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: puerto de email, aviso de vencimiento y de mora con clave de idempotencia, aviso
   corrido a día hábil (propuesta), validación de contactos (propuesta)
 - **Dependencias**: C-11, C-15
-- **Governance**: BAJO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §13
   - `knowledge-base/06_funcionalidades.md` §HU-V6
@@ -431,7 +432,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: lectura del QR de ARCA, IA completa concepto/período/categoría/grupo, factura
   duplicada frenada, control de monto atípico (propuesta)
 - **Dependencias**: C-09, C-10
-- **Governance**: BAJO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §14
   - `knowledge-base/05_reglas_de_negocio.md` §R12, R23
@@ -445,7 +446,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: carga de los datos reales del piloto, un mes completo en paralelo, comparación al
   centavo, prueba de restauración de un backup, evidencia de aislamiento
 - **Dependencias**: C-12, C-13, C-17, C-18, C-19 (y todos los anteriores) + datos del edificio piloto (P1)
-- **Governance**: MEDIO
+- **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §15
   - `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida

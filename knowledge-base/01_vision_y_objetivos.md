@@ -1,6 +1,6 @@
 # Visión y Objetivos
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-092). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-094). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `05_reglas_de_negocio.md`; los términos, en `11_glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -47,7 +47,7 @@ el cierre da igual al centavo.
 - **Tipo de complejo**: edificios en propiedad horizontal (D-027). El modelo soporta barrios
   privados desde el día uno (estados de lote, cargos por estado), pero no se configuran ni se
   prueban en el MVP.
-- **Desarrollo**: Juani, como único desarrollador (D-022); desde la adopción de Active Stack v1
+- **Desarrollo**: Juani empezó como único desarrollador (D-022); desde la adopción de Active Stack v1
   (D-093), Alberto también construye cambios propios sobre este mismo repositorio con el ciclo OPSX.
 - **Piloto**: un edificio con contacto directo de Alberto (D-033). Mientras no estén sus datos se
   diseña con un edificio de ejemplo; M1 no se cumple sin datos reales.

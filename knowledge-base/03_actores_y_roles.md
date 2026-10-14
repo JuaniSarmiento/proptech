@@ -62,6 +62,9 @@ cada acción depende de P23.
 de P23 contradecería la regla central de este proyecto (D-089, base congelada, nada se decide sin su
 fuente).
 
+**R41 (propuesta)** ya propone que sólo el titular da de baja una deuda; queda a confirmar con P23,
+como el resto de la columna de acciones.
+
 ## Rutas públicas
 
 **Hoy**, antes del cambio 2 (que es quien construye el acceso), el sistema no tiene ninguna ruta de

@@ -98,7 +98,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   excepción usa su `__str__`); confianza baja en que valga la pena antes de ver un caso real en los
   logs del humo ampliado.
 - **Depende de**: 1c. **Habilita**: 2.
-- **Bloqueado por**: la aprobación escrita y fechada de uno de los dos socios en su propuesta (D-088 no la reemplaza).
+- **Bloqueado por**: la aprobación escrita y fechada de uno de los dos socios en su propuesta (D-094: la aprueba uno de los dos socios).
 - **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
   punto y coma, mayúsculas, salto de línea, más de 63 caracteres o igual a `POSTGRES_DB`); una
   retención que borre un archivo ajeno de la carpeta; un volcado que se cuelgue con la base pausada;
@@ -528,7 +528,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   proveedor en el edificio, para marcar para revisión una factura que la IA pudo leer mal (R23,
   propuesta: entra si se valida y se fija el umbral, ProTecc A2); las facturas se descargan con links firmados y con
   vencimiento (D-070); la lectura deja cada gasto en el estado que corresponde (sin IA o en revisión),
-  y los controles del cambio 7 lo toman sin cambios;
+  y los controles del cambio 7 lo toman sin cambios.
 - **Depende de**: 6 y 7 (controles y links firmados).
 - **Bloqueado por**: P12, P21 y la elección del proveedor de IA.
 - **Decidir en el design**: el proveedor de IA (puede ser el mismo del cambio 8).

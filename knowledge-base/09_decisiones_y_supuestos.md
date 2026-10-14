@@ -2,8 +2,8 @@
 
 Registro de cómo llegamos a lo que hay. **Sólo se agrega, nunca se borra**: si una decisión
 cambia, se escribe una nueva que la reemplaza y se marca la vieja como `reemplazada por D-0XX`.
-Lo vigente se refleja en `01_vision_y_objetivos.md`, `05_reglas_de_negocio.md` y
-`16_proyecto_final.md`.
+Lo vigente se refleja en el resto de los archivos que "se reescriben" (ver la tabla de
+`README.md`); acá sólo queda el porqué de cada uno.
 
 Formato: fecha · decisión · alternativa descartada · por qué · quién decidió.
 
@@ -244,7 +244,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cada change de OPSX (D-007).
 - **Quién**: Juani.
 
-## D-022 · Juani programa el MVP
+## D-022 · Juani programa el MVP · *corregida en parte por D-093*
 
 - **Fecha**: 08/10/2026
 - **Decisión**: el desarrollo del MVP lo hace Juani. El roadmap se planifica para un solo desarrollador.
@@ -546,7 +546,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   8. El PDF de la expensa cuenta como interfaz: pasa por la skill impeccable.
 - **Quién**: Claude, por delegación explícita de Juani.
 
-## D-048 · Forma de trabajo: orquestador y agentes en secuencia, aprueba el auditor · *corregida en parte por D-049*
+## D-048 · Forma de trabajo: orquestador y agentes en secuencia, aprueba el auditor · *corregida en parte por D-049 y D-093*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: Juani trabaja solo. Cada cambio sigue un ciclo secuencial que orquesta Claude:
@@ -561,7 +561,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   porque el desarrollo es de Juani.
 - **Quién**: Juani.
 
-## D-049 · Roadmap de 16 cambios y push al cerrar cada cambio · *corregida en parte por D-052 y D-077*
+## D-049 · Roadmap de 16 cambios y push al cerrar cada cambio · *corregida en parte por D-052, D-077 y D-094*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: el plan queda escrito en `roadmap.md`, con una ficha por cambio que sirve de entrada
@@ -1028,7 +1028,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   cuenta por administración?
 - **Quién**: Juani, a partir del análisis de contradicciones de Alberto (13/10).
 
-## D-077 · El cambio 10 se parte en 10a y 10b, y el cambio 5 pasa a pedir aprobación · *corregida en parte por D-087 y D-088*
+## D-077 · El cambio 10 se parte en 10a y 10b, y el cambio 5 pasa a pedir aprobación · *corregida en parte por D-087, D-088 y D-094*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:

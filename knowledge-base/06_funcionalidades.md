@@ -108,7 +108,7 @@ que se generen deudas.
   confirmar el pago, R37), y el total de la liquidación es la suma de todo eso.
 - Dada una preliquidación, cuando no la emito, entonces no se generó ninguna deuda.
 
-**Reglas relacionadas**: R07, R15, R22, R38 (R14, R37, propuestas).
+**Reglas relacionadas**: R07, R14, R15, R22 (R14 recurrente, R37 y R38: propuestas).
 
 ### HU-A5 · Emitir la liquidación
 

@@ -41,7 +41,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   curso y por la deuda anterior cuando una unidad se vende o cambia de titular (R32). Se responde con
   Alberto y un administrador. Detectado en la auditoría del 13/10.
 - [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
-  del piloto, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
+  del cambio 8, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
   del 13/10; no está confirmado con un abogado.
 - [ ] **P13 · Acceso de soporte a la cuenta de un cliente** (ProTecc 7.3 y arquitectura de Alberto):
   cuando alguien de PropTech necesite entrar a la cuenta de un administrador para ayudarlo, el acceso
@@ -141,8 +141,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P19**: el doble vencimiento, antes del cambio 3.
 - **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
 - **P22**: quién usa el editor de reglas, antes del 6b.
-- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4 (junto con
-  P10, P17, P19, P24 y P33, en una sola sesión).
+- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4, junto con
+  P10 y P17 en la misma sesión. P19, P24 y P33 son preguntas aparte: bloquean el cambio 3, se
+  responden antes.
 - **P12, P14 y P16**: la inscripción ante la AAIP (antes del 8), el plazo del libre deuda (antes del 10b)
   y la parte de las unidades del consorcio (antes del 3).
 - **P45 y P46**: validar la propuesta de valor con administradores (antes de M2) y los nombres propios

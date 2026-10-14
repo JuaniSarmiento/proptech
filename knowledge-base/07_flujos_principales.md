@@ -41,9 +41,9 @@ abierta condiciona un paso, el flujo lo marca en vez de inventar el comportamien
 
 - **Disparador**: el administrador sube la planilla del edificio real (unidades y, opcionalmente,
   saldos por período).
-- **Actor**: administrador titular (cambio crítico, D-077: pide su aprobación antes de codear porque
-  escribe en la cuenta corriente).
-- **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2).
+- **Actor**: administrador titular.
+- **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2). El cambio pide la aprobación escrita de uno de
+  los dos socios (D-077, D-094).
 - **Pasos**:
   1. El administrador sube el Excel con la hoja principal (piso, departamento, tipo, propietario,
      contacto, coeficiente, saldo inicial, interés ya devengado) y, si el edificio lo tiene, la hoja
@@ -196,8 +196,7 @@ sequenceDiagram
 ## Flujo 5 · Pago informado y confirmación
 
 - **Disparador**: el vecino transfiere y sube el comprobante, o el administrador lo carga por él.
-- **Actor**: vecino (sube) y administrador titular o colaborador (confirma; P23 define quién puede
-  revertir o reimputar).
+- **Actor**: vecino (sube) y administrador (quién puede confirmar, revertir o reimputar: P23).
 - **Cambio**: 8 `pagos-informados` (crítico).
 - **Pasos**:
   1. El vecino sube el comprobante (BNA+, Mercado Pago u otro); la IA precarga monto, fecha y número
@@ -281,9 +280,9 @@ sequenceDiagram
 
 - **Disparador**: un vecino discute un recargo (condonación); una deuda pasa a manos del abogado
   (gestión judicial); se vende una unidad y hace falta un certificado de deuda.
-- **Actor**: administrador titular (ciclo completo, con aprobación de uno de los dos socios antes de
-  codear, D-077).
-- **Cambio**: 10b `condonacion-judicial-y-libre-deuda` (propuestas R29 y R31; R21 vigente).
+- **Actor**: administrador titular (ciclo completo).
+- **Cambio**: 10b `condonacion-judicial-y-libre-deuda` (propuestas R29 y R31; R21 vigente). El cambio
+  pide la aprobación escrita de uno de los dos socios (D-077, D-094).
 - **Pasos · condonación (propuesta, R29)**:
   1. El administrador condona un recargo con un motivo obligatorio.
   2. El sistema registra un movimiento de **condonación de interés** (crédito) que neutraliza el

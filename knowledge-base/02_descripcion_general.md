@@ -35,14 +35,14 @@ e `infra/compose.yaml` al 14/10/2026 (cambios 1a a 1c archivados).
 | Frontend · tests | Vitest | 5.0.3 (con Vite fijado en 7.3.7, D-051) | `web/package.json` |
 | Infraestructura · orquestación | Docker Compose, proyecto `proptech` | sin versión (CLI del host) | `infra/compose.yaml` |
 
-Las piezas decididas sin versión de parche todavía fijada en el código (porque el cambio que las
-construye no arrancó): **Backend** worker ARQ ya anda (cambio 1c) pero las tareas reales de PDFs,
-emails e IA llegan con los cambios 7, 8, 13 y 14 (D-038). **Frontend** PWA instalable, sin app nativa
-(D-020, D-036); hoy `web/src/app/` sólo tiene el esqueleto (`layout.tsx`, `page.tsx`,
-`salud-web/route.ts`) del cambio 1a/1c, sin las áreas `(admin)`, `(consejo)` y `(vecino)` todavía.
-**Infraestructura** Caddy como único proxy con HTTPS automático (D-043); el servicio de respaldos
-(`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) es del cambio 1d, todavía no construido (ver
-`08_arquitectura_propuesta.md` §Variables de entorno).
+Las piezas con su versión ya fijada en la tabla (como arq 0.28.0) pero pendientes de los cambios que
+vienen, porque lo que falta es la funcionalidad, no la versión: **Backend** worker ARQ ya anda (cambio
+1c) pero las tareas reales de PDFs, emails e IA llegan con los cambios 7, 8, 13 y 14 (D-038).
+**Frontend** PWA instalable, sin app nativa (D-020, D-036); hoy `web/src/app/` sólo tiene el esqueleto
+(`layout.tsx`, `page.tsx`, `salud-web/route.ts`) del cambio 1a/1c, sin las áreas `(admin)`, `(consejo)`
+y `(vecino)` todavía. **Infraestructura** Caddy como único proxy con HTTPS automático ya anda (D-043);
+el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) es del cambio 1d,
+todavía no construido (ver `08_arquitectura_propuesta.md` §Variables de entorno).
 
 ## Arquitectura general
 
@@ -73,25 +73,8 @@ emisión ante cualquier respuesta fuera de contrato (D-066, D-067). Detalle comp
 **Estructura del repositorio** (D-040): un solo repositorio con `knowledge-base/`, `openspec/`,
 `web/` (Next.js, con áreas `(admin)`, `(consejo)` y `(vecino)`), `backend/` e `infra/` (docker-compose,
 Caddyfile, backups). En `backend/src/`, tres paquetes: `proptech_core` (dominio compartido),
-`proptech_api` (routers FastAPI) y `proptech_worker` (tareas).
-
-```
-proptech/
-├── knowledge-base/
-├── openspec/
-├── config/
-│   └── parametros.yaml
-├── web/
-│   └── (admin) (consejo) (vecino)
-├── backend/
-│   └── src/
-│       ├── proptech_core/   (complejos, acceso, gastos, liquidacion,
-│       │                     cuenta_corriente, pagos, avisos, politicas, compartido)
-│       ├── proptech_api/
-│       └── proptech_worker/
-└── infra/
-    └── (docker-compose, Caddyfile, backups)
-```
+`proptech_api` (routers FastAPI) y `proptech_worker` (tareas). El árbol completo de directorios está en
+`08_arquitectura_propuesta.md` §Estructura de directorios.
 
 ## Integraciones externas
 

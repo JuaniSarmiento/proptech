@@ -98,8 +98,9 @@ Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
   estado, D-086), para que cada movimiento pueda referenciarla desde el cambio 4; el cambio 7 agrega
   preliquidación, controles (R34) y la máquina de estados de distribución (D-073, D-074).
 - **`REGLA_VERSIONADA`** (el motor de GoRules ZEN, cambio 6b) queda **fuera del camino crítico a M1**:
-  ninguna regla vigente pasa todavía por el motor (D-089); hoy el puerto de políticas se cubre con los
-  menús cerrados de `parametros.yaml` (D-080).
+  ninguna regla vigente pasa todavía por el motor (D-089); hasta el 6b no hay puerto: intereses, fondo
+  de reserva y cargo por estado son menús de configuración (D-080), y R14 y R37, si se validan, van
+  como código simple (D-089).
 - No se dibujan entidades propias para R23 (monto atípico), R25 (reimputación), R29 (condonación), R31
   (gestión judicial) ni R35-R41: según su propia regla son **movimientos o marcas sobre las entidades de
   arriba**, no tablas nuevas · ver el detalle en "Entidades".

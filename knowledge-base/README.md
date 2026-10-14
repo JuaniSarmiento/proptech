@@ -11,14 +11,29 @@ archivo del formato v1, sin renumerar ningún ID del proyecto (R, D, P, HU, L).
 
 ## Estado
 
-- **Etapa**: construcción. Cambios 1a `infraestructura-base`, 1b `arranque-del-sistema` y 1c
-  `cola-logs-y-respaldos` archivados (09, 11 y 14/10/2026); el próximo es el 1d
-  `respaldos-y-restauracion`. Ver `CHANGES.md` para el estado de cada cambio y
-  `12_fichas_de_changes.md` para su detalle.
-- **El MVP arranca por edificios**; los barrios privados son la fase siguiente.
-- **Preguntas abiertas**: el edificio piloto, el precio, el modo de redondeo y el cambio de titular,
-  entre otras. Ver `10_preguntas_abiertas.md`; las que dependen de Alberto, con contexto y propuesta,
-  están en su sección "Para Alberto".
+El estado de cada cambio (qué está archivado, en curso o pendiente) vive **sólo en** `CHANGES.md`;
+el detalle de cada uno está en `12_fichas_de_changes.md` y las preguntas abiertas, en
+`10_preguntas_abiertas.md`.
+
+## Cómo leer los IDs
+
+| Prefijo | Qué es | Dónde vive |
+|---|---|---|
+| `R` (R01 a R41) | Reglas de negocio | `05_reglas_de_negocio.md` |
+| `D-NNN` (D-001 en adelante) | Decisiones de este proyecto | `09_decisiones_y_supuestos.md` |
+| `P` (P1 a P47) | Preguntas abiertas | `10_preguntas_abiertas.md` |
+| `HU-X#` | Historias de usuario (A de administrador, V de vecino, C de consejo) | `06_funcionalidades.md` |
+| `L-NNN` | Lecciones aprendidas de un cambio ya cerrado | `15_lecciones.md` |
+| `SU-NN` | Supuestos | `09_decisiones_y_supuestos.md` |
+| `IN-NN` | Inconsistencias detectadas | `10_preguntas_abiertas.md` |
+| `C-NN` | Numeración secuencial de los cambios en Active Stack v1 | `CHANGES.md` |
+| Código propio del cambio (`1a`, `6b`, `10b`, …) | El mismo que ya usan el roadmap, `openspec/changes/` y las decisiones archivadas; no se renumera (D-093) | `CHANGES.md`, `12_fichas_de_changes.md` |
+| "principio N de Alberto" | Un principio del documento **"Arquitectura de koris, contada a lo criollo"** de Alberto Cortez (ProTecc) | Citado en reglas y decisiones; el documento no está en este repositorio |
+| `Q1` a `Q18` | Preguntas del documento de Alberto (el mismo de arriba) | Citadas en `10_preguntas_abiertas.md`; el documento no está en este repositorio |
+| `ProTecc` + letra y número (`G1`, `A1`, `B5`, `W3`…) | Un caso del catálogo de la especificación o el documento de Alberto | Citado en `05_reglas_de_negocio.md`, `09_decisiones_y_supuestos.md` y `16_proyecto_final.md` |
+| `F1` a `F13` (y variantes como `F2c`) | Un hallazgo del **rompedor** sobre un cambio puntual (por ejemplo, el 1c) | Citado en `12_fichas_de_changes.md` y `15_lecciones.md` |
+| `A1`, `M12`, `B6`… (sin el prefijo `ProTecc`) | Un hallazgo de la **auditoría de Alberto del 13/10** | Citado en el `design.md` del cambio que lo resuelve (por ejemplo, `openspec/changes/archive/2026-10-14-cola-logs-y-respaldos/design.md`) |
+| `D1`, `D2`… (sin guion, numeración propia de cada `design.md`, no un rango único del proyecto) | Una decisión de diseño de un cambio puntual; **no es lo mismo** que una `D-NNN` de `09_decisiones_y_supuestos.md` | `openspec/changes/archive/*/design.md` de cada cambio (el 1d retoma algunos números del 1c, de donde se partió, D-087) |
 
 ## Índice de Archivos
 
