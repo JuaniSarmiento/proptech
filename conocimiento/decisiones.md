@@ -1229,7 +1229,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   entidad que nacía en el 7.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
 
-## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10) · *corregida en parte por D-088 y D-089*
+## D-087 · Ajustes de método y de roadmap de la auditoría de Alberto (13/10) · *corregida en parte por D-088, D-089 y D-090*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1258,7 +1258,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   código y propuso estos ajustes.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
 
-## D-088 · El roadmap tiene 20 cambios, y el 1c queda en 29 tareas
+## D-088 · El roadmap tiene 20 cambios, y el 1c queda en 29 tareas · *corregida en parte por D-090*
 
 - **Fecha**: 13/10/2026
 - **Decisión**:
@@ -1290,6 +1290,25 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     respuestas a las preguntas abiertas (pedido de la auditoría, M1).
 - **Por qué**: la tercera auditoría de Alberto del 13/10.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
+
+## D-090 · La deuda técnica del 1c y el 1d entra en sus tareas: 35 y 19
+
+- **Fecha**: 14/10/2026
+- **Decisión**:
+  - **El 1c queda en 35 tareas** y sigue como excepción registrada a la regla de partir pasadas unas
+    veinte. Las seis nuevas son la deuda de código de la tercera auditoría que toca lo que el 1c ya
+    construye: línea de base sobre un clon con historial, pyyaml 6.0.3, `SecretStr`, un solo engine con
+    su pool, `Dinero` copiable y serializable, y los logs de ARQ sin argumentos. El resto de esa deuda
+    entró como casos dentro de tareas existentes. Corrige a D-088, que fijaba 29.
+  - **El 1d queda en 19 tareas**: rebasar los requisitos que modifica sobre lo que deje el 1c y
+    shellcheck en el CI.
+  - **Lo de código que D-087 dejaba "para cuando se retome el código"** se reparte así: `Dinero`, el
+    engine único y lo demás que toca el 1c, en el 1c; el resto, en los cambios de la tabla de deuda
+    técnica del roadmap. Corrige a D-087 en este punto.
+  - **El corte de emergencia no cambia**: si el 1c se traba, la web y el proxy salen a un cambio propio.
+- **Por qué**: la tercera auditoría de Alberto dijo que el 1c puede arrancar con esta deuda adentro;
+  dejarla para después era abrir un cambio sólo para tocar los mismos archivos otra vez.
+- **Quién**: Juani, que delegó las decisiones el 13/10.
 
 ---
 

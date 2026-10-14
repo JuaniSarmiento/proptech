@@ -5,7 +5,13 @@ partió en dos (ver `design.md` de `arranque-del-sistema`, "División del cambio
 de Alberto del 13/10 volvió a partir (D-087): **este diseño (1c) conserva D1 a D4, D7, D8 y D12**;
 **D9 (respaldos) se mudó sin cambios de fondo a `respaldos-y-restauracion` (1d)**, que además define
 el humo ampliado y el README. Los números se conservan para que se puedan rastrear; D5, D6, D10 y D11
-viven en `arranque-del-sistema`. D13 es nueva (los errores de terceros, L-007).
+viven en `arranque-del-sistema`. D13 es nueva (los errores de terceros, L-007). D16 a D18 son nuevas y
+salen de la tercera auditoría del socio (13/10): `Dinero` copiable y serializable (A1), la API detrás
+del proxy (B6) y las contraseñas como secreto con un único engine por proceso (M12 a M14). Esa misma
+auditoría sumó a D1, D2 y D7 la confirmación de Redis (M19), la red de salida del worker (M18), los
+logs de error de Caddy (M26), Alembic sin pisar los logs (M16) y ARQ sin argumentos ni resultados en
+el log (M25), y a las tareas la subida de PyYAML (M11), el rechazo de `float` y `Decimal` al encolar
+(M24) y la línea de base sobre un clon con historial (M27, B14).
 
 Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
 
@@ -28,15 +34,15 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
 
 | Lección | Dónde se aplica en este cambio |
 |---|---|
-| L-001 (apagada, que no responde y lenta, con cota de tiempo) | Redis en los tres estados contra contenedor real (D4, tarea 4.4); salud con Redis detenido y pausado (4.6); base pausada durante un trabajo (5.7); `/salud-web` con la API colgada y con la conexión rechazada (6.3). Cada test afirma su cota. |
-| L-002 (faltante, vacía, en blanco, tipo, rango; nombra la variable sin el valor) | Arranque del worker (5.8). |
-| L-003 (contar tests contra la línea de base) | 1.1 anota la línea de base; 7.1 compara. |
+| L-001 (apagada, que no responde y lenta, con cota de tiempo) | Redis en los tres estados contra contenedor real (D4, tarea 4.5); salud con Redis detenido y pausado (4.7); la base pausada con una conexión ya abierta en el pool del engine único (D18, 3.6); base pausada durante un trabajo (5.8); `/salud-web` con la API colgada y con la conexión rechazada (6.3). Cada test afirma su cota. |
+| L-002 (faltante, vacía, en blanco, tipo, rango; nombra la variable sin el valor) | Contraseñas como `SecretStr` sin perder los rechazos de vacía y en blanco (3.5); parámetros del pool (3.6); arranque del worker (5.9). |
+| L-003 (contar tests contra la línea de base) | 1.1 anotó la línea de base sobre un árbol sin historial; 1.2 la repite sobre un clon con `.git` y es la que compara 7.1. |
 | L-004 (dos revisores por el mismo camino no son dos) | Para el rompedor: los tests cubren el `request_id` por el middleware con `TestClient`, por la ruta de la web con `fetch` simulado y por el worker en proceso; el de punta a punta por el proxy es del humo del 1d. Atacar por un camino que no sea esos (por ejemplo, un endpoint `def` que abre su propia sesión, o dos pedidos concurrentes que comparten conexión del pool). |
 | L-005 (verde es todo el workflow) | Cada tarea cierra con lint, formato, tipos y tests del lado tocado; 7.1 corre el workflow entero, humo incluido. |
-| L-006 (lo destructivo apunta a `proptech`) | Los tests que detienen o pausan Redis o PostgreSQL lo hacen sobre contenedores propios del test, nunca sobre el de sesión ni sobre el stack de Compose (D12; 4.4, 5.7). |
-| L-007 (el error de una librería también es una salida) | D7 y D13: el formatter no copia mensajes de excepción (2.2); `ColaNoDisponible` tiene mensaje propio (4.4); la salud no repite el error (4.5); el 500 inesperado (3.3); los eventos de reintento (5.3); el trabajo `pickle` rechazado (5.6); el arranque del worker (5.8); `/salud-web` (6.3). Cada uno con un test de marcador. |
-| L-008 (fullmatch y sólo ASCII) | Validación del `request_id` en Python y TypeScript (D8; 3.1, 6.1) y `fallar_veces` entero estricto (5.4). |
-| L-009 (un arreglo en un módulo se prueba en su gemelo) | Gemelos de este cambio: el validador del `request_id` en Python y en TypeScript (una sola tabla de casos, 3.1 y 6.1); el verificador de base y el de cola de `/api/salud` (4.5); el arranque de la API y el del worker (5.8 replica los cuatro tests); `/api/salud` y `/salud-web` (los dos sin texto de error en el cuerpo, 4.5 y 6.3). |
+| L-006 (lo destructivo apunta a `proptech`) | Los tests que detienen o pausan Redis o PostgreSQL lo hacen sobre contenedores propios del test, nunca sobre el de sesión ni sobre el stack de Compose (D12; 3.6, 4.5, 5.8). |
+| L-007 (el error de una librería también es una salida) | D7 y D13: el formatter no copia mensajes de excepción (2.2); el 500 inesperado (3.3); las contraseñas fuera de la representación de la configuración (3.5); el log de la salud degradada sin el mensaje de psycopg (3.6); `ArgumentoNoPermitido` nombra el campo sin el valor (4.4); `ColaNoDisponible` tiene mensaje propio (4.5); la salud no repite el error (4.6); los eventos de reintento (5.3); el trabajo `pickle` rechazado (5.6); los argumentos y el resultado de un trabajo fuera de los logs de ARQ (5.7); el arranque del worker (5.9); `/salud-web` (6.3); los logs de error de Caddy sin URI ni encabezados (6.4). Cada uno con un test de marcador. |
+| L-008 (fullmatch y sólo ASCII) | Validación del `request_id` en Python y TypeScript (D8; 3.1, 6.1), `fallar_veces` entero estricto (5.4) y `Dinero` reconstruido desde su texto, que vuelve a pasar por la validación (D16, 4.3). |
+| L-009 (un arreglo en un módulo se prueba en su gemelo) | Gemelos de este cambio: el validador del `request_id` en Python y en TypeScript (una sola tabla de casos, 3.1 y 6.1); el verificador de base y el de cola de `/api/salud` (4.6); el arranque de la API y el del worker (5.9 replica los cuatro tests); `/api/salud` y `/salud-web` (los dos sin texto de error en el cuerpo, 4.6 y 6.3); el engine del worker y el de la API (los dos con los parámetros del pool de la configuración, D18). |
 
 ## Goals / Non-Goals
 
@@ -78,6 +84,9 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
   `["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]` con
   `REDIS_PASSWORD` en el entorno del servicio (el `$$` evita que Compose lo interpole y lo deje en
   `docker inspect` del healthcheck).
+- **Confirmado en la tercera auditoría (M19)**: el servicio `redis` lleva `requirepass`, `appendonly`,
+  el volumen `datos_redis` y ningún puerto publicado. La tarea 4.1 exige los cuatro y la spec lo fija
+  en "Redis protegido y persistente".
 
 ### D2 · El worker: misma imagen, otro comando, trabajos en JSON
 
@@ -87,6 +96,12 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
   `["CMD", "arq", "--check", "proptech_worker.ajustes.AjustesDelWorker"]` con
   `health_check_interval = 30` (el default de ARQ es una hora y el chequeo nunca fallaría a tiempo).
   `stop_grace_period: 30s`.
+- **Red de salida del worker (M18)**: la red `interna` es `internal: true` y no tiene salida a
+  Internet; los proveedores de email e IA (cambios 13 y 14) la necesitan. El worker suma una red
+  propia, `salida_worker`, sin `internal`, en la que no está ningún otro servicio: la base y Redis
+  siguen sólo en `interna` y no quedan alcanzables desde esa red. Se declara ahora, con su test (5.10),
+  para que el cambio 13 no tenga que tocar la topología de red junto con su lógica de envío.
+  **Descartado** poner al worker en `borde`: comparte red con Caddy y queda a un salto de lo público.
 - **Serialización JSON**: `job_serializer=lambda d: json.dumps(d).encode()` y
   `job_deserializer=json.loads`, en el pool que encola y en el worker. El default de ARQ es `pickle`:
   quien escriba en Redis ejecutaría código en el worker. Un trabajo que no es JSON falla en la
@@ -94,10 +109,17 @@ Estado de partida, con `arranque-del-sistema` archivado (11/10/2026):
 - **Contrato de toda tarea**: `async def tarea(ctx, *, request_id: str, clave: str, **datos)`, datos
   sólo `str`/`int`/`bool`/listas y mapas de esos tipos; los montos van como texto (`Dinero.a_texto()`).
 - **Dominio síncrono**: SQLAlchemy sigue sincrónico (1a). El worker abre un `Engine` al arrancar
-  (`on_startup`, guardado en `ctx`) con `connect_timeout=2`, `pool_pre_ping=True` y
+  (`on_startup`, guardado en `ctx`) con los parámetros del pool de la configuración (D18) y
   `application_name=proptech-worker`, y ejecuta el trabajo de base con `asyncio.to_thread`, que copia
   el contexto (así el `request_id` de la `ContextVar` llega al hilo).
-- `max_tries = 5`, `job_timeout = 120`, `keep_result = 3600`.
+- `max_tries = 5`, `job_timeout = 120`, `keep_result = 3600`, `log_results = False` (D7).
+- **Tipos que acepta `encolar` (M24)**: lista blanca, igual que los campos del log: `str`, `int`,
+  `bool`, `None`, listas y mapas con claves `str`, recorridos en profundidad. Cualquier otro valor
+  (`float`, `Decimal`, un `Dinero` sin pasar a texto, una fecha) se rechaza antes de tocar Redis con
+  `ArgumentoNoPermitido`, cuyo mensaje nombra la ruta del campo (`montos[1]`, `detalle.total`) y nunca
+  el valor. **Por qué**: con el serializador JSON un `float` viaja sin error y llega al worker como
+  número binario (el defecto que R07 y D-046 prohíben); un `Decimal` haría fallar `json.dumps` con un
+  `TypeError` cuyo mensaje repite el valor (L-007).
 
 ### D3 · Reintentos e idempotencia
 
@@ -196,11 +218,31 @@ código o desde `python -m proptech_worker.prueba encolar` dentro del contenedor
 - **`ruta`** = la plantilla de la ruta de FastAPI (`/api/unidades/{id}`) cuando hay una coincidencia,
   si no el path crudo truncado a 200 caracteres, sin query string.
 - Niveles: `debug`, `info`, `warning`, `error`, `critical`, en minúscula.
+- **Alembic no pisa los logs (M16)**: `migraciones/env.py` llama a
+  `fileConfig(config.config_file_name, disable_existing_loggers=False)`. Con el default (`True`), correr
+  las migraciones en un proceso que ya configuró sus logs (los tests de integración, o la API si algún
+  día migra al arrancar) apaga en silencio todos los loggers creados antes, incluidos los de
+  `proptech_core`. **Descartado** sacar `fileConfig`: el trabajo de migraciones en Compose sigue
+  queriendo ver la salida de Alembic.
+- **ARQ no escribe argumentos ni resultados (M25)**: ARQ loguea por defecto cada trabajo con sus
+  argumentos y su resultado truncados. El formatter ya descarta `record.args` y por eso esos valores no
+  salen; además `AjustesDelWorker` fija `log_results = False`, para no depender de un solo candado. La
+  tarea 5.7 lo prueba con dos marcadores (uno en un argumento, otro en el resultado) y se ve fallar
+  primero con el handler por defecto de ARQ.
 - **Rotación**: ancla `x-logs` en Compose con `driver: json-file`, `max-size: "10m"`, `max-file: "5"`,
   aplicada a todos los servicios.
-- **Fuera**: Caddy queda sin log de acceso (su formato incluye la URI con query string; filtrarla es
-  configuración propia que no se justifica todavía) y la web sin log estructurado. El primer registro
-  de un pedido es el de la API. Se revisa cuando haya producción.
+- **Caddy (M26)**: sigue sin log de acceso (su formato incluye la URI con query string), pero Caddy
+  escribe igual **logs de error** (por ejemplo, un `reverse_proxy` que no llega a la API o a la web),
+  y esos registros incluyen el pedido: la URI con su query string y los encabezados. Se filtran en el
+  logger por defecto, en las opciones globales del `Caddyfile`, con `format filter` borrando
+  `request>uri` y `request>headers`. **Descartado** registrar el riesgo como aceptado: la query string
+  puede traer un email o un token (es el mismo motivo por el que uvicorn corre sin log de acceso) y el
+  filtro es configuración de Caddy, sin código. Se verifica con `caddy adapt --validate` y el JSON
+  resultante (6.4); la verificación de punta a punta (un 502 con un email en la query) queda propuesta
+  para el humo del 1d. La sintaxis exacta del filtro se confirma en el apply contra la documentación
+  de la versión de Caddy fijada en Compose.
+- **Fuera**: la web sin log estructurado. El primer registro de un pedido es el de la API. Se revisa
+  cuando haya producción.
 - PostgreSQL: `command: ["postgres", "-c", "log_line_prefix=%m [%p] %q%a "]`, así cada línea de log
   de la base (errores, avisos) lleva el `application_name`, que trae el `request_id` (D8).
 
@@ -300,6 +342,63 @@ navegador ──► Caddy ─────────────► API ──�
 - El worker se prueba en proceso: `arq.worker.Worker(..., burst=True)` contra el Redis y el PostgreSQL
   de test, con la política de espera corta.
 
+### D16 · `Dinero` copiable y serializable (A1)
+
+- `Dinero` (1b) es inmutable: usa `__slots__` y un `__setattr__` que bloquea toda asignación. Por eso
+  `copy.copy`, `copy.deepcopy` y `pickle` fallan hoy con `AttributeError`: los tres reconstruyen el
+  objeto vacío y le asignan el estado con `setattr`. `model_copy(deep=True)` de pydantic usa
+  `deepcopy` y falla igual con cualquier modelo que tenga un monto.
+- Se agregan `__reduce__`, que devuelve `(Dinero, (self.a_texto(),))`, y `__copy__`/`__deepcopy__`,
+  que devuelven `self` (un objeto inmutable no necesita copia). Reconstruir desde el texto hace que la
+  carga pase por la misma validación que la construcción: un pickle armado a mano con `"1e3"` falla
+  con `MontoInvalido` (L-008).
+- **Por qué en este cambio y antes de la cola** (tarea 4.3, antes de 4.4): la auditoría lo pidió porque
+  ARQ serializa los argumentos con `pickle` por defecto. En este cambio la cola usa JSON (D2) y los
+  montos viajan como texto, así que por la cola nunca viaja un `Dinero`; lo que sí lo necesita es
+  cualquier camino que copie o serialice un modelo con montos (`model_copy(deep=True)`, `deepcopy` de
+  una estructura, un `ProcessPoolExecutor` en la generación de PDFs del cambio 7). Es la primera vez
+  que el código sale del dominio puro y conviene que el tipo base no falle en esos caminos.
+- **Descartado** quitar el `__setattr__` que bloquea la mutación: la inmutabilidad es la garantía de
+  R07 y D-046.
+
+### D17 · La API detrás del proxy (B6)
+
+- `CMD` del backend: `uvicorn ... --no-access-log --proxy-headers`. Sin `--proxy-headers`, la API ve
+  como cliente la dirección de Caddy y el esquema `http` aunque el pedido haya llegado por `https`.
+- Uvicorn sólo confía en las cabeceras de reenvío que vienen de las direcciones de
+  `FORWARDED_ALLOW_IPS` (por defecto `127.0.0.1`, que en un contenedor aparte nunca es Caddy). La red
+  `interna` declara su subred y `caddy` recibe una dirección fija en ella; `api` recibe
+  `FORWARDED_ALLOW_IPS` con **sólo esa dirección**.
+- **Descartado** `FORWARDED_ALLOW_IPS=*` o la subred entera: la web y el worker comparten la red
+  `interna` y podrían mandar a la API un `X-Forwarded-For` falso; cuando el cambio 2 sume el límite de
+  intentos de login por dirección, ese valor decide a quién se bloquea.
+
+### D18 · Contraseñas como secreto y un único engine por proceso (M12, M13, M14)
+
+- **`SecretStr` (M12)**: `postgres_password` y `redis_password` pasan a `SecretStr` en
+  `Configuracion`. `repr`, `str` y `model_dump` muestran `**********`. El valor se lee con
+  `get_secret_value()` sólo en el borde: `url_sqlalchemy()` al crear el engine (y en `env.py` de
+  Alembic) y el adaptador de Redis. Un test recorre el código fuente y exige que no aparezca en otro
+  lado. Los validadores de vacía y en blanco se mantienen sobre el valor secreto.
+- **Un único engine por proceso (M13)**: hoy `/api/salud` crea y descarta un engine en cada pedido. Se
+  crea uno solo en el lifespan de `crear_app()`, se guarda en `app.state` y se descarta al cerrar; el
+  verificador de base lo recibe inyectado. Una verificación fallida loguea `salud_degradada` con
+  `dependencia` y `tipo_error`, nunca el mensaje de psycopg (L-007).
+- **El congelamiento con una conexión ya abierta**: `connect_timeout` acota sólo el establecimiento
+  de la conexión. Con un engine único, el pool reutiliza una conexión abierta, y si la base se pausa
+  después, el `SELECT 1` (o el `pool_pre_ping`) queda esperando una respuesta que no llega: el kernel
+  del contenedor pausado sigue aceptando los paquetes TCP, así que el socket no da error. El
+  escenario "La base está congelada, no caída" de 1a pasaba porque cada pedido abría una conexión
+  nueva. Por eso la verificación corre en un hilo con un plazo propio de 2 s y, si vence, responde
+  `sin_conexion` e invalida esa conexión del pool; `pool_timeout` acota la espera si varias
+  verificaciones colgadas agotan el pool. La tarea 3.6 lo prueba contra un PostgreSQL propio del test.
+- **Parámetros del pool desde la configuración (M14)**: `DB_POOL_PRE_PING` (default `true`),
+  `DB_POOL_SIZE` (5, rango 1..50), `DB_POOL_RECYCLE_S` (1800, 60..86400), `DB_POOL_TIMEOUT_S` (5,
+  1..60) y `DB_CONNECT_TIMEOUT_S` (2, 1..30). Opcionales con default, así no se suma ninguna variable
+  obligatoria a `.env`; cuando vienen, se validan con las cinco formas de L-002. Los usan el engine de la
+  API y el del worker (gemelos, L-009). **Descartado** ponerlos en `config/parametros.yaml`: ese
+  archivo es de parámetros del negocio (D-042), no de conexión.
+
 ## Risks / Trade-offs
 
 - [ARQ tiene pocos mantenedores y fija `redis<6`] → La cola está detrás del puerto `Cola` y las
@@ -317,11 +416,15 @@ navegador ──► Caddy ─────────────► API ──�
 - [`trabajos_hechos` crece sin límite] → Una fila por trabajo; al volumen del MVP son miles por año.
   Se poda cuando moleste, nunca antes de que pase el `keep_result` de ARQ.
 
-- [Tamaño del cambio] → 29 tareas, por encima de las "unas veinte" de `openspec/config.yaml`. Es el
-  corte que fijó D-087 (secciones 1 a 5 del cambio original, 23 tareas) más el cierre, con las tareas
-  de logs, cola y worker partidas para que ninguna supere medio día y con las lecciones L-007 a L-009
-  sumadas. El próximo corte natural sería sacar la web y el proxy (sección 6) a otro cambio; no se hace
-  sin decisión de Juani.
+- [Tamaño del cambio] → 35 tareas, por encima de las "unas veinte" de `openspec/config.yaml` y de las
+  29 que registró D-088 como excepción. Las 29 eran el corte de D-087 (secciones 1 a 5 del cambio
+  original, 23 tareas) más el cierre, con las tareas partidas para que ninguna supere medio día y las
+  lecciones L-007 a L-009 sumadas. La tercera auditoría del socio (13/10) sumó seis: la línea de base
+  sobre un clon con historial (1.2), PyYAML (1.3), las contraseñas como secreto (3.5), el engine único
+  (3.6), `Dinero` copiable (4.3) y los logs de ARQ (5.7); el resto de sus pedidos entró como casos de
+  tareas existentes. La nueva cifra necesita su propia decisión en `conocimiento/decisiones.md` (D-088
+  dice 29). El próximo corte natural sigue siendo sacar la web y el proxy (sección 6) a otro cambio; no
+  se hace sin decisión de Juani.
 - [El 1c se archiva sin el humo ampliado] → Los escenarios de punta a punta por el proxy (el
   `request_id` elegido por el cliente, de la web a la API, el worker con un reintento dentro del stack,
   Redis pausado detrás de Caddy) se verifican acá por partes: tests de la configuración de Caddy y
@@ -335,9 +438,11 @@ navegador ──► Caddy ─────────────► API ──�
   vacía (como `0001`).
 - Para volver atrás: revertir el commit y `docker compose -p proptech down -v`.
 - Al actualizar una copia local existente no hace falta tocar `.env`: este cambio no suma variables
-  (`REDIS_PASSWORD` ya está desde 1b y `PROPTECH_URL_API_INTERNA` es fija en Compose).
+  obligatorias (`REDIS_PASSWORD` ya está desde 1b, `PROPTECH_URL_API_INTERNA` y `FORWARDED_ALLOW_IPS`
+  son fijas en Compose y los `DB_POOL_*` son opcionales con default, D18).
 
 ## Open Questions
 
 Ninguna que cambie las specs o las tareas. Pendiente de la etapa de despliegue: logs estructurados de
-Caddy y de la web.
+la web y de Caddy (los de error de Caddy ya se filtran, D7). Pendiente de registrar en
+`conocimiento/decisiones.md`: la cifra de 35 tareas (ver Risks).

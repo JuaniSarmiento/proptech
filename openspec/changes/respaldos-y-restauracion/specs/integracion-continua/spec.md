@@ -28,3 +28,16 @@ la web, que un backup se generó solo, que ese backup se restaura en una base ap
 - **WHEN** el humo pausa Redis y consulta `GET /api/salud` a través del proxy
 - **THEN** la respuesta es 503 con `"cola": "sin_conexion"` en menos de 4 segundos, y Redis se
   despausa aunque la verificación falle
+
+## ADDED Requirements
+
+### Requirement: Análisis estático de los scripts de Bash
+
+El CI SHALL correr `shellcheck`, en una versión fijada, sobre todos los scripts de Bash de `infra/`, y
+MUST fallar ante cualquier hallazgo.
+
+#### Scenario: Script de Bash con un hallazgo de shellcheck
+
+- **WHEN** un script de `infra/` tiene un hallazgo de `shellcheck` (por ejemplo, una variable sin
+  comillas)
+- **THEN** el paso de `shellcheck` del CI falla y nombra el archivo

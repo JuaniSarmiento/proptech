@@ -25,11 +25,17 @@ MUST NOT romperse en varias líneas aunque un valor contenga saltos de línea.
 - **WHEN** el código intenta loguear un campo `email`
 - **THEN** la línea no contiene ese campo y `campos_descartados` vale 1
 
+#### Scenario: Las migraciones no apagan los logs
+
+- **WHEN** un proceso que ya configuró sus logs corre las migraciones de Alembic
+- **THEN** los loggers creados antes de las migraciones siguen escribiendo sus líneas JSON
+
 ### Requirement: Lo que nunca se loguea
 
 Los logs MUST NOT contener cuerpos de pedidos o respuestas, query strings, encabezados (salvo el
 `request_id`), cookies, tokens, contraseñas, cadenas de conexión, el texto de los mensajes de
-excepción ni los argumentos interpolados de un mensaje. Esto vale también para los errores de las
+excepción, los argumentos interpolados de un mensaje ni los argumentos o el resultado de un trabajo
+del worker. Esto vale también para los errores de las
 bibliotecas de terceros (el cliente de Redis, ARQ, psycopg y SQLAlchemy): su texto MUST NOT llegar a
 un log, a un mensaje de error propio ni a una respuesta sin un test que pruebe que no repite la
 entrada. Ante un error inesperado, el log MUST registrar el tipo de error y la ubicación en el código,
@@ -57,6 +63,25 @@ y la respuesta MUST ser 500 con sólo un código de error y el `request_id`.
   un host, un parámetro de SQL o el contenido de un trabajo)
 - **THEN** el marcador no aparece en ninguna línea de log, ni en el mensaje de "cola no disponible",
   ni en el error de arranque del worker, ni en la respuesta de la API
+
+#### Scenario: Argumentos y resultado de un trabajo
+
+- **WHEN** el worker ejecuta un trabajo encolado con un argumento que contiene un marcador y la tarea
+  devuelve un resultado con otro marcador
+- **THEN** ninguno de los dos marcadores aparece en ninguna línea de log del worker, incluidas las que
+  escribe ARQ
+
+### Requirement: Logs de error del proxy sin query string ni encabezados
+
+Los logs del proxy SHALL omitir la URI con su query string y los encabezados del pedido, también en
+los registros de error (por ejemplo, cuando la API o la web no responden). El proxy MUST NOT tener log
+de acceso.
+
+#### Scenario: Error del proxy con un dato en la query
+
+- **WHEN** llega a través del proxy un pedido con `?email=vecino@ejemplo.invalid` y una cookie marcada,
+  y el proxy registra un error porque el servicio de destino no responde
+- **THEN** ninguna línea del log del proxy contiene `vecino@ejemplo.invalid`, `email=` ni la cookie
 
 ### Requirement: Número de seguimiento validado
 

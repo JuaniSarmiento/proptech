@@ -26,6 +26,10 @@ autenticación ni datos de usuario, no borra datos ni escribe fuera de los volú
 (constructor, rompedor y auditor, `forma-de-trabajo.md`) sin aprobación previa de Juani; el
 orquestador le muestra las decisiones no obvias que aparezcan al construir.
 
+**Tamaño: 35 tareas** (`tasks.md`; la 1.1 ya está hecha). D-088 registró 29 como excepción; la tercera
+auditoría del socio (13/10) sumó seis tareas y varios casos a tareas existentes (ver `design.md`,
+Risks). La cifra nueva necesita su decisión en `conocimiento/decisiones.md`.
+
 ## What Changes
 
 - **Redis** (`redis:8.10.2-trixie`) en la red `interna`, con contraseña, persistencia en disco y sin
@@ -33,13 +37,16 @@ orquestador le muestra las decisiones no obvias que aparezcan al construir.
 - **Worker ARQ** como servicio aparte que usa la misma imagen que la API con otro comando. Tiene una
   tarea de prueba, reintentos espaciados sólo para errores pasajeros, tope de intentos e
   idempotencia en dos capas (clave del trabajo en la cola y clave única en la base, en la misma
-  transacción que el efecto). Los trabajos viajan serializados en JSON, nunca con `pickle`. No arranca
-  con configuración o parámetros inválidos, con los mismos tests de arranque que ya tiene la API.
+  transacción que el efecto). Los trabajos viajan serializados en JSON, nunca con `pickle`, y `encolar`
+  rechaza `float`, `Decimal` y todo tipo fuera de la lista blanca con un error que nombra el campo.
+  No arranca con configuración o parámetros inválidos, con los mismos tests de arranque que ya tiene
+  la API. Tiene una red de salida a Internet propia, sin la base ni Redis, para los cambios 13 y 14.
 - **Migración `0002`** con la tabla técnica `trabajos_hechos` (clave de idempotencia). Es la primera
   tabla del sistema y no es de dominio.
 - **Logs estructurados en JSON**, una línea por evento, con una lista cerrada de campos, sin cuerpos,
-  sin query strings, sin mensajes de excepción, sin los argumentos de los mensajes y sin el texto de
-  los errores de Redis, ARQ o psycopg.
+  sin query strings, sin mensajes de excepción, sin los argumentos de los mensajes, sin los argumentos
+  ni el resultado de los trabajos y sin el texto de los errores de Redis, ARQ o psycopg. Alembic deja
+  de apagar los loggers existentes y los logs de error de Caddy pierden la URI y los encabezados.
 - **Número de seguimiento (`request_id`)**: Caddy lo genera siempre y pisa el que venga de Internet;
   la web lo reenvía a la API; la API lo valida (coincidencia completa, sólo ASCII, con una tabla de
   casos compartida con la web), lo pone en cada línea de log, lo devuelve en la respuesta y lo anota en
@@ -47,7 +54,14 @@ orquestador le muestra las decisiones no obvias que aparezcan al construir.
 - **Ruta técnica de la web** `GET /salud-web` (sin interfaz) que consulta la salud de la API
   reenviando el `request_id`, con un contrato de respuesta cerrado.
 - **Endpoint de salud ampliado**: informa también si la cola responde. **BREAKING** para quien lea el
-  cuerpo exacto: se agrega el campo `cola`.
+  cuerpo exacto: se agrega el campo `cola`. Usa un único engine por proceso, creado en el lifespan, con
+  los parámetros del pool desde la configuración y acotado aunque la conexión ya esté abierta.
+- **Configuración**: las contraseñas de la base y de Redis pasan a `SecretStr`; la URL con contraseña
+  se arma sólo al crear la conexión.
+- **`Dinero` copiable y serializable**: `copy`, `deepcopy`, `model_copy(deep=True)` y `pickle` dejan
+  de fallar; la reconstrucción pasa por la validación.
+- **Uvicorn** con `--no-access-log` y `--proxy-headers`, confiando sólo en la dirección de Caddy.
+- **PyYAML** sube a `>=6.0.3,<7` (no hay wheel de 6.0.2 para Python 3.14 en Windows).
 - **Rotación de logs** de todos los contenedores.
 - **CI**: los tests de integración corren también contra Redis real y el chequeo de imagen real cubre
   Redis. El humo existente sigue corriendo y, como levanta con `--wait`, espera a Redis y al worker
@@ -67,9 +81,11 @@ orquestador le muestra las decisiones no obvias que aparezcan al construir.
 
 - `entorno-de-ejecucion`: el arranque incluye Redis y el worker; el endpoint de salud informa la cola;
   Redis y el worker también sin root y sin puertos; la configuración de Redis llega también al worker;
-  rotación de logs.
+  rotación de logs; la red de salida del worker; la API detrás del proxy; el engine único con su pool;
+  las contraseñas como secreto.
 - `integracion-continua`: los tests de integración corren también contra Redis real y el chequeo de
-  imagen real cubre Redis.
+  imagen real cubre Redis; PyYAML en una versión con wheels para Python 3.14.
+- `representacion-de-montos`: un monto se puede copiar y serializar sin perder la validación.
 
 ## Lecciones que aplican
 
@@ -78,15 +94,15 @@ Se leyó `conocimiento/lecciones.md` entero (L-001 a L-009). Cómo las cubre cad
 
 | Lección | Tareas |
 |---|---|
-| L-001 · dependencia apagada, que no responde y lenta | 4.4 (Redis en los tres estados), 4.6 (salud con Redis detenido y pausado), 5.7 (base pausada durante un trabajo), 6.3 (API que no contesta) |
-| L-002 · configuración rota de muchas formas | 5.8 (arranque del worker: faltante, vacía, en blanco, tipo y rango) |
-| L-003 · contar los tests | 1.1 (línea de base) y 7.1 (comparación) |
+| L-001 · dependencia apagada, que no responde y lenta | 3.6 (base pausada con una conexión abierta en el pool), 4.5 (Redis en los tres estados), 4.7 (salud con Redis detenido y pausado), 5.8 (base pausada durante un trabajo), 6.3 (API que no contesta) |
+| L-002 · configuración rota de muchas formas | 3.5 (contraseñas como secreto), 3.6 (parámetros del pool), 5.9 (arranque del worker: faltante, vacía, en blanco, tipo y rango) |
+| L-003 · contar los tests | 1.1 (línea de base), 1.2 (línea de base sobre un clon con historial) y 7.1 (comparación) |
 | L-004 · otro camino, no el mismo | design.md: los caminos del `request_id` que cubren los tests, para que el rompedor ataque por otro |
 | L-005 · verde es todo el workflow | convención de `tasks.md` y 7.1 |
-| L-006 · lo destructivo apunta a `proptech` | 4.4 y 5.7: los tests que detienen o pausan usan contenedores propios del test, nunca el de sesión ni el de Compose |
-| L-007 · el error de una librería también es una salida | 2.2, 3.3, 4.4, 4.5, 5.3, 5.6, 5.8, 6.3 |
-| L-008 · `fullmatch` y sólo ASCII | 3.1 y 6.1 (validación del `request_id` con su tabla de casos), 5.4 (`fallar_veces` entero estricto) |
-| L-009 · el arreglo de un módulo se prueba en su gemelo | 3.1 y 6.1 (una tabla para Python y TypeScript), 4.5 (los dos verificadores de salud), 5.8 (los cuatro tests de arranque de la API, replicados en el worker) |
+| L-006 · lo destructivo apunta a `proptech` | 3.6, 4.5 y 5.8: los tests que detienen o pausan usan contenedores propios del test, nunca el de sesión ni el de Compose |
+| L-007 · el error de una librería también es una salida | 2.2, 3.3, 3.5, 3.6, 4.4, 4.5, 4.6, 5.3, 5.6, 5.7, 5.9, 6.3, 6.4 |
+| L-008 · `fullmatch` y sólo ASCII | 3.1 y 6.1 (validación del `request_id` con su tabla de casos), 4.3 (`Dinero` reconstruido desde su texto), 5.4 (`fallar_veces` entero estricto) |
+| L-009 · el arreglo de un módulo se prueba en su gemelo | 3.1 y 6.1 (una tabla para Python y TypeScript), 4.6 (los dos verificadores de salud), 5.9 (los cuatro tests de arranque de la API, replicados en el worker), 3.6 (el pool de la API y el del worker con los mismos parámetros) |
 
 ## Fuera del cambio
 
@@ -97,12 +113,14 @@ Se leyó `conocimiento/lecciones.md` entero (L-001 a L-009). Cómo las cubre cad
 - **Parámetros, `Dinero`, semilla y configuración de Redis en la API**: hechos en `arranque-del-sistema`.
 - **Usuarios, login, roles, tenant y Row-Level Security**: cambio 2. `trabajos_hechos` nace sin
   `administracion_id`; el cambio 2 decide si lo lleva, según su plan de RLS (D-087).
-- **Tareas reales del worker** (PDF, email, IA): cambios 7, 13 y 14. Red con salida a Internet para el
-  worker: cambio 13.
+- **Tareas reales del worker** (PDF, email, IA): cambios 7, 13 y 14. La red de salida del worker se
+  declara acá (tercera auditoría, M18); lo que viaja por ella es de esos cambios.
 - **Pantallas**: la única pieza nueva de la web es una ruta técnica que devuelve JSON.
 - **Rate limiting en Redis**: cambio 2 (login).
-- **Lo de código de la auditoría** que no es de este alcance (D-087: `Dinero` copiable, cabeceras de
-  seguridad, CI en pull requests, engine único del endpoint de salud, etc.).
+- **Lo de código de la auditoría** que no es de este alcance (D-087: cabeceras de seguridad, volúmenes
+  de Caddy, CI en pull requests, tipos Porcentaje y Superficie, convención de nombres de la base). De
+  esa lista, `Dinero` copiable y el engine único del endpoint de salud entran a este cambio por pedido
+  de la tercera auditoría del socio (13/10).
 
 ## Knowledge Base Impact
 
@@ -126,12 +144,17 @@ Se leyó `conocimiento/lecciones.md` entero (L-001 a L-009). Cómo las cubre cad
   `backend/migraciones/versions/0002_*`, `web/src/lib/seguimiento.ts`, `web/src/app/salud-web/route.ts`.
 - **Datos de test compartidos**: `config/contratos/request-id.json` (tabla de casos del `request_id`,
   la leen pytest y Vitest).
-- **Infra**: `infra/compose.yaml` (servicios `redis` y `worker`; rotación de logs; `log_line_prefix`
-  de PostgreSQL; `PROPTECH_URL_API_INTERNA` en `web`), `backend/Dockerfile` (`--no-access-log`),
-  `infra/Caddyfile`.
-- **Dependencias nuevas**: `arq==0.28.0`, `redis[hiredis]` 5.3.x (ARQ exige `<6`). Sin dependencias
-  nuevas en la web.
-- **Configuración nueva**: `PROPTECH_URL_API_INTERNA` (fija en Compose, no es secreto). Ninguna
-  variable nueva en `.env`.
+- **Infra**: `infra/compose.yaml` (servicios `redis` y `worker`; red `salida_worker`; subred de
+  `interna` y dirección fija de `caddy`; rotación de logs; `log_line_prefix` de PostgreSQL;
+  `PROPTECH_URL_API_INTERNA` en `web`), `backend/Dockerfile` (`--no-access-log`, `--proxy-headers`),
+  `infra/Caddyfile` (`X-Request-ID` y filtro de los logs de error).
+- **Dependencias nuevas**: `arq==0.28.0`, `redis[hiredis]` 5.3.x (ARQ exige `<6`). PyYAML sube a
+  `>=6.0.3,<7`. Sin dependencias nuevas en la web.
+- **Configuración nueva**: `PROPTECH_URL_API_INTERNA` y `FORWARDED_ALLOW_IPS` (fijas en Compose, no son
+  secreto); `DB_POOL_PRE_PING`, `DB_POOL_SIZE`, `DB_POOL_RECYCLE_S`, `DB_POOL_TIMEOUT_S` y
+  `DB_CONNECT_TIMEOUT_S`, opcionales con default. Ninguna variable obligatoria nueva en `.env`.
+- **Otros archivos**: `backend/migraciones/env.py` (`disable_existing_loggers=False`),
+  `backend/src/proptech_core/compartido/dinero.py` (`__reduce__`, `__copy__`, `__deepcopy__`),
+  `backend/src/proptech_core/compartido/configuracion.py` (`SecretStr`, parámetros del pool).
 - **Contrato**: `GET /api/salud` agrega el campo `cola`; toda respuesta de la API lleva `X-Request-ID`;
   `GET /salud-web` nuevo.

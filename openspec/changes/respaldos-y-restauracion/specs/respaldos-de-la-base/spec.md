@@ -76,7 +76,8 @@ ninguna línea.
 
 El servicio SHALL conservar los últimos `RESPALDO_CONSERVAR` backups correctos (por defecto 14) y
 borrar los más viejos sólo después de generar uno nuevo correcto. MUST NOT borrar archivos que no
-sigan el patrón de nombre de los backups.
+sigan el patrón de nombre de los backups, y MUST NOT borrar nunca el archivo generado en el ciclo en
+curso, aunque el reloj del host atrase y su nombre ordene como el más viejo.
 
 #### Scenario: Se supera la retención
 
@@ -88,6 +89,12 @@ sigan el patrón de nombre de los backups.
 - **WHEN** hay 14 backups y el siguiente falla
 - **THEN** siguen los 14
 
+#### Scenario: Reloj atrasado
+
+- **WHEN** hay 14 backups y se genera uno nuevo correcto con el reloj del host atrasado, de modo que su
+  nombre lleva una fecha anterior a la de todos los demás
+- **THEN** el backup nuevo sigue en la carpeta, quedan 14 y se borró el más viejo de los anteriores
+
 ### Requirement: Configuración del servicio de respaldos validada
 
 El servicio SHALL validar al arrancar su configuración y MUST terminar con un error que nombre la
@@ -95,7 +102,14 @@ variable si `RESPALDO_INTERVALO_SEGUNDOS`, `RESPALDO_CONSERVAR` o `RESPALDO_LIMI
 están vacíos o en blanco, no son enteros escritos sólo con dígitos ASCII (sin espacios, tabulaciones
 ni saltos de línea alrededor, sin signo y sin ceros a la izquierda) o están fuera de rango (intervalo entre 60 y 604800 segundos; conservar
 entre 1 y 365; límite entre 5 y 86400 y menor que el intervalo), sin mostrar valores de contraseñas.
-Compose MUST negarse a arrancar si falta `PROPTECH_DIR_RESPALDOS`, `PROPTECH_UID` o `PROPTECH_GID`.
+Compose MUST negarse a arrancar si falta `PROPTECH_DIR_RESPALDOS`, `PROPTECH_UID` o `PROPTECH_GID`. El
+script de respaldo MUST negarse a correr con uid 0, antes de cualquier otra verificación.
+
+#### Scenario: Corre como root
+
+- **WHEN** el script de respaldo arranca con uid 0 (por ejemplo, con `PROPTECH_UID=0`)
+- **THEN** termina con código distinto de 0 y un error que nombra `PROPTECH_UID`, sin ejecutar
+  `pg_dump` ni escribir en la carpeta
 
 #### Scenario: Intervalo inválido
 
@@ -124,7 +138,22 @@ Compose MUST negarse a arrancar si falta `PROPTECH_DIR_RESPALDOS`, `PROPTECH_UID
 El repositorio SHALL incluir un procedimiento de restauración que carga un backup en una base aparte,
 nunca sobre la base en uso por defecto, y el CI MUST ejecutarlo sobre un backup generado por el
 servicio en cada corrida del humo. Toda operación que borra una base MUST apuntar al proyecto de
-Compose `proptech` y a una base que pasó la validación del destino.
+Compose `proptech` y a una base que pasó la validación del destino. El procedimiento MUST funcionar
+desde cualquier carpeta de trabajo (encuentra por su cuenta la configuración de Compose y su archivo
+de entorno) y MUST pasar el usuario de la base (`POSTGRES_USER` del contenedor) a cada herramienta que
+borra, crea o restaura la base.
+
+#### Scenario: Restaurar desde cualquier carpeta
+
+- **WHEN** se ejecuta el procedimiento de restauración desde la raíz del repositorio o desde una
+  carpeta ajena al repositorio
+- **THEN** cada invocación de Compose corre sobre la configuración y el archivo de entorno de `infra/`
+
+#### Scenario: Usuario de la base en cada herramienta
+
+- **WHEN** el procedimiento borra, crea y restaura la base destino
+- **THEN** `dropdb`, `createdb` y `pg_restore` reciben `-U` con el usuario de la base que informa el
+  contenedor
 
 #### Scenario: Restaurar el último backup
 

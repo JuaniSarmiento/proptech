@@ -91,7 +91,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   para la API y la web (L-008, L-009), que viaja por Caddy, la web, la API, PostgreSQL y el worker;
   Redis; worker ARQ con reintentos espaciados, idempotencia (tabla `trabajos_hechos`) y los mismos
   tests de arranque que la API (L-009); `/api/salud` con la cola; `/salud-web` con su contrato de
-  respuesta; rotación de logs. 29 tareas en `openspec/changes/cola-logs-y-respaldos/`.
+  respuesta; rotación de logs. 35 tareas en `openspec/changes/cola-logs-y-respaldos/` (D-090).
 - **No entra**: respaldos, restauración, el humo ampliado y el README (1d); tareas reales del worker
   (7, 13, 14); el tenant del worker (2).
 - **Depende de**: 1b. **Habilita**: 1d.
@@ -100,7 +100,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   `application_name` pegado al pedido siguiente del pool; un trabajo que se ejecute dos veces o que
   quede a medias; Redis congelado que cuelgue la API o el worker; el texto de un error de Redis, ARQ
   o psycopg en un log o una respuesta; un trabajo con `pickle` que se ejecute.
-- **Terminado cuando**: las 29 tareas están hechas con su test visto en rojo, la corrida equivalente
+- **Terminado cuando**: las 35 tareas están hechas con su test visto en rojo, la corrida equivalente
   al CI está en verde con el humo existente (que espera a Redis y al worker saludables) y el auditor da
   el OK. La verificación de punta a punta por el proxy queda para el humo del 1d.
 
@@ -119,7 +119,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   L-008); `restaurar.sh` con el destino validado por `^proptech_[a-z0-9_]{1,50}$` y distinto de la base
   en uso, siempre sobre el proyecto `proptech` (L-006), sin repetir la salida de las herramientas
   (L-007); humo ampliado (Redis, worker, `request_id` de punta a punta, Redis pausado, backup,
-  restauración y semilla); README. 17 tareas en `openspec/changes/respaldos-y-restauracion/`.
+  restauración y semilla); README. 19 tareas en `openspec/changes/respaldos-y-restauracion/` (D-090).
 - **No entra**: copia fuera del servidor y cifrado (con el despliegue); restaurar sobre la base en
   uso; backups de Redis; alertas externas.
 - **Depende de**: 1c. **Habilita**: 2.
@@ -130,7 +130,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
   una configuración con `060`, espacios o dígitos de otro alfabeto que pase; la contraseña o la salida
   de `pg_dump` en el log; un backup a medio escribir con nombre final; que el backup no sobreviva a
   `docker compose down -v`.
-- **Terminado cuando**: Juani aprobó la propuesta; las 17 tareas están hechas con su test visto en
+- **Terminado cuando**: Juani aprobó la propuesta; las 19 tareas están hechas con su test visto en
   rojo; el humo genera el backup solo, lo restaura en `proptech_restauracion` con la misma revisión de
   Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; y el auditor
   da el OK.
@@ -557,7 +557,7 @@ Los datos del piloto no frenan el código, pero sin ellos M1 no se puede dar por
 ## Deuda técnica de las auditorías del 13/10
 
 Lo que dejaron las auditorías de código de Alberto, con el cambio que lo resuelve (D-089). Lo del 1c y
-el 1d ya está en sus tareas.
+el 1d ya está en sus tareas (D-090).
 
 | Deuda | Cambio |
 |---|---|

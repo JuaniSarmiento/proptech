@@ -10,7 +10,9 @@ dos veces no duplica su efecto.
 
 El sistema SHALL ejecutar los trabajos encolados en un proceso worker separado de la API, construido
 desde la misma imagen y el mismo código de dominio, conectado a la cola y a la base sólo por la red
-interna. El worker MUST correr sin privilegios de root y MUST NOT publicar puertos.
+interna. Su salida a Internet (que necesitan los proveedores de email e IA de cambios posteriores) MUST
+ser una red propia en la que no está ningún otro servicio. El worker MUST correr sin privilegios de
+root y MUST NOT publicar puertos.
 
 #### Scenario: Worker saludable en el stack
 
@@ -106,7 +108,17 @@ Encolar un trabajo con una clave que ya está en la cola MUST NOT crear un segun
 ### Requirement: Los trabajos viajan como datos, no como código
 
 El contenido de un trabajo en la cola SHALL serializarse como JSON. El worker MUST NOT deserializar
-trabajos con un formato capaz de ejecutar código (como `pickle`). Los montos MUST viajar como texto.
+trabajos con un formato capaz de ejecutar código (como `pickle`). Los montos MUST viajar como texto:
+`encolar` MUST aceptar sólo texto, enteros, booleanos, nulos, listas y mapas con claves de texto, y
+MUST rechazar antes de tocar Redis cualquier otro valor (en particular `float` y `Decimal`, sueltos o
+anidados) con un error propio que nombre el campo sin mostrar su valor.
+
+#### Scenario: Monto como número al encolar
+
+- **WHEN** se encola un trabajo con un argumento `float` o `Decimal`, suelto o dentro de una lista o un
+  mapa
+- **THEN** el encolado se rechaza con un error propio que nombra el campo (por ejemplo `montos[1]`), no
+  contiene el valor y no se encola nada
 
 #### Scenario: Trabajo encolado inspeccionado en Redis
 
@@ -117,6 +129,19 @@ trabajos con un formato capaz de ejecutar código (como `pickle`). Los montos MU
 
 - **WHEN** aparece en la cola un trabajo serializado con `pickle`
 - **THEN** el worker no lo ejecuta y registra el rechazo en el log sin su contenido
+
+### Requirement: Redis protegido y persistente
+
+El servicio de Redis SHALL exigir contraseña (tomada del archivo de entorno, obligatoria), persistir
+los trabajos en disco con `appendonly` sobre un volumen con nombre y no descartar trabajos por falta
+de memoria. MUST NOT publicar ningún puerto hacia el host.
+
+#### Scenario: Declaración del servicio Redis
+
+- **WHEN** se lee la configuración de Compose
+- **THEN** el servicio `redis` arranca con `--requirepass` desde `REDIS_PASSWORD` obligatoria,
+  `--appendonly yes` y `--maxmemory-policy noeviction`, monta un volumen con nombre en `/data` y no
+  declara `ports`
 
 ### Requirement: Cola que no responde
 

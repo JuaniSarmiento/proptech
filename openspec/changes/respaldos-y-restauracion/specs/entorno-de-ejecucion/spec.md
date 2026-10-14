@@ -27,7 +27,15 @@ siguiendo sólo los pasos del README, sin instalar en el host nada más que Dock
 Sólo el proxy SHALL publicar puertos hacia el host, y sólo el 80 y el 443. La base de datos, Redis, la
 API, el worker, la web y el servicio de respaldos MUST NOT publicar ningún puerto y MUST ser
 alcanzables únicamente desde la red interna de Compose. La base de datos, Redis y el servicio de
-respaldos MUST estar en una red sin salida a Internet.
+respaldos MUST estar en una red sin salida a Internet. El worker MAY tener salida a Internet sólo por
+una red propia, en la que no está ningún otro servicio.
+
+#### Scenario: Red de salida del worker
+
+- **WHEN** se lee la configuración de Compose
+- **THEN** el worker está en la red interna y en una red de salida sin `internal`, ningún otro servicio
+  (ni la base, ni Redis, ni la API, ni el servicio de respaldos) está en esa red de salida, y la base,
+  Redis y el servicio de respaldos están sólo en la red interna
 
 #### Scenario: Puertos publicados del stack levantado
 
@@ -61,7 +69,16 @@ de los respaldos) SHALL leerse de variables de entorno. El repositorio MUST incl
 archivo `.env` real ni la carpeta de respaldos. Las imágenes construidas MUST NOT contener archivos
 `.env`. Toda variable obligatoria que falte, esté vacía, en blanco, tenga un tipo equivocado o esté
 fuera de rango MUST hacer terminar al proceso con un error que nombre cada variable con problema sin
-mostrar nunca su valor. El trabajo de migraciones MUST necesitar sólo las variables de la base.
+mostrar nunca su valor. El trabajo de migraciones MUST necesitar sólo las variables de la base. Las
+contraseñas MUST guardarse en la configuración como valores secretos, que no aparecen en su
+representación, y la cadena de conexión con contraseña MUST armarse sólo al crear la conexión.
+
+#### Scenario: Contraseñas fuera de la representación de la configuración
+
+- **WHEN** se imprime, se representa o se vuelca a un diccionario o a JSON la configuración cargada con
+  contraseñas de la base y de Redis
+- **THEN** ninguna de las dos contraseñas aparece, y el único código que lee su valor es el que crea la
+  conexión a la base o a Redis
 
 #### Scenario: Archivo de entorno ignorado
 
