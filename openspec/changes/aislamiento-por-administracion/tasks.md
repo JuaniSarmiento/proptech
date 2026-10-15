@@ -241,7 +241,21 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 
 ## 8. Redes
 
-- [ ] 8.1 La web fuera de la red de la base (D10): partir `interna` en `datos` y `aplicacion` según D10 (los tests estáticos están en 2.3). En el stack levantado, desde `web` una conexión a `db:5432` y a `redis:6379` no se establece, y desde `api` sí; el `request_id` de punta a punta del humo sigue pasando con la IP nueva de Caddy. Verlo fallar antes del cambio de redes (hoy la web alcanza la base). Escenarios: `entorno-de-ejecucion` › La web intenta conectar a la base. Lecciones: L-016.
+- [x] 8.1 La web fuera de la red de la base (D10): partir `interna` en `datos` y `aplicacion` según D10 (los tests estáticos están en 2.3). En el stack levantado, desde `web` una conexión a `db:5432` y a `redis:6379` no se establece, y desde `api` sí; el `request_id` de punta a punta del humo sigue pasando con la IP nueva de Caddy. Verlo fallar antes del cambio de redes (hoy la web alcanza la base). Escenarios: `entorno-de-ejecucion` › La web intenta conectar a la base. Lecciones: L-016.
+  - Hecho 15/10/2026: la partición de redes (`datos`/`aplicacion`) ya existía desde la 2.3 — lo único
+    que faltaba era el chequeo EN VIVO. Se sumó el paso `(3d)` a `humo.sh`: conexión TCP cruda (nunca un
+    ping de aplicación, D10 pide que la red no llegue, no que el otro lado responda bien) desde `web`
+    (Node, `net.createConnection`) y desde `api` (Python, `socket`) hacia `db:5432` y `redis:6379`.
+    `web` no conecta a ninguna de las dos; `api` conecta a las dos.
+  - **Rojo real (L-013)**: sobre una COPIA de `compose.yaml` en `/tmp` (nunca el archivo real) con `web`
+    agregada a la red `datos` además de `aplicacion`, se levantó un stack parcial (`db`, `redis`, `web`,
+    proyecto Compose separado `proptech-rojo81`) y el mismo chequeo de conexión cruda dio `CONECTO`
+    desde la web hacia `db:5432` — confirmando que el paso agregado SÍ detecta el problema que D10
+    quiere prevenir. Stack parcial destruido (`down -v`) y archivo temporal borrado; `diff` contra
+    `git show HEAD:infra/compose.yaml` confirmó el archivo real intacto, sin tocar.
+  - `shellcheck` (vía Docker) sobre `humo.sh` modificado: limpio. Corrida real: `HUMO OK`, con
+    `web->db=NO_CONECTO web->redis=NO_CONECTO api->db=CONECTO api->redis=CONECTO` en la salida, y el
+    `request_id` de punta a punta (pasos 7, 7b, 8) siguió pasando igual que antes.
 
 ## 9. Humo
 

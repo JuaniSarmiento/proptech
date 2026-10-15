@@ -126,6 +126,44 @@ salida_redis_sin_auth=$(compose exec -T redis redis-cli ping 2>&1 || true)
 echo "$salida_redis_sin_auth"
 echo "$salida_redis_sin_auth" | grep -q "NOAUTH"
 
+echo "--- (3d) la web no alcanza db:5432 ni redis:6379; la api sí (D10, tarea 8.1) ---"
+# Conexión TCP cruda, nunca un ping de aplicación (D10): lo que prueba D10
+# es que la RED no llega, no que el servicio del otro lado responda bien.
+# `web` corre Node (ya lo usa el healthcheck de Compose); `api`, Python.
+conectar_desde_web() {
+  compose exec -T web node -e "
+    const net = require('node:net');
+    const s = net.createConnection({host: '$1', port: $2, timeout: 1500});
+    s.on('connect', () => { console.log('CONECTO'); s.destroy(); process.exit(0); });
+    s.on('timeout', () => { console.log('NO_CONECTO'); s.destroy(); process.exit(0); });
+    s.on('error', () => { console.log('NO_CONECTO'); process.exit(0); });
+  "
+}
+conectar_desde_api() {
+  compose exec -T api python -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(1.5)
+try:
+    s.connect(('$1', $2))
+    print('CONECTO')
+except OSError:
+    print('NO_CONECTO')
+finally:
+    s.close()
+"
+}
+resultado_web_db=$(conectar_desde_web db 5432)
+resultado_web_redis=$(conectar_desde_web redis 6379)
+resultado_api_db=$(conectar_desde_api db 5432)
+resultado_api_redis=$(conectar_desde_api redis 6379)
+echo "web->db=$resultado_web_db web->redis=$resultado_web_redis api->db=$resultado_api_db api->redis=$resultado_api_redis"
+[ "$resultado_web_db" = "NO_CONECTO" ]
+[ "$resultado_web_redis" = "NO_CONECTO" ]
+[ "$resultado_api_db" = "CONECTO" ]
+[ "$resultado_api_redis" = "CONECTO" ]
+echo "ok: la web no alcanza db ni redis por la red; la api alcanza las dos"
+
 echo "--- (4) api, web, worker, redis y respaldos corren como no root ---"
 # `id -u` vía `exec` alcanza para api/web (no bajan de root con gosu
 # DESPUÉS de arrancar). redis, en cambio, arranca como root y su propio
