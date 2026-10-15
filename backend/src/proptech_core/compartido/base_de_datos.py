@@ -140,17 +140,48 @@ def registrar_reset_del_tenant_al_devolver(engine: Engine) -> None:
     conexión cruda. `RESET` de un parámetro que nunca se fijó en esa sesión
     no es un error (Postgres lo deja pasar): no hace falta chequear antes
     si hay algo que limpiar.
+
+    **V2-1 (vuelta 3, regresión encontrada por el rompedor/auditor):** una
+    conexión cortada a mitad de pedido (un reinicio de la base, una red que
+    se cae, `pg_terminate_backend`) le llega a `checkin` de dos formas
+    distintas, y las dos tienen que terminar sin propagar nada:
+
+    1. SQLAlchemy ya la invalidó sola antes de despachar el evento, y acá
+       llega `dbapi_connection=None` — no hay nada que resetear.
+    2. Todavía parece viva, pero el propio `RESET` es lo que descubre que
+       está rota (la conexión física ya no responde).
+
+    Antes de esto, el caso 1 levantaba `AttributeError` dentro del
+    handler, y una excepción sin atrapar en un evento de `checkin` aborta
+    el "devolver al pool" de SQLAlchemy A MITAD DE CAMINO: el lugar queda
+    `checked out` para siempre, nunca vuelve a estar disponible. Con el
+    pool por default (5 + 10 de overflow), 15 cortes bastan para dejar la
+    API en 500 permanente y al worker sin reintentar nada (`AttributeError`
+    no es un error pasajero). El caso 2 tenía el mismo problema en potencia,
+    sin necesitar que SQLAlchemy llegara a invalidar la conexión primero.
+
+    Por eso acá: `dbapi_connection is None` se ignora sin más (nada que
+    hacer), y cualquier error REAL del `RESET` invalida la conexión
+    (`connection_record.invalidate`) en vez de dejarlo escapar — así
+    SQLAlchemy sí completa el `checkin`, descarta esta conexión física
+    rota y abre una nueva la próxima vez que haga falta. El error original
+    (`OperationalError`) sigue siendo el que ve quien pidió la conexión:
+    nunca se lo tapa un `AttributeError` de acá adentro.
     """
 
     @event.listens_for(engine, "checkin")
     def _checkin(dbapi_connection: Any, connection_record: Any) -> None:
-        del connection_record
-        cursor = dbapi_connection.cursor()
+        if dbapi_connection is None:
+            return
         try:
-            cursor.execute("RESET app.administracion_id")
-            dbapi_connection.commit()
-        finally:
-            cursor.close()
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("RESET app.administracion_id")
+                dbapi_connection.commit()
+            finally:
+                cursor.close()
+        except Exception as error:
+            connection_record.invalidate(error)
 
 
 class RolDeAplicacionInseguro(Exception):

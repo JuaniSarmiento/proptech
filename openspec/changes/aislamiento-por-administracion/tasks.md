@@ -414,3 +414,22 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
   - **El cambio queda acá, sin archivar y sin pushear**: lo que sigue es la vuelta 2 del rompedor y el
     auditor, sobre estas siete correcciones. `git status` limpio salvo esta misma edición.
 
+## 12. Vuelta 3 (rompedor + auditor, 15/10/2026, sobre `7313564`)
+
+Tres bloqueantes: V2-1 (regresión de R7), V2-2 (R4 verificaba forma, no bloqueo) y V2-4 (R10 no
+cubre el disco lleno). Las deudas (R5, R6, R9, R11, V2-3, V2-5, V2-7) y notas (V2-6, V2-8, V2-9)
+NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
+
+- [x] 12.1 V2-1 · `registrar_reset_del_tenant_al_devolver` (R7) rompe el pool cuando una conexión se corta a mitad de pedido o de tarea: el evento `checkin` hacía `dbapi_connection.cursor()` sin mirar si es `None` (SQLAlchemy lo deja así cuando ya invalidó la conexión sola), y un `AttributeError` sin atrapar dentro de `checkin` aborta el "devolver al pool" de SQLAlchemy a mitad de camino — el lugar queda `checked out` para siempre. Con el pool por default, 15 cortes dejan la API en 500 permanente; en el worker, el error deja de ser pasajero (`AttributeError` no reintenta). Rojo: `pg_terminate_backend` real a mitad de consulta (sesión y tarea del worker) — hoy `AttributeError`, `checkedout=1` y después `TimeoutError`/sin reintento. Corrección: `if dbapi_connection is None: return`, y cualquier error real del `RESET` invalida la conexión (`connection_record.invalidate`) en vez de propagar.
+  - Hecho 15/10/2026: rojo real confirmado (`AttributeError: 'NoneType' object has no attribute
+    'cursor'` en `base_de_datos.py:148`, idéntico al informe) con dos tests nuevos en
+    `tests/integracion/test_reset_de_pool_tras_corte.py` (contenedor propio, L-006; evento REAL
+    cableado, nunca un mock, L-017): uno a nivel sesión (pool de 1, overflow 0, `pg_terminate_backend`
+    desde una conexión de superusuario aparte) y uno en el worker (`@con_administracion_de_tarea
+    @reintentable`, el corte durante un `pg_sleep(2)`). `_checkin` ahora: `dbapi_connection is None`
+    se ignora sin más; cualquier error real del `RESET` invalida la conexión en vez de propagar.
+    Verde: `OperationalError` (no `AttributeError`), `pool.checkedout() == 0`, la sesión siguiente
+    responde, y la tarea termina en `arq.Retry` con `reintento_programado` (ya no necesitó tocar
+    `reintentos.py`: `OperationalError` ya estaba en `_ERRORES_PASAJEROS_POR_NATURALEZA`). El test de
+    R7 de la vuelta 2 (`test_un_set_de_sesion_sin_local_no_contagia...`) sigue en verde, sin cambios.
+
