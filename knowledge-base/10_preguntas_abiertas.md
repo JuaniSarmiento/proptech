@@ -126,12 +126,19 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   todo sobre `main` (D-049), porque programaba una sola persona. Con Juani y Alberto haciendo cambios
   en el mismo repositorio, acordar si cada cambio va en su rama con pull request o si se turnan sobre
   `main`. Antes de que los dos tengan un cambio en curso al mismo tiempo.
+- [ ] **P48 · A qué administración entra un email que tiene cuenta en dos** (D-096, D-097): una
+  cuenta por administración permite el mismo email en dos administraciones, y nadie definió cómo elige
+  el login a cuál entra. Opciones: la administración se elige antes del email (un enlace o un *slug*
+  por administración en la dirección de ingreso), o se resuelve después (el sistema encuentra varias
+  cuentas y pide elegir; con el link mágico del vecino, un link por cuenta o un link que lleva a
+  elegir). Vale para el vecino (link mágico) y para el personal (contraseña). **Decide**: Juani o
+  Alberto. Bloquea el 2b.
 
 ## Resumen por el cambio al que bloquean
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
-- **P18 y P23**: resueltas (D-096); ya no bloquean el cambio 2.
+- **P18 y P23**: resueltas (D-096); ya no bloquean el cambio 2 (2a y 2b, D-097).
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
@@ -149,7 +156,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   en el repositorio público.
 - **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
   visibilidad al repositorio y del primer despliegue.
-- **Login** y **proveedores de IA y email**: se deciden en el design de los cambios 2, 8, 13 y 14.
+- **P48**: a qué administración entra un email con cuenta en dos, antes del 2b (el login).
+- **Login**: decidido en D-097 (contraseña para el personal, link mágico para el vecino). **Proveedores
+  de IA y email**: se deciden en el design de los cambios 2b, 8, 13 y 14.
 
 ## Para Alberto
 

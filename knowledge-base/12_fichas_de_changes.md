@@ -96,7 +96,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   `request_id`). **F7c**: el parseo de un traceback crudo podía sacar datos raros a
   `tipo_error`/`traza` con formas muy particulares; resuelto al dejar de parsear el texto (D21: evento
   fijo según `type(msg) is str`).
-- **Depende de**: 1c. **Habilita**: 2.
+- **Depende de**: 1c. **Habilita**: 2a.
 - **Cierre (14/10/2026)**: tres vueltas entre constructor, rompedor y auditor. El auditor dio **OK con
   deuda anotada** en su vuelta 3 (D-095); Juani aceptó esa tabla. Backend 516 → 606 tests (+1
   xfailed); web sin cambios (16). La deuda aceptada queda en "Deuda del cierre del 1d" más abajo, con
@@ -112,55 +112,75 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   de Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; el
   auditor dio el OK con deuda anotada.
 
-### 2 · `acceso-y-aislamiento` · crítico · explore propio
+### 2 · `acceso-y-aislamiento` · crítico · partido en 2a y 2b (D-097)
 
-- **Objetivo**: que cada persona entre y vea sólo lo suyo, aunque el código tenga un error.
-- **Historias**: HU-V1 (entrada del vecino). **Reglas**: R10; auditoría de cada acción sensible (D-016).
-- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076, D-096. P18 (el vecino en dos
-  administraciones) y P23 (permisos por acción, que definen cada 403) ya se resolvieron en D-096,
-  antes de este explore; lo que falta decidir en el explore propio es el método de login y dónde vive
-  cada uno de los tres controles (ver más abajo).
-- **Entra**: login del personal y del vecino; los cuatro roles (titular, colaborador, consejo,
-  vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
-  privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
-  límite de pedidos en el login; las notas de seguridad que dejó el 1a (D-051): separar la red de la
-  web de la de la base, ocultar los encabezados `Via` y `X-Powered-By` y revisar las respuestas a HEAD.
-- **Plan de Row-Level Security** (D-087): dos roles de base, `proptech_migrador` (dueño de las tablas,
-  corre las migraciones) y `proptech_app` (sin superusuario ni BYPASSRLS, el que usa la API y el worker);
-  toda tabla con datos de una administración lleva `administracion_id NOT NULL`, RLS activada y
-  forzada, y una política que exige `administracion_id = current_setting('app.administracion_id')`
-  para leer y para escribir; la API fija ese valor con `set_config(..., true)` (equivale a `SET LOCAL`)
-  al abrir cada transacción, desde la identidad autenticada; el worker lo fija por tarea desde el dato
-  validado de la tarea; sin valor fijado, una consulta no devuelve nada.
-- **Tablas mínimas** (D-082): para probar el acceso, este cambio crea lo mínimo de administración,
-  complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
-  edificio.
-- **Deuda del 1d, con dueño este cambio** (L-012): ver "Deuda del cierre del 1d" más abajo (resto de
-  F7, el humo que nunca congela las dos dependencias a la vez, PID 1 no root visto sólo en `redis`, el
-  orden de la 8.1).
-- **`trabajos_hechos` y el tenant del worker** (D-091, deuda del 1c): la tabla `trabajos_hechos` del
-  1c nace sin `administracion_id`. Este cambio decide si la suma (según el plan de RLS de arriba) y,
-  si la suma, cómo el worker la fija por tarea: el `request_id` ya viaja en cada trabajo encolado
-  (1c), pero el `request_id` identifica el pedido, no la administración; hace falta decidir si el
-  dato de tenant viaja como otro argumento validado de la tarea (como ya hace el resto de `encolar`,
-  D2 del 1c) o se deriva de otro lado.
-- **M12 a medias** (D-091, deuda del 1c, impacto bajo): `url_sqlalchemy()` sigue devolviendo un `str`
-  con la contraseña interpolada, no el objeto `sqlalchemy.engine.URL` renderizado sólo en el borde que
-  había pedido Alberto. Si este cambio toca `configuracion.py` o `env.py` de Alembic por otro motivo,
-  cerrar esto de paso.
-- **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
-- **Depende de**: 1d. **Habilita**: 3, 4.
-- **Bloqueado por**: nada; se puede proponer. P18 y P23 (D-076, D-087) se resolvieron en D-096.
-- **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
-  mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
-  D-043); dónde vive cada uno de los tres controles (el worker ya tiene su forma de fijar el tenant en el plan de
-  RLS de arriba).
-- **Que intente romper el rompedor**: ver un edificio de otra administración tipeando la URL o
-  mandando otro `tenant_id`; consultar la base sin fijar el tenant; que un `SET` sin `LOCAL` contagie
-  el tenant al pedido siguiente; un colaborador entrando a un edificio no asignado; un vecino
-  abriendo pantallas del personal; fuerza bruta contra el login.
-- **Terminado cuando**: hay tests contra PostgreSQL real que intentan cruzar administraciones y
-  fallan cerrados; cada rol ve exactamente lo de D-037; la auditoría registra cada acción sensible.
+El explore propio (`openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`, 15/10/2026) recomendó
+partirlo y Juani lo aprobó el mismo día (D-097): el **2a** es el candado y se prueba sin login; el
+**2b** es el login y depende del 2a. Los dos son CRITICAL (D-094). Objetivo común: que cada persona
+entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en D-096.
+
+### 2a · `aislamiento-por-administracion` · crítico
+
+- **Objetivo**: que la base misma impida ver o escribir datos de otra administración, y que el alcance
+  por edificio y el permiso por acción respondan 404 y 403 según D-037 y D-096, con la identidad
+  inyectada en los tests (todavía sin login).
+- **Reglas**: R10. **Decisiones**: D-016, D-037, D-076, D-082, D-087, D-091, D-095, D-096, D-097.
+- **Entra**: tres roles de PostgreSQL (el de arranque sólo para crear roles y para los respaldos;
+  `proptech_migrador`, dueño de las tablas; `proptech_app`, sin superusuario ni `BYPASSRLS`, para la API
+  y el worker), con un par de credenciales por rol; tablas mínimas (D-082: administración, complejo,
+  unidad, persona y asignación por rol) con `administracion_id NOT NULL`, claves foráneas compuestas y
+  RLS forzada con `current_setting(..., true)` y `nullif`; el tenant fijado con `set_config(..., true)`
+  en cada transacción, desde la identidad; la identidad inyectable (401 en producción hasta el 2b);
+  404 fuera de alcance, indistinguible de "no existe", y 403 con el permiso faltante; auditoría en la
+  misma transacción, de sólo agregar; el tenant del worker como argumento validado; el guardián del
+  catálogo que falla si una tabla nueva queda sin candado; y la deuda con dueño "2" que no necesita el
+  login (ver las tablas de deuda más abajo).
+- **Plan de Row-Level Security** (D-087): el de la versión anterior de esta ficha, con tres roles en vez
+  de dos (el superusuario del contenedor queda sólo para crear los otros y para `pg_dump`). Detalle en
+  el `design.md` del cambio.
+- **Elecciones que firma el socio que apruebe** (sección "Aprobación" de la propuesta): E1, el
+  migrador sin `BYPASSRLS`; E2, el alcance por edificio en la aplicación y no en la base; E3,
+  `trabajos_hechos` sin `administracion_id` (es técnica); E4, Dependabot al cambio 15.
+- **No entra**: el login y todo lo que lo necesita (2b); quién lee la auditoría; las acciones
+  sensibles de otros módulos (se auditan con el helper del 2a en 7, 8 y 10b).
+- **Depende de**: 1d. **Habilita**: 2b.
+- **Bloqueado por**: la aprobación escrita y fechada de un socio en su propuesta.
+- **Que intente romper el rompedor**: la lista de la propuesta (fuga por un `SET LOCAL` que no se
+  aplicó, `current_setting` sin `missing_ok`, un rol con `BYPASSRLS` o superusuario usado por la app,
+  backups incompletos por usar el rol equivocado, 404 contra 403 filtrando existencia, la auditoría
+  salteada o editada, el worker sin tenant, el `GRANT` olvidado), más lo que ya pedía esta ficha: ver
+  un edificio de otra administración tipeando la URL o mandando otro `tenant_id`, un `SET` sin `LOCAL`
+  que contagie al pedido siguiente, un colaborador en un edificio no asignado.
+- **Terminado cuando**: hay tests contra PostgreSQL real, conectados como `proptech_app`, que intentan
+  cruzar administraciones y fallan cerrados; cada rol ve exactamente lo de D-037 y cada acción sigue la
+  matriz de D-096; la auditoría registra la asignación de edificios y no se puede editar; el humo
+  verifica el rol de la app y un backup con dos administraciones; 20 tareas en
+  `openspec/changes/aislamiento-por-administracion/`, hechas con su rojo visto.
+
+### 2b · `login` (nombre provisional) · crítico
+
+- **Objetivo**: que cada persona entre a su administración: el personal con contraseña, el vecino con
+  link mágico por mail (D-097).
+- **Historias**: HU-V1. **Decisiones**: D-036, D-039, D-043, D-096, D-097.
+- **Entra**: login del personal (titular, colaborador, consejo) con contraseña; link mágico del vecino
+  (token de un solo uso con vencimiento corto); la sesión del lado del servidor de Next (D-036);
+  límite de intentos en el login (por cuenta y, más laxo, por IP, para no bloquear a un edificio
+  detrás del mismo wifi); auditoría de login exitoso y fallido sobre la tabla del 2a; CSP en Next
+  (deuda de las auditorías del 13/10); la pantalla de login; qué rutas quedan sin sesión.
+- **No entra**: el puerto de email completo, con reintentos y plantillas (13); las pantallas del portal
+  (11) y del consejo (12).
+- **Depende de**: 2a. **Habilita**: 3, 4.
+- **Bloqueado por**: **P48** (a qué administración entra un email con cuenta en dos).
+- **Decidir en el design**: cómo se manda el mail del link mágico antes del cambio 13 (un envío mínimo
+  en este cambio o adelantar parte del puerto del 13); si el límite de intentos falla abierto o cerrado
+  cuando Redis no responde (el explore sugiere abierto, como ya trata a Redis `/api/salud`); el reset de
+  contraseña del personal (asistido por el titular o por mail).
+- **Que intente romper el rompedor**: fuerza bruta contra el login; un vecino abriendo pantallas del
+  personal; un link mágico reusado, vencido o reenviado; el login entrando a la cuenta equivocada
+  cuando el mismo email existe en dos administraciones; el límite de intentos bloqueando a todo un
+  edificio por IP compartida; el token de sesión visible en el navegador.
+- **Terminado cuando**: el personal y el vecino entran a su administración y a ninguna otra; los
+  intentos fallidos se limitan y se auditan.
 
 ### 3 · `configuracion-del-edificio` · HIGH
 
@@ -183,7 +203,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
   coeficiente por unidad.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
-- **Depende de**: 2. **Habilita**: 4, 5, 6.
+- **Depende de**: 2b. **Habilita**: 4, 5, 6.
 - **Bloqueado por**: P16, P19, P24 y P33.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
   si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
@@ -216,7 +236,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   generó; el cambio 7 la completa con la preliquidación, los controles y la distribución. La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
-- **Depende de**: 2 y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
+- **Depende de**: 2b y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
   **Habilita**: 5, 6, 7.
 - **Bloqueado por**: P10, P11, P21, P31, P34 y P42 (la sesión con un contador o administrador).
 - **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
@@ -567,7 +587,9 @@ el 1d ya está en sus tareas (D-090).
 |---|---|
 | `Dinero` copiable y serializable (`__reduce__`, `__copy__`, `__deepcopy__`), pyyaml 6.0.3, rechazo de float y Decimal al encolar, logs de ARQ sin argumentos, logs de error de Caddy, Alembic sin apagar loggers, red de egreso del worker, SecretStr, un solo engine y su pool, uvicorn sin log de acceso y con `--proxy-headers`, línea de base sobre un clon con historial | 1c |
 | Restauración con `-U` y la ruta del `.env`, retención que no borra el ciclo en curso, rechazo de uid 0, shellcheck en el CI, `-p proptech` en el humo | 1d |
-| Cabeceras de seguridad en Caddy y CSP en Next, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, Dependabot, roles de PostgreSQL para RLS (migrador y aplicación), endurecimiento de contenedores, tabla de variables del README | 2 |
+| Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, roles de PostgreSQL para RLS (migrador y aplicación), endurecimiento de contenedores, tabla de variables del README | 2a |
+| CSP en Next | 2b (una CSP sin pantallas no prueba nada; la primera es la de login) |
+| Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
 
@@ -586,7 +608,7 @@ suena más obvio.
 | `salud_degradada` duplicado (dos líneas por pedido colgado) | Sólo ensucia los logs | resuelto en 1d |
 | F7c: el parseo de un traceback crudo saca datos a `tipo_error`/`traza` con formas muy particulares | Formas muy raras, confianza baja | resuelto en 1d |
 | F3b: `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`) | FastAPI fijado `<0.144` y un test lo detecta | quien suba FastAPI |
-| M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2 |
+| M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2a (reescribe `configuracion.py` para las credenciales por rol) |
 | Redis congelado frena el worker mientras dura | Se recupera solo | aceptar, sin dueño |
 | `POSTGRES_PORT` y `REDIS_PORT` estrictos (cambia el comportamiento laxo del 1b) | En línea con L-008 | aceptar, sin dueño |
 
@@ -603,10 +625,10 @@ esté resuelta (L-012), no por el que suena más obvio.
 | F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | 15 |
 | F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | 15 |
 | "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | 15 |
-| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2 (confianza media) |
-| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2 |
-| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2 (endurecimiento de contenedores) |
-| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2 (al redactar su 8.1, decir si el orden importa o sacarlo) |
+| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2a (confianza media; el 2a amplía el mismo humo) |
+| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2a |
+| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2a (endurecimiento de contenedores) |
+| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a (su 11.1 dice el orden y por qué, D14 de su design) |
 
 ## Pendientes de arranque
 

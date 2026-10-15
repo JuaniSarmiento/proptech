@@ -30,8 +30,10 @@ mercado de arranque es **Mendoza**.
   **OK con deuda anotada** en la vuelta 3 (D-095); la deuda queda en
   `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 1d"), con dueño por ítem (mayormente
   el cambio 15 y el cambio 2).
-- **Próximo**: cambio 2 `acceso-y-aislamiento` (CRITICAL, explore propio); ya no está bloqueado por P18
-  ni P23, resueltas el 15/10/2026 en D-096 (una cuenta por administración; permisos por acción).
+- **Próximo**: cambio 2 `acceso-y-aislamiento` (CRITICAL), partido en dos el 15/10/2026 (D-097):
+  **2a `aislamiento-por-administracion`** (el candado: roles de base, RLS, 404/403, auditoría),
+  propuesto y esperando la aprobación escrita de un socio; y **2b** (el login: contraseña para el
+  personal, link mágico para el vecino), bloqueado por P48 (un email con cuenta en dos administraciones).
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -41,7 +43,7 @@ mercado de arranque es **Mendoza**.
   los casos de borde para decidir antes de su cambio (P24 a P41), la validación de los valores de
   plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
   administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
-  (P47). P18 y P23 se resolvieron en D-096.
+  (P47), a qué administración entra un email con cuenta en dos (P48). P18 y P23 se resolvieron en D-096.
 
 ## Stack Tecnológico
 
@@ -85,14 +87,14 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `knowledge-base/07_flujos_principales.md` | Flujos extremo a extremo, con sus casos de error | Se reescribe |
 | `knowledge-base/08_arquitectura_propuesta.md` | Patrones, estructura de directorios, seguridad y variables de entorno | Se reescribe |
 | `knowledge-base/09_decisiones_y_supuestos.md` | D-001 en adelante, con lo descartado y el porqué; supuestos (SU) | **Sólo se agrega** |
-| `knowledge-base/10_preguntas_abiertas.md` | Inconsistencias (IN) y preguntas abiertas (P1 a P47), con la sección "Para Alberto" | Se reescribe |
+| `knowledge-base/10_preguntas_abiertas.md` | Inconsistencias (IN) y preguntas abiertas (P1 a P48), con la sección "Para Alberto" | Se reescribe |
 | `knowledge-base/11_glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `knowledge-base/12_fichas_de_changes.md` | El detalle de cada cambio del roadmap (objetivo, reglas, dependencias, qué prueba el rompedor) | Se reescribe |
 | `knowledge-base/13_motor_de_reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN y su riesgo real, versiones, fallas y dónde entra en el roadmap | Se reescribe |
 | `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio**: constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
 | `knowledge-base/16_proyecto_final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `CHANGES.md` | **Los 20 cambios en orden, con su estado**: arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
+| `CHANGES.md` | **Los 21 cambios en orden, con su estado**: arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani (o a Alberto,
 si el cambio es de él)**. Si cambia una decisión, se escribe una decisión nueva; nunca se edita una
@@ -128,13 +130,13 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md), con el detalle de cada cambio
 en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.md). Resumen:
 
-- **Total**: 20 cambios (D-088), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
+- **Total**: 21 cambios (D-088, más el 2 partido en 2a y 2b por D-097), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
-  `1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 7`.
+  `1a → 1b → 1c → 1d → 2a → 2b → 3 → 4 → 5 → 6 → 7`.
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`.
-- **Próximo**: 2 `acceso-y-aislamiento` (CRITICAL); P18 y P23 se resolvieron en D-096, así que se puede
-  proponer.
+- **Próximo**: 2a `aislamiento-por-administracion` (CRITICAL, propuesto, espera aprobación) y después
+  2b, el login (bloqueado por P48); la partición es D-097.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.
@@ -145,7 +147,7 @@ archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`
 > el proyecto las **hereda**, no se repiten acá.
 
 **Qué no se corre nunca en este repositorio** (D-093): la base ya existe, está escrita a mano y
-tiene meses de decisiones y un roadmap de 20 cambios. Correr cualquiera de estas herramientas de
+tiene meses de decisiones y un roadmap de 21 cambios. Correr cualquiera de estas herramientas de
 fundación la pisa o la regenera con contenido que no es el nuestro:
 
 - `active-orchestrator`: **tampoco elegir "Regenerar"** si en algún momento lo pregunta. Si la

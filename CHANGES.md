@@ -27,7 +27,8 @@ C-01 infraestructura-base (1a)
   └── C-02 arranque-del-sistema (1b)
         └── C-03 cola-logs-y-respaldos (1c)
               └── C-04 respaldos-y-restauracion (1d)
-                    └── C-05 acceso-y-aislamiento (2)        ← desbloquea TODO lo demás
+                    └── C-05a aislamiento-por-administracion (2a)   ← el candado (D-097)
+                          └── C-05b login (2b)                      ← desbloquea TODO lo demás
                           │
                           └── C-06 configuracion-del-edificio (3)
                                 │
@@ -80,9 +81,12 @@ GATE 3: C-03 ✓
   → C-04 respaldos-y-restauracion (solo, HIGH: aprobación de un socio)
 
 GATE 4: C-04 ✓
-  → C-05 acceso-y-aislamiento (solo, CRITICAL: aprobación de un socio)
+  → C-05a aislamiento-por-administracion (solo, CRITICAL: aprobación de un socio)
 
-GATE 5: C-05 ✓
+GATE 4b: C-05a ✓ + P48 resuelta
+  → C-05b login (solo, CRITICAL: aprobación de un socio)
+
+GATE 5: C-05b ✓
   → C-06 configuracion-del-edificio (solo, HIGH: aprobación de un socio)
 
 GATE 6: C-06 ✓
@@ -118,14 +122,14 @@ GATE 14: C-12 + C-13 + C-17 + C-18 + C-19 ✓ + datos del edificio piloto (P1)
   → C-20 piloto-en-paralelo (solo, cierra el roadmap)
 ```
 
-### Camino crítico (14 changes — mínimo irreducible hasta cerrar M3)
+### Camino crítico (15 changes — mínimo irreducible hasta cerrar M3)
 
 ```
-C-01 → C-02 → C-03 → C-04 → C-05 → C-06 → C-07 → C-09 → C-10 → C-11 → C-14 → C-15 → C-18 → C-20
+C-01 → C-02 → C-03 → C-04 → C-05a → C-05b → C-06 → C-07 → C-09 → C-10 → C-11 → C-14 → C-15 → C-18 → C-20
 ```
 
 El **camino crítico al test de aceptación de M1** (reproducir al centavo la última liquidación del
-piloto) es el prefijo de 10 changes: `C-01 → C-02 → C-03 → C-04 → C-05 → C-06 → C-07 → C-08/C-09 →
+piloto) es el prefijo de 11 changes: `C-01 → C-02 → C-03 → C-04 → C-05a → C-05b → C-06 → C-07 → C-08/C-09 →
 C-10`. Ese es el que el proyecto sigue priorizando hoy (ver
 `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida). El resto de la cadena hasta `C-20` cierra
 M2 y M3.
@@ -143,7 +147,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   2  │ C-02 arranque-del-sistema       │         -                       │         -
   3  │ C-03 cola-logs-y-respaldos      │         -                       │         -
   4  │ C-04 respaldos-y-restauracion   │         -                       │         -
-  5  │ C-05 acceso-y-aislamiento       │         -                       │         -
+  5  │ C-05a aislamiento-por-admin.    │         -                       │         -
+ 5b  │ C-05b login                     │         -                       │         -
   6  │ C-06 configuracion-del-edificio │         -                       │         -
   7  │ C-07 motor-de-cuenta-corriente  │         -                       │         -
   8  │ C-08 importacion-desde-excel    │ C-09 gastos-y-cargos            │         -
@@ -218,20 +223,40 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ## FASE 2 — Acceso y configuración
 
-### [C-05] `acceso-y-aislamiento` · 2
-- **Estado**: `[ ]` pendiente (CRITICAL, explore propio)
-- **Scope**: login del personal y del vecino, los cuatro roles (D-037), alcance por edificio,
-  Row-Level Security con `SET LOCAL`, auditoría de cada acción sensible, 404 fuera de alcance, 403
-  sin permiso, límite de pedidos en el login
+### [C-05a] `aislamiento-por-administracion` · 2a
+- **Estado**: `[ ]` propuesto el 15/10/2026, espera la aprobación escrita de un socio (CRITICAL);
+  partido del cambio 2 `acceso-y-aislamiento` por D-097
+- **Scope**: roles de PostgreSQL separados (arranque, migrador, aplicación), Row-Level Security con
+  `SET LOCAL` por administración, tablas mínimas, alcance por edificio (404) y permiso por acción
+  según D-096 (403), auditoría de acciones sensibles (D-016), el tenant del worker, endurecimiento de
+  infraestructura (deuda con dueño "2"); se prueba sin login, con la identidad inyectada
 - **Dependencias**: C-04
 - **Governance**: CRITICO
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §2
+  - `openspec/changes/aislamiento-por-administracion/proposal.md`
+  - `openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`
+  - `knowledge-base/12_fichas_de_changes.md` §2a
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Acceso y aislamiento (R10)
   - `knowledge-base/03_actores_y_roles.md`
+  - `knowledge-base/15_lecciones.md` (L-001 a L-017)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-016, D-037, D-087, D-091, D-095, D-096, D-097)
+
+---
+
+### [C-05b] `login` · 2b
+- **Estado**: `[ ]` pendiente (CRITICAL), bloqueado por P48; partido del cambio 2 por D-097 (`login` es
+  nombre provisional: lo fija su propose)
+- **Scope**: login del personal con contraseña y del vecino con link mágico por mail (D-097), sesión
+  del lado de Next.js (D-036), límite de intentos en el login, auditoría de login exitoso y fallido
+  sobre la tabla del 2a, CSP en Next, la pantalla de login
+- **Dependencias**: C-05a
+- **Governance**: CRITICO
+- **Leer antes**:
+  - `knowledge-base/12_fichas_de_changes.md` §2b
+  - `openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md` (secciones 1, 3 y 4)
   - `knowledge-base/06_funcionalidades.md` §HU-V1
-  - `knowledge-base/10_preguntas_abiertas.md` (P18, P23, resueltas en D-096)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-096)
+  - `knowledge-base/10_preguntas_abiertas.md` (P48)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-036, D-039, D-043, D-096, D-097)
 
 ---
 
@@ -240,7 +265,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: edificios, unidades con tipo y coeficiente, grupos de reparto, categorías de gasto,
   configuración versionada de intereses y fondo de reserva, carga del edificio de ejemplo en la base,
   estado de migración del edificio
-- **Dependencias**: C-05
+- **Dependencias**: C-05b
 - **Governance**: ALTO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §3
@@ -257,7 +282,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: libro de movimientos de sólo agregar, obligaciones/pagos/imputaciones, intereses
   simples al registrarse, reparto por mayor resto, correcciones con contra-asiento, caso de uso de
   saldo inicial, función pura de moroso crítico, contrato mínimo de emisión
-- **Dependencias**: C-05, C-06
+- **Dependencias**: C-05b, C-06
 - **Governance**: CRITICO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §4

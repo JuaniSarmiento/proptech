@@ -21,7 +21,7 @@ el detalle de cada uno está en `12_fichas_de_changes.md` y las preguntas abiert
 |---|---|---|
 | `R` (R01 a R41) | Reglas de negocio | `05_reglas_de_negocio.md` |
 | `D-NNN` (D-001 en adelante) | Decisiones de este proyecto | `09_decisiones_y_supuestos.md` |
-| `P` (P1 a P47) | Preguntas abiertas | `10_preguntas_abiertas.md` |
+| `P` (P1 a P48) | Preguntas abiertas | `10_preguntas_abiertas.md` |
 | `HU-X#` | Historias de usuario (A de administrador, V de vecino, C de consejo) | `06_funcionalidades.md` |
 | `L-NNN` | Lecciones aprendidas de un cambio ya cerrado | `15_lecciones.md` |
 | `SU-NN` | Supuestos | `09_decisiones_y_supuestos.md` |
@@ -48,7 +48,7 @@ el detalle de cada uno está en `12_fichas_de_changes.md` y las preguntas abiert
 | [07_flujos_principales.md](07_flujos_principales.md) | Flujos extremo a extremo con sus casos de error | Se reescribe |
 | [08_arquitectura_propuesta.md](08_arquitectura_propuesta.md) | Patrones aplicados, estructura de directorios, seguridad, variables de entorno | Se reescribe |
 | [09_decisiones_y_supuestos.md](09_decisiones_y_supuestos.md) | Las decisiones (D-001 en adelante) con su fecha, lo descartado, el porqué y quién decidió; supuestos (SU) | **Sólo se agrega** |
-| [10_preguntas_abiertas.md](10_preguntas_abiertas.md) | Inconsistencias (IN) y preguntas abiertas (P1 a P47) priorizadas, con la sección "Para Alberto" | Se reescribe: cada respuesta sale de acá y entra como decisión |
+| [10_preguntas_abiertas.md](10_preguntas_abiertas.md) | Inconsistencias (IN) y preguntas abiertas (P1 a P48) priorizadas, con la sección "Para Alberto" | Se reescribe: cada respuesta sale de acá y entra como decisión |
 | [11_glosario.md](11_glosario.md) | El idioma común. El código usa estos mismos nombres, en español | Se reescribe |
 | [12_fichas_de_changes.md](12_fichas_de_changes.md) | El detalle de cada cambio del roadmap (objetivo, reglas, dependencias, qué prueba el rompedor); el estado vive sólo en `CHANGES.md` | Se reescribe |
 | [13_motor_de_reglas.md](13_motor_de_reglas.md) | Cómo entra el reglamento propio de cada edificio: el puerto de políticas, GoRules ZEN con su editor visual y el validador propio | Se reescribe |

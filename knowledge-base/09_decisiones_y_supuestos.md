@@ -1518,6 +1518,45 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     consejo antes de condonar; esa es la pregunta de P20 y queda sin resolver.
 - **Quién**: Juani, como socio (D-094). Alberto puede revisarla antes de que se codee el cambio 2.
 
+## D-097 · El cambio 2 se parte en 2a (el candado) y 2b (el login), y el método de login
+
+- **Fecha**: 15/10/2026
+- **Decisión**:
+  - **Partición**: el cambio 2 `acceso-y-aislamiento` se parte en dos, con el mismo criterio que partió
+    el 1 en 1a a 1d (piezas con perfil de riesgo distinto se revisan mejor por separado):
+    - **2a `aislamiento-por-administracion`, el candado**: roles de PostgreSQL separados, Row-Level
+      Security con `SET LOCAL` por administración, alcance por edificio (404) y permiso por acción
+      según D-096 (403), auditoría de acciones sensibles (D-016), el tenant del worker y el
+      endurecimiento de infraestructura con dueño "2". Se prueba entero sin login: la identidad se
+      inyecta en los tests.
+    - **2b, el login**: el método de abajo, la sesión del lado de Next.js (D-036), el límite de
+      intentos, la auditoría de login exitoso y fallido sobre la tabla del 2a y la CSP de Next. Depende
+      del 2a.
+    Los dos siguen siendo CRITICAL (D-094): ninguno se construye sin la aprobación escrita y fechada de
+    un socio.
+    El roadmap pasa de 20 a 21 cambios. En `CHANGES.md` quedan como **C-05a** y **C-05b**, para no
+    renumerar los códigos siguientes (D-093); el cambio 3 depende del 2b, como dependía del 2 entero.
+  - **Método de login**: **link mágico por mail sólo para el vecino**; el personal (titular,
+    colaborador y consejo) entra **con contraseña**. Resuelve la pregunta que D-039 dejó para el design.
+  - **Queda abierto un hueco**, que bloquea el 2b: a qué administración entra un email que tiene
+    cuenta en dos (D-096 lo permite y nadie definió el mecanismo). Es **P48**.
+- **Descartado**:
+  - El cambio 2 entero en una sola pieza: mezcla un candado que se puede probar sin pantallas con una
+    decisión de producto (el método de login), y la discusión de la segunda frena la aprobación del
+    primero.
+  - Clerk para el personal (la propuesta del documento de Alberto): suma un servicio pago con pocos
+    usuarios por administración (D-043) y manda los emails del personal a un tercero antes de tener
+    resuelta P12.
+  - Link mágico también para el personal: para quien anula liquidaciones y revierte pagos, una bandeja
+    de entrada comprometida sería la llave completa.
+  - Contraseña también para el vecino: HU-V1 pide "entrar desde el celular con mi email", y cada
+    contraseña olvidada de un vecino que entra una vez por mes es un ticket de soporte (P13).
+- **Por qué**: el explore del 15/10/2026 (`openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`,
+  secciones 1 y 7) mostró que el candado es irreductiblemente crítico y testeable de punta a punta sin
+  login, y que el login depende de decisiones de producto. El link mágico del vecino necesita mandar un
+  mail antes del cambio 13 (`avisos-por-email`): cómo se manda queda para el design del 2b.
+- **Quién**: Juani, 15/10/2026 (la partición y el método de login, con el alcance por perfil).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había
