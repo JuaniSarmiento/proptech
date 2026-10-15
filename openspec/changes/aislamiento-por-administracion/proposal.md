@@ -216,12 +216,12 @@ arquitecto que les dio esta forma; eso **no** es la aprobación del cambio: cada
 
 | Elección | Propuesta del design | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| E1 · `proptech_migrador` sin `BYPASSRLS` | Sin `BYPASSRLS`. El migrador es de confianza equivalente al superusuario sobre sus tablas (como dueño puede quitar el `FORCE`); no se le da `BYPASSRLS` para obligar a que una migración que siembre datos fije su tenant a propósito (D2) | |
-| E2 · Alcance por edificio en la aplicación | En la aplicación, con tests por rol; la base asegura la administración. Riesgo, costo de revertir y convención `complejo_id NOT NULL` en D6 | |
-| E3 · `trabajos_hechos` sin `administracion_id` | Sin columna: es técnica; las claves de idempotencia de las tareas con tenant llevan el `administracion_id` adentro (D8) | |
-| E4 · Dependabot fuera del 2a | Pasa al cambio 15 | |
-| E5 · Cuatro roles en vez de los dos de D-087 | Se suman el rol de arranque como dueño de la auditoría y `proptech_respaldo` (sin superusuario, `BYPASSRLS` y `pg_read_all_data`) para que `respaldos` deje de tener la contraseña del superusuario (D1) | |
+| E1 · `proptech_migrador` sin `BYPASSRLS` | Sin `BYPASSRLS`. El migrador es de confianza equivalente al superusuario sobre sus tablas (como dueño puede quitar el `FORCE`); no se le da `BYPASSRLS` para obligar a que una migración que siembre datos fije su tenant a propósito (D2) || Sí, Juani 15/10/2026 |
+| E2 · Alcance por edificio en la aplicación | En la aplicación, con tests por rol; la base asegura la administración. Riesgo, costo de revertir y convención `complejo_id NOT NULL` en D6 || Sí, Juani 15/10/2026 |
+| E3 · `trabajos_hechos` sin `administracion_id` | Sin columna: es técnica; las claves de idempotencia de las tareas con tenant llevan el `administracion_id` adentro (D8) || Sí, Juani 15/10/2026 |
+| E4 · Dependabot fuera del 2a | Pasa al cambio 15 || Sí, Juani 15/10/2026 |
+| E5 · Cuatro roles en vez de los dos de D-087 | Se suman el rol de arranque como dueño de la auditoría y `proptech_respaldo` (sin superusuario, `BYPASSRLS` y `pg_read_all_data`) para que `respaldos` deje de tener la contraseña del superusuario (D1) || Sí, Juani 15/10/2026 |
 
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|
-| | | |
+| Juani | 15/10/2026 | Todo el 2a tal como está en esta propuesta, con E1 a E5 aprobadas |
