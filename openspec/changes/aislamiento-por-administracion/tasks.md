@@ -62,7 +62,17 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     conexión en `autocommit=True`, así que su `rollback()` no deshacía nada (corregido con conexiones
     separadas y `autocommit=False`). Suite completa: 694 passed + 1 xfailed (sin regresión). `humo.sh`
     corrido de nuevo con la migración 0003 ya en el stack real: HUMO OK.
-- [ ] 3.2 Guardián del catálogo (D5) en `tests/integracion/test_catalogo_rls.py`: después de `upgrade head`, se cumplen las tres reglas de D5 (RLS forzada, política con `missing_ok` y permisos para la app; `complejo_id NOT NULL` con FK compuesta salvo las excepciones; tablas sin `administracion_id` sólo en la lista técnica). Ver el rojo cinco veces, cada una con una migración de prueba sobre una copia (L-013): una tabla sin `FORCE`, una sin política, una política con `current_setting` de un solo argumento, una sin `GRANT`, una con `complejo_id` nulo o sin la FK compuesta; cada rojo nombra la tabla. Escenarios: `aislamiento-por-administracion` › Una tabla nueva sin candado. Lecciones: L-013, L-016.
+- [x] 3.2 Guardián del catálogo (D5) en `tests/integracion/test_catalogo_rls.py`: después de `upgrade head`, se cumplen las tres reglas de D5 (RLS forzada, política con `missing_ok` y permisos para la app; `complejo_id NOT NULL` con FK compuesta salvo las excepciones; tablas sin `administracion_id` sólo en la lista técnica). Ver el rojo cinco veces, cada una con una migración de prueba sobre una copia (L-013): una tabla sin `FORCE`, una sin política, una política con `current_setting` de un solo argumento, una sin `GRANT`, una con `complejo_id` nulo o sin la FK compuesta; cada rojo nombra la tabla. Escenarios: `aislamiento-por-administracion` › Una tabla nueva sin candado. Lecciones: L-013, L-016.
+  - Hecho 15/10/2026: el guardián (`revisar_catalogo`) vive directo en `tests/integracion/test_catalogo_rls.py`
+    (así lo describe design.md), recorriendo `pg_tables`/`pg_class`/`pg_policies`/`pg_constraint` con el
+    rol de arranque. 6 tests (el esquema real sin problemas + los 5 rojos, cada uno con una tabla `zz_*`
+    creada a mano y borrada al final, nunca una migración real). Rojo real encontrado en el camino: una
+    política `CREATE POLICY ... USING (...)` sin `WITH CHECK` explícito queda con `with_check = NULL`
+    en el catálogo (Postgres no copia `USING` a `WITH CHECK`), lo que hacía que los cinco escenarios
+    reportaran "sin política" además de su defecto propio; se corrigió agregando `WITH CHECK` igual a
+    `USING` en los cuatro escenarios que no prueban el formato de la política, y se agregaron
+    aserciones negativas para que cada rojo aísle un solo defecto. Suite completa: 700 passed + 1
+    xfailed. No se tocó ninguna migración ni `compose.yaml`; no se repitió `humo.sh`.
 
 ## 4. El tenant en la sesión
 
