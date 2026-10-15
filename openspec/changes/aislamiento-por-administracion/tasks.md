@@ -403,4 +403,14 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     salud cae después de un ciclo fallido con un éxito previo, y un éxito posterior vuelve a limpiarla.
     `shellcheck`: limpio. Suite completa: 851 passed + 1 xfailed (849 + 2).
 
-- [ ] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.
+- [x] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.
+  - Hecho 15/10/2026 16:38-16:44, commit `d1e2a6c` (último antes de esta entrada): `test-backend.sh`
+    → 851 passed + 1 xfailed (229s); `test-web.sh` → 16 passed; `humo.sh` → HUMO OK, con el paso `(1b)`
+    (segundo `up` sobre el mismo volumen, R1) confirmado en la salida real.
+  - Contra la base de la vuelta 1 (833 passed + 1 xfailed, commit `7faadce`): **+18 tests** a lo largo
+    de R1, R2, R3, R4, R7, R8 y R10 (1 + 2 + 2 + 1 + 1 + 7 + 2 — más el corregido de la línea 231 de
+    `test_roles.py`, que no suma tests nuevos pero deja de ser engañoso). Las deudas R5, R6, R9 y R11
+    no se tocaron: siguen con dueño (2b, 3).
+  - **El cambio queda acá, sin archivar y sin pushear**: lo que sigue es la vuelta 2 del rompedor y el
+    auditor, sobre estas siete correcciones. `git status` limpio salvo esta misma edición.
+
