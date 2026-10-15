@@ -20,8 +20,9 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        "POSTGRES_USER": contenedor.username,
-        "POSTGRES_PASSWORD": contenedor.password,
+        # Alembic corre como el migrador (D1, D2, cambio 2a).
+        "POSTGRES_MIGRADOR_USER": contenedor.username,
+        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
         "POSTGRES_DB": contenedor.dbname,
     }
     # 6.1/D11: Alembic no depende de Redis ni de los parámetros del sistema.
@@ -86,6 +87,10 @@ def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)
+    # `Configuracion` (D3) lee el par de la app; antes del 2.2 es el mismo
+    # usuario del contenedor que el migrador.
+    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
 
     engine_contenedor = crear_engine(Configuracion())
     try:

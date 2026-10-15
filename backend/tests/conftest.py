@@ -31,7 +31,17 @@ IMAGEN_REDIS_PARA_TESTS = _leer_imagen_de_compose("redis")
 
 @pytest.fixture(scope="session")
 def postgres_contenedor() -> Iterator[PostgresContainer]:
-    with PostgresContainer(IMAGEN_POSTGRES_PARA_TESTS, driver="psycopg") as contenedor:
+    # Usuario con el patrón `proptech_[a-z_]{1,40}` (D1, D3, cambio 2a): antes
+    # de que el 2.2 cree los cuatro roles reales, este único usuario del
+    # contenedor hace de migrador, de app y de respaldo según el test, y las
+    # tres configuraciones por rol validan que su nombre cumpla ese patrón.
+    # El default de testcontainers ("test") no lo cumple.
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username="proptech_test",
+        password="proptech_test",  # noqa: S106 (contraseña de este contenedor de test, nunca real)
+    ) as contenedor:
         yield contenedor
 
 
@@ -52,8 +62,9 @@ def ajustes_del_worker(
     parametros_del_repo = RAIZ / "config" / "parametros.yaml"
     os.environ["POSTGRES_HOST"] = postgres_contenedor.get_container_host_ip()
     os.environ["POSTGRES_PORT"] = str(postgres_contenedor.get_exposed_port(5432))
-    os.environ["POSTGRES_USER"] = postgres_contenedor.username
-    os.environ["POSTGRES_PASSWORD"] = postgres_contenedor.password
+    # `proptech_worker.ajustes` arma su `Configuracion` con el par de la app (D3).
+    os.environ["POSTGRES_APP_USER"] = postgres_contenedor.username
+    os.environ["POSTGRES_APP_PASSWORD"] = postgres_contenedor.password
     os.environ["POSTGRES_DB"] = postgres_contenedor.dbname
     os.environ["REDIS_HOST"] = redis_contenedor.get_container_host_ip()
     os.environ["REDIS_PORT"] = str(redis_contenedor.get_exposed_port(6379))
@@ -119,8 +130,9 @@ def esquema_migrado(postgres_contenedor: PostgresContainer) -> None:
         **os.environ,
         "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
-        "POSTGRES_USER": postgres_contenedor.username,
-        "POSTGRES_PASSWORD": postgres_contenedor.password,
+        # Alembic corre como el migrador (D1, D2, cambio 2a).
+        "POSTGRES_MIGRADOR_USER": postgres_contenedor.username,
+        "POSTGRES_MIGRADOR_PASSWORD": postgres_contenedor.password,
         "POSTGRES_DB": postgres_contenedor.dbname,
     }
     subprocess.run(

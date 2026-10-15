@@ -51,8 +51,8 @@ def _configurar_entorno(
 ) -> None:
     monkeypatch.setenv("POSTGRES_HOST", postgres.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(postgres.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_USER", postgres.username)
-    monkeypatch.setenv("POSTGRES_PASSWORD", postgres.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", postgres.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres.password)
     monkeypatch.setenv("POSTGRES_DB", postgres.dbname)
     monkeypatch.setenv("REDIS_HOST", redis_host)
     monkeypatch.setenv("REDIS_PORT", str(redis_port))
@@ -122,8 +122,8 @@ def test_crear_app_expone_la_cola_cableada_y_arranca_sin_intentar_conectar(
     cuelga al armar la cola (pool perezoso, D4) y `/api/salud` responde."""
     monkeypatch.setenv("POSTGRES_HOST", postgres_contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(postgres_contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_USER", postgres_contenedor.username)
-    monkeypatch.setenv("POSTGRES_PASSWORD", postgres_contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
     monkeypatch.setenv("POSTGRES_DB", postgres_contenedor.dbname)
     monkeypatch.setenv("REDIS_HOST", "10.255.255.1")
     monkeypatch.setenv("REDIS_PORT", "6379")

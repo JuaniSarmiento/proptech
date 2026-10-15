@@ -38,8 +38,11 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        "POSTGRES_USER": contenedor.username,
-        "POSTGRES_PASSWORD": contenedor.password,
+        # Alembic corre como el migrador (D1, D2, cambio 2a); antes de los
+        # roles del 2a el contenedor de test sólo tiene un usuario, así que
+        # el par del migrador apunta al mismo superusuario del contenedor.
+        "POSTGRES_MIGRADOR_USER": contenedor.username,
+        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
         "POSTGRES_DB": contenedor.dbname,
     }
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):

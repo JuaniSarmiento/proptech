@@ -24,7 +24,14 @@ pytestmark = pytest.mark.integracion
 def contenedor_propio() -> Iterator[PostgresContainer]:
     from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
 
-    contenedor = PostgresContainer(IMAGEN_POSTGRES_PARA_TESTS, driver="psycopg")
+    # Usuario con el patrón proptech_* (D1, D3, cambio 2a): ver postgres_contenedor
+    # de sesión en tests/conftest.py.
+    contenedor = PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username="proptech_test",
+        password="proptech_test",  # noqa: S106 (contraseña de este contenedor de test, nunca real)
+    )
     with contenedor as iniciado:
         yield iniciado
 
@@ -34,8 +41,8 @@ def _configuracion_para(
 ) -> Configuracion:
     monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_USER", contenedor.username)
-    monkeypatch.setenv("POSTGRES_PASSWORD", contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", contenedor.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", contenedor.password)
     monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
     return Configuracion()
 

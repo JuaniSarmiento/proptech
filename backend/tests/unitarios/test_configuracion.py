@@ -1,393 +1,423 @@
-"""Tests unitarios de Configuracion y de la URL de conexión a PostgreSQL."""
+"""Tests unitarios de las cuatro configuraciones por rol (D3) y de la URL de conexión.
+
+Cada rol lee sólo su propio par de credenciales (usuario/contraseña); host, puerto y
+base de datos son comunes a los cuatro. `ConfiguracionDelMigrador`, `ConfiguracionDeRespaldo`
+y `Configuracion` (el rol de la app) validan además que el nombre de usuario cumpla
+`^proptech_[a-z_]{1,40}$` (D1, L-008): son los tres roles nuevos que este cambio crea con esa
+convención. `ConfiguracionDeArranque` lee `POSTGRES_USER`, el superusuario de la imagen oficial
+de PostgreSQL, que no sigue esa convención (hoy vale "proptech" en `.env.example`) y por eso no
+se le exige el patrón.
+"""
 
 import traceback
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
-VARIABLES_STRING = ["POSTGRES_HOST", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"]
-TODAS_LAS_VARIABLES = [*VARIABLES_STRING, "POSTGRES_PORT"]
+from proptech_core.compartido.configuracion import (
+    Configuracion,
+    ConfiguracionBaseDeDatos,
+    ConfiguracionDeArranque,
+    ConfiguracionDelMigrador,
+    ConfiguracionDeRespaldo,
+    ConfiguracionInvalida,
+)
 
-VARIABLES_STRING_AMPLIADAS = ["REDIS_HOST", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"]
-
-BASE_OK: dict[str, str] = {
-    "POSTGRES_HOST": "db",
-    "POSTGRES_PORT": "5432",
-    "POSTGRES_USER": "proptech",
-    "POSTGRES_PASSWORD": "pass",
-    "POSTGRES_DB": "proptech",
-}
+# --- Tabla de roles: para correr la misma batería de casos sobre los cuatro ---
 
 
-def _set_base(
-    monkeypatch: pytest.MonkeyPatch,
-    overrides: dict[str, str] | None = None,
-    deletes: list[str] | None = None,
-) -> None:
-    """Variables de entorno válidas de base, para las pruebas de la ronda 3 del Rompedor
-    que siguen. Se definen acá (no en el fixture autouse de `conftest.py`) porque estos
-    tests pisan variables puntuales a propósito."""
-    for clave, valor in BASE_OK.items():
-        monkeypatch.setenv(clave, valor)
-    for clave, valor in (overrides or {}).items():
-        monkeypatch.setenv(clave, valor)
-    for clave in deletes or []:
-        monkeypatch.delenv(clave, raising=False)
+@dataclass(frozen=True)
+class _Rol:
+    nombre: str
+    clase: Callable[[], object]
+    var_usuario: str
+    var_password: str
+    usuario_ok: str
+    exige_patron: bool
 
 
-def test_sin_password_falla_nombrando_la_variable(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
+ROLES = [
+    _Rol(
+        "arranque",
+        ConfiguracionDeArranque,
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "proptech",
+        False,
+    ),
+    _Rol(
+        "migrador",
+        ConfiguracionDelMigrador,
+        "POSTGRES_MIGRADOR_USER",
+        "POSTGRES_MIGRADOR_PASSWORD",
+        "proptech_migrador",
+        True,
+    ),
+    _Rol(
+        "respaldo",
+        ConfiguracionDeRespaldo,
+        "POSTGRES_RESPALDO_USER",
+        "POSTGRES_RESPALDO_PASSWORD",
+        "proptech_respaldo",
+        True,
+    ),
+    _Rol("app", Configuracion, "POSTGRES_APP_USER", "POSTGRES_APP_PASSWORD", "proptech_app", True),
+]
 
-    monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+_PARAMETROS_DEL_REPO = Path(__file__).resolve().parents[3] / "config" / "parametros.yaml"
+
+
+def _set_comun(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POSTGRES_HOST", "db")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
-    monkeypatch.setenv("POSTGRES_USER", "proptech")
     monkeypatch.setenv("POSTGRES_DB", "proptech")
 
-    with pytest.raises(Exception) as exc_info:
+
+def _set_ampliadas(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sólo las necesita `Configuracion` (API y worker, D11); las otras tres no."""
+    monkeypatch.setenv("REDIS_HOST", "redis")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    monkeypatch.setenv("REDIS_PASSWORD", "redis-pass")
+    monkeypatch.setenv("PROPTECH_PARAMETROS", str(_PARAMETROS_DEL_REPO))
+
+
+def _set_rol_ok(monkeypatch: pytest.MonkeyPatch, rol: _Rol) -> None:
+    _set_comun(monkeypatch)
+    monkeypatch.setenv(rol.var_usuario, rol.usuario_ok)
+    monkeypatch.setenv(rol.var_password, "clave-de-prueba")
+    if rol.nombre == "app":
+        _set_ampliadas(monkeypatch)
+
+
+def _instanciar(rol: _Rol) -> object:
+    return rol.clase()
+
+
+# --- Cada rol lee SÓLO su propio par: los otros tres pares no bastan ---
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+def test_cada_rol_no_arranca_con_el_par_de_otro_rol(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol
+) -> None:
+    _set_comun(monkeypatch)
+    if rol.nombre != "app":
+        _set_ampliadas(monkeypatch)  # para no fallar por Redis si el rol es "app" sin querer
+    # Pone las credenciales de TODOS los otros roles, nunca las del propio.
+    for otro in ROLES:
+        if otro.nombre == rol.nombre:
+            continue
+        monkeypatch.setenv(otro.var_usuario, otro.usuario_ok)
+        monkeypatch.setenv(otro.var_password, "clave-de-otro-rol")
+    # El propio par, ausente (nunca alcanza con el de otro rol): lo sacamos
+    # explícito, sin confiar en que el conftest no lo haya puesto por default.
+    monkeypatch.delenv(rol.var_usuario, raising=False)
+    monkeypatch.delenv(rol.var_password, raising=False)
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        _instanciar(rol)
+
+    mensaje = str(exc_info.value)
+    assert rol.var_usuario in mensaje
+    assert rol.var_password in mensaje
+
+
+def test_configuracion_app_no_arranca_con_solo_postgres_user_y_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Caso explícito de 2.1: el histórico POSTGRES_USER/POSTGRES_PASSWORD (el par del
+    rol de arranque) ya no alcanza para `Configuracion` (D3): exige POSTGRES_APP_USER/_PASSWORD."""
+    _set_comun(monkeypatch)
+    _set_ampliadas(monkeypatch)
+    monkeypatch.setenv("POSTGRES_USER", "proptech")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "cualquier-cosa")
+    monkeypatch.delenv("POSTGRES_APP_USER", raising=False)
+    monkeypatch.delenv("POSTGRES_APP_PASSWORD", raising=False)
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
         Configuracion()
 
     mensaje = str(exc_info.value)
-    assert "POSTGRES_PASSWORD" in mensaje
+    assert "POSTGRES_APP_USER" in mensaje
+    assert "POSTGRES_APP_PASSWORD" in mensaje
 
 
-@pytest.mark.parametrize("variable", VARIABLES_STRING)
-def test_cada_variable_faltante_se_nombra(monkeypatch: pytest.MonkeyPatch, variable: str) -> None:
-    """Las 4 variables sin default, si faltan, aparecen nombradas en el error (D11).
+# --- Por cada rol: faltante, vacía, en blanco, con espacios alrededor ---
 
-    `POSTGRES_PORT` tiene default (5432) a propósito: que falte no es un error,
-    así que no entra en este caso (si falta, Configuracion() arranca con 5432)."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+@pytest.mark.parametrize("campo", ["usuario", "password"])
+def test_variable_faltante_se_nombra(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol, campo: str
+) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    variable = rol.var_usuario if campo == "usuario" else rol.var_password
     monkeypatch.delenv(variable, raising=False)
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
+        _instanciar(rol)
 
     assert variable in str(exc_info.value)
 
 
-@pytest.mark.parametrize("variable", TODAS_LAS_VARIABLES)
-def test_cada_variable_vacia_se_nombra(monkeypatch: pytest.MonkeyPatch, variable: str) -> None:
-    """Presente pero vacía (`""`) no es "falta" para pydantic: igual se nombra y se rechaza."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+@pytest.mark.parametrize("campo", ["usuario", "password"])
+def test_variable_vacia_se_nombra(monkeypatch: pytest.MonkeyPatch, rol: _Rol, campo: str) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    variable = rol.var_usuario if campo == "usuario" else rol.var_password
     monkeypatch.setenv(variable, "")
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
+        _instanciar(rol)
 
     assert variable in str(exc_info.value)
 
 
-@pytest.mark.parametrize("variable", VARIABLES_STRING)
-def test_cada_variable_string_en_blanco_se_nombra(
-    monkeypatch: pytest.MonkeyPatch, variable: str
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+@pytest.mark.parametrize("campo", ["usuario", "password"])
+def test_variable_en_blanco_se_nombra(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol, campo: str
 ) -> None:
-    """Sólo espacios tampoco es un valor válido, aunque la variable esté "presente"."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
+    _set_rol_ok(monkeypatch, rol)
+    variable = rol.var_usuario if campo == "usuario" else rol.var_password
     monkeypatch.setenv(variable, "   ")
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
+        _instanciar(rol)
 
     assert variable in str(exc_info.value)
 
 
-def test_puerto_no_numerico_se_nombra(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv("POSTGRES_PORT", "abc")
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "POSTGRES_PORT" in str(exc_info.value)
-
-
-@pytest.mark.parametrize("puerto", ["0", "70000"])
-def test_puerto_fuera_de_rango_se_nombra(monkeypatch: pytest.MonkeyPatch, puerto: str) -> None:
-    """El puerto válido de TCP es 1-65535; 0 y 70000 quedan afuera."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv("POSTGRES_PORT", puerto)
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+@pytest.mark.parametrize("campo", ["usuario", "password"])
+def test_variable_con_espacios_alrededor_se_nombra(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol, campo: str
+) -> None:
+    """Un valor con contenido real pero con espacios de sobra alrededor tampoco es válido:
+    un ` proptech_app ` pegado por accidente en `.env` no es el rol `proptech_app`."""
+    _set_rol_ok(monkeypatch, rol)
+    variable = rol.var_usuario if campo == "usuario" else rol.var_password
+    valor_real = rol.usuario_ok if campo == "usuario" else "clave-de-prueba"
+    monkeypatch.setenv(variable, f"  {valor_real}  ")
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
+        _instanciar(rol)
 
-    assert "POSTGRES_PORT" in str(exc_info.value)
+    assert variable in str(exc_info.value)
 
 
-def test_ningun_valor_aparece_en_el_mensaje_de_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Un password con pinta de secreto real no debe aparecer en el error, ni cuando
-    el que falla es OTRA variable: el mensaje nombra variables, nunca valores."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
+# --- Patrón de nombre de rol: sólo migrador, respaldo y app (D1) ---
 
-    secreto = "s3cr3t@:/"
-    monkeypatch.setenv("POSTGRES_PASSWORD", secreto)
-    monkeypatch.setenv("POSTGRES_HOST", "")  # dispara el error; el password es válido
+
+ROLES_CON_PATRON = [r for r in ROLES if r.exige_patron]
+
+
+@pytest.mark.parametrize("rol", ROLES_CON_PATRON, ids=lambda r: r.nombre)
+@pytest.mark.parametrize(
+    "nombre_invalido",
+    [
+        "otra_cosa",
+        "Proptech_App",  # mayúsculas: el patrón es todo minúsculas
+        "proptech-app",  # guion, no guion bajo
+        "proptech_",  # sin nada después del guion bajo
+        "proptech_app1",  # con un dígito ASCII: tampoco está en [a-z_]
+        "proptech_app٥",  # con un dígito NO ascii (L-008)  # noqa: RUF001
+    ],
+)
+def test_nombre_de_usuario_fuera_del_patron_se_nombra(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol, nombre_invalido: str
+) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    monkeypatch.setenv(rol.var_usuario, nombre_invalido)
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
+        _instanciar(rol)
+
+    assert rol.var_usuario in str(exc_info.value)
+
+
+@pytest.mark.parametrize("rol", ROLES_CON_PATRON, ids=lambda r: r.nombre)
+def test_nombre_de_usuario_dentro_del_patron_se_acepta(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol
+) -> None:
+    _set_rol_ok(monkeypatch, rol)
+
+    configuracion = _instanciar(rol)
+
+    assert configuracion.postgres_user == rol.usuario_ok  # type: ignore[attr-defined]
+
+
+def test_arranque_acepta_un_nombre_que_no_sigue_el_patron_proptech(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """El rol de arranque es el superusuario de la imagen oficial: su nombre lo elige
+    quien despliega (hoy "proptech" en `.env.example`), no esta convención."""
+    _set_comun(monkeypatch)
+    monkeypatch.setenv("POSTGRES_USER", "proptech")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "clave")
+
+    configuracion = ConfiguracionDeArranque()
+
+    assert configuracion.postgres_user == "proptech"
+
+
+# --- Ningún valor (ni de otra variable) aparece en el mensaje ni en el traceback ---
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+def test_password_no_aparece_en_el_mensaje_de_otra_falla(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol
+) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    secreto = "s3cr3t-" + rol.nombre
+    monkeypatch.setenv(rol.var_password, secreto)
+    monkeypatch.setenv("POSTGRES_HOST", "")  # dispara el error por otra variable
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        _instanciar(rol)
 
     mensaje = str(exc_info.value)
     assert secreto not in mensaje
     assert "POSTGRES_HOST" in mensaje
 
 
-def test_url_escapa_password_con_caracteres_especiales(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
+def test_traceback_no_filtra_el_password_via_el_cause_suprimido(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_rol_ok(monkeypatch, ROLES[0])
+    secreto = "s3cr3t-trace-leak-check"
+    monkeypatch.setenv("POSTGRES_PASSWORD", secreto)
+    monkeypatch.setenv("POSTGRES_HOST", "")
 
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        ConfiguracionDeArranque()
+
+    err = exc_info.value
+    texto_completo = "".join(traceback.format_exception(type(err), err, err.__traceback__))
+    assert secreto not in texto_completo
+
+
+# --- Puerto: entero ASCII estricto, igual para los cuatro (comparten el lector común) ---
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+def test_puerto_no_numerico_se_nombra(monkeypatch: pytest.MonkeyPatch, rol: _Rol) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    monkeypatch.setenv("POSTGRES_PORT", "abc")
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        _instanciar(rol)
+
+    assert "POSTGRES_PORT" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+@pytest.mark.parametrize(
+    "valor_laxo",
+    ["5432\n", " 5432", "5_432", "+5432", "5432.0"],
+    ids=["salto_de_linea", "espacio", "guion_bajo", "signo_mas", "punto_flotante"],
+)
+def test_puerto_laxo_se_rechaza(
+    monkeypatch: pytest.MonkeyPatch, rol: _Rol, valor_laxo: str
+) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    monkeypatch.setenv("POSTGRES_PORT", valor_laxo)
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        _instanciar(rol)
+
+    assert "POSTGRES_PORT" in str(exc_info.value)
+
+
+def test_puerto_con_ceros_a_la_izquierda_se_acepta(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_rol_ok(monkeypatch, ROLES[0])
+    monkeypatch.setenv("POSTGRES_PORT", "05432")
+
+    configuracion = ConfiguracionDeArranque()
+
+    assert configuracion.postgres_port == 5432
+
+
+# --- La URL es un objeto `sqlalchemy.engine.URL`, no un string (M12) ---
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+def test_url_sqlalchemy_devuelve_un_objeto_url(monkeypatch: pytest.MonkeyPatch, rol: _Rol) -> None:
+    _set_rol_ok(monkeypatch, rol)
+
+    configuracion = _instanciar(rol)
+    url = configuracion.url_sqlalchemy()  # type: ignore[attr-defined]
+
+    assert isinstance(url, URL)
+    assert url.host == "db"
+    assert url.username == rol.usuario_ok
+    assert url.database == "proptech"
+
+
+@pytest.mark.parametrize("rol", ROLES, ids=lambda r: r.nombre)
+def test_url_str_y_repr_no_traen_el_password(monkeypatch: pytest.MonkeyPatch, rol: _Rol) -> None:
+    _set_rol_ok(monkeypatch, rol)
+    secreto = "clave-de-prueba"
+
+    configuracion = _instanciar(rol)
+    url = configuracion.url_sqlalchemy()  # type: ignore[attr-defined]
+
+    assert secreto not in str(url)
+    assert secreto not in repr(url)
+
+
+def test_url_escapa_password_con_caracteres_especiales(monkeypatch: pytest.MonkeyPatch) -> None:
     password_especial = "p@ss:w/rd"
-    monkeypatch.setenv("POSTGRES_HOST", "db")
-    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    _set_comun(monkeypatch)
     monkeypatch.setenv("POSTGRES_USER", "proptech")
     monkeypatch.setenv("POSTGRES_PASSWORD", password_especial)
-    monkeypatch.setenv("POSTGRES_DB", "proptech")
 
-    configuracion = Configuracion()
-    url_texto = configuracion.url_sqlalchemy()
+    configuracion = ConfiguracionDeArranque()
+    url = configuracion.url_sqlalchemy()
 
-    url = make_url(url_texto)
     assert url.password == password_especial
     assert url.host == "db"
     assert url.port == 5432
     assert url.username == "proptech"
     assert url.database == "proptech"
 
+    # `make_url` tiene que aceptar el objeto directamente (pasa de largo, no re-parsea
+    # un string): sigue dando los mismos valores reales.
+    url_reparseada = make_url(url)
+    assert url_reparseada.password == password_especial
 
-# --- Regresión de la ronda 3 del Rompedor (ex `tests/rompedor/test_configuracion_ronda3.py`) ---
+
+# --- `Configuracion` (D11: también lee Redis y los parámetros) ---
 
 
-def test_multiples_variables_rotas_a_la_vez_se_nombran_todas(
-    monkeypatch: pytest.MonkeyPatch,
+def test_configuracion_expone_valores_de_redis_y_parametros(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Varias variables inválidas al mismo tiempo: se nombran TODAS, no sólo la primera."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    _set_base(
-        monkeypatch,
-        overrides={"POSTGRES_HOST": "   ", "POSTGRES_PORT": "999999"},
-        deletes=["POSTGRES_USER"],
-    )
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    mensaje = str(exc_info.value)
-    assert "POSTGRES_HOST" in mensaje
-    assert "POSTGRES_PORT" in mensaje
-    assert "POSTGRES_USER" in mensaje
-
-
-def test_puerto_con_ceros_a_la_izquierda_se_acepta(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
-
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": "05432"})
+    ruta = tmp_path / "parametros.yaml"
+    ruta.write_text("version: 1\n")
+    _set_comun(monkeypatch)
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_app")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "clave")
+    monkeypatch.setenv("REDIS_HOST", "redis")
+    monkeypatch.setenv("REDIS_PORT", "6380")
+    monkeypatch.setenv("REDIS_PASSWORD", "clave-redis")
+    monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta))
 
     configuracion = Configuracion()
 
-    assert configuracion.postgres_port == 5432
-
-
-@pytest.mark.parametrize(
-    "valor_laxo",
-    ["5432\n", " 5432", "5_432", "+5432", "5432.0"],
-    ids=["salto_de_linea", "espacio", "guion_bajo", "signo_mas", "punto_flotante"],
-)
-def test_puerto_laxo_se_rechaza(monkeypatch: pytest.MonkeyPatch, valor_laxo: str) -> None:
-    """Vuelta 3 (F10b; L-008, L-009, gemelo de `test_redis_port_laxo_se_rechaza`):
-    `POSTGRES_PORT` vive en `_ConfiguracionBaseDeDatosBase` (la que también usa
-    Alembic) y no tenía el validador de enteros ASCII estrictos que ya tienen
-    `REDIS_PORT` y los `DB_POOL_*`; estas formas pasaban por `int()`/pydantic
-    laxo sin avisar (hasta la vuelta 2 este mismo archivo las documentaba como
-    "se_acepta")."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": valor_laxo})
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "POSTGRES_PORT" in str(exc_info.value)
-
-
-def test_puerto_vacio_se_rechaza_y_no_usa_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POSTGRES_PORT="" está PRESENTE pero vacío: se rechaza, no cae al default 5432."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    _set_base(monkeypatch, overrides={"POSTGRES_PORT": ""})
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "POSTGRES_PORT" in str(exc_info.value)
-
-
-def test_password_con_newline_y_unicode_no_filtra_valor(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    secreto = "s3cr3t\ncon-ñ-y-emoji-🔥-y-barra/dos:puntos"
-    _set_base(monkeypatch, overrides={"POSTGRES_PASSWORD": secreto, "POSTGRES_HOST": ""})
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    mensaje = str(exc_info.value)
-    assert secreto not in mensaje
-    assert "s3cr3t" not in mensaje
-
-
-def test_password_muy_largo_no_aparece_en_mensaje_de_otra_falla(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    secreto = "x" * 5000
-    _set_base(monkeypatch, overrides={"POSTGRES_PASSWORD": secreto, "POSTGRES_USER": " "})
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    mensaje = str(exc_info.value)
-    assert secreto not in mensaje
-    assert "POSTGRES_USER" in mensaje
-
-
-def test_valor_de_una_variable_contiene_nombre_de_otra(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POSTGRES_HOST vacío, pero POSTGRES_PASSWORD tiene el string 'POSTGRES_HOST' adentro:
-    no debería confundir el parseo de variables nombradas en el error."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    _set_base(
-        monkeypatch,
-        overrides={
-            "POSTGRES_HOST": "",
-            "POSTGRES_PASSWORD": "valor-que-dice-POSTGRES_HOST-adentro",
-        },
-    )
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    mensaje = str(exc_info.value)
-    assert "POSTGRES_HOST" in mensaje
-    assert "valor-que-dice" not in mensaje
-
-
-def test_traceback_no_filtra_el_password_via_el_cause_suprimido(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """La ValidationError original (con el valor crudo en error['input']) se suprime con
-    `from None`. Si algo renderizara el traceback completo con __cause__/__context__,
-    el valor podría filtrarse igual. Verificamos que __cause__ y __context__ no lo porten."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    secreto = "s3cr3t-trace-leak-check"
-    _set_base(monkeypatch, overrides={"POSTGRES_PASSWORD": secreto, "POSTGRES_HOST": ""})
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    err = exc_info.value
-    texto_completo = "".join(traceback.format_exception(type(err), err, err.__traceback__))
-    assert secreto not in texto_completo, "el valor se filtró por el traceback completo"
-
-
-# --- D11: Redis y PROPTECH_PARAMETROS (cambio 1b) ---
-
-
-@pytest.mark.parametrize("variable", VARIABLES_STRING_AMPLIADAS)
-def test_cada_variable_ampliada_faltante_se_nombra(
-    monkeypatch: pytest.MonkeyPatch, variable: str
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.delenv(variable, raising=False)
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert variable in str(exc_info.value)
-
-
-@pytest.mark.parametrize("variable", [*VARIABLES_STRING_AMPLIADAS, "REDIS_PORT"])
-def test_cada_variable_ampliada_vacia_se_nombra(
-    monkeypatch: pytest.MonkeyPatch, variable: str
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv(variable, "")
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert variable in str(exc_info.value)
-
-
-@pytest.mark.parametrize("variable", VARIABLES_STRING_AMPLIADAS)
-def test_cada_variable_ampliada_en_blanco_se_nombra(
-    monkeypatch: pytest.MonkeyPatch, variable: str
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv(variable, "   ")
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert variable in str(exc_info.value)
-
-
-def test_redis_port_no_numerico_se_nombra(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv("REDIS_PORT", "abc")
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "REDIS_PORT" in str(exc_info.value)
-
-
-@pytest.mark.parametrize("puerto", ["0", "70000"])
-def test_redis_port_fuera_de_rango_se_nombra(monkeypatch: pytest.MonkeyPatch, puerto: str) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv("REDIS_PORT", puerto)
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "REDIS_PORT" in str(exc_info.value)
-
-
-@pytest.mark.parametrize(
-    "valor_laxo",
-    ["5\n", " 5", "\t5", "5.0", "5_0"],
-    ids=["salto_de_linea", "espacio", "tabulacion", "punto_flotante", "guion_bajo"],
-)
-def test_redis_port_laxo_se_rechaza(monkeypatch: pytest.MonkeyPatch, valor_laxo: str) -> None:
-    """Ataque del rompedor (vuelta 2, F10; L-008, gemelo de DB_POOL_*): estas
-    formas pasan por `int()`/pydantic laxo sin avisar; `'5_0'` ni siquiera da
-    5: Python lo lee como el entero 50."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
-    monkeypatch.setenv("REDIS_PORT", valor_laxo)
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    assert "REDIS_PORT" in str(exc_info.value)
+    assert configuracion.redis_host == "redis"
+    assert configuracion.redis_port == 6380
+    assert configuracion.redis_password.get_secret_value() == "clave-redis"
+    assert configuracion.proptech_parametros == str(ruta)
 
 
 def test_proptech_parametros_archivo_inexistente_se_nombra(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
-
+    _set_rol_ok(monkeypatch, ROLES[-1])  # "app"
     monkeypatch.setenv("PROPTECH_PARAMETROS", "/no/existe/parametros.yaml")
 
     with pytest.raises(ConfiguracionInvalida) as exc_info:
@@ -396,114 +426,26 @@ def test_proptech_parametros_archivo_inexistente_se_nombra(
     assert "PROPTECH_PARAMETROS" in str(exc_info.value)
 
 
-def test_redis_password_no_aparece_en_el_mensaje_de_otra_falla(
+# --- 6.1 (D11, cambio 1b): Alembic sólo necesita PostgreSQL, ahora como el migrador ---
+
+
+def test_configuracion_del_migrador_no_necesita_redis_ni_parametros(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    secreto = "redis-s3cr3t"
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
+    """`migraciones/env.py` corre Alembic como `proptech_migrador` (D2): no se acopla
+    a Redis ni al archivo de parámetros del sistema, igual que antes con el rol de arranque."""
+    _set_comun(monkeypatch)
+    monkeypatch.setenv("POSTGRES_MIGRADOR_USER", "proptech_migrador")
+    monkeypatch.setenv("POSTGRES_MIGRADOR_PASSWORD", "clave")
+    for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
+        monkeypatch.delenv(variable, raising=False)
 
-    monkeypatch.setenv("REDIS_PASSWORD", secreto)
-    monkeypatch.setenv("POSTGRES_HOST", "")
+    configuracion = ConfiguracionDelMigrador()
 
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        Configuracion()
-
-    mensaje = str(exc_info.value)
-    assert secreto not in mensaje
-    assert "POSTGRES_HOST" in mensaje
-
-
-def test_configuracion_expone_valores_de_redis_y_parametros(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    from proptech_core.compartido.configuracion import Configuracion
-
-    ruta = tmp_path / "parametros.yaml"
-    ruta.write_text("version: 1\n")
-    monkeypatch.setenv("REDIS_HOST", "redis")
-    monkeypatch.setenv("REDIS_PORT", "6380")
-    monkeypatch.setenv("REDIS_PASSWORD", "clave")
-    monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta))
-
-    configuracion = Configuracion()
-
-    assert configuracion.redis_host == "redis"
-    assert configuracion.redis_port == 6380
-    assert configuracion.redis_password.get_secret_value() == "clave"
-    assert configuracion.proptech_parametros == str(ruta)
+    assert configuracion.postgres_user == "proptech_migrador"
 
 
-# --- 6.1: Alembic sólo necesita PostgreSQL (D11) ---
-
-
-def test_configuracion_base_de_datos_no_necesita_redis_ni_parametros(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Alembic (`migraciones/env.py`) sólo habla con PostgreSQL: su configuración
-    no se puede acoplar a Redis ni al archivo de parámetros del sistema."""
-    from proptech_core.compartido.configuracion import ConfiguracionBaseDeDatos
-
-    _set_base(
-        monkeypatch,
-        deletes=["REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"],
-    )
-
-    configuracion = ConfiguracionBaseDeDatos()
-
-    assert configuracion.postgres_host == "db"
-    assert configuracion.postgres_port == 5432
-    assert configuracion.postgres_user == "proptech"
-    assert configuracion.postgres_password.get_secret_value() == "pass"
-    assert configuracion.postgres_db == "proptech"
-
-
-def test_configuracion_base_de_datos_sigue_exigiendo_postgres(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from proptech_core.compartido.configuracion import (
-        ConfiguracionBaseDeDatos,
-        ConfiguracionInvalida,
-    )
-
-    _set_base(
-        monkeypatch,
-        deletes=[
-            "REDIS_HOST",
-            "REDIS_PORT",
-            "REDIS_PASSWORD",
-            "PROPTECH_PARAMETROS",
-            "POSTGRES_PASSWORD",
-        ],
-    )
-
-    with pytest.raises(ConfiguracionInvalida) as exc_info:
-        ConfiguracionBaseDeDatos()
-
-    assert "POSTGRES_PASSWORD" in str(exc_info.value)
-
-
-def test_configuracion_base_de_datos_url_sqlalchemy(monkeypatch: pytest.MonkeyPatch) -> None:
-    from proptech_core.compartido.configuracion import ConfiguracionBaseDeDatos
-
-    _set_base(
-        monkeypatch,
-        deletes=["REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"],
-    )
-
-    configuracion = ConfiguracionBaseDeDatos()
-    url = make_url(configuracion.url_sqlalchemy())
-
-    assert url.host == "db"
-    assert url.username == "proptech"
-
-
-def test_configuracion_completa_es_tambien_configuracion_base_de_datos(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`Configuracion` (la que usa la API) es una especialización de
-    `ConfiguracionBaseDeDatos` (la que usa Alembic), no un tipo aparte."""
-    from proptech_core.compartido.configuracion import Configuracion, ConfiguracionBaseDeDatos
-
-    configuracion = Configuracion()
-
-    assert isinstance(configuracion, ConfiguracionBaseDeDatos)
+def test_configuracion_base_de_datos_es_alias_del_migrador(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`ConfiguracionBaseDeDatos` (el nombre que usaba `env.py` hasta este cambio) sigue
+    existiendo como alias de `ConfiguracionDelMigrador`: nadie más que Alembic lo usa."""
+    assert ConfiguracionBaseDeDatos is ConfiguracionDelMigrador

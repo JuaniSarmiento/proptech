@@ -32,8 +32,9 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        "POSTGRES_USER": contenedor.username,
-        "POSTGRES_PASSWORD": contenedor.password,
+        # Alembic corre como el migrador (D1, D2, cambio 2a).
+        "POSTGRES_MIGRADOR_USER": contenedor.username,
+        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
         "POSTGRES_DB": contenedor.dbname,
     }
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
@@ -60,6 +61,10 @@ def fabrica(
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)
+    # `Configuracion` (la que usa `crear_engine` abajo) lee el par de la app
+    # (D3): antes del 2.2 es el mismo usuario del contenedor que el migrador.
+    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
     engine = crear_engine(Configuracion())
     try:
         yield crear_fabrica_de_sesiones(engine)

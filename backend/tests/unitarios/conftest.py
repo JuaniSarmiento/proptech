@@ -17,9 +17,19 @@ _PARAMETROS_DEL_REPO = Path(__file__).resolve().parents[3] / "config" / "paramet
 def _variables_de_postgres_por_defecto(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POSTGRES_HOST", "db")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DB", "proptech")
+    # Rol de arranque (D1): el superusuario de la imagen. Lo usa `roles.py`.
     monkeypatch.setenv("POSTGRES_USER", "proptech")
     monkeypatch.setenv("POSTGRES_PASSWORD", "proptech")
-    monkeypatch.setenv("POSTGRES_DB", "proptech")
+    # Rol del migrador (D1, D3): corre Alembic. Lo usa `migraciones/env.py`.
+    monkeypatch.setenv("POSTGRES_MIGRADOR_USER", "proptech_migrador")
+    monkeypatch.setenv("POSTGRES_MIGRADOR_PASSWORD", "proptech_migrador")
+    # Rol de la app (D1, D3): lo usan `Configuracion()`, la API y el worker.
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_app")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "proptech_app")
+    # Rol de respaldo (D1, D3): sólo lo valida esta `Configuracion`-hermana en tests.
+    monkeypatch.setenv("POSTGRES_RESPALDO_USER", "proptech_respaldo")
+    monkeypatch.setenv("POSTGRES_RESPALDO_PASSWORD", "proptech_respaldo")
     monkeypatch.setenv("REDIS_HOST", "redis")
     monkeypatch.setenv("REDIS_PORT", "6379")
     monkeypatch.setenv("REDIS_PASSWORD", "redis-pass")

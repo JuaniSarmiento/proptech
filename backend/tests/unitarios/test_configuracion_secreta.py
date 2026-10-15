@@ -24,8 +24,8 @@ def _configuracion_con_secretos(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     ruta.write_text("version: 1\n")
     monkeypatch.setenv("POSTGRES_HOST", "db")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
-    monkeypatch.setenv("POSTGRES_USER", "proptech")
-    monkeypatch.setenv("POSTGRES_PASSWORD", SECRETO_POSTGRES)
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_app")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", SECRETO_POSTGRES)
     monkeypatch.setenv("POSTGRES_DB", "proptech")
     monkeypatch.setenv("REDIS_HOST", "redis")
     monkeypatch.setenv("REDIS_PORT", "6379")
@@ -110,18 +110,18 @@ def test_las_contrasenas_vacias_o_en_blanco_se_siguen_rechazando(
 
     monkeypatch.setenv("POSTGRES_HOST", "db")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
-    monkeypatch.setenv("POSTGRES_USER", "proptech")
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_app")
     monkeypatch.setenv("POSTGRES_DB", "proptech")
     monkeypatch.setenv("REDIS_HOST", "redis")
     monkeypatch.setenv("REDIS_PORT", "6379")
 
-    monkeypatch.setenv("POSTGRES_PASSWORD", "")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "")
     monkeypatch.setenv("REDIS_PASSWORD", "clave")
     with pytest.raises(ConfiguracionInvalida) as exc_info:
         Configuracion()
-    assert "POSTGRES_PASSWORD" in str(exc_info.value)
+    assert "POSTGRES_APP_PASSWORD" in str(exc_info.value)
 
-    monkeypatch.setenv("POSTGRES_PASSWORD", "clave")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "clave")
     monkeypatch.setenv("REDIS_PASSWORD", "   ")
     with pytest.raises(ConfiguracionInvalida) as exc_info:
         Configuracion()

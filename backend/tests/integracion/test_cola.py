@@ -29,8 +29,10 @@ def _configuracion(
     ruta.write_text("version: 1\n")
     monkeypatch.setenv("POSTGRES_HOST", "db")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
-    monkeypatch.setenv("POSTGRES_USER", "x")
-    monkeypatch.setenv("POSTGRES_PASSWORD", "x")
+    # Nunca se conecta de verdad (sólo Redis importa en este archivo): el
+    # valor sólo tiene que cumplir el patrón proptech_* del rol de la app (D3).
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_x")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "x")
     monkeypatch.setenv("POSTGRES_DB", "x")
     monkeypatch.setenv("REDIS_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("REDIS_PORT", str(contenedor.get_exposed_port(6379)))

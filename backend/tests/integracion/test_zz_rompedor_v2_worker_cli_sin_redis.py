@@ -34,8 +34,10 @@ def test_worker_sin_redis_no_repite_el_error_de_redis_py() -> None:
         **os.environ,
         "POSTGRES_HOST": "localhost",
         "POSTGRES_PORT": "5432",
-        "POSTGRES_USER": "u",
-        "POSTGRES_PASSWORD": "p",
+        # Nunca se conecta de verdad (D3): sólo tiene que cumplir el patrón
+        # proptech_* del rol de la app.
+        "POSTGRES_APP_USER": "proptech_app",
+        "POSTGRES_APP_PASSWORD": "p",
         "POSTGRES_DB": "d",
         "REDIS_HOST": HOST_REDIS_INALCANZABLE,
         "REDIS_PORT": "6379",

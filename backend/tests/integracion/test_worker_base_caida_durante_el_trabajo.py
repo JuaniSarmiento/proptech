@@ -44,7 +44,14 @@ RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 def contenedor_propio() -> Iterator[PostgresContainer]:
     from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
 
-    contenedor = PostgresContainer(IMAGEN_POSTGRES_PARA_TESTS, driver="psycopg")
+    # Usuario con el patrón proptech_* (D1, D3, cambio 2a): ver postgres_contenedor
+    # de sesión en tests/conftest.py.
+    contenedor = PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username="proptech_test",
+        password="proptech_test",  # noqa: S106 (contraseña de este contenedor de test, nunca real)
+    )
     with contenedor as iniciado:
         yield iniciado
 
@@ -56,8 +63,8 @@ def _migrar_a_head(contenedor: PostgresContainer) -> None:
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        "POSTGRES_USER": contenedor.username,
-        "POSTGRES_PASSWORD": contenedor.password,
+        "POSTGRES_MIGRADOR_USER": contenedor.username,
+        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
         "POSTGRES_DB": contenedor.dbname,
     }
     subprocess.run(
@@ -75,8 +82,8 @@ def _configuracion_para(
 ) -> Configuracion:
     monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_USER", contenedor.username)
-    monkeypatch.setenv("POSTGRES_PASSWORD", contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", contenedor.username)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", contenedor.password)
     monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
     # Más corto que el default (2s): la cota de este test (D18, L-001).
     monkeypatch.setenv("DB_CONNECT_TIMEOUT_S", "1")

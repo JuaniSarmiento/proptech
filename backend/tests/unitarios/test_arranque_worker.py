@@ -11,12 +11,13 @@ import subprocess
 import sys
 
 
-def test_el_proceso_termina_si_falta_postgres_password() -> None:
+def test_el_proceso_termina_si_falta_postgres_app_password() -> None:
+    """D3 (cambio 2a): el worker usa `Configuracion`, el rol de la app."""
     entorno = dict(os.environ)
-    entorno.pop("POSTGRES_PASSWORD", None)
+    entorno.pop("POSTGRES_APP_PASSWORD", None)
     entorno.setdefault("POSTGRES_HOST", "db")
     entorno.setdefault("POSTGRES_PORT", "5432")
-    entorno.setdefault("POSTGRES_USER", "proptech")
+    entorno.setdefault("POSTGRES_APP_USER", "proptech_app")
     entorno.setdefault("POSTGRES_DB", "proptech")
 
     resultado = subprocess.run(
@@ -29,9 +30,9 @@ def test_el_proceso_termina_si_falta_postgres_password() -> None:
     )
 
     assert resultado.returncode != 0, (
-        "el proceso arrancó (código 0) sin POSTGRES_PASSWORD; "
+        "el proceso arrancó (código 0) sin POSTGRES_APP_PASSWORD; "
         f"stdout={resultado.stdout!r} stderr={resultado.stderr!r}"
     )
-    assert "POSTGRES_PASSWORD" in resultado.stderr, (
+    assert "POSTGRES_APP_PASSWORD" in resultado.stderr, (
         f"el error no nombra la variable faltante: {resultado.stderr!r}"
     )

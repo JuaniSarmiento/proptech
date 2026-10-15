@@ -20,11 +20,12 @@ import sys
 
 
 def test_el_proceso_no_debe_arrancar_con_password_vacio() -> None:
+    """D3 (cambio 2a): el par que valida es el del rol de la app."""
     entorno = dict(os.environ)
     entorno["POSTGRES_HOST"] = "db"
     entorno["POSTGRES_PORT"] = "5432"
-    entorno["POSTGRES_USER"] = "proptech"
-    entorno["POSTGRES_PASSWORD"] = ""  # presente, vacía: no es "falta" para pydantic
+    entorno["POSTGRES_APP_USER"] = "proptech_app"
+    entorno["POSTGRES_APP_PASSWORD"] = ""  # presente, vacía: no es "falta" para pydantic
     entorno["POSTGRES_DB"] = "proptech"
 
     resultado = subprocess.run(
@@ -37,6 +38,6 @@ def test_el_proceso_no_debe_arrancar_con_password_vacio() -> None:
     )
 
     assert resultado.returncode != 0, (
-        "el proceso arrancó con POSTGRES_PASSWORD vacío en vez de terminar "
+        "el proceso arrancó con POSTGRES_APP_PASSWORD vacío en vez de terminar "
         f"nombrando el problema. stdout={resultado.stdout!r}"
     )
