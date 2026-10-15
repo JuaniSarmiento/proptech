@@ -9,6 +9,7 @@
 | Multi-tenant con Row-Level Security | Toda tabla de una administración, con `administracion_id` y una política RLS forzada | La administración (el tenant) sale de la identidad autenticada, nunca de un parámetro del cliente; RLS es el segundo candado (R10, D-076) |
 | Libro de sólo agregar (append-only ledger) | `cuenta_corriente`: ningún movimiento se edita ni se borra | Permite reconstruir cualquier reclamo de un vecino y es la base del aislamiento y la auditoría (R08, D-016) |
 | Cola de trabajos con worker aparte | Redis + ARQ para PDFs, emails y lectura de facturas con IA, con reintentos espaciados e idempotencia | Generar PDFs, mandar emails y llamar a la IA mientras el usuario espera no escala ni con un edificio chico (D-038) |
+| Verificaciones de salud en paralelo con un plazo total compartido | `GET /api/salud`: la base y la cola se verifican cada una en su propio hilo, con su propia copia de contexto, contra un único `PLAZO_TOTAL_SALUD_S = 1,5 s` | Con las dos verificaciones en serie, una dependencia congelada deja la respuesta por encima de los 2 s con los que `/salud-web` corta (D20, D-095) |
 
 ## Estructura de directorios
 
@@ -63,10 +64,11 @@ Detalle completo de la decisión en `09_decisiones_y_supuestos.md` (D-040).
 ## Variables de entorno
 
 Verificado contra `infra/.env.example`, `infra/compose.yaml` y
-`backend/src/proptech_core/compartido/configuracion.py` al 14/10/2026. Nunca un valor real: el
-repositorio es público (`.env` está en `.gitignore`; `infra/.env.example` sólo trae placeholders).
+`backend/src/proptech_core/compartido/configuracion.py` al 14/10/2026 (cambios 1a a 1d archivados).
+Nunca un valor real: el repositorio es público (`.env` está en `.gitignore`; `infra/.env.example`
+sólo trae placeholders; la carpeta de respaldos también está en `.gitignore`).
 
-### Existentes (cambios 1a a 1c, archivados)
+### Existentes (cambios 1a a 1d, archivados)
 
 | Variable | La usan | Obligatoria/opcional | Default | Propósito |
 |---|---|---|---|---|
@@ -87,19 +89,6 @@ repositorio es público (`.env` está en `.gitignore`; `infra/.env.example` sól
 | `DB_POOL_RECYCLE_S` | API, worker | Opcional (60 a 86400) | 1800 | Segundos antes de reciclar una conexión del pool |
 | `DB_POOL_TIMEOUT_S` | API, worker | Opcional (1 a 60) | 5 | Segundos de espera por una conexión libre del pool |
 | `DB_CONNECT_TIMEOUT_S` | API, worker | Opcional (1 a 30) | 2 | Segundos de espera al establecer la conexión a PostgreSQL |
-
-Todas las que llegan como texto desde el entorno (enteros incluidos) se validan con coincidencia
-completa y sólo dígitos ASCII (L-008): un valor con espacios, tabulaciones, saltos de línea o
-separador de miles se rechaza en vez de convertirse en silencio a un número distinto.
-
-### Planificadas (cambio 1d `respaldos-y-restauracion`, HIGH: D-087, D-094)
-
-No construidas todavía: el cambio está propuesto en
-`openspec/changes/respaldos-y-restauracion/design.md` y necesita la aprobación escrita de uno de los
-dos socios (Juani o Alberto) antes de codear.
-
-| Variable | La usa | Obligatoria/opcional | Default | Propósito |
-|---|---|---|---|---|
 | `PROPTECH_DIR_RESPALDOS` | `respaldos` | Obligatoria (`:?falta PROPTECH_DIR_RESPALDOS`) | `./datos-respaldos` en `.env.example` (relativo a `infra/`) | Carpeta del host (bind mount, no volumen con nombre) donde se guardan los `.dump`; sobrevive a `docker compose down -v` |
 | `PROPTECH_UID` | `respaldos` | Obligatoria (`:?falta PROPTECH_UID`) | sin default | UID del usuario del host con el que corre el servicio, para que los backups no queden como root ni como un UID que el host no conoce |
 | `PROPTECH_GID` | `respaldos` | Obligatoria (`:?falta PROPTECH_GID`) | sin default | GID del usuario del host, gemelo de `PROPTECH_UID` |
@@ -107,6 +96,25 @@ dos socios (Juani o Alberto) antes de codear.
 | `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
 | `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite (L-001: una base pausada no cuelga el servicio para siempre) |
 
-La validación de estas seis variables, igual que las existentes, exige dígitos ASCII sin ceros a la
-izquierda (Bash interpreta `060` como octal) y sin signo, y nunca imprime su valor ni la salida de
-`pg_dump`/`pg_restore` en el log (L-002, L-007, L-008).
+Todas las que llegan como texto desde el entorno (enteros incluidos) se validan con coincidencia
+completa y sólo dígitos ASCII, sin ceros a la izquierda (Bash interpreta `060` como octal) y sin
+signo (L-002, L-008): un valor con espacios, tabulaciones, saltos de línea o separador de miles se
+rechaza en vez de convertirse en silencio a un número distinto. Nunca se imprime el valor de una
+variable con problema ni la salida de `pg_dump`/`pg_restore` en el log (L-007).
+
+### Servicio de respaldos (cambio 1d `respaldos-y-restauracion`, HIGH: D-087, D-094, D-095)
+
+Construido y archivado el 14/10/2026. El servicio `respaldos` corre `pg_dump --format=custom` desde
+la misma imagen de PostgreSQL que `db` (`postgres:18.6-trixie`), al arrancar y después cada
+`RESPALDO_INTERVALO_SEGUNDOS`, sólo en la red `interna` (sin puertos publicados). El volcado sale del
+contenedor por un bind mount a `PROPTECH_DIR_RESPALDOS` (no un volumen con nombre, para que
+`docker compose down -v` no se lleve los backups junto con la base), con nombre
+`proptech-<fecha y hora UTC>.dump`, permisos 600 y dueño el usuario del host (`PROPTECH_UID`/
+`PROPTECH_GID`). Retiene los últimos `RESPALDO_CONSERVAR` backups correctos (14 por defecto), sin
+borrar nunca el archivo del ciclo en curso aunque el reloj del host atrase. `infra/respaldos/restaurar.sh`
+carga un backup en una base aparte (`proptech_restauracion` por defecto), con el destino validado por
+la expresión cerrada `^proptech_[a-z0-9_]{1,50}$` y distinto de la base en uso; el humo del CI lo
+ejecuta en cada corrida y compara la revisión de Alembic de la base restaurada contra la de la base en
+uso. El servicio figura como no saludable si su último backup correcto es más viejo que 1,5
+intervalos, si todavía no generó ninguno, si su marca no es un número válido o si esa marca está en
+el futuro.

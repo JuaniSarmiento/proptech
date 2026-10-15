@@ -45,7 +45,13 @@ del worker. Esto vale también para los errores de las
 bibliotecas de terceros (el cliente de Redis, ARQ, psycopg y SQLAlchemy): su texto MUST NOT llegar a
 un log, a un mensaje de error propio ni a una respuesta sin un test que pruebe que no repite la
 entrada. Ante un error inesperado, el log MUST registrar el tipo de error y la ubicación en el código,
-y la respuesta MUST ser 500 con sólo un código de error y el `request_id`.
+y la respuesta MUST ser 500 con sólo un código de error y el `request_id`. Un mensaje de log que ya
+llega como un traceback formateado en texto MUST registrarse con el evento fijo
+`traceback_crudo_descartado`, `tipo_error` igual a `desconocido` y `traza` vacía, sin extraer ningún
+dato de ese texto. Un mensaje que no es exactamente texto (tampoco una subclase de texto) MUST
+registrarse con un evento fijo y nunca con su representación de texto: si es una excepción,
+`excepcion_como_mensaje`, con el tipo y la traza tomados del objeto; si es cualquier otro objeto,
+`mensaje_no_texto`.
 
 #### Scenario: Query string con un dato personal
 
@@ -76,6 +82,20 @@ y la respuesta MUST ser 500 con sólo un código de error y el `request_id`.
   devuelve un resultado con otro marcador
 - **THEN** ninguno de los dos marcadores aparece en ninguna línea de log del worker, incluidas las que
   escribe ARQ
+
+#### Scenario: Traceback crudo con datos en su texto
+
+- **WHEN** se loguea como mensaje un traceback ya formateado en texto que lleva un marcador en el
+  nombre de la excepción, en una línea `File "..."` o en el mensaje de la excepción
+- **THEN** la línea tiene `evento` igual a `traceback_crudo_descartado`, `tipo_error` igual a
+  `desconocido` y `traza` vacía, y el marcador no aparece en ninguna parte de la línea
+
+#### Scenario: Mensaje que no es texto
+
+- **WHEN** se loguea como mensaje un objeto que no es una excepción (o una subclase de texto) cuya
+  representación de texto devuelve un marcador
+- **THEN** la línea tiene `evento` igual a `mensaje_no_texto` y el marcador no aparece en ninguna parte
+  de la línea
 
 ### Requirement: Logs de error del proxy sin query string ni encabezados
 

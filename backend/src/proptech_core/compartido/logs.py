@@ -7,7 +7,6 @@ interpolar sus argumentos: así ningún dato pasado como argumento de
 
 import json
 import logging
-import re
 import sys
 import traceback
 from datetime import UTC, datetime
@@ -90,18 +89,28 @@ class FormateadorJSON(logging.Formatter):
             # `tipo_error`/`traza` salen de la excepción, nunca de su texto.
             datos["evento"] = EVENTO_EXCEPCION_COMO_MENSAJE
             datos.update(datos_de_excepcion(record.msg))
-        else:
-            mensaje = str(record.msg)
-            datos["evento"] = mensaje
+        elif type(record.msg) is str:
+            # `type(...) is str`, no `isinstance`: una subclase de `str`
+            # puede redefinir `__str__` y devolver cualquier cosa (D21, F7c),
+            # así que sólo el texto EXACTO se trata como plantilla.
+            mensaje = record.msg
             if _es_traceback_crudo(mensaje):
-                # `evento` como plantilla no alcanza acá (D7): todo el
-                # mensaje YA es el texto de la excepción fundido por quien lo
-                # generó (nunca lo armamos nosotros), así que se descarta
-                # entero y se reconstruye `tipo_error`/`traza` parseando el
-                # traceback, nunca repitiendo su texto (L-007).
+                # D21 (F7c): ya no se parsea el texto para sacar `tipo_error`
+                # ni `traza` (el rompedor mostró formas en las que ese parseo
+                # sacaba datos del mensaje a esos campos). Todo traceback
+                # crudo da los mismos tres valores fijos, sin leer nada de él
+                # (L-007, L-008: un texto ajeno no se puede validar con un
+                # patrón confiable, así que no se lo lee).
                 datos["evento"] = EVENTO_TRACEBACK_CRUDO_DESCARTADO
-                datos["tipo_error"] = _tipo_de_traceback_crudo(mensaje)
-                datos["traza"] = _traza_de_traceback_crudo(mensaje)
+                datos["tipo_error"] = "desconocido"
+                datos["traza"] = []
+            else:
+                datos["evento"] = mensaje
+        else:
+            # Cualquier otro objeto (D21, F7c): ni un dict, ni algo con un
+            # `__str__` propio se convierten a texto. Evento fijo, nunca su
+            # representación (que podría traer cualquier dato).
+            datos["evento"] = EVENTO_MENSAJE_NO_TEXTO
 
         request_id = record.__dict__.get("request_id")
         if request_id:
@@ -131,12 +140,10 @@ class FormateadorJSON(logging.Formatter):
 #: `datos_de_excepcion` pueda inspeccionar.
 _MARCA_TRACEBACK_CRUDO = "Traceback (most recent call last):"
 
-#: Un cuadro de un traceback ya formateado: `  File "archivo", line N, in func`.
-_PATRON_CUADRO_TRACEBACK_CRUDO = re.compile(
-    r'File "(?P<archivo>[^"]+)", line (?P<linea>\d+), in (?P<funcion>\S+)'
-)
-
-#: Evento fijo para un traceback crudo descartado (D7, L-007): nunca el texto
+#: Evento fijo para un traceback crudo descartado (D7, L-007). Desde D21
+#: (F7c) `tipo_error` y `traza` ya NO se parsean de ese texto (el rompedor
+#: mostró formas en las que el parseo viejo sacaba datos del mensaje a esos
+#: campos): son siempre `"desconocido"` y `[]`, sin leer nada del texto
 #: original, que puede traer el mensaje de la excepción (con datos del
 #: usuario o de la conexión) y las líneas de código.
 EVENTO_TRACEBACK_CRUDO_DESCARTADO = "traceback_crudo_descartado"
@@ -145,45 +152,14 @@ EVENTO_TRACEBACK_CRUDO_DESCARTADO = "traceback_crudo_descartado"
 #: (D13, L-007, vuelta 3 F7b): no hay texto propio que mostrar como `evento`.
 EVENTO_EXCEPCION_COMO_MENSAJE = "excepcion_como_mensaje"
 
-#: Un nombre de excepción válido: identificador ASCII que termina en uno de
-#: estos sufijos, sin espacios (vuelta 3, F7b). Sirve para reconocer la línea
-#: `TipoError: ...` de un traceback crudo sin confundirla con una línea de
-#: continuación del MENSAJE (que puede tener dos puntos y seguir sin tener la
-#: forma de un nombre de clase: con espacios, con guiones, etc).
-_PATRON_NOMBRE_DE_EXCEPCION = re.compile(
-    r"[A-Za-z_][\w.]*(?:Error|Exception|Warning|Exit|Interrupt)", re.ASCII
-)
+#: Evento fijo cuando `record.msg` no es ni texto exacto ni una excepción
+#: (D21, F7c): nunca se convierte con su representación de texto (`str()`),
+#: que podría devolver cualquier dato.
+EVENTO_MENSAJE_NO_TEXTO = "mensaje_no_texto"
 
 
 def _es_traceback_crudo(mensaje: str) -> bool:
     return _MARCA_TRACEBACK_CRUDO in mensaje
-
-
-def _tipo_de_traceback_crudo(mensaje: str) -> str:
-    """El nombre de la excepción, buscado de atrás para adelante entre las
-    líneas no vacías (D7, L-007, vuelta 3 F7b).
-
-    La vuelta 2 tomaba la ÚLTIMA línea entera como candidato: con un mensaje
-    de varias líneas (`psycopg`/SQLAlchemy lo hacen: "Is the server
-    running..."), esa última línea es parte del MENSAJE, no el tipo, y
-    terminaba en `tipo_error`. Acá cada línea se recorta antes de los
-    primeros dos puntos y sólo se acepta como tipo si ese recorte
-    `fullmatch`ea un nombre de excepción (`_PATRON_NOMBRE_DE_EXCEPCION`):
-    una línea de continuación del mensaje (con espacios, con guiones, sin la
-    forma de un identificador) nunca lo hace, aunque tenga dos puntos."""
-    for linea in reversed(mensaje.splitlines()):
-        candidato = linea.split(":", 1)[0].strip()
-        if candidato and _PATRON_NOMBRE_DE_EXCEPCION.fullmatch(candidato):
-            return candidato
-    return "ErrorDesconocido"
-
-
-def _traza_de_traceback_crudo(mensaje: str) -> list[str]:
-    cuadros = [
-        f"{coincidencia['archivo']}:{coincidencia['linea']}:{coincidencia['funcion']}"
-        for coincidencia in _PATRON_CUADRO_TRACEBACK_CRUDO.finditer(mensaje)
-    ]
-    return cuadros[:CUADROS_MAXIMOS_TRAZA]
 
 
 def _nombre_calificado(tipo: type) -> str:

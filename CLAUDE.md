@@ -24,9 +24,15 @@ mercado de arranque es **Mendoza**.
   `/api/salud` con la cola y `/salud-web`. Cerrado con **OK con deuda anotada** (D-091); la deuda
   queda en `knowledge-base/12_fichas_de_changes.md` ("Deuda técnica de las auditorías del 13/10"), con dueño por
   ítem (mayormente el cambio 7, antes de su primera tarea real).
-- **Próximo**: cambio 1d `respaldos-y-restauracion` (HIGH, espera la aprobación escrita de uno de los
-  dos socios antes de construir), propuesto en `openspec/changes/` (D-087, D-094). Antes de cada cambio, constructor y
-  rompedor leen `knowledge-base/15_lecciones.md`.
+- **Cambio 1d `respaldos-y-restauracion` archivado** (14/10/2026): servicio `respaldos` con `pg_dump`
+  al arrancar y a diario, 14 copias, salud por antigüedad; `restaurar.sh` con destino validado; humo
+  ampliado (Redis, worker, `request_id`, backup, restauración); `shellcheck` en el CI. Cerrado con
+  **OK con deuda anotada** en la vuelta 3 (D-095); la deuda queda en
+  `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 1d"), con dueño por ítem (mayormente
+  el cambio 15 y el cambio 2).
+- **Próximo**: cambio 2 `acceso-y-aislamiento` (CRITICAL, explore propio), bloqueado por P18 (el vecino
+  en dos administraciones) y P23 (permisos por acción), que se resuelven en su explore (D-076, D-087).
+  Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
@@ -125,8 +131,9 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
 - **Total**: 20 cambios (D-088), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
   `1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 7`.
-- **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`.
-- **Próximo**: 1d `respaldos-y-restauracion` (HIGH, espera aprobación de uno de los dos socios).
+- **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
+  `respaldos-y-restauracion`.
+- **Próximo**: 2 `acceso-y-aislamiento` (CRITICAL, bloqueado por P18 y P23).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

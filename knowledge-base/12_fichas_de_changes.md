@@ -76,39 +76,41 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 - **Decisiones**: D-043, D-047 (punto 4, backups automáticos), D-087. Avanza H46 (restauración
   probada) de M3.
 - **Gobernanza HIGH** (D-087, D-094): borra bases (`dropdb` en la restauración), escribe en el disco del host
-  (bind mount) y suma un servicio con la contraseña de la base. Se propone y se espera la aprobación de
-  uno de los dos socios (Juani o Alberto) antes de construir.
-- **Entra**: servicio `respaldos` con `pg_dump` al arrancar y cada día, acotado por un límite de tiempo
+  (bind mount) y suma un servicio con la contraseña de la base. Juani aprobó por escrito y con fecha en
+  `proposal.md` antes de construir (14/10/2026).
+- **Entró**: servicio `respaldos` con `pg_dump` al arrancar y cada día, acotado por un límite de tiempo
   (L-001), en una carpeta del host a salvo de `docker compose down -v`, con 14 copias y salud por
   antigüedad; validación de su configuración con dígitos ASCII y sin ceros a la izquierda (L-002,
   L-008); `restaurar.sh` con el destino validado por `^proptech_[a-z0-9_]{1,50}$` y distinto de la base
   en uso, siempre sobre el proyecto `proptech` (L-006), sin repetir la salida de las herramientas
   (L-007); humo ampliado (Redis, worker, `request_id` de punta a punta, Redis pausado, backup,
-  restauración y semilla); README. 19 tareas en `openspec/changes/respaldos-y-restauracion/` (D-090).
+  restauración y semilla); README. 20 tareas en
+  `openspec/changes/archive/2026-10-14-respaldos-y-restauracion/` (D-095, corrige el número de D-090).
 - **No entra**: copia fuera del servidor y cifrado (con el despliegue); restaurar sobre la base en
   uso; backups de Redis; alertas externas.
-- **Deuda del 1c, con dueño este cambio** (D-091): **F13**, `/salud-web` informa `sin_conexion` cuando
-  una dependencia está congelada en vez de lenta (la API tarda 2,005 s y la web corta a 2,000 s):
-  resolverlo con verificadores en paralelo con un plazo total menor a 2 s, o subiendo la cota de la
-  web; cumple la letra de la spec del 1c y todavía nadie lo consume, así que no bloquea, pero el humo
-  ampliado de este cambio es quien primero lo ejercita de punta a punta. **`salud_degradada`
-  duplicado**: el log de la base pausada escribe dos líneas por cada pedido colgado; sólo ensucia los
-  logs, se limpia junto con el humo ampliado. **F7c**: el parseo de un traceback crudo todavía puede
-  sacar datos raros a `tipo_error`/`traza` con formas muy particulares (y un `msg` que no es una
-  excepción usa su `__str__`); confianza baja en que valga la pena antes de ver un caso real en los
-  logs del humo ampliado.
+- **Deuda del 1c, resuelta por este cambio** (D-091): **F13**, `/salud-web` informaba `sin_conexion`
+  cuando una dependencia estaba congelada en vez de lenta (la API tardaba 2,005 s y la web cortaba a
+  2,000 s): resuelto con las dos verificaciones en hilos paralelos y un plazo total de 1,5 s (D20,
+  D-095). **`salud_degradada` duplicado**: el log de la base pausada escribía dos líneas por cada
+  pedido colgado; resuelto junto con el plazo total (una sola línea por verificación fallida, con el
+  `request_id`). **F7c**: el parseo de un traceback crudo podía sacar datos raros a
+  `tipo_error`/`traza` con formas muy particulares; resuelto al dejar de parsear el texto (D21: evento
+  fijo según `type(msg) is str`).
 - **Depende de**: 1c. **Habilita**: 2.
-- **Bloqueado por**: la aprobación escrita y fechada de uno de los dos socios en su propuesta (D-094: la aprueba uno de los dos socios).
-- **Que intente romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
+- **Cierre (14/10/2026)**: tres vueltas entre constructor, rompedor y auditor. El auditor dio **OK con
+  deuda anotada** en su vuelta 3 (D-095); Juani aceptó esa tabla. Backend 516 → 606 tests (+1
+  xfailed); web sin cambios (16). La deuda aceptada queda en "Deuda del cierre del 1d" más abajo, con
+  dueño por ítem (mayormente el cambio 15 y el cambio 2).
+- **Que intentó romper el rompedor**: un destino de restauración que borre la base en uso (con espacios,
   punto y coma, mayúsculas, salto de línea, más de 63 caracteres o igual a `POSTGRES_DB`); una
   retención que borre un archivo ajeno de la carpeta; un volcado que se cuelgue con la base pausada;
   una configuración con `060`, espacios o dígitos de otro alfabeto que pase; la contraseña o la salida
   de `pg_dump` en el log; un backup a medio escribir con nombre final; que el backup no sobreviva a
   `docker compose down -v`.
-- **Terminado cuando**: uno de los dos socios aprobó la propuesta; las 19 tareas están hechas con su test visto en
-  rojo; el humo genera el backup solo, lo restaura en `proptech_restauracion` con la misma revisión de
-  Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; y el auditor
-  da el OK.
+- **Terminado**: Juani aprobó la propuesta el 14/10/2026; las 20 tareas están hechas con su test visto
+  en rojo; el humo genera el backup solo, lo restaura en `proptech_restauracion` con la misma revisión
+  de Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; el
+  auditor dio el OK con deuda anotada.
 
 ### 2 · `acceso-y-aislamiento` · crítico · explore propio
 
@@ -131,6 +133,9 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 - **Tablas mínimas** (D-082): para probar el acceso, este cambio crea lo mínimo de administración,
   complejo, unidad, persona y asignación por rol; el cambio 3 las completa con la configuración del
   edificio.
+- **Deuda del 1d, con dueño este cambio** (L-012): ver "Deuda del cierre del 1d" más abajo (resto de
+  F7, el humo que nunca congela las dos dependencias a la vez, PID 1 no root visto sólo en `redis`, el
+  orden de la 8.1).
 - **`trabajos_hechos` y el tenant del worker** (D-091, deuda del 1c): la tabla `trabajos_hechos` del
   1c nace sin `administracion_id`. Este cambio decide si la suma (según el plan de RLS de arriba) y,
   si la suma, cómo el worker la fija por tarea: el `request_id` ya viaja en cada trabajo encolado
@@ -542,6 +547,8 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 - **Objetivo**: demostrar que PropTech reemplaza el método actual del edificio piloto.
 - **Entra**: carga de los datos reales del piloto; un mes completo en paralelo; comparación al
   centavo; prueba de restauración de un backup; evidencia de aislamiento entre administraciones y alcance por edificio.
+- **Deuda del 1d, con dueño este cambio** (L-012): ver "Deuda del cierre del 1d" más abajo (F4, F5,
+  F6, F8 y "14 copias no son 14 días").
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto) y P12.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró
@@ -573,13 +580,31 @@ suena más obvio.
 | F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | 7 (bloqueante antes de registrar su primera tarea real) |
 | F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | 7 |
 | `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | 7 |
-| F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | 1d |
-| `salud_degradada` duplicado (dos líneas por pedido colgado) | Sólo ensucia los logs | 1d |
-| F7c: el parseo de un traceback crudo saca datos a `tipo_error`/`traza` con formas muy particulares | Formas muy raras, confianza baja | 1d |
+| F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | resuelto en 1d |
+| `salud_degradada` duplicado (dos líneas por pedido colgado) | Sólo ensucia los logs | resuelto en 1d |
+| F7c: el parseo de un traceback crudo saca datos a `tipo_error`/`traza` con formas muy particulares | Formas muy raras, confianza baja | resuelto en 1d |
 | F3b: `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`) | FastAPI fijado `<0.144` y un test lo detecta | quien suba FastAPI |
 | M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2 |
 | Redis congelado frena el worker mientras dura | Se recupera solo | aceptar, sin dueño |
 | `POSTGRES_PORT` y `REDIS_PORT` estrictos (cambia el comportamiento laxo del 1b) | En línea con L-008 | aceptar, sin dueño |
+
+### Deuda del cierre del 1d (auditoría del 14/10, vuelta 3, D-095)
+
+La que aceptó el auditor al cerrar el 1d como "OK con deuda anotada" (B4-bis quedó resuelto en la
+vuelta 3 y no entra en esta tabla). Dueño asignado por el primer cambio que de verdad necesita que
+esté resuelta (L-012), no por el que suena más obvio.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| F4: con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7 | Cumple la letra del escenario "Reloj atrasado" | 15 |
+| F5: `respaldos` ignora SIGTERM (10 s y `KILL`) | La `.parcial` se borra sola al arrancar | 15 |
+| F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | 15 |
+| F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | 15 |
+| "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | 15 |
+| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2 (confianza media) |
+| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2 |
+| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2 (endurecimiento de contenedores) |
+| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2 (al redactar su 8.1, decir si el orden importa o sacarlo) |
 
 ## Pendientes de arranque
 

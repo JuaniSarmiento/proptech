@@ -138,8 +138,8 @@ driver, aunque el hilo que corría la verificación termine con un error despué
 
 - **WHEN** la verificación de la base o la de la cola vence el plazo y el hilo que la corría termina
   después con un error
-- **THEN** el log tiene exactamente una línea `salud_degradada` para esa dependencia en ese pedido, y
-  ninguna línea contiene el mensaje del error tardío
+- **THEN** el log tiene exactamente una línea `salud_degradada` para esa dependencia en ese pedido, esa
+  línea lleva el `request_id` del pedido, y ninguna línea contiene el mensaje del error tardío
 
 ### Requirement: Configuración sólo por variables de entorno y sin secretos en el repositorio
 

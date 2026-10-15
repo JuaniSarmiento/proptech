@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -258,3 +259,182 @@ def test_worker_tiene_ancla_de_rotacion_de_logs() -> None:
     worker = _compose()["services"]["worker"]
     assert "logging" in worker, "worker no declara rotación de logs (x-logs)"
     assert worker["logging"]["driver"] == "json-file"
+
+
+# --- 4.1: servicio respaldos (D9, cambio 1d) ---
+
+
+def test_respaldos_imagen_igual_a_la_de_db() -> None:
+    servicios = _compose()["services"]
+    assert "respaldos" in servicios, "falta el servicio respaldos"
+    assert servicios["respaldos"]["image"] == servicios["db"]["image"]
+
+
+def test_respaldos_solo_en_red_interna_y_sin_ports() -> None:
+    servicios = _compose()["services"]
+    respaldos = servicios["respaldos"]
+    assert "ports" not in respaldos, "respaldos no debe publicar puertos hacia el host"
+    redes = respaldos.get("networks")
+    nombres_redes = set(redes)
+    assert nombres_redes == {"interna"}, nombres_redes
+
+
+def test_respaldos_usuario_desde_proptech_uid_gid_con_obligatoriedad() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    usuario = str(respaldos.get("user", ""))
+    assert "PROPTECH_UID:?" in usuario.replace(" ", "")
+    assert "PROPTECH_GID:?" in usuario.replace(" ", "")
+
+
+def test_respaldos_monta_carpeta_del_host_como_bind_con_obligatoriedad() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    volumenes = [str(v) for v in respaldos.get("volumes", [])]
+    monta_carpeta = [v for v in volumenes if "/respaldos" in v and "respaldar.sh" not in v]
+    assert monta_carpeta, f"no se encontró el bind mount de la carpeta: {volumenes}"
+    assert any("PROPTECH_DIR_RESPALDOS:?" in v.replace(" ", "") for v in monta_carpeta), (
+        monta_carpeta
+    )
+    # No tiene que ser un volumen CON NOMBRE (L-006/D9: `down -v` se lo
+    # llevaría junto con la base).
+    datos = _compose()
+    for nombre_volumen in datos.get("volumes", {}):
+        assert nombre_volumen not in " ".join(monta_carpeta), (
+            f"la carpeta de respaldos no puede ser un volumen con nombre: {nombre_volumen}"
+        )
+
+
+def test_respaldos_monta_el_script_de_solo_lectura_como_entrypoint() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    entrypoint = respaldos.get("entrypoint")
+    texto_entrypoint = " ".join(entrypoint) if isinstance(entrypoint, list) else str(entrypoint)
+    assert "respaldar.sh" in texto_entrypoint, texto_entrypoint
+
+    volumenes = [str(v) for v in respaldos.get("volumes", [])]
+    monta_script = [v for v in volumenes if "respaldar.sh" in v]
+    assert monta_script, f"no se encontró el montaje del script: {volumenes}"
+    assert all(v.endswith(":ro") for v in monta_script), monta_script
+
+
+def test_respaldos_depende_de_db_saludable_y_migraciones_completado() -> None:
+    depends_on = _compose()["services"]["respaldos"].get("depends_on", {})
+    assert "db" in depends_on
+    condicion_db = depends_on["db"]
+    assert isinstance(condicion_db, dict) and condicion_db.get("condition") == "service_healthy"
+    assert "migraciones" in depends_on
+    condicion_migraciones = depends_on["migraciones"]
+    assert (
+        isinstance(condicion_migraciones, dict)
+        and condicion_migraciones.get("condition") == "service_completed_successfully"
+    )
+
+
+def test_respaldos_healthcheck_con_salud_y_start_period() -> None:
+    healthcheck = _compose()["services"]["respaldos"]["healthcheck"]
+    test = healthcheck["test"]
+    comando_texto = " ".join(test) if isinstance(test, list) else str(test)
+    assert "--salud" in comando_texto, comando_texto
+    assert "start_period" in healthcheck, healthcheck
+
+
+def test_respaldos_tiene_ancla_de_rotacion_de_logs() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    assert "logging" in respaldos, "respaldos no declara rotación de logs (x-logs)"
+    assert respaldos["logging"]["driver"] == "json-file"
+
+
+def test_respaldos_recibe_las_variables_respaldo() -> None:
+    entorno = _compose()["services"]["respaldos"].get("environment", {})
+    for variable in (
+        "RESPALDO_INTERVALO_SEGUNDOS",
+        "RESPALDO_CONSERVAR",
+        "RESPALDO_LIMITE_SEGUNDOS",
+    ):
+        assert variable in entorno, f"falta la variable {variable} en el servicio respaldos"
+
+
+def test_respaldos_no_esta_en_la_red_de_salida_del_worker() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    redes = set(respaldos.get("networks", []))
+    assert "salida_worker" not in redes, redes
+
+
+# --- 4.2: configuración del repositorio para los respaldos (D9, cambio 1d) ---
+
+
+def _entorno_compose_valido() -> dict[str, str]:
+    import os
+
+    entorno = dict(os.environ)
+    entorno.update(
+        {
+            "POSTGRES_USER": "proptech",
+            "POSTGRES_PASSWORD": "valor-de-prueba-no-real",
+            "POSTGRES_DB": "proptech",
+            "REDIS_PASSWORD": "valor-de-prueba-no-real",
+            "PROPTECH_SITIO": "http://localhost",
+            "PROPTECH_DIR_RESPALDOS": "./datos-respaldos-de-prueba",
+            "PROPTECH_UID": "1000",
+            "PROPTECH_GID": "1000",
+        }
+    )
+    return entorno
+
+
+def test_gitignore_ignora_la_carpeta_de_respaldos() -> None:
+    import subprocess
+
+    carpeta = RAIZ / "infra" / "datos-respaldos"
+    carpeta.mkdir(exist_ok=True)
+    archivo_de_prueba = carpeta / "proptech-20261014T000000Z.dump"
+    archivo_de_prueba.write_text("contenido-de-prueba, no un backup real")
+    try:
+        resultado = subprocess.run(
+            ["git", "check-ignore", "-q", str(archivo_de_prueba)],
+            cwd=str(RAIZ),
+            check=False,
+        )
+        assert resultado.returncode == 0, (
+            "git no ignora infra/datos-respaldos/: el backup de prueba se versionaría"
+        )
+    finally:
+        archivo_de_prueba.unlink()
+        carpeta.rmdir()
+
+
+def test_env_example_trae_las_variables_de_respaldos() -> None:
+    texto = (RAIZ / "infra" / ".env.example").read_text()
+    for variable in (
+        "PROPTECH_DIR_RESPALDOS",
+        "PROPTECH_UID",
+        "PROPTECH_GID",
+        "RESPALDO_INTERVALO_SEGUNDOS",
+        "RESPALDO_CONSERVAR",
+        "RESPALDO_LIMITE_SEGUNDOS",
+    ):
+        assert f"{variable}=" in texto, f"falta {variable} en infra/.env.example"
+
+
+@pytest.mark.parametrize(
+    "variable_faltante",
+    ["PROPTECH_DIR_RESPALDOS", "PROPTECH_UID", "PROPTECH_GID"],
+)
+def test_compose_config_falla_sin_variable_obligatoria_de_respaldos(
+    variable_faltante: str,
+) -> None:
+    import subprocess
+
+    entorno = _entorno_compose_valido()
+    entorno.pop(variable_faltante, None)
+
+    resultado = subprocess.run(
+        ["docker", "compose", "config", "--quiet"],
+        cwd=str(RAIZ / "infra"),
+        env=entorno,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+    assert resultado.returncode != 0, f"docker compose config debía fallar sin {variable_faltante}"
+    assert variable_faltante in resultado.stderr, resultado.stderr

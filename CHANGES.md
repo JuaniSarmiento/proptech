@@ -202,7 +202,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-04] `respaldos-y-restauracion` · 1d
-- **Estado**: `[ ]` ya propuesto en `openspec/changes/respaldos-y-restauracion/`: falta la aprobación escrita y fechada de un socio en `proposal.md` (HIGH); después, `/opsx:apply`
+- **Estado**: `[x]` archivado (14/10/2026), OK con deuda anotada en la vuelta 3 (D-095)
 - **Scope**: servicio `respaldos` con `pg_dump` al arrancar y a diario, 14 copias, salud por
   antigüedad; `restaurar.sh` con destino validado; humo ampliado (Redis, worker, `request_id`,
   backup, restauración); `shellcheck` en el CI; README
@@ -210,9 +210,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Governance**: ALTO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §1d
-  - `openspec/changes/respaldos-y-restauracion/proposal.md`
-  - `knowledge-base/15_lecciones.md` (L-001, L-002, L-006 a L-009)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-087, D-090)
+  - `openspec/changes/archive/2026-10-14-respaldos-y-restauracion/proposal.md`
+  - `knowledge-base/15_lecciones.md` (L-001, L-002, L-006 a L-009, L-014 a L-017)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-087, D-090, D-095)
 
 ---
 

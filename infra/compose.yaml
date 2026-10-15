@@ -169,6 +169,46 @@ services:
       timeout: 5s
       retries: 10
 
+  respaldos:
+    <<: *logs
+    image: postgres:18.6-trixie
+    # La misma imagen que `db` (el pg_dump de la misma versión que el
+    # servidor, D9). El usuario del HOST, no el uid 999 de la imagen: los
+    # archivos del bind mount quedan del dueño real (PROPTECH_UID/GID).
+    user: "${PROPTECH_UID:?falta PROPTECH_UID}:${PROPTECH_GID:?falta PROPTECH_GID}"
+    entrypoint: ["/usr/local/bin/respaldar.sh"]
+    restart: unless-stopped
+    networks:
+      - interna
+    environment:
+      HOME: /tmp
+      # Variables estándar de libpq (no las POSTGRES_* de la imagen de
+      # Postgres): pg_dump y pg_restore las toman solas, sin flags.
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: "${POSTGRES_USER:?falta POSTGRES_USER}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
+      PGDATABASE: "${POSTGRES_DB:?falta POSTGRES_DB}"
+      RESPALDO_INTERVALO_SEGUNDOS: "${RESPALDO_INTERVALO_SEGUNDOS:-86400}"
+      RESPALDO_CONSERVAR: "${RESPALDO_CONSERVAR:-14}"
+      RESPALDO_LIMITE_SEGUNDOS: "${RESPALDO_LIMITE_SEGUNDOS:-1800}"
+    volumes:
+      - ./respaldos/respaldar.sh:/usr/local/bin/respaldar.sh:ro
+      - "${PROPTECH_DIR_RESPALDOS:?falta PROPTECH_DIR_RESPALDOS}:/respaldos"
+    depends_on:
+      db:
+        condition: service_healthy
+      migraciones:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/respaldar.sh", "--salud"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # El primer backup tarda lo que tarde pg_dump; sin margen, Docker
+      # marcaría el servicio como no saludable antes de que termine.
+      start_period: 120s
+
   web:
     <<: *logs
     build:

@@ -36,6 +36,13 @@ queda un archivo final a medio escribir. La carpeta MUST sobrevivir a `docker co
 - **THEN** no queda ningún archivo `.dump` nuevo, el log registra la falla con nivel de error y el
   servicio reintenta en el próximo ciclo sin terminar
 
+#### Scenario: Falla un paso posterior al volcado
+
+- **WHEN** en modo continuo falla el renombre del archivo, la escritura de la marca del último backup
+  o la retención
+- **THEN** el log registra `respaldo_fallido` y nunca `respaldo_generado`, y sin un backup correcto el
+  chequeo de salud falla
+
 #### Scenario: Carpeta sin permiso de escritura
 
 - **WHEN** la carpeta de respaldos no se puede escribir
@@ -219,8 +226,8 @@ la base.
 ### Requirement: Salud del servicio de respaldos
 
 El servicio de respaldos SHALL figurar como no saludable si su último backup correcto es más viejo
-que una vez y media el intervalo configurado, si todavía no generó ninguno pasado el arranque, o si la
-marca del último backup no es un número válido.
+que una vez y media el intervalo configurado, si todavía no generó ninguno pasado el arranque, si la
+marca del último backup no es un número válido, o si la marca está en el futuro.
 
 #### Scenario: Backup atrasado
 
@@ -230,4 +237,9 @@ marca del último backup no es un número válido.
 #### Scenario: Marca del último backup corrupta
 
 - **WHEN** la marca del último backup contiene texto que no es un número entero
+- **THEN** el chequeo de salud del servicio falla
+
+#### Scenario: Marca del último backup en el futuro
+
+- **WHEN** la marca del último backup es posterior al momento actual
 - **THEN** el chequeo de salud del servicio falla

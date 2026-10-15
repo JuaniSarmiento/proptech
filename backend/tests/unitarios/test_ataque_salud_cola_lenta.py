@@ -17,8 +17,12 @@ from proptech_api.salud import _verificador_con_cliente_redis
 from proptech_core.compartido.conexion_redis import cliente_redis_sincrono
 
 _DEMORA_POR_COMANDO_S = 1.5
-#: Requisito "Endpoint de salud": cada verificación MUST estar acotada a 2 s.
-_COTA_S = 2.5
+#: Tarea 5.1 (D20, F13): el plazo por verificación bajó de 2 s
+#: (`PLAZO_VERIFICACION_S`) a un plazo TOTAL compartido de 1,5 s
+#: (`PLAZO_TOTAL_SALUD_S`). La cota de este test baja con él, de 2,5 s a
+#: 1,8 s (el mismo margen de 0,3 s sobre el plazo que usan los escenarios de
+#: `/api/salud` con dependencias congeladas).
+_COTA_S = 1.8
 
 
 def _redis_lento() -> int:

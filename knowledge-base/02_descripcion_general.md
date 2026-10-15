@@ -3,7 +3,7 @@
 ## Stack tecnológico
 
 Verificado contra `backend/pyproject.toml`, `backend/Dockerfile`, `web/package.json`, `web/Dockerfile`
-e `infra/compose.yaml` al 14/10/2026 (cambios 1a a 1c archivados).
+e `infra/compose.yaml` al 14/10/2026 (cambios 1a a 1d archivados).
 
 | Capa | Tecnología | Versión mínima | Fuente |
 |---|---|---|---|
@@ -41,8 +41,8 @@ vienen, porque lo que falta es la funcionalidad, no la versión: **Backend** wor
 **Frontend** PWA instalable, sin app nativa (D-020, D-036); hoy `web/src/app/` sólo tiene el esqueleto
 (`layout.tsx`, `page.tsx`, `salud-web/route.ts`) del cambio 1a/1c, sin las áreas `(admin)`, `(consejo)`
 y `(vecino)` todavía. **Infraestructura** Caddy como único proxy con HTTPS automático ya anda (D-043);
-el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) es del cambio 1d,
-todavía no construido (ver `08_arquitectura_propuesta.md` §Variables de entorno).
+el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) está construido y
+archivado desde el cambio 1d (D-095; ver `08_arquitectura_propuesta.md` §Variables de entorno).
 
 ## Arquitectura general
 

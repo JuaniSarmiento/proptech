@@ -149,3 +149,50 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   más débil que `git diff` contra un commit conocido, y el que lee el informe tiene que saber cuál de
   las dos está mirando.
 - **Aplica a**: constructor y rompedor.
+
+## L-014 · `set -e` no actúa dentro de una función llamada a la izquierda de `||`
+
+- **Origen**: cambio 1d, auditoría de la vuelta 2 (B2).
+- **Qué pasó**: el modo continuo de `respaldar.sh` llama a cada ciclo como `ciclo_backup || true`
+  (para no terminar el proceso ante una falla). Ese `|| true` apaga la propagación de `set -e` dentro
+  de esa invocación: un paso posterior al volcado (el `mv`, la escritura de la marca, la retención)
+  podía fallar sin frenar el script ni loguear la falla.
+- **Regla**: todo paso que importa lleva su propio chequeo explícito (`if ! paso; then ...; fi`); no
+  confiar en que `set -e` se vaya a propagar dentro de un contexto donde ya se usó `|| true` o
+  equivalente. Los tests ejercitan el modo en que corre producción (el modo continuo), no sólo una
+  corrida de un solo ciclo.
+- **Aplica a**: constructor y rompedor.
+
+## L-015 · Un `threading.Thread` no hereda las `ContextVar`, y una copia de contexto no se comparte entre hilos
+
+- **Origen**: cambio 1d, auditoría de la vuelta 2 (B1).
+- **Qué pasó**: lanzar las dos verificaciones de salud en hilos paralelos sin copiar el contexto
+  perdía el `request_id` en el log de la verificación que terminaba tarde; usar una sola
+  `contextvars.copy_context()` compartida entre los dos `Thread` daba
+  `RuntimeError: cannot enter context: ... is already entered`.
+- **Regla**: cada hilo que corre dentro de un pedido lleva su propia `contextvars.copy_context()`,
+  nunca una compartida con otro hilo. Un test exige el `request_id` en las líneas de log de cada hilo.
+- **Aplica a**: constructor.
+
+## L-016 · Una observación tiene que poder dar otro resultado
+
+- **Origen**: cambio 1d, auditoría de la vuelta 2 (B5).
+- **Qué pasó**: el humo contaba los eventos `traceback_crudo_descartado` y `mensaje_no_texto` sólo en
+  el servicio `respaldos`, que por ser un script de Bash nunca puede emitirlos: "0 apariciones" era
+  estructuralmente cierto, sin decir nada sobre `api` ni `worker`, que sí pueden producirlos.
+- **Regla**: antes de informar "0 apariciones" de un evento, nombrar qué servicio puede producir ese
+  evento y mirar ahí. Una observación que no puede dar otro resultado no verifica nada.
+- **Aplica a**: constructor y auditor.
+
+## L-017 · La entrada de un chequeo es la del escenario, no una que otra capa ya rechaza
+
+- **Origen**: cambio 1d, auditoría de la vuelta 2 (B4-bis).
+- **Qué pasó**: el paso 7 del humo mandaba un `valor_cliente` que no era un UUID; la API ya lo
+  descartaba y devolvía un UUID propio sin que Caddy tuviera que pisar nada, así que el chequeo pasaba
+  aunque Caddy no cumpliera la propiedad que el paso dice probar. El rojo que respaldaba la marca `[x]`
+  de la tarea se había mostrado con otra entrada (un UUID, pegándole directo a la API), no con la que
+  el humo realmente manda.
+- **Regla**: si una capa anterior descarta o reemplaza la entrada, el chequeo que sigue pasa sin tocar
+  la capa que dice probar. Verlo fallar con otra entrada no prueba el chequeo tal como quedó escrito;
+  la entrada de la demostración tiene que ser la del escenario real.
+- **Aplica a**: constructor, rompedor y auditor.

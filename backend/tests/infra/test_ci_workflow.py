@@ -80,3 +80,59 @@ def test_existen_los_pasos_del_canario() -> None:
     texto = WORKFLOW.read_text()
     assert "infra/ci/canario.sh backend" in texto
     assert "infra/ci/canario.sh web" in texto
+
+
+def test_existe_un_paso_de_shellcheck_con_version_fijada_sobre_infra() -> None:
+    """D19 (cambio 1d): el CI corre `shellcheck`, versión fijada, sobre todos
+    los `*.sh` de `infra/`. No es opcional: antes de este cambio no existía
+    ningún paso así."""
+    texto = WORKFLOW.read_text()
+    assert "shellcheck" in texto.lower(), "no hay ningún paso de shellcheck en el workflow"
+    # Versión fijada (como gitleaks, D19): un tag o SHA, nunca `latest`/`stable`.
+    assert "shellcheck:latest" not in texto
+    assert "shellcheck:stable" not in texto
+    assert re.search(r"shellcheck:v?[0-9]+\.[0-9]+\.[0-9]+", texto), (
+        "el paso de shellcheck no fija una versión concreta"
+    )
+    assert "infra" in texto.lower()
+
+
+def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
+    """D19/L-013: una COPIA (nunca el script real) con una variable sin
+    comillas hace fallar `shellcheck`, con la misma imagen y versión fijada
+    que usa el workflow. Si este canario no fallara, el paso del CI sería
+    decorativo."""
+    import subprocess
+    import tempfile
+
+    script_real = RAIZ / "infra" / "ci" / "test-backend.sh"
+    contenido_original = script_real.read_text()
+
+    with tempfile.TemporaryDirectory() as carpeta_temporal:
+        copia_rota = Path(carpeta_temporal) / "canario-roto.sh"
+        # Variable sin comillas a propósito (SC2086): nunca se toca el script real.
+        copia_rota.write_text('#!/usr/bin/env bash\narchivo="mi archivo.txt"\ncat $archivo\n')
+
+        resultado = subprocess.run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{carpeta_temporal}:/mnt",
+                "koalaman/shellcheck:v0.11.0",
+                "/mnt/canario-roto.sh",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    assert resultado.returncode != 0, (
+        "el canario (variable sin comillas) debía hacer fallar a shellcheck"
+    )
+    assert "SC2086" in resultado.stdout or "SC2086" in resultado.stderr
+
+    # El script real nunca se tocó.
+    assert script_real.read_text() == contenido_original

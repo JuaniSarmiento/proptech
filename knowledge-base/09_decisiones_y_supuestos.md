@@ -1292,7 +1292,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: la tercera auditoría de Alberto del 13/10.
 - **Quién**: Juani, a partir de la auditoría de Alberto.
 
-## D-090 · La deuda técnica del 1c y el 1d entra en sus tareas: 35 y 19
+## D-090 · La deuda técnica del 1c y el 1d entra en sus tareas: 35 y 19 · *corregida en parte por D-095*
 
 - **Fecha**: 14/10/2026
 - **Decisión**:
@@ -1441,6 +1441,35 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   (nunca un agente la completa, D-087): sólo se amplía quién puede ser ese humano.
 - **Quién**: Juani, 14/10/2026 (acordado para que Alberto pueda trabajar con autonomía real sobre sus
   propios cambios).
+
+## D-095 · El cierre del 1d: elecciones de código y aceptación de la deuda (14/10) · corrige en parte a D-090
+
+- **Fecha**: 14/10/2026
+- **Decisión**:
+  - **Backups**: `pg_dump --format=custom` desde la imagen de PostgreSQL (`postgres:18.6-trixie`),
+    volcados a una carpeta del host por bind mount (`PROPTECH_DIR_RESPALDOS`), 14 copias
+    (`RESPALDO_CONSERVAR`) y cada volcado acotado por `RESPALDO_LIMITE_SEGUNDOS`; restauración con
+    destino validado por la expresión cerrada `^proptech_[a-z0-9_]{1,50}$`, distinto de la base en
+    uso (`POSTGRES_DB`).
+  - **`/api/salud`**: las dos verificaciones (base y cola) corren en hilos paralelos con un plazo total
+    de 1,5 s (`PLAZO_TOTAL_SALUD_S`), cada hilo con su propia `contextvars.copy_context()` (B1, L-015);
+    una sola línea `salud_degradada` por verificación fallida, con el `request_id` del pedido.
+  - **Tracebacks crudos y mensajes que no son texto** se registran con un evento fijo, sin parsear su
+    contenido (`traceback_crudo_descartado`, `mensaje_no_texto`, `excepcion_como_mensaje`).
+  - **El 1d quedó en 20 tareas**, no 19: corrige el número de D-090.
+  - **Cierre**: tres vueltas entre constructor, rompedor y auditor. En la vuelta 2 el auditor bloqueó
+    por B1 a B5 (hilos sin copia de contexto, pasos del modo continuo sin chequeo explícito, antigüedad
+    negativa aceptada, marcas `[x]` sin el rojo escrito, conteo del humo sólo en `respaldos`) y por
+    B4-bis (el paso 7 del humo probado con una entrada que la API ya descartaba, no con la que el humo
+    realmente manda, L-017); el constructor los resolvió todos con test en rojo visto antes del código
+    (B4 con la demostración directa que pedía el criterio) y el auditor dio **OK con deuda anotada** en
+    su vuelta 3, el 14/10/2026. Backend 516 → 606 tests (+1 xfailed); web sin cambios (16).
+  - **Deuda aceptada**: la tabla "Deuda del cierre del 1d" de `knowledge-base/12_fichas_de_changes.md`,
+    con dueño por ítem (mayormente el cambio 15 y el cambio 2); las tres filas de deuda del 1c con
+    dueño el 1d (F13, `salud_degradada` duplicado, F7c) quedan resueltas por este cambio.
+- **Por qué**: dejar registradas las elecciones de código de este cambio para que el cambio 2 y los
+  que lo siguen no las reinventen ni las contradigan sin saberlo (mismo criterio que D-091 para el 1c).
+- **Quién**: Juani, a partir del veredicto del auditor de la vuelta 3 del 14/10/2026.
 
 ## Supuestos
 

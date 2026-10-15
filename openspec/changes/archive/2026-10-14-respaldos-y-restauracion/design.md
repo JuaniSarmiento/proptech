@@ -298,6 +298,35 @@ Se leyó `knowledge-base/15_lecciones.md` entero (L-001 a L-013).
   acepta: el proceso igual termina con su código, el operador lo reproduce a mano, y el arranque de la
   API y del worker ya valida la configuración con errores propios antes de llegar a ese camino.
 
+### D22 · Vuelta 2 (auditor): hilos de salud, pasos explícitos del modo continuo, antigüedad negativa y conteo en `api`/`worker`
+
+- **B1 · cada hilo de `/api/salud` con su propia copia de contexto**: cada `threading.Thread` que
+  corre una de las dos verificaciones en paralelo (D20) recibe su propio
+  `context=contextvars.copy_context()`, nunca uno compartido entre los dos. **Descartado**: una sola
+  copia de contexto para ambos hilos, que da `RuntimeError: cannot enter context: ... is already
+  entered` (L-015).
+- **B2 · cada paso del modo continuo con su chequeo explícito**: en `respaldar.sh`, cada paso
+  posterior a `pg_restore --list` (el `mv` atómico, la escritura de `.ultimo-ok`, la retención) lleva
+  su propio `if ! paso; then ...; fi`; `respaldo_generado` se loguea recién al final, cuando los tres
+  terminaron bien; `aplicar_retencion` devuelve 1 si algún `rm` falla. **Descartado**: confiar en que
+  `set -e` corte el script solo, porque el modo continuo llama al ciclo como `ciclo_backup || true`, y
+  ese `|| true` apaga `set -e` dentro de esa invocación (L-014).
+- **B3 · antigüedad negativa rechazada sin tolerancia**: `respaldar.sh --salud` rechaza cualquier
+  antigüedad negativa de `.ultimo-ok` (la marca en el futuro), sin ningún margen por reloj
+  desincronizado entre host y contenedor. **Descartado**: una tolerancia de unos segundos; revertir
+  esta decisión cuesta una línea y un test, si hiciera falta.
+- **B5 · el humo cuenta los eventos de log en `api` y `worker`, no en `respaldos`**: las
+  verificaciones de `traceback_crudo_descartado` y `mensaje_no_texto` del humo (D14) se miran en los
+  logs de `api` y `worker`. **Descartado**: contarlos en `respaldos`, que por ser un script de Bash
+  nunca puede emitir ese tipo de evento estructurado; un conteo ahí da siempre cero sin decir nada
+  sobre las dos piezas que sí pueden emitirlo (L-016).
+- **UUID fijo en el paso 7 del humo (vuelta 3)**: el `valor_cliente` que el paso 7 del humo manda como
+  `X-Request-ID` es un UUID canónico fijo (`c0ffee00-dada-4bad-8f00-0d15ea5e1234`), a propósito, para
+  que la validación de formato de la API no tape lo que el paso dice probar: que Caddy pisa el valor
+  elegido por el cliente. **Descartado**: un texto cualquiera que no sea un UUID (como el usado hasta
+  la vuelta 2), porque la API ya lo rechaza y lo reemplaza por su cuenta sin que Caddy tenga que pisar
+  nada, y entonces el chequeo pasaba sin ejercitar la capa que dice probar (L-017).
+
 ## Risks / Trade-offs
 
 - [Backups en el mismo disco que la base] → Protegen de un error humano o una migración rota, no de

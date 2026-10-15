@@ -38,16 +38,51 @@ Requisitos: Docker con Compose (`docker compose version`).
 
 ```bash
 cp infra/.env.example infra/.env   # completar POSTGRES_PASSWORD con un valor propio
+mkdir -p infra/datos-respaldos     # carpeta de los backups, fuera de git (D9)
 cd infra
-docker compose up --build
+PROPTECH_UID=$(id -u) PROPTECH_GID=$(id -g) docker compose up --build
 ```
+
+La carpeta de respaldos (`PROPTECH_DIR_RESPALDOS` en `.env`, por defecto
+`./datos-respaldos` relativo a `infra/`) hay que crearla **antes** del primer
+`docker compose up`: es una carpeta del host (bind mount, no un volumen de
+Docker), así sobrevive a un `docker compose down -v`. `PROPTECH_UID` y
+`PROPTECH_GID` son el usuario del host (`id -u` / `id -g`), para que esos
+archivos queden del dueño real y no de un uid que el host no conoce; sin
+ellos, Compose se niega a arrancar nombrando la variable que falta. Las demás
+variables de respaldos (`RESPALDO_INTERVALO_SEGUNDOS`, `RESPALDO_CONSERVAR`,
+`RESPALDO_LIMITE_SEGUNDOS`) ya traen un valor por defecto en `.env.example`.
 
 Después de que los servicios queden sanos:
 
 - `http://localhost`: la web (marcador técnico, todavía sin pantallas reales).
-- `http://localhost/api/salud`: `{"estado":"ok","base":"ok"}` si la base responde.
+- `http://localhost/api/salud`: `{"estado":"ok","base":"ok","cola":"ok"}` si la base y la cola
+  responden.
 
-Sólo Caddy publica puertos (80 y 443); la base, la API y la web viven en una red interna.
+Sólo Caddy publica puertos (80 y 443); la base, Redis, la API, la web y el servicio de respaldos
+viven en una red interna.
+
+**En Windows**: los scripts de `infra/` (incluidos `respaldar.sh`, `restaurar.sh` y los de
+`infra/ci/`) son de Bash. Corren en **WSL2** o en **Git Bash**, nunca en PowerShell ni en `cmd`.
+
+### Cómo restaurar un backup
+
+El servicio `respaldos` genera un backup completo al arrancar y después cada
+`RESPALDO_INTERVALO_SEGUNDOS` (un día por defecto), en `infra/datos-respaldos/` (o la carpeta que
+indique `PROPTECH_DIR_RESPALDOS`), con nombre `proptech-<fecha y hora UTC>.dump`. Para cargar uno en
+una base aparte (nunca sobre la base en uso):
+
+```bash
+infra/respaldos/restaurar.sh infra/datos-respaldos/proptech-20261014T120000Z.dump
+```
+
+Funciona desde cualquier carpeta del repositorio. Sin un segundo argumento, el destino es
+`proptech_restauracion`; para usar otro nombre (siempre con el prefijo `proptech_`, nunca la base en
+uso):
+
+```bash
+infra/respaldos/restaurar.sh infra/datos-respaldos/proptech-20261014T120000Z.dump proptech_mi_prueba
+```
 
 ### Correr los tests
 

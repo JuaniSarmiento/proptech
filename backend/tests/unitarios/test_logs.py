@@ -7,6 +7,8 @@ Línea de un pedido atendido (formato de la línea). Cambio 1c, tarea 2.1.
 import json
 import logging
 
+import pytest
+
 from proptech_core.compartido.logs import FormateadorJSON
 
 
@@ -112,11 +114,18 @@ def test_mensaje_con_argumentos_deja_la_plantilla_y_no_el_dato() -> None:
     assert "dato-sensible-123" not in json.dumps(datos)
 
 
-def test_traceback_crudo_se_descarta_y_se_reemplaza_por_tipo_y_traza() -> None:
+def test_traceback_crudo_se_descarta_con_tipo_y_traza_fijos() -> None:
     """D7, L-007, vuelta 2 (F7): Starlette/uvicorn pasan el traceback entero
     ya formateado como `msg` (sin `exc_info`); el formatter tiene que
     reconocerlo igual y no copiar el mensaje de la excepción ni las líneas
-    de código."""
+    de código.
+
+    Tarea 5.2 (D21, F7c): antes `tipo_error` y `traza` salían de parsear ese
+    texto (`RuntimeError` y los cuadros `File "..."`); el rompedor mostró
+    formas en las que ese parseo sacaba datos del mensaje a esos campos
+    (`test_ataque_traceback_crudo_v2.py`). Ahora los dos son valores FIJOS,
+    sin leer el texto: esta expectativa cambia de los valores parseados a
+    `"desconocido"` y `[]` (se borra el parseo, no se endurece)."""
     marcador = "marcador-traceback-crudo-9f1b"
     mensaje_crudo = (
         "Traceback (most recent call last):\n"
@@ -129,11 +138,102 @@ def test_traceback_crudo_se_descarta_y_se_reemplaza_por_tipo_y_traza() -> None:
     datos = json.loads(_formatear(_record(mensaje=mensaje_crudo, logger_nombre="uvicorn.error")))
     assert datos["evento"] == "traceback_crudo_descartado"
     assert marcador not in json.dumps(datos)
-    assert datos["tipo_error"] == "RuntimeError"
-    assert datos["traza"] == [
-        "/app/starlette/routing.py:660:lifespan",
-        "/app/app_que_falla.py:7:lifespan",
-    ]
+    assert datos["tipo_error"] == "desconocido"
+    assert datos["traza"] == []
+
+
+@pytest.mark.parametrize(
+    "mensaje_crudo",
+    [
+        # Marcador en el nombre de la excepción, con forma válida (termina en Error).
+        (
+            "Traceback (most recent call last):\n"
+            '  File "/app/x.py", line 1, in f\n'
+            "MarcadorError9f1b: detalle\n"
+        ),
+        # Marcador en el nombre de la excepción, con forma de clase rara (sin
+        # sufijo Error/Exception/Warning/Exit/Interrupt: el parseo viejo caía
+        # al "ErrorDesconocido" por default; ahora da lo mismo que cualquier
+        # otro caso, sin leer nada).
+        (
+            "Traceback (most recent call last):\n"
+            '  File "/app/x.py", line 1, in f\n'
+            "ClaseRaraMarcador9f1b: detalle\n"
+        ),
+        # Marcador en la línea File "..." con comillas y espacios adentro.
+        (
+            "Traceback (most recent call last):\n"
+            '  File "/app/directorio con espacio/\\"marcador9f1b\\".py", line 2, in f\n'
+            "RuntimeError: detalle\n"
+        ),
+        # Marcador en la línea de la función.
+        (
+            "Traceback (most recent call last):\n"
+            '  File "/app/x.py", line 3, in funcion_marcador9f1b\n'
+            "RuntimeError: detalle\n"
+        ),
+        # Marcador en el mensaje multilínea de la excepción.
+        (
+            "Traceback (most recent call last):\n"
+            '  File "/app/x.py", line 4, in f\n'
+            "RuntimeError: primera linea\n"
+            "marcador9f1b: segunda linea\n"
+        ),
+    ],
+)
+def test_traceback_crudo_con_marcador_en_cualquier_parte_da_siempre_valores_fijos(
+    mensaje_crudo: str,
+) -> None:
+    """Tarea 5.2 (D21, F7c): un marcador en el nombre de la excepción, en la
+    línea `File "..."` (con comillas o espacios), en la línea de la función o
+    en el mensaje multilínea siempre da los mismos tres valores fijos, sin
+    excepción: no se lee el texto para sacar nada de él (L-008)."""
+    datos = json.loads(_formatear(_record(mensaje=mensaje_crudo, logger_nombre="uvicorn.error")))
+    assert datos["evento"] == "traceback_crudo_descartado"
+    assert datos["tipo_error"] == "desconocido"
+    assert datos["traza"] == []
+    assert "marcador9f1b" not in json.dumps(datos)
+    assert "9f1b" not in json.dumps(datos)
+
+
+def test_mensaje_que_es_un_dict_da_evento_mensaje_no_texto() -> None:
+    """Tarea 5.2 (D21, F7c): un `msg` que no es texto ni excepción (acá, un
+    `dict`) nunca se convierte con su representación de texto."""
+    marcador = "marcador-dict-no-texto-7c3a"
+    datos = json.loads(_formatear(_record(mensaje={"clave": marcador})))  # type: ignore[arg-type]
+    assert datos["evento"] == "mensaje_no_texto"
+    assert marcador not in json.dumps(datos)
+
+
+def test_objeto_con_str_propio_da_evento_mensaje_no_texto_sin_llamar_str() -> None:
+    """Un objeto cuyo `__str__` devolvería un marcador nunca debe convertirse:
+    el evento es fijo y `__str__` no se llega a invocar sobre él."""
+    marcador = "marcador-objeto-str-4e2b"
+
+    class _ObjetoConStrPropio:
+        def __str__(self) -> str:
+            return marcador
+
+    datos = json.loads(_formatear(_record(mensaje=_ObjetoConStrPropio())))  # type: ignore[arg-type]
+    assert datos["evento"] == "mensaje_no_texto"
+    assert marcador not in json.dumps(datos)
+
+
+def test_subclase_de_str_con_str_propio_da_evento_mensaje_no_texto() -> None:
+    """D21: `type(msg) is str` exige texto EXACTO, no una subclase: una
+    subclase de `str` puede redefinir `__str__` y devolver cualquier cosa, así
+    que también cae en `mensaje_no_texto`, no en su propio texto como
+    plantilla."""
+    marcador = "marcador-subclase-str-2f9d"
+
+    class _SubclaseDeStr(str):
+        def __str__(self) -> str:
+            return marcador
+
+    datos = json.loads(_formatear(_record(mensaje=_SubclaseDeStr("plantilla-original"))))
+    assert datos["evento"] == "mensaje_no_texto"
+    assert marcador not in json.dumps(datos)
+    assert "plantilla-original" not in json.dumps(datos)
 
 
 def test_mensaje_de_uvicorn_sin_traceback_no_se_toca() -> None:
