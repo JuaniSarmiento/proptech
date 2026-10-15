@@ -578,3 +578,15 @@ a V3-15 siguen iguales).
   `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (13.3), que es lo que la respalda ahora.
   - Hecho 15/10/2026.
 
+- [x] 13.5 Corrida de cierre de la vuelta 4 (L-010): `test-backend.sh`, `test-web.sh`, `humo.sh`
+  (con los dos `up`), en ese orden y de a uno, contra el código de los commits 13.1-13.4 (`55586d9`
+  V3-1, `920d4e2` V3-2, `465d22b` V3-4, `cf650be` V3-10).
+  - Hecho 15/10/2026 19:11-19:21: `test-backend.sh` → **863 passed + 1 xfailed** (251s), limpio;
+    `test-web.sh` → **16 passed**; `humo.sh` → **HUMO OK** (exit 0), con el paso `(1b)` (segundo
+    `up`, R1) confirmado en la salida real ("el segundo up terminó con exit 0 y el stack quedó sano
+    de nuevo"). Corrida hecha contra el mismo árbol de código, confirmado byte a byte igual al de
+    `cf650be` antes de pegar esta entrada.
+  - Contra la base de la vuelta 3 (858 passed + 1 xfailed, commit `ac688b2`): **+5 tests** (2 de
+    V3-1, 1 de V3-2, 2 de V3-4 M8/M5). Las deudas de la vuelta 3 que quedaron fuera de esta vuelta
+    (R5, R6, R9, R11, V2-3, V2-5, V2-7, V3-5 a V3-9, V3-11 a V3-15) no se tocaron.
+  - **El cambio queda acá, sin archivar y sin pushear.**
