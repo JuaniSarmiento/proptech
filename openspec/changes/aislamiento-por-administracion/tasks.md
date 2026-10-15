@@ -391,5 +391,16 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     `HUMO OK`, confirmando que esas contraseñas ya eran distintas (las generó él al azar, no copió el
     ejemplo). Suite completa: 849 passed + 1 xfailed (842 + 7); web: 16 passed.
 
-- [ ] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.
+- [x] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.
+  - Hecho 15/10/2026 (opción A, nunca la B): rojo confirmado con `git checkout` momentáneo
+    (L-013) sobre `respaldar.sh` — con un `.ultimo-ok` bueno y un ciclo fallido después,
+    `--salud` seguía dando 0. `.ultimo-fallo` nueva: `ciclo_backup` la escribe en cada uno de sus
+    cinco puntos de falla (`pg_dump`, `pg_restore_list`, `mv`, `marca_ultimo_ok`, `retencion`) y la
+    borra al final, sólo si el ciclo completo salió bien. `verificar_salud` ahora, además de lo que ya
+    tenía, da no saludable si `.ultimo-fallo` es MÁS NUEVA que `.ultimo-ok` — exactamente el caso real
+    que el escenario pide y que el humo (que arranca sin backups previos, L-016) no alcanzaba a probar.
+    2 tests nuevos en `tests/infra/test_respaldos.py` (el harness sin Docker, con `pg_dump` falso):
+    salud cae después de un ciclo fallido con un éxito previo, y un éxito posterior vuelve a limpiarla.
+    `shellcheck`: limpio. Suite completa: 851 passed + 1 xfailed (849 + 2).
+
 - [ ] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.

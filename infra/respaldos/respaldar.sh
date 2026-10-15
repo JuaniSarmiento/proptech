@@ -127,6 +127,17 @@ aplicar_retencion() {
   return "$fallo"
 }
 
+# `.ultimo-fallo` (D2, vuelta 2, R10, opción A): la marca de `.ultimo-ok`
+# sólo dice CUÁNDO fue el último backup bueno — con el intervalo por
+# defecto (86400s), un rol equivocado puede fallar durante 36h sin que
+# `--salud` lo note, porque `.ultimo-ok` sigue "fresco" por el reloj. Esta
+# marca registra CUÁNDO fue el último intento fallido; `verificar_salud`
+# compara las dos fechas: una falla más nueva que el último éxito es no
+# saludable, aunque ese éxito siga dentro del límite de antigüedad.
+marcar_fallo() {
+  date +%s > "$CARPETA/.ultimo-fallo" || true
+}
+
 ciclo_backup() {
   local marca archivo_final archivo_parcial
   marca="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -137,12 +148,14 @@ ciclo_backup() {
         pg_dump --format=custom "--file=${archivo_parcial}" >/dev/null 2>/dev/null; then
     rm -f -- "$archivo_parcial"
     logear error respaldo_fallido etapa=pg_dump
+    marcar_fallo
     return 1
   fi
 
   if ! pg_restore --list "$archivo_parcial" >/dev/null 2>/dev/null; then
     rm -f -- "$archivo_parcial"
     logear error respaldo_fallido etapa=pg_restore_list
+    marcar_fallo
     return 1
   fi
 
@@ -157,28 +170,40 @@ ciclo_backup() {
   if ! mv -- "$archivo_parcial" "$archivo_final"; then
     rm -f -- "$archivo_parcial" "$archivo_final"
     logear error respaldo_fallido etapa=mv
+    marcar_fallo
     return 1
   fi
 
   if ! date +%s > "$CARPETA/.ultimo-ok"; then
     logear error respaldo_fallido etapa=marca_ultimo_ok
+    marcar_fallo
     return 1
   fi
 
   if ! aplicar_retencion "$archivo_final"; then
     logear error respaldo_fallido etapa=retencion
+    marcar_fallo
     return 1
   fi
 
   logear info respaldo_generado "archivo=$(basename -- "$archivo_final")"
+  # El ciclo volvió a andar: una falla vieja ya no tiene que seguir
+  # tapando la salud (si no se borrara, un fallo único y nunca más
+  # repetido dejaría el servicio no saludable para siempre).
+  rm -f -- "$CARPETA/.ultimo-fallo"
   return 0
 }
 
 # `--salud`: no saludable sin `.ultimo-ok`, si su contenido no es un entero
 # válido (misma batería de L-008 que el resto de la configuración) o si es
-# más viejo que 1,5 intervalos.
+# más viejo que 1,5 intervalos. Desde R10 (vuelta 2), TAMBIÉN no saludable
+# si hay una falla registrada MÁS NUEVA que ese último éxito: sin esto, un
+# rol equivocado (o cualquier otra causa) puede fallar durante hasta 1,5
+# intervalos (36h con el default) sin que nada lo note, porque `.ultimo-ok`
+# sigue pareciendo fresco.
 verificar_salud() {
-  local marca="$CARPETA/.ultimo-ok" contenido ahora limite antiguedad
+  local marca="$CARPETA/.ultimo-ok" marca_fallo="$CARPETA/.ultimo-fallo"
+  local contenido ahora limite antiguedad contenido_fallo
   if [ ! -f "$marca" ]; then
     return 1
   fi
@@ -195,6 +220,12 @@ verificar_salud() {
   # la salud en OK para siempre, hasta que el reloj real la alcance.
   if (( antiguedad > limite || antiguedad < 0 )); then
     return 1
+  fi
+  if [ -f "$marca_fallo" ]; then
+    contenido_fallo="$(cat "$marca_fallo")"
+    if [[ "$contenido_fallo" =~ ^[0-9]{1,12}$ ]] && (( contenido_fallo >= contenido )); then
+      return 1
+    fi
   fi
   return 0
 }

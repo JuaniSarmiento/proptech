@@ -900,3 +900,74 @@ class TestSalud:
         (carpeta / ".ultimo-ok").write_text(str(int(time.time()) + segundos_en_el_futuro))
         resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert resultado.returncode != 0, "marca con fecha futura aceptada como salud"
+
+
+class TestSaludTrasUnFalloConUltimoOkBueno:
+    """R10 (vuelta 2, opción A): el rol equivocado hace fallar el volcado
+    (ya probado arriba, `test_falla_pg_dump_no_deja_archivos_y_loguea_error`),
+    pero antes `--salud` seguía dando 0 hasta 1,5 intervalos después del
+    último backup bueno — el escenario "Volcado con el rol equivocado"
+    pide que el servicio quede no saludable, y antes no quedaba si ya había
+    un backup previo (el caso real; el humo parte sin ninguno, L-016)."""
+
+    def test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import time
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        (carpeta / ".ultimo-ok").write_text(str(int(time.time())))
+
+        salud_antes = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert salud_antes.returncode == 0, salud_antes.stderr
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_FALLA)
+        resultado_ciclo = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            args=["--una-vez"],
+        )
+        assert resultado_ciclo.returncode == 1
+
+        salud_despues = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert salud_despues.returncode != 0, "salud OK después de un ciclo fallido"
+
+    def test_un_exito_posterior_limpia_la_marca_de_fallo(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_FALLA)
+        resultado_fallido = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            args=["--una-vez"],
+        )
+        assert resultado_fallido.returncode == 1
+        assert (carpeta / ".ultimo-fallo").exists()
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        resultado_ok = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            args=["--una-vez"],
+        )
+        assert resultado_ok.returncode == 0, resultado_ok.stderr
+
+        salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert salud.returncode == 0, salud.stderr
