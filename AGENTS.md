@@ -30,18 +30,18 @@ mercado de arranque es **Mendoza**.
   **OK con deuda anotada** en la vuelta 3 (D-095); la deuda queda en
   `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 1d"), con dueño por ítem (mayormente
   el cambio 15 y el cambio 2).
-- **Próximo**: cambio 2 `acceso-y-aislamiento` (CRITICAL, explore propio), bloqueado por P18 (el vecino
-  en dos administraciones) y P23 (permisos por acción), que se resuelven en su explore (D-076, D-087).
+- **Próximo**: cambio 2 `acceso-y-aislamiento` (CRITICAL, explore propio); ya no está bloqueado por P18
+  ni P23, resueltas el 15/10/2026 en D-096 (una cuenta por administración; permisos por acción).
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
-  (P15), la parte de las unidades del consorcio (P16), el IVA (P17), el vecino con unidades en dos
-  administraciones (P18), el doble vencimiento (P19), quién aprueba una condonación (P20), los umbrales
-  de R23 y R30 (P21) quién usa el editor de reglas (P22), los permisos por acción (P23) los casos de borde
-  para decidir antes de su cambio (P24 a P41), la validación de los valores de plata (P42), el
-  contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a administradores (P45) y los
-  nombres propios en el repo (P46), ramas o turnos con dos desarrolladores (P47).
+  (P15), la parte de las unidades del consorcio (P16), el IVA (P17), el doble vencimiento (P19), quién
+  aprueba una condonación (P20), los umbrales de R23 y R30 (P21) quién usa el editor de reglas (P22),
+  los casos de borde para decidir antes de su cambio (P24 a P41), la validación de los valores de
+  plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
+  administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
+  (P47). P18 y P23 se resolvieron en D-096.
 
 ## Stack Tecnológico
 
@@ -78,7 +78,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 |---|---|---|
 | `knowledge-base/01_vision_y_objetivos.md` | Propósito, objetivos por actor, alcance, hitos M1 a M3, diferencias con la spec | Se reescribe |
 | `knowledge-base/02_descripcion_general.md` | Stack, arquitectura general, integraciones externas | Se reescribe |
-| `knowledge-base/03_actores_y_roles.md` | Actores, RBAC (las acciones por rol esperan P23), rutas públicas | Se reescribe |
+| `knowledge-base/03_actores_y_roles.md` | Actores, RBAC (acciones por rol según D-096), rutas públicas | Se reescribe |
 | `knowledge-base/04_modelo_de_datos.md` | Dominios, ERD (existente y planificado), entidades y seed data | Se reescribe |
 | `knowledge-base/05_reglas_de_negocio.md` | R01 a R41 (agrupadas por dominio, estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla vigente es un test** | Se reescribe |
 | `knowledge-base/06_funcionalidades.md` | Historias de usuario (HU-\*) por épica, con criterios de aceptación y reglas relacionadas | Se reescribe |
@@ -104,7 +104,7 @@ vieja.
 original de la especificación se descartó (D-002) y no se usa.
 
 > ⚠️ Resolver las preguntas de prioridad alta de `knowledge-base/10_preguntas_abiertas.md` (P1, P9 a
-> P11, P18, P19, P23, entre otras) antes de arrancar un cambio que dependa de ellas: cada ficha de
+> P11, P19, entre otras) antes de arrancar un cambio que dependa de ellas: cada ficha de
 > `12_fichas_de_changes.md` dice "Bloqueado por" con las que le tocan.
 
 ## Skills Disponibles
@@ -133,7 +133,8 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `1a → 1b → 1c → 1d → 2 → 3 → 4 → 5 → 6 → 7`.
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`.
-- **Próximo**: 2 `acceso-y-aislamiento` (CRITICAL, bloqueado por P18 y P23).
+- **Próximo**: 2 `acceso-y-aislamiento` (CRITICAL); P18 y P23 se resolvieron en D-096, así que se puede
+  proponer.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

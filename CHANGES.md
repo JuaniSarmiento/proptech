@@ -230,7 +230,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Acceso y aislamiento (R10)
   - `knowledge-base/03_actores_y_roles.md`
   - `knowledge-base/06_funcionalidades.md` §HU-V1
-  - `knowledge-base/10_preguntas_abiertas.md` (P18, P23)
+  - `knowledge-base/10_preguntas_abiertas.md` (P18, P23, resueltas en D-096)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-096)
 
 ---
 

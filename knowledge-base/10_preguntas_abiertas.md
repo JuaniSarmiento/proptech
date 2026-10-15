@@ -59,9 +59,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   reglamento.
 - [ ] **P17 · IVA de los consorcios** (R12): confirmar con un contador que el consorcio registra los
   gastos con el IVA incluido.
-- [ ] **P18 · El vecino con unidades en dos administraciones** (D-076): identidad global con
-  membresías por administración, o una cuenta por administración. Se resuelve en el explore del
-  cambio 2, antes de diseñar el login.
+- [x] **P18 · El vecino con unidades en dos administraciones**: resuelta en D-096, una cuenta por
+  administración (la unicidad del usuario es por administración, no global; puede repetir email).
 - [ ] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
   vencimiento con recargo escalonado en vez del vencimiento único de R03. Afecta el test de M1. Se
   responde con Alberto antes del cambio 3.
@@ -70,9 +69,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
 - [ ] **P22 · Quién usa el editor de reglas** (D-066, `13_motor_de_reglas.md`): propuesta en dos niveles,
   valores para el titular y estructura para el equipo. Antes del cambio 6b.
-- [ ] **P23 · Permisos por acción**: qué rol puede emitir, distribuir, anular una liquidación, confirmar
-  y revertir pagos, condonar, dar de baja una deuda y aceptar alertas. D-037 fija los roles pero no
-  cada acción. Antes del cambio 2.
+- [x] **P23 · Permisos por acción**: resuelta en D-096 con una matriz por acción (titular hace lo
+  irreversible o legal, colaborador lo que se deshace o revisa el titular, consejo mira, vecino ve lo
+  suyo). El umbral de aprobación del consejo para condonar sigue abierto en P20.
 - [ ] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
   propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3.
 - [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
@@ -132,7 +131,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
-- **P18 y P23**: el vecino en dos administraciones y los permisos por acción, antes del cambio 2.
+- **P18 y P23**: resueltas (D-096); ya no bloquean el cambio 2.
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.

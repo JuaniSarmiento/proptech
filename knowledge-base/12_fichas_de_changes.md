@@ -116,8 +116,10 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
 
 - **Objetivo**: que cada persona entre y vea sólo lo suyo, aunque el código tenga un error.
 - **Historias**: HU-V1 (entrada del vecino). **Reglas**: R10; auditoría de cada acción sensible (D-016).
-- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076. Se resuelven en su explore: P18 (el vecino en dos
-  administraciones) y P23 (permisos por acción, que definen cada 403).
+- **Decisiones**: D-009, D-016, D-021, D-036, D-037, D-039, D-076, D-096. P18 (el vecino en dos
+  administraciones) y P23 (permisos por acción, que definen cada 403) ya se resolvieron en D-096,
+  antes de este explore; lo que falta decidir en el explore propio es el método de login y dónde vive
+  cada uno de los tres controles (ver más abajo).
 - **Entra**: login del personal y del vecino; los cuatro roles (titular, colaborador, consejo,
   vecino); alcance por edificio; Row-Level Security con `SET LOCAL` y un rol de base sin
   privilegios; auditoría en la misma transacción; 404 fuera de alcance y 403 sin permiso;
@@ -148,7 +150,7 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   cerrar esto de paso.
 - **No entra**: la pantalla del portal (11) y la del consejo (12): acá sólo el acceso.
 - **Depende de**: 1d. **Habilita**: 3, 4.
-- **Bloqueado por**: P18 y P23 (D-076, D-087).
+- **Bloqueado por**: nada; se puede proponer. P18 y P23 (D-076, D-087) se resolvieron en D-096.
 - **Decidir en el design** (y en su explore): **el método de login** (Clerk para el personal y enlace
   mágico para vecinos, según el documento de Alberto, o una alternativa sin costo por usuario,
   D-043); dónde vive cada uno de los tres controles (el worker ya tiene su forma de fijar el tenant en el plan de

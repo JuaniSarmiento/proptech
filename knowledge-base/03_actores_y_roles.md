@@ -4,7 +4,7 @@
 
 | Rol | Qué hace |
 |---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; las acciones exclusivas del titular se definen en P23 |
+| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; las acciones exclusivas del titular están en la matriz de D-096 |
 | **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
 | **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
 | **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
@@ -38,32 +38,27 @@ como datos del dominio, no como roles que inician sesión).
 
 ## RBAC · Matriz de permisos
 
-Lo que D-037, D-076 y R10 ya deciden, por nivel de alcance (la primera capa del aislamiento). La
-pregunta **P23** ("permisos por acción": qué rol puede emitir, distribuir o anular una liquidación,
-confirmar o revertir un pago, condonar, dar de baja una deuda o aceptar una alerta) sigue **abierta** y
-se resuelve recién en el explore del cambio 2 `acceso-y-aislamiento`: la tabla de abajo no inventa esa
-columna, la deja marcada.
+Lo que D-037, D-076 y R10 ya deciden, por nivel de alcance (la primera capa del aislamiento), más la
+tercera capa, el **permiso por acción**, que fijó D-096 (resuelve P23).
 
-| Rol | Alcance (D-037, D-076) | Lectura | Escritura general | Acciones de P23 (emitir, distribuir, anular, confirmar/revertir pago, condonar, dar de baja, aceptar alerta) |
+| Rol | Alcance (D-037, D-076) | Lectura | Escritura general | Acciones de D-096 (emitir, distribuir, anular, confirmar/revertir pago, condonar, dar de baja, aceptar alerta) |
 |---|---|---|---|---|
-| **Titular** | Todos los complejos de su administración | Todo | Todo, incluido cerrar liquidaciones y anular pagos (D-037) | Pendiente P23: hoy sólo se sabe que el titular puede hacerlo todo; no está escrito si **sólo** el titular o también el colaborador |
-| **Colaborador** | Sólo los complejos que le asignan dentro de su administración | Según su nivel | Nivel "ver" (sólo lectura) o "editar" (según D-037); **no cierra ni anula** liquidaciones | Pendiente P23: D-037 ya excluye cerrar/anular para este rol; el resto de las acciones de la columna, sin decidir |
-| **Consejo** | Su complejo, dentro de la administración | Morosidad, gastos y liquidaciones de su complejo | Ninguna (sólo lectura, D-037) | No aplica: ninguna acción de P23 es de escritura, y el consejo no escribe |
-| **Vecino** | Sus unidades, dentro de la administración | Su deuda, su expensa, sus pagos y comprobantes | Informa sus propios pagos (R11); no confirma, no condona, no anula | No aplica directamente: el vecino **informa** un pago (R11), pero **confirmarlo** es acción del administrador (columna de P23) |
+| **Titular** | Todos los complejos de su administración | Todo | Todo, incluido cerrar liquidaciones y anular pagos (D-037) | Todas: emite y distribuye, anula, confirma y revierte pagos, condona, da de baja una deuda, acepta cualquier alerta |
+| **Colaborador** | Sólo los complejos que le asignan dentro de su administración | Según su nivel | Nivel "ver" (sólo lectura) o "editar" (según D-037); **no cierra ni anula** liquidaciones | Con nivel "editar": carga gastos y prepara la liquidación, confirma un pago informado, acepta alertas que no bloquean. **No** emite, no distribuye, no anula, no revierte un pago, no condona, no da de baja una deuda, no acepta una alerta que bloquea. Con nivel "ver", ninguna acción de escritura |
+| **Consejo** | Su complejo, dentro de la administración | Morosidad, gastos y liquidaciones de su complejo | Ninguna (sólo lectura, D-037) | Ninguna: ve la carga de gastos y ve cuándo se condona un interés (con el motivo), pero no ejecuta ninguna acción |
+| **Vecino** | Sus unidades, dentro de la administración | Su deuda, su expensa, sus pagos y comprobantes | Informa sus propios pagos (R11); no confirma, no condona, no anula | Ve su cuenta e informa pagos (R11); **confirmarlo** es acción del administrador |
 
 **Las dos capas siguen siendo distintas** (D-076): esta tabla cubre el **alcance por edificio** (quién
-ve qué complejo) y el **permiso general por rol** (D-037); la columna de P23 es la tercera capa,
-**permiso por acción**, y es la que falta. Fuera de alcance responde 404; dentro de alcance pero sin
-el permiso de esa acción, 403 con el permiso faltante (D-037): el detalle de qué 403 corresponde a
-cada acción depende de P23.
+ve qué complejo), el **permiso general por rol** (D-037) y, ahora, el **permiso por acción** (D-096).
+Fuera de alcance responde 404; dentro de alcance pero sin el permiso de esa acción, 403 con el permiso
+faltante (D-037).
 
-**No se completa acá** ninguna celda de la columna de acciones más allá de lo que D-037 ya fija
-(colaborador no cierra ni anula): inventar quién condona o quién da de baja una deuda sin la respuesta
-de P23 contradecería la regla central de este proyecto (D-089, base congelada, nada se decide sin su
-fuente).
+**Sigue abierta P20**: la matriz fija que condonar es acción exclusiva del titular, pero no si por
+encima de un monto hace falta además la aprobación del consejo antes de condonar; esa parte de la
+pregunta no se cierra acá.
 
-**R41 (propuesta)** ya propone que sólo el titular da de baja una deuda; queda a confirmar con P23,
-como el resto de la columna de acciones.
+**R41 (propuesta)** ya proponía que sólo el titular da de baja una deuda; D-096 lo confirma para el
+resto de la columna de acciones.
 
 ## Rutas públicas
 
@@ -87,5 +82,5 @@ pantalla de login); y si un **link firmado** de descarga (D-070: PDF de la expen
 facturas, con vencimiento entre un minuto y una hora) cuenta como "ruta pública" en el sentido de este
 documento o es un mecanismo aparte que no requiere sesión activa pero sí una firma válida: ese punto
 tampoco está resuelto todavía y se deja así, sin asumir una respuesta. Se completa junto con el
-explore del cambio 2 (login del personal y del vecino, D-039), y queda condicionado también por **P18**
-(un vecino con unidades en dos administraciones: identidad global o una cuenta por administración).
+explore del cambio 2 (login del personal y del vecino, D-039). Ya no queda condicionado por P18 (una
+cuenta por administración, D-096): el login resuelve siempre dentro de una sola administración.

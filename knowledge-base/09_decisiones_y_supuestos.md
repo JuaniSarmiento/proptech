@@ -1471,6 +1471,53 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   que lo siguen no las reinventen ni las contradigan sin saberlo (mismo criterio que D-091 para el 1c).
 - **Quién**: Juani, a partir del veredicto del auditor de la vuelta 3 del 14/10/2026.
 
+## D-096 · Una cuenta por administración y permisos por acción (P18, P23)
+
+- **Fecha**: 15/10/2026
+- **Decisión**:
+  - **P18 · Vecino con unidades en dos administraciones**: para el MVP, **una cuenta por
+    administración**. Si un vecino tiene unidades en edificios de dos administraciones distintas,
+    tiene dos cuentas, una en cada una; puede usar el mismo email en las dos, porque la unicidad del
+    usuario es por administración y no global. La tabla de usuarios se diseña para poder unificar
+    cuentas en v1.1 sin migración destructiva.
+  - **P23 · Permisos por acción**: principio general: todo lo que mueve plata de forma irreversible o
+    tiene peso legal es sólo del titular; el colaborador hace lo que se puede deshacer o lo revisa el
+    titular; el consejo mira; el vecino ve lo suyo. Matriz:
+
+    | Acción | Titular | Colaborador (sus edificios) | Consejo | Vecino |
+    |---|---|---|---|---|
+    | Cargar gastos y preparar la liquidación | Sí | Sí | Ve | No |
+    | Emitir y distribuir la liquidación | Sí | No | No | No |
+    | Anular una liquidación | Sí | No | No | No |
+    | Confirmar un pago informado | Sí | Sí | No | No |
+    | Revertir o reimputar un pago | Sí | No | No | No |
+    | Condonar intereses (con motivo, visible al consejo) | Sí | No | Ve | No |
+    | Dar de baja una deuda | Sí | No | No | No |
+    | Aceptar alertas que no bloquean | Sí | Sí | No | No |
+    | Aceptar alertas que bloquean | Sí | No | No | No |
+    | Invitar usuarios y asignar edificios | Sí | No | No | No |
+    | Ver su cuenta e informar pagos | | | | Sí |
+
+    Esta matriz aplica al colaborador con nivel "editar" (D-037); un colaborador de sólo "ver" no
+    hace ninguna de estas acciones, cierre o no cierre.
+- **Descartado**:
+  - Para P18: identidad global con membresías por administración. El login tendría que elegir de qué
+    administración mirar, sumando complejidad justo en el punto que D-016 y D-076 buscan mantener
+    simple ("la administración sale del login", un login es de una sola administración).
+- **Por qué**:
+  - P18: mantiene la regla central de que la administración sale del login (D-016, D-076): cada
+    login pertenece a una sola administración y el aislamiento por Row-Level Security queda simple.
+    El costo es mínimo en el MVP, con un solo edificio piloto.
+  - P23: separa lo irreversible o legal (lo hace sólo el titular) de lo que se puede deshacer o
+    revisar (lo puede hacer el colaborador con nivel "editar", bajo la mirada del titular). Es
+    coherente con lo ya registrado: R41 (propuesta) ya proponía que sólo el titular dé de baja una
+    deuda, y D-037 ya fijaba que el colaborador no cierra ni anula liquidaciones; esta decisión
+    extiende ese mismo criterio al resto de las acciones que P23 dejaba sin definir.
+  - **P20 sigue abierta**: esta matriz fija que condonar es una acción del titular (nadie más tiene el
+    permiso), pero no responde si por encima de un monto el titular necesita además la aprobación del
+    consejo antes de condonar; esa es la pregunta de P20 y queda sin resolver.
+- **Quién**: Juani, como socio (D-094). Alberto puede revisarla antes de que se codee el cambio 2.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había
