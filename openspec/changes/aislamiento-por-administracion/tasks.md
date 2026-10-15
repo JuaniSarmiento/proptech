@@ -133,7 +133,24 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     por tocar código real de la API: HUMO OK. El test que recorre las rutas registradas pidiendo que
     ninguna quede sin envolver (pedido de Juani) lo sumo al cerrar la 5.3, cuando también esté el
     permiso (403): recorrer las rutas antes de que el 403 exista cubriría la mitad de lo pedido.
-- [ ] 5.3 Permiso por acción con 403 (D7) en `tests/integracion/test_asignar_edificio_api.py`, con `POST /api/complejos/{id}/asignaciones`: el titular asigna un complejo a un colaborador de su administración (201, y el colaborador pasa a verlo por 5.2); un colaborador "editar" en un complejo asignado recibe 403 con `permiso_faltante` igual a `invitar_usuarios_y_asignar_edificios`; el mismo colaborador en un complejo no asignado recibe 404; consejo y vecino, 403 dentro de su alcance; el titular de A asignando a una persona de B (UUID existente) recibe 404 y no queda nada escrito. Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración. Lecciones: L-017.
+- [x] 5.3 Permiso por acción con 403 (D7) en `tests/integracion/test_asignar_edificio_api.py`, con `POST /api/complejos/{id}/asignaciones`: el titular asigna un complejo a un colaborador de su administración (201, y el colaborador pasa a verlo por 5.2); un colaborador "editar" en un complejo asignado recibe 403 con `permiso_faltante` igual a `invitar_usuarios_y_asignar_edificios`; el mismo colaborador en un complejo no asignado recibe 404; consejo y vecino, 403 dentro de su alcance; el titular de A asignando a una persona de B (UUID existente) recibe 404 y no queda nada escrito. Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración. Lecciones: L-017.
+  - Hecho 15/10/2026: `complejos.py` compone `puede()` (403, cuerpo `{"detalle": "sin_permiso",
+    "permiso_faltante": "invitar_usuarios_y_asignar_edificios"}`) y suma `existe_persona` (D-096,
+    `acceso.aplicacion.autorizacion`) para que el destinatario del cuerpo también pase por RLS antes
+    del `INSERT`. 6 tests en `test_asignar_edificio_api.py`. RED real: sin la 5.3, el titular de A
+    asignando a una persona de B no daba 404 — daba **500** (`IntegrityError` de la FK, visto en la
+    salida real), confirmando que el chequeo explícito hace falta y no alcanza con dejarlo en manos de
+    la base. Orden elegido: `existe_persona` se mira DESPUÉS de `puede()`, para no revelar nada del
+    cuerpo antes de confirmar que quien pide puede hacer esta acción en este complejo.
+  - **Sumado (pedido de Juani, "apuesta 2" del informe de la 4.2)**: `tests/integracion/
+    test_rutas_protegidas.py`, con dos chequeos. Estructural: la lista de rutas que el archivo cubre
+    tiene que coincidir EXACTO con las que la app registra bajo `/api` (salvo `/api/salud`, pública);
+    si alguien agrega una ruta sin pasar por este archivo, el conjunto ya no coincide y el test falla
+    nombrándola — confirmado agregando a mano una ruta sin identidad y viéndola fallar, después
+    restaurada con `diff` limpio. De comportamiento: cada ruta del candado, sin identidad, da 401 sin
+    tocar la base (repetido sobre el conjunto completo); con una identidad real pero sin ninguna fila
+    en `asignacion_rol`, nunca da 200/201 contra un recurso real (403 o 404, nunca éxito). 10 tests.
+  - Suite completa: 791 passed + 1 xfailed (sin regresión). `humo.sh` corrido de nuevo: HUMO OK.
 
 ## 6. Auditoría
 

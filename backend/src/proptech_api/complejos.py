@@ -18,9 +18,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
-from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
+from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, existe_persona
 from proptech_core.acceso.dominio.identidad import Identidad
-from proptech_core.acceso.dominio.permisos import alcanza
+from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
 
 router = APIRouter(prefix="/api")
@@ -82,6 +82,11 @@ class CuerpoAsignacion(BaseModel):
     administracion_id: UUID | None = None
 
 
+#: La acción de D-096 que este endpoint autoriza (D9: el mismo nombre que
+#: va a quedar registrado en la auditoría, tarea 6.x).
+_ACCION = Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS
+
+
 @router.post("/complejos/{complejo_id}/asignaciones", status_code=201)
 def asignar_complejo(
     complejo_id: UUID,
@@ -89,6 +94,23 @@ def asignar_complejo(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, str]:
+    complejo = cargar_complejo(sesion, complejo_id)
+    if complejo is None:
+        raise _no_encontrado()
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if not alcanza(asignaciones, complejo_id):
+        raise _no_encontrado()
+    if not puede(asignaciones, _ACCION, complejo_id):
+        raise HTTPException(
+            status_code=403,
+            detail={"detalle": "sin_permiso", "permiso_faltante": _ACCION.value},
+        )
+    # La persona destino (del cuerpo, no del path): recién después del
+    # permiso, para no revelar si existe antes de confirmar que quien pide
+    # puede hacer esta acción en este complejo.
+    if not existe_persona(sesion, cuerpo.persona_id):
+        raise _no_encontrado()
+
     fila = sesion.execute(
         text(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id, nivel) "
