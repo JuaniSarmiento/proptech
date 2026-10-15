@@ -222,9 +222,23 @@ verificar_salud() {
     return 1
   fi
   if [ -f "$marca_fallo" ]; then
-    contenido_fallo="$(cat "$marca_fallo")"
-    if [[ "$contenido_fallo" =~ ^[0-9]{1,12}$ ]] && (( contenido_fallo >= contenido )); then
-      return 1
+    contenido_fallo="$(cat "$marca_fallo" 2>/dev/null || true)"
+    if [[ "$contenido_fallo" =~ ^[0-9]{1,12}$ ]]; then
+      if (( contenido_fallo >= contenido )); then
+        return 1
+      fi
+    else
+      # V2-4 (vuelta 3): el disco lleno deja `.ultimo-fallo` CREADO pero
+      # VACÍO (`date +%s > .ultimo-fallo` crea el archivo antes de que la
+      # escritura misma falle) — un contenido vacío (o cualquier otra
+      # corrupción) no pasa el `fullmatch` de arriba, y antes la marca se
+      # ignoraba en silencio: exactamente la falla más común de un backup
+      # quedaba tapada, igual que R10. Sin poder comparar por número, se
+      # compara por mtime (`-nt`): esto sólo LEE archivos que ya existen,
+      # nunca depende de poder escribir con el disco lleno (eso ya pasó).
+      if [ ! "$marca" -nt "$marca_fallo" ]; then
+        return 1
+      fi
     fi
   fi
   return 0

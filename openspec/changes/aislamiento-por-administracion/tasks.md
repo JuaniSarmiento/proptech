@@ -446,3 +446,20 @@ NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
     `tgtype`/`tgqual`/un hash de `prosrc` (la otra opción que daba el auditor). 3 tests nuevos en
     `test_auditoria_tabla.py`, cada uno con su propio contenedor (rompen el estado a propósito).
 
+- [x] 12.3 V2-4 · `respaldar.sh --salud` (R10) seguía en 0 cuando el ciclo falla con el disco lleno: `date +%s > .ultimo-fallo` crea el archivo pero la escritura falla con el disco lleno, y queda VACÍO — un contenido vacío no pasa el `fullmatch` de `verificar_salud` y la marca se ignoraba en silencio, la misma falla que R10 ya había cerrado para el rol equivocado. Rojo: harness (`.ultimo-fallo` vacío y más nuevo que `.ultimo-ok`, hoy `--salud` da 0) y el script real `v2_r10_disco_lleno.sh` del rompedor (hoy "salud tras ciclo fallido exit=0"). Corrección: comparar por mtime (`-nt`) cuando el contenido no se puede leer como número — nunca depende de poder ESCRIBIR con el disco lleno, sólo lee archivos que ya existen.
+  - Hecho 15/10/2026: rojo del harness confirmado (`test_salud_falla_con_un_ultimo_fallo_vacio_mas_nuevo_que_el_ultimo_ok`,
+    `assert 0 != 0`). Rojo real pegado tal cual, corriendo `levantar.sh` + `v2_r10_disco_lleno.sh` del
+    rompedor sobre `7313564` (antes del fix):
+    ```
+    ciclo 1 exit=0 ; salud tras ciclo bueno exit=0
+    tmpfs 512K 512K 0 100% /respaldos
+    date: write error: No space left on device
+    ciclo 2 (disco lleno) exit=1
+    .ultimo-fallo existe (0 bytes)
+    salud tras ciclo fallido exit=0
+    ```
+    `verificar_salud` ahora: si `.ultimo-fallo` no tiene contenido numérico válido, compara por `-nt`
+    contra `.ultimo-ok` en vez de ignorar la marca. 2 tests nuevos en `test_respaldos.py` (uno "sano",
+    confirmado con dientes: mutado a mano a "cualquier `.ultimo-fallo` = no saludable", dio rojo). Mismo
+    script del rompedor, re-corrido con el fix: `salud tras ciclo fallido exit=1`. `shellcheck`: limpio.
+

@@ -971,3 +971,59 @@ class TestSaludTrasUnFalloConUltimoOkBueno:
 
         salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert salud.returncode == 0, salud.stderr
+
+
+class TestSaludConUltimoFalloVacioODisco:
+    """V2-4 (vuelta 3): el disco lleno deja `.ultimo-fallo` CREADO pero
+    VACÍO (`date +%s > .ultimo-fallo` crea el archivo antes de que la
+    escritura falle) — un contenido vacío no pasa el `fullmatch` de
+    `verificar_salud` y la marca se ignoraba en silencio, igual que antes
+    de R10. La corrección compara por mtime (`-nt`) cuando el contenido no
+    se puede leer como número, nunca depende de poder ESCRIBIR con el
+    disco lleno (eso ya pasó: sólo hace falta poder leer lo que ya existe)."""
+
+    def test_salud_falla_con_un_ultimo_fallo_vacio_mas_nuevo_que_el_ultimo_ok(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        import os
+        import time
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        marca_ok = carpeta / ".ultimo-ok"
+        marca_fallo = carpeta / ".ultimo-fallo"
+        marca_ok.write_text(str(int(time.time())))
+        marca_fallo.write_text("")  # vacío: el caso real del disco lleno.
+
+        ahora = time.time()
+        os.utime(marca_ok, (ahora - 100, ahora - 100))
+        os.utime(marca_fallo, (ahora, ahora))  # estrictamente más nueva.
+
+        resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert resultado.returncode != 0, "salud OK con un .ultimo-fallo vacío más nuevo"
+
+    def test_salud_pasa_si_el_ultimo_fallo_vacio_es_mas_viejo_que_el_ultimo_ok(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        """El caso sano: un fallo vacío VIEJO (de antes del último éxito)
+        no tiene que tapar un backup bueno más reciente."""
+        import os
+        import time
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        marca_ok = carpeta / ".ultimo-ok"
+        marca_fallo = carpeta / ".ultimo-fallo"
+        marca_fallo.write_text("")
+        marca_ok.write_text(str(int(time.time())))
+
+        ahora = time.time()
+        os.utime(marca_fallo, (ahora - 100, ahora - 100))
+        os.utime(marca_ok, (ahora, ahora))  # estrictamente más nueva que el fallo.
+
+        resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert resultado.returncode == 0, resultado.stderr
