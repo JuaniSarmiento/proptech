@@ -463,3 +463,17 @@ NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
     confirmado con dientes: mutado a mano a "cualquier `.ultimo-fallo` = no saludable", dio rojo). Mismo
     script del rompedor, re-corrido con el fix: `salud tras ciclo fallido exit=1`. `shellcheck`: limpio.
 
+
+- [x] 12.4 Corrida de cierre de la vuelta 3 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 3.
+  - Hecho 15/10/2026 17:41-17:47, commit `9228e64` (último antes de esta entrada): `test-backend.sh` →
+    858 passed + 1 xfailed (276s), limpio; `test-web.sh` → 16 passed; `humo.sh` → HUMO OK, con el paso
+    `(1b)` (segundo `up`, R1) confirmado en la salida real. (Una corrida intermedia, antes de commitear,
+    tuvo 1 fallo aislado en `test_worker_tenant.py::test_administracion_invalida_falla_una_sola_vez_sin_efecto[entero]`
+    por una coincidencia de substring ("123" dentro del dict de un `LogRecord` no relacionado, nada que
+    ver con esta vuelta); no reprodujo ni aislado ni en esta corrida final — flake pre-existente, no
+    tocado.)
+  - Contra la base de la vuelta 2 (851 passed + 1 xfailed, commit `d1e2a6c`): **+7 tests** (2 de V2-1,
+    3 de V2-2, 2 de V2-4). Las deudas y notas de la vuelta 2 (R5, R6, R9, R11, V2-3, V2-5, V2-6, V2-7,
+    V2-8, V2-9) no se tocaron.
+  - **El cambio queda acá, sin archivar y sin pushear**: lo que sigue es la vuelta 3 del rompedor y el
+    auditor, o la tabla directo a Juani si no hay más bloqueantes.
