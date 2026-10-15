@@ -224,8 +224,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ## FASE 2 — Acceso y configuración
 
 ### [C-05a] `aislamiento-por-administracion` · 2a
-- **Estado**: `[ ]` propuesto el 15/10/2026, espera la aprobación escrita de un socio (CRITICAL);
-  partido del cambio 2 `acceso-y-aislamiento` por D-097
+- **Estado**: `[x]` archivado (15/10/2026), OK con deuda anotada en la vuelta 3, cerrado en la vuelta 4
+  con la opción B (D-098); partido del cambio 2 `acceso-y-aislamiento` por D-097
 - **Scope**: roles de PostgreSQL separados (arranque, migrador, aplicación, respaldo), Row-Level Security con
   `SET LOCAL` por administración, tablas mínimas, alcance por edificio (404) y permiso por acción
   según D-096 (403), auditoría de acciones sensibles (D-016), el tenant del worker, la web fuera de la
@@ -233,13 +233,14 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Dependencias**: C-04
 - **Governance**: CRITICO
 - **Leer antes**:
-  - `openspec/changes/aislamiento-por-administracion/proposal.md`
+  - `openspec/changes/archive/2026-10-15-aislamiento-por-administracion/proposal.md`
   - `openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`
-  - `knowledge-base/12_fichas_de_changes.md` §2a
+  - `knowledge-base/12_fichas_de_changes.md` §2a y "Deuda del cierre del 2a"
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Acceso y aislamiento (R10)
   - `knowledge-base/03_actores_y_roles.md`
-  - `knowledge-base/15_lecciones.md` (L-001 a L-017)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-016, D-037, D-087, D-091, D-095, D-096, D-097)
+  - `knowledge-base/15_lecciones.md` (L-001 a L-021)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-016, D-037, D-087, D-091, D-095, D-096, D-097,
+    D-098)
 
 ---
 

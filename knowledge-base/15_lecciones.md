@@ -196,3 +196,75 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   la capa que dice probar. Verlo fallar con otra entrada no prueba el chequeo tal como quedó escrito;
   la entrada de la demostración tiene que ser la del escenario real.
 - **Aplica a**: constructor, rompedor y auditor.
+
+## L-018 · Un chequeo de arranque tiene que verificar el efecto, no la forma
+
+- **Origen**: cambio 2a, tres vueltas seguidas de auditoría (vuelta 1, R4; vuelta 2, V2-2; vuelta 3,
+  V3-1).
+- **Qué pasó**: el mismo defecto apareció disfrazado tres veces. En la vuelta 1, `despues()` prometía
+  "verificar que el trigger y el `FORCE` sigan activos" y no verificaba nada (R4). En la vuelta 2, el
+  gemelo: `DISABLE ROW LEVEL SECURITY` con el `FORCE` intacto pasaba `despues()` con `exit 0`, porque el
+  chequeo miraba el atributo de catálogo (`FORCE` prendido) y no si RLS de verdad estaba habilitada
+  (V2-2). En la vuelta 3, otro gemelo: `despues()` no miraba `pg_policy` en absoluto, así que una
+  política de `auditoria` tocada a mano, o reemplazada por una más débil, pasaba con `exit 0` sin que
+  nadie lo notara (V3-1).
+- **Regla**: un chequeo de arranque que lee el catálogo (`FORCE`, un nombre de política, un trigger
+  declarado) no prueba que el efecto exista; prueba que la forma está. Verificar el conjunto completo de
+  lo que importa (la política entera, no su nombre; el comportamiento bloqueado, no el flag que debería
+  bloquearlo) y, donde se pueda, probarlo con una caja negra real.
+- **Costo**: tres vueltas completas de auditoría del mismo cambio gastadas en variantes del mismo
+  defecto, cada una creyendo que la anterior ya lo había cerrado; de no aparecer en la vuelta 3, una
+  política de `auditoria` editada a mano habría pasado el arranque sin que nadie se enterara.
+- **Aplica a**: constructor y auditor.
+
+## L-019 · Un test que no puede dar rojo es peor que no tenerlo
+
+- **Origen**: cambio 2a, auditoría de la vuelta 1 (`test_roles.py:231`) y de la vuelta 2
+  (`test_auditoria_transaccion.py:416`).
+- **Qué pasó**: dos veces en el mismo cambio, un test nuevo estuvo en verde con el bloqueante todavía
+  abierto. En la vuelta 1, `test_segunda_corrida_termina_sin_error_y_con_los_mismos_atributos`
+  (`tests/integracion/test_roles.py:231`) corría `antes` dos veces sin la migración 0004 entre medio, y
+  por eso pasaba con R1 abierto (el segundo `up` no levantaba nada). En la vuelta 2,
+  `test_rojo_un_caso_marcado_que_no_registra_no_pasa_el_sweep`
+  (`tests/integracion/test_auditoria_transaccion.py:416`) no corría el sweep, así que pasaba sin que
+  V2-7 estuviera resuelto.
+- **Regla**: un test marcado `[x]` como prueba de un arreglo tiene que mutarse a mano para verlo fallar
+  con el defecto todavía presente (L-013, L-016), no alcanza con que pase después del arreglo: un test
+  que nunca pudo dar rojo certifica silencio, no corrección, y ese silencio costó dos vueltas completas
+  de auditoría en este mismo cambio.
+- **Aplica a**: constructor y auditor.
+
+## L-020 · Arreglar un bloqueante puede crear otro
+
+- **Origen**: cambio 2a, auditoría de la vuelta 2 (V2-1).
+- **Qué pasó**: el arreglo de R7 (que un `RESET` defensivo impida que el tenant contagie la conexión
+  siguiente al volver al pool) rompía el pool entero ante un corte real de la base: un
+  `pg_terminate_backend` hacía que el evento de "devolución al pool" disparara un `AttributeError` en
+  vez del `OperationalError` esperado, y las dos conexiones siguientes se agotaban por `TimeoutError`.
+  La corrección de un bloqueante (R7) generó uno nuevo y más grave (V2-1): el sistema quedaba
+  inoperable ante cada corte de conexión, no sólo ante el error original.
+- **Regla**: el arreglo de un bloqueante que toca el ciclo de vida de una conexión, una sesión o un
+  recurso compartido necesita su propio ataque dedicado (acá, un corte real de la conexión con el
+  evento cableado), no sólo la reproducción del caso que lo motivó. Cerrar R7 no probaba que el cierre
+  no abriera V2-1.
+- **Aplica a**: constructor y rompedor.
+
+## L-021 · La instrucción del auditor acota lo que los demás miran
+
+- **Origen**: cambio 2a, auditoría de las vueltas 2 y 3 ("acuerdo sospechoso").
+- **Qué pasó**: en la vuelta 2, el auditor dictó exactamente qué casos re-correr para R4, R8 y R10; el
+  rompedor los corrió y los dos coincidieron en "cerrado en su caso". Esa coincidencia no era dos
+  revisiones independientes: era el mismo encuadre del auditor, copiado dos veces. Recién cuando el
+  rompedor salió de ese encuadre por su cuenta aparecieron V2-2 y V2-4, que bloquearon. En la vuelta 3
+  pasó lo mismo con V2-2: los dos verificaron sólo los tres casos que el auditor había dictado, y de ahí
+  no salió nada nuevo; cuando el rompedor probó ocho variantes más por su cuenta, salieron V3-1, V3-2 y
+  V3-3.
+- **Regla**: cuando el auditor prescribe el caso exacto a verificar, un acuerdo entre auditor y rompedor
+  sobre ese caso no es convergencia: es la misma instrucción leída dos veces. La verificación
+  independiente tiene que incluir casos que el auditor no nombró, o declarar explícitamente que no los
+  hubo.
+- **Costo**: dos vueltas en las que el "acuerdo" entre auditor y rompedor dio una falsa sensación de
+  revisión cerrada; los tres bloqueantes reales de cada vuelta (V2-2 y V2-4 en la 2; V3-1, V3-2 y V3-3
+  en la 3) aparecieron recién cuando alguien salió del encuadre dictado, no cuando coincidieron dentro
+  de él.
+- **Aplica a**: auditor.

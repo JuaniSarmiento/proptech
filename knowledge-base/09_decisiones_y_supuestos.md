@@ -1565,6 +1565,37 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Quién**: Juani, 15/10/2026 (la partición, el método de login con su alcance por perfil, y los
   ajustes del arquitecto).
 
+## D-098 · El cierre del 2a: opción B en la vuelta 3, regla de cierre y la deuda aceptada (15/10/2026)
+
+- **Fecha**: 15/10/2026
+- **Decisión**:
+  - **Cierre en cuatro vueltas**: constructor, rompedor y auditor. El auditor bloqueó en la vuelta 1
+    (R1 a R4, R7, R8 y R10) y en la vuelta 2 (V2-1, V2-2 y V2-4); el constructor los resolvió todos. En
+    la vuelta 3 el auditor encontró tres bloqueantes más (V3-1, V3-2 y V3-4) y le dio a elegir a Juani
+    entre dos opciones: (A) cerrar con esos tres anotados como deuda, o (B) abrirlos una vuelta más.
+  - **Opción B**, elegida por Juani el 15/10/2026, con la **regla de cierre de la vuelta 4**: "el
+    rompedor verifica sólo los cuatro puntos (V3-1, V3-2, V3-4 y V3-10) y la corrida de cierre; lo que
+    encuentre fuera de esos cuatro puntos va a 'deuda nueva' y no bloquea". El rompedor de la vuelta 4
+    cerró V3-1, V3-2 y V3-4 (M8 y M5) con esa regla; V3-10 se cerró aparte, en el commit `3bbd2a6`, con
+    dos frases falsas de `tasks.md` 12.2 corregidas de verdad. Corrida de cierre: backend 863 passed +
+    1 xfailed, web 16 passed, humo OK con el segundo `up` incluido.
+  - **Deuda aceptada**: la tabla "Deuda del cierre del 2a" de `knowledge-base/12_fichas_de_changes.md`,
+    con dueño por ítem (mayormente el 2b y el 15), más la deuda nueva D-1, D-2, D-4, D-5 y D-6 de la
+    vuelta 4 (D-3 se corrigió en la misma pasada que V3-10 y no entra como deuda abierta).
+  - **La verificación de las políticas de las tablas de negocio queda prometida, no sin dueño**: el
+    chequeo 5 de la vuelta 3 encontró que `despues()` sólo mira `pg_policy` de `auditoria` (arreglado
+    por V3-1), nunca de `complejo`, `unidad` ni el resto de las tablas de negocio; nadie lo prometió
+    para esas tablas. Juani decidió prometerlo: **queda como deuda del cambio 15** (piloto), antes de
+    operar la base real, y no como "no prometido".
+- **Descartado**: la opción A (cerrar ya con V3-1, V3-2 y V3-4 como deuda anotada): Juani prefirió pagar
+  una vuelta más porque los tres bloqueantes tocaban directamente el candado (una política de
+  `auditoria` tocada a mano, o una FK hacia `auditoria`, pasando desapercibidas); dejarlos abiertos como
+  deuda del cambio más crítico del roadmap pesaba más que una vuelta extra del rompedor.
+- **Por qué**: dejar registrada la elección de Juani y la regla de cierre de la vuelta 4, para que el
+  2b, el 2c, el 3 y el 15 no reabran lo ya cerrado ni pierdan de vista la deuda que queda con su dueño
+  (mismo criterio que D-091 y D-095 para el 1c y el 1d).
+- **Quién**: Juani, 15/10/2026, a partir del veredicto del auditor en la vuelta 3.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

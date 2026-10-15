@@ -30,12 +30,22 @@ mercado de arranque es **Mendoza**.
   **OK con deuda anotada** en la vuelta 3 (D-095); la deuda queda en
   `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 1d"), con dueño por ítem (mayormente
   el cambio 15 y el cambio 2).
-- **Próximo**: cambio 2 `acceso-y-aislamiento`, partido en tres el 15/10/2026 (D-097):
-  **2a `aislamiento-por-administracion`** (CRITICAL, el candado: roles de base, RLS, 404/403,
-  auditoría), propuesto y esperando la aprobación escrita de un socio; **2b** (CRITICAL, el login:
-  contraseña para el personal, link mágico para el vecino), bloqueado por P48; y **2c
-  `endurecimiento-de-infraestructura`** (MEDIUM), propuesto. El 3 depende del 2a; el 2b hace falta para
-  que una persona use el sistema y para el despliegue.
+- **Cambio 2a `aislamiento-por-administracion` archivado** (15/10/2026): candado del multi-tenant.
+  Cuatro roles de PostgreSQL (arranque, `proptech_migrador`, `proptech_app`, `proptech_respaldo`),
+  Row-Level Security forzada con `SET LOCAL` por administración, tablas `administracion`, `complejo`,
+  `unidad` (mínima), `persona`, `asignacion_rol`, `accion_de_auditoria` y `auditoria`, alcance por
+  edificio (404) y permiso por acción (403, D-096), auditoría de acciones sensibles de sólo agregar
+  (D-016), el tenant del worker, la web fuera de la red de la base. Se prueba sin login, con la
+  identidad inyectada. Cerrado en cuatro vueltas (constructor, rompedor, auditor); Juani eligió la
+  opción B en la vuelta 3 (D-098). **OK con deuda anotada**; la deuda queda en
+  `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2a"), con dueño por ítem (mayormente
+  el 2b y el 15); la verificación de arranque de las políticas de las tablas de negocio queda prometida
+  como deuda del 15, por decisión de Juani.
+- **Próximo**: **2b, el login** (CRITICAL, contraseña para el personal, link mágico para el vecino,
+  D-097), bloqueado por P48 (a qué administración entra un email con cuenta en dos); o **2c
+  `endurecimiento-de-infraestructura`** (MEDIUM), que ya puede empezar porque sólo depende del 2a. El 3
+  `configuracion-del-edificio` también depende sólo del 2a y puede construirse en paralelo al 2b; el
+  2b hace falta recién para que una persona use el sistema y para el despliegue.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -136,10 +146,10 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
   `1a → 1b → 1c → 1d → 2a → 3 → 4 → 5 → 6 → 7` (2b y 2c en paralelo al 3).
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
-  `respaldos-y-restauracion`.
-- **Próximo**: 2a `aislamiento-por-administracion` (CRITICAL, propuesto, espera aprobación); después,
-  en paralelo, el 3, el 2b (login, bloqueado por P48) y el 2c `endurecimiento-de-infraestructura`
-  (MEDIUM, propuesto). La partición es D-097.
+  `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098).
+- **Próximo**: en paralelo, el 3 `configuracion-del-edificio`, el 2b (login, bloqueado por P48) y el 2c
+  `endurecimiento-de-infraestructura` (MEDIUM); los tres sólo dependen del 2a, ya archivado. La
+  partición es D-097.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

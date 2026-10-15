@@ -41,15 +41,46 @@ proptech/
 
 Detalle completo de la decisión en `09_decisiones_y_supuestos.md` (D-040).
 
+## Fronteras entre módulos
+
+Dirección de dependencia fijada al cerrar el cambio 2a (ficha 2a de `12_fichas_de_changes.md`):
+**`complejos` (y los módulos que colgarán de un edificio: 7, 8, 10b) → `acceso` → `compartido`**.
+`acceso` no importa `complejos`, y `compartido` no importa `acceso`: la sesión de base y el tenant son
+genéricos (`compartido`), la autorización y la auditoría son del dominio (`acceso`), y los módulos de
+negocio que necesitan alcance por edificio dependen de `acceso`, nunca al revés. Cruzar esta dirección
+(por ejemplo, que `acceso` importe algo de `complejos` para resolver un nombre de edificio) es la
+regresión que el guardián de fronteras del cambio 3 en adelante tiene que impedir.
+
 ## Seguridad
 
 - **Autenticación**: login del personal y enlace mágico o alternativa para el vecino; el método
-  concreto se decide en el *design* del cambio 2 `acceso-y-aislamiento` (D-039, D-043). El servidor de
-  Next guarda el token de sesión; el navegador nunca lo ve (D-036).
+  concreto se decide en el *design* del cambio 2b `login` (D-039, D-043, D-097). El servidor de
+  Next guarda el token de sesión; el navegador nunca lo ve (D-036). **Hoy (hasta el 2b)**: la identidad
+  se inyecta directamente en los tests (`identidad_actual` da 401 en producción, D7); no hay login real.
+- **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
+  (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
+  tres roles con `roles.py antes`/`despues`, y es el único dueño de `auditoria`); `proptech_migrador`
+  (`POSTGRES_MIGRADOR_USER`/`POSTGRES_MIGRADOR_PASSWORD`, dueño de las tablas de dominio, corre Alembic;
+  sin `BYPASSRLS`, E1: sembrar datos exige fijar el tenant a propósito, igual que la app);
+  `proptech_app` (`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`, la usan la API y el worker; sin
+  superusuario ni `BYPASSRLS`); `proptech_respaldo` (`POSTGRES_RESPALDO_USER`/
+  `POSTGRES_RESPALDO_PASSWORD`, sin superusuario, con `BYPASSRLS` y `pg_read_all_data`, sólo para
+  `pg_dump`). Ningún servicio permanente tiene la contraseña del superusuario (R8).
 - **Autorización**: tres capas: administración (tenant, deducida del login), alcance por edificio
   según el rol, permiso por acción (D-037, matriz de D-096). Fuera de alcance responde 404; sin permiso,
   403 con el permiso faltante. Row-Level Security de PostgreSQL es el segundo candado del aislamiento
-  entre administraciones (R10, D-076).
+  entre administraciones (R10, D-076), con `SET LOCAL` por transacción y `current_setting(...,
+  missing_ok=true)` + `nullif` para que una conexión sin tenant fijado falle cerrada, nunca abierta.
+- **Auditoría de acciones sensibles** (D-016, D9, cambio 2a): tabla `auditoria`, de sólo agregar (dos
+  triggers bloquean `UPDATE`, `DELETE` y `TRUNCATE` para cualquier rol, incluido su dueño), dueña el rol
+  de arranque; vocabulario cerrado en `accion_de_auditoria` (sumar una acción exige una migración). Ver
+  `04_modelo_de_datos.md` para el detalle de columnas.
+- **Redes** (D10, cambio 2a: `interna` se parte en dos; `infra/compose.yaml`): `datos` (`internal:
+  true`) es la única red que alcanza `db` y `redis`; la **web nunca está en ella** — sólo la API y el
+  worker. `aplicacion` (`internal: true`) conecta la API, la web y Caddy, con la IP fija de Caddy para
+  que `FORWARDED_ALLOW_IPS` la reconozca. `salida_worker`, sin `internal`, da salida a Internet sólo al
+  worker (proveedores de email e IA de cambios posteriores), y ningún otro servicio la integra. `borde`
+  es la única red publicada (Caddy).
 - **Validación de input**: todo monto es `Decimal` construido desde texto, nunca desde `float`
   (R07, D-046); el núcleo arma los datos con tipos fijos antes de llamar al motor de reglas y rechaza
   cualquier dato faltante o mal tipado (R33). Todo texto externo se valida con coincidencia completa y
@@ -95,6 +126,19 @@ sólo trae placeholders; la carpeta de respaldos también está en `.gitignore`)
 | `RESPALDO_INTERVALO_SEGUNDOS` | `respaldos` | Opcional (60 a 604800) | 86400 (diario) | Cada cuánto corre un backup, además del de arranque |
 | `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
 | `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite (L-001: una base pausada no cuelga el servicio para siempre) |
+
+### Nuevas del cambio 2a `aislamiento-por-administracion` (cuatro roles de PostgreSQL, D-082, E1, E5)
+
+| Variable | La usan | Obligatoria/opcional | Default | Propósito |
+|---|---|---|---|---|
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `roles.py antes`/`despues` (rol de arranque) | Obligatoria | sin default | El superusuario de la imagen oficial; crea y repara los otros tres roles; único dueño de `auditoria`; ningún servicio permanente la recibe (R8) |
+| `POSTGRES_MIGRADOR_USER` / `POSTGRES_MIGRADOR_PASSWORD` | Alembic (migraciones) | Obligatoria | sin default | `proptech_migrador`, dueño de las tablas de dominio; sin `BYPASSRLS` (E1): sembrar datos exige fijar el tenant a propósito |
+| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | API, worker | Obligatoria | sin default | `proptech_app`, sin superusuario ni `BYPASSRLS`; sujeta a RLS igual que cualquier cliente |
+| `POSTGRES_RESPALDO_USER` / `POSTGRES_RESPALDO_PASSWORD` | `respaldos`, `restaurar.sh` | Obligatoria | sin default | `proptech_respaldo`, sin superusuario, con `BYPASSRLS` y `pg_read_all_data`; sólo para `pg_dump` |
+
+Deuda conocida de esta tabla (D-098, "Deuda del cierre del 2a"): V3-14, `POSTGRES_APP_USER` acepta un
+nombre de rol que la migración no conoce (dueño 2c); V3-15, al README le faltan estas contraseñas
+distintas por rol (dueño 2c, junto con esta misma tabla).
 
 Todas las que llegan como texto desde el entorno (enteros incluidos) se validan con coincidencia
 completa y sólo dígitos ASCII, sin ceros a la izquierda (Bash interpreta `060` como octal) y sin

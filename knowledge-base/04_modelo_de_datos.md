@@ -1,10 +1,11 @@
 # Modelo de Datos
 
 > A partir de las migraciones reales en `backend/` (Alembic) y de las decisiones de modelado ya
-> tomadas (D-040, D-046, D-076, D-082, D-086). No se inventa un modelo de datos que el código todavía
-> no construyó: hoy sólo existe la tabla técnica del cambio 1c (`trabajos_hechos`); el resto (desde la
-> administración hasta el libro de movimientos) es planificado, por cambio, y así queda marcado en
-> cada sección.
+> tomadas (D-040, D-046, D-076, D-082, D-086, D-098). Desde el cierre del 2a (15/10/2026) ya existen,
+> además de `trabajos_hechos`: `administracion`, `complejo`, `unidad` (mínima), `persona`,
+> `asignacion_rol`, `accion_de_auditoria` y `auditoria` (migraciones `0003_acceso_minimo` y
+> `0004_auditoria`). El resto (desde `grupo_de_reparto` hasta el libro de movimientos) sigue siendo
+> planificado, por cambio, y así queda marcado en cada sección.
 
 ## Dominios
 
@@ -40,28 +41,37 @@ erDiagram
         uuid request_id
         timestamptz hecho_en "default now()"
     }
+    ADMINISTRACION ||--o{ COMPLEJO : "tiene (0003)"
+    ADMINISTRACION ||--o{ PERSONA : "tiene (0003, una cuenta por administracion, D-096)"
+    COMPLEJO ||--o{ UNIDAD : "tiene (0003, minima; c.3 la completa)"
+    PERSONA ||--o{ ASIGNACION_ROL : "tiene (0003)"
+    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0003, opcional salvo titular)"
+    ASIGNACION_ROL }o--|| UNIDAD : "alcanza (0003, solo rol vecino)"
+    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004)"
 ```
 
-Es la única tabla del sistema al 14/10/2026 (`backend/migraciones/versions/0002_trabajos_hechos.py`).
-La migración `0001_inicial.py` está vacía a propósito (`upgrade()`/`downgrade()` no hacen nada: el
-cambio 1a sólo deja el mecanismo de Alembic andando, D-040). `trabajos_hechos` no tiene relaciones de
-dominio: es la tabla técnica de idempotencia del worker (D3 del cambio 1c, D-090), no pertenece a
-ningún módulo de `proptech_core`.
+La única tabla del sistema hasta el 14/10/2026 era `trabajos_hechos`
+(`backend/migraciones/versions/0002_trabajos_hechos.py`). La migración `0001_inicial.py` está vacía a
+propósito (`upgrade()`/`downgrade()` no hacen nada: el cambio 1a sólo deja el mecanismo de Alembic
+andando, D-040). `trabajos_hechos` no tiene relaciones de dominio: es la tabla técnica de idempotencia
+del worker (D3 del cambio 1c, D-090), no pertenece a ningún módulo de `proptech_core`. Desde el cierre
+del 2a (15/10/2026, migraciones `0003_acceso_minimo` y `0004_auditoria`) existen además las siete
+tablas del candado, detalladas en "Entidades" más abajo.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 
 ```mermaid
 erDiagram
-    ADMINISTRACION ||--o{ COMPLEJO : "tiene (c.2, D-076)"
-    ADMINISTRACION ||--o{ PERSONA : "pertenece a (c.2, D-076; una cuenta por administracion, D-096)"
-    COMPLEJO ||--o{ UNIDAD : "tiene (c.2 minima / c.3 completa, D-082)"
+    ADMINISTRACION ||--o{ COMPLEJO : "tiene (existe, 0003, D-076)"
+    ADMINISTRACION ||--o{ PERSONA : "pertenece a (existe, 0003, D-076; una cuenta por administracion, D-096)"
+    COMPLEJO ||--o{ UNIDAD : "tiene (existe minima, 0003 / c.3 completa, D-082)"
     COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (c.3, R01)"
     COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (c.3, R16)"
     COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (c.3, R03/R15, D-080)"
     COMPLEJO ||--o{ REGLA_VERSIONADA : "versiona (c.6b, D-066; fuera del camino a M1)"
     GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa (c.3)"
-    PERSONA ||--o{ ASIGNACION_ROL : "tiene (c.2, D-037)"
-    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (c.2, D-037/D-076; permisos por accion, D-096)"
+    PERSONA ||--o{ ASIGNACION_ROL : "tiene (existe, 0003, D-037)"
+    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (existe, 0003, D-037/D-076; permisos por accion, D-096)"
     COMPLEJO ||--o{ PROVEEDOR : "factura a (c.6)"
     PROVEEDOR ||--o{ GASTO : "emite (c.6, R12)"
     GASTO ||--o{ NOTA_DE_CREDITO : "corrige (c.6, R22)"
@@ -131,52 +141,127 @@ respetar, no una migración adelantada.
 - **Sin `administracion_id`**: nace sin tenant (D-091, deuda del 1c). El cambio 2 decide si lo agrega
   según el plan de Row-Level Security que esa ficha describe, y cómo el worker lo fija por tarea.
 
-### Planificado, dominio `complejos`
+### Existe hoy, dominio `complejos` y `acceso` (migraciones `0003` y `0004`, cambio 2a)
 
-#### `administracion` · planificada (cambio 2, D-076)
+**Convención de aislamiento (B2, D5, cambio 2a)**: toda tabla que cuelga de una `administracion` lleva
+`administracion_id NOT NULL` con Row-Level Security activada y forzada (`aislar_por_administracion`,
+`migraciones/ayudas_rls.py`); toda tabla que además cuelga de un `complejo` (un edificio) lleva
+`complejo_id NOT NULL` con una **FK compuesta** `(administracion_id, complejo_id)` hacia `complejo`, no
+una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de otra administración.
+`unidad` y `asignacion_rol` ya siguen esta convención; toda tabla nueva que cuelgue de un edificio
+(cambio 3 en adelante) la repite.
+
+#### `administracion` · existe (migración `0003`, cambio 2a, D-076)
 
 - **Qué es**: el tenant. El cliente que paga PropTech (`11_glosario.md`).
-- **Atributos conocidos**: identificador; el resto, a decidir en el design del cambio 2.
+- **Atributos** (`backend/migraciones/versions/0003_acceso_minimo.py`):
+  - `id` · `UUID`, clave primaria, `server_default gen_random_uuid()`.
+  - `nombre` · `TEXT`, `NOT NULL`.
 - **Relaciones**: tiene muchos `complejo`; tiene muchas `persona` (una cuenta por administración, no
   una identidad global con membresías; D-096 resolvió P18. Una persona con unidades en dos
   administraciones tiene dos cuentas, una en cada una, con el mismo email permitido en ambas).
-- **Constraints**: ninguna consulta, archivo, caché o proceso puede devolver datos de otra
-  administración (R10); el valor sale siempre de la identidad autenticada, nunca de un parámetro del
+- **Constraints**: RLS forzada por su propio `id` (es el único tenant que se aísla por sí mismo, no por
+  `administracion_id`); ninguna consulta, archivo, caché o proceso puede devolver datos de otra
+  administración (R10), y el valor sale siempre de la identidad autenticada, nunca de un parámetro del
   cliente.
-- **Índices**: a decidir en el design.
+- **Índices**: sólo el implícito de la clave primaria; el resto queda a decidir en el design del 2b.
 
-#### `complejo` · planificada (cambio 2 mínima / cambio 3 completa, D-040, D-076)
+#### `complejo` · existe (migración `0003`, cambio 2a; completa en cambio 3, D-040, D-076)
 
 - **Qué es**: la comunidad que se administra (hoy sólo "edificio"; "barrio" queda preparado en el
   diseño, D-027). Es un **alcance** dentro de la administración (D-076), no el tenant.
-- **Atributos conocidos**: `nombre`, `localidad` (`Edificio` en `semilla.py`: `_Texto`, no vacío).
-- **Relaciones**: pertenece a una `administracion`; tiene muchas `unidad`, `grupo_de_reparto`,
-  `categoria_de_gasto`; tiene una `configuracion_versionada` vigente (y el historial de las anteriores).
-- **Constraints**: toda tabla con datos de un complejo lleva, según el plan de RLS de la ficha del
-  cambio 2, `administracion_id NOT NULL`, con RLS activada y forzada.
-- **Índices**: a decidir en el design.
+- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+  `nombre` · `TEXT NOT NULL`. El cambio 3 agrega `localidad` y el resto de lo que pedía la ficha
+  (`Edificio` en `semilla.py`: `_Texto`, no vacío).
+- **Relaciones**: pertenece a una `administracion` (FK simple); tendrá muchas `unidad`,
+  `grupo_de_reparto`, `categoria_de_gasto`, una `configuracion_versionada` vigente (cambio 3). Ya tiene
+  `unidad` y `asignacion_rol` colgando con la convención de FK compuesta.
+- **Constraints**: `administracion_id NOT NULL`, RLS forzada; `UNIQUE (administracion_id, id)` para que
+  las tablas que cuelgan de él puedan usarlo como destino de una FK compuesta.
+- **Índices**: a decidir en el design del cambio 3 para lo que agregue esa ficha.
 
-#### `unidad` · planificada (cambio 2 mínima / cambio 3 completa, D-082)
+#### `unidad` · mínima existe (migración `0003`, cambio 2a; completa en cambio 3, D-082)
 
 - **Qué es**: la unidad funcional sobre la que se liquida (departamento, cochera, baulera, local;
   `11_glosario.md`).
-- **Atributos conocidos**, tomados de `Unidad` en `backend/src/proptech_core/compartido/semilla.py`
-  (el modelo que ya valida el edificio de ejemplo, no todavía una tabla):
-  - `identificador` · texto no vacío, único **dentro de su complejo** (no globalmente).
-  - `tipo` · debe existir en `tipos_de_unidad` de `parametros.yaml` del complejo (D-042).
-  - `piso` · texto no vacío.
-  - `coeficiente` · `Decimal` positivo, hasta 6 decimales (`^\d(\.\d{1,6})?$`, `semilla.py`).
-  - `superficie_m2` · `Dinero` positivo (reusa el tipo `Dinero`, no una columna de superficie distinta).
-  - `estado` · campo presente en el modelo pero **desactivado por default en edificios** (D-030); se
-    construye con barrios (v1.2, D-089).
-- **Relaciones**: pertenece a un `complejo`; participa de uno o varios `grupo_de_reparto`; tiene muchas
-  `obligacion`, `movimiento`, `cargo_particular`, `pago`, `cbu_historico`.
-- **Constraints**: la suma de los coeficientes de un complejo (o de un grupo con coeficientes propios,
-  si P24 lo decide así) tiene que dar 1 con una tolerancia de ±0,0001 (R01, D-082); `semilla.py` hoy
-  exige la suma **exacta** a 1 sobre el total del edificio (más estricto que R01, es validación de la
-  semilla, no de la regla general).
-- **Índices**: a decidir en el design; candidato natural, único compuesto `(administracion_id,
-  complejo_id, identificador)`.
+- **Atributos existentes** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID
+  NOT NULL`; `complejo_id` · `UUID NOT NULL` (FK compuesta `(administracion_id, complejo_id)` →
+  `complejo`); `nombre` · `TEXT NOT NULL`.
+- **Atributos que agrega el cambio 3**, tomados de `Unidad` en
+  `backend/src/proptech_core/compartido/semilla.py` (el modelo que ya valida el edificio de ejemplo, no
+  todavía columnas de esta tabla): `identificador` (único dentro de su complejo), `tipo` (de
+  `tipos_de_unidad` del complejo, D-042), `piso`, `coeficiente` (`Decimal` positivo, hasta 6 decimales),
+  `superficie_m2` (`Dinero` positivo), `estado` (presente en el modelo, desactivado por default en
+  edificios, D-030; se construye con barrios, v1.2, D-089).
+- **Relaciones**: pertenece a un `complejo` (FK compuesta); participará de uno o varios
+  `grupo_de_reparto`; tendrá muchas `obligacion`, `movimiento`, `cargo_particular`, `pago`,
+  `cbu_historico` (todo cambio 3 en adelante). Ya es destino de FK compuesta desde `asignacion_rol`
+  (rol vecino).
+- **Constraints**: `UNIQUE (administracion_id, complejo_id, id)`, para que lo que cuelgue de ella use FK
+  compuesta de tres columnas (ver `asignacion_rol`). La suma de coeficientes (R01, D-082) se valida
+  desde el cambio 3, cuando exista la columna.
+- **Índices**: a decidir en el design del cambio 3.
+
+#### `persona` · existe (migración `0003`, cambio 2a, D-009, D-076)
+
+- **Qué es**: la identidad autenticada (administrador titular, colaborador, vecino o consejo).
+- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+  `nombre` · `TEXT NOT NULL`; `email` · `TEXT`, en minúscula (`CHECK email = lower(email)`), único
+  dentro de la administración.
+- **Relaciones**: pertenece a una `administracion` (D-096 resolvió P18: una cuenta por administración,
+  no varias); tiene muchas `asignacion_rol`.
+- **Constraints**: `administracion_id NOT NULL`, RLS forzada; `UNIQUE (administracion_id, email)`. El
+  login real del personal y el acceso del vecino (contraseña / link mágico, D-097) se deciden en el
+  design del cambio 2b (D-039, D-043); hoy la identidad se inyecta en los tests, sin login.
+
+#### `asignacion_rol` · existe (migración `0003`, cambio 2a, D-037)
+
+- **Qué es**: la relación entre una `persona`, un rol (`titular | colaborador | consejo | vecino`,
+  `CHECK`) y su alcance.
+- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+  `persona_id` · `UUID NOT NULL` (FK compuesta a `persona`); `rol` · `TEXT NOT NULL`; `complejo_id` ·
+  `UUID`, opcional; `unidad_id` · `UUID`, opcional; `nivel` · `TEXT`, opcional (`ver | editar`).
+- **Constraints**: `CHECK ck_asignacion_rol_forma_por_rol` exige una forma distinta por rol: `titular`
+  sin `complejo_id`, sin `unidad_id` y sin `nivel`; `colaborador` con `complejo_id` y `nivel`, sin
+  `unidad_id`; `consejo` con `complejo_id`, sin `unidad_id` ni `nivel`; `vecino` con `complejo_id` y
+  `unidad_id`, sin `nivel`. El colaborador sólo ve los edificios que le asignan, con nivel "ver" o
+  "editar" (D-037); fuera de alcance responde 404.
+- **Permisos por acción (P23, resuelta en D-096)**: qué rol puede emitir, distribuir, anular una
+  liquidación, confirmar y revertir pagos, condonar, dar de baja una deuda y aceptar alertas; ver la
+  matriz completa en D-096. P20 sigue abierta: si por encima de un monto el titular necesita además
+  la aprobación del consejo antes de condonar. Ver `03_actores_y_roles.md` §RBAC.
+
+#### `accion_de_auditoria` · existe (migración `0004`, cambio 2a, D-016)
+
+- **Qué es**: el vocabulario cerrado de acciones sensibles auditables: una fila por miembro del enum
+  `Accion` (`proptech_core.acceso.dominio.permisos`). Técnica, del migrador; sumar una acción nueva
+  exige una migración, no un valor libre.
+- **Atributos**: `nombre` · `TEXT`, clave primaria.
+- **Relaciones**: `auditoria.accion` referencia `accion_de_auditoria.nombre` (FK).
+- **Constraints**: sin RLS (no tiene `administracion_id`: es vocabulario global, no un dato de tenant).
+
+#### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
+
+- **Qué es**: el registro de acciones sensibles, de sólo agregar: nunca se edita ni se borra, ni
+  siquiera por su dueño (dos triggers, `BEFORE UPDATE OR DELETE` por fila y `BEFORE TRUNCATE` por
+  sentencia, levantan excepción para cualquier rol). El migrador la crea; el paso de roles `despues()`
+  se la transfiere al rol de arranque (superusuador, D2), el único que podría desactivar el trigger o
+  el `FORCE`, y ningún servicio permanente tiene su contraseña.
+- **Atributos**: `id` · `BIGINT IDENTITY` PK; `administracion_id` · `UUID NOT NULL`; `persona_id` ·
+  `UUID NOT NULL`; `accion` · `TEXT NOT NULL` (FK a `accion_de_auditoria`); `entidad` · `TEXT NOT NULL`;
+  `entidad_id` · `UUID NOT NULL`; `detalle` · `JSONB NOT NULL`, default `{}`; `request_id` · `UUID
+  NOT NULL`; `creado_en` · `TIMESTAMPTZ NOT NULL`, default `now()`.
+- **Relaciones**: referencia `accion_de_auditoria`; no lleva FK compuesta hacia `complejo` (D-098,
+  "deuda nueva" D-2: la primera FK legítima hacia `auditoria` frenará todo arranque, porque la sonda de
+  arranque cuenta cualquier error al intentar romper el bloqueo como el bloqueo mismo).
+- **Constraints**: `administracion_id NOT NULL`, RLS forzada, permisos reducidos a `SELECT, INSERT`
+  (la app no tiene `UPDATE`/`DELETE` reales, aunque el `ALTER DEFAULT PRIVILEGES` del migrador se los dé
+  de más: el `REVOKE` real lo hace `roles.despues()`, D9).
+- **Deuda conocida** (D-098, "Deuda del cierre del 2a"): `despues()` sólo verifica el conjunto de
+  políticas de **esta** tabla (V3-1, cerrado); no verifica las políticas de las tablas de negocio
+  (`complejo`, `unidad`, etc.) — prometido como deuda del cambio 15.
+
+### Planificado, dominio `complejos` (continuación, cambio 3)
 
 #### `grupo_de_reparto` · planificada (cambio 3, R01)
 
@@ -219,26 +304,8 @@ respetar, no una migración adelantada.
 - **No se construye para ninguna regla vigente del MVP** (D-089): entra sólo cuando R14 o R37 se validen
   y migren desde su versión de código simple de los cambios 7/8.
 
-### Planificado, dominio `acceso`
-
-#### `persona` · planificada (cambio 2, D-009, D-076)
-
-- **Qué es**: la identidad autenticada (administrador titular, colaborador, vecino o consejo).
-- **Relaciones**: pertenece a una `administracion` (D-096 resolvió P18: una cuenta por administración,
-  no varias); tiene muchas `asignacion_rol`.
-- **Constraints**: el login del personal y el acceso del vecino (Clerk o enlace mágico, u otra
-  alternativa) se deciden en el design del cambio 2 (D-039, D-043).
-
-#### `asignacion_rol` · planificada (cambio 2, D-037)
-
-- **Qué es**: la relación entre una `persona`, un rol (titular, colaborador, consejo, vecino) y su
-  alcance (todos los complejos de la administración, los asignados, el suyo, o sus unidades).
-- **Constraints**: el colaborador sólo ve los edificios que le asignan, con nivel "ver" o "editar"
-  (D-037); fuera de alcance responde 404.
-- **Permisos por acción (P23, resuelta en D-096)**: qué rol puede emitir, distribuir, anular una
-  liquidación, confirmar y revertir pagos, condonar, dar de baja una deuda y aceptar alertas; ver la
-  matriz completa en D-096. P20 sigue abierta: si por encima de un monto el titular necesita además
-  la aprobación del consejo antes de condonar. Ver `03_actores_y_roles.md` §RBAC.
+`persona` y `asignacion_rol` ya no son planificadas: ver "Existe hoy, dominio `complejos` y `acceso`"
+más arriba.
 
 ### Planificado, dominio `gastos`
 

@@ -149,19 +149,31 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   las acciones sensibles de otros módulos; la recuperación real desde un backup en otro servidor
   (cambio 15).
 - **Depende de**: 1d. **Habilita**: 2b, 2c, 3.
-- **Bloqueado por**: la aprobación escrita y fechada de un socio en su propuesta.
-- **Que intente romper el rompedor**: la lista de la propuesta (fuga por un `SET LOCAL` que no se
+- **Aprobado**: Juani, 15/10/2026, las cinco elecciones E1 a E5 firmadas en `proposal.md` (gobernanza
+  CRITICAL, D-094).
+- **Que intentó romper el rompedor**: la lista de la propuesta (fuga por un `SET LOCAL` que no se
   aplicó, `current_setting` sin `missing_ok`, un rol con `BYPASSRLS` o superusuario usado por la app,
   backups incompletos por usar el rol equivocado o `--enable-row-security`, 404 contra 403 filtrando
   existencia, la auditoría salteada, editada o con su trigger desactivado, el worker sin tenant, el
   `GRANT` olvidado, el filtro por edificio de la aplicación), más lo que ya pedía esta ficha: ver un
   edificio de otra administración tipeando la URL o mandando otro `tenant_id`, un `SET` sin `LOCAL` que
   contagie al pedido siguiente, un colaborador en un edificio no asignado.
-- **Terminado cuando**: hay tests contra PostgreSQL real, conectados como `proptech_app`, que intentan
+- **Terminado**: hay tests contra PostgreSQL real, conectados como `proptech_app`, que intentan
   cruzar administraciones y fallan cerrados; cada rol ve exactamente lo de D-037 y cada acción sigue la
   matriz de D-096; la auditoría registra la asignación de edificios y ni la app ni el migrador la
-  pueden editar; el humo verifica el rol de la app y un backup completo hecho sin superusuario; 17
-  tareas en `openspec/changes/aislamiento-por-administracion/`, hechas con su rojo visto.
+  pueden editar; el humo verifica el rol de la app y un backup completo hecho sin superusuario; 34
+  tareas en `openspec/changes/archive/2026-10-15-aislamiento-por-administracion/`, hechas con su rojo
+  visto.
+- **Cierre (15/10/2026)**: cuatro vueltas entre constructor, rompedor y auditor. El auditor bloqueó en
+  la vuelta 1 (R1 a R4, R7, R8, R10) y en la vuelta 2 (V2-1, V2-2, V2-4); el constructor los resolvió
+  todos. En la vuelta 3 el auditor encontró tres bloqueantes más (V3-1, V3-2, V3-4) y dio a elegir entre
+  cerrar con esos tres anotados como deuda (opción A) o abrirlos una vuelta más (opción B); Juani eligió
+  la **opción B** el 15/10/2026, con la regla de cierre "el rompedor verifica sólo los 4 puntos (V3-1,
+  V3-2, V3-4 y V3-10); lo que encuentre fuera de eso va a deuda nueva y no bloquea" (D-098). El rompedor
+  de la vuelta 4 cerró V3-1, V3-2 y V3-4 (M8 y M5); V3-10 se cerró aparte, en el commit `3bbd2a6`. Corrida
+  de cierre: backend 863 passed + 1 xfailed, web 16 passed, humo OK con el segundo `up` incluido. El
+  auditor dio **OK con deuda anotada**; la deuda queda en "Deuda del cierre del 2a" más abajo, con dueño
+  por ítem (mayormente el 2b y el 15).
 
 ### 2b · `login` (nombre provisional) · crítico
 
@@ -176,6 +188,9 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   sesión.
 - **No entra**: el puerto de email completo, con reintentos y plantillas (13); las pantallas del portal
   (11) y del consejo (12).
+- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R5,
+  R9, V2-7, V3-5, D-1, D-2 y D-6, más el aviso de que la primera FK legítima hacia `auditoria` frena
+  cada arranque).
 - **Depende de**: 2a. **Habilita**: el uso por una persona y el despliegue: lo piden 11 y 15 (no el 3,
   que se construye con la identidad inyectada).
 - **Bloqueado por**: **P48** (a qué administración entra un email con cuenta en dos).
@@ -203,6 +218,8 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   `openspec/changes/endurecimiento-de-infraestructura/`.
 - **No entra**: HSTS, `read_only` en los contenedores y los secretos de Compose (con el despliegue,
   15); CSP (2b); Dependabot (15).
+- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (V2-5,
+  V3-8, V3-9, V3-14, V3-15 y D-5).
 - **Depende de**: 2a (los dos tocan `compose.yaml` y `humo.sh`). **Habilita**: 15.
 - **Que intente romper el rompedor**: una respuesta que se escapa sin cabeceras (un 502, una
   redirección, un 404, un HEAD); un servicio que arranca como root y el chequeo que no lo ve; una
@@ -232,6 +249,9 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
   coeficiente por unidad.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
+- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R6 y
+  R11). **R6 bloquea antes de la primera ruta nueva de este cambio**: el sweep de rutas protegidas no
+  ve `include_router(prefix=...)`, y es la forma más probable de agregar rutas acá.
 - **Depende de**: 2a (para construirse; el 2b, para que una persona lo use). **Habilita**: 4, 5, 6.
 - **Bloqueado por**: P16, P19, P24 y P33.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
@@ -600,6 +620,10 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   centavo; prueba de restauración de un backup; evidencia de aislamiento entre administraciones y alcance por edificio.
 - **Deuda del 1d, con dueño este cambio** (L-012): ver "Deuda del cierre del 1d" más abajo (F4, F5,
   F6, F8 y "14 copias no son 14 días").
+- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más abajo (V2-3,
+  V3-4 (M2), V3-6, V3-7 y el chequeo 5 completo: los 25 archivos de test sin mutar y la verificación de
+  arranque de las políticas de las tablas de negocio, prometida como deuda de este cambio por decisión
+  de Juani).
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto) y P12.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró
@@ -659,6 +683,43 @@ esté resuelta (L-012), no por el que suena más obvio.
 | El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c |
 | PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) |
 | La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a y 2c (cada corrida de cierre dice el orden y por qué) |
+
+### Deuda del cierre del 2a (auditoría vuelta 3, D-098)
+
+La que dejó el rompedor al cerrar el 2a, aceptada por Juani como "OK con deuda anotada". Las filas
+V3-1, V3-2 y V3-4 (M8 y M5) de la tabla original de la vuelta 3 se cerraron en la vuelta 4 (opción B,
+D-098) y no entran acá; V3-4 (M2) sigue abierta. Dueño asignado por el primer cambio que de verdad
+necesita que esté resuelta (L-012), no por el que suena más obvio.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| R5: el contrato de error del endpoint de asignación (`unidad_id` del vecino) | Es contrato de error, no fuga: no escribe nada y el log no filtra; el endpoint es inalcanzable en producción hasta el login (401 siempre) | 2b (C-05b) |
+| R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3 (C-06), bloqueante antes de su primera ruta nueva |
+| R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) |
+| R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3 (C-06) |
+| V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | 15 (piloto), antes de operar la base con el superusuario |
+| V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados |
+| V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b), antes del primer segundo caso con una misma acción |
+| V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | 15 (piloto), antes de tener cortes de base con tráfico real |
+| V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2b (C-05b), antes de tocar `lifespan` u `on_startup` |
+| V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | 15 (piloto), revisar con el monitoreo del servidor real |
+| V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | 15 (piloto), antes del primer redeploy con usuarios |
+| V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests |
+| V3-9: el test de R7 se cuelga en vez de dar rojo (sesiones sin `finally`) | Hoy R7 está cerrado; el riesgo es si vuelve a romperse y el CI se cuelga en vez de mostrar el rojo | 2c (C-05c), junto con el límite de tiempo del CI |
+| V3-14: `POSTGRES_APP_USER` acepta un nombre que la migración no conoce | Falla ruidoso, sin agujero de seguridad | 2c (C-05c), con la tabla de variables del README |
+| V3-15: README desactualizado (el worker sí tiene salida, el 1d no está "Propuesto", faltan las contraseñas distintas) y el humo no mira `relrowsecurity` | Dos frases falsas y un requisito no escrito, no una fuga | 2c (C-05c), con la tabla de variables del README y el humo con pasos nombrados |
+| Chequeo 5: 25 archivos de test de RLS, permisos y rutas que nadie abrió ni mutó | El comportamiento de aislamiento sí se probó de caja negra con scripts propios; lo que no se sabe es si esos tests pueden dar rojo | 15 (piloto), una pasada de mutación antes de cargar datos reales |
+| Chequeo 5: ninguna verificación de arranque mira las políticas de las tablas de negocio (`complejo`, `unidad` y las otras), sólo las de `auditoria` | El diseño (D2) sólo promete esa verificación para la auditoría; para el resto no hay promesa rota, pero Juani decidió prometerlo | 15 (piloto) — decisión de Juani, no deuda sin dueño (D-098) |
+| D-1: de las 7 comparaciones de `_verificar_politica_de_auditoria`, 5 no tienen test que las exija (nombre, PERMISSIVE, comando, roles, WITH CHECK) | Hoy el código anda (caja negra); son mutantes vivos, no una falla observada | 2b (C-05b), junto con V3-5 |
+| D-2: la primera FK legítima hacia `auditoria` frena todo arranque (exit 1 en `despues`, con `SQLSTATE 0A000` y no el texto "FK") | Es lo diseñado (ruidoso en vez de ciego), pero nadie lo documentó como restricción del esquema | 2b (C-05b), antes de diseñar cualquier tabla que referencie `auditoria` |
+| D-4: `vuelta-3/arbol/backend/.venv` de la copia del rompedor es un symlink al `.venv` real del repo; un `uv run`/`uv sync` desde ahí redirige la instalación editable | Hoy no hay daño (el `.pth` volvió a apuntar al repo); es el entorno de trabajo efímero del rompedor, no el repo | orquestador — borrar el symlink o el `arbol/` entero antes de reusar `vuelta-3/mutar.py`, no es un cambio del roadmap |
+| D-5: `infra/ci/humo.sh` está en git como `100644` (sin `+x`); el CI lo corre con `bash` y no falla | Corrido a mano como `./humo.sh` da "Permiso denegado"; no afecta al CI | 2c (C-05c), con el humo con pasos nombrados |
+| D-6: el test de M5 detecta "sin sonda de TRUNCATE" sólo porque la palabra `"TRUNCATE"` en mayúsculas no aparece en el aviso de catálogo | El caso de la FK lo sigue cubriendo | 2b (C-05b), con D-1 |
+| Aviso para el 2b: la primera FK legítima hacia `auditoria` va a frenar cada arranque (V3-2, mismo mecanismo que D-2); contemplarlo antes de agregar cualquier referencia nueva a `auditoria` | Es el comportamiento diseñado, no una falla nueva | 2b (C-05b) |
+
+D-3 (la evidencia de `tasks.md` 13.3 mostraba otro mutante que el M5 original) no entra en esta tabla:
+el rompedor sugirió corregirla "en la misma pasada que V3-10", y se corrigió en ese mismo commit
+(`3bbd2a6`).
 
 ## Pendientes de arranque
 

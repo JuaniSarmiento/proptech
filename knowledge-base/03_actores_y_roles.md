@@ -62,9 +62,8 @@ resto de la columna de acciones.
 
 ## Rutas públicas
 
-**Hoy**, antes del cambio 2 (que es quien construye el acceso), el sistema no tiene ninguna ruta de
-dominio ni autenticación: lo único que existe son dos sondas de orquestación, pensadas para no
-necesitar sesión porque no exponen datos de ningún complejo ni unidad:
+Dos sondas de orquestación siguen sin necesitar sesión porque no exponen datos de ningún complejo ni
+unidad:
 
 - `GET /api/salud` (`backend/src/proptech_api/salud.py`): informa si la API, la base y la cola
   responden (`{"estado", "base", "cola"}`); 503 si alguna está degradada. Existe desde el cambio 1a/1c.
@@ -72,15 +71,29 @@ necesitar sesión porque no exponen datos de ningún complejo ni unidad:
   el cambio 1c.
 
 Estas dos rutas **no son una decisión de negocio sobre qué queda público**: son endpoints técnicos
-que no tienen por qué pasar por el login, igual que cualquier healthcheck de Compose. Ninguna otra
-ruta existe todavía: el esqueleto de `web/src/app/` (`layout.tsx`, `page.tsx`) no tiene pantallas de
-dominio.
+que no tienen por qué pasar por el login, igual que cualquier healthcheck de Compose.
 
-**Lo que queda por decidir** (no se asume "ninguna" sin confirmarlo en el *design* del cambio 2, D-039):
-qué pantallas del portal del vecino o del login quedan accesibles sin sesión (por ejemplo, la propia
-pantalla de login); y si un **link firmado** de descarga (D-070: PDF de la expensa, comprobantes,
-facturas, con vencimiento entre un minuto y una hora) cuenta como "ruta pública" en el sentido de este
-documento o es un mecanismo aparte que no requiere sesión activa pero sí una firma válida: ese punto
-tampoco está resuelto todavía y se deja así, sin asumir una respuesta. Se completa junto con el
-explore del cambio 2 (login del personal y del vecino, D-039). Ya no queda condicionado por P18 (una
-cuenta por administración, D-096): el login resuelve siempre dentro de una sola administración.
+**Desde el cierre del 2a (15/10/2026)** existen además tres rutas de dominio
+(`backend/src/proptech_api/complejos.py`), y las tres **exigen identidad** (`Depends(identidad_actual)`)
+y sesión con tenant (`Depends(sesion_con_tenant)`): ninguna es pública.
+
+- `GET /complejos/{complejo_id}`: 404 si no existe o está fuera de alcance (indistinguible entre los
+  dos casos, D-037).
+- `GET /unidades/{unidad_id}`: mismo criterio de 404.
+- `POST /complejos/{complejo_id}/asignaciones`: 403 con `permiso_faltante` si la identidad no puede
+  asignar roles (deuda R5, dueño el 2b: el contrato de error de este endpoint con `unidad_id` del
+  vecino, ver "Deuda del cierre del 2a" en `12_fichas_de_changes.md`).
+
+El resto de `web/src/app/` (`layout.tsx`, `page.tsx`) sigue sin pantallas de dominio. Sin login (2b),
+`identidad_actual` siempre da 401 en producción: las tres rutas son hoy inalcanzables fuera de los
+tests, que inyectan la identidad directamente.
+
+**Lo que queda por decidir** (no se asume "ninguna" sin confirmarlo en el *design* del cambio 2b,
+D-039): qué pantallas del portal del vecino o del login quedan accesibles sin sesión (por ejemplo, la
+propia pantalla de login); y si un **link firmado** de descarga (D-070: PDF de la expensa,
+comprobantes, facturas, con vencimiento entre un minuto y una hora) cuenta como "ruta pública" en el
+sentido de este documento o es un mecanismo aparte que no requiere sesión activa pero sí una firma
+válida: ese punto tampoco está resuelto todavía y se deja así, sin asumir una respuesta. Se completa
+junto con el explore del cambio 2b (login del personal y del vecino, D-039, D-097). Ya no queda
+condicionado por P18 (una cuenta por administración, D-096): el login resuelve siempre dentro de una
+sola administración.
