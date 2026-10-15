@@ -407,13 +407,15 @@ def _verificar_bloqueo_de_escritura_de_verdad(cur: psycopg.Cursor) -> list[str]:
 
     cur.execute("SAVEPOINT verificacion_bloqueo_auditoria")
     try:
-        # El rol de arranque no tiene BYPASSRLS (D1): la política de D5
-        # también lo alcanza (con FORCE), así que el INSERT de prueba
-        # necesita su propio tenant fijado ANTES, que coincida con el que
-        # va en la fila — si no, el WITH CHECK lo rechaza por RLS, no por
-        # nada que esta verificación quiera medir. `set_config(..., true)`
-        # es local a la transacción (D4) y el `ROLLBACK TO SAVEPOINT` de
-        # más abajo también lo revierte.
+        # El rol de arranque ES superusuario (V3-10, vuelta 4: este
+        # comentario decía lo contrario) y bypassea RLS siempre, sin
+        # importar `BYPASSRLS` ni `FORCE` — eso no es lo que exige fijar
+        # el tenant acá. Se fija de todos modos por prolijidad: la fila de
+        # prueba queda con un `administracion_id` real y coherente, en vez
+        # de depender de que nadie vuelva a leer este código asumiendo que
+        # el `INSERT` necesita sortear una política que, para este rol, ni
+        # se aplica. `set_config(..., true)` es local a la transacción
+        # (D4) y el `ROLLBACK TO SAVEPOINT` de más abajo también lo revierte.
         cur.execute("SELECT gen_random_uuid()")
         fila_tenant = cur.fetchone()
         if fila_tenant is None:

@@ -566,3 +566,15 @@ a V3-15 siguen iguales).
     refactor, pero están fuera de la lista cerrada de este punto — son deuda, no se tocan).
   - Hecho 15/10/2026: ambos mutantes mueren; verde de los 2 tests nuevos confirmado (ver 13.5).
 
+- [x] 13.4 V3-10 · Dos frases incorrectas. (1) El comentario de `roles.py:385` decía "el rol de
+  arranque no tiene BYPASSRLS" — es FALSO: el rol de arranque ES superusuario y por eso bypassea
+  RLS siempre, sin importar `BYPASSRLS` ni `FORCE` (la convención del encabezado de este mismo
+  archivo, línea 6, ya lo decía bien; sólo este comentario puntual estaba mal, y de forma
+  consistente con lo mismo que marcó el auditor en la vuelta 3). Reescribí el comentario para que
+  explique que el `set_config` del tenant es por prolijidad (la fila de prueba queda con un
+  `administracion_id` real y coherente), no porque haga falta sortear RLS. (2) La entrada 12.2
+  decía "nunca queda la fila de prueba, pase lo que pase", una frase sin ningún test que la
+  respaldara hasta 13.3 — la corregí para que remita a
+  `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (13.3), que es lo que la respalda ahora.
+  - Hecho 15/10/2026.
+
