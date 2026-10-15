@@ -285,6 +285,19 @@ def _existe_tabla(cur: psycopg.Cursor, tabla: str) -> bool:
     return fila is not None and bool(fila[0])
 
 
+def _funciones_de_los_triggers_de(cur: psycopg.Cursor, tabla: str) -> list[str]:
+    """Por catálogo, nunca un nombre fijo (R2, vuelta 2): toda función que
+    dispara un trigger de `tabla` hoy. Si mañana se suma otro trigger con
+    otra función, `despues()` la transfiere igual sin tocar este módulo."""
+    cur.execute(
+        "SELECT DISTINCT p.proname FROM pg_trigger t "
+        "JOIN pg_proc p ON p.oid = t.tgfoid "
+        "WHERE t.tgrelid = %s::regclass AND NOT t.tgisinternal",
+        (tabla,),
+    )
+    return [fila[0] for fila in cur.fetchall()]
+
+
 def despues(configuracion: ConfiguracionDeArranque) -> None:
     """El paso `despues` de D2 (D9): transfiere `auditoria` de vuelta al rol
     de arranque (la crea el migrador en la migración `0004`, de paso) y ajusta
@@ -320,6 +333,26 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                     arranque=sql.Identifier(configuracion.postgres_user)
                 )
             )
+            # R2 (vuelta 2): la tabla no alcanza. El bloqueo vive en la
+            # FUNCIÓN del trigger, y antes de esto quedaba del migrador —
+            # dueño de una función alcanza para reemplazarla
+            # (CREATE OR REPLACE) o borrarla (DROP ... CASCADE), que se
+            # lleva los triggers con ella. `SET search_path = ''` de
+            # paso: la función no usa ningún objeto sin calificar, así que
+            # esto no le cambia el comportamiento y cierra la puerta a que
+            # alguien la haga resolver algo de un esquema ajeno.
+            for funcion in _funciones_de_los_triggers_de(cur, "auditoria"):
+                cur.execute(
+                    sql.SQL("ALTER FUNCTION {funcion}() OWNER TO {arranque};").format(
+                        funcion=sql.Identifier(funcion),
+                        arranque=sql.Identifier(configuracion.postgres_user),
+                    )
+                )
+                cur.execute(
+                    sql.SQL("ALTER FUNCTION {funcion}() SET search_path = '';").format(
+                        funcion=sql.Identifier(funcion)
+                    )
+                )
             # Orden a propósito: primero el REVOKE amplio (deshace lo que
             # ALTER DEFAULT PRIVILEGES regaló), después el GRANT angosto de
             # D9 — nunca al revés, para no depender de qué vino primero.

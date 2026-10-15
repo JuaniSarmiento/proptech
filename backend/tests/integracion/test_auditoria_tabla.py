@@ -122,7 +122,11 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
     """D9/D11: el migrador no es dueño de `auditoria` después de `despues()`,
     así que no puede bajarla con `alembic downgrade`. Se la devuelve antes,
     con el rol de arranque — exactamente lo que el Migration Plan del
-    design.md deja como procedimiento manual y deliberado."""
+    design.md deja como procedimiento manual y deliberado.
+
+    Desde R2 (vuelta 2), lo mismo vale para la función del trigger: el
+    `downgrade` de la migración 0004 hace `DROP FUNCTION
+    fn_auditoria_bloqueada()` como migrador, y ya no es su dueña."""
     conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
     try:
         with conexion.cursor() as cur:
@@ -130,8 +134,19 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
             fila = cur.fetchone()
             if fila is not None and fila[0]:
                 cur.execute(f"ALTER TABLE auditoria OWNER TO {MIGRADOR_USER}")
+                for funcion in _funciones_de_los_triggers_de_auditoria(cur):
+                    cur.execute(f"ALTER FUNCTION {funcion}() OWNER TO {MIGRADOR_USER}")
     finally:
         conexion.close()
+
+
+def _funciones_de_los_triggers_de_auditoria(cur: psycopg.Cursor) -> list[str]:
+    cur.execute(
+        "SELECT DISTINCT p.proname FROM pg_trigger t "
+        "JOIN pg_proc p ON p.oid = t.tgfoid "
+        "WHERE t.tgrelid = 'auditoria'::regclass AND NOT t.tgisinternal"
+    )
+    return [fila[0] for fila in cur.fetchall()]
 
 
 @pytest.fixture(scope="module")
@@ -190,6 +205,54 @@ def test_el_dueño_de_auditoria_es_el_rol_de_arranque(
             cur.execute("SELECT tableowner FROM pg_tables WHERE tablename = 'auditoria'")
             assert cur.fetchone() == (ARRANQUE_USER,)
     finally:
+        conexion.close()
+
+
+# --- Vuelta 2, R2: la función de los triggers también es del rol de arranque ---
+
+
+def test_el_dueño_de_fn_auditoria_bloqueada_es_el_rol_de_arranque(
+    contenedor: PostgresContainer, esquema: None
+) -> None:
+    """Catálogo, no un nombre fijo (pedido del auditor): recorre los
+    triggers reales de `auditoria` y pide el dueño de CADA función que
+    disparan, para que esto siga valiendo si el día de mañana se agrega
+    otro trigger con otra función. `despues()` transfería la tabla pero no
+    la función (D9 lo pide, D2 también): sin esto, el migrador sigue siendo
+    dueño de la función que hace cumplir el bloqueo, y dueño de una función
+    alcanza para reemplazarla o borrarla."""
+    conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+    try:
+        with conexion.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT pg_get_userbyid(p.proowner) "
+                "FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid "
+                "WHERE t.tgrelid = 'auditoria'::regclass AND NOT t.tgisinternal"
+            )
+            dueños = {fila[0] for fila in cur.fetchall()}
+    finally:
+        conexion.close()
+    assert dueños == {ARRANQUE_USER}, dueños
+
+
+def test_el_migrador_no_puede_reemplazar_ni_borrar_la_funcion_del_trigger(
+    contenedor: PostgresContainer, esquema: None
+) -> None:
+    conexion = _conectar(contenedor, MIGRADOR_USER, MIGRADOR_PASSWORD)
+    conexion.autocommit = False
+    try:
+        with conexion.cursor() as cur:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                cur.execute(
+                    "CREATE OR REPLACE FUNCTION fn_auditoria_bloqueada() "
+                    "RETURNS trigger AS $$ BEGIN RETURN NULL; END; $$ LANGUAGE plpgsql"
+                )
+        conexion.rollback()
+        with conexion.cursor() as cur:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                cur.execute("DROP FUNCTION fn_auditoria_bloqueada() CASCADE")
+    finally:
+        conexion.rollback()
         conexion.close()
 
 

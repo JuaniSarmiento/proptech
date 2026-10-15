@@ -321,7 +321,16 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     que cubría el reinicio real. Humo: paso `(1b)`, `compose down` (sin `-v`, conserva volúmenes) +
     `compose up -d --wait` de nuevo; shellcheck limpio; `HUMO OK` con la línea
     "el segundo up terminó con exit 0" confirmada en la salida real.
-- [ ] 11.2 R2 · `fn_auditoria_bloqueada` queda del migrador: puede reemplazarla, borrarla (`DROP ... CASCADE`) o escalar a superusuario. Rojo: test de catálogo, `proowner` de toda función usada por un trigger de `auditoria` tiene que ser el rol de arranque. Corrección: `despues()` también transfiere la función (`ALTER FUNCTION ... OWNER TO`) y le fija `SET search_path`.
+- [x] 11.2 R2 · `fn_auditoria_bloqueada` queda del migrador: puede reemplazarla, borrarla (`DROP ... CASCADE`) o escalar a superusuario. Rojo: test de catálogo, `proowner` de toda función usada por un trigger de `auditoria` tiene que ser el rol de arranque. Corrección: `despues()` también transfiere la función (`ALTER FUNCTION ... OWNER TO`) y le fija `SET search_path`.
+  - Hecho 15/10/2026: rojo confirmado (dueño = `proptech_migrador`; `CREATE OR REPLACE` y
+    `DROP ... CASCADE` como migrador, ambos pasaban). `despues()` ahora recorre por catálogo
+    (`pg_trigger` + `pg_proc`, nunca un nombre fijo) las funciones de los triggers de `auditoria` y les
+    hace `ALTER FUNCTION ... OWNER TO <arranque>` + `SET search_path = ''`. 2 tests nuevos en
+    `test_auditoria_tabla.py`. **Collateral real**: el `downgrade` de la 0004 (que corre como migrador)
+    dejó de poder `DROP FUNCTION` por la misma razón que ya no puede tocar la tabla — `_devolver_auditoria_al_migrador`
+    del test ahora también le devuelve la función antes de bajar, igual que ya hacía con la tabla (D11).
+    20/20 tests de `test_auditoria_tabla.py` y 10/10 de `test_roles.py`.
+
 - [ ] 11.3 R3 · La app tiene `INSERT`/`UPDATE`/`DELETE` sobre `accion_de_auditoria` (sólo debería `SELECT`, D1): puede ampliar o vaciar el vocabulario de acciones sensibles. Rojo: como `proptech_app`, los tres se niegan (hoy pasan). Corrección: `REVOKE` explícito en `despues()` (no alcanza con excluirla del grant de `antes()`: los `DEFAULT PRIVILEGES` se los dan igual).
 - [ ] 11.4 R4 · `despues()` no verifica que el trigger y el `FORCE` sigan activos, como promete D2. Rojo: borrar un trigger (o `NO FORCE`) como arranque y correr `despues()` — hoy sale 0. Corrección: verificar al final (incluido el dueño de la función, R2) y salir con 1 nombrando qué falta si algo no está.
 - [ ] 11.5 R7 · Un `SET` de sesión (sin `LOCAL`) del tenant contagia al pedido siguiente que abre sin tenant. Rojo: pool de 1 conexión, `SET` de sesión con el tenant de A, después una sesión sin tenant — hoy ve las filas de A. Corrección: un evento de reset/checkin del pool que limpie `app.administracion_id` como cinturón, además del `SET LOCAL`.
