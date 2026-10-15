@@ -37,6 +37,7 @@ from proptech_core.compartido.base_de_datos import (
     abrir_sesion,
     crear_engine,
     crear_fabrica_de_sesiones,
+    registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
 )
 from proptech_core.compartido.configuracion import Configuracion
@@ -163,6 +164,10 @@ def fabrica_pool_1(
     engine = crear_engine(Configuracion())
     fabrica = crear_fabrica_de_sesiones(engine)
     registrar_tenant_por_administracion(fabrica)
+    # R7 (vuelta 2): el cinturón de más, sobre el MISMO engine que usan los
+    # tests de este archivo — así el rojo/verde de R7 es comparable con el
+    # resto (mismo pool de 1 conexión).
+    registrar_reset_del_tenant_al_devolver(engine)
     try:
         yield fabrica
     finally:
@@ -219,6 +224,35 @@ def test_sesion_con_tenant_tras_excepcion_y_siguiente_sin_tenant_no_hereda(
     with pytest.raises(Exception):  # noqa: B017 (cualquier error de la base alcanza)
         sesion_1.execute(text("SELECT 1 / 0"))
     sesion_1.rollback()  # una sesión con una transacción abortada exige esto
+    sesion_1.close()
+
+    sesion_2 = abrir_sesion(fabrica_pool_1, None)
+    assert _complejos_visibles(sesion_2) == []
+    sesion_2.close()
+
+
+# --- Vuelta 2, R7: un SET de sesión (sin LOCAL) no contagia al pedido siguiente ---
+
+
+def test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin(
+    fabrica_pool_1: sessionmaker[Session], dos_administraciones_con_complejo: dict[str, Any]
+) -> None:
+    """El ataque real (informe del rompedor, vuelta 1, R7): un `SET` de
+    sesión (sin `LOCAL`) del tenant — nunca lo hace `abrir_sesion`/
+    `registrar_tenant_por_administracion`, que siempre usan
+    `set_config(..., true)`, pero sí lo haría un código futuro equivocado.
+    Ese `SET` sobrevive al `ROLLBACK` que el pool ya hace al devolver la
+    conexión, porque un `SET` de sesión no es parte de la transacción que
+    se revierte. `registrar_reset_del_tenant_al_devolver` es el cinturón:
+    sin él, la sesión siguiente sin tenant ve las 2 filas de A."""
+    admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
+
+    sesion_1 = abrir_sesion(fabrica_pool_1, None)
+    # Un SET de sesión directo, simulando el error: nunca pasa por
+    # abrir_sesion ni por el evento after_begin.
+    sesion_1.execute(text(f"SET app.administracion_id = '{admin_a}'"))
+    assert _complejos_visibles(sesion_1) == ["Complejo A"]
+    sesion_1.commit()
     sesion_1.close()
 
     sesion_2 = abrir_sesion(fabrica_pool_1, None)

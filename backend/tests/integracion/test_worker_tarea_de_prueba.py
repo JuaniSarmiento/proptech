@@ -177,6 +177,8 @@ async def test_on_startup_usa_crear_engine_con_la_configuracion_del_pool(
         # la fábrica de sesiones; sin parchear esto, SQLAlchemy intenta
         # colgar un evento `after_begin` real de un `MagicMock()`.
         patch.object(ajustes_mod, "registrar_tenant_por_administracion"),
+        # R7 (vuelta 2): mismo motivo, para el evento "checkin" del engine.
+        patch.object(ajustes_mod, "registrar_reset_del_tenant_al_devolver"),
     ):
         creado.return_value = MagicMock()
         fabrica_creada.return_value = MagicMock()

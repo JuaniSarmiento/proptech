@@ -18,6 +18,7 @@ from proptech_core.compartido.base_de_datos import (
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
+    registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
 )
 from proptech_core.compartido.cola import deserializar_job, serializar_job
@@ -186,6 +187,9 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     # el tenant vacío y daría cero filas siempre, nunca un error, así que el
     # agujero sería silencioso. Gemelo de `registrar_application_name`.
     registrar_tenant_por_administracion(fabrica)
+    # Cinturón además del SET LOCAL de arriba (R7, vuelta 2): gemelo del de
+    # `proptech_api/app.py`.
+    registrar_reset_del_tenant_al_devolver(engine)
     ctx["engine"] = engine
     ctx["fabrica_de_sesiones"] = fabrica
     ctx["politica"] = POLITICA_DE_PRODUCCION

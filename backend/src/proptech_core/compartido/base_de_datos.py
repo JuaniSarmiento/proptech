@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Iterator
+from typing import Any
 
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import Connection
@@ -118,6 +119,38 @@ def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
             text("SELECT set_config('app.administracion_id', :valor, true)"),
             {"valor": str(administracion_id)},
         )
+
+
+def registrar_reset_del_tenant_al_devolver(engine: Engine) -> None:
+    """Cinturón, además del `SET LOCAL` de D4 (R7, vuelta 2, rompedor/auditor).
+
+    `set_config(..., true)` (D4) muere solo con la transacción — pero esa
+    garantía depende de que TODO el código de arriba use ese mecanismo.
+    Un `SET` de sesión (sin `LOCAL`), hecho por error en algún camino
+    futuro, sobrevive al `ROLLBACK` que el pool ya hace al devolver la
+    conexión (D4 no lo contradice: ese `ROLLBACK` es de la transacción, y un
+    `SET` de sesión no es parte de ella). Sin este cinturón, esa conexión
+    vuelve al pool con el tenant anterior pegado, y el próximo pedido que la
+    reutilice sin pasar su propio tenant ve filas de la administración de
+    otro (en vez de cero, D5).
+
+    El evento `checkin` de SQLAlchemy corre SIEMPRE que una conexión vuelve
+    al pool, DESPUÉS del `ROLLBACK` por default (`reset_on_return`): acá se
+    agrega, siempre, un `RESET app.administracion_id` explícito sobre la
+    conexión cruda. `RESET` de un parámetro que nunca se fijó en esa sesión
+    no es un error (Postgres lo deja pasar): no hace falta chequear antes
+    si hay algo que limpiar.
+    """
+
+    @event.listens_for(engine, "checkin")
+    def _checkin(dbapi_connection: Any, connection_record: Any) -> None:
+        del connection_record
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("RESET app.administracion_id")
+            dbapi_connection.commit()
+        finally:
+            cursor.close()
 
 
 def obtener_sesion(fabrica: sessionmaker[Session]) -> Iterator[Session]:

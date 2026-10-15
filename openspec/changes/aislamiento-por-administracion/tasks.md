@@ -352,7 +352,23 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     `test_auditoria_tabla.py`, acá duplicado porque cada archivo de integración es autocontenido
     (L-006). Suite completa: 841 passed + 1 xfailed (833 + 8 de R1 a R4); `humo.sh`: HUMO OK.
 
-- [ ] 11.5 R7 · Un `SET` de sesión (sin `LOCAL`) del tenant contagia al pedido siguiente que abre sin tenant. Rojo: pool de 1 conexión, `SET` de sesión con el tenant de A, después una sesión sin tenant — hoy ve las filas de A. Corrección: un evento de reset/checkin del pool que limpie `app.administracion_id` como cinturón, además del `SET LOCAL`.
+- [x] 11.5 R7 · Un `SET` de sesión (sin `LOCAL`) del tenant contagia al pedido siguiente que abre sin tenant. Rojo: pool de 1 conexión, `SET` de sesión con el tenant de A, después una sesión sin tenant — hoy ve las filas de A. Corrección: un evento de reset/checkin del pool que limpie `app.administracion_id` como cinturón, además del `SET LOCAL`.
+  - Hecho 15/10/2026: rojo confirmado con un script standalone (fuera de pytest, para no depender de
+    fixtures compartidos): sin el fix, una sesión sin tenant después de un `SET` de sesión crudo ve
+    `['Complejo A']`; con el fix, `[]`. `registrar_reset_del_tenant_al_devolver(engine)` nueva en
+    `base_de_datos.py`: evento `checkin` del ENGINE (no de la fábrica de sesiones — es un evento de
+    pool, no de sesión) que corre `RESET app.administracion_id` sobre la conexión cruda cada vez que
+    vuelve al pool, después del `ROLLBACK` que SQLAlchemy ya hace por default. `RESET` sobre un
+    parámetro nunca fijado en esa sesión no es error (verificado). Cableado en `proptech_api/app.py` y
+    `proptech_worker/ajustes.py`, gemelo de `registrar_tenant_por_administracion`. Test nuevo en
+    `test_tenant_por_transaccion.py` (pool de 1 conexión, mismo patrón que el resto del archivo).
+  - **Collateral real (el mismo patrón que ya había mordido en la 7.1)**: tres tests que mockean
+    `crear_engine`/`crear_fabrica_de_sesiones` con `MagicMock()` (`test_motor_unico.py` x2,
+    `test_worker_tarea_de_prueba.py` x1) rompieron porque el nuevo evento "checkin" intenta colgarse
+    de un `MagicMock()`, que no es un target de evento válido de SQLAlchemy — mismo `InvalidRequestError`
+    que ya se vio con `registrar_tenant_por_administracion` en la 7.1. Se sumó el `patch.object`
+    correspondiente en los tres. Suite completa: 842 passed + 1 xfailed; `humo.sh`: HUMO OK.
+
 - [ ] 11.6 R8 · Nada impide que `proptech_app` quede con el mismo nombre o contraseña que otro rol (incluido el de arranque): la API podría arrancar con `BYPASSRLS` o con la contraseña del superusuario sin que nadie lo note. Rojo: `antes()` con dos `*_USER` iguales, o dos contraseñas iguales de las cuatro — hoy sale 0. Corrección: `antes()` rechaza nombres o contraseñas repetidas (sin mostrar valores); la API y el worker no arrancan si su propia conexión tiene `rolsuper`, `rolbypassrls` o es dueña de alguna tabla. `infra/.env.example` con placeholders distintos.
 - [ ] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.
 - [ ] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.

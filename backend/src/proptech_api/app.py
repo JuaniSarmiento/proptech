@@ -11,6 +11,7 @@ from proptech_core.compartido.base_de_datos import (
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
+    registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
 )
 from proptech_core.compartido.cola import AdaptadorColaArq
@@ -50,6 +51,11 @@ def crear_app() -> FastAPI:
         # El tenant por transacción (D4, tarea 4.1): lo fija `abrir_sesion`
         # + este evento, nunca un parámetro del pedido.
         registrar_tenant_por_administracion(fabrica)
+        # Cinturón además del SET LOCAL de arriba (R7, vuelta 2): una
+        # conexión que vuelve al pool nunca lleva el tenant pegado, ni
+        # siquiera si algún camino futuro se equivoca y hace un SET de
+        # sesión en vez de set_config(..., true).
+        registrar_reset_del_tenant_al_devolver(engine)
         app.state.engine = engine
         app.state.fabrica_de_sesiones = fabrica
         try:
