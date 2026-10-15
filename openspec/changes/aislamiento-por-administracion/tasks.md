@@ -208,7 +208,36 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 
 ## 7. El worker con tenant
 
-- [ ] 7.1 `con_administracion_de_tarea` (D8) en `tests/integracion/test_worker_tenant.py` y `tests/unitarios/test_worker_tenant.py`, con `tarea_de_prueba_con_administracion`: un trabajo sin `administracion_id`, con `""`, `"  "`, `123`, `"no-es-uuid"` y un UUID con dígitos no ASCII falla una sola vez, sin reintentos, sin efecto, con el evento fijo `tarea_sin_administracion` y sin el valor en el log; con el tenant de A cuenta sólo complejos de A, también desde el hilo de `asyncio.to_thread`; dos tareas seguidas en el mismo worker (A y después B) ven cada una lo suyo; la clave de idempotencia lleva el `administracion_id` adentro. Escenarios: `cola-de-trabajos` › Trabajo sin administración; › Administración malformada; › Dos tareas seguidas; › El tenant llega al hilo. Lecciones: L-007, L-008, L-009, L-015.
+- [x] 7.1 `con_administracion_de_tarea` (D8) en `tests/integracion/test_worker_tenant.py` y `tests/unitarios/test_worker_tenant.py`, con `tarea_de_prueba_con_administracion`: un trabajo sin `administracion_id`, con `""`, `"  "`, `123`, `"no-es-uuid"` y un UUID con dígitos no ASCII falla una sola vez, sin reintentos, sin efecto, con el evento fijo `tarea_sin_administracion` y sin el valor en el log; con el tenant de A cuenta sólo complejos de A, también desde el hilo de `asyncio.to_thread`; dos tareas seguidas en el mismo worker (A y después B) ven cada una lo suyo; la clave de idempotencia lleva el `administracion_id` adentro. Escenarios: `cola-de-trabajos` › Trabajo sin administración; › Administración malformada; › Dos tareas seguidas; › El tenant llega al hilo. Lecciones: L-007, L-008, L-009, L-015.
+  - Hecho 15/10/2026: `proptech_core/compartido/tenant_de_tarea.py` (`con_administracion_de_tarea`):
+    regex ASCII canónica (gemela de `validar_request_id`, L-008) antes que nada, después el modelo
+    Pydantic estricto que pide D8 — sólo la regex corta un UUID con dígitos no ASCII, Pydantic estricto
+    por sí solo no alcanza (ver hallazgo). Va POR FUERA de `reintentable` en la pila: un
+    `administracion_id` inválido ni siquiera llama a la función reintentable, cero reintentos reales.
+    Si la tarea recibe `clave`, el decorador le antepone el `administracion_id` (E3: `trabajos_hechos`
+    tiene una sola clave global). `tarea_de_prueba_con_administracion` (cuenta complejos) nace en
+    `proptech_worker/prueba.py`, sin ruta pública, igual que `tarea_de_prueba`.
+  - **Hallazgo real (el más caro de la tarea)**: `proptech_worker/ajustes.py` nunca llamaba
+    `registrar_tenant_por_administracion(fabrica)` en `on_startup` — `abrir_sesion` dejaba el tenant en
+    `session.info` sin que nada lo convirtiera en `set_config`, así que la política de D5 veía el
+    tenant vacío y daba **cero filas siempre, nunca un error** (el mismo tipo de agujero silencioso que
+    D5 ya previene del lado de la API desde la 4.1). Se agregó la llamada, gemela de
+    `registrar_application_name`; `tarea_de_prueba` (D2, sin `abrir_sesion`) queda igual porque
+    `session.info` nunca tiene esa clave para ella.
+  - Collateral real (no un rojo buscado): `test_on_startup_usa_crear_engine_con_la_configuracion_del_pool`
+    rompió porque parchea `crear_engine`/`crear_fabrica_de_sesiones` con `MagicMock()` y
+    `registrar_tenant_por_administracion` intentaba colgar un evento `after_begin` real de un mock
+    (`InvalidRequestError`). Se agregó el `patch.object` que faltaba.
+  - Rojo visto con pydantic estricto solo (sin la regex ASCII primero): un UUID armado con dígitos
+    arábigo-índicos (U+0660 y siguientes) en la forma canónica pasaba `UUID(valor)` de la stdlib sin
+    reclamar — el mismo tipo de gotcha de L-008 que ya mordió en `_entero_ascii_estricto`, ahora
+    confirmado también en `uuid.UUID()`.
+  - Contenedor propio para el archivo de integración (L-006): mismo hallazgo de la 4.1 (`administracion`/
+    `complejo` no existen si el contenedor compartido corrió el ciclo de otro archivo primero), y además
+    `proptech_worker.ajustes` fija su `Configuracion` una sola vez al importarse — no se puede reapuntar
+    a otro contenedor en el mismo proceso, así que el `ctx` de este archivo arma su propio engine a mano.
+    10 tests unitarios (puro, sin base) + 3 de integración. Suite completa: 833 passed + 1 xfailed
+    (820 + 13); web: 16 passed; `humo.sh` (toca `ajustes.py` real): HUMO OK.
 
 ## 8. Redes
 

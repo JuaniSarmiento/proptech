@@ -173,6 +173,10 @@ async def test_on_startup_usa_crear_engine_con_la_configuracion_del_pool(
         patch.object(ajustes_mod, "crear_engine") as creado,
         patch.object(ajustes_mod, "crear_fabrica_de_sesiones") as fabrica_creada,
         patch.object(ajustes_mod, "registrar_application_name"),
+        # D4, D8 (tarea 7.1): `on_startup` también registra el tenant sobre
+        # la fábrica de sesiones; sin parchear esto, SQLAlchemy intenta
+        # colgar un evento `after_begin` real de un `MagicMock()`.
+        patch.object(ajustes_mod, "registrar_tenant_por_administracion"),
     ):
         creado.return_value = MagicMock()
         fabrica_creada.return_value = MagicMock()
