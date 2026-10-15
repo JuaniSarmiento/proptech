@@ -53,7 +53,7 @@ ningún módulo de `proptech_core`.
 ```mermaid
 erDiagram
     ADMINISTRACION ||--o{ COMPLEJO : "tiene (c.2, D-076)"
-    ADMINISTRACION ||--o{ PERSONA : "pertenece a (c.2, D-076; P18 pendiente)"
+    ADMINISTRACION ||--o{ PERSONA : "pertenece a (c.2, D-076; una cuenta por administracion, D-096)"
     COMPLEJO ||--o{ UNIDAD : "tiene (c.2 minima / c.3 completa, D-082)"
     COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (c.3, R01)"
     COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (c.3, R16)"
@@ -61,7 +61,7 @@ erDiagram
     COMPLEJO ||--o{ REGLA_VERSIONADA : "versiona (c.6b, D-066; fuera del camino a M1)"
     GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa (c.3)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (c.2, D-037)"
-    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (c.2, D-037/D-076; P23 pendiente)"
+    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (c.2, D-037/D-076; permisos por accion, D-096)"
     COMPLEJO ||--o{ PROVEEDOR : "factura a (c.6)"
     PROVEEDOR ||--o{ GASTO : "emite (c.6, R12)"
     GASTO ||--o{ NOTA_DE_CREDITO : "corrige (c.6, R22)"
@@ -137,9 +137,9 @@ respetar, no una migración adelantada.
 
 - **Qué es**: el tenant. El cliente que paga PropTech (`11_glosario.md`).
 - **Atributos conocidos**: identificador; el resto, a decidir en el design del cambio 2.
-- **Relaciones**: tiene muchos `complejo`; tiene muchas `persona` (una identidad por administración,
-  P18 todavía abierta: si una persona con unidades en dos administraciones distintas es una identidad
-  global con membresías o una cuenta por administración).
+- **Relaciones**: tiene muchos `complejo`; tiene muchas `persona` (una cuenta por administración, no
+  una identidad global con membresías; D-096 resolvió P18. Una persona con unidades en dos
+  administraciones tiene dos cuentas, una en cada una, con el mismo email permitido en ambas).
 - **Constraints**: ninguna consulta, archivo, caché o proceso puede devolver datos de otra
   administración (R10); el valor sale siempre de la identidad autenticada, nunca de un parámetro del
   cliente.
@@ -224,8 +224,8 @@ respetar, no una migración adelantada.
 #### `persona` · planificada (cambio 2, D-009, D-076)
 
 - **Qué es**: la identidad autenticada (administrador titular, colaborador, vecino o consejo).
-- **Relaciones**: pertenece a una `administracion` (P18 pendiente sobre si puede pertenecer a varias);
-  tiene muchas `asignacion_rol`.
+- **Relaciones**: pertenece a una `administracion` (D-096 resolvió P18: una cuenta por administración,
+  no varias); tiene muchas `asignacion_rol`.
 - **Constraints**: el login del personal y el acceso del vecino (Clerk o enlace mágico, u otra
   alternativa) se deciden en el design del cambio 2 (D-039, D-043).
 
@@ -235,9 +235,10 @@ respetar, no una migración adelantada.
   alcance (todos los complejos de la administración, los asignados, el suyo, o sus unidades).
 - **Constraints**: el colaborador sólo ve los edificios que le asignan, con nivel "ver" o "editar"
   (D-037); fuera de alcance responde 404.
-- **Pendiente (P23)**: qué rol puede emitir, distribuir, anular una liquidación, confirmar y revertir
-  pagos, condonar, dar de baja una deuda y aceptar alertas. No se completa acá: se resuelve en el
-  explore del cambio 2, antes de construir la tabla. Ver `03_actores_y_roles.md` §RBAC.
+- **Permisos por acción (P23, resuelta en D-096)**: qué rol puede emitir, distribuir, anular una
+  liquidación, confirmar y revertir pagos, condonar, dar de baja una deuda y aceptar alertas; ver la
+  matriz completa en D-096. P20 sigue abierta: si por encima de un monto el titular necesita además
+  la aprobación del consejo antes de condonar. Ver `03_actores_y_roles.md` §RBAC.
 
 ### Planificado, dominio `gastos`
 

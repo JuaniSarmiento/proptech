@@ -196,7 +196,8 @@ sequenceDiagram
 ## Flujo 5 · Pago informado y confirmación
 
 - **Disparador**: el vecino transfiere y sube el comprobante, o el administrador lo carga por él.
-- **Actor**: vecino (sube) y administrador (quién puede confirmar, revertir o reimputar: P23).
+- **Actor**: vecino (sube) y administrador (confirmar es del titular y del colaborador; revertir o
+  reimputar es sólo del titular, matriz de D-096).
 - **Cambio**: 8 `pagos-informados` (crítico).
 - **Pasos**:
   1. El vecino sube el comprobante (BNA+, Mercado Pago u otro); la IA precarga monto, fecha y número
@@ -228,7 +229,7 @@ sequenceDiagram
   - Reimputar y que falle a mitad de camino: no queda ningún movimiento aplicado (los dos o ninguno).
 - **Pendiente**: la elección del proveedor de IA para leer comprobantes (a decidir en el design);
   interés sobre un pago revertido o reimputado (P29); un número de operación único por banco, no sólo
-  por complejo (P40); quién puede confirmar, revertir y reimputar, acción por acción (P23).
+  por complejo (P40). Quién puede confirmar, revertir y reimputar ya quedó resuelto en D-096 (P23).
 
 ## Flujo 6 · Conciliación con el extracto bancario
 

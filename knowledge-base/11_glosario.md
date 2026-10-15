@@ -20,7 +20,7 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 ## Las personas
 
 - **Administrador**: opera el complejo y es el comprador de PropTech.
-- **Administrador titular**: quien manda en la administración (D-037). **Colaborador**: personal de la administración, sólo en los edificios que le asignan, con permiso de ver o editar. Qué puede hacer cada uno, acción por acción: ver P23.
+- **Administrador titular**: quien manda en la administración (D-037). **Colaborador**: personal de la administración, sólo en los edificios que le asignan, con permiso de ver o editar. Qué puede hacer cada uno, acción por acción: ver la matriz de D-096.
 - **Consejo** o **comisión directiva**: propietarios que controlan las cuentas y autorizan gastos.
 - **Vecino**: propietario o inquilino que usa el portal.
 - **Encargado** (edificio) o **intendente** (barrio): personal que reporta novedades y da conformidad de trabajos. En el MVP, su sueldo entra como gasto desde el recibo del contador (D-028).

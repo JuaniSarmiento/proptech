@@ -38,7 +38,7 @@ el cierre da igual al centavo.
 | Actor | Objetivo principal | Objetivos secundarios |
 |---|---|---|
 | **Administrador titular** | Liquidar y cobrar el edificio de punta a punta, mejor que con su Excel | Configurar el edificio (HU-A1), cargar el edificio desde Excel (HU-A2), cargar gastos y cargos particulares (HU-A3, HU-A3b), revisar la preliquidación (HU-A4), emitir la liquidación (HU-A5), confirmar pagos informados (HU-A6), validar con el extracto del banco (HU-A7), ver la morosidad (HU-A8), corregir errores sin perder historial (HU-A9), emitir certificados de libre deuda (HU-A10), condonar intereses y marcar gestión judicial (HU-A11, propuesta) |
-| **Colaborador** | Operar los edificios que le asignan, con nivel "ver" o "editar", sin cerrar ni anular liquidaciones ni pagos (D-037) | Las mismas acciones del titular dentro de su alcance, salvo las exclusivas del titular (P23) |
+| **Colaborador** | Operar los edificios que le asignan, con nivel "ver" o "editar", sin cerrar ni anular liquidaciones ni pagos (D-037) | Las mismas acciones del titular dentro de su alcance, salvo las exclusivas del titular (matriz de permisos de D-096) |
 | **Vecino** | Entender su expensa y pagarla desde el celular | Entrar al portal con todas sus unidades juntas (HU-V1), ver cuánto debe (HU-V2), entender en qué se gastó la plata (HU-V3), informar un pago con su comprobante (HU-V4), descargar comprobantes (HU-V5), recibir avisos antes del vencimiento y en mora (HU-V6) |
 | **Consejo** (o comisión directiva) | Controlar las cuentas del edificio sin poder modificar nada | Ver morosidad, gastos aprobados y liquidaciones emitidas (HU-C1) |
 

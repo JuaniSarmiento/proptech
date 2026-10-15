@@ -47,7 +47,7 @@ Detalle completo de la decisión en `09_decisiones_y_supuestos.md` (D-040).
   concreto se decide en el *design* del cambio 2 `acceso-y-aislamiento` (D-039, D-043). El servidor de
   Next guarda el token de sesión; el navegador nunca lo ve (D-036).
 - **Autorización**: tres capas: administración (tenant, deducida del login), alcance por edificio
-  según el rol, permiso por acción (D-037, P23 pendiente). Fuera de alcance responde 404; sin permiso,
+  según el rol, permiso por acción (D-037, matriz de D-096). Fuera de alcance responde 404; sin permiso,
   403 con el permiso faltante. Row-Level Security de PostgreSQL es el segundo candado del aislamiento
   entre administraciones (R10, D-076).
 - **Validación de input**: todo monto es `Decimal` construido desde texto, nunca desde `float`
