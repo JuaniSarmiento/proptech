@@ -33,7 +33,18 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     para usar los roles reales que crea `roles.antes()` en vez del superusuario del contenedor como alias
     (pedido de Juani al cerrar). `despues` queda como no-op documentado hasta la tarea 6.1 (D9): antes de
     la migración de auditoría no tiene nada que hacer; el CLI ya expone el subcomando para 2.3.
-- [ ] 2.3 Compose y credenciales (D1, D10) en `tests/infra/test_compose.py`: `migraciones` corre `roles antes`, `alembic` con el migrador y `roles despues`, con `restart: "no"`; `api` y `worker` tienen las variables de la app y **no** `POSTGRES_PASSWORD`, `POSTGRES_MIGRADOR_PASSWORD` ni `POSTGRES_RESPALDO_PASSWORD`; `respaldos` usa `POSTGRES_RESPALDO_USER`/`_PASSWORD` y no tiene `POSTGRES_PASSWORD`; ningún servicio con `restart` distinto de `"no"` tiene `POSTGRES_PASSWORD`; ningún archivo de `infra/` contiene `--enable-row-security` (visto en rojo con una copia de `respaldar.sh` que lo agrega, L-013); la web no está en ninguna red con `db` ni `redis`, Caddy tiene su IP fija en `aplicacion` y `FORWARDED_ALLOW_IPS` coincide. Actualizar `infra/.env.example` y sumar las variables nuevas al README en el texto que ya existe (la tabla completa es del 2c). Escenarios: `respaldos-de-la-base` › Credenciales y opciones del servicio; `entorno-de-ejecucion` › La API conecta como la app (la parte de Compose); › La web intenta conectar a la base (la parte estática). Lecciones: L-007, L-013.
+- [x] 2.3 Compose y credenciales (D1, D10) en `tests/infra/test_compose.py`: `migraciones` corre `roles antes`, `alembic` con el migrador y `roles despues`, con `restart: "no"`; `api` y `worker` tienen las variables de la app y **no** `POSTGRES_PASSWORD`, `POSTGRES_MIGRADOR_PASSWORD` ni `POSTGRES_RESPALDO_PASSWORD`; `respaldos` usa `POSTGRES_RESPALDO_USER`/`_PASSWORD` y no tiene `POSTGRES_PASSWORD`; ningún servicio con `restart` distinto de `"no"` tiene `POSTGRES_PASSWORD`; ningún archivo de `infra/` contiene `--enable-row-security` (visto en rojo con una copia de `respaldar.sh` que lo agrega, L-013); la web no está en ninguna red con `db` ni `redis`, Caddy tiene su IP fija en `aplicacion` y `FORWARDED_ALLOW_IPS` coincide. Actualizar `infra/.env.example` y sumar las variables nuevas al README en el texto que ya existe (la tabla completa es del 2c). Escenarios: `respaldos-de-la-base` › Credenciales y opciones del servicio; `entorno-de-ejecucion` › La API conecta como la app (la parte de Compose); › La web intenta conectar a la base (la parte estática). Lecciones: L-007, L-013.
+  - Hecho 15/10/2026: `interna` partida en `datos` (db, redis, migraciones, api, worker, respaldos) y
+    `aplicacion` (api, web, caddy con IP fija); `migraciones` corre `roles antes && alembic upgrade head
+    && roles despues`; `api`/`worker` con `POSTGRES_APP_*`; `respaldos` con `PGUSER`/`PGPASSWORD` desde
+    `POSTGRES_RESPALDO_*`. `infra/.env.example` y una línea del README actualizados. 18 tests nuevos/
+    modificados en `tests/infra/test_compose.py` (incluye el rojo L-013 con una copia de `respaldar.sh`)
+    y 3 en `tests/infra/test_logs_y_proxy.py` (red `aplicacion` en vez de `interna`, hallados al correr
+    la suite completa, no sólo el archivo nombrado en la tarea). `ningún servicio permanente tiene
+    POSTGRES_PASSWORD` se verificó excluyendo `db` (el rol de arranque mismo, lo crea la imagen) y
+    `migraciones` (restart "no"): no está escrito así en D1 pero es la lectura consistente con la
+    realidad, anotado como juicio en el informe. `docker compose config --quiet` validado con un entorno
+    completo (real, no sólo el parser YAML). No se corrió `humo.sh` (pedido explícito de Juani).
 
 ## 3. Tablas mínimas y Row-Level Security
 

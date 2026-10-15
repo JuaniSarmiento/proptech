@@ -40,14 +40,18 @@ def test_db_api_web_migraciones_sin_ports() -> None:
         assert "ports" not in servicios[nombre], f"{nombre} tiene ports publicados"
 
 
-def test_db_solo_en_red_interna_y_es_internal() -> None:
+def test_db_solo_en_red_datos_y_es_internal() -> None:
+    """D10 (cambio 2a): `interna` se partió en `datos` (db, redis, migraciones,
+    api, worker, respaldos) y `aplicacion` (api, web, caddy)."""
     datos = _compose()
     redes_db = datos["services"]["db"].get("networks")
-    assert redes_db == ["interna"] or redes_db == {"interna": None} or list(redes_db) == ["interna"]
-    assert datos["networks"]["interna"].get("internal") is True
+    assert list(redes_db) == ["datos"], redes_db
+    assert datos["networks"]["datos"].get("internal") is True
 
 
-def test_migraciones_usa_la_imagen_de_api_con_comando_alembic_upgrade_head() -> None:
+def test_migraciones_corre_roles_antes_alembic_y_roles_despues_en_orden() -> None:
+    """D1, D2 (cambio 2a, tarea 2.3): el paso de roles antes y después de
+    Alembic, en ese orden, con `&&` (si uno falla, no sigue el siguiente)."""
     servicios = _compose()["services"]
     api = servicios["api"]
     migraciones = servicios["migraciones"]
@@ -56,9 +60,14 @@ def test_migraciones_usa_la_imagen_de_api_con_comando_alembic_upgrade_head() -> 
     )
     comando = migraciones.get("command")
     comando_texto = " ".join(comando) if isinstance(comando, list) else str(comando)
-    assert "alembic" in comando_texto
-    assert "upgrade" in comando_texto
-    assert "head" in comando_texto
+    pos_antes = comando_texto.find("proptech_core.compartido.roles antes")
+    pos_alembic = comando_texto.find("alembic upgrade head")
+    pos_despues = comando_texto.find("proptech_core.compartido.roles despues")
+    assert pos_antes != -1, comando_texto
+    assert pos_alembic != -1, comando_texto
+    assert pos_despues != -1, comando_texto
+    assert pos_antes < pos_alembic < pos_despues, comando_texto
+    assert "&&" in comando_texto, "si un paso falla, el siguiente no debe correr"
     assert migraciones.get("restart") == "no"
 
 
@@ -136,12 +145,12 @@ def test_redis_imagen_8_10_2_trixie() -> None:
     assert servicios["redis"]["image"] == "redis:8.10.2-trixie"
 
 
-def test_redis_solo_en_red_interna_sin_ports() -> None:
+def test_redis_solo_en_red_datos_sin_ports() -> None:
     datos = _compose()
     redis = datos["services"]["redis"]
     assert "ports" not in redis, "redis no debe publicar puertos hacia el host"
     redes = redis.get("networks")
-    assert redes == ["interna"] or redes == {"interna": None} or list(redes) == ["interna"], redes
+    assert list(redes) == ["datos"], redes
 
 
 def test_redis_volumen_con_nombre_datos_redis_en_slash_data() -> None:
@@ -206,12 +215,12 @@ def test_worker_sin_ports() -> None:
     assert "ports" not in worker, "worker no debe publicar puertos hacia el host"
 
 
-def test_worker_en_red_interna_y_en_salida_worker_sin_internal() -> None:
+def test_worker_en_red_datos_y_en_salida_worker_sin_internal() -> None:
     datos = _compose()
     worker = datos["services"]["worker"]
     redes = worker.get("networks")
     nombres_redes = set(redes)
-    assert nombres_redes == {"interna", "salida_worker"}, nombres_redes
+    assert nombres_redes == {"datos", "salida_worker"}, nombres_redes
 
     assert "salida_worker" in datos["networks"], "falta declarar la red salida_worker"
     salida_worker = datos["networks"]["salida_worker"] or {}
@@ -252,7 +261,11 @@ def test_worker_monta_config_de_solo_lectura_y_recibe_parametros_y_redis() -> No
     assert entorno.get("REDIS_HOST")
     assert entorno.get("REDIS_PORT")
     assert "REDIS_PASSWORD:?" in str(entorno.get("REDIS_PASSWORD", "")).replace(" ", "")
-    assert "POSTGRES_PASSWORD:?" in str(entorno.get("POSTGRES_PASSWORD", "")).replace(" ", "")
+    # D1, D3 (tarea 2.3): el worker usa el rol de la app, no el de arranque.
+    assert "POSTGRES_APP_PASSWORD:?" in str(entorno.get("POSTGRES_APP_PASSWORD", "")).replace(
+        " ", ""
+    )
+    assert "POSTGRES_PASSWORD" not in entorno
 
 
 def test_worker_tiene_ancla_de_rotacion_de_logs() -> None:
@@ -270,13 +283,13 @@ def test_respaldos_imagen_igual_a_la_de_db() -> None:
     assert servicios["respaldos"]["image"] == servicios["db"]["image"]
 
 
-def test_respaldos_solo_en_red_interna_y_sin_ports() -> None:
+def test_respaldos_solo_en_red_datos_y_sin_ports() -> None:
     servicios = _compose()["services"]
     respaldos = servicios["respaldos"]
     assert "ports" not in respaldos, "respaldos no debe publicar puertos hacia el host"
     redes = respaldos.get("networks")
     nombres_redes = set(redes)
-    assert nombres_redes == {"interna"}, nombres_redes
+    assert nombres_redes == {"datos"}, nombres_redes
 
 
 def test_respaldos_usuario_desde_proptech_uid_gid_con_obligatoriedad() -> None:
@@ -369,6 +382,12 @@ def _entorno_compose_valido() -> dict[str, str]:
         {
             "POSTGRES_USER": "proptech",
             "POSTGRES_PASSWORD": "valor-de-prueba-no-real",
+            "POSTGRES_MIGRADOR_USER": "proptech_migrador",
+            "POSTGRES_MIGRADOR_PASSWORD": "valor-de-prueba-no-real",
+            "POSTGRES_APP_USER": "proptech_app",
+            "POSTGRES_APP_PASSWORD": "valor-de-prueba-no-real",
+            "POSTGRES_RESPALDO_USER": "proptech_respaldo",
+            "POSTGRES_RESPALDO_PASSWORD": "valor-de-prueba-no-real",
             "POSTGRES_DB": "proptech",
             "REDIS_PASSWORD": "valor-de-prueba-no-real",
             "PROPTECH_SITIO": "http://localhost",
@@ -438,3 +457,153 @@ def test_compose_config_falla_sin_variable_obligatoria_de_respaldos(
 
     assert resultado.returncode != 0, f"docker compose config debía fallar sin {variable_faltante}"
     assert variable_faltante in resultado.stderr, resultado.stderr
+
+
+# --- 2.3: credenciales por rol (D1, D3) ---
+
+
+def test_api_tiene_las_variables_de_la_app_y_no_las_de_otro_rol() -> None:
+    entorno = _compose()["services"]["api"]["environment"]
+    assert "POSTGRES_APP_USER:?" in str(entorno.get("POSTGRES_APP_USER", "")).replace(" ", "")
+    assert "POSTGRES_APP_PASSWORD:?" in str(entorno.get("POSTGRES_APP_PASSWORD", "")).replace(
+        " ", ""
+    )
+    for variable in (
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_MIGRADOR_PASSWORD",
+        "POSTGRES_RESPALDO_PASSWORD",
+    ):
+        assert variable not in entorno, f"la API no debería tener {variable}"
+
+
+def test_worker_tiene_las_variables_de_la_app_y_no_las_de_otro_rol() -> None:
+    entorno = _compose()["services"]["worker"]["environment"]
+    for variable in (
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_MIGRADOR_PASSWORD",
+        "POSTGRES_RESPALDO_PASSWORD",
+    ):
+        assert variable not in entorno, f"el worker no debería tener {variable}"
+
+
+def test_respaldos_usa_pguser_del_rol_de_respaldo_y_no_tiene_postgres_password() -> None:
+    respaldos = _compose()["services"]["respaldos"]
+    entorno = respaldos.get("environment", {})
+    assert "POSTGRES_RESPALDO_USER:?" in str(entorno.get("PGUSER", "")).replace(" ", "")
+    assert "POSTGRES_RESPALDO_PASSWORD:?" in str(entorno.get("PGPASSWORD", "")).replace(" ", "")
+    assert "POSTGRES_PASSWORD" not in str(entorno.get("PGPASSWORD", ""))
+    assert "POSTGRES_PASSWORD" not in entorno
+
+
+def test_migraciones_tiene_los_cuatro_pares_de_credenciales() -> None:
+    """El paso de roles (D2) necesita, con el rol de arranque, leer el nombre y
+    la contraseña que le va a dar a los otros tres."""
+    entorno = _compose()["services"]["migraciones"]["environment"]
+    for par in (
+        ("POSTGRES_USER", "POSTGRES_PASSWORD"),
+        ("POSTGRES_MIGRADOR_USER", "POSTGRES_MIGRADOR_PASSWORD"),
+        ("POSTGRES_APP_USER", "POSTGRES_APP_PASSWORD"),
+        ("POSTGRES_RESPALDO_USER", "POSTGRES_RESPALDO_PASSWORD"),
+    ):
+        for variable in par:
+            assert f"{variable}:?" in str(entorno.get(variable, "")).replace(" ", ""), variable
+
+
+def test_ningun_servicio_permanente_tiene_la_password_de_arranque() -> None:
+    """D1: "ningún servicio permanente tiene la contraseña del rol de
+    arranque". `db` queda exceptuado a propósito: ES el rol de arranque (la
+    imagen oficial lo crea con esas variables); `migraciones` también, porque
+    es de una sola corrida (`restart: "no"`), no un servicio permanente."""
+    servicios = _compose()["services"]
+    permanentes_exceptuados = {"db", "migraciones"}
+    for nombre, servicio in servicios.items():
+        if nombre in permanentes_exceptuados:
+            continue
+        if servicio.get("restart") == "no":
+            continue
+        entorno = servicio.get("environment", {}) or {}
+        assert "POSTGRES_PASSWORD" not in entorno, f"{nombre} tiene POSTGRES_PASSWORD"
+
+
+# --- 2.3: la web fuera de la red de la base (D10) ---
+
+
+def test_web_no_esta_en_ninguna_red_con_db_ni_redis() -> None:
+    datos = _compose()
+    redes_de_db = set(datos["services"]["db"].get("networks", []))
+    redes_de_redis = set(datos["services"]["redis"].get("networks", []))
+    redes_de_web = set(datos["services"]["web"].get("networks", []))
+    assert not (redes_de_web & redes_de_db), redes_de_web & redes_de_db
+    assert not (redes_de_web & redes_de_redis), redes_de_web & redes_de_redis
+
+
+def test_caddy_tiene_ip_fija_en_aplicacion_y_coincide_con_forwarded_allow_ips() -> None:
+    datos = _compose()
+    caddy_redes = datos["services"]["caddy"]["networks"]
+    assert "aplicacion" in caddy_redes, caddy_redes
+    ip_de_caddy = caddy_redes["aplicacion"]["ipv4_address"]
+    forwarded = str(_compose()["services"]["api"]["environment"]["FORWARDED_ALLOW_IPS"])
+    assert ip_de_caddy in forwarded, (ip_de_caddy, forwarded)
+    assert datos["networks"]["aplicacion"].get("internal") is True
+
+
+def test_api_esta_en_datos_y_en_aplicacion() -> None:
+    redes = set(_compose()["services"]["api"].get("networks", []))
+    assert redes == {"datos", "aplicacion"}, redes
+
+
+# --- 2.3: nunca --enable-row-security en infra/ (L-013, L-016) ---
+
+
+def test_ningun_archivo_de_infra_contiene_enable_row_security() -> None:
+    """D4 del design (lo probó el arquitecto): `pg_dump` como la app falla
+    ruidoso; con `--enable-row-security` sale vacío y en silencio. Nadie en
+    `infra/` debe agregar esa opción (sólo `proptech_respaldo`, con
+    `BYPASSRLS`, hace los volcados, y no la necesita)."""
+    for archivo in RAIZ.joinpath("infra").rglob("*"):
+        if archivo.is_file():
+            try:
+                texto = archivo.read_text(encoding="utf-8")
+            except UnicodeDecodeError, PermissionError:
+                continue
+            assert "--enable-row-security" not in texto, archivo
+
+
+def test_rojo_con_una_copia_de_respaldar_que_agrega_enable_row_security(
+    tmp_path: Path,
+) -> None:
+    """L-013: copia de `respaldar.sh` con la opción agregada a propósito, para
+    ver el chequeo estático fallar por la razón correcta antes de confiar en
+    que "no aparece" prueba algo."""
+    original = RAIZ / "infra" / "respaldos" / "respaldar.sh"
+    texto_real = original.read_text(encoding="utf-8")
+    assert "--enable-row-security" not in texto_real
+
+    texto_mutado = texto_real.replace(
+        'pg_dump --format=custom "--file=${archivo_parcial}"',
+        'pg_dump --enable-row-security --format=custom "--file=${archivo_parcial}"',
+    )
+    assert texto_mutado != texto_real, "no se encontró la línea exacta de pg_dump a mutar"
+
+    copia = tmp_path / "respaldar_mutado.sh"
+    copia.write_text(texto_mutado, encoding="utf-8")
+
+    assert "--enable-row-security" in copia.read_text(encoding="utf-8")
+    assert "--enable-row-security" not in original.read_text(encoding="utf-8")
+
+
+def test_env_example_trae_los_cuatro_pares_de_credenciales() -> None:
+    texto = (RAIZ / "infra" / ".env.example").read_text()
+    for variable in (
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_MIGRADOR_USER",
+        "POSTGRES_MIGRADOR_PASSWORD",
+        "POSTGRES_APP_USER",
+        "POSTGRES_APP_PASSWORD",
+        "POSTGRES_RESPALDO_USER",
+        "POSTGRES_RESPALDO_PASSWORD",
+    ):
+        assert f"{variable}=" in texto, f"falta {variable} en infra/.env.example"

@@ -37,25 +37,27 @@ def test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_pr
     assert "--proxy-headers" in comando, comando
 
 
-def test_red_interna_declara_una_subred() -> None:
-    interna = _compose()["networks"]["interna"]
-    subred = interna["ipam"]["config"][0]["subnet"]
+def test_red_aplicacion_declara_una_subred() -> None:
+    """D10 (cambio 2a, tarea 2.3): `interna` se partió en `datos` y
+    `aplicacion`; la subred fija (para la IP de Caddy) vive en `aplicacion`."""
+    aplicacion = _compose()["networks"]["aplicacion"]
+    subred = aplicacion["ipam"]["config"][0]["subnet"]
     # Verifica que sea una subred válida (lanza ValueError si no lo es).
     ipaddress.ip_network(subred)
 
 
-def test_caddy_tiene_direccion_fija_dentro_de_la_subred_interna() -> None:
+def test_caddy_tiene_direccion_fija_dentro_de_la_subred_aplicacion() -> None:
     datos = _compose()
-    subred = ipaddress.ip_network(datos["networks"]["interna"]["ipam"]["config"][0]["subnet"])
+    subred = ipaddress.ip_network(datos["networks"]["aplicacion"]["ipam"]["config"][0]["subnet"])
     redes_caddy = datos["services"]["caddy"]["networks"]
     assert isinstance(redes_caddy, dict), "caddy debe declarar networks como mapeo para fijar IP"
-    direccion_caddy = redes_caddy["interna"]["ipv4_address"]
+    direccion_caddy = redes_caddy["aplicacion"]["ipv4_address"]
     assert ipaddress.ip_address(direccion_caddy) in subred
 
 
 def test_api_confia_solo_en_la_direccion_fija_de_caddy() -> None:
     datos = _compose()
-    direccion_caddy = datos["services"]["caddy"]["networks"]["interna"]["ipv4_address"]
+    direccion_caddy = datos["services"]["caddy"]["networks"]["aplicacion"]["ipv4_address"]
     forwarded = datos["services"]["api"]["environment"]["FORWARDED_ALLOW_IPS"]
     assert forwarded == direccion_caddy
     assert forwarded != "*"

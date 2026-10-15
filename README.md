@@ -37,7 +37,7 @@ La estructura completa y su porqué están en la decisión D-040 de
 Requisitos: Docker con Compose (`docker compose version`).
 
 ```bash
-cp infra/.env.example infra/.env   # completar POSTGRES_PASSWORD con un valor propio
+cp infra/.env.example infra/.env   # completar las cuatro POSTGRES_*_PASSWORD con valores propios
 mkdir -p infra/datos-respaldos     # carpeta de los backups, fuera de git (D9)
 cd infra
 PROPTECH_UID=$(id -u) PROPTECH_GID=$(id -g) docker compose up --build
@@ -59,8 +59,8 @@ Después de que los servicios queden sanos:
 - `http://localhost/api/salud`: `{"estado":"ok","base":"ok","cola":"ok"}` si la base y la cola
   responden.
 
-Sólo Caddy publica puertos (80 y 443); la base, Redis, la API, la web y el servicio de respaldos
-viven en una red interna.
+Sólo Caddy publica puertos (80 y 443); la base, Redis, la API, el worker y el servicio de respaldos
+viven en redes internas sin salida (la web nunca alcanza la base ni Redis, D-051).
 
 **En Windows**: los scripts de `infra/` (incluidos `respaldar.sh`, `restaurar.sh` y los de
 `infra/ci/`) son de Bash. Corren en **WSL2** o en **Git Bash**, nunca en PowerShell ni en `cmd`.

@@ -9,7 +9,13 @@ x-logs: &logs
 
 networks:
   borde:
-  interna:
+  # D10 (cambio 2a): `interna` se parte en dos. `datos` es la única red que
+  # alcanza la base y Redis; la web nunca está en ella.
+  datos:
+    internal: true
+  # `aplicacion`: la API, la web y Caddy. La IP fija de Caddy vive acá (antes
+  # en `interna`); `FORWARDED_ALLOW_IPS` de la API apunta a esta subred.
+  aplicacion:
     internal: true
     ipam:
       config:
@@ -17,7 +23,7 @@ networks:
   # Salida a Internet sólo para el worker (M18): los proveedores de email e
   # IA de cambios posteriores la necesitan. Sin `internal`, y ningún otro
   # servicio está en ella: la base y Redis siguen alcanzables sólo desde
-  # `interna`.
+  # `datos`.
   salida_worker:
 
 volumes:
@@ -31,8 +37,11 @@ services:
     command: ["postgres", "-c", "log_line_prefix=%m [%p] %q%a "]
     restart: unless-stopped
     networks:
-      - interna
+      - datos
     environment:
+      # El rol de arranque (D1): superusuario de la imagen. Lo recibe sólo
+      # este servicio (para que la imagen bootstree el rol) y `migraciones`
+      # (de una sola corrida, D2); ningún servicio permanente lo tiene.
       POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
@@ -49,16 +58,35 @@ services:
     build:
       context: ../backend
     image: proptech-backend:local
-    command: ["alembic", "upgrade", "head"]
+    # El paso de roles (D1, D2) antes y después de Alembic: crea y repara
+    # proptech_migrador/proptech_app/proptech_respaldo con el rol de arranque,
+    # corre las migraciones como proptech_migrador y, después, deja la
+    # auditoría del rol de arranque otra vez (D9; sin efecto hasta la 6.1).
+    command:
+      - sh
+      - -c
+      - >-
+        python -m proptech_core.compartido.roles antes &&
+        alembic upgrade head &&
+        python -m proptech_core.compartido.roles despues
     restart: "no"
     networks:
-      - interna
+      - datos
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      # El rol de arranque, para el paso de roles (D2): sólo este servicio
+      # (de una sola corrida) y `db` lo tienen.
       POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
+      # Los tres roles que `roles.py` crea y repara, y con el que corre Alembic.
+      POSTGRES_MIGRADOR_USER: "${POSTGRES_MIGRADOR_USER:?falta POSTGRES_MIGRADOR_USER}"
+      POSTGRES_MIGRADOR_PASSWORD: "${POSTGRES_MIGRADOR_PASSWORD:?falta POSTGRES_MIGRADOR_PASSWORD}"
+      POSTGRES_APP_USER: "${POSTGRES_APP_USER:?falta POSTGRES_APP_USER}"
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?falta POSTGRES_APP_PASSWORD}"
+      POSTGRES_RESPALDO_USER: "${POSTGRES_RESPALDO_USER:?falta POSTGRES_RESPALDO_USER}"
+      POSTGRES_RESPALDO_PASSWORD: "${POSTGRES_RESPALDO_PASSWORD:?falta POSTGRES_RESPALDO_PASSWORD}"
     depends_on:
       db:
         condition: service_healthy
@@ -80,7 +108,7 @@ services:
       - "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
     restart: unless-stopped
     networks:
-      - interna
+      - datos
     environment:
       # Sólo para que el healthcheck (que corre dentro del contenedor) pueda
       # leer $REDIS_PASSWORD; la contraseña real que arranca redis-server ya
@@ -103,21 +131,24 @@ services:
     image: proptech-backend:local
     restart: unless-stopped
     networks:
-      - interna
+      - datos
+      - aplicacion
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
+      # El rol de la app (D1, D3): sin superusuario, sin BYPASSRLS, sin ser
+      # dueño de nada. Nunca POSTGRES_PASSWORD (la del rol de arranque).
+      POSTGRES_APP_USER: "${POSTGRES_APP_USER:?falta POSTGRES_APP_USER}"
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?falta POSTGRES_APP_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
       PROPTECH_PARAMETROS: /app/config/parametros.yaml
       # Única IP de la que la API acepta encabezados X-Forwarded-* (D17): la
-      # dirección fija de caddy en la red interna, nunca "*" ni una subred
-      # entera (si no, cualquier contenedor de la red podría mentir su IP de
-      # origen).
+      # dirección fija de Caddy en la red `aplicacion`, nunca "*" ni una
+      # subred entera (si no, cualquier contenedor de la red podría mentir
+      # su IP de origen).
       FORWARDED_ALLOW_IPS: "172.28.0.254"
     volumes:
       - ../config:/app/config:ro
@@ -140,13 +171,14 @@ services:
     command: ["arq", "proptech_worker.ajustes.AjustesDelWorker"]
     restart: unless-stopped
     networks:
-      - interna
+      - datos
       - salida_worker
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: "${POSTGRES_USER:?falta POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
+      # El rol de la app (D1, D3), el mismo que usa la API (gemelos, L-009).
+      POSTGRES_APP_USER: "${POSTGRES_APP_USER:?falta POSTGRES_APP_USER}"
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?falta POSTGRES_APP_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB:?falta POSTGRES_DB}"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -179,15 +211,17 @@ services:
     entrypoint: ["/usr/local/bin/respaldar.sh"]
     restart: unless-stopped
     networks:
-      - interna
+      - datos
     environment:
       HOME: /tmp
       # Variables estándar de libpq (no las POSTGRES_* de la imagen de
-      # Postgres): pg_dump y pg_restore las toman solas, sin flags.
+      # Postgres): pg_dump y pg_restore las toman solas, sin flags. El rol
+      # de respaldo (D1): BYPASSRLS + pg_read_all_data, sin superusuario;
+      # nunca el rol de arranque, que un servicio permanente ya no tiene.
       PGHOST: db
       PGPORT: "5432"
-      PGUSER: "${POSTGRES_USER:?falta POSTGRES_USER}"
-      PGPASSWORD: "${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}"
+      PGUSER: "${POSTGRES_RESPALDO_USER:?falta POSTGRES_RESPALDO_USER}"
+      PGPASSWORD: "${POSTGRES_RESPALDO_PASSWORD:?falta POSTGRES_RESPALDO_PASSWORD}"
       PGDATABASE: "${POSTGRES_DB:?falta POSTGRES_DB}"
       RESPALDO_INTERVALO_SEGUNDOS: "${RESPALDO_INTERVALO_SEGUNDOS:-86400}"
       RESPALDO_CONSERVAR: "${RESPALDO_CONSERVAR:-14}"
@@ -216,9 +250,11 @@ services:
     image: proptech-web:local
     restart: unless-stopped
     networks:
-      - interna
+      # D10/D-051: la web nunca alcanza `db` ni `redis`; sólo la API, por
+      # `aplicacion`.
+      - aplicacion
     environment:
-      # No es secreto (D8): el nombre del servicio en la red interna de
+      # No es secreto (D8): el nombre del servicio en la red `aplicacion` de
       # Compose, fijo.
       PROPTECH_URL_API_INTERNA: http://api:8000
     healthcheck:
@@ -236,7 +272,7 @@ services:
       - "443:443"
     networks:
       borde:
-      interna:
+      aplicacion:
         # Dirección fija (D17): es la que la API acepta en FORWARDED_ALLOW_IPS.
         ipv4_address: 172.28.0.254
     environment:
