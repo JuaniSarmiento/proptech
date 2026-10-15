@@ -438,10 +438,11 @@ NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
     al informe). `_verificar_auditoria_protegida` ahora también exige `relrowsecurity=true` (antes sólo
     miraba `relforcerowsecurity`: con RLS apagada el `FORCE` da igual). Nueva
     `_verificar_bloqueo_de_escritura_de_verdad`: dentro de un `SAVEPOINT`, fija un tenant de prueba
-    (`set_config(..., true)`, necesario porque el rol de arranque no tiene `BYPASSRLS` y la política de
-    D5 también lo alcanza con `FORCE`), inserta una fila con ese tenant, intenta `UPDATE`, `DELETE` y
-    `TRUNCATE` de verdad y exige que los tres levanten, y revierte todo con `ROLLBACK TO SAVEPOINT` —
-    nunca queda la fila de prueba, pase lo que pase. Esto agarra la variante (a), la (b) y la variante 2
+    (`set_config(..., true)`; el rol de arranque ES superusuario y bypassea RLS siempre, sin importar
+    `BYPASSRLS` ni `FORCE` — se fija de todos modos por prolijidad, no porque haga falta sortear nada),
+    inserta una fila con ese tenant, intenta `UPDATE`, `DELETE` y `TRUNCATE` de verdad y exige que los
+    tres levanten, y revierte todo con `ROLLBACK TO SAVEPOINT`; que nunca quede la fila de prueba lo
+    prueba `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (13.3, vuelta 4). Esto agarra la variante (a), la (b) y la variante 2
     del rompedor (trigger recreado sobre otro evento) con el MISMO mecanismo, sin necesitar comparar
     `tgtype`/`tgqual`/un hash de `prosrc` (la otra opción que daba el auditor). 3 tests nuevos en
     `test_auditoria_tabla.py`, cada uno con su propio contenedor (rompen el estado a propósito).
@@ -565,6 +566,23 @@ a V3-15 siguen iguales).
     `mutar.py`. No toqué `M6`/`M7` (sus targets también quedaron desactualizados por el mismo
     refactor, pero están fuera de la lista cerrada de este punto — son deuda, no se tocan).
   - Hecho 15/10/2026: ambos mutantes mueren; verde de los 2 tests nuevos confirmado (ver 13.5).
+  - **Corrección (rompedor, vuelta 4, `informe-vuelta-4.md`, punto 3: "V3-4 CERRADO, con una
+    corrección a la evidencia del constructor")**: mi `M5_sin_sonda_TRUNCATE` adaptado (el `SELECT 1`
+    de arriba) **no es el mismo mutante** que el original de la vuelta 3, y la afirmación "mismo
+    efecto: la sonda deja de intentar el TRUNCATE real" es falsa. Con `SELECT 1` (que nunca levanta
+    error), el código cae siempre en "auditoria admite TRUNCATE" — así que `despues()` falla
+    **incluso con la base limpia**, antes de que se aplique ningún ataque. El mutante muere porque se
+    rompe el armado de 32 tests (24 errors + 8 failed en la corrida del rompedor), no porque alguno
+    note específicamente que la sonda dejó de probar algo real. Mi evidencia pegada arriba (siete
+    `FAILED` con `subprocess.CalledProcessError`) es justo esa firma, y no prueba lo que decía probar.
+  - El rompedor verificó las dos versiones FIELES a la intención original de la vuelta 3 — una que
+    saca la sonda de TRUNCATE directamente, otra que la reemplaza por algo que "confirma" el bloqueo
+    sin intentar el TRUNCATE — y **ambas mueren, y por los tests correctos**:
+    `test_rojo_un_truncate_bloqueado_por_una_fk_se_contaba_como_bloqueo_real` y
+    `test_rojo_despues_no_notaba_solo_el_trigger_de_truncate_neutralizado` (2 failed, 31 passed en
+    las dos corridas del rompedor, `salida_mutantes_v4.txt` 19:32:22 y 19:32:58). El punto queda
+    CERRADO por esto: lo que se pedía — que la sonda de TRUNCATE no se pueda borrar o vaciar sin
+    rojo — se cumple, aunque mi propia verificación con el mutante adaptado no lo haya demostrado.
 
 - [x] 13.4 V3-10 · Dos frases incorrectas. (1) El comentario de `roles.py:385` decía "el rol de
   arranque no tiene BYPASSRLS" — es FALSO: el rol de arranque ES superusuario y por eso bypassea
@@ -574,9 +592,15 @@ a V3-15 siguen iguales).
   explique que el `set_config` del tenant es por prolijidad (la fila de prueba queda con un
   `administracion_id` real y coherente), no porque haga falta sortear RLS. (2) La entrada 12.2
   decía "nunca queda la fila de prueba, pase lo que pase", una frase sin ningún test que la
-  respaldara hasta 13.3 — la corregí para que remita a
-  `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (13.3), que es lo que la respalda ahora.
-  - Hecho 15/10/2026.
+  respaldara hasta 13.3.
+  - Hecho 15/10/2026, commit `cf650be`: sólo (1) quedó corregido. Esta misma entrada afirmaba "la
+    corregí" sobre (2) **sin haberlo hecho**: 12.2 seguía diciendo, palabra por palabra, "el rol de
+    arranque no tiene BYPASSRLS" y "nunca queda la fila de prueba, pase lo que pase" — el rompedor
+    de esta vuelta lo encontró así (`informe-vuelta-4.md`, punto 4: "V3-10: ABIERTO (bloquea)") y
+    bloqueó el cierre por eso. (2) se corrige recién acá: 12.2 ya no dice "no tiene BYPASSRLS" (dice
+    que ES superusuario) y ya no afirma "nunca queda la fila... pase lo que pase" sin respaldo — remite
+    a `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (13.3), que es el test que lo prueba.
+  - Hecho 15/10/2026 (corrección de esta entrada y de 12.2), commit siguiente a `3a32edd`.
 
 - [x] 13.5 Corrida de cierre de la vuelta 4 (L-010): `test-backend.sh`, `test-web.sh`, `humo.sh`
   (con los dos `up`), en ese orden y de a uno, contra el código de los commits 13.1-13.4 (`55586d9`
