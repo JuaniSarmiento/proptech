@@ -290,4 +290,15 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 
 ## 10. Cierre
 
-- [ ] 10.1 **Después de la última vuelta de correcciones** (L-010), y como lo último del cambio: correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh` **en ese orden y de a uno** (D13); anotar la cantidad de tests de cada lado contra la línea de base de 1.1, con hora y commit; si el código cambia después, repetirla. Escenarios: todos (corrida final). Lecciones: L-003, L-005, L-010.
+- [x] 10.1 **Después de la última vuelta de correcciones** (L-010), y como lo último del cambio: correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh` **en ese orden y de a uno** (D13); anotar la cantidad de tests de cada lado contra la línea de base de 1.1, con hora y commit; si el código cambia después, repetirla. Escenarios: todos (corrida final). Lecciones: L-003, L-005, L-010.
+  - Hecho 15/10/2026 15:14-15:19, commit `7faadce` (el último antes de esta misma entrada; nada de
+    código cambió después de esta corrida, sólo esta línea de tasks.md): `test-backend.sh` → 833
+    passed + 1 xfailed (209s); `test-web.sh` → 16 passed; `humo.sh` → HUMO OK (confirmado dos veces, la
+    segunda con `tee` + `rg "HUMO OK"` + `${PIPESTATUS[0]}` = 0, para no depender de un `tail` que
+    pudiera cortar la línea).
+  - Contra la línea de base de la 1.1 (606 passed + 1 xfailed, commit `bc4ca9f`): **+227 tests** de
+    backend a lo largo de las tareas 2.1 a 9.1; web sin cambios (16, no era parte de este cambio);
+    humo.sh pasó de 1 paso nuevo (nombrado en 2.3) a HUMO OK con los pasos de las tareas 3.1 a 9.1
+    sumados (3d, 9b, el backup manual de dos administraciones, el chequeo de rol de la conexión).
+  - **El cambio queda acá, sin archivar y sin pushear** (pedido explícito del orquestador): lo que sigue
+    es el rompedor. No hay archivos sin commitear (`git status` limpio salvo esta misma edición).
