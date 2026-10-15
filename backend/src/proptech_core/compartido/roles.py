@@ -45,7 +45,11 @@ from proptech_core.compartido.configuracion import (
 #: Nunca se reasigna aunque exista (D9): es del rol de arranque a propósito.
 _TABLA_EXCLUIDA_DE_LA_REASIGNACION = "auditoria"
 #: El migrador nunca necesita tocarla (es bookkeeping de Alembic mismo).
-_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset({"alembic_version", "auditoria"})
+#: `accion_de_auditoria` (vuelta 2, R3): el vocabulario de D1 es sólo
+#: `SELECT` para la app, nunca los cuatro permisos del grant amplio.
+_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset(
+    {"alembic_version", "auditoria", "accion_de_auditoria"}
+)
 
 
 def _conectar(configuracion: ConfiguracionDeArranque) -> psycopg.Connection:
@@ -363,6 +367,22 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
             )
             cur.execute(
                 sql.SQL("GRANT SELECT, INSERT ON auditoria TO {app};").format(
+                    app=sql.Identifier(app.postgres_user)
+                )
+            )
+            # R3 (vuelta 2): mismo mecanismo que arriba, para el vocabulario
+            # (D1: la app sólo tiene SELECT sobre `accion_de_auditoria`).
+            # Excluirla del grant amplio de `antes()` no alcanza por sí
+            # sola: la crea el migrador, y los `ALTER DEFAULT PRIVILEGES`
+            # le dan los cuatro permisos igual, sin importar qué `GRANT`
+            # explícito haga o deje de hacer la migración.
+            cur.execute(
+                sql.SQL("REVOKE INSERT, UPDATE, DELETE ON accion_de_auditoria FROM {app};").format(
+                    app=sql.Identifier(app.postgres_user)
+                )
+            )
+            cur.execute(
+                sql.SQL("GRANT SELECT ON accion_de_auditoria TO {app};").format(
                     app=sql.Identifier(app.postgres_user)
                 )
             )

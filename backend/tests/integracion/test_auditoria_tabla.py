@@ -290,6 +290,60 @@ def test_la_app_tiene_exactamente_select_e_insert_sobre_auditoria(
     assert puede_truncate is False
 
 
+# --- Vuelta 2, R3: la app sólo tiene SELECT sobre el vocabulario (accion_de_auditoria) ---
+
+
+def test_la_app_tiene_exactamente_select_sobre_accion_de_auditoria(
+    contenedor: PostgresContainer, esquema: None
+) -> None:
+    """D1 dice "SELECT sobre accion_de_auditoria" para la app. Sin el
+    `REVOKE` de `despues()`, los `ALTER DEFAULT PRIVILEGES` de `antes()` le
+    dan los cuatro permisos (el mismo mecanismo que R3 de la vuelta 1
+    encontró para `auditoria` antes de la 6.1): con `INSERT` la app puede
+    ampliar el vocabulario de acciones sensibles; con `DELETE`, dejar una
+    acción inutilizable — denegación de servicio sobre lo que esa acción
+    hace."""
+    conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+    try:
+        with conexion.cursor() as cur:
+            cur.execute(
+                "SELECT has_table_privilege(%s, 'accion_de_auditoria', 'SELECT'), "
+                "has_table_privilege(%s, 'accion_de_auditoria', 'INSERT'), "
+                "has_table_privilege(%s, 'accion_de_auditoria', 'UPDATE'), "
+                "has_table_privilege(%s, 'accion_de_auditoria', 'DELETE')",
+                (APP_USER, APP_USER, APP_USER, APP_USER),
+            )
+            fila = cur.fetchone()
+            assert fila is not None
+            puede_select, puede_insert, puede_update, puede_delete = fila
+    finally:
+        conexion.close()
+    assert puede_select is True
+    assert puede_insert is False
+    assert puede_update is False
+    assert puede_delete is False
+
+
+@pytest.mark.parametrize(
+    "sentencia",
+    [
+        "INSERT INTO accion_de_auditoria (nombre) VALUES ('accion_inventada_por_la_app')",
+        "UPDATE accion_de_auditoria SET nombre = 'x' WHERE nombre = 'informar_pago'",
+        "DELETE FROM accion_de_auditoria WHERE nombre = 'informar_pago'",
+    ],
+)
+def test_la_app_no_puede_tocar_el_vocabulario(
+    contenedor: PostgresContainer, esquema: None, sentencia: str
+) -> None:
+    conexion = _conectar(contenedor, APP_USER, APP_PASSWORD)
+    try:
+        with conexion.cursor() as cur:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                cur.execute(sentencia)
+    finally:
+        conexion.close()
+
+
 # --- Editar o borrar como la app ---
 
 
