@@ -302,3 +302,29 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     sumados (3d, 9b, el backup manual de dos administraciones, el chequeo de rol de la conexión).
   - **El cambio queda acá, sin archivar y sin pushear** (pedido explícito del orquestador): lo que sigue
     es el rompedor. No hay archivos sin commitear (`git status` limpio salvo esta misma edición).
+
+## 11. Vuelta 2 (rompedor + auditor, 15/10/2026)
+
+Convención: igual que el resto — el test se ve fallar HOY antes del código, y el rojo queda pegado
+en el "Hecho" de cada una. Siete bloqueantes de la auditoría (`auditoria-vuelta-1.md`):
+R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con dueño: 2b o 3).
+
+- [x] 11.1 R1 · `roles antes` falla en un segundo ciclo sobre el mismo volumen: `_secuencias_de_public_del_rol` intentaba reasignar `auditoria_id_seq` (IDENTITY, ligada a la tabla), y Postgres lo rechaza. Rojo: ciclo completo `antes → upgrade head → despues → antes → despues` sobre la misma base. Corrección: excluir con `pg_depend` (`deptype IN ('a','i')`) las secuencias ligadas a una columna. Arreglar el test de la línea 231 (no podía dar rojo: nunca pasaba por la 0004) y sumar al humo un segundo `up` sobre el mismo volumen.
+  - Hecho 15/10/2026: rojo real confirmado sobre el código sin parchear (revertido con `git checkout`
+    momentáneo, L-013): `cannot change owner of sequence "auditoria_id_seq"`, mismo mensaje exacto
+    que el rompedor. `_secuencias_de_public_del_rol` ahora excluye con `pg_depend`
+    (`deptype IN ('a','i')`) cualquier secuencia ligada a una columna, no sólo la de `auditoria`
+    (pedido explícito del auditor: "no alcanza con excluir sólo la de auditoria"). Test nuevo
+    `test_un_segundo_ciclo_completo_sobre_el_mismo_volumen_no_falla` en `test_roles.py`, con el ciclo
+    exacto que pidió el auditor. El test viejo de la línea 231 queda con un docstring que aclara su
+    alcance real (volumen 1d, sin la 0004 de por medio — nunca iba a ver esto) en vez de dar a entender
+    que cubría el reinicio real. Humo: paso `(1b)`, `compose down` (sin `-v`, conserva volúmenes) +
+    `compose up -d --wait` de nuevo; shellcheck limpio; `HUMO OK` con la línea
+    "el segundo up terminó con exit 0" confirmada en la salida real.
+- [ ] 11.2 R2 · `fn_auditoria_bloqueada` queda del migrador: puede reemplazarla, borrarla (`DROP ... CASCADE`) o escalar a superusuario. Rojo: test de catálogo, `proowner` de toda función usada por un trigger de `auditoria` tiene que ser el rol de arranque. Corrección: `despues()` también transfiere la función (`ALTER FUNCTION ... OWNER TO`) y le fija `SET search_path`.
+- [ ] 11.3 R3 · La app tiene `INSERT`/`UPDATE`/`DELETE` sobre `accion_de_auditoria` (sólo debería `SELECT`, D1): puede ampliar o vaciar el vocabulario de acciones sensibles. Rojo: como `proptech_app`, los tres se niegan (hoy pasan). Corrección: `REVOKE` explícito en `despues()` (no alcanza con excluirla del grant de `antes()`: los `DEFAULT PRIVILEGES` se los dan igual).
+- [ ] 11.4 R4 · `despues()` no verifica que el trigger y el `FORCE` sigan activos, como promete D2. Rojo: borrar un trigger (o `NO FORCE`) como arranque y correr `despues()` — hoy sale 0. Corrección: verificar al final (incluido el dueño de la función, R2) y salir con 1 nombrando qué falta si algo no está.
+- [ ] 11.5 R7 · Un `SET` de sesión (sin `LOCAL`) del tenant contagia al pedido siguiente que abre sin tenant. Rojo: pool de 1 conexión, `SET` de sesión con el tenant de A, después una sesión sin tenant — hoy ve las filas de A. Corrección: un evento de reset/checkin del pool que limpie `app.administracion_id` como cinturón, además del `SET LOCAL`.
+- [ ] 11.6 R8 · Nada impide que `proptech_app` quede con el mismo nombre o contraseña que otro rol (incluido el de arranque): la API podría arrancar con `BYPASSRLS` o con la contraseña del superusuario sin que nadie lo note. Rojo: `antes()` con dos `*_USER` iguales, o dos contraseñas iguales de las cuatro — hoy sale 0. Corrección: `antes()` rechaza nombres o contraseñas repetidas (sin mostrar valores); la API y el worker no arrancan si su propia conexión tiene `rolsuper`, `rolbypassrls` o es dueña de alguna tabla. `infra/.env.example` con placeholders distintos.
+- [ ] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.
+- [ ] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.

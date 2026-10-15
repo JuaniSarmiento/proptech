@@ -137,8 +137,25 @@ def _tablas_de_public_del_rol(cur: psycopg.Cursor, rol: str) -> list[str]:
 
 
 def _secuencias_de_public_del_rol(cur: psycopg.Cursor, rol: str) -> list[str]:
+    """Nunca las secuencias LIGADAS a una columna (`GENERATED ... AS IDENTITY`,
+    o el viejo `serial`): `pg_depend` con `deptype IN ('a', 'i')` (vuelta 2,
+    R1, cambio 2a). `ALTER TABLE ... OWNER TO` ya les cambia el dueño junto
+    con la tabla, y `ALTER SEQUENCE ... OWNER TO` sobre una de éstas falla
+    con "cannot change owner of sequence ...: Sequence is linked to table",
+    sin importar quién sea el rol destino — es justo lo que le pasó a
+    `auditoria_id_seq` (identity) al correr `antes()` después de la 6.1: el
+    rol de arranque es su dueño (D9), y antes esta función la devolvía igual
+    para que `_reasignar_duenio_de_lo_existente` intentara reasignarla."""
     cur.execute(
-        "SELECT sequencename FROM pg_sequences WHERE schemaname = 'public' AND sequenceowner = %s",
+        "SELECT s.relname FROM pg_class s "
+        "JOIN pg_namespace n ON n.oid = s.relnamespace "
+        "WHERE s.relkind = 'S' AND n.nspname = 'public' "
+        "AND s.relowner = (SELECT oid FROM pg_roles WHERE rolname = %s) "
+        "AND NOT EXISTS ("
+        "  SELECT 1 FROM pg_depend d "
+        "  WHERE d.objid = s.oid AND d.classid = 'pg_class'::regclass "
+        "  AND d.deptype IN ('a', 'i')"
+        ")",
         (rol,),
     )
     return [fila[0] for fila in cur.fetchall()]

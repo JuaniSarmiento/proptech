@@ -97,6 +97,16 @@ echo "$respuesta_salud" | grep -q '"estado":"ok"'
 echo "$respuesta_salud" | grep -q '"base":"ok"'
 echo "$respuesta_salud" | grep -q '"cola":"ok"'
 
+echo "--- (1b) segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no tiene que fallar ---"
+# `down` sin `-v`: conserva los volúmenes (datos_postgres, datos_redis), como
+# un reinicio real del servidor. Antes de R1, `migraciones` salía con 1 en
+# esta segunda corrida (la secuencia IDENTITY de auditoria, ya del rol de
+# arranque, no se puede reasignar) y api/worker/respaldos/caddy, que esperan
+# `service_completed_successfully`, nunca arrancaban.
+compose down
+compose up -d --wait
+echo "ok: el segundo up terminó con exit 0 y el stack quedó sano de nuevo"
+
 echo "--- (2) sólo caddy publica puertos ---"
 estado_ps=$(compose ps --format json)
 servicios_con_puertos=$(echo "$estado_ps" | python3 -c "

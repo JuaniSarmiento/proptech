@@ -231,6 +231,13 @@ def test_atributos_de_cada_rol_y_permisos_sobre_lo_existente(
 def test_segunda_corrida_termina_sin_error_y_con_los_mismos_atributos(
     contenedor: PostgresContainer,
 ) -> None:
+    """Escenario "Volumen anterior a este cambio" (D2, tarea 2.2): un volumen
+    del 1d, sin la 0004 (ni ninguna migración real) entre las dos corridas —
+    `auditoria` no existe todavía, así que esto por sí solo NUNCA iba a ver
+    R1 (vuelta 1 del rompedor/auditor: `auditoria_id_seq`, ligada a la tabla,
+    sólo existe después de esa migración). El ciclo completo con la 0004 de
+    por medio es `test_un_segundo_ciclo_completo_sobre_el_mismo_volumen_no_falla`,
+    más abajo."""
     _crear_alembic_version_y_trabajos_hechos_como_arranque(contenedor)
     _correr_antes(contenedor)
 
@@ -427,3 +434,89 @@ def test_despues_no_falla_aunque_auditoria_no_exista_todavia(
         text=True,
     )
     assert resultado.returncode == 0, resultado.stderr
+
+
+# --- Vuelta 2, R1: un segundo ciclo completo sobre la MISMA base no rompe ---
+#
+# `test_segunda_corrida_termina_sin_error_y_con_los_mismos_atributos` (arriba)
+# corre `antes()` dos veces sin que la 0004 exista nunca entre medio (sólo
+# fabrica `alembic_version`/`trabajos_hechos` a mano): por eso seguía en
+# verde con R1 abierto (hallazgo real del auditor, vuelta 1). Este test corre
+# el ciclo REAL — `antes` → `alembic upgrade head` (0001 a 0004, como
+# migrador) → `despues` → `antes` otra vez → `despues` otra vez — sobre el
+# MISMO volumen, como un reinicio real del servidor (D2, escenario "Arranque
+# repetido"). `auditoria_id_seq` (IDENTITY) queda del rol de arranque desde
+# el primer `despues()`; sin el filtro de R1, el segundo `antes()` intenta
+# `ALTER SEQUENCE auditoria_id_seq OWNER TO proptech_migrador` y Postgres lo
+# rechaza porque está ligada a la tabla.
+
+
+def _entorno_de_alembic(contenedor: PostgresContainer) -> dict[str, str]:
+    entorno = dict(_entorno_de_arranque(contenedor))
+    for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
+        entorno.pop(variable, None)
+    return entorno
+
+
+def _correr_alembic_upgrade_head(contenedor: PostgresContainer) -> None:
+    subprocess.run(
+        ["uv", "run", "alembic", "upgrade", "head"],
+        cwd=RAIZ_BACKEND,
+        env=_entorno_de_alembic(contenedor),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _correr_despues(contenedor: PostgresContainer) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+        cwd=RAIZ_BACKEND,
+        env=_entorno_de_arranque(contenedor),
+        capture_output=True,
+        text=True,
+    )
+
+
+def _correr_antes_sin_check(contenedor: PostgresContainer) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ_BACKEND,
+        env=_entorno_de_arranque(contenedor),
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_un_segundo_ciclo_completo_sobre_el_mismo_volumen_no_falla(
+    contenedor: PostgresContainer,
+) -> None:
+    resultado_antes_1 = _correr_antes_sin_check(contenedor)
+    assert resultado_antes_1.returncode == 0, resultado_antes_1.stderr
+
+    _correr_alembic_upgrade_head(contenedor)
+
+    resultado_despues_1 = _correr_despues(contenedor)
+    assert resultado_despues_1.returncode == 0, resultado_despues_1.stderr
+
+    # El "reinicio": exactamente lo que vio fallar el rompedor (R1, vuelta 1).
+    resultado_antes_2 = _correr_antes_sin_check(contenedor)
+    assert resultado_antes_2.returncode == 0, (
+        f"stdout={resultado_antes_2.stdout!r} stderr={resultado_antes_2.stderr!r}"
+    )
+    assert "auditoria_id_seq" not in resultado_antes_2.stderr
+
+    resultado_despues_2 = _correr_despues(contenedor)
+    assert resultado_despues_2.returncode == 0, resultado_despues_2.stderr
+
+    with _conectar_como(contenedor, contenedor.username, contenedor.password) as conexion:
+        with conexion.cursor() as cur:
+            assert _dueno_de(cur, "auditoria") == contenedor.username
+            cur.execute(
+                "SELECT sequenceowner FROM pg_sequences "
+                "WHERE schemaname = 'public' AND sequencename = 'auditoria_id_seq'"
+            )
+            fila = cur.fetchone()
+            assert fila is not None
+            assert fila[0] == contenedor.username
