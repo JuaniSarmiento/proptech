@@ -154,7 +154,37 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 
 ## 6. Auditoría
 
-- [ ] 6.1 Migración `0004_auditoria` y paso de roles `despues` (D2, D9) en `tests/integracion/test_auditoria_tabla.py`: después del arranque completo, el dueño de `auditoria` es el rol de arranque; como `proptech_app`, `UPDATE`, `DELETE` y `TRUNCATE` fallan; como `proptech_migrador`, `UPDATE`, `DELETE`, `TRUNCATE`, `ALTER TABLE auditoria DISABLE TRIGGER ALL` y `ALTER TABLE auditoria NO FORCE ROW LEVEL SECURITY` fallan por no ser dueño, y el trigger y el `FORCE` siguen activos (visto en rojo sin el paso `despues`, con el migrador como dueño, sobre una copia, L-013); como el rol de arranque, `UPDATE`, `DELETE` y `TRUNCATE` fallan por el trigger; una acción que no está en `accion_de_auditoria` falla por la FK; `accion_de_auditoria` coincide con `Accion`; con el tenant de A no aparece ninguna fila de B; `downgrade` (con el rol de arranque) y `upgrade` vuelven. Escenarios: `auditoria-de-acciones` › Editar o borrar como la app; › Editar, borrar o desactivar el bloqueo como el migrador; › Editar o borrar como el dueño; › Dueño de la tabla después de las migraciones; › Acción fuera de la lista; › Auditoría de otra administración. Lecciones: L-013, L-016.
+- [x] 6.1 Migración `0004_auditoria` y paso de roles `despues` (D2, D9) en `tests/integracion/test_auditoria_tabla.py`: después del arranque completo, el dueño de `auditoria` es el rol de arranque; como `proptech_app`, `UPDATE`, `DELETE` y `TRUNCATE` fallan; como `proptech_migrador`, `UPDATE`, `DELETE`, `TRUNCATE`, `ALTER TABLE auditoria DISABLE TRIGGER ALL` y `ALTER TABLE auditoria NO FORCE ROW LEVEL SECURITY` fallan por no ser dueño, y el trigger y el `FORCE` siguen activos (visto en rojo sin el paso `despues`, con el migrador como dueño, sobre una copia, L-013); como el rol de arranque, `UPDATE`, `DELETE` y `TRUNCATE` fallan por el trigger; una acción que no está en `accion_de_auditoria` falla por la FK; `accion_de_auditoria` coincide con `Accion`; con el tenant de A no aparece ninguna fila de B; `downgrade` (con el rol de arranque) y `upgrade` vuelven. Escenarios: `auditoria-de-acciones` › Editar o borrar como la app; › Editar, borrar o desactivar el bloqueo como el migrador; › Editar o borrar como el dueño; › Dueño de la tabla después de las migraciones; › Acción fuera de la lista; › Auditoría de otra administración. Lecciones: L-013, L-016.
+  - Hecho 15/10/2026: migración `0004_auditoria.py` (`accion_de_auditoria`, una fila por `Accion`;
+    `auditoria` aislada con `aislar_por_administracion("auditoria", permisos="SELECT, INSERT")`, FK de
+    `accion`, trigger `BEFORE UPDATE OR DELETE`/`BEFORE TRUNCATE` que levanta para cualquier rol).
+    `ayudas_rls.aislar_por_administracion` suma el parámetro `permisos` (antes siempre
+    `SELECT, INSERT, UPDATE, DELETE`), documentando que por sí solo no alcanza: el
+    `ALTER DEFAULT PRIVILEGES` de `antes()` de todos modos le regala a la app `UPDATE`/`DELETE` sobre
+    cualquier tabla nueva del migrador. `roles.despues()` deja de ser no-op: transfiere `auditoria` al
+    rol de arranque y hace el `REVOKE UPDATE, DELETE, TRUNCATE` + `GRANT SELECT, INSERT` explícito
+    (pedido de Juani: "que haya un test que demuestre que `proptech_app` NO tiene UPDATE, DELETE ni
+    TRUNCATE... aunque las DEFAULT PRIVILEGES se los den por default").
+  - **El rojo pedido, real**: `test_rojo_sin_despues_el_migrador_desarma_la_auditoria_y_la_app_tiene_de_mas`
+    corre el ciclo completo SIN `despues()` (contenedor propio, L-013) y muestra, por catálogo
+    (`has_table_privilege`, no por DML — ver hallazgo abajo): `proptech_app` con `UPDATE`/`DELETE` en
+    `True` (el sobre-otorgamiento real) y `TRUNCATE` en `False` (nunca estuvo en la lista de
+    `ALTER DEFAULT PRIVILEGES`, así que no hacía falta revocarlo para eso, aunque `despues()` lo revoca
+    igual por prolijidad). Con el `REVOKE` de `despues()` puesto, `test_la_app_tiene_exactamente_select_e_insert_sobre_auditoria`
+    confirma `{SELECT: True, INSERT: True, UPDATE: False, DELETE: False, TRUNCATE: False}`.
+  - **Hallazgo real (no estaba anotado)**: un DML real (`UPDATE`/`DELETE` de prueba) no sirve para ver
+    este rojo, porque el trigger de auditoría sigue bloqueando aunque el privilegio esté de más —
+    enmascara el sobre-otorgamiento. Hubo que verificar por `has_table_privilege` directamente (L-016).
+    Relacionado: `ALTER TABLE auditoria DISABLE TRIGGER ALL` falla con "is a system trigger" (exige
+    superusuario por el trigger interno de la FK de `accion`) incluso siendo dueño — así que el rojo que
+    prueba "el dueño SÍ puede desactivar el trigger" nombra el trigger propio, nunca `ALL`; el test
+    verde ("el migrador NO puede, por no ser dueño") sí usa `ALL` porque ahí "must be owner" llega
+    antes de que Postgres mire qué triggers hay, y falla por la razón correcta.
+  - `downgrade` de 0004 confirmado que el migrador solo no puede (intento real, falla) y que con el rol
+    de arranque devolviéndole la tabla primero, sí (D9/D11, Migration Plan del design.md). 18 tests en
+    `test_auditoria_tabla.py`. Suite completa: 809 passed + 1 xfailed; web: 16 passed; `humo.sh` (toca
+    migraciones y `roles.py`): HUMO OK, con `revisión en uso=0004 revisión restaurada=0004` en el stack
+    real.
 - [ ] 6.2 Helper en `acceso.aplicacion` y misma transacción (D9) en `tests/integracion/test_auditoria_transaccion.py` y `tests/unitarios/test_auditoria_detalle.py`: asignar un edificio deja exactamente una fila con la persona, `invitar_usuarios_y_asignar_edificios`, el complejo y el `request_id` del pedido; una falla forzada después del `registrar` revierte la asignación y la fila; una fila rechazada por la base revierte la asignación; `registrar` fuera de una transacción es un error; un detalle con una clave no permitida se rechaza antes de escribir y el valor (un marcador) no aparece en el error; el test del registro de `@accion_sensible` recorre todos los casos de uso marcados y exige una fila por cada uno, y se lo ve en rojo con un caso de uso marcado que no registra (sobre una copia, L-013). Escenarios: `auditoria-de-acciones` › Acción confirmada; › Acción revertida; › Registro que no se puede escribir; › Toda acción sensible registrada; › Clave no permitida en el detalle. Lecciones: L-007, L-011, L-013.
 
 ## 7. El worker con tenant

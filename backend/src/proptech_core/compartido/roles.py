@@ -16,11 +16,12 @@ arranque a propósito, D9) y otorga a la app los permisos de D1 sobre lo que
 ya existe — los `DEFAULT PRIVILEGES` (que también fija) sólo cubren lo que se
 cree de ahora en más, nunca lo que ya estaba ahí.
 
-`despues()` corre DESPUÉS de Alembic (D2): antes de la tarea 6.1, no hace
-nada — su trabajo (transferir `auditoria` al rol de arranque y verificar que
-el trigger y el `FORCE` sigan activos) no tiene sentido hasta que esa tabla
-exista. El CLI ya expone el subcomando para que `infra/compose.yaml` (tarea
-2.3) pueda llamarlo desde ya sin tener que cambiar cuando la 6.1 lo complete.
+`despues()` corre DESPUÉS de Alembic (D2, D9, tarea 6.1): transfiere
+`auditoria` (creada por el migrador en la migración `0004`) de vuelta al rol
+de arranque, y le revoca a la app el `UPDATE`/`DELETE`/`TRUNCATE` que
+`ALTER DEFAULT PRIVILEGES` le regaló por ser una tabla nueva del migrador,
+dejándole sólo `SELECT, INSERT` (D9). Antes de la 6.1 (la tabla todavía no
+existe), no hace nada.
 
 CLI: `python -m proptech_core.compartido.roles antes|despues`.
 """
@@ -261,17 +262,66 @@ def antes(configuracion: ConfiguracionDeArranque) -> None:
         conexion.close()
 
 
-def despues(configuracion: ConfiguracionDeArranque) -> None:
-    """El paso `despues` de D2 (D9): hoy no hace nada.
+def _existe_tabla(cur: psycopg.Cursor, tabla: str) -> bool:
+    cur.execute("SELECT to_regclass(%s) IS NOT NULL", (tabla,))
+    fila = cur.fetchone()
+    return fila is not None and bool(fila[0])
 
-    Antes de la tarea 6.1 (la migración `0004_auditoria`), la tabla
-    `auditoria` no existe, así que no hay nada que transferirle de vuelta al
-    rol de arranque ni ningún trigger/`FORCE` que verificar. El subcomando
-    existe desde ya para que `infra/compose.yaml` (tarea 2.3) pueda llamarlo
-    sin que el cableado de Compose tenga que cambiar cuando la 6.1 le dé
-    contenido real a esta función.
+
+def despues(configuracion: ConfiguracionDeArranque) -> None:
+    """El paso `despues` de D2 (D9): transfiere `auditoria` de vuelta al rol
+    de arranque (la crea el migrador en la migración `0004`, de paso) y ajusta
+    los permisos de la app sobre ella.
+
+    El migrador nunca queda como dueño de `auditoria`: así no puede
+    `DISABLE TRIGGER` ni `NO FORCE ROW LEVEL SECURITY` (requieren ser dueño),
+    aunque el trigger de todos modos bloquea `UPDATE`/`DELETE`/`TRUNCATE`
+    para cualquier rol, dueño incluido.
+
+    El `REVOKE` explícito es necesario, no decorativo: `ALTER DEFAULT
+    PRIVILEGES` (que fija `antes()`) le da a `proptech_app`
+    `SELECT, INSERT, UPDATE, DELETE` sobre *cualquier* tabla nueva del
+    migrador — incluida `auditoria` — sin importar qué `GRANT` explícito
+    haga la migración (`ayudas_rls.aislar_por_administracion` ahí sólo pide
+    `SELECT, INSERT`). D9 exige que la app NO tenga `UPDATE`/`DELETE`/`TRUNCATE`
+    sobre `auditoria`; sin este `REVOKE`, los tiene igual, de regalo.
+
+    Antes de la tarea 6.1 (migración `0004_auditoria` todavía no corrida),
+    `auditoria` no existe: no hay nada que hacer, y se vuelve sin error (así
+    `infra/compose.yaml`, cableado desde la tarea 2.3, no tiene que cambiar).
     """
-    del configuracion  # todavía sin uso: documentado arriba.
+    app = ConfiguracionDeAppSoloPostgres()
+
+    conexion = _conectar(configuracion)
+    try:
+        with conexion.cursor() as cur:
+            if not _existe_tabla(cur, "auditoria"):
+                return
+
+            cur.execute(
+                sql.SQL("ALTER TABLE auditoria OWNER TO {arranque};").format(
+                    arranque=sql.Identifier(configuracion.postgres_user)
+                )
+            )
+            # Orden a propósito: primero el REVOKE amplio (deshace lo que
+            # ALTER DEFAULT PRIVILEGES regaló), después el GRANT angosto de
+            # D9 — nunca al revés, para no depender de qué vino primero.
+            cur.execute(
+                sql.SQL("REVOKE UPDATE, DELETE, TRUNCATE ON auditoria FROM {app};").format(
+                    app=sql.Identifier(app.postgres_user)
+                )
+            )
+            cur.execute(
+                sql.SQL("GRANT SELECT, INSERT ON auditoria TO {app};").format(
+                    app=sql.Identifier(app.postgres_user)
+                )
+            )
+        conexion.commit()
+    except BaseException:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
 
 
 def _main(argv: list[str]) -> int:
