@@ -153,6 +153,44 @@ def registrar_reset_del_tenant_al_devolver(engine: Engine) -> None:
             cursor.close()
 
 
+class RolDeAplicacionInseguro(Exception):
+    """El rol con el que esta conexión corre no es seguro para un servicio
+    permanente (R8, vuelta 2): es superusuario, tiene `BYPASSRLS`, o es
+    dueño de alguna tabla. Cualquiera de los tres quiere decir que, pese a
+    las variables `POSTGRES_APP_*`, en los hechos terminó conectada como
+    otro rol — el de arranque o el de respaldo, por ejemplo, si
+    `POSTGRES_APP_USER` quedó igual a uno de esos por error (R8 también
+    pide que `roles antes` rechace esa configuración; esto es la segunda
+    barrera, del lado de quien se conecta, no de quien crea los roles)."""
+
+
+def verificar_rol_de_aplicacion_seguro(engine: Engine) -> None:
+    """La API y el worker la llaman al arrancar, antes de aceptar ningún
+    pedido o tarea (R8, vuelta 2): si no se cumple, el proceso no arranca,
+    nombrando qué atributo está mal — nunca arranca "igual" confiando en
+    que las variables de entorno dicen la verdad."""
+    with engine.connect() as conexion:
+        fila = conexion.execute(
+            text(
+                "SELECT rolsuper, rolbypassrls, "
+                "(SELECT count(*) FROM pg_tables WHERE tableowner = current_user) "
+                "FROM pg_roles WHERE rolname = current_user"
+            )
+        ).one()
+    rolsuper, rolbypassrls, tablas_propias = fila
+    problemas: list[str] = []
+    if rolsuper:
+        problemas.append("es superusuario")
+    if rolbypassrls:
+        problemas.append("tiene BYPASSRLS")
+    if tablas_propias:
+        problemas.append(f"es dueño de {tablas_propias} tabla(s)")
+    if problemas:
+        raise RolDeAplicacionInseguro(
+            "la conexión de la aplicación no es segura: " + "; ".join(problemas)
+        )
+
+
 def obtener_sesion(fabrica: sessionmaker[Session]) -> Iterator[Session]:
     """Dependencia de FastAPI: abre y cierra una sesión por request."""
     sesion = fabrica()

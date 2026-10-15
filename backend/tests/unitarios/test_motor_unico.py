@@ -37,6 +37,9 @@ def test_el_lifespan_crea_un_solo_engine_y_lo_descarta_al_cerrar() -> None:
         # evento "checkin" real del ENGINE; un `MagicMock()` no es un target
         # de evento de SQLAlchemy válido.
         patch.object(app_mod, "registrar_reset_del_tenant_al_devolver"),
+        # R8 (vuelta 2): `verificar_rol_de_aplicacion_seguro` desempaqueta
+        # una fila real de 3 columnas; un `MagicMock()` no la da.
+        patch.object(app_mod, "verificar_rol_de_aplicacion_seguro"),
     ):
         app = app_mod.crear_app()
         with TestClient(app) as cliente:
@@ -57,6 +60,7 @@ def test_diez_pedidos_a_salud_no_crean_engines_nuevos() -> None:
     with (
         patch.object(app_mod, "crear_engine", return_value=motor_falso) as espia,
         patch.object(app_mod, "registrar_reset_del_tenant_al_devolver"),
+        patch.object(app_mod, "verificar_rol_de_aplicacion_seguro"),
     ):
         app = app_mod.crear_app()
         app.dependency_overrides[salud_mod.obtener_verificador_de_base] = lambda: lambda: True

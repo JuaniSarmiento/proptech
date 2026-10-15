@@ -369,6 +369,27 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     que ya se vio con `registrar_tenant_por_administracion` en la 7.1. Se sumó el `patch.object`
     correspondiente en los tres. Suite completa: 842 passed + 1 xfailed; `humo.sh`: HUMO OK.
 
-- [ ] 11.6 R8 · Nada impide que `proptech_app` quede con el mismo nombre o contraseña que otro rol (incluido el de arranque): la API podría arrancar con `BYPASSRLS` o con la contraseña del superusuario sin que nadie lo note. Rojo: `antes()` con dos `*_USER` iguales, o dos contraseñas iguales de las cuatro — hoy sale 0. Corrección: `antes()` rechaza nombres o contraseñas repetidas (sin mostrar valores); la API y el worker no arrancan si su propia conexión tiene `rolsuper`, `rolbypassrls` o es dueña de alguna tabla. `infra/.env.example` con placeholders distintos.
+- [x] 11.6 R8 · Nada impide que `proptech_app` quede con el mismo nombre o contraseña que otro rol (incluido el de arranque): la API podría arrancar con `BYPASSRLS` o con la contraseña del superusuario sin que nadie lo note. Rojo: `antes()` con dos `*_USER` iguales, o dos contraseñas iguales de las cuatro — hoy sale 0. Corrección: `antes()` rechaza nombres o contraseñas repetidas (sin mostrar valores); la API y el worker no arrancan si su propia conexión tiene `rolsuper`, `rolbypassrls` o es dueña de alguna tabla. `infra/.env.example` con placeholders distintos.
+  - Hecho 15/10/2026: dos frentes, dos rojos reales. (1) `antes()`: rojo confirmado con
+    `git checkout` momentáneo (L-013) — con dos `*_USER` o dos `*_PASSWORD` iguales, salía 0 sin
+    mirar nada. `_verificar_los_cuatro_roles_son_distintos` nueva, corre ANTES de tocar la base (puro
+    Python, sin ida y vuelta a Postgres): nombra las DOS VARIABLES que colisionan, nunca el valor.
+    (2) `verificar_rol_de_aplicacion_seguro` nueva en `base_de_datos.py`: la API (`app.py`, dentro del
+    `try` del lifespan, para que el `finally` siga limpiando el engine si levanta) y el worker
+    (`ajustes.py.on_startup`) no arrancan si su propia conexión es superusuario, tiene `BYPASSRLS`, o
+    es dueña de alguna tabla. 4 tests de integración nuevos (`test_rol_de_aplicacion_seguro.py`): la
+    app pasa limpia; respaldo (`BYPASSRLS`), migrador (dueño de tablas) y el rol de arranque
+    (superusuario) levantan, cada uno nombrando la razón real.
+  - `infra/.env.example` traía las cuatro contraseñas iguales (el propio hallazgo del rompedor): ahora
+    cada una lleva el nombre del rol al final (`...-arranque`, `...-migrador`, `...-app`,
+    `...-respaldo`), y un test estático nuevo en `test_compose.py` exige que sigan siendo distintas.
+  - **Collateral real (tercera vez, mismo patrón)**: los tres tests que mockean `crear_engine` con
+    `MagicMock()` volvieron a romper — ahora porque `verificar_rol_de_aplicacion_seguro` desempaqueta
+    una fila de 3 columnas real, y un mock no la da (`ValueError: not enough values to unpack`). Mismo
+    `patch.object` de siempre, sumado a los dos anteriores (R7 ya había dejado uno ahí).
+  - Verificado contra el `.env` REAL de Juani (nunca leído directo, D18): `humo.sh` corrido entero dio
+    `HUMO OK`, confirmando que esas contraseñas ya eran distintas (las generó él al azar, no copió el
+    ejemplo). Suite completa: 849 passed + 1 xfailed (842 + 7); web: 16 passed.
+
 - [ ] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.
 - [ ] 11.8 Corrida de cierre de la vuelta 2 (D13, L-010): `test-backend.sh`, `test-web.sh`, `humo.sh` (con los dos `up`), en ese orden y de a uno, contra el commit final de la vuelta 2.

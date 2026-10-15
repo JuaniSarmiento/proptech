@@ -594,6 +594,27 @@ def test_rojo_con_una_copia_de_respaldar_que_agrega_enable_row_security(
     assert "--enable-row-security" not in original.read_text(encoding="utf-8")
 
 
+def test_env_example_tiene_las_cuatro_contrasenas_distintas() -> None:
+    """R8 (vuelta 2): copiar este archivo sin editar y correr `roles antes`
+    tiene que arrancar — no chocar con el rechazo nuevo de dos contraseñas
+    iguales (el archivo las traía las cuatro iguales antes de esto)."""
+    texto = (RAIZ / "infra" / ".env.example").read_text()
+    valores: dict[str, str] = {}
+    for linea in texto.splitlines():
+        for variable in (
+            "POSTGRES_PASSWORD",
+            "POSTGRES_MIGRADOR_PASSWORD",
+            "POSTGRES_APP_PASSWORD",
+            "POSTGRES_RESPALDO_PASSWORD",
+        ):
+            if linea.startswith(f"{variable}="):
+                valores[variable] = linea.split("=", 1)[1]
+    assert len(valores) == 4, f"faltan contraseñas en infra/.env.example: {valores.keys()}"
+    assert len(set(valores.values())) == 4, (
+        f"infra/.env.example tiene contraseñas repetidas: {valores}"
+    )
+
+
 def test_env_example_trae_los_cuatro_pares_de_credenciales() -> None:
     texto = (RAIZ / "infra" / ".env.example").read_text()
     for variable in (

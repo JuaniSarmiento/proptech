@@ -520,3 +520,45 @@ def test_un_segundo_ciclo_completo_sobre_el_mismo_volumen_no_falla(
             fila = cur.fetchone()
             assert fila is not None
             assert fila[0] == contenedor.username
+
+
+# --- Vuelta 2, R8: los cuatro roles (nombre y contraseña) tienen que ser distintos ---
+
+
+def test_antes_falla_si_dos_usuarios_coinciden(contenedor: PostgresContainer) -> None:
+    """Nada impedía que `POSTGRES_APP_USER` fuera igual a
+    `POSTGRES_RESPALDO_USER` (los dos cumplen el patrón `proptech_*`): la
+    app arrancaría conectada como el rol de respaldo, con `BYPASSRLS`
+    (hallazgo real del rompedor, vuelta 1, R8)."""
+    entorno = _entorno_de_arranque(contenedor)
+    entorno["POSTGRES_APP_USER"] = entorno["POSTGRES_RESPALDO_USER"]
+    resultado = subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ_BACKEND,
+        env=entorno,
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 1, resultado.stdout
+    assert "POSTGRES_APP_USER" in resultado.stderr
+    assert "POSTGRES_RESPALDO_USER" in resultado.stderr
+
+
+def test_antes_falla_si_dos_contrasenas_coinciden(contenedor: PostgresContainer) -> None:
+    """Las cuatro contraseñas iguales era justo lo que traía
+    `infra/.env.example` (hallazgo real del rompedor, vuelta 1, R8): la API
+    arrancaría con la contraseña del superusuario."""
+    entorno = _entorno_de_arranque(contenedor)
+    password_compartida = entorno["POSTGRES_APP_PASSWORD"]
+    entorno["POSTGRES_MIGRADOR_PASSWORD"] = password_compartida
+    resultado = subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ_BACKEND,
+        env=entorno,
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 1, resultado.stdout
+    assert "POSTGRES_APP_PASSWORD" in resultado.stderr
+    assert "POSTGRES_MIGRADOR_PASSWORD" in resultado.stderr
+    assert password_compartida not in resultado.stderr

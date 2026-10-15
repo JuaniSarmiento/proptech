@@ -20,6 +20,7 @@ from proptech_core.compartido.base_de_datos import (
     registrar_application_name,
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
+    verificar_rol_de_aplicacion_seguro,
 )
 from proptech_core.compartido.cola import deserializar_job, serializar_job
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
@@ -190,6 +191,9 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     # Cinturón además del SET LOCAL de arriba (R7, vuelta 2): gemelo del de
     # `proptech_api/app.py`.
     registrar_reset_del_tenant_al_devolver(engine)
+    # R8 (vuelta 2): gemelo del de `proptech_api/app.py` — el worker tampoco
+    # arranca si esta conexión terminó siendo, en los hechos, otro rol.
+    verificar_rol_de_aplicacion_seguro(engine)
     ctx["engine"] = engine
     ctx["fabrica_de_sesiones"] = fabrica
     ctx["politica"] = POLITICA_DE_PRODUCCION

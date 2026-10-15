@@ -179,6 +179,9 @@ async def test_on_startup_usa_crear_engine_con_la_configuracion_del_pool(
         patch.object(ajustes_mod, "registrar_tenant_por_administracion"),
         # R7 (vuelta 2): mismo motivo, para el evento "checkin" del engine.
         patch.object(ajustes_mod, "registrar_reset_del_tenant_al_devolver"),
+        # R8 (vuelta 2): mismo motivo, para la fila de 3 columnas que esta
+        # verificación espera desempaquetar.
+        patch.object(ajustes_mod, "verificar_rol_de_aplicacion_seguro"),
     ):
         creado.return_value = MagicMock()
         fabrica_creada.return_value = MagicMock()

@@ -235,11 +235,67 @@ def _fijar_default_privileges_para_la_app(cur: psycopg.Cursor, migrador: str, ap
     )
 
 
+class ConfiguracionDeRolesInsegura(Exception):
+    """Dos de los cuatro roles (arranque, migrador, app, respaldo) tienen el
+    mismo nombre de usuario, o dos de las cuatro tienen la misma contraseña
+    (R8, vuelta 2). El mensaje nombra las DOS VARIABLES que colisionan,
+    nunca el valor (L-007): con un mismo nombre, la app podría arrancar
+    siendo en los hechos el rol de arranque o el de respaldo (`BYPASSRLS`),
+    sin que nadie lo note hasta que algo ya pasó."""
+
+
+def _verificar_sin_colisiones(valores: dict[str, str], que: str) -> None:
+    vistas: dict[str, str] = {}
+    for variable, valor in valores.items():
+        if valor in vistas:
+            raise ConfiguracionDeRolesInsegura(
+                f"{que} repetida entre {vistas[valor]} y {variable} (D1, R8): "
+                "los cuatro roles tienen que ser distintos entre sí"
+            )
+        vistas[valor] = variable
+
+
+def _verificar_los_cuatro_roles_son_distintos(
+    arranque: ConfiguracionDeArranque,
+    migrador: ConfiguracionDelMigrador,
+    app: ConfiguracionDeAppSoloPostgres,
+    respaldo: ConfiguracionDeRespaldo,
+) -> None:
+    """Nada impide hoy que `POSTGRES_APP_USER` sea igual a
+    `POSTGRES_RESPALDO_USER` (los dos cumplen `^proptech_[a-z_]{1,40}$`), o
+    que las cuatro contraseñas sean la misma (el `.env.example` las traía
+    así): la app arrancaría conectada como otro rol — con `BYPASSRLS`, o
+    directamente con la contraseña del superusuario — sin que `antes()` lo
+    note (R8, vuelta 2)."""
+    _verificar_sin_colisiones(
+        {
+            "POSTGRES_USER": arranque.postgres_user,
+            "POSTGRES_MIGRADOR_USER": migrador.postgres_user,
+            "POSTGRES_APP_USER": app.postgres_user,
+            "POSTGRES_RESPALDO_USER": respaldo.postgres_user,
+        },
+        "nombre de usuario",
+    )
+    _verificar_sin_colisiones(
+        {
+            "POSTGRES_PASSWORD": _password_real(arranque),
+            "POSTGRES_MIGRADOR_PASSWORD": _password_real(migrador),
+            "POSTGRES_APP_PASSWORD": _password_real(app),
+            "POSTGRES_RESPALDO_PASSWORD": _password_real(respaldo),
+        },
+        "contraseña",
+    )
+
+
 def antes(configuracion: ConfiguracionDeArranque) -> None:
     """El paso `antes` de D2, en una sola transacción."""
     migrador = ConfiguracionDelMigrador()
     app = ConfiguracionDeAppSoloPostgres()
     respaldo = ConfiguracionDeRespaldo()
+
+    # Antes de tocar la base (R8, vuelta 2): un chequeo puro, sin ida y
+    # vuelta a Postgres, así falla lo más rápido posible.
+    _verificar_los_cuatro_roles_son_distintos(configuracion, migrador, app, respaldo)
 
     conexion = _conectar(configuracion)
     try:
@@ -478,6 +534,9 @@ def _main(argv: list[str]) -> int:
         print(f"error en el paso de roles: {error}", file=sys.stderr)
         return 1
     except AuditoriaNoProtegida as error:
+        print(f"error en el paso de roles: {error}", file=sys.stderr)
+        return 1
+    except ConfiguracionDeRolesInsegura as error:
         print(f"error en el paso de roles: {error}", file=sys.stderr)
         return 1
     return 0
