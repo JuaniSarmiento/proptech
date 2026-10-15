@@ -817,6 +817,97 @@ def test_rojo_despues_no_notaba_el_trigger_recreado_sobre_otro_evento() -> None:
         assert "el bloqueo no funciona" in resultado.stderr
 
 
+# --- Vuelta 4, V3-1: despues() compara el CONJUNTO de políticas contra el esperado ---
+
+
+def test_rojo_despues_no_notaba_una_politica_permisiva_extra() -> None:
+    """V3-1, vuelta 4 (recomendación B del auditor, decisión de Juani,
+    15/10/2026): una política PERMISIVA extra en `auditoria`, sólo para la
+    app, pasaba `despues()` con exit 0 — las políticas permisivas se
+    combinan con OR, así que agregar una adicional (aunque la original
+    siga intacta) abre la tabla igual. El catálogo de antes miraba
+    "¿existe la política esperada?", nunca "¿hay otras?"."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute(
+                    "CREATE POLICY ver_todo ON auditoria AS PERMISSIVE "
+                    f"FOR SELECT TO {APP_USER} USING (true)"
+                )
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "políticas" in resultado.stderr
+
+
+def test_rojo_despues_no_notaba_la_politica_alterada() -> None:
+    """V3-1, vuelta 4: `ALTER POLICY ... USING (true)` deja el nombre, el
+    conteo (1) y la forma (PERMISSIVE, un solo `USING`/`WITH CHECK`)
+    intactos — sólo cambia la CONDICIÓN. Por eso hace falta comparar
+    `qual`/`with_check` contra el valor exacto, no sólo que la política
+    "esté"."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("ALTER POLICY auditoria_por_administracion ON auditoria USING (true)")
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "USING" in resultado.stderr or "política" in resultado.stderr
+
+
 # --- downgrade (con el rol de arranque) y upgrade vuelven ---
 
 

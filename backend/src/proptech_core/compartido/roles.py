@@ -444,6 +444,65 @@ def _verificar_bloqueo_de_escritura_de_verdad(cur: psycopg.Cursor) -> list[str]:
     return faltantes
 
 
+#: V3-1, vuelta 4: exactamente lo que `ayudas_rls.aislar_por_administracion`
+#: genera para `auditoria` (columna `administracion_id`), confirmado contra
+#: Postgres real con `pg_get_expr`: la forma que Postgres devuelve normaliza
+#: los casts (`::text`) que el SQL original no escribe explícitos.
+_CONDICION_ESPERADA_DE_LA_POLITICA_DE_AUDITORIA = (
+    "(administracion_id = (NULLIF(current_setting('app.administracion_id'::text, true), "
+    "''::text))::uuid)"
+)
+
+
+def _verificar_politica_de_auditoria(cur: psycopg.Cursor) -> list[str]:
+    """V3-1, vuelta 4: compara el CONJUNTO ENTERO de políticas de
+    `auditoria` contra lo esperado — nunca una lista de cosas prohibidas,
+    que deja pasar cualquier política nueva que alguien agregue a mano
+    (una política PERMISIVA extra abre la tabla igual aunque la original
+    siga intacta: las permisivas se combinan con OR, hallazgo real del
+    rompedor en la vuelta 3). `ALTER POLICY ... USING (true)` deja el
+    nombre y la forma intactos y sólo cambia la condición: por eso la
+    comparación es por `qual`/`with_check` exactos, no sólo "¿existe una
+    política con este nombre?"."""
+    faltantes: list[str] = []
+    cur.execute(
+        "SELECT polname, polpermissive, polcmd, polroles, "
+        "pg_get_expr(polqual, polrelid), pg_get_expr(polwithcheck, polrelid) "
+        "FROM pg_policy WHERE polrelid = 'auditoria'::regclass"
+    )
+    filas = cur.fetchall()
+    if len(filas) != 1:
+        nombres = sorted(str(fila[0]) for fila in filas)
+        faltantes.append(
+            f"auditoria tiene {len(filas)} políticas ({', '.join(nombres) or 'ninguna'}), "
+            "se esperaba exactamente 1"
+        )
+        return faltantes
+
+    nombre, permisiva, comando, roles, qual, with_check = filas[0]
+    if nombre != "auditoria_por_administracion":
+        faltantes.append(
+            f"la política de auditoria se llama {nombre!r}, "
+            "se esperaba 'auditoria_por_administracion'"
+        )
+    if permisiva is not True:
+        faltantes.append("la política de auditoria no es PERMISSIVE")
+    if comando != "*":
+        faltantes.append(
+            f"la política de auditoria es sólo para el comando {comando!r}, "
+            "se esperaba todos los comandos ('*')"
+        )
+    if roles not in (None, [0]):
+        faltantes.append(f"la política de auditoria no es para PUBLIC (polroles={roles!r})")
+    if qual != _CONDICION_ESPERADA_DE_LA_POLITICA_DE_AUDITORIA:
+        faltantes.append(f"el USING de la política de auditoria no es el esperado (es: {qual!r})")
+    if with_check != _CONDICION_ESPERADA_DE_LA_POLITICA_DE_AUDITORIA:
+        faltantes.append(
+            f"el WITH CHECK de la política de auditoria no es el esperado (es: {with_check!r})"
+        )
+    return faltantes
+
+
 def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
     """Al final de `despues()` (R4, vuelta 2; V2-2, vuelta 3): el `FORCE`,
     el RLS encendido, los dos triggers (habilitados) y el dueño de sus
@@ -488,6 +547,7 @@ def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
             dueno_real = fila_dueno[0] if fila_dueno is not None else "(no existe)"
             faltantes.append(f"el dueño de la función {funcion} (es {dueno_real})")
 
+    faltantes.extend(_verificar_politica_de_auditoria(cur))
     faltantes.extend(_verificar_bloqueo_de_escritura_de_verdad(cur))
 
     if faltantes:

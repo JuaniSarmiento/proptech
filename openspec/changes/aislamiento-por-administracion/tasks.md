@@ -477,3 +477,31 @@ NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
     V2-8, V2-9) no se tocaron.
   - **El cambio queda acá, sin archivar y sin pushear**: lo que sigue es la vuelta 3 del rompedor y el
     auditor, o la tabla directo a Juani si no hay más bloqueantes.
+
+## 13. Vuelta 4 (decisión de Juani: opción B, 15/10/2026)
+
+Juani eligió la opción (B) del dictamen de la vuelta 3 (`auditoria-vuelta-3.md`, sección "Las
+opciones") el 15/10/2026: cerrar los 4 puntos que quedaban abiertos — V3-1, V3-2, V3-4 (sólo M8 y
+M5) y V3-10 — y no tocar ninguna otra deuda (R5, R6, R9, R11, V2-3, V2-5, V2-7, V3-5 a V3-9, V3-11
+a V3-15 siguen iguales).
+
+- [x] 13.1 V3-1 · `_verificar_politica_de_auditoria` (`despues()`) comparaba contra una lista de
+  cosas prohibidas, nunca contra el CONJUNTO ENTERO de políticas esperado sobre `auditoria`: una
+  política PERMISIVA extra agregada a mano (se combina con OR con la original, abriendo la tabla
+  igual aunque la original siga intacta) pasaba con exit 0, e `ALTER POLICY ... USING (true)`
+  (deja el nombre y la forma intactos, sólo cambia la condición) también. Rojo, contra `ac688b2`
+  (vía `git stash` sobre el fix, L-013):
+    ```
+    $ uv run pytest tests/integracion/test_auditoria_tabla.py::test_rojo_despues_no_notaba_una_politica_permisiva_extra tests/integracion/test_auditoria_tabla.py::test_rojo_despues_no_notaba_la_politica_alterada -v -m integracion
+    FAILED ...test_rojo_despues_no_notaba_una_politica_permisiva_extra - AssertionError: assert 0 == 1
+    FAILED ...test_rojo_despues_no_notaba_la_politica_alterada - AssertionError: assert 0 == 1
+    2 failed in 6.84s
+    ```
+  Corrección: `_verificar_politica_de_auditoria` exige EXACTAMENTE una política sobre `auditoria`,
+  con su nombre, PERMISSIVE, para todos los comandos (`polcmd = '*'`), PUBLIC (`polroles` en
+  `(None, [0])`), y `qual`/`with_check` iguales al string exacto que `pg_get_expr` devuelve para lo
+  que genera `ayudas_rls.aislar_por_administracion` (confirmado contra Postgres 18.6 real con un
+  script de diagnóstico aparte, nunca adivinado — Postgres normaliza los casts `::text`/`::uuid`
+  que el SQL original no escribe explícitos). 2 tests nuevos.
+  - Hecho 15/10/2026: verde confirmado (ver 13.5, corrida de cierre).
+
