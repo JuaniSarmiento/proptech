@@ -1,20 +1,30 @@
 """`abrir_sesion` y el `after_begin` del tenant por transacción (D4, cambio
 2a, tarea 4.1), contra PostgreSQL real, conectados como `proptech_app`.
 
-Usa el contenedor de sesión (`postgres_contenedor`) con los roles reales y
-el esquema migrado (`roles_reales`, `esquema_migrado`, `tests/conftest.py`):
-este archivo no muta roles ni esquema, sólo lee y escribe por sesiones de
-SQLAlchemy, así que no hace falta un contenedor propio (a diferencia de
-3.1/3.2, que sí tocaban roles y catálogo).
+Contenedor propio (L-006), nunca el de sesión: varios archivos de
+integración ya existentes (`test_idempotencia.py`, `test_migracion_
+trabajos_hechos.py`, `test_migraciones_y_salud_real.py`) corren su propio
+ciclo completo `upgrade head` / `downgrade base` sobre el contenedor de
+sesión, confiando en que corren ANTES de que algo dispare `esquema_migrado`
+por primera vez (ese fixture es de sesión: una vez que corre, no se repite).
+Este archivo y `test_identidad_api.py` disparaban `esquema_migrado` antes
+en el orden alfabético que esos otros archivos, así que el `downgrade base`
+de ellos corría DESPUÉS y le borraba el esquema a este archivo a mitad de
+sesión (`UndefinedTable: relation "administracion" does not exist`, visto
+corriendo la suite completa). Un contenedor propio evita depender de ese
+orden.
 
 Escenarios de `aislamiento-por-administracion`: El pedido siguiente no
 hereda; Una segunda transacción en el mismo pedido. Lecciones: L-009, L-015.
 """
 
 import asyncio
+import subprocess
+import sys
 import threading
 import uuid
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -33,10 +43,19 @@ from proptech_core.compartido.configuracion import Configuracion
 
 pytestmark = pytest.mark.integracion
 
+RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 
-def _conectar_como_migrador(
-    contenedor: PostgresContainer, usuario: str, password: str
-) -> psycopg.Connection:
+ARRANQUE_USER = "arranque_tenant"
+ARRANQUE_PASSWORD = "clave-arranque-no-real"
+MIGRADOR_USER = "proptech_migrador"
+MIGRADOR_PASSWORD = "clave-migrador-no-real"
+APP_USER = "proptech_app"
+APP_PASSWORD = "clave-app-no-real"
+RESPALDO_USER = "proptech_respaldo"
+RESPALDO_PASSWORD = "clave-respaldo-no-real"
+
+
+def _conectar(contenedor: PostgresContainer, usuario: str, password: str) -> psycopg.Connection:
     return psycopg.connect(
         host=contenedor.get_container_host_ip(),
         port=contenedor.get_exposed_port(5432),
@@ -48,14 +67,66 @@ def _conectar_como_migrador(
 
 
 @pytest.fixture(scope="module")
-def dos_administraciones_con_complejo(
-    postgres_contenedor: PostgresContainer, roles_reales: None, esquema_migrado: None
-) -> dict[str, Any]:
-    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+def contenedor() -> Iterator[PostgresContainer]:
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
 
-    conexion = _conectar_como_migrador(
-        postgres_contenedor, MIGRADOR_USER_DE_SESION, MIGRADOR_PASSWORD_DE_SESION
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as iniciado:
+        yield iniciado
+
+
+def _entorno_de_roles(contenedor: PostgresContainer) -> dict[str, str]:
+    import os
+
+    return {
+        **os.environ,
+        "POSTGRES_HOST": contenedor.get_container_host_ip(),
+        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
+        "POSTGRES_USER": contenedor.username,
+        "POSTGRES_PASSWORD": contenedor.password,
+        "POSTGRES_DB": contenedor.dbname,
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD,
+        "POSTGRES_APP_USER": APP_USER,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD,
+        "POSTGRES_RESPALDO_USER": RESPALDO_USER,
+        "POSTGRES_RESPALDO_PASSWORD": RESPALDO_PASSWORD,
+    }
+
+
+def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
+    entorno = dict(_entorno_de_roles(contenedor))
+    for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
+        entorno.pop(variable, None)
+    return entorno
+
+
+def _correr(args: list[str], entorno: dict[str, str]) -> None:
+    subprocess.run(args, cwd=RAIZ_BACKEND, env=entorno, check=True, capture_output=True, text=True)
+
+
+@pytest.fixture(scope="module")
+def esquema(contenedor: PostgresContainer) -> Iterator[None]:
+    _correr(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        _entorno_de_roles(contenedor),
     )
+    _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+    try:
+        yield
+    finally:
+        _correr(["uv", "run", "alembic", "downgrade", "base"], _alembic_env(contenedor))
+
+
+@pytest.fixture(scope="module")
+def dos_administraciones_con_complejo(
+    contenedor: PostgresContainer, esquema: None
+) -> dict[str, Any]:
+    conexion = _conectar(contenedor, MIGRADOR_USER, MIGRADOR_PASSWORD)
     datos: dict[str, Any] = {}
     with conexion.cursor() as cur:
         for clave in ("a", "b"):
@@ -77,18 +148,16 @@ def dos_administraciones_con_complejo(
 
 @pytest.fixture
 def fabrica_pool_1(
-    postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+    contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[sessionmaker[Session]]:
     """Engine con `pool_size=1` (la tarea lo pide explícito): la prueba más
     estricta de que `set_config(..., true)` no sobrevive al devolver la
     conexión al pool es reusar la MISMA conexión física entre sesiones."""
-    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
-
-    monkeypatch.setenv("POSTGRES_HOST", postgres_contenedor.get_container_host_ip())
-    monkeypatch.setenv("POSTGRES_PORT", str(postgres_contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
-    monkeypatch.setenv("POSTGRES_DB", postgres_contenedor.dbname)
+    monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
+    monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD)
+    monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
     monkeypatch.setenv("DB_POOL_SIZE", "1")
 
     engine = crear_engine(Configuracion())

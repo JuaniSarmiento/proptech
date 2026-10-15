@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from proptech_api import salud
+from proptech_api import complejos, salud
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.compartido.base_de_datos import (
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
+    registrar_tenant_por_administracion,
 )
 from proptech_core.compartido.cola import AdaptadorColaArq
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
@@ -46,6 +47,9 @@ def crear_app() -> FastAPI:
         engine = crear_engine(configuracion, connect_args={"application_name": "proptech-api"})
         fabrica = crear_fabrica_de_sesiones(engine)
         registrar_application_name(fabrica, "proptech-api")
+        # El tenant por transacción (D4, tarea 4.1): lo fija `abrir_sesion`
+        # + este evento, nunca un parámetro del pedido.
+        registrar_tenant_por_administracion(fabrica)
         app.state.engine = engine
         app.state.fabrica_de_sesiones = fabrica
         try:
@@ -66,6 +70,7 @@ def crear_app() -> FastAPI:
     # `path_format` relativo, que es lo que filtraba el valor concreto del
     # parámetro en el log (`seguimiento._ruta_de`).
     app.include_router(salud.router)
+    app.include_router(complejos.router)
     return app
 
 

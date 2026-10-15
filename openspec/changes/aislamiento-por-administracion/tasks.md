@@ -79,11 +79,34 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 - [x] 4.1 `abrir_sesion` y `after_begin` (D4) en `tests/integracion/test_tenant_por_transaccion.py`, con un engine de `pool_size=1` como `proptech_app`: una sesión con el tenant de A confirma y la siguiente, abierta sin tenant, lee cero filas de A; lo mismo después de revertir y después de una excepción; dentro de una sesión con el tenant de A, un `commit` y una segunda transacción siguen viendo A; una sesión abierta con `fabrica()` directo (sin `abrir_sesion`) lee cero filas; un tenant que no es `UUID` (un `str`) levanta antes de ejecutar SQL; la misma batería corre con la sesión usada desde `asyncio.to_thread` y desde un `threading.Thread`, y en los dos casos ve A (el tenant no depende del hilo, L-015). Escenarios: `aislamiento-por-administracion` › El pedido siguiente no hereda; › Una segunda transacción en el mismo pedido. Lecciones: L-009, L-015.
   - Hecho 15/10/2026: `abrir_sesion` y `registrar_tenant_por_administracion` en `base_de_datos.py`, gemelas
     de `registrar_application_name` (mismo patrón de `after_begin`). 8 tests en
-    `tests/integracion/test_tenant_por_transaccion.py`, reusando el contenedor de sesión + roles reales
-    + esquema migrado (no mutan roles ni catálogo, a diferencia de 3.1/3.2). RED real confirmado
-    (`git stash` sobre `base_de_datos.py`, `ImportError`, L-013) y restaurado. Suite completa: 708
-    passed + 1 xfailed. No se tocó ninguna migración ni `compose.yaml`; no se repitió `humo.sh`.
-- [ ] 4.2 Identidad y orden de dependencias (D7) en `tests/integracion/test_identidad_api.py`: sin `dependency_overrides`, los tres endpoints responden 401 y un contador de `before_cursor_execute` registra cero sentencias; con la identidad de A inyectada, un `X-Administracion-Id`, un `?administracion_id=` y un campo `administracion_id` en el cuerpo con el id de B no cambian el tenant (la respuesta no trae datos de B y `current_setting` dentro del pedido es A); dos pedidos seguidos con identidades distintas no se contagian; la batería pasa con la dependencia de sesión sincrónica y con una versión `async def` (D4: el tenant no depende de eso). Escenarios: `autorizacion-por-rol` › Pedido sin identidad; `aislamiento-por-administracion` › Encabezado o parámetro con otra administración. Lecciones: L-017.
+    `tests/integracion/test_tenant_por_transaccion.py`. RED real confirmado (`git stash` sobre
+    `base_de_datos.py`, `ImportError`, L-013) y restaurado. Al principio reusaba el contenedor de sesión
+    (`roles_reales`/`esquema_migrado`); corriendo la SUITE COMPLETA (no sólo el archivo) salió un orden
+    roto real: este archivo y `test_identidad_api.py` (4.2) disparaban `esquema_migrado` por primera vez
+    antes, en el orden alfabético, que archivos preexistentes (`test_idempotencia.py`,
+    `test_migracion_trabajos_hechos.py`, `test_migraciones_y_salud_real.py`) que corren su propio
+    `upgrade head`/`downgrade base` sobre el MISMO contenedor asumiendo que corren primero; su
+    `downgrade base`, al correr después, le borraba el esquema a este archivo a mitad de sesión
+    (`UndefinedTable: relation "administracion" does not exist`). Arreglado dándole a este archivo (y a
+    4.2) su propio contenedor, como ya hacían 3.1 y 3.2. Suite completa, dos corridas: 716
+    passed + 1 xfailed, en dos corridas (sin flaky). Al tocar `tests/conftest.py` o un router real, no
+    alcanza con correr el archivo propio: hay que correr la suite completa, L-013/L-016.
+- [x] 4.2 Identidad y orden de dependencias (D7) en `tests/integracion/test_identidad_api.py`: sin `dependency_overrides`, los tres endpoints responden 401 y un contador de `before_cursor_execute` registra cero sentencias; con la identidad de A inyectada, un `X-Administracion-Id`, un `?administracion_id=` y un campo `administracion_id` en el cuerpo con el id de B no cambian el tenant (la respuesta no trae datos de B y `current_setting` dentro del pedido es A); dos pedidos seguidos con identidades distintas no se contagian; la batería pasa con la dependencia de sesión sincrónica y con una versión `async def` (D4: el tenant no depende de eso). Escenarios: `autorizacion-por-rol` › Pedido sin identidad; `aislamiento-por-administracion` › Encabezado o parámetro con otra administración. Lecciones: L-017.
+  - Hecho 15/10/2026: `proptech_core/acceso/dominio/identidad.py` (`Identidad`, frozen); `proptech_api/
+    acceso.py` (`identidad_actual` siempre 401, `sesion_con_tenant` depende de ella explícitamente);
+    `proptech_api/complejos.py` con los tres endpoints mínimos de D7 (sin `alcanza`/`puede` todavía: eso
+    es la tarea 5.x, que va a envolver estos mismos handlers). `app.py` registra
+    `registrar_tenant_por_administracion` y el nuevo router. 8 tests en
+    `tests/integracion/test_identidad_api.py` (contenedor propio, mismo motivo que 4.1). RED real
+    confirmado (archivos movidos, `ImportError`/`ModuleNotFoundError`, L-013) y restaurado. Suite
+    completa: 716 passed + 1 xfailed (dos corridas). Web: 16 passed. `humo.sh` corrido de nuevo por tocar
+    código real de la API: HUMO OK.
+  - **SUPUESTO**: el 404 de estos endpoints hoy sólo cubre "no existe o es de otra administración" (ya
+    lo filtra RLS); "existe pero no alcanza" (D6, el alcance por edificio) todavía no está — lo agrega
+    5.2 envolviendo estos handlers. No se escribió `complejos.aplicacion` (que nombra design.md): estos
+    endpoints consultan la base directo dentro de la sesión con tenant, sin esa capa, porque 4.2 no la
+    ejercita todavía. Juicio del constructor, confianza media: si el rompedor o el auditor prefieren que
+    esa capa exista desde ahora, es un cambio menor en 5.x, no acá.
 
 ## 5. Autorización
 
