@@ -527,3 +527,42 @@ a V3-15 siguen iguales).
   reescribí el test con la técnica real de `v3_truncate_por_fk.sql`.)
   - Hecho 15/10/2026: verde confirmado (ver 13.5).
 
+- [x] 13.3 V3-4 (sólo M8 y M5) · Dos mutantes del harness de la vuelta 3 (`mutar.py`) sobrevivían a
+  toda la suite. **M8**: si se pierde el `ROLLBACK TO SAVEPOINT` final de
+  `_verificar_bloqueo_de_escritura_de_verdad`, la fila de prueba queda PARA SIEMPRE en `auditoria`
+  (que no admite `DELETE` ni para el dueño) — cada arranque dejaría una fila falsa más, y nada lo
+  exigía. **M5**: si la sonda de TRUNCATE deja de probar algo real, nada lo notaba. 2 tests nuevos:
+  `test_despues_no_deja_la_fila_de_prueba_en_auditoria` (cuenta filas `verificacion_de_despues` en
+  `auditoria` tras la corrida normal de `despues()` de la fixture `esquema`, debe dar 0) y
+  `test_rojo_despues_no_notaba_solo_el_trigger_de_truncate_neutralizado` (neutraliza SÓLO el
+  trigger de TRUNCATE, deja UPDATE/DELETE intactos; nombrado con "no_notaba" para que el filtro
+  `-k "no_notaba or no_verificaba_nada"` de `mutar.py` lo seleccione).
+  - Con el fix de 13.1/13.2 puesto, ambos mutantes mueren:
+    ```
+    $ python3 mutar.py M8_la_fila_de_prueba_queda
+    19:07:27 M8_la_fila_de_prueba_queda -> tests/integracion/test_auditoria_tabla.py tests/integracion/test_roles.py
+       exit 1 | FAILED tests/integracion/test_auditoria_tabla.py::test_despues_no_deja_la_fila_de_prueba_en_auditoria - AssertionError: despues() dejó una fila de prueba en auditoria
+
+    $ python3 mutar.py M5_sin_sonda_TRUNCATE
+    19:08:32 M5_sin_sonda_TRUNCATE -> tests/integracion/test_auditoria_tabla.py -k no_notaba or no_verificaba_nada
+       exit 1 | FAILED ...test_rojo_despues_no_verificaba_nada_si_el_trigger_o_el_force_desaparecen - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_la_rls_apagada_con_force_intacto - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_la_funcion_reemplazada_por_una_que_no_bloquea - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_el_trigger_recreado_sobre_otro_evento - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_una_politica_permisiva_extra - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_la_politica_alterada - subprocess.CalledProcessError...
+       FAILED ...test_rojo_despues_no_notaba_solo_el_trigger_de_truncate_neutralizado - subprocess.CalledProcessError...
+    ```
+  - **Nota sobre el harness**: `vuelta-3/arbol/` no existía (ningún punto anterior lo había
+    necesitado); lo creé sincronizado con el código de esta vuelta, más `infra/compose.yaml`
+    (faltaba para que `conftest.py` resolviera la imagen de Postgres de los tests) y un symlink al
+    `.venv` del backend real (evita reinstalar dependencias). El mutante `M5_sin_sonda_TRUNCATE`
+    original de `mutar.py` apuntaba a una línea literal (`cur.execute("TRUNCATE auditoria")`) que el
+    fix de 13.2 ya no tiene tal cual — la sonda pasó a ser una tupla `(sentencia, nombre, con_id)`
+    recorrida en loop. Adapté el mutante para apuntar a esa tupla
+    (`("TRUNCATE auditoria", "TRUNCATE", False)` → `("SELECT 1", "TRUNCATE", False)`, mismo efecto:
+    la sonda deja de intentar el TRUNCATE real) y dejé la adaptación anotada en el propio
+    `mutar.py`. No toqué `M6`/`M7` (sus targets también quedaron desactualizados por el mismo
+    refactor, pero están fuera de la lista cerrada de este punto — son deuda, no se tocan).
+  - Hecho 15/10/2026: ambos mutantes mueren; verde de los 2 tests nuevos confirmado (ver 13.5).
+

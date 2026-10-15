@@ -167,6 +167,28 @@ def esquema(contenedor: PostgresContainer) -> Iterator[None]:
         _correr(["uv", "run", "alembic", "downgrade", "base"], _alembic_env(contenedor))
 
 
+def test_despues_no_deja_la_fila_de_prueba_en_auditoria(
+    contenedor: PostgresContainer, esquema: None
+) -> None:
+    """V3-4 (M8), vuelta 4: `_verificar_bloqueo_de_escritura_de_verdad`
+    (V2-2) inserta una fila de prueba y la revierte con
+    `ROLLBACK TO SAVEPOINT` al final — si ese `ROLLBACK` se perdiera
+    algún día, la fila quedaría PARA SIEMPRE (`auditoria` no admite
+    `DELETE`, ni para el dueño): cada arranque dejaría una fila falsa más.
+    Nada lo exigía hasta ahora (mutante M8 del rompedor: sobrevivía a
+    toda la suite). El `despues()` de la fixture `esquema` ya corrió una
+    vez; esto comprueba su resultado."""
+    conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+    try:
+        with conexion.cursor() as cur:
+            cur.execute("SELECT count(*) FROM auditoria WHERE entidad = 'verificacion_de_despues'")
+            fila = cur.fetchone()
+            assert fila is not None
+            assert fila[0] == 0, "despues() dejó una fila de prueba en auditoria"
+    finally:
+        conexion.close()
+
+
 def _sembrar_fila(
     contenedor: PostgresContainer, *, administracion_id: uuid.UUID, accion: str = _ACCION_DE_PRUEBA
 ) -> None:
@@ -962,6 +984,53 @@ def test_rojo_un_truncate_bloqueado_por_una_fk_se_contaba_como_bloqueo_real() ->
         )
         assert resultado.returncode == 1, resultado.stdout
         assert "no se pudo probar" in resultado.stderr
+        assert "TRUNCATE" in resultado.stderr
+
+
+# --- Vuelta 4, V3-4 (M5): el trigger de TRUNCATE, neutralizado solo, se nota ---
+
+
+def test_rojo_despues_no_notaba_solo_el_trigger_de_truncate_neutralizado() -> None:
+    """V3-4 (M5), vuelta 4: si sólo se borra `trg_auditoria_sin_truncate`
+    (el de `UPDATE`/`DELETE` queda intacto), `TRUNCATE auditoria` deja de
+    estar bloqueado — un caso más angosto que "toda la protección
+    desaparece", pensado para que la sonda de `TRUNCATE` en particular no
+    pueda quedar inerte sin que algún test lo note (mutante M5 del
+    rompedor: reemplazaba la sonda por un `raise` que siempre "confirmaba"
+    el bloqueo sin probar nada)."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("DROP TRIGGER trg_auditoria_sin_truncate ON auditoria")
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
         assert "TRUNCATE" in resultado.stderr
 
 
