@@ -34,15 +34,15 @@ pytestmark = pytest.mark.integracion
 def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
     import os
 
+    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+
     entorno = {
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # Alembic corre como el migrador (D1, D2, cambio 2a); antes de los
-        # roles del 2a el contenedor de test sólo tiene un usuario, así que
-        # el par del migrador apunta al mismo superusuario del contenedor.
-        "POSTGRES_MIGRADOR_USER": contenedor.username,
-        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
+        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
         "POSTGRES_DB": contenedor.dbname,
     }
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
@@ -61,6 +61,7 @@ def _engine_directo(contenedor: PostgresContainer) -> sa.Engine:
 
 def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
     postgres_contenedor: PostgresContainer,
+    roles_reales: None,
 ) -> None:
     env = _alembic_env(postgres_contenedor)
     subprocess.run(
@@ -159,7 +160,9 @@ def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
 
 
 def test_migrar_en_el_mismo_proceso_no_deshabilita_un_logger_ya_configurado(
-    postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+    postgres_contenedor: PostgresContainer,
+    monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
     from proptech_core.compartido.logs import configurar_logs
 

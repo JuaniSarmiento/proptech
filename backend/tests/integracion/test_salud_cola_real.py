@@ -49,10 +49,13 @@ def _configurar_entorno(
     redis_host: str,
     redis_port: int,
 ) -> None:
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+
     monkeypatch.setenv("POSTGRES_HOST", postgres.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(postgres.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", postgres.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres.password)
+    # El rol real de la app (D1, D3, tarea 2.2), que `roles_reales` ya creó.
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     monkeypatch.setenv("POSTGRES_DB", postgres.dbname)
     monkeypatch.setenv("REDIS_HOST", redis_host)
     monkeypatch.setenv("REDIS_PORT", str(redis_port))
@@ -63,6 +66,7 @@ def test_redis_pausado_responde_503_cola_sin_conexion_en_menos_de_4s(
     postgres_contenedor: PostgresContainer,
     contenedor_redis_propio: DockerContainer,
     monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
     _configurar_entorno(
         monkeypatch,
@@ -92,6 +96,7 @@ def test_redis_detenido_responde_503_cola_sin_conexion_en_menos_de_4s(
     postgres_contenedor: PostgresContainer,
     contenedor_redis_propio: DockerContainer,
     monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
     _configurar_entorno(
         monkeypatch,
@@ -117,13 +122,16 @@ def test_redis_detenido_responde_503_cola_sin_conexion_en_menos_de_4s(
 def test_crear_app_expone_la_cola_cableada_y_arranca_sin_intentar_conectar(
     postgres_contenedor: PostgresContainer,
     monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
     """Redis inalcanzable (IP privada sin ruta, L-001): `crear_app()` no se
     cuelga al armar la cola (pool perezoso, D4) y `/api/salud` responde."""
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+
     monkeypatch.setenv("POSTGRES_HOST", postgres_contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(postgres_contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     monkeypatch.setenv("POSTGRES_DB", postgres_contenedor.dbname)
     monkeypatch.setenv("REDIS_HOST", "10.255.255.1")
     monkeypatch.setenv("REDIS_PORT", "6379")

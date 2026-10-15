@@ -28,13 +28,15 @@ pytestmark = pytest.mark.integracion
 def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
     import os
 
+    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+
     entorno = {
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # Alembic corre como el migrador (D1, D2, cambio 2a).
-        "POSTGRES_MIGRADOR_USER": contenedor.username,
-        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
+        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
         "POSTGRES_DB": contenedor.dbname,
     }
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
@@ -44,11 +46,15 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
 
 @pytest.fixture
 def fabrica(
-    postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+    postgres_contenedor: PostgresContainer,
+    monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> Iterator[sessionmaker[Session]]:
     """Migra a `head`, entrega una fábrica de sesiones y, al terminar,
     vuelve a `base` para no dejarle estado a otros tests del mismo
     contenedor de sesión (L-006)."""
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+
     env = _alembic_env(postgres_contenedor)
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
@@ -61,10 +67,10 @@ def fabrica(
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)
-    # `Configuracion` (la que usa `crear_engine` abajo) lee el par de la app
-    # (D3): antes del 2.2 es el mismo usuario del contenedor que el migrador.
-    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
+    # `Configuracion` (la que usa `crear_engine` abajo) lee el par real de la
+    # app (D3, tarea 2.2), que `roles_reales` ya creó.
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     engine = crear_engine(Configuracion())
     try:
         yield crear_fabrica_de_sesiones(engine)

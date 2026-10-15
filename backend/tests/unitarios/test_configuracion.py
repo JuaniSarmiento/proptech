@@ -449,3 +449,57 @@ def test_configuracion_base_de_datos_es_alias_del_migrador(monkeypatch: pytest.M
     """`ConfiguracionBaseDeDatos` (el nombre que usaba `env.py` hasta este cambio) sigue
     existiendo como alias de `ConfiguracionDelMigrador`: nadie más que Alembic lo usa."""
     assert ConfiguracionBaseDeDatos is ConfiguracionDelMigrador
+
+
+# --- 2.2: `roles.py` lee el par de la app sin Redis ni parámetros (corre en `migraciones`) ---
+
+
+def test_configuracion_de_app_solo_postgres_no_necesita_redis_ni_parametros(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`roles.py` (D1, D2) corre en el contenedor `migraciones`, que no tiene Redis ni el
+    archivo de parámetros: a diferencia de `Configuracion`, esta lectura no los exige."""
+    from proptech_core.compartido.configuracion import ConfiguracionDeAppSoloPostgres
+
+    _set_comun(monkeypatch)
+    monkeypatch.setenv("POSTGRES_APP_USER", "proptech_app")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "clave")
+    for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
+        monkeypatch.delenv(variable, raising=False)
+
+    configuracion = ConfiguracionDeAppSoloPostgres()
+
+    assert configuracion.postgres_user == "proptech_app"
+    assert configuracion.url_sqlalchemy().password == "clave"
+
+
+def test_configuracion_de_app_solo_postgres_exige_el_patron_de_rol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from proptech_core.compartido.configuracion import ConfiguracionDeAppSoloPostgres
+
+    _set_comun(monkeypatch)
+    monkeypatch.setenv("POSTGRES_APP_USER", "otra_cosa")
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", "clave")
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        ConfiguracionDeAppSoloPostgres()
+
+    assert "POSTGRES_APP_USER" in str(exc_info.value)
+
+
+def test_configuracion_de_app_solo_postgres_nombra_la_variable_faltante(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from proptech_core.compartido.configuracion import ConfiguracionDeAppSoloPostgres
+
+    _set_comun(monkeypatch)
+    monkeypatch.delenv("POSTGRES_APP_USER", raising=False)
+    monkeypatch.delenv("POSTGRES_APP_PASSWORD", raising=False)
+
+    with pytest.raises(ConfiguracionInvalida) as exc_info:
+        ConfiguracionDeAppSoloPostgres()
+
+    mensaje = str(exc_info.value)
+    assert "POSTGRES_APP_USER" in mensaje
+    assert "POSTGRES_APP_PASSWORD" in mensaje

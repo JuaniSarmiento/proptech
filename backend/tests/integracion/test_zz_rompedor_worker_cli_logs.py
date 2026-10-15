@@ -20,7 +20,7 @@ from testcontainers.core.container import DockerContainer
 
 from proptech_core.compartido.cola import AdaptadorColaArq
 
-from ..conftest import REDIS_PASSWORD_DE_PRUEBA
+from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION, REDIS_PASSWORD_DE_PRUEBA
 
 pytestmark = pytest.mark.integracion
 
@@ -52,8 +52,8 @@ async def test_el_worker_por_el_cli_de_arq_escribe_solo_json_y_sin_argumentos(
         **os.environ,
         "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
-        "POSTGRES_APP_USER": postgres_contenedor.username,
-        "POSTGRES_APP_PASSWORD": postgres_contenedor.password,
+        "POSTGRES_APP_USER": APP_USER_DE_SESION,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
         "POSTGRES_DB": postgres_contenedor.dbname,
         "REDIS_HOST": redis_host,
         "REDIS_PORT": str(redis_port),
@@ -122,8 +122,8 @@ async def test_el_worker_por_el_cli_de_arq_tambien_loguea_en_json_un_reintento(
         **os.environ,
         "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
-        "POSTGRES_APP_USER": postgres_contenedor.username,
-        "POSTGRES_APP_PASSWORD": postgres_contenedor.password,
+        "POSTGRES_APP_USER": APP_USER_DE_SESION,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
         "POSTGRES_DB": postgres_contenedor.dbname,
         "REDIS_HOST": redis_host,
         "REDIS_PORT": str(redis_port),

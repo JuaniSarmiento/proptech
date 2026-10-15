@@ -16,13 +16,15 @@ pytestmark = pytest.mark.integracion
 def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
     import os
 
+    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+
     entorno = {
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # Alembic corre como el migrador (D1, D2, cambio 2a).
-        "POSTGRES_MIGRADOR_USER": contenedor.username,
-        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
+        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
         "POSTGRES_DB": contenedor.dbname,
     }
     # 6.1/D11: Alembic no depende de Redis ni de los parámetros del sistema.
@@ -49,6 +51,7 @@ def _version_actual(contenedor: PostgresContainer) -> str:
 
 def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
     postgres_contenedor: PostgresContainer,
+    roles_reales: None,
 ) -> None:
     env = _alembic_env(postgres_contenedor)
 
@@ -77,20 +80,24 @@ def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
 
 
 def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
-    postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+    postgres_contenedor: PostgresContainer,
+    monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
     from proptech_api.salud import _verificador_con_engine
     from proptech_core.compartido.base_de_datos import crear_engine
     from proptech_core.compartido.configuracion import Configuracion
 
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+
     env = _alembic_env(postgres_contenedor)
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)
-    # `Configuracion` (D3) lee el par de la app; antes del 2.2 es el mismo
-    # usuario del contenedor que el migrador.
-    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
+    # `Configuracion` (D3) lee el par real de la app (tarea 2.2), que
+    # `roles_reales` ya creó.
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
 
     engine_contenedor = crear_engine(Configuracion())
     try:

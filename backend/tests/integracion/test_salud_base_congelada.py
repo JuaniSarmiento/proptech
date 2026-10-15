@@ -36,13 +36,51 @@ def contenedor_propio() -> Iterator[PostgresContainer]:
         yield iniciado
 
 
+#: Rol real de la app (D1, D2, tarea 2.2) sobre el contenedor propio de este
+#: archivo (nunca el de sesión, L-006): distinto del superusuario del contenedor.
+_APP_USER = "proptech_app"
+_APP_PASSWORD = "clave-app-no-real"
+
+
+def _crear_rol_de_la_app(contenedor: PostgresContainer) -> None:
+    import os
+    import subprocess
+    import sys
+
+    from ..conftest import RAIZ
+
+    entorno = {
+        **os.environ,
+        "POSTGRES_HOST": contenedor.get_container_host_ip(),
+        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
+        "POSTGRES_USER": contenedor.username,
+        "POSTGRES_PASSWORD": contenedor.password,
+        "POSTGRES_DB": contenedor.dbname,
+        "POSTGRES_MIGRADOR_USER": "proptech_migrador",
+        "POSTGRES_MIGRADOR_PASSWORD": "clave-migrador-no-real",
+        "POSTGRES_APP_USER": _APP_USER,
+        "POSTGRES_APP_PASSWORD": _APP_PASSWORD,
+        "POSTGRES_RESPALDO_USER": "proptech_respaldo",
+        "POSTGRES_RESPALDO_PASSWORD": "clave-respaldo-no-real",
+    }
+    subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ / "backend",
+        env=entorno,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
 def _configuracion_para(
     contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
 ) -> Configuracion:
+    _crear_rol_de_la_app(contenedor)
     monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", _APP_USER)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", _APP_PASSWORD)
     monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
     return Configuracion()
 

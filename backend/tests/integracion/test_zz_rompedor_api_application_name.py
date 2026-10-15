@@ -19,12 +19,16 @@ RAIZ = Path(__file__).resolve().parents[3]
 
 
 def test_el_engine_de_la_api_se_identifica_como_proptech_api(
-    postgres_contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+    postgres_contenedor: PostgresContainer,
+    monkeypatch: pytest.MonkeyPatch,
+    roles_reales: None,
 ) -> None:
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+
     monkeypatch.setenv("POSTGRES_HOST", postgres_contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(postgres_contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", postgres_contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", postgres_contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     monkeypatch.setenv("POSTGRES_DB", postgres_contenedor.dbname)
     monkeypatch.setenv("REDIS_HOST", "127.0.0.1")
     monkeypatch.setenv("REDIS_PORT", "1")

@@ -56,15 +56,52 @@ def contenedor_propio() -> Iterator[PostgresContainer]:
         yield iniciado
 
 
-def _migrar_a_head(contenedor: PostgresContainer) -> None:
+#: Roles reales (D1, D2, tarea 2.2) sobre el contenedor propio de este archivo
+#: (nunca el de sesión, L-006): distintos del superusuario del contenedor.
+_MIGRADOR_USER = "proptech_migrador"
+_MIGRADOR_PASSWORD = "clave-migrador-no-real"
+_APP_USER = "proptech_app"
+_APP_PASSWORD = "clave-app-no-real"
+
+
+def _crear_roles(contenedor: PostgresContainer) -> None:
     import os
+    import sys
 
     entorno = {
         **os.environ,
         "POSTGRES_HOST": contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        "POSTGRES_MIGRADOR_USER": contenedor.username,
-        "POSTGRES_MIGRADOR_PASSWORD": contenedor.password,
+        "POSTGRES_USER": contenedor.username,
+        "POSTGRES_PASSWORD": contenedor.password,
+        "POSTGRES_DB": contenedor.dbname,
+        "POSTGRES_MIGRADOR_USER": _MIGRADOR_USER,
+        "POSTGRES_MIGRADOR_PASSWORD": _MIGRADOR_PASSWORD,
+        "POSTGRES_APP_USER": _APP_USER,
+        "POSTGRES_APP_PASSWORD": _APP_PASSWORD,
+        "POSTGRES_RESPALDO_USER": "proptech_respaldo",
+        "POSTGRES_RESPALDO_PASSWORD": "clave-respaldo-no-real",
+    }
+    subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ_BACKEND,
+        env=entorno,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _migrar_a_head(contenedor: PostgresContainer) -> None:
+    import os
+
+    _crear_roles(contenedor)
+    entorno = {
+        **os.environ,
+        "POSTGRES_HOST": contenedor.get_container_host_ip(),
+        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
+        "POSTGRES_MIGRADOR_USER": _MIGRADOR_USER,
+        "POSTGRES_MIGRADOR_PASSWORD": _MIGRADOR_PASSWORD,
         "POSTGRES_DB": contenedor.dbname,
     }
     subprocess.run(
@@ -82,8 +119,8 @@ def _configuracion_para(
 ) -> Configuracion:
     monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
-    monkeypatch.setenv("POSTGRES_APP_USER", contenedor.username)
-    monkeypatch.setenv("POSTGRES_APP_PASSWORD", contenedor.password)
+    monkeypatch.setenv("POSTGRES_APP_USER", _APP_USER)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", _APP_PASSWORD)
     monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
     # Más corto que el default (2s): la cota de este test (D18, L-001).
     monkeypatch.setenv("DB_CONNECT_TIMEOUT_S", "1")

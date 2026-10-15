@@ -1,6 +1,9 @@
 """Fixtures compartidos: PostgreSQL y Redis reales por sesión de pytest
 (testcontainers / DockerContainer genérico, D12)."""
 
+import os
+import subprocess
+import sys
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
@@ -16,6 +19,16 @@ _COMPOSE = RAIZ / "infra" / "compose.yaml"
 
 #: Contraseña sólo para el contenedor de test de Redis; nunca una credencial real.
 REDIS_PASSWORD_DE_PRUEBA = "prueba-redis-no-real"
+
+#: Los tres roles reales que crea `roles.antes()` sobre el contenedor de
+#: sesión (D1, D2, tarea 2.2): desde que esa tarea cierra, ningún test de
+#: integración usa el superusuario del contenedor como alias de otro rol.
+MIGRADOR_USER_DE_SESION = "proptech_migrador"
+MIGRADOR_PASSWORD_DE_SESION = "clave-migrador-de-sesion-no-real"
+APP_USER_DE_SESION = "proptech_app"
+APP_PASSWORD_DE_SESION = "clave-app-de-sesion-no-real"
+RESPALDO_USER_DE_SESION = "proptech_respaldo"
+RESPALDO_PASSWORD_DE_SESION = "clave-respaldo-de-sesion-no-real"
 
 
 def _leer_imagen_de_compose(servicio: str) -> str:
@@ -46,8 +59,40 @@ def postgres_contenedor() -> Iterator[PostgresContainer]:
 
 
 @pytest.fixture(scope="session")
+def roles_reales(postgres_contenedor: PostgresContainer) -> None:
+    """Corre `roles.antes()` una sola vez por sesión (D1, D2, tarea 2.2), con
+    el superusuario del contenedor como rol de arranque: crea los tres roles
+    reales (`proptech_migrador`, `proptech_app`, `proptech_respaldo`) con sus
+    propias credenciales, distintas de las del contenedor."""
+    entorno = {
+        **os.environ,
+        "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
+        "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
+        "POSTGRES_USER": postgres_contenedor.username,
+        "POSTGRES_PASSWORD": postgres_contenedor.password,
+        "POSTGRES_DB": postgres_contenedor.dbname,
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
+        "POSTGRES_APP_USER": APP_USER_DE_SESION,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
+        "POSTGRES_RESPALDO_USER": RESPALDO_USER_DE_SESION,
+        "POSTGRES_RESPALDO_PASSWORD": RESPALDO_PASSWORD_DE_SESION,
+    }
+    subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ / "backend",
+        env=entorno,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.fixture(scope="session")
 def ajustes_del_worker(
-    postgres_contenedor: PostgresContainer, redis_contenedor: DockerContainer
+    postgres_contenedor: PostgresContainer,
+    redis_contenedor: DockerContainer,
+    roles_reales: None,
 ) -> object:
     """Importa `proptech_worker.ajustes` UNA SOLA VEZ por sesión, después de
     fijar las variables de entorno hacia los contenedores de sesión (cambio
@@ -57,14 +102,15 @@ def ajustes_del_worker(
     (Python cachea el módulo): por eso este fixture es de sesión y los
     contenedores (también de sesión) no cambian de puerto entre tests."""
     import importlib
-    import os
 
     parametros_del_repo = RAIZ / "config" / "parametros.yaml"
     os.environ["POSTGRES_HOST"] = postgres_contenedor.get_container_host_ip()
     os.environ["POSTGRES_PORT"] = str(postgres_contenedor.get_exposed_port(5432))
-    # `proptech_worker.ajustes` arma su `Configuracion` con el par de la app (D3).
-    os.environ["POSTGRES_APP_USER"] = postgres_contenedor.username
-    os.environ["POSTGRES_APP_PASSWORD"] = postgres_contenedor.password
+    # `proptech_worker.ajustes` arma su `Configuracion` con el par de la app
+    # (D3): desde la tarea 2.2, el rol real que crea `roles_reales`, no el
+    # superusuario del contenedor.
+    os.environ["POSTGRES_APP_USER"] = APP_USER_DE_SESION
+    os.environ["POSTGRES_APP_PASSWORD"] = APP_PASSWORD_DE_SESION
     os.environ["POSTGRES_DB"] = postgres_contenedor.dbname
     os.environ["REDIS_HOST"] = redis_contenedor.get_container_host_ip()
     os.environ["REDIS_PORT"] = str(redis_contenedor.get_exposed_port(6379))
@@ -117,22 +163,20 @@ async def cola_de_prueba_aislada(
 
 
 @pytest.fixture(scope="session")
-def esquema_migrado(postgres_contenedor: PostgresContainer) -> None:
+def esquema_migrado(postgres_contenedor: PostgresContainer, roles_reales: None) -> None:
     """Corre las migraciones a `head` una sola vez por sesión, para los
     tests que necesitan `trabajos_hechos` real (cambio 1c, tareas 5.5 a
     5.8). No hace `downgrade`: los tests de la migración misma (5.1, 5.2)
     manejan su propio ciclo completo y corren antes, en orden alfabético de
     archivo, dejando el contenedor en `base` cuando terminan."""
-    import os
-    import subprocess
-
     entorno = {
         **os.environ,
         "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
         "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
-        # Alembic corre como el migrador (D1, D2, cambio 2a).
-        "POSTGRES_MIGRADOR_USER": postgres_contenedor.username,
-        "POSTGRES_MIGRADOR_PASSWORD": postgres_contenedor.password,
+        # Alembic corre como el migrador real (D1, D2, tarea 2.2), que
+        # `roles_reales` ya creó con `CREATE` sobre `public`.
+        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
         "POSTGRES_DB": postgres_contenedor.dbname,
     }
     subprocess.run(

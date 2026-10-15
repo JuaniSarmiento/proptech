@@ -293,6 +293,35 @@ class ConfiguracionDeRespaldo(_ConfiguracionPostgresBase):
         self._cargar(_LectorDeRespaldo)
 
 
+class _LectorDeAppSoloPostgres(_LectorPostgresComun):
+    """Igual que `_LectorDeApp`, pero sin Redis ni el archivo de parámetros
+    (D1, D2): la usa `roles.py`, que corre en el contenedor `migraciones`
+    antes y después de Alembic, donde esas variables no existen."""
+
+    postgres_user: str = Field(validation_alias="POSTGRES_APP_USER")
+    postgres_password: SecretStr = Field(validation_alias="POSTGRES_APP_PASSWORD")
+
+    @field_validator("postgres_user")
+    @classmethod
+    def _usuario_valido(cls, valor: str) -> str:
+        return _nombre_de_rol_valido(valor)
+
+    @field_validator("postgres_password")
+    @classmethod
+    def _password_recortada(cls, valor: SecretStr) -> SecretStr:
+        _recortado_sin_cambios(valor.get_secret_value())
+        return valor
+
+
+class ConfiguracionDeAppSoloPostgres(_ConfiguracionPostgresBase):
+    """`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`, sin Redis ni el archivo de
+    parámetros (D1, D2): la usa `roles.py` para crear y reparar el rol de la
+    app sin acoplarse a variables que el contenedor `migraciones` no tiene."""
+
+    def __init__(self) -> None:
+        self._cargar(_LectorDeAppSoloPostgres)
+
+
 class Configuracion(_ConfiguracionPostgresBase):
     """`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD` más Redis y los parámetros del
     sistema (D11): la usan la API y el worker."""
