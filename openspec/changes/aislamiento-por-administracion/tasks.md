@@ -259,7 +259,34 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
 
 ## 9. Humo
 
-- [ ] 9.1 Sumar al humo (D11, D12), cada paso con su chequeo explícito: `current_user`, `rolsuper` y `rolbypassrls` de la conexión de `api` y de `worker` (`proptech_app`, falso, falso); dos administraciones sembradas con `psql` como rol de arranque, un backup de `respaldos` con `proptech_respaldo`, la restauración en `proptech_restauracion` con `restaurar.sh` y el conteo por administración (2 y 2), más `relforcerowsecurity` y las políticas presentes en la base restaurada. El rojo con el rol equivocado: con una copia de Compose donde `respaldos` usa `proptech_app`, el volcado **falla** (no aparece ningún `.dump` nuevo y el servicio queda no saludable), no da un conteo menor (L-013, L-016). Escenarios: `integracion-continua` › Rol de la app en el stack vivo; › Backup completo en el humo; `entorno-de-ejecucion` › La API conecta como la app; `respaldos-de-la-base` › Backup con dos administraciones; › Volcado con el rol equivocado. Lecciones: L-004, L-006, L-013, L-016.
+- [x] 9.1 Sumar al humo (D11, D12), cada paso con su chequeo explícito: `current_user`, `rolsuper` y `rolbypassrls` de la conexión de `api` y de `worker` (`proptech_app`, falso, falso); dos administraciones sembradas con `psql` como rol de arranque, un backup de `respaldos` con `proptech_respaldo`, la restauración en `proptech_restauracion` con `restaurar.sh` y el conteo por administración (2 y 2), más `relforcerowsecurity` y las políticas presentes en la base restaurada. El rojo con el rol equivocado: con una copia de Compose donde `respaldos` usa `proptech_app`, el volcado **falla** (no aparece ningún `.dump` nuevo y el servicio queda no saludable), no da un conteo menor (L-013, L-016). Escenarios: `integracion-continua` › Rol de la app en el stack vivo; › Backup completo en el humo; `entorno-de-ejecucion` › La API conecta como la app; `respaldos-de-la-base` › Backup con dos administraciones; › Volcado con el rol equivocado. Lecciones: L-004, L-006, L-013, L-016.
+  - Hecho 15/10/2026: cuatro pasos nuevos en `humo.sh`. `(9b)`: `current_user`/`rolsuper`/`rolbypassrls`
+    de la conexión real de `api` y de `worker`, vía `pg_stat_activity` filtrado por `application_name`
+    (`proptech-api%`/`proptech-worker%`, D8: dentro de una transacción queda `prefijo:request_id`, el
+    `LIKE` alcanza las dos formas) unido a `pg_roles`; los dos dan `proptech_app,false,false`. Siembra
+    de dos administraciones con dos complejos cada una (rol de arranque, bypassea RLS) justo después del
+    `up --wait`, ANTES de que el healthcheck de `respaldos` ya haya exigido su primer backup automático
+    (D9: ese backup corre DENTRO de `start_period`, antes de que el humo llegue a sembrar nada si se
+    sembrara después). Backup manual (`respaldar.sh --una-vez`, ya pensado para esto) después de
+    sembrar, y el resto de las verificaciones de la 9.1 usan ESE dump (el más nuevo, no
+    necesariamente el único) para no depender de si el automático alcanzó a llevarse los datos.
+    Verificado en la base restaurada: conteo por administración (2, 2), `relforcerowsecurity` y
+    `pg_policies` presentes en `administracion`/`complejo` (el volcado se lleva el esquema, no sólo los
+    datos).
+  - **Hallazgo real**: concatenar un booleano con `||` en SQL lo castea a `"true"`/`"false"` (el literal
+    SQL), NO al `"t"`/`"f"` que psql muestra para una columna booleana sola — la primera versión del
+    chequeo `(9b)` comparaba contra `"proptech_app,f,f"` y el script cortaba en seco ahí (los pasos
+    10 en adelante ni se veían en la salida, `set -e` se llevó todo a la limpieza) hasta corregir la
+    comparación.
+  - **Rojo real (L-013)**: sobre una copia de `compose.yaml` en `/tmp` con `respaldos` usando
+    `POSTGRES_APP_USER`/`_PASSWORD` en vez de los de `proptech_respaldo`, un stack parcial (`db`,
+    `migraciones`, `respaldos`, proyecto separado `proptech-rojo91`) mostró el log
+    `{"evento":"respaldo_fallido","etapa":"pg_dump"}`, cero archivos `.dump` nuevos y el servicio
+    `unhealthy` a los ~150s — nunca un conteo menor, falla de punta a punta. Stack destruido, carpeta
+    temporal y archivo de Compose mutado borrados; `diff` contra `git show HEAD:infra/compose.yaml`
+    confirmó el archivo real intacto.
+  - `shellcheck` sobre `humo.sh`: limpio. Corrida real completa: `HUMO OK`. Suite completa (no cambió
+    código Python, sólo `infra/`): backend 833 passed + 1 xfailed, web 16 passed, sin regresiones.
 
 ## 10. Cierre
 

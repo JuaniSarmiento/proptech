@@ -72,6 +72,24 @@ STACK_LEVANTADO=1
 USUARIO_DB="$(compose exec -T db printenv POSTGRES_USER)"
 BASE_EN_USO="$(compose exec -T db printenv POSTGRES_DB)"
 
+# D11, D12 (tarea 9.1): dos administraciones con dos complejos cada una,
+# sembradas con el rol de arranque (bypassea RLS por ser superusuario, sin
+# necesitar `set_config`) ANTES de pedir el backup manual más abajo, para
+# que ese volcado puntual las tenga adentro.
+ADMINISTRACION_HUMO_A="10000000-0000-0000-0000-000000000001"
+ADMINISTRACION_HUMO_B="10000000-0000-0000-0000-000000000002"
+compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" -v ON_ERROR_STOP=1 <<SQL
+insert into administracion (id, nombre) values
+  ('$ADMINISTRACION_HUMO_A', 'Administración A del humo'),
+  ('$ADMINISTRACION_HUMO_B', 'Administración B del humo');
+insert into complejo (id, administracion_id, nombre) values
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A1'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A2'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B1'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B2');
+SQL
+echo "ok: dos administraciones con dos complejos cada una, sembradas con $USUARIO_DB"
+
 echo "--- (1) GET /api/salud por Caddy, con la cola conectada ---"
 respuesta_salud=$(curl -fsS http://localhost/api/salud)
 echo "$respuesta_salud"
@@ -290,6 +308,31 @@ else
   exit 1
 fi
 
+echo "--- (9b) la api y el worker conectan como proptech_app, ni superusuario ni BYPASSRLS (D11, tarea 9.1) ---"
+# `pg_stat_activity` filtrado por `application_name` (D8: la API arranca con
+# "proptech-api", el worker con "proptech-worker"; dentro de una transacción
+# queda "<prefijo>:<request_id>", así que LIKE con el prefijo alcanza a las
+# dos formas). Ya hubo pedidos a la API (pasos 1, 6, 7, 8) y un trabajo del
+# worker (paso 9) antes de este punto: las dos conexiones existen.
+rol_de_conexion() {
+  local prefijo="$1"
+  compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" -tAc "
+    select distinct r.rolname || ',' || r.rolsuper || ',' || r.rolbypassrls
+    from pg_stat_activity a join pg_roles r on r.rolname = a.usename
+    where a.application_name like '${prefijo}%'
+    limit 1
+  "
+}
+rol_api=$(rol_de_conexion "proptech-api" | tr -d '[:space:]')
+rol_worker=$(rol_de_conexion "proptech-worker" | tr -d '[:space:]')
+echo "api: $rol_api | worker: $rol_worker"
+# "true"/"false", no el "t"/"f" de psql (hallazgo real): concatenar un
+# booleano con || lo castea a texto con su literal SQL, no con el formato
+# de columna de psql.
+[ "$rol_api" = "proptech_app,false,false" ]
+[ "$rol_worker" = "proptech_app,false,false" ]
+echo "ok: api y worker conectan como proptech_app, sin ser superusuario ni BYPASSRLS"
+
 echo "--- (10) Redis pausado: /api/salud y /salud-web degradados, nunca colgados ---"
 compose pause redis
 inicio_ns=$(date +%s%N)
@@ -331,6 +374,25 @@ done
 [ "$dump_aparecio" = "1" ]
 archivo_dump=$(find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" | sort | head -n 1)
 echo "ok: apareció un backup en menos de 2 minutos: $archivo_dump"
+
+# D11, D12 (tarea 9.1): el backup automático de arriba puede haber corrido
+# ANTES de sembrar las dos administraciones (el healthcheck de `respaldos`
+# sólo pasa cuando ya hubo un primer ciclo, D9): se pide uno manual
+# (`--una-vez`, pensado para esto) y se usa el dump MÁS NUEVO —no
+# necesariamente el único— para el resto de las verificaciones de este paso.
+compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez
+archivo_dump_reciente=""
+for _ in $(seq 1 24); do
+  archivo_dump_reciente=$(find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" | sort | tail -n 1)
+  if [ -n "$archivo_dump_reciente" ] && [ "$archivo_dump_reciente" != "$archivo_dump" ]; then
+    break
+  fi
+  sleep 5
+done
+[ -n "$archivo_dump_reciente" ]
+[ "$archivo_dump_reciente" != "$archivo_dump" ]
+archivo_dump="$archivo_dump_reciente"
+echo "ok: backup manual con las dos administraciones sembradas: $archivo_dump"
 
 # B5 (auditor, vuelta 2, L-016): `respaldos` es un script de bash, nunca usa
 # `FormateadorJSON` (D7): contar estos eventos sólo en sus logs es un cero
@@ -375,6 +437,38 @@ existe_trabajos_hechos=$(compose exec -T db psql -U "$USUARIO_DB" \
 echo "revisión en uso=$(echo "$revision_en_uso" | tr -d '[:space:]') revisión restaurada=$(echo "$revision_restaurada" | tr -d '[:space:]')"
 [ "$(echo "$revision_restaurada" | tr -d '[:space:]')" = "$(echo "$revision_en_uso" | tr -d '[:space:]')" ]
 [ "$(echo "$existe_trabajos_hechos" | tr -d '[:space:]')" = "t" ]
+
+# D11, D12 (tarea 9.1): las dos administraciones sembradas arriba, con dos
+# complejos cada una, llegaron en el volcado — contadas con el rol de
+# arranque (bypassea RLS, D1), nunca con la app (vería cero: sin tenant).
+conteo_complejos_a=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select count(*) from complejo where administracion_id = '$ADMINISTRACION_HUMO_A'")
+conteo_complejos_b=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select count(*) from complejo where administracion_id = '$ADMINISTRACION_HUMO_B'")
+echo "conteo por administración en la base restaurada: A=$(echo "$conteo_complejos_a" | tr -d '[:space:]') B=$(echo "$conteo_complejos_b" | tr -d '[:space:]')"
+[ "$(echo "$conteo_complejos_a" | tr -d '[:space:]')" = "2" ]
+[ "$(echo "$conteo_complejos_b" | tr -d '[:space:]')" = "2" ]
+
+# D11, D12: el volcado se lleva el FORCE y las políticas (son parte del
+# esquema, no de los datos) — se verifican en la base restaurada, no en la
+# que ya está en uso (que el guardián de la 3.2 ya cubre en los tests).
+rls_forzada_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select relforcerowsecurity from pg_class where relname = 'administracion'")
+rls_forzada_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select relforcerowsecurity from pg_class where relname = 'complejo'")
+politicas_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select count(*) from pg_policies where tablename = 'administracion'")
+politicas_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select count(*) from pg_policies where tablename = 'complejo'")
+echo "relforcerowsecurity administracion=$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" \
+  "complejo=$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" \
+  "políticas administracion=$(echo "$politicas_administracion" | tr -d '[:space:]')" \
+  "complejo=$(echo "$politicas_complejo" | tr -d '[:space:]')"
+[ "$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" = "t" ]
+[ "$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" = "t" ]
+[ "$(echo "$politicas_administracion" | tr -d '[:space:]')" -gt 0 ]
+[ "$(echo "$politicas_complejo" | tr -d '[:space:]')" -gt 0 ]
+echo "ok: la base restaurada tiene el FORCE y las políticas de D5, y el conteo por administración (2, 2)"
 
 revision_en_uso_despues=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d "$BASE_EN_USO" -tAc "select version_num from alembic_version")
