@@ -185,7 +185,26 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     `test_auditoria_tabla.py`. Suite completa: 809 passed + 1 xfailed; web: 16 passed; `humo.sh` (toca
     migraciones y `roles.py`): HUMO OK, con `revisión en uso=0004 revisión restaurada=0004` en el stack
     real.
-- [ ] 6.2 Helper en `acceso.aplicacion` y misma transacción (D9) en `tests/integracion/test_auditoria_transaccion.py` y `tests/unitarios/test_auditoria_detalle.py`: asignar un edificio deja exactamente una fila con la persona, `invitar_usuarios_y_asignar_edificios`, el complejo y el `request_id` del pedido; una falla forzada después del `registrar` revierte la asignación y la fila; una fila rechazada por la base revierte la asignación; `registrar` fuera de una transacción es un error; un detalle con una clave no permitida se rechaza antes de escribir y el valor (un marcador) no aparece en el error; el test del registro de `@accion_sensible` recorre todos los casos de uso marcados y exige una fila por cada uno, y se lo ve en rojo con un caso de uso marcado que no registra (sobre una copia, L-013). Escenarios: `auditoria-de-acciones` › Acción confirmada; › Acción revertida; › Registro que no se puede escribir; › Toda acción sensible registrada; › Clave no permitida en el detalle. Lecciones: L-007, L-011, L-013.
+- [x] 6.2 Helper en `acceso.aplicacion` y misma transacción (D9) en `tests/integracion/test_auditoria_transaccion.py` y `tests/unitarios/test_auditoria_detalle.py`: asignar un edificio deja exactamente una fila con la persona, `invitar_usuarios_y_asignar_edificios`, el complejo y el `request_id` del pedido; una falla forzada después del `registrar` revierte la asignación y la fila; una fila rechazada por la base revierte la asignación; `registrar` fuera de una transacción es un error; un detalle con una clave no permitida se rechaza antes de escribir y el valor (un marcador) no aparece en el error; el test del registro de `@accion_sensible` recorre todos los casos de uso marcados y exige una fila por cada uno, y se lo ve en rojo con un caso de uso marcado que no registra (sobre una copia, L-013). Escenarios: `auditoria-de-acciones` › Acción confirmada; › Acción revertida; › Registro que no se puede escribir; › Toda acción sensible registrada; › Clave no permitida en el detalle. Lecciones: L-007, L-011, L-013.
+  - Hecho 15/10/2026: `proptech_core/acceso/aplicacion/auditoria.py` (`registrar`, exige
+    `sesion.in_transaction()`; `_detalle_validado` contra un modelo Pydantic por `Accion`,
+    `extra="forbid"`, nunca el valor en el mensaje de error — L-007; `accion_sensible`/
+    `casos_sensibles_registrados`, el registro de casos de uso auditados). `complejos/aplicacion/
+    escritura.py` nace con el único caso marcado hoy, `asignar_complejo_a_persona`: usa
+    `sesion.begin_nested()` si la sesión ya estaba en una transacción (el caso real de la API, que ya
+    leyó antes) o `sesion.begin()` si no (una sesión recién abierta, como en el test). `complejos.py`
+    deja de insertar `asignacion_rol` a mano: llama al caso de uso y sigue committeando una sola vez.
+  - **Hallazgo real**: `:detalle::jsonb` en un `text()` de SQLAlchemy no sustituye el bind — SQLAlchemy
+    deja `:nombre::tipo` sin tocar (para no confundirlo con el operador de cast de Postgres) y el `:`
+    crudo le llega al driver como `SyntaxError`. Se resolvió con `CAST(:detalle AS jsonb)`. El error de
+    `CheckViolation` de `asignacion_rol` también llega envuelto en `sqlalchemy.exc.IntegrityError`
+    (`.orig` es el de psycopg) al pasar por `sesion.execute()` del ORM, no suelto como en los tests de
+    la 6.1 que usan psycopg directo.
+  - 5 tests en `test_auditoria_detalle.py` (unitario, puro, sin base) + 6 en
+    `test_auditoria_transaccion.py` (contenedor propio, L-006), incluido el rojo de la 6.2 (L-013: una
+    copia del registro con un caso falso que nunca llama a `registrar()`, visto fallar la misma
+    aserción que usa el sweep real). Suite completa: 820 passed + 1 xfailed (809 + 11); web: 16 passed;
+    `humo.sh` (toca `complejos.py` real): HUMO OK.
 
 ## 7. El worker con tenant
 

@@ -14,13 +14,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, existe_persona
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
+from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
 
 router = APIRouter(prefix="/api")
@@ -111,20 +112,17 @@ def asignar_complejo(
     if not existe_persona(sesion, cuerpo.persona_id):
         raise _no_encontrado()
 
-    fila = sesion.execute(
-        text(
-            "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id, nivel) "
-            "VALUES (:administracion_id, :persona_id, :rol, :complejo_id, :nivel) "
-            "RETURNING id"
-        ),
-        {
-            # Siempre de la identidad (D7): nunca de `cuerpo.administracion_id`.
-            "administracion_id": str(identidad.administracion_id),
-            "persona_id": str(cuerpo.persona_id),
-            "rol": cuerpo.rol,
-            "complejo_id": str(complejo_id),
-            "nivel": cuerpo.nivel,
-        },
-    ).one()
+    # El request_id lo fija el middleware (D8): siempre un UUID canónico
+    # dentro de un pedido real (`seguimiento.validar_request_id`).
+    request_id = UUID(request_id_actual.get() or "")
+    nueva_id = asignar_complejo_a_persona(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        persona_id=cuerpo.persona_id,
+        rol=cuerpo.rol,
+        nivel=cuerpo.nivel,
+        request_id=request_id,
+    )
     sesion.commit()
-    return {"id": str(fila.id)}
+    return {"id": str(nueva_id)}
