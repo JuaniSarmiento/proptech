@@ -317,7 +317,13 @@ echo "traceback_crudo_descartado en logs de api/worker: $cantidad_traceback_crud
 echo "mensaje_no_texto en logs de api/worker: $cantidad_mensaje_no_texto"
 echo "salud_degradada en logs de api/worker: $cantidad_salud_degradada"
 
-revision_en_uso=$(compose exec -T api alembic current 2>/dev/null | awk '{print $1}')
+# D1/D3 (cambio 2a): `api` ya no tiene las credenciales del migrador (sólo
+# las de la app), así que "alembic current" adentro de `api` ya no funciona.
+# La revisión en uso se lee directo de `alembic_version`, igual que
+# `revision_restaurada` más abajo: el rol de arranque (`db`) puede leerla sin
+# depender de qué rol sea dueño de la tabla.
+revision_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" \
+  -d "$BASE_EN_USO" -tAc "select version_num from alembic_version")
 filas_antes=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d "$BASE_EN_USO" -tAc "select count(*) from trabajos_hechos")
 
@@ -328,14 +334,15 @@ revision_restaurada=$(compose exec -T db psql -U "$USUARIO_DB" \
 existe_trabajos_hechos=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d proptech_restauracion -tAc "select to_regclass('public.trabajos_hechos') is not null")
 
-echo "revisión en uso=$revision_en_uso revisión restaurada=$(echo "$revision_restaurada" | tr -d '[:space:]')"
+echo "revisión en uso=$(echo "$revision_en_uso" | tr -d '[:space:]') revisión restaurada=$(echo "$revision_restaurada" | tr -d '[:space:]')"
 [ "$(echo "$revision_restaurada" | tr -d '[:space:]')" = "$(echo "$revision_en_uso" | tr -d '[:space:]')" ]
 [ "$(echo "$existe_trabajos_hechos" | tr -d '[:space:]')" = "t" ]
 
-revision_en_uso_despues=$(compose exec -T api alembic current 2>/dev/null | awk '{print $1}')
+revision_en_uso_despues=$(compose exec -T db psql -U "$USUARIO_DB" \
+  -d "$BASE_EN_USO" -tAc "select version_num from alembic_version")
 filas_despues=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d "$BASE_EN_USO" -tAc "select count(*) from trabajos_hechos")
-[ "$revision_en_uso_despues" = "$revision_en_uso" ]
+[ "$(echo "$revision_en_uso_despues" | tr -d '[:space:]')" = "$(echo "$revision_en_uso" | tr -d '[:space:]')" ]
 [ "$(echo "$filas_despues" | tr -d '[:space:]')" = "$(echo "$filas_antes" | tr -d '[:space:]')" ]
 echo "ok: la base en uso no cambió (revisión y filas de trabajos_hechos iguales antes y después)"
 

@@ -44,7 +44,11 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     POSTGRES_PASSWORD` se verificó excluyendo `db` (el rol de arranque mismo, lo crea la imagen) y
     `migraciones` (restart "no"): no está escrito así en D1 pero es la lectura consistente con la
     realidad, anotado como juicio en el informe. `docker compose config --quiet` validado con un entorno
-    completo (real, no sólo el parser YAML). No se corrió `humo.sh` (pedido explícito de Juani).
+    completo (real, no sólo el parser YAML). `humo.sh` corrido el 15/10/2026 tras que Juani completara
+    `infra/.env`: falló primero (`alembic current` dentro de `api`, que ya no tiene las credenciales del
+    migrador); arreglado leyendo `alembic_version` por `psql` como el rol de arranque, igual que ya se
+    hacía para la base restaurada; `shellcheck` (vía Docker, como el CI) en verde; segunda corrida: HUMO
+    OK, los 14 pasos, exit 0.
 
 ## 3. Tablas mínimas y Row-Level Security
 
