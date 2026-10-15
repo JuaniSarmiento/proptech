@@ -181,6 +181,14 @@ diff y lo detecta el guardián (D5).
 - `url_sqlalchemy()` pasa a devolver `sqlalchemy.engine.URL`; `create_engine` lo acepta tal cual y
   `env.py` arma su engine con `create_engine(url)` en vez de `config.set_main_option(...)`. Un test
   verifica que `str()` y `repr()` del objeto ocultan la contraseña.
+- **Decisión de implementación (construida en la tarea 2.1)**: el patrón `^proptech_[a-z_]{1,40}$`
+  (D1, L-008) se exige al usuario de los **tres roles nuevos** (`ConfiguracionDelMigrador`,
+  `ConfiguracionDeRespaldo`, `Configuracion`), no al de `ConfiguracionDeArranque`. Razón: D1 dice "los
+  nombres, de `POSTGRES_*_USER`, validados contra ese patrón" — una forma que la variable del rol de
+  arranque (`POSTGRES_USER`, sin segmento intermedio) no tiene — y su nombre lo elige quien despliega
+  (hoy `proptech` en `infra/.env.example`, sin el guion bajo que pide el patrón): exigírselo hubiera
+  invalidado configuraciones existentes sin que ninguna decisión lo pidiera. Verificado en
+  `tests/unitarios/test_configuracion.py` (tabla `ROLES`, campo `exige_patron`).
 
 ### D4 · El tenant viaja en `session.info` (N4)
 
