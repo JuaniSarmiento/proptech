@@ -505,3 +505,25 @@ a V3-15 siguen iguales).
   que el SQL original no escribe explícitos). 2 tests nuevos.
   - Hecho 15/10/2026: verde confirmado (ver 13.5, corrida de cierre).
 
+- [x] 13.2 V3-2 · Las tres sondas de `_verificar_bloqueo_de_escritura_de_verdad` (UPDATE/DELETE/
+  TRUNCATE) usaban `except psycopg.Error: pass`: CUALQUIER error se contaba como "el bloqueo
+  funcionó", sin mirar cuál. Reproducción real del rompedor (`v3_truncate_por_fk.sql`): neutralizar
+  sólo el trigger de TRUNCATE (recrearlo sobre `AFTER INSERT ... WHEN (false)`, como en la
+  variante 2 de V2-2) y crear una tabla con una FK hacia `auditoria` — Postgres rechaza igual el
+  `TRUNCATE` ("cannot truncate a table referenced in a foreign key constraint"), pero por la FK,
+  nunca por el bloqueo real. Rojo, contra `ac688b2` (vía `git stash`, L-013):
+    ```
+    $ uv run pytest tests/integracion/test_auditoria_tabla.py::test_rojo_un_truncate_bloqueado_por_una_fk_se_contaba_como_bloqueo_real -v -m integracion
+    FAILED ...test_rojo_un_truncate_bloqueado_por_una_fk_se_contaba_como_bloqueo_real - AssertionError: assert 0 == 1
+    1 failed in 3.58s
+    ```
+  Corrección: `_es_el_bloqueo_esperado` exige el SQLSTATE `P0001` y el texto `auditoria no admite`
+  exactos del `RAISE EXCEPTION` de `fn_auditoria_bloqueada` (migración `0004`) — cualquier otro
+  error (una FK, lo que sea) se reporta ahora como "no se pudo probar el bloqueo", nunca como
+  bloqueo confirmado. 1 test nuevo. (Mi primer intento de reproducir este punto fue con un `DELETE`
+  y una fila referenciada por FK — falló por una razón distinta: el trigger `BEFORE DELETE`, activo
+  y sin neutralizar, siempre gana la carrera contra el chequeo de FK de Postgres y se adelanta con
+  su propio `RAISE`. L-017: el escenario real del rompedor es por `TRUNCATE`, no por `DELETE`;
+  reescribí el test con la técnica real de `v3_truncate_por_fk.sql`.)
+  - Hecho 15/10/2026: verde confirmado (ver 13.5).
+

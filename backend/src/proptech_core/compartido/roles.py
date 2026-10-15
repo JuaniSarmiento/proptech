@@ -359,16 +359,41 @@ _TRIGGERS_ESPERADOS_DE_AUDITORIA = frozenset(
 )
 
 
+#: V3-2, vuelta 4: el SQLSTATE fijo de un `RAISE EXCEPTION` de PL/pgSQL
+#: sin uno propio (D9, migración `0004`) — nunca el de una FK, un
+#: `CheckViolation` o cualquier otra cosa que también herede de
+#: `psycopg.Error`.
+_SQLSTATE_DEL_BLOQUEO_DE_AUDITORIA = "P0001"
+_MENSAJE_DEL_BLOQUEO_DE_AUDITORIA = "auditoria no admite"
+
+
+def _es_el_bloqueo_esperado(error: psycopg.Error) -> bool:
+    """V3-2, vuelta 4: antes, `except psycopg.Error: pass` trataba CUALQUIER
+    error como "el bloqueo funciona" — el día que algo tenga una FK hacia
+    `auditoria` (o cualquier otra razón ajena), un intento bloqueado por esa
+    OTRA causa pasaba la verificación sin que el trigger propio hubiera
+    hecho nada. Acá se exige el SQLSTATE y el texto exactos del `RAISE
+    EXCEPTION` de `fn_auditoria_bloqueada` (migración `0004`), nunca "algún
+    error cualquiera"."""
+    sqlstate = getattr(error, "sqlstate", None)
+    return (
+        sqlstate == _SQLSTATE_DEL_BLOQUEO_DE_AUDITORIA
+        and _MENSAJE_DEL_BLOQUEO_DE_AUDITORIA in str(error)
+    )
+
+
 def _verificar_bloqueo_de_escritura_de_verdad(cur: psycopg.Cursor) -> list[str]:
-    """V2-2(b), vuelta 3: prueba el BLOQUEO, no su forma. El catálogo (R2:
-    dueño de la función; R4: nombre y `tgenabled` del trigger) no distingue
-    una función reemplazada por una que no hace nada, o un trigger recreado
-    con el mismo nombre sobre otro evento (`AFTER INSERT ... WHEN (false)`
-    en vez de `BEFORE UPDATE OR DELETE`) — en los dos casos el catálogo
-    sigue viéndose "bien". Acá se inserta una fila de prueba dentro de un
-    `SAVEPOINT`, se intenta `UPDATE`, `DELETE` y `TRUNCATE` de verdad, se
-    exige que los tres fallen, y se revierte todo al final: la fila de
-    prueba nunca queda, pase lo que pase."""
+    """V2-2(b), vuelta 3; V3-2, vuelta 4: prueba el BLOQUEO, no su forma. El
+    catálogo (R2: dueño de la función; R4: nombre y `tgenabled` del
+    trigger) no distingue una función reemplazada por una que no hace
+    nada, o un trigger recreado con el mismo nombre sobre otro evento
+    (`AFTER INSERT ... WHEN (false)` en vez de `BEFORE UPDATE OR DELETE`)
+    — en los dos casos el catálogo sigue viéndose "bien". Acá se inserta
+    una fila de prueba dentro de un `SAVEPOINT`, se intenta `UPDATE`,
+    `DELETE` y `TRUNCATE` de verdad, se exige que los tres fallen CON EL
+    ERROR ESPERADO (V3-2: nunca "cualquier error", que podría ser una FK
+    ajena bloqueando por una razón distinta), y se revierte todo al final:
+    la fila de prueba nunca queda, pase lo que pase."""
     faltantes: list[str] = []
 
     cur.execute("SELECT nombre FROM accion_de_auditoria LIMIT 1")
@@ -410,33 +435,29 @@ def _verificar_bloqueo_de_escritura_de_verdad(cur: psycopg.Cursor) -> list[str]:
         id_de_prueba = fila_id[0]
 
         intentos = (
-            ("UPDATE auditoria SET entidad = 'x' WHERE id = %s", "UPDATE"),
-            ("DELETE FROM auditoria WHERE id = %s", "DELETE"),
+            ("UPDATE auditoria SET entidad = 'x' WHERE id = %s", "UPDATE", True),
+            ("DELETE FROM auditoria WHERE id = %s", "DELETE", True),
+            # TRUNCATE es por sentencia, no por fila: no necesita el id de
+            # prueba, pero sí corre dentro del mismo SAVEPOINT para no
+            # perder la fila.
+            ("TRUNCATE auditoria", "TRUNCATE", False),
         )
-        for sentencia, nombre in intentos:
+        for sentencia, nombre, con_id in intentos:
             cur.execute("SAVEPOINT intento_de_escritura")
             try:
-                cur.execute(sentencia, (id_de_prueba,))
-            except psycopg.Error:
-                pass  # levantó: el bloqueo sigue andando.
+                cur.execute(sentencia, (id_de_prueba,) if con_id else None)
+            except psycopg.Error as error:
+                if not _es_el_bloqueo_esperado(error):
+                    faltantes.append(
+                        f"no se pudo probar el bloqueo de {nombre}: "
+                        f"un error distinto del esperado lo frenó "
+                        f"(SQLSTATE {error.sqlstate}), nunca confirmado como el bloqueo real"
+                    )
             else:
                 faltantes.append(f"auditoria admite {nombre} (el bloqueo no funciona)")
             finally:
                 cur.execute("ROLLBACK TO SAVEPOINT intento_de_escritura")
                 cur.execute("RELEASE SAVEPOINT intento_de_escritura")
-
-        # TRUNCATE es por sentencia, no por fila: no necesita el id de prueba,
-        # pero sí corre dentro del mismo SAVEPOINT para no perder la fila.
-        cur.execute("SAVEPOINT intento_de_escritura")
-        try:
-            cur.execute("TRUNCATE auditoria")
-        except psycopg.Error:
-            pass
-        else:
-            faltantes.append("auditoria admite TRUNCATE (el bloqueo no funciona)")
-        finally:
-            cur.execute("ROLLBACK TO SAVEPOINT intento_de_escritura")
-            cur.execute("RELEASE SAVEPOINT intento_de_escritura")
     finally:
         cur.execute("ROLLBACK TO SAVEPOINT verificacion_bloqueo_auditoria")
         cur.execute("RELEASE SAVEPOINT verificacion_bloqueo_auditoria")

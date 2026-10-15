@@ -908,6 +908,63 @@ def test_rojo_despues_no_notaba_la_politica_alterada() -> None:
         assert "USING" in resultado.stderr or "política" in resultado.stderr
 
 
+# --- Vuelta 4, V3-2: las sondas de bloqueo exigen el error EXACTO, no cualquier error ---
+
+
+def test_rojo_un_truncate_bloqueado_por_una_fk_se_contaba_como_bloqueo_real() -> None:
+    """V3-2, vuelta 4 (reproducción real del rompedor, `v3_truncate_por_fk.sql`):
+    el trigger de `TRUNCATE` se recrea neutralizado (mismo nombre, sobre
+    `AFTER INSERT ... WHEN (false)`, como en la variante 2 de V2-2) y
+    además se crea una tabla con una FK hacia `auditoria`. Postgres
+    rechaza igual el `TRUNCATE` ("cannot truncate a table referenced in a
+    foreign key constraint") — pero por la FK, nunca por el bloqueo real,
+    que está neutralizado. Antes, `except psycopg.Error: pass` no
+    distinguía un error del otro y daba el bloqueo por bueno sin haber
+    probado nada."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("DROP TRIGGER trg_auditoria_sin_truncate ON auditoria")
+                cur.execute(
+                    "CREATE TRIGGER trg_auditoria_sin_truncate "
+                    "AFTER INSERT ON auditoria "
+                    "FOR EACH STATEMENT WHEN (false) "
+                    "EXECUTE FUNCTION fn_auditoria_bloqueada()"
+                )
+                cur.execute("CREATE TABLE ancla (auditoria_id bigint REFERENCES auditoria(id))")
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "no se pudo probar" in resultado.stderr
+        assert "TRUNCATE" in resultado.stderr
+
+
 # --- downgrade (con el rol de arranque) y upgrade vuelven ---
 
 
