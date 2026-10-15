@@ -289,6 +289,60 @@ def _existe_tabla(cur: psycopg.Cursor, tabla: str) -> bool:
     return fila is not None and bool(fila[0])
 
 
+class AuditoriaNoProtegida(Exception):
+    """`despues()` terminó sus pasos y, al verificar (R4, vuelta 2, D2: "verifica
+    que el trigger y el FORCE sigan activos"), algo de la protección de
+    `auditoria` no está. Nombra exactamente qué, nunca pasa en silencio."""
+
+
+#: Nombres fijos de los dos triggers que crea la migración `0004` (D9): se
+#: usan sólo para poder NOMBRAR cuál falta si alguno desaparece; cuáles
+#: funciones transferir (R2) sigue saliendo del catálogo, nunca de acá.
+_TRIGGERS_ESPERADOS_DE_AUDITORIA = frozenset(
+    {"trg_auditoria_sin_update_delete", "trg_auditoria_sin_truncate"}
+)
+
+
+def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
+    """Al final de `despues()` (R4, vuelta 2): el `FORCE`, los dos triggers
+    (habilitados) y el dueño de sus funciones. `despues()` no los
+    RECREA si faltan (eso es tocar `auditoria`, y D9/D11 dicen que eso pasa
+    por el paso de roles, no en silencio dentro de él) — sólo deja de pasar
+    por alto que alguien los sacó."""
+    faltantes: list[str] = []
+
+    cur.execute(
+        "SELECT relforcerowsecurity FROM pg_class "
+        "WHERE relname = 'auditoria' AND relnamespace = 'public'::regnamespace"
+    )
+    fila_force = cur.fetchone()
+    if fila_force is None or not fila_force[0]:
+        faltantes.append("FORCE ROW LEVEL SECURITY en auditoria")
+
+    cur.execute(
+        "SELECT tgname, tgenabled FROM pg_trigger "
+        "WHERE tgrelid = 'auditoria'::regclass AND NOT tgisinternal"
+    )
+    triggers = {fila[0]: fila[1] for fila in cur.fetchall()}
+    for nombre in sorted(_TRIGGERS_ESPERADOS_DE_AUDITORIA - triggers.keys()):
+        faltantes.append(f"el trigger {nombre} (no existe)")
+    for nombre, habilitado in sorted(triggers.items()):
+        if habilitado != "O":
+            faltantes.append(f"el trigger {nombre} (deshabilitado)")
+
+    for funcion in _funciones_de_los_triggers_de(cur, "auditoria"):
+        cur.execute("SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE proname = %s", (funcion,))
+        fila_dueno = cur.fetchone()
+        if fila_dueno is None or fila_dueno[0] != arranque:
+            dueno_real = fila_dueno[0] if fila_dueno is not None else "(no existe)"
+            faltantes.append(f"el dueño de la función {funcion} (es {dueno_real})")
+
+    if faltantes:
+        raise AuditoriaNoProtegida(
+            "la protección de auditoria no se pudo confirmar: " + "; ".join(faltantes)
+        )
+
+
 def _funciones_de_los_triggers_de(cur: psycopg.Cursor, tabla: str) -> list[str]:
     """Por catálogo, nunca un nombre fijo (R2, vuelta 2): toda función que
     dispara un trigger de `tabla` hoy. Si mañana se suma otro trigger con
@@ -386,6 +440,13 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                     app=sql.Identifier(app.postgres_user)
                 )
             )
+            # R4 (vuelta 2): recién acá, con todo lo de arriba ya aplicado
+            # en esta misma transacción. Si algo sigue sin estar (un
+            # trigger que alguien borró antes de esta corrida, por
+            # ejemplo: esto no lo recrea), se corta ACÁ, antes de
+            # confirmar nada — nunca un "despues() salió bien" silencioso
+            # sobre una auditoria que en los hechos no está protegida.
+            _verificar_auditoria_protegida(cur, configuracion.postgres_user)
         conexion.commit()
     except BaseException:
         conexion.rollback()
@@ -414,6 +475,9 @@ def _main(argv: list[str]) -> int:
         # El mensaje de psycopg nombra la operación y el objeto, nunca un
         # valor que nosotros le hayamos pasado como literal (L-007): las
         # contraseñas viajan como `sql.Literal`, nunca interpoladas a mano.
+        print(f"error en el paso de roles: {error}", file=sys.stderr)
+        return 1
+    except AuditoriaNoProtegida as error:
         print(f"error en el paso de roles: {error}", file=sys.stderr)
         return 1
     return 0

@@ -95,6 +95,9 @@ def _correr(args: list[str], entorno: dict[str, str]) -> None:
 
 
 def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
+    """D9/D11, y desde R2 (vuelta 2) también la función de sus triggers: el
+    `downgrade` de la 0004 corre como migrador y hace `DROP FUNCTION`, y ya
+    no es su dueño (gemelo del helper de `test_auditoria_tabla.py`)."""
     conexion = psycopg.connect(
         host=contenedor.get_container_host_ip(),
         port=contenedor.get_exposed_port(5432),
@@ -109,6 +112,13 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
             fila = cur.fetchone()
             if fila is not None and fila[0]:
                 cur.execute(f"ALTER TABLE auditoria OWNER TO {MIGRADOR_USER}")
+                cur.execute(
+                    "SELECT DISTINCT p.proname FROM pg_trigger t "
+                    "JOIN pg_proc p ON p.oid = t.tgfoid "
+                    "WHERE t.tgrelid = 'auditoria'::regclass AND NOT t.tgisinternal"
+                )
+                for fila_funcion in cur.fetchall():
+                    cur.execute(f"ALTER FUNCTION {fila_funcion[0]}() OWNER TO {MIGRADOR_USER}")
     finally:
         conexion.close()
 

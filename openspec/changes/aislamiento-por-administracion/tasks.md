@@ -339,7 +339,19 @@ R1, R2, R3, R4, R7, R8, R10. Las deudas R5, R6, R9 y R11 NO se tocan (quedan con
     mismo patrón que ya existía para `auditoria`. 34/34 tests entre `test_auditoria_tabla.py` y
     `test_roles.py`; guardián de catálogo (`test_catalogo_rls.py`) sin regresión, 6/6.
 
-- [ ] 11.4 R4 · `despues()` no verifica que el trigger y el `FORCE` sigan activos, como promete D2. Rojo: borrar un trigger (o `NO FORCE`) como arranque y correr `despues()` — hoy sale 0. Corrección: verificar al final (incluido el dueño de la función, R2) y salir con 1 nombrando qué falta si algo no está.
+- [x] 11.4 R4 · `despues()` no verifica que el trigger y el `FORCE` sigan activos, como promete D2. Rojo: borrar un trigger (o `NO FORCE`) como arranque y correr `despues()` — hoy sale 0. Corrección: verificar al final (incluido el dueño de la función, R2) y salir con 1 nombrando qué falta si algo no está.
+  - Hecho 15/10/2026: rojo confirmado (borrar `trg_auditoria_sin_truncate` como arranque y correr
+    `despues()` de nuevo: salía 0, sin mirar nada). `_verificar_auditoria_protegida` nueva en
+    `roles.py`: `FORCE`, los dos triggers (nombrados, habilitados) y el dueño de sus funciones (R2),
+    corrida al final de `despues()` dentro de la MISMA transacción — si algo falta, `despues()` no
+    confirma nada (rollback) y sale 1 nombrando qué, vía la excepción propia `AuditoriaNoProtegida`
+    (nueva rama en `_main`). No recrea lo que falta: D9/D11 ya dicen que tocar `auditoria` es cosa del
+    paso de roles, no un arreglo silencioso dentro de él. **Collateral real**: el teardown de
+    `test_auditoria_transaccion.py` tenía su propia copia de `_devolver_auditoria_al_migrador` sin el
+    fix de R2 (la función también, no sólo la tabla) — mismo síntoma que ya se había arreglado en
+    `test_auditoria_tabla.py`, acá duplicado porque cada archivo de integración es autocontenido
+    (L-006). Suite completa: 841 passed + 1 xfailed (833 + 8 de R1 a R4); `humo.sh`: HUMO OK.
+
 - [ ] 11.5 R7 · Un `SET` de sesión (sin `LOCAL`) del tenant contagia al pedido siguiente que abre sin tenant. Rojo: pool de 1 conexión, `SET` de sesión con el tenant de A, después una sesión sin tenant — hoy ve las filas de A. Corrección: un evento de reset/checkin del pool que limpie `app.administracion_id` como cinturón, además del `SET LOCAL`.
 - [ ] 11.6 R8 · Nada impide que `proptech_app` quede con el mismo nombre o contraseña que otro rol (incluido el de arranque): la API podría arrancar con `BYPASSRLS` o con la contraseña del superusuario sin que nadie lo note. Rojo: `antes()` con dos `*_USER` iguales, o dos contraseñas iguales de las cuatro — hoy sale 0. Corrección: `antes()` rechaza nombres o contraseñas repetidas (sin mostrar valores); la API y el worker no arrancan si su propia conexión tiene `rolsuper`, `rolbypassrls` o es dueña de alguna tabla. `infra/.env.example` con placeholders distintos.
 - [ ] 11.7 R10 · Con el rol equivocado, `respaldos --salud` sigue dando 0 hasta 1,5 intervalos después del último backup bueno (36h con el default): esconde la falla salvo que se arranque sin backups previos. **Opción A** (la que corresponde: la opción B es cambiar el escenario y es de Juani, D-094): una marca `.ultimo-fallo` que `--salud` mire. Rojo: `.ultimo-ok` bueno previo + credenciales de la app + un ciclo fallido — hoy `--salud` sigue en 0.

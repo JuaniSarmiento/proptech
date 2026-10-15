@@ -623,6 +623,55 @@ def test_rojo_sin_despues_el_migrador_desarma_la_auditoria_y_la_app_tiene_de_mas
         _correr(["uv", "run", "alembic", "downgrade", "base"], _alembic_env(contenedor))
 
 
+# --- Vuelta 2, R4: despues() verifica el trigger y el FORCE, no sólo los transfiere ---
+
+
+def test_rojo_despues_no_verificaba_nada_si_el_trigger_o_el_force_desaparecen() -> None:
+    """D2 promete que `despues()` "verifica que el trigger y el `FORCE`
+    sigan activos". Contenedor propio (L-006): este test rompe el estado a
+    propósito (borra un trigger, como el rol de arranque) y no lo deja
+    reparado — nunca puede compartir el `esquema` del resto del archivo."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        # Como el rol de arranque (ya es dueño, gracias al despues() de arriba):
+        # se borra uno de los dos triggers, directo en el catálogo.
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("DROP TRIGGER trg_auditoria_sin_truncate ON auditoria")
+        finally:
+            conexion.close()
+
+        # Un segundo `despues()` (un reinicio, un redeploy) tiene que notar
+        # que falta el trigger y salir con 1, nombrando qué falta — hoy
+        # sale con 0 sin haber mirado nada de esto.
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "trg_auditoria_sin_truncate" in resultado.stderr
+
+
 # --- downgrade (con el rol de arranque) y upgrade vuelven ---
 
 
