@@ -8,18 +8,21 @@ transacción (R10, D-016, D-076, D-087).
 
 ### Requirement: Roles de la base separados por trabajo
 
-El sistema SHALL usar tres roles de PostgreSQL distintos: el rol de arranque del contenedor, sólo para
-crear los otros dos y para los respaldos; `proptech_migrador`, dueño de las tablas, para las
-migraciones; y `proptech_app`, para la API y el worker. Ni `proptech_migrador` ni `proptech_app` MUST
-ser superusuario ni tener `BYPASSRLS`, `CREATEROLE` o `CREATEDB`. `proptech_app` MUST NOT ser dueño de
-ninguna tabla. La creación de los roles MUST ser idempotente y funcionar también sobre un volumen de
-datos que ya existía antes de este cambio.
+El sistema SHALL usar cuatro roles de PostgreSQL distintos: el rol de arranque del contenedor
+(superusuario), sólo para crear y reparar los otros y como dueño de la auditoría; `proptech_migrador`,
+dueño de las tablas de dominio, para las migraciones; `proptech_app`, para la API y el worker; y
+`proptech_respaldo`, sólo para volcar la base. Ninguno de los tres roles del proyecto MUST ser
+superusuario ni tener `CREATEROLE` o `CREATEDB`; `proptech_migrador` y `proptech_app` MUST NOT tener
+`BYPASSRLS`; `proptech_app` MUST NOT ser dueño de ninguna tabla. `proptech_migrador` MUST poder crear
+tablas en el esquema de la aplicación, y `proptech_app` MUST tener permisos sobre las tablas que ya
+existían antes de este cambio. La creación de los roles MUST ser idempotente y funcionar también sobre
+un volumen de datos que ya existía.
 
 #### Scenario: Los atributos de cada rol
 
 - **WHEN** se levanta el stack y se consulta el catálogo de roles
-- **THEN** `proptech_migrador` y `proptech_app` existen, ninguno es superusuario ni tiene `BYPASSRLS`,
-  y `proptech_app` no es dueño de ninguna tabla del esquema
+- **THEN** `proptech_migrador`, `proptech_app` y `proptech_respaldo` existen, ninguno es superusuario,
+  sólo `proptech_respaldo` tiene `BYPASSRLS`, y `proptech_app` no es dueño de ninguna tabla
 
 #### Scenario: Arranque repetido
 
@@ -30,7 +33,8 @@ datos que ya existía antes de este cambio.
 
 - **WHEN** se levanta el stack sobre un volumen con las tablas de los cambios 1a a 1d, creadas por el
   rol de arranque
-- **THEN** las migraciones terminan con éxito como `proptech_migrador` y esas tablas pasan a ser suyas
+- **THEN** las migraciones terminan con éxito como `proptech_migrador`, esas tablas pasan a ser suyas y
+  `proptech_app` puede leer y escribir `trabajos_hechos`
 
 ### Requirement: Toda tabla de una administración está aislada por la base
 
@@ -38,7 +42,8 @@ Toda tabla con datos de una administración SHALL tener `administracion_id NOT N
 Security activada y forzada, y una política que exija, para leer y para escribir, que
 `administracion_id` sea igual al tenant fijado en la transacción. Una fila que referencia a otra
 (un complejo, una unidad, una persona) MUST pertenecer a la misma administración que la fila
-referenciada.
+referenciada. Toda tabla que cuelga de un edificio MUST llevar `complejo_id NOT NULL` con clave foránea
+compuesta `(administracion_id, complejo_id)`.
 
 #### Scenario: Otra administración no ve nada
 
@@ -56,10 +61,17 @@ referenciada.
 - **WHEN** con el tenant de A se crea una unidad que apunta a un complejo de B
 - **THEN** la base rechaza la escritura
 
+#### Scenario: Referencia a otro edificio rechazada
+
+- **WHEN** con el tenant de A se crea una asignación de vecino que apunta a una unidad de un complejo
+  distinto del que dice la fila
+- **THEN** la base rechaza la escritura
+
 #### Scenario: Una tabla nueva sin candado
 
-- **WHEN** existe en el esquema una tabla con columna `administracion_id` sin RLS forzada, sin política
-  o sin permisos para `proptech_app`
+- **WHEN** existe en el esquema una tabla con columna `administracion_id` sin RLS forzada, sin política,
+  sin permisos para `proptech_app`, o con columna `complejo_id` que admite nulos o no tiene la FK
+  compuesta con la administración (fuera de la lista explícita de excepciones)
 - **THEN** la suite de tests falla nombrando la tabla
 
 ### Requirement: Sin tenant fijado, cero filas y nunca un error

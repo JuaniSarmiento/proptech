@@ -1518,32 +1518,38 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     consejo antes de condonar; esa es la pregunta de P20 y queda sin resolver.
 - **Quién**: Juani, como socio (D-094). Alberto puede revisarla antes de que se codee el cambio 2.
 
-## D-097 · El cambio 2 se parte en 2a (el candado) y 2b (el login), y el método de login
+## D-097 · El cambio 2 se parte en 2a (el candado), 2b (el login) y 2c (el endurecimiento), y el método de login
 
-- **Fecha**: 15/10/2026
+- **Fecha**: 15/10/2026 (ajustada el mismo día, antes de publicarse, con la revisión del arquitecto que
+  Juani aprobó aplicar)
 - **Decisión**:
-  - **Partición**: el cambio 2 `acceso-y-aislamiento` se parte en dos, con el mismo criterio que partió
+  - **Partición**: el cambio 2 `acceso-y-aislamiento` se parte en tres, con el mismo criterio que partió
     el 1 en 1a a 1d (piezas con perfil de riesgo distinto se revisan mejor por separado):
-    - **2a `aislamiento-por-administracion`, el candado**: roles de PostgreSQL separados, Row-Level
-      Security con `SET LOCAL` por administración, alcance por edificio (404) y permiso por acción
-      según D-096 (403), auditoría de acciones sensibles (D-016), el tenant del worker y el
-      endurecimiento de infraestructura con dueño "2". Se prueba entero sin login: la identidad se
-      inyecta en los tests.
-    - **2b, el login**: el método de abajo, la sesión del lado de Next.js (D-036), el límite de
-      intentos, la auditoría de login exitoso y fallido sobre la tabla del 2a y la CSP de Next. Depende
-      del 2a.
-    Los dos siguen siendo CRITICAL (D-094): ninguno se construye sin la aprobación escrita y fechada de
-    un socio.
-    El roadmap pasa de 20 a 21 cambios. En `CHANGES.md` quedan como **C-05a** y **C-05b**, para no
-    renumerar los códigos siguientes (D-093); el cambio 3 depende del 2b, como dependía del 2 entero.
+    - **2a `aislamiento-por-administracion`, el candado** (CRITICAL): roles de PostgreSQL separados,
+      Row-Level Security con `SET LOCAL` por administración, alcance por edificio (404) y permiso por
+      acción según D-096 (403), auditoría de acciones sensibles (D-016), el tenant del worker y la web
+      fuera de la red de la base. Se prueba entero sin login: la identidad se inyecta en los tests.
+    - **2b, el login** (CRITICAL): el método de abajo, la sesión del lado de Next.js (D-036), el límite
+      de intentos, la auditoría de los ingresos sobre la tabla del 2a y la CSP de Next. Depende del 2a.
+    - **2c `endurecimiento-de-infraestructura`** (MEDIUM): la deuda de infraestructura con dueño "2"
+      que no hace al candado (cabeceras y volúmenes de Caddy, `Via`, `X-Powered-By`, HEAD, CI en pull
+      requests con límite de tiempo y gitleaks por digest, contenedores endurecidos y PID 1 no root por
+      servicio, el resto de F7 y la doble congelada del humo, la tabla de variables del README).
+      Depende del 2a porque toca los mismos archivos.
+  - **Dependencias**: el cambio 3 depende del **2a** para construirse (sus tests inyectan la identidad
+    igual que los del 2a). El **2b** es requisito para que una persona lo use y para el despliegue, no
+    para construirlo: lo piden el portal (11), la vista del consejo (12, por el 11) y el piloto (15).
+    El roadmap pasa de 20 a 22 cambios; en `CHANGES.md` quedan como **C-05a**, **C-05b** y **C-05c**,
+    para no renumerar los códigos siguientes (D-093).
   - **Método de login**: **link mágico por mail sólo para el vecino**; el personal (titular,
     colaborador y consejo) entra **con contraseña**. Resuelve la pregunta que D-039 dejó para el design.
   - **Queda abierto un hueco**, que bloquea el 2b: a qué administración entra un email que tiene
     cuenta en dos (D-096 lo permite y nadie definió el mecanismo). Es **P48**.
 - **Descartado**:
-  - El cambio 2 entero en una sola pieza: mezcla un candado que se puede probar sin pantallas con una
-    decisión de producto (el método de login), y la discusión de la segunda frena la aprobación del
-    primero.
+  - El cambio 2 en una sola pieza, o en dos con el endurecimiento dentro del candado: la aprobación
+    CRITICAL del candado cargaría con trabajo de otro perfil de riesgo (revisión del arquitecto).
+  - Que el 3 espere al 2b: frenaría el camino a M1 por una pantalla que el 3 no necesita para
+    construirse.
   - Clerk para el personal (la propuesta del documento de Alberto): suma un servicio pago con pocos
     usuarios por administración (D-043) y manda los emails del personal a un tercero antes de tener
     resuelta P12.
@@ -1553,9 +1559,11 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     contraseña olvidada de un vecino que entra una vez por mes es un ticket de soporte (P13).
 - **Por qué**: el explore del 15/10/2026 (`openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`,
   secciones 1 y 7) mostró que el candado es irreductiblemente crítico y testeable de punta a punta sin
-  login, y que el login depende de decisiones de producto. El link mágico del vecino necesita mandar un
-  mail antes del cambio 13 (`avisos-por-email`): cómo se manda queda para el design del 2b.
-- **Quién**: Juani, 15/10/2026 (la partición y el método de login, con el alcance por perfil).
+  login, y que el login depende de decisiones de producto; la revisión del arquitecto del mismo día
+  separó además lo que el candado no necesita. El link mágico del vecino necesita mandar un mail antes
+  del cambio 13 (`avisos-por-email`): cómo se manda queda para el design del 2b.
+- **Quién**: Juani, 15/10/2026 (la partición, el método de login con su alcance por perfil, y los
+  ajustes del arquitecto).
 
 ## Supuestos
 

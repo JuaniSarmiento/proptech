@@ -112,50 +112,56 @@ archivar con commit y push. Un cambio arranca cuando el anterior está archivado
   de Alembic y el archivo sobrevive a `down -v`; la corrida equivalente al CI está en verde; el
   auditor dio el OK con deuda anotada.
 
-### 2 · `acceso-y-aislamiento` · crítico · partido en 2a y 2b (D-097)
+### 2 · `acceso-y-aislamiento` · partido en 2a, 2b y 2c (D-097)
 
 El explore propio (`openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`, 15/10/2026) recomendó
-partirlo y Juani lo aprobó el mismo día (D-097): el **2a** es el candado y se prueba sin login; el
-**2b** es el login y depende del 2a. Los dos son CRITICAL (D-094). Objetivo común: que cada persona
-entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en D-096.
+partirlo, Juani lo aprobó el mismo día y la revisión del arquitecto separó además el endurecimiento
+(D-097): el **2a** es el candado y se prueba sin login; el **2b** es el login; el **2c** es el
+endurecimiento de infraestructura que el candado no necesita. Objetivo común: que cada persona entre y
+vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en D-096.
 
 ### 2a · `aislamiento-por-administracion` · crítico
 
 - **Objetivo**: que la base misma impida ver o escribir datos de otra administración, y que el alcance
   por edificio y el permiso por acción respondan 404 y 403 según D-037 y D-096, con la identidad
   inyectada en los tests (todavía sin login).
-- **Reglas**: R10. **Decisiones**: D-016, D-037, D-076, D-082, D-087, D-091, D-095, D-096, D-097.
-- **Entra**: tres roles de PostgreSQL (el de arranque sólo para crear roles y para los respaldos;
-  `proptech_migrador`, dueño de las tablas; `proptech_app`, sin superusuario ni `BYPASSRLS`, para la API
-  y el worker), con un par de credenciales por rol; tablas mínimas (D-082: administración, complejo,
-  unidad, persona y asignación por rol) con `administracion_id NOT NULL`, claves foráneas compuestas y
-  RLS forzada con `current_setting(..., true)` y `nullif`; el tenant fijado con `set_config(..., true)`
-  en cada transacción, desde la identidad; la identidad inyectable (401 en producción hasta el 2b);
-  404 fuera de alcance, indistinguible de "no existe", y 403 con el permiso faltante; auditoría en la
-  misma transacción, de sólo agregar; el tenant del worker como argumento validado; el guardián del
-  catálogo que falla si una tabla nueva queda sin candado; y la deuda con dueño "2" que no necesita el
-  login (ver las tablas de deuda más abajo).
-- **Plan de Row-Level Security** (D-087): el de la versión anterior de esta ficha, con tres roles en vez
-  de dos (el superusuario del contenedor queda sólo para crear los otros y para `pg_dump`). Detalle en
-  el `design.md` del cambio.
-- **Elecciones que firma el socio que apruebe** (sección "Aprobación" de la propuesta): E1, el
-  migrador sin `BYPASSRLS`; E2, el alcance por edificio en la aplicación y no en la base; E3,
-  `trabajos_hechos` sin `administracion_id` (es técnica); E4, Dependabot al cambio 15.
-- **No entra**: el login y todo lo que lo necesita (2b); quién lee la auditoría; las acciones
-  sensibles de otros módulos (se auditan con el helper del 2a en 7, 8 y 10b).
-- **Depende de**: 1d. **Habilita**: 2b.
+- **Reglas**: R10. **Decisiones**: D-016, D-021, D-037, D-076, D-082, D-087, D-091, D-096, D-097.
+- **Entra**: cuatro roles de PostgreSQL (el de arranque, superusuario, sólo para crear y reparar los
+  otros y como dueño de la auditoría; `proptech_migrador`, dueño de las tablas de dominio;
+  `proptech_app`, sin superusuario ni `BYPASSRLS`, para la API y el worker; `proptech_respaldo`, sin
+  superusuario, con `BYPASSRLS` y `pg_read_all_data`, para `pg_dump`), con un par de credenciales por
+  rol y ningún servicio permanente con la contraseña del superusuario; tablas mínimas (D-082) con
+  `administracion_id NOT NULL`, FK compuestas y RLS forzada con `current_setting(..., true)` y
+  `nullif`; la convención de `complejo_id NOT NULL` con FK compuesta para toda tabla de un edificio; el
+  tenant en `session.info` y fijado con `set_config(..., true)` en cada transacción; la identidad
+  inyectable (401 en producción hasta el 2b); 404 fuera de alcance, indistinguible de "no existe", y
+  403 con el permiso faltante; auditoría en `acceso.aplicacion`, del rol de arranque, de sólo agregar y
+  en la misma transacción; el tenant del worker como argumento validado; el guardián del catálogo; la
+  web fuera de la red de la base; M12.
+- **Fronteras**: `complejos` (y 7, 8, 10b) → `acceso` → `compartido`; `acceso` no importa `complejos`
+  y `compartido` no importa `acceso`.
+- **Elecciones que firma el socio que apruebe**: E1, el migrador sin `BYPASSRLS` (es de confianza
+  equivalente al superusuario sobre sus tablas; la razón es obligar a sembrar con el tenant fijado a
+  propósito); E2, el alcance por edificio en la aplicación, con su riesgo (un vecino viendo a otro) y
+  su costo de revertir; E3, `trabajos_hechos` sin `administracion_id`; E4, Dependabot al cambio 15; E5,
+  cuatro roles en vez de los dos de D-087.
+- **No entra**: el login (2b); el endurecimiento que no hace al candado (2c); quién lee la auditoría;
+  las acciones sensibles de otros módulos; la recuperación real desde un backup en otro servidor
+  (cambio 15).
+- **Depende de**: 1d. **Habilita**: 2b, 2c, 3.
 - **Bloqueado por**: la aprobación escrita y fechada de un socio en su propuesta.
 - **Que intente romper el rompedor**: la lista de la propuesta (fuga por un `SET LOCAL` que no se
   aplicó, `current_setting` sin `missing_ok`, un rol con `BYPASSRLS` o superusuario usado por la app,
-  backups incompletos por usar el rol equivocado, 404 contra 403 filtrando existencia, la auditoría
-  salteada o editada, el worker sin tenant, el `GRANT` olvidado), más lo que ya pedía esta ficha: ver
-  un edificio de otra administración tipeando la URL o mandando otro `tenant_id`, un `SET` sin `LOCAL`
-  que contagie al pedido siguiente, un colaborador en un edificio no asignado.
+  backups incompletos por usar el rol equivocado o `--enable-row-security`, 404 contra 403 filtrando
+  existencia, la auditoría salteada, editada o con su trigger desactivado, el worker sin tenant, el
+  `GRANT` olvidado, el filtro por edificio de la aplicación), más lo que ya pedía esta ficha: ver un
+  edificio de otra administración tipeando la URL o mandando otro `tenant_id`, un `SET` sin `LOCAL` que
+  contagie al pedido siguiente, un colaborador en un edificio no asignado.
 - **Terminado cuando**: hay tests contra PostgreSQL real, conectados como `proptech_app`, que intentan
   cruzar administraciones y fallan cerrados; cada rol ve exactamente lo de D-037 y cada acción sigue la
-  matriz de D-096; la auditoría registra la asignación de edificios y no se puede editar; el humo
-  verifica el rol de la app y un backup con dos administraciones; 20 tareas en
-  `openspec/changes/aislamiento-por-administracion/`, hechas con su rojo visto.
+  matriz de D-096; la auditoría registra la asignación de edificios y ni la app ni el migrador la
+  pueden editar; el humo verifica el rol de la app y un backup completo hecho sin superusuario; 17
+  tareas en `openspec/changes/aislamiento-por-administracion/`, hechas con su rojo visto.
 
 ### 2b · `login` (nombre provisional) · crítico
 
@@ -163,13 +169,15 @@ entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolv
   link mágico por mail (D-097).
 - **Historias**: HU-V1. **Decisiones**: D-036, D-039, D-043, D-096, D-097.
 - **Entra**: login del personal (titular, colaborador, consejo) con contraseña; link mágico del vecino
-  (token de un solo uso con vencimiento corto); la sesión del lado del servidor de Next (D-036);
-  límite de intentos en el login (por cuenta y, más laxo, por IP, para no bloquear a un edificio
-  detrás del mismo wifi); auditoría de login exitoso y fallido sobre la tabla del 2a; CSP en Next
-  (deuda de las auditorías del 13/10); la pantalla de login; qué rutas quedan sin sesión.
+  (token de un solo uso con vencimiento corto); la sesión del lado del servidor de Next (D-036); límite
+  de intentos en el login (por cuenta y, más laxo, por IP, para no bloquear a un edificio detrás del
+  mismo wifi); auditoría de `ingreso_exitoso` e `ingreso_fallido` con `acceso.aplicacion` (cada acción
+  nueva, con su migración de vocabulario); CSP en Next; la pantalla de login; qué rutas quedan sin
+  sesión.
 - **No entra**: el puerto de email completo, con reintentos y plantillas (13); las pantallas del portal
   (11) y del consejo (12).
-- **Depende de**: 2a. **Habilita**: 3, 4.
+- **Depende de**: 2a. **Habilita**: el uso por una persona y el despliegue: lo piden 11 y 15 (no el 3,
+  que se construye con la identidad inyectada).
 - **Bloqueado por**: **P48** (a qué administración entra un email con cuenta en dos).
 - **Decidir en el design**: cómo se manda el mail del link mágico antes del cambio 13 (un envío mínimo
   en este cambio o adelantar parte del puerto del 13); si el límite de intentos falla abierto o cerrado
@@ -181,6 +189,27 @@ entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolv
   edificio por IP compartida; el token de sesión visible en el navegador.
 - **Terminado cuando**: el personal y el vecino entran a su administración y a ninguna otra; los
   intentos fallidos se limitan y se auditan.
+
+### 2c · `endurecimiento-de-infraestructura` · MEDIUM
+
+- **Objetivo**: cerrar la deuda de infraestructura con dueño "2" que no cambia quién ve qué dato.
+- **Decisiones**: D-051, D-087, D-089, D-095, D-097.
+- **Gobernanza**: MEDIUM. Checkpoints, sin aprobación previa de los socios (D-094).
+- **Entra**: cabeceras de seguridad en Caddy, sin `Server`, `Via` ni `X-Powered-By`, y HEAD revisado;
+  volúmenes de Caddy; `no-new-privileges` y capacidades mínimas justificadas viendo fallar el arranque;
+  PID 1 no root en cada servicio, con el rojo en cada uno; CI en pull requests, con `timeout-minutes` y
+  gitleaks por digest; humo con pasos nombrados, "uno solo" exacto, la doble congelada y las cabeceras
+  de punta a punta; la tabla de variables del README. 10 tareas en
+  `openspec/changes/endurecimiento-de-infraestructura/`.
+- **No entra**: HSTS, `read_only` en los contenedores y los secretos de Compose (con el despliegue,
+  15); CSP (2b); Dependabot (15).
+- **Depende de**: 2a (los dos tocan `compose.yaml` y `humo.sh`). **Habilita**: 15.
+- **Que intente romper el rompedor**: una respuesta que se escapa sin cabeceras (un 502, una
+  redirección, un 404, un HEAD); un servicio que arranca como root y el chequeo que no lo ve; una
+  capacidad de más sin justificar; un trabajo del CI sin límite; un paso del humo que falla sin decir
+  cuál; la doble congelada que deja algo pausado.
+- **Terminado cuando**: las 10 tareas están hechas con su rojo visto y la corrida de cierre está en
+  verde.
 
 ### 3 · `configuracion-del-edificio` · HIGH
 
@@ -203,7 +232,7 @@ entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolv
   la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
   coeficiente por unidad.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
-- **Depende de**: 2b. **Habilita**: 4, 5, 6.
+- **Depende de**: 2a (para construirse; el 2b, para que una persona lo use). **Habilita**: 4, 5, 6.
 - **Bloqueado por**: P16, P19, P24 y P33.
 - **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
   si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
@@ -236,7 +265,7 @@ entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolv
   generó; el cambio 7 la completa con la preliquidación, los controles y la distribución. La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
-- **Depende de**: 2b y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
+- **Depende de**: 2a y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
   **Habilita**: 5, 6, 7.
 - **Bloqueado por**: P10, P11, P21, P31, P34 y P42 (la sesión con un contador o administrador).
 - **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
@@ -495,7 +524,7 @@ entre y vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolv
 - **Entra**: todas las unidades de la persona juntas; deuda y vencimiento; expensa por ordinaria,
   extraordinaria y categoría, con la comparación contra el mes anterior; descarga de PDFs con links
   firmados y con vencimiento (D-070); app instalable. Pasa por la skill impeccable.
-- **Depende de**: 10a. **Habilita**: 12.
+- **Depende de**: 10a y 2b (el vecino tiene que poder entrar). **Habilita**: 12.
 - **Distribución** (D-074): la primera vez que un vecino abre una liquidación, el portal llama al
   puerto de distribución del cambio 7.
 - **Que intente romper el rompedor**: ver la unidad de otro vecino; números distintos a los del
@@ -587,7 +616,8 @@ el 1d ya está en sus tareas (D-090).
 |---|---|
 | `Dinero` copiable y serializable (`__reduce__`, `__copy__`, `__deepcopy__`), pyyaml 6.0.3, rechazo de float y Decimal al encolar, logs de ARQ sin argumentos, logs de error de Caddy, Alembic sin apagar loggers, red de egreso del worker, SecretStr, un solo engine y su pool, uvicorn sin log de acceso y con `--proxy-headers`, línea de base sobre un clon con historial | 1c |
 | Restauración con `-U` y la ruta del `.env`, retención que no borra el ciclo en curso, rechazo de uid 0, shellcheck en el CI, `-p proptech` en el humo | 1d |
-| Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, roles de PostgreSQL para RLS (migrador y aplicación), endurecimiento de contenedores, tabla de variables del README | 2a |
+| Roles de PostgreSQL para RLS (migrador y aplicación) | 2a |
+| Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) |
 | CSP en Next | 2b (una CSP sin pantallas no prueba nada; la primera es la de login) |
 | Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
@@ -625,10 +655,10 @@ esté resuelta (L-012), no por el que suena más obvio.
 | F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | 15 |
 | F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | 15 |
 | "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | 15 |
-| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2a (confianza media; el 2a amplía el mismo humo) |
-| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2a |
-| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2a (endurecimiento de contenedores) |
-| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a (su 11.1 dice el orden y por qué, D14 de su design) |
+| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2c (confianza media) |
+| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c |
+| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) |
+| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a y 2c (cada corrida de cierre dice el orden y por qué) |
 
 ## Pendientes de arranque
 

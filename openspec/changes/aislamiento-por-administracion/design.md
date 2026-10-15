@@ -9,58 +9,84 @@ Estado del código al 15/10/2026 (commit `b77babf`):
 - **`configuracion.py`**: `_ConfiguracionBaseDeDatosBase` y `_ConfiguracionBase` leen el mismo par
   `POSTGRES_USER`/`POSTGRES_PASSWORD`; `url_sqlalchemy()` arma un `URL` y lo devuelve renderizado como
   `str` con la contraseña (M12 a medias, D-091).
-- **`base_de_datos.py::registrar_application_name`** ya hace, para `application_name`, lo que el plan
-  de D-087 pide para el tenant: un `after_begin` sobre la `sessionmaker` que corre
-  `set_config(..., true)` leyendo una `ContextVar`. Es el molde de D4, con dos diferencias: un tenant
-  ausente nunca se inventa, y el tenant tiene que estar fijado antes de la primera consulta.
-- **Worker**: `tareas.py` valida sus argumentos con Pydantic estricto antes de encolar (D2 del 1c) y
-  `con_seguimiento_de_tarea` fija el `request_id` por tarea; la base se toca con `asyncio.to_thread`,
-  que copia el contexto (L-015).
+- **`base_de_datos.py::registrar_application_name`** ya registra un `after_begin` sobre la
+  `sessionmaker` que corre `set_config(..., true)`. Es el molde de D4.
+- **Worker**: `tareas.py` valida sus argumentos con Pydantic estricto antes de encolar (D2 del 1c); la
+  base se toca con `asyncio.to_thread` (L-015).
 - **Migraciones**: `0001_inicial` (vacía) y `0002_trabajos_hechos`, las dos creadas por el rol de
   arranque.
-- **Redes**: `interna` (sin salida, con la base, Redis, la API, el worker, la web y Caddy con IP fija
-  `172.28.0.254`), `borde` (Caddy) y `salida_worker`. La web está hoy en la misma red que la base.
-- **CI** (`.github/workflows/ci.yml`): sólo `on: push`, sin `timeout-minutes`, gitleaks
-  `zricethezav/gitleaks:v8.30.1` por tag.
+- **Redes**: `interna` (sin salida: base, Redis, API, worker, web y Caddy con IP fija `172.28.0.254`),
+  `borde` (Caddy) y `salida_worker`. La web está hoy en la misma red que la base.
+- **Restauración** (`infra/respaldos/restaurar.sh`, 1d): `pg_restore --no-owner -U <rol de arranque>`
+  en una base aparte.
 
-## Deuda que recibe este cambio, y el reparto con el 2b
+**Lo que probó el arquitecto** el 15/10/2026 en un contenedor `postgres:18.6-trixie` descartable, y
+que este design toma como hecho (EVIDENCIA de su revisión, no de este propose):
 
-Criterio (L-012): va al 2a lo que necesita el candado o el endurecimiento de infraestructura; va al 2b
-lo que necesita el login. Lo que no necesita ninguno de los dos se dice.
+1. El migrador no puede crear tablas en `public` sin `GRANT CREATE` o sin ser dueño del esquema.
+2. `ALTER DEFAULT PRIVILEGES` no cubre tablas que ya existían.
+3. El dueño de una tabla, aun sin `BYPASSRLS`, puede `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY` y
+   leer todo, y puede `DISABLE TRIGGER`.
+4. `pg_dump` como `proptech_app` falla ruidoso (`exit=1`, "query would be affected by row-level
+   security policy"); con `--enable-row-security` sale vacío y en silencio; un rol sin superusuario
+   con `BYPASSRLS` y `pg_read_all_data` vuelca todo.
+5. Con FastAPI 0.143, una dependencia sincrónica que hace set/reset de una `ContextVar` falla con
+   `ValueError` o el endpoint no ve el valor; con `async def` funciona.
+
+## Deuda que recibe este cambio, y el reparto con el 2b y el 2c
+
+Criterio (L-012, revisado por el arquitecto): va al 2a sólo lo que el candado necesita; al 2b lo que
+necesita el login; al 2c (`endurecimiento-de-infraestructura`, MEDIUM) el endurecimiento que no hace al
+candado.
 
 | Ítem (origen) | Va a | Por qué |
 |---|---|---|
 | Roles de PostgreSQL para RLS, migrador y aplicación (auditorías 13/10) | 2a | Es el candado mismo (D1) |
-| Endurecimiento de contenedores (13/10) | 2a | Infra; el rol de la app sin privilegios pierde valor si el contenedor puede escalar (D11) |
-| PID 1 no root visto sólo en `redis` (1d) | 2a | Es parte del endurecimiento de contenedores, mismo test (D11) |
-| Cabeceras de seguridad en Caddy (13/10) y `Via`, `X-Powered-By`, HEAD (D-051) | 2a | Infra del proxy; se prueban sin pantallas (D10) |
-| Volúmenes de Caddy (13/10) | 2a | Infra del proxy, mismo archivo (D10) |
-| Separar la red de la web de la de la base (D-051) | 2a | Es parte del aislamiento: la web nunca tiene que alcanzar la base (D11) |
-| CI con `pull_request`, límites de tiempo y gitleaks por digest (13/10) | 2a | Endurecimiento del pipeline que corre los tests del candado; con dos desarrolladores (D-093) los PR ya existen (D12) |
-| Tabla de variables del README (13/10) | 2a | Las credenciales por rol son las primeras variables que cambian el contrato de `.env` |
+| Separar la red de la web de la de la base (D-051) | 2a | Es aislamiento de datos: la web nunca tiene que alcanzar la base (D10) |
 | M12 a medias, URL como `str` (1c) | 2a | El 2a reescribe `configuracion.py` y `env.py` para las credenciales por rol (D3) |
 | `trabajos_hechos` y el tenant del worker (1c) | 2a | El worker con tenant es parte del candado (D8) |
-| F7 resto: "aparece uno solo" y pasos 11 y 13 sin nombre (1d) | 2a | El 2a amplía el humo con roles y backup completo; se arregla el mismo archivo (D13) |
-| El humo nunca congela las dos dependencias (1d) | 2a | Mismo archivo, misma tarea de humo (D13) |
-| El orden de la 8.1 (1d) | 2a | La tarea de cierre del 2a (11.1) dice el orden y por qué (D14) |
-| CSP en Next (13/10) | 2b | Una CSP sin pantallas no prueba nada; la primera pantalla con formulario es la de login |
-| Límite de intentos en el login (ficha 2) | 2b | No existe login que limitar |
-| Auditoría de login exitoso y fallido (explore §3) | 2b | Usa la tabla y el helper del 2a |
-| Dependabot (13/10) | ninguno | No lo necesita ni el candado ni el login. Se propone moverlo al cambio 15, junto a las imágenes por digest que mantendría (E4 en "Aprobación") |
+| El orden de la 8.1 (1d) | 2a y 2c | Cada uno dice el orden de su corrida de cierre y por qué (D13) |
+| Cabeceras en Caddy, `Via`, `X-Powered-By`, HEAD, volúmenes de Caddy | 2c | Infra del proxy; no cambia quién ve qué dato |
+| CI con `pull_request`, límites de tiempo y gitleaks por digest | 2c | Pipeline; no cambia quién ve qué dato |
+| Endurecimiento de contenedores y PID 1 no root servicio por servicio (13/10, 1d) | 2c | Reduce lo que puede hacer un proceso comprometido; el candado de datos no depende de eso |
+| F7 resto y la doble congelada del humo (1d) | 2c | Calidad del humo y de la salud; no tocan el candado |
+| Tabla de variables del README (13/10) | 2c | Documentación; el 2a sólo suma sus variables nuevas en el texto existente |
+| CSP en Next, límite de intentos, auditoría de ingresos | 2b | Necesitan el login |
+| Dependabot (13/10) | 15 (E4) | No lo necesita ni el candado ni el login; va con las imágenes por digest |
 
 ## Cómo aplica cada lección
 
 La tabla del proposal dice qué tarea cubre cada lección. Lo que cambia el diseño:
 
 - **L-004**: los tests de integración entran por la sesión de SQLAlchemy contra PostgreSQL real; el
-  catálogo (`pg_class`, `pg_policies`, `pg_roles`) se mira con SQL crudo; el humo entra por el proxy y
-  por `psql`. El rompedor ataca por un tercer camino: el pool, los hilos y las migraciones futuras.
-- **L-015**: la `ContextVar` del tenant se lee en el `after_begin`, que corre en el hilo donde se abre
-  la transacción; todo acceso a la base del worker sigue por `asyncio.to_thread`.
-- **L-016**: PID 1 no root se ve en rojo **en cada** servicio, no en uno; el conteo de filas del backup
-  se hace con dos administraciones sembradas, así "las dos" puede dar "una".
+  catálogo (`pg_class`, `pg_policies`, `pg_roles`, `pg_constraint`) se mira con SQL crudo; el humo entra
+  por el proxy y por `psql`. El rompedor ataca por un tercer camino: el pool, los hilos, las migraciones
+  futuras.
+- **L-015**: el tenant viaja como dato en `session.info`, no como `ContextVar` ambiente (D4): no
+  depende de qué hilo abre la transacción.
+- **L-016**: todo test de aislamiento conecta como `proptech_app`; uno que conecta como superusuario
+  pasa siempre. El volcado con el rol equivocado se ve fallar, no se supone.
 - **L-017**: los ids de otra administración que usan los tests son UUID válidos y existentes, nunca un
   texto que FastAPI ya rechaza con 422.
+
+## Fronteras
+
+| Frontera | Dirección | Con qué rol o por dónde | Qué no puede cruzar |
+|---|---|---|---|
+| API → base | API depende de la base | `proptech_app`, tenant por transacción | nada sin tenant; nunca el rol de arranque, migrador ni respaldo |
+| worker → base | worker depende de la base | `proptech_app`, tenant por tarea | ídem |
+| migraciones → base | migraciones dependen de la base | rol de arranque (paso de roles) y `proptech_migrador` (Alembic) | el migrador no toca la auditoría |
+| respaldos → base (volcado) | respaldos dependen de la base | `proptech_respaldo` | nunca `--enable-row-security`; nunca el rol de arranque |
+| restauración → base | `restaurar.sh` depende de la base | rol de arranque, `--no-owner`, sólo bases `proptech_*` distintas de la en uso | los roles no viajan en el volcado (ver "Frontera de la restauración") |
+| Caddy → web y API | Caddy depende de las dos | red `aplicacion` | Caddy y la web no alcanzan `db` ni `redis` |
+| `complejos` → `acceso` | `complejos` (y 7, 8, 10b) dependen de `acceso.aplicacion`; `acceso` **no** importa `complejos` | por la capa `aplicacion` (D-021) | `acceso` trabaja sólo con ids de complejo y unidad; la API compone los dos |
+| `acceso` → `compartido` | `acceso` depende de `compartido`; `compartido` **no** importa `acceso` | import directo de código común | la auditoría vive en `acceso`, no en `compartido` (D9) |
+
+La dirección `complejos` → `acceso` se elige porque `complejos` (cambio 3) va a necesitar auditar y
+autorizar, y la auditoría vive en `acceso`: si `acceso` además leyera `complejos` habría un ciclo. Para
+eso, `asignacion_rol` guarda el `complejo_id` también en las filas de vecino (además de la unidad), y la
+API, que compone los dos módulos, carga la unidad con `complejos.aplicacion` y le pasa a `acceso` los
+ids. Un test de imports lo fija (5.1).
 
 ## Goals / Non-Goals
 
@@ -69,84 +95,113 @@ La tabla del proposal dice qué tarea cubre cada lección. Lo que cambia el dise
 - Que ningún camino de la API ni del worker pueda leer o escribir datos de otra administración aunque
   el código se equivoque, y que la base lo sostenga sola.
 - Que 404 y 403 sigan D-037 y D-096 sin filtrar existencia.
-- Dejar el helper de auditoría listo para los cambios 7, 8 y 10b.
+- Dejar la auditoría lista para los cambios 7, 8 y 10b.
 
 **Non-Goals:**
 
 - Ningún mecanismo de sesión, contraseña, mail ni token (2b).
 - Ninguna política de base por edificio (E2, D6).
 - Ningún endpoint para leer la auditoría.
+- El endurecimiento que no hace al candado (2c).
 
 ## Decisions
 
-### D1 · Tres roles, y quién usa cada uno
+### D1 · Cuatro roles, y quién usa cada uno (E5)
 
-- **Rol de arranque** (`POSTGRES_USER`, superusuario de la imagen): crea los otros dos y hace los
-  backups. Lo reciben sólo `migraciones` (para el paso de roles) y `respaldos`.
-- **`proptech_migrador`**: `LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`, dueño del esquema
-  `public` de la aplicación y de todas las tablas. Corre `alembic upgrade head`.
+- **Rol de arranque** (`POSTGRES_USER`, superusuario de la imagen): corre el paso de roles (D2), es
+  dueño de `auditoria` y lo usa `restaurar.sh` desde el host. Lo recibe sólo `migraciones`, que es de
+  una sola corrida (`restart: "no"`). Ningún servicio permanente lo tiene.
+- **`proptech_migrador`**: `LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`, con `CREATE` sobre
+  `public`, dueño de todas las tablas de dominio. Corre `alembic upgrade head`. **Es de confianza
+  equivalente al superusuario sobre sus tablas**: como dueño puede `ALTER TABLE ... NO FORCE ROW LEVEL
+  SECURITY` y leer todo (lo probó el arquitecto). Por eso su contraseña la tiene sólo `migraciones`.
 - **`proptech_app`**: `LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB`, sin ser dueño de nada,
-  con `SELECT, INSERT, UPDATE, DELETE` sobre las tablas de dominio (`SELECT, INSERT` sobre
-  `auditoria`) y `USAGE` sobre las secuencias, otorgados por `ALTER DEFAULT PRIVILEGES FOR ROLE
-  proptech_migrador` más el `GRANT` explícito en cada migración, y verificados por el guardián de D5.
+  con `SELECT, INSERT, UPDATE, DELETE` sobre las tablas de dominio y `trabajos_hechos`, `SELECT,
+  INSERT` sobre `auditoria`, `SELECT` sobre `accion_de_auditoria` y `USAGE` sobre las secuencias.
+- **`proptech_respaldo`**: `LOGIN NOSUPERUSER BYPASSRLS NOCREATEROLE NOCREATEDB`, miembro de
+  `pg_read_all_data`. Sólo lo usa el servicio `respaldos` para `pg_dump`. Lee todo y no escribe nada.
 
-Los nombres de los dos roles son fijos (`proptech_migrador`, `proptech_app`); las contraseñas vienen de
-`POSTGRES_MIGRADOR_PASSWORD` y `POSTGRES_APP_PASSWORD`. Las variables `POSTGRES_MIGRADOR_USER` y
-`POSTGRES_APP_USER` existen sólo para que la configuración no tenga el nombre escrito en dos lugares, y
-se validan contra `^proptech_[a-z_]{1,40}$` (L-008).
+Las contraseñas vienen de `POSTGRES_MIGRADOR_PASSWORD`, `POSTGRES_APP_PASSWORD` y
+`POSTGRES_RESPALDO_PASSWORD`; los nombres, de `POSTGRES_*_USER`, validados contra
+`^proptech_[a-z_]{1,40}$` (L-008).
 
-**Descartado**: dos roles como dice D-087, con el rol de arranque reasignado a uno de ellos. El rol de
-arranque es superusuario por la imagen y no se puede degradar sin perder la forma de crear los otros;
-dejarlo existir sólo para eso y para los respaldos es más simple que quitarle el superusuario.
+**E5, apartamiento de D-087** (que hablaba de dos roles): se suman el rol de arranque con un trabajo
+propio (dueño de la auditoría, B3) y `proptech_respaldo`, para que `respaldos`, que corre siempre,
+deje de tener la contraseña del superusuario. **Descartado**: `respaldos` con el rol de arranque (como
+en el 1d): un servicio permanente con la llave de todo; y `respaldos` con `proptech_app`: el volcado
+falla (o sale vacío con `--enable-row-security`).
 
-### D2 · El arranque de roles corre en `migraciones`, no en `docker-entrypoint-initdb.d` (E1)
+### D2 · El paso de roles corre en `migraciones`, antes y después de Alembic (E1)
 
-Un script de `initdb.d` corre sólo con el volumen vacío: no sirve para las máquinas que ya tienen la
-base del 1d. Por eso el servicio `migraciones` corre primero un comando Python
-(`python -m proptech_core.compartido.roles`) con el rol de arranque, que en una sola transacción:
+Un script de `docker-entrypoint-initdb.d` corre sólo con el volumen vacío: no sirve para las máquinas
+que ya tienen la base del 1d. Por eso el servicio `migraciones` corre:
+
+```
+python -m proptech_core.compartido.roles antes
+alembic upgrade head            # como proptech_migrador
+python -m proptech_core.compartido.roles despues
+```
+
+**`antes`**, con el rol de arranque, en una sola transacción:
 
 1. crea cada rol si no existe (`DO $$ ... IF NOT EXISTS (SELECT 1 FROM pg_roles ...)`, porque
    `CREATE ROLE IF NOT EXISTS` no existe);
 2. fija los atributos de D1 con `ALTER ROLE` cada vez (así una corrida arregla un rol que alguien
-   tocó a mano) y la contraseña con `psycopg.sql.Literal`, nunca interpolada a mano ni logueada (L-007);
-3. transfiere al migrador las tablas y secuencias de `public` que sean del rol de arranque
-   (`alembic_version`, `trabajos_hechos`), una por una por nombre, nunca `REASSIGN OWNED` (que se
-   llevaría objetos que no son del proyecto, L-006);
-4. fija los `DEFAULT PRIVILEGES`.
+   tocó a mano), la membresía en `pg_read_all_data` y la contraseña con `psycopg.sql.Literal`, nunca
+   interpolada a mano ni logueada (L-007);
+3. `GRANT CREATE, USAGE ON SCHEMA public TO proptech_migrador` y `GRANT USAGE ON SCHEMA public TO
+   proptech_app` (sin el primero el migrador no puede crear tablas: punto 1 del arquitecto);
+4. transfiere al migrador cada tabla y secuencia de `public` cuyo dueño sea el rol de arranque, salvo
+   `auditoria` (que es del rol de arranque a propósito, D9). Es una lista que
+   sale del catálogo de ese esquema, nunca `REASSIGN OWNED` (que se llevaría objetos fuera del
+   proyecto, L-006). Sobre un volumen del 1d eso es `alembic_version` y `trabajos_hechos`; sobre una
+   base restaurada (dueño: el rol de arranque, por `--no-owner`) son todas las de dominio;
+5. otorga **explícitamente** a `proptech_app` los permisos de D1 sobre cada tabla existente, incluida
+   `trabajos_hechos` (los `DEFAULT PRIVILEGES` no cubren lo que ya existía: punto 2 del arquitecto);
+6. fija `ALTER DEFAULT PRIVILEGES FOR ROLE proptech_migrador` para las tablas futuras.
 
-Después corre `alembic upgrade head` con las credenciales del migrador.
+**`despues`**, con el rol de arranque: transfiere `auditoria` al rol de arranque (la crea la migración
+0004 como migrador), vuelve a otorgar los permisos de D1 sobre ella y verifica que el trigger y el
+`FORCE` sigan activos. Así el migrador nunca queda como dueño de la
+auditoría (B3).
 
-**E1, sin `BYPASSRLS` para el migrador**: las migraciones del 2a no siembran datos. Una migración
-futura que necesite escribir filas de una administración fija su propio
-`set_config('app.administracion_id', ..., true)` antes de insertar, igual que la app. Darle
-`BYPASSRLS` sería más simple, pero dejaría un rol con contraseña en el `.env` que saltea todas las
-políticas; sin él, el único que las saltea es el superusuario de arranque, que la API y el worker
-nunca reciben.
+**E1, sin `BYPASSRLS` para el migrador**: el migrador ya puede saltear la política de sus tablas
+(quitando el `FORCE`), así que no darle `BYPASSRLS` **no** es una barrera contra él. La razón es otra:
+obligar a que una migración que siembre filas de una administración fije su tenant **a propósito**
+(`set_config('app.administracion_id', ..., true)`), igual que la app, en vez de escribir sin pensar en
+qué administración cae cada fila. Quitarle el `FORCE` a una tabla en una migración es visible en el
+diff y lo detecta el guardián (D5).
 
 ### D3 · Configuración por rol y la URL como objeto (M12)
 
-- `_ConfiguracionBaseDeDatosBase` se parte en un lector común (host, puerto, base) y un par de
-  credenciales por clase: `ConfiguracionDeArranque` (rol de arranque), `ConfiguracionDelMigrador` y
-  `Configuracion` (API y worker, con las credenciales de la app). Cada una lee sólo sus variables, así
-  la API no levanta aunque alguien le pase la contraseña de arranque por error y la use (y un test lo
-  verifica leyendo el entorno del contenedor en Compose).
-- `url_sqlalchemy()` pasa a devolver `sqlalchemy.engine.URL`; `create_engine` lo acepta tal cual y el
-  único lugar que lo renderiza a texto es ninguno: `env.py` arma su engine con
-  `create_engine(url)` en vez de `config.set_main_option("sqlalchemy.url", ...)`. Un test verifica que
-  `repr()` y `str()` del objeto ocultan la contraseña.
+- Un lector común (host, puerto, base) y un par de credenciales por clase: `ConfiguracionDeArranque`,
+  `ConfiguracionDelMigrador`, `ConfiguracionDeRespaldo` (sólo para validar en tests; `respaldos` es un
+  script de Bash que usa las variables de libpq) y `Configuracion` (API y worker, con las de la app).
+  Cada una lee sólo sus variables.
+- `url_sqlalchemy()` pasa a devolver `sqlalchemy.engine.URL`; `create_engine` lo acepta tal cual y
+  `env.py` arma su engine con `create_engine(url)` en vez de `config.set_main_option(...)`. Un test
+  verifica que `str()` y `repr()` del objeto ocultan la contraseña.
 
-### D4 · El tenant: `ContextVar` + `after_begin` + `SET LOCAL`
+### D4 · El tenant viaja en `session.info` (N4)
 
-- `administracion_id_actual: ContextVar[UUID | None]` en `proptech_core/compartido/tenant.py`.
-- Un `after_begin` registrado en la `sessionmaker` de la API y del worker (gemelos, L-009) que, si la
-  variable tiene valor, corre `SELECT set_config('app.administracion_id', :v, true)` con el UUID como
-  parámetro ligado. Si no tiene valor, **no fija nada**: la política devuelve cero filas (D5). Nunca
-  inventa un valor, a diferencia del `request_id`.
+- `abrir_sesion(fabrica, administracion_id: UUID | None) -> Session` crea la sesión con
+  `info={"administracion_id": administracion_id}`. Es la única forma de abrir una sesión de dominio en
+  la API y en el worker (gemelos, L-009).
+- Un `after_begin` registrado en la `sessionmaker` lee `session.info.get("administracion_id")`; si es un
+  `UUID`, corre `SELECT set_config('app.administracion_id', :v, true)` con el valor como parámetro
+  ligado; si falta, **no fija nada** y la política devuelve cero filas (D5). Nunca inventa un valor.
+  Si es algo que no es `UUID` (un `str`, por error de programación), levanta antes de tocar la base.
 - `after_begin` corre en cada transacción, así un `commit` a mitad de pedido abre la siguiente con el
-  mismo tenant (escenario "Una segunda transacción en el mismo pedido").
-- Se descarta `SET` sin `LOCAL` y `RESET` al devolver la conexión: un `SET` de sesión que no se
-  resetea por un error contagia al pedido siguiente, y `set_config(..., true)` muere con la
-  transacción sin depender de que alguien lo limpie.
+  mismo tenant: `session.info` dura lo que la sesión.
+- `set_config(..., true)` muere con la transacción; se descarta `SET` de sesión con `RESET` al devolver
+  la conexión, porque depende de que alguien limpie aunque haya un error.
+
+**Descartado: una `ContextVar` fijada por una dependencia `async def`.** Funciona con FastAPI 0.143 si
+la dependencia es `async def` (punto 5 del arquitecto), pero deja la seguridad atada a un detalle del
+framework (una dependencia sincrónica rompe en silencio o con `ValueError`) y a que cada hilo copie el
+contexto (L-015, el mismo problema en el worker). En `session.info` el tenant es un dato explícito de
+la sesión que lo usa: no hay contexto que perder ni que resetear, y una sesión abierta sin pasar por
+`abrir_sesion` falla cerrada (cero filas).
 
 ### D5 · La política, y el guardián del catálogo
 
@@ -162,169 +217,202 @@ CREATE POLICY <t>_por_administracion ON <t>
 
 El `true` de `current_setting` (`missing_ok`) evita el error cuando la variable nunca se fijó; el
 `nullif` evita el error de castear `''` a `uuid` (una variable fijada una vez en la sesión queda como
-cadena vacía después de la transacción). Con `NULL`, la igualdad no es verdadera y no pasa ninguna
-fila. Para no repetir el texto en cada migración, un helper de migraciones
-`aislar_por_administracion(nombre_de_tabla)` emite las cuatro sentencias y el `GRANT` a la app.
+cadena vacía después de la transacción). Un helper de migraciones `aislar_por_administracion(tabla)`
+emite las sentencias y el `GRANT` a la app.
 
 **El guardián** (`tests/integracion/test_catalogo_rls.py`) recorre el catálogo después de
-`upgrade head` y falla, nombrando la tabla, si alguna tabla de `public` con columna
-`administracion_id` no tiene `relrowsecurity` y `relforcerowsecurity`, no tiene política, tiene una
-política cuyo texto en `pg_policies` usa `current_setting` sin el segundo argumento, o no tiene los
-permisos de D1 para `proptech_app`. Las tablas sin `administracion_id` tienen que estar en una lista
-explícita de tablas técnicas (hoy `alembic_version` y `trabajos_hechos`, más `administracion`, que se
-aísla por su propio `id`). Una tabla nueva sin estar en ninguna de las dos categorías hace fallar el
-test: es la red contra el `GRANT` olvidado.
+`upgrade head` y falla, nombrando la tabla, si alguna tabla de `public`:
+
+- con `administracion_id` no tiene `relrowsecurity` y `relforcerowsecurity`, no tiene política, tiene
+  una política que usa `current_setting` sin el segundo argumento, o no tiene los permisos de D1 para
+  `proptech_app`;
+- con `complejo_id` lo admite nulo o no tiene la FK compuesta `(administracion_id, complejo_id) →
+  complejo (administracion_id, id)`, salvo las excepciones listadas (hoy sólo `asignacion_rol`, donde el
+  titular no tiene complejo);
+- sin `administracion_id`, no está en la lista explícita de tablas técnicas (`alembic_version`,
+  `trabajos_hechos`, `accion_de_auditoria`; `administracion` se aísla por su propio `id`).
+
+Es la red contra el `GRANT` olvidado y contra una tabla de edificio sin `complejo_id`.
 
 ### D6 · Tablas mínimas y el alcance por edificio en la aplicación (E2)
 
 Migración `0003_acceso_minimo`:
 
-- `administracion (id uuid PK, nombre text)`, con política sobre `id` en vez de `administracion_id`.
+- `administracion (id uuid PK, nombre text)`, con política sobre `id`.
 - `complejo (id, administracion_id, nombre)`, `UNIQUE (administracion_id, id)`.
-- `unidad (id, administracion_id, complejo_id, nombre)`, FK compuesta
-  `(administracion_id, complejo_id) → complejo (administracion_id, id)`.
+- `unidad (id, administracion_id, complejo_id NOT NULL, nombre)`, `UNIQUE (administracion_id,
+  complejo_id, id)`, FK compuesta `(administracion_id, complejo_id) → complejo`.
 - `persona (id, administracion_id, nombre, email text null)`, con `CHECK (email = lower(email))` y
-  `UNIQUE (administracion_id, email)` (D-096: único por administración, no global; sin la extensión
-  `citext`, para no sumar una dependencia de la base).
-- `asignacion_rol (id, administracion_id, persona_id, rol, complejo_id null, unidad_id null, nivel null)`,
-  con `CHECK` por rol: titular sin complejo ni unidad; colaborador con complejo y nivel `ver` o
-  `editar`; consejo con complejo; vecino con unidad. FKs compuestas a persona, complejo y unidad.
+  `UNIQUE (administracion_id, email)` (D-096; sin la extensión `citext`).
+- `asignacion_rol (id, administracion_id, persona_id, rol, complejo_id null, unidad_id null, nivel
+  null)`, con `CHECK` por rol: titular sin complejo ni unidad; colaborador con complejo y nivel `ver` o
+  `editar`; consejo con complejo; vecino con complejo **y** unidad. FKs compuestas a persona, a complejo
+  `(administracion_id, complejo_id)` y a unidad `(administracion_id, complejo_id, unidad_id)`, así la
+  unidad del vecino tiene que ser de ese complejo.
 
-Las FK compuestas son el candado de "Referencia cruzada rechazada": aunque la política deja escribir
-la fila propia, la FK no deja colgarla de una fila ajena.
+**Convención nueva** (B2): toda tabla que cuelga de un edificio lleva `complejo_id NOT NULL` con FK
+compuesta `(administracion_id, complejo_id)`, y el guardián (D5) lo exige. Deja preparada la reversión
+de E2 sin rellenos.
 
-**E2, alcance por edificio en la aplicación**: la base asegura la administración; el edificio lo
-filtra el dominio `acceso` leyendo `asignacion_rol` (ya filtrada por RLS). Una segunda política por
-persona exigiría fijar también la identidad de la persona en la transacción y escribir, por tabla, el
-camino hasta sus asignaciones: más caro, y cada tabla nueva de los cambios 3 a 10 tendría que
-repetirlo. El riesgo es el que dice el explore (§2.5): un error de código en el filtro por edificio
-muestra un edificio no asignado **de la misma administración**, nunca de otra. Se cubre con un test por
-rol y por endpoint (5.2) y queda en la lista del rompedor.
+**E2, alcance por edificio en la aplicación**: la base asegura la administración; el edificio lo filtra
+el dominio `acceso` leyendo `asignacion_rol` (ya filtrada por RLS).
+
+- **Riesgo explícito**: el filtro de aplicación no sólo separa edificios del personal: también protege
+  al **vecino frente a la unidad de otro vecino** y al **consejo frente a otro edificio**. Si falla, un
+  vecino ve la deuda y los datos de un tercero de su misma administración. La base no lo frena. Se
+  cubre con un test por rol y por endpoint (5.2) y es un blanco explícito del rompedor.
+- **Costo de revertir** (pasar a una política de base por persona): hoy, unas 3 o 4 tareas: un segundo
+  `set_config` con `app.persona_id` en el mismo `after_begin`; una función `SECURITY DEFINER` que lea
+  `asignacion_rol` sin recursión de políticas; las políticas por tabla contra esa función; y ampliar el
+  guardián. Después del cambio 10, cada tabla con datos tiene que pasar por una migración con relleno
+  y su política: el costo crece con cada cambio.
+- **Por qué igual en la aplicación**: la política por persona exige escribir, por tabla, el camino hasta
+  las asignaciones, y cada tabla nueva de los cambios 3 a 10 tendría que repetirlo; con la convención de
+  `complejo_id` y el costo de revertir acotado, se puede decidir de nuevo antes del cambio 10.
 
 ### D7 · Identidad, sesión y autorización
 
 - `proptech_core/acceso/dominio/`: `Identidad(administracion_id, persona_id)` (frozen), los enums
-  `Rol`, `Nivel` y `Accion`, la matriz de D-096 como un dict literal `{Accion: {(Rol, Nivel|None)}}`
-  y dos funciones puras: `puede(asignaciones, accion, complejo_id) -> bool` y
-  `alcanza(asignaciones, complejo_id | unidad) -> bool`. Las asignaciones salen de la base, nunca del
-  pedido.
+  `Rol`, `Nivel` y `Accion`, la matriz de D-096 como un dict literal `{Accion: {(Rol, Nivel|None)}}` y
+  dos funciones puras: `puede(asignaciones, accion, complejo_id) -> bool` y `alcanza(asignaciones,
+  complejo_id, unidad_id | None) -> bool`. Las asignaciones salen de la base, nunca del pedido.
 - `proptech_api/acceso.py`: `identidad_actual()` levanta `HTTPException(401)` siempre (hasta el 2b);
-  `sesion_con_tenant(identidad = Depends(identidad_actual))` fija la `ContextVar`, abre la sesión, y la
-  resetea con el token en el `finally`. Al depender explícitamente de la identidad, FastAPI no puede
-  abrir la sesión antes. Los tests usan `app.dependency_overrides[identidad_actual]`.
+  `sesion_con_tenant(identidad = Depends(identidad_actual))` llama a `abrir_sesion(fabrica,
+  identidad.administracion_id)` y la cierra en el `finally`. Al depender explícitamente de la
+  identidad, FastAPI no abre la sesión antes. Como el tenant viaja en la sesión (D4), da igual si la
+  dependencia es sincrónica o `async def`. Los tests usan `app.dependency_overrides[identidad_actual]`.
 - Orden de chequeo en cada endpoint: cargar el recurso con la sesión filtrada → si no está o no
-  `alcanza`, 404 → si no `puede`, 403 `{"detalle": "sin_permiso", "permiso_faltante": "<accion>"}`.
-  El 404 sale de una sola función que arma la respuesta, así "no existe", "de otra administración" y
-  "fuera de alcance" son el mismo objeto.
+  `alcanza`, 404 → si no `puede`, 403 `{"detalle": "sin_permiso", "permiso_faltante": "<accion>"}`. El
+  404 sale de una sola función, así "no existe", "de otra administración" y "fuera de alcance" son el
+  mismo objeto.
 - Endpoints: `GET /api/complejos/{complejo_id}`, `GET /api/unidades/{unidad_id}` y
-  `POST /api/complejos/{complejo_id}/asignaciones` (cuerpo: `persona_id`, `rol`, `nivel`).
+  `POST /api/complejos/{complejo_id}/asignaciones` (cuerpo: `persona_id`, `rol`, `nivel`). Los tres viven
+  en `proptech_api`, que compone `complejos.aplicacion` (cargar) y `acceso.aplicacion` (autorizar y
+  auditar).
 
 ### D8 · El worker: el tenant como argumento validado (E3)
 
-- Decorador `con_administracion_de_tarea` (molde: `con_seguimiento_de_tarea`): valida
-  `administracion_id` con un modelo Pydantic estricto (`UUID`, `strict=True`) antes de tocar nada;
-  si falla, levanta una excepción de tipo permanente que el worker no reintenta (el mismo camino que
-  ya tienen los argumentos inválidos de la tarea de prueba) y loguea un evento fijo
-  `tarea_sin_administracion` sin el valor (L-007). Si valida, fija la `ContextVar` y la resetea al
-  terminar con el token, también si la tarea falla.
-- Una tarea de prueba nueva (`tarea_de_prueba_con_administracion`, cuenta complejos) en
-  `proptech_worker/prueba.py` para los tests y el humo.
+- Decorador `con_administracion_de_tarea`: valida `administracion_id` con un modelo Pydantic estricto
+  (`UUID`, `strict=True`) antes de tocar nada; si falla, levanta una excepción permanente que el worker
+  no reintenta y loguea un evento fijo `tarea_sin_administracion` sin el valor (L-007). Si valida, le
+  pasa el `UUID` a la tarea, que abre sus sesiones con `abrir_sesion(fabrica, administracion_id)`
+  (D4), también dentro de `asyncio.to_thread`. No hay estado ambiente que pase a la tarea siguiente.
+- `tarea_de_prueba_con_administracion` (cuenta complejos) en `proptech_worker/prueba.py`.
 - **E3**: `trabajos_hechos` queda **sin** `administracion_id` y fuera de RLS: guarda la clave de
-  idempotencia, el nombre de la tarea, el `request_id` y la hora, ningún dato de una administración.
-  Las claves de idempotencia de las tareas con tenant incluyen el `administracion_id`, para que dos
-  administraciones no se pisen la misma clave. Va a la lista de tablas técnicas del guardián (D5).
+  idempotencia, el nombre de la tarea, el `request_id` y la hora. **Con D8, las claves de idempotencia
+  de las tareas con tenant llevan el `administracion_id` adentro**, así dos administraciones no se pisan
+  la misma clave; la clave no se puede leer como dato de negocio. Va a la lista de tablas técnicas del
+  guardián.
 
-### D9 · Auditoría
+### D9 · Auditoría en `acceso.aplicacion` (B1, B3)
 
-- Migración `0004_auditoria`: `auditoria (id bigint identity, administracion_id, persona_id, accion
-  text, entidad text, entidad_id uuid, detalle jsonb, request_id uuid, creado_en timestamptz default
-  now())`, aislada con D5 pero con `GRANT SELECT, INSERT` a la app (ni `UPDATE` ni `DELETE`), un
-  `CHECK (accion IN (...))` con el vocabulario y un trigger `BEFORE UPDATE OR DELETE` por fila más
-  uno `BEFORE TRUNCATE` por sentencia que levantan una excepción para cualquier rol, dueño incluido.
-  El superusuario de arranque podría desactivar el trigger: es el mismo rol que ya puede todo, y la app
-  nunca lo tiene.
-- `proptech_core/compartido/auditoria.py`: `registrar(sesion, identidad, accion, entidad, entidad_id,
-  detalle)` exige `sesion.in_transaction()` (si no, error de programación), valida el detalle contra
-  el modelo Pydantic de esa acción (`extra="forbid"`, sólo tipos simples) y hace el `INSERT` en la
-  misma sesión. El caso de uso abre `with sesion.begin():`, hace el efecto y llama a `registrar`;
-  cualquier excepción revierte las dos.
-- Un decorador `@accion_sensible(Accion.X)` marca el caso de uso; un registro en memoria lista los
-  marcados y un test los recorre y exige una fila por cada uno.
-- Vocabulario inicial: `asignar_edificio`. El 2b suma `ingreso_exitoso` e `ingreso_fallido`.
+**Dónde vive y hacia dónde apunta la dependencia**: `proptech_core/acceso/aplicacion/auditoria.py`.
+Los módulos que auditan (`complejos` desde el 3; `liquidacion`, `pagos`, `cuenta_corriente` desde 7, 8
+y 10b) la usan vía `acceso.aplicacion` (D-021: los módulos se hablan sólo por `aplicacion`). La
+dirección es `<módulo> → acceso → compartido`; `compartido` no importa a nadie del dominio.
+**Descartado**: la auditoría en `compartido` (como la listaba D-021): necesita `Identidad` y `Accion`,
+que son de `acceso`, y eso es un ciclo `compartido` ↔ `acceso`; definir en `compartido` un actor y un
+vocabulario genéricos obligaría a `compartido` a conocer las acciones de todos los módulos.
 
-### D10 · Proxy y web
+**Un solo vocabulario**: `Accion` (en `acceso.dominio`) es a la vez el nombre del permiso de la matriz
+y la acción registrada en la auditoría. La asignación de un edificio se audita como
+`invitar_usuarios_y_asignar_edificios`, igual que su permiso. Las acciones que no se autorizan con la
+matriz (el 2b suma `ingreso_exitoso` e `ingreso_fallido`) son miembros de `Accion` sin fila en la
+matriz, y `puede` las niega: se registran, no se autorizan.
 
-- `Caddyfile`: `header` con `X-Content-Type-Options nosniff`, `Referrer-Policy no-referrer`,
-  `X-Frame-Options DENY`, `Permissions-Policy "camera=(), microphone=(), geolocation=()"`, y
-  `-Server`, `-Via`, `-X-Powered-By`; `reverse_proxy` con `header_down -Via` y
-  `header_down -X-Powered-By` para lo que viene de atrás. HSTS queda para el despliegue con dominio
-  (cambio 15): en el CI el sitio es HTTP.
-- `web/next.config.*`: `poweredByHeader: false`.
-- Volúmenes `datos_caddy:/data` y `config_caddy:/config`.
+**La tabla** (migración `0004_auditoria`):
 
-### D11 · Redes y contenedores
+- `accion_de_auditoria (nombre text PK)`, técnica y del migrador, con una fila por miembro de `Accion`;
+  `auditoria (id bigint identity, administracion_id, persona_id, accion text REFERENCES
+  accion_de_auditoria, entidad text, entidad_id uuid, detalle jsonb, request_id uuid, creado_en
+  timestamptz default now())`, aislada con D5. **Cada acción nueva exige una migración** que inserte
+  su fila en `accion_de_auditoria` (es el control de la base sobre el vocabulario; un test exige que la
+  tabla y el enum coincidan). Se descarta el `CHECK (accion IN (...))` sobre `auditoria`: como la tabla
+  es del rol de arranque, cada acción nueva obligaría a correr una migración como superusuario. El
+  migrador, dueño del vocabulario, podría borrarlo con `CASCADE` y llevarse la FK: perdería el control
+  del vocabulario, no la posibilidad de editar o borrar filas de auditoría.
+- Un trigger `BEFORE UPDATE OR DELETE` por fila y uno `BEFORE TRUNCATE` por sentencia levantan una
+  excepción para cualquier rol.
+- **Dueño: el rol de arranque** (paso `despues` de D2). El migrador no es dueño, así que no puede
+  `DISABLE TRIGGER` ni `NO FORCE` (punto 3 del arquitecto), y no tiene `UPDATE` ni `DELETE`. La app sólo
+  tiene `SELECT, INSERT`. El único que puede desactivar el trigger es el superusuario de arranque, que
+  ya puede todo y que ningún servicio permanente tiene. Consecuencia: una migración futura que cambie
+  la estructura de `auditoria` corre en el paso de roles, no en Alembic (se anota como riesgo).
 
-- `interna` se parte en `datos` (interna, sin salida: `db`, `redis`, `migraciones`, `api`, `worker`,
-  `respaldos`) y `aplicacion` (interna, sin salida: `api`, `web`, `caddy`), con la IP fija de Caddy
-  en `aplicacion` y `FORWARDED_ALLOW_IPS` apuntando a esa. La web llega a la API por `aplicacion` y no
-  ve `db` ni `redis`.
-- Todos los servicios: `security_opt: [no-new-privileges:true]`. `cap_drop: [ALL]` en `api`, `worker`,
-  `web`, `migraciones` y `respaldos`; `db` y `redis` con `cap_drop: [ALL]` y sólo las capacidades que
-  su entrypoint necesita para bajar de usuario (`CHOWN`, `SETUID`, `SETGID`, `DAC_OVERRIDE`,
-  `FOWNER`); `caddy` con `NET_BIND_SERVICE`. El constructor confirma la lista mínima viendo fallar el
-  arranque sin cada una (se anota en el informe).
-- PID 1 no root: el test existente de `/proc/1/status` se parametriza por servicio, y el rojo se ve en
-  cada uno con una copia de Compose mutada (L-013, L-016).
+**El helper**: `registrar(sesion, identidad, accion, entidad, entidad_id, detalle)` exige
+`sesion.in_transaction()`, valida el detalle contra el modelo Pydantic de esa acción
+(`extra="forbid"`, sólo tipos simples) y hace el `INSERT` en la misma sesión. El caso de uso abre `with
+sesion.begin():`, hace el efecto y llama a `registrar`; cualquier excepción revierte las dos. Un
+decorador `@accion_sensible(Accion.X)` marca el caso de uso; un test recorre los marcados y exige una
+fila por cada uno.
 
-### D12 · CI
+### D10 · La web fuera de la red de la base
 
-`on: [push, pull_request]`, `timeout-minutes` en cada trabajo (10 los rápidos, 30 el humo) y gitleaks
-como `zricethezav/gitleaks:v8.30.1@sha256:<digest>`, con el digest tomado de la imagen que hoy corre
-el CI (el constructor lo anota con el comando que lo obtuvo).
+`interna` se parte en `datos` (interna, sin salida: `db`, `redis`, `migraciones`, `api`, `worker`,
+`respaldos`) y `aplicacion` (interna, sin salida: `api`, `web`, `caddy`), con la IP fija de Caddy en
+`aplicacion` y `FORWARDED_ALLOW_IPS` apuntando a esa. La web llega a la API por `aplicacion` y no ve
+`db` ni `redis`. El resto del endurecimiento de contenedores es del 2c.
 
-### D13 · Humo
+### D11 · Frontera de la restauración (N2)
 
-- Pasos nuevos: `current_user`, `rolsuper` y `rolbypassrls` de la conexión de la API y del worker;
-  cabeceras con GET y HEAD por el proxy; dos administraciones sembradas con `psql` como rol de
-  arranque, backup, restauración en `proptech_restauracion` y conteo por administración (2 y 2).
-- F7 resto: una función `paso N "descripción"` que imprime el número y la descripción al fallar, y un
-  helper `exactamente_uno` para cada "aparece uno solo". Cada paso con su `if ! ...; then` (L-014).
-- Doble congelada: `docker compose -p proptech pause db redis`, los dos pedidos y un `trap` que
-  despausa siempre.
+`restaurar.sh` (1d) corre `pg_restore --no-owner` con el rol de arranque. Lo que viaja en el volcado:
+tablas, datos, `FORCE`, políticas, triggers y `GRANT` (que nombran a los roles por nombre). Lo que
+**no** viaja: los roles mismos ni sus contraseñas (son del clúster), y los dueños (`--no-owner`: todo
+queda del rol de arranque). En la base de verificación del humo (`proptech_restauracion`, mismo
+clúster) los roles existen, así que los `GRANT` se aplican, y el humo verifica que la RLS forzada y las
+políticas llegaron. Sobre una base restaurada para **reemplazar** la de producción, el paso `antes` de
+D2 vuelve a pasarle las tablas de dominio al migrador y la auditoría queda del rol de arranque como
+debe. **Riesgo con dueño, cambio 15**: el procedimiento de recuperación real (restaurar en otro
+servidor, donde los roles no existen) necesita levantar primero `migraciones` para crear los roles y
+recién después restaurar; se escribe y se prueba con el despliegue.
 
-### D14 · La corrida de cierre, en orden
+### D12 · El humo
 
-La 11.1 corre `test-backend.sh`, `test-web.sh` y `humo.sh` **en este orden y de a uno**: los tests de
+Pasos nuevos, cada uno con su `if ! ...; then` explícito: `current_user`, `rolsuper` y `rolbypassrls`
+de la conexión de `api` y de `worker`; la web sin conexión a `db:5432`; dos administraciones sembradas
+con `psql` como rol de arranque, un backup de `respaldos` (ya con `proptech_respaldo`), la restauración
+en `proptech_restauracion` y el conteo por administración, más `relforcerowsecurity` y las políticas en
+la base restaurada. El rojo se ve con una copia de Compose donde `respaldos` usa `proptech_app`: el
+volcado tiene que **fallar** (no queda `.dump` nuevo y el servicio queda no saludable), no dar un
+conteo menor. Un test estático exige que ningún script ni `compose.yaml` contenga
+`--enable-row-security`. El resto del humo (F7, doble congelada) es del 2c.
+
+### D13 · La corrida de cierre, en orden
+
+La 10.1 corre `test-backend.sh`, `test-web.sh` y `humo.sh` **en este orden y de a uno**: los tests de
 integración y el humo usan contenedores de PostgreSQL con nombres del proyecto `proptech`, y en
-paralelo se pisan. Si el orden no importara para un paso, la tarea lo diría; acá importa.
+paralelo se pisan.
 
 ## Risks / Trade-offs
 
-- [Alcance por edificio sólo en la aplicación] → tests por rol y por endpoint, y el rompedor lo ataca;
-  la base sigue asegurando la administración (E2).
-- [El rol de arranque sigue siendo superusuario y está en el `.env`] → sólo lo reciben `migraciones`
-  y `respaldos`; un test de Compose verifica que `api` y `worker` no lo tienen.
-- [Una migración futura escribe una política a mano sin `missing_ok`] → el guardián del catálogo lee
-  `pg_policies` y falla.
-- [Cambiar de red rompe `FORWARDED_ALLOW_IPS`] → el humo ya verifica el `request_id` de punta a punta
-  y la IP de origen; si la IP fija no coincide, falla ahí.
-- [Las capacidades mínimas de `db` y `redis` dependen de la imagen] → se prueban arrancando el stack;
-  si una actualización de imagen necesita otra, el humo falla al levantar.
-- [El paso de roles necesita la contraseña de arranque en `migraciones`] → es un servicio de una sola
-  corrida (`restart: "no"`), y su log no repite ningún valor (L-007).
-- [E3: `trabajos_hechos` global] → no guarda datos de una administración; si un cambio futuro le
-  agrega uno, el guardián lo obliga a aislarla.
+- [Alcance por edificio sólo en la aplicación: un error muestra la unidad de otro vecino o el edificio
+  de otro consejo] → tests por rol y por endpoint, blanco del rompedor, convención de `complejo_id` y
+  costo de revertir acotado (E2, D6).
+- [El migrador puede quitar el `FORCE` de sus tablas] → es de confianza equivalente al superusuario;
+  sólo `migraciones` tiene su contraseña; el guardián falla si una tabla queda sin `FORCE` (D5).
+- [`migraciones` tiene la contraseña del rol de arranque, y un contenedor terminado conserva su entorno
+  en `docker inspect`] → es de una sola corrida y no expone puertos; el 2c y el 15 revisan secretos de
+  Compose con el despliegue.
+- [Una migración futura escribe una política a mano sin `missing_ok`] → el guardián lee `pg_policies`.
+- [Cambiar `auditoria` exige el rol de arranque] → se hace en el paso de roles; es raro y deliberado.
+- [Cambiar de red rompe `FORWARDED_ALLOW_IPS`] → el humo ya verifica el `request_id` de punta a punta.
+- [Restauración en otro servidor sin roles] → dueño, el cambio 15 (D11).
+- [E3: `trabajos_hechos` global] → no guarda datos de una administración; si un cambio le agrega uno,
+  el guardián lo obliga a aislarla.
 
 ## Migration Plan
 
-1. `git pull`, completar `infra/.env` con `POSTGRES_MIGRADOR_PASSWORD` y `POSTGRES_APP_PASSWORD`
-   (el README lo dice).
-2. `docker compose up --build`: `migraciones` crea los roles, transfiere `alembic_version` y
-   `trabajos_hechos` al migrador y corre 0003 y 0004; la API y el worker arrancan como `proptech_app`.
-3. Rollback: `alembic downgrade 0002` como migrador (0004 y 0003 tienen `downgrade` que deja el
-   esquema como estaba) y volver la imagen anterior. Los roles quedan creados: no molestan, y el paso
-   de roles es idempotente si se vuelve a subir. El backup del 1d sigue siendo completo en las dos
-   direcciones porque lo hace el rol de arranque.
+1. `git pull`, completar `infra/.env` con `POSTGRES_MIGRADOR_*`, `POSTGRES_APP_*` y
+   `POSTGRES_RESPALDO_*` (el README lo dice).
+2. `docker compose up --build`: `migraciones` corre `roles antes`, `alembic upgrade head` como migrador
+   (0003 y 0004) y `roles despues`; la API y el worker arrancan como `proptech_app`; `respaldos`, como
+   `proptech_respaldo`.
+3. **Rollback**: `alembic downgrade 0002` **borra las tablas**, incluida la auditoría. Hoy no hay datos
+   reales y cuesta cero; **desde el cambio 3, con edificios cargados, ya no**: un rollback pasa a ser
+   restaurar un backup, no un `downgrade`. Como `auditoria` es del rol de arranque, el `downgrade` de
+   0004 corre con ese rol (el migrador no puede borrarla). Los roles quedan creados: no molestan, y el
+   paso de roles es idempotente si se vuelve a subir. Volver la imagen anterior exige volver
+   `respaldos` al rol de arranque del 1d.
 
 ## Open Questions
 
