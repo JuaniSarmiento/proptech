@@ -359,20 +359,115 @@ _TRIGGERS_ESPERADOS_DE_AUDITORIA = frozenset(
 )
 
 
+def _verificar_bloqueo_de_escritura_de_verdad(cur: psycopg.Cursor) -> list[str]:
+    """V2-2(b), vuelta 3: prueba el BLOQUEO, no su forma. El catálogo (R2:
+    dueño de la función; R4: nombre y `tgenabled` del trigger) no distingue
+    una función reemplazada por una que no hace nada, o un trigger recreado
+    con el mismo nombre sobre otro evento (`AFTER INSERT ... WHEN (false)`
+    en vez de `BEFORE UPDATE OR DELETE`) — en los dos casos el catálogo
+    sigue viéndose "bien". Acá se inserta una fila de prueba dentro de un
+    `SAVEPOINT`, se intenta `UPDATE`, `DELETE` y `TRUNCATE` de verdad, se
+    exige que los tres fallen, y se revierte todo al final: la fila de
+    prueba nunca queda, pase lo que pase."""
+    faltantes: list[str] = []
+
+    cur.execute("SELECT nombre FROM accion_de_auditoria LIMIT 1")
+    fila_accion = cur.fetchone()
+    if fila_accion is None:
+        faltantes.append(
+            "no se pudo probar el bloqueo de escritura: accion_de_auditoria está vacía"
+        )
+        return faltantes
+    accion = fila_accion[0]
+
+    cur.execute("SAVEPOINT verificacion_bloqueo_auditoria")
+    try:
+        # El rol de arranque no tiene BYPASSRLS (D1): la política de D5
+        # también lo alcanza (con FORCE), así que el INSERT de prueba
+        # necesita su propio tenant fijado ANTES, que coincida con el que
+        # va en la fila — si no, el WITH CHECK lo rechaza por RLS, no por
+        # nada que esta verificación quiera medir. `set_config(..., true)`
+        # es local a la transacción (D4) y el `ROLLBACK TO SAVEPOINT` de
+        # más abajo también lo revierte.
+        cur.execute("SELECT gen_random_uuid()")
+        fila_tenant = cur.fetchone()
+        if fila_tenant is None:
+            faltantes.append("no se pudo generar el tenant de prueba para verificar el bloqueo")
+            return faltantes
+        tenant_de_prueba = str(fila_tenant[0])
+        cur.execute("SELECT set_config('app.administracion_id', %s, true)", (tenant_de_prueba,))
+        cur.execute(
+            "INSERT INTO auditoria "
+            "(administracion_id, persona_id, accion, entidad, entidad_id, request_id) "
+            "VALUES (%s, gen_random_uuid(), %s, 'verificacion_de_despues', "
+            "gen_random_uuid(), gen_random_uuid()) RETURNING id",
+            (tenant_de_prueba, accion),
+        )
+        fila_id = cur.fetchone()
+        if fila_id is None:
+            faltantes.append("no se pudo insertar la fila de prueba para verificar el bloqueo")
+            return faltantes
+        id_de_prueba = fila_id[0]
+
+        intentos = (
+            ("UPDATE auditoria SET entidad = 'x' WHERE id = %s", "UPDATE"),
+            ("DELETE FROM auditoria WHERE id = %s", "DELETE"),
+        )
+        for sentencia, nombre in intentos:
+            cur.execute("SAVEPOINT intento_de_escritura")
+            try:
+                cur.execute(sentencia, (id_de_prueba,))
+            except psycopg.Error:
+                pass  # levantó: el bloqueo sigue andando.
+            else:
+                faltantes.append(f"auditoria admite {nombre} (el bloqueo no funciona)")
+            finally:
+                cur.execute("ROLLBACK TO SAVEPOINT intento_de_escritura")
+                cur.execute("RELEASE SAVEPOINT intento_de_escritura")
+
+        # TRUNCATE es por sentencia, no por fila: no necesita el id de prueba,
+        # pero sí corre dentro del mismo SAVEPOINT para no perder la fila.
+        cur.execute("SAVEPOINT intento_de_escritura")
+        try:
+            cur.execute("TRUNCATE auditoria")
+        except psycopg.Error:
+            pass
+        else:
+            faltantes.append("auditoria admite TRUNCATE (el bloqueo no funciona)")
+        finally:
+            cur.execute("ROLLBACK TO SAVEPOINT intento_de_escritura")
+            cur.execute("RELEASE SAVEPOINT intento_de_escritura")
+    finally:
+        cur.execute("ROLLBACK TO SAVEPOINT verificacion_bloqueo_auditoria")
+        cur.execute("RELEASE SAVEPOINT verificacion_bloqueo_auditoria")
+
+    return faltantes
+
+
 def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
-    """Al final de `despues()` (R4, vuelta 2): el `FORCE`, los dos triggers
-    (habilitados) y el dueño de sus funciones. `despues()` no los
-    RECREA si faltan (eso es tocar `auditoria`, y D9/D11 dicen que eso pasa
-    por el paso de roles, no en silencio dentro de él) — sólo deja de pasar
-    por alto que alguien los sacó."""
+    """Al final de `despues()` (R4, vuelta 2; V2-2, vuelta 3): el `FORCE`,
+    el RLS encendido, los dos triggers (habilitados) y el dueño de sus
+    funciones por catálogo, MÁS el bloqueo de escritura probado de verdad
+    (`_verificar_bloqueo_de_escritura_de_verdad`, porque el catálogo por sí
+    solo no distingue un bloqueo real de uno con la forma correcta pero
+    neutralizado). `despues()` no RECREA nada si falta (eso es tocar
+    `auditoria`, y D9/D11 dicen que eso pasa por el paso de roles, no en
+    silencio dentro de él) — sólo deja de pasar por alto que alguien lo
+    desarmó."""
     faltantes: list[str] = []
 
     cur.execute(
-        "SELECT relforcerowsecurity FROM pg_class "
+        "SELECT relrowsecurity, relforcerowsecurity FROM pg_class "
         "WHERE relname = 'auditoria' AND relnamespace = 'public'::regnamespace"
     )
-    fila_force = cur.fetchone()
-    if fila_force is None or not fila_force[0]:
+    fila_rls = cur.fetchone()
+    if fila_rls is None or not fila_rls[0]:
+        # V2-2(a), vuelta 3: con `relrowsecurity=false` la política no se
+        # aplica a NADIE (ni siquiera a la app, que no tiene BYPASSRLS),
+        # `FORCE` da igual activo o no — rompe "Auditoría de otra
+        # administración" sin tocar el `FORCE` para nada.
+        faltantes.append("ROW LEVEL SECURITY (relrowsecurity) en auditoria")
+    if fila_rls is None or not fila_rls[1]:
         faltantes.append("FORCE ROW LEVEL SECURITY en auditoria")
 
     cur.execute(
@@ -392,6 +487,8 @@ def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
         if fila_dueno is None or fila_dueno[0] != arranque:
             dueno_real = fila_dueno[0] if fila_dueno is not None else "(no existe)"
             faltantes.append(f"el dueño de la función {funcion} (es {dueno_real})")
+
+    faltantes.extend(_verificar_bloqueo_de_escritura_de_verdad(cur))
 
     if faltantes:
         raise AuditoriaNoProtegida(

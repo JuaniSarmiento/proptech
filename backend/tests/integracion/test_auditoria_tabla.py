@@ -672,6 +672,151 @@ def test_rojo_despues_no_verificaba_nada_si_el_trigger_o_el_force_desaparecen() 
         assert "trg_auditoria_sin_truncate" in resultado.stderr
 
 
+# --- Vuelta 3, V2-2: despues() verificaba la FORMA del bloqueo, no que bloqueara de verdad ---
+
+
+def test_rojo_despues_no_notaba_la_rls_apagada_con_force_intacto() -> None:
+    """V2-2(a), vuelta 3: el rompedor apagó `relrowsecurity` (con `FORCE`
+    todavía en `t`) como rol de arranque, y `despues()` lo dejó pasar con
+    exit 0 — con la RLS apagada, la política no se aplica a NADIE (ni
+    siquiera a la app, que no tiene `BYPASSRLS`): rompe "Auditoría de otra
+    administración". Contenedor propio (L-006): rompe el estado a propósito."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("ALTER TABLE auditoria DISABLE ROW LEVEL SECURITY")
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "ROW LEVEL SECURITY" in resultado.stderr
+
+
+def test_rojo_despues_no_notaba_la_funcion_reemplazada_por_una_que_no_bloquea() -> None:
+    """V2-2(b), vuelta 3: el rompedor reemplazó el CUERPO de
+    `fn_auditoria_bloqueada` (mismo nombre, mismo dueño, mismos triggers
+    habilitados) por uno que no bloquea nada — el catálogo (R2: dueño;
+    R4: `tgenabled`) no ve ninguna diferencia. La verificación tiene que
+    probar el bloqueo DE VERDAD, no su forma: inserta una fila dentro de
+    un `SAVEPOINT`, exige que `UPDATE`/`DELETE`/`TRUNCATE` fallen, y
+    revierte. Contenedor propio (L-006)."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                # Mismo nombre, dueño y triggers: sólo cambia el cuerpo.
+                cur.execute(
+                    "CREATE OR REPLACE FUNCTION fn_auditoria_bloqueada() "
+                    "RETURNS trigger LANGUAGE plpgsql AS $$ "
+                    "BEGIN "
+                    "  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF; "
+                    "  RETURN NEW; "
+                    "END; $$"
+                )
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "el bloqueo no funciona" in resultado.stderr
+
+
+def test_rojo_despues_no_notaba_el_trigger_recreado_sobre_otro_evento() -> None:
+    """V2-2(b), variante 2 del rompedor: el trigger recreado con el mismo
+    nombre, sobre otro evento (`AFTER INSERT ... WHEN (false)`) en vez de
+    `BEFORE UPDATE OR DELETE` — `tgenabled` sigue en `'O'`, el nombre sigue
+    siendo el mismo: el catálogo de R4 no lo ve. La prueba de bloqueo real
+    lo agarra igual, porque intenta el UPDATE/DELETE de verdad."""
+    from ..conftest import IMAGEN_POSTGRES_PARA_TESTS
+
+    with PostgresContainer(
+        IMAGEN_POSTGRES_PARA_TESTS,
+        driver="psycopg",
+        username=ARRANQUE_USER,
+        password=ARRANQUE_PASSWORD,
+    ) as contenedor:
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+            _entorno_de_roles(contenedor),
+        )
+        _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+        _correr(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            _entorno_de_roles(contenedor),
+        )
+
+        conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
+        try:
+            with conexion.cursor() as cur:
+                cur.execute("DROP TRIGGER trg_auditoria_sin_update_delete ON auditoria")
+                cur.execute(
+                    "CREATE TRIGGER trg_auditoria_sin_update_delete "
+                    "AFTER INSERT ON auditoria "
+                    "FOR EACH ROW WHEN (false) "
+                    "EXECUTE FUNCTION fn_auditoria_bloqueada()"
+                )
+        finally:
+            conexion.close()
+
+        resultado = subprocess.run(
+            [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+            cwd=RAIZ_BACKEND,
+            env=_entorno_de_roles(contenedor),
+            capture_output=True,
+            text=True,
+        )
+        assert resultado.returncode == 1, resultado.stdout
+        assert "el bloqueo no funciona" in resultado.stderr
+
+
 # --- downgrade (con el rol de arranque) y upgrade vuelven ---
 
 

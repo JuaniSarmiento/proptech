@@ -433,3 +433,16 @@ NO se tocan: quedan con dueño o archivadas tal como las dejó el auditor.
     `reintentos.py`: `OperationalError` ya estaba en `_ERRORES_PASAJEROS_POR_NATURALEZA`). El test de
     R7 de la vuelta 2 (`test_un_set_de_sesion_sin_local_no_contagia...`) sigue en verde, sin cambios.
 
+- [x] 12.2 V2-2 · `despues()` (R4) verificaba la FORMA del bloqueo de `auditoria`, no que bloqueara de verdad, y el rompedor lo reprodujo como rol de arranque FUERA de cualquier ventana de migración (el auditor subió la severidad por esto: el informe la había acotado, de forma falsa, a "la tanda de la 0004"). (a) `ALTER TABLE auditoria DISABLE ROW LEVEL SECURITY` (con `FORCE` intacto) pasaba `despues()` con exit 0 — sin RLS encendida, la política no se aplica a NADIE. (b) Reemplazar el cuerpo de `fn_auditoria_bloqueada()` (mismo nombre, mismo dueño, mismos triggers habilitados) también pasaba con exit 0 — igual que recrear el trigger sobre otro evento con `WHEN (false)`. Rojo: los tres, hoy exit 0. Corrección: sumar `relrowsecurity` al catálogo (a), y probar el BLOQUEO DE VERDAD dentro de un `SAVEPOINT` (b): insertar una fila de prueba, exigir que `UPDATE`/`DELETE`/`TRUNCATE` fallen, y revertir todo.
+  - Hecho 15/10/2026: los tres rojos confirmados sobre `7313564` sin tocar, exit 0 en los tres (idéntico
+    al informe). `_verificar_auditoria_protegida` ahora también exige `relrowsecurity=true` (antes sólo
+    miraba `relforcerowsecurity`: con RLS apagada el `FORCE` da igual). Nueva
+    `_verificar_bloqueo_de_escritura_de_verdad`: dentro de un `SAVEPOINT`, fija un tenant de prueba
+    (`set_config(..., true)`, necesario porque el rol de arranque no tiene `BYPASSRLS` y la política de
+    D5 también lo alcanza con `FORCE`), inserta una fila con ese tenant, intenta `UPDATE`, `DELETE` y
+    `TRUNCATE` de verdad y exige que los tres levanten, y revierte todo con `ROLLBACK TO SAVEPOINT` —
+    nunca queda la fila de prueba, pase lo que pase. Esto agarra la variante (a), la (b) y la variante 2
+    del rompedor (trigger recreado sobre otro evento) con el MISMO mecanismo, sin necesitar comparar
+    `tgtype`/`tgqual`/un hash de `prosrc` (la otra opción que daba el auditor). 3 tests nuevos en
+    `test_auditoria_tabla.py`, cada uno con su propio contenedor (rompen el estado a propósito).
+
