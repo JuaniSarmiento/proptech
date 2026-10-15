@@ -1,0 +1,33 @@
+"""Composición de la matriz de D-096 con la base (D7, cambio 2a).
+
+Carga las asignaciones de la persona (ya filtradas por RLS) para que la API
+llame `alcanza`/`puede` (`acceso.dominio.permisos`) sin escribir SQL. Nunca
+importa `complejos` (D-021): la API, que compone los dos módulos, es quien
+sabe a qué complejo pertenece una unidad.
+"""
+
+from uuid import UUID
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from proptech_core.acceso.dominio.permisos import Asignacion, Nivel, Rol
+
+
+def cargar_asignaciones(sesion: Session, persona_id: UUID) -> list[Asignacion]:
+    filas = sesion.execute(
+        text(
+            "SELECT rol, complejo_id, unidad_id, nivel FROM asignacion_rol "
+            "WHERE persona_id = :persona_id"
+        ),
+        {"persona_id": str(persona_id)},
+    ).all()
+    return [
+        Asignacion(
+            rol=Rol(fila.rol),
+            complejo_id=fila.complejo_id,
+            unidad_id=fila.unidad_id,
+            nivel=Nivel(fila.nivel) if fila.nivel else None,
+        )
+        for fila in filas
+    ]

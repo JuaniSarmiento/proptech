@@ -1,12 +1,13 @@
-"""Los tres endpoints mínimos del candado (D7, cambio 2a, tarea 4.2): ver un
-complejo, ver una unidad, asignar un edificio a una persona.
+"""Los tres endpoints mínimos del candado (D7, cambio 2a, tareas 4.2 y 5.x):
+ver un complejo, ver una unidad, asignar un edificio a una persona.
 
-Acá sólo el cableado de identidad y tenant (D7): cargan por id dentro de la
-sesión ya filtrada por RLS (D5) y devuelven 404 si no existe. El alcance por
-edificio (D6, "no alcanza" aunque exista) y el permiso por acción de D-096
-todavía no están — los suma la tarea 5.x, envolviendo estos mismos
-endpoints. Por eso el 404 de acá es parcial: cubre "no existe o es de otra
-administración" (ya lo filtra RLS), no "existe pero no te alcanza".
+Compone `complejos.aplicacion` (cargar) y `acceso.aplicacion` + `acceso.
+dominio.permisos` (autorizar, D-096): nunca al revés (D-021, frontera
+verificada en `test_fronteras_de_modulos.py`). El orden de cada endpoint es
+siempre el de D7: cargar el recurso en la sesión con tenant (ya filtrada
+por RLS) → si no existe o no alcanza, 404 (`_no_encontrado()`, siempre la
+misma respuesta, para no filtrar cuál de los dos pasó, L-017) → si no
+puede, 403 con `permiso_faltante` (tarea 5.3).
 """
 
 from uuid import UUID
@@ -17,39 +18,57 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
+from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.acceso.dominio.permisos import alcanza
+from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
 
 router = APIRouter(prefix="/api")
 
 
+def _no_encontrado() -> HTTPException:
+    """Una sola función para "no existe" y "no alcanza" (L-017): las dos
+    tienen que dar exactamente la misma respuesta, nunca una variación que
+    delate cuál de las dos pasó."""
+    return HTTPException(status_code=404, detail="no encontrado")
+
+
 @router.get("/complejos/{complejo_id}")
-def ver_complejo(complejo_id: UUID, sesion: Session = Depends(sesion_con_tenant)) -> dict[str, str]:
-    fila = sesion.execute(
-        text("SELECT id, administracion_id, nombre FROM complejo WHERE id = :id"),
-        {"id": str(complejo_id)},
-    ).first()
-    if fila is None:
-        raise HTTPException(status_code=404)
+def ver_complejo(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    complejo = cargar_complejo(sesion, complejo_id)
+    if complejo is None:
+        raise _no_encontrado()
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if not alcanza(asignaciones, complejo_id):
+        raise _no_encontrado()
     return {
-        "id": str(fila.id),
-        "administracion_id": str(fila.administracion_id),
-        "nombre": fila.nombre,
+        "id": str(complejo.id),
+        "administracion_id": str(complejo.administracion_id),
+        "nombre": complejo.nombre,
     }
 
 
 @router.get("/unidades/{unidad_id}")
-def ver_unidad(unidad_id: UUID, sesion: Session = Depends(sesion_con_tenant)) -> dict[str, str]:
-    fila = sesion.execute(
-        text("SELECT id, administracion_id, complejo_id, nombre FROM unidad WHERE id = :id"),
-        {"id": str(unidad_id)},
-    ).first()
-    if fila is None:
-        raise HTTPException(status_code=404)
+def ver_unidad(
+    unidad_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    unidad = cargar_unidad(sesion, unidad_id)
+    if unidad is None:
+        raise _no_encontrado()
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if not alcanza(asignaciones, unidad.complejo_id, unidad_id):
+        raise _no_encontrado()
     return {
-        "id": str(fila.id),
-        "administracion_id": str(fila.administracion_id),
-        "complejo_id": str(fila.complejo_id),
-        "nombre": fila.nombre,
+        "id": str(unidad.id),
+        "administracion_id": str(unidad.administracion_id),
+        "complejo_id": str(unidad.complejo_id),
+        "nombre": unidad.nombre,
     }
 
 

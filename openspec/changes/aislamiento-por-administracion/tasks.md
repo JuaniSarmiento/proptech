@@ -120,7 +120,19 @@ corrige `design.md` antes de empezar. Sin eso, no se empieza. Ningún agente com
     agregado a mano al `base_de_datos.py` REAL (no sólo a la copia), visto fallar nombrando el archivo,
     restaurado con `diff` limpio contra el original. Suite completa: 770 passed + 1 xfailed. No se tocó
     ninguna migración, `compose.yaml` ni la API real; no se repitió `humo.sh`.
-- [ ] 5.2 Alcance por edificio con 404 (D6, D7) en `tests/integracion/test_alcance_api.py`, con `GET /api/complejos/{id}` y `GET /api/unidades/{id}` como `proptech_app` y la identidad inyectada: colaborador en complejo no asignado, vecino en la unidad de otro vecino del mismo complejo y consejo en otro complejo reciben 404; el titular recibe 200 en todos los de su administración; un complejo de B (UUID existente) y un UUID que no existe dan respuestas idénticas en código, cuerpo y encabezados salvo `X-Request-ID`. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Titular; › Id de otra administración contra id inexistente. Lecciones: L-017.
+- [x] 5.2 Alcance por edificio con 404 (D6, D7) en `tests/integracion/test_alcance_api.py`, con `GET /api/complejos/{id}` y `GET /api/unidades/{id}` como `proptech_app` y la identidad inyectada: colaborador en complejo no asignado, vecino en la unidad de otro vecino del mismo complejo y consejo en otro complejo reciben 404; el titular recibe 200 en todos los de su administración; un complejo de B (UUID existente) y un UUID que no existe dan respuestas idénticas en código, cuerpo y encabezados salvo `X-Request-ID`. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Titular; › Id de otra administración contra id inexistente. Lecciones: L-017.
+  - Hecho 15/10/2026: nace `proptech_core/complejos/aplicacion/lectura.py` (`cargar_complejo`,
+    `cargar_unidad`, sólo lectura; nunca importa `acceso`) y `proptech_core/acceso/aplicacion/
+    autorizacion.py` (`cargar_asignaciones`). `proptech_api/complejos.py` compone los dos + `alcanza`,
+    con una sola función `_no_encontrado()` para "no existe" y "no alcanza" (mismo cuerpo siempre,
+    L-017). 5 tests en `test_alcance_api.py`. RED real confirmado revirtiendo `complejos.py` a su
+    versión de la 4.2 (3 failed, código real en vez de esperado). Colateral: los fixtures de 4.2
+    (`test_identidad_api.py`) no tenían ninguna `asignacion_rol`, así que `alcanza` les daba 404 donde
+    antes daba 200 — se les agregó una asignación de titular (4.2 prueba el cableado de identidad, no
+    el alcance; eso es esta tarea). Suite completa: 775 passed + 1 xfailed. `humo.sh` corrido de nuevo
+    por tocar código real de la API: HUMO OK. El test que recorre las rutas registradas pidiendo que
+    ninguna quede sin envolver (pedido de Juani) lo sumo al cerrar la 5.3, cuando también esté el
+    permiso (403): recorrer las rutas antes de que el 403 exista cubriría la mitad de lo pedido.
 - [ ] 5.3 Permiso por acción con 403 (D7) en `tests/integracion/test_asignar_edificio_api.py`, con `POST /api/complejos/{id}/asignaciones`: el titular asigna un complejo a un colaborador de su administración (201, y el colaborador pasa a verlo por 5.2); un colaborador "editar" en un complejo asignado recibe 403 con `permiso_faltante` igual a `invitar_usuarios_y_asignar_edificios`; el mismo colaborador en un complejo no asignado recibe 404; consejo y vecino, 403 dentro de su alcance; el titular de A asignando a una persona de B (UUID existente) recibe 404 y no queda nada escrito. Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración. Lecciones: L-017.
 
 ## 6. Auditoría
