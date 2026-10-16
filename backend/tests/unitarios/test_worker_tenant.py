@@ -65,11 +65,23 @@ async def test_administracion_invalida_falla_una_sola_vez_sin_efecto(
     # `None`/`""` son triviales (cualquier string "contiene" ""; "None"
     # aparece siempre en el repr de un LogRecord por `exc_info`), así que
     # el chequeo real sólo tiene sentido para un valor con contenido propio.
+    #
+    # Deuda V3-8 (2a), tarea 4.1: comparar contra `str(registro.__dict__)`
+    # entero es un flake, no una verificación (visto en 4 de 100 corridas,
+    # siempre con `valor=123`): ese diccionario trae metadata propia de
+    # `LogRecord` que nada tiene que ver con el valor rechazado —
+    # `created` (segundos con fracción), `thread`, `process`, `taskName`
+    # de asyncio— y cualquiera de ellos puede CONTENER por azar los mismos
+    # dígitos ("123" en el id de un hilo o en los microsegundos de
+    # `created`). `tenant_de_tarea.py` sólo vuelca un campo propio además
+    # del mensaje (`extra={"tarea": ...}`, con el NOMBRE de la función, no
+    # el valor): ese es el único campo que de verdad podría filtrar el
+    # valor, y es el que se compara.
     representacion = str(valor)
     if representacion not in ("", "None"):
         for registro in caplog.records:
             assert representacion not in registro.getMessage()
-            assert representacion not in str(registro.__dict__)
+            assert representacion not in str(registro.__dict__.get("tarea", ""))
 
 
 async def test_administracion_valida_le_llega_a_la_tarea_como_uuid() -> None:
