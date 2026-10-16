@@ -145,3 +145,30 @@ Fuera de esta vuelta (deuda con dueño 15, no se tocan): C2-5 (línea/comando re
 `compose()` y en los 17 `if !`), C2-7 (el conteo de `.dump` es una carrera en el segundo `up`), C2-8
 (`arranque_fallido` sólo cubre `ConfiguracionInvalida`/`RolDeAplicacionInseguro`, no un `POSTGRES_HOST`
 o una contraseña inválidos), y las notas N1 a N13.
+
+## Cierre sin vuelta 3 (D-101)
+
+Auditoría de la vuelta 2: tres bloqueantes (C2V2-1, -2, -3) y condiciones de archivo (C2V2-5, C2V2-8,
+la 9.1 vencida). Juani decidió cerrar sin vuelta 3 (D-101), con C2V2-1 y C2V2-8 por la opción (b).
+
+- [x] C2V2-1 y C2V2-8: la spec de `entorno-de-ejecucion` queda acotada a HTTP y la de
+  `integracion-continua` nombra la excepción de los `exit 1` del humo; las dos, deuda del 15 (`d327327`).
+- [x] C2V2-3: el comentario de `humo.sh` deja de afirmar que una política más débil "también se ve" y
+  declara el límite (conteo, no contenido) (`d327327`).
+- [x] C2V2-4: borrado el aserto `content == b""` de `test_salud.py`, que no podía dar rojo (`d327327`).
+- [x] C2V2-5: `knowledge-base/08` sin la frase falsa de V3-14 y con la sección de seguridad reescrita
+  (proxy y contenedores) (`d327327`).
+- [x] Deuda: tabla "Deuda del cierre del 2c" en `12_fichas_de_changes.md`; D-101 en `09`; L-022 en `15`
+  (`745d8c8`).
+- [x] Test hermético: la primera corrida de la 9.1 sobre `d327327` dio 3 failed en
+  `test_compose_config_falla_sin_variable_obligatoria_de_respaldos` (`docker compose config` leía el
+  `infra/.env` local y la variable "faltante" volvía por ahí; en un clon limpio, los 3 pasaban). Ese
+  rojo es el de la tarea: `--env-file /dev/null` (`c353927`).
+- [x] 9.1 repetida sobre `c353927`, en orden y de a uno (16/10/2026):
+  - `bash infra/ci/test-backend.sh` (15:57:09-16:02:04): 900 passed, 1 xfailed.
+  - `bash infra/ci/test-web.sh` (16:02:04-16:02:05): 16 passed.
+  - `bash infra/ci/humo.sh` (16:02:05-16:04:02): `HUMO OK`.
+  - Clon limpio (16:04:02-16:04:34): `git clone` de `c353927`, `cp infra/.env.example infra/.env` con
+    las contraseñas generadas al azar, `mkdir -p infra/datos-respaldos`, `docker compose up --build`
+    con `PROPTECH_UID`/`PROPTECH_GID`: siete servicios sanos más `migraciones`, `/api/salud` 200 por el
+    proxy, `down -v` limpio.
