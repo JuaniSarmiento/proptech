@@ -96,6 +96,6 @@ el único servicio que corre como root, declarado y sin capacidades salvo `NET_B
 #### Scenario: Un servicio configurado como root
 
 - **WHEN** una copia de Compose hace correr como root cualquiera de esos siete servicios (`user: "0:0"`;
-  en `db` y `redis`, además, con el entrypoint salteado para que no baje de usuario con `gosu`) y se
-  corre el chequeo
+  en `db` y `redis`, además, con el entrypoint salteado para que no baje de usuario por su cuenta —
+  `gosu` en `db`, `setpriv` en `redis`) y se corre el chequeo
 - **THEN** el chequeo da rojo nombrando ese servicio, para cada uno de los siete

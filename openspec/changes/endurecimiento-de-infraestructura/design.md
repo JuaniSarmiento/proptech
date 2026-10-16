@@ -13,7 +13,8 @@ del 16/10/2026). `Caddyfile`, `ci.yml` y `next.config.ts` no cambiaron desde `b7
 - **`web/next.config.ts`**: Next manda `X-Powered-By: Next.js` por defecto.
 - **`infra/compose.yaml`**: 8 servicios (`db`, `migraciones`, `redis`, `respaldos`, `web`, `worker`,
   `api`, `caddy`), cuatro redes (`datos`, `aplicacion` y las de salida, entre ellas `salida_worker`);
-  ningún servicio tiene `security_opt` ni `cap_drop`. `db` y `redis` bajan de usuario con `gosu`;
+  ningún servicio tiene `security_opt` ni `cap_drop`. `db` baja de usuario con `gosu`; `redis`, con
+  `setpriv` (corregido en C2-3, vuelta 2 del 2c: el comentario decía `gosu` para los dos);
   `respaldos` corre con `PROPTECH_UID`; `api`, `worker` y `web` con el `USER` de su imagen; `caddy` corre
   como root (la imagen no fija `USER`).
 - **`infra/ci/humo.sh`**: 21 pasos y dos `up` (el segundo, del 2a, sobre los volúmenes existentes,
@@ -100,9 +101,19 @@ proceso no root no podría abrir el puerto 80. Root sin capacidades ni privilegi
 los dos males. Si el constructor ve otra cosa al probarlo, se informa antes de cambiarlo.
 
 La verificación es por efecto, no por forma (L-018): además del test sobre el YAML, en el stack vivo
-`/proc/1/status` de cada servicio trae `NoNewPrivs: 1` y su `CapBnd` es exactamente la lista
-justificada de ese servicio (vacía salvo `db`, `redis` y `caddy`). Un `cap_drop` que el runtime ignore
-pasa el test del YAML y no pasa éste.
+`/proc/1/status` de cada servicio trae `NoNewPrivs: 1`. Un `cap_drop` que el runtime ignore pasa el
+test del YAML y no pasa éste.
+
+**Corregido en C2-3 (rompedor/auditor, vuelta 1 del 2c):** el `CapBnd` NO se lee de `/proc/1/status`.
+Para un servicio cuyo entrypoint baja privilegios por su cuenta después de arrancar (`redis`, con
+`setpriv`), el PID 1 queda con `CapBnd` vacío SIEMPRE, tenga o no `cap_drop`/`security_opt` en
+Compose — el chequeo nunca podía dar rojo ahí (reproducido con el humo real: sin el bloque de
+`redis`, sigue `HUMO OK`). `db` (con `gosu`) no tenía este problema porque `gosu` no limpia el bounding
+set, pero el mecanismo tiene que valer para cualquier entrypoint que baje privilegios por su cuenta, no
+sólo para los dos de hoy. Se lee `/proc/self/status` de un proceso NUEVO (`compose exec`/`run`), que
+siempre refleja el `HostConfig` que puso Compose: ahí el `CapBnd` de cada uno de los OCHO servicios
+(suma `migraciones`) es exactamente su lista justificada — vacía salvo `db` (`0xc3`), `redis` (`0x1c0`,
+su propio `cap_add`) y `caddy` (`0x400`).
 
 **Descartado**: `read_only: true` en este cambio; cada imagen escribe en lugares distintos (`/tmp`,
 cachés de Next) y exige un `tmpfs` por servicio, que se evalúa con el despliegue (15).
@@ -110,7 +121,9 @@ cachés de Next) y exige un `tmpfs` por servicio, que se evalúa con el desplieg
 ### D4 · PID 1 no root servicio por servicio
 
 Se chequea el usuario del PID 1 por `/proc/1/status` en **siete** servicios: `api`, `web`, `worker`,
-`migraciones`, `respaldos`, `redis` y `db` (en `db` y `redis`, el PID 1 después de `gosu`). `api` y `web`
+`migraciones`, `respaldos`, `redis` y `db` (en `db`, el PID 1 después de `gosu`; en `redis`, después de
+`setpriv` — el chequeo de IDENTIDAD sigue siendo válido por PID 1 en los dos: lo que cambia con C2-3 es
+sólo el chequeo de CAPACIDADES de D3, no éste). `api` y `web`
 pasan de `exec id -u` a `/proc/1/status`, como el resto: `id -u` dice quién es el `exec`, no quién es el
 proceso. `caddy` queda fuera de la lista y declarado root (D3).
 
@@ -121,9 +134,10 @@ cambia, este chequeo deja de alcanzar y hay que revisarlo.
 
 El rojo se ve en **cada uno de los siete** con una copia de Compose que lo hace correr como root
 (L-013, L-016): ver el rojo en uno solo no dice nada de los demás, que es exactamente la deuda del 1d.
-En `db` y `redis`, `user: "0:0"` no alcanza: el entrypoint arranca como root igual y baja con `gosu`,
-así que el chequeo seguiría en verde sin probar nada. Ahí la copia saltea el entrypoint (como se hizo
-con `redis` en el 1d: `--entrypoint sh -c "redis-server ..."`, sin el `gosu`).
+En `db` y `redis`, `user: "0:0"` no alcanza: el entrypoint arranca como root igual y baja de privilegios
+por su cuenta (`gosu` en `db`, `setpriv` en `redis`), así que el chequeo seguiría en verde sin probar
+nada. Ahí la copia saltea el entrypoint (como se hizo con `redis` en el 1d:
+`--entrypoint sh -c "redis-server ..."`, sin pasar por `setpriv`).
 
 ### D5 · CI
 

@@ -270,24 +270,30 @@ echo "uid pid1: api=$uid_pid1_api web=$uid_pid1_web worker=$uid_pid1_worker" \
 # capacidades sean sólo NET_BIND_SERVICE.
 
 paso 4b "privilegios y capacidades en el proceso vivo (NoNewPrivs y CapBnd)"
-# D3, tarea 3.4: se lee el EFECTO en /proc/1/status, no el YAML (un
-# cap_drop que el runtime ignore pasaría igual si sólo se mirara
-# compose.yaml, L-018). La lista "justificada" de cada servicio salió de
-# probarla en vivo (tarea 3.2): db retiene CHOWN+DAC_OVERRIDE+SETUID+
-# SETGID (0xc3) en su PID 1 incluso después de bajar con gosu; caddy
-# retiene sólo NET_BIND_SERVICE (0x400, se queda root). redis, en cambio,
-# aunque el cap_add le da SETUID/SETGID/SETPCAP para que `setpriv` pueda
-# bajar de privilegios, el PID 1 final queda con CapBnd VACÍO (setpriv no
-# los retiene como gosu): la lista "vacía salvo db, redis y caddy" de la
-# tarea no es cierta para redis en esta imagen (hallazgo real, verificado
-# contra el proceso vivo); el valor correcto para redis es 0, igual que
-# el resto.
-nonewprivs_pid1() {
-  compose exec -T "$1" sh -c "awk '/^NoNewPrivs:/ {print \$2}' /proc/1/status"
+# D3, tarea 3.4; corregido en C2-3 (rompedor/auditor, vuelta 1 del 2c).
+# El chequeo lee /proc/1/status: para un servicio cuyo entrypoint baja
+# privilegios por su cuenta DESPUÉS de que el contenedor arranca (redis
+# con `setpriv`), el PID 1 no refleja lo que puso Compose — queda con
+# CapBnd 0 tenga o no `cap_drop`/`security_opt`, así que el chequeo nunca
+# podía dar rojo ahí (reproducido con humo.sh real sin el bloque de
+# security_opt/cap_drop/cap_add de redis: HUMO OK igual). `db` (con
+# `gosu`) no tiene este problema porque gosu no limpia el bounding set,
+# pero el chequeo tiene que valer para CUALQUIER entrypoint que baje
+# privilegios por su cuenta, hoy o mañana (L-018, L-021): se lee
+# /proc/self/status de un proceso NUEVO (`compose exec`/`run`), que
+# siempre refleja el HostConfig que puso Compose, sin importar qué haga
+# el entrypoint con el PID 1.
+nonewprivs_de(){ compose exec -T "$1" sh -c "awk '/^NoNewPrivs:/ {print \$2}' /proc/self/status"; }
+capbnd_de(){ compose exec -T "$1" sh -c "awk '/^CapBnd:/ {print \$2}' /proc/self/status"; }
+# `migraciones` ya salió (una sola corrida): gemelo de la 3.3, con un
+# `run --no-deps` descartable en vez de un `exec`.
+nonewprivs_de_migraciones(){
+  compose run --rm --no-deps --entrypoint sh migraciones \
+    -c "awk '/^NoNewPrivs:/ {print \$2}' /proc/self/status"
 }
-
-capbnd_pid1() {
-  compose exec -T "$1" sh -c "awk '/^CapBnd:/ {print \$2}' /proc/1/status"
+capbnd_de_migraciones(){
+  compose run --rm --no-deps --entrypoint sh migraciones \
+    -c "awk '/^CapBnd:/ {print \$2}' /proc/self/status"
 }
 
 verificar_privilegios() {
@@ -297,9 +303,9 @@ verificar_privilegios() {
   # NoNewPrivs); una extracción por posición de línea (en vez de por
   # nombre de campo) asignaría los valores al revés sin que ningún tipo
   # lo avise.
-  local servicio="$1" capbnd_esperado="$2" nnp capbnd
-  nnp=$(nonewprivs_pid1 "$servicio")
-  capbnd=$(capbnd_pid1 "$servicio")
+  local servicio="$1" capbnd_esperado="$2" lector_nnp="$3" lector_capbnd="$4" nnp capbnd
+  nnp=$("$lector_nnp" "$servicio")
+  capbnd=$("$lector_capbnd" "$servicio")
   echo "privilegios $servicio: NoNewPrivs=$nnp CapBnd=$capbnd (esperado $capbnd_esperado)"
   if [ "$nnp" != "1" ]; then
     echo "ERROR: $servicio no tiene NoNewPrivs:1 (tiene '$nnp')" >&2
@@ -311,14 +317,15 @@ verificar_privilegios() {
   fi
 }
 
-verificar_privilegios api 0000000000000000
-verificar_privilegios web 0000000000000000
-verificar_privilegios worker 0000000000000000
-verificar_privilegios respaldos 0000000000000000
-verificar_privilegios redis 0000000000000000
-verificar_privilegios db 00000000000000c3
-verificar_privilegios caddy 0000000000000400
-echo "ok: NoNewPrivs y CapBnd correctos en los siete servicios vivos"
+verificar_privilegios api 0000000000000000 nonewprivs_de capbnd_de
+verificar_privilegios web 0000000000000000 nonewprivs_de capbnd_de
+verificar_privilegios worker 0000000000000000 nonewprivs_de capbnd_de
+verificar_privilegios respaldos 0000000000000000 nonewprivs_de capbnd_de
+verificar_privilegios redis 00000000000001c0 nonewprivs_de capbnd_de
+verificar_privilegios db 00000000000000c3 nonewprivs_de capbnd_de
+verificar_privilegios caddy 0000000000000400 nonewprivs_de capbnd_de
+verificar_privilegios migraciones 0000000000000000 nonewprivs_de_migraciones capbnd_de_migraciones
+echo "ok: NoNewPrivs y CapBnd correctos en los ocho servicios, leídos de un proceso que depende de Compose"
 
 paso 5 "las imágenes construidas no contienen .env"
 compose run --rm --no-deps --entrypoint sh api -c '[ ! -f /app/.env ]'
