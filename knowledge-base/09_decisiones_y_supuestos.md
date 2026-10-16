@@ -1612,6 +1612,27 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Por qué**: es la opción que menos le pide al usuario y sirve para los dos tipos de ingreso.
 - **Quién**: Juani, 16/10/2026 (D-094: decide cualquiera de los dos socios).
 
+## D-100 · P19, P33 y P24: vencimientos y grupos parciales, configurables (16/10/2026)
+
+- **Fecha**: 16/10/2026
+- **Decisión**:
+  - **P19, doble vencimiento**: el sistema soporta las dos formas. Cada edificio elige en su
+    configuración versionada: vencimiento único (R03) o doble vencimiento, con un recargo para el
+    segundo. El doble se modela sumando campos opcionales, sin cambiar el caso único.
+  - **P33, cómo se fija el vencimiento**: un día fijo en la configuración del edificio (por ejemplo el
+    10), que se puede correr al emitir una liquidación puntual (un feriado, un ajuste), dejando
+    registrado el cambio.
+  - **P24, grupos parciales** (Ascensor, Cocheras): dos modos por grupo. Por defecto, los coeficientes
+    generales se renormalizan entre las unidades del grupo; si el reglamento fija porcentajes propios,
+    el grupo lleva coeficientes propios por unidad, que tienen que sumar 1 dentro del grupo.
+- **Descartado**: fijar una sola variante en cada caso (sólo vencimiento único, sólo día fijo sin
+  ajuste, sólo renormalizar o sólo coeficientes propios): cada una deja afuera reglamentos reales y
+  obliga a migrar datos el día que llegue el primer edificio distinto.
+- **Por qué**: son prácticas habituales en los consorcios argentinos y el reglamento del edificio
+  piloto todavía no está a mano; soportar las variantes cuesta pocas columnas y no cierra puertas.
+  Cuando Alberto confirme cómo es el piloto, sólo se elige la variante en la configuración.
+- **Quién**: Juani, 16/10/2026 (D-094). Pendiente de contrastar con el reglamento del piloto (Alberto).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

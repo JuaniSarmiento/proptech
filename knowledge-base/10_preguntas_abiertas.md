@@ -61,9 +61,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   gastos con el IVA incluido.
 - [x] **P18 · El vecino con unidades en dos administraciones**: resuelta en D-096, una cuenta por
   administración (la unicidad del usuario es por administración, no global; puede repetir email).
-- [ ] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
+- [x] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
   vencimiento con recargo escalonado en vez del vencimiento único de R03. Afecta el test de M1. Se
-  responde con Alberto antes del cambio 3.
+  responde con Alberto antes del cambio 3. Resuelta en D-100 (16/10/2026).
 - [ ] **P20 · Quién aprueba una condonación** (R29, Q1 de Alberto): el titular solo, con auditoría, o el
   consejo por encima de un umbral. Antes del cambio 10b.
 - [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
@@ -72,8 +72,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [x] **P23 · Permisos por acción**: resuelta en D-096 con una matriz por acción (titular hace lo
   irreversible o legal, colaborador lo que se deshace o revisa el titular, consejo mira, vecino ve lo
   suyo). El umbral de aprobación del consejo para condonar sigue abierto en P20.
-- [ ] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
-  propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3.
+- [x] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
+  propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3. Resuelta en D-100 (16/10/2026).
 - [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
   liquidada): qué pasa si el reparto daría negativo, y en qué bloque cae si la factura era
   extraordinaria. Antes del cambio 6.
@@ -91,8 +91,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   interés, o un saldo por debajo del umbral de R30. Antes del cambio 4.
 - [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
   fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
-- [ ] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
-  edificio o cargado al emitir. Antes del cambio 3.
+- [x] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
+  edificio o cargado al emitir. Antes del cambio 3. Resuelta en D-100 (16/10/2026).
 - [ ] **P34 · Hasta qué fecha calcula el interés cada emisión**: la de emisión, el cierre del período o
   el vencimiento siguiente (R03). Antes del cambio 4.
 - [x] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos**: con una
