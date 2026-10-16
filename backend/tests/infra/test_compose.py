@@ -1,5 +1,6 @@
 """Tests estáticos sobre infra/compose.yaml: red, puertos y dependencias (D8/D9)."""
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -445,8 +446,11 @@ def test_compose_config_falla_sin_variable_obligatoria_de_respaldos(
     entorno = _entorno_compose_valido()
     entorno.pop(variable_faltante, None)
 
+    # `--env-file /dev/null`: sin esto Compose lee solo `infra/.env` si existe
+    # (la máquina de quien desarrolla lo tiene) y la variable "faltante" vuelve
+    # por ahí; el test pasaba en un clon limpio y fallaba en la máquina real.
     resultado = subprocess.run(
-        ["docker", "compose", "config", "--quiet"],
+        ["docker", "compose", "--env-file", os.devnull, "config", "--quiet"],
         cwd=str(RAIZ / "infra"),
         env=entorno,
         capture_output=True,
