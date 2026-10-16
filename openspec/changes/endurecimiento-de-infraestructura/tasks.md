@@ -60,7 +60,7 @@ arranque del candado; si aparece algo que afecte el aislamiento, se frena y se c
 
 ## 8. Rollback
 
-- [ ] 8.1 Rollback ejercitado (D9, F-2): con `git worktree` de `d0502fa` (sin tocar el árbol de trabajo), levantar con `-p proptech` y cargar datos (las dos administraciones del humo o la semilla); anotar `/api/salud` y conteos. Subir a la versión del 2c sobre esos mismos volúmenes: `/api/salud` 200 por el proxy y conteos iguales. Volver a `d0502fa` sobre los mismos volúmenes: `/api/salud` 200 y conteos iguales. Anotar comandos y salida, y reescribir el Migration Plan de `design.md` con los comandos exactos y el resultado. Bajar todo con `down -v` y `git worktree remove` al terminar. Escenarios: ninguno (procedimiento de operación). Lecciones: L-006, L-016.
+- [x] 8.1 Rollback ejercitado (D9, F-2): con `git worktree` de `d0502fa` (sin tocar el árbol de trabajo), levantar con `-p proptech` y cargar datos (las dos administraciones del humo o la semilla); anotar `/api/salud` y conteos. Subir a la versión del 2c sobre esos mismos volúmenes: `/api/salud` 200 por el proxy y conteos iguales. Volver a `d0502fa` sobre los mismos volúmenes: `/api/salud` 200 y conteos iguales. Anotar comandos y salida, y reescribir el Migration Plan de `design.md` con los comandos exactos y el resultado. Bajar todo con `down -v` y `git worktree remove` al terminar. Escenarios: ninguno (procedimiento de operación). Lecciones: L-006, L-016.
 
 ## 9. Cierre
 
