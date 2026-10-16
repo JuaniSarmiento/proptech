@@ -207,26 +207,38 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
 
 ### 2c · `endurecimiento-de-infraestructura` · MEDIUM
 
-- **Objetivo**: cerrar la deuda de infraestructura con dueño "2" que no cambia quién ve qué dato.
-- **Decisiones**: D-051, D-087, D-089, D-095, D-097.
-- **Gobernanza**: MEDIUM. Checkpoints, sin aprobación previa de los socios (D-094).
-- **Entra**: cabeceras de seguridad en Caddy, sin `Server`, `Via` ni `X-Powered-By`, y HEAD revisado;
-  volúmenes de Caddy; `no-new-privileges` y capacidades mínimas justificadas viendo fallar el arranque;
-  PID 1 no root en cada servicio, con el rojo en cada uno; CI en pull requests, con `timeout-minutes` y
-  gitleaks por digest; humo con pasos nombrados, "uno solo" exacto, la doble congelada y las cabeceras
-  de punta a punta; la tabla de variables del README. 10 tareas en
-  `openspec/changes/endurecimiento-de-infraestructura/`.
-- **No entra**: HSTS, `read_only` en los contenedores y los secretos de Compose (con el despliegue,
-  15); CSP (2b); Dependabot (15).
-- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (V2-5,
-  V3-8, V3-9, V3-14, V3-15 y D-5).
+- **Objetivo**: cerrar la deuda de infraestructura con dueño "2" que no cambia quién ve qué dato, y la
+  del cierre del 2a con dueño 2c.
+- **Decisiones**: D-051, D-087, D-089, D-095, D-097, D-098.
+- **Gobernanza**: MEDIUM. Checkpoints, sin aprobación previa de los socios (D-094). Regla de freno: dos
+  tareas tocan el arranque del candado (`app.py` por V2-5, `roles.py` por V3-14); si aparece algo que
+  afecte el aislamiento, se frena y se consulta a Juani. Revisado por DevOps el 16/10/2026 contra
+  `d0502fa`; cambios aprobados por Juani.
+- **Entra**: cabeceras de seguridad en Caddy, sin `Server`, `Via` ni `X-Powered-By`, también en los 502
+  que genera Caddy, y HEAD con las mismas cabeceras que GET; volúmenes de Caddy (verificados con
+  `instance.uuid`); `no-new-privileges` y capacidades mínimas justificadas viendo fallar el arranque
+  sobre volúmenes nuevos y existentes, verificadas en el proceso vivo; PID 1 no root en siete servicios,
+  con el rojo en cada uno; CI en pull requests sin perder `push` a `main` ni `workflow_dispatch`, con
+  `timeout-minutes` medidos y gitleaks y `shellcheck` por digest; humo con pasos nombrados, logs al
+  fallar, un respaldo por arranque, la doble congelada y las cabeceras de punta a punta; una sola tabla
+  de variables (README, `08` la enlaza); la deuda del 2a (V2-5, V3-8, V3-9, V3-14, V3-15, D-5); rollback
+  ejercitado. 20 tareas en `openspec/changes/endurecimiento-de-infraestructura/`.
+- **No entra**: HSTS, `read_only` en los contenedores, imágenes base por digest, monitoreo fuera del CI
+  y los secretos de Compose, incluidos `REDIS_PASSWORD` en la línea de comando y las contraseñas en
+  `docker inspect` (con el despliegue, 15); CSP (2b); Dependabot (15).
+- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más abajo (V2-5,
+  V3-8, V3-9, V3-14, V3-15 y D-5). V2-5 tiene una pregunta abierta para Juani (P1 de la propuesta: choca
+  con V3-5, dueño 2b, que pide un test antes de tocar `lifespan`).
 - **Depende de**: 2a (los dos tocan `compose.yaml` y `humo.sh`). **Habilita**: 15.
-- **Que intente romper el rompedor**: una respuesta que se escapa sin cabeceras (un 502, una
-  redirección, un 404, un HEAD); un servicio que arranca como root y el chequeo que no lo ve; una
-  capacidad de más sin justificar; un trabajo del CI sin límite; un paso del humo que falla sin decir
-  cuál; la doble congelada que deja algo pausado.
-- **Terminado cuando**: las 10 tareas están hechas con su rojo visto y la corrida de cierre está en
-  verde.
+- **Que intente romper el rompedor**: una respuesta que se escapa sin cabeceras (un 502 de Caddy, una
+  redirección, un 404, un HEAD); un servicio que arranca como root y el chequeo que no lo ve (`gosu` en
+  `db` y `redis`); una capacidad de más sin justificar, o una de menos que sólo rompe sobre un volumen
+  existente; un trabajo del CI sin límite; un paso del humo que falla sin decir cuál o cuyo log se
+  pierde; la doble congelada que deja algo pausado; un rollback que no vuelve.
+- **Terminado cuando**: las 20 tareas están hechas con su rojo visto; el rollback se ejercitó (subir y
+  volver a `d0502fa` sobre volúmenes con datos, salud 200 y conteos iguales en las dos direcciones, con
+  comandos y salida); la corrida de cierre está en verde, en orden y de a uno; y un clon limpio del
+  commit final levanta con los comandos del README tal cual, con `/api/salud` 200.
 
 ### 3 · `configuracion-del-edificio` · HIGH
 
@@ -624,6 +636,10 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   V3-4 (M2), V3-6, V3-7 y el chequeo 5 completo: los 25 archivos de test sin mutar y la verificación de
   arranque de las políticas de las tablas de negocio, prometida como deuda de este cambio por decisión
   de Juani).
+- **Deuda nueva, origen "revisión del 2c, 16/10/2026"**: `REDIS_PASSWORD` va en la línea de comando de
+  `redis-server` (`--requirepass` en `compose.yaml`), visible en `docker inspect` y en `/proc/1/cmdline`;
+  y todas las contraseñas de los servicios quedan en el `Config.Env` de `docker inspect`. Se suma a la
+  contraseña del rol de arranque en el entorno de `migraciones`, ya con dueño 15.
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto) y P12.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró

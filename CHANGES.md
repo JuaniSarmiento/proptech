@@ -264,18 +264,21 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ### [C-05c] `endurecimiento-de-infraestructura` · 2c
 - **Estado**: `[ ]` propuesto el 15/10/2026 (MEDIUM, sin aprobación previa); partido del cambio 2 por
-  D-097
-- **Scope**: cabeceras de seguridad y volúmenes de Caddy, sin `Via` ni `X-Powered-By`, HEAD revisado;
-  CI en pull requests con límite de tiempo y gitleaks por digest; contenedores con `no-new-privileges`
-  y capacidades mínimas, PID 1 no root por servicio; humo con pasos nombrados, "uno solo" exacto y la
-  doble congelada; tabla de variables del README
+  D-097; revisado por DevOps el 16/10/2026 contra `d0502fa`, cambios aprobados por Juani (20 tareas)
+- **Scope**: cabeceras de seguridad y volúmenes de Caddy, sin `Via` ni `X-Powered-By`, también en los
+  502 de Caddy, HEAD revisado; CI en pull requests (sin perder `push` a `main` ni `workflow_dispatch`)
+  con límite de tiempo medido y gitleaks y `shellcheck` por digest; contenedores con
+  `no-new-privileges` y capacidades mínimas verificadas en el proceso vivo, PID 1 no root en siete
+  servicios; humo con pasos nombrados, logs al fallar, un respaldo por arranque y la doble congelada;
+  una sola tabla de variables; la deuda del 2a con dueño 2c (V2-5, V3-8, V3-9, V3-14, V3-15, D-5);
+  rollback ejercitado y clon limpio
 - **Dependencias**: C-05a
-- **Governance**: MEDIO
+- **Governance**: MEDIO, con regla de freno en el arranque del candado (`app.py`, `roles.py`)
 - **Leer antes**:
-  - `openspec/changes/endurecimiento-de-infraestructura/proposal.md`
+  - `openspec/changes/endurecimiento-de-infraestructura/proposal.md` (incluida la pregunta P1)
   - `knowledge-base/12_fichas_de_changes.md` §2c y las tablas de deuda
-  - `knowledge-base/15_lecciones.md` (L-001, L-013, L-014, L-016)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-051, D-095, D-097)
+  - `knowledge-base/15_lecciones.md` (L-001, L-013, L-014, L-016, L-018, L-019)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-051, D-095, D-097, D-098)
 
 ---
 
