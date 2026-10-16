@@ -81,15 +81,15 @@ def test_un_if_negado_reportado_a_mano_nombra_numero_descripcion_linea_y_comando
     assert "grep -q no-esta-aca" in resultado.stderr
 
 
-def test_humo_usa_pasos_sh_en_sus_24_pasos() -> None:
-    """humo.sh tiene que fuentear pasos.sh y anunciar sus 24 pasos con
+def test_humo_usa_pasos_sh_en_sus_25_pasos() -> None:
+    """humo.sh tiene que fuentear pasos.sh y anunciar sus 25 pasos con
     `paso N "descripción"`, no con `echo "--- (N) descripción ---"` suelto
     (que no deja nada para que el trap reporte al fallar)."""
     texto = HUMO.read_text()
     assert "pasos.sh" in texto, "humo.sh no fuentea infra/ci/pasos.sh"
     llamadas_a_paso = re.findall(r'^\s*paso\s+\S+\s+"', texto, flags=re.MULTILINE)
-    assert len(llamadas_a_paso) == 24, (
-        f"se esperaban 24 llamadas a `paso N ...` en humo.sh, se encontraron {len(llamadas_a_paso)}"
+    assert len(llamadas_a_paso) == 25, (
+        f"se esperaban 25 llamadas a `paso N ...` en humo.sh, se encontraron {len(llamadas_a_paso)}"
     )
     assert not re.search(r'^echo "--- \(', texto, flags=re.MULTILINE), (
         "quedó un encabezado de paso anunciado con echo suelto en vez de `paso`"

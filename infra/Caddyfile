@@ -42,7 +42,7 @@
 		-Via
 		-X-Powered-By
 		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
+		Referrer-Policy no-referrer
 		X-Frame-Options DENY
 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
 	}
@@ -62,9 +62,32 @@
 			-Via
 			-X-Powered-By
 			X-Content-Type-Options nosniff
-			Referrer-Policy strict-origin-when-cross-origin
+			Referrer-Policy no-referrer
 			X-Frame-Options DENY
 			Permissions-Policy "geolocation=(), microphone=(), camera=()"
 		}
 	}
+}
+
+# C2-2 (rompedor/auditor, vuelta 1 del 2c): sitio de respaldo. Un pedido
+# que no matchea el host de {$PROPTECH_SITIO} (por IP, con un Host ajeno,
+# o sin Host en HTTP/1.0) caía en la respuesta POR DEFECTO de Caddy — un
+# 200 vacío armado por fuera del bloque del sitio, así que ni el `header`
+# de arriba ni `handle_errors` lo alcanzan: salía con Server: Caddy y sin
+# ninguna cabecera de seguridad. Este bloque, sin host (cualquier Host en
+# el puerto 80), es lo último que Caddy prueba, así que nunca compite con
+# el sitio real. No cubre lo que Caddy arma ANTES de elegir un sitio (una
+# línea de pedido mal formada, un encabezado gigante, HTTP/9.9): eso es la
+# excepción documentada en la spec, inherente al servidor HTTP de Go.
+:80 {
+	header {
+		-Server
+		-Via
+		-X-Powered-By
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+	respond 421
 }

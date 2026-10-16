@@ -5,8 +5,16 @@
 Toda respuesta servida por el proxy SHALL llevar `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` y una `Permissions-Policy` restrictiva, y MUST
 NOT llevar `Server`, `Via` ni `X-Powered-By`, venga de la web, de la API o del propio Caddy (incluidas
-las respuestas de error que genera Caddy cuando un servicio de atrás no responde). Una respuesta a HEAD
-MUST llevar las mismas cabeceras que la respuesta a GET.
+las respuestas de error que genera Caddy cuando un servicio de atrás no responde), **y sin importar si
+el pedido matchea el sitio configurado** (`{$PROPTECH_SITIO}`): por IP, con un `Host` que no sea ese, o
+sin `Host` (HTTP/1.0), el proxy SHALL servir esta misma respuesta en vez de la respuesta por defecto de
+Caddy (C2-2, vuelta 2 del 2c). Una respuesta a HEAD MUST llevar las mismas cabeceras que la respuesta a
+GET.
+
+**Excepción, acotada:** lo que el servidor HTTP arma ANTES de elegir un sitio — una línea de pedido
+malformada (400), un encabezado demasiado grande (431), una versión de HTTP no soportada (505) o un
+`OPTIONS *` — no pasa por ningún sitio (ni el real ni el de respaldo) y sale sin estas cabeceras; es
+inherente al servidor HTTP de Go que usa Caddy, no una falla de configuración (N1, rompedor vuelta 1).
 
 #### Scenario: Respuesta de la web y de la API
 
@@ -24,18 +32,31 @@ MUST llevar las mismas cabeceras que la respuesta a GET.
 - **WHEN** el servicio `api` está detenido y se pide `GET /api/salud` por el proxy
 - **THEN** la respuesta es 502, trae las cabeceras de seguridad y no trae `Server`
 
+#### Scenario: Pedido que no matchea el sitio configurado
+
+- **WHEN** se pide por IP, con un `Host` que no es `{$PROPTECH_SITIO}`, o sin `Host` (HTTP/1.0)
+- **THEN** la respuesta trae las cabeceras de seguridad y no trae `Server`, `Via` ni `X-Powered-By`
+  (nunca la respuesta por defecto de Caddy)
+
 ### Requirement: Contenedores endurecidos
 
 Ningún servicio SHALL poder ganar privilegios nuevos (`no-new-privileges`) y cada uno MUST correr con
 sólo las capacidades del kernel que necesita, cada una justificada, verificado en el proceso que corre
 y no sólo en la configuración. Los datos de Caddy MUST persistir en volúmenes propios.
 
+Para un servicio cuyo entrypoint baja privilegios por su cuenta después de que el contenedor arranca
+(hoy `redis`, con `setpriv`; mañana puede ser otro), el PID 1 MUST NOT ser la fuente de este chequeo:
+su `CapBnd` puede quedar vacío sin importar qué haya puesto Compose, así que un `cap_drop` sacado
+pasaría igual (C2-3, rompedor/auditor, vuelta 1 del 2c). El chequeo SHALL leer un proceso nuevo
+(`compose exec`/`run`), que siempre refleja lo que Compose configuró.
+
 #### Scenario: Privilegios y capacidades en el stack vivo
 
-- **WHEN** con el stack levantado se lee `/proc/1/status` de cada servicio
+- **WHEN** con el stack levantado se lee `/proc/self/status` de un proceso nuevo en cada uno de los
+  ocho servicios (`compose exec`, o `compose run --no-deps` en `migraciones`, que ya terminó)
 - **THEN** todos traen `NoNewPrivs: 1`, el `CapBnd` de cada uno es exactamente su lista justificada
   (vacía salvo en `db`, `redis` y `caddy`), y el chequeo da rojo si una copia de Compose le saca el
-  `cap_drop` a un servicio
+  `cap_drop`/`security_opt` a cualquiera de los ocho, incluido `redis`
 
 #### Scenario: Caddy recreado conserva sus datos
 

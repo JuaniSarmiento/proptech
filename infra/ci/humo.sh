@@ -335,19 +335,47 @@ paso 6b "cabeceras de seguridad de punta a punta (D1), con el 502 y la persisten
 # Caddy con la api caída (que header -Server por sí solo NO cubre:
 # evidencia capturada contra el stack real antes de la 3.1, "Server:
 # Caddy" en el 502).
+#: C2-1 (rompedor/auditor, vuelta 1 del 2c): no alcanza con que la cabecera
+#: exista, hace falta su VALOR — una Referrer-Policy: unsafe-url pasaba
+#: todo. Juani confirmó `no-referrer` (como la spec y D1), no
+#: `strict-origin-when-cross-origin`.
 verificar_cabeceras() {
-  local descripcion="$1" encabezados="$2" cabecera
+  local descripcion="$1" encabezados="$2" cabecera valor_obtenido
+  local encabezados_sin_cr
+  encabezados_sin_cr=$(echo "$encabezados" | tr -d '\r')
+
   for cabecera in X-Content-Type-Options Referrer-Policy X-Frame-Options Permissions-Policy; do
-    if ! echo "$encabezados" | tr -d '\r' | grep -qi "^${cabecera}:"; then
+    if ! echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
       echo "ERROR: falta $cabecera en $descripcion" >&2
       echo "$encabezados"
       exit 1
     fi
   done
+
   for cabecera in Server Via X-Powered-By; do
-    if echo "$encabezados" | tr -d '\r' | grep -qi "^${cabecera}:"; then
+    if echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
       echo "ERROR: $cabecera presente en $descripcion (tiene que estar ausente)" >&2
       echo "$encabezados"
+      exit 1
+    fi
+  done
+
+  for cabecera in X-Content-Type-Options:nosniff Referrer-Policy:no-referrer X-Frame-Options:DENY; do
+    valor_obtenido=$(echo "$encabezados_sin_cr" | grep -i "^${cabecera%%:*}:" | head -n1 \
+      | sed "s/^[^:]*:[[:space:]]*//")
+    if [ "$valor_obtenido" != "${cabecera#*:}" ]; then
+      echo "ERROR: ${cabecera%%:*} en $descripcion tiene el valor '$valor_obtenido'," \
+        "se esperaba '${cabecera#*:}'" >&2
+      echo "$encabezados"
+      exit 1
+    fi
+  done
+
+  local permissions_policy
+  permissions_policy=$(echo "$encabezados_sin_cr" | grep -i "^Permissions-Policy:" | head -n1)
+  for directiva in camera microphone geolocation; do
+    if ! echo "$permissions_policy" | grep -qi "${directiva}=()"; then
+      echo "ERROR: Permissions-Policy en $descripcion no niega $directiva ($permissions_policy)" >&2
       exit 1
     fi
   done
@@ -407,6 +435,18 @@ echo "instance.uuid antes=$instance_uuid_antes después=$instance_uuid_despues"
 [ -n "$instance_uuid_antes" ]
 [ "$instance_uuid_antes" = "$instance_uuid_despues" ]
 echo "ok: instance.uuid de Caddy sobrevivió a --force-recreate (D2)"
+
+paso 6c "toda respuesta fuera del bloque del sitio (C2-2): otro Host, por IP, sin Host"
+# Antes del sitio de respaldo del Caddyfile, cualquiera de estas tres caía
+# en la respuesta POR DEFECTO de Caddy (200 vacío, Server: Caddy, sin
+# ninguna cabecera): por fuera del `header`/`handle_errors` del sitio real.
+encabezados_host_ajeno=$(curl -s -D - -o /dev/null -H "Host: evil.example" http://localhost/)
+encabezados_por_ip=$(curl -s -D - -o /dev/null http://127.0.0.1/)
+encabezados_sin_host=$(curl -s -D - -o /dev/null --http1.0 -H "Host:" http://localhost/)
+verificar_cabeceras "Host: evil.example (ajeno)" "$encabezados_host_ajeno"
+verificar_cabeceras "por IP (127.0.0.1)" "$encabezados_por_ip"
+verificar_cabeceras "HTTP/1.0 sin Host" "$encabezados_sin_host"
+echo "ok: las tres formas de no matchear el sitio salen con las cuatro cabeceras y sin las tres prohibidas"
 
 paso 7 "request_id: el proxy pisa un valor elegido por el cliente"
 # Caddy pisa SIEMPRE X-Request-ID con su propio UUID (Caddyfile), así que un

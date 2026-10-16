@@ -5,9 +5,15 @@ Caddy) es de la tarea 5.3 (L-004: otro camino).
 Escenarios de `entorno-de-ejecucion`: Respuesta de la web y de la API
 (cabeceras); Error del proxy (las mismas cabeceras en un 502 de Caddy);
 Caddy recreado conserva sus datos (los volúmenes, parte estática).
+
+C2-1 (rompedor/auditor, vuelta 1 del 2c): hasta acá, los tests sólo miraban
+que la cabecera EXISTIERA; un `Referrer-Policy: unsafe-url` o un
+`X-Frame-Options: ALLOWALL` pasaban todo (M11/M12, L-019). Ahora se exige
+el VALOR de las cuatro.
 """
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -28,6 +34,29 @@ _CABECERAS_DE_SEGURIDAD = (
     "Permissions-Policy",
 )
 _CABECERAS_A_QUITAR = ("Server", "Via", "X-Powered-By")
+
+#: Juani confirmó `Referrer-Policy: no-referrer` (como dice la spec y D1),
+#: no `strict-origin-when-cross-origin` (C2-1, vuelta 2 del 2c).
+_VALOR_ESPERADO = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+}
+#: Permissions-Policy: cada directiva, vacía (niega el permiso), sin
+#: importar el orden entre las tres (L-021: no atarse a la grafía literal
+#: de hoy).
+_DIRECTIVAS_PERMISSIONS_POLICY = ("camera", "microphone", "geolocation")
+
+
+def _valores_de_cabeceras(texto: str) -> dict[str, list[str]]:
+    """Cada ocurrencia de `Cabecera valor` en un bloque `header { ... }` del
+    Caddyfile (una lista: la cabecera puede repetirse en más de un bloque,
+    p.ej. el sitio y `handle_errors`)."""
+    valores: dict[str, list[str]] = {c: [] for c in _CABECERAS_DE_SEGURIDAD}
+    for cabecera in _CABECERAS_DE_SEGURIDAD:
+        patron = re.compile(rf'^\s*{re.escape(cabecera)}\s+"?([^"\n]+?)"?\s*$', re.MULTILINE)
+        valores[cabecera] = [m.strip() for m in patron.findall(texto)]
+    return valores
 
 
 def _compose() -> dict[str, Any]:
@@ -73,10 +102,25 @@ def test_caddy_adapt_validate_sigue_aceptando_el_caddyfile() -> None:
     assert adaptado.get("apps", {}).get("http") is not None
 
 
-def test_el_caddyfile_fija_las_cuatro_cabeceras_de_seguridad() -> None:
+def test_el_caddyfile_fija_las_cuatro_cabeceras_de_seguridad_con_su_valor() -> None:
+    """C2-1: no alcanza con que la cabecera exista — tiene que tener el
+    valor que pide la spec. Se exige en TODOS los bloques `header` que la
+    traen (el del sitio y el de `handle_errors`), no sólo en el primero."""
     texto = CADDYFILE.read_text()
-    for cabecera in _CABECERAS_DE_SEGURIDAD:
-        assert cabecera in texto, f"falta la cabecera {cabecera} en el Caddyfile"
+    valores = _valores_de_cabeceras(texto)
+    for cabecera, esperado in _VALOR_ESPERADO.items():
+        encontrados = valores[cabecera]
+        assert encontrados, f"falta la cabecera {cabecera} en el Caddyfile"
+        for valor in encontrados:
+            assert valor == esperado, (
+                f"{cabecera} tiene el valor {valor!r}, se esperaba {esperado!r}"
+            )
+
+    for valor in valores["Permissions-Policy"]:
+        for directiva in _DIRECTIVAS_PERMISSIONS_POLICY:
+            assert re.search(rf"\b{directiva}=\(\)", valor), (
+                f"Permissions-Policy ({valor!r}) no niega {directiva}"
+            )
 
 
 def test_el_caddyfile_quita_server_via_y_x_powered_by() -> None:
@@ -103,9 +147,32 @@ def test_el_caddyfile_tiene_un_handle_errors_que_repite_las_mismas_cabeceras() -
 def test_las_cabeceras_estan_fuera_de_los_handle_de_ruta() -> None:
     """Tienen que aplicar a /api/* y a la web por igual (y a HEAD, que Go
     responde solo sin cuerpo): puestas dentro de un único `header` al nivel
-    del sitio, no duplicadas (ni olvidadas) dentro de cada `handle`."""
+    del sitio, no duplicadas (ni olvidadas) dentro de cada `handle`.
+    Tres bloques `header` en todo el Caddyfile: el sitio, su
+    `handle_errors` y el sitio de respaldo de C2-2 — nunca más (eso
+    delataría una copia pegada dentro de un `handle`)."""
     texto = CADDYFILE.read_text()
-    assert texto.count("X-Content-Type-Options") <= 2  # el header normal + handle_errors
+    assert texto.count("X-Content-Type-Options") == 3
+
+
+def test_el_caddyfile_tiene_un_sitio_de_respaldo_para_lo_que_no_matchea() -> None:
+    """C2-2: cualquier pedido que no matchee el host de `{$PROPTECH_SITIO}`
+    (por IP, Host ajeno, sin Host) caía en la respuesta por defecto de
+    Caddy, fuera del `header`/`handle_errors` del sitio real — con
+    `Server: Caddy` y sin ninguna cabecera. El rojo de punta a punta
+    (stack vivo) es de la 6c del humo; acá sólo la forma."""
+    texto = CADDYFILE.read_text()
+    assert re.search(r"^:80\s*\{", texto, re.MULTILINE), (
+        "falta un sitio de respaldo (':80 { ... }') para lo que no matchea el sitio real"
+    )
+    inicio = texto.index(":80 {")
+    bloque = texto[inicio:]
+    for cabecera in _CABECERAS_A_QUITAR:
+        assert f"-{cabecera}" in bloque, f"el sitio de respaldo no quita {cabecera}"
+    for cabecera, esperado in _VALOR_ESPERADO.items():
+        assert f"{cabecera} {esperado}" in bloque, (
+            f"el sitio de respaldo no fija {cabecera}: {esperado}"
+        )
 
 
 def test_next_config_desactiva_powered_by_header() -> None:
