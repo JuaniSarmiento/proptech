@@ -212,7 +212,11 @@ def _ejecutar_verificaciones_en_paralelo(
     return _esperar(resultado_base), _esperar(resultado_cola)
 
 
-@router.get("/salud")
+#: GET y HEAD (D1, tarea 2c 5.3, entorno-de-ejecucion > "Respuesta de la web y
+#: de la API"): `.get()` sólo registra GET en esta versión de FastAPI (no
+#: hereda el auto-agregado de HEAD de `starlette.routing.Route`, hallazgo
+#: real); sin este `methods=`, HEAD /api/salud daba 405 por el proxy.
+@router.api_route("/salud", methods=["GET", "HEAD"])
 def salud(
     response: Response,
     verificador_base: Callable[[], bool] = Depends(obtener_verificador_de_base),

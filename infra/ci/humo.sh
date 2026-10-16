@@ -301,6 +301,86 @@ paso 6 "GET / responde 200 con HTML"
 cuerpo_home=$(curl -fsS http://localhost/)
 echo "$cuerpo_home" | grep -qi "<html"
 
+paso 6b "cabeceras de seguridad de punta a punta (D1), con el 502 y la persistencia de Caddy (D2)"
+# D1/5.3: las cuatro cabeceras de seguridad y la ausencia de
+# Server/Via/X-Powered-By, por el proxy, en GET y HEAD de / y /api/salud,
+# en una ruta inexistente de la API y en el 502 que genera el propio
+# Caddy con la api caída (que header -Server por sí solo NO cubre:
+# evidencia capturada contra el stack real antes de la 3.1, "Server:
+# Caddy" en el 502).
+verificar_cabeceras() {
+  local descripcion="$1" encabezados="$2" cabecera
+  for cabecera in X-Content-Type-Options Referrer-Policy X-Frame-Options Permissions-Policy; do
+    if ! echo "$encabezados" | tr -d '\r' | grep -qi "^${cabecera}:"; then
+      echo "ERROR: falta $cabecera en $descripcion" >&2
+      echo "$encabezados"
+      exit 1
+    fi
+  done
+  for cabecera in Server Via X-Powered-By; do
+    if echo "$encabezados" | tr -d '\r' | grep -qi "^${cabecera}:"; then
+      echo "ERROR: $cabecera presente en $descripcion (tiene que estar ausente)" >&2
+      echo "$encabezados"
+      exit 1
+    fi
+  done
+}
+
+#: Sólo las cuatro cabeceras de seguridad, en minúsculas y ordenadas: lo
+#: que varía entre un GET y su HEAD (Date, Content-Length, X-Request-ID
+#: con otro UUID) queda afuera de la comparación a propósito.
+cabeceras_de_seguridad_normalizadas() {
+  echo "$1" | tr -d '\r' | tr '[:upper:]' '[:lower:]' \
+    | grep -E '^(x-content-type-options|referrer-policy|x-frame-options|permissions-policy):' \
+    | sort
+}
+
+encabezados_get_raiz=$(curl -fsS -D - -o /dev/null http://localhost/)
+encabezados_head_raiz=$(curl -fsSI http://localhost/)
+encabezados_get_salud=$(curl -fsS -D - -o /dev/null http://localhost/api/salud)
+encabezados_head_salud=$(curl -fsSI http://localhost/api/salud)
+encabezados_404=$(curl -s -D - -o /dev/null http://localhost/api/esta-ruta-no-existe)
+
+verificar_cabeceras "GET /" "$encabezados_get_raiz"
+verificar_cabeceras "HEAD /" "$encabezados_head_raiz"
+verificar_cabeceras "GET /api/salud" "$encabezados_get_salud"
+verificar_cabeceras "HEAD /api/salud" "$encabezados_head_salud"
+verificar_cabeceras "GET a una ruta inexistente de la API" "$encabezados_404"
+
+if [ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_raiz")" \
+     != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_raiz")" ]; then
+  echo "ERROR: HEAD / no tiene las mismas cabeceras de seguridad que GET /" >&2
+  exit 1
+fi
+if [ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_salud")" \
+     != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_salud")" ]; then
+  echo "ERROR: HEAD /api/salud no tiene las mismas cabeceras de seguridad que GET /api/salud" >&2
+  exit 1
+fi
+echo "ok: GET, HEAD y la ruta inexistente de la API tienen las cuatro cabeceras y ninguna prohibida"
+
+echo "(6b.1) el 502 de Caddy con la api caída también cumple:"
+compose stop api
+# `curl -s` sin `-f`: un 502 no es 2xx, así que `-f` haría que curl
+# devolviera error y nunca se vieran las cabeceras.
+encabezados_502=$(curl -s -D - -o /dev/null http://localhost/api/salud)
+codigo_502=$(echo "$encabezados_502" | head -n 1 | awk '{print $2}')
+compose start api
+echo "$encabezados_502"
+[ "$codigo_502" = "502" ]
+verificar_cabeceras "el 502 de Caddy con la api caída" "$encabezados_502"
+echo "ok: el 502 de Caddy con la api caída tiene las cuatro cabeceras y ninguna prohibida"
+
+echo "(6b.2) instance.uuid de Caddy, igual antes y después de --force-recreate:"
+instance_uuid_antes=$(compose exec -T caddy cat /data/caddy/instance.uuid)
+compose up -d --force-recreate caddy >/dev/null
+compose up -d --wait >/dev/null
+instance_uuid_despues=$(compose exec -T caddy cat /data/caddy/instance.uuid)
+echo "instance.uuid antes=$instance_uuid_antes después=$instance_uuid_despues"
+[ -n "$instance_uuid_antes" ]
+[ "$instance_uuid_antes" = "$instance_uuid_despues" ]
+echo "ok: instance.uuid de Caddy sobrevivió a --force-recreate (D2)"
+
 paso 7 "request_id: el proxy pisa un valor elegido por el cliente"
 # Caddy pisa SIEMPRE X-Request-ID con su propio UUID (Caddyfile), así que un
 # valor mandado por el cliente nunca llega tal cual a la API ni a los logs.

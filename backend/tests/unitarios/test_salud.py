@@ -438,3 +438,14 @@ def test_salud_degradada_por_cola_congelada_lleva_el_request_id_del_pedido(
     lineas_degradadas = [linea for linea in salida.out.splitlines() if "salud_degradada" in linea]
     assert len(lineas_degradadas) == 1, lineas_degradadas
     assert rid in lineas_degradadas[0], lineas_degradadas[0]
+
+
+def test_head_responde_200_igual_que_get() -> None:
+    """Tarea 2c 5.3 (`entorno-de-ejecucion` > "Respuesta de la web y de la
+    API"): un HEAD a /api/salud tiene que responder como el GET (mismo
+    código, sin depender de que el proxy lo arregle: si la ruta de FastAPI
+    no acepta HEAD, el 405 llega igual por Caddy)."""
+    cliente = _cliente_con_verificadores(lambda: True, lambda: True)
+    respuesta = cliente.head("/api/salud")
+    assert respuesta.status_code == 200
+    assert respuesta.content == b""
