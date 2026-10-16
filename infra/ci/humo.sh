@@ -202,11 +202,13 @@ echo "ok: la web no alcanza db ni redis por la red; la api alcanza las dos"
 paso 4 "api, web, worker, redis y respaldos corren como no root"
 # `id -u` vía `exec` alcanza para api/web (no bajan de root con gosu
 # DESPUÉS de arrancar). redis, en cambio, arranca como root y su propio
-# entrypoint baja a uid 999 con gosu recién para el proceso PID 1: un
-# `exec` nuevo no hereda esa bajada y mentiría "root" aunque el proceso que
-# de verdad atiende conexiones no lo sea (D14). Por eso para worker, redis
-# y respaldos se lee el uid real del PID 1 en `/proc/1/status`, no el de un
-# `exec` nuevo.
+# entrypoint baja a uid 999 recién para el proceso PID 1 (con `setpriv`,
+# no con `gosu`: hallazgo real de la tarea 3.2, `docker-entrypoint.sh` de
+# esta imagen usa `/usr/bin/setpriv --reuid redis --regid redis
+# --clear-groups`); un `exec` nuevo no hereda esa bajada y mentiría "root"
+# aunque el proceso que de verdad atiende conexiones no lo sea (D14). Por
+# eso para worker, redis y respaldos se lee el uid real del PID 1 en
+# `/proc/1/status`, no el de un `exec` nuevo.
 uid_api=$(compose exec -T api id -u)
 uid_web=$(compose exec -T web id -u)
 echo "uid api=$uid_api uid web=$uid_web"

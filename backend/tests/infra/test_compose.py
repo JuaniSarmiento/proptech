@@ -628,3 +628,42 @@ def test_env_example_trae_los_cuatro_pares_de_credenciales() -> None:
         "POSTGRES_RESPALDO_PASSWORD",
     ):
         assert f"{variable}=" in texto, f"falta {variable} en infra/.env.example"
+
+
+# --- D3, tarea 3.2: no-new-privileges y cap_drop: [ALL] en todos los
+# servicios; cap_add sólo en db, redis y caddy, con la lista fijada
+# levantando el stack sin cada capacidad candidata (L-013), dos veces
+# (volumen nuevo y, para `db`, también sobre un volumen existente: ahí
+# aparece la única diferencia encontrada, DAC_OVERRIDE). La verificación
+# del PROCESO vivo (que el runtime respete esto) es de la tarea 3.4; esto
+# sólo fija la forma de compose.yaml para que no derive en silencio.
+
+_CAP_ADD_ESPERADO: dict[str, set[str]] = {
+    "db": {"CHOWN", "DAC_OVERRIDE", "SETUID", "SETGID"},
+    "redis": {"SETUID", "SETGID", "SETPCAP"},
+    "caddy": {"NET_BIND_SERVICE"},
+}
+
+_SERVICIOS_SIN_CAP_ADD = ("migraciones", "api", "worker", "respaldos", "web")
+
+
+def test_todos_los_servicios_tienen_no_new_privileges_y_cap_drop_all() -> None:
+    servicios = _compose()["services"]
+    for nombre, servicio in servicios.items():
+        assert servicio.get("security_opt") == ["no-new-privileges:true"], (
+            f"{nombre} no tiene security_opt: [no-new-privileges:true]"
+        )
+        assert servicio.get("cap_drop") == ["ALL"], f"{nombre} no tiene cap_drop: [ALL]"
+
+
+def test_cap_add_solo_en_db_redis_y_caddy_con_la_lista_fijada() -> None:
+    servicios = _compose()["services"]
+    for nombre in _SERVICIOS_SIN_CAP_ADD:
+        assert "cap_add" not in servicios[nombre], (
+            f"{nombre} tiene cap_add; no se encontró ninguna capacidad que le haga falta"
+        )
+    for nombre, esperadas in _CAP_ADD_ESPERADO.items():
+        obtenidas = set(servicios[nombre].get("cap_add") or [])
+        assert obtenidas == esperadas, (
+            f"cap_add de {nombre}: esperado {sorted(esperadas)}, tiene {sorted(obtenidas)}"
+        )
