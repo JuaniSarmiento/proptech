@@ -29,6 +29,11 @@ networks:
 volumes:
   datos_postgres:
   datos_redis:
+  # D2 (tarea 3.1): instance.uuid (y el estado de autosave) sobreviven a
+  # un `compose up -d --force-recreate caddy`, en vez de cambiar cada vez
+  # (verificado en el stack vivo, tarea 5.3).
+  datos_caddy:
+  config_caddy:
 
 services:
   db:
@@ -294,6 +299,8 @@ services:
       PROPTECH_SITIO: "${PROPTECH_SITIO:?falta PROPTECH_SITIO}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - datos_caddy:/data
+      - config_caddy:/config
     depends_on:
       api:
         condition: service_healthy

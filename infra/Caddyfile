@@ -30,8 +30,41 @@
 		reverse_proxy web:3000
 	}
 
-	header -Server
+	# D1/D-051: cuatro cabeceras de seguridad, y Server/Via/X-Powered-By
+	# quitadas (también lo que viene de atrás: Caddy mismo agrega Via, y
+	# Next.js agrega X-Powered-By salvo que se le pida lo contrario,
+	# `next.config.ts`). `header_down` aplica a la respuesta de arriba
+	# (api/web) en cada `reverse_proxy`, así que un `header` al nivel del
+	# sitio alcanza a los dos `handle` por igual, sin duplicarlo en cada
+	# uno.
+	header {
+		-Server
+		-Via
+		-X-Powered-By
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
 	# El que necesite correlacionar del lado del cliente lee el de la
 	# respuesta (D8).
 	header X-Request-ID {http.request.uuid}
+
+	# D1: `header -Server` arriba NO alcanza a un 502/504 que el propio
+	# Caddy genera (p.ej. `api` caída) — es una respuesta de un camino
+	# distinto dentro de Caddy, no la que armó el `header` de la ruta
+	# (evidencia: un Caddyfile mínimo con `header -Server` igual devuelve
+	# `Server: Caddy` en un 502). Hace falta repetir el mismo tratamiento
+	# acá.
+	handle_errors {
+		header {
+			-Server
+			-Via
+			-X-Powered-By
+			X-Content-Type-Options nosniff
+			Referrer-Policy strict-origin-when-cross-origin
+			X-Frame-Options DENY
+			Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		}
+	}
 }
