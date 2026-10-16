@@ -536,6 +536,15 @@ echo "conteo por administración en la base restaurada: A=$(echo "$conteo_comple
 # D11, D12: el volcado se lleva el FORCE y las políticas (son parte del
 # esquema, no de los datos) — se verifican en la base restaurada, no en la
 # que ya está en uso (que el guardián de la 3.2 ya cubre en los tests).
+# Deuda V3-15 (2a), tarea 5.4: relrowsecurity ADEMÁS de
+# relforcerowsecurity (el gemelo de V2-2, L-018): "DISABLE ROW LEVEL
+# SECURITY" (relrowsecurity=false) no toca relforcerowsecurity, así que
+# el chequeo de sólo relforcerowsecurity no vería una tabla con RLS
+# deshabilitada del todo.
+rls_habilitada_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select relrowsecurity from pg_class where relname = 'administracion'")
+rls_habilitada_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+  -tAc "select relrowsecurity from pg_class where relname = 'complejo'")
 rls_forzada_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
   -tAc "select relforcerowsecurity from pg_class where relname = 'administracion'")
 rls_forzada_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
@@ -544,10 +553,14 @@ politicas_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_
   -tAc "select count(*) from pg_policies where tablename = 'administracion'")
 politicas_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
   -tAc "select count(*) from pg_policies where tablename = 'complejo'")
-echo "relforcerowsecurity administracion=$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" \
+echo "relrowsecurity administracion=$(echo "$rls_habilitada_administracion" | tr -d '[:space:]')" \
+  "complejo=$(echo "$rls_habilitada_complejo" | tr -d '[:space:]')" \
+  "relforcerowsecurity administracion=$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" \
   "complejo=$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" \
   "políticas administracion=$(echo "$politicas_administracion" | tr -d '[:space:]')" \
   "complejo=$(echo "$politicas_complejo" | tr -d '[:space:]')"
+[ "$(echo "$rls_habilitada_administracion" | tr -d '[:space:]')" = "t" ]
+[ "$(echo "$rls_habilitada_complejo" | tr -d '[:space:]')" = "t" ]
 [ "$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" = "t" ]
 [ "$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" = "t" ]
 [ "$(echo "$politicas_administracion" | tr -d '[:space:]')" -gt 0 ]
