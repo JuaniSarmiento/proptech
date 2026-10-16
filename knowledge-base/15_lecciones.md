@@ -268,3 +268,17 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   en la 3) aparecieron recién cuando alguien salió del encuadre dictado, no cuando coincidieron dentro
   de él.
 - **Aplica a**: auditor.
+
+## L-022 · Un chequeo que compara un resumen no ve lo que el resumen esconde
+
+- **Origen**: cambio 2c, auditoría de la vuelta 2 (D-101).
+- **Qué pasó**: cada arreglo de la vuelta 2 cerró el caso que lo había hecho caer, y el rompedor
+  encontró el mismo agujero un nivel más abajo: el proxy cubría el puerto 80 y no el 443; el test del
+  log miraba ERROR y no WARNING; el humo contaba políticas de RLS y no las leía, mientras un comentario
+  afirmaba que una política más débil "también se ve".
+- **Regla**: un chequeo de seguridad compara el conjunto completo contra su fuente (todo puerto
+  publicado, todo nivel, la tupla entera de la política, la lista de servicios sacada de Compose), o
+  declara en el mismo lugar qué deja afuera. Ningún comentario ni `[x]` afirma una cobertura sin el
+  mutante que la muestra en rojo.
+- **Costo**: tres bloqueantes en la vuelta 2 y la familia entera pasada como deuda al 15.
+- **Aplica a**: constructor y rompedor.

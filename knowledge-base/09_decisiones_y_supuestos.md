@@ -1633,6 +1633,28 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   Cuando Alberto confirme cómo es el piloto, sólo se elige la variante en la configuración.
 - **Quién**: Juani, 16/10/2026 (D-094). Pendiente de contrastar con el reglamento del piloto (Alberto).
 
+## D-101 · El cierre del 2c: sin vuelta 3, límites declarados y deuda al 15 (16/10/2026)
+
+- **Contexto**: la auditoría de la vuelta 2 del 2c dejó tres bloqueantes (C2V2-1, el respaldo del proxy
+  sólo en `:80`; C2V2-2, el test del log que sólo mira ERROR; C2V2-3, el humo que cuenta políticas de
+  RLS en vez de compararlas) y dos bifurcaciones para Juani (C2V2-1 y C2V2-8). Los tres son la misma
+  familia: el chequeo compara un resumen y no el conjunto. Ninguno es una fuga hoy: la RLS de la base en
+  uso está intacta, el `Caddyfile` sirve bien en HTTP y la captura sólo-ERROR es anterior al 2c.
+- **Decisión**: cerrar sin vuelta 3, como con el 2a (D-098). C2V2-1 y C2V2-8, opción (b): las specs
+  acotan el requisito (HTTP; los `exit 1` del humo) y nombran la excepción. C2V2-3: el comentario de
+  `humo.sh` deja de afirmar lo que el chequeo no ve y declara el límite. C2V2-4 (un aserto que no podía
+  dar rojo) se borró; C2V2-5 (la frase falsa sobre V3-14 en `08` y la reescritura de su sección de
+  seguridad) se hizo. El resto va a la tabla "Deuda del cierre del 2c" de `12_fichas_de_changes.md`.
+- **Elecciones de código del 2c** (prometidas por la propuesta): capacidades por servicio `db`
+  (`CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`), `redis` (`SETUID`, `SETGID`) y `caddy`
+  (`NET_BIND_SERVICE`), el resto ninguna; los errores de Caddy pasan por `handle_errors` con las mismas
+  cabeceras; un sitio de respaldo `:80` responde `421`; una sola tabla de variables, en el README.
+- **Descartado**: una vuelta 3 que arregle la familia entera (F1 a F5 del auditor). Cuesta otra ronda
+  completa de constructor, rompedor y auditor, y lo que cubre (HTTPS real, el contenido de las
+  políticas, los niveles de log) recién muerde con el despliegue.
+- **Costo**: el 15 hereda la familia entera escrita como deuda, no resuelta.
+- **Quién**: Juani, 16/10/2026, por falta de presupuesto de IA para otra ronda.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

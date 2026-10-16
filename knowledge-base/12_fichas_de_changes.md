@@ -207,6 +207,8 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
 
 ### 2c · `endurecimiento-de-infraestructura` · MEDIUM
 
+- **Estado**: cerrado el 16/10/2026 sin vuelta 3 (D-101), con dos vueltas de constructor, rompedor y
+  auditor; la deuda queda en "Deuda del cierre del 2c" más abajo, casi toda con dueño 15.
 - **Objetivo**: cerrar la deuda de infraestructura con dueño "2" que no cambia quién ve qué dato, y la
   del cierre del 2a con dueño 2c.
 - **Decisiones**: D-051, D-087, D-089, D-095, D-097, D-098.
@@ -640,6 +642,9 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   `redis-server` (`--requirepass` en `compose.yaml`), visible en `docker inspect` y en `/proc/1/cmdline`;
   y todas las contraseñas de los servicios quedan en el `Config.Env` de `docker inspect`. Se suma a la
   contraseña del rol de arranque en el entorno de `migraciones`, ya con dueño 15.
+- **Deuda del 2c con dueño este cambio** (D-101): ver "Deuda del cierre del 2c" más abajo. Lo grueso:
+  el proxy con `https://` y la 308, el humo que compara políticas de RLS por conteo, el log a todo nivel,
+  la lista de servicios escrita a mano y los `exit 1` del humo sin línea.
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto) y P12.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró
@@ -657,7 +662,7 @@ el 1d ya está en sus tareas (D-090).
 | `Dinero` copiable y serializable (`__reduce__`, `__copy__`, `__deepcopy__`), pyyaml 6.0.3, rechazo de float y Decimal al encolar, logs de ARQ sin argumentos, logs de error de Caddy, Alembic sin apagar loggers, red de egreso del worker, SecretStr, un solo engine y su pool, uvicorn sin log de acceso y con `--proxy-headers`, línea de base sobre un clon con historial | 1c |
 | Restauración con `-U` y la ruta del `.env`, retención que no borra el ciclo en curso, rechazo de uid 0, shellcheck en el CI, `-p proptech` en el humo | 1d |
 | Roles de PostgreSQL para RLS (migrador y aplicación) | 2a |
-| Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) |
+| Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) — **cerrada en el 2c (las cinco cosas, tareas 3.1 a 4.3 y 7.1)** |
 | CSP en Next | 2b (una CSP sin pantallas no prueba nada; la primera es la de login) |
 | Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
@@ -695,10 +700,10 @@ esté resuelta (L-012), no por el que suena más obvio.
 | F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | 15 |
 | F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | 15 |
 | "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | 15 |
-| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2c (confianza media) |
-| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c |
-| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) |
-| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a y 2c (cada corrida de cierre dice el orden y por qué) |
+| F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2c (confianza media) — **cerrada en el 2c (5.1 y pasos nombrados; los `exit 1` sueltos quedan en C2-5)** |
+| El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c — **cerrada en el 2c (5.2)** |
+| PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) — **cerrada en el 2c (3.3, rojo en los siete)** |
+| La 8.1 (la corrida equivalente al CI) corrió en paralelo y no "en este orden", como pide la tarea (vueltas 2 y 3) | Todos los resultados dieron verde y el repo real se recorrió de nuevo al final | 2a y 2c (cada corrida de cierre dice el orden y por qué) — **cerrada en el 2c (9.1, en orden y de a uno)** |
 
 ### Deuda del cierre del 2a (auditoría vuelta 3, D-098)
 
@@ -714,28 +719,49 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) |
 | R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3 (C-06) |
 | V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | 15 (piloto), antes de operar la base con el superusuario |
-| V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados |
+| V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados — **cerrada en el 2c (6.1)** |
 | V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b), antes del primer segundo caso con una misma acción |
 | V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | 15 (piloto), antes de tener cortes de base con tráfico real |
-| V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 |
+| V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 — **cerrada en el 2c (6.0)** |
 | V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | 15 (piloto), revisar con el monitoreo del servidor real |
 | V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | 15 (piloto), antes del primer redeploy con usuarios |
-| V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests |
-| V3-9: el test de R7 se cuelga en vez de dar rojo (sesiones sin `finally`) | Hoy R7 está cerrado; el riesgo es si vuelve a romperse y el CI se cuelga en vez de mostrar el rojo | 2c (C-05c), junto con el límite de tiempo del CI |
-| V3-14: `POSTGRES_APP_USER` acepta un nombre que la migración no conoce | Falla ruidoso, sin agujero de seguridad | 2c (C-05c), con la tabla de variables del README |
-| V3-15: README desactualizado (el worker sí tiene salida, el 1d no está "Propuesto", faltan las contraseñas distintas) y el humo no mira `relrowsecurity` | Dos frases falsas y un requisito no escrito, no una fuga | 2c (C-05c), con la tabla de variables del README y el humo con pasos nombrados |
+| V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests — **cerrada en el 2c (4.1)** |
+| V3-9: el test de R7 se cuelga en vez de dar rojo (sesiones sin `finally`) | Hoy R7 está cerrado; el riesgo es si vuelve a romperse y el CI se cuelga en vez de mostrar el rojo | 2c (C-05c), junto con el límite de tiempo del CI — **cerrada en el 2c (4.2)** |
+| V3-14: `POSTGRES_APP_USER` acepta un nombre que la migración no conoce | Falla ruidoso, sin agujero de seguridad | 2c (C-05c), con la tabla de variables del README — **cerrada en el 2c (6.2)** |
+| V3-15: README desactualizado (el worker sí tiene salida, el 1d no está "Propuesto", faltan las contraseñas distintas) y el humo no mira `relrowsecurity` | Dos frases falsas y un requisito no escrito, no una fuga | 2c (C-05c), con la tabla de variables del README y el humo con pasos nombrados — **cerrada en el 2c (7.1 y 5.4)** |
 | Chequeo 5: 25 archivos de test de RLS, permisos y rutas que nadie abrió ni mutó | El comportamiento de aislamiento sí se probó de caja negra con scripts propios; lo que no se sabe es si esos tests pueden dar rojo | 15 (piloto), una pasada de mutación antes de cargar datos reales |
 | Chequeo 5: ninguna verificación de arranque mira las políticas de las tablas de negocio (`complejo`, `unidad` y las otras), sólo las de `auditoria` | El diseño (D2) sólo promete esa verificación para la auditoría; para el resto no hay promesa rota, pero Juani decidió prometerlo | 15 (piloto) — decisión de Juani, no deuda sin dueño (D-098) |
 | D-1: de las 7 comparaciones de `_verificar_politica_de_auditoria`, 5 no tienen test que las exija (nombre, PERMISSIVE, comando, roles, WITH CHECK) | Hoy el código anda (caja negra); son mutantes vivos, no una falla observada | 2b (C-05b), junto con V3-5 |
 | D-2: la primera FK legítima hacia `auditoria` frena todo arranque (exit 1 en `despues`, con `SQLSTATE 0A000` y no el texto "FK") | Es lo diseñado (ruidoso en vez de ciego), pero nadie lo documentó como restricción del esquema | 2b (C-05b), antes de diseñar cualquier tabla que referencie `auditoria` |
 | D-4: `vuelta-3/arbol/backend/.venv` de la copia del rompedor es un symlink al `.venv` real del repo; un `uv run`/`uv sync` desde ahí redirige la instalación editable | Hoy no hay daño (el `.pth` volvió a apuntar al repo); es el entorno de trabajo efímero del rompedor, no el repo | orquestador — borrar el symlink o el `arbol/` entero antes de reusar `vuelta-3/mutar.py`, no es un cambio del roadmap |
-| D-5: `infra/ci/humo.sh` está en git como `100644` (sin `+x`); el CI lo corre con `bash` y no falla | Corrido a mano como `./humo.sh` da "Permiso denegado"; no afecta al CI | 2c (C-05c), con el humo con pasos nombrados |
+| D-5: `infra/ci/humo.sh` está en git como `100644` (sin `+x`); el CI lo corre con `bash` y no falla | Corrido a mano como `./humo.sh` da "Permiso denegado"; no afecta al CI | 2c (C-05c), con el humo con pasos nombrados — **cerrada en el 2c (commit de `humo.sh` con +x)** |
 | D-6: el test de M5 detecta "sin sonda de TRUNCATE" sólo porque la palabra `"TRUNCATE"` en mayúsculas no aparece en el aviso de catálogo | El caso de la FK lo sigue cubriendo | 2b (C-05b), con D-1 |
 | Aviso para el 2b: la primera FK legítima hacia `auditoria` va a frenar cada arranque (V3-2, mismo mecanismo que D-2); contemplarlo antes de agregar cualquier referencia nueva a `auditoria` | Es el comportamiento diseñado, no una falla nueva | 2b (C-05b) |
 
 D-3 (la evidencia de `tasks.md` 13.3 mostraba otro mutante que el M5 original) no entra en esta tabla:
 el rompedor sugirió corregirla "en la misma pasada que V3-10", y se corrigió en ese mismo commit
 (`3bbd2a6`).
+
+### Deuda del cierre del 2c (auditoría vuelta 2, D-101)
+
+Cerrado sin vuelta 3 por decisión de Juani. El auditor la leyó como una sola familia: el chequeo
+compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no el ejemplo (L-021).
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| C2V2-1: con `PROPTECH_SITIO=https://...`, un `Host` ajeno por el 443 sale `200` con `Server: Caddy` y sin las cuatro cabeceras; la 308 de http a https tampoco las lleva | Hoy el stack corre en HTTP y el 443 no escucha; la spec quedó acotada a HTTP y lo dice | 15 (piloto), con el dominio real y HSTS |
+| C2V2-2: el test del log (`test_worker_tenant.py`) captura sólo ERROR de un logger; una fuga en WARNING o en otro logger llega al JSON de producción | Anterior al 2c (`741caf2`); hoy ningún WARNING ni INFO emite el valor | 15 (piloto), antes de cargar datos reales |
+| C2V2-3: el humo compara la CANTIDAD de políticas de RLS de la base restaurada, no su contenido; `USING (true)` o un renombre pasan | La RLS de la base en uso está intacta; el comentario de `humo.sh` ya declara el límite | 15 (piloto), junto con la prueba de restauración |
+| C2V2-6: nada fija qué devuelve el sitio de respaldo (hoy `421` vacío en ocho métodos) | La configuración de hoy es correcta | 15 (piloto), junto con C2V2-1 |
+| C2V2-7: la lista de servicios del chequeo de capacidades está escrita a mano; un noveno servicio no lo ve nadie | Hoy hay ocho y los ocho dan rojo | 15 (piloto) |
+| C2-5 y C2V2-8: 22 `exit 1` e `if !` del humo sin línea ni comando; `compose()` informa su propia línea | El paso se ve por su encabezado; la spec nombra la excepción | 15 (piloto) |
+| C2-7: el conteo de `.dump` en el segundo `up` es una carrera (el comentario de `humo.sh:84-88` es falso) | Hoy no se ve: el volcado tarda menos de 1 s | 15 (piloto) |
+| C2-8: `arranque_fallido` no cubre una base inalcanzable ni un `parametros.yaml` mal formado (confirmado con comando en la vuelta 2) | El contenedor igual no arranca; falta la causa nombrada | 15 (piloto), antes del despliegue |
+| N2: con la `api` pausada, Caddy no responde en 100 s | Sin tráfico real no muerde | 15 (piloto) |
+| N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | 15 (piloto), nota |
+| N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | 15 (piloto), con C2V2-1 |
+| N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | 15 (piloto), con C2V2-2 |
+| N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
 
 ## Pendientes de arranque
 
