@@ -246,6 +246,68 @@ nombrando la variable y sin mostrar valores; la tabla de variables dice la restr
 ## Migration Plan
 
 `docker compose up --build` sobre los volúmenes existentes. Los volúmenes nuevos de Caddy nacen vacíos
-(hoy no hay certificados que conservar). Rollback: el procedimiento de D9, **ejercitado** en la tarea
-8.1; acá se anotan los comandos exactos que se corrieron y su resultado (salud y conteos antes, después
-de subir y después de volver).
+(hoy no hay certificados que conservar, el sitio de prueba es `http://localhost`). Sin cambios de
+Alembic en este cambio (2c es infra pura): la versión de la base no se mueve en ningún sentido del
+rollback.
+
+**Ejercitado el 16/10/2026** (tarea 8.1), sobre un stack con datos reales, con `git worktree` de
+`d0502fa` (sin tocar el árbol de trabajo):
+
+```bash
+git worktree add /tmp/proptech-base d0502fa
+```
+
+1. **Arriba, desde `d0502fa`** (`/tmp/proptech-base/infra`, con `infra/.env` copiado de `.env.example`):
+   ```bash
+   docker compose -p proptech up -d --build --wait
+   ```
+   Siete servicios `Healthy`. Se sembraron dos administraciones con dos complejos cada una (mismo
+   patrón que el paso 0 del humo, con otro UUID para no pisarlas) directo por `psql` como el rol de
+   arranque:
+   ```
+   $ curl -s http://localhost/api/salud
+   {"estado":"ok","base":"ok","cola":"ok"}
+   $ psql ... -tAc "select count(*) from administracion"   -> 2
+   $ psql ... -tAc "select count(*) from complejo"          -> 4
+   $ psql ... -tAc "select version_num from alembic_version" -> 0004
+   ```
+
+2. **Subir a la versión del 2c, mismos volúmenes** (desde el árbol de trabajo real, `infra/.env`
+   copiado del mismo que usó el paso 1 — mismas credenciales, mismo volumen de Postgres):
+   ```bash
+   docker compose -p proptech up -d --build --wait
+   ```
+   Siete servicios `Healthy` de nuevo (ahora con `cap_drop`, `no-new-privileges`, las cabeceras de
+   Caddy y los dos volúmenes nuevos de Caddy, creados vacíos sobre la marcha):
+   ```
+   $ curl -s http://localhost/api/salud
+   {"estado":"ok","base":"ok","cola":"ok"}
+   $ psql ... -tAc "select count(*) from administracion"   -> 2   (igual)
+   $ psql ... -tAc "select count(*) from complejo"          -> 4   (igual)
+   $ psql ... -tAc "select version_num from alembic_version" -> 0004 (igual)
+   ```
+
+3. **Volver a `d0502fa`, mismos volúmenes** (desde `/tmp/proptech-base/infra` otra vez):
+   ```bash
+   docker compose -p proptech up -d --build --wait
+   ```
+   Siete servicios `Healthy`:
+   ```
+   $ curl -s http://localhost/api/salud
+   {"estado":"ok","base":"ok","cola":"ok"}
+   $ psql ... -tAc "select count(*) from administracion"   -> 2   (igual)
+   $ psql ... -tAc "select count(*) from complejo"          -> 4   (igual)
+   $ psql ... -tAc "select version_num from alembic_version" -> 0004 (igual)
+   ```
+
+4. **Abajo y limpieza:**
+   ```bash
+   docker compose -p proptech down -v --remove-orphans
+   git worktree remove /tmp/proptech-base
+   ```
+
+**Resultado: el rollback ida y vuelta no perdió datos ni rompió `/api/salud` por el proxy, en ningún
+sentido.** El volumen de Postgres, creado por `d0502fa` **sin** `cap_drop`, se abrió sin problema con
+el `db` del 2c (**con** `cap_drop` y `DAC_OVERRIDE` sólo para el segundo arranque, tarea 3.2) — es
+exactamente el camino real de la máquina de Juani y del despliegue (cambio 15): un volumen que ya
+existe desde antes de este cambio, no uno creado de cero con la imagen ya endurecida.
