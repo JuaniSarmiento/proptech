@@ -43,6 +43,17 @@ STACK_LEVANTADO=0
 limpiar() {
   local estado=$?
   echo "--- limpieza: compose down -v ---"
+  # F-1 (tarea 2.2): si algo falló, el estado y los logs de los
+  # contenedores se vuelcan ACÁ, antes del `down -v` que se los lleva. Sin
+  # esto, en el CI lo único que queda cuando falla un `up --wait` es la
+  # última línea del script (el modo de falla esperable con `cap_drop:
+  # [ALL]` es justo un error de permisos en el log de `db` o `redis`, que
+  # nadie vería).
+  if [ "$estado" != "0" ]; then
+    echo "--- estado != 0 ($estado): volcando compose ps -a y compose logs antes de down -v ---"
+    compose ps -a || true
+    compose logs --no-color --tail=200 || true
+  fi
   # Toda pausa se despausa aunque la verificación que la causó haya fallado
   # (D14): si no, `compose down` igual la baja, pero dejarla pausada hasta
   # entonces es un estado que nadie pidió.
