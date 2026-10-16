@@ -199,34 +199,48 @@ echo "web->db=$resultado_web_db web->redis=$resultado_web_redis api->db=$resulta
 [ "$resultado_api_redis" = "CONECTO" ]
 echo "ok: la web no alcanza db ni redis por la red; la api alcanza las dos"
 
-paso 4 "api, web, worker, redis y respaldos corren como no root"
-# `id -u` vía `exec` alcanza para api/web (no bajan de root con gosu
-# DESPUÉS de arrancar). redis, en cambio, arranca como root y su propio
-# entrypoint baja a uid 999 recién para el proceso PID 1 (con `setpriv`,
-# no con `gosu`: hallazgo real de la tarea 3.2, `docker-entrypoint.sh` de
-# esta imagen usa `/usr/bin/setpriv --reuid redis --regid redis
-# --clear-groups`); un `exec` nuevo no hereda esa bajada y mentiría "root"
-# aunque el proceso que de verdad atiende conexiones no lo sea (D14). Por
-# eso para worker, redis y respaldos se lee el uid real del PID 1 en
-# `/proc/1/status`, no el de un `exec` nuevo.
-uid_api=$(compose exec -T api id -u)
-uid_web=$(compose exec -T web id -u)
-echo "uid api=$uid_api uid web=$uid_web"
-[ "$uid_api" != "0" ]
-[ "$uid_web" != "0" ]
-
+paso 4 "api, web, worker, migraciones, respaldos, redis y db corren como no root (PID 1)"
+# D4 (tarea 3.3, MODIFIED de la requirement principal "Contenedores sin
+# privilegios de root"): los siete, no sólo worker/redis/respaldos. Un
+# `exec` nuevo (`id -u`) NO alcanza para ninguno: no ve qué usuario es
+# de verdad el PID 1 cuando el propio entrypoint de la imagen baja de
+# privilegios DESPUÉS de arrancar (gosu en `db`; `setpriv` en `redis`,
+# no `gosu` — hallazgo real de la tarea 3.2) — un `exec` nuevo correría
+# con el usuario de la IMAGEN, no el que terminó siendo el PID 1 (D14).
+# `api`/`web`/`worker` no bajan así (imagen con `USER proptech`, nunca
+# root), pero se leen igual por uniformidad con el resto.
 uid_pid1() {
   local servicio="$1"
   compose exec -T "$servicio" sh -c "awk '/^Uid:/ {print \$2}' /proc/1/status"
 }
 
+uid_pid1_api=$(uid_pid1 api)
+uid_pid1_web=$(uid_pid1 web)
 uid_pid1_worker=$(uid_pid1 worker)
-uid_pid1_redis=$(uid_pid1 redis)
 uid_pid1_respaldos=$(uid_pid1 respaldos)
-echo "uid pid1 worker=$uid_pid1_worker redis=$uid_pid1_redis respaldos=$uid_pid1_respaldos"
+uid_pid1_redis=$(uid_pid1 redis)
+uid_pid1_db=$(uid_pid1 db)
+# `migraciones` ya salió (de una sola corrida) para cuando llega este
+# paso: D4 dice leer el usuario CONFIGURADO con un `run --no-deps`
+# descartable en vez del proceso que ya terminó. Aceptable porque la
+# imagen no cambia de usuario en ningún entrypoint propio (backend/
+# Dockerfile: `USER proptech`, sin `ENTRYPOINT`) — el usuario del PID 1
+# de la corrida real es el mismo que el de este `run` de un vistazo.
+uid_pid1_migraciones=$(compose run --rm --no-deps --entrypoint sh migraciones \
+  -c "awk '/^Uid:/ {print \$2}' /proc/1/status")
+echo "uid pid1: api=$uid_pid1_api web=$uid_pid1_web worker=$uid_pid1_worker" \
+  "migraciones=$uid_pid1_migraciones respaldos=$uid_pid1_respaldos" \
+  "redis=$uid_pid1_redis db=$uid_pid1_db"
+[ "$uid_pid1_api" != "0" ]
+[ "$uid_pid1_web" != "0" ]
 [ "$uid_pid1_worker" != "0" ]
-[ "$uid_pid1_redis" != "0" ]
+[ "$uid_pid1_migraciones" != "0" ]
 [ "$uid_pid1_respaldos" != "0" ]
+[ "$uid_pid1_redis" != "0" ]
+[ "$uid_pid1_db" != "0" ]
+# `caddy` queda FUERA de este paso a propósito: se queda root (uid 0),
+# declarado (D3) — nada que verificar acá, el 3.4 verifica que sus
+# capacidades sean sólo NET_BIND_SERVICE.
 
 paso 5 "las imágenes construidas no contienen .env"
 compose run --rm --no-deps --entrypoint sh api -c '[ ! -f /app/.env ]'
