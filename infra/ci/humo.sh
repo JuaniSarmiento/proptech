@@ -553,6 +553,61 @@ rm -f /tmp/salud_web_redis_pausado.json
 compose unpause redis
 echo "ok: Redis pausado -> /api/salud y /salud-web degradados, Redis despausado"
 
+paso 10b "base y Redis pausados a la vez: 503 en menos de 2,5s, exactamente dos salud_degradada, /salud-web sin sin_conexion"
+# D6 (deuda del 1d/2a, tarea 5.2): la doble congelada, no una por vez. El
+# plazo total compartido (salud.py, PLAZO_TOTAL_SALUD_S=1.5) corre para
+# las dos verificaciones EN PARALELO, así que pausar las dos juntas no
+# debería tardar más que pausar una sola; 2,5s deja 1s de margen sobre
+# ese plazo en un runner compartido (los pasos 10/13, por separado, usan
+# una cota de 4s: acá se pide más estricto porque las dos corren en
+# paralelo, no en serie).
+compose pause db
+compose pause redis
+inicio_ns=$(date +%s%N)
+codigo_doble=$(curl -s -D /tmp/cabeceras_doble_pausada.txt -o /tmp/salud_doble_pausada.json \
+  -w '%{http_code}' http://localhost/api/salud || true)
+fin_ns=$(date +%s%N)
+duracion_ms=$(( (fin_ns - inicio_ns) / 1000000 ))
+request_id_doble=$(tr -d '\r' < /tmp/cabeceras_doble_pausada.txt \
+  | awk -F': ' 'tolower($1)=="x-request-id" {print $2}')
+cat /tmp/salud_doble_pausada.json
+echo "código: $codigo_doble, duración: ${duracion_ms}ms, request_id: $request_id_doble"
+rm -f /tmp/cabeceras_doble_pausada.txt /tmp/salud_doble_pausada.json
+if [ "$duracion_ms" -ge 2500 ]; then
+  echo "ERROR: /api/salud tardó ${duracion_ms}ms con base y Redis pausados (cota: 2500ms)" >&2
+  compose unpause db
+  compose unpause redis
+  exit 1
+fi
+[ "$codigo_doble" = "503" ]
+[ -n "$request_id_doble" ]
+
+# Margen para que las dos líneas lleguen al log antes de leerlo (como el
+# paso 7). "Exactamente dos" es sensible a F6 (1d, dueño 15: a veces un
+# 503 sale sin su salud_degradada); si este chequeo flakea alguna vez, es
+# F6 reapareciendo, no una regresión de esta tarea.
+sleep 1
+lineas_con_este_pedido=$(compose logs api 2>/dev/null | grep -F "$request_id_doble")
+cantidad_salud_degradada_doble=$(echo "$lineas_con_este_pedido" | grep -c "salud_degradada" || true)
+echo "salud_degradada con request_id=$request_id_doble: $cantidad_salud_degradada_doble"
+[ "$cantidad_salud_degradada_doble" = "2" ]
+
+codigo_web_doble=$(curl -s -o /tmp/salud_web_doble.json -w '%{http_code}' http://localhost/salud-web || true)
+cat /tmp/salud_web_doble.json
+echo "código /salud-web: $codigo_web_doble"
+[ "$codigo_web_doble" = "503" ]
+if grep -q "sin_conexion" /tmp/salud_web_doble.json; then
+  echo "ERROR: /salud-web informó sin_conexion con base y Redis pausados (la API contestó: tiene que ser degradado)" >&2
+  rm -f /tmp/salud_web_doble.json
+  compose unpause db
+  compose unpause redis
+  exit 1
+fi
+rm -f /tmp/salud_web_doble.json
+compose unpause db
+compose unpause redis
+echo "ok: base y Redis pausados a la vez -> 503 en ${duracion_ms}ms, dos salud_degradada, /salud-web degradado (no sin_conexion)"
+
 paso 11 "backups: cada arranque deja exactamente un .dump nuevo, se restaura, no toca la base en uso"
 # D6 (tarea 5.1): "aparece uno solo" (el título viejo) ya es falso con dos
 # `up` (arriba, dumps_tras_primer_arranque/dumps_tras_segundo_arranque).

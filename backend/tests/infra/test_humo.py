@@ -105,3 +105,30 @@ def test_todo_script_de_infra_es_ejecutable() -> None:
     assert not scripts_sin_modo_ejecutable, (
         f"scripts de infra/ sin modo 100755 en el índice de git: {scripts_sin_modo_ejecutable}"
     )
+
+
+def test_limpiar_despausa_antes_del_down_v() -> None:
+    """D6, tarea 5.2: `limpiar` tiene que despausar `db` y `redis` ANTES
+    de `compose down -v` (si no, una pausa que la propia falla deja
+    puesta se pierde de vista: `down` la baja igual, pero haber estado
+    pausada hasta entonces es un estado que nadie pidió). Se verifica el
+    ORDEN textual dentro de la función `limpiar`, no sólo que las tres
+    líneas existan en algún lado del archivo."""
+    texto = HUMO.read_text()
+    inicio = texto.index("limpiar() {")
+    fin = texto.index("\n}\n", inicio)
+    cuerpo_limpiar = texto[inicio:fin]
+
+    posicion_unpause_db = cuerpo_limpiar.index("compose unpause db")
+    posicion_unpause_redis = cuerpo_limpiar.index("compose unpause redis")
+    # La invocación real, no el `echo "--- limpieza: compose down -v
+    # ---"` decorativo de más arriba (que también contiene la cadena
+    # "compose down -v" y matchearía primero).
+    posicion_down_v = cuerpo_limpiar.index("compose down -v --remove-orphans")
+
+    assert posicion_unpause_db < posicion_down_v, (
+        "'compose unpause db' tiene que ir ANTES de 'compose down -v' en limpiar()"
+    )
+    assert posicion_unpause_redis < posicion_down_v, (
+        "'compose unpause redis' tiene que ir ANTES de 'compose down -v' en limpiar()"
+    )
