@@ -56,3 +56,8 @@ xfail_strict = true
 markers = [
   "integracion: tests que requieren Docker y PostgreSQL real",
 ]
+# Deuda V3-9 (2a), tarea 4.2: si un test se cuelga (sin dependencia nueva,
+# viene con pytest/faulthandler), vuelca la traza de todos los hilos al
+# log del CI antes de que el workflow lo corte por `timeout-minutes`
+# (tarea 4.3), en vez de dejar sólo el silencio de un trabajo cortado.
+faulthandler_timeout = 55

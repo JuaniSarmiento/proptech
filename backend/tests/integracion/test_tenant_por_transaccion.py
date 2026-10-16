@@ -187,16 +187,24 @@ def test_sesion_con_tenant_commit_y_siguiente_sin_tenant_no_hereda(
 ) -> None:
     admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
 
+    # Deuda V3-9 (2a), tarea 4.2: `sesion_1.close()` suelto (sin `finally`)
+    # no corre si el `assert` de arriba falla, y sobre un pool de 1 conexión
+    # eso cuelga `abrir_sesion` de `sesion_2` esperando una conexión que
+    # nunca se devuelve (el cuelgue que V3-9 nombra).
     sesion_1 = abrir_sesion(fabrica_pool_1, admin_a)
-    assert _complejos_visibles(sesion_1) == ["Complejo A"]
-    sesion_1.commit()
-    sesion_1.close()
+    try:
+        assert _complejos_visibles(sesion_1) == ["Complejo A"]
+        sesion_1.commit()
+    finally:
+        sesion_1.close()
 
     # Misma fábrica, mismo pool de tamaño 1: si el engine tuviera más de una
     # conexión esto no probaría nada (podría tocarle otra conexión limpia).
     sesion_2 = abrir_sesion(fabrica_pool_1, None)
-    assert _complejos_visibles(sesion_2) == []
-    sesion_2.close()
+    try:
+        assert _complejos_visibles(sesion_2) == []
+    finally:
+        sesion_2.close()
 
 
 def test_sesion_con_tenant_rollback_y_siguiente_sin_tenant_no_hereda(
@@ -205,13 +213,17 @@ def test_sesion_con_tenant_rollback_y_siguiente_sin_tenant_no_hereda(
     admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
 
     sesion_1 = abrir_sesion(fabrica_pool_1, admin_a)
-    assert _complejos_visibles(sesion_1) == ["Complejo A"]
-    sesion_1.rollback()
-    sesion_1.close()
+    try:
+        assert _complejos_visibles(sesion_1) == ["Complejo A"]
+        sesion_1.rollback()
+    finally:
+        sesion_1.close()
 
     sesion_2 = abrir_sesion(fabrica_pool_1, None)
-    assert _complejos_visibles(sesion_2) == []
-    sesion_2.close()
+    try:
+        assert _complejos_visibles(sesion_2) == []
+    finally:
+        sesion_2.close()
 
 
 def test_sesion_con_tenant_tras_excepcion_y_siguiente_sin_tenant_no_hereda(
@@ -220,15 +232,19 @@ def test_sesion_con_tenant_tras_excepcion_y_siguiente_sin_tenant_no_hereda(
     admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
 
     sesion_1 = abrir_sesion(fabrica_pool_1, admin_a)
-    assert _complejos_visibles(sesion_1) == ["Complejo A"]
-    with pytest.raises(Exception):  # noqa: B017 (cualquier error de la base alcanza)
-        sesion_1.execute(text("SELECT 1 / 0"))
-    sesion_1.rollback()  # una sesión con una transacción abortada exige esto
-    sesion_1.close()
+    try:
+        assert _complejos_visibles(sesion_1) == ["Complejo A"]
+        with pytest.raises(Exception):  # noqa: B017 (cualquier error de la base alcanza)
+            sesion_1.execute(text("SELECT 1 / 0"))
+        sesion_1.rollback()  # una sesión con una transacción abortada exige esto
+    finally:
+        sesion_1.close()
 
     sesion_2 = abrir_sesion(fabrica_pool_1, None)
-    assert _complejos_visibles(sesion_2) == []
-    sesion_2.close()
+    try:
+        assert _complejos_visibles(sesion_2) == []
+    finally:
+        sesion_2.close()
 
 
 # --- Vuelta 2, R7: un SET de sesión (sin LOCAL) no contagia al pedido siguiente ---
@@ -248,16 +264,20 @@ def test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin(
     admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
 
     sesion_1 = abrir_sesion(fabrica_pool_1, None)
-    # Un SET de sesión directo, simulando el error: nunca pasa por
-    # abrir_sesion ni por el evento after_begin.
-    sesion_1.execute(text(f"SET app.administracion_id = '{admin_a}'"))
-    assert _complejos_visibles(sesion_1) == ["Complejo A"]
-    sesion_1.commit()
-    sesion_1.close()
+    try:
+        # Un SET de sesión directo, simulando el error: nunca pasa por
+        # abrir_sesion ni por el evento after_begin.
+        sesion_1.execute(text(f"SET app.administracion_id = '{admin_a}'"))
+        assert _complejos_visibles(sesion_1) == ["Complejo A"]
+        sesion_1.commit()
+    finally:
+        sesion_1.close()
 
     sesion_2 = abrir_sesion(fabrica_pool_1, None)
-    assert _complejos_visibles(sesion_2) == []
-    sesion_2.close()
+    try:
+        assert _complejos_visibles(sesion_2) == []
+    finally:
+        sesion_2.close()
 
 
 # --- Una segunda transacción en el mismo pedido sigue viendo A (D4) ---
