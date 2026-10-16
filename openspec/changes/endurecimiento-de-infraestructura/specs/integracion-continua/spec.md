@@ -7,6 +7,12 @@ comando que falló, también cuando falla un chequeo suelto (`[ ]` o `grep -q`) 
 `if ! ...; then`. Cuando el humo falla, MUST volcar el estado y los logs de los contenedores antes de
 bajar el stack. Cada arranque del servicio de respaldos MUST dejar exactamente un backup nuevo.
 
+**Excepción, acotada (C2-5 y C2V2-8, D-101, deuda del cambio 15):** dentro de `infra/ci/humo.sh`, los
+caminos que terminan en un `exit 1` explícito (22 en el cierre del 2c) y los `if ! ...; then` del
+propio humo nombran el paso por el encabezado `--- (N) ... ---` que lo precede y por su propio
+`ERROR:`, pero no la línea ni el comando; y una falla dentro de `compose()` informa la línea de esa
+función, no la del llamado. El escenario de abajo vale para los helpers de `pasos.sh`.
+
 #### Scenario: Un paso que falla
 
 - **WHEN** un script mínimo que usa los helpers del humo fuerza a fallar un paso, una vez con un `[ ]`

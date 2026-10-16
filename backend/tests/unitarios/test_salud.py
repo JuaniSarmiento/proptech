@@ -448,4 +448,5 @@ def test_head_responde_200_igual_que_get() -> None:
     cliente = _cliente_con_verificadores(lambda: True, lambda: True)
     respuesta = cliente.head("/api/salud")
     assert respuesta.status_code == 200
-    assert respuesta.content == b""
+    # Sin aserto sobre el cuerpo: `TestClient` descarta el cuerpo de todo
+    # HEAD, así que `content == b""` no podía dar rojo (C2V2-4).

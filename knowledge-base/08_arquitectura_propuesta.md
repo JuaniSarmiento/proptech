@@ -81,6 +81,18 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
   que `FORWARDED_ALLOW_IPS` la reconozca. `salida_worker`, sin `internal`, da salida a Internet sólo al
   worker (proveedores de email e IA de cambios posteriores), y ningún otro servicio la integra. `borde`
   es la única red publicada (Caddy).
+- **Proxy** (cambio 2c, D1 y D2): Caddy agrega a toda respuesta `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` y una `Permissions-Policy` restrictiva, y
+  quita `Server`, `Via` y `X-Powered-By`, también en sus propios errores (el 502 con la API caída). Un
+  sitio de respaldo en `:80` responde `421` a todo pedido por IP o con un `Host` ajeno, con las mismas
+  cabeceras. **Límite**: sólo en HTTP; el 443 con `https://` y la redirección 308 son deuda del 15
+  (C2V2-1, D-101). Sin HSTS hasta el dominio real (cambio 15).
+- **Contenedores** (cambio 2c, D3 y D4): todo servicio con `no-new-privileges` y `cap_drop: [ALL]`;
+  `cap_add` sólo donde un arranque real lo pidió: `db` (`CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, para
+  que su entrypoint baje a `postgres`), `redis` (`SETUID`, `SETGID`) y `caddy` (`NET_BIND_SERVICE`). El
+  PID 1 corre sin root en siete servicios; `caddy` queda root, declarado. El humo lee `/proc/self/status`
+  de cada servicio vivo y exige `NoNewPrivs: 1` y su `CapBnd` exacto. **Límite**: la lista de servicios
+  está escrita a mano (un noveno servicio no lo ve nadie, C2V2-7, deuda del 15).
 - **Validación de input**: todo monto es `Decimal` construido desde texto, nunca desde `float`
   (R07, D-046); el núcleo arma los datos con tipos fijos antes de llamar al motor de reglas y rechaza
   cualquier dato faltante o mal tipado (R33). Todo texto externo se valida con coincidencia completa y
@@ -101,8 +113,8 @@ propia tabla (duplicada con la del README, y con una fila que ya mentía: `POSTG
 "compartido por los cuatro servicios", falso desde el 2a); dos tablas son una que deriva, así que acá
 queda sólo el enlace.
 
-Deuda conocida (D-098, "Deuda del cierre del 2a"), todavía sin resolver: V3-14, `POSTGRES_APP_USER`
-acepta un nombre de rol que la migración no conoce (dueño 2c, tarea 6.2).
+`POSTGRES_APP_USER` tiene que ser el nombre del rol que conoce la migración (`proptech_app`): con
+otro nombre, `roles antes` corta el arranque nombrando la variable (V3-14, cerrada en el 2c, tarea 6.2).
 
 Todas las que llegan como texto desde el entorno (enteros incluidos) se validan con coincidencia
 completa y sólo dígitos ASCII, sin ceros a la izquierda (Bash interpreta `060` como octal) y sin

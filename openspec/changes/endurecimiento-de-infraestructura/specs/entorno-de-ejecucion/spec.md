@@ -16,6 +16,12 @@ malformada (400), un encabezado demasiado grande (431), una versión de HTTP no 
 `OPTIONS *` — no pasa por ningún sitio (ni el real ni el de respaldo) y sale sin estas cabeceras; es
 inherente al servidor HTTP de Go que usa Caddy, no una falla de configuración (N1, rompedor vuelta 1).
 
+**Alcance, acotado a HTTP (C2V2-1, D-101):** este requisito se verifica con el sitio en `http://`, que
+es como corre el stack hasta el piloto. Con un sitio `https://` (`PROPTECH_SITIO=https://...`), el
+respaldo del puerto 443 (un `Host` ajeno con SNI válido hoy sale `200` con `Server: Caddy` y sin las
+cuatro cabeceras) y la redirección `308` de http a https NO están cubiertos: son deuda del cambio 15,
+que es el que pone el dominio real y HSTS.
+
 #### Scenario: Respuesta de la web y de la API
 
 - **WHEN** se pide `/` y `/api/salud` a través del proxy, con GET y con HEAD

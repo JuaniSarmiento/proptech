@@ -752,8 +752,11 @@ echo "conteo por administración en la base restaurada: A=$(echo "$conteo_comple
 # `administracion` y `complejo`, L-017: la 5.4 mostró su rojo justo sobre
 # una de esas dos). Para cada una: `relrowsecurity`, `relforcerowsecurity`
 # y la cantidad de políticas, comparados contra la base en uso — no sólo
-# ">0", para que una política reemplazada por una más débil (menos
-# políticas, o las mismas con otro nombre) también se vea.
+# ">0", para que una política que falta también se vea. LÍMITE (C2V2-3,
+# D-101): se compara el CONTEO, no el contenido. Una política renombrada o
+# reemplazada por una más débil con la misma cantidad (`USING (true)`)
+# pasa este paso. Comparar la tupla completa de `pg_policies` es deuda
+# del cambio 15.
 tablas_con_politicas_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" \
   -tAc "select distinct tablename from pg_policies order by tablename")
 echo "tablas con políticas en la base en uso: $(echo "$tablas_con_politicas_en_uso" | tr '\n' ' ')"
