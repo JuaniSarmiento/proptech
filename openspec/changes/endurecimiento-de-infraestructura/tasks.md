@@ -65,3 +65,83 @@ arranque del candado; si aparece algo que afecte el aislamiento, se frena y se c
 ## 9. Cierre
 
 - [x] 9.1 **Después de la última vuelta de correcciones** (L-010): `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh` **en ese orden y de a uno** (D7); anotar la cantidad de tests contra la línea de base de 1.1, con hora y commit. Después, el **clon limpio** (D7): `git clone` del commit final a un directorio temporal, los comandos del README tal cual (`cp`, `mkdir`, `up --build`), `/api/salud` 200 por el proxy y `down -v`; anotar comandos y salida. Repetir todo si el código cambia después. Escenarios: todos. Lecciones: L-003, L-005, L-010.
+
+## Vuelta 2 — bloqueantes de la auditoría (rompedor + auditor, vuelta 1)
+
+Veredicto del auditor: vuelve al constructor con 5 bloqueantes (C2-1, C2-2, C2-3, C2-4, C2-6).
+Quedan como deuda con dueño 15, sin tocar: C2-5, C2-7, C2-8 y las notas. Pedido del auditor: arreglar
+la familia, no el ejemplo (L-018, L-021). Cada rojo se pega acá antes del código.
+
+- [x] C2-1 El valor de cada cabecera, no sólo su presencia (L-019). `Referrer-Policy` sirve
+  `strict-origin-when-cross-origin`; la spec y D1 piden `no-referrer` (confirmado por Juani). Ningún
+  test miraba valores: `X-Frame-Options: ALLOWALL` pasaba (M12 del rompedor).
+
+  **Rojo (hoy, antes del código):**
+  ```
+  $ uv run pytest tests/infra/test_caddyfile_seguridad.py::test_el_caddyfile_fija_las_cuatro_cabeceras_de_seguridad_con_su_valor -q
+  AssertionError: Referrer-Policy tiene el valor 'strict-origin-when-cross-origin', se esperaba 'no-referrer'
+  1 failed in 0.05s
+  ```
+  Rojo repetido con un valor débil en las otras tres (copias, restauradas después de cada una):
+  `X-Content-Type-Options: sniff`, `X-Frame-Options: ALLOWALL`, `Permissions-Policy` sin negar `camera`
+  — las tres fallan nombrando la cabecera y el valor. **Verde**: `Referrer-Policy no-referrer` en el
+  Caddyfile (sitio y `handle_errors`); `verificar_cabeceras` del humo exige valor, no sólo presencia.
+
+- [x] C2-2 Toda respuesta que el proxy emite fuera del bloque del sitio (por IP, con `Host` ajeno, sin
+  `Host`) sale con `Server: Caddy` y sin ninguna cabecera — la spec dice "toda respuesta servida por
+  el proxy". Un sitio de respaldo cubre los tres casos; lo que Caddy arma antes de cualquier ruta (N1:
+  400, 431, 505, `OPTIONS *`) queda enumerado en la spec como excepción, con su prueba.
+
+  **Rojo (stack vivo, antes del código)**: `Host: evil.example`, por IP (`127.0.0.1`) y HTTP/1.0 sin
+  `Host`, los tres `200 OK` con `Server: Caddy` y sin ninguna de las cuatro cabeceras. **Verde**: sitio
+  de respaldo `:80 { header {...} respond 421 }` en el Caddyfile; los tres casos ahora `421` con las
+  cuatro cabeceras y sin `Server`; el sitio real y el 502 siguen iguales (verificado). Nuevo paso 6c en
+  el humo.
+
+- [x] C2-3 El chequeo vivo de capacidades (3.4) no puede dar rojo en `redis` ni en `db`: lee el PID 1,
+  y `redis` (`setpriv`) y `db` (`gosu`) bajan privilegios por su cuenta — el PID 1 no refleja lo que
+  puso Compose. El chequeo pasa a leer un proceso nuevo (`compose exec`), que sí depende de Compose;
+  se extiende a los ocho servicios (suma `migraciones`, con `compose run --no-deps` como la 3.3).
+  Corregir también el comentario de `humo.sh` y de `test_compose.py` que dicen que `redis` baja con
+  `gosu` o que su `CapBnd` de PID 1 es su lista.
+
+  **Rojo (stack vivo, antes del código)**: con una copia de Compose sin `security_opt`/`cap_drop`/
+  `cap_add` de `redis`, `/proc/1/status` sigue dando `CapBnd: 0` (el chequeo viejo pasaría igual);
+  `/proc/self/status` de un `exec` nuevo da `0xa80425fb` (el default de Docker, no `0x1c0`). **Verde**:
+  el chequeo lee `/proc/self/status` de un proceso nuevo en los ocho servicios; `redis` pasa a
+  esperar `0x1c0` (su propio `cap_add`, no vacío). Comentarios de `humo.sh`, `design.md` y `spec.md`
+  corregidos (redis usa `setpriv`, no `gosu`; el mecanismo de lectura cambia, no el de 3.3/PID1-uid).
+
+- [x] C2-4 `relrowsecurity` se mira en 2 de las 6 tablas con políticas (sólo `administracion` y
+  `complejo`); la spec pide "en las tablas con políticas". La lista de tablas sale de la BASE EN USO
+  (o de las migraciones), nunca de la restaurada — si saliera de ahí, una tabla que perdió sus
+  políticas en el dump dejaría de contarse como "con políticas" y pasaría igual.
+
+  **Rojo (restauración real, antes del código)**: con `unidad` (ni `administracion` ni `complejo`) con
+  `DISABLE ROW LEVEL SECURITY` en la restaurada, el chequeo viejo (2 tablas) pasa igual; con las
+  políticas de `unidad` borradas en la restaurada (`relrowsecurity`/`relforcerowsecurity` siguen en
+  `t`), el chequeo de sólo esas dos banderas también pasa igual. **Verde**: la lista de tablas sale de
+  `select distinct tablename from pg_policies` contra la BASE EN USO (6 tablas); para cada una,
+  `relrowsecurity`, `relforcerowsecurity` y el conteo de políticas, comparado contra la base en uso.
+  Bug propio atrapado en el camino: un `while read` que corría varios `compose exec` adentro cortaba
+  después de la primera tabla (competían por el mismo stdin); arreglado con `< /dev/null` en cada uno.
+
+- [x] C2-6 El arreglo del flake V3-8 (tarea 4.1) comparaba sólo contra el campo `tarea`; una fuga por
+  cualquier otro campo (`valor_recibido`, o el nuevo `causa`) pasa (M10 y M10b del rompedor). Hay que
+  comparar contra TODO lo que de verdad sale al log (la línea que arma `FormateadorJSON`, o
+  `__dict__` menos los atributos estándar de `LogRecord`), y repetir el lazo del flake 150+ veces para
+  mostrar que no se reabre V3-8. El comentario de `logs.py` sobre `causa` tiene que decir qué impide
+  hoy que OTRO logger lo use con un valor — y si nada lo impide, decirlo así.
+
+  **Rojo (antes del código)**: con `extra={"tarea": ..., "valor_recibido": str(administracion_id)}`
+  (M10) y con `extra={"tarea": ..., "causa": str(administracion_id)}` (M10b), el test viejo (sólo
+  miraba `tarea`) sobrevivía a las dos. **Verde**: se compara contra todos los campos extra del
+  registro (`__dict__` menos `_ATRIBUTOS_ESTANDAR` de `logs.py`, el mismo criterio que usa
+  `FormateadorJSON`); las dos mutaciones ahora fallan, nombrando el campo. Flake V3-8: 0 fallas en 150
+  corridas después del arreglo. Comentario de `causa` en `logs.py` reescrito: dice que nada en el
+  código impide que otro logger la use con un valor, y que es un aviso, no una barrera.
+
+Fuera de esta vuelta (deuda con dueño 15, no se tocan): C2-5 (línea/comando real del trap en
+`compose()` y en los 17 `if !`), C2-7 (el conteo de `.dump` es una carrera en el segundo `up`), C2-8
+(`arranque_fallido` sólo cubre `ConfiguracionInvalida`/`RolDeAplicacionInseguro`, no un `POSTGRES_HOST`
+o una contraseña inválidos), y las notas N1 a N13.
