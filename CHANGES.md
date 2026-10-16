@@ -32,7 +32,9 @@ C-01 infraestructura-base (1a)
                           ├── C-05b login (2b)                      ← para usarlo una persona: lo piden C-16 y C-20
                           ├── C-05c endurecimiento-de-infraestructura (2c)
                           │
-                          └── C-06 configuracion-del-edificio (3)
+                          └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (propuesto, E1)
+                                │
+                                ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │
                                 └── C-07 motor-de-cuenta-corriente (4)
                                       │
@@ -86,12 +88,13 @@ GATE 4: C-04 ✓
   → C-05a aislamiento-por-administracion (solo, CRITICAL: aprobación de un socio)
 
 GATE 5: C-05a ✓                                          ← fork del cambio 2 (3 paralelos)
-  → C-06 configuracion-del-edificio [Agente A] (HIGH: aprobación de un socio; camino crítico)
+  → C-06a configuracion-del-edificio [Agente A] (HIGH: aprobación de un socio; camino crítico)
   → C-05b login                     [Agente B] (CRITICAL: aprobación de un socio; además necesita P48)
   → C-05c endurecimiento-de-infraestructura [Agente C] (MEDIUM)
 
-GATE 6: C-06 ✓
-  → C-07 motor-de-cuenta-corriente (solo, CRITICAL: aprobación de un socio)
+GATE 6: C-06a ✓
+  → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un socio)
+  → C-06b pantallas-del-edificio (en paralelo, después de los shape de la tarea 8.1 del 3a)
 
 GATE 7: C-07 ✓                                           ← PRIMER FORK real (2 paralelos)
   → C-08 importacion-desde-excel    [Agente A]
@@ -126,11 +129,11 @@ GATE 14: C-05b + C-05c + C-12 + C-13 + C-17 + C-18 + C-19 ✓ + datos del edific
 ### Camino crítico (14 changes — mínimo irreducible hasta cerrar M3)
 
 ```
-C-01 → C-02 → C-03 → C-04 → C-05a → C-06 → C-07 → C-09 → C-10 → C-11 → C-14 → C-15 → C-18 → C-20
+C-01 → C-02 → C-03 → C-04 → C-05a → C-06a → C-07 → C-09 → C-10 → C-11 → C-14 → C-15 → C-18 → C-20
 ```
 
 El **camino crítico al test de aceptación de M1** (reproducir al centavo la última liquidación del
-piloto) es el prefijo de 10 changes: `C-01 → C-02 → C-03 → C-04 → C-05a → C-06 → C-07 → C-08/C-09 →
+piloto) es el prefijo de 10 changes: `C-01 → C-02 → C-03 → C-04 → C-05a → C-06a → C-07 → C-08/C-09 →
 C-10`. Ese es el que el proyecto sigue priorizando hoy (ver
 `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida). El resto de la cadena hasta `C-20` cierra
 M2 y M3.
@@ -149,8 +152,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   3  │ C-03 cola-logs-y-respaldos      │         -                       │         -
   4  │ C-04 respaldos-y-restauracion   │         -                       │         -
   5  │ C-05a aislamiento-por-admin.    │         -                       │         -
-  6  │ C-06 configuracion-del-edificio │ C-05b login                     │ C-05c endurecimiento-de-infra.
-  7  │ C-07 motor-de-cuenta-corriente  │         -                       │         -
+  6  │ C-06a configuracion-del-edif.   │ C-05b login                     │ C-05c endurecimiento-de-infra.
+  7  │ C-07 motor-de-cuenta-corriente  │         -                       │ C-06b pantallas-del-edificio
   8  │ C-08 importacion-desde-excel    │ C-09 gastos-y-cargos            │         -
   9  │ C-10 liquidacion-y-emision      │         -                       │         -
  10  │ C-11 pagos-informados           │         -                       │ C-19 lectura-de-facturas
@@ -247,7 +250,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ### [C-05b] `login` · 2b
 - **Estado**: `[ ]` pendiente (CRITICAL), bloqueado por P48; partido del cambio 2 por D-097 (`login` es
   nombre provisional: lo fija su propose). Es requisito para que una persona use el sistema y para el
-  despliegue (C-16, C-20), no para construir C-06
+  despliegue (C-16, C-20), no para construir C-06a
 - **Scope**: login del personal con contraseña y del vecino con link mágico por mail (D-097), sesión
   del lado de Next.js (D-036), límite de intentos en el login, auditoría de login exitoso y fallido
   sobre la tabla del 2a, CSP en Next, la pantalla de login
@@ -282,18 +285,41 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-06] `configuracion-del-edificio` · 3
-- **Estado**: `[ ]` pendiente (HIGH)
-- **Scope**: edificios, unidades con tipo y coeficiente, grupos de reparto, categorías de gasto,
-  configuración versionada de intereses y fondo de reserva, carga del edificio de ejemplo en la base,
-  estado de migración del edificio
+### [C-06a] `configuracion-del-edificio` · 3a
+- **Estado**: `[ ]` propuesto el 16/10/2026 (HIGH), esperando la aprobación de un socio con E1 a E8
+  (`openspec/changes/configuracion-del-edificio/proposal.md`); 23 tareas: 7 bloqueadas enteras y 4 en
+  parte por P19, P24 y P33. Propone partir el 3 en 3a y 3b (E1)
+- **Scope**: edificio y unidad completos (tipo, coeficiente, superficie, estado de migración),
+  grupos de reparto con FK compuesta por edificio, categorías de gasto, configuración versionada de
+  intereses y fondo de reserva de sólo agregar, permisos y auditoría de configuración, API con
+  contrato de error, el edificio de ejemplo cargado en la base con un comando idempotente, la deuda R6
+  y R11 del 2a y la del 1b con dueño 3, y los `shape` de las pantallas del 3b (sin código)
 - **Dependencias**: C-05a
 - **Governance**: ALTO
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §3
+  - `knowledge-base/12_fichas_de_changes.md` §3a
+  - `openspec/changes/configuracion-del-edificio/proposal.md` y `design.md`
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Complejos (configuración del edificio)
   - `knowledge-base/06_funcionalidades.md` §HU-A1
-  - `knowledge-base/10_preguntas_abiertas.md` (P16, P19, P24, P33)
+  - `knowledge-base/10_preguntas_abiertas.md` (P16, P19, P24, P33, P47)
+
+---
+
+### [C-06b] `pantallas-del-edificio` · 3b (nombre provisional)
+- **Estado**: `[ ]` pendiente, nace de la partición propuesta en el 3a (E1); se propone después de los
+  siete `shape` de la tarea 8.1 del 3a
+- **Scope**: las pantallas de configuración del edificio para el administrador (mis edificios,
+  resumen, padrón, grupos, categorías, intereses y fondo, confirmar "sin saldos previos"), el acceso
+  de desarrollo sin login firmado en E2 (sólo si el 2b no llegó antes), los tokens de `DESIGN.md` y el
+  "terminado" de frontend (teclado y foco, errores por campo, estados de carga y vacío, 320 px, WCAG
+  2.2 AA)
+- **Dependencias**: C-06a (y los briefs de `shape`)
+- **Governance**: ALTO mientras incluya el acceso de desarrollo (toca la identidad); se confirma en su
+  propose
+- **Leer antes**:
+  - `knowledge-base/12_fichas_de_changes.md` §3b
+  - `PRODUCT.md`, `DESIGN.md` y los briefs de `shape` en `openspec/exploraciones/`
+  - `openspec/changes/configuracion-del-edificio/design.md` (D11 y D12)
 
 ---
 
@@ -304,7 +330,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: libro de movimientos de sólo agregar, obligaciones/pagos/imputaciones, intereses
   simples al registrarse, reparto por mayor resto, correcciones con contra-asiento, caso de uso de
   saldo inicial, función pura de moroso crítico, contrato mínimo de emisión
-- **Dependencias**: C-05a, C-06
+- **Dependencias**: C-05a, C-06a
 - **Governance**: CRITICO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §4
@@ -318,7 +344,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[ ]` pendiente (CRITICAL, D-077)
 - **Scope**: plantilla de Excel con hoja opcional de saldos por período, validación fila por fila,
   carga atómica, detección de reimportación, saldos en borrador comparados unidad por unidad
-- **Dependencias**: C-06, C-07
+- **Dependencias**: C-06a, C-07
 - **Governance**: CRITICO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §5
@@ -332,7 +358,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[ ]` pendiente
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura
-- **Dependencias**: C-06, C-07
+- **Dependencias**: C-06a, C-07
 - **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §6

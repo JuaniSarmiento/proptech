@@ -247,40 +247,86 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   comandos y salida); la corrida de cierre está en verde, en orden y de a uno; y un clon limpio del
   commit final levanta con los comandos del README tal cual, con `/api/salud` 200.
 
-### 3 · `configuracion-del-edificio` · HIGH
+### 3 · `configuracion-del-edificio` · partido en 3a y 3b (propuesto, E1 del 3a)
 
-- **Objetivo**: que el administrador cree un edificio y lo configure como dice su reglamento.
-- **Historias**: HU-A1. **Reglas**: R01 (sólo la definición de grupos), R02 (sólo el campo de estado, desactivado; la regla se construye con barrios, D-089), R03 (su
-  configuración), R15 (porcentaje), R16 (categorías).
-- **Propuestas** (entran si se validan): R35 (calendario de feriados del sistema), R36 (tasa de la
-  extraordinaria), R39 (marca de unidad del consorcio).
-- **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-080, D-087.
-- **Gobernanza HIGH** (D-087, D-094): guarda la configuración versionada de intereses, que cambia montos. Se
-  propone y se espera la revisión de uno de los dos socios antes de construir.
-- **Entra**: edificios, unidades con su tipo (departamento, cochera, baulera, local) y coeficiente;
-  grupos de reparto con sus unidades y método; categorías de gasto (crear, renombrar, ordenar,
-  desactivar); configuración de intereses y fondo de reserva como **menús cerrados** tomados de
-  `parametros.yaml` al crear, con versión (D-010, D-080);
-  **cargar en la base el edificio de ejemplo** de `config/semilla/edificio-ejemplo.yaml` (validado en 1b);
-  el **estado de migración del edificio** (pendiente, confirmada o sin saldos previos, R09, D-083): la
-  semilla y su validador suman ese campo, y el edificio de ejemplo queda "sin saldos previos"; el
-  cambio 5 usa ese estado; **alinear el validador de la semilla con R01** (tolerancia de ±0,0001) y con
-  la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
-  coeficiente por unidad.
-- **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
-- **Pantallas (3b)**: cada una lleva su ayuda "?" (The Always-Help Rule de `DESIGN.md`, pedido de
-  Alberto del 17/10/2026). Una pantalla sin su "?" con el texto escrito no se da por terminada.
-- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R6 y
-  R11). **R6 bloquea antes de la primera ruta nueva de este cambio**: el sweep de rutas protegidas no
-  ve `include_router(prefix=...)`, y es la forma más probable de agregar rutas acá.
-- **Depende de**: 2a (para construirse; el 2b, para que una persona lo use). **Habilita**: 4, 5, 6.
-- **Bloqueado por**: P16, P19, P24 y P33.
-- **Decidir en el design**: cómo se guarda la configuración vigente en cada liquidación (historia);
-  si el edificio piloto usa primer y segundo vencimiento con recargo escalonado (R26, pendiente: P19, ProTecc G4) en vez del vencimiento único de R03.
-- **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1; una unidad repetida;
-  cambiar la tasa y que se pierda la versión anterior; editar la configuración de otro edificio.
-- **Terminado cuando**: se cumplen los criterios de HU-A1; un edificio nuevo arranca con los valores
-  de `parametros.yaml`; cambiar el archivo no altera edificios existentes.
+El propose del 16/10/2026 (`openspec/changes/configuracion-del-edificio/`) contó unas 23 tareas de
+backend y unas 15 de pantallas, y propone partirlo (elección E1, la firma el socio que apruebe): el
+**3a** es el modelo, las reglas, la API y la semilla, y es lo único que necesita el 4; el **3b** son las
+pantallas, que además pasan antes por un `shape` con Juani. Si E1 se rechaza, las dos fichas vuelven a
+ser una. Objetivo común: que el administrador cree un edificio y lo configure como dice su reglamento.
+
+### 3a · `configuracion-del-edificio` · HIGH
+
+- **Objetivo**: que el modelo del edificio quede completo para el 4, con la base frenando cualquier
+  cruce de edificio o de administración, y la configuración que cambia plata versionada y de sólo
+  agregar.
+- **Historias**: HU-A1 (los datos; las pantallas son del 3b). **Reglas**: R01 (sólo la definición de
+  grupos y la validación de coeficientes), R02 (sólo el campo de estado, desactivado; la regla se
+  construye con barrios, D-089), R03 (su configuración), R09 (el estado de migración), R15
+  (porcentaje), R16 (categorías).
+- **Propuestas** que **no entran** (ninguna se validó): R35, R36, R39.
+- **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-080, D-082, D-083, D-087, D-089,
+  D-094, D-096, D-098.
+- **Gobernanza HIGH** (D-087, D-094): guarda la configuración versionada de intereses, que cambia montos,
+  y suma permisos a la matriz de D-096. Se propone y se espera la aprobación de uno de los dos socios,
+  con las elecciones E1 a E8, antes de construir.
+- **Entra**: edificio (localidad, estado de migración) y unidad (identificador, tipo de D-029, piso,
+  coeficiente, superficie, estado desactivado) completos; grupos de reparto con FK compuesta que
+  comparte `complejo_id`, "Generales" obligatorio; categorías de gasto (crear, renombrar, ordenar,
+  desactivar, nunca borrar); configuración de intereses y fondo de reserva como **menús cerrados**
+  tomados de `parametros.yaml` al crear, versionada con vigencia, autor y fecha, de sólo agregar
+  (D-010, D-080, E4); el informe de R01 con la tolerancia de ±0,0001 (bloquea el 7, no la carga, E5);
+  permisos de configuración (E3) y auditoría de crear edificio, crear versión y confirmar "sin saldos
+  previos" (E7); API con contrato de error (401, 404, 403, 409, 422 sin el valor); **cargar en la base
+  el edificio de ejemplo** con un comando idempotente, en una administración de ejemplo propia (E6); el
+  **estado de migración** (pendiente, confirmada o sin saldos previos, R09, D-083) en la base y en la
+  semilla, con el ejemplo "sin saldos previos"; **alinear el validador de la semilla con R01** y con la
+  respuesta a P24; los `shape` de las pantallas del 3b, sin código. 23 tareas en
+  `openspec/changes/configuracion-del-edificio/`.
+- **No entra**: las pantallas y el acceso de desarrollo (3b); carga masiva desde Excel (5); cálculos
+  (4, 7); que una liquidación emitida no cambie al cambiar la tasa (se prueba en el 7); el motor de
+  reglas (6b, D-087); bajas de edificios, unidades o grupos.
+- **Deuda con dueño este cambio** (L-012, D-098): **R6**, que bloquea antes de la primera ruta nueva (el
+  sweep de rutas protegidas no ve `include_router(prefix=...)` ni `add_api_route`); **R11** (el id lo
+  genera siempre el servidor, E8: un alta con `id` da 422, verificado por un barrido); y la fila del 1b
+  de "Deuda técnica de las auditorías del 13/10" (el tope del YAML ya estaba hecho; lo de Compose va
+  después de integrar el 2c).
+- **Depende de**: 2a (para construirse; el 2b, para que una persona lo use). **Habilita**: 4, 5, 6, 3b.
+- **Bloqueado por**: P19 y P33 (la forma de la configuración versionada y, por arrastre, crear un
+  edificio y cargar el ejemplo) y P24 (grupos parciales y el validador de la semilla), en tareas
+  puntuales: 12 de 23 tareas no dependen de ninguna. P16 sólo bloquearía R39, que no entra. P47 no
+  bloquea el código pero sí la integración con el 2c.
+- **Decidido en el design**: la configuración vigente para una fecha es la versión de mayor vigencia que
+  no la supera; cada liquidación del 7 referencia la versión que usó (qué fecha usa es P34, del 4 y el
+  7). Si P19 confirma doble vencimiento, la versión suma columnas: se reabre el design antes de la 3.4.
+- **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1 (bordes 0,9999 y 1,0001,
+  0,9998); una unidad repetida; cambiar la tasa y que se pierda la versión anterior; versiones
+  superpuestas o simultáneas para la misma fecha; editar la configuración de otro edificio; una unidad
+  de otro edificio o de otra administración en un grupo, por la API y por SQL; el edificio de ejemplo
+  cargado dos veces, en paralelo o después de editarlo; montos y proporciones como `float`; un alta con
+  `id` del cliente; una ruta nueva que el sweep no ve. La lista completa está en la propuesta.
+- **Terminado cuando**: se cumplen los criterios de datos de HU-A1; un edificio nuevo arranca con los
+  valores de `parametros.yaml`; cambiar el archivo no altera edificios existentes; la base rechaza como
+  `proptech_app` toda escritura cruzada y toda edición de una versión; las migraciones bajan y suben
+  sobre una copia con datos; la corrida de cierre en orden y un clon limpio en verde.
+
+### 3b · `pantallas-del-edificio` (nombre provisional) · HIGH mientras lleve el acceso de desarrollo
+
+- **Objetivo**: que el administrador configure su edificio desde el navegador.
+- **Entra**: siete pantallas de la superficie del administrador (mis edificios, resumen del edificio,
+  padrón de unidades, grupos de reparto, categorías de gasto, intereses y fondo de reserva, confirmar
+  "sin saldos previos"), cada una después de su `shape` con Juani (tarea 8.1 del 3a); los tokens de
+  `DESIGN.md`; el acceso de desarrollo sin login de E2 (punto de entrada fuera del paquete instalado y
+  un Compose aparte, que el 2b borra), **sólo si el 2b no llegó antes**.
+- **Reglas de diseño**: números tabulares y formato argentino en coeficientes, tasas y porcentajes; el
+  estado de R01 y el de migración nunca sólo con color; una acción principal por pantalla; la web no
+  calcula (la suma y su estado vienen de la API).
+- **Terminado cuando**: cada pantalla se opera entera con teclado y foco visible; cada error está
+  asociado a su campo por programa; los estados de carga, vacío y error se alcanzan a pedido; a 320 px
+  no hay scroll horizontal; WCAG 2.2 AA sin violaciones de axe en cada estado.
+  Cada pantalla tiene su ayuda "?" con las tres partes escritas (D-102, HU-T1, The Always-Help
+  Rule de `DESIGN.md`, pedido de Alberto del 17/10/2026).
+- **Depende de**: 3a y los briefs de `shape`. **Habilita**: el uso real del 3 junto con el 2b.
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
 
@@ -306,7 +352,7 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   generó; el cambio 7 la completa con la preliquidación, los controles y la distribución. La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
-- **Depende de**: 2a y 3 (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
+- **Depende de**: 2a y 3a (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
   **Habilita**: 5, 6, 7.
 - **Bloqueado por**: P10, P11, P21, P31, P34 y P42 (la sesión con un contador o administrador).
 - **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
@@ -672,7 +718,7 @@ el 1d ya está en sus tareas (D-090).
 | Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) — **cerrada en el 2c (las cinco cosas, tareas 3.1 a 4.3 y 7.1)** |
 | CSP en Next | 2b (una CSP sin pantallas no prueba nada; la primera es la de login) |
 | Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
-| `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3 |
+| `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3a (tareas 2.3 y 2.4; el tope del YAML ya estaba hecho) |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
 
 ### Deuda del cierre del 1c (auditoría del 14/10, D-091)
@@ -722,9 +768,9 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
 | R5: el contrato de error del endpoint de asignación (`unidad_id` del vecino) | Es contrato de error, no fuga: no escribe nada y el log no filtra; el endpoint es inalcanzable en producción hasta el login (401 siempre) | 2b (C-05b) |
-| R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3 (C-06), bloqueante antes de su primera ruta nueva |
+| R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3a (C-06a), bloqueante antes de su primera ruta nueva (tarea 2.1) |
 | R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) |
-| R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3 (C-06) |
+| R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3a (C-06a), tarea 2.2 |
 | V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | 15 (piloto), antes de operar la base con el superusuario |
 | V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados — **cerrada en el 2c (6.1)** |
 | V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b), antes del primer segundo caso con una misma acción |
