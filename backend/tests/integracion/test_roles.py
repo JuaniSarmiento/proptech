@@ -562,3 +562,29 @@ def test_antes_falla_si_dos_contrasenas_coinciden(contenedor: PostgresContainer)
     assert "POSTGRES_APP_PASSWORD" in resultado.stderr
     assert "POSTGRES_MIGRADOR_PASSWORD" in resultado.stderr
     assert password_compartida not in resultado.stderr
+
+
+def test_antes_rechaza_un_postgres_app_user_que_las_migraciones_no_conocen(
+    contenedor: PostgresContainer,
+) -> None:
+    """V3-14 (2a), tarea 6.2: `ayudas_rls.py` (migraciones) tiene el `GRANT`
+    escrito a mano para `proptech_app` (`_ROL_DE_LA_APP`); un
+    `POSTGRES_APP_USER` distinto crea igual un rol (con ESE otro nombre),
+    pero ningún `GRANT` de una migración futura lo alcanza — antes de esta
+    tarea, `antes()` pasaba igual y la falla aparecía recién más tarde (un
+    permiso denegado en la API, sin ninguna pista de esto). Nombra la
+    variable, nunca el valor: el nombre elegido no aparece en la salida."""
+    entorno = _entorno_de_arranque(contenedor)
+    entorno["POSTGRES_APP_USER"] = "proptech_otra_app"
+    resultado = subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
+        cwd=RAIZ_BACKEND,
+        env=entorno,
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 1, (
+        f"antes() tenía que rechazar el arranque; stdout={resultado.stdout!r}"
+    )
+    assert "POSTGRES_APP_USER" in resultado.stderr
+    assert "proptech_otra_app" not in resultado.stderr

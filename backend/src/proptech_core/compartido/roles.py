@@ -244,6 +244,35 @@ class ConfiguracionDeRolesInsegura(Exception):
     sin que nadie lo note hasta que algo ya pasó."""
 
 
+#: V3-14 (2a), tarea 6.2: el mismo nombre que `migraciones/ayudas_rls.py`
+#: tiene escrito a mano en sus `GRANT` (`_ROL_DE_LA_APP`). Duplicado a
+#: propósito, nunca importado: `migraciones` depende de `proptech_core`
+#: (ver `migraciones/env.py`), nunca al revés — importar desde acá
+#: invertiría esa frontera por una sola constante. Si uno de los dos
+#: cambia, el otro se queda desactualizado en silencio; ese riesgo es
+#: menor que el de la frontera invertida, y los dos están comentados con
+#: una referencia cruzada al otro.
+_ROL_DE_LA_APP_QUE_CONOCEN_LAS_MIGRACIONES = "proptech_app"
+
+
+class NombreDeRolDeLaAppDesconocido(Exception):
+    """`POSTGRES_APP_USER` no es el nombre que `migraciones/ayudas_rls.py`
+    ya tiene escrito a mano en sus `GRANT` (V3-14, deuda del 2a). Sin este
+    chequeo, `antes()` crea igual un rol con el nombre que diga la
+    variable, y la falla aparece recién más tarde — un permiso denegado en
+    la API o el worker, sin ninguna pista de que el nombre del rol es la
+    causa. Nombra la variable, nunca el valor (L-007)."""
+
+
+def _verificar_rol_de_la_app_conocido(app: ConfiguracionDeAppSoloPostgres) -> None:
+    if app.postgres_user != _ROL_DE_LA_APP_QUE_CONOCEN_LAS_MIGRACIONES:
+        raise NombreDeRolDeLaAppDesconocido(
+            "POSTGRES_APP_USER no es el rol que las migraciones conocen "
+            f"(tiene que ser {_ROL_DE_LA_APP_QUE_CONOCEN_LAS_MIGRACIONES!r}, "
+            "ver migraciones/ayudas_rls.py)"
+        )
+
+
 def _verificar_sin_colisiones(valores: dict[str, str], que: str) -> None:
     vistas: dict[str, str] = {}
     for variable, valor in valores.items():
@@ -296,6 +325,9 @@ def antes(configuracion: ConfiguracionDeArranque) -> None:
     # Antes de tocar la base (R8, vuelta 2): un chequeo puro, sin ida y
     # vuelta a Postgres, así falla lo más rápido posible.
     _verificar_los_cuatro_roles_son_distintos(configuracion, migrador, app, respaldo)
+    # V3-14 (2a), tarea 6.2: ídem, antes de crear un rol con un nombre que
+    # ninguna migración va a alcanzar con sus GRANT.
+    _verificar_rol_de_la_app_conocido(app)
 
     conexion = _conectar(configuracion)
     try:
@@ -717,6 +749,9 @@ def _main(argv: list[str]) -> int:
         print(f"error en el paso de roles: {error}", file=sys.stderr)
         return 1
     except ConfiguracionDeRolesInsegura as error:
+        print(f"error en el paso de roles: {error}", file=sys.stderr)
+        return 1
+    except NombreDeRolDeLaAppDesconocido as error:
         print(f"error en el paso de roles: {error}", file=sys.stderr)
         return 1
     return 0

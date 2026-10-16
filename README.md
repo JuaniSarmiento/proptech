@@ -133,7 +133,7 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | `db`, migraciones (`roles.py antes`/`despues`) | Obligatoria | sin default | El rol de arranque: superusuario de la imagen oficial. Crea y repara los otros tres roles, único dueño de `auditoria`; ningún servicio PERMANENTE lo recibe (R8). **No** es el que usan la API ni el worker (ver `POSTGRES_APP_*`, abajo) |
 | `POSTGRES_DB` | `db`, API, worker, migraciones | Obligatoria | sin default | Nombre de la base |
 | `POSTGRES_MIGRADOR_USER` / `POSTGRES_MIGRADOR_PASSWORD` | Alembic (migraciones) | Obligatoria | sin default | `proptech_migrador`, dueño de las tablas de dominio; sin `BYPASSRLS` |
-| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | API, worker | Obligatoria | sin default | `proptech_app`, sin superusuario ni `BYPASSRLS`; sujeta a Row-Level Security igual que cualquier cliente |
+| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | API, worker | Obligatoria; `POSTGRES_APP_USER` tiene que ser exactamente `proptech_app` (`roles antes` lo rechaza si no, V3-14) | sin default | `proptech_app`, sin superusuario ni `BYPASSRLS`; sujeta a Row-Level Security igual que cualquier cliente. Las migraciones (`ayudas_rls.py`) tienen ese nombre escrito a mano en sus `GRANT`: un nombre distinto crearía un rol sin esos permisos |
 | `POSTGRES_RESPALDO_USER` / `POSTGRES_RESPALDO_PASSWORD` | `respaldos`, `restaurar.sh` | Obligatoria | sin default | `proptech_respaldo`, con `BYPASSRLS` y `pg_read_all_data`, sin superusuario; sólo para `pg_dump`/`pg_restore` |
 | `REDIS_HOST` | API, worker | Fijada por Compose | `redis` | Host de Redis |
 | `REDIS_PORT` | API, worker | Opcional | 6379 | Puerto de Redis |
