@@ -55,7 +55,11 @@ def test_no_hay_continue_on_error_ni_or_true() -> None:
     assert "|| true" not in texto
 
 
-def test_disparadores_incluyen_push_a_main_y_workflow_dispatch() -> None:
+def test_disparadores_incluyen_push_a_main_workflow_dispatch_y_pull_request() -> None:
+    """MODIFIED de 'Verificaciones en cada push' (tarea 4.3): sumar
+    `pull_request` sin perder `push: branches: [main]` ni
+    `workflow_dispatch` (si `push` perdiera el filtro de rama, correría en
+    cualquier push a cualquier rama, no sólo a `main`)."""
     datos = _workflow()
     disparador = datos[True] if True in datos else datos.get("on")
     assert disparador is not None, "no se encontró la clave on:"
@@ -63,6 +67,7 @@ def test_disparadores_incluyen_push_a_main_y_workflow_dispatch() -> None:
     ramas = disparador["push"].get("branches") if isinstance(disparador["push"], dict) else None
     assert ramas is None or "main" in ramas
     assert "workflow_dispatch" in disparador
+    assert "pull_request" in disparador
 
 
 def test_permisos_son_solo_contents_read() -> None:
@@ -136,3 +141,44 @@ def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
 
     # El script real nunca se tocó.
     assert script_real.read_text() == contenido_original
+
+
+#: D5 (tarea 4.3): medidos contra `gh run view` del CI real (último push,
+#: 2026-10-15 23:32Z): backend 9m08s y con tendencia creciente (4m26s,
+#: 5m18s, 5m32s, 9m08s en las cuatro corridas previas); humo 1 a 2 min; web,
+#: shellcheck y secretos, menos de 20s cada uno.
+_TIMEOUT_MINUTES_ESPERADO = {
+    "backend": 20,
+    "humo": 15,
+    "web": 5,
+    "shellcheck": 5,
+    "secretos": 5,
+}
+
+
+def test_timeout_minutes_de_cada_trabajo() -> None:
+    datos = _workflow()
+    jobs = datos.get("jobs", {})
+    for nombre, minutos in _TIMEOUT_MINUTES_ESPERADO.items():
+        assert nombre in jobs, f"falta el job {nombre}"
+        assert jobs[nombre].get("timeout-minutes") == minutos, (
+            f"el job {nombre} esperaba timeout-minutes: {minutos}, "
+            f"tiene {jobs[nombre].get('timeout-minutes')!r}"
+        )
+
+
+_PATRON_IMAGEN_CON_DIGEST = re.compile(r"[\w./-]+:v?[0-9][0-9.]*@sha256:[0-9a-f]{64}")
+
+
+def test_gitleaks_y_shellcheck_fijados_por_tag_y_digest() -> None:
+    """D19/D5: un tag solo (como ya pasaba con gitleaks) se puede
+    re-publicar con otro contenido sin que nadie lo note; `@sha256:` fija
+    el contenido exacto. El digest tiene que venir del registro (`docker
+    manifest inspect`), no de una copia local que puede estar desalineada
+    con lo que el tag apunta hoy (hallazgo real de esta tarea)."""
+    texto = WORKFLOW.read_text()
+    for imagen in ("zricethezav/gitleaks", "koalaman/shellcheck"):
+        coincidencias = [
+            m.group(0) for m in _PATRON_IMAGEN_CON_DIGEST.finditer(texto) if imagen in m.group(0)
+        ]
+        assert coincidencias, f"{imagen} no está fijada con tag Y @sha256: en el workflow"

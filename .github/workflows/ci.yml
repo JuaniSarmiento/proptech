@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  pull_request:
 
 permissions:
   contents: read
@@ -11,6 +12,11 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-24.04
+    # D5 (tarea 4.3): medido con `gh run view` sobre el CI real: 4m26s,
+    # 5m18s, 5m32s y 9m08s en las últimas cuatro corridas (tendencia
+    # creciente). 20 min deja margen sin ser tan laxo como para no cortar
+    # un cuelgue real.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -33,6 +39,8 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
+    # D5: medido en menos de 20s; 5 min de margen.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -59,6 +67,8 @@ jobs:
 
   humo:
     runs-on: ubuntu-24.04
+    # D5: medido en 1 a 2 min (1m00s a 2m00s en las últimas cuatro corridas).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Prueba de humo del stack completo
@@ -66,20 +76,34 @@ jobs:
 
   shellcheck:
     runs-on: ubuntu-24.04
+    # D5: medido en menos de 20s; 5 min de margen.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: shellcheck sobre los scripts de infra/
         run: |
+          # D19/D5 (tarea 4.3): tag Y digest, no sólo el tag (que se puede
+          # re-publicar con otro contenido). Digest tomado del registro
+          # (`docker manifest inspect koalaman/shellcheck:v0.11.0 -v`,
+          # 2026-10-16), nunca de una copia local: la copia local de esta
+          # máquina tenía OTRO digest para el mismo tag.
           docker run --rm -v "$GITHUB_WORKSPACE":/repo -w /repo \
-            koalaman/shellcheck:v0.11.0 $(find infra -name '*.sh')
+            koalaman/shellcheck:v0.11.0@sha256:b9389b73c8f26f710a7171cb7d8848a34a9c1e07a7865e727c9ec4ce99f9a83f \
+            $(find infra -name '*.sh')
 
   secretos:
     runs-on: ubuntu-24.04
+    # D5: medido en menos de 20s; 5 min de margen.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: gitleaks
         run: |
+          # Digest tomado del registro (`docker manifest inspect
+          # zricethezav/gitleaks:v8.30.1 -v`, 2026-10-16), nunca de una
+          # copia local (misma observación que shellcheck arriba).
           docker run --rm -v "$GITHUB_WORKSPACE":/repo -w /repo \
-            zricethezav/gitleaks:v8.30.1 git --config /repo/.gitleaks.toml -v .
+            zricethezav/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb \
+            git --config /repo/.gitleaks.toml -v .
