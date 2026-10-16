@@ -5,6 +5,7 @@ Escenario de `integracion-continua`: Humo en el CI (destrucción con
 """
 
 import re
+import subprocess
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -81,3 +82,26 @@ def test_el_humo_cuenta_salud_degradada_y_f7c_en_api_y_worker() -> None:
         assert "worker" in servicios, (
             f"'{patron}': el conteo no mira los logs de worker: {servicios!r}"
         )
+
+
+def test_todo_script_de_infra_es_ejecutable() -> None:
+    """D-5/D-6 (deuda del 2a, tarea 2.3): todo `infra/**/*.sh` tiene que
+    estar en `100755` según el índice de git, no según el filesystem (que
+    un checkout puede normalizar distinto): `git update-index --chmod=+x`
+    es lo que de verdad hace falta, no sólo `chmod` local."""
+    resultado = subprocess.run(
+        ["git", "ls-files", "-s", "infra"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    scripts_sin_modo_ejecutable = [
+        linea
+        for linea in resultado.stdout.splitlines()
+        if linea.rsplit("\t", 1)[-1].endswith(".sh") and not linea.startswith("100755")
+    ]
+    assert not scripts_sin_modo_ejecutable, (
+        f"scripts de infra/ sin modo 100755 en el índice de git: {scripts_sin_modo_ejecutable}"
+    )
