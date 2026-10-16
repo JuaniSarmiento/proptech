@@ -2,6 +2,13 @@
 # Prueba de humo del stack completo detrás de Caddy (D9, D14).
 set -euo pipefail
 
+# D6 (tarea 2.1): pasos con nombre. `paso N "descripción"` reemplaza el
+# `echo "--- (N) descripción ---"` suelto de antes; el `trap ... ERR` de
+# pasos.sh nombra número, descripción, línea y comando si algo del paso
+# falla. Se fuentea con la ruta del script (antes del `cd` de abajo).
+# shellcheck source=infra/ci/pasos.sh
+source "$(dirname "${BASH_SOURCE[0]}")/pasos.sh"
+
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 if [ ! -f .env ]; then
@@ -62,7 +69,7 @@ trap limpiar EXIT
 echo "contenido-senuelo-no-es-un-secreto-real" > "$SENUELO_BACKEND"
 echo "contenido-senuelo-no-es-un-secreto-real" > "$SENUELO_WEB"
 
-echo "--- (0) compose up --build -d --wait ---"
+paso 0 "compose up --build -d --wait"
 compose up --build -d --wait
 STACK_LEVANTADO=1
 
@@ -90,14 +97,14 @@ insert into complejo (id, administracion_id, nombre) values
 SQL
 echo "ok: dos administraciones con dos complejos cada una, sembradas con $USUARIO_DB"
 
-echo "--- (1) GET /api/salud por Caddy, con la cola conectada ---"
+paso 1 "GET /api/salud por Caddy, con la cola conectada"
 respuesta_salud=$(curl -fsS http://localhost/api/salud)
 echo "$respuesta_salud"
 echo "$respuesta_salud" | grep -q '"estado":"ok"'
 echo "$respuesta_salud" | grep -q '"base":"ok"'
 echo "$respuesta_salud" | grep -q '"cola":"ok"'
 
-echo "--- (1b) segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no tiene que fallar ---"
+paso 1b "segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no tiene que fallar"
 # `down` sin `-v`: conserva los volúmenes (datos_postgres, datos_redis), como
 # un reinicio real del servidor. Antes de R1, `migraciones` salía con 1 en
 # esta segunda corrida (la secuencia IDENTITY de auditoria, ya del rol de
@@ -107,7 +114,7 @@ compose down
 compose up -d --wait
 echo "ok: el segundo up terminó con exit 0 y el stack quedó sano de nuevo"
 
-echo "--- (2) sólo caddy publica puertos ---"
+paso 2 "sólo caddy publica puertos"
 estado_ps=$(compose ps --format json)
 servicios_con_puertos=$(echo "$estado_ps" | python3 -c "
 import json, sys
@@ -127,7 +134,7 @@ print(','.join(sorted(set(nombres))))
 echo "servicios con puertos publicados: $servicios_con_puertos"
 [ "$servicios_con_puertos" = "caddy" ]
 
-echo "--- (3) el servicio db no tiene puerto publicado hacia el host ---"
+paso 3 "el servicio db no tiene puerto publicado hacia el host"
 # No se usa una conexión TCP cruda a 127.0.0.1:5432: en una máquina de
 # desarrollo puede haber OTRO PostgreSQL de otro proyecto escuchando ahí, lo
 # que daría un falso "accesible" sin que este stack publique nada. Se
@@ -140,7 +147,7 @@ if [ -n "$puerto_db_publicado" ] && [ "$puerto_db_publicado" != "0" ]; then
 fi
 echo "ok: db no tiene ports publicados (compose port db 5432 = '$mapeo_db')"
 
-echo "--- (3b) redis no tiene puerto publicado hacia el host ---"
+paso 3b "redis no tiene puerto publicado hacia el host"
 mapeo_redis=$(compose port redis 6379 2>/dev/null || true)
 puerto_redis_publicado="${mapeo_redis##*:}"
 if [ -n "$puerto_redis_publicado" ] && [ "$puerto_redis_publicado" != "0" ]; then
@@ -149,12 +156,12 @@ if [ -n "$puerto_redis_publicado" ] && [ "$puerto_redis_publicado" != "0" ]; the
 fi
 echo "ok: redis no tiene ports publicados (compose port redis 6379 = '$mapeo_redis')"
 
-echo "--- (3c) redis rechaza un comando sin contraseña (NOAUTH) ---"
+paso 3c "redis rechaza un comando sin contraseña (NOAUTH)"
 salida_redis_sin_auth=$(compose exec -T redis redis-cli ping 2>&1 || true)
 echo "$salida_redis_sin_auth"
 echo "$salida_redis_sin_auth" | grep -q "NOAUTH"
 
-echo "--- (3d) la web no alcanza db:5432 ni redis:6379; la api sí (D10, tarea 8.1) ---"
+paso 3d "la web no alcanza db:5432 ni redis:6379; la api sí (D10, tarea 8.1)"
 # Conexión TCP cruda, nunca un ping de aplicación (D10): lo que prueba D10
 # es que la RED no llega, no que el servicio del otro lado responda bien.
 # `web` corre Node (ya lo usa el healthcheck de Compose); `api`, Python.
@@ -192,7 +199,7 @@ echo "web->db=$resultado_web_db web->redis=$resultado_web_redis api->db=$resulta
 [ "$resultado_api_redis" = "CONECTO" ]
 echo "ok: la web no alcanza db ni redis por la red; la api alcanza las dos"
 
-echo "--- (4) api, web, worker, redis y respaldos corren como no root ---"
+paso 4 "api, web, worker, redis y respaldos corren como no root"
 # `id -u` vía `exec` alcanza para api/web (no bajan de root con gosu
 # DESPUÉS de arrancar). redis, en cambio, arranca como root y su propio
 # entrypoint baja a uid 999 con gosu recién para el proceso PID 1: un
@@ -219,15 +226,15 @@ echo "uid pid1 worker=$uid_pid1_worker redis=$uid_pid1_redis respaldos=$uid_pid1
 [ "$uid_pid1_redis" != "0" ]
 [ "$uid_pid1_respaldos" != "0" ]
 
-echo "--- (5) las imágenes construidas no contienen .env ---"
+paso 5 "las imágenes construidas no contienen .env"
 compose run --rm --no-deps --entrypoint sh api -c '[ ! -f /app/.env ]'
 compose run --rm --no-deps --entrypoint sh web -c '[ ! -f /app/.env ]'
 
-echo "--- (6) GET / responde 200 con HTML ---"
+paso 6 "GET / responde 200 con HTML"
 cuerpo_home=$(curl -fsS http://localhost/)
 echo "$cuerpo_home" | grep -qi "<html"
 
-echo "--- (7) request_id: el proxy pisa un valor elegido por el cliente ---"
+paso 7 "request_id: el proxy pisa un valor elegido por el cliente"
 # Caddy pisa SIEMPRE X-Request-ID con su propio UUID (Caddyfile), así que un
 # valor mandado por el cliente nunca llega tal cual a la API ni a los logs.
 # B4-bis (auditor, vuelta 2, L-017): tiene que ser un UUID CANÓNICO (el
@@ -250,7 +257,7 @@ else
   exit 1
 fi
 
-echo "--- (7b) request_id malicioso: no aparece en ningún log ---"
+paso 7b "request_id malicioso: no aparece en ningún log"
 # curl (como la mayoría de los clientes HTTP modernos) rechaza un salto de
 # línea real dentro del valor de un encabezado (de otro modo sería una
 # inyección de encabezados); acá se manda lo más parecido que un cliente
@@ -269,7 +276,7 @@ for servicio in caddy api web worker redis respaldos; do
 done
 echo "ok: el valor malicioso no aparece en ningún log"
 
-echo "--- (8) /salud-web devuelve X-Request-ID y aparece en el log de la API ---"
+paso 8 "/salud-web devuelve X-Request-ID y aparece en el log de la API"
 respuesta_salud_web=$(curl -fsS -D - -o /tmp/salud_web_cuerpo.json http://localhost/salud-web)
 request_id_salud_web=$(echo "$respuesta_salud_web" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-request-id" {print $2}')
 cat /tmp/salud_web_cuerpo.json
@@ -284,7 +291,7 @@ else
   exit 1
 fi
 
-echo "--- (9) worker: trabajo con un reintento, dentro del stack ---"
+paso 9 "worker: trabajo con un reintento, dentro del stack"
 salida_encolar=$(compose exec -T api python -m proptech_worker.prueba encolar --fallar-veces 1)
 echo "$salida_encolar"
 clave_trabajo=$(echo "$salida_encolar" | awk -F= '/^clave=/ {print $2}')
@@ -318,7 +325,7 @@ else
   exit 1
 fi
 
-echo "--- (9b) la api y el worker conectan como proptech_app, ni superusuario ni BYPASSRLS (D11, tarea 9.1) ---"
+paso 9b "la api y el worker conectan como proptech_app, ni superusuario ni BYPASSRLS (D11, tarea 9.1)"
 # `pg_stat_activity` filtrado por `application_name` (D8: la API arranca con
 # "proptech-api", el worker con "proptech-worker"; dentro de una transacción
 # queda "<prefijo>:<request_id>", así que LIKE con el prefijo alcanza a las
@@ -343,7 +350,7 @@ echo "api: $rol_api | worker: $rol_worker"
 [ "$rol_worker" = "proptech_app,false,false" ]
 echo "ok: api y worker conectan como proptech_app, sin ser superusuario ni BYPASSRLS"
 
-echo "--- (10) Redis pausado: /api/salud y /salud-web degradados, nunca colgados ---"
+paso 10 "Redis pausado: /api/salud y /salud-web degradados, nunca colgados"
 compose pause redis
 inicio_ns=$(date +%s%N)
 codigo_api_redis_pausado=$(curl -s -o /tmp/salud_redis_pausado.json -w '%{http_code}' http://localhost/api/salud || true)
@@ -372,7 +379,7 @@ rm -f /tmp/salud_web_redis_pausado.json
 compose unpause redis
 echo "ok: Redis pausado -> /api/salud y /salud-web degradados, Redis despausado"
 
-echo "--- (11) backups: aparece uno solo, se restaura, no toca la base en uso ---"
+paso 11 "backups: aparece uno solo, se restaura, no toca la base en uso"
 dump_aparecio=0
 for _ in $(seq 1 24); do
   if ls "$CARPETA_RESPALDOS_HUMO"/proptech-*.dump >/dev/null 2>&1; then
@@ -491,10 +498,10 @@ echo "ok: la base en uso no cambió (revisión y filas de trabajos_hechos iguale
 compose exec -T db dropdb --if-exists -U "$USUARIO_DB" proptech_restauracion
 echo "ok: se borró la base de restauración"
 
-echo "--- (12) comando de verificación de la semilla, dentro de api ---"
+paso 12 "comando de verificación de la semilla, dentro de api"
 compose exec -T api python -m proptech_core.compartido.semilla /app/config/semilla/edificio-ejemplo.yaml
 
-echo "--- (13) base pausada (congelada, no caída) -> 503 degradado, dentro de un tiempo acotado ---"
+paso 13 "base pausada (congelada, no caída) -> 503 degradado, dentro de un tiempo acotado"
 # "pause" congela el proceso de postgres (cgroup freezer): a diferencia de "stop", el
 # socket de escucha sigue existiendo y el kernel acepta el SYN, pero nadie en el
 # contenedor atiende el handshake de la aplicación. Es el caso que `connect_timeout=2`
@@ -517,7 +524,7 @@ if [ "$duracion_ms" -ge 4000 ]; then
   exit 1
 fi
 
-echo "--- (14) base caída -> 503 degradado ---"
+paso 14 "base caída -> 503 degradado"
 compose stop db
 sleep 1
 codigo=$(curl -s -o /tmp/salud_degradada.json -w '%{http_code}' http://localhost/api/salud || true)
