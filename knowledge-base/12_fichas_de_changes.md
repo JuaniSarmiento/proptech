@@ -325,6 +325,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 3b · `pantallas-del-edificio` (nombre provisional) · HIGH mientras lleve el acceso de desarrollo
 
 - **Objetivo**: que el administrador configure su edificio desde el navegador.
+- **Entra también la carga del edificio de ejemplo en la base** (la 7.2 del 3a), movida por la firma de E1 del 3a (Juani, 16/10/2026): sólo la necesita el acceso de desarrollo.
 - **Precondición del propose**: el `shape` de cada una de las siete pantallas con Juani (una sesión
   de `impeccable shape` por pantalla, con un brief en `openspec/exploraciones/` y el OK de Juani con
   fecha). Era la tarea 8.1 de la primera versión del propose del 3a; pasó acá para no atar el cierre del 3a a siete sesiones de diseño
