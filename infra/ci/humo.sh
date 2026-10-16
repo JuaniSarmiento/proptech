@@ -80,9 +80,21 @@ trap limpiar EXIT
 echo "contenido-senuelo-no-es-un-secreto-real" > "$SENUELO_BACKEND"
 echo "contenido-senuelo-no-es-un-secreto-real" > "$SENUELO_WEB"
 
+# Deuda V3-15/D6 (tarea 5.1): el healthcheck de `respaldos` sólo pasa
+# cuando ya hubo un primer ciclo de backup (comentario de D9 más abajo),
+# así que cada `compose up --wait` que lo deja "Healthy" implica que ya
+# escribió exactamente un `.dump` nuevo — nunca "uno solo" en total (eso
+# ya es falso con el segundo `up` de la 1b: dos arranques, dos backups).
+contar_dumps() {
+  find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" 2>/dev/null | wc -l | tr -d '[:space:]'
+}
+
 paso 0 "compose up --build -d --wait"
 compose up --build -d --wait
 STACK_LEVANTADO=1
+dumps_tras_primer_arranque=$(contar_dumps)
+echo "dumps tras el primer arranque de respaldos: $dumps_tras_primer_arranque"
+[ "$dumps_tras_primer_arranque" = "1" ]
 
 # Se piden una sola vez y se reusan (en vez de un `printenv` nuevo cada vez
 # que hacen falta): el usuario y el nombre de la base en uso no cambian
@@ -124,6 +136,10 @@ paso 1b "segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no ti
 compose down
 compose up -d --wait
 echo "ok: el segundo up terminó con exit 0 y el stack quedó sano de nuevo"
+dumps_tras_segundo_arranque=$(contar_dumps)
+echo "dumps tras el segundo arranque de respaldos: $dumps_tras_segundo_arranque"
+[ "$dumps_tras_segundo_arranque" = "$((dumps_tras_primer_arranque + 1))" ]
+echo "ok: cada arranque de respaldos dejó exactamente un .dump nuevo (D6)"
 
 paso 2 "sólo caddy publica puertos"
 estado_ps=$(compose ps --format json)
@@ -537,37 +553,34 @@ rm -f /tmp/salud_web_redis_pausado.json
 compose unpause redis
 echo "ok: Redis pausado -> /api/salud y /salud-web degradados, Redis despausado"
 
-paso 11 "backups: aparece uno solo, se restaura, no toca la base en uso"
-dump_aparecio=0
-for _ in $(seq 1 24); do
-  if ls "$CARPETA_RESPALDOS_HUMO"/proptech-*.dump >/dev/null 2>&1; then
-    dump_aparecio=1
-    break
-  fi
-  sleep 5
-done
-[ "$dump_aparecio" = "1" ]
-archivo_dump=$(find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" | sort | head -n 1)
-echo "ok: apareció un backup en menos de 2 minutos: $archivo_dump"
+paso 11 "backups: cada arranque deja exactamente un .dump nuevo, se restaura, no toca la base en uso"
+# D6 (tarea 5.1): "aparece uno solo" (el título viejo) ya es falso con dos
+# `up` (arriba, dumps_tras_primer_arranque/dumps_tras_segundo_arranque).
+# Lo que de verdad se puede afirmar, y se verifica acá, es "exactamente
+# uno nuevo por arranque" — incluido el manual (`--una-vez`) de abajo.
+dumps_antes_del_manual=$(contar_dumps)
+echo "dumps antes del backup manual: $dumps_antes_del_manual"
+[ "$dumps_antes_del_manual" = "$dumps_tras_segundo_arranque" ]
 
 # D11, D12 (tarea 9.1): el backup automático de arriba puede haber corrido
 # ANTES de sembrar las dos administraciones (el healthcheck de `respaldos`
 # sólo pasa cuando ya hubo un primer ciclo, D9): se pide uno manual
-# (`--una-vez`, pensado para esto) y se usa el dump MÁS NUEVO —no
-# necesariamente el único— para el resto de las verificaciones de este paso.
+# (`--una-vez`, pensado para esto) y se usa el dump MÁS NUEVO para el
+# resto de las verificaciones de este paso.
 compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez
-archivo_dump_reciente=""
+dumps_despues_del_manual="$dumps_antes_del_manual"
 for _ in $(seq 1 24); do
-  archivo_dump_reciente=$(find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" | sort | tail -n 1)
-  if [ -n "$archivo_dump_reciente" ] && [ "$archivo_dump_reciente" != "$archivo_dump" ]; then
+  dumps_despues_del_manual=$(contar_dumps)
+  if [ "$dumps_despues_del_manual" -gt "$dumps_antes_del_manual" ]; then
     break
   fi
   sleep 5
 done
-[ -n "$archivo_dump_reciente" ]
-[ "$archivo_dump_reciente" != "$archivo_dump" ]
+echo "dumps después del backup manual: $dumps_despues_del_manual"
+[ "$dumps_despues_del_manual" = "$((dumps_antes_del_manual + 1))" ]
+archivo_dump_reciente=$(find "$CARPETA_RESPALDOS_HUMO" -maxdepth 1 -name "proptech-*.dump" | sort | tail -n 1)
 archivo_dump="$archivo_dump_reciente"
-echo "ok: backup manual con las dos administraciones sembradas: $archivo_dump"
+echo "ok: el backup manual dejó exactamente un .dump nuevo, con las administraciones sembradas: $archivo_dump"
 
 # B5 (auditor, vuelta 2, L-016): `respaldos` es un script de bash, nunca usa
 # `FormateadorJSON` (D7): contar estos eventos sólo en sus logs es un cero
