@@ -41,14 +41,22 @@ CAMPOS_PERMITIDOS = frozenset(
         "traza",
         "dependencia",
         "componente",
-        # V2-5 (2a), tarea 6.1: el texto de "arranque_fallido". A
-        # diferencia de `tipo_error` (nunca el mensaje de una excepción
-        # cualquiera, L-007), `causa` SÍ es seguro acá porque los dos
-        # únicos emisores (`ConfiguracionInvalida`, `RolDeAplicacionInseguro`)
-        # arman su mensaje sólo con NOMBRES de variable o con frases fijas
-        # ("es superusuario", "tiene BYPASSRLS"), nunca con un valor leído
-        # del entorno o de una fila. No usar este campo con el texto de
-        # una excepción que no dé esa misma garantía.
+        # V2-5 (2a), tarea 6.1: el texto de "arranque_fallido".
+        #
+        # C2-6 (rompedor/auditor, vuelta 1 del 2c): esta lista blanca NO
+        # distingue QUIÉN llama a `logger.error(..., extra={"causa": ...})`
+        # — está permitido para CUALQUIER logger del proceso, no sólo para
+        # `app.py`/`ajustes.py`. Hoy es seguro usarlo con
+        # `ConfiguracionInvalida`/`RolDeAplicacionInseguro` porque esas dos
+        # excepciones arman su mensaje sólo con NOMBRES de variable o con
+        # frases fijas, nunca con un valor leído del entorno o de una fila
+        # — pero NADA EN EL CÓDIGO LO HACE CUMPLIR. El rompedor lo probó
+        # agregando `extra={"causa": str(administracion_id)}` en
+        # `tenant_de_tarea.py` (un módulo sin relación con el arranque,
+        # M10b): la fuga llegó igual al JSON. Quien agregue `causa` en
+        # cualquier otro lugar tiene que volver a verificar, a mano, que
+        # el valor que pasa ahí nunca puede ser un dato del entorno ni de
+        # una fila — este comentario no es una barrera, es un aviso.
         "causa",
     }
 )

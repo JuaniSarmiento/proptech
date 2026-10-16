@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from proptech_core.compartido.logs import _ATRIBUTOS_ESTANDAR
 from proptech_core.compartido.tenant_de_tarea import (
     AdministracionInvalida,
     con_administracion_de_tarea,
@@ -73,15 +74,31 @@ async def test_administracion_invalida_falla_una_sola_vez_sin_efecto(
     # `created` (segundos con fracción), `thread`, `process`, `taskName`
     # de asyncio— y cualquiera de ellos puede CONTENER por azar los mismos
     # dígitos ("123" en el id de un hilo o en los microsegundos de
-    # `created`). `tenant_de_tarea.py` sólo vuelca un campo propio además
-    # del mensaje (`extra={"tarea": ...}`, con el NOMBRE de la función, no
-    # el valor): ese es el único campo que de verdad podría filtrar el
-    # valor, y es el que se compara.
+    # `created`).
+    #
+    # C2-6 (rompedor/auditor, vuelta 1 del 2c): comparar sólo contra el
+    # campo `tarea` (como quedó después del arreglo del flake de arriba)
+    # le sacó los dientes al test para cualquier OTRA fuga: una fuga en un
+    # campo extra nuevo (`valor_recibido`, o el `causa` que agregó la
+    # tarea 6.1) pasaba sin que nada la viera (M10 y M10b del rompedor,
+    # L-019/L-020). Se compara contra TODOS los campos extra del
+    # registro — `__dict__` menos los atributos estándar de un
+    # `LogRecord` recién creado (`_ATRIBUTOS_ESTANDAR` de `logs.py`, el
+    # mismo criterio que usa `FormateadorJSON` para separar "extra" de lo
+    # propio del logger) — sin importar cómo se llame el campo nuevo que
+    # alguien agregue el día de mañana.
     representacion = str(valor)
     if representacion not in ("", "None"):
         for registro in caplog.records:
             assert representacion not in registro.getMessage()
-            assert representacion not in str(registro.__dict__.get("tarea", ""))
+            campos_extra = {
+                clave: valor_campo
+                for clave, valor_campo in registro.__dict__.items()
+                if clave not in _ATRIBUTOS_ESTANDAR
+            }
+            assert representacion not in str(campos_extra), (
+                f"el valor apareció en un campo extra del log: {campos_extra}"
+            )
 
 
 async def test_administracion_valida_le_llega_a_la_tarea_como_uuid() -> None:
