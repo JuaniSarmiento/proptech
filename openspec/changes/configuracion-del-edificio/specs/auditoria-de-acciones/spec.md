@@ -2,11 +2,12 @@
 
 ### Requirement: Acciones de configuración auditadas
 
-Crear un edificio, crear una versión de configuración de intereses y fondo de reserva, y confirmar
-"sin saldos previos" SHALL registrarse en la auditoría, en la misma transacción que la acción, con su
-acción del vocabulario cerrado (sumada por migración) y un detalle con claves permitidas: el id del
-edificio y, para una versión, su fecha de vigencia. El detalle MUST NOT contener los valores de la
-tasa ni del porcentaje. Si la acción se revierte, MUST NOT quedar su fila de auditoría.
+Crear un edificio, crear una versión de configuración de intereses, vencimiento y fondo de reserva, y
+confirmar "sin saldos previos" SHALL registrarse en la auditoría, en la misma transacción que la
+acción, con su acción del vocabulario cerrado (sumada por migración) y un detalle con claves
+permitidas: el id del edificio y, para una versión, su fecha de vigencia. El detalle MUST NOT contener
+los valores de la tasa, del porcentaje ni del recargo. Si la acción se revierte, MUST NOT quedar su
+fila de auditoría.
 
 #### Scenario: Crear un edificio queda auditado
 
@@ -21,5 +22,6 @@ tasa ni del porcentaje. Si la acción se revierte, MUST NOT quedar su fila de au
 
 #### Scenario: El detalle no trae la tasa
 
-- **WHEN** se registra la creación de una versión con tasa "4.00"
+- **WHEN** se registra la creación de una versión con tasa "4.00" y recargo del segundo vencimiento
+  "5.00"
 - **THEN** el detalle tiene sólo el id del edificio y la fecha de vigencia

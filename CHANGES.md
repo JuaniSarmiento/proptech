@@ -94,7 +94,7 @@ GATE 5: C-05a ✓                                          ← fork del cambio 2
 
 GATE 6: C-06a ✓
   → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un socio)
-  → C-06b pantallas-del-edificio (en paralelo, después de los shape de la tarea 8.1 del 3a)
+  → C-06b pantallas-del-edificio (en paralelo; su propose espera los siete shape con Juani)
 
 GATE 7: C-07 ✓                                           ← PRIMER FORK real (2 paralelos)
   → C-08 importacion-desde-excel    [Agente A]
@@ -286,14 +286,17 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-06a] `configuracion-del-edificio` · 3a
-- **Estado**: `[ ]` propuesto el 16/10/2026 (HIGH), esperando la aprobación de un socio con E1 a E8
-  (`openspec/changes/configuracion-del-edificio/proposal.md`); 23 tareas: 7 bloqueadas enteras y 4 en
-  parte por P19, P24 y P33. Propone partir el 3 en 3a y 3b (E1)
+- **Estado**: `[ ]` propuesto el 16/10/2026 (HIGH) y revisado por el arquitecto el mismo día
+  (bloqueantes aplicados con decisiones de Juani: B5, P19, P33), esperando la aprobación de un socio
+  con E1 a E10 (`openspec/changes/configuracion-del-edificio/proposal.md`); 24 tareas, ninguna
+  bloqueada (D-100 resolvió P19, P24 y P33); se recomienda mover la carga del ejemplo al 3b (quedan 23).
+  Propone partir el 3 en 3a y 3b (E1)
 - **Scope**: edificio y unidad completos (tipo, coeficiente, superficie, estado de migración),
-  grupos de reparto con FK compuesta por edificio, categorías de gasto, configuración versionada de
-  intereses y fondo de reserva de sólo agregar, permisos y auditoría de configuración, API con
-  contrato de error, el edificio de ejemplo cargado en la base con un comando idempotente, la deuda R6
-  y R11 del 2a y la del 1b con dueño 3, y los `shape` de las pantallas del 3b (sin código)
+  grupos de reparto con FK compuesta por edificio y dos modos de coeficientes (D-100), categorías de
+  gasto, configuración versionada de intereses, vencimiento (día fijo, único o doble con recargo) y
+  fondo de reserva de sólo agregar, permisos de configuración y de lectura (el vecino ve sólo lo suyo)
+  y auditoría, API con contrato de error, el edificio de ejemplo cargado en la base con un comando
+  idempotente, y la deuda R6 y R11 del 2a y la del 1b con dueño 3
 - **Dependencias**: C-05a
 - **Governance**: ALTO
 - **Leer antes**:
@@ -301,16 +304,18 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   - `openspec/changes/configuracion-del-edificio/proposal.md` y `design.md`
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Complejos (configuración del edificio)
   - `knowledge-base/06_funcionalidades.md` §HU-A1
-  - `knowledge-base/10_preguntas_abiertas.md` (P16, P19, P24, P33, P47)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-096, D-098, D-100)
+  - `knowledge-base/10_preguntas_abiertas.md` (P16, P47)
 
 ---
 
 ### [C-06b] `pantallas-del-edificio` · 3b (nombre provisional)
 - **Estado**: `[ ]` pendiente, nace de la partición propuesta en el 3a (E1); se propone después de los
-  siete `shape` de la tarea 8.1 del 3a
+  siete `shape` con Juani, que son su precondición (en la primera versión del propose eran la tarea 8.1 del 3a)
 - **Scope**: las pantallas de configuración del edificio para el administrador (mis edificios,
   resumen, padrón, grupos, categorías, intereses y fondo, confirmar "sin saldos previos"), el acceso
-  de desarrollo sin login firmado en E2 (sólo si el 2b no llegó antes), los tokens de `DESIGN.md` y el
+  de desarrollo sin login firmado en E2 (sólo si el 2b no llegó antes), la carga del ejemplo en la base
+  si E1 se firma con esa recomendación, los tokens de `DESIGN.md` y el
   "terminado" de frontend (teclado y foco, errores por campo, estados de carga y vacío, 320 px, WCAG
   2.2 AA)
 - **Dependencias**: C-06a (y los briefs de `shape`)

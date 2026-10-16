@@ -27,15 +27,18 @@ abierta condiciona un paso, el flujo lo marca en vez de inventar el comportamien
   5. El sistema fija el **estado de migración** del edificio: pendiente, confirmada o sin saldos
      previos (D-083); el edificio de ejemplo queda "sin saldos previos" porque no trae saldo inicial.
 - **Casos de error**:
-  - Coeficientes de un grupo que no suman 1 dentro de la tolerancia de ±0,0001 (R01): se rechaza con
-    el informe de la diferencia.
+  - Coeficientes de "Generales" o de un grupo con coeficientes propios que no suman 1 dentro de la
+    tolerancia de ±0,0001 (R01): la carga no se rechaza; el sistema informa la suma, la diferencia y su
+    estado, y la emisión del cambio 7 queda bloqueada por el control duro "Coeficientes fuera de
+    tolerancia" de R34 hasta que se corrija.
   - Una unidad repetida o un tipo de unidad que no existe en los parámetros del complejo: se rechaza
     (`semilla.py`, `_validar_contra_parametros`).
   - Editar la configuración de otro edificio: rechazado por el aislamiento de R10/D-076 (se prueba en
     el cambio 2, que es quien construye el acceso).
-- **Pendiente**: si el edificio piloto usa el esquema de doble vencimiento (R26) en vez del
-  vencimiento único de R03 (P19, antes del cambio 3); los coeficientes propios de un grupo parcial
-  (P24).
+- **Resuelto en D-100**: el edificio elige vencimiento único o doble con recargo en porcentaje, con un
+  día fijo del 1 al 28 que el cambio 7 puede correr al emitir (P19, P33), y cada grupo parcial elige
+  renormalizar los coeficientes generales o llevar coeficientes propios (P24). Falta contrastarlo con
+  el reglamento del piloto (Alberto).
 
 ## Flujo 2 · Migración de saldos iniciales (importación desde Excel)
 

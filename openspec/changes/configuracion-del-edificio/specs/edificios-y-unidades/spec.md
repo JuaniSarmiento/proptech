@@ -9,17 +9,28 @@ está, sin que ningún dato cruce de edificio ni de administración.
 ### Requirement: Un edificio nuevo arranca con los valores de los parámetros
 
 Crear un edificio SHALL copiar, en ese momento, los valores de `config/parametros.yaml` que el proceso
-leyó al arrancar: la primera versión de la configuración de intereses y fondo de reserva, las
-categorías de gasto precargadas y el grupo "Generales" por coeficiente con todas las unidades. El
-edificio MUST nacer con estado de migración `pendiente` y con los estados de unidad de R02
-desactivados. Cambiar el archivo de parámetros después MUST NOT alterar ningún edificio ya creado.
+leyó al arrancar: la primera versión de la configuración de intereses, vencimiento y fondo de reserva,
+las categorías de gasto precargadas y el grupo "Generales" por coeficiente con todas las unidades. El
+alta MAY traer la configuración inicial de intereses, vencimiento y fondo de reserva del reglamento
+del edificio, con los mismos rangos y reglas que una versión; si la trae, la primera versión MUST ser
+esa, vigente desde el día de alta, y no hace falta una segunda versión. El edificio MUST nacer con
+estado de migración `pendiente` y con los estados de unidad de R02 desactivados. Cambiar el archivo de
+parámetros después MUST NOT alterar ningún edificio ya creado.
 
 #### Scenario: Edificio nuevo con los valores del archivo
 
 - **WHEN** el titular crea un edificio con nombre y localidad
 - **THEN** el edificio existe en su administración con 3.00 % mensual, 0 días de gracia, cálculo
-  proporcional por día, fondo de reserva 0.00 %, las nueve categorías de los parámetros, el grupo
-  "Generales" por coeficiente, estado de migración `pendiente` y estados de unidad desactivados
+  proporcional por día, vencimiento único el día por defecto de los parámetros, fondo de reserva
+  0.00 %, las nueve categorías de los parámetros, el grupo "Generales" por coeficiente, estado de
+  migración `pendiente` y estados de unidad desactivados
+
+#### Scenario: Edificio nuevo con la configuración de su reglamento
+
+- **WHEN** el titular crea un edificio mandando en el alta tasa "5.00", vencimiento el día 10 y fondo
+  de reserva "2.00"
+- **THEN** el edificio tiene una sola versión de configuración, vigente desde hoy, con esos valores, y
+  ningún pedido posterior del mismo día hace falta para fijarlos
 
 #### Scenario: Cambiar el archivo no toca edificios existentes
 
@@ -31,8 +42,8 @@ desactivados. Cambiar el archivo de parámetros después MUST NOT alterar ningú
 
 Toda ruta que da de alta algo SHALL generar el id del lado del servidor y tomar la administración de
 la identidad. Un cuerpo de alta que trae `id`, `administracion_id`, `complejo_id` o cualquier campo que
-la ruta no declara MUST rechazarse con 422, sin escribir nada y sin repetir en la respuesta el valor
-rechazado. Esto MUST valer para toda ruta de alta presente y futura, verificado por un barrido.
+la ruta no declara MUST rechazarse con 422 que nombra el campo, sin escribir nada y sin repetir en la
+respuesta el valor rechazado. Esto MUST valer para toda ruta de alta presente y futura, verificado por un barrido.
 
 #### Scenario: Alta de edificio con id propio
 
@@ -48,6 +59,11 @@ rechazado. Esto MUST valer para toda ruta de alta presente y futura, verificado 
 
 - **WHEN** existe una ruta `POST` de dominio cuyo cuerpo acepta un `id` sin rechazarlo
 - **THEN** la suite de tests falla nombrando la ruta
+
+#### Scenario: Una ruta de alta nueva sin cuerpo de prueba
+
+- **WHEN** existe una ruta `POST` de dominio para la que el barrido no tiene un cuerpo válido de prueba
+- **THEN** la suite de tests falla nombrando la ruta, en vez de saltearla
 
 ### Requirement: Unidades con tipo, coeficiente y superficie
 

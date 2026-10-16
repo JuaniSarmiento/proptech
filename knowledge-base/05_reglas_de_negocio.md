@@ -46,17 +46,28 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Cada gasto se asigna a un grupo** y se reparte sólo entre sus unidades. El grupo dice **quién
   paga**; la categoría (R16) dice **en qué se gastó**. Son independientes.
 - **Default**: un complejo nuevo arranca con un grupo "Generales", todas las unidades, por coeficiente.
-- **Validación** (D-082, a validar con un administrador): los coeficientes de un grupo suman 1 con
-  una tolerancia de ±0,0001, con el borde incluido (0,9999 y 1,0001 se aceptan). Dentro de la tolerancia
-  se aceptan con una advertencia, y el reparto usa
-  cada coeficiente dividido por la suma real, así el total sigue exacto con R07. Fuera de la tolerancia,
-  la carga se rechaza con el informe de la diferencia.
+- **Coeficientes de un grupo parcial** (D-100, P24): cada grupo parcial por coeficiente elige su modo.
+  Por defecto, **renormalizado**: cada unidad usa su coeficiente general dividido por la suma de los
+  generales de las unidades del grupo. Si el reglamento fija porcentajes propios, **coeficientes
+  propios**: cada unidad del grupo lleva el suyo, y tienen que sumar 1 dentro del grupo. Un grupo por
+  superficie o en partes iguales no tiene coeficientes propios.
+- **Validación** (D-082, a validar con un administrador): los coeficientes de "Generales" y los de
+  cada grupo con coeficientes propios suman 1 con una tolerancia de ±0,0001, con el borde incluido
+  (0,9999 y 1,0001 están dentro). **La carga no se rechaza** (E5 del 3a): cargar el padrón de a una
+  unidad pasa necesariamente por sumas parciales que no dan 1. **Se informa siempre la suma, la
+  diferencia y su estado**: "ok" si es exactamente 1, "advertencia" dentro de la tolerancia y "fuera de
+  tolerancia" si se aparta más. **La emisión se bloquea**: un grupo fuera de tolerancia dispara el
+  control duro "Coeficientes fuera de tolerancia" de R34 (cambio 7). Dentro de la tolerancia, el
+  reparto usa cada coeficiente dividido por la suma real, así el total sigue exacto con R07.
 - **Historia**: la liquidación guarda la composición de cada grupo usada en ese período.
 - **Grupos típicos de un edificio**: Generales (todas las unidades), Ascensor (sin planta baja ni
   locales), Cocheras, Servicios centrales. En barrios: Generales, Pileta, Obra calle 5.
 - **Tests mínimos**: gasto general entre todos; gasto de un grupo parcial no toca a los demás;
-  partes iguales; la suma repartida es igual al gasto, al centavo; coeficientes que suman 0,9999 se
-  aceptan con advertencia y el total sigue exacto; coeficientes que suman 0,9998 se rechazan.
+  partes iguales; la suma repartida es igual al gasto, al centavo; coeficientes que suman 0,9999 dan
+  advertencia y el total sigue exacto; coeficientes que suman 0,9998 se guardan, se informan "fuera de
+  tolerancia" y la emisión no sigue; un grupo renormalizado reparte entre sus unidades en proporción a
+  sus coeficientes generales; un grupo con coeficientes propios que suman 0,8 se informa fuera de
+  tolerancia.
 
 ## R02 · Estado de la unidad · Vigente (D-014) · desactivada en edificios (D-030) · se construye con barrios (v1.2, D-089)
 
@@ -476,11 +487,14 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Emisión con alertas aceptadas**: con un bloqueo activo (salvo los controles duros), el administrador puede emitir igual sólo
   si confirma de forma explícita qué alertas acepta. Queda registrado quién, cuándo y cuáles. Es
   distinto del modo degradado (R24), que cubre la caída de un servicio externo.
-- **Controles duros** (D-080, D-081): "saldos iniciales sin validar", "ingresos mayores que los
-  gastos" y "factura duplicada" **no se pueden aceptar**: la emisión sólo sigue cuando se resuelven. Emitir sin los saldos iniciales
+- **Controles duros** (D-080, D-081, E5 del 3a): "saldos iniciales sin validar", "ingresos mayores que
+  los gastos", "factura duplicada" y "coeficientes fuera de tolerancia" **no se pueden aceptar**: la
+  emisión sólo sigue cuando se resuelven. Emitir sin los saldos iniciales
   confirmados dejaría la deuda vieja afuera del libro (R09, R40), y emitir con ingresos mayores que los
   gastos daría expensas negativas (R38). **Factura duplicada** también es duro (D-081): con la clave
-  completa de R12 es la misma factura, y aceptarla repartiría el gasto dos veces. El resto de los bloqueantes se puede aceptar con registro.
+  completa de R12 es la misma factura, y aceptarla repartiría el gasto dos veces. **Coeficientes fuera de tolerancia** es duro porque
+  repartiría mal entre todas las unidades: R01 deja cargar el padrón sin bloquear y este control es el
+  que la hace cumplir. El resto de los bloqueantes se puede aceptar con registro.
 - **Una diferencia nunca se tapa**: no se carga un movimiento inventado para que un control dé bien.
 - **Controles del MVP**:
 
@@ -488,6 +502,7 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   |---|---|---|---|
   | Saldos iniciales sin validar | El edificio es nuevo y su estado de migración no es confirmada ni sin saldos previos (R09) | Bloqueante (duro) | 7 |
   | Factura duplicada | Dos gastos con el mismo CUIT del proveedor, punto de venta, tipo y número de comprobante (la clave de R12) | Bloqueante (duro) | 7 |
+  | Coeficientes fuera de tolerancia | "Generales" o un grupo con coeficientes propios suma fuera de 1 ± 0,0001 (R01, D-082, D-100), según el mismo informe que da la API del cambio 3a | Bloqueante (duro) | 7 |
   | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
   | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
   | Pagos sin confirmar | Hay pagos informados todavía sin confirmar: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
@@ -505,7 +520,8 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Tests mínimos**: un bloqueo activo impide emitir; aceptarlo de forma explícita permite emitir y
   deja registro con usuario, fecha y alertas; una advertencia no impide emitir; una factura cargada
   dos veces dispara el bloqueo con proveedor, número y monto y no se puede aceptar; "ingresos mayores que
-  los gastos" no se puede aceptar; un edificio sin
+  los gastos" no se puede aceptar; un padrón que suma 0,9998 dispara "coeficientes fuera de tolerancia"
+  con el grupo y la diferencia, y aceptarlo se rechaza; un edificio sin
   saldos confirmados no emite su primera liquidación, y aceptar esa alerta se rechaza: la emisión
   recién sigue cuando se confirman los saldos o se confirma "sin saldos previos" (R09); ningún control
   genera movimientos.

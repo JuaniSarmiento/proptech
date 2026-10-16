@@ -1,16 +1,17 @@
 ## Purpose
 
-Define los grupos de reparto de cada edificio (R01): quién paga cada gasto, con qué método y entre qué
-unidades, y cómo se informa si los coeficientes cierran, sin que un grupo pueda incluir unidades de
-otro edificio ni de otra administración.
+Define los grupos de reparto de cada edificio (R01): quién paga cada gasto, con qué método, entre qué
+unidades y con qué coeficientes (D-100), y cómo se informa si los coeficientes cierran, sin que un
+grupo pueda incluir unidades de otro edificio ni de otra administración.
 
 ## ADDED Requirements
 
 ### Requirement: El grupo "Generales" es obligatorio y abarca todo el edificio
 
-Todo edificio SHALL tener un grupo "Generales", creado con el edificio, por coeficiente y con todas
-sus unidades, incluidas las que se den de alta después. Su método y su alcance MUST NOT poder
-cambiarse, y el grupo MUST NOT poder borrarse.
+Todo edificio SHALL tener un grupo "Generales", creado con el edificio, por coeficiente, con los
+coeficientes de las unidades y con todas sus unidades, incluidas las que se den de alta después. Su
+método, su modo de coeficientes y su alcance MUST NOT poder cambiarse, y el grupo MUST NOT poder
+borrarse.
 
 #### Scenario: Una unidad nueva entra a Generales
 
@@ -52,14 +53,47 @@ Una clave repetida dentro del edificio MUST responder 409.
 - **WHEN** se agrega dos veces la misma unidad a un grupo
 - **THEN** la respuesta es 409 y la unidad figura una sola vez
 
+### Requirement: Dos modos de coeficientes en los grupos parciales
+
+Un grupo parcial por coeficiente SHALL tener un modo de coeficientes (D-100, P24): `renormalizado`,
+por defecto, en el que cada unidad usa su coeficiente general dividido por la suma de los generales de
+las unidades del grupo, o `propios`, en el que cada unidad del grupo lleva su propio coeficiente
+(texto decimal ASCII, mayor que 0 y hasta 1, hasta 6 decimales) y la suma dentro del grupo se valida
+como en R01. Un grupo por superficie o en partes iguales MUST ser `renormalizado`. Un miembro de un
+grupo `renormalizado` MUST NOT llevar coeficiente propio y uno de un grupo `propios` MUST llevarlo; la
+base MUST rechazar la incoherencia aunque la aplicación se equivoque. Cambiar el modo de un grupo MUST
+reemplazar sus miembros en una sola operación, con la forma del modo nuevo.
+
+#### Scenario: Grupo parcial renormalizado
+
+- **WHEN** el titular crea "Ascensor" con cuatro unidades sin coeficientes propios
+- **THEN** el grupo queda `renormalizado` y no informa una suma propia
+
+#### Scenario: Coeficiente propio en un grupo renormalizado
+
+- **WHEN** conectado como `proptech_app` se inserta por SQL un miembro con coeficiente en un grupo
+  `renormalizado`, o uno sin coeficiente en un grupo `propios`
+- **THEN** la base rechaza la escritura
+
+#### Scenario: Cambiar el modo por SQL con miembros
+
+- **WHEN** conectado como `proptech_app` se cambia por SQL el modo de un grupo que tiene miembros
+- **THEN** la base rechaza la escritura y el grupo y sus miembros quedan iguales
+
+#### Scenario: Cambiar el modo de un grupo
+
+- **WHEN** el titular pasa "Cocheras" de `renormalizado` a `propios` mandando sus unidades con
+  coeficientes que suman "1.000000"
+- **THEN** el grupo queda `propios`, con esos coeficientes, y su informe dice estado `ok`
+
 ### Requirement: Informe de coeficientes según R01
 
-Para el grupo "Generales", la API SHALL informar siempre la suma de los coeficientes, la diferencia con
-1 y un estado: `ok` si la suma es exactamente 1, `advertencia` si se aparta hasta 0,0001 inclusive, y
-`fuera_de_tolerancia` si se aparta más. La suma y la diferencia MUST calcularse en `Decimal` y
-devolverse como texto. Cargar o editar unidades MUST NOT bloquearse por la suma: el bloqueo lo hace el
-control antes de emitir del cambio 7 (R34). Los grupos parciales se informan según la respuesta a P24,
-que este requisito no fija.
+Para el grupo "Generales" y para cada grupo con coeficientes `propios`, la API SHALL informar siempre
+la suma de los coeficientes, la diferencia con 1 y un estado: `ok` si la suma es exactamente 1,
+`advertencia` si se aparta hasta 0,0001 inclusive, y `fuera_de_tolerancia` si se aparta más. La suma y
+la diferencia MUST calcularse en `Decimal`, con la misma función que usa el validador de la semilla, y
+devolverse como texto. Cargar o editar unidades o grupos MUST NOT bloquearse por la suma: el bloqueo
+lo hace el control "Coeficientes fuera de tolerancia" antes de emitir, en el cambio 7 (R34).
 
 #### Scenario: Suma exacta
 
@@ -86,3 +120,9 @@ que este requisito no fija.
 
 - **WHEN** un edificio recién creado no tiene unidades
 - **THEN** el informe dice suma "0.000000" y estado `fuera_de_tolerancia`
+
+#### Scenario: Grupo con coeficientes propios que no suman 1
+
+- **WHEN** un grupo `propios` tiene miembros cuyos coeficientes suman 0.800000
+- **THEN** el grupo queda guardado y su informe dice suma "0.800000", diferencia "-0.200000" y estado
+  `fuera_de_tolerancia`

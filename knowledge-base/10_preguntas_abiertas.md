@@ -142,14 +142,14 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
-- **P24 a P34 y P36 a P41** (P35 ya está resuelta, D-086): casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual
-  se decide.
-- **P19**: el doble vencimiento, antes del cambio 3.
+- **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la
+  quinta y la sexta revisión, cada uno con el cambio antes del cual se decide.
+- **P19**: resuelta en D-100 (vencimiento único o doble, por edificio); ya no bloquea el cambio 3.
 - **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
 - **P22**: quién usa el editor de reglas, antes del 6b.
 - **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4, junto con
-  P10 y P17 en la misma sesión. P19, P24 y P33 son preguntas aparte: bloquean el cambio 3, se
-  responden antes.
+  P10 y P17 en la misma sesión. P19, P24 y P33 ya no bloquean el cambio 3 (D-100); los rangos y
+  defaults de vencimiento que fija el 3a entran en esta validación.
 - **P12, P14 y P16**: la inscripción ante la AAIP (antes del 8), el plazo del libre deuda (antes del 10b)
   y la parte de las unidades del consorcio (antes del 3).
 - **P45 y P46**: validar la propuesta de valor con administradores (antes de M2) y los nombres propios

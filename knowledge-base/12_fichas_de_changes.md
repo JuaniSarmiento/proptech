@@ -249,10 +249,11 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
 
 ### 3 · `configuracion-del-edificio` · partido en 3a y 3b (propuesto, E1 del 3a)
 
-El propose del 16/10/2026 (`openspec/changes/configuracion-del-edificio/`) contó unas 23 tareas de
-backend y unas 15 de pantallas, y propone partirlo (elección E1, la firma el socio que apruebe): el
-**3a** es el modelo, las reglas, la API y la semilla, y es lo único que necesita el 4; el **3b** son las
-pantallas, que además pasan antes por un `shape` con Juani. Si E1 se rechaza, las dos fichas vuelven a
+El propose del 16/10/2026 (`openspec/changes/configuracion-del-edificio/`, revisado por el arquitecto
+el mismo día, con D-100 aplicada) cuenta 24 tareas de backend y unas 15 de pantallas, y propone
+partirlo (elección E1, la firma el socio que apruebe): el **3a** es el modelo, las reglas, la API y la
+semilla, y es lo único que necesita el 4; el **3b** son los `shape` de las pantallas con Juani y las
+pantallas. Si E1 se rechaza, las dos fichas vuelven a
 ser una. Objetivo común: que el administrador cree un edificio y lo configure como dice su reglamento.
 
 ### 3a · `configuracion-del-edificio` · HIGH
@@ -260,64 +261,82 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Objetivo**: que el modelo del edificio quede completo para el 4, con la base frenando cualquier
   cruce de edificio o de administración, y la configuración que cambia plata versionada y de sólo
   agregar.
-- **Historias**: HU-A1 (los datos; las pantallas son del 3b). **Reglas**: R01 (sólo la definición de
-  grupos y la validación de coeficientes), R02 (sólo el campo de estado, desactivado; la regla se
-  construye con barrios, D-089), R03 (su configuración), R09 (el estado de migración), R15
-  (porcentaje), R16 (categorías).
+- **Historias**: HU-A1 (los datos; las pantallas son del 3b). **Reglas**: R01 (la definición de
+  grupos con los dos modos de coeficientes de D-100 y el informe de la suma), R02 (sólo el campo de
+  estado, desactivado; la regla se construye con barrios, D-089), R03 (su configuración, con el día fijo
+  de vencimiento del 1 al 28), R26 (sólo como configuración: vencimiento único o doble con recargo en
+  porcentaje, D-100), R09 (el estado de migración), R15 (porcentaje), R16 (categorías).
 - **Propuestas** que **no entran** (ninguna se validó): R35, R36, R39.
 - **Decisiones**: D-010, D-013, D-029, D-030, D-031, D-041, D-042, D-080, D-082, D-083, D-087, D-089,
-  D-094, D-096, D-098.
+  D-094, D-096, D-098, D-100.
 - **Gobernanza HIGH** (D-087, D-094): guarda la configuración versionada de intereses, que cambia montos,
   y suma permisos a la matriz de D-096. Se propone y se espera la aprobación de uno de los dos socios,
-  con las elecciones E1 a E8, antes de construir.
+  con las elecciones E1 a E10, antes de construir.
 - **Entra**: edificio (localidad, estado de migración) y unidad (identificador, tipo de D-029, piso,
   coeficiente, superficie, estado desactivado) completos; grupos de reparto con FK compuesta que
   comparte `complejo_id`, "Generales" obligatorio; categorías de gasto (crear, renombrar, ordenar,
-  desactivar, nunca borrar); configuración de intereses y fondo de reserva como **menús cerrados**
-  tomados de `parametros.yaml` al crear, versionada con vigencia, autor y fecha, de sólo agregar
-  (D-010, D-080, E4); el informe de R01 con la tolerancia de ±0,0001 (bloquea el 7, no la carga, E5);
-  permisos de configuración (E3) y auditoría de crear edificio, crear versión y confirmar "sin saldos
-  previos" (E7); API con contrato de error (401, 404, 403, 409, 422 sin el valor); **cargar en la base
-  el edificio de ejemplo** con un comando idempotente, en una administración de ejemplo propia (E6); el
-  **estado de migración** (pendiente, confirmada o sin saldos previos, R09, D-083) en la base y en la
-  semilla, con el ejemplo "sin saldos previos"; **alinear el validador de la semilla con R01** y con la
-  respuesta a P24; los `shape` de las pantallas del 3b, sin código. 23 tareas en
-  `openspec/changes/configuracion-del-edificio/`.
-- **No entra**: las pantallas y el acceso de desarrollo (3b); carga masiva desde Excel (5); cálculos
-  (4, 7); que una liquidación emitida no cambie al cambiar la tasa (se prueba en el 7); el motor de
-  reglas (6b, D-087); bajas de edificios, unidades o grupos.
+  desactivar, nunca borrar); configuración de intereses, vencimiento (día fijo del 1 al 28, único o
+  doble con recargo en porcentaje, E9) y fondo de reserva como **menús cerrados** tomados de
+  `parametros.yaml` al crear (o del reglamento, en el mismo alta), versionada con vigencia, autor y
+  fecha, de sólo agregar también en los permisos que sobreviven a cada `up` (D-010, D-080, E4); grupos
+  parciales renormalizados o con coeficientes propios (D-100); el informe de R01 con la tolerancia de
+  ±0,0001, con la función pura en `compartido` (bloquea el 7, no la carga, E5); permisos de
+  configuración y de lectura, con el vecino viendo sólo lo suyo (E3), y auditoría de crear edificio,
+  crear versión y confirmar "sin saldos previos" (E7); API con contrato de error (401, 422 del cuerpo,
+  404, 403, 409, 422 sin el valor); **cargar en la base el edificio de ejemplo** con un comando
+  idempotente, en una administración de ejemplo propia (E6, E10; se recomienda mover esa tarea al 3b);
+  el **estado de migración** (pendiente, confirmada o sin saldos previos, R09, D-083) en la base y en
+  la semilla, con el ejemplo "sin saldos previos"; **alinear el validador de la semilla con R01** y con
+  los modos de D-100. 24 tareas en `openspec/changes/configuracion-del-edificio/` (23 si la carga del
+  ejemplo pasa al 3b; excepción a D-088 como el 1c).
+- **No entra**: los `shape`, las pantallas y el acceso de desarrollo (3b); carga masiva desde Excel
+  (5); cálculos (4, 7), incluido el recargo del segundo vencimiento; correr el vencimiento al emitir
+  (7); que una liquidación emitida no cambie al cambiar la tasa (se prueba en el 7); el motor de reglas
+  (6b, D-087); bajas de edificios, unidades o grupos.
 - **Deuda con dueño este cambio** (L-012, D-098): **R6**, que bloquea antes de la primera ruta nueva (el
   sweep de rutas protegidas no ve `include_router(prefix=...)` ni `add_api_route`); **R11** (el id lo
   genera siempre el servidor, E8: un alta con `id` da 422, verificado por un barrido); y la fila del 1b
-  de "Deuda técnica de las auditorías del 13/10" (el tope del YAML ya estaba hecho; lo de Compose va
-  después de integrar el 2c).
+  de "Deuda técnica de las auditorías del 13/10" (el tope del YAML ya estaba hecho; la parte de
+  infraestructura choca con `main` en `app.py`, no en Compose).
 - **Depende de**: 2a (para construirse; el 2b, para que una persona lo use). **Habilita**: 4, 5, 6, 3b.
-- **Bloqueado por**: P19 y P33 (la forma de la configuración versionada y, por arrastre, crear un
-  edificio y cargar el ejemplo) y P24 (grupos parciales y el validador de la semilla), en tareas
-  puntuales: 12 de 23 tareas no dependen de ninguna. P16 sólo bloquearía R39, que no entra. P47 no
-  bloquea el código pero sí la integración con el 2c.
+- **Bloqueado por**: nada. P19, P24 y P33 se resolvieron en D-100 (16/10/2026, pendiente de contrastar
+  con el reglamento del piloto) y las 24 tareas quedan libres desde la aprobación. P16 sólo bloquearía
+  R39, que no entra. P47 no bloquea el código pero sí la integración (`app.py` y `roles.py`). Cuatro
+  preguntas nuevas de la revisión (PR1 a PR4 en el design) no bloquean.
 - **Decidido en el design**: la configuración vigente para una fecha es la versión de mayor vigencia que
   no la supera; cada liquidación del 7 referencia la versión que usó (qué fecha usa es P34, del 4 y el
-  7). Si P19 confirma doble vencimiento, la versión suma columnas: se reabre el design antes de la 3.4.
+  7). Desde el 3a, el rollback con edificios cargados es restaurar un respaldo; el `downgrade` vale
+  sólo para una base sin auditoría nueva.
 - **Que intente romper el rompedor**: coeficientes de un grupo que no suman 1 (bordes 0,9999 y 1,0001,
   0,9998); una unidad repetida; cambiar la tasa y que se pierda la versión anterior; versiones
-  superpuestas o simultáneas para la misma fecha; editar la configuración de otro edificio; una unidad
-  de otro edificio o de otra administración en un grupo, por la API y por SQL; el edificio de ejemplo
-  cargado dos veces, en paralelo o después de editarlo; montos y proporciones como `float`; un alta con
-  `id` del cliente; una ruta nueva que el sweep no ve. La lista completa está en la propuesta.
+  superpuestas o simultáneas para la misma fecha; editar una versión después de un segundo `up`;
+  vencimientos incoherentes; editar la configuración de otro edificio; un vecino que lee el padrón;
+  una unidad de otro edificio o de otra administración en un grupo, por la API y por SQL; el edificio
+  de ejemplo cargado dos veces, en paralelo o después de editarlo; montos y proporciones como `float`;
+  un alta con `id` del cliente; una ruta nueva que el sweep no ve; un import de `complejos` en
+  `compartido`. La lista completa está en la propuesta.
 - **Terminado cuando**: se cumplen los criterios de datos de HU-A1; un edificio nuevo arranca con los
   valores de `parametros.yaml`; cambiar el archivo no altera edificios existentes; la base rechaza como
-  `proptech_app` toda escritura cruzada y toda edición de una versión; las migraciones bajan y suben
-  sobre una copia con datos; la corrida de cierre en orden y un clon limpio en verde.
+  `proptech_app` toda escritura cruzada y toda edición de una versión, también después de un segundo
+  `up`; el vecino no lee la configuración; las migraciones bajan y suben sobre una copia sin auditoría
+  nueva y, con auditoría nueva, el `downgrade` falla y se restaura el respaldo; la corrida de cierre en
+  orden y un clon limpio en verde.
 
 ### 3b · `pantallas-del-edificio` (nombre provisional) · HIGH mientras lleve el acceso de desarrollo
 
 - **Objetivo**: que el administrador configure su edificio desde el navegador.
+- **Precondición del propose**: el `shape` de cada una de las siete pantallas con Juani (una sesión
+  de `impeccable shape` por pantalla, con un brief en `openspec/exploraciones/` y el OK de Juani con
+  fecha). Era la tarea 8.1 de la primera versión del propose del 3a; pasó acá para no atar el cierre del 3a a siete sesiones de diseño
+  (revisión del arquitecto del 16/10).
 - **Entra**: siete pantallas de la superficie del administrador (mis edificios, resumen del edificio,
-  padrón de unidades, grupos de reparto, categorías de gasto, intereses y fondo de reserva, confirmar
-  "sin saldos previos"), cada una después de su `shape` con Juani (tarea 8.1 del 3a); los tokens de
-  `DESIGN.md`; el acceso de desarrollo sin login de E2 (punto de entrada fuera del paquete instalado y
-  un Compose aparte, que el 2b borra), **sólo si el 2b no llegó antes**.
+  padrón de unidades, grupos de reparto, categorías de gasto, intereses, vencimiento y fondo de
+  reserva, confirmar "sin saldos previos"); los tokens de `DESIGN.md`; el acceso de desarrollo sin
+  login de E2 (punto de entrada fuera del paquete instalado y un Compose aparte que nunca se llama
+  `compose.override.yaml`, que el 2b borra), **sólo si el 2b no llegó antes**, con un test que falla si
+  algún archivo del repositorio pone `COMPOSE_FILE` con `desarrollo` (la contención real es la RLS más
+  la identidad fija en la administración de ejemplo); y, si E1 se firma con la recomendación, el
+  comando que carga el ejemplo en la base (la 7.2 del 3a).
 - **Reglas de diseño**: números tabulares y formato argentino en coeficientes, tasas y porcentajes; el
   estado de R01 y el de migración nunca sólo con color; una acción principal por pantalla; la web no
   calcula (la suma y su estado vienen de la API).
@@ -326,7 +345,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   no hay scroll horizontal; WCAG 2.2 AA sin violaciones de axe en cada estado.
   Cada pantalla tiene su ayuda "?" con las tres partes escritas (D-102, HU-T1, The Always-Help
   Rule de `DESIGN.md`, pedido de Alberto del 17/10/2026).
-- **Depende de**: 3a y los briefs de `shape`. **Habilita**: el uso real del 3 junto con el 2b.
+- **Depende de**: 3a y los `shape`. **Habilita**: el uso real del 3 junto con el 2b.
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
 
@@ -429,7 +448,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
 - **Decisiones**: D-024, D-031, D-041, D-047 (puntos 5, 7 y 8), D-055, D-066, D-067, D-069, D-070,
-  D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082, D-084, D-085.
+  D-073, D-074, D-075, D-078, D-079, D-080, D-081, D-082, D-084, D-085, D-100.
 - **Entra**, en dos bloques de tareas:
   - **Preliquidación (sin efectos)**: reparto de los gastos aprobados, fondo de reserva, cargos
     particulares e intereses, agrupado por ordinaria y extraordinaria y por categoría; no escribe deuda.
@@ -442,9 +461,16 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
     (13). Después de distribuida, sólo se corrige con un ajuste (R08).
   - **Controles antes de emitir** (R34, D-069): la lista con bloqueantes y advertencias, la emisión
     con alertas aceptadas y su registro, y los controles sobre los gastos: saldos iniciales sin
-    validar, factura duplicada, gastos en revisión (bloqueante), gastos sin IA (advertencia) y, sobre
-    las consultas que expone el cambio 6, gasto mensual obligatorio faltante e ingresos mayores que
-    los gastos. Los controles de pagos, extracto y contactos los suman los cambios 8, 9 y 13.
+    validar, factura duplicada, gastos en revisión (bloqueante), gastos sin IA (advertencia),
+    **coeficientes fuera de tolerancia** (bloqueante duro: lee el informe de R01 del 3a para
+    "Generales" y cada grupo con coeficientes propios; es lo que hace cumplir R01, porque la carga del
+    padrón no se bloquea, E5 del 3a) y, sobre las consultas que expone el cambio 6, gasto mensual
+    obligatorio faltante e ingresos mayores que los gastos. Los controles de pagos, extracto y
+    contactos los suman los cambios 8, 9 y 13.
+  - **Vencimiento de la liquidación** (D-100, P33): toma el día fijo y la modalidad (único o doble, con
+    el recargo en porcentaje) de la configuración vigente del 3a, y permite **correr el vencimiento al
+    emitir** una liquidación puntual (un feriado, un ajuste), dejando registrado quién, cuándo, de qué
+    día a qué día y el motivo. Correrlo no cambia la configuración del edificio.
   - **Links de descarga firmados y con vencimiento** (D-070): el PDF de la expensa nunca tiene una
     dirección pública; este cambio arma el mecanismo que reusan los demás.
   - **Reglas propias del edificio sin motor** (D-089): si se validan, el importe con descuento de la
@@ -473,7 +499,8 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   de Alberto, ProTecc A4): la liquidación sale igual; los gastos "sin IA" no entran y generan una
   advertencia, y los "en revisión" bloquean salvo aceptación (D-075). Los tests de R24 arman a mano
   gastos en esos estados, sin esperar a los cambios 9 y 14.
-- **Que intente romper el rompedor**: emitir dos veces el mismo período; una preliquidación que
+- **Que intente romper el rompedor**: emitir con un padrón que suma 0,9998 o aceptar esa alerta;
+  correr el vencimiento sin dejar registro; emitir dos veces el mismo período; una preliquidación que
   escribe algo; lo prorrateado que no da los gastos menos notas de crédito e ingresos, más el fondo; Redis caído justo
   después de emitir; renombrar una categoría después de emitir; anular una liquidación después de
   que fue distribuida; anular sin motivo; anular y que algún movimiento del libro cambie; distribuir
