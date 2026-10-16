@@ -88,8 +88,8 @@ def test_humo_usa_pasos_sh_en_sus_21_pasos() -> None:
     texto = HUMO.read_text()
     assert "pasos.sh" in texto, "humo.sh no fuentea infra/ci/pasos.sh"
     llamadas_a_paso = re.findall(r'^\s*paso\s+\S+\s+"', texto, flags=re.MULTILINE)
-    assert len(llamadas_a_paso) == 21, (
-        f"se esperaban 21 llamadas a `paso N ...` en humo.sh, se encontraron {len(llamadas_a_paso)}"
+    assert len(llamadas_a_paso) == 22, (
+        f"se esperaban 22 llamadas a `paso N ...` en humo.sh, se encontraron {len(llamadas_a_paso)}"
     )
     assert not re.search(r'^echo "--- \(', texto, flags=re.MULTILINE), (
         "quedó un encabezado de paso anunciado con echo suelto en vez de `paso`"

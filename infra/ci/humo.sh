@@ -242,6 +242,57 @@ echo "uid pid1: api=$uid_pid1_api web=$uid_pid1_web worker=$uid_pid1_worker" \
 # declarado (D3) — nada que verificar acá, el 3.4 verifica que sus
 # capacidades sean sólo NET_BIND_SERVICE.
 
+paso 4b "privilegios y capacidades en el proceso vivo (NoNewPrivs y CapBnd)"
+# D3, tarea 3.4: se lee el EFECTO en /proc/1/status, no el YAML (un
+# cap_drop que el runtime ignore pasaría igual si sólo se mirara
+# compose.yaml, L-018). La lista "justificada" de cada servicio salió de
+# probarla en vivo (tarea 3.2): db retiene CHOWN+DAC_OVERRIDE+SETUID+
+# SETGID (0xc3) en su PID 1 incluso después de bajar con gosu; caddy
+# retiene sólo NET_BIND_SERVICE (0x400, se queda root). redis, en cambio,
+# aunque el cap_add le da SETUID/SETGID/SETPCAP para que `setpriv` pueda
+# bajar de privilegios, el PID 1 final queda con CapBnd VACÍO (setpriv no
+# los retiene como gosu): la lista "vacía salvo db, redis y caddy" de la
+# tarea no es cierta para redis en esta imagen (hallazgo real, verificado
+# contra el proceso vivo); el valor correcto para redis es 0, igual que
+# el resto.
+nonewprivs_pid1() {
+  compose exec -T "$1" sh -c "awk '/^NoNewPrivs:/ {print \$2}' /proc/1/status"
+}
+
+capbnd_pid1() {
+  compose exec -T "$1" sh -c "awk '/^CapBnd:/ {print \$2}' /proc/1/status"
+}
+
+verificar_privilegios() {
+  # Dos lecturas por separado (nunca una sola con las dos líneas juntas,
+  # L-016/hallazgo real): el orden de los campos en /proc/[pid]/status
+  # NO es "como se pide" sino el del kernel (CapBnd va ANTES que
+  # NoNewPrivs); una extracción por posición de línea (en vez de por
+  # nombre de campo) asignaría los valores al revés sin que ningún tipo
+  # lo avise.
+  local servicio="$1" capbnd_esperado="$2" nnp capbnd
+  nnp=$(nonewprivs_pid1 "$servicio")
+  capbnd=$(capbnd_pid1 "$servicio")
+  echo "privilegios $servicio: NoNewPrivs=$nnp CapBnd=$capbnd (esperado $capbnd_esperado)"
+  if [ "$nnp" != "1" ]; then
+    echo "ERROR: $servicio no tiene NoNewPrivs:1 (tiene '$nnp')" >&2
+    exit 1
+  fi
+  if [ "$capbnd" != "$capbnd_esperado" ]; then
+    echo "ERROR: $servicio tiene CapBnd=$capbnd, se esperaba $capbnd_esperado" >&2
+    exit 1
+  fi
+}
+
+verificar_privilegios api 0000000000000000
+verificar_privilegios web 0000000000000000
+verificar_privilegios worker 0000000000000000
+verificar_privilegios respaldos 0000000000000000
+verificar_privilegios redis 0000000000000000
+verificar_privilegios db 00000000000000c3
+verificar_privilegios caddy 0000000000000400
+echo "ok: NoNewPrivs y CapBnd correctos en los siete servicios vivos"
+
 paso 5 "las imágenes construidas no contienen .env"
 compose run --rm --no-deps --entrypoint sh api -c '[ ! -f /app/.env ]'
 compose run --rm --no-deps --entrypoint sh web -c '[ ! -f /app/.env ]'
