@@ -1596,6 +1596,22 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   (mismo criterio que D-091 y D-095 para el 1c y el 1d).
 - **Quién**: Juani, 15/10/2026, a partir del veredicto del auditor en la vuelta 3.
 
+## D-099 · P48: el selector de administración después de autenticarse (16/10/2026)
+
+- **Fecha**: 16/10/2026
+- **Decisión**: si un email tiene cuenta en más de una administración (lo permite D-096), la persona se
+  autentica primero (contraseña para el personal, link mágico para el vecino, D-097) y después el
+  sistema le muestra un selector "¿A cuál querés entrar?" con sus administraciones. Si tiene una sola
+  cuenta, entra directo, sin selector. Vale igual para los dos métodos de ingreso.
+- **Descartado**:
+  - una dirección o código propio por administración en el ingreso: es más prolijo para la marca de
+    cada administración, pero le suma al vecino algo que tiene que saber; se puede agregar más adelante
+    sin romper esta decisión;
+  - que el link mágico ya traiga la administración, pedido desde el portal del edificio: resuelve sólo
+    al vecino y el personal igual necesita una de las otras dos.
+- **Por qué**: es la opción que menos le pide al usuario y sirve para los dos tipos de ingreso.
+- **Quién**: Juani, 16/10/2026 (D-094: decide cualquiera de los dos socios).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

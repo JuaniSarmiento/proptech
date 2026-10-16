@@ -126,7 +126,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   todo sobre `main` (D-049), porque programaba una sola persona. Con Juani y Alberto haciendo cambios
   en el mismo repositorio, acordar si cada cambio va en su rama con pull request o si se turnan sobre
   `main`. Antes de que los dos tengan un cambio en curso al mismo tiempo.
-- [ ] **P48 · A qué administración entra un email que tiene cuenta en dos** (D-096, D-097): una
+- [x] **P48 · A qué administración entra un email que tiene cuenta en dos** (resuelta en D-099: selector después de autenticarse) (D-096, D-097): una
   cuenta por administración permite el mismo email en dos administraciones, y nadie definió cómo elige
   el login a cuál entra. Opciones: la administración se elige antes del email (un enlace o un *slug*
   por administración en la dirección de ingreso), o se resuelve después (el sistema encuentra varias
@@ -156,7 +156,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   en el repositorio público.
 - **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
   visibilidad al repositorio y del primer despliegue.
-- **P48**: a qué administración entra un email con cuenta en dos, antes del 2b (el login).
+- **P48**: resuelta en D-099 (selector después de autenticarse); ya no bloquea el 2b.
 - **Login**: decidido en D-097 (contraseña para el personal, link mágico para el vecino). **Proveedores
   de IA y email**: se deciden en el design de los cambios 2b, 8, 13 y 14.
 
