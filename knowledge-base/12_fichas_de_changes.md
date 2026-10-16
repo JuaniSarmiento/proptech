@@ -189,7 +189,7 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
 - **No entra**: el puerto de email completo, con reintentos y plantillas (13); las pantallas del portal
   (11) y del consejo (12).
 - **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R5,
-  R9, V2-7, V3-5, D-1, D-2 y D-6, más el aviso de que la primera FK legítima hacia `auditoria` frena
+  R9, V2-7, D-1, D-2 y D-6 (V3-5 pasó al 2c el 16/10/2026), más el aviso de que la primera FK legítima hacia `auditoria` frena
   cada arranque).
 - **Depende de**: 2a. **Habilita**: el uso por una persona y el despliegue: lo piden 11 y 15 (no el 3,
   que se construye con la identidad inyectada).
@@ -717,7 +717,7 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados |
 | V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b), antes del primer segundo caso con una misma acción |
 | V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | 15 (piloto), antes de tener cortes de base con tráfico real |
-| V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2b (C-05b), antes de tocar `lifespan` u `on_startup` |
+| V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 |
 | V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | 15 (piloto), revisar con el monitoreo del servidor real |
 | V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | 15 (piloto), antes del primer redeploy con usuarios |
 | V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests |

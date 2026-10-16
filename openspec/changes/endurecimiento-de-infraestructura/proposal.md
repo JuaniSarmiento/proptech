@@ -40,8 +40,9 @@ Revisado por DevOps el 16/10/2026 contra `d0502fa`; cambios aprobados por Juani.
   cableado real de R7 y R8 en el arranque "antes de tocar `lifespan` u `on_startup`". Hacer V2-5 acá
   adelanta ese toque al 2c. Opciones: (a) traer V3-5 al 2c, antes de la tarea 6.1; (b) hacer V2-5 sin
   tocar `lifespan` (la línea del log sale de donde se levanta el error, en `base_de_datos.py` y en la
-  construcción de `Configuracion`), y V3-5 sigue en el 2b; (c) pasar V2-5 al 2b, junto con V3-5. La
-  tarea 6.1 no empieza sin esta respuesta.
+  construcción de `Configuracion`), y V3-5 sigue en el 2b; (c) pasar V2-5 al 2b, junto con V3-5.
+  **Respuesta de Juani (16/10/2026): (a).** V3-5 pasa del 2b al 2c como tarea 6.0, y la 6.1 arranca
+  recién con la 6.0 en verde.
 
 ## What Changes
 

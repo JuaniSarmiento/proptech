@@ -10,8 +10,8 @@ nombra los escenarios de la spec que cubre y las lecciones que aplica. Ninguna t
 Precondiciones: el 2a (`aislamiento-por-administracion`) archivado. Gobernanza MEDIUM: sin aprobación
 previa de un socio; las decisiones no obvias (la lista de capacidades, los digests, el mecanismo de
 `handle_errors`) van en el informe. **Regla de freno** (`proposal.md`): las tareas 6.1 y 6.2 tocan el
-arranque del candado; si aparece algo que afecte el aislamiento, se frena y se consulta a Juani. La 6.1
-no empieza hasta que Juani conteste la pregunta P1 de `proposal.md`.
+arranque del candado; si aparece algo que afecte el aislamiento, se frena y se consulta a Juani. P1 de
+`proposal.md` quedó respondida (a) el 16/10/2026: la 6.0 (V3-5) va antes de la 6.1.
 
 ## 1. Línea de base
 
@@ -45,7 +45,13 @@ no empieza hasta que Juani conteste la pregunta P1 de `proposal.md`.
 
 ## 6. Arranque (deuda del 2a; regla de freno)
 
-- [ ] 6.1 La causa de un arranque rechazado (D10, deuda V2-5 del 2a). **Precondición: la respuesta de Juani a P1** (`proposal.md`). Cuando `Configuracion()` o `verificar_rol_de_aplicacion_seguro` cortan el arranque, el log de `api` y el de `worker` (L-009) tienen una línea JSON con un evento propio de arranque fallido y la causa, sin valores secretos (L-007, con un marcador que pruebe que la contraseña no se repite). **Rojo**: con una copia de Compose donde `api` conecta con el rol de arranque, hoy `docker compose -p proptech logs api` no contiene la causa; después, sí, y el contenedor sigue sin arrancar. Escenarios: `entorno-de-ejecucion` › Arranque rechazado con causa nombrada. Lecciones: L-007, L-009, L-013, L-016.
+- [ ] 6.0 El cableado real del arranque (deuda V3-5 del 2a, traída del 2b por la respuesta (a) a P1).
+  Un test que arranca la API y el worker con su `lifespan` y su `on_startup` reales, sin `patch`, y
+  exige que el reset del tenant al devolver una conexión (R7) esté registrado en el engine y que
+  `verificar_rol_de_aplicacion_seguro` (R8) haya corrido. **Rojo**: con cada una de esas dos llamadas
+  borrada a mano del arranque, el test falla nombrándola; hoy, borrarlas deja la suite en verde
+  (informe de la vuelta 3, V3-5). Lecciones: L-016, L-019.
+- [ ] 6.1 La causa de un arranque rechazado (D10, deuda V2-5 del 2a). **Precondición: la 6.0 en verde.** Cuando `Configuracion()` o `verificar_rol_de_aplicacion_seguro` cortan el arranque, el log de `api` y el de `worker` (L-009) tienen una línea JSON con un evento propio de arranque fallido y la causa, sin valores secretos (L-007, con un marcador que pruebe que la contraseña no se repite). **Rojo**: con una copia de Compose donde `api` conecta con el rol de arranque, hoy `docker compose -p proptech logs api` no contiene la causa; después, sí, y el contenedor sigue sin arrancar. Escenarios: `entorno-de-ejecucion` › Arranque rechazado con causa nombrada. Lecciones: L-007, L-009, L-013, L-016.
 - [ ] 6.2 Nombre de rol desconocido (D11, deuda V3-14 del 2a): `roles antes` rechaza un `POSTGRES_APP_USER` distinto de `_ROL_DE_LA_APP` (`ayudas_rls.py:19`), nombrando la variable y sin mostrar valores. **Rojo**: con `POSTGRES_APP_USER=otra_app`, hoy `antes` pasa y falla más tarde con otro mensaje; después, `antes` sale con 1 y la causa. La restricción va a la fila de la tabla de 7.1. Escenarios: ninguno nuevo (la verificación es el rojo de esta tarea). Lecciones: L-002, L-007, L-016.
 
 ## 7. Documentación
