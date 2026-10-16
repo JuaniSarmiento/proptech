@@ -15,6 +15,7 @@ from types import TracebackType
 from typing import Any
 
 from proptech_core.compartido.base_de_datos import (
+    RolDeAplicacionInseguro,
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
@@ -24,11 +25,13 @@ from proptech_core.compartido.base_de_datos import (
 )
 from proptech_core.compartido.cola import deserializar_job, serializar_job
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
-from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 from proptech_core.compartido.logs import FormateadorJSON, configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.compartido.reintentos import PoliticaReintentos
 from proptech_worker.tareas import tarea_de_prueba
+
+_logger = logging.getLogger("proptech_worker.ajustes")
 
 #: Config de `logging.config.dictConfig` para el CLI de ARQ (D7, D13, L-007,
 #: vuelta 3 F12): `arq/cli.py` hace SIEMPRE `dictConfig(...)` justo después
@@ -133,8 +136,15 @@ except ImportError:  # pragma: no cover - `arq.cli` necesita `click` (D1, ya es 
 # Antes que nada: logs en JSON (D7). Falla rápido si la configuración o los
 # parámetros son inválidos (D11), nombrando el problema, antes de construir
 # `redis_settings` (que ya necesita leer la contraseña de Redis).
+#
+# Deuda V2-5 (2a), tarea 6.1, gemelo de `proptech_api.app` (L-009): la
+# causa queda en el log en JSON, nunca sólo en el traceback de stderr.
 configurar_logs("worker")
-_configuracion = Configuracion()
+try:
+    _configuracion = Configuracion()
+except ConfiguracionInvalida as _error_de_arranque:
+    _logger.error("arranque_fallido", extra={"causa": str(_error_de_arranque)})
+    raise
 leer_parametros(_configuracion.proptech_parametros)
 
 #: Espera base e intentos máximos de producción (D3): 2, 4, 8, 16 s.
@@ -193,7 +203,12 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     registrar_reset_del_tenant_al_devolver(engine)
     # R8 (vuelta 2): gemelo del de `proptech_api/app.py` — el worker tampoco
     # arranca si esta conexión terminó siendo, en los hechos, otro rol.
-    verificar_rol_de_aplicacion_seguro(engine)
+    # V2-5 (tarea 6.1): la causa queda en el log, gemela de la de la API.
+    try:
+        verificar_rol_de_aplicacion_seguro(engine)
+    except RolDeAplicacionInseguro as error:
+        _logger.error("arranque_fallido", extra={"causa": str(error)})
+        raise
     ctx["engine"] = engine
     ctx["fabrica_de_sesiones"] = fabrica
     ctx["politica"] = POLITICA_DE_PRODUCCION

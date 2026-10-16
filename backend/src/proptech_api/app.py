@@ -1,5 +1,6 @@
 """Crea la app FastAPI con el router bajo /api."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI
 from proptech_api import complejos, salud
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.compartido.base_de_datos import (
+    RolDeAplicacionInseguro,
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
@@ -17,9 +19,11 @@ from proptech_core.compartido.base_de_datos import (
 )
 from proptech_core.compartido.cola import AdaptadorColaArq
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
-from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 from proptech_core.compartido.logs import configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
+
+_logger = logging.getLogger("proptech_api.app")
 
 
 def crear_app() -> FastAPI:
@@ -32,7 +36,16 @@ def crear_app() -> FastAPI:
     # esto, Configuracion() se construye recién dentro del verificador de salud,
     # su excepción queda atrapada por el `except Exception` genérico del
     # endpoint y un error de configuración se confunde con la base caída.
-    configuracion = Configuracion()
+    #
+    # Deuda V2-5 (2a), tarea 6.1: la causa queda en el log en JSON (D10),
+    # nunca sólo en el traceback de stderr. `ConfiguracionInvalida` nombra
+    # las VARIABLES con problemas, nunca sus valores (L-007): `str(error)`
+    # es seguro de logear tal cual.
+    try:
+        configuracion = Configuracion()
+    except ConfiguracionInvalida as error:
+        _logger.error("arranque_fallido", extra={"causa": str(error)})
+        raise
     # Idem con los parámetros del sistema (D6): un archivo inválido también
     # termina el arranque acá, nombrando cada campo con problemas.
     leer_parametros(configuracion.proptech_parametros)
@@ -64,7 +77,15 @@ def crear_app() -> FastAPI:
             # hechos, otro rol (superusuario, BYPASSRLS, o dueña de una
             # tabla), la API no arranca — nunca confía en que
             # POSTGRES_APP_USER dice la verdad.
-            verificar_rol_de_aplicacion_seguro(engine)
+            #
+            # V2-5 (tarea 6.1): la causa queda en el log (D10).
+            # RolDeAplicacionInseguro nombra el problema (superusuario,
+            # BYPASSRLS, dueña de tablas), nunca ningún valor (L-007).
+            try:
+                verificar_rol_de_aplicacion_seguro(engine)
+            except RolDeAplicacionInseguro as error:
+                _logger.error("arranque_fallido", extra={"causa": str(error)})
+                raise
             yield
         finally:
             app.state.engine.dispose()
