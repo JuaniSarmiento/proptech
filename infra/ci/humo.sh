@@ -740,38 +740,57 @@ echo "conteo por administración en la base restaurada: A=$(echo "$conteo_comple
 [ "$(echo "$conteo_complejos_b" | tr -d '[:space:]')" = "2" ]
 
 # D11, D12: el volcado se lleva el FORCE y las políticas (son parte del
-# esquema, no de los datos) — se verifican en la base restaurada, no en la
-# que ya está en uso (que el guardián de la 3.2 ya cubre en los tests).
-# Deuda V3-15 (2a), tarea 5.4: relrowsecurity ADEMÁS de
-# relforcerowsecurity (el gemelo de V2-2, L-018): "DISABLE ROW LEVEL
-# SECURITY" (relrowsecurity=false) no toca relforcerowsecurity, así que
-# el chequeo de sólo relforcerowsecurity no vería una tabla con RLS
-# deshabilitada del todo.
-rls_habilitada_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select relrowsecurity from pg_class where relname = 'administracion'")
-rls_habilitada_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select relrowsecurity from pg_class where relname = 'complejo'")
-rls_forzada_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select relforcerowsecurity from pg_class where relname = 'administracion'")
-rls_forzada_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select relforcerowsecurity from pg_class where relname = 'complejo'")
-politicas_administracion=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select count(*) from pg_policies where tablename = 'administracion'")
-politicas_complejo=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-  -tAc "select count(*) from pg_policies where tablename = 'complejo'")
-echo "relrowsecurity administracion=$(echo "$rls_habilitada_administracion" | tr -d '[:space:]')" \
-  "complejo=$(echo "$rls_habilitada_complejo" | tr -d '[:space:]')" \
-  "relforcerowsecurity administracion=$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" \
-  "complejo=$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" \
-  "políticas administracion=$(echo "$politicas_administracion" | tr -d '[:space:]')" \
-  "complejo=$(echo "$politicas_complejo" | tr -d '[:space:]')"
-[ "$(echo "$rls_habilitada_administracion" | tr -d '[:space:]')" = "t" ]
-[ "$(echo "$rls_habilitada_complejo" | tr -d '[:space:]')" = "t" ]
-[ "$(echo "$rls_forzada_administracion" | tr -d '[:space:]')" = "t" ]
-[ "$(echo "$rls_forzada_complejo" | tr -d '[:space:]')" = "t" ]
-[ "$(echo "$politicas_administracion" | tr -d '[:space:]')" -gt 0 ]
-[ "$(echo "$politicas_complejo" | tr -d '[:space:]')" -gt 0 ]
-echo "ok: la base restaurada tiene el FORCE y las políticas de D5, y el conteo por administración (2, 2)"
+# esquema, no de los datos) — se verifican en la base restaurada.
+#
+# C2-4 (rompedor/auditor, vuelta 1 del 2c): la lista de tablas "con
+# políticas" NUNCA sale de la base restaurada (si saliera de ahí, una
+# tabla que perdió todas sus políticas en el dump dejaría de figurar "con
+# políticas" y pasaría igual — el chequeo se auto-engañaría). Sale de la
+# BASE EN USO, que no cambió: hoy son seis (`administracion`, `complejo`,
+# `unidad`, `persona`, `asignacion_rol` de la migración 0003, y
+# `auditoria` de la 0004), contra las dos que miraba antes (sólo
+# `administracion` y `complejo`, L-017: la 5.4 mostró su rojo justo sobre
+# una de esas dos). Para cada una: `relrowsecurity`, `relforcerowsecurity`
+# y la cantidad de políticas, comparados contra la base en uso — no sólo
+# ">0", para que una política reemplazada por una más débil (menos
+# políticas, o las mismas con otro nombre) también se vea.
+tablas_con_politicas_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" \
+  -tAc "select distinct tablename from pg_policies order by tablename")
+echo "tablas con políticas en la base en uso: $(echo "$tablas_con_politicas_en_uso" | tr '\n' ' ')"
+[ -n "$tablas_con_politicas_en_uso" ]
+
+while IFS= read -r tabla; do
+  [ -n "$tabla" ] || continue
+  # `< /dev/null` en cada `compose exec` (hallazgo real, verificado en
+  # vivo): sin esto, cada `psql` dentro del `while read` compite por el
+  # mismo stdin que el propio bucle usa para leer la lista de tablas, y
+  # el bucle corta después de la primera — nombraba sólo `administracion`
+  # y daba por buena toda la verificación sin haber mirado el resto.
+  politicas_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" \
+    -tAc "select count(*) from pg_policies where tablename = '$tabla'" < /dev/null | tr -d '[:space:]')
+  rls_habilitada=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+    -tAc "select relrowsecurity from pg_class where relname = '$tabla'" < /dev/null | tr -d '[:space:]')
+  rls_forzada=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+    -tAc "select relforcerowsecurity from pg_class where relname = '$tabla'" < /dev/null | tr -d '[:space:]')
+  politicas_restauradas=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+    -tAc "select count(*) from pg_policies where tablename = '$tabla'" < /dev/null | tr -d '[:space:]')
+  echo "tabla=$tabla relrowsecurity=$rls_habilitada relforcerowsecurity=$rls_forzada" \
+    "políticas: en_uso=$politicas_en_uso restaurada=$politicas_restauradas"
+  if [ "$rls_habilitada" != "t" ]; then
+    echo "ERROR: $tabla en la base restaurada tiene relrowsecurity != t (tiene '$rls_habilitada')" >&2
+    exit 1
+  fi
+  if [ "$rls_forzada" != "t" ]; then
+    echo "ERROR: $tabla en la base restaurada tiene relforcerowsecurity != t (tiene '$rls_forzada')" >&2
+    exit 1
+  fi
+  if [ "$politicas_restauradas" != "$politicas_en_uso" ]; then
+    echo "ERROR: $tabla en la base restaurada tiene $politicas_restauradas política(s)," \
+      "la base en uso tiene $politicas_en_uso" >&2
+    exit 1
+  fi
+done <<< "$tablas_con_politicas_en_uso"
+echo "ok: RLS habilitada, forzada y mismas políticas que la base en uso, en todas las tablas con políticas"
 
 revision_en_uso_despues=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d "$BASE_EN_USO" -tAc "select version_num from alembic_version")
