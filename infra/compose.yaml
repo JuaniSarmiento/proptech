@@ -150,6 +150,15 @@ services:
       # subred entera (si no, cualquier contenedor de la red podría mentir
       # su IP de origen).
       FORWARDED_ALLOW_IPS: "172.28.0.254"
+      # D18/M14, tarea 7.1: opcionales con default en `Configuracion`
+      # (`configuracion.py`); se pasan explícitas acá (con el MISMO default
+      # que el código, vía `${VAR:-default}`) para que una sola tabla de
+      # variables (README) las documente sin tener que adivinarlas.
+      DB_POOL_PRE_PING: "${DB_POOL_PRE_PING:-true}"
+      DB_POOL_SIZE: "${DB_POOL_SIZE:-5}"
+      DB_POOL_RECYCLE_S: "${DB_POOL_RECYCLE_S:-1800}"
+      DB_POOL_TIMEOUT_S: "${DB_POOL_TIMEOUT_S:-5}"
+      DB_CONNECT_TIMEOUT_S: "${DB_CONNECT_TIMEOUT_S:-2}"
     volumes:
       - ../config:/app/config:ro
     depends_on:
@@ -184,6 +193,12 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
       PROPTECH_PARAMETROS: /app/config/parametros.yaml
+      # D18/M14, tarea 7.1: gemelo de la API (L-009), mismos defaults.
+      DB_POOL_PRE_PING: "${DB_POOL_PRE_PING:-true}"
+      DB_POOL_SIZE: "${DB_POOL_SIZE:-5}"
+      DB_POOL_RECYCLE_S: "${DB_POOL_RECYCLE_S:-1800}"
+      DB_POOL_TIMEOUT_S: "${DB_POOL_TIMEOUT_S:-5}"
+      DB_CONNECT_TIMEOUT_S: "${DB_CONNECT_TIMEOUT_S:-2}"
     volumes:
       - ../config:/app/config:ro
     depends_on:

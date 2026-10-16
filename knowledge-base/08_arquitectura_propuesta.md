@@ -94,51 +94,15 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
 
 ## Variables de entorno
 
-Verificado contra `infra/.env.example`, `infra/compose.yaml` y
-`backend/src/proptech_core/compartido/configuracion.py` al 14/10/2026 (cambios 1a a 1d archivados).
-Nunca un valor real: el repositorio es público (`.env` está en `.gitignore`; `infra/.env.example`
-sólo trae placeholders; la carpeta de respaldos también está en `.gitignore`).
+Tabla única (D8, tarea 2c del cambio `endurecimiento-de-infraestructura`): la lista completa, con
+quién la usa, si es obligatoria, su default y su propósito, vive en
+[`README.md#variables-de-entorno`](../README.md#variables-de-entorno). Antes esta sección tenía su
+propia tabla (duplicada con la del README, y con una fila que ya mentía: `POSTGRES_USER` decía
+"compartido por los cuatro servicios", falso desde el 2a); dos tablas son una que deriva, así que acá
+queda sólo el enlace.
 
-### Existentes (cambios 1a a 1d, archivados)
-
-| Variable | La usan | Obligatoria/opcional | Default | Propósito |
-|---|---|---|---|---|
-| `POSTGRES_HOST` | `db` (implícito), API, worker, migraciones (`ConfiguracionBaseDeDatos`) | Obligatoria para `Configuracion`/`ConfiguracionBaseDeDatos` | Compose la fija en `db` para API, worker y migraciones; `.env.example` trae `db` para uso fuera de Compose | Host de PostgreSQL |
-| `POSTGRES_PORT` | API, worker, migraciones | Opcional (default `5432` en `Configuracion`; Compose la fija en `"5432"`) | 5432 | Puerto de PostgreSQL |
-| `POSTGRES_USER` | `db`, API, worker, migraciones | Obligatoria (`:?falta POSTGRES_USER` en Compose) | sin default | Usuario de conexión, compartido por los cuatro servicios |
-| `POSTGRES_PASSWORD` | `db`, API, worker, migraciones | Obligatoria | sin default | Contraseña de PostgreSQL (`SecretStr`; nunca se loguea, L-007) |
-| `POSTGRES_DB` | `db`, API, worker, migraciones | Obligatoria | sin default | Nombre de la base |
-| `REDIS_HOST` | API, worker | Obligatoria | Compose la fija en `redis` | Host de Redis |
-| `REDIS_PORT` | API, worker | Opcional (default `6379`) | 6379 | Puerto de Redis |
-| `REDIS_PASSWORD` | `redis`, API, worker | Obligatoria (`:?falta REDIS_PASSWORD`) | sin default | Contraseña de Redis (`SecretStr`; `redis-server` arranca con `--requirepass`) |
-| `PROPTECH_PARAMETROS` | API, worker | Obligatoria (el archivo tiene que existir y ser legible) | Compose la fija en `/app/config/parametros.yaml` | Ruta al archivo de parámetros del sistema (D-042) |
-| `FORWARDED_ALLOW_IPS` | API (uvicorn, `--proxy-headers`) | Fijada por Compose, no por `.env` | `172.28.0.254` (la IP fija de `caddy` en la red `interna`, D17 del design del 1c) | Única IP de la que la API acepta encabezados `X-Forwarded-*` |
-| `PROPTECH_SITIO` | `caddy` | Obligatoria (`:?falta PROPTECH_SITIO`) | sin default | Dominio o URL que sirve Caddy (`http://localhost` en local; el dominio real en producción, con HTTPS automático) |
-| `PROPTECH_URL_API_INTERNA` | `web` | Fijada por Compose | `http://api:8000` | URL interna con la que el servidor de Next llama a la API; nunca la ve el navegador (D-036) |
-| `DB_POOL_PRE_PING` | API, worker | Opcional | `true` | Verifica la conexión del pool antes de usarla (D18 del design del 1c, M14 de la auditoría de Alberto del 13/10) |
-| `DB_POOL_SIZE` | API, worker | Opcional (1 a 50) | 5 | Tamaño del pool del engine de SQLAlchemy |
-| `DB_POOL_RECYCLE_S` | API, worker | Opcional (60 a 86400) | 1800 | Segundos antes de reciclar una conexión del pool |
-| `DB_POOL_TIMEOUT_S` | API, worker | Opcional (1 a 60) | 5 | Segundos de espera por una conexión libre del pool |
-| `DB_CONNECT_TIMEOUT_S` | API, worker | Opcional (1 a 30) | 2 | Segundos de espera al establecer la conexión a PostgreSQL |
-| `PROPTECH_DIR_RESPALDOS` | `respaldos` | Obligatoria (`:?falta PROPTECH_DIR_RESPALDOS`) | `./datos-respaldos` en `.env.example` (relativo a `infra/`) | Carpeta del host (bind mount, no volumen con nombre) donde se guardan los `.dump`; sobrevive a `docker compose down -v` |
-| `PROPTECH_UID` | `respaldos` | Obligatoria (`:?falta PROPTECH_UID`) | sin default | UID del usuario del host con el que corre el servicio, para que los backups no queden como root ni como un UID que el host no conoce |
-| `PROPTECH_GID` | `respaldos` | Obligatoria (`:?falta PROPTECH_GID`) | sin default | GID del usuario del host, gemelo de `PROPTECH_UID` |
-| `RESPALDO_INTERVALO_SEGUNDOS` | `respaldos` | Opcional (60 a 604800) | 86400 (diario) | Cada cuánto corre un backup, además del de arranque |
-| `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
-| `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite (L-001: una base pausada no cuelga el servicio para siempre) |
-
-### Nuevas del cambio 2a `aislamiento-por-administracion` (cuatro roles de PostgreSQL, D-082, E1, E5)
-
-| Variable | La usan | Obligatoria/opcional | Default | Propósito |
-|---|---|---|---|---|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `roles.py antes`/`despues` (rol de arranque) | Obligatoria | sin default | El superusuario de la imagen oficial; crea y repara los otros tres roles; único dueño de `auditoria`; ningún servicio permanente la recibe (R8) |
-| `POSTGRES_MIGRADOR_USER` / `POSTGRES_MIGRADOR_PASSWORD` | Alembic (migraciones) | Obligatoria | sin default | `proptech_migrador`, dueño de las tablas de dominio; sin `BYPASSRLS` (E1): sembrar datos exige fijar el tenant a propósito |
-| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | API, worker | Obligatoria | sin default | `proptech_app`, sin superusuario ni `BYPASSRLS`; sujeta a RLS igual que cualquier cliente |
-| `POSTGRES_RESPALDO_USER` / `POSTGRES_RESPALDO_PASSWORD` | `respaldos`, `restaurar.sh` | Obligatoria | sin default | `proptech_respaldo`, sin superusuario, con `BYPASSRLS` y `pg_read_all_data`; sólo para `pg_dump` |
-
-Deuda conocida de esta tabla (D-098, "Deuda del cierre del 2a"): V3-14, `POSTGRES_APP_USER` acepta un
-nombre de rol que la migración no conoce (dueño 2c); V3-15, al README le faltan estas contraseñas
-distintas por rol (dueño 2c, junto con esta misma tabla).
+Deuda conocida (D-098, "Deuda del cierre del 2a"), todavía sin resolver: V3-14, `POSTGRES_APP_USER`
+acepta un nombre de rol que la migración no conoce (dueño 2c, tarea 6.2).
 
 Todas las que llegan como texto desde el entorno (enteros incluidos) se validan con coincidencia
 completa y sólo dígitos ASCII, sin ceros a la izquierda (Bash interpreta `060` como octal) y sin
