@@ -7,6 +7,26 @@ regla citada vive en `05_reglas_de_negocio.md`.
 
 ---
 
+## Transversal: ayuda en cada pantalla
+
+### HU-T1 · Entender para qué sirve cada pantalla
+
+**Como** cualquier usuario (administrador, colaborador, vecino o consejo) **quiero** tocar un "?" en
+cada pantalla y leer para qué sirve y qué hago ahí **para** usarla sin preguntarle a nadie.
+Pedido de Alberto (17/10/2026, D-102). Vale para **todas** las historias de abajo.
+
+- **Dado** cualquier pantalla del sistema · **cuando** la abro · **entonces** veo un botón "?" junto
+  al título, siempre en el mismo lugar.
+- **Dado** el "?" · **cuando** lo toco, lo clickeo o lo activo con el teclado · **entonces** se abre
+  una explicación didáctica, en castellano simple, con tres partes: para qué sirve la pantalla, qué
+  hago acá (pasos numerados) y qué pasa después.
+- **Dado** la explicación abierta · **cuando** toco "Cerrar" o aprieto `Esc` · **entonces** se cierra y
+  vuelvo a donde estaba, sin perder lo que había cargado.
+- **Dado** un celular · **cuando** uso el "?" · **entonces** funciona tocándolo (no depende de pasar
+  el mouse) y el texto se lee al tamaño normal de la pantalla.
+
+---
+
 ## Épica: Administrador
 
 ### HU-A1 · Configurar el edificio

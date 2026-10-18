@@ -7,6 +7,12 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 > **acreditado** no está **imputado**; una unidad **al día** no es lo mismo que una con
 > **crédito a favor**. La mitad de los bugs de la especificación original nacieron de mezclarlas.
 
+## La interfaz
+
+- **Ayuda de pantalla ("?")**: el botón que tiene toda pantalla, junto a su título, y que abre una
+  explicación didáctica en tres partes: para qué sirve la pantalla, qué se hace ahí y qué pasa
+  después. Obligatoria en todas (D-102, HU-T1).
+
 ## El complejo y sus partes
 
 - **Administración**: el cliente que paga PropTech: una empresa o persona que administra uno o varios complejos. Es el **tenant**: todo dato pertenece a una administración y ninguna ve los datos de otra (R10, D-076).

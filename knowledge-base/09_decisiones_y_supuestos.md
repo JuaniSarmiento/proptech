@@ -1655,6 +1655,23 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Costo**: el 15 hereda la familia entera escrita como deuda, no resuelta.
 - **Quién**: Juani, 16/10/2026, por falta de presupuesto de IA para otra ronda.
 
+## D-102 · Toda pantalla lleva su ayuda "?" (17/10/2026)
+
+- **Contexto**: arranca el frontend (3b) y los usuarios incluyen vecinos mayores que entran pocas veces
+  al mes desde el celular, y administradores que hoy dependen del Excel. Alberto lo pidió explícitamente
+  y como "super importante".
+- **Decisión**: toda pantalla del sistema, de cualquier actor, tiene un botón "?" junto al título que
+  abre una explicación didáctica en tres partes: para qué sirve la pantalla, qué se hace ahí (pasos
+  numerados) y qué pasa después. Se abre tocando o con teclado, nunca sólo al pasar el mouse; se lee al
+  tamaño del cuerpo de texto; se cierra con un botón y con `Esc`. Una pantalla sin su "?" no está
+  terminada. Vive en `DESIGN.md` (The Always-Help Rule), en HU-T1 de `06_funcionalidades.md`, en las
+  reglas del proceso de `14_forma_de_trabajo.md` y en la regla transversal de `12_fichas_de_changes.md`.
+- **Descartado**: un centro de ayuda aparte o un manual en PDF (nadie lo abre en el momento en que lo
+  necesita); tooltips al pasar el mouse (en el celular no existen y el texto queda chico).
+- **Por qué**: lo que ve el vecino es la cara del administrador (principio 5 de `PRODUCT.md`); una
+  pantalla que se explica sola baja las preguntas al administrador, que es el éxito del producto.
+- **Quién**: Alberto, 17/10/2026; registrado por Juani.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

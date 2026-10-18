@@ -40,6 +40,8 @@ Referencia de sensación: Mercado Pago y el home banking argentino, patrones que
 3. **Una cosa importante por pantalla.** El fin de mes no tiene que sentirse un quilombo: cada pantalla deja claro qué es lo próximo.
 4. **Dos superficies, un solo sistema.** Densa y rápida para el administrador; grande, simple y liviana para el vecino. Mismo lenguaje visual, distinta densidad.
 5. **Lo que ve el vecino es la cara del administrador.** Cada expensa, cada aviso y cada comprobante tiene que dejarlo bien parado.
+6. **Toda pantalla se explica sola.** Cada pantalla tiene su "?" con una explicación didáctica de para
+   qué sirve, qué se hace ahí y qué pasa después (D-102, pedido de Alberto).
 
 ## Accessibility & Inclusion
 

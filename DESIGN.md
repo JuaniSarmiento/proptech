@@ -55,9 +55,39 @@ Neutros tibios con un único acento terracota de uso escaso; los valores exactos
 
 Plano por defecto. La profundidad se marca con capas de tono y bordes finos, no con sombras; una sombra aparece sólo como respuesta a un estado, como un menú abierto.
 
+## 5. Components
+
+### Ayuda de pantalla ("?")
+
+**The Always-Help Rule.** Toda pantalla, del administrador y del vecino, lleva un botón "?" de ayuda,
+siempre en el mismo lugar (junto al título de la pantalla). Es un pedido de Alberto (17/10/2026) y es
+obligatorio: **una pantalla sin su "?" no está terminada.**
+
+Al tocarlo se abre una explicación didáctica de esa pantalla, en castellano simple y sin jerga
+contable, con tres partes:
+
+1. **¿Para qué sirve esta pantalla?** Qué le resuelve a quien la usa.
+2. **¿Qué hago acá?** Los pasos, numerados y cortos.
+3. **¿Y después?** Qué pasa con lo que cargó o a dónde sigue.
+
+Ejemplo, configuración del edificio: "Acá cargás los datos del edificio: sus unidades, el coeficiente de
+cada una y cómo se cobran las expensas. 1. Revisá que estén todas las unidades. 2. Fijate que los
+coeficientes sumen 100%. 3. Elegí el día de vencimiento. Con esto armado ya podés liquidar las
+expensas del mes."
+
+Cómo se comporta:
+- Se abre **al tocar o al hacer clic**, nunca sólo al pasar el mouse (en el celular no hay mouse).
+- Es un panel con letra del tamaño del cuerpo de texto, no un globito chico; se cierra con un botón
+  visible y con `Esc`.
+- Es operable con teclado, tiene nombre accesible ("Ayuda: para qué sirve esta pantalla") y foco
+  visible (WCAG 2.2 AA).
+- El texto vive junto a la pantalla, en el mismo cambio que la construye: si la pantalla cambia, su
+  ayuda cambia en el mismo commit.
+
 ## 6. Do's and Don'ts
 
 ### Do:
+- **Do** poner en cada pantalla su "?" de ayuda, con las tres partes escritas (The Always-Help Rule).
 - **Do** dejar en cada pantalla una sola acción principal en terracota.
 - **Do** mostrar cada importe en números tabulares, alineado a la derecha y con formato argentino.
 - **Do** acompañar todo estado de plata con texto, nunca sólo con color.

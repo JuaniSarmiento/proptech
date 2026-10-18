@@ -9,6 +9,11 @@ D-049).
 El ciclo de cada cambio está en `14_forma_de_trabajo.md`: proponer, construir, romper, auditar y
 archivar con commit y push. Un cambio arranca cuando el anterior está archivado.
 
+**Regla transversal para todo cambio con pantallas** (D-102): cada pantalla nueva o modificada lleva su
+ayuda "?" con las tres partes (para qué sirve, qué hago acá, qué pasa después), según HU-T1 y la
+Always-Help Rule de `DESIGN.md`. Forma parte del "Terminado cuando" de cada ficha aunque la ficha no
+lo repita.
+
 ---
 
 ## M1 · Liquida
@@ -263,6 +268,8 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   la respuesta a P24: hoy los grupos Ascensor y Cocheras de la semilla no suman 1 con un solo
   coeficiente por unidad.
 - **No entra**: carga masiva desde Excel (5); cálculos (4, 7); el motor de reglas (6b, D-087).
+- **Pantallas (3b)**: cada una lleva su ayuda "?" (The Always-Help Rule de `DESIGN.md`, pedido de
+  Alberto del 17/10/2026). Una pantalla sin su "?" con el texto escrito no se da por terminada.
 - **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R6 y
   R11). **R6 bloquea antes de la primera ruta nueva de este cambio**: el sweep de rutas protegidas no
   ve `include_router(prefix=...)`, y es la forma más probable de agregar rutas acá.

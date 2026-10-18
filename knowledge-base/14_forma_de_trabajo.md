@@ -105,5 +105,8 @@ El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani
   desarrolladores (D-093), el criterio de ramas o turnos está abierto (P47). Al archivar cada cambio,
   con el OK del auditor, se commitea y se pushea a `main` sin preguntar (autorizado por Juani,
   D-049). Cualquier otro push se pregunta.
+- **Toda pantalla lleva su ayuda "?"** (D-102, The Always-Help Rule de `DESIGN.md`, HU-T1): en un
+  cambio con frontend, una pantalla sin su "?" y sin las tres partes del texto escritas no está
+  terminada, y el rompedor lo verifica pantalla por pantalla.
 - **El repositorio es público**: nunca secretos ni datos personales reales, ni en código ni en tests.
 - **Nada se da por probado sin la salida del comando** que lo prueba, y de esta versión del código.
