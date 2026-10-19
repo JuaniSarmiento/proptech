@@ -22,3 +22,17 @@ infra/datos-respaldos/
 
 # Active Stack v1: registro local de skills, no versionado (se regenera por máquina)
 .atl/
+
+# Deuda del 1b con dueño 3 (D13, cambio 3a, tarea 2.4): editores, sistema
+# operativo y artefactos de empaquetado/cobertura de Python que todavía no
+# se ignoraban (los cachés de mypy/pytest/ruff ya se ignoran solos: cada
+# uno escribe su propio .gitignore adentro).
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/

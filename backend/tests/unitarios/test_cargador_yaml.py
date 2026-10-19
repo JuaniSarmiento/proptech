@@ -1,5 +1,6 @@
 """4.1: el cargador YAML propio rechaza claves duplicadas y arma errores claros (D6)."""
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -73,6 +74,10 @@ def test_archivo_inexistente_falla(tmp_path: Path) -> None:
     assert "no se puede leer" in str(exc_info.value).lower()
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="os.chmod(0o000) no bloquea la lectura en Windows (D13, deuda del 1b con dueño 3)",
+)
 def test_archivo_sin_permiso_de_lectura_falla(tmp_path: Path) -> None:
     from proptech_core.compartido.cargador_yaml import ErrorDeCarga, leer_archivo
 
