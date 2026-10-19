@@ -21,7 +21,11 @@ cree de ahora en más, nunca lo que ya estaba ahí.
 de arranque, y le revoca a la app el `UPDATE`/`DELETE`/`TRUNCATE` que
 `ALTER DEFAULT PRIVILEGES` le regaló por ser una tabla nueva del migrador,
 dejándole sólo `SELECT, INSERT` (D9). Antes de la 6.1 (la tabla todavía no
-existe), no hace nada.
+existe), no hace nada. También le revoca todo a la app sobre
+`alembic_version` (creada por Alembic mismo) y le deja sólo `SELECT`
+(revisión final, 19/10/2026, arreglo 8): la exclusión de esa tabla en
+`_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` sólo evita el `GRANT` explícito de
+`antes()`, nunca el regalo de los DEFAULT PRIVILEGES.
 
 CLI: `python -m proptech_core.compartido.roles antes|despues`.
 """
@@ -53,6 +57,15 @@ _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset(
 
 # D16: la auditoría conserva su tratamiento y dueño propios (D9).
 _TABLAS_DE_SOLO_AGREGAR = frozenset({"configuracion_versionada"})
+
+#: Revisión final (19/10/2026), arreglo 8: mismo defecto que D9/D16 resolvieron
+#: para `auditoria`/`configuracion_versionada`, para una tabla que Alembic
+#: mismo crea (no el migrador vía una migración, pero el dueño es igual el
+#: migrador) — estar en `_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` sólo evita el
+#: `GRANT` explícito de `antes()`; los `ALTER DEFAULT PRIVILEGES` igual le dan
+#: a la app los cuatro permisos la primera vez que Alembic la crea. La app sí
+#: necesita LEERLA (confirmar que las migraciones corrieron); nunca escribirla.
+_TABLAS_DE_SOLO_LECTURA_PARA_LA_APP = frozenset({"alembic_version"})
 
 
 def _conectar(configuracion: ConfiguracionDeArranque) -> psycopg.Connection:
@@ -663,6 +676,22 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                     )
                     cur.execute(
                         sql.SQL("GRANT SELECT, INSERT ON {} TO {}").format(
+                            sql.Identifier(tabla), sql.Identifier(app.postgres_user)
+                        )
+                    )
+            # Revisión final (19/10/2026), arreglo 8: `REVOKE ALL` primero
+            # (deshace lo que los DEFAULT PRIVILEGES regalaron, cualquiera
+            # sea el permiso) y recién después el `GRANT SELECT` angosto —
+            # mismo orden que el de `auditoria` más abajo, nunca al revés.
+            for tabla in sorted(_TABLAS_DE_SOLO_LECTURA_PARA_LA_APP):
+                if _existe_tabla(cur, tabla):
+                    cur.execute(
+                        sql.SQL("REVOKE ALL ON {} FROM {}").format(
+                            sql.Identifier(tabla), sql.Identifier(app.postgres_user)
+                        )
+                    )
+                    cur.execute(
+                        sql.SQL("GRANT SELECT ON {} TO {}").format(
                             sql.Identifier(tabla), sql.Identifier(app.postgres_user)
                         )
                     )
