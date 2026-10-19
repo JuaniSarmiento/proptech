@@ -76,10 +76,13 @@ def test_los_cuatro_tipos_de_d029_se_aceptan(
     ).fetchone() == (tipo,)
 
 
-def test_mover_unidad_a_edificio_existente_de_otra_administracion_falla_por_fk(
+def test_mover_unidad_a_edificio_existente_de_otra_administracion_falla_por_inmutabilidad(
     app_edificio: psycopg.Connection, edificios: Edificios
 ) -> None:
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+    with pytest.raises(
+        psycopg.errors.CheckViolation,
+        match="La unidad no admite cambiar complejo_id ni administracion_id",
+    ):
         app_edificio.execute(
             "UPDATE unidad SET complejo_id = %s WHERE id = %s",
             (edificios.complejo_b, edificios.unidad_a),

@@ -1246,7 +1246,8 @@ $ cd backend && uv run pytest tests/integracion/test_grupos_casos_de_uso.py test
 
 Correcciones autorizadas por Juani, 19/10/2026, sobre `a64172f`.
 Los tests originales quedan íntegros en `.git/informes-3a/correcciones-v2/tests-originales/`.
-R3B-5 queda pendiente de decisión, sin cambios de producción ni inclusión en la suite verde.
+R3B-5 quedó pendiente en el cierre anterior. Juani decidió el 19/10/2026 que la barrera
+va en la base; su corrección y evidencia quedan en la sección R3B-5 al final de esta vuelta.
 
 ### R3B-1 y R3B-7 · Texto Unicode seguro
 
@@ -1846,6 +1847,80 @@ All checks passed!
 213 files already formatted
 Success: no issues found in 196 source files
 14:57:14 [exit 0]
+```
+
+### R3B-5 · Una unidad no cambia de edificio, tampoco por SQL
+
+- [x] Trigger `BEFORE UPDATE` en `unidad` que impida cambiar `complejo_id` o
+  `administracion_id`, con error claro. Migración nueva `0014`, downgrade/upgrade real,
+  controles de edición legítima y regresión de la cascada de D15 en `grupo_unidad`.
+  Decisión de Juani (19/10/2026): la barrera va en la base.
+
+**ROJO** (sin migración 0014; mismo tenant, identificador sin colisión y sin miembros):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_unidad_edificio_inmutable.py tests/integracion/test_rls_edificio.py::test_mover_unidad_a_edificio_existente_de_otra_administracion_falla_por_inmutabilidad -q --tb=short --color=no
+15:00:03
+E   Failed: DID NOT RAISE CheckViolation
+FAILED tests/integracion/test_unidad_edificio_inmutable.py::test_una_unidad_no_se_muda_a_otro_edificio_de_la_misma_administracion_por_sql
+5 failed, 2 passed in 8.71s
+15:00:13 [exit 1]
+```
+Los dos controles de edición legítima nacieron verdes; se verifica su rojo con mutante abajo.
+
+**MUTANTE**: trigger demasiado restrictivo; diff temporal de 3 líneas, revertido:
+```diff
+-            IF NEW.complejo_id IS DISTINCT FROM OLD.complejo_id
+-                OR NEW.administracion_id IS DISTINCT FROM OLD.administracion_id THEN
++            IF TRUE THEN
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_unidad_edificio_inmutable.py -k edicion_legitima -q --tb=short --color=no
+15:01:33
+E   psycopg.errors.CheckViolation: La unidad no admite cambiar complejo_id ni administracion_id
+2 failed, 4 deselected in 8.08s
+15:01:42 [exit 1]
+```
+
+**VERDE** (mutante revertido; incluye downgrade/upgrade, API y cascada de D15):
+```text
+$ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest tests/integracion/test_unidad_edificio_inmutable.py tests/integracion/test_rls_edificio.py tests/integracion/test_modo_de_coeficientes.py tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_padron_api.py -q --tb=short --color=no
+15:01:49
+All checks passed!
+215 files already formatted
+Success: no issues found in 197 source files
+94 passed, 1 warning in 37.01s
+15:02:29 [exit 0]
+```
+
+**JUICIO**: el único `UPDATE unidad` de `backend/src`/`infra` está en
+`complejos/aplicacion/unidades.py`: edita identificador/tipo/piso/coeficiente/superficie,
+sin cambiar las claves. El trigger sólo actúa sobre `unidad`; D15 mantiene su FK con
+`ON UPDATE CASCADE` hacia `grupo_unidad`, verificada por `test_modo_de_coeficientes.py`.
+
+**HUMO COMPLETO** (limpieza del script incluida):
+```text
+$ date +%T && bash infra/ci/humo.sh
+15:02:39
+HUMO OK
+15:05:00 [exit 0]
+```
+
+**ESTILO Y TIPOS antes del commit**:
+```text
+$ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy && date +%T
+15:10:52
+All checks passed!
+215 files already formatted
+Success: no issues found in 197 source files
+15:10:53 [exit 0]
+```
+
+**BACKEND COMPLETO, una corrida final**:
+```text
+$ date +%T && bash infra/ci/test-backend.sh
+15:02:39
+=========== 1720 passed, 1 xfailed, 16 warnings in 506.98s (0:08:26) ===========
+15:11:10 [exit 0]
 ```
 
 ## 3. Modelo

@@ -104,6 +104,12 @@ la lista de grupos; `grupo_unidad (grupo_id, unidad_id)` los miembros de un grup
 
 Una migración por tarea, numerada desde `0005` en el orden de `tasks.md`.
 
+**R3B-5, decisión de Juani (19/10/2026)**: la pertenencia de `unidad` se protege en la base con
+una migración nueva `0014`, posterior a `0013`. Un trigger `BEFORE UPDATE` compara `complejo_id`
+y `administracion_id` con `IS DISTINCT FROM` y rechaza cualquier cambio con `check_violation`
+y un mensaje claro. Permite editar los datos del padrón y reasignar las mismas claves. Su downgrade
+elimina el trigger y su función. No interviene en `grupo_unidad` ni altera la cascada de D15.
+
 Alternativa descartada para `tipo`: una tabla de tipos por edificio copiada de los parámetros. D-029
 fija los cuatro tipos; si algún día cambian, es una migración, igual que el vocabulario de auditoría.
 Para que el `CHECK` y `parametros.yaml` no sean dos fuentes de verdad que se separan, la lectura de

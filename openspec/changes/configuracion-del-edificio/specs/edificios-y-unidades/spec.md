@@ -108,8 +108,9 @@ como texto, nunca como número.
 ### Requirement: Una unidad no cambia de edificio ni de administración
 
 Una unidad SHALL pertenecer a un solo edificio de una sola administración durante toda su vida. Editar
-una unidad MUST NOT poder cambiar su edificio ni su administración, y la base MUST rechazar, aunque la
-aplicación se equivoque, una unidad que apunte a un edificio de otra administración.
+una unidad MUST NOT poder cambiar su edificio ni su administración. La base MUST rechazar cualquier
+cambio de `complejo_id` o `administracion_id`, también hacia otro edificio de la misma administración
+(decisión de Juani, 19/10/2026, R3B-5). Reasignar los mismos valores MUST seguir permitido.
 
 #### Scenario: Mover una unidad por la API
 
@@ -121,6 +122,23 @@ aplicación se equivoque, una unidad que apunte a un edificio de otra administra
 - **WHEN** conectado como `proptech_app` con el tenant de A se actualiza el `complejo_id` de una unidad
   a un edificio de B
 - **THEN** la base rechaza la escritura
+
+#### Scenario: Mover una unidad por SQL dentro de la misma administración
+
+- **WHEN** conectado como `proptech_app` con el tenant de A se actualiza el `complejo_id` de una unidad
+  a otro edificio de A, sin colisiones de identificador ni referencias que impidan la escritura
+- **THEN** la base rechaza la escritura con un error claro y la unidad conserva su edificio
+
+#### Scenario: Cambiar la administración de una unidad por SQL
+
+- **WHEN** conectado como `proptech_app` se cambia `administracion_id`, solo o junto con `complejo_id`
+- **THEN** la base rechaza la escritura con el error de pertenencia inmutable
+
+#### Scenario: Editar datos o reasignar las mismas claves por SQL
+
+- **WHEN** conectado como `proptech_app` se edita el identificador o piso sin cambiar la pertenencia,
+  incluso asignando a `complejo_id` y `administracion_id` sus valores actuales
+- **THEN** la base permite la edición
 
 ### Requirement: Estado de migración del edificio
 
