@@ -1478,7 +1478,40 @@ Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe
 
 ## 6. API
 
-- [ ] 6.1 Rutas de edificios (D6): listar, crear (con configuración inicial opcional), ver, resumen con estado e informe de R01, confirmar "sin saldos previos". Cada ruta entra en la lista de 2.1 y en el diccionario de cuerpos de 2.2 en el mismo commit. Tests de contrato con identidad inyectada: 401 sin identidad y sin SQL; 422 del cuerpo antes que 404 y 403 (orden de D6); 404 idéntico para inexistente, fuera de alcance y de otra administración; 403 con `permiso_faltante` para colaborador al crear o confirmar; el vecino recibe 403 en el resumen de su edificio y 404 en el de otro; 409; 422 con marcador ausente; alta con `id` rechazada. Escenarios: `edificios-y-unidades` › Alta de edificio con id propio; › Lista de un colaborador; › Un colaborador confirma; › Volver atrás; `autorizacion-por-rol` › Un colaborador crea un edificio; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio. Lecciones: L-007, L-017.
+- [x] 6.1 Rutas de edificios (D6): listar, crear (con configuración inicial opcional), ver, resumen con estado e informe de R01, confirmar "sin saldos previos". Cada ruta entra en la lista de 2.1 y en el diccionario de cuerpos de 2.2 en el mismo commit. Tests de contrato con identidad inyectada: 401 sin identidad y sin SQL; 422 del cuerpo antes que 404 y 403 (orden de D6); 404 idéntico para inexistente, fuera de alcance y de otra administración; 403 con `permiso_faltante` para colaborador al crear o confirmar; el vecino recibe 403 en el resumen de su edificio y 404 en el de otro; 409; 422 con marcador ausente; alta con `id` rechazada. Escenarios: `edificios-y-unidades` › Alta de edificio con id propio; › Lista de un colaborador; › Un colaborador confirma; › Volver atrás; `autorizacion-por-rol` › Un colaborador crea un edificio; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio. Lecciones: L-007, L-017.
+
+  ROJO (rutas todavía ausentes):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_edificios_api.py -q --tb=short
+  11:49:41
+  E   assert 404 == 200
+  21 failed, 1 passed, 1 warning in 6.89s
+  ```
+  El 404 del GET existente nació verde; mutante temporal y revertido en `finally`:
+  ```diff
+  - return HTTPException(status_code=404, detail="no encontrado")
+  + return HTTPException(status_code=404, detail="mutante")
+  ```
+  ```text
+  $ cd backend && date +%T && uv run python - <<'PY_MUTANTE'
+  # cambia el mensaje, ejecuta el nodo siguiente y restaura la copia original en finally
+  # uv run pytest 'tests/integracion/test_edificios_api.py::test_404_identico_para_inexistente_fuera_de_alcance_y_ajeno[GET-]' -q --tb=short --show-capture=no
+  PY_MUTANTE
+  11:50:03
+  E   AssertionError: assert {'detail': 'mutante'} == {'detail': 'no encontrado'}
+  1 failed, 1 warning in 7.17s
+  ```
+
+  VERDE (API, barridos, casos de uso y candado del 2a):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_edificios_api.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_crear_edificio.py tests/integracion/test_versiones_casos_de_uso.py tests/integracion/test_alcance_api.py tests/integracion/test_identidad_api.py -q --tb=short --show-capture=no && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  11:52:34
+  73 passed, 1 warning in 34.71s
+  All checks passed!
+  192 files already formatted
+  Success: no issues found in 178 source files
+  ```
+
 - [ ] 6.2 Rutas de unidades y de grupos (D6): alta, edición, lista, miembros con modo y coeficientes. Mismo contrato que 6.1. Tests propios: coeficiente y superficie como número JSON dan 422 sin el valor; `administracion_id` de otra administración en el cuerpo da 422 sin el id; el consejo y el colaborador "ver" reciben 403 al escribir y 200 al leer el padrón; el vecino recibe 403 al pedir el padrón de su edificio y 200 al pedir su unidad por `GET /api/unidades/{id}`. Escenarios: `edificios-y-unidades` › Coeficiente como número; › Coeficiente fuera de forma; › Tipo desconocido; › Alta de unidad con otra administración en el cuerpo; `autorizacion-por-rol` › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino ve su unidad. Lecciones: L-007, L-008, L-017.
 - [ ] 6.3 Rutas de categorías y de configuración (D6): categorías completas; versiones y vigente por fecha. Tests propios: tasa o recargo como número, `NaN`, fuera de rango, día 29 o con campo de capitalización dan 422; colaborador "editar" crea categoría y no versión (403); colaborador "ver" no crea categoría y sí lee la configuración; un `UniqueViolation` al crear la versión se traduce a 409 (la concurrencia real la prueba 3.6 en la base); no existe ruta para borrar una categoría ni una versión. Escenarios: `configuracion-versionada` › Tasa como número; › Tasa fuera de rango; › Pedido de capitalización; › Día de vencimiento fuera de rango; › Un colaborador cambia la tasa; › Dos pedidos simultáneos; `categorias-de-gasto` › Borrar; `autorizacion-por-rol` › Un colaborador "ver" crea una categoría. Lecciones: L-007.
 

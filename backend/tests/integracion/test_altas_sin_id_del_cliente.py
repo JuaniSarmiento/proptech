@@ -65,11 +65,14 @@ _MARCADOR = "marcador-nunca-tendria-que-salir-en-una-respuesta"
 #: Rutas `POST` SIN cuerpo (D7, nota N8): quedan fuera del barrido de abajo
 #: porque no hay nada a lo que sumarle `id`. `.../sin-saldos-previos` es de
 #: la tarea 6.1, que todavía no existe en este cambio.
-_RUTAS_SIN_CUERPO: set[tuple[str, str]] = set()
+_RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
+    ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
+}
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
 #: que no agregue su entrada acá hace fallar `test_toda_ruta_post_tiene_cuerpo_de_prueba`.
 _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
+    ("/api/complejos", "POST"): lambda mundo: {"nombre": "Edificio", "localidad": "Mendoza"},
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),
         "rol": "consejo",

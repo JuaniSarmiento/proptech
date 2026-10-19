@@ -6,6 +6,8 @@ o el verificador de salud). Un test puede pisar cualquiera con su propio
 `monkeypatch.setenv`/`delenv` para probar el caso contrario.
 """
 
+from __future__ import annotations
+
 import os
 from collections.abc import Iterator
 from pathlib import Path
@@ -16,6 +18,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from proptech_core.acceso.dominio.identidad import Identidad
+
+    from ._api_edificios import ApiEdificio
 
 import psycopg
 import pytest
@@ -164,3 +168,120 @@ def identidad_edificio(sesion_edificio: Session) -> Identidad:
         {"id": persona, "admin": admin},
     )
     return Identidad(admin, persona)
+
+
+@pytest.fixture
+def api_edificio(
+    base_del_edificio: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[ApiEdificio]:
+    from datetime import UTC, datetime
+
+    from fastapi.testclient import TestClient
+    from sqlalchemy import text
+
+    from proptech_api.app import crear_app
+    from proptech_core.acceso.dominio.identidad import Identidad
+    from proptech_core.compartido.base_de_datos import abrir_sesion
+    from proptech_core.compartido.parametros import leer_parametros
+    from proptech_core.complejos.aplicacion.escritura import crear_edificio
+
+    from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
+    from ._api_edificios import ApiEdificio
+
+    for clave, valor in base_del_edificio.entorno.items():
+        if clave in {"POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB"}:
+            monkeypatch.setenv(clave, valor)
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER_DE_SESION)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
+    app = crear_app()
+    admin, admin_b = uuid4(), uuid4()
+    personas = {rol: uuid4() for rol in ("titular", "editar", "ver", "consejo", "vecino")}
+    with TestClient(app) as cliente:
+        with abrir_sesion(app.state.fabrica_de_sesiones, admin) as sesion:
+            sesion.execute(
+                text("INSERT INTO administracion (id, nombre) VALUES (:id, 'Inventada API')"),
+                {"id": admin},
+            )
+            for persona in personas.values():
+                sesion.execute(
+                    text(
+                        "INSERT INTO persona (id, administracion_id, nombre) "
+                        "VALUES (:id, :admin, 'Persona ficticia')"
+                    ),
+                    {"id": persona, "admin": admin},
+                )
+            identidad = Identidad(admin, personas["titular"])
+            parametros = leer_parametros(str(_PARAMETROS_DEL_REPO))
+            edificios = [
+                crear_edificio(
+                    sesion,
+                    identidad,
+                    nombre=nombre,
+                    localidad="Mendoza",
+                    parametros=parametros,
+                    reloj=lambda: datetime.now(UTC),
+                    request_id=uuid4(),
+                )
+                for nombre in ("Edificio API", "Otro edificio API")
+            ]
+            unidades = [
+                sesion.execute(
+                    text(
+                        "INSERT INTO unidad (administracion_id, complejo_id, identificador, "
+                        "tipo, piso, coeficiente, superficie_m2) "
+                        "VALUES (:admin, :edificio, :nombre, 'departamento', '1', '0.5', '60') "
+                        "RETURNING id"
+                    ),
+                    {"admin": admin, "edificio": edificio, "nombre": nombre},
+                ).scalar_one()
+                for edificio, nombre in (
+                    (edificios[0], "1A"),
+                    (edificios[0], "1B"),
+                    (edificios[1], "2A"),
+                )
+            ]
+            for rol, persona in personas.items():
+                sesion.execute(
+                    text(
+                        "INSERT INTO asignacion_rol "
+                        "(administracion_id, persona_id, rol, complejo_id, unidad_id, nivel) "
+                        "VALUES (:admin, :persona, :rol, :edificio, :unidad, :nivel)"
+                    ),
+                    {
+                        "admin": admin,
+                        "persona": persona,
+                        "rol": "colaborador" if rol in ("editar", "ver") else rol,
+                        "edificio": None if rol == "titular" else edificios[0],
+                        "unidad": unidades[0] if rol == "vecino" else None,
+                        "nivel": rol if rol in ("editar", "ver") else None,
+                    },
+                )
+            sesion.commit()
+        with base_del_edificio.conectar_app() as conexion, conexion.transaction():
+            fijar_tenant(conexion, admin_b)
+            ajeno = uuid4()
+            conexion.execute(
+                "INSERT INTO administracion (id, nombre) VALUES (%s, 'Otra inventada API')",
+                (admin_b,),
+            )
+            conexion.execute(
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, 'Ajeno API', 'Mendoza')",
+                (ajeno, admin_b),
+            )
+            unidad_ajena = insertar_unidad(conexion, admin_b, ajeno)
+        api = ApiEdificio(
+            app=app,
+            cliente=cliente,
+            base=base_del_edificio,
+            admin=admin,
+            edificio=edificios[0],
+            otro=edificios[1],
+            ajeno=ajeno,
+            unidad=unidades[0],
+            otra_unidad=unidades[2],
+            unidad_ajena=unidad_ajena,
+            personas=personas,
+        )
+        api.como("titular")
+        yield api

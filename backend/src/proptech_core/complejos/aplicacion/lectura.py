@@ -23,6 +23,8 @@ class ComplejoLeido:
     id: UUID
     administracion_id: UUID
     nombre: str
+    localidad: str
+    estado_migracion: str
 
 
 @dataclass(frozen=True)
@@ -35,12 +37,33 @@ class UnidadLeida:
 
 def cargar_complejo(sesion: Session, complejo_id: UUID) -> ComplejoLeido | None:
     fila = sesion.execute(
-        text("SELECT id, administracion_id, nombre FROM complejo WHERE id = :id"),
+        text(
+            "SELECT id, administracion_id, nombre, localidad, estado_migracion "
+            "FROM complejo WHERE id = :id"
+        ),
         {"id": str(complejo_id)},
     ).first()
     if fila is None:
         return None
-    return ComplejoLeido(id=fila.id, administracion_id=fila.administracion_id, nombre=fila.nombre)
+    return ComplejoLeido(
+        id=fila.id,
+        administracion_id=fila.administracion_id,
+        nombre=fila.nombre,
+        localidad=fila.localidad,
+        estado_migracion=fila.estado_migracion,
+    )
+
+
+def listar_complejos(sesion: Session) -> list[ComplejoLeido]:
+    return [
+        ComplejoLeido(**dict(fila))
+        for fila in sesion.execute(
+            text(
+                "SELECT id, administracion_id, nombre, localidad, estado_migracion "
+                "FROM complejo ORDER BY nombre, id"
+            )
+        ).mappings()
+    ]
 
 
 def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:

@@ -56,6 +56,10 @@ _RUTAS_PUBLICAS = {("/api/salud", "GET")}
 #: estructural falla nombrándolo: es la señal de que una ruta nueva no pasó
 #: por este archivo.
 _RUTAS_CUBIERTAS = {
+    ("/api/complejos", "GET"),
+    ("/api/complejos", "POST"),
+    ("/api/complejos/{complejo_id}/resumen", "GET"),
+    ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
     ("/api/complejos/{complejo_id}", "GET"),
     ("/api/unidades/{unidad_id}", "GET"),
     ("/api/complejos/{complejo_id}/asignaciones", "POST"),
@@ -231,6 +235,10 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     ruta_resuelta = ruta.format(complejo_id=mundo["complejo_id"], unidad_id=mundo["unidad_id"])
     if metodo == "GET":
         return cliente.get(ruta_resuelta)
+    if ruta == "/api/complejos":
+        return cliente.post(ruta_resuelta, json={"nombre": "Edificio", "localidad": "Mendoza"})
+    if ruta.endswith("/sin-saldos-previos"):
+        return cliente.post(ruta_resuelta)
     return cliente.post(
         ruta_resuelta,
         json={"persona_id": str(mundo["otra_persona"]), "rol": "consejo"},

@@ -24,6 +24,7 @@ from proptech_core.compartido.conexion_redis import ajustes_redis_arq
 from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 from proptech_core.compartido.logs import configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
+from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 
 _logger = logging.getLogger("proptech_api.app")
 
@@ -50,7 +51,7 @@ def crear_app() -> FastAPI:
         raise
     # Idem con los parámetros del sistema (D6): un archivo inválido también
     # termina el arranque acá, nombrando cada campo con problemas.
-    leer_parametros(configuracion.proptech_parametros)
+    parametros = leer_parametros(configuracion.proptech_parametros)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -93,6 +94,7 @@ def crear_app() -> FastAPI:
             app.state.engine.dispose()
 
     app = FastAPI(title="PropTech API", lifespan=lifespan)
+    app.state.parametros = parametros
     # La cola queda cableada (D4): el pool de ARQ es perezoso (sólo conecta
     # al primer uso), así que armarla acá no intenta hablar con Redis y la
     # app arranca igual aunque esté inalcanzable (tarea 4.7).
@@ -109,4 +111,6 @@ def crear_app() -> FastAPI:
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
     app.add_exception_handler(RequestValidationError, manejador_422)
+    for tipo_de_error in (NoEncontrado, Conflicto, EntradaInvalida):
+        app.add_exception_handler(tipo_de_error, complejos.manejar_error_de_complejos)
     return app

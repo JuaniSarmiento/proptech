@@ -10,10 +10,12 @@ misma respuesta, para no filtrar cuál de los dos pasó, L-017) → si no
 puede, 403 con `permiso_faltante` (tarea 5.3).
 """
 
-from typing import Annotated
+from datetime import UTC, datetime
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import Field
 from sqlalchemy.orm import Session
 
@@ -23,8 +25,20 @@ from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, ex
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
-from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
-from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
+from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
+from proptech_core.complejos.aplicacion.escritura import (
+    asignar_complejo_a_persona,
+    confirmar_sin_saldos_previos,
+    crear_edificio,
+)
+from proptech_core.complejos.aplicacion.lectura import (
+    ComplejoLeido,
+    cargar_complejo,
+    cargar_unidad,
+    listar_complejos,
+)
+from proptech_core.complejos.aplicacion.unidades import listar_unidades
+from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
 #: `strict=True` de `CuerpoDeAlta` exige una instancia de `UUID` en modo
 #: "python" (D7, R11); un `UUID` de cuerpo tiene que volver a aceptar su
@@ -40,6 +54,124 @@ def _no_encontrado() -> HTTPException:
     tienen que dar exactamente la misma respuesta, nunca una variación que
     delate cuál de las dos pasó."""
     return HTTPException(status_code=404, detail="no encontrado")
+
+
+async def manejar_error_de_complejos(_request: Request, error: Exception) -> JSONResponse:
+    if isinstance(error, NoEncontrado):
+        return JSONResponse(status_code=404, content={"detail": "no encontrado"})
+    if isinstance(error, Conflicto):
+        return JSONResponse(status_code=409, content={"detail": "conflicto", "campo": error.campo})
+    if isinstance(error, EntradaInvalida):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": [
+                    {
+                        "loc": ["body", *error.campo.split(".")],
+                        "msg": error.motivo,
+                        "type": "value_error",
+                    }
+                ]
+            },
+        )
+    raise TypeError("error de complejos inesperado")
+
+
+def _autorizar(
+    sesion: Session, identidad: Identidad, accion: Accion, complejo_id: UUID | None
+) -> None:
+    if not puede(cargar_asignaciones(sesion, identidad.persona_id), accion, complejo_id):
+        raise HTTPException(
+            status_code=403, detail={"detalle": "sin_permiso", "permiso_faltante": accion.value}
+        )
+
+
+def _edificio_autorizado(
+    sesion: Session, identidad: Identidad, complejo_id: UUID, accion: Accion
+) -> ComplejoLeido:
+    edificio = cargar_complejo(sesion, complejo_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if edificio is None or not alcanza(asignaciones, complejo_id):
+        raise _no_encontrado()
+    _autorizar(sesion, identidad, accion, complejo_id)
+    return edificio
+
+
+class CuerpoEdificio(CuerpoDeAlta):
+    nombre: str = Field(min_length=1, max_length=200)
+    localidad: str = Field(min_length=1, max_length=200)
+    configuracion_inicial: ConfiguracionEdificio | None = None
+
+
+@router.get("/complejos")
+def mis_edificios(
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, str]]:
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if not asignaciones:
+        raise HTTPException(status_code=403, detail="sin_permiso")
+    return [
+        {"id": str(e.id), "nombre": e.nombre, "localidad": e.localidad}
+        for e in listar_complejos(sesion)
+        if alcanza(asignaciones, e.id)
+    ]
+
+
+@router.post("/complejos", status_code=201)
+def alta_edificio(
+    cuerpo: CuerpoEdificio,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _autorizar(sesion, identidad, Accion.CREAR_EDIFICIO, None)
+    if cuerpo.configuracion_inicial is not None:
+        try:
+            cuerpo.configuracion_inicial.validar_rango_recargo(request.app.state.parametros)
+        except ValueError:
+            raise EntradaInvalida("configuracion_inicial.recargo_segundo_vencimiento") from None
+    id_ = crear_edificio(
+        sesion,
+        identidad,
+        nombre=cuerpo.nombre,
+        localidad=cuerpo.localidad,
+        parametros=request.app.state.parametros,
+        reloj=lambda: datetime.now(UTC),
+        request_id=UUID(request_id_actual.get() or ""),
+        configuracion_inicial=cuerpo.configuracion_inicial,
+    )
+    sesion.commit()
+    return {"id": str(id_)}
+
+
+@router.get("/complejos/{complejo_id}/resumen")
+def resumen_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    edificio = _edificio_autorizado(
+        sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO
+    )
+    return {
+        "estado_migracion": edificio.estado_migracion,
+        "informe": listar_unidades(sesion, complejo_id)["informe"],
+    }
+
+
+@router.post("/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos")
+def confirmar_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIRMAR_SIN_SALDOS_PREVIOS)
+    confirmar_sin_saldos_previos(
+        sesion, identidad, complejo_id=complejo_id, request_id=UUID(request_id_actual.get() or "")
+    )
+    sesion.commit()
+    return {"id": str(complejo_id), "estado_migracion": "sin_saldos_previos"}
 
 
 @router.get("/complejos/{complejo_id}")
@@ -58,6 +190,7 @@ def ver_complejo(
         "id": str(complejo.id),
         "administracion_id": str(complejo.administracion_id),
         "nombre": complejo.nombre,
+        "localidad": complejo.localidad,
     }
 
 
