@@ -1468,6 +1468,50 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_norma
 14:33:25 [exit 0]
 ```
 
+### R3B-10 y R3B-11 · Tasa fuera de rango nombra ambos extremos
+
+- [x] Si un decimal ASCII finito fuera de 0.00–10.00 falla antes por signo/longitud,
+  devolver el motivo del rango; conservar el parser estricto de Porcentaje para todo lo demás.
+No se admiten números JSON, NaN ni formatos nuevos. La validación posterior del rango sigue
+actuando para `10.01`. Test original movido a `test_tasa_fuera_de_rango.py`, ampliado a negativos,
+más de tres dígitos, signo positivo y los dos ingresos (alta y nueva versión).
+**ROJO** R3B-10:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_tasa_fuera_de_rango.py -q --tb=line --color=no
+14:33:49
+FAILED tests/integracion/test_tasa_fuera_de_rango.py::test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango[alta-1000.00]
+10 failed, 2 passed, 1 warning in 9.97s
+14:34:01 [exit 1]
+```
+**VERDE** (configuración, API y todos los unitarios):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_tasa_fuera_de_rango.py tests/integracion/test_configuracion_api.py tests/unitarios -q --tb=line --color=no
+14:34:34
+955 passed, 1 warning in 54.45s
+14:35:31 [exit 0]
+```
+R3B-11 nació verde para `10.01`: mutante exacto del mensaje, con copia previa y revertido
+(`python3 .git/informes-3a/correcciones-v2/mutar.py r11-mutante`):
+```diff
+-            raise ValueError("tasa_mensual debe estar entre 0.00 y 10.00")
++            raise ValueError("tasa_mensual fuera de rango")
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_tasa_fuera_de_rango.py -q --tb=line --color=no
+14:35:44
+FAILED tests/integracion/test_tasa_fuera_de_rango.py::test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango[version-10.01]
+FAILED tests/integracion/test_tasa_fuera_de_rango.py::test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango[alta-10.01]
+2 failed, 10 passed, 1 warning in 9.39s
+14:35:55 [exit 1]
+```
+**VERDE** después de restituirlo:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_tasa_fuera_de_rango.py -q --tb=line --color=no
+14:35:55
+12 passed, 1 warning in 8.69s
+14:36:05 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo

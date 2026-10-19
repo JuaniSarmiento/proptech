@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from proptech_core.compartido.parametros import Parametros
-from proptech_core.compartido.porcentaje import Porcentaje
+from proptech_core.compartido.porcentaje import Porcentaje, PorcentajeInvalido
 
 
 class ConfiguracionEdificio(BaseModel):
@@ -22,6 +23,20 @@ class ConfiguracionEdificio(BaseModel):
     modalidad_de_vencimiento: Literal["unico", "doble"]
     dia_segundo_vencimiento: int | None = Field(default=None, ge=1, le=28, validate_default=True)
     recargo_segundo_vencimiento: Porcentaje | None = Field(default=None, validate_default=True)
+
+    @field_validator("tasa_mensual", mode="before")
+    @classmethod
+    def tasa_numerica_fuera_de_formato(cls, valor: Any) -> Any:
+        # El rango debe nombrarse también si el tipo corta antes por signo
+        # o cantidad de dígitos. Se reconocen sólo decimales ASCII finitos;
+        # el contrato de Porcentaje sigue rechazando números JSON y NaN.
+        if isinstance(valor, str) and re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?", valor):
+            if not Decimal("0") <= Decimal(valor) <= Decimal("10"):
+                try:
+                    Porcentaje(valor)
+                except PorcentajeInvalido:
+                    raise ValueError("tasa_mensual debe estar entre 0.00 y 10.00") from None
+        return valor
 
     @field_validator("tasa_mensual")
     @classmethod
