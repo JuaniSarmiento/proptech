@@ -30,7 +30,32 @@ Precondiciones, sin las cuales no se empieza:
 
 ## 2. Deuda heredada, antes de cualquier ruta nueva
 
-- [ ] 2.1 **R6** (bloqueante antes de la primera ruta nueva, D-098) en `tests/integracion/test_rutas_protegidas.py`: el barrido toma la ruta efectiva de toda `APIRoute` de la app (incluida con `include_router(prefix=...)`, agregada con `add_api_route` sobre la app, anidada). **Rojo**, sobre una copia del test (L-013): una app de prueba con un router sin prefijo montado con `include_router(prefix="/api")` y otra con `add_api_route("/api/x")`, cada una con una ruta fuera de `_RUTAS_CUBIERTAS`: el barrido de hoy pasa en verde (es el defecto). Arreglarlo y verlo fallar nombrando cada ruta; sobre la app real, la lista sale idéntica a la de hoy (tres rutas del 2a más `/api/salud` pública). Escenarios: `autorizacion-por-rol` › Ruta montada con prefijo de inclusión; › Ruta agregada directo a la app; › Las rutas de hoy siguen cubiertas. Lecciones: L-013, L-019, L-020.
+- [x] 2.1 **R6** (bloqueante antes de la primera ruta nueva, D-098) en `tests/integracion/test_rutas_protegidas.py`: el barrido toma la ruta efectiva de toda `APIRoute` de la app (incluida con `include_router(prefix=...)`, agregada con `add_api_route` sobre la app, anidada). **Rojo**, sobre una copia del test (L-013): una app de prueba con un router sin prefijo montado con `include_router(prefix="/api")` y otra con `add_api_route("/api/x")`, cada una con una ruta fuera de `_RUTAS_CUBIERTAS`: el barrido de hoy pasa en verde (es el defecto). Arreglarlo y verlo fallar nombrando cada ruta; sobre la app real, la lista sale idéntica a la de hoy (tres rutas del 2a más `/api/salud` pública). Escenarios: `autorizacion-por-rol` › Ruta montada con prefijo de inclusión; › Ruta agregada directo a la app; › Las rutas de hoy siguen cubiertas. Lecciones: L-013, L-019, L-020.
+
+  **RED** — 2026-10-19 09:01:40 (los dos tests nuevos, agregados ANTES del arreglo, corriendo contra el `_api_routes` viejo — no hizo falta copia aparte, L-013: agregar el test ya alcanza para ver el defecto sin tocar el código de producción):
+  ```
+  $ uv run pytest tests/integracion/test_rutas_protegidas.py -k "sin_cubrir_se_detecta" -v
+  FAILED ...::test_ruta_montada_con_prefijo_de_inclusion_sin_cubrir_se_detecta
+    AssertionError: el barrido no vio la ruta montada con include_router(prefix=...): rutas detectadas: set()
+  FAILED ...::test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta
+    AssertionError: el barrido no vio la ruta agregada con add_api_route directo a la app: rutas detectadas: set()
+  2 failed, 10 deselected, 1 warning in 0.73s
+  ```
+  Confirma el defecto exacto de D8: el barrido viejo no fallaba nombrando la ruta nueva (lo que se esperaría de un barrido "ciego pero detectado"); la perdía del todo (`set()`), porque filtraba por `sub.path.startswith("/api")` sobre `original_router.routes`, cuyo `.path` nunca lleva el prefijo de inclusión, y porque ignoraba toda ruta que no viniera envuelta en `_IncludedRouter`.
+
+  **GREEN** — 2026-10-19 09:02:06, arreglo de `_api_routes` (recorre `_IncludedRouter.effective_candidates()`, recursivo, más `APIRoute` directa):
+  ```
+  $ uv run pytest tests/integracion/test_rutas_protegidas.py -k "sin_cubrir_se_detecta" -v
+  PASSED ...::test_ruta_montada_con_prefijo_de_inclusion_sin_cubrir_se_detecta
+  PASSED ...::test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta
+  2 passed, 10 deselected, 1 warning in 0.79s
+  ```
+  Suite completa del archivo, sin regresión (L-020 — las tres rutas del 2a + `/api/salud` siguen siendo exactamente lo que ve el barrido, escenario "Las rutas de hoy siguen cubiertas"):
+  ```
+  $ uv run pytest tests/integracion/test_rutas_protegidas.py -q    # 09:02:53
+  12 passed, 1 warning in 6.70s
+  ```
+  Lint/formato/tipos (L-005): `uv run ruff check` y `uv run ruff format --check` y `uv run mypy tests/integracion/test_rutas_protegidas.py` — los tres en verde, 09:02:48.
 - [ ] 2.2 **R11** (D7 del design, E8): un modelo base de cuerpo con `extra="forbid"` y `strict=True`, y el manejador de 422 de las rutas de dominio que devuelve el campo y el motivo, nunca el valor. Un barrido nuevo en `tests/integracion/test_altas_sin_id_del_cliente.py` recorre toda ruta `POST` de dominio que encuentra el barrido de 2.1, toma su cuerpo válido de un diccionario de **cuerpos de prueba por ruta** y le suma `id`, `administracion_id` y `complejo_id` con un marcador: espera 422 cuya ruta de error **nombra `id`**, ninguna fila nueva y el marcador ausente de la respuesta. Una ruta `POST` sin cuerpo de prueba **hace fallar la suite** nombrándola (nunca se saltea). Exclusiones, con el motivo escrito en el test: la asignación del 2a (ignora `administracion_id`, diferencia conocida) y `POST .../sin-saldos-previos` (sin cuerpo). **Rojo**, dos: con una ruta de prueba cuyo cuerpo no hereda del modelo base, el barrido falla nombrándola; con una ruta de prueba sin cuerpo de prueba en el diccionario, también. Escenarios: `edificios-y-unidades` › Una ruta de alta nueva sin cuerpo estricto; › Una ruta de alta nueva sin cuerpo de prueba. Lecciones: L-007, L-019.
 - [ ] 2.3 Deuda del 1b con dueño 3, parte de código (D13): `Porcentaje` y `Superficie` en `proptech_core/compartido/` (texto decimal ASCII, `fullmatch`, rechazo de `float`, `bool`, `NaN`, `Infinity`, `-0`, dígitos Unicode y `\n` final, con tests en rojo primero); `parametros.py` y `semilla.py` pasan a usarlos (L-009: la misma batería sobre los dos lectores); `parametros.py` rechaza un tipo de unidad fuera de los cuatro de D-029, con la constante que va a usar el `CHECK` de 3.1 (nota N9 c; rojo: hoy `quincho` en `tipos_de_unidad` pasa); `Semilla.version: Literal[1]` (rojo: hoy `version: 2` pasa); `naming_convention` en la `MetaData`; `pydantic` declarado directo en `backend/pyproject.toml` (rojo: `tests/infra/test_dependencias.py` lo exige). Escenarios: `datos-semilla` › Versión distinta de 1. Lecciones: L-008, L-009.
 - [ ] 2.4 Deuda del 1b con dueño 3, parte de infraestructura (D13). Choca con `main` en `backend/src/proptech_api/app.py` (no en Compose, el humo ni el CI, que no cambiaron desde el fork): la rama ya tiene `main` desde el rebase del 16/10; si `main` volvió a tocar `app.py`, rebasar antes de empezar. `app.py` sin app creada al importar, conservando el log de `arranque_fallido` que sumó `main`, y `uvicorn --factory proptech_api.app:crear_app` en Compose y Dockerfile; healthcheck de la web contra `127.0.0.1`; `.gitignore` ampliado; el test de `chmod` salteado en Windows. Rojo de cada uno en `tests/infra/` y `tests/unitarios/test_arranque_api.py` (importar `proptech_api.app` hoy crea la app). Humo en verde al final. Escenarios: ninguno nuevo (no cambia comportamiento observable). Lecciones: L-005.

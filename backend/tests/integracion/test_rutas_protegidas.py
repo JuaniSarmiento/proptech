@@ -25,8 +25,7 @@ from typing import Any
 
 import psycopg
 import pytest
-from fastapi import FastAPI
-from fastapi.routing import APIRoute
+from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from testcontainers.community.postgres import PostgresContainer
 
@@ -199,18 +198,49 @@ def cliente(app_real: FastAPI) -> Iterator[TestClient]:
         yield cliente
 
 
-def _api_routes(app: FastAPI) -> list[APIRoute]:
-    """Las `APIRoute` reales bajo `/api`: en esta versión de FastAPI,
-    `include_router` las envuelve en un `_IncludedRouter` sin tipo público,
-    con el router original en el atributo dinámico `original_router`."""
-    rutas: list[APIRoute] = []
+def _api_routes(app: FastAPI) -> list[Any]:
+    """Toda ruta que la app de verdad atiende bajo `/api`, con su ruta
+    EFECTIVA (prefijo de inclusión ya aplicado) — no la `APIRoute` original
+    del router, que no lo lleva (D8, R6).
+
+    Tres formas de llegar a una ruta, las tres contempladas:
+
+    - directa (`app.add_api_route(...)`): queda como `APIRoute` en
+      `app.routes`, sin envolver.
+    - incluida (`app.include_router(router, prefix=...)`, con o sin
+      prefijo): en esta versión de FastAPI, `include_router` envuelve el
+      router en un `_IncludedRouter` sin tipo público; su `.original_router`
+      tiene las rutas SIN el prefijo de inclusión (por eso el barrido
+      anterior, que miraba ahí, era ciego a cualquier ruta montada con
+      prefijo: "/x" nunca empieza con "/api", aunque la app responda en
+      "/api/x"). La ruta efectiva sale de
+      `_IncludedRouter.effective_candidates()`, que arma FastAPI resolviendo
+      el prefijo; cada candidato es un `_EffectiveRouteContext` (con `.path`
+      ya prefijado, `.methods` y `.dependant`, igual que una `APIRoute`) o,
+      si el router incluido a su vez incluye otro, un `_IncludedRouter`
+      anidado — de ahí la recursión.
+    - anidada (un router que incluye a otro, cualquier profundidad): se
+      resuelve recursando sobre cada `_IncludedRouter` que aparece dentro de
+      `effective_candidates()`, acumulando los prefijos de cada nivel (lo
+      hace FastAPI; acá sólo se recorre el resultado).
+
+    Devuelve objetos heterogéneos a propósito (`APIRoute` o
+    `_EffectiveRouteContext`): el resto del archivo sólo usa `.path`,
+    `.methods` y `.dependant`, que los dos exponen.
+    """
+    rutas: list[Any] = []
+
+    def _recorrer(candidato: object) -> None:
+        if type(candidato).__name__ == "_IncludedRouter":
+            for sub in candidato.effective_candidates():  # type: ignore[attr-defined]
+                _recorrer(sub)
+            return
+        ruta = getattr(candidato, "path", None)
+        if isinstance(ruta, str) and ruta.startswith("/api"):
+            rutas.append(candidato)
+
     for route in app.routes:
-        if type(route).__name__ != "_IncludedRouter":
-            continue
-        router_original = route.original_router  # type: ignore[attr-defined]
-        for sub in router_original.routes:
-            if isinstance(sub, APIRoute) and sub.path.startswith("/api"):
-                rutas.append(sub)
+        _recorrer(route)
     return rutas
 
 
@@ -298,3 +328,53 @@ def test_cada_ruta_con_identidad_sin_asignacion_nunca_da_200_ni_201(
         assert respuesta.status_code in (403, 404), respuesta.status_code
     finally:
         app_real.dependency_overrides.pop(identidad_actual, None)
+
+
+# --- D8/R6: el barrido ve la ruta efectiva, sin depender de cómo se montó ---
+
+
+def test_ruta_montada_con_prefijo_de_inclusion_sin_cubrir_se_detecta() -> None:
+    """Scenario `autorizacion-por-rol` > Ruta montada con prefijo de
+    inclusión: un router SIN prefijo propio, incluido con
+    `include_router(prefix="/api")`, con una ruta fuera de
+    `_RUTAS_CUBIERTAS`. El defecto (D8): el barrido miraba
+    `original_router.routes`, cuyo `.path` no lleva el prefijo de inclusión
+    ("/sin-cubrir", no "/api/sin-cubrir"), así que ni pasaba el filtro
+    `startswith("/api")` y la ruta quedaba invisible — no "detectada pero sin
+    cubrir", sino afuera del conjunto entero. Si el barrido real corriera
+    sobre una app así, tendría que fallar nombrando la ruta."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/sin-cubrir")
+    def _sin_cubrir() -> dict[str, str]:  # pragma: no cover - nunca se llama
+        return {}
+
+    app.include_router(router, prefix="/api")
+
+    rutas = _rutas_reales_del_candado(app)
+
+    assert ("/api/sin-cubrir", "GET") in rutas, (
+        "el barrido no vio la ruta montada con include_router(prefix=...): "
+        f"rutas detectadas: {rutas}"
+    )
+    assert rutas - _RUTAS_PUBLICAS != _RUTAS_CUBIERTAS
+
+
+def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
+    """Scenario `autorizacion-por-rol` > Ruta agregada directo a la app: una
+    ruta sumada con `add_api_route` sobre la app misma (sin pasar por ningún
+    router), fuera de `_RUTAS_CUBIERTAS`. El defecto (D8): el barrido sólo
+    miraba rutas envueltas en `_IncludedRouter`
+    (`type(route).__name__ != "_IncludedRouter": continue`), así que una
+    `APIRoute` agregada directo a `app.routes` nunca entraba al recorrido."""
+    app = FastAPI()
+    app.add_api_route("/api/directo-sin-cubrir", lambda: {}, methods=["GET"])
+
+    rutas = _rutas_reales_del_candado(app)
+
+    assert ("/api/directo-sin-cubrir", "GET") in rutas, (
+        "el barrido no vio la ruta agregada con add_api_route directo a la app: "
+        f"rutas detectadas: {rutas}"
+    )
+    assert rutas - _RUTAS_PUBLICAS != _RUTAS_CUBIERTAS
