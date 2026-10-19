@@ -2041,6 +2041,29 @@ Arreglos aprobados por Juani el 19/10/2026, sobre HEAD `334daf5`: `.git/informes
 
 **Alembic head**: 0014 → 0016 (migraciones 0015, 0016 nuevas).
 
+**ESTILO Y TIPOS, final** (después de los 9 commits de esta tanda):
+```text
+$ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+221 files already formatted
+Success: no issues found in 201 source files
+```
+
+**BACKEND COMPLETO, corrida final**:
+```text
+$ date +%T && bash infra/ci/test-backend.sh
+16:07:21
+1737 passed, 1 xfailed, 16 warnings in 428.37s (0:07:08)
+```
+
+**HUMO COMPLETO, corrida final**:
+```text
+$ date +%T && bash infra/ci/humo.sh
+16:14:38
+HUMO OK
+16:16:44 [exit 0]
+```
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
