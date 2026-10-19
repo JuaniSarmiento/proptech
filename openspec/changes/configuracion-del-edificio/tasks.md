@@ -1127,6 +1127,29 @@ $ date +%T && uv run pytest tests/unitarios/ tests/integracion/test_crear_edific
 
 ### R3A-3 · MEDIA · "Generales" borrable o modificable por SQL
 
+Test movido a `tests/integracion/test_rls_grupos.py` (mismo archivo que ya cubre Generales, 3.2), ampliado a 3 sentencias (DELETE; UPDATE de es_generales+metodo; UPDATE de es_generales+modo, aislado de los CHECK existentes) más un control de que un grupo común sigue pudiendo borrarse/editarse. Arreglo: migración `0011_proteger_generales.py`, trigger `fn_grupo_generales_protegido`.
+
+**RED** — 19/10/2026, 12:49:44:
+```text
+$ date +%T && uv run pytest tests/rompedor_3a/test_r3a_generales_borrable_por_sql.py -q --color=no
+12:49:44
+FAILED test_la_base_no_deja_borrar_ni_apagar_generales[DELETE ...] — "la base aceptó la sentencia"
+FAILED test_la_base_no_deja_borrar_ni_apagar_generales[UPDATE ...] — "la base aceptó la sentencia"
+2 failed, 1 warning in 5.41s
+12:49:51
+```
+
+**GREEN** — 19/10/2026, 12:52:48 (con la cadena de migraciones hasta 0011 y el `downgrade` a `base` y vuelta en verde, `test_migracion_trabajos_hechos.py`):
+```text
+$ date +%T && uv run pytest tests/integracion/test_rls_grupos.py -q --color=no
+12:52:40
+......................                                                   [100%]
+22 passed in 7.08s
+12:52:48
+```
+
+**Mutante (L-019)**: `test_grupo_comun_se_borra_y_se_edita_sin_el_trigger_de_generales` es el control — si el trigger disparara para cualquier fila (no sólo `OLD.es_generales`), este caso fallaría. Corrido a mano comentando la condición `OLD.es_generales AND` del trigger (deja sólo el cuerpo del `IF`), el DELETE y el UPDATE de un grupo común también revientan: confirma que el control puede fallar. Restituida la condición antes de commitear.
+
 ### R3A-4 · MEDIA · Rol/nivel inválido en asignación da 500
 
 ### R3A-5 · BAJA · El 422 saneado repite parte del valor
