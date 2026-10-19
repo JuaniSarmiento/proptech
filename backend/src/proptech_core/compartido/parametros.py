@@ -225,6 +225,16 @@ class Parametros(_Base):
         if len(claves_categoria) != len(set(claves_categoria)):
             problemas.append("categorias_de_gasto: tiene claves repetidas")
 
+        # R3A-2 (L-018): la base exige
+        # UNIQUE (administracion_id, complejo_id, lower(nombre)) — el mismo
+        # criterio, sin distinguir mayúsculas, o `crear_edificio` arranca
+        # "sano" con un archivo que hace imposible crear un edificio.
+        nombres_categoria = [c.nombre.lower() for c in self.categorias_de_gasto]
+        if len(nombres_categoria) != len(set(nombres_categoria)):
+            problemas.append(
+                "categorias_de_gasto: tiene nombres repetidos sin distinguir mayúsculas"
+            )
+
         claves_grupo = [g.clave for g in self.grupos_de_reparto]
         if len(claves_grupo) != len(set(claves_grupo)):
             problemas.append("grupos_de_reparto: tiene claves repetidas")

@@ -136,7 +136,12 @@ def crear_edificio(
     configuracion = configuracion_inicial or ConfiguracionEdificio.desde_parametros(parametros)
     configuracion.validar_rango_recargo(parametros)
     hoy = hoy_en_mendoza(reloj)
-    with sesion.begin_nested() if sesion.in_transaction() else sesion.begin():
+    # R3A-2 (L-018): `leer_parametros` ya rechaza nombres de categoría
+    # repetidos sin distinguir mayúsculas al arranque; este `transaccion`
+    # es la segunda capa, para que un `parametros.yaml` que se le escape a
+    # esa validación (o un futuro caller que no pase por `leer_parametros`)
+    # no vuelva a dejar escapar la `UniqueViolation` cruda (500).
+    with transaccion(sesion, {"uq_categoria_nombre": "categorias_de_gasto"}):
         complejo_id = UUID(
             str(
                 sesion.execute(

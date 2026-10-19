@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session
 
 from proptech_core.acceso.aplicacion.auditoria import registrar
 from proptech_core.acceso.dominio.identidad import Identidad
-from proptech_core.compartido.parametros import leer_parametros
+from proptech_core.compartido.parametros import CategoriaDeGasto, leer_parametros
 from proptech_core.compartido.porcentaje import Porcentaje
 from proptech_core.complejos.aplicacion import escritura
+from proptech_core.complejos.aplicacion.errores import Conflicto
 
 pytestmark = pytest.mark.integracion
 PARAMETROS = Path(__file__).resolve().parents[3] / "config/parametros.yaml"
@@ -99,6 +100,40 @@ def test_alta_copia_todos_los_valores(
         request,
         {"complejo_id": str(edificio)},
     )
+
+
+def test_categorias_con_nombre_repetido_sin_mayusculas_da_conflicto_no_500(
+    sesion_edificio: Session, identidad_edificio: Identidad
+) -> None:
+    """R3A-2 (L-018), segunda capa: `leer_parametros` ya rechaza esto al
+    arrancar, pero si a `crear_edificio` igual le llega un `Parametros` con
+    nombres de categoría repetidos sin distinguir mayúsculas (construido a
+    mano, sin pasar por el lector), la `UniqueViolation` de
+    `uq_categoria_nombre` no tiene que escapar cruda (500): tiene que
+    traducirse al mismo `Conflicto` que ya usa `categorias.crear_categoria`."""
+    parametros = leer_parametros(str(PARAMETROS))
+    parametros = parametros.model_copy(
+        update={
+            "categorias_de_gasto": [
+                *parametros.categorias_de_gasto,
+                CategoriaDeGasto(clave="limpieza_bis", nombre="LIMPIEZA"),
+            ]
+        }
+    )
+    with pytest.raises(Conflicto) as exc_info:
+        escritura.crear_edificio(
+            sesion_edificio,
+            identidad_edificio,
+            nombre="Edificio",
+            localidad="Mendoza",
+            parametros=parametros,
+            reloj=reloj,
+            request_id=uuid4(),
+        )
+    assert exc_info.value.campo == "categorias_de_gasto"
+    for tabla in ("complejo", "configuracion_versionada", "categoria_de_gasto", "auditoria"):
+        consulta = f"SELECT count(*) FROM {tabla}"  # noqa: S608 - tablas literales del test
+        assert sesion_edificio.execute(text(consulta)).scalar_one() == 0
 
 
 def test_configuracion_inicial_y_parametros_nuevos_no_alteran_el_primero(

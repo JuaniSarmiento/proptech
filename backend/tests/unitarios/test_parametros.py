@@ -226,6 +226,35 @@ def test_claves_de_categoria_repetidas_falla() -> None:
         Parametros(**datos)
 
 
+def test_nombres_de_categoria_repetidos_sin_distinguir_mayusculas_falla() -> None:
+    """R3A-2 (L-018): la base exige `UNIQUE (..., lower(nombre))` (migración
+    0008); dos claves distintas con el mismo nombre salvo mayúsculas (p.ej.
+    "Limpieza" y "LIMPIEZA") arrancan "sanas" y hacen que TODA alta de
+    edificio termine en 500 por un `UniqueViolation` que nadie espera. El
+    arranque tiene que rechazarlas con el mismo criterio que la base."""
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["categorias_de_gasto"][1]["nombre"] = datos["categorias_de_gasto"][0]["nombre"].upper()
+    with pytest.raises(ValidationError, match="nombres repetidos"):
+        Parametros(**datos)
+
+
+def test_nombres_de_categoria_distintos_pasa() -> None:
+    """Mutante del test anterior (L-019): si `_validar_cruzadas` comparara
+    por clave en vez de por nombre, este caso (nombres distintos, claves ya
+    distintas en `_valido()`) seguiría pasando igual — no demuestra nada por
+    sí solo, así que lo que prueba que el chequeo mira el nombre es el test
+    de arriba, no este. Se deja como control: nombres realmente distintos
+    nunca deben rechazarse."""
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    Parametros(**datos)
+
+
 def test_estado_repetido_falla() -> None:
     from pydantic import ValidationError
 
@@ -380,6 +409,22 @@ def test_leer_parametros_archivo_valido(tmp_path: Any) -> None:
     parametros = leer_parametros(str(ruta))
     assert isinstance(parametros, Parametros)
     assert parametros.intereses.dias_de_gracia == 0
+
+
+def test_leer_parametros_rechaza_nombres_de_categoria_repetidos_sin_mayusculas(
+    tmp_path: Any,
+) -> None:
+    """R3A-2: el arranque tiene que rechazar al archivo, no dejarlo pasar
+    "sano" para que recién después, en cada alta de edificio, reviente."""
+    from proptech_core.compartido.parametros import ParametrosInvalidos, leer_parametros
+
+    datos = _valido()
+    datos["categorias_de_gasto"][1]["nombre"] = datos["categorias_de_gasto"][0]["nombre"].upper()
+    ruta = tmp_path / "parametros.yaml"
+    ruta.write_bytes(_dump(datos))
+
+    with pytest.raises(ParametrosInvalidos, match="nombres repetidos"):
+        leer_parametros(str(ruta))
 
 
 # --- 2.3 (3a): deuda del 1b con dueño 3 (D13, nota N9 c de design.md) ---
