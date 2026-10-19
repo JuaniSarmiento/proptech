@@ -49,3 +49,13 @@ def test_archivo_del_repo_cumple_los_defaults_de_d042() -> None:
         assert estado.cargo_fijo.a_texto() == "0.00"
     claves_estado = {e.clave for e in parametros.estados_de_unidad.estados}
     assert claves_estado == {"baldio", "en_obra", "habitado", "desocupado"}
+
+
+def test_defaults_de_vencimiento_y_rango_del_recargo() -> None:
+    from proptech_core.compartido.parametros import leer_parametros
+
+    vencimiento = leer_parametros(str(ARCHIVO)).vencimiento
+    assert vencimiento.dia == 10
+    assert vencimiento.modalidad == "unico"
+    assert vencimiento.rango_recargo.minimo == Decimal("0.01")
+    assert vencimiento.rango_recargo.maximo == Decimal("20.00")

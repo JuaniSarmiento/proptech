@@ -67,7 +67,10 @@ def base_del_edificio(
             },
         )
         try:
-            base.migrar("upgrade", "head")
+            for _ in range(2):
+                base.roles("antes")
+                base.migrar("upgrade", "head")
+                base.roles("despues")
             yield base
         finally:
             arranque.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(nombre)))

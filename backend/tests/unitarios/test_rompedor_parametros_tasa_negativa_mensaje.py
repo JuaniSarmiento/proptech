@@ -32,6 +32,11 @@ def _parametros_validos() -> dict[str, Any]:
             "forma_de_calculo": "proporcional_por_dia",
         },
         "fondo_de_reserva": {"porcentaje": "0.00"},
+        "vencimiento": {
+            "dia": 10,
+            "modalidad": "unico",
+            "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+        },
         "categorias_de_gasto": [{"clave": "encargado", "nombre": "Encargado"}],
         "grupos_de_reparto": [
             {

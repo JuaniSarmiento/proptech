@@ -120,6 +120,7 @@ _Clave = Annotated[str, AfterValidator(_clave_valida)]
 _ClaveDeTipoDeUnidad = Annotated[_Clave, AfterValidator(_tipo_de_unidad_valido)]
 _Tasa = Annotated[Decimal, BeforeValidator(_validador_porcentaje("0", "10"))]
 _Porcentaje = Annotated[Decimal, BeforeValidator(_validador_porcentaje("0", "100"))]
+_Recargo = Annotated[Decimal, BeforeValidator(_validador_porcentaje("0.01", "20.00"))]
 _Factor = Annotated[Porcentaje, AfterValidator(_factor_en_rango)]
 _CargoFijo = Annotated[Dinero, AfterValidator(_cargo_fijo_no_negativo)]
 
@@ -136,6 +137,41 @@ class Intereses(_Base):
 
 class FondoDeReserva(_Base):
     porcentaje: _Porcentaje
+
+
+class RangoDelRecargo(_Base):
+    minimo: _Recargo
+    maximo: _Recargo
+
+    @model_validator(mode="after")
+    def _ordenado(self) -> RangoDelRecargo:
+        if self.minimo > self.maximo:
+            raise ValueError("el mínimo no puede superar al máximo")
+        return self
+
+
+class Vencimiento(_Base):
+    dia: int = Field(ge=1, le=28)
+    modalidad: Literal["unico", "doble"]
+    rango_recargo: RangoDelRecargo
+    dia_segundo_vencimiento: int | None = Field(default=None, ge=1, le=28)
+    recargo_segundo_vencimiento: _Recargo | None = None
+
+    @model_validator(mode="after")
+    def _coherente(self) -> Vencimiento:
+        segundo, recargo = self.dia_segundo_vencimiento, self.recargo_segundo_vencimiento
+        if self.modalidad == "unico":
+            valido = segundo is None and recargo is None
+        else:
+            valido = (
+                segundo is not None
+                and segundo > self.dia
+                and recargo is not None
+                and self.rango_recargo.minimo <= recargo <= self.rango_recargo.maximo
+            )
+        if not valido:
+            raise ValueError("vencimiento incoherente: revisar modalidad, segundo día y recargo")
+        return self
 
 
 class CategoriaDeGasto(_Base):
@@ -172,6 +208,7 @@ class Parametros(_Base):
     version: Literal[1]
     intereses: Intereses
     fondo_de_reserva: FondoDeReserva
+    vencimiento: Vencimiento
     categorias_de_gasto: list[CategoriaDeGasto] = Field(min_length=1)
     grupos_de_reparto: list[GrupoDeReparto] = Field(min_length=1)
     tipos_de_unidad: list[TipoDeUnidad] = Field(min_length=1)

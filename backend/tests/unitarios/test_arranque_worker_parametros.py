@@ -17,6 +17,8 @@ def test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo(tmp_path: Path)
         'intereses: {tasa_mensual: "-1.00", dias_de_gracia: 0, '
         "forma_de_calculo: proporcional_por_dia}\n"
         'fondo_de_reserva: {porcentaje: "0.00"}\n'
+        "vencimiento: {dia: 10, modalidad: unico, "
+        'rango_recargo: {minimo: "0.01", maximo: "20.00"}}\n'
         "categorias_de_gasto: [{clave: varios, nombre: Varios}]\n"
         "grupos_de_reparto: [{clave: generales, nombre: Generales, "
         "metodo: coeficiente, alcance: todas_las_unidades}]\n"

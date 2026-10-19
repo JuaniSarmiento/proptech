@@ -14,6 +14,11 @@ BASE: dict[str, Any] = {
         "forma_de_calculo": "proporcional_por_dia",
     },
     "fondo_de_reserva": {"porcentaje": "0.00"},
+    "vencimiento": {
+        "dia": 10,
+        "modalidad": "unico",
+        "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+    },
     "categorias_de_gasto": [
         {"clave": "encargado", "nombre": "Encargado y cargas sociales"},
         {"clave": "seguridad", "nombre": "Seguridad"},
@@ -400,3 +405,96 @@ def test_cada_tipo_de_unidad_de_d029_pasa(clave: str) -> None:
     datos = _valido()
     datos["tipos_de_unidad"] = [{"clave": clave, "nombre": clave.capitalize()}]
     Parametros(**datos)
+
+
+# 3.6: vencimiento y rango del recargo, como texto y con límites cerrados.
+def test_vencimiento_y_rango_validos() -> None:
+    from decimal import Decimal
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["vencimiento"] = {
+        "dia": 10,
+        "modalidad": "unico",
+        "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+    }
+    vencimiento = Parametros(**datos).vencimiento
+    assert vencimiento.dia == 10
+    assert vencimiento.modalidad == "unico"
+    assert vencimiento.rango_recargo.minimo == Decimal("0.01")
+    assert vencimiento.rango_recargo.maximo == Decimal("20.00")
+
+
+@pytest.mark.parametrize(
+    "campo,valor",
+    [
+        ("dia", 0),
+        ("dia", 29),
+        ("dia", "10"),
+        ("dia", True),
+        ("modalidad", "libre"),
+        ("rango_recargo", {"minimo": "0.00", "maximo": "20.00"}),
+        ("rango_recargo", {"minimo": "0.01", "maximo": "20.01"}),
+        ("rango_recargo", {"minimo": "5.00", "maximo": "4.00"}),
+        ("rango_recargo", {"minimo": 0.01, "maximo": "20.00"}),
+    ],
+)
+def test_vencimiento_invalido_no_se_acepta(campo: str, valor: object) -> None:
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["vencimiento"] = {
+        "dia": 10,
+        "modalidad": "unico",
+        "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+        campo: valor,
+    }
+    with pytest.raises(ValidationError) as error:
+        Parametros(**datos)
+    assert any(e["loc"][:2] == ("vencimiento", campo) for e in error.value.errors())
+
+
+@pytest.mark.parametrize(
+    "cambios",
+    [
+        {"modalidad": "doble"},
+        {
+            "modalidad": "doble",
+            "dia_segundo_vencimiento": 10,
+            "recargo_segundo_vencimiento": "5.00",
+        },
+        {"recargo_segundo_vencimiento": "5.00"},
+    ],
+)
+def test_defaults_de_vencimiento_incoherentes(cambios: dict[str, Any]) -> None:
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["vencimiento"] = {
+        "dia": 10,
+        "modalidad": "unico",
+        "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+        **cambios,
+    }
+    with pytest.raises(ValidationError) as error:
+        Parametros(**datos)
+    assert "vencimiento incoherente" in str(error.value)
+
+
+def test_defaults_de_vencimiento_doble_completos() -> None:
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["vencimiento"] = {
+        "dia": 10,
+        "modalidad": "doble",
+        "dia_segundo_vencimiento": 20,
+        "recargo_segundo_vencimiento": "5.00",
+        "rango_recargo": {"minimo": "0.01", "maximo": "20.00"},
+    }
+    assert Parametros(**datos).vencimiento.dia_segundo_vencimiento == 20

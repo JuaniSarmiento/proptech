@@ -1213,7 +1213,45 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   12 passed in 5.64s
   All checks passed! / 173 files already formatted / Success: no issues found in 161 source files
   ```
-- [ ] 3.6 Migración de la configuración versionada (D2, D3, E4, E9): columnas de R03 y R15, el vencimiento (`dia_de_vencimiento` del 1 al 28, `modalidad_de_vencimiento`, `dia_segundo_vencimiento` y `recargo_segundo_vencimiento` nulos) con los `CHECK` de rango de `parametros.py` y el `CHECK` de coherencia; `UNIQUE` por fecha de vigencia, autor con FK compuesta a `persona`, la tabla en `_TABLAS_DE_SOLO_AGREGAR` (3.5) y trigger que rechaza `UPDATE`, `DELETE` y `TRUNCATE`. `parametros.yaml` y `Parametros` suman el vencimiento (día por defecto, modalidad, rango del recargo), con rojo primero. Tests que **intentan** editar (L-018): `UPDATE`, `DELETE` y `TRUNCATE` como `proptech_app` y como `proptech_migrador` se rechazan y la fila queda igual; dos `INSERT` con la misma fecha en transacciones concurrentes, uno falla; día 0 y 29 fallan; doble sin recargo, único con recargo, segundo día igual al primero, fallan; `downgrade` y `upgrade`. Escenarios: `configuracion-versionada` › Editar una versión por SQL; › Dos pedidos simultáneos (la parte de la base); › Vencimiento incoherente por SQL. Lecciones: L-016, L-018.
+- [x] 3.6 Migración de la configuración versionada (D2, D3, E4, E9): columnas de R03 y R15, el vencimiento (`dia_de_vencimiento` del 1 al 28, `modalidad_de_vencimiento`, `dia_segundo_vencimiento` y `recargo_segundo_vencimiento` nulos) con los `CHECK` de rango de `parametros.py` y el `CHECK` de coherencia; `UNIQUE` por fecha de vigencia, autor con FK compuesta a `persona`, la tabla en `_TABLAS_DE_SOLO_AGREGAR` (3.5) y trigger que rechaza `UPDATE`, `DELETE` y `TRUNCATE`. `parametros.yaml` y `Parametros` suman el vencimiento (día por defecto, modalidad, rango del recargo), con rojo primero. Tests que **intentan** editar (L-018): `UPDATE`, `DELETE` y `TRUNCATE` como `proptech_app` y como `proptech_migrador` se rechazan y la fila queda igual; dos `INSERT` con la misma fecha en transacciones concurrentes, uno falla; día 0 y 29 fallan; doble sin recargo, único con recargo, segundo día igual al primero, fallan; `downgrade` y `upgrade`. Escenarios: `configuracion-versionada` › Editar una versión por SQL; › Dos pedidos simultáneos (la parte de la base); › Vencimiento incoherente por SQL. Lecciones: L-016, L-018.
+
+  Evidencia 19/10/2026 (3.6):
+  ```text
+  RED: cd backend && date +%T; uv run pytest tests/integracion/test_configuracion_versionada_db.py tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py -q --tb=short
+  10:56:03
+  E psycopg.errors.UndefinedTable: relation "configuracion_versionada" does not exist
+  E AttributeError: 'Parametros' object has no attribute 'vencimiento'
+  41 failed, 45 passed in 7.30s
+  RED adicional de coherencia de los defaults:
+  cd backend && date +%T; uv run pytest tests/unitarios/test_parametros.py -q -k 'defaults_de_vencimiento' --tb=short
+  10:56:33
+  E ValidationError: vencimiento / Extra inputs are not permitted
+  4 failed, 54 deselected in 0.15s
+  ```
+  `0009` sigue a `0008`. Se intenta UPDATE/DELETE/TRUNCATE como app (42501) y migrador
+  (P0001 con el mensaje del trigger), comprobando la fila completa después de cada intento.
+  La base de cada módulo corre dos ciclos completos de roles antes/migraciones/roles despues.
+  Dos conexiones y una barrera compiten por la misma vigencia: una confirma y otra da UniqueViolation.
+  El rango de parámetros queda en `vencimiento.rango_recargo.{minimo,maximo}`; admite defaults
+  dobles completos y rechaza defaults incoherentes. Se actualizaron las fixtures antiguas para
+  que el campo nuevo no tape el error que cada test intenta provocar.
+  Mutante con copia previa `.atl/bloque-c/configuracion.pre-mutante.py` (sin commit):
+  ```diff
+  -            RAISE EXCEPTION 'configuracion_versionada no admite % (sólo agregar)', TG_OP;
+  +            RETURN NEW;
+  ```
+  ```text
+  cd backend && date +%T; uv run pytest tests/integracion/test_configuracion_versionada_db.py -q -k 'escritura_real and migrador' --tb=short
+  10:58:49
+  E Failed: DID NOT RAISE RaiseException (UPDATE, DELETE y TRUNCATE)
+  3 failed, 27 deselected in 5.29s
+  Mutante revertido, idéntico byte a byte a la copia previa.
+  GREEN: cd backend && date +%T; uv run pytest tests/unitarios tests/integracion/test_rls_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_modo_de_coeficientes.py tests/integracion/test_categorias_db.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_catalogo_rls.py -q --tb=short
+  10:59:11
+  773 passed, 1 warning in 65.24s (0:01:05)
+  uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 175 files already formatted / Success: no issues found in 162 source files
+  ```
 - [ ] 3.7 Vocabulario y matriz (D5, D14, E3, E7, B5): `Accion` suma `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`, `configurar_padron` y `ver_configuracion_del_edificio`; `0004` congelada con la lista literal de las acciones del 2a y la migración nueva con su lista literal, sin importar `Accion`; la matriz con el reparto de E3 y la lectura (vecino no); `puede` acepta `complejo_id=None` sólo para `crear_edificio`. Tests: la matriz celda por celda para los cinco perfiles, incluidas las acciones del 2a; cada otra acción con `None` se niega; una base vacía con `upgrade head` deja `accion_de_auditoria` igual a `{a.value for a in Accion}` (rojo: con el 0004 de hoy, la migración nueva choca con la clave primaria); el arranque real con las migraciones nuevas no frena por D-2 (ninguna FK hacia `auditoria`). Escenarios: `autorizacion-por-rol` › La matriz completa. Lecciones: L-016.
 
 ## 4. Dominio puro
