@@ -10,7 +10,7 @@ misma respuesta, para no filtrar cuál de los dos pasó, L-017) → si no
 puede, 403 con `permiso_faltante` (tarea 5.3).
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -25,21 +25,27 @@ from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, ex
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.compartido.coeficientes import Coeficiente
+from proptech_core.compartido.parametros import CategoriaDeGasto
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.compartido.superficie import Superficie
-from proptech_core.complejos.aplicacion import grupos, unidades
+from proptech_core.complejos.aplicacion import categorias, grupos, unidades
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.complejos.aplicacion.escritura import (
     asignar_complejo_a_persona,
     confirmar_sin_saldos_previos,
     crear_edificio,
+    crear_version_de_configuracion,
+    hoy_en_mendoza,
 )
 from proptech_core.complejos.aplicacion.lectura import (
     ComplejoLeido,
+    cargar_categoria,
     cargar_complejo,
     cargar_grupo,
     cargar_unidad,
+    configuracion_vigente,
     listar_complejos,
+    listar_versiones,
 )
 from proptech_core.complejos.aplicacion.unidades import listar_unidades
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
@@ -164,6 +170,23 @@ class CuerpoEdicionGrupo(CuerpoDeEdicion):
     @classmethod
     def clave_valida(cls, valor: str | None) -> str | None:
         return None if valor is None else grupos.DatosGrupo.clave_valida(valor)
+
+
+class CuerpoCategoria(CategoriaDeGasto, CuerpoDeAlta):
+    pass
+
+
+class CuerpoEdicionCategoria(CuerpoDeEdicion):
+    nombre: str | None = Field(default=None, min_length=1, max_length=80)
+    activa: bool | None = None
+
+
+class CuerpoOrdenCategorias(CuerpoDeAlta):
+    orden: list[_UUIDDeCuerpo]
+
+
+class CuerpoVersion(ConfiguracionEdificio, CuerpoDeAlta):
+    vigente_desde: Annotated[date, Field(strict=False)]
 
 
 @router.get("/complejos")
@@ -393,6 +416,111 @@ def reemplazar_miembros(
     )
     sesion.commit()
     return {"id": str(grupo_id)}
+
+
+@router.get("/complejos/{complejo_id}/categorias")
+def categorias_del_edificio(
+    complejo_id: UUID,
+    solo_activas: bool = False,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, Any]]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return categorias.listar_categorias(sesion, complejo_id, solo_activas=solo_activas)
+
+
+@router.post("/complejos/{complejo_id}/categorias", status_code=201)
+def alta_categoria(
+    complejo_id: UUID,
+    cuerpo: CuerpoCategoria,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    id_ = categorias.crear_categoria(
+        sesion, identidad, complejo_id=complejo_id, datos=cuerpo.model_dump()
+    )
+    sesion.commit()
+    return {"id": str(id_)}
+
+
+@router.patch("/categorias/{categoria_id}")
+def modificar_categoria(
+    categoria_id: UUID,
+    cuerpo: CuerpoEdicionCategoria,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    categoria = cargar_categoria(sesion, categoria_id)
+    if categoria is None:
+        raise _no_encontrado()
+    _edificio_autorizado(sesion, identidad, categoria["complejo_id"], Accion.CONFIGURAR_PADRON)
+    categorias.editar_categoria(
+        sesion, categoria_id=categoria_id, cambios=cuerpo.model_dump(exclude_unset=True)
+    )
+    sesion.commit()
+    return {"id": str(categoria_id)}
+
+
+@router.put("/complejos/{complejo_id}/categorias/orden")
+def ordenar_categorias(
+    complejo_id: UUID,
+    cuerpo: CuerpoOrdenCategorias,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    categorias.reordenar_categorias(sesion, complejo_id=complejo_id, orden=cuerpo.orden)
+    sesion.commit()
+    return {"id": str(complejo_id)}
+
+
+@router.get("/complejos/{complejo_id}/configuracion")
+def vigente_del_edificio(
+    complejo_id: UUID,
+    fecha: date | None = None,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any] | None:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return configuracion_vigente(
+        sesion, complejo_id, fecha or hoy_en_mendoza(lambda: datetime.now(UTC))
+    )
+
+
+@router.get("/complejos/{complejo_id}/configuracion/versiones")
+def versiones_del_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, Any]]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return listar_versiones(sesion, complejo_id)
+
+
+@router.post("/complejos/{complejo_id}/configuracion/versiones", status_code=201)
+def alta_version(
+    complejo_id: UUID,
+    cuerpo: CuerpoVersion,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CREAR_VERSION_DE_CONFIGURACION)
+    id_ = crear_version_de_configuracion(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        configuracion=ConfiguracionEdificio.model_validate(
+            cuerpo.model_dump(exclude={"vigente_desde"})
+        ),
+        vigente_desde=cuerpo.vigente_desde,
+        parametros=request.app.state.parametros,
+        reloj=lambda: datetime.now(UTC),
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"id": str(id_)}
 
 
 class CuerpoAsignacion(CuerpoDeAlta):

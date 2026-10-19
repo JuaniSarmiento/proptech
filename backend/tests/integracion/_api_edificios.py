@@ -27,6 +27,7 @@ class ApiEdificio:
     otra_unidad: UUID
     unidad_ajena: UUID
     grupo_ajeno: UUID
+    categoria_ajena: UUID
     personas: dict[str, UUID]
 
     def como(self, rol: str) -> None:

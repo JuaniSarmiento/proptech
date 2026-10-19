@@ -103,6 +103,18 @@ def cargar_grupo(sesion: Session, grupo_id: UUID) -> dict[str, Any] | None:
     return None if fila is None else dict(fila)
 
 
+def cargar_categoria(sesion: Session, categoria_id: UUID) -> dict[str, Any] | None:
+    fila = (
+        sesion.execute(
+            text("SELECT id, complejo_id FROM categoria_de_gasto WHERE id=:id"),
+            {"id": categoria_id},
+        )
+        .mappings()
+        .first()
+    )
+    return None if fila is None else dict(fila)
+
+
 _COLUMNAS_CONFIGURACION = (
     "SELECT id, complejo_id, vigente_desde, tasa_mensual::text, dias_de_gracia, "
     "forma_de_calculo, porcentaje_fondo::text, dia_de_vencimiento, modalidad_de_vencimiento, "

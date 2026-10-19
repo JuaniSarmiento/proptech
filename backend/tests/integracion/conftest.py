@@ -271,6 +271,12 @@ def api_edificio(
             )
             unidad_ajena = insertar_unidad(conexion, admin_b, ajeno)
             grupo_ajeno = insertar_grupo(conexion, admin_b, ajeno)
+            categoria_ajena = uuid4()
+            conexion.execute(
+                "INSERT INTO categoria_de_gasto (id, administracion_id, complejo_id, clave, "
+                "nombre, orden) VALUES (%s, %s, %s, 'limpieza', 'Limpieza', 0)",
+                (categoria_ajena, admin_b, ajeno),
+            )
         api = ApiEdificio(
             app=app,
             cliente=cliente,
@@ -284,6 +290,7 @@ def api_edificio(
             otra_unidad=unidades[2],
             unidad_ajena=unidad_ajena,
             grupo_ajeno=grupo_ajeno,
+            categoria_ajena=categoria_ajena,
             personas=personas,
         )
         api.como("titular")

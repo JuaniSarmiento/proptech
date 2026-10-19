@@ -1543,7 +1543,39 @@ Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe
   Success: no issues found in 179 source files
   ```
 
-- [ ] 6.3 Rutas de categorías y de configuración (D6): categorías completas; versiones y vigente por fecha. Tests propios: tasa o recargo como número, `NaN`, fuera de rango, día 29 o con campo de capitalización dan 422; colaborador "editar" crea categoría y no versión (403); colaborador "ver" no crea categoría y sí lee la configuración; un `UniqueViolation` al crear la versión se traduce a 409 (la concurrencia real la prueba 3.6 en la base); no existe ruta para borrar una categoría ni una versión. Escenarios: `configuracion-versionada` › Tasa como número; › Tasa fuera de rango; › Pedido de capitalización; › Día de vencimiento fuera de rango; › Un colaborador cambia la tasa; › Dos pedidos simultáneos; `categorias-de-gasto` › Borrar; `autorizacion-por-rol` › Un colaborador "ver" crea una categoría. Lecciones: L-007.
+- [x] 6.3 Rutas de categorías y de configuración (D6): categorías completas; versiones y vigente por fecha. Tests propios: tasa o recargo como número, `NaN`, fuera de rango, día 29 o con campo de capitalización dan 422; colaborador "editar" crea categoría y no versión (403); colaborador "ver" no crea categoría y sí lee la configuración; un `UniqueViolation` al crear la versión se traduce a 409 (la concurrencia real la prueba 3.6 en la base); no existe ruta para borrar una categoría ni una versión. Escenarios: `configuracion-versionada` › Tasa como número; › Tasa fuera de rango; › Pedido de capitalización; › Día de vencimiento fuera de rango; › Un colaborador cambia la tasa; › Dos pedidos simultáneos; `categorias-de-gasto` › Borrar; `autorizacion-por-rol` › Un colaborador "ver" crea una categoría. Lecciones: L-007.
+
+  ROJO (rutas ausentes):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_configuracion_api.py -q --tb=short --show-capture=no
+  12:00:16
+  E   assert 404 == 201
+  30 failed, 1 warning in 7.94s
+  ```
+  ROJO de la ubicación del error antes de mover las validaciones a cada campo:
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_configuracion_api.py -q --tb=short --show-capture=no
+  12:01:49
+  E   AssertionError: assert 'tasa_mensual' in ['body']
+  E   AssertionError: assert 'dia_segundo_vencimiento' in ['body']
+  5 failed, 25 passed, 1 warning in 8.70s
+  ```
+  La quinta falla era un nombre de categoría de prueba ya precargado; corregido a uno nuevo.
+
+
+  VERDE (toda la API, barridos y casos de uso afectados):
+  ```text
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && date +%T && uv run pytest tests/integracion/test_configuracion_api.py tests/integracion/test_edificios_api.py tests/integracion/test_padron_api.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_versiones_casos_de_uso.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_crear_edificio.py -q --tb=short --show-capture=no
+  12:02:37
+  179 passed, 1 warning in 38.54s
+  ```
+  Antes del commit, repetidos después del verde:
+  ```text
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed!
+  194 files already formatted
+  Success: no issues found in 180 source files
+  ```
 
 ## 7. El edificio de ejemplo
 

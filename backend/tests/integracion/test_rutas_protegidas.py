@@ -56,6 +56,13 @@ _RUTAS_PUBLICAS = {("/api/salud", "GET")}
 #: estructural falla nombrándolo: es la señal de que una ruta nueva no pasó
 #: por este archivo.
 _RUTAS_CUBIERTAS = {
+    ("/api/complejos/{complejo_id}/categorias", "GET"),
+    ("/api/complejos/{complejo_id}/categorias", "POST"),
+    ("/api/categorias/{categoria_id}", "PATCH"),
+    ("/api/complejos/{complejo_id}/categorias/orden", "PUT"),
+    ("/api/complejos/{complejo_id}/configuracion", "GET"),
+    ("/api/complejos/{complejo_id}/configuracion/versiones", "GET"),
+    ("/api/complejos/{complejo_id}/configuracion/versiones", "POST"),
     ("/api/complejos/{complejo_id}/unidades", "GET"),
     ("/api/complejos/{complejo_id}/unidades", "POST"),
     ("/api/unidades/{unidad_id}", "PATCH"),
@@ -171,6 +178,12 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             (grupo_id, admin_id, complejo_id),
         )
         persona_sin_asignacion = uuid.uuid4()
+        categoria_id = uuid.uuid4()
+        cur.execute(
+            "INSERT INTO categoria_de_gasto (id, administracion_id, complejo_id, clave, "
+            "nombre, orden) VALUES (%s, %s, %s, 'limpieza', 'Limpieza', 0)",
+            (categoria_id, admin_id, complejo_id),
+        )
         cur.execute(
             "INSERT INTO persona (id, administracion_id, nombre, email) VALUES (%s, %s, %s, %s)",
             (str(persona_sin_asignacion), str(admin_id), "sin asignación", "sin-asig@ej.com"),
@@ -187,6 +200,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "complejo_id": complejo_id,
         "unidad_id": unidad_id,
         "grupo_id": grupo_id,
+        "categoria_id": categoria_id,
         "persona_sin_asignacion": persona_sin_asignacion,
         "otra_persona": otra_persona,
     }
@@ -250,6 +264,17 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     ruta_resuelta = ruta.format(**mundo)
     if metodo == "GET":
         return cliente.get(ruta_resuelta)
+    if "/configuracion/versiones" in ruta:
+        from .test_configuracion_api import version
+
+        return cliente.post(ruta_resuelta, json=version())
+    if "/categorias" in ruta:
+        cuerpo_categoria: dict[str, Any] = (
+            {"orden": [str(mundo["categoria_id"])]} if metodo == "PUT" else {"nombre": "Nueva"}
+        )
+        if metodo == "POST":
+            cuerpo_categoria["clave"] = "nueva"
+        return cliente.request(metodo, ruta_resuelta, json=cuerpo_categoria)
     if ruta == "/api/complejos":
         return cliente.post(ruta_resuelta, json={"nombre": "Edificio", "localidad": "Mendoza"})
     if ruta.endswith("/sin-saldos-previos"):
