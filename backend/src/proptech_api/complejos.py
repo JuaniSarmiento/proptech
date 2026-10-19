@@ -48,7 +48,9 @@ from proptech_core.complejos.aplicacion.lectura import (
     listar_complejos,
     listar_versiones,
 )
-from proptech_core.complejos.aplicacion.unidades import listar_unidades
+from proptech_core.complejos.aplicacion.lectura import (
+    resumen_edificio as leer_resumen_edificio,
+)
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
 #: `strict=True` de `CuerpoDeAlta` exige una instancia de `UUID` en modo
@@ -264,13 +266,8 @@ def resumen_edificio(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, Any]:
-    edificio = _edificio_autorizado(
-        sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO
-    )
-    return {
-        "estado_migracion": edificio.estado_migracion,
-        "informe": listar_unidades(sesion, complejo_id)["informe"],
-    }
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return leer_resumen_edificio(sesion, complejo_id, hoy_en_mendoza(lambda: datetime.now(UTC)))
 
 
 @router.post("/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos")

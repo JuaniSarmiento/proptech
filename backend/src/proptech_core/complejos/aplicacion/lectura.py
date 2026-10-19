@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.compartido.coeficientes import Coeficiente, informar_coeficientes
 from proptech_core.complejos.aplicacion.errores import NoEncontrado
 
 
@@ -149,3 +150,87 @@ def configuracion_vigente(sesion: Session, complejo_id: UUID, fecha: date) -> di
         .first()
     )
     return None if fila is None else dict(fila)
+
+
+def resumen_edificio(sesion: Session, complejo_id: UUID, hoy: date) -> dict[str, Any]:
+    """D5 (tarea 2.1): la puesta a punto del edificio. Nunca llama a
+    `unidades`/`grupos`/`categorias` (evitaría el ciclo: esos módulos ya
+    importan de acá) — consulta directo, como el resto de este archivo.
+
+    Los seis pasos (criterio de `edificios-y-unidades` > "Resumen y puesta a
+    punto del edificio"): `unidades`, `coeficientes`, `grupos`, `categorias`,
+    `intereses_y_vencimiento` y `saldos_previos`.
+    """
+    complejo = cargar_complejo(sesion, complejo_id)
+    if complejo is None:
+        raise NoEncontrado()
+
+    coeficientes_unidades = (
+        sesion.execute(
+            text("SELECT coeficiente::text FROM unidad WHERE complejo_id=:id"), {"id": complejo_id}
+        )
+        .scalars()
+        .all()
+    )
+    cantidad_unidades = len(coeficientes_unidades)
+    informe = informar_coeficientes(Coeficiente(c) for c in coeficientes_unidades)
+
+    grupos_parciales = (
+        sesion.execute(
+            text(
+                "SELECT id, modo_de_coeficientes FROM grupo_de_reparto "
+                "WHERE complejo_id=:id AND NOT es_generales"
+            ),
+            {"id": complejo_id},
+        )
+        .mappings()
+        .all()
+    )
+    paso_grupos = "hecho"
+    for grupo in grupos_parciales:
+        miembros = (
+            sesion.execute(
+                text("SELECT coeficiente::text FROM grupo_unidad WHERE grupo_id=:id"),
+                {"id": grupo["id"]},
+            )
+            .scalars()
+            .all()
+        )
+        if not miembros:
+            paso_grupos = "falta"
+            break
+        if grupo["modo_de_coeficientes"] == "propios":
+            informe_grupo = informar_coeficientes(Coeficiente(c) for c in miembros)
+            if informe_grupo["estado"] == "fuera_de_tolerancia":
+                paso_grupos = "falta"
+                break
+
+    categorias_activas = sesion.execute(
+        text("SELECT count(*) FROM categoria_de_gasto WHERE complejo_id=:id AND activa"),
+        {"id": complejo_id},
+    ).scalar_one()
+
+    pasos = {
+        "unidades": "hecho" if cantidad_unidades > 0 else "falta",
+        "coeficientes": (
+            "hecho"
+            if cantidad_unidades > 0 and informe["estado"] in ("ok", "advertencia")
+            else "falta"
+        ),
+        "grupos": paso_grupos,
+        "categorias": "hecho" if categorias_activas > 0 else "falta",
+        "intereses_y_vencimiento": (
+            "hecho" if configuracion_vigente(sesion, complejo_id, hoy) is not None else "falta"
+        ),
+        "saldos_previos": "hecho" if complejo.estado_migracion != "pendiente" else "falta",
+    }
+
+    return {
+        "nombre": complejo.nombre,
+        "localidad": complejo.localidad,
+        "cantidad_unidades": cantidad_unidades,
+        "estado_migracion": complejo.estado_migracion,
+        "informe": informe,
+        "pasos": pasos,
+        "listo_para_liquidar": all(paso == "hecho" for paso in pasos.values()),
+    }

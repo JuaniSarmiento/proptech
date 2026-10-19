@@ -38,8 +38,20 @@ def test_ver_edificio_y_resumen_con_estado_e_informe(api_edificio: ApiEdificio) 
     resumen = api.cliente.get(api.ruta("/resumen"))
     assert resumen.status_code == 200
     assert resumen.json() == {
+        "nombre": "Edificio API",
+        "localidad": "Mendoza",
+        "cantidad_unidades": 2,
         "estado_migracion": "pendiente",
         "informe": {"suma": "1.000000", "diferencia": "0.000000", "estado": "ok"},
+        "pasos": {
+            "unidades": "hecho",
+            "coeficientes": "hecho",
+            "grupos": "hecho",
+            "categorias": "hecho",
+            "intereses_y_vencimiento": "hecho",
+            "saldos_previos": "falta",
+        },
+        "listo_para_liquidar": False,
     }
 
 
