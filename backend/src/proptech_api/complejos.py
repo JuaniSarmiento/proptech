@@ -11,12 +11,12 @@ puede, 403 con `permiso_faltante` (tarea 5.3).
 """
 
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import Field
+from pydantic import Field, field_validator
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
@@ -24,7 +24,10 @@ from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, existe_persona
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
+from proptech_core.compartido.coeficientes import Coeficiente
 from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.compartido.superficie import Superficie
+from proptech_core.complejos.aplicacion import grupos, unidades
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.complejos.aplicacion.escritura import (
     asignar_complejo_a_persona,
@@ -34,6 +37,7 @@ from proptech_core.complejos.aplicacion.escritura import (
 from proptech_core.complejos.aplicacion.lectura import (
     ComplejoLeido,
     cargar_complejo,
+    cargar_grupo,
     cargar_unidad,
     listar_complejos,
 )
@@ -101,6 +105,65 @@ class CuerpoEdificio(CuerpoDeAlta):
     nombre: str = Field(min_length=1, max_length=200)
     localidad: str = Field(min_length=1, max_length=200)
     configuracion_inicial: ConfiguracionEdificio | None = None
+
+
+class CuerpoUnidad(unidades.DatosUnidad, CuerpoDeAlta):
+    pass
+
+
+class CuerpoDeEdicion(CuerpoDeAlta):
+    """Un PATCH puede omitir campos, pero no anularlos."""
+
+    @field_validator("*", mode="before", check_fields=False)
+    @classmethod
+    def no_nulo(cls, valor: Any) -> Any:
+        if valor is None:
+            raise ValueError("el campo no admite null")
+        return valor
+
+
+class CuerpoEdicionUnidad(CuerpoDeEdicion):
+    identificador: str | None = Field(default=None, min_length=1, max_length=40)
+    tipo: str | None = None
+    piso: str | None = None
+    coeficiente: Coeficiente | None = None
+    superficie_m2: Superficie | None = None
+
+    @field_validator("tipo")
+    @classmethod
+    def tipo_valido(cls, valor: str | None) -> str | None:
+        return None if valor is None else unidades.DatosUnidad.tipo_valido(valor)
+
+    @field_validator("superficie_m2")
+    @classmethod
+    def superficie_positiva(cls, valor: Superficie | None) -> Superficie | None:
+        return None if valor is None else unidades.DatosUnidad.superficie_positiva(valor)
+
+
+class CuerpoMiembro(CuerpoDeAlta):
+    unidad_id: _UUIDDeCuerpo
+    coeficiente: Coeficiente | None = None
+
+
+class CuerpoMiembros(CuerpoDeAlta):
+    modo_de_coeficientes: Literal["renormalizado", "propios"] = "renormalizado"
+    unidades: list[CuerpoMiembro]
+
+
+class CuerpoGrupo(grupos.DatosGrupo, CuerpoDeAlta):
+    modo_de_coeficientes: Literal["renormalizado", "propios"] = "renormalizado"
+    unidades: list[CuerpoMiembro] = Field(default_factory=list)
+
+
+class CuerpoEdicionGrupo(CuerpoDeEdicion):
+    clave: str | None = None
+    nombre: str | None = Field(default=None, min_length=1, max_length=80)
+    metodo: Literal["coeficiente", "superficie", "partes_iguales"] | None = None
+
+    @field_validator("clave")
+    @classmethod
+    def clave_valida(cls, valor: str | None) -> str | None:
+        return None if valor is None else grupos.DatosGrupo.clave_valida(valor)
 
 
 @router.get("/complejos")
@@ -211,7 +274,125 @@ def ver_unidad(
         "administracion_id": str(unidad.administracion_id),
         "complejo_id": str(unidad.complejo_id),
         "identificador": unidad.identificador,
+        "tipo": unidad.tipo,
+        "piso": unidad.piso,
+        "coeficiente": unidad.coeficiente,
+        "superficie_m2": unidad.superficie_m2,
     }
+
+
+@router.get("/complejos/{complejo_id}/unidades")
+def padron_del_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return dict(unidades.listar_unidades(sesion, complejo_id))
+
+
+@router.post("/complejos/{complejo_id}/unidades", status_code=201)
+def alta_unidad(
+    complejo_id: UUID,
+    cuerpo: CuerpoUnidad,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    id_ = unidades.crear_unidad(
+        sesion, identidad, complejo_id=complejo_id, datos=cuerpo.model_dump()
+    )
+    respuesta = ver_unidad(id_, identidad, sesion)
+    sesion.commit()
+    return respuesta
+
+
+@router.patch("/unidades/{unidad_id}")
+def modificar_unidad(
+    unidad_id: UUID,
+    cuerpo: CuerpoEdicionUnidad,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    unidad = cargar_unidad(sesion, unidad_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if unidad is None or not alcanza(asignaciones, unidad.complejo_id, unidad_id):
+        raise _no_encontrado()
+    _edificio_autorizado(sesion, identidad, unidad.complejo_id, Accion.CONFIGURAR_PADRON)
+    unidades.editar_unidad(
+        sesion, unidad_id=unidad_id, cambios=cuerpo.model_dump(exclude_unset=True)
+    )
+    respuesta = ver_unidad(unidad_id, identidad, sesion)
+    sesion.commit()
+    return respuesta
+
+
+def _autorizar_grupo(sesion: Session, identidad: Identidad, grupo_id: UUID) -> None:
+    grupo = cargar_grupo(sesion, grupo_id)
+    if grupo is None:
+        raise _no_encontrado()
+    _edificio_autorizado(sesion, identidad, grupo["complejo_id"], Accion.CONFIGURAR_PADRON)
+
+
+@router.get("/complejos/{complejo_id}/grupos")
+def grupos_del_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, Any]]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
+    return grupos.listar_grupos(sesion, complejo_id)
+
+
+@router.post("/complejos/{complejo_id}/grupos", status_code=201)
+def alta_grupo(
+    complejo_id: UUID,
+    cuerpo: CuerpoGrupo,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    id_ = grupos.crear_grupo(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        datos=cuerpo.model_dump(include={"clave", "nombre", "metodo"}),
+        miembros=[m.model_dump() for m in cuerpo.unidades],
+        modo=cuerpo.modo_de_coeficientes,
+    )
+    sesion.commit()
+    return {"id": str(id_)}
+
+
+@router.patch("/grupos/{grupo_id}")
+def modificar_grupo(
+    grupo_id: UUID,
+    cuerpo: CuerpoEdicionGrupo,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _autorizar_grupo(sesion, identidad, grupo_id)
+    grupos.editar_grupo(sesion, grupo_id=grupo_id, cambios=cuerpo.model_dump(exclude_unset=True))
+    sesion.commit()
+    return {"id": str(grupo_id)}
+
+
+@router.put("/grupos/{grupo_id}/unidades")
+def reemplazar_miembros(
+    grupo_id: UUID,
+    cuerpo: CuerpoMiembros,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _autorizar_grupo(sesion, identidad, grupo_id)
+    grupos.fijar_unidades(
+        sesion,
+        grupo_id=grupo_id,
+        modo=cuerpo.modo_de_coeficientes,
+        miembros=[m.model_dump() for m in cuerpo.unidades],
+    )
+    sesion.commit()
+    return {"id": str(grupo_id)}
 
 
 class CuerpoAsignacion(CuerpoDeAlta):

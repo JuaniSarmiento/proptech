@@ -56,6 +56,13 @@ _RUTAS_PUBLICAS = {("/api/salud", "GET")}
 #: estructural falla nombrándolo: es la señal de que una ruta nueva no pasó
 #: por este archivo.
 _RUTAS_CUBIERTAS = {
+    ("/api/complejos/{complejo_id}/unidades", "GET"),
+    ("/api/complejos/{complejo_id}/unidades", "POST"),
+    ("/api/unidades/{unidad_id}", "PATCH"),
+    ("/api/complejos/{complejo_id}/grupos", "GET"),
+    ("/api/complejos/{complejo_id}/grupos", "POST"),
+    ("/api/grupos/{grupo_id}", "PATCH"),
+    ("/api/grupos/{grupo_id}/unidades", "PUT"),
     ("/api/complejos", "GET"),
     ("/api/complejos", "POST"),
     ("/api/complejos/{complejo_id}/resumen", "GET"),
@@ -156,6 +163,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             "VALUES (%s, %s, %s, %s, 'departamento', '1', '0.1', '60.00')",
             (str(unidad_id), str(admin_id), str(complejo_id), "1A"),
         )
+        grupo_id = uuid.uuid4()
+        cur.execute(
+            "INSERT INTO grupo_de_reparto "
+            "(id, administracion_id, complejo_id, clave, nombre, metodo) "
+            "VALUES (%s, %s, %s, 'ascensor', 'Ascensor', 'coeficiente')",
+            (grupo_id, admin_id, complejo_id),
+        )
         persona_sin_asignacion = uuid.uuid4()
         cur.execute(
             "INSERT INTO persona (id, administracion_id, nombre, email) VALUES (%s, %s, %s, %s)",
@@ -172,6 +186,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "administracion_id": admin_id,
         "complejo_id": complejo_id,
         "unidad_id": unidad_id,
+        "grupo_id": grupo_id,
         "persona_sin_asignacion": persona_sin_asignacion,
         "otra_persona": otra_persona,
     }
@@ -232,13 +247,32 @@ def test_cada_ruta_del_candado_depende_de_identidad_actual(
 
 
 def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) -> Any:
-    ruta_resuelta = ruta.format(complejo_id=mundo["complejo_id"], unidad_id=mundo["unidad_id"])
+    ruta_resuelta = ruta.format(**mundo)
     if metodo == "GET":
         return cliente.get(ruta_resuelta)
     if ruta == "/api/complejos":
         return cliente.post(ruta_resuelta, json={"nombre": "Edificio", "localidad": "Mendoza"})
     if ruta.endswith("/sin-saldos-previos"):
         return cliente.post(ruta_resuelta)
+    if ruta.endswith("/unidades") or ruta == "/api/unidades/{unidad_id}":
+        cuerpo = (
+            {"modo_de_coeficientes": "renormalizado", "unidades": []}
+            if metodo == "PUT"
+            else {
+                "identificador": "2A",
+                "tipo": "departamento",
+                "piso": "2",
+                "coeficiente": "0.2",
+                "superficie_m2": "60.00",
+            }
+        )
+        return cliente.request(metodo, ruta_resuelta, json=cuerpo)
+    if "/grupos" in ruta:
+        return cliente.request(
+            metodo,
+            ruta_resuelta,
+            json={"clave": "cocheras", "nombre": "Cocheras", "metodo": "coeficiente"},
+        )
     return cliente.post(
         ruta_resuelta,
         json={"persona_id": str(mundo["otra_persona"]), "rol": "consejo"},

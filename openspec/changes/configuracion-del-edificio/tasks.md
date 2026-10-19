@@ -1512,7 +1512,37 @@ Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe
   Success: no issues found in 178 source files
   ```
 
-- [ ] 6.2 Rutas de unidades y de grupos (D6): alta, edición, lista, miembros con modo y coeficientes. Mismo contrato que 6.1. Tests propios: coeficiente y superficie como número JSON dan 422 sin el valor; `administracion_id` de otra administración en el cuerpo da 422 sin el id; el consejo y el colaborador "ver" reciben 403 al escribir y 200 al leer el padrón; el vecino recibe 403 al pedir el padrón de su edificio y 200 al pedir su unidad por `GET /api/unidades/{id}`. Escenarios: `edificios-y-unidades` › Coeficiente como número; › Coeficiente fuera de forma; › Tipo desconocido; › Alta de unidad con otra administración en el cuerpo; `autorizacion-por-rol` › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino ve su unidad. Lecciones: L-007, L-008, L-017.
+- [x] 6.2 Rutas de unidades y de grupos (D6): alta, edición, lista, miembros con modo y coeficientes. Mismo contrato que 6.1. Tests propios: coeficiente y superficie como número JSON dan 422 sin el valor; `administracion_id` de otra administración en el cuerpo da 422 sin el id; el consejo y el colaborador "ver" reciben 403 al escribir y 200 al leer el padrón; el vecino recibe 403 al pedir el padrón de su edificio y 200 al pedir su unidad por `GET /api/unidades/{id}`. Escenarios: `edificios-y-unidades` › Coeficiente como número; › Coeficiente fuera de forma; › Tipo desconocido; › Alta de unidad con otra administración en el cuerpo; `autorizacion-por-rol` › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino ve su unidad. Lecciones: L-007, L-008, L-017.
+
+  ROJO (rutas ausentes y respuesta de unidad incompleta):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_padron_api.py tests/integracion/test_alcance_api.py -q --tb=short --show-capture=no
+  11:54:39
+  E   assert 404 == 201
+  36 failed, 4 passed, 1 warning in 13.12s
+  ```
+
+  ROJO adicional (alcance de unidad antes del permiso en PATCH):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_padron_api.py::test_vecino_no_edita_unidad_ajena_del_mismo_edificio -q --tb=short --show-capture=no
+  11:56:20
+  E   assert 403 == 404
+  1 failed, 1 warning in 6.73s
+  ```
+  VERDE (HTTP, barridos, casos de uso de unidades y grupos):
+  ```text
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && date +%T && uv run pytest tests/integracion/test_padron_api.py tests/integracion/test_edificios_api.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_alcance_api.py tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_grupos_casos_de_uso.py -q --tb=short --show-capture=no
+  11:57:59
+  134 passed, 1 warning in 34.59s
+  ```
+  Antes del commit, repetidos después del verde:
+  ```text
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed!
+  193 files already formatted
+  Success: no issues found in 179 source files
+  ```
+
 - [ ] 6.3 Rutas de categorías y de configuración (D6): categorías completas; versiones y vigente por fecha. Tests propios: tasa o recargo como número, `NaN`, fuera de rango, día 29 o con campo de capitalización dan 422; colaborador "editar" crea categoría y no versión (403); colaborador "ver" no crea categoría y sí lee la configuración; un `UniqueViolation` al crear la versión se traduce a 409 (la concurrencia real la prueba 3.6 en la base); no existe ruta para borrar una categoría ni una versión. Escenarios: `configuracion-versionada` › Tasa como número; › Tasa fuera de rango; › Pedido de capitalización; › Día de vencimiento fuera de rango; › Un colaborador cambia la tasa; › Dos pedidos simultáneos; `categorias-de-gasto` › Borrar; `autorizacion-por-rol` › Un colaborador "ver" crea una categoría. Lecciones: L-007.
 
 ## 7. El edificio de ejemplo

@@ -33,6 +33,10 @@ class UnidadLeida:
     administracion_id: UUID
     complejo_id: UUID
     identificador: str
+    tipo: str
+    piso: str
+    coeficiente: str
+    superficie_m2: str
 
 
 def cargar_complejo(sesion: Session, complejo_id: UUID) -> ComplejoLeido | None:
@@ -68,7 +72,10 @@ def listar_complejos(sesion: Session) -> list[ComplejoLeido]:
 
 def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
     fila = sesion.execute(
-        text("SELECT id, administracion_id, complejo_id, identificador FROM unidad WHERE id = :id"),
+        text(
+            "SELECT id, administracion_id, complejo_id, identificador, tipo, piso, "
+            "coeficiente::text, superficie_m2::text FROM unidad WHERE id = :id"
+        ),
         {"id": str(unidad_id)},
     ).first()
     if fila is None:
@@ -78,7 +85,22 @@ def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
         administracion_id=fila.administracion_id,
         complejo_id=fila.complejo_id,
         identificador=fila.identificador,
+        tipo=fila.tipo,
+        piso=fila.piso,
+        coeficiente=fila.coeficiente,
+        superficie_m2=fila.superficie_m2,
     )
+
+
+def cargar_grupo(sesion: Session, grupo_id: UUID) -> dict[str, Any] | None:
+    fila = (
+        sesion.execute(
+            text("SELECT id, complejo_id FROM grupo_de_reparto WHERE id=:id"), {"id": grupo_id}
+        )
+        .mappings()
+        .first()
+    )
+    return None if fila is None else dict(fila)
 
 
 _COLUMNAS_CONFIGURACION = (

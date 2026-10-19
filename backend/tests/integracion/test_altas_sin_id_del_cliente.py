@@ -72,6 +72,19 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
 #: que no agregue su entrada acá hace fallar `test_toda_ruta_post_tiene_cuerpo_de_prueba`.
 _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
+    ("/api/complejos/{complejo_id}/unidades", "POST"): lambda mundo: {
+        "identificador": "2A",
+        "tipo": "departamento",
+        "piso": "2",
+        "coeficiente": "0.2",
+        "superficie_m2": "60.00",
+    },
+    ("/api/complejos/{complejo_id}/grupos", "POST"): lambda mundo: {
+        "clave": "ascensor",
+        "nombre": "Ascensor",
+        "metodo": "coeficiente",
+        "unidades": [],
+    },
     ("/api/complejos", "POST"): lambda mundo: {"nombre": "Edificio", "localidad": "Mendoza"},
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),

@@ -19,12 +19,14 @@ class ApiEdificio:
     cliente: TestClient
     base: BaseDeEdificio
     admin: UUID
+    admin_ajena: UUID
     edificio: UUID
     otro: UUID
     ajeno: UUID
     unidad: UUID
     otra_unidad: UUID
     unidad_ajena: UUID
+    grupo_ajeno: UUID
     personas: dict[str, UUID]
 
     def como(self, rol: str) -> None:

@@ -27,7 +27,7 @@ from psycopg import sql
 from testcontainers.community.postgres import PostgresContainer
 
 from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
-from ._edificios import BaseDeEdificio, Edificios, fijar_tenant, insertar_unidad
+from ._edificios import BaseDeEdificio, Edificios, fijar_tenant, insertar_grupo, insertar_unidad
 
 _PARAMETROS_DEL_REPO = Path(__file__).resolve().parents[3] / "config" / "parametros.yaml"
 
@@ -270,17 +270,20 @@ def api_edificio(
                 (ajeno, admin_b),
             )
             unidad_ajena = insertar_unidad(conexion, admin_b, ajeno)
+            grupo_ajeno = insertar_grupo(conexion, admin_b, ajeno)
         api = ApiEdificio(
             app=app,
             cliente=cliente,
             base=base_del_edificio,
             admin=admin,
+            admin_ajena=admin_b,
             edificio=edificios[0],
             otro=edificios[1],
             ajeno=ajeno,
             unidad=unidades[0],
             otra_unidad=unidades[2],
             unidad_ajena=unidad_ajena,
+            grupo_ajeno=grupo_ajeno,
             personas=personas,
         )
         api.como("titular")

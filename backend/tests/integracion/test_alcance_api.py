@@ -271,6 +271,10 @@ def test_vecino_en_la_unidad_de_otro_vecino_da_404(
             "administracion_id": str(mundo["administracion_id"]),
             "complejo_id": str(mundo["complejo_1"]),
             "identificador": "1A",
+            "tipo": "departamento",
+            "piso": "1",
+            "coeficiente": "0.100000",
+            "superficie_m2": "60.00",
         }
         de_otro = cliente.get(f"/api/unidades/{mundo['unidad_2']}")
         assert de_otro.status_code == 404
