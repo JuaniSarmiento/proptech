@@ -22,8 +22,17 @@ veces en `ctx`) — L-007, el error de una librería es una fuga. El cuerpo
 siempre cae como "extra_forbidden"; `manejador_422` reemplaza la respuesta
 por una que nombra sólo el campo (`loc`) y el motivo (`type`/`msg`), para
 TODA ruta de la app, nunca el valor.
+
+Revisión final (19/10/2026), arreglo 2: para "extra_forbidden" la CLAVE de
+`loc` también la elige el cliente (es el nombre que mandó para un campo
+que no existe) — nombrarla sin condición es la misma fuga que `input`, con
+el agravante de que el contrato (R11) exige nombrar ALGO ahí. `_loc`
+nombra la clave tal cual sólo si matchea `_CLAVE_RAZONABLE` (un nombre de
+campo ASCII acotado, que cubre `id`); si no, `loc` dice
+`"campo_no_permitido"`, sin la clave.
 """
 
+import re
 from typing import Any
 
 from fastapi import Request, status
@@ -50,6 +59,29 @@ def _motivo(error: ErrorDetails) -> str:
     return f"valor inválido ({error['type']})"
 
 
+#: Revisión final (19/10/2026), arreglo 2: un nombre de campo razonable,
+#: ASCII, acotado en longitud (R11 exige que el 422 nombre `id`, que
+#: matchea). Nunca se usa para VALIDAR el cuerpo (eso lo hace cada modelo
+#: de dominio): sólo decide si la clave que mandó el cliente es segura
+#: para repetirla en `loc`.
+_CLAVE_RAZONABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+
+#: `loc` reemplazada cuando la clave de un `extra_forbidden` no matchea
+#: `_CLAVE_RAZONABLE` — nunca la clave misma (L-007: una clave de 10 KB o
+#: con HTML/JS es, para este propósito, tan "valor del cliente" como el
+#: `input` que `_motivo` ya blanquea).
+_CAMPO_NO_PERMITIDO = "campo_no_permitido"
+
+
+def _loc(error: ErrorDetails) -> list[str | int]:
+    loc = list(error["loc"])
+    if error["type"] == "extra_forbidden" and loc:
+        clave = loc[-1]
+        if not (isinstance(clave, str) and _CLAVE_RAZONABLE.fullmatch(clave)):
+            loc[-1] = _CAMPO_NO_PERMITIDO
+    return loc
+
+
 class CuerpoDeAlta(BaseModel):
     """Modelo base de todo cuerpo de alta (`POST`) bajo `/api` (R11)."""
 
@@ -73,8 +105,7 @@ async def manejador_422(_request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, RequestValidationError):
         raise TypeError(f"manejador_422 recibió un error inesperado: {type(exc)!r}")
     detalle: list[dict[str, Any]] = [
-        {"type": error["type"], "loc": list(error["loc"]), "msg": _motivo(error)}
-        for error in exc.errors()
+        {"type": error["type"], "loc": _loc(error), "msg": _motivo(error)} for error in exc.errors()
     ]
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content={"detail": detalle}
