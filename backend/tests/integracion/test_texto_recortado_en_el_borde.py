@@ -67,6 +67,29 @@ def test_nombre_y_localidad_de_edificio_sin_espacios_al_borde(api_edificio: ApiE
     assert edificio["localidad"] == "Mendoza"
 
 
+def test_nombre_de_categoria_mismo_tope_al_crear_que_al_editar(api_edificio: ApiEdificio) -> None:
+    """Revisión final (19/10/2026), arreglo 1: `CuerpoCategoria` medía los 80
+    caracteres DESPUÉS de recortar espacios (vía `CategoriaDeGasto._Nombre`)
+    y `CuerpoEdicionCategoria` los medía ANTES (`Field(max_length=80)`) — un
+    nombre de 81 caracteres crudos que recorta a 79 pasaba al crear y se
+    rechazaba al editar, con el mismo valor. Ahora los dos miden antes de
+    recortar, como el resto de la familia (`grupos.DatosGrupo`,
+    `CuerpoEdicionGrupo`)."""
+    api = api_edificio
+    api.como("titular")
+    nombre_81_crudo_79_recortado = " " + "a" * 79 + " "
+    alta = api.cliente.post(
+        api.ruta("/categorias"),
+        json={"clave": "tope_81", "nombre": nombre_81_crudo_79_recortado},
+    )
+    assert alta.status_code == 422, alta.text
+    categoria_id = api.cliente.get(api.ruta("/categorias")).json()[0]["id"]
+    edicion = api.cliente.patch(
+        f"/api/categorias/{categoria_id}", json={"nombre": nombre_81_crudo_79_recortado}
+    )
+    assert edicion.status_code == 422, edicion.text
+
+
 def test_nombre_de_grupo_sin_espacios_al_borde(api_edificio: ApiEdificio) -> None:
     api = api_edificio
     api.como("titular")

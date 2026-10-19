@@ -187,7 +187,16 @@ class CuerpoEdicionGrupo(CuerpoDeEdicion):
 
 
 class CuerpoCategoria(CategoriaDeGasto, CuerpoDeAlta):
-    pass
+    #: R3A-1/R3A-6, revisión final (19/10/2026, arreglo 1): mismo tope que
+    #: `CuerpoEdicionCategoria` — el `nombre` heredado de `CategoriaDeGasto`
+    #: (`_Nombre`) mide los 80 caracteres DESPUÉS de recortar espacios;
+    #: `CuerpoEdicionCategoria` los mide ANTES (`Field(max_length=80)`), como
+    #: el resto de la familia (`grupos.DatosGrupo`, `CuerpoEdicionGrupo`). Sin
+    #: este override, un nombre de 81 caracteres crudos que recorta a 79 se
+    #: podía crear y no se podía volver a mandar igual al editar.
+    nombre: Annotated[
+        str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)
+    ]
 
 
 class CuerpoEdicionCategoria(CuerpoDeEdicion):
