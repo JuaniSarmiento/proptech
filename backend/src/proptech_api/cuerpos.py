@@ -30,6 +30,24 @@ from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
+from pydantic_core import ErrorDetails
+
+#: R3A-5 (L-007): el único `type` cuyo `msg` es nuestro, no de pydantic — lo
+#: arma pydantic como "Value error, <mensaje>" a partir de un `ValueError`
+#: que nosotros escribimos a mano en cada `field_validator`/`AfterValidator`
+#: del cambio (p.ej. `texto.py`, `_nombre_valido`), y esos mensajes ya están
+#: auditados para nunca repetir el valor del cliente (L-007, L-002). Para
+#: cualquier otro `type` (uuid_parsing, int_parsing, literal_error, ...),
+#: `msg` lo genera pydantic y puede incluir el fragmento rechazado (un
+#: carácter, una longitud) — blanquear por tipo conocido es frágil, así que
+#: se blanquea todo lo que no está en esta lista.
+_TIPOS_CON_MENSAJE_PROPIO = frozenset({"value_error"})
+
+
+def _motivo(error: ErrorDetails) -> str:
+    if error["type"] in _TIPOS_CON_MENSAJE_PROPIO:
+        return error["msg"]
+    return f"valor inválido ({error['type']})"
 
 
 class CuerpoDeAlta(BaseModel):
@@ -40,9 +58,9 @@ class CuerpoDeAlta(BaseModel):
 
 async def manejador_422(_request: Request, exc: Exception) -> JSONResponse:
     """Mismo código 422 de siempre, con el detalle saneado: cada error
-    conserva `type`, `loc` y `msg` (todos describen el CAMPO y el motivo),
-    nunca `input` ni `ctx` (que pueden llevar el valor que mandó el
-    cliente, L-007).
+    conserva `type` y `loc` (describen el CAMPO), y un `msg` que describe el
+    motivo SIN ningún fragmento del valor (`_motivo`, L-007) — nunca `input`
+    ni `ctx`, que pydantic sí llena con el valor que mandó el cliente.
 
     La firma recibe `Exception`, no `RequestValidationError`, porque así la
     tipa `Starlette.add_exception_handler` (el registro es por clase, pero
@@ -55,7 +73,7 @@ async def manejador_422(_request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, RequestValidationError):
         raise TypeError(f"manejador_422 recibió un error inesperado: {type(exc)!r}")
     detalle: list[dict[str, Any]] = [
-        {"type": error["type"], "loc": list(error["loc"]), "msg": error["msg"]}
+        {"type": error["type"], "loc": list(error["loc"]), "msg": _motivo(error)}
         for error in exc.errors()
     ]
     return JSONResponse(
