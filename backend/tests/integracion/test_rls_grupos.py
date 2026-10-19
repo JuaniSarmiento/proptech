@@ -129,6 +129,53 @@ def test_clave_repetida_en_el_mismo_edificio_falla_por_unique(
         insertar_grupo(app_edificio, edificios.administracion_a, edificios.complejo_a)
 
 
+@pytest.mark.parametrize(
+    "sentencia",
+    [
+        "DELETE FROM grupo_de_reparto WHERE id = %s",
+        "UPDATE grupo_de_reparto SET es_generales = false, metodo = 'partes_iguales' WHERE id = %s",
+        "UPDATE grupo_de_reparto SET es_generales = false, modo_de_coeficientes = 'propios' "
+        "WHERE id = %s",
+    ],
+    ids=["delete", "update_es_generales_y_metodo", "update_es_generales_y_modo"],
+)
+def test_generales_no_se_borra_ni_se_desnaturaliza_ni_por_sql(
+    app_edificio: psycopg.Connection, edificios: Edificios, sentencia: str
+) -> None:
+    """R3A-3 (L-018): la spec de grupos-de-reparto no acota la protección de
+    Generales a la API (a diferencia de las categorías); `proptech_app`
+    tiene DELETE y UPDATE sobre la tabla (D1) y, como Generales no tiene
+    filas en `grupo_unidad`, ninguna FK frena el DELETE. El trigger
+    `fn_grupo_generales_protegido` (migración 0011) es la única barrera."""
+    generales = insertar_grupo(
+        app_edificio,
+        edificios.administracion_a,
+        edificios.complejo_a,
+        "generales",
+        es_generales=True,
+    )
+    with pytest.raises(psycopg.Error):
+        app_edificio.execute(sentencia, (generales,))
+
+
+def test_grupo_comun_se_borra_y_se_edita_sin_el_trigger_de_generales(
+    app_edificio: psycopg.Connection, edificios: Edificios, grupo: UUID
+) -> None:
+    """Control del test anterior (L-019): el trigger mira `OLD.es_generales`,
+    así que un grupo común (no Generales) sigue pudiendo borrarse y cambiar
+    de método/modo — si el trigger disparara para cualquier fila, este caso
+    también fallaría."""
+    app_edificio.execute(
+        "UPDATE grupo_de_reparto SET metodo = 'partes_iguales', "
+        "modo_de_coeficientes = 'renormalizado' WHERE id = %s",
+        (grupo,),
+    )
+    app_edificio.execute("DELETE FROM grupo_de_reparto WHERE id = %s", (grupo,))
+    assert app_edificio.execute(
+        "SELECT count(*) FROM grupo_de_reparto WHERE id = %s", (grupo,)
+    ).fetchone() == (0,)
+
+
 def test_cada_edificio_admite_su_generales_con_la_misma_clave(
     app_edificio: psycopg.Connection, edificios: Edificios
 ) -> None:
