@@ -16,7 +16,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import AfterValidator, Field, field_validator
+from pydantic import AfterValidator, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
@@ -543,8 +543,15 @@ def alta_version(
 
 class CuerpoAsignacion(CuerpoDeAlta):
     persona_id: _UUIDDeCuerpo
-    rol: str
-    nivel: str | None = None
+    # R3A-4 (deuda del 2a, L-019): `rol`/`nivel` como `str` libre llegaban
+    # crudos al INSERT y violaban un CHECK de `asignacion_rol` (500). Acá sólo
+    # se aceptan "colaborador" y "consejo": este endpoint siempre fija
+    # `complejo_id` (del path) y nunca manda `unidad_id`, así que "titular"
+    # (exige `complejo_id IS NULL`) y "vecino" (exige `unidad_id IS NOT
+    # NULL`) jamás podrían satisfacer `ck_asignacion_rol_forma_por_rol`
+    # (migración 0003) a través de este cuerpo.
+    rol: Literal["colaborador", "consejo"]
+    nivel: Literal["ver", "editar"] | None = None
     # Se acepta para que un cuerpo que lo manda no explote con un campo
     # desconocido (422), pero se ignora a propósito (D7, D4): el tenant de
     # la fila sale siempre de la identidad, nunca de un campo del cuerpo.
@@ -552,6 +559,15 @@ class CuerpoAsignacion(CuerpoDeAlta):
     # nombrarlo (está declarado, no es "extra"); `id` y `complejo_id`, que
     # nunca se declaran, sí.
     administracion_id: _UUIDDeCuerpo | None = None
+
+    @model_validator(mode="after")
+    def _nivel_segun_rol(self) -> CuerpoAsignacion:
+        # Mismo CHECK: colaborador exige nivel, consejo lo exige ausente.
+        if self.rol == "colaborador" and self.nivel is None:
+            raise ValueError("nivel es obligatorio para el rol colaborador")
+        if self.rol == "consejo" and self.nivel is not None:
+            raise ValueError("nivel no es válido para el rol consejo")
+        return self
 
 
 #: La acción de D-096 que este endpoint autoriza (D9: el mismo nombre que
