@@ -95,6 +95,36 @@ Todos informan en tres secciones, sólo las que tengan contenido:
 
 El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani tal cual.
 
+## Constructor con Codex (desde el 3a)
+
+Desde el cambio 3a, el constructor puede ser **Codex (GPT-6.1-Sol, esfuerzo `xhigh`)** en vez de un
+agente de Claude. Rompedor, auditor y los revisores de rol siguen siendo siempre de Claude, de otra
+familia de modelo que el constructor (L-025).
+
+- **Briefs por bloque**: las tareas del cambio se agrupan en bloques de 3 a 6, cada uno con su propio
+  brief (`.git/informes-<cambio>/codex-<cambio>/brief-bloque-X.md`) más unas reglas comunes a todos los
+  bloques (TDD estricto, rojo y verde pegados en `tasks.md`, tope de evidencia, conventional commits
+  **sin** atribución a IA ni `Co-Authored-By`). Un brief nombra sólo lo que esa tarea necesita leer; no
+  nombra, por defecto, los consumidores fuera del área que toca (L-023, L-025): eso hay que escribirlo
+  a propósito cuando aplique.
+- **Acceso total, autorizado por Juani el 19/10/2026**: Codex corre sin sandbox, en la máquina de
+  Juani, con permiso explícito para usar Docker (sólo a través de los tests o de `infra/ci/*.sh`,
+  nunca comandos sueltos que toquen contenedores de otros proyectos de la máquina), leer el repo entero
+  y commitear. El **sandbox `workspace-write` no sirve** para este rol: no llega a Docker (ni siquiera
+  a través de los tests) y no puede commitear, así que cada tarea con integración real o con un commit
+  pendiente queda a medio hacer.
+- **El orquestador compara `docker ps`** antes y después de cada bloque (mismos contenedores, ningún
+  `proptech`/`proptech-clon` quedando atrás) y **revisa la atribución de cada commit** del bloque antes
+  de seguir, porque es la regla más fácil de pasar por alto en una corrida larga y sin supervisión
+  línea por línea.
+- **Lo que Codex no puede terminar, lo termina el orquestador**: correr la suite completa o el humo
+  cuando el sandbox no alcanza, commitear una tarea que Codex dejó sin commit, y la verificación
+  independiente de cada bloque cerrado (L-023, L-024).
+- **Medición del 19/10/2026** (cambio 3a): 22 tareas completadas en unas 2 horas de trabajo real,
+  aproximadamente 1,3 millones de tokens de la cuota de ChatGPT consumidos; la ventana de 5 horas de
+  Plus se agotó en aproximadamente 2,5 horas (quedó sin cuota antes de cerrar el bloque E, que terminó
+  el orquestador).
+
 ## Reglas del proceso
 
 - **De a un cambio por vez**, en el orden de `CHANGES.md`, con la ficha detallada de cada uno en

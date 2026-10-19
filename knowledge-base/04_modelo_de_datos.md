@@ -1,11 +1,14 @@
 # Modelo de Datos
 
 > A partir de las migraciones reales en `backend/` (Alembic) y de las decisiones de modelado ya
-> tomadas (D-040, D-046, D-076, D-082, D-086, D-098). Desde el cierre del 2a (15/10/2026) ya existen,
-> además de `trabajos_hechos`: `administracion`, `complejo`, `unidad` (mínima), `persona`,
-> `asignacion_rol`, `accion_de_auditoria` y `auditoria` (migraciones `0003_acceso_minimo` y
-> `0004_auditoria`). El resto (desde `grupo_de_reparto` hasta el libro de movimientos) sigue siendo
-> planificado, por cambio, y así queda marcado en cada sección.
+> tomadas (D-040, D-046, D-076, D-082, D-086, D-098, D-100, D-103, D-104). Desde el cierre del 2a
+> (15/10/2026) ya existen, además de `trabajos_hechos`: `administracion`, `complejo` (mínimo), `unidad`
+> (mínima), `persona`, `asignacion_rol`, `accion_de_auditoria` y `auditoria` (migraciones
+> `0003_acceso_minimo` y `0004_auditoria`). Desde el cierre del 3a (19/10/2026, migraciones `0005` a
+> `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`, `grupo_unidad`,
+> `categoria_de_gasto` y `configuracion_versionada` (de sólo agregar), más cinco acciones nuevas de
+> `accion_de_auditoria`. El resto (desde el libro de movimientos) sigue siendo planificado, por cambio,
+> y así queda marcado en cada sección.
 
 ## Dominios
 
@@ -43,11 +46,15 @@ erDiagram
     }
     ADMINISTRACION ||--o{ COMPLEJO : "tiene (0003)"
     ADMINISTRACION ||--o{ PERSONA : "tiene (0003, una cuenta por administracion, D-096)"
-    COMPLEJO ||--o{ UNIDAD : "tiene (0003, minima; c.3 la completa)"
+    COMPLEJO ||--o{ UNIDAD : "tiene (0003 minima, 0005 completa)"
+    COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (0006/0007, R01, D-100)"
+    GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa via GRUPO_UNIDAD (0006/0007)"
+    COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (0008, R16)"
+    COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (0009, solo agregar)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (0003)"
     ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0003, opcional salvo titular)"
     ASIGNACION_ROL }o--|| UNIDAD : "alcanza (0003, solo rol vecino)"
-    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004)"
+    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010)"
 ```
 
 La única tabla del sistema hasta el 14/10/2026 era `trabajos_hechos`
@@ -56,7 +63,9 @@ propósito (`upgrade()`/`downgrade()` no hacen nada: el cambio 1a sólo deja el 
 andando, D-040). `trabajos_hechos` no tiene relaciones de dominio: es la tabla técnica de idempotencia
 del worker (D3 del cambio 1c, D-090), no pertenece a ningún módulo de `proptech_core`. Desde el cierre
 del 2a (15/10/2026, migraciones `0003_acceso_minimo` y `0004_auditoria`) existen además las siete
-tablas del candado, detalladas en "Entidades" más abajo.
+tablas del candado, detalladas en "Entidades" más abajo. Desde el cierre del 3a (19/10/2026,
+migraciones `0005` a `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`,
+`grupo_unidad`, `categoria_de_gasto` y `configuracion_versionada`.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 
@@ -64,12 +73,12 @@ tablas del candado, detalladas en "Entidades" más abajo.
 erDiagram
     ADMINISTRACION ||--o{ COMPLEJO : "tiene (existe, 0003, D-076)"
     ADMINISTRACION ||--o{ PERSONA : "pertenece a (existe, 0003, D-076; una cuenta por administracion, D-096)"
-    COMPLEJO ||--o{ UNIDAD : "tiene (existe minima, 0003 / c.3 completa, D-082)"
-    COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (c.3, R01)"
-    COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (c.3, R16)"
-    COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (c.3, R03/R15, D-080)"
+    COMPLEJO ||--o{ UNIDAD : "tiene (existe, 0003 minima / 0005 completa, D-082)"
+    COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (existe, 3a, R01, D-100)"
+    COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (existe, 3a, R16)"
+    COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (existe, 3a, R03/R15, D-080, solo agregar)"
     COMPLEJO ||--o{ REGLA_VERSIONADA : "versiona (c.6b, D-066; fuera del camino a M1)"
-    GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa (c.3)"
+    GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa via GRUPO_UNIDAD (existe, 3a)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (existe, 0003, D-037)"
     ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (existe, 0003, D-037/D-076; permisos por accion, D-096)"
     COMPLEJO ||--o{ PROVEEDOR : "factura a (c.6)"
@@ -94,9 +103,9 @@ erDiagram
 Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
 
 - **`c.N`** es el número del cambio que construye esa entidad (`12_fichas_de_changes.md`). `UNIDAD`,
-  por ejemplo, nace mínima en el cambio 2 (D-082: "para probar el acceso, este cambio crea lo mínimo de
-  administración, complejo, unidad, persona y asignación por rol") y el cambio 3 la completa con tipo,
-  coeficiente y estado.
+  por ejemplo, nació mínima en el cambio 2a (D-082: "para probar el acceso, este cambio crea lo mínimo
+  de administración, complejo, unidad, persona y asignación por rol") y el 3a (`0005`) ya la completó
+  con tipo, coeficiente, superficie y estado.
 - El **modelo de tablas concreto del libro de movimientos** (`MOVIMIENTO`, `OBLIGACION`) queda
   explícitamente **a decidir en el design del cambio 4** (`motor-de-cuenta-corriente`): su ficha dice
   "Decidir en el design: el modelo de tablas del libro; cómo se bloquea la cuenta durante una
@@ -166,41 +175,46 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   cliente.
 - **Índices**: sólo el implícito de la clave primaria; el resto queda a decidir en el design del 2b.
 
-#### `complejo` · existe (migración `0003`, cambio 2a; completa en cambio 3, D-040, D-076)
+#### `complejo` · completo (migración `0003`, cambio 2a; completada en `0005`, cambio 3a, D-040, D-076)
 
 - **Qué es**: la comunidad que se administra (hoy sólo "edificio"; "barrio" queda preparado en el
   diseño, D-027). Es un **alcance** dentro de la administración (D-076), no el tenant.
-- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
-  `nombre` · `TEXT NOT NULL`. El cambio 3 agrega `localidad` y el resto de lo que pedía la ficha
-  (`Edificio` en `semilla.py`: `_Texto`, no vacío).
-- **Relaciones**: pertenece a una `administracion` (FK simple); tendrá muchas `unidad`,
-  `grupo_de_reparto`, `categoria_de_gasto`, una `configuracion_versionada` vigente (cambio 3). Ya tiene
-  `unidad` y `asignacion_rol` colgando con la convención de FK compuesta.
+- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py`): `id` · `UUID` PK;
+  `administracion_id` · `UUID NOT NULL`; `nombre` · `TEXT NOT NULL`; `localidad` · `TEXT NOT NULL`
+  (rellenada con `''` al agregarse sobre los edificios del 2a, sin `CHECK` de no vacío por eso mismo,
+  ver "Deuda del cierre del 3a"); `estado_migracion` · `TEXT NOT NULL`, `CHECK IN ('pendiente',
+  'confirmada', 'sin_saldos_previos')`, default `'pendiente'` (R09, D-083).
+- **Relaciones**: pertenece a una `administracion` (FK simple); tiene muchas `unidad`,
+  `grupo_de_reparto`, `categoria_de_gasto` y `configuracion_versionada` (todas con FK compuesta hacia
+  `complejo`, convención del 2a). Ya tenía `unidad` y `asignacion_rol` colgando desde el 2a.
 - **Constraints**: `administracion_id NOT NULL`, RLS forzada; `UNIQUE (administracion_id, id)` para que
-  las tablas que cuelgan de él puedan usarlo como destino de una FK compuesta.
-- **Índices**: a decidir en el design del cambio 3 para lo que agregue esa ficha.
+  las tablas que cuelgan de él puedan usarlo como destino de una FK compuesta; `ck_complejo_nombre_no_vacio`
+  (`0016`, `nombre <> ''`). `localidad` queda fuera de ese `CHECK`, decisión de Juani, dueño propuesto 3b.
+- **Índices**: ninguno además de los implícitos de las claves.
 
-#### `unidad` · mínima existe (migración `0003`, cambio 2a; completa en cambio 3, D-082)
+#### `unidad` · completa (migración `0003`, cambio 2a; completada en `0005`, cambio 3a, D-082)
 
 - **Qué es**: la unidad funcional sobre la que se liquida (departamento, cochera, baulera, local;
   `11_glosario.md`).
-- **Atributos existentes** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID
-  NOT NULL`; `complejo_id` · `UUID NOT NULL` (FK compuesta `(administracion_id, complejo_id)` →
-  `complejo`); `nombre` · `TEXT NOT NULL`.
-- **Atributos que agrega el cambio 3**, tomados de `Unidad` en
-  `backend/src/proptech_core/compartido/semilla.py` (el modelo que ya valida el edificio de ejemplo, no
-  todavía columnas de esta tabla): `identificador` (único dentro de su complejo), `tipo` (de
-  `tipos_de_unidad` del complejo, D-042), `piso`, `coeficiente` (`Decimal` positivo, hasta 6 decimales),
-  `superficie_m2` (`Dinero` positivo), `estado` (presente en el modelo, desactivado por default en
-  edificios, D-030; se construye con barrios, v1.2, D-089).
-- **Relaciones**: pertenece a un `complejo` (FK compuesta); participará de uno o varios
-  `grupo_de_reparto`; tendrá muchas `obligacion`, `movimiento`, `cargo_particular`, `pago`,
-  `cbu_historico` (todo cambio 3 en adelante). Ya es destino de FK compuesta desde `asignacion_rol`
-  (rol vecino).
-- **Constraints**: `UNIQUE (administracion_id, complejo_id, id)`, para que lo que cuelgue de ella use FK
-  compuesta de tres columnas (ver `asignacion_rol`). La suma de coeficientes (R01, D-082) se valida
-  desde el cambio 3, cuando exista la columna.
-- **Índices**: a decidir en el design del cambio 3.
+- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py`): `id` · `UUID` PK;
+  `administracion_id` · `UUID NOT NULL`; `complejo_id` · `UUID NOT NULL` (FK compuesta
+  `(administracion_id, complejo_id)` → `complejo`); `identificador` · `TEXT NOT NULL` (renombrada desde
+  `nombre`, única dentro de su complejo); `tipo` · `TEXT NOT NULL`, `CHECK IN` los valores de
+  `TIPOS_DE_UNIDAD_VALIDOS`, default `'departamento'`; `piso` · `TEXT NOT NULL`; `coeficiente` ·
+  `NUMERIC(7,6) NOT NULL`, `CHECK > 0 AND <= 1`; `superficie_m2` · `NUMERIC(10,2) NOT NULL`,
+  `CHECK > 0`; `estado` · `TEXT`, opcional (desactivado por default en edificios, D-030; se construye
+  con barrios, v1.2, D-089).
+- **Relaciones**: pertenece a un `complejo` (FK compuesta); participa de uno o varios `grupo_de_reparto`
+  vía `grupo_unidad`; tendrá muchas `obligacion`, `movimiento`, `cargo_particular`, `pago`,
+  `cbu_historico` (cambio 4 en adelante). Ya es destino de FK compuesta desde `asignacion_rol` (rol
+  vecino).
+- **Constraints**: `UNIQUE (administracion_id, complejo_id, id)` (destino de FK compuesta de tres
+  columnas, ver `asignacion_rol` y `grupo_unidad`); `uq_unidad_identificador` (único dentro del
+  complejo); `ck_unidad_identificador_no_vacio` (`0016`); trigger `trg_unidad_edificio_inmutable`
+  (`0014`, RF-D de la propuesta del 3b/R3B-5): ningún `UPDATE` puede cambiar `complejo_id` ni
+  `administracion_id` de una unidad ya creada, tampoco por SQL. La suma de coeficientes de R01 se valida
+  en la aplicación, con la función pura de `compartido`, no en la base.
+- **Índices**: ninguno además de los implícitos de las claves y del único de identificador.
 
 #### `persona` · existe (migración `0003`, cambio 2a, D-009, D-076)
 
@@ -231,7 +245,7 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   matriz completa en D-096. P20 sigue abierta: si por encima de un monto el titular necesita además
   la aprobación del consejo antes de condonar. Ver `03_actores_y_roles.md` §RBAC.
 
-#### `accion_de_auditoria` · existe (migración `0004`, cambio 2a, D-016)
+#### `accion_de_auditoria` · existe (migración `0004`, cambio 2a, D-016; ampliado en `0010`, cambio 3a, D14)
 
 - **Qué es**: el vocabulario cerrado de acciones sensibles auditables: una fila por miembro del enum
   `Accion` (`proptech_core.acceso.dominio.permisos`). Técnica, del migrador; sumar una acción nueva
@@ -239,6 +253,9 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 - **Atributos**: `nombre` · `TEXT`, clave primaria.
 - **Relaciones**: `auditoria.accion` referencia `accion_de_auditoria.nombre` (FK).
 - **Constraints**: sin RLS (no tiene `administracion_id`: es vocabulario global, no un dato de tenant).
+- **Acciones que suma el 3a** (`0010_acciones_de_configuracion.py`, literales e independientes del enum,
+  D14): `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`,
+  `configurar_padron`, `ver_configuracion_del_edificio`.
 
 #### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
 
@@ -261,41 +278,81 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   políticas de **esta** tabla (V3-1, cerrado); no verifica las políticas de las tablas de negocio
   (`complejo`, `unidad`, etc.) — prometido como deuda del cambio 15.
 
-### Planificado, dominio `complejos` (continuación, cambio 3)
+### Existe hoy, dominio `complejos` (migraciones `0006` a `0016`, cambio 3a, R01, D-100)
 
-#### `grupo_de_reparto` · planificada (cambio 3, R01)
+#### `grupo_de_reparto` · existe (migración `0006`; modo de coeficientes en `0007`; protegido en `0011`/`0012`/`0015`)
 
-- **Atributos conocidos**, de `GrupoDeReparto` en `parametros.py` y `grupos_de_reparto` en
-  `parametros.yaml`: `clave` (`^[a-z][a-z0-9_]{0,39}$`), `nombre` (hasta 80 caracteres), `metodo`
-  (`coeficiente | superficie | partes_iguales`), `alcance` (`todas_las_unidades | a_elegir`),
-  `descripcion` opcional.
-- **Relaciones**: pertenece a un `complejo`; agrupa muchas `unidad`; cada `gasto` se asigna a uno.
-- **Constraints**: el grupo `generales` es obligatorio, con `metodo=coeficiente` y
-  `alcance=todas_las_unidades` (`_validar_cruzadas` en `parametros.py`); claves no repetidas dentro del
-  complejo.
-- **Pendiente (P24)**: si un grupo parcial (Ascensor, Cocheras) lleva coeficientes propios por unidad o
-  renormaliza los generales entre sus unidades; el edificio de ejemplo hoy no lo resuelve (ver "Seed
-  data inicial").
+- **Qué es**: el grupo por el que se reparte un gasto (Generales, Ascensor, Cocheras; R01).
+- **Atributos** (`0006_grupos_de_reparto.py` + `0007_modo_de_coeficientes.py`): `id` · `UUID` PK;
+  `administracion_id`/`complejo_id` · `UUID NOT NULL` (FK compuesta a `complejo`); `clave` · `TEXT
+  NOT NULL`; `nombre` · `TEXT NOT NULL`; `metodo` · `TEXT NOT NULL`, `CHECK IN ('coeficiente',
+  'superficie', 'partes_iguales')`; `es_generales` · `BOOLEAN NOT NULL`, default `false`;
+  `modo_de_coeficientes` · `TEXT NOT NULL`, `CHECK IN ('renormalizado', 'propios')`, default
+  `'renormalizado'` (D15, D-100: un grupo parcial renormaliza entre sus unidades o usa un coeficiente
+  propio por miembro).
+- **Relaciones**: pertenece a un `complejo`; agrupa muchas `unidad` vía `grupo_unidad`.
+- **Constraints**: `uq_grupo_clave` (única por complejo); `uq_grupo_generales` (índice único parcial,
+  un solo `es_generales=true` por complejo); `ck_grupo_generales_coeficiente` (Generales sólo por
+  coeficiente); `ck_grupo_generales_renormalizado` (Generales sólo renormalizado);
+  `ck_grupo_propios_por_coeficiente` (modo `propios` exige `metodo='coeficiente'`); `uq_grupo_modo`
+  (clave de cuatro columnas para la FK de `grupo_unidad`, `ON UPDATE CASCADE`). Dos triggers de `0011`
+  (`fn_grupo_generales_protegido`, ampliado en `0015` con `complejo_id`/`administracion_id`, RF-D-1):
+  "Generales" no admite `DELETE` ni cambiar `es_generales`, `metodo`, `modo_de_coeficientes`,
+  `complejo_id` ni `administracion_id`, también por SQL. Dos triggers de `0012`: "Generales" nunca tiene
+  filas explícitas en `grupo_unidad` (su alcance es implícito, todas las unidades del edificio) y no se
+  puede promover un grupo con miembros a `es_generales`.
 
-#### `categoria_de_gasto` · planificada (cambio 3, R16, D-041)
+#### `grupo_unidad` · existe (migración `0006`; modo de coeficientes en `0007`)
 
-- **Atributos conocidos**, de `CategoriaDeGasto` en `parametros.py`: `clave`, `nombre`. Arranca con las
-  nueve categorías de `parametros.yaml` (ver "Seed data inicial"); el administrador puede crear,
-  renombrar, ordenar y desactivar las suyas (una categoría con gastos no se borra, se desactiva).
-- **Relaciones**: pertenece a un `complejo`; clasifica muchos `gasto`.
-- **Constraints**: claves no repetidas dentro del complejo.
+- **Qué es**: la pertenencia de una `unidad` a un `grupo_de_reparto` parcial (nunca a "Generales", que
+  es implícito).
+- **Atributos** (`0006_grupos_de_reparto.py` + `0007_modo_de_coeficientes.py`): `id` · `UUID` PK;
+  `administracion_id`/`complejo_id` · `UUID NOT NULL`; `grupo_id` · `UUID NOT NULL` (FK compuesta de
+  cuatro columnas a `grupo_de_reparto`, incluido `modo_de_coeficientes`, `ON UPDATE CASCADE`);
+  `unidad_id` · `UUID NOT NULL` (FK compuesta a `unidad`); `modo_de_coeficientes` · `TEXT NOT NULL`;
+  `coeficiente` · `NUMERIC(7,6)`, opcional.
+- **Relaciones**: une `grupo_de_reparto` y `unidad` (muchos a muchos).
+- **Constraints**: `uq_grupo_unidad` (una unidad no se repite en el mismo grupo);
+  `ck_grupo_unidad_modo_coeficiente` (`coeficiente IS NOT NULL` si y sólo si el modo es `propios`);
+  `ck_grupo_unidad_coeficiente` (`0 < coeficiente <= 1` cuando no es nulo). Cambiar el modo del grupo
+  reescribe los miembros en una transacción (cascade); el trigger de `0012` rechaza un `INSERT`/`UPDATE`
+  cuyo grupo sea "Generales".
 
-#### `configuracion_versionada` · planificada (cambio 3, D-080, D-010, D-031)
+#### `categoria_de_gasto` · existe (migración `0008`, R16, D-041)
 
-- **Qué es**: la configuración de intereses (R03) y fondo de reserva (R15) de un complejo, **versionada
-  con fecha y autor**; cada liquidación guarda la versión con la que se calculó (historia, no se pisa).
-- **Atributos conocidos**, de `Intereses`/`FondoDeReserva` en `parametros.py`: `tasa_mensual` (0 a 10%,
-  `_PATRON_PORCENTAJE`), `dias_de_gracia` (entero 0 a 31), `forma_de_calculo`
-  (`proporcional_por_dia | mes_entero`), `porcentaje` del fondo (0 a 100%). Son **menús cerrados**, no
-  fórmula libre (D-010).
-- **Relaciones**: pertenece a un `complejo`; cada `liquidacion` referencia la versión vigente al emitir.
-- **Pendiente**: si el edificio piloto usa el esquema de doble vencimiento (R26, P19) en vez de este
-  menú; cómo se guarda exactamente el historial de versiones, a decidir en el design del cambio 3.
+- **Atributos** (`0008_categorias_de_gasto.py`): `id` · `UUID` PK; `administracion_id`/`complejo_id` ·
+  `UUID NOT NULL`; `clave` · `TEXT NOT NULL`; `nombre` · `TEXT NOT NULL`; `orden` · `INTEGER NOT NULL`;
+  `activa` · `BOOLEAN NOT NULL`, default `true`.
+- **Relaciones**: pertenece a un `complejo`; clasificará muchos `gasto` (cambio 6).
+- **Constraints**: `uq_categoria_clave`; `uq_categoria_orden` (única, `DEFERRABLE INITIALLY DEFERRED`,
+  para poder reordenar todas en una transacción); `uq_categoria_nombre` (índice único por
+  `lower(nombre)`, no se repite salvo mayúsculas); `ck_categoria_de_gasto_nombre_no_vacio` (`0016`). Una
+  categoría con gastos no se borra, se desactiva (`activa=false`).
+
+#### `configuracion_versionada` · existe (migración `0009`, D-080, D-010, D-031, D-100; de sólo agregar)
+
+- **Qué es**: la configuración de intereses (R03), fondo de reserva (R15) y vencimiento (R26, D-100) de
+  un complejo, **versionada con fecha y autor**, de sólo agregar: no se edita ni se borra, ni por su
+  autor, también por SQL. La vigente para una fecha es la versión de mayor `vigente_desde` que no la
+  supera; cada liquidación referencia la que usó (decidido en el design del 3a).
+- **Atributos** (`0009_configuracion_versionada.py`): `id` · `UUID` PK; `administracion_id`/
+  `complejo_id` · `UUID NOT NULL`; `vigente_desde` · `DATE NOT NULL`; `tasa_mensual` ·
+  `NUMERIC(4,2) NOT NULL`, `CHECK BETWEEN 0 AND 10`; `dias_de_gracia` · `SMALLINT NOT NULL`, `CHECK
+  BETWEEN 0 AND 31`; `forma_de_calculo` · `TEXT NOT NULL`, `CHECK IN ('proporcional_por_dia',
+  'mes_entero')`; `porcentaje_fondo` · `NUMERIC(5,2) NOT NULL`, `CHECK BETWEEN 0 AND 100`;
+  `dia_de_vencimiento` · `SMALLINT NOT NULL`, `CHECK BETWEEN 1 AND 28`; `modalidad_de_vencimiento` ·
+  `TEXT NOT NULL`, `CHECK IN ('unico', 'doble')`; `dia_segundo_vencimiento` · `SMALLINT`, opcional;
+  `recargo_segundo_vencimiento` · `NUMERIC(5,2)`, opcional (0,01 a 20,00%); `autor_id` · `UUID NOT NULL`
+  (FK compuesta a `persona`); `creada_en` · `TIMESTAMPTZ NOT NULL`, default `now()`.
+- **Relaciones**: pertenece a un `complejo`; cada `liquidacion` referenciará la versión vigente al
+  emitir (cambio 7).
+- **Constraints**: `uq_configuracion_vigencia` (una versión por fecha y complejo);
+  `ck_configuracion_vencimiento_coherente` (modalidad `unico` exige los dos campos del segundo
+  vencimiento en `NULL`; `doble` los exige completos y coherentes: el segundo día es posterior al
+  primero, hasta el día 28, con recargo positivo). RLS con permisos reducidos a `SELECT, INSERT`
+  (`aislar_por_administracion(..., permisos="SELECT, INSERT")`); dos triggers
+  (`fn_configuracion_versionada_bloqueada`) rechazan cualquier `UPDATE`, `DELETE` o `TRUNCATE`, también
+  por SQL como `proptech_app`.
 
 #### `regla_versionada` · planificada (cambio 6b, D-066; fuera del camino a M1)
 
@@ -304,8 +361,9 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 - **No se construye para ninguna regla vigente del MVP** (D-089): entra sólo cuando R14 o R37 se validen
   y migren desde su versión de código simple de los cambios 7/8.
 
-`persona` y `asignacion_rol` ya no son planificadas: ver "Existe hoy, dominio `complejos` y `acceso`"
-más arriba.
+`persona`, `asignacion_rol`, `grupo_de_reparto`, `grupo_unidad`, `categoria_de_gasto` y
+`configuracion_versionada` ya no son planificadas: ver "Existe hoy, dominio `complejos` y `acceso`" y
+"Existe hoy, dominio `complejos`" más arriba.
 
 ### Planificado, dominio `gastos`
 
@@ -422,8 +480,10 @@ presenta.
 ## Seed data inicial
 
 Dos archivos ya validados (cambio 1b, D-053), con sus lectores propios
-(`backend/src/proptech_core/compartido/parametros.py` y `semilla.py`), que todavía **no se insertan en
-la base** (no hay tablas de edificio hasta el cambio 3, que es quien carga la semilla).
+(`backend/src/proptech_core/compartido/parametros.py` y `semilla.py`), alineados con R01 y el modo de
+coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a, pero el comando que carga el
+edificio de ejemplo **en la base** se movió al 3b (sólo lo necesita el acceso de desarrollo sin login,
+E6/E10 de la propuesta del 3a): hoy la semilla sigue validándose en memoria, no insertada.
 
 ### `config/parametros.yaml` · los valores con que arranca cada edificio nuevo (D-042)
 
@@ -459,5 +519,6 @@ Validado por `Semilla` (`semilla.py`) contra los parámetros de arriba: `version
   "alinear el validador de la semilla con R01 (tolerancia de ±0,0001) y con la respuesta a P24": la
   pregunta que lo cubre es **P24** (coeficientes de grupos parciales), ya abierta en
   `10_preguntas_abiertas.md`. No se inventa acá una solución.
-- **Estado de migración**: el campo todavía no existe en este archivo (lo suma el cambio 3, D-083); hoy
-  la semilla no declara "sin saldos previos" porque ese campo no se construyó aún.
+- **Estado de migración**: la columna `complejo.estado_migracion` existe desde el 3a (`0005`, D-083),
+  con el ejemplo pensado como `'sin_saldos_previos'`; el campo todavía no se agregó a este archivo de
+  semilla (pendiente del 3b, que es quien la carga en la base).

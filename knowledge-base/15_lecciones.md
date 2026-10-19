@@ -281,4 +281,53 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   declara en el mismo lugar qué deja afuera. Ningún comentario ni `[x]` afirma una cobertura sin el
   mutante que la muestra en rojo.
 - **Costo**: tres bloqueantes en la vuelta 2 y la familia entera pasada como deuda al 15.
+
+## L-023 · Una migración que agrega NOT NULL o CHECK rompe también fuera de `backend/`
+
+- **Origen**: cambio 3a, cierre del bloque D (19/10/2026).
+- **Qué pasó**: la migración `0005` agregó `localidad NOT NULL` a `complejo`. La suite de `backend/`
+  no tenía ningún INSERT que la dejara afuera y pasó en verde; `infra/ci/humo.sh` siembra con `psql`
+  directo, fuera de `backend/`, y nadie lo miró hasta la corrida completa después del bloque D: el humo
+  rompió con "null value in column \"localidad\" violates not-null constraint". El arreglo fue sumar la
+  columna a la siembra del humo (commit `05eaddd`).
+- **Regla**: antes de cerrar una migración que agrega `NOT NULL` o un `CHECK`, buscar con `rg` todo
+  `INSERT` a esa tabla en el repositorio entero, no sólo en `backend/`: el humo, los scripts de
+  `infra/ci/` y cualquier semilla fuera del dominio pueden escribir en esa tabla sin pasar por la
+  aplicación.
+- **Costo**: una corrida de humo en rojo y un commit de arreglo (`05eaddd`).
+- **Aplica a**: constructor, orquestador (en la verificación independiente de cada bloque).
+
+## L-024 · Cada vuelta de arreglos es código nuevo sin mirada independiente
+
+- **Origen**: cambio 3a, auditoría vuelta 1 (fila 4) y vuelta 2 (filas 1 y 2).
+- **Qué pasó**: cada vuelta de correcciones la escribió, la probó y la dio por buena el mismo autor
+  (Codex). El auditor lo marcó en la vuelta 1 ("nada de la vuelta de correcciones tuvo una segunda
+  mirada": el trigger de `0011`, `texto.py` y el arreglo final los dio por buenos su propio autor) y
+  otra vez en la vuelta 2 (fila 1: la guarda de autenticación, reescrita por Codex, sin revisor
+  posterior; fila 2: las migraciones `0012`/`0013`, que cambian datos y permisos sobre bases
+  existentes, "sólo las miró su autor"). Recién los revisores de rol de backend y DBA, convocados sobre
+  el HEAD final (`334daf5`), encontraron RF-B-1 a RF-B-4 y RF-D-1 a RF-D-4; RF-D-1 (Generales mudable de
+  edificio, por SQL) vivía en una migración ya aplicada (`0011`) y exigió una migración nueva (`0015`).
+- **Regla**: cerrar una vuelta de arreglos con revisores de rol de sólo lectura sobre lo que tocó esa
+  última vuelta, no con otra vuelta entera de rompedor sobre el cambio completo: el rompedor que ya
+  recorrió el cambio entero tiende a no releer lo recién escrito con la misma sospecha.
+- **Costo**: dos vueltas señaladas por el auditor sin corregirse hasta el cierre; un hallazgo real
+  (RF-D-1) que vivía desde antes y se encontró recién al convocar un rol distinto.
+- **Aplica a**: auditor, orquestador.
+
+## L-025 · Un constructor no se revisa a sí mismo, y obedece el brief al pie de la letra
+
+- **Origen**: cambio 3a, bloques B a E y las dos vueltas de corrección (Codex como constructor).
+- **Qué pasó**: con el mismo autor escribiendo el test, el código y el mutante que lo prueba, el
+  rompedor encontró 6 hallazgos en la vuelta 1 (R3A-1 a R3A-6) y 12 en la vuelta 2 (R3B-1 a R3B-12),
+  todos en código que Codex había dado por terminado y probado. Codex además se ciñó al brief al pie de
+  la letra: lo que el brief no nombraba (como la siembra del humo fuera de `backend/`, L-023) no lo
+  miró, sin que eso fuera una falla de instrucción, sino el límite declarado de su alcance.
+- **Regla**: con un constructor que no es el mismo modelo que revisa (Codex, u otro), el brief nombra
+  explícitamente los consumidores fuera del área que toca (otros módulos, `infra/`, scripts); y el
+  rompedor y el auditor son siempre de una familia distinta a la del constructor, nunca el mismo modelo
+  revisándose.
+- **Costo**: 18 hallazgos entre las dos vueltas, todos en la primera lectura externa del código de
+  Codex.
+- **Aplica a**: orquestador (al armar el brief), auditor.
 - **Aplica a**: constructor y rompedor.

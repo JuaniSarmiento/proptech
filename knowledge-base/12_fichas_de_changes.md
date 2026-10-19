@@ -258,6 +258,12 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 
 ### 3a · `configuracion-del-edificio` · HIGH
 
+- **Estado**: archivado el 19/10/2026 (D-103, D-104). Constructor Codex (GPT-6.1-Sol en `xhigh`, por
+  bloques A a E, detalle en `14_forma_de_trabajo.md`); rompedor y auditor en dos vueltas (vuelta 1: 6
+  hallazgos, R3A-1 a R3A-6; vuelta 2: 12 hallazgos, R3B-1 a R3B-12) y, sobre el HEAD final (`334daf5`),
+  revisores de rol de backend y DBA que encontraron además RF-B-1 a RF-B-4 y RF-D-1 a RF-D-4 (ésta dio
+  la migración `0015`, D-103). El auditor dio **OK**; la deuda queda en "Deuda del cierre del 3a" más
+  abajo, con dueño por ítem (mayormente 3b, 2b, 15 y el 7).
 - **Objetivo**: que el modelo del edificio quede completo para el 4, con la base frenando cualquier
   cruce de edificio o de administración, y la configuración que cambia plata versionada y de sólo
   agregar.
@@ -843,6 +849,22 @@ compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no 
 | N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | 15 (piloto), con C2V2-1 |
 | N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | 15 (piloto), con C2V2-2 |
 | N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
+
+### Deuda del cierre del 3a
+
+La que dejó el cierre del 3a: constructor Codex por bloques, rompedor y auditor en dos vueltas, más los
+revisores de rol de backend y DBA sobre el HEAD final (detalle en la ficha del 3a y en
+`14_forma_de_trabajo.md`). Dueño asignado por el primer cambio que de verdad necesita que esté resuelta
+(L-012), no por el que suena más obvio; donde ese dueño lo propuso el orquestador sin que Juani lo haya
+firmado todavía, queda dicho en la fila.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | 15 (piloto). Dueño propuesto, no confirmado por Juani |
+| `complejo.localidad` puede quedar `''` en los edificios que vienen del 2a (el backfill de `0005` usa `server_default=""`); el `CHECK` de texto no vacío de `0016` la excluye a propósito, por ese mismo motivo (RF-D-2, hallado en la propia migración) | La API ya rechaza `''` en `localidad` con 422 (`CuerpoEdificio.localidad`); el agujero es sólo por SQL directo y sólo sobre edificios que ya existían antes del 3a | 3b (editar la localidad desde el padrón y agregar ahí el `CHECK`) |
+| RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b (el login acota quién llega a probar). Dueño propuesto, no confirmado por Juani |
+| Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | El rompedor del 3b. Dueño propuesto, no confirmado por Juani |
+| La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | Decisión tomada y declarada, no un agujero sin dueño: D-103 deja la excepción a propósito porque la migración de historia de edificios reales la va a necesitar | 7 (migración de historia de edificios reales) |
 
 ## Pendientes de arranque
 

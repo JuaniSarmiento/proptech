@@ -13,11 +13,13 @@ cada push), **1b `arranque-del-sistema`** (configuración, tipo `Dinero` exacto,
 edificio de ejemplo validados), **1c `cola-logs-y-respaldos`** (Redis, worker con reintentos e
 idempotencia, logs en JSON y número de seguimiento de punta a punta; cerrado con OK con deuda
 anotada), **1d `respaldos-y-restauracion`** (`pg_dump` automático y a diario, restauración probada
-contra una base aparte) y **2a `aislamiento-por-administracion`** (roles de PostgreSQL separados,
-Row-Level Security por administración y auditoría de acciones sensibles; el candado, D-097). En
-construcción: **2b `login`** y **2c `endurecimiento-de-infraestructura`** (este cambio: cabeceras,
-contenedores y CI más duros, deuda de infraestructura de los cambios anteriores). Todavía no hay
-liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
+contra una base aparte), **2a `aislamiento-por-administracion`** (roles de PostgreSQL separados,
+Row-Level Security por administración y auditoría de acciones sensibles; el candado, D-097), **2c
+`endurecimiento-de-infraestructura`** (cabeceras, contenedores y CI más duros) y **3a
+`configuracion-del-edificio`** (el modelo del edificio completo: unidades, grupos de reparto,
+categorías de gasto y la configuración de intereses y vencimiento, versionada y de sólo agregar). En
+construcción: **2b `login`** y **3b `pantallas-del-edificio`** (las siete pantallas del administrador).
+Todavía no hay liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 ([`CHANGES.md`](CHANGES.md), con el detalle de cada cambio en
 [`knowledge-base/12_fichas_de_changes.md`](knowledge-base/12_fichas_de_changes.md)).
 

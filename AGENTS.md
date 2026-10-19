@@ -41,11 +41,29 @@ mercado de arranque es **Mendoza**.
   `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2a"), con dueño por ítem (mayormente
   el 2b y el 15); la verificación de arranque de las políticas de las tablas de negocio queda prometida
   como deuda del 15, por decisión de Juani.
-- **Próximo**: **2b, el login** (CRITICAL, contraseña para el personal, link mágico para el vecino,
-  D-097), bloqueado por P48 (a qué administración entra un email con cuenta en dos); o **2c
-  `endurecimiento-de-infraestructura`** (MEDIUM), que ya puede empezar porque sólo depende del 2a. El 3
-  `configuracion-del-edificio` también depende sólo del 2a y puede construirse en paralelo al 2b; el
-  2b hace falta recién para que una persona use el sistema y para el despliegue.
+- **Cambio 2c `endurecimiento-de-infraestructura` archivado** (16/10/2026): cabeceras de seguridad en
+  Caddy, `no-new-privileges` y capacidades mínimas, PID 1 no root en los siete servicios, CI en pull
+  requests con límites de tiempo y gitleaks por digest, humo con pasos nombrados, tabla única de
+  variables en el README. Cerrado sin vuelta 3 (D-101). **OK con deuda anotada**; la deuda queda en
+  `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2c"), con dueño por ítem (mayormente
+  el 15).
+- **Cambio 3a `configuracion-del-edificio` archivado** (19/10/2026, D-103, D-104): el modelo del
+  edificio completo (`complejo` y `unidad` enteros, `grupo_de_reparto` con los dos modos de
+  coeficientes de D-100, `grupo_unidad`, `categoria_de_gasto`, `configuracion_versionada` de sólo
+  agregar, el vocabulario de auditoría ampliado), con la base frenando todo cruce de edificio o de
+  administración, también por SQL (R3A-3, R3B-5, RF-D-1). Primer cambio construido con **Codex
+  (GPT-6.1-Sol, `xhigh`) como constructor**, por bloques con brief propio (detalle en
+  `knowledge-base/14_forma_de_trabajo.md`); rompedor y auditor en dos vueltas (6 hallazgos en la
+  primera, 12 en la segunda) y revisores de rol de backend y DBA sobre el HEAD final. **OK**; la deuda
+  queda en `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 3a"), con dueño por ítem
+  (mayormente el 3b, el 2b, el 15 y el 7).
+- **Próximo**: **3b `pantallas-del-edificio`** (HIGH mientras lleve el acceso de desarrollo): las siete
+  pantallas de la superficie del administrador (mis edificios, resumen del edificio, padrón de
+  unidades, grupos de reparto, categorías de gasto, intereses/vencimiento/fondo de reserva, confirmar
+  "sin saldos previos"). Cada pantalla necesita su sesión de `impeccable shape` con Juani antes del
+  propose (un brief en `openspec/exploraciones/` y el OK de Juani con fecha), y cada una lleva su ayuda
+  "?" con las tres partes escritas (D-102, HU-T1). En paralelo sigue disponible **2b, el login**
+  (CRITICAL, D-097), bloqueado por P48.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -142,14 +160,17 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md), con el detalle de cada cambio
 en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.md). Resumen:
 
-- **Total**: 22 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
+- **Total**: 23 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, y el 3 partido en 3a y 3b por
+  E1 del propose del 3a), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
-  `1a → 1b → 1c → 1d → 2a → 3 → 4 → 5 → 6 → 7` (2b y 2c en paralelo al 3).
+  `1a → 1b → 1c → 1d → 2a → 3a → 4 → 5 → 6 → 7` (2b, 2c y 3b en paralelo).
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
-  `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098).
-- **Próximo**: en paralelo, el 3 `configuracion-del-edificio`, el 2b (login, bloqueado por P48) y el 2c
-  `endurecimiento-de-infraestructura` (MEDIUM); los tres sólo dependen del 2a, ya archivado. La
-  partición es D-097.
+  `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
+  `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
+  (OK, D-103, D-104).
+- **Próximo**: 3b `pantallas-del-edificio` (las siete pantallas del administrador, cada una con su
+  `shape` previo con Juani); en paralelo, el 2b (login, bloqueado por P48). La partición del 3 es
+  E1 de la propuesta del 3a, firmada por Juani el 16/10/2026.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.
