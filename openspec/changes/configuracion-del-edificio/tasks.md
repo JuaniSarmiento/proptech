@@ -1362,6 +1362,39 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_identidad_antes
 14:26:30 [exit 0]
 ```
 
+### R3B-3 y R3B-4 · Barrido completo de rutas efectivas (D8, R6/R11)
+
+- [x] Eliminar filtro `/api`; recorrer inclusiones y Mount recursivamente, acumulando prefijos.
+Rutas públicas explícitas: salud, OpenAPI y documentación de la app raíz (no las de una subapp).
+WebSocket se registra como método `WEBSOCKET`; una ruta Starlette sin dependencias responde False
+a `depende_de`, y un ASGI opaco falla nombrando el montaje. Se inspecciona el árbol efectivo
+(también el de WebSocket incluido). Los dos `!= _RUTAS_CUBIERTAS` tautológicos se reemplazan
+por la diferencia exacta con la ruta que falta. Tests del rompedor movidos a unitarios.
+**ROJO** (casos originales y montajes anidados, WebSocket, ASGI opaco):
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py -q --tb=line --color=no
+14:25:22
+FAILED tests/unitarios/test_barrido_de_rutas.py::test_websocket_y_ruta_starlette_se_detectan_sin_inventar_dependencias
+FAILED tests/unitarios/test_barrido_de_rutas.py::test_mount_opaco_falla_nombrando_su_ruta
+7 failed, 1 warning in 0.48s
+14:25:23 [exit 1]
+```
+**ROJO** adicional: WebSocket con guarda dentro de Mount e inclusión:
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py -q --tb=line --color=no
+14:28:00
+FAILED tests/unitarios/test_barrido_de_rutas.py::test_mount_en_router_incluido_y_websocket_con_guarda
+1 failed, 7 passed, 1 warning in 0.40s
+14:28:02 [exit 1]
+```
+**VERDE** (barrido y sus dos consumidores, sin perder rutas existentes):
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py -q --tb=line --color=no
+14:28:19
+82 passed, 1 warning in 17.16s
+14:28:37 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo

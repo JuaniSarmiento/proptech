@@ -49,7 +49,13 @@ RESPALDO_USER = "proptech_respaldo"
 RESPALDO_PASSWORD = "clave-respaldo-no-real"
 
 #: Pública a propósito: no pasa por identidad ni por tenant (D11).
-_RUTAS_PUBLICAS = {("/api/salud", "GET")}
+_RUTAS_PUBLICAS = {
+    ("/api/salud", "GET"),
+    ("/docs", "GET"),
+    ("/docs/oauth2-redirect", "GET"),
+    ("/redoc", "GET"),
+    ("/openapi.json", "GET"),
+}
 
 #: Las rutas del candado que este archivo prueba, una por una, más abajo.
 #: Si `_rutas_reales_del_candado()` devuelve algo que no está acá, el test
@@ -361,7 +367,7 @@ def test_ruta_montada_con_prefijo_de_inclusion_sin_cubrir_se_detecta() -> None:
         "el barrido no vio la ruta montada con include_router(prefix=...): "
         f"rutas detectadas: {rutas}"
     )
-    assert rutas - _RUTAS_PUBLICAS != _RUTAS_CUBIERTAS
+    assert rutas - _RUTAS_PUBLICAS - _RUTAS_CUBIERTAS == {("/api/sin-cubrir", "GET")}
 
 
 def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
@@ -380,4 +386,4 @@ def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
         "el barrido no vio la ruta agregada con add_api_route directo a la app: "
         f"rutas detectadas: {rutas}"
     )
-    assert rutas - _RUTAS_PUBLICAS != _RUTAS_CUBIERTAS
+    assert rutas - _RUTAS_PUBLICAS - _RUTAS_CUBIERTAS == {("/api/directo-sin-cubrir", "GET")}

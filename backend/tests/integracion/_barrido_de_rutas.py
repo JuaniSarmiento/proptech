@@ -1,82 +1,94 @@
-"""Barrido de rutas EFECTIVAS de la app bajo `/api` (D8, R6).
+"""R6/R11: todas las rutas efectivas, con cualquier prefijo y montaje.
 
-Compartido entre `test_rutas_protegidas.py` (2.1, el candado) y
-`test_altas_sin_id_del_cliente.py` (2.2, R11): los dos necesitan la misma
-noción de "qué rutas tiene la app de verdad", y que sea la MISMA función
-evita que diverjan (L-009: el arreglo se prueba en el gemelo, mismo criterio
-aplicado acá a dos lectores del mismo barrido). No es un archivo de test (no
-empieza con `test_`): pytest no lo recolecta.
+La lista pública es explícita en test_rutas_protegidas. Un montaje ASGI
+opaco o un tipo desconocido fallan nombrando dónde no se pudo inspeccionar;
+no se saltean rutas por carecer de methods/dependant.
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI
+from starlette.routing import Mount, WebSocketRoute
 
 
-def rutas_efectivas(app: FastAPI) -> list[Any]:
-    """Toda ruta que la app de verdad atiende bajo `/api`, con su ruta
-    EFECTIVA (prefijo de inclusión ya aplicado) — no la `APIRoute` original
-    del router, que no lo lleva (D8, R6).
+@dataclass(frozen=True)
+class RutaEfectiva:
+    path: str
+    methods: frozenset[str]
+    dependant: Any = None
 
-    Tres formas de llegar a una ruta, las tres contempladas:
 
-    - directa (`app.add_api_route(...)`): queda como `APIRoute` en
-      `app.routes`, sin envolver.
-    - incluida (`app.include_router(router, prefix=...)`, con o sin
-      prefijo): en esta versión de FastAPI, `include_router` envuelve el
-      router en un `_IncludedRouter` sin tipo público; su `.original_router`
-      tiene las rutas SIN el prefijo de inclusión (por eso el barrido
-      anterior, que miraba ahí, era ciego a cualquier ruta montada con
-      prefijo: "/x" nunca empieza con "/api", aunque la app responda en
-      "/api/x"). La ruta efectiva sale de
-      `_IncludedRouter.effective_candidates()`, que arma FastAPI resolviendo
-      el prefijo; cada candidato es un `_EffectiveRouteContext` (con `.path`
-      ya prefijado, `.methods` y `.dependant`, igual que una `APIRoute`) o,
-      si el router incluido a su vez incluye otro, un `_IncludedRouter`
-      anidado — de ahí la recursión.
-    - anidada (un router que incluye a otro, cualquier profundidad): se
-      resuelve recursando sobre cada `_IncludedRouter` que aparece dentro de
-      `effective_candidates()`, acumulando los prefijos de cada nivel (lo
-      hace FastAPI; acá sólo se recorre el resultado).
+def rutas_efectivas(app: FastAPI) -> list[RutaEfectiva]:
+    rutas: list[RutaEfectiva] = []
 
-    Devuelve objetos heterogéneos a propósito (`APIRoute` o
-    `_EffectiveRouteContext`): quien llama sólo usa `.path`, `.methods` y
-    `.dependant`, que los dos exponen.
-    """
-    rutas: list[Any] = []
-
-    def _recorrer(candidato: object) -> None:
+    def recorrer(candidato: Any, prefijo: str = "") -> None:
         if type(candidato).__name__ == "_IncludedRouter":
-            for sub in candidato.effective_candidates():  # type: ignore[attr-defined]
-                _recorrer(sub)
+            # FastAPI resuelve los prefijos de inclusión, incluidos los anidados.
+            for sub in candidato.effective_candidates():
+                recorrer(sub, prefijo)
             return
-        ruta = getattr(candidato, "path", None)
-        if isinstance(ruta, str) and ruta.startswith("/api"):
-            rutas.append(candidato)
+        original = getattr(candidato, "original_route", candidato)
+        starlette = getattr(candidato, "starlette_route", None)
+        ruta = (
+            getattr(candidato, "path", None)
+            or getattr(starlette, "path", None)
+            or getattr(original, "path", None)
+        )
+        if not isinstance(ruta, str):
+            raise AssertionError(f"ruta desconocida bajo {prefijo or '/'}: {candidato!r}")
+        efectiva = prefijo + ruta
+        if isinstance(original, Mount):
+            subrutas = original.routes
+            if not subrutas:
+                raise AssertionError(f"montaje opaco sin rutas inspeccionables: {efectiva}")
+            for sub in subrutas:
+                recorrer(sub, efectiva)
+            return
+        metodos: set[str] | None
+        if isinstance(original, WebSocketRoute):
+            metodos = {"WEBSOCKET"}
+        else:
+            metodos = getattr(candidato, "methods", None) or getattr(original, "methods", None)
+            if not metodos:
+                raise AssertionError(f"ruta sin métodos inspeccionables: {efectiva}")
+        rutas.append(
+            RutaEfectiva(
+                efectiva,
+                frozenset(metodos),
+                (
+                    getattr(candidato, "dependant", None)
+                    or getattr(starlette, "dependant", None)
+                    or getattr(original, "dependant", None)
+                ),
+            )
+        )
 
     for route in app.routes:
-        _recorrer(route)
+        recorrer(route)
     return rutas
 
 
 def rutas_reales_del_candado(app: FastAPI) -> set[tuple[str, str]]:
-    rutas: set[tuple[str, str]] = set()
-    for sub in rutas_efectivas(app):
-        for metodo in sub.methods or set():
-            if metodo != "HEAD":
-                rutas.add((sub.path, metodo))
-    return rutas
+    return {
+        (ruta.path, metodo)
+        for ruta in rutas_efectivas(app)
+        for metodo in ruta.methods
+        if metodo != "HEAD"
+    }
 
 
 def depende_de(app: FastAPI, ruta: str, metodo: str, objetivo: object) -> bool:
-    """Si `objetivo` aparece en el árbol de dependencias de esa ruta,
-    directo o anidado (no sólo las de primer nivel)."""
+    """El árbol de la primera ruta efectiva que atiende ese método y path."""
     for sub in rutas_efectivas(app):
-        if sub.path == ruta and metodo in (sub.methods or set()):
+        if sub.path == ruta and metodo in sub.methods:
+            if sub.dependant is None:
+                return False
             pendientes = list(sub.dependant.dependencies)
             while pendientes:
                 dep = pendientes.pop()
                 if dep.call is objetivo:
                     return True
                 pendientes.extend(dep.dependencies)
+            return False
     return False
