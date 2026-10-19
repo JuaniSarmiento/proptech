@@ -1,15 +1,16 @@
 """Grupos del edificio y reemplazo atómico de sus miembros (D6, D15)."""
 
 import re
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.coeficientes import Coeficiente, informar_coeficientes
+from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.complejos.aplicacion.errores import (
     Conflicto,
     EntradaInvalida,
@@ -25,7 +26,10 @@ _CONFLICTOS = {"uq_grupo_clave": "clave", "uq_grupo_unidad": "unidades"}
 class DatosGrupo(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
     clave: str
-    nombre: str = Field(min_length=1, max_length=80)
+    #: R3A-1/R3A-6: nunca un carácter de control, recortado en el borde.
+    nombre: Annotated[
+        str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)
+    ]
     metodo: Literal["coeficiente", "superficie", "partes_iguales"]
 
     @field_validator("clave")

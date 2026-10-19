@@ -25,6 +25,7 @@ from pydantic import (
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.porcentaje import Porcentaje, PorcentajeInvalido
+from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.compartido.tipos_de_unidad import TIPOS_DE_UNIDAD_VALIDOS
 
 # re.ASCII en _PATRON_CLAVE: por consistencia con el resto del módulo,
@@ -85,11 +86,13 @@ def _tipo_de_unidad_valido(valor: str) -> str:
 
 
 def _nombre_valido(valor: str) -> str:
-    if not valor.strip():
-        raise ValueError("no puede estar vacío ni en blanco")
-    if len(valor) > 80:
+    # R3A-1/R3A-6 (cambio 3a, vuelta 1 de correcciones): nunca un carácter
+    # de control (U+0000 incluido), y recortado en el borde — mismo criterio
+    # que el resto de los nombres de la familia (unidad, grupo, categoría).
+    recortado = recortado_sin_control(valor)
+    if len(recortado) > 80:
         raise ValueError("no puede superar los 80 caracteres")
-    return valor
+    return recortado
 
 
 def _clave_valida(valor: str) -> str:

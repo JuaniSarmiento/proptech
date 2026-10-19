@@ -16,7 +16,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import Field, field_validator
+from pydantic import AfterValidator, Field, field_validator
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
@@ -28,6 +28,7 @@ from proptech_core.compartido.coeficientes import Coeficiente
 from proptech_core.compartido.parametros import CategoriaDeGasto
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.compartido.superficie import Superficie
+from proptech_core.compartido.texto import recortado_sin_control, sin_caracteres_de_control
 from proptech_core.complejos.aplicacion import categorias, grupos, unidades
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.complejos.aplicacion.escritura import (
@@ -108,8 +109,13 @@ def _edificio_autorizado(
 
 
 class CuerpoEdificio(CuerpoDeAlta):
-    nombre: str = Field(min_length=1, max_length=200)
-    localidad: str = Field(min_length=1, max_length=200)
+    #: R3A-1/R3A-6: nunca un carácter de control, recortados en el borde.
+    nombre: Annotated[
+        str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
+    ]
+    localidad: Annotated[
+        str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
+    ]
     configuracion_inicial: ConfiguracionEdificio | None = None
 
 
@@ -129,9 +135,13 @@ class CuerpoDeEdicion(CuerpoDeAlta):
 
 
 class CuerpoEdicionUnidad(CuerpoDeEdicion):
-    identificador: str | None = Field(default=None, min_length=1, max_length=40)
+    #: R3A-1/R3A-6: misma familia que `unidades.DatosUnidad`.
+    identificador: (
+        Annotated[str, Field(min_length=1, max_length=40), AfterValidator(recortado_sin_control)]
+        | None
+    ) = None
     tipo: str | None = None
-    piso: str | None = None
+    piso: Annotated[str, AfterValidator(sin_caracteres_de_control)] | None = None
     coeficiente: Coeficiente | None = None
     superficie_m2: Superficie | None = None
 
@@ -163,7 +173,11 @@ class CuerpoGrupo(grupos.DatosGrupo, CuerpoDeAlta):
 
 class CuerpoEdicionGrupo(CuerpoDeEdicion):
     clave: str | None = None
-    nombre: str | None = Field(default=None, min_length=1, max_length=80)
+    #: R3A-1/R3A-6: misma familia que `grupos.DatosGrupo`.
+    nombre: (
+        Annotated[str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)]
+        | None
+    ) = None
     metodo: Literal["coeficiente", "superficie", "partes_iguales"] | None = None
 
     @field_validator("clave")
@@ -177,7 +191,11 @@ class CuerpoCategoria(CategoriaDeGasto, CuerpoDeAlta):
 
 
 class CuerpoEdicionCategoria(CuerpoDeEdicion):
-    nombre: str | None = Field(default=None, min_length=1, max_length=80)
+    #: R3A-1/R3A-6: misma familia que `CategoriaDeGasto` (parametros.py).
+    nombre: (
+        Annotated[str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)]
+        | None
+    ) = None
     activa: bool | None = None
 
 

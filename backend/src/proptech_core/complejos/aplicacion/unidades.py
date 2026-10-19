@@ -1,9 +1,9 @@
 """Altas y edición del padrón; la sesión ya tiene el tenant y el alcance autorizado."""
 
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from proptech_core.compartido.coeficientes import (
     informar_coeficientes,
 )
 from proptech_core.compartido.superficie import Superficie
+from proptech_core.compartido.texto import recortado_sin_control, sin_caracteres_de_control
 from proptech_core.compartido.tipos_de_unidad import TIPOS_DE_UNIDAD_VALIDOS
 from proptech_core.complejos.aplicacion.errores import (
     NoEncontrado,
@@ -25,9 +26,14 @@ from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 
 class DatosUnidad(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
-    identificador: str = Field(min_length=1, max_length=40)
+    #: R3A-1/R3A-6: nunca un carácter de control (U+0000 incluido, que
+    #: PostgreSQL rechaza crudo), y el identificador se recorta en el borde
+    #: para que "1A " no sea otra unidad que "1A".
+    identificador: Annotated[
+        str, Field(min_length=1, max_length=40), AfterValidator(recortado_sin_control)
+    ]
     tipo: str
-    piso: str
+    piso: Annotated[str, AfterValidator(sin_caracteres_de_control)]
     coeficiente: Coeficiente
     superficie_m2: Superficie
 
