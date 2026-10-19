@@ -1,0 +1,15 @@
+{
+  "autor_id": "69544e91-8d8a-47c9-9a28-c29c372c78ab",
+  "complejo_id": "a2602538-8fe2-413d-92c4-224f6b2cb496",
+  "creada_en": "2026-10-19T22:06:28.894289Z",
+  "dia_de_vencimiento": 10,
+  "dia_segundo_vencimiento": null,
+  "dias_de_gracia": 0,
+  "forma_de_calculo": "proporcional_por_dia",
+  "id": "87afbf85-831d-4cc9-85bd-63ed7985b9d4",
+  "modalidad_de_vencimiento": "unico",
+  "porcentaje_fondo": "0.00",
+  "recargo_segundo_vencimiento": null,
+  "tasa_mensual": "3.00",
+  "vigente_desde": "2026-10-19"
+}

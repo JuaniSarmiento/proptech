@@ -1,0 +1,52 @@
+[
+  {
+    "administracion_id": "5246886a-9b39-4f59-9367-81654a795c1b",
+    "clave": "generales",
+    "complejo_id": "2d717ebe-f354-4fdf-95ca-3f0485fe84fb",
+    "es_generales": true,
+    "id": "db7a0826-f7f3-4319-b03f-96c48b8426af",
+    "informe": {
+      "diferencia": "0.100000",
+      "estado": "fuera_de_tolerancia",
+      "suma": "1.100000"
+    },
+    "metodo": "coeficiente",
+    "modo_de_coeficientes": "renormalizado",
+    "nombre": "Generales",
+    "unidades": [
+      {
+        "coeficiente": "0.100000",
+        "unidad_id": "0a3821f6-9447-427a-bb4d-8493ebe9ee49"
+      },
+      {
+        "coeficiente": "0.500000",
+        "unidad_id": "2a95d1f0-0987-49af-9ad9-f5ef8d0cd358"
+      },
+      {
+        "coeficiente": "0.500000",
+        "unidad_id": "d506c810-e10f-49bb-bfd8-39a3f6ce81c1"
+      }
+    ]
+  },
+  {
+    "administracion_id": "5246886a-9b39-4f59-9367-81654a795c1b",
+    "clave": "ascensor",
+    "complejo_id": "2d717ebe-f354-4fdf-95ca-3f0485fe84fb",
+    "es_generales": false,
+    "id": "4accc4b0-8e04-447a-ad28-ad11c236c6dd",
+    "informe": null,
+    "metodo": "coeficiente",
+    "modo_de_coeficientes": "renormalizado",
+    "nombre": "Ascensor",
+    "unidades": [
+      {
+        "coeficiente": null,
+        "unidad_id": "0a3821f6-9447-427a-bb4d-8493ebe9ee49"
+      },
+      {
+        "coeficiente": null,
+        "unidad_id": "2a95d1f0-0987-49af-9ad9-f5ef8d0cd358"
+      }
+    ]
+  }
+]

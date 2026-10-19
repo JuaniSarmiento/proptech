@@ -1,0 +1,36 @@
+{
+  "informe": {
+    "diferencia": "0.100000",
+    "estado": "fuera_de_tolerancia",
+    "suma": "1.100000"
+  },
+  "unidades": [
+    {
+      "coeficiente": "0.500000",
+      "complejo_id": "1e37a1df-48af-44fe-9527-3a93e7204915",
+      "id": "153ca513-698c-4f13-8186-f1f28f10ea40",
+      "identificador": "1A",
+      "piso": "1",
+      "superficie_m2": "60.00",
+      "tipo": "departamento"
+    },
+    {
+      "coeficiente": "0.500000",
+      "complejo_id": "1e37a1df-48af-44fe-9527-3a93e7204915",
+      "id": "ce1a0338-bef2-4a64-81a8-5d15c39d9125",
+      "identificador": "1B",
+      "piso": "1",
+      "superficie_m2": "60.00",
+      "tipo": "departamento"
+    },
+    {
+      "coeficiente": "0.100000",
+      "complejo_id": "1e37a1df-48af-44fe-9527-3a93e7204915",
+      "id": "5544ade5-177f-4ae3-a2e4-aa289374f0dd",
+      "identificador": "1C",
+      "piso": "1",
+      "superficie_m2": "55.00",
+      "tipo": "departamento"
+    }
+  ]
+}

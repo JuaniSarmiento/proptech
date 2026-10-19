@@ -1,0 +1,20 @@
+{
+  "cantidad_unidades": 3,
+  "estado_migracion": "pendiente",
+  "informe": {
+    "diferencia": "0.100000",
+    "estado": "fuera_de_tolerancia",
+    "suma": "1.100000"
+  },
+  "listo_para_liquidar": false,
+  "localidad": "Mendoza",
+  "nombre": "Edificio API",
+  "pasos": {
+    "categorias": "hecho",
+    "coeficientes": "falta",
+    "grupos": "hecho",
+    "intereses_y_vencimiento": "hecho",
+    "saldos_previos": "falta",
+    "unidades": "hecho"
+  }
+}
