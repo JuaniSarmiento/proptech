@@ -32,6 +32,9 @@ from testcontainers.community.postgres import PostgresContainer
 from proptech_api.acceso import identidad_actual
 from proptech_core.acceso.dominio.identidad import Identidad
 
+from ._barrido_de_rutas import depende_de as _depende_de
+from ._barrido_de_rutas import rutas_reales_del_candado as _rutas_reales_del_candado
+
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
@@ -196,75 +199,6 @@ def app_real(
 def cliente(app_real: FastAPI) -> Iterator[TestClient]:
     with TestClient(app_real) as cliente:
         yield cliente
-
-
-def _api_routes(app: FastAPI) -> list[Any]:
-    """Toda ruta que la app de verdad atiende bajo `/api`, con su ruta
-    EFECTIVA (prefijo de inclusión ya aplicado) — no la `APIRoute` original
-    del router, que no lo lleva (D8, R6).
-
-    Tres formas de llegar a una ruta, las tres contempladas:
-
-    - directa (`app.add_api_route(...)`): queda como `APIRoute` en
-      `app.routes`, sin envolver.
-    - incluida (`app.include_router(router, prefix=...)`, con o sin
-      prefijo): en esta versión de FastAPI, `include_router` envuelve el
-      router en un `_IncludedRouter` sin tipo público; su `.original_router`
-      tiene las rutas SIN el prefijo de inclusión (por eso el barrido
-      anterior, que miraba ahí, era ciego a cualquier ruta montada con
-      prefijo: "/x" nunca empieza con "/api", aunque la app responda en
-      "/api/x"). La ruta efectiva sale de
-      `_IncludedRouter.effective_candidates()`, que arma FastAPI resolviendo
-      el prefijo; cada candidato es un `_EffectiveRouteContext` (con `.path`
-      ya prefijado, `.methods` y `.dependant`, igual que una `APIRoute`) o,
-      si el router incluido a su vez incluye otro, un `_IncludedRouter`
-      anidado — de ahí la recursión.
-    - anidada (un router que incluye a otro, cualquier profundidad): se
-      resuelve recursando sobre cada `_IncludedRouter` que aparece dentro de
-      `effective_candidates()`, acumulando los prefijos de cada nivel (lo
-      hace FastAPI; acá sólo se recorre el resultado).
-
-    Devuelve objetos heterogéneos a propósito (`APIRoute` o
-    `_EffectiveRouteContext`): el resto del archivo sólo usa `.path`,
-    `.methods` y `.dependant`, que los dos exponen.
-    """
-    rutas: list[Any] = []
-
-    def _recorrer(candidato: object) -> None:
-        if type(candidato).__name__ == "_IncludedRouter":
-            for sub in candidato.effective_candidates():  # type: ignore[attr-defined]
-                _recorrer(sub)
-            return
-        ruta = getattr(candidato, "path", None)
-        if isinstance(ruta, str) and ruta.startswith("/api"):
-            rutas.append(candidato)
-
-    for route in app.routes:
-        _recorrer(route)
-    return rutas
-
-
-def _rutas_reales_del_candado(app: FastAPI) -> set[tuple[str, str]]:
-    rutas: set[tuple[str, str]] = set()
-    for sub in _api_routes(app):
-        for metodo in sub.methods or set():
-            if metodo != "HEAD":
-                rutas.add((sub.path, metodo))
-    return rutas
-
-
-def _depende_de(app: FastAPI, ruta: str, metodo: str, objetivo: object) -> bool:
-    """Si `objetivo` aparece en el árbol de dependencias de esa ruta,
-    directo o anidado (no sólo las de primer nivel)."""
-    for sub in _api_routes(app):
-        if sub.path == ruta and metodo in (sub.methods or set()):
-            pendientes = list(sub.dependant.dependencies)
-            while pendientes:
-                dep = pendientes.pop()
-                if dep.call is objetivo:
-                    return True
-                pendientes.extend(dep.dependencies)
-    return False
 
 
 # --- Estructural: ninguna ruta nueva se queda afuera de este archivo ---

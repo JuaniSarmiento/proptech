@@ -10,19 +10,27 @@ misma respuesta, para no filtrar cuál de los dos pasó, L-017) → si no
 puede, 403 con `permiso_faltante` (tarea 5.3).
 """
 
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import identidad_actual, sesion_con_tenant
+from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, existe_persona
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
+
+#: `strict=True` de `CuerpoDeAlta` exige una instancia de `UUID` en modo
+#: "python" (D7, R11); un `UUID` de cuerpo tiene que volver a aceptar su
+#: única representación posible en JSON (texto) con `strict=False` puntual
+#: — el resto del cuerpo (acá, `rol`) sigue estricto.
+_UUIDDeCuerpo = Annotated[UUID, Field(strict=False)]
 
 router = APIRouter(prefix="/api")
 
@@ -73,14 +81,17 @@ def ver_unidad(
     }
 
 
-class CuerpoAsignacion(BaseModel):
-    persona_id: UUID
+class CuerpoAsignacion(CuerpoDeAlta):
+    persona_id: _UUIDDeCuerpo
     rol: str
     nivel: str | None = None
     # Se acepta para que un cuerpo que lo manda no explote con un campo
     # desconocido (422), pero se ignora a propósito (D7, D4): el tenant de
     # la fila sale siempre de la identidad, nunca de un campo del cuerpo.
-    administracion_id: UUID | None = None
+    # Diferencia conocida con el resto del cambio (D7): acá NO da 422 por
+    # nombrarlo (está declarado, no es "extra"); `id` y `complejo_id`, que
+    # nunca se declaran, sí.
+    administracion_id: _UUIDDeCuerpo | None = None
 
 
 #: La acción de D-096 que este endpoint autoriza (D9: el mismo nombre que
