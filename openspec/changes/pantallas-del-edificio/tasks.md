@@ -21,7 +21,8 @@ grupo 7. El grupo 7 es **HIGH** y no se toca sin la firma de `proposal.md` › A
 
 ## 1. Línea de base
 
-- [ ] 1.1 Correr, de a uno y en orden, `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, más `pnpm biome ci` y `pnpm tsc --noEmit` en `web/`, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`). Si algo falla, frenar e informarlo como falla previa. Verificación: el informe trae los cinco comandos con su salida. Escenarios: ninguno (medición de partida). Lecciones: L-003.
+- [x] 1.1 Correr, de a uno y en orden, `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, más `pnpm biome ci` y `pnpm tsc --noEmit` en `web/`, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`). Si algo falla, frenar e informarlo como falla previa. Verificación: el informe trae los cinco comandos con su salida. Escenarios: ninguno (medición de partida). Lecciones: L-003.
+  - Commit `ed16f393c4b472aefe4ae196affb1e285d19a1a6`. `test-backend.sh`: 1737 passed, 1 xfailed (18:21:09→18:28, 418.94s). `test-web.sh`: 3 test files, 16 passed (18:28:19). `pnpm biome ci`: "Checked 10 files... No fixes applied" (18:28:19). `pnpm tsc --noEmit`: sin salida, exit 0 (18:28:20). `humo.sh`: exit 0, 18:28:25→18:30:23.
 
 ## 2. Lo que la API todavía no da, y el ejemplo en la base (MEDIUM)
 
