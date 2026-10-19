@@ -10,6 +10,7 @@ libre de toda ruta del 3a, tanto en el alta como en la edición.
 """
 
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -57,8 +58,10 @@ def test_texto_con_caracter_de_control_da_422_y_no_500(
     assert respuesta.status_code == 422, (metodo, ruta, respuesta.status_code, respuesta.text)
 
 
+@pytest.mark.parametrize("contexto", ["existente", "inexistente", "sin_permiso"])
 def test_patch_de_grupo_con_caracter_de_control_en_el_nombre_da_422(
     api_edificio: ApiEdificio,
+    contexto: str,
 ) -> None:
     api = api_edificio
     api.como("titular")
@@ -72,18 +75,26 @@ def test_patch_de_grupo_con_caracter_de_control_en_el_nombre_da_422(
         },
     )
     assert alta.status_code == 201, alta.text
+    recurso_id = str(uuid4()) if contexto == "inexistente" else alta.json()["id"]
+    if contexto == "sin_permiso":
+        api.como("consejo")
     cliente = TestClient(api.app, raise_server_exceptions=False)
-    respuesta = cliente.patch(f"/api/grupos/{alta.json()['id']}", json={"nombre": NUL})
+    respuesta = cliente.patch(f"/api/grupos/{recurso_id}", json={"nombre": NUL})
     assert respuesta.status_code == 422, (respuesta.status_code, respuesta.text)
 
 
+@pytest.mark.parametrize("contexto", ["existente", "inexistente", "sin_permiso"])
 def test_patch_de_categoria_con_caracter_de_control_en_el_nombre_da_422(
     api_edificio: ApiEdificio,
+    contexto: str,
 ) -> None:
     api = api_edificio
     api.como("titular")
     alta = api.cliente.post(api.ruta("/categorias"), json={"clave": "diurna", "nombre": "Diurna"})
     assert alta.status_code == 201, alta.text
+    recurso_id = str(uuid4()) if contexto == "inexistente" else alta.json()["id"]
+    if contexto == "sin_permiso":
+        api.como("consejo")
     cliente = TestClient(api.app, raise_server_exceptions=False)
-    respuesta = cliente.patch(f"/api/categorias/{alta.json()['id']}", json={"nombre": NUL})
+    respuesta = cliente.patch(f"/api/categorias/{recurso_id}", json={"nombre": NUL})
     assert respuesta.status_code == 422, (respuesta.status_code, respuesta.text)

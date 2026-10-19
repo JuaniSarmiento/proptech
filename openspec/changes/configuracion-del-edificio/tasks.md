@@ -1545,6 +1545,194 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_editar_metodo_d
 14:37:01 [exit 0]
 ```
 
+### Auditor · Fila 2 · Mutantes de la vuelta 1 con ejecución reproducida
+
+- [x] Repetir los mutantes omitidos y pegar comando/hora/salida; copias previas en
+  `.git/informes-3a/correcciones-v2/*-copia.py`, restauradas por `mutar.py` en `finally`.
+
+#### R3A-1 · PATCH de identificador, grupo y categoría
+
+HALLAZGO de cobertura confirmado: quitar sólo el validador de la API dejaba el PATCH de grupo
+verde por la defensa del dominio. Diagnóstico anterior a ampliar el test:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py -k patch_de_grupo -q --tb=line --color=no
+14:37:38
+1 passed, 9 deselected, 1 warning in 10.17s
+14:37:50 [exit 0, REVERTIDO_OK]
+```
+Se amplían grupo/categoría a recurso inexistente y rol sin permiso: D6 exige 422 antes de 404/403.
+Mismo mutante de la API, ahora detectado (`mutar.py a1-api-solo-diagnostico`):
+```diff
+-        Annotated[str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)]
++        Annotated[str, Field(min_length=1, max_length=80)]
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py -k patch_de_grupo -q --tb=line --color=no
+14:38:20
+FAILED tests/integracion/test_texto_sin_caracteres_de_control.py::test_patch_de_grupo_con_caracter_de_control_en_el_nombre_da_422[sin_permiso]
+2 failed, 1 passed, 11 deselected, 1 warning in 12.51s
+14:38:35 [exit 1]
+```
+Mutante de familia: saltear la función que usan ambas capas (`mutar.py a1-familia`):
+```diff
+-    if _tiene_caracter_de_control(valor):
++    if False:
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py -q --tb=line --color=no
+14:38:35
+FAILED tests/integracion/test_texto_sin_caracteres_de_control.py::test_patch_de_categoria_con_caracter_de_control_en_el_nombre_da_422[sin_permiso]
+14 failed, 1 warning in 11.37s
+14:38:48 [exit 1]
+```
+**VERDE** al restituir ambos mutantes:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py -q --tb=line --color=no
+14:39:01
+14 passed, 1 warning in 12.83s
+14:39:16 [exit 0]
+```
+
+#### R3A-2 · Traducir el conflicto de categorías
+
+Mutante narrado en la vuelta 1 (`python3 .git/informes-3a/correcciones-v2/mutar.py a2-transaccion`):
+```diff
+-    with transaccion(sesion, {"uq_categoria_nombre": "categorias_de_gasto"}):
++    with sesion.begin_nested() if sesion.in_transaction() else sesion.begin():
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_crear_edificio.py -k categorias_con_nombre_repetido_sin_mayusculas -q --tb=line --color=no
+14:39:17
+FAILED tests/integracion/test_crear_edificio.py::test_categorias_con_nombre_repetido_sin_mayusculas_da_conflicto_no_500
+1 failed, 3 deselected in 7.57s
+14:39:26 [exit 1]
+```
+**VERDE** de los cinco archivos de la vuelta 1 (también el resto de crear edificio):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py tests/integracion/test_crear_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_422_sin_el_valor.py -q --tb=line --color=no
+14:40:56
+51 passed, 1 warning in 24.23s
+14:41:22 [exit 0]
+```
+
+#### R3A-3 · Tercera sentencia y control de grupo común
+
+Mutantes sobre copia previa de 0011, aplicados sólo en bases de test y revertidos:
+```diff
+-            IF OLD.es_generales AND (
++            IF FALSE AND (
+```
+Mutante ejecutado con `python3 .git/informes-3a/correcciones-v2/mutar.py a3-update`:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_rls_grupos.py -k generales_no_se_borra -q --tb=line --color=no
+14:39:26
+FAILED tests/integracion/test_rls_grupos.py::test_generales_no_se_borra_ni_se_desnaturaliza_ni_por_sql[update_es_generales_y_metodo]
+FAILED tests/integracion/test_rls_grupos.py::test_generales_no_se_borra_ni_se_desnaturaliza_ni_por_sql[update_es_generales_y_modo]
+2 failed, 1 passed, 19 deselected in 9.10s
+14:39:37 [exit 1]
+```
+```diff
+-            IF OLD.es_generales AND (
++            IF (
+```
+Mutante ejecutado con `python3 .git/informes-3a/correcciones-v2/mutar.py a3-control`:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_rls_grupos.py -k grupo_comun_se_borra -q --tb=line --color=no
+14:39:37
+FAILED tests/integracion/test_rls_grupos.py::test_grupo_comun_se_borra_y_se_edita_sin_el_trigger_de_generales
+1 failed, 21 deselected in 9.36s
+14:39:48 [exit 1]
+```
+**VERDE** del archivo completo, incluido el control:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py tests/integracion/test_crear_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_422_sin_el_valor.py -q --tb=line --color=no
+14:40:56
+51 passed, 1 warning in 24.23s
+14:41:22 [exit 0]
+```
+
+#### R3A-4 · Tres inválidos nuevos y dos controles
+
+Mutantes con copia previa de `complejos.py`, revertidos:
+```diff
+-if self.rol == "colaborador" and self.nivel is None:
++if self.rol == "colaborador" and self.nivel is not None:
+-if self.rol == "consejo" and self.nivel is not None:
++if self.rol == "consejo" and self.nivel is None:
+```
+Mutante ejecutado con `python3 .git/informes-3a/correcciones-v2/mutar.py a4-combinaciones`:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -q --tb=line --color=no
+14:39:48
+FAILED tests/integracion/test_asignacion_validacion.py::test_rol_y_nivel_validos_dan_201[colaborador_con_nivel]
+FAILED tests/integracion/test_asignacion_validacion.py::test_rol_y_nivel_validos_dan_201[consejo_sin_nivel]
+4 failed, 4 passed, 1 warning in 12.86s
+14:40:03 [exit 1]
+```
+El inválido de nivel tiene su propia barrera (`mutar.py a4-nivel`):
+```diff
+-    nivel: Literal["ver", "editar"] | None = None
++    nivel: str | None = None
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k nivel_inventado -q --tb=line --color=no
+14:40:03
+FAILED tests/integracion/test_asignacion_validacion.py::test_rol_o_nivel_invalido_en_asignacion_da_422_y_no_500[nivel_inventado]
+1 failed, 7 deselected, 1 warning in 8.15s
+14:40:13 [exit 1]
+```
+**VERDE** de las ocho combinaciones (en los cinco archivos):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py tests/integracion/test_crear_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_422_sin_el_valor.py -q --tb=line --color=no
+14:40:56
+51 passed, 1 warning in 24.23s
+14:41:22 [exit 0]
+```
+
+#### R3A-5 · literal_error y conservación de value_error
+
+El control esperaba el mensaje anterior a R3B-1/7: se actualizó al mensaje Unicode declarado.
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_422_sin_el_valor.py -k mensaje_propio -q --tb=line --color=no
+14:38:00
+FAILED tests/integracion/test_422_sin_el_valor.py::test_mensaje_propio_de_un_validador_nuestro_si_se_conserva
+1 failed, 2 deselected, 1 warning in 9.66s
+14:38:11 [exit 1]
+```
+Mutantes narrados, sobre copia previa de `cuerpos.py`, revertidos:
+```diff
+-_TIPOS_CON_MENSAJE_PROPIO = frozenset({"value_error"})
++_TIPOS_CON_MENSAJE_PROPIO = frozenset({"value_error", "literal_error", "uuid_parsing"})
+```
+Mutante ejecutado con `python3 .git/informes-3a/correcciones-v2/mutar.py a5-tipos`:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_422_sin_el_valor.py -k 'not mensaje_propio' -q --tb=line --color=no
+14:40:13
+FAILED tests/integracion/test_422_sin_el_valor.py::test_uuid_invalido_en_el_cuerpo_no_aparece_en_el_422
+FAILED tests/integracion/test_422_sin_el_valor.py::test_rol_invalido_en_la_asignacion_tampoco_aparece_en_el_422
+2 failed, 1 deselected, 1 warning in 6.33s
+14:40:21 [exit 1]
+```
+```diff
+-    if error["type"] in _TIPOS_CON_MENSAJE_PROPIO:
++    if False:
+```
+Mutante ejecutado con `python3 .git/informes-3a/correcciones-v2/mutar.py a5-control`:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_422_sin_el_valor.py -k mensaje_propio -q --tb=line --color=no
+14:40:21
+FAILED tests/integracion/test_422_sin_el_valor.py::test_mensaje_propio_de_un_validador_nuestro_si_se_conserva
+1 failed, 2 deselected, 1 warning in 7.19s
+14:40:30 [exit 1]
+```
+**VERDE** al restituir el saneamiento (incluye literal_error y control):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py tests/integracion/test_crear_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_422_sin_el_valor.py -q --tb=line --color=no
+14:40:56
+51 passed, 1 warning in 24.23s
+14:41:22 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo

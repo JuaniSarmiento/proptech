@@ -76,5 +76,5 @@ def test_mensaje_propio_de_un_validador_nuestro_si_se_conserva(api_edificio: Api
     assert respuesta.status_code == 422
     assert (
         respuesta.json()["detail"][0]["msg"]
-        == "Value error, no puede contener caracteres de control"
+        == "Value error, no puede contener caracteres de control, invisibles o no representables"
     )
