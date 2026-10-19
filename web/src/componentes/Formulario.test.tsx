@@ -56,6 +56,15 @@ describe("Formulario", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("con `action`, se la pasa al <form> (tarea 4.1: envío real con una server action)", () => {
+    const { container } = render(
+      <Formulario erroresPorCampo={{}} action="/no-deberia-navegar-acá">
+        <Campo nombre="identificador" etiqueta="Identificador" />
+      </Formulario>,
+    );
+    expect(container.querySelector("form")?.getAttribute("action")).toBe("/no-deberia-navegar-acá");
+  });
+
   it("sin violaciones de axe, con errores", async () => {
     const { container } = render(
       <Formulario

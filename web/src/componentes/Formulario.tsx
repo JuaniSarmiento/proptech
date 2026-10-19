@@ -8,11 +8,21 @@
  * marcando un campo de más.
  */
 
-import { type ComponentPropsWithoutRef, createContext, type ReactNode, useContext } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  createContext,
+  type FormHTMLAttributes,
+  type ReactNode,
+  useContext,
+} from "react";
 
 type Props = {
   erroresPorCampo: Record<string, string>;
   erroresDesconocidos?: string[];
+  /** Server action o URL del `<form>` (tarea 4.1): `Formulario` es dueño
+   * del único `<form>` de la pantalla, así que el envío real pasa por acá,
+   * nunca por un segundo `<form>` anidado. */
+  action?: FormHTMLAttributes<HTMLFormElement>["action"];
   children: ReactNode;
 };
 
@@ -25,12 +35,12 @@ function idDelCampo(nombre: string): string {
  * viene de la API (`Formulario`), y `Campo` sólo pregunta por el suyo. */
 const _ContextoDeErrores = createContext<Record<string, string>>({});
 
-export function Formulario({ erroresPorCampo, erroresDesconocidos = [], children }: Props) {
+export function Formulario({ erroresPorCampo, erroresDesconocidos = [], action, children }: Props) {
   const hayErrores = Object.keys(erroresPorCampo).length > 0 || erroresDesconocidos.length > 0;
 
   return (
     <_ContextoDeErrores.Provider value={erroresPorCampo}>
-      <form>
+      <form action={action}>
         {hayErrores ? (
           <div role="alert" aria-label="Resumen de errores" className="formulario__resumen">
             <p>Revisá estos datos:</p>

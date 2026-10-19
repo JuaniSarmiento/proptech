@@ -1,0 +1,55 @@
+/**
+ * Diccionario de mensajes en castellano simple por motivo (D2, tarea 4.1):
+ * un 422/409 de la API llega a la pantalla ya traducido, nunca con el texto
+ * de la API (L-007 — `cliente.ts` ya extrae sólo `type`/`campo`, vocabulario
+ * cerrado; este diccionario es el último paso antes de mostrarlo).
+ */
+
+import type { ErrorDeCampo } from "./cliente";
+
+const _MENSAJES: Record<string, string> = {
+  missing: "Este dato es obligatorio.",
+  string_too_short: "Es muy corto.",
+  string_too_long: "Es muy largo.",
+  value_error: "Este valor no es válido.",
+  int_parsing: "Tiene que ser un número entero.",
+  decimal_parsing: "Tiene que ser un número.",
+  literal_error: "Elegí una de las opciones.",
+  greater_than: "Tiene que ser mayor a cero.",
+};
+
+const _GENERICO = "Revisá este dato.";
+
+/** Traduce un `motivo` (el `type` de Pydantic, vocabulario cerrado) a
+ * castellano simple; un motivo que no está en el diccionario da el mensaje
+ * genérico, nunca el texto técnico. */
+export function mensajeDeError(motivo: string): string {
+  return _MENSAJES[motivo] ?? _GENERICO;
+}
+
+export type ErroresSeparados = {
+  erroresPorCampo: Record<string, string>;
+  erroresDesconocidos: string[];
+};
+
+/** Separa los errores de la API entre los que corresponden a un campo que
+ * el formulario conoce (`camposConocidos`) y los que no: un error de un
+ * campo desconocido va sólo al resumen, nunca marcando un campo de más
+ * (D8, tarea 3.7). Misma forma que espera `Formulario` (D8), para pasarla
+ * directo desde la server action de cada pantalla. */
+export function erroresDeFormulario(
+  errores: ErrorDeCampo[],
+  camposConocidos: string[],
+): ErroresSeparados {
+  const erroresPorCampo: Record<string, string> = {};
+  const erroresDesconocidos: string[] = [];
+  for (const error of errores) {
+    const mensaje = mensajeDeError(error.motivo);
+    if (camposConocidos.includes(error.campo)) {
+      erroresPorCampo[error.campo] = mensaje;
+    } else {
+      erroresDesconocidos.push(mensaje);
+    }
+  }
+  return { erroresPorCampo, erroresDesconocidos };
+}
