@@ -1,5 +1,7 @@
 """R6/D8: rutas efectivas fuera de /api, montadas y de otros protocolos."""
 
+from pathlib import Path
+
 import pytest
 from fastapi import APIRouter, Depends, FastAPI, WebSocket
 from starlette.routing import Route
@@ -111,6 +113,32 @@ def test_head_sin_get_es_una_ruta_que_el_candado_debe_ver() -> None:
     app = FastAPI()
     app.add_api_route("/interno/solo-cabecera", lambda: {}, methods=["HEAD"])
     assert ("/interno/solo-cabecera", "HEAD") in rutas_reales_del_candado(app)
+
+
+def test_barrido_ve_una_ruta_de_frontend_sin_prefijo(tmp_path: Path) -> None:
+    """RF-B-1 (revisión final, 19/10/2026): `app.frontend(...)` registra sus
+    rutas en `router._low_priority_routes` (`_FrontendRouteGroup`), nunca en
+    `app.routes` — el barrido sólo recorría `app.routes`, así que una app
+    que sirviera un frontend estático quedaba invisible para R6/R11 (hoy no
+    se usa, pero el barrido tiene que verla si alguna vez se usa)."""
+    app = FastAPI()
+    app.frontend("/", directory=str(tmp_path), check_dir=False)
+
+    rutas = rutas_reales_del_candado(app)
+    assert ("/", "GET") in rutas, f"el barrido no ve la ruta de frontend: {rutas}"
+
+
+def test_barrido_ve_una_ruta_de_frontend_con_prefijo_de_inclusion(tmp_path: Path) -> None:
+    """Mismo defecto, pero con el frontend montado dentro de un router
+    incluido con prefijo (D8): el grupo de frontend viaja como
+    `_EffectiveRouteContext` con `frontend_prefix`, no como el grupo crudo."""
+    app = FastAPI()
+    router = APIRouter()
+    router.frontend("/", directory=str(tmp_path), check_dir=False)
+    app.include_router(router, prefix="/estatico")
+
+    rutas = rutas_reales_del_candado(app)
+    assert ("/estatico", "GET") in rutas, f"el barrido no ve la ruta de frontend: {rutas}"
 
 
 def test_ruta_desconocida_dentro_de_include_falla_nombrando_el_prefijo() -> None:

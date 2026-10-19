@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.routing import _EffectiveRouteContext, _FrontendRouteGroup, _join_frontend_paths
 from starlette.routing import Mount, WebSocketRoute
 
 
@@ -68,6 +69,32 @@ def rutas_efectivas(app: FastAPI) -> list[RutaEfectiva]:
 
     for route in app.routes:
         recorrer(route)
+
+    # RF-B-1 (revisión final, 19/10/2026): `app.frontend(...)` (y
+    # `router.frontend(...)`) registran sus rutas en
+    # `router._low_priority_routes`, nunca en `app.routes` — invisibles
+    # para el recorrido de arriba. `_iter_low_priority_routes` entrega el
+    # grupo crudo (`_FrontendRouteGroup`, sin prefijo) o, para uno montado
+    # dentro de un router incluido, su `_EffectiveRouteContext` (con el
+    # prefijo de inclusión ya resuelto, D8).
+    for candidato in app.router._iter_low_priority_routes():
+        if isinstance(candidato, _EffectiveRouteContext):
+            prefijo = candidato.frontend_prefix
+            grupo = candidato.original_route
+        else:
+            prefijo = ""
+            grupo = candidato
+        if not isinstance(grupo, _FrontendRouteGroup):
+            raise AssertionError(f"ruta de baja prioridad desconocida: {grupo!r}")
+        for frontend_route in grupo.routes:
+            rutas.append(
+                RutaEfectiva(
+                    _join_frontend_paths(prefijo, frontend_route.path),
+                    frozenset(frontend_route.methods),
+                    None,
+                )
+            )
+
     return rutas
 
 
