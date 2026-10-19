@@ -1070,6 +1070,69 @@ HUMO OK
 
 Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe a todo el que inserta en esa tabla, también fuera de `backend/` (el humo corre con psql). Desde el bloque E, el humo se corre al final de cada bloque.
 
+## Vuelta 1 de correcciones (R3A)
+
+Informe del rompedor: `.git/informes-3a/rompedor/informe-vuelta-1.md`. Base `072a960`, HEAD `11fe3d9`. 0 CRÍTICA, 2 ALTA, 2 MEDIA, 2 BAJA. Un commit por hallazgo.
+
+### R3A-1 · ALTA · NUL en texto libre da 500
+
+Test movido a `tests/integracion/test_texto_sin_caracteres_de_control.py` (ampliado a 10 casos: la familia completa, alta y edición). Arreglo: `proptech_core/compartido/texto.py` (`sin_caracteres_de_control`, `recortado_sin_control`), aplicado en `unidades.py`, `grupos.py`, `parametros.py` y `complejos.py`.
+
+**RED** — 19/10/2026, 12:38:25:
+```text
+$ date +%T && uv run pytest tests/rompedor_3a/test_r3a_nul_en_textos.py -q --color=no
+12:38:25
+...
+FAILED test_nul_en_un_texto_da_422_y_no_500[0..6] (7 casos): 500, sqlalchemy.exc.DataError
+7 failed, 1 warning in 5.84s
+12:38:33
+```
+
+**GREEN** — 19/10/2026, 12:43:09, con la familia ampliada (10 casos, incluye PATCH de grupo y categoría):
+```text
+$ date +%T && uv run pytest tests/integracion/test_texto_sin_caracteres_de_control.py -q --color=no
+12:43:09
+..........                                                               [100%]
+10 passed, 1 warning in 6.69s
+12:43:18
+```
+
+**Mutante (L-019)**: sacado el `AfterValidator` de `CuerpoEdicionGrupo.nombre` (API), el test de PATCH de grupo sigue en verde porque `grupos.DatosGrupo` (dominio) lo frena igual — defensa en dos capas, no una aserción muerta. Sacado también de `grupos.DatosGrupo.nombre`, el caso 6 de la familia (POST grupo) da rojo: `FAILED test_texto_con_caracter_de_control_da_422_y_no_500[6]`, 500 real. Las dos capas se restituyeron antes de commitear.
+
+**Hallazgo fuera de alcance, no arreglado**: al construir el test de PATCH de grupo, crear un grupo nuevo con `"unidades": []` (sin miembros) da **500** (`sqlalchemy.exc.ProgrammingError: operator does not exist: uuid = integer`) — el `bindparam("ids", expanding=True)` de `grupos.py::_reemplazar` con lista vacía renderiza `IN (SELECT CAST(NULL AS INTEGER) WHERE 1!=1)`, que no tipa contra `uuid`. Ningún test existente lo pisa porque toda alta de grupo de la suite manda al menos un miembro. No es ninguno de los 6 hallazgos del informe; lo evité en el test (mandé un miembro real) y lo dejo señalado, sin arreglar.
+
+### R3A-2 · ALTA · Parámetros con nombres de categoría repetidos sin mayúsculas
+
+Tests movidos a `tests/unitarios/test_parametros.py` (dos: `Parametros` directo y `leer_parametros` con archivo) y `tests/integracion/test_crear_edificio.py` (defensa en profundidad). Arreglo: `parametros.py::_validar_cruzadas` compara `nombre.lower()`; `escritura.py::crear_edificio` usa `transaccion(sesion, {"uq_categoria_nombre": "categorias_de_gasto"})` en vez de un `begin_nested()` pelado.
+
+**RED** — 19/10/2026, 12:45:13:
+```text
+$ date +%T && uv run pytest tests/rompedor_3a/test_r3a_parametros_nombres_repetidos.py -q --color=no
+12:45:13
+FAILED test_arranque_rechaza_nombres_de_categoria_repetidos_sin_mayusculas — DID NOT RAISE ParametrosInvalidos
+FAILED test_crear_edificio_con_esos_parametros_no_revienta — "crear_edificio deja escapar la IntegrityError cruda (500 en la API)"
+2 failed in 5.39s
+12:45:19
+```
+
+**GREEN** — 19/10/2026, 12:49:01 (suite `unitarios/` + `test_crear_edificio.py` + categorías, 865 tests):
+```text
+$ date +%T && uv run pytest tests/unitarios/ tests/integracion/test_crear_edificio.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_categorias_db.py -q --color=no
+12:48:13
+865 passed, 1 warning in 47.10s
+12:49:01
+```
+
+**Mutante (L-019)**: revertido `transaccion(...)` a `sesion.begin_nested() if ... else sesion.begin()` puro, `test_categorias_con_nombre_repetido_sin_mayusculas_da_conflicto_no_500` da rojo real: `sqlalchemy.exc.IntegrityError: ... duplicate key value violates unique constraint "uq_categoria_nombre"`. Restituido antes de commitear. El test de `_validar_cruzadas` ya tenía su rojo (arriba, mismo mecanismo que el rompedor demostró).
+
+### R3A-3 · MEDIA · "Generales" borrable o modificable por SQL
+
+### R3A-4 · MEDIA · Rol/nivel inválido en asignación da 500
+
+### R3A-5 · BAJA · El 422 saneado repite parte del valor
+
+### R3A-6 · BAJA · Unicidad de identificador/nombre con espacios al borde
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
