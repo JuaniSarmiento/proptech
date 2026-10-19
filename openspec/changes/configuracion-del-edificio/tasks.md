@@ -1923,6 +1923,116 @@ $ date +%T && bash infra/ci/test-backend.sh
 15:11:10 [exit 0]
 ```
 
+## Tanda final (revisión backend y DBA)
+
+Arreglos aprobados por Juani el 19/10/2026, sobre HEAD `334daf5`: `.git/informes-3a/revision-final/{backend,dba}.md`.
+
+- [x] F1 Mismo tope (80) al crear una categoría que al editarla; nombre de grupo/categoría en blanco se rechaza (ya lo hacía `recortado_sin_control`; el defecto real era el tope). `CuerpoCategoria` medía los 80 caracteres DESPUÉS de recortar (heredado de `CategoriaDeGasto._Nombre`); `CuerpoEdicionCategoria`/`CuerpoGrupo`/`CuerpoEdicionGrupo` los miden ANTES (`Field(max_length=80)`). Un nombre de 81 crudos que recorta a 79 pasaba al crear y se rechazaba al editar.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_texto_recortado_en_el_borde.py -q
+  15:34:42 ... AssertionError: assert 201 == 422   (alta aceptó el nombre de 81/79)
+  ```
+  Arreglo: `CuerpoCategoria` declara su propio `nombre` con `Field(min_length=1, max_length=80)` + `AfterValidator(recortado_sin_control)`, igual que el resto de la familia (`backend/src/proptech_api/complejos.py`).
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_texto_recortado_en_el_borde.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_categorias_db.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_422_sin_el_valor.py -q
+  15:35:01 ... 36 passed, 1 warning in 20.89s
+  ```
+  Commit `065feb6`.
+
+- [x] F2 El 422 de un campo no permitido (`extra_forbidden`) hacía eco de la CLAVE tal cual la mandó el cliente en `loc`, sin condición (R11 pide nombrar el campo, pero no cualquier clave de 10 KB o con HTML/JS). `backend/src/proptech_api/cuerpos.py`.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_422_clave_no_permitida.py -q
+  15:36:24 ... assert '<script>alert(1)</script>' not in ... (2 failed, 1 passed: el control con "id" ya pasaba)
+  ```
+  Arreglo: `_loc()` nombra la clave sólo si matchea `^[A-Za-z_][A-Za-z0-9_]{0,63}$` (nombre de campo razonable, cubre `id`); si no, `loc` dice `"campo_no_permitido"`.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_422_clave_no_permitida.py tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_422_sin_el_valor.py -q
+  15:37:00 ... 14 passed, 1 warning in 15.43s
+  ```
+  Commit `17d665b`.
+
+- [x] F3 RF-B-3: el docstring de `test_rutas_protegidas.py` prometía "401 sin tocar la base" sobre el conjunto COMPLETO de rutas; el test sólo miraba el status — "sin SQL" vivía repartido en los `..._401_sin_sql` de otros archivos, sobre subconjuntos, y una ruta nueva podía quedar sin ese chequeo sin que nada lo note.
+  - Sin rojo de producción: las 21 rutas YA respetan identidad-antes-que-SQL (D7); la aserción nueva (`sentencias == []`, instrumentando `before_cursor_execute` del engine real) nace verde sobre el código real:
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_rutas_protegidas.py -k test_cada_ruta_sin_identidad_da_401 -q
+  15:38:51 ... 21 passed, 45 deselected, 1 warning in 6.09s
+  ```
+  - L-019: un test que nace verde necesita un mutante que lo haga fallar. Se agregó `test_mutante_ruta_que_toca_la_base_antes_de_la_identidad_hace_fallar_el_barrido`: una ruta sintética con una dependencia que ejecuta SQL ANTES de `identidad_actual`, con el mismo mecanismo de instrumentación — demuestra que `sentencias != []` sí puede disparar.
+  - Docstring corregido: ya no afirma algo que no prueba.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_rutas_protegidas.py -q
+  15:40:04 ... 67 passed, 1 warning in 7.00s
+  ```
+  Commit `3c7542c`.
+
+- [x] F4 RF-B-1: `app.frontend()`/`router.frontend()` (FastAPI 0.143) registran sus rutas en `router._low_priority_routes`, nunca en `app.routes` — invisibles para `rutas_efectivas` (`_barrido_de_rutas.py`). Hoy no se usan en producción.
+  ```text
+  $ date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py -q -k frontend
+  15:41:40 ... assert ('/estatico', 'GET') in {...sólo /docs, /redoc, /openapi.json...}   (2 failed)
+  ```
+  Arreglo: `rutas_efectivas` también recorre `app.router._iter_low_priority_routes()`, resolviendo `_EffectiveRouteContext.frontend_prefix` cuando el frontend se montó dentro de un router incluido (D8).
+  ```text
+  $ date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py -q
+  15:41:57 ... 87 passed, 1 warning in 11.20s
+  ```
+  Commit `fc7b100`.
+
+- [x] F5 RF-B-2: `RutaConIdentidad.con_identidad` (`acceso.py:72-74`) comparaba sólo `status_code == 400`, así que un `HTTPException(400)` levantado por el propio endpoint (motivo de dominio, nunca de parseo) hacía que `identidad_actual` se resolviera DOS veces, contradiciendo D6 ("una sola vez").
+  ```text
+  $ date +%T && uv run pytest tests/unitarios/acceso/test_ruta_con_identidad.py -q
+  15:43:14 ... AssertionError: identidad_actual se resolvió 2 veces, se esperaba 1   (1 failed, 1 passed: el control de parseo real ya pasaba)
+  ```
+  Arreglo: se compara además contra el `detail` exacto ("There was an error parsing the body") con el que FastAPI envuelve una falla real de parseo.
+  ```text
+  $ date +%T && uv run pytest tests/unitarios/acceso/test_ruta_con_identidad.py tests/integracion/test_identidad_antes_del_cuerpo.py tests/integracion/test_422_sin_el_valor.py tests/integracion/test_422_clave_no_permitida.py -q
+  15:43:57 ... 2 passed; 15:44:01 ... 27 passed, 1 warning in 14.41s
+  ```
+  Commit `2b5a684`.
+
+- [x] F6 RF-D-1 (DBA): el trigger de 0011 (`fn_grupo_generales_protegido`) sólo mira `es_generales`/`metodo`/`modo_de_coeficientes`; `UPDATE grupo_de_reparto SET complejo_id = <otro edificio de la misma administración>` sobre Generales pasaba — el edificio original queda sin Generales. No se edita 0011.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_generales_alcance_sql.py -k mudarse -q
+  15:45:09 ... Failed: DID NOT RAISE Error
+  ```
+  Arreglo: migración `0015` (`CREATE OR REPLACE FUNCTION`) suma `complejo_id`/`administracion_id` a la comparación; el downgrade restaura exactamente la definición de 0011.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_generales_alcance_sql.py -q
+  15:45:34 ... 8 passed in 9.07s
+  $ date +%T && uv run pytest tests/integracion/test_migracion_normaliza_textos.py tests/integracion/test_unidad_edificio_inmutable.py tests/integracion/test_catalogo_rls.py tests/integracion/test_generales_alcance_sql.py tests/integracion/test_grupos_casos_de_uso.py -q
+  15:46:29 ... 44 passed, 1 warning in 31.89s
+  ```
+  (Downgrade/upgrade de la cadena completa, ejercitado por `test_dos_up...`/`test_trigger_de_0011_sobrevive_downgrade_y_upgrade` y la suite de catálogo.) Commit `e8257c1`.
+
+- [x] F7 RF-D-2 (DBA): un texto que queda vacío DESPUÉS del recorte de 0013 se guardaba como `''`; la API ya lo rechaza (422), la base no. Verificado antes del `CHECK`: ningún seed usa `''` en `backend/`, `config/`, `infra/` (`rg`; único hallazgo, `test_semilla_comando.py`, que prueba el rechazo del LECTOR de semillas).
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_textos_no_vacios_en_la_base.py -q
+  15:48:32 ... 6 failed (Failed: DID NOT RAISE CheckViolation, las 5 columnas + el caso "recorta a vacío")
+  ```
+  Arreglo: migración `0016`, `CHECK (<> '')` en `complejo.nombre`/`localidad`, `grupo_de_reparto.nombre`, `categoria_de_gasto.nombre`, `unidad.identificador` (las mismas que recorta `fn_recortar_texto_3a`). `infra/ci/humo.sh` inserta en `complejo` con valores no vacíos: revisado, no choca.
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_textos_no_vacios_en_la_base.py -q
+  15:48:56 ... 6 passed in 6.49s
+  $ date +%T && uv run pytest tests/integracion/test_catalogo_rls.py tests/integracion/test_migracion_normaliza_textos.py tests/integracion/test_categorias_db.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_crear_edificio.py tests/integracion/test_texto_recortado_en_el_borde.py -q
+  15:49:09 ... 54 passed, 1 warning in 37.53s
+  ```
+  Commit `2abda0c`.
+
+- [x] F8 `proptech_app` podía escribir `alembic_version` (los `ALTER DEFAULT PRIVILEGES` del 2a le dan los cuatro permisos sobre toda tabla nueva del migrador, incluida la que Alembic crea solo; estar en `_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` sólo evita el `GRANT` explícito de `antes()`).
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_roles_alembic_version.py -q
+  15:50:49 ... Failed: DID NOT RAISE InsufficientPrivilege
+  ```
+  Arreglo (`roles.py`, `despues()`): `REVOKE ALL ON alembic_version FROM proptech_app; GRANT SELECT ...` (la app sí la lee, confirmado por `test_unidad_edificio_inmutable.py`) — mismo patrón que D9/D16 para `auditoria`/`configuracion_versionada`. Un segundo ciclo `antes/upgrade head/despues` no lo reabre (probado en el mismo test).
+  ```text
+  $ date +%T && uv run pytest tests/integracion/test_roles_alembic_version.py -q
+  15:51:35 ... 1 passed in 7.67s
+  $ date +%T && uv run pytest tests/integracion/test_unidad_edificio_inmutable.py tests/integracion/test_roles.py tests/integracion/test_roles_solo_agregar.py tests/integracion/test_roles_alembic_version.py tests/integracion/test_catalogo_rls.py -q
+  15:53:23 ... 34 passed in 87.71s (0:01:27)
+  ```
+  De paso: la migración 0016 corrió el head de `0015` a `0016`, dejando desactualizada la versión hardcodeada en `test_unidad_edificio_inmutable.py:111` (un gap de la regresión de F7, que no corrió ese archivo); se corrigió acá. Commit `3a1d9b1`.
+
+**Alembic head**: 0014 → 0016 (migraciones 0015, 0016 nuevas).
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
