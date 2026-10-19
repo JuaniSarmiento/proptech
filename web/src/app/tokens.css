@@ -1,0 +1,59 @@
+/**
+ * Tokens de color y tipografía (D10, tarea 3.5): "El recibo prolijo".
+ *
+ * Papel tibio, tinta y grafito suave en OKLCH (nunca #fff/#000, D10); un
+ * único acento terracota de ladrillo apagado, nunca naranja saturado;
+ * advertencia como segundo color de estado, siempre acompañado de texto
+ * (The Never Color Alone Rule). Verificados en `tokens.test.ts` por
+ * cálculo real (conversión OKLCH → sRGB, `../lib/color/oklch.ts`), nunca a
+ * ojo: cada par que la interfaz usa como texto sobre fondo llega a 4,5:1.
+ *
+ * Tipografía: Source Sans 3 (D10) — sans humanista, cálida, con figuras
+ * tabulares (`tnum`) para que los importes alineen en columna (The Tabular
+ * Money Rule), buena cobertura de castellano (tildes y "ñ" en su subset
+ * "latin", Latin-1 Supplement). Se sirve desde la propia web vía
+ * `@fontsource/source-sans-3` (paquete en `node_modules`, Next la empaqueta
+ * como asset propio): nada se pide a un tercero en cada visita. Elegida
+ * sobre Fira Sans y Noto Sans por tener figuras tabulares en sus pesos
+ * normales sin necesitar la variable (menos peso para la superficie del
+ * vecino, con mala señal) y por su legibilidad en cuerpos chicos, probada en
+ * paneles de datos (Adobe la diseñó para interfaces, no para títulos). Nunca
+ * Inter ni la del sistema por reflejo (D10).
+ */
+
+:root {
+  --color-papel: oklch(97% 0.006 75);
+  --color-tinta: oklch(22% 0.012 55);
+  --color-grafito: oklch(46% 0.012 55);
+  --color-terracota: oklch(40% 0.095 35);
+  --color-advertencia: oklch(48% 0.09 75);
+
+  --tipo-fuente-base: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+
+  --tipo-label: 0.8rem;
+  --tipo-cuerpo: 1rem;
+  --tipo-titulo: 1.25rem;
+  --tipo-titular: 1.563rem;
+
+  --salto-reduce-movimiento: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --salto-reduce-movimiento: 1;
+  }
+}
+
+body {
+  background-color: var(--color-papel);
+  color: var(--color-tinta);
+  font-family: var(--tipo-fuente-base);
+  font-size: var(--tipo-cuerpo);
+}
+
+/* The Tabular Money Rule: todo importe, coeficiente o porcentaje alineado
+   en columna usa esta clase (D6, D10). */
+.numero-tabular {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

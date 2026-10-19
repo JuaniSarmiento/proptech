@@ -169,6 +169,9 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/source-sans-3':
+        specifier: ^5.3.1
+        version: 5.3.1
       next:
         specifier: 16.4.0
         version: 16.4.0(@types/node@24.9.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -499,6 +502,9 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource/source-sans-3@5.3.1':
+    resolution: {integrity: sha512-O3YxvbotUOgYI2Zx0bBcEMNjnwitRf9P2+9pd54sMoux1NHrdXnMwZusw2P78lFhEzOPN4glOEQmX0ASaS68uA==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -1582,6 +1588,8 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.16.0': {}
+
+  '@fontsource/source-sans-3@5.3.1': {}
 
   '@img/colour@1.1.0':
     optional: true
