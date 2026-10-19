@@ -15,6 +15,7 @@ import subprocess
 import sys
 import uuid
 from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -34,6 +35,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
 )
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import escritura
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
 
@@ -380,6 +382,15 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
     )
 
     _INVOCADORES: dict[Accion, Callable[[Session], UUID]] = {
+        Accion.CREAR_EDIFICIO: lambda sesion: escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Ficticio",
+            localidad="Mendoza",
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ),
         Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: lambda sesion: asignar_complejo_a_persona(
             sesion,
             identidad,
@@ -402,7 +413,9 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         try:
             _con_tenant(sesion, datos["administracion_id"])
             invocar(sesion)
-            sesion.commit()
+            # Las acciones nuevas impiden downgrade por su FK (D14).
+            # El barrido verifica en la misma transacción y la revierte.
+            sesion.flush()
             filas = sesion.execute(
                 text("SELECT 1 FROM auditoria WHERE accion = :accion"), {"accion": accion.value}
             ).all()

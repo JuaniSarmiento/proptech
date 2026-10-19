@@ -1333,7 +1333,26 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
 
 ## 5. Casos de uso, contra PostgreSQL real como `proptech_app`
 
-- [ ] 5.1 Crear un edificio (D3, D9, D10, E4): copia los parámetros recibidos (no relee el disco) o toma la configuración inicial del alta, crea la primera versión vigente desde hoy, las categorías, "Generales", estado `pendiente`, todo en una transacción con su auditoría. Tests: valores por defecto completos (incluido el vencimiento único el día por defecto); con configuración inicial en el alta, la primera versión la tiene y no hace falta otra; con otros parámetros pasados al caso de uso, el primer edificio no cambia; una falla a mitad (forzada) no deja nada, ni la auditoría. Escenarios: `edificios-y-unidades` › Edificio nuevo con los valores del archivo; › Edificio nuevo con la configuración de su reglamento; › Cambiar el archivo no toca edificios existentes; `auditoria-de-acciones` › Crear un edificio queda auditado. Lecciones: L-016.
+- [x] 5.1 Crear un edificio (D3, D9, D10, E4): copia los parámetros recibidos (no relee el disco) o toma la configuración inicial del alta, crea la primera versión vigente desde hoy, las categorías, "Generales", estado `pendiente`, todo en una transacción con su auditoría. Tests: valores por defecto completos (incluido el vencimiento único el día por defecto); con configuración inicial en el alta, la primera versión la tiene y no hace falta otra; con otros parámetros pasados al caso de uso, el primer edificio no cambia; una falla a mitad (forzada) no deja nada, ni la auditoría. Escenarios: `edificios-y-unidades` › Edificio nuevo con los valores del archivo; › Edificio nuevo con la configuración de su reglamento; › Cambiar el archivo no toca edificios existentes; `auditoria-de-acciones` › Crear un edificio queda auditado. Lecciones: L-016.
+
+  EVIDENCIA:
+  ```text
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_crear_edificio.py
+  11:13:05
+  E AttributeError: module 'proptech_core.complejos.aplicacion.escritura' has no attribute 'crear_edificio'
+  3 failed in 8.95s
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_crear_edificio.py tests/integracion/test_auditoria_transaccion.py
+  11:14:53
+  9 passed in 16.30s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 182 files already formatted / Success: no issues found in 168 source files
+  ```
+  JUICIO: parámetros recibidos, configuración inicial, categorías propias, Generales, autor y
+  auditoría en una transacción/savepoint. La falla forzada comprueba primero que la auditoría se
+  escribió y después verifica cero filas en las cinco tablas afectadas, como proptech_app.
+  HALLAZGO: el barrido de acciones sensibles ahora verifica sin commit y revierte: confirmar una
+  acción nueva impedía su downgrade final por la FK del vocabulario (D14), como está previsto.
+
 - [ ] 5.2 Unidades: alta y edición con `Coeficiente`/`Superficie` desde texto, identificador repetido como conflicto, sin poder cambiar de edificio; el informe de R01 de 4.1 en la respuesta del padrón. Tests: alta válida; "1A" repetida en el mismo edificio y en otro; editar con otro `complejo_id` se rechaza; una unidad de otra administración no se encuentra; un alta que deja la suma fuera de tolerancia se guarda igual y lo informa. Escenarios: `edificios-y-unidades` › Alta de unidad válida; › Identificador repetido; › Mismo identificador en otro edificio; › Mover una unidad por la API; › Unidad de otra administración; `grupos-de-reparto` › Fuera de tolerancia. Lecciones: L-017.
 - [ ] 5.3 Grupos (D6, D15): crear y editar un grupo, fijar sus unidades buscándolas dentro del edificio del grupo, con su modo y, si es `propios`, el coeficiente de cada una; cambiar el modo reescribe los miembros en una transacción; "Generales" inmutable; el informe de cada grupo `propios`. Tests: unidad de otro edificio y de otra administración dan el mismo error sin revelar cuál; repetida; cambiar el método de "Generales"; una unidad nueva entra sola en "Generales" (guarda de regresión, rojo sobre una copia, ver design); grupo renormalizado sin coeficientes; grupo propios que suma 0,8 se guarda y se informa `fuera_de_tolerancia`; pasar un grupo de renormalizado a propios con sus coeficientes. Escenarios: `grupos-de-reparto` › Grupo con una unidad de otro edificio; › Grupo con una unidad de otra administración; › Unidad repetida en un grupo; › Cambiar el método de Generales; › Una unidad nueva entra a Generales; › Grupo parcial renormalizado; › Grupo con coeficientes propios que no suman 1; › Cambiar el modo de un grupo. Lecciones: L-017.
 - [ ] 5.4 Categorías: crear, renombrar, desactivar, reactivar y reordenar con el orden completo. Tests: agregar en A no aparece en B; renombrar en A no cambia B; nombre repetido; orden que omite, repite o trae una categoría de otro edificio no cambia nada. Escenarios: `categorias-de-gasto` › Agregar una categoría; › Renombrar una categoría; › Nombre repetido; › Desactivar; › Reordenar; › Orden incompleto. Lecciones: L-017.

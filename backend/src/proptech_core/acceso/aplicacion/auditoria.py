@@ -53,6 +53,7 @@ class _DetalleAsignarEdificio(_DetalleBase):
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[Accion, type[_DetalleBase]] = {
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignarEdificio,
+    Accion.CREAR_EDIFICIO: _DetalleAsignarEdificio,
 }
 
 

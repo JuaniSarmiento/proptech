@@ -9,7 +9,13 @@ o el verificador de salud). Un test puede pisar cualquiera con su propio
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from proptech_core.acceso.dominio.identidad import Identidad
 
 import psycopg
 import pytest
@@ -109,3 +115,52 @@ def edificios(app_edificio: psycopg.Connection) -> Edificios:
             unidades.append(insertar_unidad(app_edificio, admin, complejo))
     fijar_tenant(app_edificio, admin_a)
     return Edificios(admin_a, admin_b, complejo_a, otro_a, complejo_b, *unidades)
+
+
+@pytest.fixture
+def sesion_edificio(base_del_edificio: BaseDeEdificio) -> Iterator[Session]:
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import Session
+    from sqlalchemy.pool import NullPool
+
+    def conectar() -> psycopg.Connection:
+        conexion = base_del_edificio.conectar_app()
+        conexion.autocommit = False
+        return conexion
+
+    engine = create_engine("postgresql+psycopg://", creator=conectar, poolclass=NullPool)
+    try:
+        with Session(engine) as sesion:
+            assert sesion.execute(
+                text(
+                    "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles "
+                    "WHERE rolname = current_user"
+                )
+            ).one() == ("proptech_app", False, False)
+            yield sesion
+            sesion.rollback()
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def identidad_edificio(sesion_edificio: Session) -> Identidad:
+    from sqlalchemy import text
+
+    from proptech_core.acceso.dominio.identidad import Identidad
+
+    admin, persona = uuid4(), uuid4()
+    sesion_edificio.execute(
+        text("SELECT set_config('app.administracion_id', :id, true)"), {"id": str(admin)}
+    )
+    sesion_edificio.execute(
+        text("INSERT INTO administracion (id, nombre) VALUES (:id, 'Inventada')"), {"id": admin}
+    )
+    sesion_edificio.execute(
+        text(
+            "INSERT INTO persona (id, administracion_id, nombre) "
+            "VALUES (:id, :admin, 'Persona ficticia')"
+        ),
+        {"id": persona, "admin": admin},
+    )
+    return Identidad(admin, persona)
