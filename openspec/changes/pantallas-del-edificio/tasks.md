@@ -86,6 +86,23 @@ cambio de este bloque del lado del backend es esa corrección de la guarda, y qu
 `1755 passed, 1 xfailed` limpio — pero esto es una inferencia, no la corrida completa vista en verde. Pendiente: re-correr `test-backend.sh` y
 `humo.sh` completos cuando la memoria del sistema lo permita (no antes).
 
+**Cierre del bloque B corrido por el orquestador (19/10/2026, HEAD `1e11926`)**: el constructor no pudo
+correrlo porque el sistema cortó su corrida por memoria; quedaron dos contenedores de testcontainers
+huérfanos de esa corrida (`postgres:18.6`, `redis:8.10.2`, etiqueta `org.testcontainers=true`), sacados
+por nombre antes de correr.
+
+```text
+$ bash infra/ci/test-backend.sh
+20:13:09
+1755 passed, 1 xfailed, 16 warnings in 424.48s (0:07:04)
+[código de salida: 0]
+
+$ bash infra/ci/humo.sh
+20:20:18
+HUMO OK
+[código de salida: 0]
+```
+
 ## 4. Las siete pantallas (MEDIUM), una por tarea, cada una con su "?"
 
 - [ ] 4.1 **Mis edificios** (`/edificios`): lista con nombre, localidad, cantidad de unidades, estado de coeficientes y de migración en texto, leídos del resumen de cada edificio (D5); "Nuevo edificio" en el panel lateral con nombre y localidad, que al guardar lleva al resumen; con un solo edificio muestra la lista igual (D11); 403 al crear para un colaborador. Rojo primero: el test del estado vacío ("Todavía no tenés edificios" con "Nuevo edificio"). Escenarios: `pantallas-del-edificio` › Sin edificios; › Crear un edificio; › Sin permiso.
