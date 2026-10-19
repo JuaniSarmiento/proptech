@@ -119,7 +119,817 @@ Precondiciones, sin las cuales no se empieza:
   ```
   Lint/formato/tipos (L-005): `ruff check`, `ruff format --check` y `mypy` en verde, 2026-10-19 09:12:37, sobre `cuerpos.py`, `complejos.py`, `app.py` y el test nuevo.
 - [ ] 2.3 Deuda del 1b con dueño 3, parte de código (D13): `Porcentaje` y `Superficie` en `proptech_core/compartido/` (texto decimal ASCII, `fullmatch`, rechazo de `float`, `bool`, `NaN`, `Infinity`, `-0`, dígitos Unicode y `\n` final, con tests en rojo primero); `parametros.py` y `semilla.py` pasan a usarlos (L-009: la misma batería sobre los dos lectores); `parametros.py` rechaza un tipo de unidad fuera de los cuatro de D-029, con la constante que va a usar el `CHECK` de 3.1 (nota N9 c; rojo: hoy `quincho` en `tipos_de_unidad` pasa); `Semilla.version: Literal[1]` (rojo: hoy `version: 2` pasa); `naming_convention` en la `MetaData`; `pydantic` declarado directo en `backend/pyproject.toml` (rojo: `tests/infra/test_dependencias.py` lo exige). Escenarios: `datos-semilla` › Versión distinta de 1. Lecciones: L-008, L-009.
-- [ ] 2.4 Deuda del 1b con dueño 3, parte de infraestructura (D13). Choca con `main` en `backend/src/proptech_api/app.py` (no en Compose, el humo ni el CI, que no cambiaron desde el fork): la rama ya tiene `main` desde el rebase del 16/10; si `main` volvió a tocar `app.py`, rebasar antes de empezar. `app.py` sin app creada al importar, conservando el log de `arranque_fallido` que sumó `main`, y `uvicorn --factory proptech_api.app:crear_app` en Compose y Dockerfile; healthcheck de la web contra `127.0.0.1`; `.gitignore` ampliado; el test de `chmod` salteado en Windows. Rojo de cada uno en `tests/infra/` y `tests/unitarios/test_arranque_api.py` (importar `proptech_api.app` hoy crea la app). Humo en verde al final. Escenarios: ninguno nuevo (no cambia comportamiento observable). Lecciones: L-005.
+- [x] 2.4 Deuda del 1b con dueño 3, parte de infraestructura (D13). Choca con `main` en `backend/src/proptech_api/app.py` (no en Compose, el humo ni el CI, que no cambiaron desde el fork): la rama ya tiene `main` desde el rebase del 16/10; si `main` volvió a tocar `app.py`, rebasar antes de empezar. `app.py` sin app creada al importar, conservando el log de `arranque_fallido` que sumó `main`, y `uvicorn --factory proptech_api.app:crear_app` en Compose y Dockerfile; healthcheck de la web contra `127.0.0.1`; `.gitignore` ampliado; el test de `chmod` salteado en Windows. Rojo de cada uno en `tests/infra/` y `tests/unitarios/test_arranque_api.py` (importar `proptech_api.app` hoy crea la app). Humo en verde al final. Escenarios: ninguno nuevo (no cambia comportamiento observable). Lecciones: L-005.
+
+**ROJO inicial de D13: importación sin configuración, CMD factory y salud web IPv4 (19/10/2026)**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api.py tests/unitarios/test_arranque_api_parametros.py tests/unitarios/test_arranque_api_password_vacio.py tests/unitarios/test_arranque_api_variable_malformada.py tests/infra/test_logs_y_proxy.py::test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_proxy tests/infra/test_compose.py::test_healthcheck_de_web_usa_loopback_ipv4 -q --tb=short
+09:53:22
+FF......FF                                                               [100%]
+=================================== FAILURES ===================================
+_ test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[POSTGRES_APP_PASSWORD] _
+tests/unitarios/test_arranque_api.py:32: in test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion
+    assert resultado.returncode == 0, resultado.stderr
+E   AssertionError: Traceback (most recent call last):
+E       File "<string>", line 1, in <module>
+E         import proptech_api.app; print('IMPORTADO')
+E         ^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_api/app.py", line 115, in <module>
+E         app = crear_app()
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_api/app.py", line 47, in crear_app
+E         configuracion = Configuracion()
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py", line 343, in __init__
+E         raise ConfiguracionInvalida(
+E             f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"
+E         ) from None
+E     proptech_core.compartido.configuracion.ConfiguracionInvalida: Configuración inválida — falta configurar: POSTGRES_APP_PASSWORD
+E
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', "import proptech_api...re.compartido.configuracion.ConfiguracionInvalida: Configuración inválida — falta configurar: POSTGRES_APP_PASSWORD\n').returncode
+_ test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[PROPTECH_PARAMETROS] _
+tests/unitarios/test_arranque_api.py:32: in test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion
+    assert resultado.returncode == 0, resultado.stderr
+E   AssertionError: Traceback (most recent call last):
+E       File "<string>", line 1, in <module>
+E         import proptech_api.app; print('IMPORTADO')
+E         ^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_api/app.py", line 115, in <module>
+E         app = crear_app()
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_api/app.py", line 47, in crear_app
+E         configuracion = Configuracion()
+E       File "/home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py", line 343, in __init__
+E         raise ConfiguracionInvalida(
+E             f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"
+E         ) from None
+E     proptech_core.compartido.configuracion.ConfiguracionInvalida: Configuración inválida — falta configurar: PROPTECH_PARAMETROS
+E
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', "import proptech_api...core.compartido.configuracion.ConfiguracionInvalida: Configuración inválida — falta configurar: PROPTECH_PARAMETROS\n').returncode
+_ test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_proxy _
+tests/infra/test_logs_y_proxy.py:36: in test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_proxy
+    assert comando[:3] == ["uvicorn", "--factory", "proptech_api.app:crear_app"], comando
+E   AssertionError: ['uvicorn', 'proptech_api.app:app', '--host', '0.0.0.0', '--port', '8000', ...]
+E   assert ['uvicorn', '...pp', '--host'] == ['uvicorn', '...pp:crear_app']
+E
+E     At index 1 diff: 'proptech_api.app:app' != '--factory'
+E     Use -v to get more diff
+__________________ test_healthcheck_de_web_usa_loopback_ipv4 ___________________
+tests/infra/test_compose.py:23: in test_healthcheck_de_web_usa_loopback_ipv4
+    assert "fetch('http://127.0.0.1:3000')" in comando[3], comando
+E   AssertionError: ['CMD', 'node', '-e', "fetch('http://localhost:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"]
+E   assert "fetch('http://127.0.0.1:3000')" in "fetch('http://localhost:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api.py::test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[POSTGRES_APP_PASSWORD]
+FAILED tests/unitarios/test_arranque_api.py::test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[PROPTECH_PARAMETROS]
+FAILED tests/infra/test_logs_y_proxy.py::test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_proxy
+FAILED tests/infra/test_compose.py::test_healthcheck_de_web_usa_loopback_ipv4
+4 failed, 6 passed in 4.73s
+[código de salida: 1]
+```
+
+**VERDE de D13: importación sin efectos y arranque explícito con validación**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api.py tests/unitarios/test_arranque_api_parametros.py tests/unitarios/test_arranque_api_password_vacio.py tests/unitarios/test_arranque_api_variable_malformada.py tests/infra/test_logs_y_proxy.py::test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_proxy tests/infra/test_compose.py::test_healthcheck_de_web_usa_loopback_ipv4 -q --tb=short
+09:54:07
+..........                                                               [100%]
+10 passed in 5.10s
+[código de salida: 0]
+```
+
+Mutante temporal **M1 contraseña faltante aceptada**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_core/compartido/configuracion.py
++++ M1 contraseña faltante aceptada
+@@ -164,7 +164,7 @@
+     las usan la API y el worker, que sí hablan con Redis y leen los parámetros."""
+
+     postgres_user: str = Field(validation_alias="POSTGRES_APP_USER")
+-    postgres_password: SecretStr = Field(validation_alias="POSTGRES_APP_PASSWORD")
++    postgres_password: SecretStr = Field(default=SecretStr("prueba-mutante"), validation_alias="POSTGRES_APP_PASSWORD")
+
+     redis_host: str
+     redis_port: int = Field(default=6379, ge=1, le=65535)
+```
+
+**ROJO del mutante M1 contraseña faltante aceptada**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api.py::test_el_proceso_termina_si_falta_postgres_app_password -q --tb=short
+09:54:54
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_el_proceso_termina_si_falta_postgres_app_password ____________
+tests/unitarios/test_arranque_api.py:56: in test_el_proceso_termina_si_falta_postgres_app_password
+    assert resultado.returncode != 0, (
+E   AssertionError: el proceso arrancó (código 0) sin POSTGRES_APP_PASSWORD; stdout='' stderr=''
+E   assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', 'from proptech_api.app import crear_app; crear_app()'], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api.py::test_el_proceso_termina_si_falta_postgres_app_password
+1 failed in 0.61s
+[código de salida: 1]
+```
+
+**Reversión de M1 contraseña faltante aceptada: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M1-configuracion.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py
+09:54:55
+
+[código de salida: 0]
+```
+
+Mutante temporal **M2 YAML con tasa negativa aceptado**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_api/app.py
++++ M2 YAML con tasa negativa aceptado
+@@ -50,7 +50,7 @@
+         raise
+     # Idem con los parámetros del sistema (D6): un archivo inválido también
+     # termina el arranque acá, nombrando cada campo con problemas.
+-    leer_parametros(configuracion.proptech_parametros)
++    # Mutante temporal: se omite validar el contenido del YAML.
+
+     @asynccontextmanager
+     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+```
+
+**ROJO del mutante M2 YAML con tasa negativa aceptado**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo -q --tb=short
+09:54:55
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo _________
+tests/unitarios/test_arranque_api_parametros.py:36: in test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo
+    assert resultado.returncode != 0
+E   AssertionError: assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', 'from proptech_api.app import crear_app; crear_app()'], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo
+1 failed in 0.58s
+[código de salida: 1]
+```
+
+**Reversión de M2 YAML con tasa negativa aceptado: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M2-app.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_api/app.py
+09:54:56
+
+[código de salida: 0]
+```
+
+Mutante temporal **M3 contraseña vacía aceptada**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_core/compartido/configuracion.py
++++ M3 contraseña vacía aceptada
+@@ -187,7 +187,7 @@
+     @field_validator("postgres_password")
+     @classmethod
+     def _password_recortada(cls, valor: SecretStr) -> SecretStr:
+-        _recortado_sin_cambios(valor.get_secret_value())
++        # Mutante temporal: se acepta la contraseña vacía.
+         return valor
+
+     @field_validator(
+```
+
+**ROJO del mutante M3 contraseña vacía aceptada**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api_password_vacio.py -q --tb=short
+09:55:25
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_el_proceso_no_debe_arrancar_con_password_vacio ______________
+tests/unitarios/test_arranque_api_password_vacio.py:40: in test_el_proceso_no_debe_arrancar_con_password_vacio
+    assert resultado.returncode != 0, (
+E   AssertionError: el proceso arrancó con POSTGRES_APP_PASSWORD vacío en vez de terminar nombrando el problema. stdout='ARRANCO\n'
+E   assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', "from proptech_api.app import crear_app; crear_app(); print('ARRANCO')"], returncode=0, stdout='ARRANCO\n', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api_password_vacio.py::test_el_proceso_no_debe_arrancar_con_password_vacio
+1 failed in 0.63s
+[código de salida: 1]
+```
+
+**Reversión de M3 contraseña vacía aceptada: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M3-configuracion.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py
+09:55:26
+
+[código de salida: 0]
+```
+
+Mutante temporal **M4 puerto abc aceptado**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_core/compartido/configuracion.py
++++ M4 puerto abc aceptado
+@@ -103,7 +103,7 @@
+     @field_validator("postgres_port", mode="before")
+     @classmethod
+     def _puerto_entero_ascii_estricto(cls, valor: object) -> object:
+-        return _entero_ascii_estricto(valor)
++        return 5432 if valor == "abc" else _entero_ascii_estricto(valor)
+
+     @field_validator("postgres_host", "postgres_db")
+     @classmethod
+```
+
+**ROJO del mutante M4 puerto abc aceptado**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api_variable_malformada.py -q --tb=short
+09:55:26
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_el_proceso_nombra_la_variable_con_puerto_malformado ___________
+tests/unitarios/test_arranque_api_variable_malformada.py:37: in test_el_proceso_nombra_la_variable_con_puerto_malformado
+    assert resultado.returncode != 0, "el proceso debería terminar con POSTGRES_PORT inválido"
+E   AssertionError: el proceso debería terminar con POSTGRES_PORT inválido
+E   assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', 'from proptech_api.app import crear_app; crear_app()'], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api_variable_malformada.py::test_el_proceso_nombra_la_variable_con_puerto_malformado
+1 failed in 0.72s
+[código de salida: 1]
+```
+
+**Reversión de M4 puerto abc aceptado: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M4-configuracion.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py
+09:55:28
+
+[código de salida: 0]
+```
+
+Mutante temporal **M5 ruta de parámetros faltante aceptada**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_core/compartido/configuracion.py
++++ M5 ruta de parámetros faltante aceptada
+@@ -169,7 +169,7 @@
+     redis_host: str
+     redis_port: int = Field(default=6379, ge=1, le=65535)
+     redis_password: SecretStr
+-    proptech_parametros: str
++    proptech_parametros: str = '/home/juanisarmiento/Proyectos/PropTech/config/parametros.yaml'
+
+     # Parámetros del pool del engine (D18, M14): opcionales con default, así
+     # no se suma ninguna variable obligatoria a `.env`.
+```
+
+**ROJO del mutante M5 ruta de parámetros faltante aceptada**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable -q --tb=short
+09:55:28
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable _
+tests/unitarios/test_arranque_api_parametros.py:53: in test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable
+    assert resultado.returncode != 0
+E   AssertionError: assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', 'from proptech_api.app import crear_app; crear_app()'], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable
+1 failed in 0.73s
+[código de salida: 1]
+```
+
+**Reversión de M5 ruta de parámetros faltante aceptada: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M5-configuracion.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py
+09:55:29
+
+[código de salida: 0]
+```
+
+Mutante temporal **M6 ruta de parámetros vacía aceptada**, con copia previa en `/tmp/proptech-2-4/` (L-013; sin commit del mutante):
+
+```diff
+--- backend/src/proptech_core/compartido/configuracion.py
++++ M6 ruta de parámetros vacía aceptada
+@@ -205,7 +205,7 @@
+     @field_validator("redis_host", "proptech_parametros")
+     @classmethod
+     def _recortados(cls, valor: str) -> str:
+-        return _recortado_sin_cambios(valor)
++        return '/home/juanisarmiento/Proyectos/PropTech/config/parametros.yaml' if valor == "" else _recortado_sin_cambios(valor)
+
+     @field_validator("redis_password")
+     @classmethod
+```
+
+**ROJO del mutante M6 ruta de parámetros vacía aceptada**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable -q --tb=short
+09:55:29
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable __
+tests/unitarios/test_arranque_api_parametros.py:70: in test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable
+    assert resultado.returncode != 0
+E   AssertionError: assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3', '-c', 'from proptech_api.app import crear_app; crear_app()'], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable
+1 failed in 0.61s
+[código de salida: 1]
+```
+
+**Reversión de M6 ruta de parámetros vacía aceptada: diff contra copia previa**
+
+```text
+$ cd backend && date +%T && diff -u /tmp/proptech-2-4/M6-configuracion.py.original /home/juanisarmiento/Proyectos/PropTech/backend/src/proptech_core/compartido/configuracion.py
+09:55:30
+
+[código de salida: 0]
+```
+
+**VERDE focalizado después del formato y las reversiones**
+
+```text
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_arranque_api.py tests/unitarios/test_arranque_api_parametros.py tests/unitarios/test_arranque_api_password_vacio.py tests/unitarios/test_arranque_api_variable_malformada.py tests/infra/test_logs_y_proxy.py tests/infra/test_compose.py::test_healthcheck_de_web_usa_loopback_ipv4 -q --tb=short
+10:08:30
+................                                                         [100%]
+16 passed in 5.07s
+[código de salida: 0]
+```
+
+**Commit bloqueado por filesystem: git add no puede escribir .git/index.lock**
+
+```text
+$ cd backend && date +%T && git -C /home/juanisarmiento/Proyectos/PropTech add backend/Dockerfile backend/src/proptech_api/app.py backend/tests/infra/test_compose.py backend/tests/infra/test_logs_y_proxy.py backend/tests/integracion/test_causa_de_arranque_rechazado.py backend/tests/unitarios/test_arranque_api.py backend/tests/unitarios/test_arranque_api_parametros.py backend/tests/unitarios/test_arranque_api_password_vacio.py backend/tests/unitarios/test_arranque_api_variable_malformada.py backend/tests/unitarios/test_motor_unico.py infra/compose.yaml openspec/changes/configuracion-del-edificio/tasks.md
+10:08:54
+fatal: Unable to create '/home/juanisarmiento/Proyectos/PropTech/.git/index.lock': Read-only file system
+[código de salida: 128]
+```
+
+**Suite completa solicitada: repetición con límite externo de 75 s tras bloqueo en TestClient**
+
+```text
+$ cd backend && date +%T && timeout --signal=INT --kill-after=5s 75s uv run --offline pytest tests/unitarios tests/infra -q
+10:08:29
+......................................................................Timeout (0:00:55)!
+Thread 0x00007a2f071fe6c0 [asyncio-portal-] (most recent call first):
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/selectors.py", line 452 in select
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 2019 in _run_once
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 677 in run_forever
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 706 in run_until_complete
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 127 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 2548 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_core/_eventloop.py", line 83 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 538 in run_blocking_portal
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1024 in run
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Thread 0x00007a2f0f8da740 [pytest] (most recent call first):
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 369 in wait
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/concurrent/futures/_base.py", line 445 in result
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 2780 in run_sync_from_thread
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 119 in run_sync
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 303 in _spawn_task_from_thread
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 384 in start_task_soon
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 340 in call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/starlette/testclient.py", line 356 in handle_request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014 in _send_single_request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979 in _send_handling_redirects
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942 in _send_handling_auth
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914 in send
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 825 in request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/starlette/testclient.py", line 463 in request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1053 in get
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/tests/unitarios/test_ataque_ruta.py", line 82 in test_ruta_logueada_es_la_plantilla_y_no_contiene_el_valor
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/python.py", line 167 in pytest_pyfunc_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/python.py", line 1707 in runtest
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 184 in pytest_runtest_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 250 in <lambda>
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 249 in call_and_report
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 139 in runtestprotocol
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 408 in pytest_runtestloop
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 384 in _main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/config/__init__.py", line 229 in _main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/config/__init__.py", line 253 in _console_main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/pytest", line 10 in <module>
+[código de salida: -9]
+```
+
+**ROJO de lint: línea de 104 caracteres**
+
+```text
+$ cd backend && date +%T && uv run --offline ruff check .
+09:56:42
+E501 Line too long (104 > 100)
+  --> tests/unitarios/test_arranque_api_password_vacio.py:32:101
+   |
+31 |     resultado = subprocess.run(
+32 |         [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app(); print('ARRANCO')"],
+   |                                                                                                     ^^^^
+33 |         env=entorno,
+34 |         capture_output=True,
+   |
+
+Found 1 error.
+[código de salida: 1]
+```
+
+**ROJO de formato: lista de argumentos del subproceso**
+
+```text
+$ cd backend && date +%T && uv run --offline ruff format --check .
+09:56:42
+unformatted: File would be reformatted
+  --> tests/unitarios/test_arranque_api_password_vacio.py:32:10
+   |
+31 |     resultado = subprocess.run(
+   -         [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app(); print('ARRANCO')"],
+32 +         [
+33 +             sys.executable,
+34 +             "-c",
+35 +             "from proptech_api.app import crear_app; crear_app(); print('ARRANCO')",
+36 +         ],
+37 |         env=entorno,
+   |
+
+1 file would be reformatted, 162 files already formatted
+[código de salida: 1]
+```
+
+**VERDE de lint después de formatear la lista**
+
+```text
+$ cd backend && date +%T && uv run --offline ruff check .
+09:57:10
+All checks passed!
+[código de salida: 0]
+```
+
+**VERDE de formato**
+
+```text
+$ cd backend && date +%T && uv run --offline ruff format --check .
+09:57:10
+163 files already formatted
+[código de salida: 0]
+```
+
+**VERDE de tipos (L-005)**
+
+```text
+$ cd backend && date +%T && uv run --offline mypy
+09:57:10
+Success: no issues found in 155 source files
+[código de salida: 0]
+```
+
+
+**Corridas interrumpidas y diagnóstico del bloqueo (sin resultado verde)**
+
+Se ejecutaron primero estas dos corridas sin límite externo:
+
+```text
+uv run --offline pytest tests/unitarios tests/infra -q
+uv run --offline pytest tests/unitarios tests/infra/test_logs_y_proxy.py tests/infra/test_compose.py::test_healthcheck_de_web_usa_loopback_ipv4 -q
+```
+
+Ambas se interrumpieron con Ctrl-C (código 130) tras ubicar el bloqueo.
+El arnés capturaba stdout y sólo lo imprimía al terminar; al interrumpirlo
+no se recuperó esa salida ni su hora inicial. No se atribuyen conteos ni
+resultado a esas dos corridas. La orden completa se repitió con un límite
+externo de 75 segundos y su hora/salida se registran por separado.
+
+La corrida de diagnóstico con salida detallada fue:
+
+```text
+$ cd backend && date +%T
+10:06:20
+$ uv run --offline pytest tests/unitarios -vv -x 2>&1 | tee /tmp/proptech-2-4/unitarios-detalle.log
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 648 items
+
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-cargar_gastos_y_preparar_liquidacion] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-emitir_y_distribuir_liquidacion] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-anular_liquidacion] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-confirmar_pago_informado] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-revertir_o_reimputar_pago] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-condonar_intereses] PASSED [  0%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-dar_de_baja_deuda] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-aceptar_alertas_no_bloqueantes] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-aceptar_alertas_bloqueantes] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-invitar_usuarios_y_asignar_edificios] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[titular-informar_pago] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-cargar_gastos_y_preparar_liquidacion] PASSED [  1%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-emitir_y_distribuir_liquidacion] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-anular_liquidacion] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-confirmar_pago_informado] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-revertir_o_reimputar_pago] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-condonar_intereses] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-dar_de_baja_deuda] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-aceptar_alertas_no_bloqueantes] PASSED [  2%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-aceptar_alertas_bloqueantes] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-invitar_usuarios_y_asignar_edificios] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[colaborador-informar_pago] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-cargar_gastos_y_preparar_liquidacion] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-emitir_y_distribuir_liquidacion] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-anular_liquidacion] PASSED [  3%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-confirmar_pago_informado] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-revertir_o_reimputar_pago] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-condonar_intereses] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-dar_de_baja_deuda] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-aceptar_alertas_no_bloqueantes] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-aceptar_alertas_bloqueantes] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-invitar_usuarios_y_asignar_edificios] PASSED [  4%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[consejo-informar_pago] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-cargar_gastos_y_preparar_liquidacion] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-emitir_y_distribuir_liquidacion] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-anular_liquidacion] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-confirmar_pago_informado] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-revertir_o_reimputar_pago] PASSED [  5%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-condonar_intereses] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-dar_de_baja_deuda] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-aceptar_alertas_no_bloqueantes] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-aceptar_alertas_bloqueantes] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-invitar_usuarios_y_asignar_edificios] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_cada_celda_de_la_matriz[vecino-informar_pago] PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_colaborador_de_nivel_ver_no_tiene_ninguna_fila_en_si PASSED [  6%]
+tests/unitarios/acceso/test_permisos.py::test_una_accion_sin_fila_en_la_matriz_se_niega_para_todos PASSED [  7%]
+tests/unitarios/acceso/test_permisos.py::test_alcanza_titular_cualquier_complejo_y_unidad PASSED [  7%]
+tests/unitarios/acceso/test_permisos.py::test_alcanza_colaborador_solo_el_complejo_asignado PASSED [  7%]
+tests/unitarios/acceso/test_permisos.py::test_alcanza_consejo_solo_su_complejo PASSED [  7%]
+tests/unitarios/acceso/test_permisos.py::test_alcanza_vecino_su_complejo_y_su_unidad_no_otra PASSED [  7%]
+tests/unitarios/acceso/test_permisos.py::test_alcanza_sin_ninguna_asignacion_es_falso PASSED [  7%]
+tests/unitarios/test_arranque_api.py::test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[POSTGRES_APP_PASSWORD] PASSED [  8%]
+tests/unitarios/test_arranque_api.py::test_importar_el_modulo_no_crea_la_app_ni_valida_configuracion[PROPTECH_PARAMETROS] PASSED [  8%]
+tests/unitarios/test_arranque_api.py::test_el_proceso_termina_si_falta_postgres_app_password PASSED [  8%]
+tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo PASSED [  8%]
+tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable PASSED [  8%]
+tests/unitarios/test_arranque_api_parametros.py::test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable PASSED [  8%]
+tests/unitarios/test_arranque_api_password_vacio.py::test_el_proceso_no_debe_arrancar_con_password_vacio PASSED [  8%]
+tests/unitarios/test_arranque_api_variable_malformada.py::test_el_proceso_nombra_la_variable_con_puerto_malformado PASSED [  9%]
+tests/unitarios/test_arranque_worker.py::test_el_proceso_termina_si_falta_postgres_app_password PASSED [  9%]
+tests/unitarios/test_arranque_worker_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo PASSED [  9%]
+tests/unitarios/test_arranque_worker_parametros.py::test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variable PASSED [  9%]
+tests/unitarios/test_arranque_worker_parametros.py::test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable PASSED [  9%]
+tests/unitarios/test_arranque_worker_parametros.py::test_el_proceso_termina_con_proptech_parametros_inexistente_nombrando_la_variable PASSED [  9%]
+tests/unitarios/test_arranque_worker_password_vacio.py::test_el_proceso_no_arranca_con_postgres_password_vacio PASSED [ 10%]
+tests/unitarios/test_arranque_worker_password_vacio.py::test_el_proceso_no_arranca_con_redis_password_vacia PASSED [ 10%]
+tests/unitarios/test_arranque_worker_password_vacio.py::test_el_proceso_no_arranca_con_redis_password_en_blanco PASSED [ 10%]
+tests/unitarios/test_arranque_worker_variable_malformada.py::test_el_proceso_nombra_la_variable_con_postgres_port_malformado PASSED [ 10%]
+tests/unitarios/test_arranque_worker_variable_malformada.py::test_el_proceso_nombra_la_variable_con_redis_port_malformado PASSED [ 10%]
+tests/unitarios/test_arranque_worker_variable_malformada.py::test_el_proceso_nombra_la_variable_con_redis_port_fuera_de_rango PASSED [ 10%]
+tests/unitarios/test_ataque_ruta.py::test_ruta_logueada_es_la_plantilla_y_no_contiene_el_valor[/api/personas/pers-/api/personas/{dni}-pers] Timeout (0:00:55)!
+Thread 0x00007a3f50dff6c0 [asyncio-portal-] (most recent call first):
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/selectors.py", line 452 in select
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 2019 in _run_once
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 677 in run_forever
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 706 in run_until_complete
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 127 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 2548 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_core/_eventloop.py", line 83 in run
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 538 in run_blocking_portal
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1024 in run
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Thread 0x00007a3f58d24740 [pytest] (most recent call first):
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 369 in wait
+  File "/home/juanisarmiento/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/concurrent/futures/_base.py", line 445 in result
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 2780 in run_sync_from_thread
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 119 in run_sync
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 303 in _spawn_task_from_thread
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 384 in start_task_soon
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/anyio/from_thread.py", line 340 in call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/starlette/testclient.py", line 356 in handle_request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014 in _send_single_request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979 in _send_handling_redirects
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942 in _send_handling_auth
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914 in send
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 825 in request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/starlette/testclient.py", line 463 in request
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1053 in get
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/tests/unitarios/test_ataque_ruta.py", line 82 in test_ruta_logueada_es_la_plantilla_y_no_contiene_el_valor
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/python.py", line 167 in pytest_pyfunc_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/python.py", line 1707 in runtest
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 184 in pytest_runtest_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 250 in <lambda>
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 249 in call_and_report
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 139 in runtestprotocol
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 408 in pytest_runtestloop
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 384 in _main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/config/__init__.py", line 229 in _main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/_pytest/config/__init__.py", line 253 in _console_main
+  File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/bin/pytest", line 10 in <module>
+[código de salida de la interrupción con Ctrl-C: 130]
+```
+
+EVIDENCIA: el primer caso de `test_ataque_ruta.py` queda esperando dentro de
+`TestClient.get`; faulthandler vuelca la traza a los 55 s. Ese test crea una
+`FastAPI()` propia y no importa `proptech_api.app`. Se verificó sin diferencias
+con `git diff --exit-code HEAD -- backend/tests/unitarios/test_ataque_ruta.py
+backend/src/proptech_api/seguimiento.py` (código 0, sin salida).
+La causa del bloqueo no se verificó: atribuirla al sandbox es una hipótesis,
+no una conclusión. El orquestador debe repetir también unitarios e infra,
+además de integración y humo.
+
+**Revisión del constructor de la continuación de 2.4 (19/10/2026)**
+
+HEAD inicial: `8ca9441`, rama `main`, árbol limpio al comenzar. Horas de los
+comandos tomadas con `date +%T`, zona `-03` (`2026-10-19`, UTC−03:00).
+La API de Compose hereda el CMD del Dockerfile: no declara un arranque Uvicorn
+propio que haya que reemplazar. Se conservan todas las opciones del CMD y todo
+el cuerpo de `crear_app()`, incluidos ambos logs de `arranque_fallido`.
+
+Los 17 archivos originales de `rg -l "proptech_api\.app" backend/tests`
+se revisaron uno por uno en sus imports, subprocesos y creación de la app:
+
+| Archivo bajo `backend/tests/` | Resultado de la revisión |
+| --- | --- |
+| `unitarios/test_arranque_api.py` | Subproceso de arranque llama la fábrica; dos casos nuevos distinguen importación de arranque. |
+| `unitarios/test_arranque_api_parametros.py` | Los tres subprocesos llaman la fábrica; M2, M5 y M6 prueban cada rechazo. |
+| `unitarios/test_arranque_api_password_vacio.py` | Subproceso llama la fábrica y exige el nombre de la variable; M3. |
+| `unitarios/test_arranque_api_variable_malformada.py` | Subproceso llama la fábrica y usa las credenciales del rol de app; M4. |
+| `unitarios/test_salud.py` | Ya usa `crear_app()`; no requiere cambios. |
+| `unitarios/test_middleware_error_inesperado.py` | Ya usa `crear_app()`; no requiere cambios. |
+| `unitarios/test_middleware_seguimiento.py` | Ya usa `crear_app()`; no requiere cambios. |
+| `unitarios/test_motor_unico.py` | Ya usa `app_mod.crear_app()`; se actualiza el comentario sobre validación. |
+| `integracion/test_causa_de_arranque_rechazado.py` | Se adapta el subproceso de API a la fábrica; los otros casos ya la llaman. Sin ejecutar. |
+| `integracion/test_rutas_protegidas.py` | Fixture ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+| `integracion/test_zz_rompedor_api_application_name.py` | Ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+| `integracion/test_alcance_api.py` | Fixture ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+| `integracion/test_salud_cola_real.py` | Los tres casos ya usan `crear_app()`; sin ejecutar. |
+| `integracion/test_identidad_api.py` | Fixture ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+| `integracion/test_asignar_edificio_api.py` | Fixture ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+| `integracion/test_cableado_real_del_arranque.py` | Fixture y rechazo de rol inseguro ya llaman la fábrica; sin ejecutar. |
+| `integracion/test_altas_sin_id_del_cliente.py` | Fixture ya usa `crear_app()` y `TestClient`; sin ejecutar. |
+
+Después de exigir el target de la fábrica en `tests/infra/test_logs_y_proxy.py`,
+el mismo `rg` sobre todos los tests devuelve 18 archivos: el adicional es ese
+test estático; los 17 consumidores originales siguen presentes.
+Una inspección AST de los 17 confirma sintaxis válida y ausencia de
+`from proptech_api.app import app`; esto no ejecuta integración.
+
+Otros archivos leídos (completos o secciones pertinentes):
+
+- `AGENTS.md`, `CLAUDE.md`, `/home/juanisarmiento/.claude/CLAUDE.md`.
+- `CHANGES.md`, `knowledge-base/12_fichas_de_changes.md`, `knowledge-base/15_lecciones.md`.
+- `.claude/skills/openspec-apply-change/SKILL.md` y las skills locales
+  `test-driven-development/SKILL.md` y `fastapi-templates/SKILL.md`.
+- `openspec/changes/configuracion-del-edificio/{proposal,design,tasks}.md` y sus
+  siete `specs/*/spec.md` (contexto de apply; implementación limitada a D13/2.4).
+- `backend/src/proptech_api/app.py`,
+  `backend/src/proptech_core/compartido/configuracion.py`, `backend/Dockerfile`,
+  `backend/pyproject.toml`, `backend/tests/conftest.py`,
+  `backend/tests/unitarios/conftest.py`, `backend/tests/infra/test_compose.py`,
+  `backend/tests/infra/test_logs_y_proxy.py`, `infra/compose.yaml`,
+  `infra/ci/test-backend.sh`.
+- Para diagnosticar la corrida: `backend/tests/unitarios/test_ataque_ruta.py`,
+  `test_ataque_uvicorn_lifespan.py`, `test_ataque_salud_cola_lenta.py`,
+  `backend/src/proptech_api/seguimiento.py`, `backend/tests/infra/conftest.py`,
+  `test_caddyfile_request_id.py`, `test_caddyfile_seguridad.py`,
+  `test_ci_workflow.py` (estos últimos tres bajo `backend/tests/infra/`).
+
+Archivos cambiados, todos leídos:
+
+- `backend/src/proptech_api/app.py` y `backend/Dockerfile`.
+- `infra/compose.yaml`.
+- `backend/tests/unitarios/test_arranque_api.py`.
+- `backend/tests/unitarios/test_arranque_api_parametros.py`.
+- `backend/tests/unitarios/test_arranque_api_password_vacio.py`.
+- `backend/tests/unitarios/test_arranque_api_variable_malformada.py`.
+- `backend/tests/unitarios/test_motor_unico.py` (comentario).
+- `backend/tests/integracion/test_causa_de_arranque_rechazado.py`.
+- `backend/tests/infra/test_compose.py` y `backend/tests/infra/test_logs_y_proxy.py`.
+- Este `tasks.md`, solamente debajo de 2.4; la casilla sigue pendiente.
+
+Incidencia del arnés temporal de mutación: al preparar M3, el primer
+`python3 /tmp/proptech-2-4/mutar.py` terminó con
+`AssertionError: M3 contraseña vacía aceptada` porque el selector encontraba
+dos validadores (Postgres y Redis). La guardia actuó antes de modificar M3;
+M1 y M2 ya estaban revertidos. Se acotó el selector al método de contraseña de
+Postgres y se retomó con `python3 /tmp/proptech-2-4/mutar.py 3`; los seis rojos
+y sus seis reversiones están arriba. Las copias previas son propias de esta
+sesión (L-013); además se comparó `configuracion.py` con el HEAD inicial,
+byte por byte, sin diferencias.
+
+Las salidas se conservan quitando códigos ANSI de color y espacios al final
+de línea para mantener `git diff --check` limpio.
+
+**JUICIO:** confianza alta en la importación sin creación de app, en el
+rechazo de configuración inválida al llamar la fábrica y en los cambios
+estáticos de arranque/salud. Los seis casos de rechazo pueden dar rojo.
+La suite completa queda sin validar por el bloqueo descrito abajo.
+
+**SUPUESTO:** el comportamiento real con PostgreSQL, Redis, Uvicorn y Next
+en contenedores queda por verificar. Integración está adaptada o ya usaba la
+fábrica, pero no se ejecutó ningún test de `tests/integracion/`, ni humo ni
+build de imágenes. Los ejecuta el orquestador. No se leyó `infra/.env`, ni se
+modificaron `.gitignore`, el test de chmod, ni otras tareas.
+
+**Commits:** ninguno. `git add` falló con código 128 porque `.git` es de sólo
+lectura (`Unable to create .../.git/index.lock: Read-only file system`).
+Mensaje propuesto para el orquestador: `refactor(api): crear la aplicación al arrancar con factory`.
+No se hizo push.
+
+**Verificación final de alcance y reversiones**
+
+```text
+$ cd backend && date +%T && python3 /tmp/proptech-2-4/verificar.py
+10:10:25
+12 archivos cambiados, todos dentro del alcance; .gitignore y chmod sin cambios.
+tasks.md: sólo cambia 2.4; su casilla sigue [ ]; otras tareas idénticas a 8ca9441.
+app.py: único cambio = quitar la instancia global; crear_app y sus logs intactos.
+configuracion.py: idéntico a 8ca9441; 6 mutantes revertidos y documentados.
+17 consumidores originales: AST válida y fábrica explícita; integración sin ejecutar.
+[código de salida: 0]
+```
+
+**VERDE de whitespace del diff final**
+
+```text
+$ cd backend && date +%T && git diff --check
+10:10:26
+
+[código de salida: 0]
+```
+
+**VERDE fuera del sandbox, corrido por el orquestador (19/10/2026)**
+
+El bloqueo de `test_ataque_ruta.py:82` que anotó el constructor es del sandbox de Codex: fuera de él la misma orden termina.
+
+```text
+$ cd backend && uv run --offline pytest tests/unitarios tests/infra -q -p no:cacheprovider
+10:12:03
+834 passed, 1 warning in 58.31s
+
+$ bash infra/ci/test-backend.sh        # integración contra Postgres en contenedores
+10:13:07
+=========== 1030 passed, 1 xfailed, 16 warnings in 287.17s (0:04:47) ===========
+[código de salida: 0]
+
+$ bash infra/ci/humo.sh                # imagen con CMD --factory, healthcheck web en 127.0.0.1
+10:17:58
+HUMO OK
+[código de salida: 0]
+```
+
+Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el commit es el siguiente).
 
 ## 3. Modelo
 

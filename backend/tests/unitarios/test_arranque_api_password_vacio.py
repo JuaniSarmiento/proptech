@@ -29,7 +29,11 @@ def test_el_proceso_no_debe_arrancar_con_password_vacio() -> None:
     entorno["POSTGRES_DB"] = "proptech"
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app; print('ARRANCO')"],
+        [
+            sys.executable,
+            "-c",
+            "from proptech_api.app import crear_app; crear_app(); print('ARRANCO')",
+        ],
         env=entorno,
         capture_output=True,
         text=True,
@@ -41,3 +45,4 @@ def test_el_proceso_no_debe_arrancar_con_password_vacio() -> None:
         "el proceso arrancó con POSTGRES_APP_PASSWORD vacío en vez de terminar "
         f"nombrando el problema. stdout={resultado.stdout!r}"
     )
+    assert "POSTGRES_APP_PASSWORD" in resultado.stderr, resultado.stderr

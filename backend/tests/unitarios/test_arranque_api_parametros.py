@@ -25,7 +25,7 @@ def test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo(tmp_path: Path)
     entorno["PROPTECH_PARAMETROS"] = str(archivo)
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app"],
+        [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app()"],
         env=entorno,
         capture_output=True,
         text=True,
@@ -42,7 +42,7 @@ def test_el_proceso_termina_con_proptech_parametros_faltante_nombrando_la_variab
     entorno.pop("PROPTECH_PARAMETROS", None)
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app"],
+        [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app()"],
         env=entorno,
         capture_output=True,
         text=True,
@@ -59,7 +59,7 @@ def test_el_proceso_termina_con_proptech_parametros_vacia_nombrando_la_variable(
     entorno["PROPTECH_PARAMETROS"] = ""
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app"],
+        [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app()"],
         env=entorno,
         capture_output=True,
         text=True,

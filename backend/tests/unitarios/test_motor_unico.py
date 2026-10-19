@@ -23,10 +23,8 @@ def _puerto_libre_sin_servidor() -> int:
 
 
 def test_el_lifespan_crea_un_solo_engine_y_lo_descarta_al_cerrar() -> None:
-    # Import local (no al tope del módulo): `proptech_api.app` corre
-    # `Configuracion()` al importarse por primera vez, y el fixture autouse
-    # que pone las variables de entorno por defecto recién corre DESPUÉS de
-    # que pytest colecciona los módulos de test.
+    # La fábrica valida `Configuracion()` al llamarla; el fixture autouse
+    # ya puso las variables de entorno por defecto antes de crear la app.
     import proptech_api.app as app_mod
     from proptech_api import salud as salud_mod
 

@@ -70,7 +70,7 @@ def test_api_logea_arranque_fallido_si_falta_una_variable() -> None:
     entorno.setdefault("POSTGRES_DB", "proptech")
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app"],
+        [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app()"],
         env=entorno,
         capture_output=True,
         text=True,

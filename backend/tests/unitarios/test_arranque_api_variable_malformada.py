@@ -21,12 +21,12 @@ def test_el_proceso_nombra_la_variable_con_puerto_malformado() -> None:
     entorno = dict(os.environ)
     entorno["POSTGRES_HOST"] = "db"
     entorno["POSTGRES_PORT"] = "abc"  # presente, pero no es un entero válido
-    entorno["POSTGRES_USER"] = "proptech"
-    entorno["POSTGRES_PASSWORD"] = "proptech"
+    entorno["POSTGRES_APP_USER"] = "proptech_app"
+    entorno["POSTGRES_APP_PASSWORD"] = "proptech_app"
     entorno["POSTGRES_DB"] = "proptech"
 
     resultado = subprocess.run(
-        [sys.executable, "-c", "import proptech_api.app"],
+        [sys.executable, "-c", "from proptech_api.app import crear_app; crear_app()"],
         env=entorno,
         capture_output=True,
         text=True,

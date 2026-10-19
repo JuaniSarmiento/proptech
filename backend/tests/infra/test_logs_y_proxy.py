@@ -33,6 +33,7 @@ def test_dockerfile_backend_corre_uvicorn_sin_log_de_acceso_y_confiando_en_el_pr
     coincidencia = re.search(r"^CMD\s+(\[.*\])\s*$", texto, flags=re.MULTILINE)
     assert coincidencia is not None, "no se encontró un CMD en backend/Dockerfile"
     comando = yaml.safe_load(coincidencia.group(1))
+    assert comando[:3] == ["uvicorn", "--factory", "proptech_api.app:crear_app"], comando
     assert "--no-access-log" in comando, comando
     assert "--proxy-headers" in comando, comando
 

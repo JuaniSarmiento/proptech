@@ -18,4 +18,4 @@ COPY --from=build --chown=proptech:proptech /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 USER proptech
 EXPOSE 8000
-CMD ["uvicorn", "proptech_api.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--proxy-headers"]
+CMD ["uvicorn", "--factory", "proptech_api.app:crear_app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--proxy-headers"]

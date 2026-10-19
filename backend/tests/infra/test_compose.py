@@ -17,6 +17,12 @@ def _compose() -> dict[str, Any]:
     return datos
 
 
+def test_healthcheck_de_web_usa_loopback_ipv4() -> None:
+    comando = _compose()["services"]["web"]["healthcheck"]["test"]
+    assert comando[:3] == ["CMD", "node", "-e"], comando
+    assert "fetch('http://127.0.0.1:3000')" in comando[3], comando
+
+
 def test_compose_declara_nombre_de_proyecto_fijo() -> None:
     """Sin `name:`, Compose usa el nombre de la carpeta (`infra`) como proyecto, y
     `docker compose down -v --remove-orphans` en `humo.sh` opera sobre ese nombre

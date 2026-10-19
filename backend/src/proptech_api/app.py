@@ -110,6 +110,3 @@ def crear_app() -> FastAPI:
     # de este router ni el de cualquier otro que se agregue después.
     app.add_exception_handler(RequestValidationError, manejador_422)
     return app
-
-
-app = crear_app()

@@ -330,7 +330,7 @@ services:
       # Compose, fijo.
       PROPTECH_URL_API_INTERNA: http://api:8000
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 10
