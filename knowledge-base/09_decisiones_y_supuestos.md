@@ -1672,6 +1672,43 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   pantalla que se explica sola baja las preguntas al administrador, que es el éxito del producto.
 - **Quién**: Alberto, 17/10/2026; registrado por Juani.
 
+## D-103 · La base sostiene la pertenencia: una unidad y "Generales" no cambian de edificio (19/10/2026)
+
+- **Contexto**: en el 3a el rompedor mostró que, como `proptech_app`, por SQL se podía mudar una unidad
+  a otro edificio de la misma administración (R3B-5), y el revisor de DBA, que se podía mudar el grupo
+  "Generales" (RF-D-1). La API ya lo impedía; la FK compuesta sólo frenaba el cambio de administración.
+- **Decisión**: la base rechaza, con trigger, todo cambio de `complejo_id` o `administracion_id` de una
+  unidad (migración 0014) y del grupo "Generales" (0015). La spec `edificios-y-unidades` se endureció
+  en ese sentido.
+- **Descartado**: dejarlo sólo en la API (la base es la última línea y no confía en la aplicación; es el
+  mismo criterio que R3A-3 y D9).
+- **Excepción decidida**: la regla "una versión de configuración rige desde hoy en Mendoza o después" se
+  queda en la aplicación; la base acepta fechas pasadas porque la migración de historia de edificios
+  reales (change 7) las va a necesitar.
+- **Quién**: Juani, 19/10/2026.
+
+## D-104 · Reglas de texto libre del 3a (19/10/2026)
+
+- **Contexto**: las vueltas de rompedor del 3a (R3A-1, R3A-6, R3B-1, R3B-7, R3B-8, R3B-9) encontraron
+  textos con caracteres de control, invisibles, surrogates y espacios al borde que daban 500 o
+  duplicados que se ven iguales. Las reglas las propuso el constructor (Codex) y las firmó Juani.
+- **Decisión**:
+  - Todo texto libre (nombres de edificio, grupo y categoría, localidad, identificador y piso) rechaza con
+    422 los caracteres Unicode Cc, Cf, Cs, Co, Cn, Zl, Zp y Default_Ignorable; conserva letras, acentos
+    combinantes y espacios comunes; no hace NFC ni toca espacios internos (`compartido/texto.py`).
+  - Los espacios al borde se **recortan** (no se rechazan); un texto que queda vacío se rechaza. La semilla
+    usa la misma función que la API.
+  - La migración 0013 recortó los datos ya guardados (su downgrade no repone los espacios) y aborta si
+    el recorte produce un duplicado; triggers recortan también las escrituras por SQL.
+  - Alta y edición de un mismo campo tienen las mismas reglas (nombre de categoría: 80 caracteres en
+    ambos); identificador de unidad de 1 a 40 caracteres.
+  - Un 422 por campo no permitido nombra la clave sólo si es un nombre de campo razonable; si no, dice
+    "campo no permitido". Nunca repite el valor.
+- **Aceptado como está**: un entero JSON de más de 4300 dígitos da 400 (no 422), sin eco ni 500; en el
+  alta de grupo, D6 no ordena el 409 de clave repetida contra el 422 de unidades.
+- **Nombres**: el rango del recargo del segundo vencimiento vive en `vencimiento.rango_recargo.{minimo,maximo}`.
+- **Quién**: Juani, 19/10/2026, sobre la propuesta del constructor y las auditorías del 3a.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había
