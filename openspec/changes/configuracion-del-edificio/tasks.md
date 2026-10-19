@@ -1242,6 +1242,55 @@ $ cd backend && uv run pytest tests/integracion/test_grupos_casos_de_uso.py test
 35 passed in 11.48s
 ```
 
+## Vuelta 2 de correcciones (R3B)
+
+Correcciones autorizadas por Juani, 19/10/2026, sobre `a64172f`.
+Los tests originales quedan íntegros en `.git/informes-3a/correcciones-v2/tests-originales/`.
+R3B-5 queda pendiente de decisión, sin cambios de producción ni inclusión en la suite verde.
+
+### R3B-1 y R3B-7 · Texto Unicode seguro
+
+- [x] Familia de altas y PATCH: 422 saneado, sin eco del valor; tests originales movidos a
+  `test_texto_unicode_seguro.py` (integración y unitarios), ampliados a nombres/localidad/piso.
+Regla declarada en `texto.py`: rechazar Cc/Cf/Cs/Co/Cn, Zl/Zp y Default_Ignorable Mn/Lo
+(tabla Unicode 17 enlazada en el código). Se conservan letras, acentos combinantes y espacios Zs;
+no se hace NFC ni se cambian espacios internos. El recorte al borde sigue siendo el de R3A-6.
+**ROJO** (incluye los surrogates y Cf del rompedor; familia ampliada):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_unicode_seguro.py tests/unitarios/test_texto_unicode_seguro.py -q --tb=line --color=no
+14:20:02
+FAILED tests/unitarios/test_texto_unicode_seguro.py::test_texto_no_representable_o_invisible_se_rechaza_sin_repetirlo[sin_caracteres_de_control-\U000e0100]
+69 failed, 20 passed, 1 warning in 20.89s
+14:20:26 [exit 1]
+```
+**VERDE** (incluye la regresión de R3A-1/6):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_texto_unicode_seguro.py tests/unitarios/test_texto_unicode_seguro.py tests/integracion/test_texto_sin_caracteres_de_control.py tests/integracion/test_texto_recortado_en_el_borde.py -q --tb=line --color=no
+14:20:43
+104 passed, 1 warning in 26.65s
+14:21:13 [exit 0]
+```
+Control nacido verde: mutante con copia previa `texto.pre-mutante.py`, revertido en `finally`:
+```diff
+-    if _tiene_caracter_de_control(valor):
++    if True:
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_texto_unicode_seguro.py -k visible_se_conserva -q --tb=line --color=no
+14:21:33
+FAILED tests/unitarios/test_texto_unicode_seguro.py::test_texto_visible_se_conserva[1 A]
+5 failed, 46 deselected in 0.03s
+14:21:34 [exit 1]
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_texto_unicode_seguro.py -q --tb=line --color=no
+14:21:34
+51 passed in 0.06s
+14:21:35 [exit 0]
+```
+
+<!-- evidencia-r3b -->
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
