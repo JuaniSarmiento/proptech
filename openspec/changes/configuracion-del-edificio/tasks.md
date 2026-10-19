@@ -1179,7 +1179,40 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   uv run ruff check . && uv run ruff format --check . && uv run mypy
   All checks passed! / 172 files already formatted / Success: no issues found in 160 source files
   ```
-- [ ] 3.5 **Tablas de sólo agregar en el paso de roles** (D16, B2, L-018), en `backend/src/proptech_core/compartido/roles.py` (si `main` lo volvió a tocar desde el rebase del 16/10, rebasar antes): `_TABLAS_DE_SOLO_AGREGAR`; `antes()` las saltea al otorgar permisos a la app; `despues()` hace `REVOKE UPDATE, DELETE, TRUNCATE` y `GRANT SELECT, INSERT` sobre cada una. El guardián `tests/integracion/test_catalogo_rls.py` se ajusta: acepta una tabla de la lista sólo con exactamente `SELECT, INSERT` y sólo si su trigger rechaza un `UPDATE` de verdad (caja negra); toda otra tabla con `administracion_id` sigue necesitando los cuatro permisos (L-020). **Rojo** con una tabla de prueba de sólo agregar y el `roles.py` de hoy: después de **dos `up`** (`roles antes`, migraciones, `roles despues`, dos veces), sobre una copia (L-013) con el trigger deshabilitado, `UPDATE` como `proptech_app` pasa; después del arreglo, `UPDATE` y `DELETE` dan "permission denied". Rojo del guardián: una tabla en la lista sin trigger hace fallar el guardián. Escenarios: `configuracion-versionada` › Editar una versión después de otro arranque. Lecciones: L-013, L-016, L-018, L-020.
+- [x] 3.5 **Tablas de sólo agregar en el paso de roles** (D16, B2, L-018), en `backend/src/proptech_core/compartido/roles.py` (si `main` lo volvió a tocar desde el rebase del 16/10, rebasar antes): `_TABLAS_DE_SOLO_AGREGAR`; `antes()` las saltea al otorgar permisos a la app; `despues()` hace `REVOKE UPDATE, DELETE, TRUNCATE` y `GRANT SELECT, INSERT` sobre cada una. El guardián `tests/integracion/test_catalogo_rls.py` se ajusta: acepta una tabla de la lista sólo con exactamente `SELECT, INSERT` y sólo si su trigger rechaza un `UPDATE` de verdad (caja negra); toda otra tabla con `administracion_id` sigue necesitando los cuatro permisos (L-020). **Rojo** con una tabla de prueba de sólo agregar y el `roles.py` de hoy: después de **dos `up`** (`roles antes`, migraciones, `roles despues`, dos veces), sobre una copia (L-013) con el trigger deshabilitado, `UPDATE` como `proptech_app` pasa; después del arreglo, `UPDATE` y `DELETE` dan "permission denied". Rojo del guardián: una tabla en la lista sin trigger hace fallar el guardián. Escenarios: `configuracion-versionada` › Editar una versión después de otro arranque. Lecciones: L-013, L-016, L-018, L-020.
+
+  Evidencia 19/10/2026 (3.5):
+  ```text
+  RED: cd backend && date +%T; uv run pytest tests/integracion/test_roles_solo_agregar.py tests/integracion/test_catalogo_rls.py -q --tb=short
+  10:51:27
+  E Failed: DID NOT RAISE InsufficientPrivilege (UPDATE y DELETE tras dos up, trigger deshabilitado)
+  E AssertionError: ['zz_solo_agregar: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE']
+  7 failed, 7 passed in 15.40s
+  ```
+  Guardián: exige los siete privilegios de tabla, exactamente SELECT/INSERT. Para llegar al
+  trigger como app sin confundirlo con la capa de permisos, otorga UPDATE temporal dentro de
+  un SAVEPOINT; SET LOCAL ROLE comprueba app sin superusuario/BYPASSRLS, y revierte permiso,
+  tenant y filas. Sólo el error P0001 esperado de ese UPDATE cuenta como bloqueo.
+  Mutante L-020 sobre copia previa `.atl/bloque-c/guardian.pre-mutante.py` (sin commit):
+  ```diff
+  -            elif not _app_tiene_los_cuatro_permisos(cur, tabla):
+  +            elif tabla in _TABLAS_DE_SOLO_AGREGAR and not _app_tiene_los_cuatro_permisos(cur, tabla):
+  ```
+  ```text
+  cd backend && date +%T; uv run pytest tests/integracion/test_catalogo_rls.py::test_tabla_fuera_de_la_lista_con_solo_select_insert_se_rechaza -q --tb=short
+  10:53:03
+  E AssertionError: assert [] == ['zz_ordinaria_con_permisos_incompletos: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE']
+  1 failed in 3.68s
+  Mutante revertido y comparación byte a byte con la copia previa: idéntica.
+  GREEN: cd backend && date +%T; uv run pytest tests/integracion/test_roles_solo_agregar.py tests/integracion/test_catalogo_rls.py tests/integracion/test_roles.py tests/integracion/test_auditoria_tabla.py -q --tb=short
+  10:53:12
+  60 passed in 85.34s (0:01:25)
+  Tras acotar el except a la sentencia UPDATE, nueva corrida del guardián y puertas:
+  cd backend && date +%T; uv run pytest tests/integracion/test_catalogo_rls.py -q --tb=short && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:53:55
+  12 passed in 5.64s
+  All checks passed! / 173 files already formatted / Success: no issues found in 161 source files
+  ```
 - [ ] 3.6 Migración de la configuración versionada (D2, D3, E4, E9): columnas de R03 y R15, el vencimiento (`dia_de_vencimiento` del 1 al 28, `modalidad_de_vencimiento`, `dia_segundo_vencimiento` y `recargo_segundo_vencimiento` nulos) con los `CHECK` de rango de `parametros.py` y el `CHECK` de coherencia; `UNIQUE` por fecha de vigencia, autor con FK compuesta a `persona`, la tabla en `_TABLAS_DE_SOLO_AGREGAR` (3.5) y trigger que rechaza `UPDATE`, `DELETE` y `TRUNCATE`. `parametros.yaml` y `Parametros` suman el vencimiento (día por defecto, modalidad, rango del recargo), con rojo primero. Tests que **intentan** editar (L-018): `UPDATE`, `DELETE` y `TRUNCATE` como `proptech_app` y como `proptech_migrador` se rechazan y la fila queda igual; dos `INSERT` con la misma fecha en transacciones concurrentes, uno falla; día 0 y 29 fallan; doble sin recargo, único con recargo, segundo día igual al primero, fallan; `downgrade` y `upgrade`. Escenarios: `configuracion-versionada` › Editar una versión por SQL; › Dos pedidos simultáneos (la parte de la base); › Vencimiento incoherente por SQL. Lecciones: L-016, L-018.
 - [ ] 3.7 Vocabulario y matriz (D5, D14, E3, E7, B5): `Accion` suma `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`, `configurar_padron` y `ver_configuracion_del_edificio`; `0004` congelada con la lista literal de las acciones del 2a y la migración nueva con su lista literal, sin importar `Accion`; la matriz con el reparto de E3 y la lectura (vecino no); `puede` acepta `complejo_id=None` sólo para `crear_edificio`. Tests: la matriz celda por celda para los cinco perfiles, incluidas las acciones del 2a; cada otra acción con `None` se niega; una base vacía con `upgrade head` deja `accion_de_auditoria` igual a `{a.value for a in Accion}` (rojo: con el 0004 de hoy, la migración nueva choca con la clave primaria); el arranque real con las migraciones nuevas no frena por D-2 (ninguna FK hacia `auditoria`). Escenarios: `autorizacion-por-rol` › La matriz completa. Lecciones: L-016.
 

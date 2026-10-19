@@ -51,6 +51,9 @@ _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset(
     {"alembic_version", "auditoria", "accion_de_auditoria"}
 )
 
+# D16: la auditoría conserva su tratamiento y dueño propios (D9).
+_TABLAS_DE_SOLO_AGREGAR = frozenset({"configuracion_versionada"})
+
 
 def _conectar(configuracion: ConfiguracionDeArranque) -> psycopg.Connection:
     """Conecta con el rol de arranque. La contraseña real sale de `URL.password`,
@@ -204,7 +207,7 @@ def _otorgar_permisos_explicitos_a_la_app(cur: psycopg.Cursor, app: str) -> None
     recibe "permission denied" aunque esos DEFAULT PRIVILEGES ya estén
     (punto 2 del arquitecto, D2)."""
     for tabla in _tablas_de_public(cur):
-        if tabla in _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP:
+        if tabla in _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP | _TABLAS_DE_SOLO_AGREGAR:
             continue
         cur.execute(
             sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {tabla} TO {app};").format(
@@ -651,6 +654,18 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
     conexion = _conectar(configuracion)
     try:
         with conexion.cursor() as cur:
+            for tabla in sorted(_TABLAS_DE_SOLO_AGREGAR):
+                if _existe_tabla(cur, tabla):
+                    cur.execute(
+                        sql.SQL("REVOKE UPDATE, DELETE, TRUNCATE ON {} FROM {}").format(
+                            sql.Identifier(tabla), sql.Identifier(app.postgres_user)
+                        )
+                    )
+                    cur.execute(
+                        sql.SQL("GRANT SELECT, INSERT ON {} TO {}").format(
+                            sql.Identifier(tabla), sql.Identifier(app.postgres_user)
+                        )
+                    )
             if not _existe_tabla(cur, "auditoria"):
                 return
 

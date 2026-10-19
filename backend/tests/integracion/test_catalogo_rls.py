@@ -16,10 +16,14 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg import sql
 from testcontainers.community.postgres import PostgresContainer
+
+from proptech_core.compartido.roles import _TABLAS_DE_SOLO_AGREGAR
 
 pytestmark = pytest.mark.integracion
 
@@ -112,6 +116,78 @@ def _tiene_fk_compuesta_a_complejo(cur: psycopg.Cursor, tabla: str) -> bool:
     return any(patron.search(definicion) for definicion in definiciones)
 
 
+def _app_tiene_solo_select_insert(cur: psycopg.Cursor, tabla: str) -> bool:
+    permisos = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER")
+    return all(
+        cur.execute("SELECT has_table_privilege(%s, %s, %s)", (APP_USER, tabla, permiso)).fetchone()
+        == (permiso in {"SELECT", "INSERT"},)
+        for permiso in permisos
+    )
+
+
+def _trigger_rechaza_update_como_app(cur: psycopg.Cursor, tabla: str) -> bool:
+    """Dos capas independientes: permiso temporal sólo dentro del SAVEPOINT.
+
+    El cursor de catálogo conecta como arranque para preparar la sonda; la
+    escritura conecta por SET LOCAL ROLE a la app sin BYPASSRLS. Ni permiso,
+    ni tenant, ni filas de prueba sobreviven al ROLLBACK.
+    """
+    cur.execute("SAVEPOINT sonda_solo_agregar")
+    try:
+        admin, complejo, persona = uuid4(), uuid4(), uuid4()
+        cur.execute("SELECT set_config('app.administracion_id', %s, true)", (str(admin),))
+        if tabla == "configuracion_versionada":
+            cur.execute(
+                "INSERT INTO administracion (id, nombre) VALUES (%s, 'Sonda ficticia')", (admin,)
+            )
+            cur.execute(
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, 'Sonda ficticia', 'Mendoza')",
+                (complejo, admin),
+            )
+            cur.execute(
+                "INSERT INTO persona (id, administracion_id, nombre) "
+                "VALUES (%s, %s, 'Sonda ficticia')",
+                (persona, admin),
+            )
+            cur.execute(
+                "INSERT INTO configuracion_versionada "
+                "(administracion_id, complejo_id, autor_id, vigente_desde, tasa_mensual, "
+                "dias_de_gracia, forma_de_calculo, porcentaje_fondo, dia_de_vencimiento, "
+                "modalidad_de_vencimiento) VALUES (%s, %s, %s, CURRENT_DATE, '3.00', 0, "
+                "'proporcional_por_dia', '0.00', 10, 'unico')",
+                (admin, complejo, persona),
+            )
+        else:
+            cur.execute(
+                sql.SQL("INSERT INTO {} (administracion_id) VALUES (%s)").format(
+                    sql.Identifier(tabla)
+                ),
+                (admin,),
+            )
+        cur.execute(
+            sql.SQL("GRANT UPDATE ON {} TO {}").format(
+                sql.Identifier(tabla), sql.Identifier(APP_USER)
+            )
+        )
+        cur.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(APP_USER)))
+        assert cur.execute(
+            "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
+        ).fetchone() == (APP_USER, False, False)
+        try:
+            cur.execute(
+                sql.SQL("UPDATE {} SET administracion_id = administracion_id").format(
+                    sql.Identifier(tabla)
+                )
+            )
+        except psycopg.Error as error:
+            return error.sqlstate == "P0001" and f"{tabla} no admite" in str(error)
+    finally:
+        cur.execute("ROLLBACK TO SAVEPOINT sonda_solo_agregar")
+        cur.execute("RELEASE SAVEPOINT sonda_solo_agregar")
+    return False
+
+
 def revisar_catalogo(cur: psycopg.Cursor) -> list[str]:
     """Las tres reglas de D5. Devuelve una lista de problemas, cada uno
     nombrando la tabla; vacía si todo cumple."""
@@ -128,7 +204,12 @@ def revisar_catalogo(cur: psycopg.Cursor) -> list[str]:
                     f"{tabla}: no tiene política contra current_setting('app.administracion_id', "
                     f"true) sobre {columna_aislante}, o le falta el segundo argumento"
                 )
-            if not _app_tiene_los_cuatro_permisos(cur, tabla):
+            if tabla in _TABLAS_DE_SOLO_AGREGAR:
+                if not _app_tiene_solo_select_insert(cur, tabla):
+                    problemas.append(f"{tabla}: proptech_app debe tener exactamente SELECT/INSERT")
+                if not _trigger_rechaza_update_como_app(cur, tabla):
+                    problemas.append(f"{tabla}: el trigger no rechaza UPDATE como proptech_app")
+            elif not _app_tiene_los_cuatro_permisos(cur, tabla):
                 problemas.append(
                     f"{tabla}: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE"
                 )
@@ -224,13 +305,22 @@ def _conectar_como_migrador(contenedor: PostgresContainer) -> psycopg.Connection
 def test_el_esquema_real_no_tiene_ningun_problema(
     contenedor: PostgresContainer, esquema: None
 ) -> None:
-    conexion = _conectar_como_migrador(contenedor)
-    try:
-        with conexion.cursor() as cur:
-            problemas = revisar_catalogo(cur)
-    finally:
-        conexion.close()
+    problemas = _revisar_como_arranque(contenedor)
     assert problemas == []
+
+
+def _revisar_como_arranque(contenedor: PostgresContainer) -> list[str]:
+    with (
+        psycopg.connect(
+            host=contenedor.get_container_host_ip(),
+            port=contenedor.get_exposed_port(5432),
+            user=ARRANQUE_USER,
+            password=ARRANQUE_PASSWORD,
+            dbname=contenedor.dbname,
+        ) as conexion,
+        conexion.cursor() as cur,
+    ):
+        return revisar_catalogo(cur)
 
 
 # --- Los cinco rojos (L-013): una tabla de prueba por escenario, nunca la migración real ---
@@ -242,7 +332,7 @@ def _crear_y_revisar(contenedor: PostgresContainer, nombre_tabla: str, ddl: list
         with conexion.cursor() as cur:
             for sentencia in ddl:
                 cur.execute(sentencia)
-            problemas = revisar_catalogo(cur)
+            problemas = _revisar_como_arranque(contenedor)
     finally:
         with conexion.cursor() as cur:
             cur.execute(f'DROP TABLE IF EXISTS "{nombre_tabla}"')
@@ -362,3 +452,72 @@ def test_rojo_complejo_id_nulo_o_sin_fk(contenedor: PostgresContainer, esquema: 
     assert any(tabla in p and "complejo_id" in p for p in problemas), problemas
     assert not any(tabla in p and "forzada" in p for p in problemas), problemas
     assert not any(tabla in p and "no tiene política" in p for p in problemas), problemas
+
+
+@pytest.mark.parametrize(
+    "defecto", ["ninguno", "sin_trigger", "trigger_inerte", "permiso_extra", "sin_insert"]
+)
+def test_excepcion_solo_agregar_exige_permisos_exactos_y_bloqueo_real(
+    contenedor: PostgresContainer, esquema: None, monkeypatch: pytest.MonkeyPatch, defecto: str
+) -> None:
+    tabla = "zz_solo_agregar"
+    monkeypatch.setitem(globals(), "_TABLAS_DE_SOLO_AGREGAR", frozenset({tabla}))
+    condicion = _condicion_valida()
+    ddl = [
+        f'CREATE TABLE "{tabla}" (id uuid DEFAULT gen_random_uuid(), '
+        "administracion_id uuid NOT NULL)",
+        f'ALTER TABLE "{tabla}" ENABLE ROW LEVEL SECURITY',
+        f'ALTER TABLE "{tabla}" FORCE ROW LEVEL SECURITY',
+        f'CREATE POLICY aislamiento ON "{tabla}" USING ({condicion}) WITH CHECK ({condicion})',
+        f'REVOKE ALL ON "{tabla}" FROM {APP_USER}',
+        f'GRANT SELECT, INSERT ON "{tabla}" TO {APP_USER}',
+    ]
+    if defecto != "sin_trigger":
+        cuerpo = (
+            "RETURN NEW;"
+            if defecto == "trigger_inerte"
+            else f"RAISE EXCEPTION '{tabla} no admite cambios';"
+        )
+        ddl += [
+            "CREATE OR REPLACE FUNCTION fn_sonda() RETURNS trigger LANGUAGE plpgsql "
+            f"AS $$ BEGIN {cuerpo} END $$",
+            f'CREATE TRIGGER bloqueo BEFORE UPDATE ON "{tabla}" '
+            "FOR EACH ROW EXECUTE FUNCTION fn_sonda()",
+        ]
+    if defecto == "permiso_extra":
+        ddl.append(f'GRANT TRUNCATE ON "{tabla}" TO {APP_USER}')
+    if defecto == "sin_insert":
+        ddl.append(f'REVOKE INSERT ON "{tabla}" FROM {APP_USER}')
+    try:
+        problemas = [
+            p for p in _crear_y_revisar(contenedor, tabla, ddl) if p.startswith(f"{tabla}:")
+        ]
+    finally:
+        with _conectar_como_migrador(contenedor) as conexion:
+            conexion.execute("DROP FUNCTION IF EXISTS fn_sonda()")
+    if defecto == "ninguno":
+        assert problemas == []
+    elif defecto in {"sin_trigger", "trigger_inerte"}:
+        assert any("trigger" in p for p in problemas), problemas
+    else:
+        assert any("exactamente SELECT/INSERT" in p for p in problemas), problemas
+
+
+def test_tabla_fuera_de_la_lista_con_solo_select_insert_se_rechaza(
+    contenedor: PostgresContainer, esquema: None
+) -> None:
+    tabla = "zz_ordinaria_con_permisos_incompletos"
+    condicion = _condicion_valida()
+    problemas = _crear_y_revisar(
+        contenedor,
+        tabla,
+        [
+            f'CREATE TABLE "{tabla}" (administracion_id uuid NOT NULL)',
+            f'ALTER TABLE "{tabla}" ENABLE ROW LEVEL SECURITY',
+            f'ALTER TABLE "{tabla}" FORCE ROW LEVEL SECURITY',
+            f'CREATE POLICY aislamiento ON "{tabla}" USING ({condicion}) WITH CHECK ({condicion})',
+            f'REVOKE ALL ON "{tabla}" FROM {APP_USER}',
+            f'GRANT SELECT, INSERT ON "{tabla}" TO {APP_USER}',
+        ],
+    )
+    assert problemas == [f"{tabla}: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE"]
