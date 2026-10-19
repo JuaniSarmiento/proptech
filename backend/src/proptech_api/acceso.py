@@ -48,15 +48,31 @@ def _exigir_identidad(identidad: Identidad = Depends(identidad_actual)) -> None:
     """Árbol reducido: sólo identidad, nunca sesión ni SQL de dominio."""
 
 
+#: RF-B-2 (revisión final, 19/10/2026): el `detail` exacto con el que
+#: FastAPI envuelve CUALQUIER excepción no-HTTPException al parsear el
+#: cuerpo (`fastapi/routing.py`, `except Exception: ... HTTPException(
+#: status_code=400, detail="There was an error parsing the body")`).
+#: Antes, `con_identidad` sólo miraba `status_code == 400`: un endpoint
+#: que levanta su propio `HTTPException(400, ...)` por un motivo de
+#: dominio (nunca de parseo) hacía que la identidad se resolviera DOS
+#: veces, contradiciendo D6 ("en el camino que parsea bien, la resolución
+#: habitual se ejecuta una sola vez"). Comparar por el `detail` exacto,
+#: no sólo por el código, distingue el 400 de parseo real del de dominio.
+_DETALLE_DEL_ERROR_DE_PARSEO_DEL_CUERPO = "There was an error parsing the body"
+
+
 class RutaConIdentidad(APIRoute):
     """D6: un error del parser nunca se entrega antes del 401.
 
-    FastAPI parsea JSON antes de resolver dependencias. Si ese parseo falla,
-    se resuelve sólo identidad con el mismo solver (incluidos overrides y
-    dependencias anidadas) antes de devolver el error. En pedidos que parsean,
-    FastAPI resuelve todo normalmente: no se autentica dos veces ni se toca
-    la base en esta barrera. Las dependencias explícitas de cada ruta siguen
-    siendo obligatorias y verificadas por el barrido.
+    FastAPI parsea JSON antes de resolver dependencias. Si ESE parseo falla
+    (nunca cualquier otro 400: RF-B-2, revisión final 19/10/2026, se compara
+    por el `detail` exacto de FastAPI, no sólo por el código), se resuelve
+    sólo identidad con el mismo solver (incluidos overrides y dependencias
+    anidadas) antes de devolver el error. En pedidos que parsean, incluido
+    un 400 que el propio endpoint levanta por un motivo de dominio, FastAPI
+    resuelve todo normalmente: no se autentica dos veces ni se toca la base
+    en esta barrera. Las dependencias explícitas de cada ruta siguen siendo
+    obligatorias y verificadas por el barrido.
     """
 
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
@@ -70,7 +86,10 @@ class RutaConIdentidad(APIRoute):
                 fallo_de_parseo = (
                     any(e["type"] == "json_invalid" for e in error.errors())
                     if isinstance(error, RequestValidationError)
-                    else error.status_code == 400
+                    else (
+                        error.status_code == 400
+                        and error.detail == _DETALLE_DEL_ERROR_DE_PARSEO_DEL_CUERPO
+                    )
                 )
                 if fallo_de_parseo:
                     async with AsyncExitStack() as pila:
