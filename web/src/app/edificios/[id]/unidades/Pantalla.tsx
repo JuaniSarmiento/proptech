@@ -100,33 +100,35 @@ export function PantallaPadron({
       {unidades.length === 0 ? (
         <Estados tipo="vacio" mensaje="Todavía no cargaste unidades" accion={botonAgregar} />
       ) : (
-        <table className="padron-de-unidades">
-          <caption className="sr-only">Unidades del edificio</caption>
-          <thead>
-            <tr>
-              <th>Identificador</th>
-              <th>Tipo</th>
-              <th>Piso</th>
-              <th className="numero-tabular">Superficie (m²)</th>
-              <th className="numero-tabular">Coeficiente</th>
-            </tr>
-          </thead>
-          <tbody>
-            {unidades.map((unidad) => (
-              <tr key={unidad.id}>
-                <td>
-                  <button type="button" onClick={(e) => abrirEdicion(unidad, e)}>
-                    {unidad.identificador}
-                  </button>
-                </td>
-                <td>{unidad.tipo}</td>
-                <td>{unidad.piso}</td>
-                <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
-                <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>
+        <div className="padron-de-unidades__scroll">
+          <table className="padron-de-unidades">
+            <caption className="sr-only">Unidades del edificio</caption>
+            <thead>
+              <tr>
+                <th>Identificador</th>
+                <th>Tipo</th>
+                <th>Piso</th>
+                <th className="numero-tabular">Superficie (m²)</th>
+                <th className="numero-tabular">Coeficiente</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {unidades.map((unidad) => (
+                <tr key={unidad.id}>
+                  <td>
+                    <button type="button" onClick={(e) => abrirEdicion(unidad, e)}>
+                      {unidad.identificador}
+                    </button>
+                  </td>
+                  <td>{unidad.tipo}</td>
+                  <td>{unidad.piso}</td>
+                  <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
+                  <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <PanelLateral

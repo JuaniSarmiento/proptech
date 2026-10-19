@@ -11,6 +11,19 @@ import { resumenDelEdificio } from "../../lib/api/resumen";
 import { crearEdificioAction } from "./acciones";
 import { type EdificioConEstado, PantallaMisEdificios } from "./Pantalla";
 
+/**
+ * SIN esto, Next.js intenta pre-renderizar esta ruta en `next build`
+ * porque no tiene segmento dinámico (`[id]`), y la cachea como página
+ * estática con lo que haya dado el `fetch` en ESE momento del build —
+ * antes de que la API (o la API falsa) esté levantada. Gotcha real, visto
+ * en Playwright (bloque C, 4.1): `next start` servía para siempre "No
+ * pudimos cargar tus edificios.", la respuesta congelada de un `fetch`
+ * fallido en build time, sin volver a pedir nada en ningún request real.
+ * Las rutas `/edificios/[id]/...` no lo necesitan: el segmento dinámico
+ * ya las vuelve dinámicas por sí solo.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function PaginaMisEdificios() {
   const lista = await listaDeEdificios();
 

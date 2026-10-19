@@ -62,6 +62,22 @@ body {
   text-align: right;
 }
 
+/* Visible sólo para lectores de pantalla (patrón estándar): `Ayuda.tsx`
+   (3.6) ya usaba esta clase, pero nunca se había definido — el texto
+   quedaba mostrado a la vista en vez de oculto. Nunca `display: none`
+   (eso lo sacaría también del árbol de accesibilidad). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Panel lateral y ayuda (D8, tarea 3.6): plano por defecto, sin sombra
    salvo abiertos; sólo confirman el cambio de estado con `opacity`, nunca
    con una propiedad de layout, y respetan `prefers-reduced-motion`. */
@@ -72,4 +88,115 @@ body {
   box-shadow: 0 2px 8px oklch(22% 0.012 55 / 15%);
   opacity: 1;
   transition: opacity var(--duracion-transicion) ease-out;
+}
+
+/* Layout de las pantallas del edificio (D10, tarea 4.1-4.4): menú fijo a
+   la izquierda desde ~768 px; por debajo se pliega a "Secciones" (el
+   estado ya lo maneja `MenuDelEdificio`, acá sólo se traduce a CSS). A
+   320 px nada de esto puede generar scroll horizontal de la página
+   entera (gotcha real, visto en Playwright): la tabla del padrón scrollea
+   ADENTRO de su propio contenedor, nunca la página. */
+.armazon-del-edificio {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.menu-del-edificio__lista {
+  display: none;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.menu-del-edificio__lista[data-abierto="true"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .armazon-del-edificio {
+    flex-direction: row;
+  }
+
+  .menu-del-edificio {
+    flex: 0 0 14rem;
+  }
+
+  .menu-del-edificio__boton {
+    display: none;
+  }
+
+  .menu-del-edificio__lista {
+    display: flex;
+  }
+
+  .armazon-del-edificio__contenido {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.encabezado-de-pantalla {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.encabezado-de-pantalla__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Botón principal (D8, "El recibo prolijo"): el único acento terracota de
+   cada pantalla, nunca más de uno por vista (The One Voice Rule). */
+.boton-principal {
+  background-color: var(--color-terracota);
+  color: var(--color-papel);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+
+.lista-de-edificios,
+.grupos-de-reparto {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lista-de-edificios__fila a,
+.grupos-de-reparto__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+/* La tabla del padrón (D6, tarea 4.3): este contenedor scrollea para sí
+   mismo con `overflow-x: auto` — así una tabla ancha (5 columnas, hasta
+   200 filas) nunca empuja el ancho de la página entera a 320 px. */
+.padron-de-unidades__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.padron-de-unidades {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.padron-de-unidades th,
+.padron-de-unidades td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--color-grafito);
+  white-space: nowrap;
 }

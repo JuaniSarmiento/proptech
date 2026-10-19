@@ -77,6 +77,16 @@ describe("api-falsa", () => {
     expect(grupos).toEqual([]);
   });
 
+  it('vacío: el informe es el real de "cero unidades" (nunca null — gotcha visto en Playwright, bloque C: la API real `informar_coeficientes([])` siempre da un informe bien formado, nunca null, y una pantalla que confía en el tipo no-nulable de D4 rompe si acá se manda null)', async () => {
+    const id = idDe("vacio");
+    const unidades = await (await fetch(`${base}/api/complejos/${id}/unidades`)).json();
+    expect(unidades.informe).toEqual({
+      suma: "0.000000",
+      diferencia: "-1.000000",
+      estado: "fuera_de_tolerancia",
+    });
+  });
+
   it("advertencia y fuera de tolerancia mutan el informe (nunca el archivo real)", async () => {
     const resumenAdvertencia = await (
       await fetch(`${base}/api/complejos/${idDe("advertencia")}/resumen`)

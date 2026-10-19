@@ -63,7 +63,17 @@ function unidadSintetica(indice: number) {
  * el archivo): cada pedido parte de una copia nueva (`leerFixture`). */
 function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, datos: Json): Json {
   if (claveEscenario === "vacio") {
-    if (nombreFixture === "unidades") return { informe: null, unidades: [] };
+    // El informe de "cero unidades" NUNCA es `null`: la API real
+    // (`informar_coeficientes([])`) siempre da un informe bien formado
+    // (suma 0, diferencia -1, fuera de tolerancia) — `Padron.informe` no es
+    // nulable (D4). Gotcha real, visto romper una pantalla en Playwright
+    // (bloque C, 4.3): `null` acá hacía que `EstadoDeCoeficientes` leyera
+    // `.estado` de `null` durante el render.
+    if (nombreFixture === "unidades")
+      return {
+        informe: informeConEstado("fuera_de_tolerancia", "-1.000000", "0.000000"),
+        unidades: [],
+      };
     if (nombreFixture === "grupos") return [];
     if (nombreFixture === "categorias") return [];
     if (nombreFixture === "versiones") return [];

@@ -145,6 +145,34 @@ HUMO OK
 - [ ] 4.6 **Intereses y vencimiento** (`/edificios/[id]/configuracion`): vigente arriba (tasa, fondo, vencimiento único o doble con día y recargo); historial como línea de tiempo con vigencia, autor (`autor_nombre`) y campos cambiados respecto de la anterior (comparación de textos, no de números); "Cambiar configuración" en el panel con "rige desde" (mínimo hoy en Mendoza) y el aviso de que la versión anterior no se borra; 422 de recargo o día en su campo; 403 para un colaborador. Rojo primero: el historial con la tasa como campo cambiado. Escenarios: `pantallas-del-edificio` › Cambiar la tasa; › Sin permiso.
 - [ ] 4.7 **Confirmar "sin saldos previos"** (`/edificios/[id]/saldos-previos`, D11): explicación en castellano simple, "no se puede deshacer", casilla que habilita el botón; enviar sin tildar (teclado o envío directo) no llama a la API y deja el error asociado a la casilla; con el estado ya confirmado muestra el estado; 409 si otro lo confirmó en el medio. Rojo primero: el envío sin tildar no llama a la acción. Escenarios: `pantallas-del-edificio` › Sin tildar la casilla; › Ya confirmado.
 
+**Cierre del bloque C (4.1-4.4)**: barrido real de las cuatro pantallas nuevas con `test-web-navegador.sh`
+(`web/e2e/bloque-c.spec.ts`, 320 px + contenido real contra la API falsa; NO es el generador "sin huecos"
+de 5.1, que sigue pendiente). Tres hallazgos reales, los tres arreglados en el mismo barrido:
+- **CSS de layout faltante** (D10): nada en `tokens.css` plegaba el menú por debajo de 768 px ni
+  acotaba el ancho a 320 px; la tabla del padrón desbordaba la página. Sumado a `tokens.css`: el layout
+  `.armazon-del-edificio` (flex columna → fila a 768 px, replegando `.menu-del-edificio__lista` por
+  `data-abierto`), `.encabezado-de-pantalla`, `.boton-principal` (el acento terracota, una vez por
+  pantalla) y `.padron-de-unidades__scroll` (la tabla scrollea ADENTRO de su contenedor, nunca la
+  página entera). De paso, `.sr-only` nunca se había definido desde que `Ayuda.tsx` la usa (3.6): el
+  texto "Ayuda" quedaba a la vista en vez de oculto.
+- **Bug real en la API falsa de 3.8** (`web/e2e/api-falsa.ts`): el escenario "vacio" mutaba `unidades` a
+  `{ informe: null, unidades: [] }`, pero la API real (`informar_coeficientes([])`) nunca da `null` —
+  siempre un informe bien formado. `Padron.informe` no es nulable (D4) y `PantallaPadron` rompía al
+  leer `informe.estado` de `null` en un navegador real. RED 20:49:52 (`api-falsa.test.ts`, caso nuevo)
+  → `expected null to deeply equal {...}`. GREEN 20:50:06 → `13 passed`.
+- **`/edificios` se congelaba en build time**: sin segmento dinámico, Next.js la pre-renderizaba en
+  `next build` —ANTES de que la API falsa (o la real) estuviera levantada— y `next start` servía para
+  siempre esa respuesta congelada ("No pudimos cargar tus edificios."), sin volver a pedir nada en
+  ningún request real. Visto fallar 4 veces seguidas en Playwright (no era flaky) antes de encontrar la
+  causa. Arreglado con `export const dynamic = "force-dynamic"` en `web/src/app/edificios/page.tsx`;
+  las rutas `/edificios/[id]/...` no lo necesitaban (el segmento dinámico ya las vuelve dinámicas).
+- Playwright final 20:55:28 `test-web-navegador.sh`: `10 passed (3.5s)` (las 5 de `bloque-c.spec.ts` +
+  las 5 genéricas de 3.8). `test-web.sh` 20:55:50: `33 files, 171 passed`. `pnpm biome ci`/`pnpm tsc
+  --noEmit`: limpios. Sin procesos huérfanos (`pgrep -fa 'playwright|api-falsa|next'` vacío tras cada
+  corrida) y sin contenedores propios en `docker ps`.
+- **NO se corrió** `test-backend.sh` ni `humo.sh` (fuera del alcance del bloque C, los corre el
+  orquestador) ni el generador "sin huecos" de 5.1 (grupo 5, no asignado a este bloque).
+
 ## 5. Barrido en el navegador y `DESIGN.md` (MEDIUM)
 
 - [ ] 5.1 Barrido completo con `infra/ci/test-web-navegador.sh`: las siete pantallas por cada escenario de `escenarios.ts` (incluidos nombres de 200 caracteres, identificadores de 40 y 200 unidades) a 320 px y a 1280 px, recorrido de teclado y axe con contraste. Verificación: la salida lista pantallas por escenarios sin huecos y en verde. Escenarios: `pantallas-del-edificio` › 320 px; › axe en cada estado. Lecciones: L-022.

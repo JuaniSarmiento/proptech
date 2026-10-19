@@ -17,6 +17,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: "list",
+  // Un solo worker (decisión declarada, bloque C/4.1-4.4): esta máquina
+  // corre con memoria muy ajustada (`free -h` bajo 1,5 GiB libres varias
+  // veces durante este bloque); el valor por defecto sin CI es la mitad
+  // de los núcleos (8 acá), que levantaría varios Chromium a la vez.
+  workers: 1,
   use: {
     baseURL: process.env.PROPTECH_URL_WEB ?? "http://127.0.0.1:3100",
     trace: "retain-on-failure",
