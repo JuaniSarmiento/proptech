@@ -1201,6 +1201,30 @@ $ date +%T && uv run pytest tests/integracion/test_422_sin_el_valor.py -q --colo
 
 ### R3A-6 · BAJA · Unicidad de identificador/nombre con espacios al borde
 
+**Decisión**: normalizar (recortar los espacios al borde), no rechazar. Misma función que R3A-1 (`recortado_sin_control`), ya aplicada a toda la familia en el commit de R3A-1 (66e0fe0) — este hallazgo no necesitó un segundo arreglo de producción, sólo el test, movido y ampliado a `tests/integracion/test_texto_recortado_en_el_borde.py` (identificador de unidad y nombre de categoría, que ya tenían colisión posible; más nombre de grupo y nombre/localidad de edificio, que no colisionan pero igual se normalizan, verificado leyendo el recurso creado).
+
+**RED** — 19/10/2026, por mutante (el rompedor original ya estaba en verde para este archivo porque R3A-1 se arregló primero): sacado el `.strip()` de `recortado_sin_control` a propósito, 13:03:51→13:04:17:
+```text
+$ date +%T && uv run pytest tests/integracion/test_texto_recortado_en_el_borde.py -q --color=no
+13:04:11
+FAILED test_identificador_con_espacio_al_final_no_es_otra_unidad
+FAILED test_nombre_de_categoria_con_espacio_no_es_otra_categoria
+FAILED test_identificador_sin_espacios_al_borde_se_guarda_recortado
+FAILED test_nombre_y_localidad_de_edificio_sin_espacios_al_borde
+FAILED test_nombre_de_grupo_sin_espacios_al_borde
+5 failed, 1 warning in 5.75s
+13:04:17
+```
+
+**GREEN** — 19/10/2026, 13:04:28, con el `.strip()` restituido:
+```text
+$ date +%T && uv run pytest tests/integracion/test_texto_recortado_en_el_borde.py -q --color=no
+13:04:21
+.....                                                                    [100%]
+5 passed, 1 warning in 5.75s
+13:04:28
+```
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
