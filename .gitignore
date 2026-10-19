@@ -12,6 +12,11 @@ __pycache__/
 node_modules/
 .next/
 
+# Playwright (D7, tarea 3.8): artefactos de corrida, nunca el código
+web/playwright-report/
+web/test-results/
+web/blob-report/
+
 # Entorno y secretos
 .env
 .env.*

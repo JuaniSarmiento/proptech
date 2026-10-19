@@ -39,8 +39,9 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
-    # D5: medido en menos de 20s; 5 min de margen.
-    timeout-minutes: 5
+    # D5: medido en menos de 20s en vitest; sumar el navegador real (3.8:
+    # `next build` + Chromium) deja un margen bastante más generoso.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -62,6 +63,11 @@ jobs:
         run: pnpm tsc --noEmit
       - name: Tests
         run: bash infra/ci/test-web.sh
+      - name: Instalar Chromium (D7, tarea 3.8 - sólo este navegador)
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Tests en el navegador real
+        run: bash infra/ci/test-web-navegador.sh
       - name: Canario
         run: bash infra/ci/canario.sh web
 

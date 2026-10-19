@@ -1,0 +1,194 @@
+/**
+ * API falsa para el navegador real (D7, tarea 3.8): un servidor HTTP de
+ * Node SIN DEPENDENCIAS que sirve los fixtures de 3.4
+ * (`web/src/lib/api/fixtures/*.json`, generados desde la API real) y los
+ * muta por escenario según el id del edificio (`escenarios.ts`).
+ *
+ * `crearServidor()` no escucha por sí sola (así `api-falsa.test.ts` la
+ * prueba sobre un puerto al azar, sin pisar el puerto real); quien corre
+ * este archivo como script (`test-web-navegador.sh`) es quien la levanta.
+ */
+
+import { readFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { escenarioPorId } from "./escenarios";
+
+const _AQUI = dirname(fileURLToPath(import.meta.url));
+const _DIR_FIXTURES = join(_AQUI, "../src/lib/api/fixtures");
+
+// biome-ignore lint/suspicious/noExplicitAny: los fixtures son JSON de forma variable (lista, objeto).
+type Json = any;
+
+function leerFixture(nombre: string): Json {
+  // Una lectura fresca por pedido (no cachear en memoria): mutar el
+  // resultado más abajo nunca puede mutar accidentalmente lo que lee el
+  // próximo pedido.
+  return JSON.parse(readFileSync(join(_DIR_FIXTURES, `${nombre}.json`), "utf-8"));
+}
+
+const _RUTAS: Record<string, string> = {
+  "": "edificio",
+  resumen: "resumen",
+  unidades: "unidades",
+  grupos: "grupos",
+  categorias: "categorias",
+  configuracion: "vigente",
+  "configuracion/versiones": "versiones",
+};
+
+// `slice(0, 200)` sobre una base que repite de más: 200 caracteres EXACTOS,
+// sin depender de que la cuenta de `repeat` cierre justo.
+export const NOMBRE_DE_200 = "Consorcio Edificio Modelo ".repeat(8).slice(0, 200);
+export const IDENTIFICADOR_DE_40 = "UNIDAD-".padEnd(40, "0");
+
+function informeConEstado(estado: string, diferencia: string, suma: string) {
+  return { diferencia, estado, suma };
+}
+
+function unidadSintetica(indice: number) {
+  return {
+    coeficiente: "0.005000",
+    complejo_id: "00000000-0000-0000-0000-00000000aaaa",
+    id: `00000000-0000-0000-0000-${String(indice).padStart(12, "0")}`,
+    identificador: `U${indice}`,
+    piso: String(Math.floor(indice / 4) + 1),
+    superficie_m2: "40.00",
+    tipo: "departamento",
+  };
+}
+
+/** Aplica la mutación del escenario sobre el fixture YA LEÍDO (nunca sobre
+ * el archivo): cada pedido parte de una copia nueva (`leerFixture`). */
+function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, datos: Json): Json {
+  if (claveEscenario === "vacio") {
+    if (nombreFixture === "unidades") return { informe: null, unidades: [] };
+    if (nombreFixture === "grupos") return [];
+    if (nombreFixture === "categorias") return [];
+    if (nombreFixture === "versiones") return [];
+    if (nombreFixture === "resumen") return { ...datos, cantidad_unidades: 0 };
+    return datos;
+  }
+
+  if (claveEscenario === "advertencia" || claveEscenario === "fuera_de_tolerancia") {
+    const informe =
+      claveEscenario === "advertencia"
+        ? informeConEstado("advertencia", "0.000050", "0.999950")
+        : informeConEstado("fuera_de_tolerancia", "-0.000200", "0.999800");
+    if (nombreFixture === "resumen") return { ...datos, informe };
+    if (nombreFixture === "unidades") return { ...datos, informe };
+    return datos;
+  }
+
+  if (claveEscenario === "doscientas_unidades") {
+    if (nombreFixture === "unidades") {
+      return {
+        informe: informeConEstado("ok", "0.000000", "1.000000"),
+        unidades: Array.from({ length: 200 }, (_, indice) => unidadSintetica(indice)),
+      };
+    }
+    if (nombreFixture === "resumen") return { ...datos, cantidad_unidades: 200 };
+    return datos;
+  }
+
+  if (claveEscenario === "nombres_largos") {
+    if (nombreFixture === "edificio" || nombreFixture === "resumen") {
+      return { ...datos, nombre: NOMBRE_DE_200 };
+    }
+    if (nombreFixture === "unidades") {
+      return {
+        ...datos,
+        unidades: datos.unidades.map((unidad: Json) => ({
+          ...unidad,
+          identificador: IDENTIFICADOR_DE_40,
+        })),
+      };
+    }
+    return datos;
+  }
+
+  return datos;
+}
+
+/** Crea el servidor sin levantarlo (`listen()` queda a cargo de quien lo
+ * use: así se puede probar sobre un puerto al azar). */
+export function crearServidor(): Server {
+  return createServer((pedido, respuesta) => {
+    const url = new URL(pedido.url ?? "/", "http://localhost");
+    const partes = url.pathname.split("/").filter(Boolean);
+
+    if (partes[0] !== "api" || partes[1] !== "complejos") {
+      respuesta.writeHead(404).end();
+      return;
+    }
+
+    if (!partes[2]) {
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify(leerFixture("lista")));
+      return;
+    }
+
+    const id = partes[2];
+    const resto = partes.slice(3).join("/");
+    const escenario = escenarioPorId(id);
+
+    const responderSegunEscenario = () => {
+      switch (escenario?.clave) {
+        case "error_500":
+          // Texto técnico a propósito (L-007): la pantalla NUNCA lo
+          // muestra, el cliente de la API (3.3) ya lo filtra antes de
+          // llegar a React.
+          respuesta
+            .writeHead(500, { "content-type": "text/plain" })
+            .end("Traceback (most recent call last): algo técnico que no es para el usuario");
+          return true;
+        case "sin_permiso_403":
+          respuesta
+            .writeHead(403, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: { permiso_faltante: "cambiar_configuracion" } }));
+          return true;
+        case "no_existe_404":
+          respuesta.writeHead(404).end();
+          return true;
+        case "sin_sesion_401":
+          respuesta.writeHead(401).end();
+          return true;
+        default:
+          return false;
+      }
+    };
+
+    const nombreFixture = _RUTAS[resto];
+    if (!nombreFixture) {
+      respuesta.writeHead(404).end();
+      return;
+    }
+
+    const enviar = () => {
+      if (responderSegunEscenario()) {
+        return;
+      }
+      const datos = leerFixture(nombreFixture);
+      const mutado = escenario
+        ? mutarParaElEscenario(escenario.clave, nombreFixture, datos)
+        : datos;
+      respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));
+    };
+
+    if (escenario?.clave === "lento") {
+      setTimeout(enviar, 3000);
+    } else {
+      enviar();
+    }
+  });
+}
+
+const _esPuntoDeEntrada = process.argv[1] === fileURLToPath(import.meta.url);
+if (_esPuntoDeEntrada) {
+  const puerto = Number(process.env.PROPTECH_PUERTO_API_FALSA ?? 4100);
+  crearServidor().listen(puerto, () => {
+    console.log(`api-falsa escuchando en :${puerto}`);
+  });
+}
