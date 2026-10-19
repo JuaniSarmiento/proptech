@@ -1395,6 +1395,35 @@ $ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.
 14:28:37 [exit 0]
 ```
 
+### R3B-6 · Generales sin miembros explícitos por SQL
+
+- [x] Nueva migración 0012; 0011 permanece intacta. Frenar INSERT/UPDATE de miembros hacia
+  Generales y promover a Generales un grupo que ya tiene miembros; el bloqueo FOR SHARE del padre
+  evita que cambie su condición durante el alta del miembro. Trigger con search_path vacío,
+  sin SECURITY DEFINER. Los parciales conservan sus operaciones.
+No hay contradicción con 5.2/5.3: Generales consulta todas las unidades; no inserta miembros.
+Si ya hay miembros explícitos, la migración aborta indicando el motivo. El preflight del dueño
+usa NO FORCE bajo ACCESS EXCLUSIVE dentro de la misma transacción; restaura FORCE antes de
+terminar y el rollback lo conserva al fallar. No cambia políticas ni concede privilegios.
+Test original movido a `test_generales_alcance_sql.py`, ampliado a INSERT/UPDATE/promoción,
+preflight con datos legados y RLS tras rollback; conserva ciclo downgrade/upgrade y privilegios.
+**ROJO**:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_generales_alcance_sql.py -q --tb=line --color=no
+14:28:44
+FAILED tests/integracion/test_generales_alcance_sql.py::test_familia_de_miembros_explicitos_de_generales_se_rechaza[promover]
+FAILED tests/integracion/test_generales_alcance_sql.py::test_migracion_detecta_miembros_viejos_de_generales_y_revierte_el_candado
+5 failed, 2 passed in 17.65s
+14:29:03 [exit 1]
+```
+**VERDE** (incluye unidad nueva en Generales y grupos parciales):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_generales_alcance_sql.py tests/integracion/test_rls_grupos.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_modo_de_coeficientes.py -q --tb=line --color=no
+14:29:49
+61 passed in 33.12s
+14:30:24 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
