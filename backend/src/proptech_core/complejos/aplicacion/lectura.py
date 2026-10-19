@@ -125,12 +125,27 @@ _COLUMNAS_CONFIGURACION = (
 
 
 def listar_versiones(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+    """`autor_nombre` (D5, tarea 2.2): `JOIN persona` por la FK compuesta
+    que ya existe (`fk_configuracion_autor`), dentro de la misma sesión con
+    tenant — nunca sólo `autor_id = p.id`, para no depender del filtro de
+    RLS para aislar la fila correcta de `persona`."""
     if cargar_complejo(sesion, complejo_id) is None:
         raise NoEncontrado()
     return [
         dict(f)
         for f in sesion.execute(
-            text(_COLUMNAS_CONFIGURACION + "ORDER BY vigente_desde"), {"id": complejo_id}
+            text(
+                "SELECT cv.id, cv.complejo_id, cv.vigente_desde, cv.tasa_mensual::text, "
+                "cv.dias_de_gracia, cv.forma_de_calculo, cv.porcentaje_fondo::text, "
+                "cv.dia_de_vencimiento, cv.modalidad_de_vencimiento, "
+                "cv.dia_segundo_vencimiento, cv.recargo_segundo_vencimiento::text, "
+                "cv.autor_id, cv.creada_en, p.nombre AS autor_nombre "
+                "FROM configuracion_versionada cv "
+                "JOIN persona p ON p.id = cv.autor_id "
+                "AND p.administracion_id = cv.administracion_id "
+                "WHERE cv.complejo_id=:id ORDER BY cv.vigente_desde"
+            ),
+            {"id": complejo_id},
         ).mappings()
     ]
 

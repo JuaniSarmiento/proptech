@@ -182,7 +182,13 @@ def test_vigente_para_fecha_y_antes_de_la_primera(
     sesion_edificio: Session, identidad_edificio: Identidad
 ) -> None:
     edificio = crear(sesion_edificio, identidad_edificio)
-    anterior = lectura.listar_versiones(sesion_edificio, edificio)[0]
+    # `configuracion_vigente` no trae `autor_nombre` (D5, tarea 2.2: sólo
+    # el historial lo necesita); se lo descarta para comparar el resto.
+    anterior = {
+        k: v
+        for k, v in lectura.listar_versiones(sesion_edificio, edificio)[0].items()
+        if k != "autor_nombre"
+    }
     nueva = version(
         sesion_edificio, identidad_edificio, edificio, date(2026, 12, 1), tasa_mensual="4.00"
     )

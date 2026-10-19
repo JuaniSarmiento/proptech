@@ -128,14 +128,17 @@ def test_versiones_vigente_por_fecha_y_unique_violation_traducida_a_409(
     assert versiones[0] == inicial
     nueva = versiones[1]
     assert nueva["autor_id"] == str(api.personas["titular"])
+    assert nueva["autor_nombre"] == "Persona ficticia"
     assert nueva["creada_en"]
     assert nueva["tasa_mensual"] == "4.00"
     assert nueva["recargo_segundo_vencimiento"] == "5.00"
     assert nueva["dia_segundo_vencimiento"] == 20
+    # `/configuracion` no trae `autor_nombre` (D5, tarea 2.2: sólo el
+    # historial lo necesita); se lo descarta para comparar el resto.
     for fecha, esperada in (
         ("2000-01-01", None),
-        (inicial["vigente_desde"], inicial),
-        (cuerpo["vigente_desde"], nueva),
+        (inicial["vigente_desde"], {k: v for k, v in inicial.items() if k != "autor_nombre"}),
+        (cuerpo["vigente_desde"], {k: v for k, v in nueva.items() if k != "autor_nombre"}),
     ):
         vigente = api.cliente.get(api.ruta("/configuracion"), params={"fecha": fecha})
         assert vigente.status_code == 200
