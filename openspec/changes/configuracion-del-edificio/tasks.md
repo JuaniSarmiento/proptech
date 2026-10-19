@@ -1313,6 +1313,55 @@ $ cd backend && date +%T && uv run pytest tests/unitarios/test_semilla.py tests/
 14:22:44 [exit 0]
 ```
 
+### R3B-2 · Identidad antes de entregar errores del cuerpo (D6)
+
+- [x] `RutaConIdentidad` en todas las rutas de dominio: ante un error del parser,
+  resolver sólo identidad antes de devolverlo, con el solver de FastAPI y sus overrides.
+No se resuelve la sesión ni se duplica autenticación en el camino válido. El 400 de UTF-8
+inválido también pasa por la guarda; autenticado conserva 400, JSON malformado conserva 422.
+Tests del rompedor movidos a `test_identidad_antes_del_cuerpo.py`; ampliados con UTF-8 inválido,
+control autenticado y escucha de SQL (ninguna sentencia en los seis casos de parseo).
+**ROJO**:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_identidad_antes_del_cuerpo.py -q --tb=line --color=no
+14:23:19
+FAILED tests/integracion/test_identidad_antes_del_cuerpo.py::test_error_de_parseo_respeta_identidad_sin_sql[False-{"nombre":"\xff"}]
+14 failed, 7 passed, 1 warning in 10.29s
+14:23:30 [exit 1]
+```
+**VERDE** (también contrato 422 → 404 → 403 → 409):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_identidad_antes_del_cuerpo.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_edificios_api.py tests/integracion/test_padron_api.py tests/integracion/test_configuracion_api.py -q --tb=line --color=no
+14:24:48
+175 passed, 1 warning in 43.58s
+14:25:35 [exit 0]
+```
+Controles nacidos verdes: dos mutantes, con copia previa y restauración en `finally`:
+```diff
+-    raise HTTPException(status_code=401)
++    return Identidad(__import__("uuid").uuid4(), __import__("uuid").uuid4())
+```
+```diff
+ if fallo_de_parseo:
++    raise HTTPException(status_code=401)
+```
+```text
+$ python3 .git/informes-3a/correcciones-v2/mutar.py r2-mutante-credenciales
+14:25:59
+4 failed, 17 deselected, 1 warning in 9.36s
+14:26:09 [exit 1, REVERTIDO_OK]
+$ python3 .git/informes-3a/correcciones-v2/mutar.py r2-mutante-control
+14:26:10
+3 failed, 3 passed, 15 deselected, 1 warning in 7.63s
+14:26:18 [exit 1, REVERTIDO_OK]
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_identidad_antes_del_cuerpo.py -q --tb=line --color=no
+14:26:19
+21 passed, 1 warning in 9.94s
+14:26:30 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo

@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
-from proptech_api.acceso import identidad_actual, sesion_con_tenant
+from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_tenant
 from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones, existe_persona
 from proptech_core.acceso.dominio.identidad import Identidad
@@ -57,7 +57,7 @@ from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 #: — el resto del cuerpo (acá, `rol`) sigue estricto.
 _UUIDDeCuerpo = Annotated[UUID, Field(strict=False)]
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 
 
 def _no_encontrado() -> HTTPException:
