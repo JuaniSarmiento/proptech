@@ -1512,6 +1512,39 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_tasa_fuera_de_r
 14:36:05 [exit 0]
 ```
 
+### R3B-12 · PATCH de método sobre un grupo propios
+
+- [x] Test del rompedor movido sin cambiar sus aserciones a
+  `tests/integracion/test_editar_metodo_de_grupo_propios.py` (superficie y partes iguales).
+**VERDE inicial**: el defecto era de cobertura, no de producción.
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_editar_metodo_de_grupo_propios.py -q --tb=line --color=no
+14:35:04
+2 passed, 1 warning in 10.30s
+14:35:17 [exit 0]
+```
+**ROJO por mutante exacto** de `grupos.py:225`, copia previa y revertido en `finally`
+(`python3 .git/informes-3a/correcciones-v2/mutar.py r12-mutante`):
+```diff
+-        if grupo["modo_de_coeficientes"] == "propios" and entrada.metodo != "coeficiente":
+-            raise EntradaInvalida("metodo")
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_editar_metodo_de_grupo_propios.py -q --tb=line --color=no
+14:36:25
+FAILED tests/integracion/test_editar_metodo_de_grupo_propios.py::test_grupo_propios_no_cambia_a_metodo_sin_coeficiente_por_patch[superficie]
+FAILED tests/integracion/test_editar_metodo_de_grupo_propios.py::test_grupo_propios_no_cambia_a_metodo_sin_coeficiente_por_patch[partes_iguales]
+2 failed, 1 warning in 7.85s
+14:36:35 [exit 1]
+```
+**VERDE** al restituir la guarda (también grupos/padrón):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_editar_metodo_de_grupo_propios.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_padron_api.py -q --tb=line --color=no
+14:36:35
+51 passed, 1 warning in 23.81s
+14:37:01 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
