@@ -22,11 +22,11 @@ class RutaEfectiva:
 def rutas_efectivas(app: FastAPI) -> list[RutaEfectiva]:
     rutas: list[RutaEfectiva] = []
 
-    def recorrer(candidato: Any, prefijo: str = "") -> None:
+    def recorrer(candidato: Any, prefijo: str = "", ubicacion: str = "") -> None:
         if type(candidato).__name__ == "_IncludedRouter":
             # FastAPI resuelve los prefijos de inclusión, incluidos los anidados.
             for sub in candidato.effective_candidates():
-                recorrer(sub, prefijo)
+                recorrer(sub, prefijo, prefijo + candidato.include_context.prefix)
             return
         original = getattr(candidato, "original_route", candidato)
         starlette = getattr(candidato, "starlette_route", None)
@@ -36,7 +36,9 @@ def rutas_efectivas(app: FastAPI) -> list[RutaEfectiva]:
             or getattr(original, "path", None)
         )
         if not isinstance(ruta, str):
-            raise AssertionError(f"ruta desconocida bajo {prefijo or '/'}: {candidato!r}")
+            raise AssertionError(
+                f"ruta desconocida bajo {ubicacion or prefijo or '/'}: {original!r}"
+            )
         efectiva = prefijo + ruta
         if isinstance(original, Mount):
             subrutas = original.routes
@@ -70,11 +72,13 @@ def rutas_efectivas(app: FastAPI) -> list[RutaEfectiva]:
 
 
 def rutas_reales_del_candado(app: FastAPI) -> set[tuple[str, str]]:
+    # HEAD sólo se omite como alias de GET del mismo objeto/árbol de dependencias.
+    # Una ruta exclusivamente HEAD es independiente y debe entrar al candado.
     return {
         (ruta.path, metodo)
         for ruta in rutas_efectivas(app)
         for metodo in ruta.methods
-        if metodo != "HEAD"
+        if metodo != "HEAD" or "GET" not in ruta.methods
     }
 
 

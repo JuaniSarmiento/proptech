@@ -105,3 +105,20 @@ def test_mount_en_router_incluido_y_websocket_con_guarda() -> None:
     ruta = "/interno/padron/vivo/eventos"
     assert (ruta, "WEBSOCKET") in rutas_reales_del_candado(app)
     assert depende_de(app, ruta, "WEBSOCKET", identidad_actual)
+
+
+def test_head_sin_get_es_una_ruta_que_el_candado_debe_ver() -> None:
+    app = FastAPI()
+    app.add_api_route("/interno/solo-cabecera", lambda: {}, methods=["HEAD"])
+    assert ("/interno/solo-cabecera", "HEAD") in rutas_reales_del_candado(app)
+
+
+def test_ruta_desconocida_dentro_de_include_falla_nombrando_el_prefijo() -> None:
+    from starlette.routing import Host
+
+    app = FastAPI()
+    router = APIRouter()
+    router.routes.append(Host("interno.ejemplo.invalid", app=FastAPI()))
+    app.include_router(router, prefix="/gestion")
+    with pytest.raises(AssertionError, match="/gestion"):
+        rutas_reales_del_candado(app)

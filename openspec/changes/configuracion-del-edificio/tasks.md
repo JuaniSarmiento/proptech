@@ -1733,6 +1733,28 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_texto_sin_carac
 14:41:22 [exit 0]
 ```
 
+### R3B-3/4 · Extensión de familia: HEAD propio y diagnóstico del prefijo
+
+- [x] Detectar también una ruta HEAD independiente; HEAD sólo se omite cuando comparte
+  el mismo objeto/árbol con GET. Nombrar el prefijo efectivo al encontrar un tipo desconocido
+  en un router incluido (ejercitado con Host). Los dos casos dieron rojo antes del arreglo.
+**ROJO**:
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py -q --tb=line --color=no
+14:40:57
+FAILED tests/unitarios/test_barrido_de_rutas.py::test_head_sin_get_es_una_ruta_que_el_candado_debe_ver
+FAILED tests/unitarios/test_barrido_de_rutas.py::test_ruta_desconocida_dentro_de_include_falla_nombrando_el_prefijo
+2 failed, 8 passed, 1 warning in 0.36s
+14:40:58 [exit 1]
+```
+**VERDE** (barrido R6 y altas R11 completos):
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py -q --tb=line --color=no
+14:41:40
+84 passed, 1 warning in 15.38s
+14:41:57 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
