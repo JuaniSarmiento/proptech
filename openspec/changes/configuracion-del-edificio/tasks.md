@@ -1090,7 +1090,40 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   10:35:11
   All checks passed! / 166 files already formatted / Success: no issues found in 157 source files
   ```
-- [ ] 3.2 Migración de grupos (D2): `grupo_de_reparto` y `grupo_unidad` con las tres FK compuestas que comparten `complejo_id` (a `complejo`, al grupo y a la unidad; la primera la exige el guardián), "Generales" único por edificio y por coeficiente. Tests como `proptech_app`, insertando de verdad (L-018): miembro con una unidad de otro edificio de la misma administración falla; de otra administración falla; unidad repetida en un grupo falla; un segundo "Generales" falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › La base frena lo que la aplicación deja pasar; › Unidad repetida en un grupo (la parte de la base). Lecciones: L-016, L-017, L-018.
+- [x] 3.2 Migración de grupos (D2): `grupo_de_reparto` y `grupo_unidad` con las tres FK compuestas que comparten `complejo_id` (a `complejo`, al grupo y a la unidad; la primera la exige el guardián), "Generales" único por edificio y por coeficiente. Tests como `proptech_app`, insertando de verdad (L-018): miembro con una unidad de otro edificio de la misma administración falla; de otra administración falla; unidad repetida en un grupo falla; un segundo "Generales" falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › La base frena lo que la aplicación deja pasar; › Unidad repetida en un grupo (la parte de la base). Lecciones: L-016, L-017, L-018.
+
+  **RED** — 19/10/2026, antes de crear `0006`:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_grupos.py -q
+  10:36:36
+  E psycopg.errors.UndefinedTable: relation "grupo_de_reparto" does not exist
+  7 failed, 11 errors in 3.90s
+  ```
+  **Mutante de la FK (L-018)** — copia previa en `backend/.pytest_cache/bloque_b/0006_original.py`;
+  diff temporal al final de `upgrade()` (revertido desde la copia antes del verde):
+  ```diff
+  +    op.drop_constraint("fk_grupo_unidad_unidad", "grupo_unidad", type_="foreignkey")
+  +
+  ```
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_grupos.py -k miembro_con_unidad -q
+  10:37:42
+  E Failed: DID NOT RAISE ForeignKeyViolation
+  2 failed, 16 deselected in 4.66s
+  ```
+  Las dos entradas son UUID de unidades existentes: otro edificio de A y otra administración.
+  Además: FK al grupo, duplicados de miembro/clave/Generales, métodos, aislamiento y escritura
+  cruzada como app; ciclo `head → 0005 → head` conserva la unidad e inserta un miembro nuevo.
+
+  **GREEN** — mutante revertido, incluidos 3.1 y el guardián:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_catalogo_rls.py -q
+  10:38:02
+  48 passed in 16.14s
+  cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:38:17
+  All checks passed! / 168 files already formatted / Success: no issues found in 158 source files
+  ```
 - [ ] 3.3 Migración del modo de coeficientes (D15, D-100, P24): `grupo_de_reparto.modo_de_coeficientes` con su `CHECK` y su `UNIQUE` de cuatro columnas; `grupo_unidad.modo_de_coeficientes` y `coeficiente` nulo, la FK al grupo pasa a `(administracion_id, complejo_id, grupo_id, modo_de_coeficientes)` con `ON UPDATE CASCADE`; los `CHECK` de coherencia (modo propios ⇔ coeficiente presente; propios ⇒ método por coeficiente; "Generales" renormalizado). Tests como `proptech_app`, insertando de verdad (L-018): un miembro con coeficiente en un grupo renormalizado falla; uno sin coeficiente en un grupo propios falla; un miembro con un modo distinto del de su grupo falla por la FK; un grupo propios por superficie falla; `UPDATE` del modo de un grupo con miembros falla (el cascade choca con el `CHECK`); "Generales" con modo propios falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › Coeficiente propio en un grupo renormalizado; › Cambiar el modo por SQL con miembros. Lecciones: L-016, L-018.
 - [ ] 3.4 Migración de categorías (D2): `categoria_de_gasto` con clave y nombre únicos por edificio (nombre sin distinguir mayúsculas), `orden` único diferible, `activa`. Tests como `proptech_app`: "limpieza" junto a "Limpieza" falla; el mismo nombre en otro edificio pasa; dos categorías intercambian `orden` dentro de una transacción; una categoría de otra administración no se ve. Escenarios: `categorias-de-gasto` › Nombre repetido (la parte de la base). Lecciones: L-016.
 - [ ] 3.5 **Tablas de sólo agregar en el paso de roles** (D16, B2, L-018), en `backend/src/proptech_core/compartido/roles.py` (si `main` lo volvió a tocar desde el rebase del 16/10, rebasar antes): `_TABLAS_DE_SOLO_AGREGAR`; `antes()` las saltea al otorgar permisos a la app; `despues()` hace `REVOKE UPDATE, DELETE, TRUNCATE` y `GRANT SELECT, INSERT` sobre cada una. El guardián `tests/integracion/test_catalogo_rls.py` se ajusta: acepta una tabla de la lista sólo con exactamente `SELECT, INSERT` y sólo si su trigger rechaza un `UPDATE` de verdad (caja negra); toda otra tabla con `administracion_id` sigue necesitando los cuatro permisos (L-020). **Rojo** con una tabla de prueba de sólo agregar y el `roles.py` de hoy: después de **dos `up`** (`roles antes`, migraciones, `roles despues`, dos veces), sobre una copia (L-013) con el trigger deshabilitado, `UPDATE` como `proptech_app` pasa; después del arreglo, `UPDATE` y `DELETE` dan "permission denied". Rojo del guardián: una tabla en la lista sin trigger hace fallar el guardián. Escenarios: `configuracion-versionada` › Editar una versión después de otro arranque. Lecciones: L-013, L-016, L-018, L-020.

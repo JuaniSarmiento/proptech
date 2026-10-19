@@ -72,3 +72,35 @@ def insertar_unidad(
     ).fetchone()
     assert fila is not None
     return UUID(str(fila[0]))
+
+
+def insertar_grupo(
+    conexion: psycopg.Connection,
+    administracion_id: UUID,
+    complejo_id: UUID,
+    clave: str = "ascensor",
+    *,
+    metodo: str = "coeficiente",
+    es_generales: bool = False,
+) -> UUID:
+    fila = conexion.execute(
+        "INSERT INTO grupo_de_reparto (administracion_id, complejo_id, clave, nombre, metodo, "
+        "es_generales) VALUES (%s, %s, %s, 'Grupo de prueba', %s, %s) RETURNING id",
+        (administracion_id, complejo_id, clave, metodo, es_generales),
+    ).fetchone()
+    assert fila is not None
+    return UUID(str(fila[0]))
+
+
+def insertar_miembro(
+    conexion: psycopg.Connection,
+    administracion_id: UUID,
+    complejo_id: UUID,
+    grupo_id: UUID,
+    unidad_id: UUID,
+) -> None:
+    conexion.execute(
+        "INSERT INTO grupo_unidad (administracion_id, complejo_id, grupo_id, unidad_id) "
+        "VALUES (%s, %s, %s, %s)",
+        (administracion_id, complejo_id, grupo_id, unidad_id),
+    )
