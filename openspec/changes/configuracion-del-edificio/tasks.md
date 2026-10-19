@@ -2617,7 +2617,15 @@ HUMO OK
 
 ## 8. Cierre
 
-- [ ] 8.1 Corrida de cierre **después de la última vuelta de correcciones** (L-010), en orden y de a uno: `test-backend.sh`, `test-web.sh`, `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Ejercitar el Migration Plan (B3), con comandos y salida: (1) sobre una copia **sin auditoría nueva** (datos del 2a, sin edificios del 3a): `upgrade head`, `downgrade 0004`, `upgrade head`, con conteos iguales y `/api/salud` en 200; (2) sobre una copia **con el ejemplo cargado** (o con un edificio creado por la API, si la 7.2 pasó al 3b): `downgrade 0004` falla en la migración de vocabulario, los conteos quedan iguales, y restaurar el respaldo del 1d tomado antes de subir devuelve la base a su estado anterior. Un clon limpio del commit final levanta con los comandos del README tal cual. Verificación: el informe trae los comandos, la salida y la hora de cada paso. Escenarios: todos (corrida completa). Lecciones: L-003, L-005, L-010.
+- [x] 8.1 Corrida de cierre **después de la última vuelta de correcciones** (L-010), en orden y de a uno: `test-backend.sh`, `test-web.sh`, `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Ejercitar el Migration Plan (B3), con comandos y salida: (1) sobre una copia **sin auditoría nueva** (datos del 2a, sin edificios del 3a): `upgrade head`, `downgrade 0004`, `upgrade head`, con conteos iguales y `/api/salud` en 200; (2) sobre una copia **con el ejemplo cargado** (o con un edificio creado por la API, si la 7.2 pasó al 3b): `downgrade 0004` falla en la migración de vocabulario, los conteos quedan iguales, y restaurar el respaldo del 1d tomado antes de subir devuelve la base a su estado anterior. Un clon limpio del commit final levanta con los comandos del README tal cual. Verificación: el informe trae los comandos, la salida y la hora de cada paso. Escenarios: todos (corrida completa). Lecciones: L-003, L-005, L-010.
+  **Límite declarado por el orquestador (19/10/2026, 16:45):** el paso (2) del Migration Plan pide que
+  restaurar el respaldo del 1d "devuelva la base a su estado anterior". `infra/respaldos/restaurar.sh`
+  restaura **siempre en una base aparte** y rechaza la base en uso (D9 del 1d, a propósito). Se ejercitó
+  así: la base aparte recuperó los datos y la revisión `0004` (ver la evidencia de abajo). Lo que no existe
+  es un procedimiento con herramienta para **pasar la aplicación a la base restaurada**; queda como deuda
+  (tabla del cierre del 3a en `12_fichas_de_changes.md`). Se marca `[x]` con este límite, igual que el 2c
+  cerró con límites declarados (D-101).
+
 
   **EVIDENCIA — 19/10/2026, horas ART (UTC−3).** HEAD de código final: `2c8883507d4b5f5b92aa39ea80a3bfac2a4111fa`; árbol limpio al iniciar. Este cierre cambia sólo este registro. Sin código de producto ni tests nuevos; los rojos siguientes son rechazos operativos esperados.
 
