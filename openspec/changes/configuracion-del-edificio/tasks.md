@@ -1252,7 +1252,53 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   uv run ruff check . && uv run ruff format --check . && uv run mypy
   All checks passed! / 175 files already formatted / Success: no issues found in 162 source files
   ```
-- [ ] 3.7 Vocabulario y matriz (D5, D14, E3, E7, B5): `Accion` suma `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`, `configurar_padron` y `ver_configuracion_del_edificio`; `0004` congelada con la lista literal de las acciones del 2a y la migración nueva con su lista literal, sin importar `Accion`; la matriz con el reparto de E3 y la lectura (vecino no); `puede` acepta `complejo_id=None` sólo para `crear_edificio`. Tests: la matriz celda por celda para los cinco perfiles, incluidas las acciones del 2a; cada otra acción con `None` se niega; una base vacía con `upgrade head` deja `accion_de_auditoria` igual a `{a.value for a in Accion}` (rojo: con el 0004 de hoy, la migración nueva choca con la clave primaria); el arranque real con las migraciones nuevas no frena por D-2 (ninguna FK hacia `auditoria`). Escenarios: `autorizacion-por-rol` › La matriz completa. Lecciones: L-016.
+- [x] 3.7 Vocabulario y matriz (D5, D14, E3, E7, B5): `Accion` suma `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`, `configurar_padron` y `ver_configuracion_del_edificio`; `0004` congelada con la lista literal de las acciones del 2a y la migración nueva con su lista literal, sin importar `Accion`; la matriz con el reparto de E3 y la lectura (vecino no); `puede` acepta `complejo_id=None` sólo para `crear_edificio`. Tests: la matriz celda por celda para los cinco perfiles, incluidas las acciones del 2a; cada otra acción con `None` se niega; una base vacía con `upgrade head` deja `accion_de_auditoria` igual a `{a.value for a in Accion}` (rojo: con el 0004 de hoy, la migración nueva choca con la clave primaria); el arranque real con las migraciones nuevas no frena por D-2 (ninguna FK hacia `auditoria`). Escenarios: `autorizacion-por-rol` › La matriz completa. Lecciones: L-016.
+
+  Evidencia 19/10/2026 (3.7):
+  ```text
+  RED: cd backend && date +%T; uv run pytest tests/unitarios/acceso/test_permisos.py tests/integracion/test_vocabulario_configuracion.py -q --tb=short
+  11:01:21
+  E ValueError: 'crear_edificio' is not a valid Accion
+  E AssertionError: 0004_auditoria.py importa el vocabulario vivo
+  64 failed, 106 passed, 1 warning in 7.36s
+  RED D14: después de sumar enum, matriz y 0010, antes de congelar 0004:
+  cd backend && date +%T; uv run pytest tests/integracion/test_vocabulario_configuracion.py::test_base_vacia_con_upgrade_head_y_arranque_real -q --tb=short
+  11:01:49
+  E psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "pk_accion_de_auditoria"
+  E DETAIL: Key (nombre)=(crear_edificio) already exists.
+  1 warning, 1 error in 3.58s
+  ```
+  `0004` conserva sólo sus once acciones literales; `0010` tiene sus cinco literales propias.
+  Ninguna importa Accion ni usa ON CONFLICT. Se verifica igualdad exacta enum/base desde cero,
+  downgrade a 0004 y upgrade, ninguna FK hacia auditoria, y lifespan real como proptech_app.
+  Matriz escrita a mano: 16 acciones × 5 perfiles, más 80 casos con complejo_id=None.
+  Mutante con copia previa `.atl/bloque-c/permisos.pre-mutante.py` (sin commit):
+  ```diff
+  -    if complejo_id is None and accion is not Accion.CREAR_EDIFICIO:
+  -        return False
+  +    if complejo_id is None:
+  +        return True
+  ```
+  ```text
+  cd backend && date +%T; set -o pipefail; uv run pytest tests/unitarios/acceso/test_permisos.py -q -k 'sin_complejo' --tb=no | tail -n 4
+  11:03:08
+  FAILED test_sin_complejo_solo_crear_edificio_para_titular[vecino-ver_configuracion_del_edificio]
+  79 failed, 1 passed, 87 deselected in 0.11s
+  Mutante revertido, idéntico byte a byte a la copia previa.
+  GREEN: cd backend && date +%T; uv run pytest tests/unitarios/acceso/test_permisos.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_auditoria_transaccion.py -q --tb=short
+  11:03:24
+  176 passed, 1 warning in 10.61s
+  uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 177 files already formatted / Success: no issues found in 163 source files
+  ```
+
+  Cierre del bloque C, una corrida completa:
+  ```text
+  date +%T; bash infra/ci/test-backend.sh > .atl/bloque-c/backend-completo.log 2>&1
+  11:03:45
+  =========== 1270 passed, 1 xfailed, 16 warnings in 317.85s (0:05:17) ===========
+  ```
+  El xfail es el existente de F2c, con dueño cambio 7 (test_zz_rompedor_v3_agotada_con_efecto).
 
 ## 4. Dominio puro
 

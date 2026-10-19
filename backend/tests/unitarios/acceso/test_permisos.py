@@ -21,111 +21,53 @@ OTRO_COMPLEJO = uuid.uuid4()
 UNIDAD = uuid.uuid4()
 OTRA_UNIDAD = uuid.uuid4()
 
-#: Copiada a mano de la matriz de D-096 (P23): Sí/No/Ve por acción y rol. El
-#: colaborador de esta tabla es siempre el de nivel "editar" (D-037); el de
-#: "ver" no tiene ninguna fila en Sí, en ninguna acción (se prueba aparte).
-#: "Ve" se trata como False para `puede` (es una autorización de LECTURA,
-#: un concepto que esta tarea no cubre): sólo "Sí" es True.
-_MATRIZ_A_MANO: dict[Accion, dict[Rol, bool]] = {
-    Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: True,
-        Rol.CONSEJO: False,  # "Ve"
-        Rol.VECINO: False,
-    },
-    Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.ANULAR_LIQUIDACION: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.CONFIRMAR_PAGO_INFORMADO: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: True,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.REVERTIR_O_REIMPUTAR_PAGO: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.CONDONAR_INTERESES: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,  # "Ve"
-        Rol.VECINO: False,
-    },
-    Accion.DAR_DE_BAJA_DEUDA: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: True,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.ACEPTAR_ALERTAS_BLOQUEANTES: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: {
-        Rol.TITULAR: True,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: False,
-    },
-    Accion.INFORMAR_PAGO: {
-        Rol.TITULAR: False,
-        Rol.COLABORADOR: False,
-        Rol.CONSEJO: False,
-        Rol.VECINO: True,
-    },
+# D-096 y D5 del 3a, escritos a mano: titular, editar, ver, consejo, vecino.
+_MATRIZ_A_MANO: dict[str, tuple[bool, bool, bool, bool, bool]] = {
+    "cargar_gastos_y_preparar_liquidacion": (True, True, False, False, False),
+    "emitir_y_distribuir_liquidacion": (True, False, False, False, False),
+    "anular_liquidacion": (True, False, False, False, False),
+    "confirmar_pago_informado": (True, True, False, False, False),
+    "revertir_o_reimputar_pago": (True, False, False, False, False),
+    "condonar_intereses": (True, False, False, False, False),
+    "dar_de_baja_deuda": (True, False, False, False, False),
+    "aceptar_alertas_no_bloqueantes": (True, True, False, False, False),
+    "aceptar_alertas_bloqueantes": (True, False, False, False, False),
+    "invitar_usuarios_y_asignar_edificios": (True, False, False, False, False),
+    "informar_pago": (False, False, False, False, True),
+    "crear_edificio": (True, False, False, False, False),
+    "crear_version_de_configuracion": (True, False, False, False, False),
+    "confirmar_sin_saldos_previos": (True, False, False, False, False),
+    "configurar_padron": (True, True, False, False, False),
+    "ver_configuracion_del_edificio": (True, True, True, True, False),
 }
+_PERFILES = [
+    Asignacion(Rol.TITULAR, None),
+    Asignacion(Rol.COLABORADOR, COMPLEJO, nivel=Nivel.EDITAR),
+    Asignacion(Rol.COLABORADOR, COMPLEJO, nivel=Nivel.VER),
+    Asignacion(Rol.CONSEJO, COMPLEJO),
+    Asignacion(Rol.VECINO, COMPLEJO, unidad_id=UNIDAD),
+]
 
 
 def _asignacion_de(rol: Rol) -> Asignacion:
-    if rol is Rol.TITULAR:
-        return Asignacion(rol=Rol.TITULAR, complejo_id=None)
-    if rol is Rol.COLABORADOR:
-        return Asignacion(rol=Rol.COLABORADOR, complejo_id=COMPLEJO, nivel=Nivel.EDITAR)
-    if rol is Rol.CONSEJO:
-        return Asignacion(rol=Rol.CONSEJO, complejo_id=COMPLEJO)
-    return Asignacion(rol=Rol.VECINO, complejo_id=COMPLEJO, unidad_id=UNIDAD)
+    return next(a for a in _PERFILES if a.rol is rol)
 
 
-# --- Cada celda de la matriz, una por una ---
+@pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
+@pytest.mark.parametrize("perfil", range(5), ids=["titular", "editar", "ver", "consejo", "vecino"])
+def test_cada_celda_de_la_matriz(nombre: str, perfil: int) -> None:
+    assert puede([_PERFILES[perfil]], Accion(nombre), COMPLEJO) is _MATRIZ_A_MANO[nombre][perfil]
 
 
-@pytest.mark.parametrize("accion", list(Accion), ids=lambda a: a.value)
-@pytest.mark.parametrize("rol", list(Rol), ids=lambda r: r.value)
-def test_cada_celda_de_la_matriz(accion: Accion, rol: Rol) -> None:
-    esperado = _MATRIZ_A_MANO[accion][rol]
-    asignacion = _asignacion_de(rol)
-
-    resultado = puede([asignacion], accion, COMPLEJO)
-
-    assert resultado is esperado, f"{accion.value} x {rol.value}: esperaba {esperado}"
+@pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
+@pytest.mark.parametrize("perfil", range(5), ids=["titular", "editar", "ver", "consejo", "vecino"])
+def test_sin_complejo_solo_crear_edificio_para_titular(nombre: str, perfil: int) -> None:
+    esperado = nombre == "crear_edificio" and perfil == 0
+    assert puede([_PERFILES[perfil]], Accion(nombre), None) is esperado
 
 
-def test_colaborador_de_nivel_ver_no_tiene_ninguna_fila_en_si() -> None:
-    """D-096: "un colaborador de sólo 'ver' no hace ninguna de estas
-    acciones, cierre o no cierre"."""
-    asignacion = Asignacion(rol=Rol.COLABORADOR, complejo_id=COMPLEJO, nivel=Nivel.VER)
-    for accion in Accion:
-        assert puede([asignacion], accion, COMPLEJO) is False, accion.value
+def test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario() -> None:
+    assert {a.value for a in Accion} == set(_MATRIZ_A_MANO)
 
 
 # --- Una Accion sin fila en la matriz se niega para todos ---

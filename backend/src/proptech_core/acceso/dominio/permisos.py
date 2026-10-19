@@ -44,6 +44,11 @@ class Accion(StrEnum):
     #: "Ver su cuenta e informar pagos" de D-096: la única fila de la matriz
     #: que es del vecino, no del titular/colaborador/consejo.
     INFORMAR_PAGO = "informar_pago"
+    CREAR_EDIFICIO = "crear_edificio"
+    CREAR_VERSION_DE_CONFIGURACION = "crear_version_de_configuracion"
+    CONFIRMAR_SIN_SALDOS_PREVIOS = "confirmar_sin_saldos_previos"
+    CONFIGURAR_PADRON = "configurar_padron"
+    VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
 
 
 @dataclass(frozen=True)
@@ -59,8 +64,8 @@ class Asignacion:
 
 #: La matriz de D-096, escrita a mano (no generada desde el código): para
 #: cada acción, el conjunto de (rol, nivel) que puede hacerla. El nivel es
-#: `None` salvo para `COLABORADOR` (D-037): un colaborador de sólo "ver" no
-#: tiene ninguna fila en esta matriz, cierre o no cierre (D-096). Una
+#: `None` salvo para `COLABORADOR` (D-037): el nivel "ver" sólo permite
+#: leer la configuración del edificio (D5 del 3a). Una
 #: `Accion` sin entrada aquí se niega para todos (`.get(..., frozenset())`
 #: en `puede`, nunca `[accion]`).
 _MATRIZ: dict[Accion, frozenset[tuple[Rol, Nivel | None]]] = {
@@ -81,13 +86,28 @@ _MATRIZ: dict[Accion, frozenset[tuple[Rol, Nivel | None]]] = {
     Accion.ACEPTAR_ALERTAS_BLOQUEANTES: frozenset({(Rol.TITULAR, None)}),
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset({(Rol.TITULAR, None)}),
     Accion.INFORMAR_PAGO: frozenset({(Rol.VECINO, None)}),
+    Accion.CREAR_EDIFICIO: frozenset({(Rol.TITULAR, None)}),
+    Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({(Rol.TITULAR, None)}),
+    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({(Rol.TITULAR, None)}),
+    Accion.CONFIGURAR_PADRON: frozenset({(Rol.TITULAR, None), (Rol.COLABORADOR, Nivel.EDITAR)}),
+    Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset(
+        {
+            (Rol.TITULAR, None),
+            (Rol.COLABORADOR, Nivel.EDITAR),
+            (Rol.COLABORADOR, Nivel.VER),
+            (Rol.CONSEJO, None),
+        }
+    ),
 }
 
 
-def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID) -> bool:
+def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID | None) -> bool:
     """D-096. El titular no tiene una asignación por complejo (D6: su fila
     tiene `complejo_id = NULL`, cubre toda la administración); las demás
-    sólo cuentan si su `complejo_id` coincide con el que se está pidiendo."""
+    sólo cuentan si su `complejo_id` coincide con el que se está pidiendo.
+    Sin complejo sólo se evalúa crear un edificio (D5 del 3a)."""
+    if complejo_id is None and accion is not Accion.CREAR_EDIFICIO:
+        return False
     permitidos = _MATRIZ.get(accion, frozenset())
     for asignacion in asignaciones:
         clave: tuple[Rol, Nivel | None]

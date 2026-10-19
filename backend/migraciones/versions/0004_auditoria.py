@@ -26,7 +26,6 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 from migraciones.ayudas_rls import aislar_por_administracion
-from proptech_core.acceso.dominio.permisos import Accion
 
 revision: str = "0004"
 down_revision: str | None = "0003"
@@ -37,6 +36,21 @@ _NOMBRE_FUNCION_TRIGGER = "fn_auditoria_bloqueada"
 _NOMBRE_TRIGGER_FILA = "trg_auditoria_sin_update_delete"
 _NOMBRE_TRIGGER_SENTENCIA = "trg_auditoria_sin_truncate"
 
+# D14: foto literal del vocabulario del 2a, independiente del enum vivo.
+_ACCIONES_DEL_2A = (
+    "cargar_gastos_y_preparar_liquidacion",
+    "emitir_y_distribuir_liquidacion",
+    "anular_liquidacion",
+    "confirmar_pago_informado",
+    "revertir_o_reimputar_pago",
+    "condonar_intereses",
+    "dar_de_baja_deuda",
+    "aceptar_alertas_no_bloqueantes",
+    "aceptar_alertas_bloqueantes",
+    "invitar_usuarios_y_asignar_edificios",
+    "informar_pago",
+)
+
 
 def upgrade() -> None:
     op.create_table(
@@ -45,7 +59,7 @@ def upgrade() -> None:
     )
     op.bulk_insert(
         sa.table("accion_de_auditoria", sa.column("nombre", sa.Text())),
-        [{"nombre": accion.value} for accion in Accion],
+        [{"nombre": nombre} for nombre in _ACCIONES_DEL_2A],
     )
 
     op.create_table(
