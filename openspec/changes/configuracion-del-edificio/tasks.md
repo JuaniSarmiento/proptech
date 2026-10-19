@@ -1816,9 +1816,37 @@ queda íntegro en `.git/informes-3a/correcciones-v2/pendiente-R3B-5.py`, sin eje
 Comprobaciones de estilo/tipos antes de cada commit: `cd backend && uv run ruff check . &&
 uv run ruff format --check . && uv run mypy`, limpias. No hubo commits de mutantes.
 Los supuestos sobre datos legados se prueban con datos inventados; no se inspeccionaron bases reales.
-<!-- cierre-r3b -->
+Código y tests de cierre: `e0f3040`; el commit posterior sólo agrega esta evidencia.
+**Backend completo, una corrida final**:
+```text
+$ date +%T && bash infra/ci/test-backend.sh
+14:44:59
+=========== 1714 passed, 1 xfailed, 16 warnings in 567.33s (0:09:27) ===========
+14:54:31 [exit 0]
+```
+**Humo completo** (Docker sólo a través del script autorizado):
+```text
+$ date +%T && bash infra/ci/humo.sh
+14:54:52
+HUMO OK
+# Últimas líneas del script (limpieza incluida):
+ Network proptech_salida_worker  Removed
+ Network proptech_datos  Removed
+ Network proptech_borde  Removed
+ Network proptech_aplicacion  Removed
+14:57:03 [exit 0]
+```
 
-<!-- evidencia-r3b -->
+
+**Estilo y tipos antes del commit de cierre**:
+```text
+$ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy && date +%T
+14:57:13
+All checks passed!
+213 files already formatted
+Success: no issues found in 196 source files
+14:57:14 [exit 0]
+```
 
 ## 3. Modelo
 
