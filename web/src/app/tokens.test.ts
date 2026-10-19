@@ -40,3 +40,13 @@ describe("contraste de los tokens de color (D10)", () => {
     expect(contrasteDeTokens(texto, fondo)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe("prefers-reduced-motion (tarea 3.6)", () => {
+  it("pone --duracion-transicion en 0ms dentro de @media (prefers-reduced-motion: reduce)", () => {
+    const bloqueReducido = _TOKENS_CSS.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\{([^}]*)\}/,
+    );
+    expect(bloqueReducido).not.toBeNull();
+    expect(bloqueReducido?.[1]).toMatch(/--duracion-transicion:\s*0ms/);
+  });
+});

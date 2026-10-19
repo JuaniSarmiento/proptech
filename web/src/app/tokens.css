@@ -35,12 +35,16 @@
   --tipo-titulo: 1.25rem;
   --tipo-titular: 1.563rem;
 
-  --salto-reduce-movimiento: 0;
+  /* Única curva de salida del sistema (D8/DESIGN.md "Do"): sólo confirma un
+     cambio de estado (abrir el panel o la ayuda), nunca sobre layout. */
+  --duracion-transicion: 160ms;
 }
 
+/* `prefers-reduced-motion` sin transición (tarea 3.6): no es "más lenta",
+   es CERO — `.panel-lateral` y `.ayuda__panel` la usan en `opacity`. */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --salto-reduce-movimiento: 1;
+    --duracion-transicion: 0ms;
   }
 }
 
@@ -56,4 +60,16 @@ body {
 .numero-tabular {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* Panel lateral y ayuda (D8, tarea 3.6): plano por defecto, sin sombra
+   salvo abiertos; sólo confirman el cambio de estado con `opacity`, nunca
+   con una propiedad de layout, y respetan `prefers-reduced-motion`. */
+.panel-lateral,
+.ayuda__panel {
+  background-color: var(--color-papel);
+  border: 1px solid var(--color-grafito);
+  box-shadow: 0 2px 8px oklch(22% 0.012 55 / 15%);
+  opacity: 1;
+  transition: opacity var(--duracion-transicion) ease-out;
 }
