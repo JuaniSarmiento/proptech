@@ -2618,3 +2618,146 @@ HUMO OK
 ## 8. Cierre
 
 - [ ] 8.1 Corrida de cierre **después de la última vuelta de correcciones** (L-010), en orden y de a uno: `test-backend.sh`, `test-web.sh`, `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Ejercitar el Migration Plan (B3), con comandos y salida: (1) sobre una copia **sin auditoría nueva** (datos del 2a, sin edificios del 3a): `upgrade head`, `downgrade 0004`, `upgrade head`, con conteos iguales y `/api/salud` en 200; (2) sobre una copia **con el ejemplo cargado** (o con un edificio creado por la API, si la 7.2 pasó al 3b): `downgrade 0004` falla en la migración de vocabulario, los conteos quedan iguales, y restaurar el respaldo del 1d tomado antes de subir devuelve la base a su estado anterior. Un clon limpio del commit final levanta con los comandos del README tal cual. Verificación: el informe trae los comandos, la salida y la hora de cada paso. Escenarios: todos (corrida completa). Lecciones: L-003, L-005, L-010.
+
+  **EVIDENCIA — 19/10/2026, horas ART (UTC−3).** HEAD de código final: `2c8883507d4b5f5b92aa39ea80a3bfac2a4111fa`; árbol limpio al iniciar. Este cierre cambia sólo este registro. Sin código de producto ni tests nuevos; los rojos siguientes son rechazos operativos esperados.
+
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  16:18:46 | 2c8883507d4b5f5b92aa39ea80a3bfac2a4111fa
+  16:25:46 | 1737 passed, 1 xfailed, 16 warnings in 415.12s (0:06:55); exit=0
+  $ date +%T; bash infra/ci/test-web.sh
+  16:26:07 → 16:26:08 | Test Files 3 passed (3); Tests 16 passed (16); exit=0
+  $ date +%T; COMPOSE_ENV_FILES="$PWD/infra/.env.example" bash infra/ci/humo.sh
+  16:26:15 → 16:28:14 | HUMO OK; exit=0; limpieza de proptech completada
+  ```
+  Comparación con 1.1: backend 900 → 1737 aprobados (+837), 1 → 1 xfailed; web 16 → 16; humo OK → OK. Sin skips ni selección parcial. Las tres corridas fueron secuenciales.
+
+  **Migration Plan — copia descartable en Compose.** Se usaron runners temporales en `infra/ci/`, retirados antes del commit; sólo proyectos `proptech` y `proptech-clon`. No había contenedores previos de esos proyectos. Compose usó el ejemplo público, sin inspeccionar `.env`. Preparación y abreviaturas de los comandos registrados:
+  ```bash
+  export COMPOSE_ENV_FILES="$PWD/infra/.env.example" PROPTECH_UID="$(id -u)" PROPTECH_GID="$(id -g)"
+  export PROPTECH_DIR_RESPALDOS="$PWD/.atl/cierre-8-1/respaldos-1792438170"
+  mkdir -p "$PROPTECH_DIR_RESPALDOS"
+  compose() { docker compose -p proptech -f "$PWD/infra/compose.yaml" --env-file "$PWD/infra/.env.example" "$@"; }
+  sql() { compose exec -T db sh -c 'exec psql -X -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1"' sh "$1"; }
+  ```
+  Cada snapshot enumera **todas** las tablas públicas con `pg_tables`, cuenta con el rol de arranque (para ver ambos tenants) y guarda además todas las filas como `row_to_json(t)::text`, ordenadas. `diff -u` compara ambas salidas; las filas incluyen `alembic_version`. No se usa este conteo como prueba de aislamiento RLS.
+  ```sql
+  -- Consulta enviada a sql BASE para generar/ejecutar los conteos (sin ; antes de \gexec):
+  SELECT format('SELECT %L || count(*)::text FROM %I.%I;', tablename || '=', schemaname, tablename) FROM pg_tables WHERE schemaname='public' ORDER BY tablename
+  \gexec
+  SELECT format('SELECT %L || coalesce(string_agg(fila, E''\n'' ORDER BY fila), '''') FROM (SELECT row_to_json(t)::text AS fila FROM %I.%I t) s;', tablename || '=', schemaname, tablename) FROM pg_tables WHERE schemaname='public' ORDER BY tablename
+  \gexec
+  ```
+  ```text
+  $ date +%T; compose up -d --wait db redis
+  16:29:30 → 16:29:36 | db y redis Healthy
+  $ date +%T; compose run --rm --no-deps migraciones sh -c 'python -m proptech_core.compartido.roles antes && alembic upgrade 0004 && python -m proptech_core.compartido.roles despues'
+  16:29:36 → 16:29:39 | upgrade hasta 0004; exit=0
+  $ date +%T; sql proptech <<'SQL'  # siembra del 2a, todos los datos ficticios
+  16:29:39 | SQL siguiente; exit=0
+  ```
+  ```sql
+  INSERT INTO administracion (id, nombre) VALUES ('10000000-0000-0000-0000-000000000001', 'Administración ficticia A'), ('10000000-0000-0000-0000-000000000002', 'Administración ficticia B');
+  INSERT INTO complejo (id, administracion_id, nombre) SELECT ('20000000-0000-0000-0000-00000000000'||i)::uuid, ('10000000-0000-0000-0000-00000000000'||((i+1)/2))::uuid, 'Complejo ficticio '||i FROM generate_series(1,4) i;
+  INSERT INTO unidad (administracion_id, complejo_id, nombre) SELECT administracion_id, id, 'Unidad ficticia' FROM complejo;
+  INSERT INTO persona (id, administracion_id, nombre) SELECT ('30000000-0000-0000-0000-00000000000'||i)::uuid, ('10000000-0000-0000-0000-00000000000'||i)::uuid, 'Persona ficticia '||i FROM generate_series(1,2) i;
+  INSERT INTO asignacion_rol (administracion_id, persona_id, rol) SELECT administracion_id, id, 'titular' FROM persona;
+  INSERT INTO auditoria (administracion_id, persona_id, accion, entidad, entidad_id, request_id) SELECT administracion_id, id, 'invitar_usuarios_y_asignar_edificios', 'complejo', ('20000000-0000-0000-0000-00000000000'||i)::uuid, gen_random_uuid() FROM (SELECT *, row_number() OVER (ORDER BY id) i FROM persona) p;
+  INSERT INTO trabajos_hechos (clave, tarea, request_id) VALUES ('cierre-8-1', 'ficticia_2a', gen_random_uuid());
+  ```
+  ```text
+  16:29:40 | snapshot antes_0004: accion_de_auditoria=11 administracion=2 alembic_version=1 asignacion_rol=2 auditoria=2 complejo=4 persona=2 trabajos_hechos=1 unidad=4
+  $ date +%T; compose up -d --no-deps respaldos
+  16:29:40 → 16:29:42 | backup automático al arrancar, ANTES del upgrade; dump completo del 1d
+  DUMP=$PROPTECH_DIR_RESPALDOS/proptech-20261019T192940Z.dump
+  $ date +%T; compose run --rm --no-deps migraciones alembic upgrade head
+  16:29:42 → 16:29:44 | 0004 → 0016; exit=0
+  16:29:44 | head_primero: accion_de_auditoria=16 administracion=2 alembic_version=1 asignacion_rol=2 auditoria=2 categoria_de_gasto=0 complejo=4 configuracion_versionada=0 grupo_de_reparto=0 grupo_unidad=0 persona=2 trabajos_hechos=1 unidad=4
+  $ date +%T; compose run --rm --no-deps migraciones alembic downgrade 0004
+  16:29:44 → 16:29:46 | 0016 → 0004; exit=0
+  $ date +%T; diff -u antes_0004.conteos vuelta_0004.conteos; diff -u antes_0004.filas vuelta_0004.filas
+  16:29:46 | ambos sin diferencias; mismas 9 tablas, conteos y contenido, revisión 0004
+  $ date +%T; compose run --rm --no-deps migraciones alembic upgrade head
+  16:29:46 → 16:29:48 | 0004 → 0016; exit=0
+  $ date +%T; diff -u head_primero.conteos head_segundo.conteos; diff -u head_primero.filas head_segundo.filas
+  16:29:48 | ambos sin diferencias; mismas 13 tablas, conteos y contenido, revisión 0016
+  $ date +%T; compose up -d --wait api
+  16:29:48 → 16:29:58 | migraciones del stack exit=0; api Healthy
+  $ date +%T; compose exec -T api python -c 'import urllib.request; r=urllib.request.urlopen("http://localhost:8000/api/salud", timeout=5); print("/api/salud", r.status, r.read().decode()); assert r.status == 200'
+  16:29:58 | /api/salud 200 {"estado":"ok","base":"ok","cola":"ok"}
+  ```
+  Los nombres de snapshots anteriores son relativos a `.atl/cierre-8-1/`. El aumento 11 → 16 corresponde al vocabulario nuevo; las cuatro tablas nuevas están vacías. Se compararon también las dos fotos de `0004`, sin exigir que el esquema de `0004` tenga las tablas de `0016`.
+
+  **Migration Plan (2) — alta real por caso de uso y rechazo esperado.** A las 16:29:58 se ejecutó `compose exec -T api python -` con este código; commit real al salir de `s.begin()`:
+  ```python
+  from datetime import UTC, datetime
+  from uuid import UUID, uuid4
+  from sqlalchemy import create_engine, text
+  from sqlalchemy.orm import Session
+  from proptech_core.compartido.configuracion import Configuracion
+  from proptech_core.compartido.parametros import leer_parametros
+  from proptech_core.acceso.dominio.identidad import Identidad
+  from proptech_core.complejos.aplicacion.escritura import crear_edificio
+  admin = UUID('10000000-0000-0000-0000-000000000001'); persona = UUID('30000000-0000-0000-0000-000000000001')
+  with Session(create_engine(Configuracion().url_sqlalchemy())) as s, s.begin():
+      assert s.execute(text('SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname=current_user')).one() == ('proptech_app', False, False)
+      s.execute(text("SELECT set_config('app.administracion_id', :id, true)"), {'id': str(admin)})
+      edificio = crear_edificio(s, Identidad(admin, persona), nombre='Edificio ficticio cierre 8.1', localidad='Mendoza', parametros=leer_parametros('/app/config/parametros.yaml'), reloj=lambda: datetime.now(UTC), request_id=uuid4())
+      assert s.execute(text("SELECT count(*) FROM auditoria WHERE accion='crear_edificio' AND entidad_id=:id"), {'id': edificio}).scalar_one() == 1
+  ```
+  ```text
+  16:29:59 | con_edificio: accion_de_auditoria=16 administracion=2 alembic_version=1 asignacion_rol=2 auditoria=3 categoria_de_gasto=9 complejo=5 configuracion_versionada=1 grupo_de_reparto=1 grupo_unidad=0 persona=2 trabajos_hechos=1 unidad=4
+  $ date +%T; compose run --rm --no-deps migraciones alembic downgrade 0004
+  16:30:00 → 16:30:01 | exit=1; Running downgrade 0010 -> 0009, Vocabulario de configuración
+  psycopg.errors.ForeignKeyViolation: ... violates foreign key constraint "fk_auditoria_accion" on table "auditoria"
+  DETAIL: Key (nombre)=(crear_edificio) is still referenced from table "auditoria".
+  $ date +%T; diff -u con_edificio.conteos tras_fallo.conteos; diff -u con_edificio.filas tras_fallo.filas
+  16:30:02 | ambos sin diferencias; mismas 13 tablas y todas sus filas, revisión 0016
+  $ date +%T; bash infra/respaldos/restaurar.sh "$DUMP" proptech
+  16:30:02 | exit=1; error: DESTINO: 'proptech' no cumple el patrón de un nombre de base válido
+  $ date +%T; bash infra/respaldos/restaurar.sh "$DUMP" proptech_cierre_81
+  16:30:02 → 16:30:03 | exit=0
+  $ date +%T; diff -u antes_0004.conteos restaurada_0004.conteos; diff -u antes_0004.filas restaurada_0004.filas
+  16:30:03 | ambos sin diferencias; 9 tablas y contenido idénticos al estado previo, revisión 0004
+  $ date +%T; diff -u con_edificio.conteos activa_final.conteos; diff -u con_edificio.filas activa_final.filas
+  16:30:03 | ambos sin diferencias; base activa conserva el edificio y revisión 0016; /api/salud sigue en 200
+  $ date +%T; compose down -v
+  16:30:03 → 16:30:14 | eliminados sólo contenedores, volúmenes y redes de esta corrida proptech
+  ```
+  **JUICIO / CONFLICTO:** el 1d reconstruye los datos y la revisión anteriores en **otra base**, pero no ofrece el rollback de la base activa que pide B3. `restaurar.sh:35` rechaza `proptech` por patrón y `:51` protege también cualquier destino válido que sea la base en uso. No se desactivaron guardas ni se inventó un cambio de conexión. **8.1 queda `[ ]`**: falta un procedimiento autorizado/probado de recuperación de la base activa. Primera instrumentación (16:28:33–16:29:15): abortó al esperar el mensaje de base en uso y recibir el rechazo de patrón; limpió el stack. Se repitió todo con ese rechazo comprobado (salidas arriba); sin cambios de producto.
+
+  **Clon limpio del HEAD de código final**, fuera del repo; comandos del README con `-p proptech-clon` exigido por esta tarea. `COMPOSE_ENV_FILES` apuntó al `.env.example` del clon. El commit documental sólo agrega esta evidencia; se repite el arranque de su hash después de crearlo.
+  ```text
+  $ date +%T; git clone --no-hardlinks /home/juanisarmiento/Proyectos/PropTech /tmp/proptech-clon-8-1.DGy887
+  16:30:25 | clone OK
+  $ date +%T; cd /tmp/proptech-clon-8-1.DGy887; git rev-parse HEAD; git status --short
+  16:30:25 | 2c8883507d4b5f5b92aa39ea80a3bfac2a4111fa; status vacío
+  $ date +%T; cp infra/.env.example infra/.env
+  16:30:25 | exit=0 (placeholders públicos del ejemplo)
+  $ date +%T; mkdir -p infra/datos-respaldos; cd infra
+  16:30:25 | exit=0
+  $ date +%T; PROPTECH_UID=$(id -u) PROPTECH_GID=$(id -g) docker compose -p proptech-clon up --build
+  16:30:25 | iniciado en segundo plano por el runner, sin cambiar el comando de arranque
+  $ date +%T; curl -fsS -w '\nHTTP %{http_code}\n' http://localhost/api/salud
+  16:30:49 | {"estado":"ok","base":"ok","cola":"ok"}; HTTP 200
+  $ date +%T; curl -fsS -w '\nHTTP %{http_code}\n' http://localhost/salud-web
+  16:30:49 | {"web":"ok","api":"ok"}; HTTP 200
+  $ date +%T; curl -fsS -o /dev/null -w 'GET / HTTP %{http_code}\n' http://localhost/
+  16:30:50 | GET / HTTP 200; compose ps: api/db/redis/respaldos/web/worker healthy, caddy running, migraciones exited
+  $ date +%T; docker compose -p proptech-clon down -v
+  16:30:50 → 16:31:00 | stack eliminado
+  $ date +%T; rm -rf -- /tmp/proptech-clon-8-1.DGy887
+  16:31:00 → 16:31:01 | directorio eliminado; runner exit=0
+  $ date +%T; cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:31:34 | All checks passed!; 221 files already formatted; Success: no issues found in 201 source files
+  ```
+  **SUPUESTO:** ninguno sobre el rollback: la restauración probada alcanza sólo la base aparte. Se verificaron filas completas, además de los conteos pedidos. La repetición final y el control de contenedores se completaron antes del commit:
+
+  ```text
+  $ date +%T; bash infra/ci/test-backend.sh
+  16:31:53 → 16:39:03 | 1737 passed, 1 xfailed, 16 warnings in 425.94s (0:07:05); exit=0
+  $ date +%T; docker ps --format '{{.Names}}'
+  16:39:10 | mismos 14 nombres que al inicio; nuevos=[]; ningún proptech ni proptech-clon
+  $ date +%T; cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:39:10 | All checks passed!; 221 files already formatted; Success: no issues found in 201 source files
+  ```
