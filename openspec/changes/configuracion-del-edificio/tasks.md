@@ -1176,6 +1176,29 @@ $ date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -q -
 
 ### R3A-5 · BAJA · El 422 saneado repite parte del valor
 
+Test movido a `tests/integracion/test_422_sin_el_valor.py` (nuevo), con un segundo `type` (`literal_error`) y un control de que el `msg` propio (`value_error`) se conserva. Arreglo: `cuerpos.py::_motivo` sólo deja pasar `msg` para `type == "value_error"`; cualquier otro tipo se reemplaza por un motivo genérico.
+
+**RED** — 19/10/2026, 12:58:52:
+```text
+$ date +%T && uv run pytest tests/rompedor_3a/test_r3a_eco_del_valor_en_422.py -q --color=no
+12:58:52
+FAILED test_uuid_invalido_en_el_cuerpo_no_aparece_en_el_422
+AssertionError: 'Ж' is contained here: ...found `Ж` at 0"}]}
+1 failed, 1 warning in 5.33s
+12:58:59
+```
+
+**GREEN** — 19/10/2026, 13:02:20:
+```text
+$ date +%T && uv run pytest tests/integracion/test_422_sin_el_valor.py -q --color=no
+13:02:13
+...                                                                      [100%]
+3 passed, 1 warning in 5.64s
+13:02:20
+```
+
+**Mutante (L-019)**: agregados `literal_error`/`uuid_parsing` a `_TIPOS_CON_MENSAJE_PROPIO`, los dos tests de fuga dan rojo real (el `msg` de pydantic vuelve a aparecer). Revertido ese mutante y probado el opuesto (blanquear siempre, `if False`), el test de control (`value_error` se conserva) da rojo. Restituido el código correcto antes de commitear.
+
 ### R3A-6 · BAJA · Unicidad de identificador/nombre con espacios al borde
 
 ## 3. Modelo
