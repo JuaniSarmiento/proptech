@@ -75,6 +75,16 @@ grupo 7. El grupo 7 es **HIGH** y no se toca sin la firma de `proposal.md` › A
   - Suite de vitest 19:57:34 (tras ordenar un import que biome marcó): `19 files, 117 passed` (vs. 105 de 3.7: +12, `api-falsa.test.ts`). `pnpm biome ci`/`pnpm tsc --noEmit`: limpios. `test-web.sh` 19:57:45: `117 passed`.
   - **Supuesto no verificado**: "corre limpio desde un clon" se probó con `node_modules` y Chromium YA instalados en esta máquina (no desde un `git clone` nuevo); el comando de instalación (`pnpm exec playwright install chromium`, proyecto-local) corrió una vez y se verificó por separado, pero no encadenado a un clon fresco por el tiempo que toma bajar Chromium (~300 MB) de nuevo.
 
+**Cierre del bloque B — incompleto por un límite del entorno, declarado**: `test_ci_workflow.py` quedó pineado en `timeout-minutes: 5` para `web`
+(commit aparte, `test(infra): actualizar timeout-minutes esperado del job web`). La corrida completa de `test-backend.sh` ANTES de ese fix dio
+`1754 passed, 1 failed (esa misma guarda), 1 xfailed` en 438.79s (20:00→20:07) — ninguna otra falla. Una segunda corrida completa, YA con el fix,
+se lanzó a las 20:08 y la mató el propio harness por memoria crítica del sistema (554 MiB libres de 13 GiB) al 26% de avance, sin ninguna falla
+hasta ese punto; la instrucción del harness es explícita: no reintentar por cuenta propia. `test-web.sh` sí corrió limpio después del fix, 20:10:19:
+`19 files, 117 passed`. `humo.sh` no se corrió (mismo motivo: evitar sumar presión de memoria). **Juicio (confianza media-alta)**: dado que el único
+cambio de este bloque del lado del backend es esa corrección de la guarda, y que 1754/1755 ya pasaban antes y después sin tocarse, lo esperable es
+`1755 passed, 1 xfailed` limpio — pero esto es una inferencia, no la corrida completa vista en verde. Pendiente: re-correr `test-backend.sh` y
+`humo.sh` completos cuando la memoria del sistema lo permita (no antes).
+
 ## 4. Las siete pantallas (MEDIUM), una por tarea, cada una con su "?"
 
 - [ ] 4.1 **Mis edificios** (`/edificios`): lista con nombre, localidad, cantidad de unidades, estado de coeficientes y de migración en texto, leídos del resumen de cada edificio (D5); "Nuevo edificio" en el panel lateral con nombre y localidad, que al guardar lleva al resumen; con un solo edificio muestra la lista igual (D11); 403 al crear para un colaborador. Rojo primero: el test del estado vacío ("Todavía no tenés edificios" con "Nuevo edificio"). Escenarios: `pantallas-del-edificio` › Sin edificios; › Crear un edificio; › Sin permiso.
