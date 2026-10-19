@@ -252,8 +252,11 @@ prefijo en el router**, como hoy. Todas dependen de `identidad_actual` y `sesion
 `GET /api/unidades/{id}` del 2a cambia `nombre` por `identificador` en su respuesta (nota N9 d): es un
 cambio de contrato, no sólo de tests, y nadie lo consume todavía (la web está vacía).
 
-**Orden de los errores**: FastAPI valida el cuerpo después de las dependencias y antes del handler,
-así que el orden real es **401** (sin identidad, sin tocar la base) → **422 del cuerpo** → **404** →
+**Orden de los errores**: FastAPI valida el esquema del cuerpo después de las dependencias,
+pero parsea JSON antes. `RutaConIdentidad` intercepta los errores de ese parser y resuelve sólo
+la identidad con el solver de FastAPI antes de entregarlos (también el 400 de bytes inválidos).
+En el camino que parsea bien, la resolución habitual se ejecuta una sola vez. Así se conserva
+el orden **401** (sin identidad, sin tocar la base) → **422 del cuerpo** → **404** →
 **403** → **409** o **422 semántico**. El 422 del cuerpo no filtra existencia (no depende de ningún
 dato), pero ningún test espera un 403 con un cuerpo inválido. **404** `{"detail": "no encontrado"}`
 idéntico para inexistente, fuera de alcance y de otra administración; **403** con
@@ -302,6 +305,11 @@ hoy (tres rutas del 2a más `/api/salud`) tiene que salir idéntica (L-020).
 Si la versión fijada de FastAPI no expone la ruta efectiva sin atributos internos, se arma recorriendo
 `app.routes` y concatenando prefijos, con un test que falla si FastAPI cambia esa estructura (mismo
 criterio que F3b del 1c).
+
+El barrido no filtra por `/api`: la lista pública es explícita (salud, OpenAPI y documentación
+de la raíz). Recorre subapps `Mount` con sus prefijos, HTTP y WebSocket; una ruta HEAD sin GET
+es independiente. Un montaje opaco o un tipo desconocido falla nombrando su ubicación efectiva.
+HEAD sólo se omite cuando comparte objeto y dependencias con GET.
 
 ### D9 · El edificio de ejemplo en la base (E6, E10)
 

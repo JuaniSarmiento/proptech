@@ -1755,6 +1755,69 @@ $ cd backend && date +%T && uv run pytest tests/unitarios/test_barrido_de_rutas.
 14:41:57 [exit 0]
 ```
 
+### Controles originales conservados · Aislamiento y grupos vacíos
+
+- [x] Mover los dos intentos verdes a
+  `tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py`, sin cambiar aserciones.
+Mutantes con copia previa y restauración en `finally`, detectados por cada control:
+```diff
+-    return HTTPException(status_code=404, detail="no encontrado")
++    return HTTPException(status_code=403, detail="no encontrado")
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -k titular_de_otra -q --tb=line --color=no
+14:43:28
+FAILED tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py::test_titular_de_otra_administracion_no_alcanza_nada_de_a
+1 failed, 1 deselected, 1 warning in 8.20s
+14:43:37 [exit 1]
+```
+```diff
+-        if ids
+-        else set()
+```
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -k grupo_propios_sin_miembros -q --tb=line --color=no
+14:43:37
+FAILED tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py::test_grupo_propios_sin_miembros_no_rompe_la_lista
+1 failed, 1 deselected, 1 warning in 12.18s
+14:43:51 [exit 1]
+```
+**VERDE** tras restituir los dos mutantes (junto con la migración solicitada):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_trabajos_hechos.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -q --tb=line --color=no
+14:43:52
+4 passed, 3 warnings in 12.43s
+14:44:06 [exit 0]
+```
+
+### Auditor · Fila 3 · Cadena completa con 0011, 0012 y 0013
+
+```text
+$ cd backend && date +%T && uv run alembic heads
+14:44:40
+0013 (head)
+14:44:40 [exit 0]
+```
+
+Verificación pedida, sin cambiar producción. `test_migracion_trabajos_hechos.py` ejecuta
+upgrade head, downgrade base y upgrade head, y prueba también los logs de Alembic.
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_trabajos_hechos.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -q --tb=line --color=no
+14:43:52
+4 passed, 3 warnings in 12.43s
+14:44:06 [exit 0]
+```
+Los 15 tests originales del bloque autorizado están en integración/unitarios; R3B-5
+queda íntegro en `.git/informes-3a/correcciones-v2/pendiente-R3B-5.py`, sin ejecutarlo en el verde.
+`backend/tests/rompedor_3a_v2/` ya no existe. No se cambió la pertenencia de la unidad por SQL.
+
+### Cierre de la vuelta 2
+
+Comprobaciones de estilo/tipos antes de cada commit: `cd backend && uv run ruff check . &&
+uv run ruff format --check . && uv run mypy`, limpias. No hubo commits de mutantes.
+Los supuestos sobre datos legados se prueban con datos inventados; no se inspeccionaron bases reales.
+<!-- cierre-r3b -->
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
