@@ -118,7 +118,123 @@ Precondiciones, sin las cuales no se empieza:
   34 passed in 38.22s
   ```
   Lint/formato/tipos (L-005): `ruff check`, `ruff format --check` y `mypy` en verde, 2026-10-19 09:12:37, sobre `cuerpos.py`, `complejos.py`, `app.py` y el test nuevo.
-- [ ] 2.3 Deuda del 1b con dueño 3, parte de código (D13): `Porcentaje` y `Superficie` en `proptech_core/compartido/` (texto decimal ASCII, `fullmatch`, rechazo de `float`, `bool`, `NaN`, `Infinity`, `-0`, dígitos Unicode y `\n` final, con tests en rojo primero); `parametros.py` y `semilla.py` pasan a usarlos (L-009: la misma batería sobre los dos lectores); `parametros.py` rechaza un tipo de unidad fuera de los cuatro de D-029, con la constante que va a usar el `CHECK` de 3.1 (nota N9 c; rojo: hoy `quincho` en `tipos_de_unidad` pasa); `Semilla.version: Literal[1]` (rojo: hoy `version: 2` pasa); `naming_convention` en la `MetaData`; `pydantic` declarado directo en `backend/pyproject.toml` (rojo: `tests/infra/test_dependencias.py` lo exige). Escenarios: `datos-semilla` › Versión distinta de 1. Lecciones: L-008, L-009.
+- [x] 2.3 Deuda del 1b con dueño 3, parte de código (D13): `Porcentaje` y `Superficie` en `proptech_core/compartido/` (texto decimal ASCII, `fullmatch`, rechazo de `float`, `bool`, `NaN`, `Infinity`, `-0`, dígitos Unicode y `\n` final, con tests en rojo primero); `parametros.py` y `semilla.py` pasan a usarlos (L-009: la misma batería sobre los dos lectores); `parametros.py` rechaza un tipo de unidad fuera de los cuatro de D-029, con la constante que va a usar el `CHECK` de 3.1 (nota N9 c; rojo: hoy `quincho` en `tipos_de_unidad` pasa); `Semilla.version: Literal[1]` (rojo: hoy `version: 2` pasa); `naming_convention` en la `MetaData`; `pydantic` declarado directo en `backend/pyproject.toml` (rojo: `tests/infra/test_dependencias.py` lo exige). Escenarios: `datos-semilla` › Versión distinta de 1. Lecciones: L-008, L-009.
+
+**Evidencia de 2.3 (rojo por mutante, pegado el 19/10/2026)**
+
+Mutación posterior a la implementación; no reconstruye el rojo histórico de `b52257d`. Base: HEAD; copia previa en memoria, restaurada byte a byte después de cada corrida. Horas locales (Argentina).
+L-009: misma batería de sufijos (`\n`, `\r`, `\t`, espacio, NUL) en tasa, fondo, factor y superficie; el mutante deja pasar `\n` y los otros cuatro siguen rechazándose.
+
+```text
+Porcentaje — backend/src/proptech_core/compartido/porcentaje.py
+@@ -47,0 +48,2 @@
++        if type(texto) is float:
++            texto = str(texto)
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_porcentaje.py::test_construccion_rechaza_tipos_que_no_son_str[0.1] -q --tb=line
+10:28:41
+E   Failed: DID NOT RAISE PorcentajeInvalido
+FAILED tests/unitarios/test_porcentaje.py::test_construccion_rechaza_tipos_que_no_son_str[0.1]
+1 failed in 0.06s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+Superficie — backend/src/proptech_core/compartido/superficie.py
+@@ -42,0 +43,2 @@
++        if type(texto) is float:
++            texto = str(texto)
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_superficie.py::test_construccion_rechaza_tipos_que_no_son_str[0.1] -q --tb=line
+10:28:42
+E   Failed: DID NOT RAISE SuperficieInvalida
+FAILED tests/unitarios/test_superficie.py::test_construccion_rechaza_tipos_que_no_son_str[0.1]
+1 failed in 0.03s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+Tipo D-029 — backend/src/proptech_core/compartido/parametros.py
+@@ -79 +79 @@
+-    if valor not in TIPOS_DE_UNIDAD_VALIDOS:
++    if False:
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_parametros.py::test_tipo_de_unidad_fuera_de_los_cuatro_de_d029_falla -q --tb=line
+10:28:43
+E   Failed: DID NOT RAISE ValidationError
+FAILED tests/unitarios/test_parametros.py::test_tipo_de_unidad_fuera_de_los_cuatro_de_d029_falla
+1 failed in 0.09s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+Semilla.version — backend/src/proptech_core/compartido/semilla.py
+@@ -93 +93 @@
+-    version: Literal[1]
++    version: int
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_semilla.py::test_version_distinta_de_uno_falla -q --tb=line
+10:28:44
+E   Failed: DID NOT RAISE SemillaInvalida
+FAILED tests/unitarios/test_semilla.py::test_version_distinta_de_uno_falla - ...
+1 failed in 0.13s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+naming_convention — backend/src/proptech_core/compartido/base_de_datos.py
+@@ -33 +33 @@
+-    metadata = MetaData(naming_convention=_NAMING_CONVENTION)
++    metadata = MetaData()
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_base_de_datos_naming_convention.py::test_metadata_de_base_tiene_naming_convention_determinista -q --tb=line
+10:28:44
+E   AssertionError: falta la clave 'uq' en naming_convention: immutabledict({'ix': 'ix_%(column_0_label)s'})
+FAILED tests/unitarios/test_base_de_datos_naming_convention.py::test_metadata_de_base_tiene_naming_convention_determinista
+1 failed in 0.12s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+pydantic directo — backend/pyproject.toml
+@@ -12 +11,0 @@
+-  "pydantic>=2.14.0,<2.15.0",
+$ cd backend && date +%T && uv run --offline pytest tests/infra/test_dependencias.py::test_pyproject_exige_pydantic_directo -q --tb=line
+10:28:45
+E   AssertionError: no se encontró pydantic declarado directo (no transitivo) en ['fastapi>=0.143.0,<0.144.0', 'uvicorn>=0.54.0,<0.55.0', 'sqlalchemy>=2.1.4,<2.2.0', 'alembic>=1.20.0,<1.21.0', 'psycopg[binary]>=3.3.6,<3.4.0', 'pydantic-settings>=2.15.0,<2.16.0', 'pyyaml>=6.0.3,<7', 'arq==0.28.0', 'redis[hiredis]>=5.3.1,<6']
+FAILED tests/infra/test_dependencias.py::test_pyproject_exige_pydantic_directo
+1 failed in 0.01s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+L-009 tasa — backend/src/proptech_core/compartido/porcentaje.py
+@@ -50 +50 @@
+-        if not _PATRON.fullmatch(texto):
++        if not _PATRON.match(texto):
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_tasa_mensual_rechaza_sufijo_peligroso -q --tb=line
+10:28:46
+E   Failed: DID NOT RAISE ValidationError
+FAILED tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_tasa_mensual_rechaza_sufijo_peligroso[\n]
+1 failed, 4 passed in 0.08s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+L-009 fondo — backend/src/proptech_core/compartido/porcentaje.py
+@@ -50 +50 @@
+-        if not _PATRON.fullmatch(texto):
++        if not _PATRON.match(texto):
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_fondo_de_reserva_rechaza_sufijo_peligroso -q --tb=line
+10:28:47
+E   Failed: DID NOT RAISE ValidationError
+FAILED tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_fondo_de_reserva_rechaza_sufijo_peligroso[\n]
+1 failed, 4 passed in 0.07s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+L-009 factor — backend/src/proptech_core/compartido/porcentaje.py
+@@ -50 +50 @@
+-        if not _PATRON.fullmatch(texto):
++        if not _PATRON.match(texto):
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_factor_de_estado_rechaza_sufijo_peligroso -q --tb=line
+10:28:48
+E   Failed: DID NOT RAISE ValidationError
+FAILED tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_factor_de_estado_rechaza_sufijo_peligroso[\n]
+1 failed, 4 passed in 0.07s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+L-009 superficie — backend/src/proptech_core/compartido/superficie.py
+@@ -45 +45 @@
+-        if not _PATRON.fullmatch(texto):
++        if not _PATRON.match(texto):
+$ cd backend && date +%T && uv run --offline pytest tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_superficie_m2_rechaza_sufijo_peligroso -q --tb=line
+10:28:48
+E   Failed: DID NOT RAISE ValidationError
+FAILED tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py::test_superficie_m2_rechaza_sufijo_peligroso[\n]
+1 failed, 4 passed in 0.08s
+$ git diff --quiet -- backend/src  # salida: 0; pytest: 1
+```
+
+Los diez mutantes dieron rojo; ninguno sobrevivió. Verde final con producción y dependencias restauradas:
+
+```text
+$ cd backend && uv run --offline pytest tests/unitarios/test_porcentaje.py tests/unitarios/test_superficie.py tests/unitarios/test_parametros.py tests/unitarios/test_semilla.py tests/unitarios/test_base_de_datos_naming_convention.py tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py tests/infra/test_dependencias.py -q
+209 passed in 0.47s
+[código de salida: 0]
+```
+
 - [x] 2.4 Deuda del 1b con dueño 3, parte de infraestructura (D13). Choca con `main` en `backend/src/proptech_api/app.py` (no en Compose, el humo ni el CI, que no cambiaron desde el fork): la rama ya tiene `main` desde el rebase del 16/10; si `main` volvió a tocar `app.py`, rebasar antes de empezar. `app.py` sin app creada al importar, conservando el log de `arranque_fallido` que sumó `main`, y `uvicorn --factory proptech_api.app:crear_app` en Compose y Dockerfile; healthcheck de la web contra `127.0.0.1`; `.gitignore` ampliado; el test de `chmod` salteado en Windows. Rojo de cada uno en `tests/infra/` y `tests/unitarios/test_arranque_api.py` (importar `proptech_api.app` hoy crea la app). Humo en verde al final. Escenarios: ninguno nuevo (no cambia comportamiento observable). Lecciones: L-005.
 
 **ROJO inicial de D13: importación sin configuración, CMD factory y salud web IPv4 (19/10/2026)**
