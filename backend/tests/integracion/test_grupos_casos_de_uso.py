@@ -233,3 +233,25 @@ def test_miembro_y_clave_repetidos(sesion_edificio: Session, identidad_edificio:
     assert next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)[
         "unidades"
     ] == [{"unidad_id": unidad, "coeficiente": None}]
+
+
+@pytest.mark.parametrize("modo", ["renormalizado", "propios"])
+def test_grupo_sin_miembros_se_crea_vacio(
+    sesion_edificio: Session, identidad_edificio: Identidad, modo: str
+) -> None:
+    """Un grupo nuevo sin unidades no es un 500: el `IN` con lista vacía no tipa contra
+    `uuid` en Postgres (hallazgo de la vuelta 1 de correcciones)."""
+    from proptech_core.complejos.aplicacion import grupos
+
+    edificio = crear(sesion_edificio, identidad_edificio)
+    grupos.crear_grupo(
+        sesion_edificio,
+        identidad_edificio,
+        complejo_id=edificio,
+        datos={"clave": "vacio", "nombre": "Vacío", "metodo": "coeficiente"},
+        modo=modo,
+        miembros=[],
+    )
+    vacio = [g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["clave"] == "vacio"]
+    assert len(vacio) == 1
+    assert vacio[0]["unidades"] == []

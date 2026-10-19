@@ -1225,6 +1225,23 @@ $ date +%T && uv run pytest tests/integracion/test_texto_recortado_en_el_borde.p
 13:04:28
 ```
 
+### Grupo sin miembros daba 500 (hallado por el constructor de la vuelta 1, arreglado por el orquestador)
+
+`grupos.py::_reemplazar` consultaba `id IN :ids` con lista vacía; Postgres no tipa el `IN` vacío contra `uuid`.
+
+```text
+$ cd backend && uv run pytest tests/integracion/test_grupos_casos_de_uso.py -k sin_miembros -q --tb=line
+13:13:59
+FAILED ...test_grupo_sin_miembros_se_crea_vacio[renormalizado] - ProgrammingError: (psycopg.errors.UndefinedFunction) operato...
+FAILED ...test_grupo_sin_miembros_se_crea_vacio[propios] - ProgrammingError: (psycopg.errors.UndefinedFunction) operato...
+2 failed, 11 deselected in 5.84s
+
+# arreglo: sin miembros no se consulta
+$ cd backend && uv run pytest tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_rls_grupos.py -q
+13:14:13
+35 passed in 11.48s
+```
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.

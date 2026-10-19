@@ -131,13 +131,18 @@ def _reemplazar(
         raise Conflicto("unidades")
     if any((modo == "propios") != (m.coeficiente is not None) for m in entradas):
         raise EntradaInvalida("unidades")
-    encontrados = set(
-        sesion.execute(
-            text("SELECT id FROM unidad WHERE complejo_id=:complejo AND id IN :ids").bindparams(
-                bindparam("ids", expanding=True)
-            ),
-            {"complejo": grupo["complejo_id"], "ids": ids},
-        ).scalars()
+    # Sin miembros no se consulta: el `IN` expandido con lista vacía no tipa contra `uuid`.
+    encontrados = (
+        set(
+            sesion.execute(
+                text("SELECT id FROM unidad WHERE complejo_id=:complejo AND id IN :ids").bindparams(
+                    bindparam("ids", expanding=True)
+                ),
+                {"complejo": grupo["complejo_id"], "ids": ids},
+            ).scalars()
+        )
+        if ids
+        else set()
     )
     if encontrados != set(ids):
         raise EntradaInvalida("unidades")
