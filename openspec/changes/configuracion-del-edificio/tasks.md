@@ -1124,7 +1124,47 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   10:38:17
   All checks passed! / 168 files already formatted / Success: no issues found in 158 source files
   ```
-- [ ] 3.3 Migración del modo de coeficientes (D15, D-100, P24): `grupo_de_reparto.modo_de_coeficientes` con su `CHECK` y su `UNIQUE` de cuatro columnas; `grupo_unidad.modo_de_coeficientes` y `coeficiente` nulo, la FK al grupo pasa a `(administracion_id, complejo_id, grupo_id, modo_de_coeficientes)` con `ON UPDATE CASCADE`; los `CHECK` de coherencia (modo propios ⇔ coeficiente presente; propios ⇒ método por coeficiente; "Generales" renormalizado). Tests como `proptech_app`, insertando de verdad (L-018): un miembro con coeficiente en un grupo renormalizado falla; uno sin coeficiente en un grupo propios falla; un miembro con un modo distinto del de su grupo falla por la FK; un grupo propios por superficie falla; `UPDATE` del modo de un grupo con miembros falla (el cascade choca con el `CHECK`); "Generales" con modo propios falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › Coeficiente propio en un grupo renormalizado; › Cambiar el modo por SQL con miembros. Lecciones: L-016, L-018.
+- [x] 3.3 Migración del modo de coeficientes (D15, D-100, P24): `grupo_de_reparto.modo_de_coeficientes` con su `CHECK` y su `UNIQUE` de cuatro columnas; `grupo_unidad.modo_de_coeficientes` y `coeficiente` nulo, la FK al grupo pasa a `(administracion_id, complejo_id, grupo_id, modo_de_coeficientes)` con `ON UPDATE CASCADE`; los `CHECK` de coherencia (modo propios ⇔ coeficiente presente; propios ⇒ método por coeficiente; "Generales" renormalizado). Tests como `proptech_app`, insertando de verdad (L-018): un miembro con coeficiente en un grupo renormalizado falla; uno sin coeficiente en un grupo propios falla; un miembro con un modo distinto del de su grupo falla por la FK; un grupo propios por superficie falla; `UPDATE` del modo de un grupo con miembros falla (el cascade choca con el `CHECK`); "Generales" con modo propios falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › Coeficiente propio en un grupo renormalizado; › Cambiar el modo por SQL con miembros. Lecciones: L-016, L-018.
+
+  **RED** — 19/10/2026, antes de crear `0007`:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_modo_de_coeficientes.py -q
+  10:39:44
+  E psycopg.errors.UndefinedColumn: column "modo_de_coeficientes" of relation "grupo_de_reparto" does not exist
+  19 failed in 7.50s
+  ```
+  **Mutante de coherencia (L-018)** — copia previa en `backend/.pytest_cache/bloque_b/0007_original.py`;
+  diff temporal al final de `upgrade()` (revertido desde la copia antes del cierre):
+  ```diff
+  +    op.drop_constraint("ck_grupo_unidad_modo_coeficiente", "grupo_unidad", type_="check")
+  +
+  ```
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_modo_de_coeficientes.py -k 'incoherente or cambiar_modo_con_miembros' -q
+  10:40:58
+  E Failed: DID NOT RAISE CheckViolation
+  4 failed, 15 deselected in 4.79s
+  ```
+  FK probada con modos distintos pero miembros de forma válida; cascade probado en ambas
+  direcciones, con savepoint y comparación posterior de grupo/miembro/coeficiente/unidad.
+  El ciclo `head → 0006 → head → 0006 → head` conserva miembros del esquema anterior;
+  se comprueba el relleno renormalizado, el coeficiente nulo y el retiro del default temporal.
+  **GREEN del modelo** — antes del mutante, incluidos 3.1, 3.2 y guardián:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_modo_de_coeficientes.py tests/integracion/test_rls_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_catalogo_rls.py -q
+  10:40:23
+  67 passed in 21.01s
+  cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:47:35
+  All checks passed! / 170 files already formatted / Success: no issues found in 159 source files
+  ```
+
+  **GREEN de cierre del bloque B** — después de revertir el mutante, suite completa una vez:
+  ```text
+  date +%T && bash infra/ci/test-backend.sh
+  10:41:31
+  =========== 1091 passed, 1 xfailed, 16 warnings in 339.16s (0:05:39) ===========
+  ```
 - [ ] 3.4 Migración de categorías (D2): `categoria_de_gasto` con clave y nombre únicos por edificio (nombre sin distinguir mayúsculas), `orden` único diferible, `activa`. Tests como `proptech_app`: "limpieza" junto a "Limpieza" falla; el mismo nombre en otro edificio pasa; dos categorías intercambian `orden` dentro de una transacción; una categoría de otra administración no se ve. Escenarios: `categorias-de-gasto` › Nombre repetido (la parte de la base). Lecciones: L-016.
 - [ ] 3.5 **Tablas de sólo agregar en el paso de roles** (D16, B2, L-018), en `backend/src/proptech_core/compartido/roles.py` (si `main` lo volvió a tocar desde el rebase del 16/10, rebasar antes): `_TABLAS_DE_SOLO_AGREGAR`; `antes()` las saltea al otorgar permisos a la app; `despues()` hace `REVOKE UPDATE, DELETE, TRUNCATE` y `GRANT SELECT, INSERT` sobre cada una. El guardián `tests/integracion/test_catalogo_rls.py` se ajusta: acepta una tabla de la lista sólo con exactamente `SELECT, INSERT` y sólo si su trigger rechaza un `UPDATE` de verdad (caja negra); toda otra tabla con `administracion_id` sigue necesitando los cuatro permisos (L-020). **Rojo** con una tabla de prueba de sólo agregar y el `roles.py` de hoy: después de **dos `up`** (`roles antes`, migraciones, `roles despues`, dos veces), sobre una copia (L-013) con el trigger deshabilitado, `UPDATE` como `proptech_app` pasa; después del arreglo, `UPDATE` y `DELETE` dan "permission denied". Rojo del guardián: una tabla en la lista sin trigger hace fallar el guardián. Escenarios: `configuracion-versionada` › Editar una versión después de otro arranque. Lecciones: L-013, L-016, L-018, L-020.
 - [ ] 3.6 Migración de la configuración versionada (D2, D3, E4, E9): columnas de R03 y R15, el vencimiento (`dia_de_vencimiento` del 1 al 28, `modalidad_de_vencimiento`, `dia_segundo_vencimiento` y `recargo_segundo_vencimiento` nulos) con los `CHECK` de rango de `parametros.py` y el `CHECK` de coherencia; `UNIQUE` por fecha de vigencia, autor con FK compuesta a `persona`, la tabla en `_TABLAS_DE_SOLO_AGREGAR` (3.5) y trigger que rechaza `UPDATE`, `DELETE` y `TRUNCATE`. `parametros.yaml` y `Parametros` suman el vencimiento (día por defecto, modalidad, rango del recargo), con rojo primero. Tests que **intentan** editar (L-018): `UPDATE`, `DELETE` y `TRUNCATE` como `proptech_app` y como `proptech_migrador` se rechazan y la fila queda igual; dos `INSERT` con la misma fecha en transacciones concurrentes, uno falla; día 0 y 29 fallan; doble sin recargo, único con recargo, segundo día igual al primero, fallan; `downgrade` y `upgrade`. Escenarios: `configuracion-versionada` › Editar una versión por SQL; › Dos pedidos simultáneos (la parte de la base); › Vencimiento incoherente por SQL. Lecciones: L-016, L-018.

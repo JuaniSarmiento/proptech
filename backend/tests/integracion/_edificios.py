@@ -98,9 +98,12 @@ def insertar_miembro(
     complejo_id: UUID,
     grupo_id: UUID,
     unidad_id: UUID,
+    *,
+    modo: str = "renormalizado",
+    coeficiente: str | None = None,
 ) -> None:
     conexion.execute(
-        "INSERT INTO grupo_unidad (administracion_id, complejo_id, grupo_id, unidad_id) "
-        "VALUES (%s, %s, %s, %s)",
-        (administracion_id, complejo_id, grupo_id, unidad_id),
+        "INSERT INTO grupo_unidad (administracion_id, complejo_id, grupo_id, unidad_id, "
+        "modo_de_coeficientes, coeficiente) VALUES (%s, %s, %s, %s, %s, %s)",
+        (administracion_id, complejo_id, grupo_id, unidad_id, modo, coeficiente),
     )
