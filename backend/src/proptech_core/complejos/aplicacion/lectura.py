@@ -8,10 +8,14 @@ otra administración (RLS ya lo filtró). El resto del dominio de complejos
 """
 
 from dataclasses import dataclass
+from datetime import date
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from proptech_core.complejos.aplicacion.errores import NoEncontrado
 
 
 @dataclass(frozen=True)
@@ -52,3 +56,39 @@ def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
         complejo_id=fila.complejo_id,
         identificador=fila.identificador,
     )
+
+
+_COLUMNAS_CONFIGURACION = (
+    "SELECT id, complejo_id, vigente_desde, tasa_mensual::text, dias_de_gracia, "
+    "forma_de_calculo, porcentaje_fondo::text, dia_de_vencimiento, modalidad_de_vencimiento, "
+    "dia_segundo_vencimiento, recargo_segundo_vencimiento::text, autor_id, creada_en "
+    "FROM configuracion_versionada WHERE complejo_id=:id "
+)
+
+
+def listar_versiones(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+    if cargar_complejo(sesion, complejo_id) is None:
+        raise NoEncontrado()
+    return [
+        dict(f)
+        for f in sesion.execute(
+            text(_COLUMNAS_CONFIGURACION + "ORDER BY vigente_desde"), {"id": complejo_id}
+        ).mappings()
+    ]
+
+
+def configuracion_vigente(sesion: Session, complejo_id: UUID, fecha: date) -> dict[str, Any] | None:
+    if cargar_complejo(sesion, complejo_id) is None:
+        raise NoEncontrado()
+    fila = (
+        sesion.execute(
+            text(
+                _COLUMNAS_CONFIGURACION
+                + "AND vigente_desde<=:fecha ORDER BY vigente_desde DESC LIMIT 1"
+            ),
+            {"id": complejo_id, "fecha": fecha},
+        )
+        .mappings()
+        .first()
+    )
+    return None if fila is None else dict(fila)

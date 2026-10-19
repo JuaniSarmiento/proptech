@@ -20,6 +20,7 @@ from __future__ import annotations
 import functools
 import json
 from collections.abc import Callable
+from datetime import date
 from typing import Any, ParamSpec, TypeVar
 from uuid import UUID
 
@@ -49,11 +50,17 @@ class _DetalleAsignarEdificio(_DetalleBase):
     complejo_id: UUID
 
 
+class _DetalleConfiguracion(_DetalleAsignarEdificio):
+    vigente_desde: date
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[Accion, type[_DetalleBase]] = {
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignarEdificio,
     Accion.CREAR_EDIFICIO: _DetalleAsignarEdificio,
+    Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
+    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
 }
 
 

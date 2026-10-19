@@ -24,6 +24,13 @@ from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.parametros import Parametros
+from proptech_core.complejos.aplicacion.errores import (
+    Conflicto,
+    EntradaInvalida,
+    NoEncontrado,
+    transaccion,
+)
+from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
 _ACCION = Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS
@@ -175,6 +182,73 @@ def crear_edificio(
             sesion,
             identidad,
             Accion.CREAR_EDIFICIO,
+            entidad="complejo",
+            entidad_id=complejo_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(complejo_id)},
+        )
+    return complejo_id
+
+
+@accion_sensible(Accion.CREAR_VERSION_DE_CONFIGURACION)
+def crear_version_de_configuracion(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    complejo_id: UUID,
+    configuracion: ConfiguracionEdificio,
+    vigente_desde: date,
+    parametros: Parametros,
+    reloj: Callable[[], datetime],
+    request_id: UUID,
+) -> UUID:
+    if vigente_desde < hoy_en_mendoza(reloj):
+        raise EntradaInvalida("vigente_desde", "no puede ser anterior a hoy en Mendoza")
+    try:
+        configuracion.validar_rango_recargo(parametros)
+    except ValueError:
+        raise EntradaInvalida(
+            "recargo_segundo_vencimiento", "fuera del rango de parámetros"
+        ) from None
+    with transaccion(sesion, {"uq_configuracion_vigencia": "vigente_desde"}):
+        if cargar_complejo(sesion, complejo_id) is None:
+            raise NoEncontrado()
+        version_id = insertar_configuracion(
+            sesion, identidad, complejo_id, vigente_desde, configuracion
+        )
+        registrar(
+            sesion,
+            identidad,
+            Accion.CREAR_VERSION_DE_CONFIGURACION,
+            entidad="complejo",
+            entidad_id=complejo_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(complejo_id), "vigente_desde": vigente_desde.isoformat()},
+        )
+    return version_id
+
+
+@accion_sensible(Accion.CONFIRMAR_SIN_SALDOS_PREVIOS)
+def confirmar_sin_saldos_previos(
+    sesion: Session, identidad: Identidad, *, complejo_id: UUID, request_id: UUID
+) -> UUID:
+    with transaccion(sesion, {}):
+        estado = sesion.execute(
+            text("SELECT estado_migracion FROM complejo WHERE id=:id FOR UPDATE"),
+            {"id": complejo_id},
+        ).scalar_one_or_none()
+        if estado is None:
+            raise NoEncontrado()
+        if estado != "pendiente":
+            raise Conflicto("estado_migracion")
+        sesion.execute(
+            text("UPDATE complejo SET estado_migracion='sin_saldos_previos' WHERE id=:id"),
+            {"id": complejo_id},
+        )
+        registrar(
+            sesion,
+            identidad,
+            Accion.CONFIRMAR_SIN_SALDOS_PREVIOS,
             entidad="complejo",
             entidad_id=complejo_id,
             request_id=request_id,

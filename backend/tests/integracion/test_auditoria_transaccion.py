@@ -15,7 +15,7 @@ import subprocess
 import sys
 import uuid
 from collections.abc import Callable, Iterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -38,6 +38,7 @@ from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import escritura
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
+from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
 pytestmark = pytest.mark.integracion
 
@@ -382,6 +383,26 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
     )
 
     _INVOCADORES: dict[Accion, Callable[[Session], UUID]] = {
+        Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
+            escritura.crear_version_de_configuracion(
+                sesion,
+                identidad,
+                complejo_id=datos["complejo_id"],
+                configuracion=ConfiguracionEdificio.desde_parametros(
+                    leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml"))
+                ),
+                parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+                vigente_desde=date(2026, 11, 1),
+                reloj=lambda: datetime(2026, 11, 1, 12, tzinfo=UTC),
+                request_id=uuid.uuid4(),
+            )
+        ),
+        Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: lambda sesion: escritura.confirmar_sin_saldos_previos(
+            sesion,
+            identidad,
+            complejo_id=datos["complejo_id"],
+            request_id=uuid.uuid4(),
+        ),
         Accion.CREAR_EDIFICIO: lambda sesion: escritura.crear_edificio(
             sesion,
             identidad,

@@ -1370,6 +1370,8 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   JUICIO: Coeficiente/Superficie desde texto, edición parcial sin cambio de edificio, conflicto de
   identificador traducido desde UniqueViolation y padrón con informe R01. Se guarda la suma parcial.
   El movimiento usa un edificio existente; otra administración e inexistente dan el mismo error.
+  SUPUESTO: el identificador admite entre 1 y 40 caracteres; el máximo de 40 se eligió sin
+  un límite explícito en la spec.
 
 - [x] 5.3 Grupos (D6, D15): crear y editar un grupo, fijar sus unidades buscándolas dentro del edificio del grupo, con su modo y, si es `propios`, el coeficiente de cada una; cambiar el modo reescribe los miembros en una transacción; "Generales" inmutable; el informe de cada grupo `propios`. Tests: unidad de otro edificio y de otra administración dan el mismo error sin revelar cuál; repetida; cambiar el método de "Generales"; una unidad nueva entra sola en "Generales" (guarda de regresión, rojo sobre una copia, ver design); grupo renormalizado sin coeficientes; grupo propios que suma 0,8 se guarda y se informa `fuera_de_tolerancia`; pasar un grupo de renormalizado a propios con sus coeficientes. Escenarios: `grupos-de-reparto` › Grupo con una unidad de otro edificio; › Grupo con una unidad de otra administración; › Unidad repetida en un grupo; › Cambiar el método de Generales; › Una unidad nueva entra a Generales; › Grupo parcial renormalizado; › Grupo con coeficientes propios que no suman 1; › Cambiar el modo de un grupo. Lecciones: L-017.
 
@@ -1421,7 +1423,35 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   clave/nombre repetidos son conflictos. Omisión, repetición y categorías ajenas existentes no
   cambian nada. El bloqueo del edificio serializa altas y reordenamientos de sus categorías.
 
-- [ ] 5.5 Versiones de configuración y estado de migración: crear una versión (vigencia desde hoy en Mendoza o después, autor, auditoría, vencimiento único o doble), `configuracion_vigente(complejo, fecha)`, y confirmar "sin saldos previos" sólo desde `pendiente`, con auditoría. Tests: cambiar la tasa deja dos versiones y la vieja intacta; pasar a doble vencimiento con día 20 y recargo "5.00" deja la versión anterior única; vigencia de ayer se rechaza; con el reloj fijado a las 23:30 y a las 00:30 de Mendoza, "hoy" es el día de Mendoza; misma fecha dos veces es conflicto y no deja auditoría (el `UniqueViolation` se traduce de forma determinista, sin depender de dos pedidos a la vez); vigente para el 15/11 con versiones del 1/11 y el 1/12; fecha anterior a la primera; confirmar dos veces es conflicto. Escenarios: `configuracion-versionada` › Cambiar la tasa; › Pasar a doble vencimiento; › Dos versiones para el mismo día; › Versión retroactiva; › Vigente para una fecha; › Fecha anterior a la primera versión; `edificios-y-unidades` › Confirmar sin saldos previos; › Confirmar dos veces; `auditoria-de-acciones` › La versión que falla no deja auditoría; › El detalle no trae la tasa. Lecciones: L-016.
+- [x] 5.5 Versiones de configuración y estado de migración: crear una versión (vigencia desde hoy en Mendoza o después, autor, auditoría, vencimiento único o doble), `configuracion_vigente(complejo, fecha)`, y confirmar "sin saldos previos" sólo desde `pendiente`, con auditoría. Tests: cambiar la tasa deja dos versiones y la vieja intacta; pasar a doble vencimiento con día 20 y recargo "5.00" deja la versión anterior única; vigencia de ayer se rechaza; con el reloj fijado a las 23:30 y a las 00:30 de Mendoza, "hoy" es el día de Mendoza; misma fecha dos veces es conflicto y no deja auditoría (el `UniqueViolation` se traduce de forma determinista, sin depender de dos pedidos a la vez); vigente para el 15/11 con versiones del 1/11 y el 1/12; fecha anterior a la primera; confirmar dos veces es conflicto. Escenarios: `configuracion-versionada` › Cambiar la tasa; › Pasar a doble vencimiento; › Dos versiones para el mismo día; › Versión retroactiva; › Vigente para una fecha; › Fecha anterior a la primera versión; `edificios-y-unidades` › Confirmar sin saldos previos; › Confirmar dos veces; `auditoria-de-acciones` › La versión que falla no deja auditoría; › El detalle no trae la tasa. Lecciones: L-016.
+
+  EVIDENCIA:
+  ```text
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_versiones_casos_de_uso.py
+  11:23:01
+  E AttributeError: module 'proptech_core.complejos.aplicacion.lectura' has no attribute 'listar_versiones'
+  E AttributeError: module 'proptech_core.complejos.aplicacion.escritura' has no attribute 'crear_version_de_configuracion'
+  7 failed in 9.39s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 190 files already formatted / Success: no issues found in 176 source files
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_versiones_casos_de_uso.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_crear_edificio.py
+  11:24:33
+  16 passed in 20.47s
+  ```
+  JUICIO: versiones inmutables con autor, doble vencimiento y detalle cerrado sin tasas/recargos;
+  vigencia de hoy o futura con reloj inyectado y America/Argentina/Mendoza. A las 23:30 y a las
+  00:30 se acepta el día local y se rechaza el anterior. Un observador de SQLAlchemy comprueba
+  que la fecha repetida provoca UniqueViolation real, traducido a conflicto sin auditoría.
+  La vigente del 15/11 es la del 1/11; antes de la primera no hay configuración. Confirmar sólo
+  permite pendiente y audita una vez; repetir o partir de confirmada es conflicto.
+
+  Cierre completo del bloque D:
+  ```text
+  $ date +%T; bash infra/ci/test-backend.sh
+  11:25:12
+  =========== 1351 passed, 1 xfailed, 16 warnings in 538.10s (0:08:58) ===========
+  ```
+
 
 ## 6. API
 
