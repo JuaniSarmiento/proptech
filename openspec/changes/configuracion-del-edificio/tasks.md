@@ -1152,6 +1152,28 @@ $ date +%T && uv run pytest tests/integracion/test_rls_grupos.py -q --color=no
 
 ### R3A-4 · MEDIA · Rol/nivel inválido en asignación da 500
 
+Test movido a `tests/integracion/test_asignacion_validacion.py` (nuevo, mismo estilo liviano que `test_padron_api.py`), ampliado a 6 casos inválidos (vecino, titular, rol inventado, nivel inventado, colaborador sin nivel, consejo con nivel) + 2 de control en verde (las únicas combinaciones válidas). Arreglo: `CuerpoAsignacion.rol`/`nivel` pasan a `Literal` + `model_validator` que exige la combinación del CHECK `ck_asignacion_rol_forma_por_rol`.
+
+**RED** — 19/10/2026, 12:53:45:
+```text
+$ date +%T && uv run pytest tests/rompedor_3a/test_r3a_asignacion_500.py -q --color=no
+12:53:45
+FAILED test_rol_invalido_en_asignacion_da_422[cuerpo0..2] (3 casos): 500, sqlalchemy.exc.IntegrityError
+3 failed, 1 warning in 5.60s
+12:53:51
+```
+
+**GREEN** — 19/10/2026, 12:58:23:
+```text
+$ date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -q --color=no
+12:58:16
+........                                                                 [100%]
+8 passed, 1 warning in 5.84s
+12:58:23
+```
+
+**Mutante (L-019)**: invertida a propósito la condición de `_nivel_segun_rol` (colaborador exige nivel ausente, consejo lo exige presente), 4 de los 8 casos dan rojo: los 2 inválidos que antes pasaban por esa rama y los 2 de control (`colaborador_sin_nivel`, `consejo_con_nivel` fallan; `colaborador_con_nivel`, `consejo_sin_nivel` también). Restituida la condición correcta antes de commitear.
+
 ### R3A-5 · BAJA · El 422 saneado repite parte del valor
 
 ### R3A-6 · BAJA · Unicidad de identificador/nombre con espacios al borde
