@@ -21,6 +21,7 @@ from pydantic import (
 from proptech_core.compartido import coeficientes
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
 from proptech_core.compartido.superficie import Superficie
+from proptech_core.compartido.texto import recortado_sin_control, sin_caracteres_de_control
 
 if TYPE_CHECKING:
     from proptech_core.compartido.parametros import Parametros
@@ -36,14 +37,8 @@ def _coeficiente_valido(valor: Any) -> Decimal:
     return coeficientes.Coeficiente(valor).decimal
 
 
-def _no_vacio(valor: str) -> str:
-    if not valor.strip():
-        raise ValueError("no puede estar vacío ni en blanco")
-    return valor
-
-
 _Coeficiente = Annotated[Decimal, BeforeValidator(_coeficiente_valido)]
-_Texto = Annotated[str, AfterValidator(_no_vacio)]
+_Texto = Annotated[str, AfterValidator(recortado_sin_control)]
 
 
 class _Base(BaseModel):
@@ -69,7 +64,7 @@ def _superficie_positiva(valor: Superficie) -> Superficie:
 class Unidad(_Base):
     identificador: _Texto
     tipo: _Texto
-    piso: _Texto
+    piso: Annotated[str, Field(min_length=1), AfterValidator(sin_caracteres_de_control)]
     coeficiente: _Coeficiente
     superficie_m2: Annotated[Superficie, AfterValidator(_superficie_positiva)]
 

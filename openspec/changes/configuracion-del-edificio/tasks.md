@@ -1289,6 +1289,30 @@ $ cd backend && date +%T && uv run pytest tests/unitarios/test_texto_unicode_seg
 14:21:35 [exit 0]
 ```
 
+### R3B-9 · Semilla y API comparten la regla de texto (L-009)
+
+- [x] Eliminar `_no_vacio`: `_Texto` usa `recortado_sin_control`; el piso usa
+  `sin_caracteres_de_control`, como la API. Identificadores y referencias de grupos se recortan.
+Tests del rompedor movidos a `tests/unitarios/test_semilla_texto_compartido.py`, ampliados a
+invisibles, uso privado y separadores. Se quitaron referencias a 1B en los casos inválidos:
+el rechazo por referencia inexistente no debe tapar la falta de validación de texto (L-017).
+**ROJO**:
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_semilla_texto_compartido.py -q --tb=line --color=no
+14:22:30
+FAILED tests/unitarios/test_semilla_texto_compartido.py::test_semilla_rechaza_unicode_inseguro[\u2028]
+FAILED tests/unitarios/test_semilla_texto_compartido.py::test_semilla_recorta_identificadores_y_referencias_de_grupos
+7 failed in 0.24s
+14:22:31 [exit 1]
+```
+**VERDE** (todos los validadores/comando de semilla):
+```text
+$ cd backend && date +%T && uv run pytest tests/unitarios/test_semilla.py tests/unitarios/test_semilla_comando.py tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py tests/unitarios/test_semilla_texto_compartido.py -q --tb=line --color=no
+14:22:42
+49 passed in 1.00s
+14:22:44 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
