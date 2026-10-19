@@ -2008,7 +2008,7 @@ Arreglos aprobados por Juani el 19/10/2026, sobre HEAD `334daf5`: `.git/informes
   $ date +%T && uv run pytest tests/integracion/test_textos_no_vacios_en_la_base.py -q
   15:48:32 ... 6 failed (Failed: DID NOT RAISE CheckViolation, las 5 columnas + el caso "recorta a vacío")
   ```
-  Arreglo: migración `0016`, `CHECK (<> '')` en `complejo.nombre`/`localidad`, `grupo_de_reparto.nombre`, `categoria_de_gasto.nombre`, `unidad.identificador` (las mismas que recorta `fn_recortar_texto_3a`). `infra/ci/humo.sh` inserta en `complejo` con valores no vacíos: revisado, no choca.
+  Arreglo: migración `0016`, `CHECK (<> '')` en `complejo.nombre`, `grupo_de_reparto.nombre`, `categoria_de_gasto.nombre`, `unidad.identificador` (las mismas que recorta `fn_recortar_texto_3a`). `infra/ci/humo.sh` inserta en `complejo` con valores no vacíos: revisado, no choca.
   ```text
   $ date +%T && uv run pytest tests/integracion/test_textos_no_vacios_en_la_base.py -q
   15:48:56 ... 6 passed in 6.49s
@@ -2016,6 +2016,14 @@ Arreglos aprobados por Juani el 19/10/2026, sobre HEAD `334daf5`: `.git/informes
   15:49:09 ... 54 passed, 1 warning in 37.53s
   ```
   Commit `2abda0c`.
+  - **Corrección** (hallada por la corrida completa, no por la suite acotada por archivo): el `CHECK` incluía también `complejo.localidad` y rompía `test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a` — `0005_edificio_y_unidad` rellena `localidad` con `''` (`server_default=""`) para los `complejo` que ya existían en el 2a, sin esa columna todavía; el `rg` previo no lo vio porque un `server_default` no es un literal buscable. Se excluyó `localidad` del `CHECK` (no se inventa un valor para reemplazar ese backfill) y queda documentado en `0016_textos_no_vacios.py` para que Juani decida. La API sigue rechazando `''` en `localidad` con 422, sin cambios.
+  ```text
+  $ date +%T && bash infra/ci/test-backend.sh
+  15:56:39 ... FAILED test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a — CheckViolation: ck_complejo_localidad_no_vacia   (1 failed, 1736 passed)
+  $ date +%T && uv run pytest tests/integracion/test_textos_no_vacios_en_la_base.py tests/integracion/test_rls_edificio.py -q
+  16:06:25 ... 30 passed in 12.43s
+  ```
+  Commit `048d8d6`.
 
 - [x] F8 `proptech_app` podía escribir `alembic_version` (los `ALTER DEFAULT PRIVILEGES` del 2a le dan los cuatro permisos sobre toda tabla nueva del migrador, incluida la que Alembic crea solo; estar en `_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` sólo evita el `GRANT` explícito de `antes()`).
   ```text
