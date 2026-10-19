@@ -4,16 +4,33 @@ import uuid
 from collections.abc import Iterator
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, event, text
+from sqlalchemy import Engine, MetaData, create_engine, event, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import DeclarativeBase, Session, SessionTransaction, sessionmaker
 
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.seguimiento import request_id_actual
 
+# D13 (deuda del 1b con dueño 3, tarea 2.3): nombres deterministas para toda
+# constraint que se declare sin nombre explícito desde un modelo de
+# SQLAlchemy Core/ORM. Las migraciones del 2a (0001 a 0004) ya nombran cada
+# constraint a mano con este mismo prefijo (`fk_<tabla>_...`,
+# `uq_<tabla>_...`, `ck_<tabla>_...`, ver `migraciones/versions/
+# 0003_acceso_minimo.py`); esto no les cambia nada, cubre lo que venga desde
+# 3.1 en adelante.
+_NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
 
 class Base(DeclarativeBase):
     """Base declarativa común para todos los modelos del dominio."""
+
+    metadata = MetaData(naming_convention=_NAMING_CONVENTION)
 
 
 def crear_engine(

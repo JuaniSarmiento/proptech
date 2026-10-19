@@ -75,3 +75,24 @@ def test_uv_lock_resuelve_redis_en_rama_5() -> None:
     assert (5, 3, 1) <= version < (6, 0, 0), (
         f"uv.lock resuelve redis {version}, necesita >=5.3.1,<6"
     )
+
+
+# --- 2.3 (3a): deuda del 1b con dueño 3 (D13) — pydantic declarado directo ---
+
+
+def test_pyproject_exige_pydantic_directo() -> None:
+    """Hoy pydantic llega sólo transitivo (vía fastapi y pydantic-settings);
+    D13 pide declararlo directo, con el rango que ya resuelve `uv.lock`."""
+    dependencias = _dependencias_pyproject()
+    especificador = next((d for d in dependencias if re.match(r"^pydantic[<>=~!]", d)), None)
+    assert especificador is not None, (
+        f"no se encontró pydantic declarado directo (no transitivo) en {dependencias}"
+    )
+
+
+def test_uv_lock_resuelve_pydantic_2_14_o_mas() -> None:
+    contenido = (RAIZ / "backend" / "uv.lock").read_text()
+    coincidencia = re.search(r'name = "pydantic"\nversion = "(\d+)\.(\d+)\.(\d+)"', contenido)
+    assert coincidencia is not None, "no se encontró el paquete pydantic en uv.lock"
+    version = tuple(int(parte) for parte in coincidencia.groups())
+    assert version >= (2, 14, 0), f"uv.lock resuelve pydantic {version}, necesita >=2.14.0"

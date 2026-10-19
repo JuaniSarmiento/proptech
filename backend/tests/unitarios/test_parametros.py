@@ -375,3 +375,28 @@ def test_leer_parametros_archivo_valido(tmp_path: Any) -> None:
     parametros = leer_parametros(str(ruta))
     assert isinstance(parametros, Parametros)
     assert parametros.intereses.dias_de_gracia == 0
+
+
+# --- 2.3 (3a): deuda del 1b con dueño 3 (D13, nota N9 c de design.md) ---
+
+
+def test_tipo_de_unidad_fuera_de_los_cuatro_de_d029_falla() -> None:
+    """D-029 fija los cuatro tipos (departamento, cochera, baulera, local);
+    hoy `tipos_de_unidad` acepta cualquier clave que matchee `_PATRON_CLAVE`."""
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["tipos_de_unidad"] = [{"clave": "quincho", "nombre": "Quincho"}]
+    with pytest.raises(ValidationError):
+        Parametros(**datos)
+
+
+@pytest.mark.parametrize("clave", ["departamento", "cochera", "baulera", "local"])
+def test_cada_tipo_de_unidad_de_d029_pasa(clave: str) -> None:
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _valido()
+    datos["tipos_de_unidad"] = [{"clave": clave, "nombre": clave.capitalize()}]
+    Parametros(**datos)

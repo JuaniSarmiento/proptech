@@ -24,6 +24,8 @@ from pydantic import (
 
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
 from proptech_core.compartido.dinero import Dinero
+from proptech_core.compartido.porcentaje import Porcentaje, PorcentajeInvalido
+from proptech_core.compartido.tipos_de_unidad import TIPOS_DE_UNIDAD_VALIDOS
 
 # re.ASCII en _PATRON_CLAVE: por consistencia con el resto del módulo,
 # aunque hoy no use `\d` (si alguna vez lo usara, no filtraría dígitos
@@ -32,10 +34,8 @@ from proptech_core.compartido.dinero import Dinero
 # aceptaba "encargado\n" o "3.00\n" como válidos (auditor, cambio 1b
 # vuelta 3; misma familia que L-002).
 _PATRON_CLAVE = re.compile(r"^[a-z][a-z0-9_]{0,39}$", re.ASCII)
-# re.ASCII: `\d` sin ese flag matchea cualquier dígito Unicode de categoría Nd
-# (arábigo-índico, de ancho completo, etc.), no sólo 0-9 (rompedor, cambio 1b
-# vuelta 2; mismo problema que `dinero.py`).
-_PATRON_PORCENTAJE = re.compile(r"^\d{1,3}(\.\d{1,2})?$", re.ASCII)
+# El formato de un porcentaje (ASCII, fullmatch, sin signo) lo valida
+# `Porcentaje` desde D13 (tarea 2.3); ya no hace falta un patrón propio acá.
 
 
 class ParametrosInvalidos(Exception):
@@ -47,24 +47,41 @@ def _validador_porcentaje(minimo: str, maximo: str) -> Any:
     maximo_d = Decimal(maximo)
 
     def _validar(valor: Any) -> Decimal:
-        if type(valor) is not str:
-            raise ValueError(f"debe estar escrito como texto, no {type(valor).__name__}")
-        if not _PATRON_PORCENTAJE.fullmatch(valor):
-            # El mensaje nombra el rango permitido aunque el problema sea de
-            # formato (no sólo de valor): un "-1.00" nunca llega al chequeo de
-            # rango de más abajo porque el patrón no admite signo, y la spec
-            # (escenario "Tasa negativa") exige que el rango se mencione
-            # siempre (rompedor, cambio 1b vuelta 2).
+        # D13 (deuda del 1b con dueño 3, tarea 2.3, L-009): el formato
+        # (texto ASCII, fullmatch, sin signo, rechazo de float/bool/NaN/
+        # Infinity/dígitos Unicode/`\n` final) lo valida `Porcentaje`, el
+        # mismo tipo que usa `semilla.py` para su propio campo — un arreglo
+        # ahí arregla los dos lectores (el gemelo de L-009). El mensaje
+        # sigue nombrando el rango permitido aunque el problema sea de
+        # formato (no sólo de valor): un "-1.00" nunca llega al chequeo de
+        # rango de más abajo porque `Porcentaje` no admite signo, y la spec
+        # (escenario "Tasa negativa") exige que el rango se mencione
+        # siempre (rompedor, cambio 1b vuelta 2).
+        try:
+            porcentaje = Porcentaje(valor)
+        except PorcentajeInvalido:
             raise ValueError(
                 f"formato inválido: hasta 2 decimales, sin signo; debe estar entre "
                 f"{minimo} y {maximo}"
-            )
-        decimal = Decimal(valor)
+            ) from None
+        decimal = porcentaje.decimal
         if decimal < minimo_d or decimal > maximo_d:
             raise ValueError(f"debe estar entre {minimo} y {maximo}")
         return decimal
 
     return _validar
+
+
+def _tipo_de_unidad_valido(valor: str) -> str:
+    """D-029 (deuda del 1b con dueño 3, tarea 2.3, nota N9 c de
+    `design.md`): sólo los cuatro tipos de unidad fijados por D-029, con la
+    misma constante que usa el `CHECK` de la migración de la tarea 3.1."""
+    if valor not in TIPOS_DE_UNIDAD_VALIDOS:
+        raise ValueError(
+            "tipo de unidad desconocido: debe ser uno de "
+            + ", ".join(sorted(TIPOS_DE_UNIDAD_VALIDOS))
+        )
+    return valor
 
 
 def _nombre_valido(valor: str) -> str:
@@ -81,9 +98,11 @@ def _clave_valida(valor: str) -> str:
     return valor
 
 
-def _factor_en_rango(valor: Dinero) -> Dinero:
+def _factor_en_rango(valor: Porcentaje) -> Porcentaje:
     """El factor de un estado es un porcentaje 0..100 (mismo rango que el
-    fondo de reserva), aunque viaje con el tipo `Dinero` (D6, tarea 6.3)."""
+    fondo de reserva, D6, tarea 6.3). Hasta D13 (tarea 2.3) viajaba con el
+    tipo `Dinero` por no existir todavía `Porcentaje`, aunque nunca fue un
+    monto; D13 lo corrige."""
     if valor.decimal < Decimal("0") or valor.decimal > Decimal("100"):
         raise ValueError("debe estar entre 0 y 100")
     return valor
@@ -98,9 +117,10 @@ def _cargo_fijo_no_negativo(valor: Dinero) -> Dinero:
 
 _Nombre = Annotated[str, AfterValidator(_nombre_valido)]
 _Clave = Annotated[str, AfterValidator(_clave_valida)]
+_ClaveDeTipoDeUnidad = Annotated[_Clave, AfterValidator(_tipo_de_unidad_valido)]
 _Tasa = Annotated[Decimal, BeforeValidator(_validador_porcentaje("0", "10"))]
 _Porcentaje = Annotated[Decimal, BeforeValidator(_validador_porcentaje("0", "100"))]
-_Factor = Annotated[Dinero, AfterValidator(_factor_en_rango)]
+_Factor = Annotated[Porcentaje, AfterValidator(_factor_en_rango)]
 _CargoFijo = Annotated[Dinero, AfterValidator(_cargo_fijo_no_negativo)]
 
 
@@ -132,7 +152,7 @@ class GrupoDeReparto(_Base):
 
 
 class TipoDeUnidad(_Base):
-    clave: _Clave
+    clave: _ClaveDeTipoDeUnidad
     nombre: _Nombre
 
 

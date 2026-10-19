@@ -8,7 +8,7 @@ import os
 import re
 import sys
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     AfterValidator,
@@ -20,7 +20,7 @@ from pydantic import (
 )
 
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
-from proptech_core.compartido.dinero import Dinero
+from proptech_core.compartido.superficie import Superficie
 
 if TYPE_CHECKING:
     from proptech_core.compartido.parametros import Parametros
@@ -71,7 +71,11 @@ class Edificio(_Base):
     localidad: _Texto
 
 
-def _dinero_positivo(valor: Dinero) -> Dinero:
+def _superficie_positiva(valor: Superficie) -> Superficie:
+    """D13 (deuda del 1b con dueño 3, tarea 2.3): `superficie_m2` pasa de
+    `Dinero` (un monto, nunca lo que es: una superficie en m², NUMERIC(10,2))
+    a `Superficie`, con el mismo patrón ASCII y `fullmatch` (L-008, el
+    gemelo de L-009 con `parametros.py`)."""
     if valor.decimal <= 0:
         raise ValueError("debe ser positiva")
     return valor
@@ -82,11 +86,11 @@ class Unidad(_Base):
     tipo: _Texto
     piso: _Texto
     coeficiente: _Coeficiente
-    superficie_m2: Annotated[Dinero, AfterValidator(_dinero_positivo)]
+    superficie_m2: Annotated[Superficie, AfterValidator(_superficie_positiva)]
 
 
 class Semilla(_Base):
-    version: int
+    version: Literal[1]
     edificio: Edificio
     unidades: list[Unidad] = Field(min_length=1)
     grupos: dict[str, Any]

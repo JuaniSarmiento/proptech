@@ -126,3 +126,42 @@ def test_coeficiente_rechaza_sufijo_peligroso(sufijo: str) -> None:
             coeficiente="0.400000" + sufijo,  # type: ignore[arg-type]
             superficie_m2="60.00",  # type: ignore[arg-type]
         )
+
+
+# --- D13 (deuda del 1b con dueño 3, tarea 2.3, L-009): el gemelo de los dos
+# lectores. `_validador_porcentaje` (tasa_mensual, fondo_de_reserva, factor)
+# y `superficie_m2` ahora delegan el formato en `Porcentaje`/`Superficie`
+# (compartido/), así que un sufijo peligroso tiene que fallar en los dos
+# lectores con el mismo mecanismo, no sólo en el tipo nuevo aislado. No es
+# un rojo nuevo (ya lo demuestran `test_porcentaje.py` y `test_superficie.py`
+# contra el tipo directo, y el de arriba contra `_PATRON_COEFICIENTE`); queda
+# como guarda de que la batería llega hasta los dos lectores, no sólo hasta
+# el tipo. ---
+
+
+@pytest.mark.parametrize("sufijo", _SUFIJOS_PELIGROSOS)
+def test_factor_de_estado_rechaza_sufijo_peligroso(sufijo: str) -> None:
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.parametros import Parametros
+
+    datos = _parametros_validos()
+    datos["estados_de_unidad"]["estados"][0]["factor"] = "100.00" + sufijo
+    with pytest.raises(ValidationError):
+        Parametros(**datos)
+
+
+@pytest.mark.parametrize("sufijo", _SUFIJOS_PELIGROSOS)
+def test_superficie_m2_rechaza_sufijo_peligroso(sufijo: str) -> None:
+    from pydantic import ValidationError
+
+    from proptech_core.compartido.semilla import Unidad
+
+    with pytest.raises(ValidationError):
+        Unidad(
+            identificador="1A",
+            tipo="departamento",
+            piso="1",
+            coeficiente="0.400000",  # type: ignore[arg-type]
+            superficie_m2="60.00" + sufijo,  # type: ignore[arg-type]
+        )

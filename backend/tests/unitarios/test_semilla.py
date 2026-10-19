@@ -221,3 +221,22 @@ def test_semilla_no_tiene_campos_de_persona_ni_contacto() -> None:
     assert re.search(r"\b\d{2,4}[-\s]?\d{6,8}\b", texto) is None, "parece un teléfono"
     for prohibida in ("nombre_completo", "dni", "telefono", "email", "contacto", "propietario"):
         assert prohibida not in texto.lower()
+
+
+# --- 2.3 (3a): deuda del 1b con dueño 3 (D13) ---
+
+
+def test_version_distinta_de_uno_falla(parametros: Any, tmp_path: Path) -> None:
+    """D13: `Semilla.version` pasa a ser `Literal[1]` (hoy acepta cualquier
+    `int`, por ejemplo `2`), escenario `datos-semilla` - Version distinta
+    de 1."""
+    from proptech_core.compartido.semilla import SemillaInvalida, leer_semilla
+
+    datos = _valido()
+    datos["version"] = 2
+    ruta = tmp_path / "semilla.yaml"
+    ruta.write_bytes(_dump(datos))
+
+    with pytest.raises(SemillaInvalida) as exc_info:
+        leer_semilla(str(ruta), parametros)
+    assert "version" in str(exc_info.value)
