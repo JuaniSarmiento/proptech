@@ -21,7 +21,11 @@ def parametros() -> Any:
 
 BASE: dict[str, Any] = {
     "version": 1,
-    "edificio": {"nombre": "Edificio Ejemplo", "localidad": "Mendoza"},
+    "edificio": {
+        "nombre": "Edificio Ejemplo",
+        "localidad": "Mendoza",
+        "estado_migracion": "sin_saldos_previos",
+    },
     "unidades": [
         {
             "identificador": "L-PB",

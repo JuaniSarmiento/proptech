@@ -1,12 +1,10 @@
-"""Datos semilla del edificio de ejemplo (D10): archivo versionado, validado
-contra los parámetros, que todavía no se inserta en la base (sin tablas de
-edificio hasta el cambio 3)."""
+"""Semilla validada contra los parámetros y R01 compartida; no abre la base."""
 
 from __future__ import annotations
 
 import os
-import re
 import sys
+import warnings
 from decimal import Decimal
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
@@ -17,20 +15,15 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    model_validator,
 )
 
+from proptech_core.compartido import coeficientes
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
 from proptech_core.compartido.superficie import Superficie
 
 if TYPE_CHECKING:
     from proptech_core.compartido.parametros import Parametros
-
-# re.ASCII: mismo problema que `dinero.py` y `parametros.py` (rompedor, cambio
-# 1b vuelta 2) — `\d` sin el flag acepta dígitos Unicode no-ASCII.
-# fullmatch, no match + `^...$` (usado abajo): mismo problema que los otros
-# patrones del cambio — `$` matchea antes de un `\n` final del string, así
-# que `.match()` aceptaba "0.400000\n" (auditor, cambio 1b vuelta 3).
-_PATRON_COEFICIENTE = re.compile(r"^\d(\.\d{1,6})?$", re.ASCII)
 
 
 class SemillaInvalida(Exception):
@@ -38,18 +31,9 @@ class SemillaInvalida(Exception):
 
 
 def _coeficiente_valido(valor: Any) -> Decimal:
-    if type(valor) is not str:
-        raise ValueError(f"debe estar escrito como texto, no {type(valor).__name__}")
-    if not _PATRON_COEFICIENTE.fullmatch(valor):
-        raise ValueError("formato inválido: hasta 6 decimales, un solo dígito entero")
-    decimal = Decimal(valor)
-    if decimal <= 0:
-        # El patrón admite "0" o "0.000000" como formato válido, pero la spec
-        # (specs/datos-semilla, "Semilla validada contra los parámetros")
-        # exige texto decimal **positivo**, no sólo no negativo (auditor,
-        # cambio 1b vuelta 3).
-        raise ValueError("debe ser positivo")
-    return decimal
+    # Conserva Decimal en el modelo de la semilla, con el mismo parser que
+    # la API (ASCII, fullmatch y rango). R01 tampoco se copia (L-009).
+    return coeficientes.Coeficiente(valor).decimal
 
 
 def _no_vacio(valor: str) -> str:
@@ -69,6 +53,7 @@ class _Base(BaseModel):
 class Edificio(_Base):
     nombre: _Texto
     localidad: _Texto
+    estado_migracion: Literal["pendiente", "confirmada", "sin_saldos_previos"]
 
 
 def _superficie_positiva(valor: Superficie) -> Superficie:
@@ -89,11 +74,37 @@ class Unidad(_Base):
     superficie_m2: Annotated[Superficie, AfterValidator(_superficie_positiva)]
 
 
+class MiembroDeGrupo(_Base):
+    identificador: _Texto
+    coeficiente: _Coeficiente | None = None
+
+
+class Grupo(_Base):
+    modo: Literal["renormalizado", "propios"] = "renormalizado"
+    unidades: list[MiembroDeGrupo]
+
+    @model_validator(mode="before")
+    @classmethod
+    def abreviaturas(cls, valor: Any) -> Any:
+        # Las listas de identificadores del 1b siguen siendo abreviaturas
+        # de un grupo renormalizado, al igual que omitir `modo` en un mapa.
+        if isinstance(valor, list):
+            valor = {"unidades": valor}
+        if isinstance(valor, dict) and isinstance(valor.get("unidades"), list):
+            return {
+                **valor,
+                "unidades": [
+                    {"identificador": m} if isinstance(m, str) else m for m in valor["unidades"]
+                ],
+            }
+        return valor
+
+
 class Semilla(_Base):
     version: Literal[1]
     edificio: Edificio
     unidades: list[Unidad] = Field(min_length=1)
-    grupos: dict[str, Any]
+    grupos: dict[str, Literal["todas"] | Grupo]
 
 
 def _ruta_legible(loc: tuple[int | str, ...]) -> str:
@@ -110,8 +121,22 @@ def _formatear_errores_pydantic(error: ValidationError) -> list[str]:
     return [f"{_ruta_legible(e['loc'])}: {e['msg']}" for e in error.errors()]
 
 
-def _validar_contra_parametros(semilla: Semilla, parametros: Parametros) -> list[str]:
+def _informar_suma(
+    valores: list[Decimal], campo: str, problemas: list[str], advertencias: list[str]
+) -> None:
+    informe = coeficientes.informar_coeficientes(coeficientes.Coeficiente(str(v)) for v in valores)
+    diferencia = informe["diferencia"]
+    if informe["estado"] == "fuera_de_tolerancia":
+        problemas.append(f"{campo}: los coeficientes no suman 1; diferencia {diferencia}")
+    elif informe["estado"] == "advertencia":
+        advertencias.append(f"{campo}: diferencia {diferencia} dentro de la tolerancia de R01")
+
+
+def _validar_contra_parametros(
+    semilla: Semilla, parametros: Parametros
+) -> tuple[list[str], list[str]]:
     problemas: list[str] = []
+    advertencias: list[str] = []
 
     tipos_validos = {t.clave for t in parametros.tipos_de_unidad}
     for i, unidad in enumerate(semilla.unidades):
@@ -135,29 +160,43 @@ def _validar_contra_parametros(semilla: Semilla, parametros: Parametros) -> list
             "unidades: hay identificadores repetidos: " + ", ".join(repr(d) for d in duplicados)
         )
 
-    suma = sum((u.coeficiente for u in semilla.unidades), start=Decimal(0))
-    if suma != Decimal(1):
-        problemas.append(f"unidades: los coeficientes deben sumar exactamente 1 (suman {suma})")
+    _informar_suma([u.coeficiente for u in semilla.unidades], "unidades", problemas, advertencias)
 
-    claves_grupo_validas = {g.clave for g in parametros.grupos_de_reparto}
-    for clave_grupo, miembros in semilla.grupos.items():
+    claves_grupo_validas = {g.clave: g for g in parametros.grupos_de_reparto}
+    if "generales" not in semilla.grupos:
+        problemas.append("grupos.generales: es obligatorio y debe ser 'todas'")
+    for clave_grupo, grupo in semilla.grupos.items():
         if clave_grupo not in claves_grupo_validas:
             problemas.append(f"grupos.{clave_grupo}: grupo de reparto desconocido")
             continue
         if clave_grupo == "generales":
-            if miembros != "todas":
+            if grupo != "todas":
                 problemas.append("grupos.generales: debe ser 'todas'")
             continue
-        if not isinstance(miembros, list):
+        if isinstance(grupo, str):
             problemas.append(f"grupos.{clave_grupo}: debe ser una lista de identificadores")
             continue
-        for miembro in miembros:
-            if miembro not in identificadores:
+        campo = f"grupos.{clave_grupo}"
+        if grupo.modo == "propios" and claves_grupo_validas[clave_grupo].metodo != "coeficiente":
+            problemas.append(f"{campo}.modo: sólo coeficiente admite coeficientes propios")
+        vistos_grupo: set[str] = set()
+        for indice, miembro in enumerate(grupo.unidades):
+            if miembro.identificador in vistos_grupo:
                 problemas.append(
-                    f"grupos.{clave_grupo}: el identificador {miembro!r} no existe en unidades"
+                    f"{campo}.unidades: identificador repetido {miembro.identificador!r}"
                 )
+            vistos_grupo.add(miembro.identificador)
+            if miembro.identificador not in identificadores:
+                problemas.append(
+                    f"{campo}: el identificador {miembro.identificador!r} no existe en unidades"
+                )
+            if (grupo.modo == "propios") != (miembro.coeficiente is not None):
+                problemas.append(f"{campo}.unidades[{indice}].coeficiente: incoherente con el modo")
+        propios = [m.coeficiente for m in grupo.unidades if m.coeficiente is not None]
+        if grupo.modo == "propios" and len(propios) == len(grupo.unidades):
+            _informar_suma(propios, campo, problemas, advertencias)
 
-    return problemas
+    return problemas, advertencias
 
 
 def leer_semilla(ruta: str, parametros: Parametros) -> Semilla:
@@ -176,9 +215,11 @@ def leer_semilla(ruta: str, parametros: Parametros) -> Semilla:
             "semilla inválida:\n" + "\n".join(_formatear_errores_pydantic(error))
         ) from None
 
-    problemas = _validar_contra_parametros(semilla, parametros)
+    problemas, advertencias = _validar_contra_parametros(semilla, parametros)
     if problemas:
         raise SemillaInvalida("semilla inválida:\n" + "\n".join(problemas))
+    for advertencia in advertencias:
+        warnings.warn(advertencia, UserWarning, stacklevel=2)
 
     return semilla
 

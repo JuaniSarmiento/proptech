@@ -1579,7 +1579,46 @@ Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe
 
 ## 7. El edificio de ejemplo
 
-- [ ] 7.1 Semilla y validador (D9, D10, D15): `estado_migracion: sin_saldos_previos` en `config/semilla/edificio-ejemplo.yaml`; el formato `grupos:` suma `modo` (por defecto `renormalizado`) y el coeficiente de cada miembro si es `propios`; el validador usa la función de R01 de `compartido` (4.1, L-009) para "Generales" y para cada grupo `propios`, valida el estado de migración y la coherencia del modo. Rojo: hoy 0.9999 se rechaza y los campos nuevos dan "campo desconocido". Escenarios: `datos-semilla` › Estado de migración del ejemplo; › La semilla del repositorio es válida; › Coeficientes dentro de la tolerancia; › Coeficientes que no suman 1; › Grupo con coeficientes propios en la semilla; › Tipo de unidad desconocido; › El archivo no tiene datos personales. Lecciones: L-009.
+- [x] 7.1 Semilla y validador (D9, D10, D15): `estado_migracion: sin_saldos_previos` en `config/semilla/edificio-ejemplo.yaml`; el formato `grupos:` suma `modo` (por defecto `renormalizado`) y el coeficiente de cada miembro si es `propios`; el validador usa la función de R01 de `compartido` (4.1, L-009) para "Generales" y para cada grupo `propios`, valida el estado de migración y la coherencia del modo. Rojo: hoy 0.9999 se rechaza y los campos nuevos dan "campo desconocido". Escenarios: `datos-semilla` › Estado de migración del ejemplo; › La semilla del repositorio es válida; › Coeficientes dentro de la tolerancia; › Coeficientes que no suman 1; › Grupo con coeficientes propios en la semilla; › Tipo de unidad desconocido; › El archivo no tiene datos personales. Lecciones: L-009.
+
+  ROJO (tolerancia, función compartida y campos nuevos):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_semilla_configuracion.py -q --tb=short --show-capture=no
+  12:05:35
+  E   unidades: los coeficientes deben sumar exactamente 1 (suman 0.999900)
+  E   edificio.estado_migracion: Extra inputs are not permitted
+  E   assert 0 == 1  # ninguna llamada a la función compartida
+  21 failed in 0.33s
+  ```
+  Formato: estado obligatorio en `edificio.estado_migracion`; grupos parciales con
+  `{modo, unidades}` y miembros `{identificador, coeficiente}` para `propios`.
+  Las listas de identificadores se conservan como abreviatura renormalizada.
+
+  VERDE (semilla, comando, coeficientes y fronteras):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla.py tests/unitarios/test_semilla_comando.py tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py tests/unitarios/test_coeficientes.py tests/unitarios/test_fronteras_de_modulos.py -q --tb=short --show-capture=no && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  12:07:18
+  89 passed in 1.06s
+  All checks passed!
+  195 files already formatted
+  Success: no issues found in 181 source files
+  ```
+
+  Cierre del bloque E, suite completa (salida 0; última línea):
+  ```text
+  $ date +%T && bash infra/ci/test-backend.sh > backend/.pytest_cache/bloque-e-backend.log 2>&1
+  12:07:53
+  =========== 1519 passed, 1 xfailed, 16 warnings in 415.99s (0:06:55) ===========
+  ```
+
+  Humo del cierre del bloque E, corrido por el orquestador (Codex se quedó sin cuota antes de correrlo):
+  ```text
+  $ bash infra/ci/humo.sh
+  12:17:43
+  HUMO OK
+  [código de salida: 0]
+  ```
+
 - 7.2 **Movida al 3b** por la firma de E1 (Juani, 16/10/2026): sólo la necesita el acceso de desarrollo. Queda el texto como referencia para el propose del 3b. Comando de carga idempotente (D9, E6, E10; se recomienda mover al 3b, ver E1), como `proptech_migrador` con el tenant de la administración de ejemplo fijado a propósito, por los mismos casos de uso que la API. Tests contra PostgreSQL real: primera carga con los conteos esperados (13 unidades) y la auditoría de crear y confirmar; segunda carga igual sin cambios; segunda carga después de cambiar `parametros.yaml` da "ya estaba" (sólo compara lo que sale de la semilla, D-042); dos cargas en paralelo dejan un solo ejemplo; con una unidad editada falla sin escribir y dice qué difiere; otra administración con datos queda idéntica (comparación fila por fila); sin tenant no escribe nada. Escenarios: `datos-semilla` › Primera carga; › Segunda carga igual; › Cambiar los parámetros no hace fallar la carga; › Dos cargas a la vez; › El ejemplo cambió en la base; › Otras administraciones no se tocan. Lecciones: L-006, L-016.
 
 ## 8. Cierre

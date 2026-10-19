@@ -1,5 +1,8 @@
 version: 1
-edificio: { nombre: "Edificio Ejemplo", localidad: "Mendoza" }
+edificio:
+  nombre: "Edificio Ejemplo"
+  localidad: "Mendoza"
+  estado_migracion: sin_saldos_previos
 unidades:
   - { identificador: "L-PB", tipo: local,        piso: "PB", coeficiente: "0.080000", superficie_m2: "45.00" }
   - { identificador: "1A",   tipo: departamento, piso: "1",  coeficiente: "0.100000", superficie_m2: "60.00" }
@@ -16,5 +19,9 @@ unidades:
   - { identificador: "B1",   tipo: baulera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "4.00" }
 grupos:
   generales: todas
-  ascensor: ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"]
-  cocheras: ["C1", "C2", "C3"]
+  ascensor:
+    modo: renormalizado
+    unidades: ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"]
+  cocheras:
+    modo: renormalizado
+    unidades: ["C1", "C2", "C3"]
