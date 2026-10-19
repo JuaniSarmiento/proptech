@@ -1302,7 +1302,34 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
 
 ## 4. Dominio puro
 
-- [ ] 4.1 **R01 en `compartido`** (D4, D10, B1, D-082): primero el test de fronteras, `test_compartido_no_importa_complejos` y que `compartido` no importe ningún módulo de dominio, en `tests/unitarios/test_fronteras_de_modulos.py`, con su **rojo** sobre una copia con un import de `complejos` agregado a `compartido` (L-013). Después, sin base: el tipo `Coeficiente` (texto decimal ASCII, hasta 6 decimales, `fullmatch`) y la función pura en `compartido/coeficientes.py`: suma y diferencia en `Decimal`, estado `ok`, `advertencia` (bordes 0,9999 y 1,0001 incluidos) o `fuera_de_tolerancia` (0,9998, 1,0002, cero unidades); rechazo de `float` en la entrada; con pruebas de propiedades (para cualquier conjunto de coeficientes válidos, el estado coincide con la distancia a 1 calculada en `Decimal`). La misma función informa un grupo con coeficientes propios. Escenarios: `grupos-de-reparto` › Suma exacta; › Borde inferior de la tolerancia; › Borde superior de la tolerancia; › Fuera de tolerancia; › Edificio sin unidades; › Grupo con coeficientes propios que no suman 1. Lecciones: L-008, L-009, L-013, L-019.
+- [x] 4.1 **R01 en `compartido`** (D4, D10, B1, D-082): primero el test de fronteras, `test_compartido_no_importa_complejos` y que `compartido` no importe ningún módulo de dominio, en `tests/unitarios/test_fronteras_de_modulos.py`, con su **rojo** sobre una copia con un import de `complejos` agregado a `compartido` (L-013). Después, sin base: el tipo `Coeficiente` (texto decimal ASCII, hasta 6 decimales, `fullmatch`) y la función pura en `compartido/coeficientes.py`: suma y diferencia en `Decimal`, estado `ok`, `advertencia` (bordes 0,9999 y 1,0001 incluidos) o `fuera_de_tolerancia` (0,9998, 1,0002, cero unidades); rechazo de `float` en la entrada; con pruebas de propiedades (para cualquier conjunto de coeficientes válidos, el estado coincide con la distancia a 1 calculada en `Decimal`). La misma función informa un grupo con coeficientes propios. Escenarios: `grupos-de-reparto` › Suma exacta; › Borde inferior de la tolerancia; › Borde superior de la tolerancia; › Fuera de tolerancia; › Edificio sin unidades; › Grupo con coeficientes propios que no suman 1. Lecciones: L-008, L-009, L-013, L-019.
+
+  EVIDENCIA (L-013: copia propia en `.evidencia-d/4_1`, no el árbol real; eliminada después):
+  ```diff
+  --- compartido/__init__.py (original)
+  +++ compartido/__init__.py (copia)
+  @@ -0,0 +1,2 @@
+  +
+  +from proptech_core import complejos
+  ```
+  ```text
+  $ date +%T; cd backend && uv run pytest -q ../.evidencia-d/4_1/tests/unitarios/test_fronteras_de_modulos.py -k 'no_importa_complejos or ningun_modulo'
+  11:11:03
+  E AssertionError: {'complejos': ['proptech_core/compartido/__init__.py']}
+  2 failed, 1 passed, 2 deselected in 0.23s
+  $ date +%T; cd backend && uv run pytest -q tests/unitarios/test_coeficientes.py
+  11:11:30
+  E ModuleNotFoundError: No module named 'proptech_core.compartido.coeficientes'
+  42 failed in 0.24s
+  $ date +%T; cd backend && uv run pytest -q tests/unitarios/test_coeficientes.py tests/unitarios/test_fronteras_de_modulos.py
+  11:11:49
+  47 passed in 0.44s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 179 files already formatted / Success: no issues found in 165 source files
+  ```
+  JUICIO: bordes inclusivos, diferencia con signo, cero unidades, grupos propios y 2000 conjuntos
+  generados con semilla reproducible; suma y distancia calculadas con Decimal. Sin dependencias nuevas.
+
 
 ## 5. Casos de uso, contra PostgreSQL real como `proptech_app`
 

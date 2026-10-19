@@ -24,6 +24,10 @@ def _imports_de(archivo: Path) -> list[tuple[int, str | None]]:
                 resultado.append((0, alias.name))
         elif isinstance(nodo, ast.ImportFrom):
             resultado.append((nodo.level, nodo.module))
+            if nodo.module in (None, "proptech_core"):
+                for alias in nodo.names:
+                    prefijo = f"{nodo.module}." if nodo.module else ""
+                    resultado.append((nodo.level, prefijo + alias.name))
     return resultado
 
 
@@ -108,3 +112,28 @@ def test_el_checker_encuentra_un_import_de_acceso_agregado_a_una_copia(
                 break
 
     assert ofensores == ["base_de_datos.py"], ofensores
+
+
+def test_compartido_no_importa_complejos() -> None:
+    assert _archivos_que_importan("compartido", "complejos") == []
+
+
+def test_compartido_no_importa_ningun_modulo_de_dominio() -> None:
+    dominios = {
+        "acceso",
+        "complejos",
+        "gastos",
+        "liquidacion",
+        "cuenta_corriente",
+        "pagos",
+        "avisos",
+        "politicas",
+    } | {
+        p.name
+        for p in RAIZ_SRC.iterdir()
+        if p.is_dir() and p.name != "compartido" and not p.name.startswith("_")
+    }
+    ofensores = {
+        d: archivos for d in dominios if (archivos := _archivos_que_importan("compartido", d))
+    }
+    assert ofensores == {}, ofensores
