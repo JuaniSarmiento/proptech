@@ -123,7 +123,8 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         complejo_2 = uuid.uuid4()
         for cid, nombre in ((complejo_1, "Complejo 1"), (complejo_2, "Complejo 2")):
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(cid), str(admin_id), nombre),
             )
 
@@ -131,8 +132,9 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         unidad_2 = uuid.uuid4()
         for uid, nombre in ((unidad_1, "1A"), (unidad_2, "1B")):
             cur.execute(
-                "INSERT INTO unidad (id, administracion_id, complejo_id, nombre) "
-                "VALUES (%s, %s, %s, %s)",
+                "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, "
+                "tipo, piso, coeficiente, superficie_m2) "
+                "VALUES (%s, %s, %s, %s, 'departamento', '1', '0.1', '60.00')",
                 (str(uid), str(admin_id), str(complejo_1), nombre),
             )
 
@@ -182,7 +184,8 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         cur.execute("INSERT INTO administracion (id, nombre) VALUES (%s, %s)", (str(admin_b), "B"))
         complejo_de_b = uuid.uuid4()
         cur.execute(
-            "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+            "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+            "VALUES (%s, %s, %s, 'Mendoza')",
             (str(complejo_de_b), str(admin_b), "Complejo de B"),
         )
 
@@ -263,6 +266,12 @@ def test_vecino_en_la_unidad_de_otro_vecino_da_404(
     try:
         propia = cliente.get(f"/api/unidades/{mundo['unidad_1']}")
         assert propia.status_code == 200
+        assert propia.json() == {
+            "id": str(mundo["unidad_1"]),
+            "administracion_id": str(mundo["administracion_id"]),
+            "complejo_id": str(mundo["complejo_1"]),
+            "identificador": "1A",
+        }
         de_otro = cliente.get(f"/api/unidades/{mundo['unidad_2']}")
         assert de_otro.status_code == 404
         # El complejo (sin pedir una unidad en particular) sí lo alcanza.

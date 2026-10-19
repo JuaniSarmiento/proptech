@@ -1049,7 +1049,47 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
 
 ## 3. Modelo
 
-- [ ] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
+- [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.
+
+  **RED** — 19/10/2026, antes de `0005` y del cambio de contrato:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_alcance_api.py::test_vecino_en_la_unidad_de_otro_vecino_da_404 -q
+  10:31:43
+  E AssertionError: {'nombre': '1A'} != {'identificador': '1A'}
+  1 failed, 1 warning in 6.29s
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_edificio.py -q
+  10:33:01
+  E psycopg.errors.UndefinedColumn: column "localidad" of relation "complejo" does not exist
+  1 failed, 23 errors in 7.51s
+  ```
+  **Mutante L-019** — la FK del 2a ya protegía el movimiento. Copia previa en
+  `backend/.pytest_cache/bloque_b/0005_original.py`; diff temporal al final de `upgrade()`:
+  ```diff
+  +    op.drop_constraint("fk_unidad_complejo", "unidad", type_="foreignkey")
+  +
+  ```
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_edificio.py -k mover_unidad -q
+  10:34:27
+  E Failed: DID NOT RAISE ForeignKeyViolation
+  1 failed, 23 deselected in 3.30s
+  ```
+  Mutante revertido desde la copia antes del verde. Tests/siembra nuevos como `proptech_app`,
+  sin superusuario ni BYPASSRLS, tenant local; bases propias dentro del contenedor de sesión.
+  **Contrato modificado:** `GET /api/unidades/{id}` devuelve `identificador` en lugar de `nombre`;
+  JSON completo comprobado en `test_alcance_api.py`. Se actualizaron los 6 INSERT de unidad en
+  los 5 archivos del 2a contados en 1.1 y los INSERT de complejo que necesitan localidad.
+  `0004`/`Accion` quedan para 3.7 (D14); este bloque no agrega vocabulario.
+
+  **GREEN** — mutante revertido; suite de los archivos tocados + guardián:
+  ```text
+  cd backend && date +%T && uv run pytest tests/integracion/test_rls_edificio.py tests/integracion/test_alcance_api.py tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_asignar_edificio_api.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_identidad_api.py tests/integracion/test_rls_acceso_minimo.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_tenant_por_transaccion.py tests/integracion/test_worker_tenant.py tests/integracion/test_catalogo_rls.py -q
+  10:34:41
+  101 passed, 1 warning in 51.59s
+  cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:35:11
+  All checks passed! / 166 files already formatted / Success: no issues found in 157 source files
+  ```
 - [ ] 3.2 Migración de grupos (D2): `grupo_de_reparto` y `grupo_unidad` con las tres FK compuestas que comparten `complejo_id` (a `complejo`, al grupo y a la unidad; la primera la exige el guardián), "Generales" único por edificio y por coeficiente. Tests como `proptech_app`, insertando de verdad (L-018): miembro con una unidad de otro edificio de la misma administración falla; de otra administración falla; unidad repetida en un grupo falla; un segundo "Generales" falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › La base frena lo que la aplicación deja pasar; › Unidad repetida en un grupo (la parte de la base). Lecciones: L-016, L-017, L-018.
 - [ ] 3.3 Migración del modo de coeficientes (D15, D-100, P24): `grupo_de_reparto.modo_de_coeficientes` con su `CHECK` y su `UNIQUE` de cuatro columnas; `grupo_unidad.modo_de_coeficientes` y `coeficiente` nulo, la FK al grupo pasa a `(administracion_id, complejo_id, grupo_id, modo_de_coeficientes)` con `ON UPDATE CASCADE`; los `CHECK` de coherencia (modo propios ⇔ coeficiente presente; propios ⇒ método por coeficiente; "Generales" renormalizado). Tests como `proptech_app`, insertando de verdad (L-018): un miembro con coeficiente en un grupo renormalizado falla; uno sin coeficiente en un grupo propios falla; un miembro con un modo distinto del de su grupo falla por la FK; un grupo propios por superficie falla; `UPDATE` del modo de un grupo con miembros falla (el cascade choca con el `CHECK`); "Generales" con modo propios falla; `downgrade` y `upgrade`. Escenarios: `grupos-de-reparto` › Coeficiente propio en un grupo renormalizado; › Cambiar el modo por SQL con miembros. Lecciones: L-016, L-018.
 - [ ] 3.4 Migración de categorías (D2): `categoria_de_gasto` con clave y nombre únicos por edificio (nombre sin distinguir mayúsculas), `orden` único diferible, `activa`. Tests como `proptech_app`: "limpieza" junto a "Limpieza" falla; el mismo nombre en otro edificio pasa; dos categorías intercambian `orden` dentro de una transacción; una categoría de otra administración no se ve. Escenarios: `categorias-de-gasto` › Nombre repetido (la parte de la base). Lecciones: L-016.

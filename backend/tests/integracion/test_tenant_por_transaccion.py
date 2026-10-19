@@ -139,7 +139,8 @@ def dos_administraciones_con_complejo(
             )
             complejo_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(complejo_id), str(admin_id), f"Complejo {clave.upper()}"),
             )
             datos[clave] = {"administracion_id": admin_id, "complejo_id": complejo_id}

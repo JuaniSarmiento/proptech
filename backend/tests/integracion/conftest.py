@@ -6,9 +6,18 @@ o el verificador de salud). Un test puede pisar cualquiera con su propio
 `monkeypatch.setenv`/`delenv` para probar el caso contrario.
 """
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
+from uuid import uuid4
 
+import psycopg
 import pytest
+from psycopg import sql
+from testcontainers.community.postgres import PostgresContainer
+
+from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+from ._edificios import BaseDeEdificio, Edificios, fijar_tenant, insertar_unidad
 
 _PARAMETROS_DEL_REPO = Path(__file__).resolve().parents[3] / "config" / "parametros.yaml"
 
@@ -19,3 +28,81 @@ def _variables_ampliadas_por_defecto(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REDIS_PORT", "6379")
     monkeypatch.setenv("REDIS_PASSWORD", "redis-pass")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(_PARAMETROS_DEL_REPO))
+
+
+@pytest.fixture(scope="module")
+def base_del_edificio(
+    postgres_contenedor: PostgresContainer, roles_reales: None
+) -> Iterator[BaseDeEdificio]:
+    """Reutiliza el contenedor/roles de sesión, con una base propia por módulo.
+
+    Sólo CREATE/DROP DATABASE usa el arranque. Los escenarios y la siembra
+    conectan como proptech_app; Alembic conecta como proptech_migrador.
+    El ciclo downgrade/upgrade nunca altera el esquema de otro test.
+    """
+    nombre = f"proptech_edificio_{uuid4().hex}"
+    with psycopg.connect(
+        host=postgres_contenedor.get_container_host_ip(),
+        port=postgres_contenedor.get_exposed_port(5432),
+        user=postgres_contenedor.username,
+        password=postgres_contenedor.password,
+        dbname=postgres_contenedor.dbname,
+        autocommit=True,
+    ) as arranque:
+        arranque.execute(
+            sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                sql.Identifier(nombre), sql.Identifier(MIGRADOR_USER_DE_SESION)
+            )
+        )
+        base = BaseDeEdificio(
+            postgres_contenedor,
+            nombre,
+            {
+                **os.environ,
+                "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),
+                "POSTGRES_PORT": str(postgres_contenedor.get_exposed_port(5432)),
+                "POSTGRES_DB": nombre,
+                "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
+                "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
+            },
+        )
+        try:
+            base.migrar("upgrade", "head")
+            yield base
+        finally:
+            arranque.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(nombre)))
+
+
+@pytest.fixture
+def app_edificio(base_del_edificio: BaseDeEdificio) -> Iterator[psycopg.Connection]:
+    with base_del_edificio.conectar_app() as conexion:
+        conexion.autocommit = False
+        assert conexion.execute(
+            "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
+        ).fetchone() == ("proptech_app", False, False)
+        try:
+            yield conexion
+        finally:
+            conexion.rollback()
+
+
+@pytest.fixture
+def edificios(app_edificio: psycopg.Connection) -> Edificios:
+    admin_a, admin_b = uuid4(), uuid4()
+    complejo_a, otro_a, complejo_b = uuid4(), uuid4(), uuid4()
+    unidades = []
+    for admin, complejos in ((admin_a, (complejo_a, otro_a)), (admin_b, (complejo_b,))):
+        fijar_tenant(app_edificio, admin)
+        app_edificio.execute(
+            "INSERT INTO administracion (id, nombre) VALUES (%s, 'Administración ficticia')",
+            (admin,),
+        )
+        for complejo in complejos:
+            app_edificio.execute(
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, 'Edificio de prueba', 'Mendoza')",
+                (complejo, admin),
+            )
+            unidades.append(insertar_unidad(app_edificio, admin, complejo))
+    fijar_tenant(app_edificio, admin_a)
+    return Edificios(admin_a, admin_b, complejo_a, otro_a, complejo_b, *unidades)

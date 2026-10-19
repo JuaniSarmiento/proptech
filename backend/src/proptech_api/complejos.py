@@ -77,7 +77,7 @@ def ver_unidad(
         "id": str(unidad.id),
         "administracion_id": str(unidad.administracion_id),
         "complejo_id": str(unidad.complejo_id),
-        "nombre": unidad.nombre,
+        "identificador": unidad.identificador,
     }
 
 

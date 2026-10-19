@@ -131,13 +131,15 @@ def dos_administraciones(contenedor: PostgresContainer, esquema: None) -> dict[s
             )
             complejo_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(complejo_id), str(admin_id), f"Complejo {clave.upper()}"),
             )
             unidad_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO unidad (id, administracion_id, complejo_id, nombre) "
-                "VALUES (%s, %s, %s, %s)",
+                "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, "
+                "tipo, piso, coeficiente, superficie_m2) "
+                "VALUES (%s, %s, %s, %s, 'departamento', '1', '0.1', '60.00')",
                 (str(unidad_id), str(admin_id), str(complejo_id), f"1A-{clave}"),
             )
             persona_id = uuid.uuid4()
@@ -226,7 +228,8 @@ def test_escritura_cruzada_falla_y_no_deja_nada(
                 # Postgres reporta como "insufficient privilege".
                 with pytest.raises(psycopg.errors.InsufficientPrivilege):
                     cur.execute(
-                        "INSERT INTO complejo (administracion_id, nombre) VALUES (%s, %s)",
+                        "INSERT INTO complejo (administracion_id, nombre, localidad) "
+                        "VALUES (%s, %s, 'Mendoza')",
                         (str(dos_administraciones["b"]["administracion_id"]), "intruso"),
                     )
             else:
@@ -271,8 +274,9 @@ def test_unidad_colgada_de_un_complejo_de_otra_administracion_falla_por_fk(
             )
             with pytest.raises(psycopg.errors.ForeignKeyViolation):
                 cur.execute(
-                    "INSERT INTO unidad (administracion_id, complejo_id, nombre) "
-                    "VALUES (%s, %s, %s)",
+                    "INSERT INTO unidad (administracion_id, complejo_id, identificador, "
+                    "tipo, piso, coeficiente, superficie_m2) "
+                    "VALUES (%s, %s, %s, 'departamento', '1', '0.1', '60.00')",
                     (
                         str(dos_administraciones["a"]["administracion_id"]),
                         str(dos_administraciones["b"]["complejo_id"]),
@@ -296,7 +300,8 @@ def test_asignacion_con_unidad_de_otro_complejo_de_la_misma_administracion_falla
             cur.execute("SELECT set_config('app.administracion_id', %s, false)", (str(admin_a),))
             otro_complejo_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(otro_complejo_id), str(admin_a), "Otro complejo de A"),
             )
             persona_id = dos_administraciones["a"]["persona_id"]

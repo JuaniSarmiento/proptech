@@ -176,7 +176,8 @@ def _sembrar_administracion_complejo_y_personas(
             )
             complejo_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(complejo_id), str(admin_id), "Complejo de prueba"),
             )
             titular_id = uuid.uuid4()

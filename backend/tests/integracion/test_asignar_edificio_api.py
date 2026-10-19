@@ -121,14 +121,16 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             (complejo_no_asignado, "No asignado"),
         ):
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(cid), str(admin_id), nombre),
             )
 
         unidad_del_vecino = uuid.uuid4()
         cur.execute(
-            "INSERT INTO unidad (id, administracion_id, complejo_id, nombre) "
-            "VALUES (%s, %s, %s, %s)",
+            "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, "
+            "tipo, piso, coeficiente, superficie_m2) "
+            "VALUES (%s, %s, %s, %s, 'departamento', '1', '0.1', '60.00')",
             (str(unidad_del_vecino), str(admin_id), str(complejo_asignado), "1A"),
         )
 

@@ -135,7 +135,8 @@ def _sembrar_administracion_con_complejos(
             )
             for índice in range(cantidad):
                 cur.execute(
-                    "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                    "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                    "VALUES (%s, %s, %s, 'Mendoza')",
                     (str(uuid.uuid4()), str(administracion_id), f"Complejo {índice}"),
                 )
     finally:

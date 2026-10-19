@@ -129,13 +129,15 @@ def dos_administraciones_con_complejo_y_unidad(
             )
             complejo_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO complejo (id, administracion_id, nombre) VALUES (%s, %s, %s)",
+                "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(complejo_id), str(admin_id), f"Complejo {clave.upper()}"),
             )
             unidad_id = uuid.uuid4()
             cur.execute(
-                "INSERT INTO unidad (id, administracion_id, complejo_id, nombre) "
-                "VALUES (%s, %s, %s, %s)",
+                "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, "
+                "tipo, piso, coeficiente, superficie_m2) "
+                "VALUES (%s, %s, %s, %s, 'departamento', '1', '0.1', '60.00')",
                 (str(unidad_id), str(admin_id), str(complejo_id), f"1A-{clave}"),
             )
             persona_id = uuid.uuid4()

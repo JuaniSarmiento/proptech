@@ -26,7 +26,7 @@ class UnidadLeida:
     id: UUID
     administracion_id: UUID
     complejo_id: UUID
-    nombre: str
+    identificador: str
 
 
 def cargar_complejo(sesion: Session, complejo_id: UUID) -> ComplejoLeido | None:
@@ -41,7 +41,7 @@ def cargar_complejo(sesion: Session, complejo_id: UUID) -> ComplejoLeido | None:
 
 def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
     fila = sesion.execute(
-        text("SELECT id, administracion_id, complejo_id, nombre FROM unidad WHERE id = :id"),
+        text("SELECT id, administracion_id, complejo_id, identificador FROM unidad WHERE id = :id"),
         {"id": str(unidad_id)},
     ).first()
     if fila is None:
@@ -50,5 +50,5 @@ def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
         id=fila.id,
         administracion_id=fila.administracion_id,
         complejo_id=fila.complejo_id,
-        nombre=fila.nombre,
+        identificador=fila.identificador,
     )
