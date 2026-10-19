@@ -5,6 +5,14 @@
 # `pnpm exec playwright install chromium` antes (no está acá porque CI y un
 # clon local lo cachean distinto; el paso del job `web` en ci.yml lo hace).
 set -euo pipefail
+# Control de trabajos (D7, tarea 3.8): cada `&` de abajo arranca en su
+# PROPIO grupo de procesos, así `kill -- -$PID` en la limpieza mata TODA
+# la cadena (pnpm → tsx/next → next-server), no sólo el primer PID. Sin
+# esto, `next start` quedaba corriendo huérfano después de una corrida
+# limpia (se vio de verdad: dos corridas atrás dejaron `next-server` y
+# `api-falsa` vivos y comiendo memoria mucho después de que el script ya
+# había terminado).
+set -m
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../web"
 
@@ -18,17 +26,18 @@ PID_API_FALSA=""
 PID_WEB=""
 
 limpiar() {
-  [ -n "$PID_WEB" ] && kill "$PID_WEB" 2>/dev/null || true
-  [ -n "$PID_API_FALSA" ] && kill "$PID_API_FALSA" 2>/dev/null || true
+  [ -n "$PID_WEB" ] && kill -- "-$PID_WEB" 2>/dev/null || true
+  [ -n "$PID_API_FALSA" ] && kill -- "-$PID_API_FALSA" 2>/dev/null || true
 }
 trap limpiar EXIT
 
+# `/dev/tcp` de bash, no un proceso de Node por intento: spawnear
+# `pnpm exec node` cada 0,5 s es lento bajo carga (una corrida real tardó
+# minutos sólo en esta espera). Esto es instantáneo.
 esperar_puerto() {
   local puerto="$1"
   local intentos=0
-  until corepack pnpm@12.10.1 exec node -e "
-    fetch('http://127.0.0.1:${puerto}/').catch(() => process.exit(1))
-  " >/dev/null 2>&1; do
+  until (exec 3<>"/dev/tcp/127.0.0.1/${puerto}") 2>/dev/null; do
     intentos=$((intentos + 1))
     if [ "$intentos" -ge 50 ]; then
       echo "nadie contesta en :${puerto} después de 25s" >&2
@@ -36,6 +45,7 @@ esperar_puerto() {
     fi
     sleep 0.5
   done
+  exec 3>&- 2>/dev/null || true
 }
 
 corepack pnpm@12.10.1 build
