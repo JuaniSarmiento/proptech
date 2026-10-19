@@ -1047,6 +1047,29 @@ HUMO OK
 
 Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el commit es el siguiente).
 
+**Verificación independiente del bloque D por el orquestador (19/10/2026, HEAD `4e31885`)**
+
+```text
+$ bash infra/ci/test-backend.sh
+11:35:24
+1351 passed, 1 xfailed, 16 warnings in 430.48s (0:07:10)
+[código de salida: 0]
+
+$ bash infra/ci/humo.sh          # ROJO: regresión de 3.1 que ningún test unitario ni de integración ve
+11:42:36
+ERROR:  null value in column "localidad" of relation "complejo" violates not-null constraint
+ERROR: paso 0 (compose up --build -d --wait) falló en la línea 38
+[código de salida: 3]
+
+# arreglo: la siembra del humo (infra/ci/humo.sh) suma `localidad`, NOT NULL desde 0005 (3.1)
+$ bash infra/ci/humo.sh
+11:43:35
+HUMO OK
+[código de salida: 0]
+```
+
+Lección para los bloques que siguen: una migración que agrega `NOT NULL` rompe a todo el que inserta en esa tabla, también fuera de `backend/` (el humo corre con psql). Desde el bloque E, el humo se corre al final de cada bloque.
+
 ## 3. Modelo
 
 - [x] 3.1 Migración del edificio y la unidad completos (D2): `complejo.localidad`, `complejo.estado_migracion`; `unidad.identificador` (renombra `nombre`), `tipo`, `piso`, `coeficiente NUMERIC(7,6)`, `superficie_m2 NUMERIC(10,2)`, `estado` nulo; sus `CHECK` y el `UNIQUE` del identificador. Tests en `tests/integracion/test_rls_edificio.py`, como `proptech_app`: identificador repetido en el mismo edificio falla y en otro pasa; coeficiente `0` o `1.000001` falla por `CHECK`; mover una unidad a un edificio de otra administración falla; `downgrade` a `0004` y `upgrade` vuelven. Actualizar los tests del 2a que usan `nombre` (contados en 1.1), la respuesta de `GET /api/unidades/{id}` (`identificador`, cambio de contrato) y el guardián del catálogo en verde. Escenarios: `edificios-y-unidades` › Mover una unidad por SQL; › Identificador repetido (la parte de la base). Lecciones: L-016, L-017.

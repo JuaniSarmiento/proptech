@@ -112,11 +112,11 @@ compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" -v ON_ERROR_STOP=1 <<
 insert into administracion (id, nombre) values
   ('$ADMINISTRACION_HUMO_A', 'Administración A del humo'),
   ('$ADMINISTRACION_HUMO_B', 'Administración B del humo');
-insert into complejo (id, administracion_id, nombre) values
-  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A1'),
-  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A2'),
-  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B1'),
-  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B2');
+insert into complejo (id, administracion_id, nombre, localidad) values
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A1', 'Mendoza'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_A', 'Complejo A2', 'Mendoza'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B1', 'Mendoza'),
+  (gen_random_uuid(), '$ADMINISTRACION_HUMO_B', 'Complejo B2', 'Mendoza');
 SQL
 echo "ok: dos administraciones con dos complejos cada una, sembradas con $USUARIO_DB"
 
