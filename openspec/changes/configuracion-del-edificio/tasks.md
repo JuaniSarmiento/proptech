@@ -26,7 +26,40 @@ Precondiciones, sin las cuales no se empieza:
 
 ## 1. Línea de base
 
-- [ ] 1.1 Correr la suite completa antes de tocar nada (`bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/humo.sh`, en ese orden y de a uno) y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); anotar también cuántos tests del 2a insertan en `unidad` con la columna `nombre` (los toca 3.1). Si algo falla, frenar e informarlo como falla previa. Escenarios: ninguno (medición de partida). Lecciones: L-003.
+- [x] 1.1 Correr la suite completa antes de tocar nada (`bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/humo.sh`, en ese orden y de a uno) y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); anotar también cuántos tests del 2a insertan en `unidad` con la columna `nombre` (los toca 3.1). Si algo falla, frenar e informarlo como falla previa. Escenarios: ninguno (medición de partida). Lecciones: L-003.
+
+  Commit de la línea de base: `379ffa666e4850f44c1aeb4b17c1ecf6abf577b2` (HEAD al arrancar).
+
+  **DESVIACIÓN DE PROCESO, anotada sin tapar**: `bash infra/ci/test-backend.sh` se lanzó en segundo plano a las 08:58:10 y, mientras corría, ya se empezó a leer y editar `test_rutas_protegidas.py` para la tarea 2.1 (primer `pytest -k` propio de 2.1 a las 09:01:40), antes de que la 1.1 terminara (09:04:29). No es la secuencia que pide la convención ("correr todo antes de tocar nada"). Mitigación real, no sólo intención: pytest importa cada módulo de test una sola vez al recolectar (los primeros segundos de la corrida); un edit posterior en disco no cambia el bytecode ya cargado en ESE proceso, y las corridas de 2.1 fueron procesos `pytest` nuevos y separados — por eso el número de abajo no está mezclado con el código de 2.1. Pero no hay captura de log de la fase de recolección que lo pruebe con certeza (no se usó `--collect-only` con marca de hora antes de editar), así que el conteo de 900/1 queda como EVIDENCIA de lo que corrió, con esta ASUNCIÓN declarada sobre por qué no está contaminado.
+
+  **EVIDENCIA** — `bash infra/ci/test-backend.sh` (equivalente a `uv run pytest`, que es lo que ese script invoca):
+  ```
+  $ cd backend && uv run pytest -q    # lanzado 08:58:10, terminó ~09:04:29 (379.08s)
+  900 passed, 1 xfailed, 16 warnings in 379.08s (0:06:19)
+  ```
+
+  **EVIDENCIA** — `bash infra/ci/test-web.sh`:
+  ```
+  $ bash infra/ci/test-web.sh    # 2026-10-19 09:05:54
+  Test Files  3 passed (3)
+  Tests  16 passed (16)
+  Duration  367ms
+  ```
+
+  **EVIDENCIA** — `bash infra/ci/humo.sh`:
+  ```
+  $ bash infra/ci/humo.sh    # 2026-10-19 09:05:59, terminó 09:08:27
+  ...
+  HUMO OK
+  exit=0
+  ```
+
+  **Tests del 2a que insertan en `unidad` con la columna `nombre`** (los toca 3.1, que la renombra a `identificador`): 6 inserts `INSERT INTO unidad (..., nombre)` en 5 archivos —
+  `tests/integracion/test_alcance_api.py` (1), `tests/integracion/test_asignar_edificio_api.py` (1),
+  `tests/integracion/test_rutas_protegidas.py` (1, ya actualizado por 2.1 al archivo compartido pero
+  la fila de `INSERT` sigue igual), `tests/integracion/test_rls_acceso_minimo.py` (2),
+  `tests/integracion/test_identidad_api.py` (1). Comando: `rg -c "INTO unidad.*nombre" tests/`, 2026-10-19
+  09:03. Ningún uso ORM (`Unidad(nombre=...)`) encontrado, sólo SQL crudo.
 
 ## 2. Deuda heredada, antes de cualquier ruta nueva
 
