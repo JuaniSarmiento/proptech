@@ -72,6 +72,25 @@ def test_trigger_de_0011_sobrevive_downgrade_y_upgrade(base_del_edificio: BaseDe
             conexion.rollback()
 
 
+def test_generales_no_admite_mudarse_de_edificio_por_sql(
+    app_edificio: psycopg.Connection, edificios: Edificios
+) -> None:
+    """RF-D-1 (revisión final, 19/10/2026). El trigger de 0011
+    (`fn_grupo_generales_protegido`) sólo mira `es_generales`, `metodo` y
+    `modo_de_coeficientes`: un `UPDATE grupo_de_reparto SET complejo_id =
+    <otro edificio de la misma administración>` sobre Generales pasaba sin
+    error. El edificio original queda sin Generales (equivale al DELETE que
+    el trigger prohíbe) y la spec (`grupos-de-reparto/spec.md`) exige que el
+    alcance de Generales MUST NOT cambiar. La FK compuesta no alcanza: sólo
+    impide otra ADMINISTRACIÓN, nunca otro edificio de la misma."""
+    generales = _generales(app_edificio, edificios)
+    with pytest.raises(psycopg.Error, match="Generales"):
+        app_edificio.execute(
+            "UPDATE grupo_de_reparto SET complejo_id = %s WHERE id = %s",
+            (edificios.otro_complejo_a, generales),
+        )
+
+
 def test_proptech_app_no_tiene_truncate_ni_puede_apagar_el_trigger(
     app_edificio: psycopg.Connection,
 ) -> None:

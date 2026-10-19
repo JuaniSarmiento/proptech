@@ -108,6 +108,6 @@ def test_downgrade_quita_la_barrera_y_upgrade_la_reinstala_sin_perder_datos(
                 "SELECT administracion_id, complejo_id, identificador FROM unidad WHERE id = %s",
                 (unidad,),
             ).fetchone() == (admin, destino, "1A")
-            assert app.execute("SELECT version_num FROM alembic_version").fetchone() == ("0014",)
+            assert app.execute("SELECT version_num FROM alembic_version").fetchone() == ("0015",)
     finally:
         base.migrar("upgrade", "head")
