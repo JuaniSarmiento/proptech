@@ -1424,6 +1424,50 @@ $ cd backend && date +%T && uv run pytest tests/integracion/test_generales_alcan
 14:30:24 [exit 0]
 ```
 
+### R3B-8 · Recorte de datos legados y SQL futuro
+
+- [x] Nueva 0013: normalizar nombres de edificio/grupo/categoría, localidad e identificador.
+Elección: recortar los datos existentes; si dos identificadores o nombres de categoría (sin
+mayúsculas) chocan, abortar toda la migración con tabla/campo y sin valores. Sin deduplicar ni
+borrar filas. Se bloquean las cuatro tablas y se quita FORCE sólo al dueño durante la transacción;
+FORCE se restaura al terminar o por rollback. No se cambian las políticas de tenant.
+Triggers recortan las futuras escrituras SQL: no puede reabrirse la duplicación del test original.
+La tabla de espacios se congela en la migración y un test la compara con `str.isspace()` completo.
+Downgrade quita los triggers; no repone los espacios ya recortados. Semilla/API siguen usando
+la función compartida de Python. Tests movidos a `test_migracion_normaliza_textos.py`: dos tenants,
+cinco campos, colisiones de unidad/categoría, datos/revisión/RLS intactos al fallar.
+**ROJO** (original y datos previos a 0013):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_normaliza_textos.py -q --tb=line --color=no
+14:30:31
+FAILED tests/integracion/test_migracion_normaliza_textos.py::test_migracion_con_choque_falla_claro_y_no_toca_datos_ni_rls[unidad]
+FAILED tests/integracion/test_migracion_normaliza_textos.py::test_migracion_con_choque_falla_claro_y_no_toca_datos_ni_rls[categoria_de_gasto]
+4 failed, 1 warning in 15.26s
+14:30:48 [exit 1]
+```
+**ROJO** del recorte Unicode en SQL:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_normaliza_textos.py -k recorte_sql -q --tb=line --color=no
+14:31:27
+FAILED tests/integracion/test_migracion_normaliza_textos.py::test_recorte_sql_coincide_con_strip_unicode
+1 failed, 4 deselected, 1 warning in 9.39s
+14:31:38 [exit 1]
+```
+**VERDE** (normalización, unicidad y regresiones de padrón/categorías):
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_normaliza_textos.py tests/integracion/test_texto_recortado_en_el_borde.py tests/integracion/test_rls_edificio.py tests/integracion/test_categorias_db.py -q --tb=line --color=no
+14:32:16
+41 passed, 1 warning in 29.51s
+14:32:47 [exit 0]
+```
+**VERDE** tras acortar el mensaje de colisión y dejar los UPDATE literales:
+```text
+$ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_normaliza_textos.py -q --tb=line --color=no
+14:33:07
+5 passed, 1 warning in 15.65s
+14:33:25 [exit 0]
+```
+
 <!-- evidencia-r3b -->
 
 ## 3. Modelo
