@@ -1403,7 +1403,24 @@ Commit sobre el que corrió: `8ca9441` más el diff de 2.4 sin commitear (el com
   residual ni cambios de miembros. Generales inmutable y dinámico; modo reemplazado en transacción,
   renormalizado sin informe propio, propios con informe R01 incluso al sumar 0,8; repetidas en conflicto.
 
-- [ ] 5.4 Categorías: crear, renombrar, desactivar, reactivar y reordenar con el orden completo. Tests: agregar en A no aparece en B; renombrar en A no cambia B; nombre repetido; orden que omite, repite o trae una categoría de otro edificio no cambia nada. Escenarios: `categorias-de-gasto` › Agregar una categoría; › Renombrar una categoría; › Nombre repetido; › Desactivar; › Reordenar; › Orden incompleto. Lecciones: L-017.
+- [x] 5.4 Categorías: crear, renombrar, desactivar, reactivar y reordenar con el orden completo. Tests: agregar en A no aparece en B; renombrar en A no cambia B; nombre repetido; orden que omite, repite o trae una categoría de otro edificio no cambia nada. Escenarios: `categorias-de-gasto` › Agregar una categoría; › Renombrar una categoría; › Nombre repetido; › Desactivar; › Reordenar; › Orden incompleto. Lecciones: L-017.
+
+  EVIDENCIA:
+  ```text
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_categorias_casos_de_uso.py
+  11:20:51
+  E ImportError: cannot import name 'categorias' from 'proptech_core.complejos.aplicacion'
+  7 failed in 8.00s
+  $ date +%T; cd backend && uv run pytest -q tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_categorias_db.py tests/integracion/test_crear_edificio.py
+  11:21:34
+  17 passed in 21.14s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 189 files already formatted / Success: no issues found in 175 source files
+  ```
+  JUICIO: altas, renombres, desactivación/reactivación y orden completo (incluye inactivas);
+  clave/nombre repetidos son conflictos. Omisión, repetición y categorías ajenas existentes no
+  cambian nada. El bloqueo del edificio serializa altas y reordenamientos de sus categorías.
+
 - [ ] 5.5 Versiones de configuración y estado de migración: crear una versión (vigencia desde hoy en Mendoza o después, autor, auditoría, vencimiento único o doble), `configuracion_vigente(complejo, fecha)`, y confirmar "sin saldos previos" sólo desde `pendiente`, con auditoría. Tests: cambiar la tasa deja dos versiones y la vieja intacta; pasar a doble vencimiento con día 20 y recargo "5.00" deja la versión anterior única; vigencia de ayer se rechaza; con el reloj fijado a las 23:30 y a las 00:30 de Mendoza, "hoy" es el día de Mendoza; misma fecha dos veces es conflicto y no deja auditoría (el `UniqueViolation` se traduce de forma determinista, sin depender de dos pedidos a la vez); vigente para el 15/11 con versiones del 1/11 y el 1/12; fecha anterior a la primera; confirmar dos veces es conflicto. Escenarios: `configuracion-versionada` › Cambiar la tasa; › Pasar a doble vencimiento; › Dos versiones para el mismo día; › Versión retroactiva; › Vigente para una fecha; › Fecha anterior a la primera versión; `edificios-y-unidades` › Confirmar sin saldos previos; › Confirmar dos veces; `auditoria-de-acciones` › La versión que falla no deja auditoría; › El detalle no trae la tasa. Lecciones: L-016.
 
 ## 6. API
