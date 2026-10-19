@@ -145,12 +145,15 @@ def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
 
 #: D5 (tarea 4.3): medidos contra `gh run view` del CI real (último push,
 #: 2026-10-15 23:32Z): backend 9m08s y con tendencia creciente (4m26s,
-#: 5m18s, 5m32s, 9m08s en las cuatro corridas previas); humo 1 a 2 min; web,
-#: shellcheck y secretos, menos de 20s cada uno.
+#: 5m18s, 5m32s, 9m08s en las cuatro corridas previas); humo 1 a 2 min;
+#: shellcheck y secretos, menos de 20s cada uno. `web` subió de 5 a 15
+#: (tarea 3.8 del 3b: sumó `next build` + Chromium real sobre vitest, que
+#: solo); sin medición real de CI todavía, 15 deja margen sobre lo que se
+#: vio en esta máquina (unos 90s de punta a punta).
 _TIMEOUT_MINUTES_ESPERADO = {
     "backend": 20,
     "humo": 15,
-    "web": 5,
+    "web": 15,
     "shellcheck": 5,
     "secretos": 5,
 }
