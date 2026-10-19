@@ -7,11 +7,16 @@ tiene que ser EXACTAMENTE la que la app registra bajo `/api` (salvo
 `/api/salud`, pública a propósito); si alguien agrega una ruta nueva sin
 pasar por este archivo, el conjunto ya no coincide y el test falla, sin
 esperar a que alguien se acuerde de extenderlo. (2) de comportamiento — cada
-ruta no pública, llamada sin ninguna identidad, da 401 sin tocar la base
-(ya probado en 4.2 por separado, repetido acá sobre el conjunto completo); y
-llamada con una identidad real pero SIN ninguna fila en `asignacion_rol`,
-nunca da 200/201 contra un recurso real (ni por falta de alcance ni por
-falta de permiso: cualquiera de los dos caminos tiene que cortar).
+ruta no pública, llamada sin ninguna identidad, da 401 SIN TOCAR LA BASE,
+sobre el conjunto completo de `_RUTAS_CUBIERTAS` (RF-B-3, revisión final
+19/10/2026: hasta acá esto sólo miraba el status, y "sin tocar la base"
+vivía repartido en los `..._401_sin_sql` de otros archivos, sobre
+subconjuntos — el docstring lo prometía sobre el conjunto completo sin
+cumplirlo; ahora instrumenta `before_cursor_execute` del engine real por
+cada ruta, mismo mecanismo que esos archivos); y llamada con una identidad
+real pero SIN ninguna fila en `asignacion_rol`, nunca da 200/201 contra un
+recurso real (ni por falta de alcance ni por falta de permiso: cualquiera
+de los dos caminos tiene que cortar).
 
 Contenedor propio (L-006; mismo motivo que 4.1/4.2/5.2/5.3).
 """
@@ -25,7 +30,7 @@ from typing import Any
 
 import psycopg
 import pytest
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
 from testcontainers.community.postgres import PostgresContainer
 
@@ -314,9 +319,27 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
 def test_cada_ruta_sin_identidad_da_401(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any], ruta_y_metodo: tuple[str, str]
 ) -> None:
+    """RF-B-3 (revisión final, 19/10/2026): el docstring de este archivo
+    prometía "sin tocar la base" sobre el conjunto COMPLETO de rutas, pero
+    hasta acá sólo miraba el status — la instrumentación de SQL vivía
+    repartida en `..._401_sin_sql` de otros archivos, sobre subconjuntos.
+    Mismo mecanismo que `test_edificios_api.test_401_sin_sql_incluso_con_
+    cuerpo_invalido`: escuchar `before_cursor_execute` del engine real."""
+    from sqlalchemy import event
+
     ruta, metodo = ruta_y_metodo
-    respuesta = _pedido(cliente, ruta, metodo, mundo)
+    sentencias: list[Any] = []
+
+    def registrar(*args: Any) -> None:
+        sentencias.append(args[2])
+
+    event.listen(app_real.state.engine, "before_cursor_execute", registrar)
+    try:
+        respuesta = _pedido(cliente, ruta, metodo, mundo)
+    finally:
+        event.remove(app_real.state.engine, "before_cursor_execute", registrar)
     assert respuesta.status_code == 401, f"{metodo} {ruta}: {respuesta.status_code}"
+    assert sentencias == [], f"{metodo} {ruta} tocó la base sin identidad: {sentencias}"
 
 
 @pytest.mark.parametrize("ruta_y_metodo", sorted(_RUTAS_CUBIERTAS))
@@ -387,3 +410,46 @@ def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
         f"rutas detectadas: {rutas}"
     )
     assert rutas - _RUTAS_PUBLICAS - _RUTAS_CUBIERTAS == {("/api/directo-sin-cubrir", "GET")}
+
+
+# --- RF-B-3 (revisión final, 19/10/2026): el barrido de SQL puede fallar ---
+
+
+def test_mutante_ruta_que_toca_la_base_antes_de_la_identidad_hace_fallar_el_barrido() -> None:
+    """L-019: `sentencias == []` en `test_cada_ruta_sin_identidad_da_401`
+    nace verde sobre las rutas reales (D7 ya las hace bien) — nunca se vio
+    fallar. Acá se arma, a mano, la ruta que esa regla existe para
+    detectar: una dependencia que ejecuta SQL ANTES que `identidad_actual`
+    (`_toca_la_base`, declarada primero en la firma). El mismo mecanismo
+    de instrumentación (`before_cursor_execute`) tiene que ver esa
+    sentencia y hacer fallar la aserción que el test real usa."""
+    from sqlalchemy import create_engine, event, text
+
+    app = FastAPI()
+    engine = create_engine("sqlite://")
+
+    def _toca_la_base() -> None:
+        with engine.connect() as conexion:
+            conexion.execute(text("SELECT 1"))
+
+    @app.get("/mutante")
+    def _ruta_rota(
+        _tocada: None = Depends(_toca_la_base),
+        _identidad: Identidad = Depends(identidad_actual),
+    ) -> dict[str, str]:  # pragma: no cover - nunca se llega, identidad_actual da 401 siempre
+        return {}
+
+    cliente = TestClient(app)
+    sentencias: list[object] = []
+
+    def registrar(*args: object) -> None:
+        sentencias.append(args[2])
+
+    event.listen(engine, "before_cursor_execute", registrar)
+    try:
+        respuesta = cliente.get("/mutante")
+    finally:
+        event.remove(engine, "before_cursor_execute", registrar)
+
+    assert respuesta.status_code == 401
+    assert sentencias != [], "el mutante no tocó la base: este escenario no probaría nada (L-019)"
