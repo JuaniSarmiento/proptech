@@ -16,7 +16,7 @@ import {
   fijarMiembrosDeGrupo,
   type MiembroAEnviar,
 } from "../../../../lib/api/grupos";
-import { erroresDeFormulario } from "../../../../lib/api/mensajes";
+import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import type { EstadoFormularioGrupo } from "./Pantalla";
 
 const _CAMPOS_DATOS = ["clave", "nombre", "metodo"];
@@ -58,6 +58,9 @@ function _mapearErrorDeDatos(resultado: ResultadoApi<unknown>): EstadoFormulario
       erroresDesconocidos: ["No podés modificar los grupos de reparto."],
     };
   }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresPorCampo: {}, erroresDesconocidos: [MENSAJE_SIN_SESION] };
+  }
   return {
     erroresPorCampo: {},
     erroresDesconocidos: ["No pudimos guardar los datos. Probá de nuevo."],
@@ -67,6 +70,9 @@ function _mapearErrorDeDatos(resultado: ResultadoApi<unknown>): EstadoFormulario
 function _mapearErrorDeMiembros(resultado: ResultadoApi<unknown>): string[] {
   if (resultado.estado === "invalido") {
     return erroresDeFormulario(resultado.errores as ErrorDeCampo[], []).erroresDesconocidos;
+  }
+  if (resultado.estado === "sin_sesion") {
+    return [MENSAJE_SIN_SESION];
   }
   return ["No pudimos guardar las unidades. Probá de nuevo."];
 }

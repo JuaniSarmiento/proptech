@@ -16,7 +16,7 @@
 import { revalidatePath } from "next/cache";
 import type { ErrorDeCampo, ResultadoApi } from "../../../../lib/api/cliente";
 import { crearVersionDeConfiguracion } from "../../../../lib/api/configuracion";
-import { erroresDeFormulario } from "../../../../lib/api/mensajes";
+import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import type { EstadoFormularioVersion } from "./Pantalla";
 
 const _CAMPOS_CONOCIDOS = [
@@ -73,6 +73,9 @@ export async function crearVersionDeConfiguracionAction(
       erroresPorCampo: {},
       erroresDesconocidos: ["No podés cambiar la configuración de intereses y vencimiento."],
     };
+  }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresPorCampo: {}, erroresDesconocidos: [MENSAJE_SIN_SESION] };
   }
   return {
     erroresPorCampo: {},

@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { confirmarSinSaldosPrevios } from "../../../../lib/api/edificios";
+import { MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import type { EstadoConfirmacion } from "./Pantalla";
 
 export async function confirmarSinSaldosPreviosAction(
@@ -37,6 +38,9 @@ export async function confirmarSinSaldosPreviosAction(
       erroresPorCampo: {},
       erroresDesconocidos: ["No podés confirmar que el edificio arranca sin saldos previos."],
     };
+  }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresPorCampo: {}, erroresDesconocidos: [MENSAJE_SIN_SESION] };
   }
   return {
     erroresPorCampo: {},

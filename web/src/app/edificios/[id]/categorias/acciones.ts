@@ -15,7 +15,11 @@ import {
   reordenarCategorias,
 } from "../../../../lib/api/categorias";
 import type { ErrorDeCampo, ResultadoApi } from "../../../../lib/api/cliente";
-import { erroresDeFormulario, mensajeDeError } from "../../../../lib/api/mensajes";
+import {
+  erroresDeFormulario,
+  MENSAJE_SIN_SESION,
+  mensajeDeError,
+} from "../../../../lib/api/mensajes";
 import type { EstadoAccionDeLista, EstadoFormularioCategoria } from "./Pantalla";
 
 const _CAMPOS_CONOCIDOS = ["clave", "nombre"];
@@ -50,6 +54,9 @@ function _mapearPanel(
       erroresDesconocidos: ["No podés modificar las categorías de gasto."],
     };
   }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresPorCampo: {}, erroresDesconocidos: [MENSAJE_SIN_SESION] };
+  }
   return {
     erroresPorCampo: {},
     erroresDesconocidos: ["No pudimos guardar los datos. Probá de nuevo."],
@@ -67,6 +74,9 @@ function _mapearDeLista(
   }
   if (resultado.estado === "sin_permiso") {
     return { erroresDesconocidos: [mensajeSinPermiso] };
+  }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresDesconocidos: [MENSAJE_SIN_SESION] };
   }
   if (resultado.estado === "invalido") {
     return {

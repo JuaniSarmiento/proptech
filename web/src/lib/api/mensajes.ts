@@ -20,6 +20,12 @@ const _MENSAJES: Record<string, string> = {
 
 const _GENERICO = "Revisá este dato.";
 
+/** R3C-8 (rompedor 3b): el mismo texto que ya usaba `crearEdificioAction`
+ * para un 401 — hasta el 2b la API de producción siempre da 401, así que
+ * cada escritura sin este mapeo invitaba a reintentar algo que nunca iba
+ * a andar ("No pudimos guardar los datos. Probá de nuevo."). */
+export const MENSAJE_SIN_SESION = "Tu sesión expiró. Iniciá sesión de nuevo.";
+
 /** Traduce un `motivo` (el `type` de Pydantic, vocabulario cerrado) a
  * castellano simple; un motivo que no está en el diccionario da el mensaje
  * genérico, nunca el texto técnico. */

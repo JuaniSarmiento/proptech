@@ -11,7 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ErrorDeCampo, ResultadoApi } from "../../../../lib/api/cliente";
-import { erroresDeFormulario } from "../../../../lib/api/mensajes";
+import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import { crearUnidad, editarUnidad } from "../../../../lib/api/unidades";
 import type { EstadoFormularioUnidad } from "./Pantalla";
 
@@ -46,6 +46,9 @@ function _mapear(resultado: ResultadoApi<unknown>, complejoId: string): EstadoFo
       erroresPorCampo: {},
       erroresDesconocidos: ["No podés modificar el padrón de unidades."],
     };
+  }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresPorCampo: {}, erroresDesconocidos: [MENSAJE_SIN_SESION] };
   }
   return {
     erroresPorCampo: {},
