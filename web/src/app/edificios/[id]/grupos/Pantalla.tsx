@@ -164,7 +164,11 @@ export function PantallaGrupos({
         alCerrar={() => setPanelAbierto(false)}
         devolverFocoA={aperturaRef}
       >
+        {/* R3C-4: misma `key` por entidad que en unidades/Pantalla.tsx —
+         * fuerza el remonte del formulario al cambiar de fila con el panel
+         * abierto (ver comentario allá). */}
         <Formulario
+          key={grupoEnEdicion?.id ?? "nuevo"}
           erroresPorCampo={estado?.erroresPorCampo ?? {}}
           erroresDesconocidos={estado?.erroresDesconocidos ?? []}
           action={enviar}

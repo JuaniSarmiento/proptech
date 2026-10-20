@@ -200,4 +200,35 @@ describe("PantallaCategorias", () => {
     );
     await sinViolaciones(container);
   });
+
+  it("R3C-4 · tocar otra categoría con el panel abierto no mezcla el nombre tipeado con el id de la otra", async () => {
+    const accionEditar = vi.fn().mockResolvedValue(null);
+    const usuario = userEvent.setup();
+    const { container } = render(
+      <PantallaCategorias
+        id="e1"
+        nombreEdificio="Edificio API"
+        categorias={[PORTON, LIMPIEZA, ASCENSOR]}
+        accionCrear={accionNula}
+        accionEditar={accionEditar}
+        accionEstado={accionNula}
+        accionReordenar={accionNula}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Portón" }));
+    const nombre = screen.getByLabelText("Nombre") as HTMLInputElement;
+    await usuario.clear(nombre);
+    await usuario.type(nombre, "Portón renombrado a medias");
+    await usuario.click(screen.getByRole("button", { name: "Limpieza" }));
+    // `querySelector` simple matchearía el hidden de activar/desactivar de
+    // la primera fila (mismo `name`, D-ficha 4.5): el del panel es el que
+    // vive dentro de `.formulario` (D8).
+    const oculto = container.querySelector(
+      '.formulario input[name="categoria_id"]',
+    ) as HTMLInputElement;
+    expect({
+      id: oculto.value,
+      nombre: (screen.getByLabelText("Nombre") as HTMLInputElement).value,
+    }).toEqual({ id: "c2", nombre: "Limpieza" });
+  });
 });

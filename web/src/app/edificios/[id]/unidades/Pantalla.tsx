@@ -145,7 +145,14 @@ export function PantallaPadron({
         alCerrar={() => setPanelAbierto(false)}
         devolverFocoA={aperturaRef}
       >
+        {/* R3C-4 (rompedor 3b): sin `key`, tocar otra fila con el panel
+         * abierto sólo cambiaba el `defaultValue` de los `Campo` (no
+         * controlados) — React no remonta el input ya montado, así que un
+         * campo ya tocado conservaba lo tipeado para la unidad anterior y
+         * el oculto `unidad_id` lo mandaba sobre la unidad nueva. La `key`
+         * por unidad (o "nueva") fuerza el remonte del formulario entero. */}
         <Formulario
+          key={unidadEnEdicion?.id ?? "nueva"}
           erroresPorCampo={estado?.erroresPorCampo ?? {}}
           erroresDesconocidos={estado?.erroresDesconocidos ?? []}
           action={enviar}

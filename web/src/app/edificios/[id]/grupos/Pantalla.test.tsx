@@ -173,4 +173,30 @@ describe("PantallaGrupos", () => {
     );
     await sinViolaciones(container);
   });
+
+  it("R3C-4 · tocar otro grupo con el panel abierto no mezcla el nombre tipeado con el id del otro", async () => {
+    const BAULERAS: Grupo = { ...ASCENSOR, id: "g2", clave: "bauleras", nombre: "Bauleras" };
+    const accionEditar = vi.fn().mockResolvedValue(null);
+    const usuario = userEvent.setup();
+    const { container } = render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, ASCENSOR, BAULERAS]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionEditar}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
+    const nombre = screen.getByLabelText("Nombre") as HTMLInputElement;
+    await usuario.clear(nombre);
+    await usuario.type(nombre, "Ascensor renombrado a medias");
+    await usuario.click(screen.getByRole("button", { name: /Bauleras/ }));
+    const oculto = container.querySelector('input[name="grupo_id"]') as HTMLInputElement;
+    expect({
+      id: oculto.value,
+      nombre: (screen.getByLabelText("Nombre") as HTMLInputElement).value,
+    }).toEqual({ id: "g2", nombre: "Bauleras" });
+  });
 });

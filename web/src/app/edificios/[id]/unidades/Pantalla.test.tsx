@@ -176,4 +176,37 @@ describe("PantallaPadron", () => {
     );
     await sinViolaciones(container);
   });
+
+  it("R3C-4 · tocar otra fila con el panel abierto no mezcla lo tipeado de una unidad con el id de otra", async () => {
+    const UNIDAD_2B: Unidad = {
+      ...UNIDAD_1A,
+      id: "u2",
+      identificador: "2B",
+      coeficiente: "0.300000",
+    };
+    const accionEditar = vi.fn().mockResolvedValue(null);
+    const usuario = userEvent.setup();
+    const { container } = render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        unidades={[UNIDAD_1A, UNIDAD_2B]}
+        informe={{ suma: "0.800000", diferencia: "-0.200000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionNula}
+        accionEditar={accionEditar}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    const coeficiente = screen.getByLabelText("Coeficiente") as HTMLInputElement;
+    await usuario.clear(coeficiente);
+    await usuario.type(coeficiente, "0.700000");
+    // El panel no es modal (aria-modal=false, fijo a la derecha): la tabla
+    // sigue clicable, así que tocar otra fila sin cerrar es un camino real.
+    await usuario.click(screen.getByRole("button", { name: "2B" }));
+    const oculto = container.querySelector('input[name="unidad_id"]') as HTMLInputElement;
+    expect({
+      id: oculto.value,
+      coeficiente: (screen.getByLabelText("Coeficiente") as HTMLInputElement).value,
+    }).toEqual({ id: "u2", coeficiente: "0.300000" });
+  });
 });
