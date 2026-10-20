@@ -413,6 +413,25 @@ familia por hallazgo).
     casos obsoletos de `__rompedor__` en rojo). `pnpm tsc --noEmit`/`pnpm biome
     check`: limpios.
   - Commit `fix(web): loading.tsx con <main> y <h1> (R3C-7)`.
+- [x] R3C-9 (BAJA): `grupos.json` usaba `unidad_id` 0a3821f6/2a95d1f0/d506c810,
+  que no existen en `unidades.json` (153ca513/ce1a0338/5544ade5) — en el
+  navegador real, "Editar grupo" nunca mostraba unidades pre-marcadas.
+  - RED (reusa el rojo del rompedor) 22:50:33 `vitest run
+    src/__rompedor__/fixtures.test.ts` → `huerfanas` trae 5 ids en vez de `[]`.
+  - Arreglo: remapeo de `grupos.json` conservando el coeficiente de cada unidad
+    (0,1 → 1C, 0,5 → 1A/1B) — decisión declarada: a mano, no regenerado desde la
+    API real (`PROPTECH_ACTUALIZAR_FIXTURES=1`), para no arrastrar los otros 7
+    fixtures ni depender de Docker en esta vuelta; queda anotado en el fixture
+    nuevo como la vía mejor si el contrato cambia.
+  - `fixtures.test.ts` (permanente, en `lib/api/`) además guarda que el informe
+    de cada fixture sea coherente (`diferencia = suma - 1`, estado según la
+    tolerancia real de `compartido/coeficientes.py`, backend) — ningún fixture
+    estaba roto en este eje, pero ahora queda guardado.
+  - GREEN 22:52:15 `vitest run src/lib/api/fixtures.test.ts` → `3 passed`.
+    `pnpm tsc --noEmit` (tuvo que ensanchar el tipo `estado` a `string`: un
+    `import ... from "*.json"` nunca da el literal) / `pnpm biome check --write`:
+    limpios.
+  - Commit `fix(web): grupos.json referencia unidades que existen en unidades.json (R3C-9)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
