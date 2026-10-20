@@ -488,7 +488,47 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   Ruff check / format --check / mypy: limpios (227 archivos / 206 fuentes).
   SUPUESTO: ninguno. Logs completos locales en .git/informes-roles-bloque-b/4.1-*.log.
 
-- [ ] 4.2 El endpoint de asignación (D7, RA-2) en `backend/tests/integracion/test_asignar_edificio_api.py` y `test_asignacion_validacion.py`: el super admin asigna a una persona de su administración como administrador, contador, auxiliar y consejo (201, la fila tiene ese perfil y la persona pasa a ver el complejo, y la fila de auditoría de esa acción tiene en `detalle` el `complejo_id`, el `rol` asignado y el alcance); un administrador por edificio en su complejo recibe 403 con `invitar_usuarios_y_asignar_edificios`, y en otro complejo 404; un administrador principal, 403; el super admin de A con una persona de B (UUID existente), 404 y nada escrito; un cuerpo con `nivel`, `vinculo` o `unidad_id`, o con `rol` `super_admin`, `vecino`, `titular` o `colaborador`, da 422 nombrando el campo y nada escrito. Verificar si R5 del 2a queda cubierta y decirlo en el informe. RED: con el cuerpo viejo, `rol: "administrador"` da 422 y `nivel` es obligatorio; aparte, el `detalle` de auditoría todavía no tiene `rol` ni alcance (RA-2). Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración; › Cuerpo de la asignación con el vocabulario viejo o fuera de lo asignable. Lecciones: L-012, L-017.
+- [x] 4.2 El endpoint de asignación (D7, RA-2) en `backend/tests/integracion/test_asignar_edificio_api.py` y `test_asignacion_validacion.py`: el super admin asigna a una persona de su administración como administrador, contador, auxiliar y consejo (201, la fila tiene ese perfil y la persona pasa a ver el complejo, y la fila de auditoría de esa acción tiene en `detalle` el `complejo_id`, el `rol` asignado y el alcance); un administrador por edificio en su complejo recibe 403 con `invitar_usuarios_y_asignar_edificios`, y en otro complejo 404; un administrador principal, 403; el super admin de A con una persona de B (UUID existente), 404 y nada escrito; un cuerpo con `nivel`, `vinculo` o `unidad_id`, o con `rol` `super_admin`, `vecino`, `titular` o `colaborador`, da 422 nombrando el campo y nada escrito. Verificar si R5 del 2a queda cubierta y decirlo en el informe. RED: con el cuerpo viejo, `rol: "administrador"` da 422 y `nivel` es obligatorio; aparte, el `detalle` de auditoría todavía no tiene `rol` ni alcance (RA-2). Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración; › Cuerpo de la asignación con el vocabulario viejo o fuera de lo asignable. Lecciones: L-012, L-017.
+
+  EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py tests/integracion/test_asignar_edificio_api.py -q
+  13:04:56
+  E assert 422 == 201 (administrador/contador/auxiliar); consejo: detalle sin rol ni alcance
+  10 failed, 14 passed, 1 warning in 18.12s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_auditoria_detalle.py -q
+  13:06:29
+  E DetalleInvalido: ... alcance, rol (el validador también necesitaba el contrato nuevo)
+  1 failed, 4 passed in 0.13s
+  ```
+  El 403 del principal nació verde (matriz del bloque A); copia previa real
+  `.git/informes-roles-bloque-b/4.2-permisos-original.py`, mutante sin commit:
+  ```diff
+  -Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset({_SA}),
+  +Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset({_SA, _AP}),
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignar_edificio_api.py::test_administrador_principal_no_asigna -q
+  13:07:13
+  E assert 201 == 403
+  1 failed, 1 warning in 5.70s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignar_edificio_api.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_identidad_api.py tests/integracion/test_422_sin_el_valor.py tests/integracion/test_altas_sin_id_del_cliente.py tests/unitarios/test_auditoria_detalle.py -q
+  13:06:37
+  54 passed, 1 warning in 27.81s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignar_edificio_api.py::test_administrador_principal_no_asigna tests/unitarios/test_auditoria_detalle.py -q
+  13:07:22 (copia restaurada byte a byte)
+  6 passed, 1 warning in 5.92s
+  ```
+  JUICIO: cuatro roles con fila exacta, acceso antes/después y detalle auditado
+  por request_id; denegaciones 403/404 y nueve cuerpos 422 con campo explícito.
+  Nada escrito incluye asignaciones Y auditoría, también para la persona real
+  de B, consultando como proptech_app. R5 del 2a cubierta: unidad_id válido en
+  cuerpo con rol válido da 422 con loc=[body, unidad_id] y no escribe nada;
+  el cierre de esa deuda corresponde al archivo del change. Llamadores de
+  aplicación adaptados a la eliminación de nivel, sin compatibilidad legada.
+  Ruff check / format --check / mypy: limpios (227 archivos / 206 fuentes).
+  SUPUESTO: ninguno. Logs locales: .git/informes-roles-bloque-b/4.2-*.log.
+
 - [ ] 4.3 Las rutas existentes con la matriz nueva, en `backend/tests/integracion/test_alcance_api.py` y un archivo nuevo `test_perfiles_api.py`, como `proptech_app` con la identidad inyectada: un administrador por edificio crea una versión de configuración en su edificio (201, autor y auditoría) y recibe 403 al confirmar "sin saldos previos"; un administrador principal confirma en un edificio que nadie le asignó (200 y auditoría); un administrador principal recibe 403 al crear un edificio; un contador principal lista todos los edificios, lee el padrón de cualquiera (200) y recibe 403 al editar una unidad, crear una categoría y crear una versión; un auxiliar recibe 403 al crear una categoría; el consejo lee el padrón (200) y no edita una unidad (403); el vecino propietario y el inquilino ven su unidad (200), reciben 404 en la de otro vecino del mismo complejo y 403 en la configuración de su complejo; una persona administrador por edificio en A y auxiliar en B recibe 404 en C. RED: con la matriz vieja el administrador por edificio recibe 403 al crear la versión. Escenarios: `autorizacion-por-rol` › Titular; › Contador principal; › Dos asignaciones de la misma persona; › Un colaborador crea un edificio; › Un colaborador "ver" crea una categoría; › El contador no escribe; › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio; › El vecino ve su unidad; › Dos propietarios de la misma unidad; `configuracion-versionada` › Cambiar la tasa; › Un administrador del edificio cambia la tasa; › Un colaborador cambia la tasa; `edificios-y-unidades` › Confirmar sin saldos previos; › Un administrador principal confirma; › Confirmar dos veces; › Un colaborador confirma; › Lista de un colaborador; › Lista de un contador principal; › Unidad de otra administración. Lecciones: L-016, L-017.
 
 - [ ] 4.4 Consistencia del vocabulario de roles asignables (RA-4, revisión del arquitecto), en un test nuevo (por ejemplo `backend/tests/unitarios/acceso/test_vocabulario_asignable.py`): el conjunto de valores del `Literal` de `CuerpoAsignacion.rol` (`proptech_api/complejos.py`), el conjunto de valores permitidos por `ck_asignacion_rol_rol_valido` (leído de la migración `0017`, no copiado a mano) y el subconjunto asignable por esta ruta del enum `Rol` de `acceso/dominio/permisos.py` tienen que ser el mismo conjunto; el test falla si alguno de los tres cambia sin que los otros dos lo acompañen. RED: se escribe el test contra el estado de hoy (el `Literal` todavía dice `colaborador | consejo`) y se lo ve fallar por la razón correcta antes de actualizar el cuerpo del endpoint en 4.2/D7. Escenarios: ninguno nuevo (sostiene la consistencia entre D7 y D1). Lecciones: L-019, L-022.

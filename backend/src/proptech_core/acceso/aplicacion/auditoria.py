@@ -21,7 +21,7 @@ import functools
 import json
 from collections.abc import Callable
 from datetime import date
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -50,6 +50,11 @@ class _DetalleAsignarEdificio(_DetalleBase):
     complejo_id: UUID
 
 
+class _DetalleAsignacion(_DetalleAsignarEdificio):
+    rol: Literal["administrador", "contador", "auxiliar", "consejo"]
+    alcance: Literal["edificio"]
+
+
 class _DetalleConfiguracion(_DetalleAsignarEdificio):
     vigente_desde: date
 
@@ -57,7 +62,7 @@ class _DetalleConfiguracion(_DetalleAsignarEdificio):
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[Accion, type[_DetalleBase]] = {
-    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignarEdificio,
+    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignacion,
     Accion.CREAR_EDIFICIO: _DetalleAsignarEdificio,
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,

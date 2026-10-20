@@ -1,18 +1,6 @@
-"""`rol`/`nivel` de `POST /api/complejos/{id}/asignaciones` validados en el
-cuerpo (R3A-4, deuda del 2a alcanzable desde el 3a).
-
-`CuerpoAsignacion.rol`/`nivel` eran `str` libres: llegaban crudos al INSERT
-de `asignacion_rol` y un valor que no matcheara alguno de los CHECK de la
-migración 0003 (`ck_asignacion_rol_rol_valido`, `ck_asignacion_rol_nivel_
-valido`, `ck_asignacion_rol_forma_por_rol`) terminaba en 500 (D6: ningún 500
-alcanzable con entrada del cliente). Este endpoint siempre fija
-`complejo_id` (del path) y nunca manda `unidad_id`, así que "titular" y
-"vecino" nunca podrían satisfacer el CHECK de todos modos: el cuerpo sólo
-acepta "colaborador" (con `nivel`) y "consejo" (sin `nivel`).
-"""
+"""Vocabulario asignable y campos extra rechazados en el borde (D7, R5 del 2a)."""
 
 import pytest
-from fastapi.testclient import TestClient
 
 from ._api_edificios import ApiEdificio
 
@@ -20,51 +8,41 @@ pytestmark = pytest.mark.integracion
 
 
 @pytest.mark.parametrize(
-    "cuerpo",
+    ("cuerpo", "campo"),
     [
-        {"rol": "vecino"},
-        {"rol": "titular"},
-        {"rol": "inventado"},
-        {"rol": "colaborador", "nivel": "superusuario"},
-        {"rol": "colaborador"},
-        {"rol": "consejo", "nivel": "ver"},
-    ],
-    ids=[
-        "vecino_sin_unidad_posible",
-        "titular_sin_complejo_null_posible",
-        "rol_inventado",
-        "nivel_inventado",
-        "colaborador_sin_nivel",
-        "consejo_con_nivel",
-    ],
+        ({"rol": rol}, "rol")
+        for rol in ("super_admin", "vecino", "titular", "colaborador", "inventado")
+    ]
+    + [
+        ({"rol": "administrador", campo: valor}, campo)
+        for campo, valor in (
+            ("nivel", "editar"),
+            ("vinculo", "propietario"),
+            ("unidad_id", "10000000-0000-0000-0000-000000000001"),
+        )
+    ]
+    + [({"rol": "consejo", "nivel": "ver"}, "nivel")],
 )
-def test_rol_o_nivel_invalido_en_asignacion_da_422_y_no_500(
-    api_edificio: ApiEdificio, cuerpo: dict[str, str]
+def test_cuerpo_fuera_de_lo_asignable_da_422_y_no_escribe(
+    api_edificio: ApiEdificio, cuerpo: dict[str, str], campo: str
 ) -> None:
     api = api_edificio
     api.como("titular")
-    cliente = TestClient(api.app, raise_server_exceptions=False)
-    respuesta = cliente.post(
-        api.ruta("/asignaciones"), json={"persona_id": str(api.personas["ver"]), **cuerpo}
-    )
-    assert respuesta.status_code == 422, (respuesta.status_code, respuesta.text)
-
-
-@pytest.mark.parametrize(
-    "cuerpo",
-    [
-        {"rol": "colaborador", "nivel": "editar"},
-        {"rol": "consejo"},
-    ],
-    ids=["colaborador_con_nivel", "consejo_sin_nivel"],
-)
-def test_rol_y_nivel_validos_dan_201(api_edificio: ApiEdificio, cuerpo: dict[str, str]) -> None:
-    """Control del test anterior (L-019): si la validación rechazara de
-    más, estos dos (las únicas combinaciones que este endpoint soporta)
-    también fallarían."""
-    api = api_edificio
-    api.como("titular")
+    consulta = "SELECT (SELECT count(*) FROM asignacion_rol), (SELECT count(*) FROM auditoria)"
+    antes = api.filas(consulta)
     respuesta = api.cliente.post(
         api.ruta("/asignaciones"), json={"persona_id": str(api.personas["vecino"]), **cuerpo}
     )
-    assert respuesta.status_code == 201, (respuesta.status_code, respuesta.text)
+    assert respuesta.status_code == 422, respuesta.text
+    assert ["body", campo] in [error["loc"] for error in respuesta.json()["detail"]]
+    assert api.filas(consulta) == antes
+
+
+@pytest.mark.parametrize("rol", ["administrador", "contador", "auxiliar", "consejo"])
+def test_roles_asignables_dan_201(api_edificio: ApiEdificio, rol: str) -> None:
+    api = api_edificio
+    api.como("titular")
+    respuesta = api.cliente.post(
+        api.ruta("/asignaciones"), json={"persona_id": str(api.personas["vecino"]), "rol": rol}
+    )
+    assert respuesta.status_code == 201, respuesta.text

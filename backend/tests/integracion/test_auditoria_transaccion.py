@@ -255,8 +255,7 @@ def test_asignar_complejo_deja_una_fila_de_asignacion_y_una_de_auditoria(
             identidad,
             complejo_id=datos["complejo_id"],
             persona_id=datos["colaborador_id"],
-            rol="colaborador",
-            nivel="editar",
+            rol="administrador",
             request_id=request_id,
         )
         sesion.commit()
@@ -309,8 +308,7 @@ def test_una_falla_forzada_despues_de_registrar_revierte_la_asignacion_y_la_fila
                 identidad,
                 complejo_id=datos["complejo_id"],
                 persona_id=datos["colaborador_id"],
-                rol="colaborador",
-                nivel="editar",
+                rol="administrador",
                 request_id=uuid.uuid4(),
             )
         # ... pero la transacción (o el SAVEPOINT) revierte las dos (D9).
@@ -350,7 +348,6 @@ def test_una_asignacion_rechazada_por_el_check_no_deja_nada(
                 complejo_id=datos["complejo_id"],
                 persona_id=datos["colaborador_id"],
                 rol="vecino",
-                nivel=None,
                 request_id=uuid.uuid4(),
             )
         assert isinstance(excinfo.value.orig, psycopg.errors.CheckViolation)
@@ -417,8 +414,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             identidad,
             complejo_id=datos["complejo_id"],
             persona_id=datos["colaborador_id"],
-            rol="colaborador",
-            nivel="editar",
+            rol="administrador",
             request_id=uuid.uuid4(),
         ),
     }

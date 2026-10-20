@@ -44,7 +44,6 @@ def asignar_complejo_a_persona(
     complejo_id: UUID,
     persona_id: UUID,
     rol: str,
-    nivel: str | None,
     request_id: UUID,
 ) -> UUID:
     bloque = sesion.begin_nested() if sesion.in_transaction() else sesion.begin()
@@ -60,10 +59,7 @@ def asignar_complejo_a_persona(
                 # Siempre de la identidad (D7): nunca de un campo del pedido.
                 "administracion_id": str(identidad.administracion_id),
                 "persona_id": str(persona_id),
-                # Adaptación al esquema 0017; el cuerpo nuevo y su auditoría van en 4.2.
-                "rol": ("administrador" if nivel == "editar" else "auxiliar")
-                if rol == "colaborador"
-                else rol,
+                "rol": rol,
                 "complejo_id": str(complejo_id),
             },
         ).one()
@@ -74,7 +70,7 @@ def asignar_complejo_a_persona(
             entidad="complejo",
             entidad_id=complejo_id,
             request_id=request_id,
-            detalle={"complejo_id": str(complejo_id)},
+            detalle={"complejo_id": str(complejo_id), "rol": rol, "alcance": "edificio"},
         )
     # psycopg3 ya devuelve una columna uuid como `uuid.UUID`, incluso en un
     # `text()` crudo; el `str()`/`UUID()` sólo blinda el tipo para mypy.

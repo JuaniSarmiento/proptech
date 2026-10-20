@@ -17,10 +17,9 @@ from proptech_core.acceso.dominio.permisos import Accion
 
 def test_detalle_valido_para_invitar_usuarios_pasa() -> None:
     complejo_id = uuid4()
-    validado = _detalle_validado(
-        Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS, {"complejo_id": str(complejo_id)}
-    )
-    assert validado == {"complejo_id": str(complejo_id)}
+    detalle = {"complejo_id": str(complejo_id), "rol": "administrador", "alcance": "edificio"}
+    validado = _detalle_validado(Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS, detalle)
+    assert validado == detalle
 
 
 def test_clave_no_permitida_se_rechaza_y_el_valor_no_aparece_en_el_error() -> None:

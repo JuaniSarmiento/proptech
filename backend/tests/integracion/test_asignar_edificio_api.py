@@ -24,6 +24,8 @@ from testcontainers.community.postgres import PostgresContainer
 from proptech_api.acceso import identidad_actual
 from proptech_core.acceso.dominio.identidad import Identidad
 
+from ._api_edificios import ApiEdificio
+
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
@@ -198,17 +200,21 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
     return datos
 
 
-def _cantidad_de_asignaciones(contenedor: PostgresContainer, administracion_id: uuid.UUID) -> int:
-    conexion = _conectar(contenedor, MIGRADOR_USER, MIGRADOR_PASSWORD)
+def _cantidad_de_asignaciones(
+    contenedor: PostgresContainer, administracion_id: uuid.UUID
+) -> tuple[int, int]:
+    conexion = _conectar(contenedor, APP_USER, APP_PASSWORD)
     try:
         with conexion.cursor() as cur:
             cur.execute(
                 "SELECT set_config('app.administracion_id', %s, false)", (str(administracion_id),)
             )
-            cur.execute("SELECT count(*) FROM asignacion_rol")
+            cur.execute(
+                "SELECT (SELECT count(*) FROM asignacion_rol), (SELECT count(*) FROM auditoria)"
+            )
             fila = cur.fetchone()
             assert fila is not None
-            return int(fila[0])
+            return int(fila[0]), int(fila[1])
     finally:
         conexion.close()
 
@@ -349,3 +355,60 @@ def test_titular_asignando_a_persona_de_otra_administracion_404_y_nada_escrito(
 
     despues = _cantidad_de_asignaciones(contenedor, mundo["administracion_id"])
     assert despues == antes
+
+
+@pytest.mark.parametrize("rol", ["administrador", "contador", "auxiliar", "consejo"])
+def test_super_admin_asigna_perfil_alcance_y_auditoria(api_edificio: ApiEdificio, rol: str) -> None:
+    api = api_edificio
+    persona = api.personas["vecino"]
+    api.como("vecino")
+    assert api.cliente.get(f"/api/complejos/{api.otro}").status_code == 404
+    api.como("titular")
+    respuesta = api.cliente.post(
+        f"/api/complejos/{api.otro}/asignaciones", json={"persona_id": str(persona), "rol": rol}
+    )
+    assert respuesta.status_code == 201, respuesta.text
+    assert api.filas(
+        "SELECT persona_id, rol, complejo_id, unidad_id, vinculo FROM asignacion_rol WHERE id = %s",
+        (respuesta.json()["id"],),
+    ) == [(persona, rol, api.otro, None, None)]
+    assert api.filas(
+        "SELECT persona_id, accion, entidad_id, detalle FROM auditoria WHERE request_id = %s",
+        (respuesta.headers["X-Request-ID"],),
+    ) == [
+        (
+            api.personas["titular"],
+            "invitar_usuarios_y_asignar_edificios",
+            api.otro,
+            {"complejo_id": str(api.otro), "rol": rol, "alcance": "edificio"},
+        )
+    ]
+    api.como("vecino")
+    assert api.cliente.get(f"/api/complejos/{api.otro}").status_code == 200
+
+
+def test_administrador_principal_no_asigna(api_edificio: ApiEdificio) -> None:
+    api = api_edificio
+    persona = uuid.uuid4()
+    with api.base.conectar_app() as conexion, conexion.transaction():
+        conexion.execute("SELECT set_config('app.administracion_id', %s, true)", (str(api.admin),))
+        conexion.execute(
+            "INSERT INTO persona (id, administracion_id, nombre) VALUES (%s, %s, 'Principal')",
+            (persona, api.admin),
+        )
+        conexion.execute(
+            "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+            "VALUES (%s, %s, 'administrador')",
+            (api.admin, persona),
+        )
+    api.personas["principal"] = persona
+    api.como("principal")
+    consulta = "SELECT (SELECT count(*) FROM asignacion_rol), (SELECT count(*) FROM auditoria)"
+    antes = api.filas(consulta)
+    respuesta = api.cliente.post(
+        api.ruta("/asignaciones"),
+        json={"persona_id": str(api.personas["vecino"]), "rol": "consejo"},
+    )
+    assert respuesta.status_code == 403
+    assert respuesta.json()["detail"]["permiso_faltante"] == "invitar_usuarios_y_asignar_edificios"
+    assert api.filas(consulta) == antes
