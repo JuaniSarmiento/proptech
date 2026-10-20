@@ -139,3 +139,30 @@ lateral para el padrón; referencias Mercado Pago y home banking; configuración
 confirmación en la página con casilla; listo para usar; resumen con checklist de pasos pendientes.
 
 OK del brief: **Juani, 19/10/2026** (en la conversación: "aprobado").
+
+## Enmienda del 20/10/2026: todo el ancho, paneles y ayuda acoplada
+
+Juani vio las pantallas pulidas y pidió (con una captura de Mercado Pago como referencia) que el
+contenido **aproveche toda la pantalla** y no se sienta vacío. Reemplaza lo que el brief decía en contra:
+
+1. **Ancho completo**: el contenido ocupa todo el ancho disponible con márgenes cómodos; nada de columna
+   angosta centrada. En pantallas grandes se usa el espacio con columnas.
+2. **Paneles con borde suave y esquinas redondeadas** (planos, sin sombra; no tarjetas iguales en grilla):
+   un panel principal y un panel lateral de apoyo por pantalla. Resumen: checklist con barra de progreso
+   ("3 de 6 pasos") a la izquierda; datos del edificio y "Tu próximo paso" a la derecha. Unidades: tabla
+   grande y, al costado, suma de coeficientes, unidades por tipo y qué falta. Intereses y vencimiento:
+   vigente e historial lado a lado.
+3. **Menú lateral más rico**, con íconos y agrupado ("El edificio": Resumen, Unidades, Grupos;
+   "Configuración": Categorías, Intereses y vencimiento), y una **barra superior** con el edificio actual
+   y el usuario.
+4. **Filas con ícono**, título y una línea secundaria en gris que explica (como "Últimas actividades").
+5. **La ayuda "?" como panel acoplado a la derecha** que **empuja** el contenido (no lo tapa) y queda
+   abierto mientras se trabaja; más completa: pasos, un ejemplo y qué pasa después.
+6. **Más didáctico**: cada panel con una línea que dice para qué sirve; estados vacíos con un dibujo
+   simple y el próximo paso.
+
+Se mantiene: terracota (no el azul de Mercado Pago), números tabulares, "El recibo prolijo", una acción
+principal por pantalla, accesibilidad y 320 px (en pantalla chica los paneles se apilan y la ayuda
+ocupa el ancho).
+
+OK de Juani: **20/10/2026** (en la conversación: "dale si").
