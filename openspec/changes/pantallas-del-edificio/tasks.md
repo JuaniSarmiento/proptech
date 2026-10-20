@@ -513,6 +513,25 @@ AssertionError: expected <body><div>…(1)</div></body> to be <button type="butt
    Start at  09:49:40
 ```
 
+### 3. RF-F-3 y RF-F-4: ayuda dentro del alcance de teclado
+
+Solución declarada: el ciclo de Tab incluye el panel y los controles de la ayuda de su pantalla, sin habilitar el resto. Cerrar la ayuda devuelve el foco al panel si está abierto; sin panel vuelve a Ayuda. Se prueban ambos órdenes de apertura, Escape y Tab/Shift+Tab/Enter, en variantes lateral y ancha; se conserva lo tipeado.
+
+- 03-rojo (09:50:25, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/PanelLateral.test.tsx -t RF-F`
+```text
+AssertionError: expected <button type="button" …(1)>…(1)</button> to be <button type="button" …(3)>…(1)</button> // Object.is equality
+ Test Files  1 failed (1)
+      Tests  4 failed | 5 skipped (9)
+   Start at  09:50:26
+```
+
+- 03-verde (09:51:02, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/{PanelLateral,Ayuda,MenuDelEdificio}.test.tsx`
+```text
+ Test Files  3 passed (3)
+      Tests  22 passed (22)
+   Start at  09:51:02
+```
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

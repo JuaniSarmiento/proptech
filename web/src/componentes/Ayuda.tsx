@@ -12,7 +12,7 @@
  * documento, así que el siguiente `Tab` entra a leerlo. Se cierra con el
  * mismo botón, con "Cerrar" o con `Esc` (`useCerrarConEscape`: sólo la capa
  * de arriba, así un panel lateral abierto después se cierra primero), y el
- * foco vuelve al botón.
+ * foco vuelve al botón, o al panel lateral si está abierto en la pantalla.
  *
  * Quién empuja a quién lo resuelve el CSS (`.armazon:has(.ayuda__panel)`):
  * el panel sólo existe en el DOM mientras está abierto.
@@ -37,7 +37,15 @@ export function Ayuda({ paraQueSirve, pasos, ejemplo, yDespues }: Props) {
 
   function cerrar() {
     setAbierta(false);
-    botonRef.current?.focus();
+    const boton = botonRef.current;
+    const panel = boton?.closest("main")?.querySelector<HTMLElement>(".panel-lateral");
+    // Si la ayuda es externa al formulario abierto, el regreso queda en
+    // el panel. Una ayuda anidada conserva su propio botón como destino.
+    if (panel && !panel.contains(boton)) {
+      panel.querySelector<HTMLElement>("button")?.focus();
+    } else {
+      boton?.focus();
+    }
   }
 
   useCerrarConEscape(abierta, cerrar);

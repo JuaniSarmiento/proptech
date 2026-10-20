@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -39,7 +39,76 @@ function PruebaConFila() {
   );
 }
 
+function PruebaConAyudaExterna({ variante = "lateral" }: { variante?: "lateral" | "ancho" }) {
+  const botonRef = useRef<HTMLButtonElement>(null);
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <main>
+      <Ayuda paraQueSirve="Unidades" pasos={["Cargá los datos"]} yDespues="Grupos" />
+      <button type="button" ref={botonRef} onClick={() => setAbierto(true)}>
+        Agregar
+      </button>
+      <button type="button">Fuera de la trampa</button>
+      <PanelLateral
+        abierto={abierto}
+        titulo="Datos"
+        alCerrar={() => setAbierto(false)}
+        devolverFocoA={botonRef}
+        variante={variante}
+      >
+        <label>
+          Dato
+          <input />
+        </label>
+        <button type="button">Guardar</button>
+      </PanelLateral>
+    </main>
+  );
+}
+
 describe("PanelLateral", () => {
+  it.each(["lateral", "ancho"] as const)(
+    "RF-F-3: ayuda abierta después del panel %s, Escape conserva el foco y lo cargado adentro",
+    async (variante) => {
+      const usuario = userEvent.setup();
+      render(<PruebaConAyudaExterna variante={variante} />);
+      await usuario.click(screen.getByRole("button", { name: "Agregar" }));
+      await usuario.type(screen.getByLabelText("Dato"), "Sin perder");
+      await usuario.click(screen.getByRole("button", { name: "Ayuda" }));
+      await usuario.keyboard("{Escape}");
+      expect(screen.queryByRole("region")).toBeNull();
+      const panel = screen.getByRole("dialog");
+      expect(panel.contains(document.activeElement)).toBe(true);
+      expect(screen.getByLabelText("Dato")).toHaveProperty("value", "Sin perder");
+    },
+  );
+
+  it.each(["lateral", "ancho"] as const)(
+    "RF-F-4: ayuda abierta antes del panel %s, se alcanza Cerrar ayuda con Tab sin cerrar el formulario",
+    async (variante) => {
+      const usuario = userEvent.setup();
+      render(<PruebaConAyudaExterna variante={variante} />);
+      await usuario.click(screen.getByRole("button", { name: "Ayuda" }));
+      await usuario.click(screen.getByRole("button", { name: "Agregar" }));
+      await usuario.type(screen.getByLabelText("Dato"), "Sin perder");
+      const panel = screen.getByRole("dialog");
+      within(panel).getByRole("button", { name: "Guardar" }).focus();
+      await usuario.tab();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Ayuda" }));
+      await usuario.tab();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cerrar ayuda" }));
+      // El ciclo inverso tampoco sale a los controles de la pantalla.
+      await usuario.tab();
+      expect(document.activeElement).toBe(within(panel).getByRole("button", { name: "Cerrar" }));
+      await usuario.tab({ shift: true });
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cerrar ayuda" }));
+      await usuario.keyboard("{Enter}");
+      expect(screen.queryByRole("region")).toBeNull();
+      expect(panel.contains(document.activeElement)).toBe(true);
+      expect(screen.getByLabelText("Dato")).toHaveProperty("value", "Sin perder");
+    },
+  );
+
   it("atrapa el foco: Tab desde el último control vuelve al primero (El foco no se escapa)", async () => {
     const usuario = userEvent.setup();
     render(<PruebaConFila />);

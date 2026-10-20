@@ -57,8 +57,8 @@ export function PanelLateral({
   useCerrarConEscape(abierto, cerrarYDevolverFoco);
 
   // Al abrir, el foco entra al panel (primer control). La trampa de foco
-  // (Tab en el último vuelve al primero, Shift+Tab en el primero vuelve al
-  // último) vive en un listener imperativo, no en `onKeyDown` del `<div>`:
+  // incluye la ayuda acoplada de esta pantalla y vive en un listener
+  // imperativo, no en `onKeyDown` del `<div>`:
   // un `<div>` sin rol interactivo con manejo de teclado dispara
   // `lint/a11y/noStaticElementInteractions` de biome (ya pasó en 3.5).
   useEffect(() => {
@@ -69,7 +69,19 @@ export function PanelLateral({
     if (!nodo) {
       return;
     }
-    const focosables = () => Array.from(nodo.querySelectorAll<HTMLElement>(_SELECTOR_FOCUSABLE));
+    // La ayuda acoplada pertenece al mismo alcance de teclado aunque su
+    // región viva fuera del panel en el DOM. El resto de la pantalla no.
+    const ayuda = nodo.closest("main")?.querySelector(".ayuda");
+    const focosables = () =>
+      [
+        ...new Set([
+          ...nodo.querySelectorAll<HTMLElement>(_SELECTOR_FOCUSABLE),
+          ...(ayuda?.querySelectorAll<HTMLElement>(_SELECTOR_FOCUSABLE) ?? []),
+        ]),
+      ].filter(
+        (elemento) =>
+          !elemento.hasAttribute("disabled") && elemento.getAttribute("type") !== "hidden",
+      );
     focosables()[0]?.focus();
 
     function alTeclado(evento: KeyboardEvent) {
@@ -77,21 +89,16 @@ export function PanelLateral({
         return;
       }
       const lista = focosables();
-      const primero = lista[0];
-      const ultimo = lista.at(-1);
-      if (!primero || !ultimo) {
+      if (lista.length === 0) {
         return;
       }
-      if (evento.shiftKey && document.activeElement === primero) {
-        evento.preventDefault();
-        ultimo.focus();
-      } else if (!evento.shiftKey && document.activeElement === ultimo) {
-        evento.preventDefault();
-        primero.focus();
-      }
+      const indice = lista.indexOf(document.activeElement as HTMLElement);
+      const siguiente = (indice + (evento.shiftKey ? -1 : 1) + lista.length) % lista.length;
+      evento.preventDefault();
+      lista[siguiente]?.focus();
     }
-    nodo.addEventListener("keydown", alTeclado);
-    return () => nodo.removeEventListener("keydown", alTeclado);
+    document.addEventListener("keydown", alTeclado);
+    return () => document.removeEventListener("keydown", alTeclado);
   }, [abierto]);
 
   if (!abierto) {
