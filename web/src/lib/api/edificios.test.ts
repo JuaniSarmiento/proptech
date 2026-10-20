@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { crearEdificio, edificioPorId, listaDeEdificios } from "./edificios";
+import {
+  confirmarSinSaldosPrevios,
+  crearEdificio,
+  edificioPorId,
+  listaDeEdificios,
+} from "./edificios";
 
 function mockFetch(respuesta: { status: number; cuerpo?: unknown }) {
   return vi.fn().mockResolvedValue({
@@ -64,6 +69,35 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
     expect(await crearEdificio({ nombre: "X", localidad: "Y" })).toEqual({
       estado: "sin_permiso",
       permiso: "crear_edificio",
+    });
+  });
+
+  it("confirmarSinSaldosPrevios manda POST sin cuerpo a estado-de-migracion/sin-saldos-previos", async () => {
+    const fetchFalso = mockFetch({
+      status: 200,
+      cuerpo: { id: "1", estado_migracion: "sin_saldos_previos" },
+    });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await confirmarSinSaldosPrevios("1");
+    const llamada = fetchFalso.mock.calls[0];
+    expect(llamada?.[0]).toBe(
+      "http://api-interna:8000/api/complejos/1/estado-de-migracion/sin-saldos-previos",
+    );
+    expect(llamada?.[1]?.method).toBe("POST");
+    expect(resultado).toEqual({
+      estado: "ok",
+      datos: { id: "1", estado_migracion: "sin_saldos_previos" },
+    });
+  });
+
+  it("confirmarSinSaldosPrevios con 409 da conflicto (otro lo confirmó en el medio)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 409, cuerpo: { detail: "conflicto", campo: "estado_migracion" } }),
+    );
+    expect(await confirmarSinSaldosPrevios("1")).toEqual({
+      estado: "conflicto",
+      campo: "estado_migracion",
     });
   });
 });

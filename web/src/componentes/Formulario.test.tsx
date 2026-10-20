@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
 import { Campo, Formulario } from "./Formulario";
 
@@ -63,6 +63,19 @@ describe("Formulario", () => {
       </Formulario>,
     );
     expect(container.querySelector("form")?.getAttribute("action")).toBe("/no-deberia-navegar-acá");
+  });
+
+  it("con `onSubmit` y `aria-label`, se los pasa al <form> (tarea 4.7: validar antes de llamar a la acción)", () => {
+    const alEnviar = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    const { container } = render(
+      <Formulario erroresPorCampo={{}} onSubmit={alEnviar} aria-label="Formulario de prueba">
+        <Campo nombre="identificador" etiqueta="Identificador" />
+      </Formulario>,
+    );
+    const formulario = container.querySelector("form");
+    expect(formulario?.getAttribute("aria-label")).toBe("Formulario de prueba");
+    formulario?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    expect(alEnviar).toHaveBeenCalledTimes(1);
   });
 
   it("sin violaciones de axe, con errores", async () => {

@@ -23,6 +23,12 @@ type Props = {
    * del único `<form>` de la pantalla, así que el envío real pasa por acá,
    * nunca por un segundo `<form>` anidado. */
   action?: FormHTMLAttributes<HTMLFormElement>["action"];
+  /** Validación previa a la acción (tarea 4.7): corre ANTES de `action`
+   * (orden nativo del DOM); si llama a `preventDefault()`, la acción nunca
+   * se dispara. Mismo motivo que `action`: un segundo `<form>` anidado es
+   * inválido en HTML, así que esto también pasa por el único `<form>`. */
+  onSubmit?: FormHTMLAttributes<HTMLFormElement>["onSubmit"];
+  "aria-label"?: string;
   children: ReactNode;
 };
 
@@ -35,12 +41,19 @@ function idDelCampo(nombre: string): string {
  * viene de la API (`Formulario`), y `Campo` sólo pregunta por el suyo. */
 const _ContextoDeErrores = createContext<Record<string, string>>({});
 
-export function Formulario({ erroresPorCampo, erroresDesconocidos = [], action, children }: Props) {
+export function Formulario({
+  erroresPorCampo,
+  erroresDesconocidos = [],
+  action,
+  onSubmit,
+  "aria-label": ariaLabel,
+  children,
+}: Props) {
   const hayErrores = Object.keys(erroresPorCampo).length > 0 || erroresDesconocidos.length > 0;
 
   return (
     <_ContextoDeErrores.Provider value={erroresPorCampo}>
-      <form action={action}>
+      <form action={action} onSubmit={onSubmit} aria-label={ariaLabel}>
         {hayErrores ? (
           <div role="alert" aria-label="Resumen de errores" className="formulario__resumen">
             <p>Revisá estos datos:</p>
