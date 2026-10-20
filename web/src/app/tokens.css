@@ -189,6 +189,20 @@ body {
   margin-left: auto;
 }
 
+.historial-de-configuracion {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.historial-de-configuracion__fila {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-grafito);
+}
+
 /* La tabla del padrón (D6, tarea 4.3): este contenedor scrollea para sí
    mismo con `overflow-x: auto` — así una tabla ancha (5 columnas, hasta
    200 filas) nunca empuja el ancho de la página entera a 320 px. */

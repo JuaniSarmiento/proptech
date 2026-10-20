@@ -6,10 +6,46 @@
  */
 
 import { pedirApi, type ResultadoApi } from "./cliente";
-import type { ConfiguracionVigente } from "./tipos";
+import type { ConfiguracionVigente, VersionDelHistorial } from "./tipos";
 
 export async function configuracionVigente(
   id: string,
 ): Promise<ResultadoApi<ConfiguracionVigente>> {
   return pedirApi<ConfiguracionVigente>(`/api/complejos/${id}/configuracion`);
+}
+
+/**
+ * Historial de versiones (D5, tarea 4.6): `autor_nombre` viene de la API
+ * (`JOIN persona`), nunca calculado acá. Sin `camposDePlata`: es un
+ * arreglo, igual que `grupos.ts`/`categorias.ts` (D2).
+ */
+export async function versionesDeConfiguracion(
+  id: string,
+): Promise<ResultadoApi<VersionDelHistorial[]>> {
+  return pedirApi<VersionDelHistorial[]>(`/api/complejos/${id}/configuracion/versiones`);
+}
+
+export type DatosNuevaVersion = {
+  tasa_mensual: string;
+  dias_de_gracia: number;
+  forma_de_calculo: string;
+  porcentaje_fondo: string;
+  dia_de_vencimiento: number;
+  modalidad_de_vencimiento: string;
+  dia_segundo_vencimiento: number | null;
+  recargo_segundo_vencimiento: string | null;
+  vigente_desde: string;
+};
+
+/** Crea una versión nueva; la anterior no se borra (D11, shape §5). La
+ * validación de "rige desde hoy en Mendoza o después" la hace la API
+ * (422 en `vigente_desde`): la web nunca calcula "hoy" (D-ficha 4.6). */
+export async function crearVersionDeConfiguracion(
+  complejoId: string,
+  datos: DatosNuevaVersion,
+): Promise<ResultadoApi<{ id: string }>> {
+  return pedirApi<{ id: string }>(`/api/complejos/${complejoId}/configuracion/versiones`, {
+    metodo: "POST",
+    cuerpo: datos,
+  });
 }
