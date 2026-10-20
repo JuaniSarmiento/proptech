@@ -38,7 +38,9 @@ aprobar el cambio y rechazar una de ellas, y entonces el design se corrige antes
 - **`asignacion_rol` cambia de forma** (E1, E2): `rol` pasa a `super_admin | administrador | contador
   | auxiliar | consejo | vecino`; se borra `nivel`; se suma `vinculo` (`propietario | inquilino`),
   obligatorio en el vecino y prohibido en el resto; una persona tiene a lo sumo una relación con cada
-  unidad. **BREAKING** para todo `INSERT` que use el vocabulario viejo.
+  unidad. Una persona también tiene a lo sumo una asignación de rol de personal (`super_admin`,
+  `administrador`, `contador`, `auxiliar`) por alcance, alcance principal incluido (RA-5, Juani,
+  20/10/2026). **BREAKING** para todo `INSERT` que use el vocabulario viejo.
 - **Migración `0017_roles_de_la_empresa`** que convierte las filas existentes de todas las
   administraciones: titular → super admin; colaborador "editar" → administrador por edificio;
   colaborador "ver" → auxiliar; consejo → consejo; vecino → vecino propietario (E7). Su `downgrade`
@@ -49,6 +51,8 @@ aprobar el cambio y rechazar una de ellas, y entonces el design se corrige antes
   revertir o reimputar pagos, condonar, dar de baja deuda y aceptar alertas bloqueantes, sólo el super
   admin y el administrador principal. Contador, auxiliar y consejo no tienen ninguna acción de
   escritura. Las 16 acciones de `Accion` se quedan con su nombre: no hay vocabulario de auditoría nuevo.
+  El `detalle` de auditoría de una asignación de rol suma el rol y el alcance asignados (RA-2): no es
+  vocabulario nuevo de `Accion`, sólo más datos en las filas que se escriban de ahora en más.
 - **El inquilino ve sólo ordinarias** (punto 7): se declara en la spec y se construye ahora sólo el
   atributo y la distinción en el dominio. La lectura de expensas ordinarias y extraordinarias no existe
   todavía (llega con gastos y liquidación, cambios 6 y 7): la regla queda escrita para ellos.
@@ -85,6 +89,10 @@ Ninguna.
   migración deje la tabla sin `FORCE`.
 - **Un alcance principal regalado**: una fila de auxiliar, consejo o vecino con `complejo_id` nulo; un
   administrador por edificio que alcance otro edificio; un contador principal que pueda escribir.
+- **Dos roles de personal en el mismo alcance** (RA-5): una persona con dos filas de rol de personal
+  (cualquier combinación de `super_admin`, `administrador`, `contador`, `auxiliar`) en el mismo
+  edificio, o dos con alcance principal; que el único de RA-5 no la frene también ahí, con
+  `complejo_id` nulo en las dos filas.
 - **La regla de corregir**: un administrador por edificio que anule, revierta, condone, dé de baja o
   acepte una alerta bloqueante en su propio edificio; la misma acción con dos asignaciones (por edificio
   en A y principal en ninguno).
@@ -129,8 +137,10 @@ pantallas nuevas; las dos frases de la web no cambian ninguna combinación de ca
   liquidación (6 y 7); acá sólo queda escrita.
 - **Exportar** (el contador, "luego exportar") y cualquier acción de lectura contable nueva: nacen con
   los módulos que tienen algo que leer (6, 7, 10a, 12).
-- **Gestionar usuarios**: invitar personas, dar perfiles con alcance principal o por unidad. Hoy sólo
-  existe la asignación por edificio; ver la pregunta abierta en `design.md`.
+- **Gestionar usuarios** (RA-6, decidido por Juani el 20/10/2026): el super admin invita al personal y
+  le asigna perfil y alcance; los vecinos se dan de alta desde el padrón con su vínculo (propietario o
+  inquilino) y reciben la invitación por mail. Esta funcionalidad va en el change **2b**, junto con el
+  login: no se construye acá, en `roles-de-la-empresa`. Hoy sólo existe la asignación por edificio.
 - **Políticas de base por persona o por edificio** (revertir E2 del 2a): sigue la decisión del 2a.
 - **El acceso de desarrollo** (`acceso-de-desarrollo`, en curso y sin firmar): no se toca acá; ver la
   pregunta abierta sobre el orden.
@@ -199,12 +209,12 @@ spec vigente.
 |---|---|---|
 | E1 · Perfil y alcance en `asignacion_rol` | `rol` con seis valores, el alcance se deduce de `complejo_id` y `unidad_id` (sin columna `alcance`), `nivel` se borra (D1) | |
 | E2 · Propietario o inquilino | Columna `vinculo` en la fila del vecino, una relación por persona y unidad (D2) | |
-| E3 · Configuración versionada | Crear una versión de intereses y vencimiento la puede el super admin y **todo administrador** del edificio; hoy es sólo del titular (punto 3: "configuración") (D4) | |
-| E4 · Confirmar "sin saldos previos" | Super admin y administrador principal, como dar de baja una deuda (D4) | |
+| E3 · Configuración versionada | Crear una versión de intereses y vencimiento la puede el super admin y **todo administrador** del edificio; hoy es sólo del titular (punto 3: "configuración") (D4) | Sí — Juani, 20/10/2026. Resuelve a favor de la exploración la contradicción con el 3a (antes, sólo el titular): queda **todo administrador** con alcance sobre el edificio, no sólo el principal. |
+| E4 · Confirmar "sin saldos previos" | Super admin y administrador principal, como dar de baja una deuda (D4) | Sí — Juani, 20/10/2026. Confirma la propuesta: sólo super admin y administrador principal, nunca cualquier administrador. |
 | E5 · Crear edificios y asignar | Sólo el super admin (punto 3: "edificios, usuarios y roles") (D4) | |
 | E6 · Lectura de la configuración | Contador, auxiliar y consejo leen la configuración del edificio de su alcance (D4) | |
 | E7 · Filas existentes y vuelta atrás | El vecino de hoy pasa a propietario; el `downgrade` falla ruidoso con un contador, un administrador principal o un inquilino (D5) | |
-| E8 · Texto de la web | "Esto lo puede hacer el super admin de la empresa." (D8) | |
+| E8 · Texto de la web | "Esto lo puede hacer el super admin de la empresa." (D8) | Sí — Juani, 20/10/2026. En la interfaz el rol se muestra como "Super admin" (de la empresa); cierra la pregunta abierta sobre las palabras de la pantalla. |
 
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|

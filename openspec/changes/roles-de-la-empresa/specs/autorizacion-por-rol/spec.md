@@ -57,7 +57,10 @@ Cada acción sensible SHALL estar permitida sólo a los perfiles con alcance que
 alcance principal cuenta en todos los complejos de su administración. Dentro del alcance y sin el
 permiso, la respuesta MUST ser 403 con el nombre del permiso faltante. Fuera del alcance, la respuesta
 MUST ser 404 aunque tampoco tenga el permiso: el alcance se evalúa primero. Una acción que no está en
-la matriz MUST negarse. Contador, auxiliar y consejo MUST NOT poder ninguna acción que escriba.
+la matriz MUST negarse. Contador, auxiliar y consejo MUST NOT poder ninguna acción que escriba. Sin
+complejo (`complejo_id` nulo, al crear un edificio) sólo MUST evaluarse el permiso `crear_edificio`:
+ninguna otra acción de la matriz MUST evaluarse sin complejo, aunque la asignación sea de alcance
+principal.
 
 Columnas: SA, super admin; AP, administrador principal; AE, administrador por edificio; CP, contador
 principal; CE, contador por edificio; AX, auxiliar; CO, consejo; VP, vecino propietario; VI, vecino
@@ -190,7 +193,10 @@ La base SHALL rechazar, también por SQL como `proptech_app`, toda asignación q
 su perfil: super admin sin complejo ni unidad; administrador y contador sin unidad, con o sin complejo;
 auxiliar y consejo con complejo y sin unidad; vecino con complejo, unidad y vínculo. El vínculo
 (`propietario` o `inquilino`) MUST existir sólo en el vecino. Un perfil fuera de la lista MUST
-rechazarse. Una persona MUST tener a lo sumo una relación con cada unidad.
+rechazarse. Una persona MUST tener a lo sumo una relación con cada unidad. Una persona MUST tener
+también a lo sumo una asignación de rol de personal (super admin, administrador, contador o auxiliar)
+por alcance, incluido el alcance principal (RA-5): no impide, además, que esa misma persona sea
+consejo o vecino, que son asignaciones de otro tipo.
 
 #### Scenario: Alcance principal regalado
 
@@ -218,6 +224,14 @@ rechazarse. Una persona MUST tener a lo sumo una relación con cada unidad.
 - **WHEN** como `proptech_app` se inserta, para una persona que ya es propietaria de una unidad, una
   segunda relación con esa unidad
 - **THEN** la base rechaza la escritura
+
+#### Scenario: Dos roles de personal en el mismo alcance
+
+- **WHEN** como `proptech_app` se inserta, para una persona que ya es administrador, contador, auxiliar
+  o super admin en un alcance (un edificio, o el alcance principal), una segunda fila de rol de
+  personal en ese mismo alcance
+- **THEN** la base rechaza la escritura, y esto vale también cuando las dos filas tienen `complejo_id`
+  nulo (alcance principal)
 
 ### Requirement: Propietario e inquilino de una unidad
 

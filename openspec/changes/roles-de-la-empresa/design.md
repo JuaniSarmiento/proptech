@@ -2,7 +2,11 @@
 
 Ver `proposal.md` (Why) y la exploración `openspec/exploraciones/2026-10-20-roles-de-la-empresa-y-login.md`
 (puntos 1 a 9, decididos por Juani el 20/10/2026; no se rediscuten acá). Estado del código al
-20/10/2026 (commit `4507759`):
+20/10/2026 (commit `4507759`; verificado: es el último commit que tocó código de aplicación antes de
+este proposal. El HEAD de hoy, `c7113d0` ("docs(openspec): propose de roles-de-la-empresa"), sólo agrega
+los ocho archivos de `openspec/changes/roles-de-la-empresa/` y no cambia nada de `backend/` ni `web/`,
+así que el estado del código en `c7113d0` es idéntico al de `4507759`; se mantiene esta última como la
+cita porque es el commit que de verdad tocó código):
 
 - **`acceso/dominio/permisos.py`**: enums `Rol` (`titular | colaborador | consejo | vecino`), `Nivel`
   (`ver | editar`) y `Accion` (16 miembros); `Asignacion(rol, complejo_id, unidad_id, nivel)`; la
@@ -18,8 +22,10 @@ Ver `proposal.md` (Why) y la exploración `openspec/exploraciones/2026-10-20-rol
   `rol, complejo_id, unidad_id, nivel`), `complejos/aplicacion/escritura.py::asignar_complejo_a_persona`
   (inserta `rol` y `nivel`) y `proptech_api/complejos.py::CuerpoAsignacion` (`rol: colaborador |
   consejo`, `nivel` obligatorio para el colaborador). Ningún camino de producción crea titulares ni
-  vecinos: los crean los tests (21 archivos con el vocabulario viejo) y, fuera del árbol, la carga del
-  ejemplo guardada sin commitear en `.git/informes-3b/2.3-wip/`.
+  vecinos: los crean los tests (21 archivos con el vocabulario viejo). La carga del ejemplo guardada sin
+  commitear en `.git/informes-3b/2.3-wip/` **no inserta en `asignacion_rol`** (RD-7, revisión del DBA):
+  su riesgo real es otro, que llama al caso de uso `crear_edificio` con una persona que todavía no tiene
+  ninguna asignación de rol.
 - **Vocabulario de auditoría**: `accion_de_auditoria` tiene las 16 acciones (0004 y 0010). El detalle
   de la asignación guarda sólo `complejo_id`: ninguna fila de auditoría guarda un rol.
 - **Precedente de migración de datos con RLS forzada**: `0013_normalizar_textos_legados` hace
@@ -69,6 +75,27 @@ No cambian. `complejos` → `acceso` → `compartido`; `acceso` sigue sin import
 `compartido` sin importar `acceso` (el test de fronteras del 2a lo sigue exigiendo). El perfil y el
 alcance viven en `acceso.dominio`; la API sigue componiendo los dos módulos.
 
+**Frontera cruzada que ya existe (RA-4, revisión del arquitecto)**: `complejos/aplicacion/escritura.py:54`
+escribe por SQL crudo directamente en `asignacion_rol`, que es tabla del módulo `acceso`, no de
+`complejos`. No es una frontera nueva de este cambio (ya la cruzaba `asignar_complejo_a_persona` antes
+de D1/D2); este cambio la hereda sin tocarla.
+
+**Vocabulario de roles asignables repetido en tres lugares (RA-4)**: el `Literal` de
+`CuerpoAsignacion.rol` en `proptech_api/complejos.py`, el `CHECK ck_asignacion_rol_rol_valido` de la
+base y el enum `Rol` (perfil) de `acceso/dominio/permisos.py` tienen que decir, cada uno por su lado, el
+mismo conjunto de roles asignables por esta ruta. Nada los ata hoy: se pueden desincronizar sin que
+ningún test lo note. Se agrega una tarea con un test de consistencia que falla si los tres dejan de
+coincidir (tarea 4.4 de `tasks.md`).
+
+**Decisión (RA-4)**: se mantiene la escritura directa de `complejos/escritura.py` a `asignacion_rol`;
+no se migra a un caso de uso único `acceso.asignar`. **Alternativa descartada**: centralizar la
+escritura en `acceso.asignar` significaría mover `asignar_complejo_a_persona` entero (el `INSERT`, el
+`SAVEPOINT`/transacción compartida con la auditoría de D9, y el `@accion_sensible`) a un módulo que hoy
+no existe, tocando el único punto de escritura de roles y su test de extremo a extremo, para mover una
+frontera que ninguna historia de este cambio necesita mover. Se decide no pagar ese costo ahora,
+documentando el motivo acá en vez de volver a decidirlo en silencio la próxima vez que se toque este
+archivo.
+
 ## Decisions
 
 ### D1 · Perfil y alcance en `asignacion_rol` (E1)
@@ -95,6 +122,11 @@ alcance viven en `acceso.dominio`; la API sigue componiendo los dos módulos.
 `complejo_id` y `unidad_id`, y obliga a un `CHECK` más que ate las tres columnas; una fila con
 `alcance = 'edificio'` y `complejo_id` nulo sería exactamente el agujero que se quiere cerrar.
 
+**Costo de revertir (RA-7, E1)**: es el `downgrade` de D5 completo (sólo corre sin datos nuevos: ningún
+contador, ningún administrador principal, ningún inquilino) más deshacer, a mano, cada punto que ya lee
+el alcance deducido en vez de `rol` y `nivel` (`cargar_asignaciones`, `permisos.py`, el cuerpo del
+endpoint de D7). Con datos nuevos ya cargados, no hay vuelta sin restaurar un respaldo (Migration Plan).
+
 ### D2 · Propietario o inquilino: `vinculo` en la fila del vecino (E2)
 
 - Columna `vinculo text` nula, obligatoria en el vecino y prohibida en el resto (D1). La fila del vecino
@@ -110,6 +142,12 @@ alcance viven en `acceso.dominio`; la API sigue componiendo los dos módulos.
 **Descartado**: dos valores de rol (`vecino_propietario`, `vecino_inquilino`). Es más corto para la
 matriz, pero pone la diferencia en el perfil de la persona en vez de en su relación con la unidad (punto
 5), y obliga a cada consulta que pregunte "¿es vecino de esta unidad?" a nombrar dos roles.
+
+**Costo de revertir (RA-7, E2)**: borrar la columna `vinculo` y el índice `uq_asignacion_rol_persona_unidad`,
+y volver a un solo perfil `VECINO` en el dominio. Es gratis mientras nada lea la distinción; en cuanto
+los cambios 6 y 7 empiecen a leer `vinculo` para separar ordinarias de extraordinarias, revertir pierde
+ese dato en cada fila existente, y no hay vuelta sin restaurar un respaldo (como el resto de este
+cambio).
 
 ### D3 · La matriz nueva (D-106 propuesta)
 
@@ -141,7 +179,9 @@ por edificio; AX auxiliar; CO consejo; VP y VI vecino propietario e inquilino (p
 - `puede(asignaciones, accion, complejo_id)`: una asignación principal cuenta en cualquier complejo de
   la administración; una por edificio, sólo si su `complejo_id` coincide; una por unidad, sólo si el
   complejo de su unidad coincide. Con `complejo_id=None` (crear un edificio) sólo cuentan las
-  principales. La clave que se busca en la matriz es `(perfil, alcance)`.
+  principales. La clave que se busca en la matriz es `(perfil, alcance)`. **Se conserva la guarda que ya
+  existe en `permisos.py:109`** (RA-3, revisión del arquitecto): con `complejo_id=None` sólo se evalúa
+  el permiso `crear_edificio`, nunca otra acción, aunque la asignación sea de alcance principal.
 - `alcanza(asignaciones, complejo_id, unidad_id=None)`: principal, todo; por edificio, ese complejo y sus
   unidades; por unidad, su unidad y su complejo (sin unidad pedida). Igual que hoy, con "principal" en
   lugar de "titular".
@@ -157,20 +197,30 @@ tabla de casos dejaría de ser una tabla.
 
 - **E3, crear una versión de configuración: super admin y todo administrador**. El punto 3 pone
   "configuración" entre lo que opera el administrador, y el punto 4 no la incluye entre lo que se reserva
-  al principal. **Contradice** la spec vigente de `configuracion-versionada` y la decisión del 3a (sólo
-  el titular, porque la tasa mueve plata). Se propone seguir a la exploración, que es posterior, y se
-  pide la firma explícita. Alternativa: sólo super admin y administrador principal (lo más parecido al 3a
-  que el punto 3 permite).
+  al principal, lo que **contradecía** la spec vigente de `configuracion-versionada` y la decisión del
+  3a (sólo el titular, porque la tasa mueve plata). **Contradicción resuelta por decisión de Juani del
+  20/10/2026**: queda la exploración, que es posterior al 3a. **Versión vigente desde esa fecha**: crea
+  una versión de configuración el super admin y todo administrador con alcance sobre el edificio
+  (principal o por ese edificio), no sólo el principal. Alternativa descartada: sólo super admin y
+  administrador principal (lo más parecido al 3a que el punto 3 permite).
 - **E4, confirmar "sin saldos previos": super admin y administrador principal**. No figura en la
   exploración. Declara que el edificio arranca sin deuda anterior: tiene el peso de dar de baja una
-  deuda (punto 4). Alternativas: sólo el super admin (como hoy el titular) o todo administrador.
+  deuda (punto 4). **Decidido por Juani el 20/10/2026**: sólo el super admin y el administrador
+  principal, nunca cualquier administrador. Alternativas descartadas: sólo el super admin (como hoy el
+  titular) o todo administrador.
 - **E5, crear un edificio e invitar o asignar: sólo el super admin**. Punto 3: "todo, incluidos
   edificios, usuarios y roles" es lo que distingue al super admin. Alternativa: también el administrador
-  principal.
+  principal. **Costo de revertir (RA-7)**: es cambiar una celda de la matriz (sumar AP a
+  `crear_edificio` e `invitar_usuarios_y_asignar_edificios`) y dos escenarios de spec; no toca la base
+  ni la migración.
 - **E6, la lectura de la configuración: contador, auxiliar y consejo**. Es la única acción de lectura que
   existe; el padrón y los coeficientes son la base de lo contable (contador), el auxiliar lee "el
   edificio" y el consejo ya la leía desde el 3a. Las lecturas de gastos, liquidaciones y comprobantes
-  nacen con los cambios 6, 7 y 12, con estos mismos perfiles.
+  nacen con los cambios 6, 7 y 12, con estos mismos perfiles. **Alternativa descartada (RA-7)**: que
+  sólo leyera el consejo, como en el 3a, dejando afuera a contador y auxiliar hasta que tuvieran su
+  propia pantalla; se descarta porque el contador necesita el padrón y los coeficientes desde ahora (son
+  la base de la liquidación del cambio 6) y el auxiliar, que ya opera el edificio, quedaría sin ver lo
+  mismo que ve el administrador sin que ninguna regla de negocio lo pida.
 
 ### D5 · La migración `0017_roles_de_la_empresa` (E7)
 
@@ -183,21 +233,50 @@ Corre como `proptech_migrador`, en una sola transacción, con el patrón de `001
    cantidad, sin ids ni nombres.
 3. Borrar los tres `CHECK`, sumar `vinculo`, convertir: `titular` → `super_admin`; `colaborador` con
    `editar` → `administrador`; `colaborador` con `ver` → `auxiliar`; `vecino` → `vinculo =
-   'propietario'`; borrar `nivel`; crear los `CHECK` nuevos y el índice único.
+   'propietario'`; borrar `nivel`; crear los `CHECK` nuevos y tres objetos nuevos:
+   - `uq_asignacion_rol_persona_unidad` (D2): índice único parcial sobre `(administracion_id,
+     persona_id, unidad_id) WHERE rol = 'vecino'`.
+   - `uq_asignacion_rol_persona_alcance` (RA-5, decidido por Juani el 20/10/2026): una persona no
+     puede tener dos asignaciones de rol de personal (`super_admin`, `administrador`, `contador`,
+     `auxiliar`) en el mismo alcance, y el alcance "principal" (`complejo_id IS NULL`) queda protegido
+     igual que el resto, no exento. Se crea como
+     `CREATE UNIQUE INDEX uq_asignacion_rol_persona_alcance ON asignacion_rol (administracion_id,
+     persona_id, complejo_id) NULLS NOT DISTINCT WHERE rol IN ('super_admin', 'administrador',
+     'contador', 'auxiliar')`. `NULLS NOT DISTINCT` (soportado desde PostgreSQL 15; la imagen de este
+     proyecto es `postgres:18.6-trixie`) hace que dos filas con `complejo_id` nulo del mismo alcance
+     principal cuenten como el mismo valor para el único — que es justo el caso que, con un `UNIQUE`
+     corriente, quedaba exento, porque ese tipo de índice trata cada `NULL` como distinto de cualquier
+     otro. El índice no restringe `consejo` ni `vecino`: el consejo y el vínculo con una unidad son
+     asignaciones de otro tipo y coexisten con un rol de personal de la misma persona (RA-5).
+   - `ix_asignacion_rol_persona` (RD-1, revisión del DBA): índice no único `(administracion_id,
+     persona_id)`, para la consulta de `cargar_asignaciones`
+     (`acceso/aplicacion/autorizacion.py:31`), que lee todas las asignaciones de una persona dentro de
+     su administración en cada pedido.
 4. `ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY` antes del commit. Si algo falla, PostgreSQL
    revierte todo, incluido el `NO FORCE`.
 
 **El vecino de hoy pasa a propietario** (E7): es la forma que conserva lo que ya veía; hoy no hay datos
 reales, así que no se le quita nada a nadie que exista.
 
-**`downgrade`**, en el mismo patrón:
+**`downgrade`**, en el mismo patrón y en este orden explícito (RD-3, revisión del DBA):
 
-1. Si hay alguna fila sin forma en 0016, `RAISE EXCEPTION` **antes de tocar nada**, con la cantidad
-   por tipo y sin ids ni nombres: `contador` (cualquier alcance), `administrador` con `complejo_id`
-   nulo, `vecino` con `vinculo = 'inquilino'`.
-2. Si no, la vuelta exacta: `super_admin` → `titular`; `administrador` → `colaborador` con `editar`;
-   `auxiliar` → `colaborador` con `ver`; `vecino` sin vínculo; `nivel` vuelve; los `CHECK` y el índice de
-   0003 y 0016, idénticos (el test compara el catálogo de antes y después).
+1. `LOCK TABLE asignacion_rol IN ACCESS EXCLUSIVE MODE`.
+2. `ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY` (relaja la validación, igual que en el
+   `upgrade`, antes de tocar ninguna fila).
+3. Chequeo previo: si hay alguna fila sin forma en 0016, `RAISE EXCEPTION` **antes de tocar nada**, con
+   la cantidad por tipo y sin ids ni nombres: `contador` (cualquier alcance), `administrador` con
+   `complejo_id` nulo, `vecino` con `vinculo = 'inquilino'`.
+4. Si no, la vuelta exacta: `super_admin` → `titular`; `administrador` → `colaborador` con `editar`;
+   `auxiliar` → `colaborador` con `ver`; `vecino` sin vínculo; `nivel` vuelve. Se borran, en este orden
+   (RD-4, revisión del DBA): la constraint `uq_asignacion_rol_persona_unidad`, el índice
+   `uq_asignacion_rol_persona_alcance` (RA-5) y el índice `ix_asignacion_rol_persona` (RD-1), y por
+   último la columna `vinculo`; se recrean los tres `CHECK` de 0003 y se borra el `CHECK` nuevo. **No
+   hay índice de 0003 ni de 0016 que restaurar**: `asignacion_rol` no tenía ningún índice más allá de la
+   PK antes de esta migración, y `0016` no toca esta tabla (si algún texto anterior dice que el
+   `downgrade` borra "índices de 0003 y 0016", es un error: esos índices no existen). El catálogo de
+   antes y después queda comparado entero (tarea 3.3), **sin contar `ordinal_position`** en las
+   columnas (RD-4: cambia con el orden de creación y no es señal real de drift).
+5. `ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY` antes del commit.
 
 El inquilino falla aunque "vecino" exista en 0016: devolverlo como vecino borraría la restricción que
 el punto 7 le pone, y el día que existan las extraordinarias el código viejo no sabría que no puede
@@ -223,8 +302,10 @@ endpoint (tarea 4.3).
   del path y nunca hay unidad): 422, como hoy `titular` y `vecino` (R3A-4).
 - Sólo el super admin lo pasa (`invitar_usuarios_y_asignar_edificios`, E5). Orden de siempre: complejo
   → alcance (404) → permiso (403) → persona destino (404).
-- `asignar_complejo_a_persona` deja de recibir `nivel`. La auditoría no cambia (`detalle` con
-  `complejo_id`).
+- `asignar_complejo_a_persona` deja de recibir `nivel`. La auditoría suma al `detalle` el `rol`
+  asignado y el alcance (RA-2, revisión del arquitecto): sigue guardando `complejo_id`, y agrega esos
+  dos campos sólo en las filas que se escriban de acá en adelante. No es una migración de vocabulario:
+  las filas de auditoría anteriores no se tocan (no se pueden reescribir, D9 del 2a).
 - **R5 del 2a** (el contrato de error de `unidad_id` en este cuerpo): se verifica con el cuerpo nuevo en
   la tarea 4.2; si queda cubierto, la fila de deuda se cierra al archivar.
 
@@ -236,6 +317,10 @@ así que la frase es cierta para cualquier 403 de las pantallas del 3b, sin mape
 "administración" para el tenant, y eso no cambia. Se actualizan `Estados.test.tsx` (hoy busca
 `/titular/`) y el test de la acción de crear edificio, viéndolos fallar primero.
 
+**Decidido por Juani el 20/10/2026**: el rol se muestra, en la interfaz, como "Super admin" (de la
+empresa); es el texto que ve el usuario. Cierra la pregunta abierta sobre "super admin de la empresa" o
+"superadministrador de la administración": queda la primera.
+
 ## Risks / Trade-offs
 
 - [La migración corre sin `FORCE` unos milisegundos] → dentro de una transacción con `ACCESS EXCLUSIVE`:
@@ -243,13 +328,14 @@ así que la frase es cierta para cualquier 403 de las pantallas del 3b, sin mape
   test leen `relforcerowsecurity` y prueban el aislamiento como la app después.
 - [Alcance por edificio en la aplicación, ahora con más perfiles] → la tabla de casos de `alcanza` por
   perfil y los tests por endpoint de la 4.3; blanco del rompedor.
-- [E3 deja que un administrador por edificio cambie la tasa de interés] → queda auditado con autor
-  (`configuracion-versionada`); si Juani lo rechaza, es cambiar una celda y dos escenarios.
+- [E3 permite que un administrador por edificio cambie la tasa de interés] → queda auditado con autor
+  (`configuracion-versionada`); decidido por Juani el 20/10/2026, no rechazado.
 - [`downgrade` que falla con datos nuevos] → es el comportamiento buscado; con datos nuevos, volver
   atrás es restaurar un respaldo (como dice el Migration Plan del 2a desde el cambio 3).
-- [La carga del ejemplo sin commitear (`.git/informes-3b/2.3-wip/`) inserta un titular] → la tarea 3.4
-  la busca (L-023) y deja escrito qué cambiar; no la toca, porque no está en el árbol ni es de este
-  cambio.
+- [La carga del ejemplo sin commitear (`.git/informes-3b/2.3-wip/`) llama a `crear_edificio` con una
+  persona que todavía no tiene ninguna asignación de rol (RD-7: no inserta en `asignacion_rol`)] → la
+  tarea 3.4 la busca (L-023) y deja escrito qué cambiar; no la toca, porque no está en el árbol ni es de
+  este cambio.
 - [Specs y decisiones anteriores siguen diciendo "titular"] → los escenarios que este cambio modifica
   dicen "(antes, titular)"; el glosario lo aclara al archivar. Los demás escenarios con "titular" son
   equivalentes a "super admin".
@@ -263,18 +349,31 @@ así que la frase es cierta para cualquier 403 de las pantallas del 3b, sin mape
    Volver la imagen anterior sin bajar la migración no sirve: el código viejo lee `nivel`, que ya no
    existe, y falla ruidoso (no abre nada).
 
+**Supuesto declarado (RD-2, revisión del DBA)**: no hay producción ni datos reales de este sistema —
+nunca se desplegó (arriba, "Despliegue: no hay"). Como no hay un respaldo real contra el que probar la
+migración, la prueba de `upgrade`/`downgrade`/`upgrade` de la tarea 3.5 (`tasks.md`) usa la copia más
+fiel disponible: el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas, volcado
+con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez` y restaurado en una base aparte
+con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa
+`humo.sh`). Sobre esa base restaurada corre `upgrade` a 0017, `downgrade` a 0016 y `upgrade` otra vez,
+comparando conteos por `administracion_id` y por `rol` antes y después de cada paso.
+
 ## Open Questions
 
 Ninguna cambia las specs ni las tareas; se responden al firmar o antes del cambio que las necesita.
 
 - **El orden con `acceso-de-desarrollo`** (en curso, sin firmar): su punto de entrada usa "la identidad
-  del titular de la administración de ejemplo" y la carga del ejemplo inserta un titular. Si se
-  construye antes que este cambio, su tarea de carga tiene que usar `super_admin` después; si después,
-  directamente. La exploración dice además que con el login ese change se reduce a la carga del ejemplo.
-- **Quién gestiona usuarios y alcances principales**: hoy sólo existe asignar por edificio. Dar un
-  alcance principal, invitar personas y dar de alta vecinos con su vínculo no tiene endpoint ni change
-  con dueño. Candidato: el 2b (invitar va con crear la cuenta en Clerk) o el 11 (vecinos).
-- **Las palabras de la pantalla** (E8): "super admin de la empresa" o "superadministrador de la
-  administración". No cambia nada más que dos frases y su test.
+  del titular de la administración de ejemplo"; la carga del ejemplo no inserta ese titular en
+  `asignacion_rol` (RD-7), llama a `crear_edificio` con una persona que todavía no tiene ninguna
+  asignación de rol, y esa asignación falta en el 3b. Si `acceso-de-desarrollo` se construye antes que
+  este cambio, su tarea de carga tiene que SUMAR una fila `super_admin` para esa persona (no reemplazar
+  lo que ya tenga) con el vocabulario nuevo después; si después, directamente con el vocabulario nuevo
+  (RA-1, revisión del arquitecto; detalle en `tasks.md`, tarea 3.4, que ese change hereda y tiene que
+  retomar). La exploración dice además que con el login ese change se reduce a la carga del ejemplo.
+- **Quién gestiona usuarios y alcances principales — resuelto (RA-6, Juani, 20/10/2026)**: va en el
+  change **2b**, junto con el login: el super admin invita al personal y le asigna perfil y alcance;
+  los vecinos se dan de alta desde el padrón con su vínculo y reciben la invitación por mail (detalle
+  en `proposal.md`, "Fuera del cambio"). Hoy sólo existe la asignación por edificio.
+- **Las palabras de la pantalla — resuelto (E8, Juani, 20/10/2026)**: "Super admin" (de la empresa).
 - **El consejo y la condonación**: D-096 decía que el consejo "ve" las condonaciones; P20 (si por encima
   de un monto hace falta el consejo) sigue abierta y no la toca este cambio.
