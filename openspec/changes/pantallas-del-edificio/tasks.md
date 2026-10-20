@@ -363,6 +363,25 @@ familia por hallazgo).
     interpolación en la ruta, no un id de más en un JSON que la API real valida
     igual.
   - Commit `fix(web): valida que todo id de ruta sea UUID antes de armar el pedido (R3C-2)`.
+- [x] R3C-8 (MEDIA): sólo `crearEdificioAction` mapeaba `sin_sesion`; el resto de
+  las escrituras (unidades, categorías, grupos, configuración, saldos previos)
+  caían en el genérico "No pudimos guardar los datos. Probá de nuevo." Hasta el
+  2b la API real siempre da 401, así que invitaba a reintentar algo imposible.
+  - RED 22:45:37 `vitest run src/lib/api/sin-sesion.test.ts` (nuevo, servidor
+    HTTP real que siempre da 401) → `6 failed`: cada acción mostraba su mensaje
+    genérico en vez de "Tu sesión expiró. Iniciá sesión de nuevo.".
+  - Arreglo: `MENSAJE_SIN_SESION` (constante nueva en `mensajes.ts`, mismo texto
+    que ya usaba `crearEdificioAction`); se agregó el caso `sin_sesion` a las seis
+    funciones de mapeo tocadas (unidades, categorías panel + lista, grupos datos +
+    miembros, configuración, saldos previos).
+  - GREEN 22:46:52 `vitest run src/lib/api/sin-sesion.test.ts` → `6 passed`. Suite
+    completa 22:46:27 `vitest run` → `260 passed`; sólo quedan en rojo R3C-9 (no
+    tocado todavía) y dos casos de `src/__rompedor__/servidor.test.ts` que ya no
+    tienen sentido tal como están escritos (usaban ids como `"sesion401"`/`"1"`
+    que R3C-2 ahora rechaza antes de llegar a la API falsa de ese test) — el
+    caso real ya vive en `sin-sesion.test.ts` con un UUID. `pnpm tsc --noEmit`/
+    `pnpm biome check` (con `--write`): limpios.
+  - Commit `fix(web): un 401 en cualquier escritura dice que la sesión expiró (R3C-8)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
