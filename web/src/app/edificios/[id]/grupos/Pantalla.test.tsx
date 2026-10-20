@@ -71,6 +71,22 @@ describe("PantallaGrupos", () => {
     expect(screen.getByText(/se calcula solo y no se edita/i)).toBeTruthy();
   });
 
+  it('el método se lee en castellano ("por coeficiente"), no con la clave cruda de la API (pulido 3b)', () => {
+    render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, ASCENSOR]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+      />,
+    );
+    const boton = screen.getByRole("button", { name: /Ascensor/ });
+    expect(boton.textContent).toContain("por coeficiente");
+    expect(boton.textContent).not.toMatch(/· coeficiente ·/);
+  });
+
   it('un grupo que no es "Generales" abre el panel de edición al tocarlo', async () => {
     const usuario = userEvent.setup();
     render(

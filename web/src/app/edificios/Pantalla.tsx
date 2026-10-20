@@ -83,24 +83,33 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
         <ul className="lista-de-edificios" aria-label="Edificios">
           {edificios.map((edificio) => (
             <li key={edificio.id} className="lista-de-edificios__fila">
-              <a href={`/edificios/${edificio.id}`}>
-                <span className="lista-de-edificios__nombre">{edificio.nombre}</span>
+              <div className="lista-de-edificios__identidad">
+                <a href={`/edificios/${edificio.id}`} className="lista-de-edificios__nombre">
+                  {edificio.nombre}
+                </a>
                 <span className="lista-de-edificios__localidad">{edificio.localidad}</span>
-                <span className="numero-tabular">{edificio.cantidadUnidades ?? "—"} unidades</span>
+              </div>
+              <span className="lista-de-edificios__unidades numero-tabular">
+                {edificio.cantidadUnidades ?? "Sin datos de"} unidades
+              </span>
+              <div className="lista-de-edificios__estados">
                 {edificio.estadoCoeficientes && edificio.diferencia ? (
                   <EstadoDeCoeficientes
                     estado={edificio.estadoCoeficientes}
                     diferencia={edificio.diferencia}
                   />
                 ) : (
-                  <span>Coeficientes: sin datos</span>
+                  <p>Coeficientes: sin datos</p>
                 )}
-                <span>
+                <p className="lista-de-edificios__migracion">
                   {edificio.estadoMigracion
                     ? textoEstadoDeMigracion(edificio.estadoMigracion)
                     : "Estado de migración: sin datos"}
-                </span>
-              </a>
+                </p>
+              </div>
+              <span className="lista-de-edificios__flecha" aria-hidden="true">
+                ›
+              </span>
             </li>
           ))}
         </ul>

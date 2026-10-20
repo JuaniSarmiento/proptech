@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Resumen } from "../../../lib/api/tipos";
 import { sinViolaciones } from "../../../lib/test/accesibilidad";
@@ -45,6 +45,14 @@ describe("PantallaResumen", () => {
     expect(screen.getByText("13")).toBeTruthy();
     const items = screen.getAllByText("Falta");
     expect(items.length).toBe(6);
+  });
+
+  it('cada paso separa la etiqueta de su estado (no "Cargar unidadesFalta") y marca el estado en la fila (pulido 3b)', () => {
+    render(<PantallaResumen id="1" resumen={RESUMEN_EDIFICIO_NUEVO} vigente={null} />);
+    const checklist = screen.getByRole("list", { name: "Puesta a punto del edificio" });
+    const pasos = within(checklist).getAllByRole("listitem");
+    expect(pasos[0]?.textContent).toMatch(/Cargar unidades\s+Falta$/);
+    expect(pasos[0]?.getAttribute("data-estado")).toBe("falta");
   });
 
   it("un edificio completo muestra Listo para liquidar", () => {

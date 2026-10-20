@@ -118,6 +118,22 @@ describe("PantallaCategorias", () => {
     expect(screen.getByRole("button", { name: "Desactivar Portón" })).toBeTruthy();
   });
 
+  it('el botón de estado dice sólo "Desactivar" a la vista y el nombre completo al lector de pantalla (pulido 3b)', () => {
+    render(
+      <PantallaCategorias
+        id="e1"
+        nombreEdificio="Edificio API"
+        categorias={[PORTON]}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+        accionEstado={accionNula}
+        accionReordenar={accionNula}
+      />,
+    );
+    const boton = screen.getByRole("button", { name: "Desactivar Portón" });
+    expect(boton.querySelector(".sr-only")?.textContent).toBe("Portón");
+  });
+
   it('"Agregar categoría" abre el panel con clave y nombre', async () => {
     const usuario = userEvent.setup();
     render(

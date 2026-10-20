@@ -130,6 +130,20 @@ describe("PantallaPadron", () => {
     ).toBeGreaterThan(0);
   });
 
+  it('el tipo se muestra con su etiqueta ("Departamento"), no con la clave cruda de la API (pulido 3b)', () => {
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        unidades={[UNIDAD_1A]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+      />,
+    );
+    expect(screen.getByRole("cell", { name: "Departamento" })).toBeTruthy();
+  });
+
   it("prueba con 200 unidades: la tabla renderiza sin romper", () => {
     const unidades: Unidad[] = Array.from({ length: 200 }, (_, i) => ({
       ...UNIDAD_1A,

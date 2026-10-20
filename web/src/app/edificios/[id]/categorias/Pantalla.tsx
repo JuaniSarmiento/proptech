@@ -147,28 +147,40 @@ export function PantallaCategorias({
             const ordenSiSube = ordenConMovimiento(categorias, categoria.id, -1);
             const ordenSiBaja = ordenConMovimiento(categorias, categoria.id, 1);
             return (
-              <li key={categoria.id} className="categorias-de-gasto__fila">
-                <button type="button" onClick={(e) => abrirEdicion(categoria, e)}>
+              <li
+                key={categoria.id}
+                className="categorias-de-gasto__fila"
+                data-activa={categoria.activa}
+              >
+                <button
+                  type="button"
+                  className="boton-enlace categorias-de-gasto__nombre"
+                  onClick={(e) => abrirEdicion(categoria, e)}
+                >
                   {categoria.nombre}
                 </button>
-                <span>{categoria.activa ? "Activa" : "Desactivada"}</span>
+                <span className="categorias-de-gasto__estado">
+                  {categoria.activa ? "Activa" : "Desactivada"}
+                </span>
 
-                <form action={enviarEstado}>
+                <form action={enviarEstado} className="categorias-de-gasto__accion">
                   <input type="hidden" name="categoria_id" value={categoria.id} />
                   <input type="hidden" name="activa" value={categoria.activa ? "false" : "true"} />
-                  <button type="submit">
-                    {categoria.activa ? "Desactivar" : "Reactivar"} {categoria.nombre}
+                  <button type="submit" className="boton-secundario">
+                    {categoria.activa ? "Desactivar" : "Reactivar"}{" "}
+                    <span className="sr-only">{categoria.nombre}</span>
                   </button>
                 </form>
 
                 <div className="categorias-de-gasto__orden">
                   {indice > 0 ? (
-                    <form action={enviarReordenar}>
+                    <form action={enviarReordenar} className="categorias-de-gasto__subir">
                       {ordenSiSube.map((idOrdenado) => (
                         <input key={idOrdenado} type="hidden" name="orden" value={idOrdenado} />
                       ))}
                       <button
                         type="submit"
+                        className="boton-icono"
                         aria-label={`Subir ${categoria.nombre}`}
                         onClick={(e) => {
                           botonMovidoRef.current = e.currentTarget;
@@ -179,12 +191,13 @@ export function PantallaCategorias({
                     </form>
                   ) : null}
                   {indice < categorias.length - 1 ? (
-                    <form action={enviarReordenar}>
+                    <form action={enviarReordenar} className="categorias-de-gasto__bajar">
                       {ordenSiBaja.map((idOrdenado) => (
                         <input key={idOrdenado} type="hidden" name="orden" value={idOrdenado} />
                       ))}
                       <button
                         type="submit"
+                        className="boton-icono"
                         aria-label={`Bajar ${categoria.nombre}`}
                         onClick={(e) => {
                           botonMovidoRef.current = e.currentTarget;

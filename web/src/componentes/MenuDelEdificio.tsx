@@ -57,7 +57,9 @@ export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Pr
       <a href="/edificios" className="menu-del-edificio__volver">
         Mis edificios
       </a>
-      <p className="menu-del-edificio__nombre">{nombreEdificio}</p>
+      <p className="menu-del-edificio__nombre" title={nombreEdificio}>
+        {nombreEdificio}
+      </p>
       <button
         ref={botonRef}
         type="button"

@@ -47,6 +47,10 @@ const _TIPOS: Array<{ valor: string; etiqueta: string }> = [
   { valor: "local", etiqueta: "Local" },
 ];
 
+function etiquetaDeTipo(valor: string): string {
+  return _TIPOS.find((tipo) => tipo.valor === valor)?.etiqueta ?? valor;
+}
+
 export function PantallaPadron({
   id,
   nombreEdificio,
@@ -116,11 +120,15 @@ export function PantallaPadron({
               {unidades.map((unidad) => (
                 <tr key={unidad.id}>
                   <td>
-                    <button type="button" onClick={(e) => abrirEdicion(unidad, e)}>
+                    <button
+                      type="button"
+                      className="boton-enlace"
+                      onClick={(e) => abrirEdicion(unidad, e)}
+                    >
                       {unidad.identificador}
                     </button>
                   </td>
-                  <td>{unidad.tipo}</td>
+                  <td>{etiquetaDeTipo(unidad.tipo)}</td>
                   <td>{unidad.piso}</td>
                   <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
                   <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>

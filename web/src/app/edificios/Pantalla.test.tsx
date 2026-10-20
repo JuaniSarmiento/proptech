@@ -60,6 +60,27 @@ describe("PantallaMisEdificios", () => {
     expect(screen.getByText("Pendiente de confirmar saldos previos")).toBeTruthy();
   });
 
+  it("el enlace de cada fila se llama como el edificio, no con todos los estados pegados (pulido 3b)", () => {
+    render(
+      <PantallaMisEdificios
+        edificios={[
+          {
+            id: "7",
+            nombre: "Edificio API",
+            localidad: "Mendoza",
+            cantidadUnidades: 13,
+            estadoCoeficientes: "ok",
+            diferencia: "0.000000",
+            estadoMigracion: "pendiente",
+          },
+        ]}
+        accionCrear={vi.fn()}
+      />,
+    );
+    const enlace = screen.getByRole("link", { name: "Edificio API" });
+    expect(enlace.getAttribute("href")).toBe("/edificios/7");
+  });
+
   it('"Nuevo edificio" abre el panel con el formulario (nombre y localidad)', async () => {
     const usuario = userEvent.setup();
     render(<PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />);

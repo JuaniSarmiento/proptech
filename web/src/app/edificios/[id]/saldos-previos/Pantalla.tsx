@@ -72,14 +72,16 @@ export function PantallaSaldosPrevios({
       />
 
       {estadoMigracion !== "pendiente" ? (
-        <p role="status">{textoEstadoDeMigracion(estadoMigracion)}</p>
+        <p role="status" className="estado-confirmado">
+          {textoEstadoDeMigracion(estadoMigracion)}
+        </p>
       ) : (
-        <>
+        <div className="saldos-previos">
           <p>
             Este edificio va a empezar a liquidarse en el sistema sin deudas ni saldos de antes:
             cualquier deuda o saldo previo queda fuera de las próximas liquidaciones.
           </p>
-          <p>
+          <p className="aviso">
             <strong>Esta acción no se puede deshacer.</strong>
           </p>
 
@@ -102,7 +104,7 @@ export function PantallaSaldosPrevios({
               Confirmar
             </button>
           </Formulario>
-        </>
+        </div>
       )}
     </ArmazonDelEdificio>
   );

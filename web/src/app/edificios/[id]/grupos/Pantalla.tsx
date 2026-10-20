@@ -48,6 +48,11 @@ const _METODOS: Array<{ valor: string; etiqueta: string }> = [
   { valor: "partes_iguales", etiqueta: "Partes iguales" },
 ];
 
+function textoDeMetodo(metodo: string): string {
+  const etiqueta = _METODOS.find((m) => m.valor === metodo)?.etiqueta;
+  return etiqueta ? `por ${etiqueta.toLowerCase()}` : metodo;
+}
+
 function textoDeModo(modo: string): string {
   return modo === "propios" ? "coeficientes propios" : "coeficientes renormalizados";
 }
@@ -118,17 +123,28 @@ export function PantallaGrupos({
           {[...generales, ...resto].map((grupo) => (
             <li key={grupo.id} className="grupos-de-reparto__fila">
               {grupo.es_generales ? (
-                <div>
+                <div className="grupos-de-reparto__datos">
                   <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
-                  <span> · automático · {grupo.unidades.length} unidades</span>
+                  <span className="grupos-de-reparto__meta">
+                    {" "}
+                    · automático · {grupo.unidades.length} unidades
+                  </span>
                   <p className="grupos-de-reparto__nota">
                     Agrupa todo lo que no entra en un grupo propio: se calcula solo y no se edita.
                   </p>
                 </div>
               ) : (
-                <button type="button" onClick={(e) => abrirEdicion(grupo, e)}>
-                  {grupo.nombre} · {grupo.metodo} · {textoDeModo(grupo.modo_de_coeficientes)} ·{" "}
-                  {grupo.unidades.length} unidades
+                <button
+                  type="button"
+                  className="boton-enlace grupos-de-reparto__datos"
+                  onClick={(e) => abrirEdicion(grupo, e)}
+                >
+                  <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
+                  <span className="grupos-de-reparto__meta">
+                    {" "}
+                    · {textoDeMetodo(grupo.metodo)} · {textoDeModo(grupo.modo_de_coeficientes)} ·{" "}
+                    {grupo.unidades.length} unidades
+                  </span>
                 </button>
               )}
               {grupo.modo_de_coeficientes === "propios" && grupo.informe ? (

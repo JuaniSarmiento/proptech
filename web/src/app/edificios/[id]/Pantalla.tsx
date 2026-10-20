@@ -61,17 +61,16 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
         </p>
       ) : null}
 
-      <ol className="resumen__checklist">
+      <ol className="resumen__checklist" aria-label="Puesta a punto del edificio">
         {_PASOS.map((paso) => {
           const hecho = resumen.pasos[paso.clave] === "hecho";
           return (
-            <li key={paso.clave} className="resumen__paso">
+            <li key={paso.clave} className="resumen__paso" data-estado={hecho ? "hecho" : "falta"}>
               <a href={`/edificios/${id}${paso.href}`}>
-                <span className="numero-tabular">{paso.numero}.</span> {paso.etiqueta}
-              </a>
-              <span className={hecho ? "resumen__paso-hecho" : "resumen__paso-falta"}>
-                {hecho ? "Hecho" : "Falta"}
-              </span>
+                <span className="resumen__numero numero-tabular">{paso.numero}.</span>{" "}
+                {paso.etiqueta}
+              </a>{" "}
+              <span className="resumen__estado">{hecho ? "Hecho" : "Falta"}</span>
             </li>
           );
         })}

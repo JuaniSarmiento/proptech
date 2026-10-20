@@ -53,7 +53,7 @@ export function Formulario({
 
   return (
     <_ContextoDeErrores.Provider value={erroresPorCampo}>
-      <form action={action} onSubmit={onSubmit} aria-label={ariaLabel}>
+      <form className="formulario" action={action} onSubmit={onSubmit} aria-label={ariaLabel}>
         {hayErrores ? (
           <div role="alert" aria-label="Resumen de errores" className="formulario__resumen">
             <p>Revisá estos datos:</p>
