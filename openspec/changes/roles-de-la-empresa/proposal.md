@@ -219,3 +219,4 @@ spec vigente.
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|
 | Juani | 20/10/2026 | Todo el change roles-de-la-empresa tal como está en esta propuesta, con E1 a E8 aprobadas |
+| Juani | 20/10/2026 | Correcciones del rompedor RR-1 (409 al repetir un perfil), RR-2 (la auditoría nombra a quién se asigna), RR-3 (consejo único por persona y edificio, migración 0018) y RR-4 (texto del 403 sin super admin en pagos), tal como están en el design y en los commits 8b77584, 50ca141, 09314d7 y cae90fb |
