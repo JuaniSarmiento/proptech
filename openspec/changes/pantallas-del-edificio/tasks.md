@@ -559,6 +559,37 @@ TestingLibraryElementError: Unable to find an element with the text: ¿Qué hago
    Start at  09:51:57
 ```
 
+### 5. Auditor fila 4: escrituras desde la pantalla en Playwright
+
+Tres casos con ids aislados del barrido de lecturas: alta desde el vacío, Content-Type/cuerpo leídos por HTTP en ultima-escritura y dos rechazos consecutivos 403/422 conservando los cinco campos. Rojo inicial: la API falsa todavía sólo devuelve fixtures de lectura. El script dirigido usa el mismo arranque y limpieza que test-web-navegador.sh, filtrando escrituras-unidades.spec.ts; se reutiliza la compilación sin cambios de producción.
+
+- 05-rojo (09:54:24, salida 1): `date +%T && PROPTECH_OMITIR_BUILD=1 PROPTECH_PUERTO_API_FALSA=4500 PROPTECH_PUERTO_WEB=3500 bash .git/informes-3b/arreglos-finales/navegador-dirigido.sh`
+```text
+    Error: element(s) not found
+    Error: expect(locator).toContainText(expected) failed
+    Error: element(s) not found
+  3 failed
+```
+
+- 05-rojo-conservacion (09:55:12, salida 1): `date +%T && PROPTECH_OMITIR_BUILD=1 PROPTECH_PUERTO_API_FALSA=4500 PROPTECH_PUERTO_WEB=3500 bash .git/informes-3b/arreglos-finales/navegador-dirigido.sh`
+```text
+    Error: expect(locator).toHaveValue(expected) failed
+    Error: expect(locator).toHaveValue(expected) failed
+  2 failed
+  1 passed (13.4s)
+```
+
+- Rojo adicional 09:56:02: `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Formulario.test.tsx -t R3C-3` → `1 failed`; un valor inicial no vacío tampoco se restauraba (base 7/7). Se repone todo valor enviado tras un error, incluido el select.
+
+- 05-verde (09:56:15, salida 0): `date +%T && PROPTECH_PUERTO_API_FALSA=4500 PROPTECH_PUERTO_WEB=3500 bash .git/informes-3b/arreglos-finales/navegador-dirigido.sh`
+```text
+  Generating static pages using 12 workers (0/3) ...
+✓ Generating static pages using 12 workers (3/3) in 444ms
+  3 passed (2.6s)
+```
+
+- Verde adicional 09:56:40: `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Formulario.test.tsx e2e/api-falsa.test.ts` → `27 passed`.
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

@@ -14,6 +14,7 @@ import { createServer, type Server } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
+import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
 const _DIR_FIXTURES = join(_AQUI, "../src/lib/api/fixtures");
@@ -157,6 +158,7 @@ const _ERROR_CONTENT_TYPE_INVALIDO = JSON.stringify({
 /** Crea el servidor sin levantarlo (`listen()` queda a cargo de quien lo
  * use: así se puede probar sobre un puerto al azar). */
 export function crearServidor(): Server {
+  const unidadesCreadas = new Map<string, Json>();
   return createServer((pedido, respuesta) => {
     const url = new URL(pedido.url ?? "/", "http://localhost");
     const partes = url.pathname.split("/").filter(Boolean);
@@ -221,9 +223,19 @@ export function crearServidor(): Server {
         return;
       }
       const datos = leerFixture(nombreFixture);
-      const mutado = escenario
-        ? mutarParaElEscenario(escenario.clave, nombreFixture, datos)
-        : datos;
+      let mutado = escenario ? mutarParaElEscenario(escenario.clave, nombreFixture, datos) : datos;
+      if (
+        resto === "unidades" &&
+        Object.values(ESCRITURAS_UNIDADES).some((valor) => valor === id)
+      ) {
+        const unidad = unidadesCreadas.get(id);
+        mutado = {
+          unidades: unidad ? [unidad] : [],
+          informe: unidad
+            ? informeConEstado("ok", "0.000000", "1.000000")
+            : informeConEstado("fuera_de_tolerancia", "-1.000000", "0.000000"),
+        };
+      }
       respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));
     };
 
@@ -282,6 +294,36 @@ export function crearServidor(): Server {
           .writeHead(422, { "content-type": "application/json" })
           .end(JSON.stringify({ detail: [{ type: "model_attributes_type", loc: ["body"] }] }));
         return;
+      }
+      if (pedido.method === "POST" && resto === "unidades") {
+        if (id === ESCRITURAS_UNIDADES.rechazo403) {
+          respuesta
+            .writeHead(403, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: { permiso_faltante: "modificar_unidades" } }));
+          return;
+        }
+        if (id === ESCRITURAS_UNIDADES.rechazo422) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(
+              JSON.stringify({ detail: [{ type: "value_error", loc: ["body", "identificador"] }] }),
+            );
+          return;
+        }
+        if (id === ESCRITURAS_UNIDADES.alta) {
+          // Este escenario siempre carga una sola unidad con coeficiente 1.
+          // Guarda en memoria y permite verificar la revalidación de Next.
+          const unidad = {
+            ...cuerpoParseado,
+            id: "00000000-0000-0000-0000-000000000201",
+            complejo_id: id,
+          };
+          unidadesCreadas.set(id, unidad);
+          respuesta
+            .writeHead(201, { "content-type": "application/json" })
+            .end(JSON.stringify(unidad));
+          return;
+        }
       }
       enviar();
     });

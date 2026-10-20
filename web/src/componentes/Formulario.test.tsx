@@ -27,7 +27,19 @@ function FormularioDePrueba({
       erroresDesconocidos={estado?.erroresDesconocidos ?? []}
       action={enviar}
     >
-      <Campo nombre="identificador" etiqueta="Identificador" name="identificador" />
+      <Campo
+        nombre="identificador"
+        etiqueta="Identificador"
+        name="identificador"
+        defaultValue="Original"
+      />
+      <label>
+        Tipo
+        <select name="tipo" defaultValue="departamento">
+          <option value="departamento">Departamento</option>
+          <option value="cochera">Cochera</option>
+        </select>
+      </label>
       <button type="submit">Guardar</button>
     </Formulario>
   );
@@ -111,10 +123,13 @@ describe("Formulario", () => {
       });
     const usuario = userEvent.setup();
     render(<FormularioDePrueba accion={accion} />);
+    await usuario.clear(screen.getByLabelText("Identificador"));
     await usuario.type(screen.getByLabelText("Identificador"), "PB-LOCAL");
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Tipo" }), "cochera");
     await usuario.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(screen.getByText(/No podés modificar el padrón/)).toBeTruthy());
     expect((screen.getByLabelText("Identificador") as HTMLInputElement).value).toBe("PB-LOCAL");
+    expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveProperty("value", "cochera");
   });
 
   it("sin violaciones de axe, con errores", async () => {

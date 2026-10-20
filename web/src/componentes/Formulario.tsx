@@ -90,7 +90,7 @@ export function Formulario({
         campo instanceof HTMLInputElement ||
         campo instanceof HTMLTextAreaElement ||
         campo instanceof HTMLSelectElement;
-      if (esCampoDeTexto && !campo.value) {
+      if (esCampoDeTexto) {
         campo.value = valor;
       }
     }
