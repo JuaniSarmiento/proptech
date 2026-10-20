@@ -51,8 +51,16 @@ describe("PantallaResumen", () => {
     render(<PantallaResumen id="1" resumen={RESUMEN_EDIFICIO_NUEVO} vigente={null} />);
     const checklist = screen.getByRole("list", { name: "Puesta a punto del edificio" });
     const pasos = within(checklist).getAllByRole("listitem");
-    expect(pasos[0]?.textContent).toMatch(/Cargar unidades\s+Falta$/);
-    expect(pasos[0]?.getAttribute("data-estado")).toBe("falta");
+    const primero = pasos[0] as HTMLElement;
+    // Enmienda 20/10: entre la etiqueta y el estado ahora va la línea gris
+    // que explica el paso. Lo que se sigue exigiendo: la etiqueta es SU
+    // enlace (sin el estado pegado) y el estado es un elemento aparte, al
+    // final de la fila.
+    expect(within(primero).getByRole("link").textContent).toBe("Cargar unidades");
+    const estado = within(primero).getByText("Falta");
+    expect(estado.closest("a")).toBeNull();
+    expect(primero.textContent).toMatch(/Falta$/);
+    expect(primero.getAttribute("data-estado")).toBe("falta");
   });
 
   it("un edificio completo muestra Listo para liquidar", () => {
@@ -87,6 +95,27 @@ describe("PantallaResumen", () => {
     expect(screen.getByRole("link", { name: /sin saldos previos/ }).getAttribute("href")).toBe(
       "/edificios/42/saldos-previos",
     );
+  });
+
+  it('barra de progreso "N de 6 pasos" contando lo que marcó la API, y "Tu próximo paso" lleva al primero que falta', () => {
+    render(
+      <PantallaResumen
+        id="7"
+        resumen={{
+          ...RESUMEN_EDIFICIO_NUEVO,
+          pasos: { ...RESUMEN_EDIFICIO_NUEVO.pasos, unidades: "hecho", grupos: "hecho" },
+        }}
+        vigente={null}
+      />,
+    );
+    expect(screen.getByRole("progressbar", { name: "2 de 6 pasos" })).toBeTruthy();
+    const proximo = screen.getByRole("region", { name: "Tu próximo paso" });
+    expect(within(proximo).getByText(/Revisar coeficientes/)).toBeTruthy();
+    expect(
+      within(proximo)
+        .getByRole("link", { name: /Completar este paso/ })
+        .getAttribute("href"),
+    ).toBe("/edificios/7/unidades");
   });
 
   it("sin violaciones de axe", async () => {

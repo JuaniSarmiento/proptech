@@ -9,13 +9,20 @@
  * a la casilla por programa (`aria-invalid`/`aria-describedby`, igual que
  * cualquier otro campo, D8). Mientras el estado no sea "pendiente" se
  * muestra el estado, nunca el formulario (D11).
+ *
+ * Enmienda del 20/10/2026: la confirmación en el panel principal y, al
+ * costado, qué significa en tres filas con ícono (antes, una sola vez,
+ * después).
  */
 
+import { CalendarCheck2, CircleCheck, FileX2, Undo2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useActionState, useState } from "react";
 import { Ayuda } from "../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantalla";
+import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, Formulario } from "../../../../componentes/Formulario";
+import { Panel } from "../../../../componentes/Panel";
 import { textoEstadoDeMigracion } from "../../../../lib/textoDeEstados";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_SALDOS_PREVIOS } from "./ayuda";
@@ -71,41 +78,87 @@ export function PantallaSaldosPrevios({
         ayuda={<Ayuda {...AYUDA_SALDOS_PREVIOS} />}
       />
 
-      {estadoMigracion !== "pendiente" ? (
-        <p role="status" className="estado-confirmado">
-          {textoEstadoDeMigracion(estadoMigracion)}
-        </p>
-      ) : (
-        <div className="saldos-previos">
-          <p>
-            Este edificio va a empezar a liquidarse en el sistema sin deudas ni saldos de antes:
-            cualquier deuda o saldo previo queda fuera de las próximas liquidaciones.
-          </p>
-          <p className="aviso">
-            <strong>Esta acción no se puede deshacer.</strong>
-          </p>
-
-          <Formulario
-            erroresPorCampo={erroresPorCampo}
-            erroresDesconocidos={estado?.erroresDesconocidos ?? []}
-            action={enviar}
-            onSubmit={alEnviar}
-            aria-label="Confirmar sin saldos previos"
+      <div className="disposicion">
+        {estadoMigracion !== "pendiente" ? (
+          <Panel
+            titulo="Estado de los saldos previos"
+            descripcion="Este paso ya está resuelto para este edificio."
           >
-            <Campo
-              nombre="acepto"
-              etiqueta="Entiendo que el edificio arranca sin deudas anteriores"
-              name="acepto"
-              type="checkbox"
-              checked={aceptado}
-              onChange={(e) => setAceptado(e.target.checked)}
+            <FilaConIcono
+              icono={CircleCheck}
+              tono="listo"
+              titulo={
+                <span role="status" className="estado-confirmado">
+                  {textoEstadoDeMigracion(estadoMigracion)}
+                </span>
+              }
+              detalle="No hace falta hacer nada más acá. Volvé al resumen para ver el próximo paso."
             />
-            <button type="submit" className="boton-principal" disabled={!aceptado}>
-              Confirmar
-            </button>
-          </Formulario>
+          </Panel>
+        ) : (
+          <Panel
+            titulo="Arrancar sin saldos previos"
+            descripcion="Confirmalo una sola vez, cuando el edificio no tenga deudas ni saldos de antes para pasar."
+            className="saldos-previos"
+          >
+            <p>
+              Este edificio va a empezar a liquidarse en el sistema sin deudas ni saldos de antes:
+              cualquier deuda o saldo previo queda fuera de las próximas liquidaciones.
+            </p>
+            <p className="aviso">
+              <strong>Esta acción no se puede deshacer.</strong>
+            </p>
+
+            <Formulario
+              erroresPorCampo={erroresPorCampo}
+              erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+              action={enviar}
+              onSubmit={alEnviar}
+              aria-label="Confirmar sin saldos previos"
+            >
+              <Campo
+                nombre="acepto"
+                etiqueta="Entiendo que el edificio arranca sin deudas anteriores"
+                name="acepto"
+                type="checkbox"
+                checked={aceptado}
+                onChange={(e) => setAceptado(e.target.checked)}
+              />
+              <button type="submit" className="boton-principal" disabled={!aceptado}>
+                Confirmar
+              </button>
+            </Formulario>
+          </Panel>
+        )}
+
+        <div className="disposicion__lateral">
+          <Panel titulo="Qué significa" variante="apoyo">
+            <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Qué significa">
+              <li>
+                <FilaConIcono
+                  icono={FileX2}
+                  titulo="Sin deudas de antes"
+                  detalle="Las deudas o saldos que traía el edificio no pasan al sistema."
+                />
+              </li>
+              <li>
+                <FilaConIcono
+                  icono={Undo2}
+                  titulo="Una sola vez"
+                  detalle="Después de confirmar no se puede volver atrás."
+                />
+              </li>
+              <li>
+                <FilaConIcono
+                  icono={CalendarCheck2}
+                  titulo="Después"
+                  detalle="El edificio se liquida desde cero, mes a mes."
+                />
+              </li>
+            </ul>
+          </Panel>
         </div>
-      )}
+      </div>
     </ArmazonDelEdificio>
   );
 }

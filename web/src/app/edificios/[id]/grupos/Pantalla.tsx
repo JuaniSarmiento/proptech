@@ -7,14 +7,22 @@
  * unidad en "propios", sin suma en vivo: D9 muestra el informe de la API
  * después de guardar, nunca lo calcula mientras se tipea). Cambiar el modo
  * en edición avisa que se reescriben los coeficientes.
+ *
+ * Enmienda del 20/10/2026: la lista vive en el panel principal, cada grupo
+ * como fila con ícono, y al costado un panel que explica los métodos y los
+ * modos con palabras simples, más lo que hay armado en este edificio (sólo
+ * conteos).
  */
 
+import { Layers, Lock, Ruler, Scale, Users } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Ayuda } from "../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantalla";
 import { EstadoDeCoeficientes } from "../../../../componentes/EstadoDeCoeficientes";
 import { Estados } from "../../../../componentes/Estados";
+import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, Formulario } from "../../../../componentes/Formulario";
+import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { Grupo, Unidad } from "../../../../lib/api/tipos";
 import { ArmazonDelEdificio } from "../Armazon";
@@ -116,47 +124,140 @@ export function PantallaGrupos({
         accionPrincipal={botonAgregar}
       />
 
-      {grupos.length === 0 ? (
-        <Estados tipo="vacio" mensaje="Todavía no armaste ningún grupo" accion={botonAgregar} />
-      ) : (
-        <ul className="grupos-de-reparto" aria-label="Grupos de reparto">
-          {[...generales, ...resto].map((grupo) => (
-            <li key={grupo.id} className="grupos-de-reparto__fila">
-              {grupo.es_generales ? (
-                <div className="grupos-de-reparto__datos">
-                  <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
-                  <span className="grupos-de-reparto__meta">
-                    {" "}
-                    · automático · {grupo.unidades.length} unidades
-                  </span>
-                  <p className="grupos-de-reparto__nota">
-                    Agrupa todo lo que no entra en un grupo propio: se calcula solo y no se edita.
-                  </p>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="boton-enlace grupos-de-reparto__datos"
-                  onClick={(e) => abrirEdicion(grupo, e)}
+      <div className="disposicion">
+        <Panel
+          titulo="Grupos del edificio"
+          descripcion="Cada grupo dice qué unidades pagan un gasto y cómo se lo reparten. Tocá un grupo para cambiarlo."
+        >
+          {grupos.length === 0 ? (
+            <Estados
+              tipo="vacio"
+              mensaje="Todavía no armaste ningún grupo"
+              detalle="Armá uno para cada gasto que no pagan todas las unidades, por ejemplo el ascensor."
+              accion={botonAgregar}
+            />
+          ) : (
+            <ul
+              className="lista-de-filas lista-de-filas--tocable grupos-de-reparto"
+              aria-label="Grupos de reparto"
+            >
+              {[...generales, ...resto].map((grupo) => (
+                <li
+                  key={grupo.id}
+                  className="grupos-de-reparto__fila"
+                  data-editable={!grupo.es_generales}
                 >
-                  <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
-                  <span className="grupos-de-reparto__meta">
-                    {" "}
-                    · {textoDeMetodo(grupo.metodo)} · {textoDeModo(grupo.modo_de_coeficientes)} ·{" "}
-                    {grupo.unidades.length} unidades
-                  </span>
-                </button>
-              )}
-              {grupo.modo_de_coeficientes === "propios" && grupo.informe ? (
-                <EstadoDeCoeficientes
-                  estado={grupo.informe.estado}
-                  diferencia={grupo.informe.diferencia}
+                  <FilaConIcono
+                    icono={grupo.es_generales ? Lock : Layers}
+                    tono={grupo.es_generales ? "listo" : "neutro"}
+                    titulo={
+                      grupo.es_generales ? (
+                        <span className="grupos-de-reparto__datos">
+                          <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
+                          <span className="grupos-de-reparto__meta">
+                            Automático ·{" "}
+                            <span className="numero-tabular">{grupo.unidades.length}</span> unidades
+                          </span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="boton-enlace grupos-de-reparto__datos"
+                          onClick={(e) => abrirEdicion(grupo, e)}
+                        >
+                          <span className="grupos-de-reparto__nombre">{grupo.nombre}</span>
+                          <span className="grupos-de-reparto__meta">
+                            {textoDeMetodo(grupo.metodo)} ·{" "}
+                            {textoDeModo(grupo.modo_de_coeficientes)} · {grupo.unidades.length}{" "}
+                            unidades
+                          </span>
+                        </button>
+                      )
+                    }
+                    detalle={
+                      grupo.es_generales ? (
+                        <p className="grupos-de-reparto__nota">
+                          Agrupa todo lo que no entra en un grupo propio: se calcula solo y no se
+                          edita.
+                        </p>
+                      ) : undefined
+                    }
+                    fin={
+                      grupo.modo_de_coeficientes === "propios" && grupo.informe ? (
+                        <EstadoDeCoeficientes
+                          estado={grupo.informe.estado}
+                          diferencia={grupo.informe.diferencia}
+                        />
+                      ) : undefined
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <div className="disposicion__lateral">
+          <Panel
+            titulo="Cómo se reparte"
+            variante="apoyo"
+            descripcion="Lo que elegís al armar un grupo, en palabras simples."
+          >
+            <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Métodos de reparto">
+              <li>
+                <FilaConIcono
+                  icono={Scale}
+                  titulo="Por coeficiente"
+                  detalle="Cada unidad paga según su coeficiente del padrón."
                 />
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+              <li>
+                <FilaConIcono
+                  icono={Ruler}
+                  titulo="Por superficie"
+                  detalle="Cada unidad paga según sus metros cuadrados."
+                />
+              </li>
+              <li>
+                <FilaConIcono
+                  icono={Users}
+                  titulo="Partes iguales"
+                  detalle="Todas las unidades del grupo pagan lo mismo."
+                />
+              </li>
+            </ul>
+            <dl className="renglones renglones--explicacion">
+              <div className="renglones__fila renglones__fila--apilada">
+                <dt>Coeficientes renormalizados</dt>
+                <dd>Se usan los del padrón, ajustados para que el grupo sume 100%.</dd>
+              </div>
+              <div className="renglones__fila renglones__fila--apilada">
+                <dt>Coeficientes propios</dt>
+                <dd>Cargás uno distinto para cada unidad del grupo.</dd>
+              </div>
+            </dl>
+          </Panel>
+
+          <Panel titulo="En este edificio" variante="apoyo">
+            <dl className="renglones">
+              <div className="renglones__fila">
+                <dt>Grupos armados</dt>
+                <dd className="numero-tabular">{grupos.length}</dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Con coeficientes propios</dt>
+                <dd className="numero-tabular">
+                  {grupos.filter((g) => g.modo_de_coeficientes === "propios").length}
+                </dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Unidades en el padrón</dt>
+                <dd className="numero-tabular">{unidadesDisponibles.length}</dd>
+              </div>
+            </dl>
+          </Panel>
+        </div>
+      </div>
 
       <PanelLateral
         abierto={panelAbierto}

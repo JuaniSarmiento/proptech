@@ -9,5 +9,7 @@ export const AYUDA_SALDOS_PREVIOS = {
     "Tildá la casilla sólo cuando estés seguro.",
     "Confirmá para habilitar la liquidación del edificio.",
   ],
+  ejemplo:
+    "Si tomás un edificio nuevo, o uno que el administrador anterior te entregó con todas las cuentas en cero, confirmás acá y empezás a liquidar desde este mes.",
   yDespues: "El edificio queda listo para liquidarse desde cero, sin arrastrar saldos anteriores.",
 };

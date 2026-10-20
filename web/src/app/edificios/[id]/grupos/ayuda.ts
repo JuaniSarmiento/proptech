@@ -7,8 +7,10 @@ export const AYUDA_GRUPOS = {
   pasos: [
     '"Generales" ya está armado solo: reparte entre todas las unidades y no se edita.',
     "Para un gasto que no es de todos, creá un grupo nuevo con las unidades que corresponden.",
-    "Elegí si el coeficiente de cada unidad se recalcula entre las del grupo (renormalizado) o lo poner vos (propios).",
+    "Elegí si el coeficiente de cada unidad se recalcula entre las del grupo (renormalizado) o lo ponés vos (propios).",
   ],
+  ejemplo:
+    'Si las cocheras no usan el ascensor, armás un grupo "Ascensor" sólo con los departamentos, y el gasto del ascensor se reparte entre ellos.',
   yDespues:
     "Cuando liquides un gasto, elegís a qué grupo pertenece y la expensa se reparte entre sus unidades.",
 };

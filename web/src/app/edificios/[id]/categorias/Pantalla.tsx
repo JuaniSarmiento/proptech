@@ -8,13 +8,21 @@
  * el MISMO nodo del DOM antes y después de que el servidor revalide con el
  * nuevo orden (React lo conserva por `key={categoria.id}`), así que no hace
  * falta buscarlo de nuevo tras la revalidación.
+ *
+ * Enmienda del 20/10/2026: la lista en el panel principal, cada categoría
+ * como fila con ícono, estado en la línea gris y sus acciones a la
+ * derecha ("Subir"/"Bajar" con texto al lado del ícono); al costado,
+ * cuántas hay activas y cómo se usan.
  */
 
+import { ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Ayuda } from "../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantalla";
 import { Estados } from "../../../../componentes/Estados";
+import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, Formulario } from "../../../../componentes/Formulario";
+import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { Categoria } from "../../../../lib/api/tipos";
 import { ArmazonDelEdificio } from "../Armazon";
@@ -139,80 +147,160 @@ export function PantallaCategorias({
         </div>
       ) : null}
 
-      {categorias.length === 0 ? (
-        <Estados tipo="vacio" mensaje="Todavía no tenés categorías" accion={botonAgregar} />
-      ) : (
-        <ul className="categorias-de-gasto" aria-label="Categorías de gasto">
-          {categorias.map((categoria, indice) => {
-            const ordenSiSube = ordenConMovimiento(categorias, categoria.id, -1);
-            const ordenSiBaja = ordenConMovimiento(categorias, categoria.id, 1);
-            return (
-              <li
-                key={categoria.id}
-                className="categorias-de-gasto__fila"
-                data-activa={categoria.activa}
-              >
-                <button
-                  type="button"
-                  className="boton-enlace categorias-de-gasto__nombre"
-                  onClick={(e) => abrirEdicion(categoria, e)}
-                >
-                  {categoria.nombre}
-                </button>
-                <span className="categorias-de-gasto__estado">
-                  {categoria.activa ? "Activa" : "Desactivada"}
-                </span>
+      <div className="disposicion">
+        <Panel
+          titulo="Categorías del edificio"
+          descripcion="Los rubros en los que anotás cada gasto. Tocá un nombre para cambiarlo."
+        >
+          {categorias.length === 0 ? (
+            <Estados
+              tipo="vacio"
+              mensaje="Todavía no tenés categorías"
+              detalle="Sumá una por cada tipo de gasto que pagás todos los meses, como limpieza o seguridad."
+              accion={botonAgregar}
+            />
+          ) : (
+            <ul className="lista-de-filas categorias-de-gasto" aria-label="Categorías de gasto">
+              {categorias.map((categoria, indice) => {
+                const ordenSiSube = ordenConMovimiento(categorias, categoria.id, -1);
+                const ordenSiBaja = ordenConMovimiento(categorias, categoria.id, 1);
+                return (
+                  <li
+                    key={categoria.id}
+                    className="categorias-de-gasto__fila"
+                    data-activa={categoria.activa}
+                  >
+                    <FilaConIcono
+                      icono={Tag}
+                      tono={categoria.activa ? "neutro" : "listo"}
+                      titulo={
+                        <button
+                          type="button"
+                          className="boton-enlace categorias-de-gasto__nombre"
+                          onClick={(e) => abrirEdicion(categoria, e)}
+                        >
+                          {categoria.nombre}
+                        </button>
+                      }
+                      detalle={
+                        <span className="categorias-de-gasto__estado">
+                          {categoria.activa ? "Activa" : "Desactivada"}
+                        </span>
+                      }
+                      fin={
+                        <>
+                          <form action={enviarEstado} className="categorias-de-gasto__accion">
+                            <input type="hidden" name="categoria_id" value={categoria.id} />
+                            <input
+                              type="hidden"
+                              name="activa"
+                              value={categoria.activa ? "false" : "true"}
+                            />
+                            <button type="submit" className="boton-secundario">
+                              {categoria.activa ? "Desactivar" : "Reactivar"}{" "}
+                              <span className="sr-only">{categoria.nombre}</span>
+                            </button>
+                          </form>
 
-                <form action={enviarEstado} className="categorias-de-gasto__accion">
-                  <input type="hidden" name="categoria_id" value={categoria.id} />
-                  <input type="hidden" name="activa" value={categoria.activa ? "false" : "true"} />
-                  <button type="submit" className="boton-secundario">
-                    {categoria.activa ? "Desactivar" : "Reactivar"}{" "}
-                    <span className="sr-only">{categoria.nombre}</span>
-                  </button>
-                </form>
+                          <div className="categorias-de-gasto__orden">
+                            {indice > 0 ? (
+                              <form action={enviarReordenar} className="categorias-de-gasto__subir">
+                                {ordenSiSube.map((idOrdenado) => (
+                                  <input
+                                    key={idOrdenado}
+                                    type="hidden"
+                                    name="orden"
+                                    value={idOrdenado}
+                                  />
+                                ))}
+                                <button
+                                  type="submit"
+                                  className="boton-icono"
+                                  aria-label={`Subir ${categoria.nombre}`}
+                                  onClick={(e) => {
+                                    botonMovidoRef.current = e.currentTarget;
+                                  }}
+                                >
+                                  <ChevronUp size={16} strokeWidth={2} aria-hidden="true" />
+                                  Subir
+                                </button>
+                              </form>
+                            ) : null}
+                            {indice < categorias.length - 1 ? (
+                              <form action={enviarReordenar} className="categorias-de-gasto__bajar">
+                                {ordenSiBaja.map((idOrdenado) => (
+                                  <input
+                                    key={idOrdenado}
+                                    type="hidden"
+                                    name="orden"
+                                    value={idOrdenado}
+                                  />
+                                ))}
+                                <button
+                                  type="submit"
+                                  className="boton-icono"
+                                  aria-label={`Bajar ${categoria.nombre}`}
+                                  onClick={(e) => {
+                                    botonMovidoRef.current = e.currentTarget;
+                                  }}
+                                >
+                                  <ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
+                                  Bajar
+                                </button>
+                              </form>
+                            ) : null}
+                          </div>
+                        </>
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
 
-                <div className="categorias-de-gasto__orden">
-                  {indice > 0 ? (
-                    <form action={enviarReordenar} className="categorias-de-gasto__subir">
-                      {ordenSiSube.map((idOrdenado) => (
-                        <input key={idOrdenado} type="hidden" name="orden" value={idOrdenado} />
-                      ))}
-                      <button
-                        type="submit"
-                        className="boton-icono"
-                        aria-label={`Subir ${categoria.nombre}`}
-                        onClick={(e) => {
-                          botonMovidoRef.current = e.currentTarget;
-                        }}
-                      >
-                        ▲
-                      </button>
-                    </form>
-                  ) : null}
-                  {indice < categorias.length - 1 ? (
-                    <form action={enviarReordenar} className="categorias-de-gasto__bajar">
-                      {ordenSiBaja.map((idOrdenado) => (
-                        <input key={idOrdenado} type="hidden" name="orden" value={idOrdenado} />
-                      ))}
-                      <button
-                        type="submit"
-                        className="boton-icono"
-                        aria-label={`Bajar ${categoria.nombre}`}
-                        onClick={(e) => {
-                          botonMovidoRef.current = e.currentTarget;
-                        }}
-                      >
-                        ▼
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
+        <div className="disposicion__lateral">
+          <Panel titulo="En este edificio" variante="apoyo">
+            <dl className="renglones">
+              <div className="renglones__fila">
+                <dt>Activas</dt>
+                <dd className="numero-tabular">{categorias.filter((c) => c.activa).length}</dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Desactivadas</dt>
+                <dd className="numero-tabular">{categorias.filter((c) => !c.activa).length}</dd>
+              </div>
+            </dl>
+          </Panel>
+
+          <Panel titulo="Cómo se usan" variante="apoyo">
+            <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Cómo se usan">
+              <li>
+                <FilaConIcono
+                  icono={Tag}
+                  titulo="Renombrar"
+                  detalle="Cambiás el nombre sin perder su historial."
+                />
               </li>
-            );
-          })}
-        </ul>
-      )}
+              <li>
+                <FilaConIcono
+                  icono={Tag}
+                  titulo="Desactivar"
+                  detalle="La dejás de usar sin borrarla. La podés reactivar cuando quieras."
+                />
+              </li>
+              <li>
+                <FilaConIcono
+                  icono={ChevronUp}
+                  titulo="Subir y bajar"
+                  detalle="Ordenan la lista como vos quieras."
+                />
+              </li>
+            </ul>
+          </Panel>
+        </div>
+      </div>
 
       <PanelLateral
         abierto={panelAbierto}

@@ -9,5 +9,7 @@ export const AYUDA_PADRON = {
     "Fijate que los coeficientes sumen 100%.",
     "Si falta o sobra, corregí la unidad que corresponda.",
   ],
+  ejemplo:
+    "Un edificio con 4 departamentos iguales lleva 0,250000 de coeficiente en cada uno: los cuatro suman 1, que es el 100%.",
   yDespues: "Con el padrón completo ya podés armar los grupos y liquidar.",
 };

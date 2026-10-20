@@ -10,5 +10,7 @@ export const AYUDA_CATEGORIAS = {
     "Si una categoría ya no se usa, desactivala en vez de borrarla.",
     'Ordená la lista con "subir" y "bajar" para que aparezca como vos querés.',
   ],
+  ejemplo:
+    "Si el edificio paga limpieza, seguridad y abono del ascensor, armás esas tres categorías. Si dejás de tener seguridad, la desactivás.",
   yDespues: "Con las categorías armadas, ya podés cargar los gastos de cada liquidación.",
 };

@@ -59,6 +59,8 @@ export default async function PaginaMisEdificios() {
       estadoCoeficientes: resumen.datos.informe.estado,
       diferencia: resumen.datos.informe.diferencia,
       estadoMigracion: resumen.datos.estado_migracion,
+      pasosHechos: Object.values(resumen.datos.pasos).filter((paso) => paso === "hecho").length,
+      listoParaLiquidar: resumen.datos.listo_para_liquidar,
     };
   });
 
