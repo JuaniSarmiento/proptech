@@ -1,10 +1,11 @@
 /**
- * Layout común de las pantallas dentro de un edificio (D10): menú lateral
- * fijo + contenido. Composición pura (sin estado propio): `MenuDelEdificio`
- * ya es quien maneja su interactividad.
+ * Layout común de las pantallas dentro de un edificio (D10, enmienda del
+ * 20/10/2026): el armazón general con el edificio en la barra superior y
+ * el menú agrupado con íconos. Composición pura (sin estado propio).
  */
 
 import type { ReactNode } from "react";
+import { Armazon } from "../../../componentes/Armazon";
 import { MenuDelEdificio } from "../../../componentes/MenuDelEdificio";
 import { seccionesDelEdificio } from "./secciones";
 
@@ -17,13 +18,11 @@ type Props = {
 
 export function ArmazonDelEdificio({ id, nombreEdificio, seccionActual, children }: Props) {
   return (
-    <div className="armazon-del-edificio">
-      <MenuDelEdificio
-        nombreEdificio={nombreEdificio}
-        seccionActual={seccionActual}
-        secciones={seccionesDelEdificio(id)}
-      />
-      <main className="armazon-del-edificio__contenido">{children}</main>
-    </div>
+    <Armazon
+      edificio={{ nombre: nombreEdificio }}
+      menu={<MenuDelEdificio seccionActual={seccionActual} secciones={seccionesDelEdificio(id)} />}
+    >
+      {children}
+    </Armazon>
   );
 }

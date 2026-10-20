@@ -50,6 +50,14 @@
   /* Única curva de salida del sistema (D8/DESIGN.md "Do"): sólo confirma un
      cambio de estado (abrir el panel o la ayuda), nunca sobre layout. */
   --duracion-transicion: 160ms;
+
+  /* Estructura (enmienda del shape del 3b, 20/10/2026): todo el ancho,
+     paneles planos con esquinas redondeadas y la ayuda acoplada. */
+  --alto-barra: 3.5rem;
+  --ancho-menu: 16rem;
+  --ancho-ayuda: 22rem;
+  --radio-panel: 0.75rem;
+  --radio-control: 0.375rem;
 }
 
 /* `prefers-reduced-motion` sin transición (tarea 3.6): no es "más lenta",
@@ -221,68 +229,170 @@ h2 {
 }
 
 /* ------------------------------------------------------------------ */
-/* Armazón del edificio: menú fijo a la izquierda desde 768 px; por      */
-/* debajo se pliega a "Secciones". A 320 px nada de esto puede generar    */
-/* scroll horizontal de la página (la tabla scrollea ADENTRO de su caja). */
+/* Armazón (enmienda del 20/10/2026): barra superior, menú lateral con  */
+/* íconos y contenido a TODO el ancho, sin columna angosta centrada. A   */
+/* 320 px nada de esto puede generar scroll horizontal de la página (la  */
+/* tabla scrollea ADENTRO de su caja).                                    */
 /* ------------------------------------------------------------------ */
 
-.armazon-del-edificio {
+.armazon {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-.armazon-del-edificio__contenido,
-.pantalla-mis-edificios {
+.barra-superior {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.25rem 1rem 3rem;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--alto-barra);
+  padding: 0 1rem;
+  background-color: var(--color-papel-claro);
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.barra-superior__marca {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-tinta);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.barra-superior__logo {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-terracota);
+  color: var(--color-papel);
+}
+
+.barra-superior__migas {
   min-width: 0;
 }
 
-.pantalla-mis-edificios {
-  max-width: 64rem;
-  margin: 0 auto;
+.barra-superior__migas ol {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
 }
+
+.barra-superior__migas li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.barra-superior__migas a {
+  color: var(--color-grafito);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.barra-superior__migas a:hover {
+  color: var(--color-tinta);
+  text-decoration: underline;
+}
+
+.barra-superior__separador {
+  flex: none;
+  color: var(--color-grafito);
+}
+
+/* Un nombre de 200 caracteres se corta en un renglón; el completo queda en
+   el `title` del renglón y en el texto que lee el lector de pantalla. */
+.barra-superior__edificio {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+
+.barra-superior__usuario {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  color: var(--color-grafito);
+  font-weight: 600;
+}
+
+.barra-superior__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--color-papel-hundido);
+  color: var(--color-tinta);
+}
+
+/* A 320 px la marca queda en el logo (el texto sigue ahí para el lector de
+   pantalla) y "Mis edificios" en la miga deja lugar al edificio. */
+@media (max-width: 639px) {
+  .barra-superior__marca {
+    font-size: 0;
+  }
+
+  .barra-superior__migas li:first-child {
+    display: none;
+  }
+
+  .barra-superior__migas li:last-child .barra-superior__separador {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .barra-superior__usuario {
+    display: flex;
+  }
+}
+
+.armazon__cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.armazon__contenido {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+  padding: 1.25rem 1rem 3rem;
+  /* Los paneles de cada pantalla deciden sus columnas por el ancho REAL del
+     contenido (con o sin la ayuda acoplada), no por el de la ventana. */
+  container-type: inline-size;
+}
+
+/* ------------------------------------------------------------------ */
+/* Menú del edificio: grupos con título, íconos de línea con su texto    */
+/* al lado. Por debajo de 768 px se pliega a "Secciones".                */
+/* ------------------------------------------------------------------ */
 
 .menu-del-edificio {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 1rem;
-  background-color: var(--color-papel-hundido);
+  padding: 0.75rem 1rem;
+  background-color: var(--color-papel-claro);
   border-bottom: 1px solid var(--color-linea);
-}
-
-.menu-del-edificio__volver {
-  align-self: flex-start;
-  color: var(--color-grafito);
-  font-size: var(--tipo-label);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.menu-del-edificio__volver::before {
-  content: "← " / "";
-}
-
-.menu-del-edificio__volver:hover {
-  color: var(--color-tinta);
-  text-decoration: underline;
-}
-
-/* Un nombre de 200 caracteres no se come el menú: tres renglones y el
-   resto en el `title` (el lector de pantalla lee el texto completo). */
-.menu-del-edificio__nombre {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-  font-weight: 700;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
 }
 
 .menu-del-edificio__boton {
@@ -291,79 +401,111 @@ h2 {
 
 .menu-del-edificio__lista {
   display: none;
-  list-style: none;
-  padding: 0;
-  margin: 0.25rem 0 0;
 }
 
 .menu-del-edificio__lista[data-abierto="true"] {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 1rem;
+  padding-top: 0.25rem;
 }
 
-.menu-del-edificio__lista a {
-  display: block;
+.menu-del-edificio__titulo-grupo {
+  margin-bottom: 0.25rem;
+  padding: 0 0.75rem;
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.menu-del-edificio__grupo ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-del-edificio__grupo a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radio-control);
   color: var(--color-tinta);
   text-decoration: none;
 }
 
-.menu-del-edificio__lista a:hover {
-  background-color: var(--color-linea);
+.menu-del-edificio__grupo a svg {
+  flex: none;
+  color: var(--color-grafito);
 }
 
-/* Sección actual: `aria-current` + la marca de forma "▸" (que viene en el
-   texto) + el fondo tenue. Nunca sólo el color. */
-.menu-del-edificio__lista a[aria-current="page"] {
+.menu-del-edificio__grupo a:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+/* Sección actual: `aria-current` + la marca de forma "›" + el fondo
+   tenue. Nunca sólo el color. */
+.menu-del-edificio__grupo a[aria-current="page"] {
   background-color: var(--color-terracota-tenue);
   color: var(--color-terracota);
   font-weight: 600;
 }
 
+.menu-del-edificio__grupo a[aria-current="page"] svg {
+  color: var(--color-terracota);
+}
+
+.menu-del-edificio__marca {
+  margin-left: auto;
+  font-weight: 700;
+}
+
 @media (min-width: 768px) {
-  .armazon-del-edificio {
+  .armazon__cuerpo {
     flex-direction: row;
+  }
+
+  /* La marca ocupa el ancho del menú: la miga del edificio arranca alineada
+     con el contenido, como en cualquier panel de home banking. */
+  .armazon[data-con-menu="true"] .barra-superior__marca {
+    width: calc(var(--ancho-menu) - 1rem);
+  }
+
+  .barra-superior {
+    padding: 0 1.5rem 0 1rem;
   }
 
   .menu-del-edificio {
     position: sticky;
-    top: 0;
-    flex: 0 0 15rem;
+    top: var(--alto-barra);
+    flex: 0 0 var(--ancho-menu);
     align-self: flex-start;
-    min-height: 100vh;
-    padding: 1.5rem 1rem;
+    height: calc(100vh - var(--alto-barra));
+    overflow-y: auto;
+    padding: 1.5rem 0.75rem;
     border-bottom: none;
     border-right: 1px solid var(--color-linea);
-  }
-
-  .menu-del-edificio__lista {
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-linea);
   }
 
   .menu-del-edificio__boton {
     display: none;
   }
 
-  /* El bug del pulido 3b: acá faltaba `flex-direction: column` y las cinco
-     secciones quedaban en una sola línea ("GruposCategorías…"). */
-  .menu-del-edificio__lista {
+  .menu-del-edificio__lista,
+  .menu-del-edificio__lista[data-abierto="true"] {
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
+    gap: 1.5rem;
+    padding-top: 0;
   }
 
-  .armazon-del-edificio__contenido {
-    flex: 1;
-    max-width: 68rem;
+  .armazon__contenido {
     padding: 2rem 2.5rem 4rem;
-  }
-
-  .pantalla-mis-edificios {
-    padding: 2.5rem 2.5rem 4rem;
   }
 }
 
@@ -371,58 +513,167 @@ h2 {
 /* Encabezado de pantalla y ayuda "?"                                   */
 /* ------------------------------------------------------------------ */
 
+/* El título, el botón de ayuda y la acción principal son ítems del mismo
+   renglón (`display: contents` en sus envoltorios), así la ayuda abierta
+   en pantalla chica cae a todo el ancho DEBAJO del renglón, en vez de
+   quedar metida al lado del título. */
 .encabezado-de-pantalla {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-linea);
 }
 
-.encabezado-de-pantalla__titulo {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
+.encabezado-de-pantalla__titulo,
+.encabezado-de-pantalla .ayuda {
+  display: contents;
+}
+
+.encabezado-de-pantalla h1 {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-/* Una lista que arranca justo debajo del encabezado no repite su línea:
-   la del encabezado ya separa. */
-.encabezado-de-pantalla
-+ :is(.lista-de-edificios, .resumen__checklist, .grupos-de-reparto, .categorias-de-gasto) {
-  margin-top: -0.75rem;
-  border-top: none;
+.encabezado-de-pantalla__accion {
+  margin-left: auto;
+}
+
+.encabezado-de-pantalla__accion .boton-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .ayuda__boton {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
   flex: none;
-  width: 1.75rem;
-  min-height: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border-radius: 50%;
-  border-color: var(--color-grafito);
-  background-color: transparent;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.5rem;
+  border-color: var(--color-linea);
+  border-radius: 1rem;
+  background-color: var(--color-papel-claro);
   color: var(--color-grafito);
-  font-weight: 700;
 }
 
 .ayuda__boton:hover {
+  border-color: var(--color-grafito);
   background-color: var(--color-papel-hundido);
   color: var(--color-tinta);
 }
 
-/* Panel lateral y ayuda (D8, tarea 3.6): hojas pegadas al borde derecho
-   que flotan sobre la pantalla sin bloquearla (nunca modal). Plano por
-   defecto: la única sombra del sistema, y sólo existe abiertos. Confirman
-   el cambio de estado con `opacity` (`@starting-style`), nunca con una
-   propiedad de layout, y respetan `prefers-reduced-motion`. */
-.panel-lateral,
+.ayuda__boton[aria-expanded="true"] {
+  border-color: var(--color-terracota);
+  background-color: var(--color-terracota-tenue);
+  color: var(--color-terracota);
+}
+
+/* Ayuda abierta en pantalla chica: un bloque a todo el ancho, en el flujo,
+   debajo del renglón del título. Empuja el contenido hacia abajo. */
 .ayuda__panel {
+  order: 10;
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background-color: var(--color-papel-claro);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-panel);
+  opacity: 1;
+  transition: opacity var(--duracion-transicion) ease-out;
+}
+
+.ayuda__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.ayuda__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+
+.ayuda__panel h2 {
+  margin-top: 0.5rem;
+  font-size: var(--tipo-cuerpo);
+}
+
+.ayuda__pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+}
+
+.ayuda__pasos li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.625rem;
+  counter-increment: paso;
+}
+
+.ayuda__pasos li::before {
+  content: counter(paso);
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background-color: var(--color-papel-hundido);
+  font-size: var(--tipo-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ayuda__ejemplo {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radio-control);
+  background-color: var(--color-papel-hundido);
+}
+
+/* Desde 1024 px la ayuda se ACOPLA a la derecha, debajo de la barra: el
+   cuerpo le deja su lugar (padding-right), así empuja el contenido en vez
+   de taparlo, y un panel lateral que se abra después se corre a su
+   izquierda. */
+@media (min-width: 1024px) {
+  .ayuda__panel {
+    position: fixed;
+    top: var(--alto-barra);
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    width: var(--ancho-ayuda);
+    padding: 1.25rem 1.5rem 2rem;
+    overflow-y: auto;
+    border-width: 0 0 0 1px;
+    border-radius: 0;
+  }
+
+  .armazon:has(.ayuda__panel) .armazon__cuerpo {
+    padding-right: var(--ancho-ayuda);
+  }
+
+  .armazon:has(.ayuda__panel) .panel-lateral:not(.panel-lateral--ancho) {
+    right: var(--ancho-ayuda);
+  }
+}
+
+/* Panel lateral (D8, tarea 3.6): hoja pegada al borde derecho que flota
+   sobre la pantalla sin bloquearla (nunca modal). La única sombra del
+   sistema, y sólo existe abierto. Confirma el cambio de estado con
+   `opacity` (`@starting-style`), nunca con una propiedad de layout. */
+.panel-lateral {
   position: fixed;
   top: 0;
   right: 0;
@@ -434,7 +685,7 @@ h2 {
   width: min(28rem, 100vw);
   padding: 1.5rem;
   overflow-y: auto;
-  background-color: var(--color-papel);
+  background-color: var(--color-papel-claro);
   border-left: 1px solid var(--color-grafito);
   box-shadow: 0 2px 8px oklch(22% 0.012 55 / 15%);
   opacity: 1;
@@ -448,34 +699,275 @@ h2 {
   }
 }
 
-.ayuda__panel {
-  z-index: 30;
+.panel-lateral__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
 }
 
-.panel-lateral > h2,
-.ayuda__panel > h2:first-of-type {
-  padding-right: 6rem;
+.panel-lateral__cabecera > div {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .panel-lateral__cerrar,
 .ayuda__cerrar {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.375rem;
 }
 
-.ayuda__panel h2 {
+/* Variante "ancho": el mismo panel en el flujo de la pantalla, a todo el
+   ancho del contenido, plano como cualquier panel (no flota, no lleva
+   sombra). */
+.panel-lateral--ancho {
+  position: static;
+  z-index: auto;
+  width: auto;
+  padding: 1.25rem;
+  overflow: visible;
+  border: 1px solid var(--color-grafito);
+  border-radius: var(--radio-panel);
+  box-shadow: none;
+}
+
+@container (min-width: 40rem) {
+  .panel-lateral--ancho {
+    padding: 1.5rem 1.75rem;
+  }
+
+  /* Los campos en columnas: cada uno con su ancho cómodo, y el resumen de
+     errores, los avisos y "Guardar" a todo el renglón. */
+  .panel-lateral--ancho .formulario {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    align-items: start;
+    gap: 1.25rem 1.5rem;
+  }
+
+  .panel-lateral--ancho .formulario > :is(.formulario__resumen, p, button[type="submit"]) {
+    grid-column: 1 / -1;
+  }
+
+  .panel-lateral--ancho .formulario > button[type="submit"] {
+    justify-self: start;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Paneles, disposición y filas con ícono (enmienda del 20/10/2026)     */
+/* ------------------------------------------------------------------ */
+
+/* Un panel principal y, al costado, la columna de apoyo. Por el ancho del
+   contenido (container query), no de la ventana: con la ayuda acoplada,
+   la columna de apoyo baja debajo del panel principal. */
+.disposicion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1.5rem;
+}
+
+/* Apilada debajo del principal (pantalla chica o ayuda abierta), la
+   columna de apoyo reparte sus paneles en el ancho en vez de estirarse
+   hacia abajo; al costado, vuelve a ser una columna. */
+.disposicion__lateral {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  align-items: start;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+@container (min-width: 60rem) {
+  .disposicion {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+  }
+
+  .disposicion__lateral {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (min-width: 52rem) {
+  .disposicion--mitades {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+  /* Cada panel es su propio contenedor: sus filas se acomodan a SU ancho
+     (la columna de apoyo es angosta aunque la pantalla sea ancha). */
+  container-type: inline-size;
+  padding: 1.25rem;
+  background-color: var(--color-papel-claro);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-panel);
+}
+
+@container (min-width: 40rem) {
+  .panel--principal {
+    padding: 1.5rem 1.75rem;
+  }
+}
+
+.panel__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.panel__textos {
+  min-width: 0;
+}
+
+.panel--apoyo h2 {
   font-size: var(--tipo-cuerpo);
-  margin-top: 0.5rem;
 }
 
-.ayuda__panel ol {
+.panel__descripcion {
+  margin-top: 0.25rem;
+  color: var(--color-grafito);
+}
+
+/* Renglones de una lista dentro de un panel: separados por una Línea fina,
+   nunca tarjetas (The Flat-By-Default Rule). */
+.lista-de-filas {
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  list-style: none;
 }
 
-.ayuda__panel li + li {
-  margin-top: 0.375rem;
+.lista-de-filas > li {
+  padding: 0.875rem 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.lista-de-filas > li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.lista-de-filas > li:last-child {
+  padding-bottom: 0;
+}
+
+.lista-de-filas--compacta > li {
+  padding: 0.625rem 0;
+}
+
+.fila-con-icono {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+.fila-con-icono__icono {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-linea);
+  border-radius: 50%;
+  background-color: var(--color-papel);
+  color: var(--color-grafito);
+}
+
+.fila-con-icono[data-tono="atencion"] .fila-con-icono__icono {
+  border-color: var(--color-terracota-tenue);
+  background-color: var(--color-terracota-tenue);
+  color: var(--color-terracota);
+}
+
+.fila-con-icono[data-tono="listo"] .fila-con-icono__icono {
+  border-color: var(--color-papel-hundido);
+  background-color: var(--color-papel-hundido);
+  color: var(--color-tinta);
+}
+
+.fila-con-icono__textos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.fila-con-icono__titulo {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.fila-con-icono__detalle {
+  color: var(--color-grafito);
+}
+
+.fila-con-icono__fin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* En un panel angosto (pantalla chica) lo de la derecha baja debajo del
+   texto, alineado con él. Mide el PANEL, no la ventana. */
+@container (max-width: 20rem) {
+  .fila-con-icono {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+  }
+
+  .fila-con-icono__fin {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  /* Las listas compactas de apoyo llevan a la derecha un número corto:
+     ese sí entra al lado del texto. */
+  .lista-de-filas--compacta .fila-con-icono {
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  }
+
+  .lista-de-filas--compacta .fila-con-icono__fin {
+    grid-column: auto;
+  }
+}
+
+.barra-de-progreso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.barra-de-progreso__texto {
+  font-weight: 700;
+  text-align: left;
+}
+
+.barra-de-progreso__pista {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+}
+
+.barra-de-progreso__relleno {
+  height: 100%;
+  background-color: var(--color-terracota);
+  transform: scaleX(var(--progreso, 0));
+  transform-origin: left;
+  transition: transform var(--duracion-transicion) ease-out;
 }
 
 /* La casilla de cada unidad en el panel de grupos (va antes de las reglas
@@ -629,18 +1121,86 @@ h2 {
   line-height: 1.3;
 }
 
+/* Vacío (enmienda del 20/10/2026): un dibujo simple, qué pasa y el
+   próximo paso, con la acción al lado. Plano, sin caja punteada: ya vive
+   dentro de un panel. */
 .estados--vacio {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1rem;
-  padding: 2rem 1.5rem;
-  border: 1px dashed var(--color-grafito);
-  border-radius: 0.375rem;
+  padding: 1rem 0;
 }
 
-.estados--vacio p {
-  font-weight: 600;
+.estados__textos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 40rem;
+}
+
+.estados__mensaje {
+  font-size: var(--tipo-titulo);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.estados__detalle {
+  color: var(--color-grafito);
+}
+
+.estados__dibujo {
+  flex: none;
+  width: 7.5rem;
+  height: auto;
+}
+
+.estados__dibujo-linea,
+.estados__dibujo-suelo,
+.estados__dibujo-mas {
+  fill: none;
+  stroke: var(--color-grafito);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.estados__dibujo-ventana {
+  fill: var(--color-papel-hundido);
+  stroke: var(--color-grafito);
+  stroke-width: 1.5;
+}
+
+.estados__dibujo-pendiente {
+  fill: none;
+  stroke: var(--color-terracota);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+.estados__dibujo-suelo {
+  stroke: var(--color-linea);
+}
+
+.estados__dibujo-acento {
+  fill: var(--color-terracota-tenue);
+}
+
+.estados__dibujo-mas {
+  stroke: var(--color-terracota);
+}
+
+@container (min-width: 36rem) {
+  .estados--vacio {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.75rem;
+    padding: 1.5rem 0.5rem;
+  }
+
+  .estados--vacio > :is(button, a) {
+    margin-left: auto;
+  }
 }
 
 /* The One Voice Rule: el encabezado ya tiene la acción principal en
@@ -729,35 +1289,78 @@ h2 {
 }
 
 /* ------------------------------------------------------------------ */
-/* Mis edificios: lista de movimientos de home banking, no tarjetas.    */
-/* Toda la fila se toca (el enlace del nombre se estira con ::after), y */
-/* el nombre accesible del enlace es sólo el del edificio.              */
+/* Filas que se tocan enteras (Mis edificios, checklist, grupos): el    */
+/* enlace o botón del título se estira con ::after sobre todo el        */
+/* renglón, y el nombre accesible sigue siendo sólo el del título.      */
+/* ------------------------------------------------------------------ */
+
+.lista-de-filas--tocable > li {
+  position: relative;
+  margin-inline: -0.75rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radio-control);
+  transition: background-color var(--duracion-transicion) ease-out;
+}
+
+.lista-de-filas--tocable > li:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+.lista-de-filas--tocable > li:first-child {
+  padding-top: 0.875rem;
+}
+
+.lista-de-filas--tocable > li:last-child {
+  padding-bottom: 0.875rem;
+}
+
+.lista-de-filas--tocable
+  :is(.fila-con-icono__titulo a, .fila-con-icono__titulo .boton-enlace)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radio-control);
+}
+
+/* ------------------------------------------------------------------ */
+/* Mis edificios: lista a todo el ancho, cada dato con su rótulo.       */
 /* ------------------------------------------------------------------ */
 
 .lista-de-edificios {
-  list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--color-linea);
+  list-style: none;
 }
 
 .lista-de-edificios__fila {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
   grid-template-areas:
-    "identidad flecha"
-    "unidades flecha"
-    "estados flecha";
+    "icono identidad flecha"
+    ". unidades flecha"
+    ". coeficientes flecha"
+    ". migracion flecha"
+    ". puesta flecha";
   align-items: center;
-  gap: 0.375rem 1.5rem;
+  gap: 0.375rem 1rem;
+  margin-inline: -0.75rem;
   padding: 1rem 0.75rem;
-  border-bottom: 1px solid var(--color-linea);
+  border-top: 1px solid var(--color-linea);
+  border-radius: var(--radio-control);
   transition: background-color var(--duracion-transicion) ease-out;
+}
+
+.lista-de-edificios__fila:first-child {
+  border-top: none;
 }
 
 .lista-de-edificios__fila:hover {
   background-color: var(--color-papel-hundido);
+}
+
+.lista-de-edificios__icono {
+  grid-area: icono;
 }
 
 .lista-de-edificios__identidad {
@@ -778,6 +1381,7 @@ h2 {
   content: "";
   position: absolute;
   inset: 0;
+  border-radius: var(--radio-control);
 }
 
 .lista-de-edificios__fila:hover .lista-de-edificios__nombre {
@@ -786,20 +1390,46 @@ h2 {
 
 .lista-de-edificios__localidad {
   color: var(--color-grafito);
-  font-size: var(--tipo-label);
+}
+
+.lista-de-edificios__dato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.125rem 0.5rem;
+  min-width: 0;
 }
 
 .lista-de-edificios__unidades {
   grid-area: unidades;
-  text-align: left;
 }
 
-.lista-de-edificios__estados {
-  grid-area: estados;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.125rem;
+.lista-de-edificios__coeficientes {
+  grid-area: coeficientes;
+}
+
+.lista-de-edificios__migracion {
+  grid-area: migracion;
+}
+
+.lista-de-edificios__puesta {
+  grid-area: puesta;
+}
+
+.lista-de-edificios__puesta .barra-de-progreso {
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 12rem;
+}
+
+.lista-de-edificios__puesta .barra-de-progreso__texto {
+  font-weight: 400;
+}
+
+.lista-de-edificios__rotulo {
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  font-weight: 600;
 }
 
 .lista-de-edificios .estado-de-coeficientes {
@@ -807,67 +1437,36 @@ h2 {
   background: none;
 }
 
-.lista-de-edificios__migracion {
-  color: var(--color-grafito);
-}
-
 .lista-de-edificios__flecha {
   grid-area: flecha;
   color: var(--color-grafito);
-  font-size: var(--tipo-titulo);
 }
 
-@media (min-width: 768px) {
+@container (min-width: 56rem) {
   .lista-de-edificios__fila {
-    grid-template-columns: minmax(0, 1.2fr) 7rem minmax(0, 2fr) auto;
-    grid-template-areas: "identidad unidades estados flecha";
+    grid-template-columns:
+      2.5rem minmax(0, 1.2fr) 5rem minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 0.9fr)
+      auto;
+    grid-template-areas: "icono identidad unidades coeficientes migracion puesta flecha";
+    gap: 0.25rem 1.5rem;
+  }
+
+  .lista-de-edificios__dato {
+    flex-direction: column;
+    gap: 0.125rem;
   }
 
   .lista-de-edificios__unidades {
-    text-align: right;
+    align-items: flex-end;
   }
 }
 
 /* ------------------------------------------------------------------ */
-/* Resumen: checklist de puesta a punto                                 */
+/* Resumen: checklist con progreso, próximo paso y datos                */
 /* ------------------------------------------------------------------ */
 
-.resumen__listo {
-  align-self: flex-start;
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.25rem;
-  background-color: var(--color-papel-hundido);
-  font-weight: 700;
-}
-
-.resumen__listo::before {
-  content: "✓ " / "";
-}
-
-.resumen__checklist {
-  max-width: 44rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--color-linea);
-}
-
-.resumen__paso {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 0.5rem;
-  border-bottom: 1px solid var(--color-linea);
-}
-
 .resumen__paso a {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  min-width: 0;
   color: var(--color-tinta);
-  font-weight: 600;
   text-decoration: none;
 }
 
@@ -875,11 +1474,8 @@ h2 {
   text-decoration: underline;
 }
 
-.resumen__numero {
-  flex: none;
-  width: 1.25rem;
+.resumen__paso[data-estado="hecho"] a {
   color: var(--color-grafito);
-  text-align: left;
 }
 
 .resumen__estado {
@@ -891,12 +1487,8 @@ h2 {
   white-space: nowrap;
 }
 
-.resumen__paso[data-estado="hecho"] a {
-  color: var(--color-grafito);
-  font-weight: 400;
-}
-
 .resumen__paso[data-estado="hecho"] .resumen__estado {
+  background-color: var(--color-papel-hundido);
   color: var(--color-grafito);
 }
 
@@ -913,8 +1505,33 @@ h2 {
   content: "○ " / "";
 }
 
-.resumen__datos {
-  color: var(--color-grafito);
+.resumen__proximo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.resumen__proximo-titulo {
+  font-weight: 700;
+}
+
+.resumen__proximo .boton-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.resumen__listo {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+  font-weight: 700;
+}
+
+.resumen__listo::before {
+  content: "✓ " / "";
 }
 
 /* ------------------------------------------------------------------ */
@@ -961,52 +1578,24 @@ h2 {
   background-color: var(--color-papel-hundido);
 }
 
-/* ------------------------------------------------------------------ */
-/* Grupos y categorías: renglones con borde inferior fino               */
-/* ------------------------------------------------------------------ */
-
-.grupos-de-reparto,
-.categorias-de-gasto,
-.historial-de-configuracion {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--color-linea);
+.padron__suma {
+  font-size: var(--tipo-titular);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
 }
 
-.grupos-de-reparto__fila {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  padding: 0.875rem 0.5rem;
-  border-bottom: 1px solid var(--color-linea);
-}
+/* ------------------------------------------------------------------ */
+/* Grupos y categorías                                                  */
+/* ------------------------------------------------------------------ */
 
 .grupos-de-reparto__datos {
-  min-width: 0;
-}
-
-/* Un grupo editable es un renglón entero para tocar, con su "›" como en
-   Mis edificios. */
-.grupos-de-reparto__fila > .boton-enlace {
   display: flex;
-  flex: 1;
-  align-items: baseline;
-  flex-wrap: wrap;
-  /* El espacio entre nombre y datos: en un ítem flex el espacio inicial
-     del `<span>` se colapsa ("Ascensor· por…"). */
-  column-gap: 0.25rem;
-}
-
-.grupos-de-reparto__fila > .boton-enlace::after {
-  content: "›" / "";
-  margin-left: auto;
-  padding-left: 1rem;
-  color: var(--color-grafito);
-  font-size: var(--tipo-titulo);
-  line-height: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  min-width: 0;
+  text-align: left;
 }
 
 .grupos-de-reparto__nombre {
@@ -1019,9 +1608,7 @@ h2 {
 }
 
 .grupos-de-reparto__nota {
-  margin-top: 0.25rem;
   color: var(--color-grafito);
-  font-size: var(--tipo-label);
 }
 
 .grupos-de-reparto__unidad {
@@ -1042,38 +1629,9 @@ h2 {
   width: 9rem;
 }
 
-.categorias-de-gasto__fila {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "nombre estado"
-    "accion orden";
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  padding: 0.625rem 0.5rem;
-  border-bottom: 1px solid var(--color-linea);
-}
-
-.categorias-de-gasto__nombre {
-  grid-area: nombre;
-  justify-self: start;
-}
-
-.categorias-de-gasto__estado {
-  grid-area: estado;
-  color: var(--color-grafito);
-  font-size: var(--tipo-label);
-}
-
-.categorias-de-gasto__accion {
-  grid-area: accion;
-  justify-self: start;
-}
-
 .categorias-de-gasto__orden {
-  grid-area: orden;
   display: grid;
-  grid-template-columns: 2rem 2rem;
+  grid-template-columns: 5.25rem 5.25rem;
   gap: 0.25rem;
 }
 
@@ -1088,9 +1646,18 @@ h2 {
 }
 
 .categorias-de-gasto :is(.boton-secundario, .boton-icono) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
   border-color: var(--color-linea);
   background-color: transparent;
   color: var(--color-grafito);
+  font-size: var(--tipo-cuerpo);
+  font-weight: 400;
 }
 
 .categorias-de-gasto :is(.boton-secundario, .boton-icono):hover {
@@ -1099,10 +1666,8 @@ h2 {
   color: var(--color-tinta);
 }
 
-.categorias-de-gasto .boton-secundario {
-  min-height: 2rem;
-  padding: 0.25rem 0.75rem;
-  font-weight: 400;
+.categorias-de-gasto__accion {
+  min-width: 7rem;
 }
 
 .categorias-de-gasto__fila[data-activa="false"] .categorias-de-gasto__nombre {
@@ -1110,36 +1675,29 @@ h2 {
   font-weight: 400;
 }
 
-@media (min-width: 768px) {
-  .categorias-de-gasto__fila {
-    grid-template-columns: minmax(0, 1fr) 7rem 7.5rem 4.25rem;
-    grid-template-areas: "nombre estado accion orden";
-  }
-}
-
 /* ------------------------------------------------------------------ */
-/* Intereses y vencimiento: la vigente como renglones de recibo, y el   */
-/* historial como línea de tiempo.                                      */
+/* Renglones etiqueta/valor (vigente, datos del edificio): un recibo.   */
 /* ------------------------------------------------------------------ */
-
-.configuracion__vigente {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
 
 .renglones {
-  max-width: 32rem;
   margin: 0;
-  border-top: 1px solid var(--color-linea);
 }
 
 .renglones__fila {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.625rem 0.5rem;
-  border-bottom: 1px solid var(--color-linea);
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.renglones__fila:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.renglones__fila:last-child {
+  padding-bottom: 0;
 }
 
 .renglones dt {
@@ -1149,32 +1707,44 @@ h2 {
 .renglones dd {
   margin: 0;
   font-weight: 600;
+  text-align: right;
 }
 
-.historial-de-configuracion__fila {
-  display: grid;
-  gap: 0.125rem 1.5rem;
-  padding: 0.75rem 0.5rem;
-  border-bottom: 1px solid var(--color-linea);
+.renglones__fila--apilada {
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.historial-de-configuracion__detalle {
+.renglones__fila--apilada dd {
+  font-weight: 400;
+  text-align: left;
+}
+
+.renglones--explicacion dt {
+  color: var(--color-tinta);
+  font-weight: 600;
+}
+
+.renglones--explicacion dd {
   color: var(--color-grafito);
 }
 
-@media (min-width: 768px) {
-  .historial-de-configuracion__fila {
-    grid-template-columns: 13rem minmax(0, 1fr);
-  }
+/* ------------------------------------------------------------------ */
+/* Intereses y vencimiento: historial como línea de tiempo              */
+/* ------------------------------------------------------------------ */
+
+.historial-de-configuracion__fecha {
+  font-weight: 400;
 }
 
 /* ------------------------------------------------------------------ */
 /* Confirmar "sin saldos previos"                                       */
 /* ------------------------------------------------------------------ */
 
-.saldos-previos {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.saldos-previos > p {
+  max-width: 40rem;
+}
+
+.saldos-previos .formulario {
   max-width: 40rem;
 }

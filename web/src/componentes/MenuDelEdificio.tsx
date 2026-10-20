@@ -1,35 +1,61 @@
 "use client";
 
 /**
- * Menú lateral del edificio (D10, tarea 3.5): Resumen, Unidades, Grupos,
- * Categorías e Intereses y vencimiento, encabezado por el nombre del
- * edificio. Por debajo de 768 px se pliega a un botón "Secciones" operable
- * con teclado y `Esc` (D8, `pantallas-del-edificio` › Menú plegado).
+ * Menú lateral del edificio (D10, enmienda del 20/10/2026): las secciones
+ * agrupadas ("El edificio", "Configuración"), cada una con su ícono de
+ * línea y su texto al lado (nunca sólo el ícono). El nombre del edificio y
+ * "Mis edificios" pasaron a la barra superior (`Armazon`). Por debajo de
+ * 768 px se pliega a un botón "Secciones" operable con teclado y `Esc`
+ * (D8, `pantallas-del-edificio` › Menú plegado).
  *
- * Bug real encontrado en el barrido de 5.1: el enlace "Mis edificios" y el
- * nombre del edificio quedaban FUERA de cualquier landmark (el contenedor
- * exterior era un `<div>`), violación `region` de axe en el navegador real
- * (nunca la vio un test de componente en jsdom, que no corre esa regla
- * sobre documento completo). El contenedor pasó a ser el propio `<nav>`
- * (anidado es válido con nombres accesibles distintos: "Menú del edificio"
- * por fuera, "Secciones del edificio" por dentro).
+ * Todo vive dentro de un único `<nav>` con nombre: el barrido de 5.1 ya
+ * encontró una vez contenido del menú fuera de todo landmark (violación
+ * `region` de axe en el navegador real).
  */
 
+import {
+  CalendarClock,
+  House,
+  Layers,
+  type LucideIcon,
+  Tags,
+  Building2 as Unidades,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+
+export type IconoDeSeccion = "resumen" | "unidades" | "grupos" | "categorias" | "configuracion";
 
 export type SeccionDelEdificio = {
   clave: string;
   etiqueta: string;
   href: string;
+  grupo: string;
+  icono: IconoDeSeccion;
+};
+
+const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
+  resumen: House,
+  unidades: Unidades,
+  grupos: Layers,
+  categorias: Tags,
+  configuracion: CalendarClock,
 };
 
 type Props = {
-  nombreEdificio: string;
   seccionActual: string;
   secciones: SeccionDelEdificio[];
 };
 
-export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Props) {
+/** Las secciones agrupadas en el orden en que aparece cada grupo. */
+function agrupar(secciones: SeccionDelEdificio[]): Array<[string, SeccionDelEdificio[]]> {
+  const grupos = new Map<string, SeccionDelEdificio[]>();
+  for (const seccion of secciones) {
+    grupos.set(seccion.grupo, [...(grupos.get(seccion.grupo) ?? []), seccion]);
+  }
+  return [...grupos.entries()];
+}
+
+export function MenuDelEdificio({ seccionActual, secciones }: Props) {
   const [abierto, setAbierto] = useState(false);
   const idDelMenu = useId();
   const botonRef = useRef<HTMLButtonElement>(null);
@@ -53,13 +79,7 @@ export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Pr
   }, [abierto]);
 
   return (
-    <nav className="menu-del-edificio" aria-label="Menú del edificio">
-      <a href="/edificios" className="menu-del-edificio__volver">
-        Mis edificios
-      </a>
-      <p className="menu-del-edificio__nombre" title={nombreEdificio}>
-        {nombreEdificio}
-      </p>
+    <nav className="menu-del-edificio" aria-label="Secciones del edificio">
       <button
         ref={botonRef}
         type="button"
@@ -70,21 +90,36 @@ export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Pr
       >
         Secciones
       </button>
-      <nav id={idDelMenu} aria-label="Secciones del edificio">
-        <ul className="menu-del-edificio__lista" data-abierto={abierto}>
-          {secciones.map((seccion) => {
-            const esActual = seccion.clave === seccionActual;
-            return (
-              <li key={seccion.clave}>
-                <a href={seccion.href} aria-current={esActual ? "page" : undefined}>
-                  {esActual ? "▸ " : ""}
-                  {seccion.etiqueta}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <div id={idDelMenu} className="menu-del-edificio__lista" data-abierto={abierto}>
+        {agrupar(secciones).map(([grupo, delGrupo], indice) => (
+          <div key={grupo} className="menu-del-edificio__grupo">
+            <p className="menu-del-edificio__titulo-grupo" id={`${idDelMenu}-grupo-${indice}`}>
+              {grupo}
+            </p>
+            <ul aria-labelledby={`${idDelMenu}-grupo-${indice}`}>
+              {delGrupo.map((seccion) => {
+                const esActual = seccion.clave === seccionActual;
+                const Icono = _ICONOS[seccion.icono];
+                return (
+                  <li key={seccion.clave}>
+                    <a href={seccion.href} aria-current={esActual ? "page" : undefined}>
+                      <Icono size={18} strokeWidth={1.75} aria-hidden="true" />
+                      <span>{seccion.etiqueta}</span>
+                      {/* La sección actual se marca también con forma, no
+                       * sólo con el fondo (The Never Color Alone Rule). */}
+                      {esActual ? (
+                        <span className="menu-del-edificio__marca" aria-hidden="true">
+                          ›
+                        </span>
+                      ) : null}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }

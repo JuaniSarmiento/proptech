@@ -23,11 +23,39 @@ import type { ReactNode } from "react";
 
 type Props =
   | { tipo: "cargando" }
-  | { tipo: "vacio"; mensaje: string; accion?: ReactNode }
+  | { tipo: "vacio"; mensaje: string; detalle?: string; accion?: ReactNode }
   | { tipo: "error"; mensaje: string; onReintentar: () => void }
   | { tipo: "sinPermiso"; queNoPuede: string }
   | { tipo: "noExiste" }
   | { tipo: "sinSesion" };
+
+/** Dibujo simple del estado vacío (enmienda del 20/10/2026): un edificio
+ * de línea con una ventana por completar, en los neutros del sistema. Es
+ * decorativo: el mensaje y el próximo paso van en texto al lado. */
+function DibujoVacio() {
+  return (
+    <svg
+      className="estados__dibujo"
+      viewBox="0 0 120 96"
+      width="120"
+      height="96"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="estados__dibujo-suelo" d="M8 88h104" />
+      <rect className="estados__dibujo-linea" x="30" y="16" width="44" height="72" rx="3" />
+      <rect className="estados__dibujo-linea" x="74" y="40" width="22" height="48" rx="3" />
+      <rect className="estados__dibujo-ventana" x="38" y="26" width="10" height="10" rx="1.5" />
+      <rect className="estados__dibujo-ventana" x="56" y="26" width="10" height="10" rx="1.5" />
+      <rect className="estados__dibujo-ventana" x="38" y="44" width="10" height="10" rx="1.5" />
+      <rect className="estados__dibujo-pendiente" x="56" y="44" width="10" height="10" rx="1.5" />
+      <rect className="estados__dibujo-ventana" x="80" y="50" width="10" height="8" rx="1.5" />
+      <path className="estados__dibujo-linea" d="M46 88V72h12v16" />
+      <circle className="estados__dibujo-acento" cx="96" cy="22" r="9" />
+      <path className="estados__dibujo-mas" d="M96 17.5v9M91.5 22h9" />
+    </svg>
+  );
+}
 
 export function Estados(props: Props) {
   switch (props.tipo) {
@@ -43,7 +71,11 @@ export function Estados(props: Props) {
     case "vacio":
       return (
         <div className="estados estados--vacio">
-          <p>{props.mensaje}</p>
+          <DibujoVacio />
+          <div className="estados__textos">
+            <p className="estados__mensaje">{props.mensaje}</p>
+            {props.detalle ? <p className="estados__detalle">{props.detalle}</p> : null}
+          </div>
           {props.accion}
         </div>
       );

@@ -13,8 +13,14 @@
  * `Esc` por su cuenta, pisando `useCerrarConEscape`). Con sólo el atributo
  * `open`, es un elemento de flujo normal: el foco y el `Esc` los maneja
  * este componente.
+ *
+ * Variante "ancho" (enmienda del 20/10/2026): el mismo panel, con el mismo
+ * foco, `Esc` y devolución de foco, pero EN EL FLUJO de la pantalla y a
+ * todo el ancho del contenido, para formularios largos que en una hoja de
+ * 28rem quedaban como una columna angosta (Intereses y vencimiento).
  */
 
+import { X } from "lucide-react";
 import { type ReactNode, type RefObject, useEffect, useRef } from "react";
 import { useCerrarConEscape } from "../lib/teclado/useCerrarConEscape";
 
@@ -23,13 +29,24 @@ type Props = {
   titulo: string;
   alCerrar: () => void;
   devolverFocoA: RefObject<HTMLElement | null>;
+  /** Una línea gris debajo del título. */
+  descripcion?: string;
+  variante?: "lateral" | "ancho";
   children: ReactNode;
 };
 
 const _SELECTOR_FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export function PanelLateral({ abierto, titulo, alCerrar, devolverFocoA, children }: Props) {
+export function PanelLateral({
+  abierto,
+  titulo,
+  alCerrar,
+  devolverFocoA,
+  descripcion,
+  variante = "lateral",
+  children,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   function cerrarYDevolverFoco() {
@@ -87,12 +104,18 @@ export function PanelLateral({ abierto, titulo, alCerrar, devolverFocoA, childre
       role="dialog"
       aria-label={titulo}
       aria-modal="false"
-      className="panel-lateral"
+      className={variante === "ancho" ? "panel-lateral panel-lateral--ancho" : "panel-lateral"}
     >
-      <button type="button" className="panel-lateral__cerrar" onClick={cerrarYDevolverFoco}>
-        Cerrar
-      </button>
-      <h2>{titulo}</h2>
+      <div className="panel-lateral__cabecera">
+        <div>
+          <h2>{titulo}</h2>
+          {descripcion ? <p className="panel__descripcion">{descripcion}</p> : null}
+        </div>
+        <button type="button" className="panel-lateral__cerrar" onClick={cerrarYDevolverFoco}>
+          <X size={16} strokeWidth={2} aria-hidden="true" />
+          Cerrar
+        </button>
+      </div>
       {children}
     </div>
   );

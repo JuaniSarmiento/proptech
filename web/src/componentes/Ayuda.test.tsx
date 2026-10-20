@@ -52,6 +52,68 @@ describe("Ayuda", () => {
     expect(document.activeElement).toBe(boton);
   });
 
+  it("acoplada: abrirla NO le saca el foco al botón, y el siguiente Tab entra al panel (enmienda 20/10)", async () => {
+    const usuario = userEvent.setup();
+    render(elTexto());
+    const boton = screen.getByRole("button", { name: /Ayuda/ });
+
+    await usuario.click(boton);
+    expect(document.activeElement).toBe(boton);
+    expect(boton.getAttribute("aria-expanded")).toBe("true");
+
+    await usuario.tab();
+    const panel = screen.getByRole("region", { name: "Ayuda: para qué sirve esta pantalla" });
+    expect(panel.contains(document.activeElement)).toBe(true);
+  });
+
+  it("queda abierta mientras se trabaja: escribir en otro campo de la pantalla no la cierra", async () => {
+    const usuario = userEvent.setup();
+    render(
+      <>
+        {elTexto()}
+        <label>
+          Identificador
+          <input />
+        </label>
+      </>,
+    );
+    await usuario.click(screen.getByRole("button", { name: /Ayuda/ }));
+    await usuario.type(screen.getByLabelText("Identificador"), "1A");
+    expect(screen.getByText("¿Qué hago acá?")).toBeTruthy();
+    expect((screen.getByLabelText("Identificador") as HTMLInputElement).value).toBe("1A");
+  });
+
+  it("el mismo botón la cierra y devuelve el foco ahí", async () => {
+    const usuario = userEvent.setup();
+    render(elTexto());
+    const boton = screen.getByRole("button", { name: /Ayuda/ });
+    await usuario.click(boton);
+    await usuario.click(boton);
+    expect(screen.queryByText("¿Qué hago acá?")).toBeNull();
+    expect(boton.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(boton);
+  });
+
+  it("muestra el ejemplo cuando la pantalla lo trae, y no deja un título vacío si no", async () => {
+    const usuario = userEvent.setup();
+    const { unmount } = render(elTexto());
+    await usuario.click(screen.getByRole("button", { name: /Ayuda/ }));
+    expect(screen.queryByText("Un ejemplo")).toBeNull();
+    unmount();
+
+    render(
+      <Ayuda
+        paraQueSirve="a"
+        pasos={["b"]}
+        ejemplo="Cuatro departamentos con 0,250000 cada uno."
+        yDespues="c"
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: /Ayuda/ }));
+    expect(screen.getByText("Un ejemplo")).toBeTruthy();
+    expect(screen.getByText("Cuatro departamentos con 0,250000 cada uno.")).toBeTruthy();
+  });
+
   it("sin violaciones de axe, cerrada y abierta", async () => {
     const usuario = userEvent.setup();
     const { container } = render(elTexto());
