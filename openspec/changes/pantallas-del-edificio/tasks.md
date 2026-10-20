@@ -314,6 +314,28 @@ familia por hallazgo).
     envíos fallidos seguidos dan el mismo `true` y el efecto no volvería a
     correr).
   - Commit `fix(web): un 403/422/409 ya no borra lo cargado en el panel (R3C-3)`.
+- [x] R3C-4 (MEDIA): sin `key`, cambiar de fila con el panel abierto sólo cambiaba
+  el `defaultValue` de los `Campo` (no controlados) — React no remonta un input ya
+  montado, así que un campo ya tocado conservaba lo tipeado para la fila
+  anterior, mientras el `unidad_id`/`grupo_id`/`categoria_id` oculto (controlado)
+  ya apuntaba a la fila nueva. Mismo patrón en unidades, grupos y categorías.
+  - RED (unidades, ya existía) 22:37 `vitest run src/__rompedor__/pantallas.test.tsx`
+    → ya en verde con el fix (ver más abajo); el rojo original de este caso quedó
+    documentado en el informe del rompedor. RED propio (grupos/categorías, revirtiendo
+    el `key` para confirmarlo) 22:38:48 `vitest run .../grupos/Pantalla.test.tsx
+    .../categorias/Pantalla.test.tsx` → `2 failed`: el nombre tipeado para la
+    primera fila viajaba con el id de la segunda.
+  - Arreglo: `<Formulario key={entidadEnEdicion?.id ?? "nueva"}>` en las tres
+    `Pantalla.tsx` (unidades, grupos, categorías) — fuerza el remonte completo del
+    formulario al cambiar de entidad.
+  - Gotcha real escrito el test de categorías: `container.querySelector('input
+    [name="categoria_id"]')` a secas matcheaba el hidden de
+    activar/desactivar de la PRIMERA fila (mismo `name`, D-ficha 4.5), no el del
+    panel — hubo que acotar a `.formulario input[name="categoria_id"]`.
+  - GREEN 22:39:48 `vitest run .../categorias/Pantalla.test.tsx
+    .../grupos/Pantalla.test.tsx .../unidades/Pantalla.test.tsx` → `3 files, 27
+    passed`. `pnpm tsc --noEmit`/`pnpm biome check`: limpios.
+  - Commit `fix(web): cambiar de fila con el panel abierto ya no mezcla dos entidades (R3C-4)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
