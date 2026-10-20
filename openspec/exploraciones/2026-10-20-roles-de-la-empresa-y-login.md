@@ -40,15 +40,19 @@ modelo: migración de perfiles y de alcance principal, matriz rehecha, política
 CRITICAL (el candado): va en un **change propio, antes del login**, probado entero sin login como el 2a.
 Después el 2b con Clerk sólo conecta la identidad de Clerk con estas asignaciones.
 
-## Abierto
+## Cerrado por Juani (20/10/2026, segunda ronda)
 
-- **Varios propietarios del mismo depto** (matrimonio, herederos): ¿todos ven todo y cualquiera informa
-  el pago? (propuesta: sí).
-- **Qué ve exactamente el inquilino**: la regla "ordinarias para el inquilino, extraordinarias para el
-  propietario" es la habitual en Argentina por contrato de locación; confirmar si hay casos distintos.
-- **El barrio con partes adentro** (Barrio 1, las flechas de edi2): ¿un consorcio con sectores (grupos
-  de reparto, ya existen) o varios consorcios agrupados? Cambia el modelo de datos. **Lo decide Alberto.**
-- **Clerk**: costo por usuario activo mensual con muchos vecinos; los mails de los vecinos en un tercero
-  (P12, aprobación de Alberto); mapeo de la identidad de Clerk a `persona` (por id de Clerk, nunca por
-  email solo); qué pasa con el link mágico del vecino y el change 13.
-- Con el login, el change `acceso-de-desarrollo` queda reducido a la carga del edificio de ejemplo.
+6. **Varios propietarios del mismo depto**: cada uno con su cuenta, todos ven la cuenta completa de la
+   unidad y cualquiera puede informar un pago.
+7. **El inquilino ve sólo las expensas ordinarias** (las extraordinarias son del propietario, la regla
+   habitual del contrato de locación en Argentina).
+8. **Un barrio con torres o sectores es un solo consorcio**, y los sectores son grupos de reparto (ya
+   existen): sin cambio de modelo. Descartado: varios consorcios agrupados con una entidad nueva.
+9. **Clerk se adopta con aviso de privacidad**: se declara en la política de privacidad (ley 25.326,
+   transferencia internacional), Clerk guarda sólo lo mínimo (email y nombre), la identidad se vincula a
+   `persona` por el id de Clerk (nunca por el email solo), y el costo real se verifica en la página de
+   Clerk antes del piloto (change 15). Cierra P12 para la autenticación.
+
+Con la segunda ronda no queda nada abierto de esta exploración. Siguiente paso: el propose del change de
+roles de la empresa (CRITICAL, antes del login) y después el del 2b con Clerk. Con el login, el change
+`acceso-de-desarrollo` se reduce a la carga del edificio de ejemplo.
