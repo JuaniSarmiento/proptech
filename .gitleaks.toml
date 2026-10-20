@@ -2,3 +2,14 @@ title = "gitleaks config — PropTech"
 
 [extend]
 useDefault = true
+
+# Falso positivo de `generic-api-key` (CI del 20/10/2026, change 3b): las URLs de la API interna
+# con un UUID de prueba en los tests del cliente de la web ("api" seguido de algo con entropía).
+# Acotado a la vez por archivo (tests de web/src/lib/api) Y por el texto exacto de esa URL: un
+# secreto real en esos mismos archivos, o esa URL en cualquier otro archivo, se sigue reportando.
+[[allowlists]]
+description = "URLs de la API interna con UUID de prueba en los tests del cliente de la web"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^web/src/lib/api/[^/]+\.test\.ts$''']
+regexes = ['''http://api-interna:8000/api/[A-Za-z0-9/_.-]+''']
