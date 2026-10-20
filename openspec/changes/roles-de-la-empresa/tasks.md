@@ -196,7 +196,7 @@ EVIDENCIA (20/10/2026):
   en 3.4 antes de la suite completa. SUPUESTO: ninguno.
 
 
-- [ ] 3.2 La forma de cada asignación en la base (D1, D2), en el mismo archivo, como `proptech_app` en `head`: una fila válida de cada perfil y alcance entra (nueve formas); cada forma inválida falla por el `CHECK` y no deja nada (auxiliar, consejo o vecino sin complejo; super admin con complejo; vecino sin vínculo; administrador con vínculo; rol `titular`, `colaborador` y uno inventado); la misma persona propietaria e inquilina de una unidad falla por el índice único; la misma persona con dos asignaciones de rol de personal (cualquier combinación de super admin, administrador, contador o auxiliar) en el mismo alcance falla por `uq_asignacion_rol_persona_alcance` (RA-5), y esto vale también con `complejo_id` nulo en las dos (alcance principal, antes exento con un `UNIQUE` sin `NULLS NOT DISTINCT`); la misma persona con un rol de personal y, además, una fila de consejo o de vecino en el mismo edificio entra sin problema (RA-5: son asignaciones de otro tipo); dos propietarios distintos y un inquilino distinto de la misma unidad entran. Actualizar los casos de `test_rls_acceso_minimo.py` que prueban en `head` el `CHECK` de 0003 (colaborador sin nivel), sin borrar ninguno sin reemplazo. RED: con la base de 0016 los inserts del vocabulario nuevo fallan. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Super admin atado a un edificio; › Vecino sin vínculo o personal con vínculo; › Perfil desconocido; › Propietaria e inquilina de la misma unidad; › Dos roles de personal en el mismo alcance; › Dos propietarios de la misma unidad (la parte de la base). Lecciones: L-016, L-018.
+- [x] 3.2 La forma de cada asignación en la base (D1, D2), en el mismo archivo, como `proptech_app` en `head`: una fila válida de cada perfil y alcance entra (nueve formas); cada forma inválida falla por el `CHECK` y no deja nada (auxiliar, consejo o vecino sin complejo; super admin con complejo; vecino sin vínculo; administrador con vínculo; rol `titular`, `colaborador` y uno inventado); la misma persona propietaria e inquilina de una unidad falla por el índice único; la misma persona con dos asignaciones de rol de personal (cualquier combinación de super admin, administrador, contador o auxiliar) en el mismo alcance falla por `uq_asignacion_rol_persona_alcance` (RA-5), y esto vale también con `complejo_id` nulo en las dos (alcance principal, antes exento con un `UNIQUE` sin `NULLS NOT DISTINCT`); la misma persona con un rol de personal y, además, una fila de consejo o de vecino en el mismo edificio entra sin problema (RA-5: son asignaciones de otro tipo); dos propietarios distintos y un inquilino distinto de la misma unidad entran. Actualizar los casos de `test_rls_acceso_minimo.py` que prueban en `head` el `CHECK` de 0003 (colaborador sin nivel), sin borrar ninguno sin reemplazo. RED: con la base de 0016 los inserts del vocabulario nuevo fallan. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Super admin atado a un edificio; › Vecino sin vínculo o personal con vínculo; › Perfil desconocido; › Propietaria e inquilina de la misma unidad; › Dos roles de personal en el mismo alcance; › Dos propietarios de la misma unidad (la parte de la base). Lecciones: L-016, L-018.
 
 EVIDENCIA (20/10/2026): los cuatro tests nuevos nacieron verdes a las
   12:18:19 (7 passed in 22.19s); los CHECK/índices ya se crearon por D5 en 3.1.
@@ -248,15 +248,69 @@ EVIDENCIA (20/10/2026): los cuatro tests nuevos nacieron verdes a las
   vecino sin unidad y auxiliar sin complejo; la FK usa vecino propietario válido.
   Resuelto por el orquestador, 20/10/2026: la suite de test_rls_acceso_minimo
   ejecuta downgrade base al cerrar. Su verde se completa después del downgrade
-  de 3.3; hasta entonces esta tarea conserva [ ]. SUPUESTO: ninguno.
+  de 3.3, ahora verificada. Se corrigió la transacción del caso legado para
+  que SET LOCAL sobreviva al INSERT. SUPUESTO: ninguno.
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_rls_acceso_minimo.py -q -k asignacion_incompleta
+  12:24:24  (mismo mutante del CHECK de forma, restaurado)
+  E Failed: DID NOT RAISE CheckViolation
+  2 failed, 17 deselected in 4.17s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/integracion/test_rls_acceso_minimo.py -q
+  12:24:41
+  31 passed in 45.69s
+  ```
 
 
-- [ ] 3.3 El `downgrade` (D5, E7, RD-3, RD-4), en el mismo archivo: con sólo filas con forma vieja, `downgrade 0016` corre en el orden de D5 (`LOCK`, `NO FORCE`, chequeo previo de conteos, conversión, `FORCE`) y devuelve cada una a su rol y nivel exactos en las dos administraciones; el catálogo de `asignacion_rol` (columnas **excluyendo `ordinal_position`**, que cambia con el orden de creación y no es señal real de drift; `CHECK`; que ya no estén la constraint `uq_asignacion_rol_persona_unidad` ni los índices `uq_asignacion_rol_persona_alcance` y `ix_asignacion_rol_persona`; políticas; `FORCE`) queda idéntico al de antes del `upgrade`, comparado entero; después `upgrade` vuelve a pasar. Con un contador, con un administrador principal y con un vecino inquilino, por separado, el `downgrade` falla, el mensaje dice cuántas filas de cada tipo y no trae ningún id ni nombre, y ni las filas ni el esquema cambian. RED: una copia del `downgrade` que convierte el inquilino en vecino en vez de fallar pasa el caso que debía fallar, y el test lo muestra; otra copia que hace el chequeo previo de conteos antes del `LOCK`/`NO FORCE` (en vez de después, RD-3) se marca y se corrige. Escenarios: `autorizacion-por-rol` › Volver atrás sin datos nuevos; › Volver atrás con un contador o un inquilino. Lecciones: L-013, L-016, L-022.
+- [x] 3.3 El `downgrade` (D5, E7, RD-3, RD-4), en el mismo archivo: con sólo filas con forma vieja, `downgrade 0016` corre en el orden de D5 (`LOCK`, `NO FORCE`, chequeo previo de conteos, conversión, `FORCE`) y devuelve cada una a su rol y nivel exactos en las dos administraciones; el catálogo de `asignacion_rol` (columnas **excluyendo `ordinal_position`**, que cambia con el orden de creación y no es señal real de drift; `CHECK`; que ya no estén la constraint `uq_asignacion_rol_persona_unidad` ni los índices `uq_asignacion_rol_persona_alcance` y `ix_asignacion_rol_persona`; políticas; `FORCE`) queda idéntico al de antes del `upgrade`, comparado entero; después `upgrade` vuelve a pasar. Con un contador, con un administrador principal y con un vecino inquilino, por separado, el `downgrade` falla, el mensaje dice cuántas filas de cada tipo y no trae ningún id ni nombre, y ni las filas ni el esquema cambian. RED: una copia del `downgrade` que convierte el inquilino en vecino en vez de fallar pasa el caso que debía fallar, y el test lo muestra; otra copia que hace el chequeo previo de conteos antes del `LOCK`/`NO FORCE` (en vez de después, RD-3) se marca y se corrige. Escenarios: `autorizacion-por-rol` › Volver atrás sin datos nuevos; › Volver atrás con un contador o un inquilino. Lecciones: L-013, L-016, L-022.
 
-  JUICIO: pendiente; depende de 0017 (3.1 detenida). No hay RED/GREEN ni downgrade.
-  Conflicto adicional de D5 para aclarar antes de implementarlo: D2 y el upgrade
-  crean `uq_asignacion_rol_persona_unidad` como índice único parcial; el downgrade
-  lo llama constraint. Se debe precisar ese paso, sin cambiarlo por interpretación.
+EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -q -k downgrade
+  12:21:37
+  E NotImplementedError: El downgrade se construye en la tarea 3.3
+  5 failed, 7 deselected in 16.29s
+  ```
+  Mutantes con copias previas locales, diff real y restauración byte a byte:
+  ```diff
+  -                   count(*) FILTER (WHERE rol = 'vecino' AND vinculo = 'inquilino')
+  +                   count(*) FILTER (WHERE false)
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -q -k 'downgrade_rechaza and inquilino'
+  12:23:16
+  E Failed: DID NOT RAISE AssertionError
+  1 failed, 2 passed, 9 deselected in 12.29s
+  ```
+  Segunda copia: las dos instrucciones LOCK y NO FORCE se movieron de antes
+  del DO a después (diff completo en `3.3-preflight-antes-lock.log`):
+  ```diff
+  -    op.execute("LOCK TABLE asignacion_rol IN ACCESS EXCLUSIVE MODE")
+  -    op.execute("ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY")
+       op.execute(""" ... chequeo previo ... """)
+  +    op.execute("LOCK TABLE asignacion_rol IN ACCESS EXCLUSIVE MODE")
+  +    op.execute("ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY")
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py::test_downgrade_emite_lock_no_force_y_despues_chequea_conteos -q
+  12:23:31
+  E assert 746 < 546
+  1 failed in 4.75s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/integracion/test_rls_acceso_minimo.py -q
+  12:24:41
+  31 passed in 45.69s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 227 files already formatted / Success: no issues found in 206 source files
+  ```
+  JUICIO: ciclo exacto en dos tenants; sin índices nuevos tras downgrade;
+  políticas, CHECK, FK, PK y propiedades de columnas comparados completos.
+  Cada tipo nuevo bloquea con sus conteos (2, 3 y 4), sin ids ni nombres;
+  filas, esquema, FORCE y versión quedan intactos tras cada rechazo.
+  resuelto por el orquestador, 20/10/2026: DROP INDEX para el índice parcial;
+  también se excluye dtd_identifier (7 → 9 al recrear nivel, rojo a 12:22:51,
+  `3.3-catalogo-detalle.log`), porque identifica la posición del atributo igual
+  que ordinal_position. No es drift estructural; design aclarado.
+  SUPUESTO: ninguno.
+
 
 - [ ] 3.4 Todo `INSERT` a `asignacion_rol` del repositorio (L-023): `rg` sobre el repositorio entero (`backend/`, `infra/`, `web/`, `openspec/changes/acceso-de-desarrollo/`) y, aparte, sobre `.git/informes-3b/`; pasar al vocabulario nuevo los ayudantes de `tests/integracion/conftest.py` y cada test que siembra asignaciones, con el mapeo de D5 (titular → super admin, colaborador "editar" → administrador, "ver" → auxiliar, vecino → vecino propietario). La carga del ejemplo sin commitear no se toca: se anota en el informe qué línea cambiaría. La identidad de desarrollo (fuera de este cambio, en el change `acceso-de-desarrollo`, en curso y sin firmar) necesita SUMAR una fila de rol `super_admin` a la persona de ejemplo con el vocabulario nuevo, no reemplazar lo que ya tenga (RA-1, revisión del arquitecto): se anota en el informe, y `acceso-de-desarrollo` hereda esta tarea pendiente — es ese change el que tiene que retomarla (ver `design.md`, Open Questions, "El orden con `acceso-de-desarrollo`"). Verificación: la lista del `rg` antes y después en el informe, y la suite completa del backend en verde con la misma cantidad de tests de la 1.1 más los nuevos. Escenarios: ninguno nuevo (sostiene los existentes). Lecciones: L-003, L-023.
 

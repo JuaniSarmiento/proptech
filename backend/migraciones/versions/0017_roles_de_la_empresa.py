@@ -82,4 +82,55 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError("El downgrade se construye en la tarea 3.3")
+    op.execute("LOCK TABLE asignacion_rol IN ACCESS EXCLUSIVE MODE")
+    op.execute("ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY")
+    op.execute("""
+        DO $$ DECLARE contadores bigint; principales bigint; inquilinos bigint; BEGIN
+            SELECT count(*) FILTER (WHERE rol = 'contador'),
+                   count(*) FILTER (WHERE rol = 'administrador' AND complejo_id IS NULL),
+                   count(*) FILTER (WHERE rol = 'vecino' AND vinculo = 'inquilino')
+            INTO contadores, principales, inquilinos FROM asignacion_rol;
+            IF contadores + principales + inquilinos > 0 THEN
+                RAISE EXCEPTION 'downgrade: contador=%, administrador_principal=%, inquilino=%',
+                    contadores, principales, inquilinos;
+            END IF;
+        END $$
+    """)
+    for nombre in ("rol_valido", "vinculo_valido", "forma_por_rol"):
+        op.drop_constraint("ck_asignacion_rol_" + nombre, "asignacion_rol", type_="check")
+    op.add_column("asignacion_rol", sa.Column("nivel", sa.Text(), nullable=True))
+    op.execute("""
+        UPDATE asignacion_rol SET
+            nivel = CASE WHEN rol = 'administrador' THEN 'editar'
+                         WHEN rol = 'auxiliar' THEN 'ver' ELSE NULL END,
+            rol = CASE WHEN rol = 'super_admin' THEN 'titular'
+                       WHEN rol IN ('administrador', 'auxiliar') THEN 'colaborador'
+                       ELSE rol END
+    """)
+    op.drop_index("uq_asignacion_rol_persona_unidad", table_name="asignacion_rol")
+    op.drop_index("uq_asignacion_rol_persona_alcance", table_name="asignacion_rol")
+    op.drop_index("ix_asignacion_rol_persona", table_name="asignacion_rol")
+    op.drop_column("asignacion_rol", "vinculo")
+    op.create_check_constraint(
+        "ck_asignacion_rol_rol_valido",
+        "asignacion_rol",
+        "rol IN ('titular', 'colaborador', 'consejo', 'vecino')",
+    )
+    op.create_check_constraint(
+        "ck_asignacion_rol_nivel_valido",
+        "asignacion_rol",
+        "nivel IS NULL OR nivel IN ('ver', 'editar')",
+    )
+    op.create_check_constraint(
+        "ck_asignacion_rol_forma_por_rol",
+        "asignacion_rol",
+        "(rol = 'titular' AND complejo_id IS NULL AND unidad_id IS NULL "
+        "AND nivel IS NULL) OR "
+        "(rol = 'colaborador' AND complejo_id IS NOT NULL AND unidad_id IS NULL "
+        "AND nivel IS NOT NULL) OR "
+        "(rol = 'consejo' AND complejo_id IS NOT NULL AND unidad_id IS NULL "
+        "AND nivel IS NULL) OR "
+        "(rol = 'vecino' AND complejo_id IS NOT NULL AND unidad_id IS NOT NULL "
+        "AND nivel IS NULL)",
+    )
+    op.execute("ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY")

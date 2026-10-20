@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -127,8 +128,8 @@ def _sembrar(base: BaseDeEdificio) -> list[Legado]:
 
 def _catalogo(base: BaseDeEdificio) -> dict[str, list[tuple[object, ...]]]:
     consultas = {
-        "columnas": "SELECT column_name,data_type,is_nullable,column_default "
-        "FROM information_schema.columns "
+        "columnas": "SELECT column_name,to_jsonb(c) - 'ordinal_position' - 'dtd_identifier' "
+        "FROM information_schema.columns AS c "
         "WHERE table_schema='public' AND table_name='asignacion_rol' ORDER BY column_name",
         "constraints": "SELECT conname,contype,pg_get_constraintdef(oid) FROM pg_constraint "
         "WHERE conrelid='asignacion_rol'::regclass ORDER BY conname",
@@ -433,3 +434,82 @@ def test_personal_coexiste_con_consejo_y_vecino_y_la_unidad_admite_tres_personas
                 "SELECT vinculo FROM asignacion_rol WHERE persona_id=ANY(%s) ORDER BY vinculo",
                 (personas,),
             ).fetchall() == [("inquilino",), ("propietario",), ("propietario",)]
+
+
+def test_downgrade_restaura_filas_y_catalogo_entero_y_permite_otro_upgrade(
+    base_roles: BaseDeEdificio,
+) -> None:
+    datos = _sembrar(base_roles)
+    catalogo, filas = _catalogo(base_roles), _filas(base_roles, datos, "nivel")
+    base_roles.migrar("upgrade", "0017")
+    base_roles.migrar("downgrade", "0016")
+    assert _filas(base_roles, datos, "nivel") == filas
+    assert _catalogo(base_roles) == catalogo
+    base_roles.migrar("upgrade", "0017")
+    _comprobar_conversion(base_roles, datos)
+
+
+@pytest.mark.parametrize(
+    "tipo,cantidad,mensaje",
+    [
+        ("contador", 2, "contador=2, administrador_principal=0, inquilino=0"),
+        ("administrador", 3, "contador=0, administrador_principal=3, inquilino=0"),
+        ("inquilino", 4, "contador=0, administrador_principal=0, inquilino=4"),
+    ],
+)
+def test_downgrade_rechaza_cada_tipo_nuevo_sin_cambiar_nada(
+    base_roles: BaseDeEdificio,
+    tipo: str,
+    cantidad: int,
+    mensaje: str,
+) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "0017")
+    admin, complejo, unidad, _ = datos[1]
+    personas = []
+    with base_roles.conectar_app() as c, c.transaction():
+        fijar_tenant(c, admin)
+        for _ in range(cantidad):
+            persona = _persona(c, admin)
+            personas.append(persona)
+            if tipo == "inquilino":
+                _asignar(c, admin, persona, "vecino", complejo, unidad, "inquilino")
+            else:
+                _asignar(c, admin, persona, tipo, None)
+    catalogo, filas = _catalogo(base_roles), _filas(base_roles, datos, "vinculo")
+    with pytest.raises(AssertionError, match=mensaje) as error:
+        base_roles.migrar("downgrade", "0016")
+    assert all(str(id_) not in str(error.value) for lote in datos for id_ in lote[:3])
+    assert all(str(p) not in str(error.value) for p in personas)
+    assert "Perfil ficticio" not in str(error.value)
+    assert _catalogo(base_roles) == catalogo
+    assert _filas(base_roles, datos, "vinculo") == filas
+    with base_roles.conectar_app() as c:
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0017",)
+
+
+def test_downgrade_emite_lock_no_force_y_despues_chequea_conteos(
+    base_roles: BaseDeEdificio,
+) -> None:
+    resultado = subprocess.run(
+        ["uv", "run", "alembic", "downgrade", "0017:0016", "--sql"],
+        cwd=_MIGRACION.parents[2],
+        env=base_roles.entorno,
+        capture_output=True,
+        text=True,
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    salida = resultado.stdout
+    assert (
+        salida.index("LOCK TABLE asignacion_rol IN ACCESS EXCLUSIVE MODE")
+        < salida.index("ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY")
+        < salida.index("contador=")
+        < salida.index("UPDATE asignacion_rol")
+        < salida.index("ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY")
+    )
+    assert (
+        salida.index("DROP INDEX uq_asignacion_rol_persona_unidad")
+        < salida.index("DROP INDEX uq_asignacion_rol_persona_alcance")
+        < salida.index("DROP INDEX ix_asignacion_rol_persona")
+        < salida.index("DROP COLUMN vinculo")
+    )

@@ -340,6 +340,7 @@ def test_asignacion_incompleta_para_su_rol_falla_por_check(
     columnas_extra: dict[str, str],
 ) -> None:
     conexion = _conectar(contenedor, APP_USER, APP_PASSWORD)
+    conexion.autocommit = False
     admin_a = dos_administraciones["a"]["administracion_id"]
     persona = dos_administraciones["a"]["persona_id"]
     try:

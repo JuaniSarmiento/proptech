@@ -274,8 +274,10 @@ reales, así que no se le quita nada a nadie que exista.
    hay índice de 0003 ni de 0016 que restaurar**: `asignacion_rol` no tenía ningún índice más allá de la
    PK antes de esta migración, y `0016` no toca esta tabla (si algún texto anterior dice que el
    `downgrade` borra "índices de 0003 y 0016", es un error: esos índices no existen). El catálogo de
-   antes y después queda comparado entero (tarea 3.3), **sin contar `ordinal_position`** en las
-   columnas (RD-4: cambia con el orden de creación y no es señal real de drift).
+   antes y después queda comparado entero (tarea 3.3), **sin contar `ordinal_position` ni `dtd_identifier`** en las
+   columnas (RD-4: cambian con el orden de creación y no son señal real de drift;
+   resuelto por el orquestador, 20/10/2026: PostgreSQL usa el número de atributo
+   también como `dtd_identifier`, verificado como 7 → 9 al recrear `nivel`).
 5. `ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY` antes del commit.
 
 El inquilino falla aunque "vecino" exista en 0016: devolverlo como vecino borraría la restricción que
