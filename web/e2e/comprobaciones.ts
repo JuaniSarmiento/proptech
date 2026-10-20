@@ -25,3 +25,26 @@ export async function contornoDeFocoCalculado(page: Page, selector: string): Pro
     return getComputedStyle(elemento).outlineStyle;
   }, selector);
 }
+
+/** El `outline` calculado de QUIEN TENGA el foco en este momento (tarea
+ * 5.1: recorrido real con `Tab`, sin saber de antemano qué selector va a
+ * recibirlo — a diferencia de `contornoDeFocoCalculado`, que enfoca un
+ * elemento puntual). */
+export function contornoDelElementoEnfocado(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const elemento = document.activeElement;
+    if (!(elemento instanceof HTMLElement)) {
+      return "none";
+    }
+    return getComputedStyle(elemento).outlineStyle;
+  });
+}
+
+/** `true` si `Tab` ya no tiene a dónde ir y el foco volvió a `<body>`
+ * (tarea 5.1): una pantalla puede tener menos de tres controles
+ * enfocables a propósito (p.ej. "sin permiso"/"sin sesión", D8 — ninguna
+ * de las dos pide un enlace), y eso NO es "foco invisible", es que el
+ * recorrido de teclado ya terminó. */
+export function elFocoVolvioAlCuerpo(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.activeElement === document.body);
+}

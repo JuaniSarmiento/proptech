@@ -48,7 +48,7 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
   const [estado, enviar] = useActionState(accionCrear, null);
 
   return (
-    <div className="pantalla-mis-edificios">
+    <main className="pantalla-mis-edificios">
       <EncabezadoDePantalla
         titulo="Mis edificios"
         ayuda={<Ayuda {...AYUDA_MIS_EDIFICIOS} />}
@@ -124,6 +124,6 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
           </button>
         </Formulario>
       </PanelLateral>
-    </div>
+    </main>
   );
 }

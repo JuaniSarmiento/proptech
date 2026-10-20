@@ -5,6 +5,14 @@
  * Categorías e Intereses y vencimiento, encabezado por el nombre del
  * edificio. Por debajo de 768 px se pliega a un botón "Secciones" operable
  * con teclado y `Esc` (D8, `pantallas-del-edificio` › Menú plegado).
+ *
+ * Bug real encontrado en el barrido de 5.1: el enlace "Mis edificios" y el
+ * nombre del edificio quedaban FUERA de cualquier landmark (el contenedor
+ * exterior era un `<div>`), violación `region` de axe en el navegador real
+ * (nunca la vio un test de componente en jsdom, que no corre esa regla
+ * sobre documento completo). El contenedor pasó a ser el propio `<nav>`
+ * (anidado es válido con nombres accesibles distintos: "Menú del edificio"
+ * por fuera, "Secciones del edificio" por dentro).
  */
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -45,7 +53,7 @@ export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Pr
   }, [abierto]);
 
   return (
-    <div className="menu-del-edificio">
+    <nav className="menu-del-edificio" aria-label="Menú del edificio">
       <a href="/edificios" className="menu-del-edificio__volver">
         Mis edificios
       </a>
@@ -75,6 +83,6 @@ export function MenuDelEdificio({ nombreEdificio, seccionActual, secciones }: Pr
           })}
         </ul>
       </nav>
-    </div>
+    </nav>
   );
 }
