@@ -256,6 +256,40 @@ Cambios:
 - [x] **Navegador**: `web/e2e/pulido.spec.ts` (4 casos de layout real que jsdom no ve: menú apilado,
   estado separado, panel fijo, alineación del padrón), vistos en rojo contra el build anterior.
 
+## Vuelta de correcciones del rompedor (R3C)
+
+Informe: `.git/informes-3b/rompedor/informe.md`. Orden por severidad (L-021, una
+familia por hallazgo).
+
+- [x] R3C-1 (CRÍTICA) + R3C-10 (MEDIA, la causa de que no se viera): `pedirApi`
+  (`web/src/lib/api/cliente.ts`) mandaba el cuerpo como string sin `Content-Type`:
+  `fetch` ponía `text/plain;charset=UTF-8` y FastAPI, que sólo parsea JSON con
+  `application/json`/`+json`, daba 422 en TODA escritura. La API falsa del
+  navegador (`web/e2e/api-falsa.ts`) tampoco miraba el método ni el Content-Type,
+  así que el barrido completo nunca vio el 422.
+  - RED 22:29:38 `vitest run src/lib/api/cliente.test.ts` → `R3C-1 · con cuerpo,
+    declara Content-Type: application/json` falla: `Content-Type` es `null`.
+  - RED (API falsa, revirtiendo temporalmente el fix para confirmarlo) 22:32:11
+    `vitest run e2e/api-falsa.test.ts` → `3 failed`: un POST con `text/plain` da
+    200 (esperaba 422), un arreglo válido como JSON da 200 (esperaba 422), y
+    `/api/__debug/ultima-escritura` no existe (`SyntaxError: Unexpected end of
+    JSON input`).
+  - GREEN 22:33:28 `vitest run e2e/api-falsa.test.ts src/lib/api/cliente.test.ts`
+    → `2 files, 44 passed`.
+  - Backend (contrato de escritura, con identidad inyectada, patrón de
+    `tests/integracion/test_contrato_web.py`):
+    `backend/tests/integracion/test_contrato_web_escritura.py` nuevo — reusa el
+    rojo original del rompedor (22:18:08, `backend/tests/rompedor_3b/`, pegado en
+    el informe: `assert 422 == 201` con `text/plain`) y agrega la guarda
+    permanente de las dos puntas. GREEN 22:30:16 `uv run pytest
+    tests/integracion/test_contrato_web_escritura.py` → `2 passed`.
+  - `pnpm biome ci`/`pnpm tsc --noEmit` (sobre los archivos tocados) y `uv run
+    ruff check/format --check`/`mypy` sobre el test nuevo: limpios.
+  - **Supuesto**: `biome ci` sobre el repo completo sigue en rojo mientras
+    `web/src/__rompedor__/` y `web/e2e/rompedor.spec.ts` no se borran (formato
+    propio del rompedor, no tocado a propósito: se borran al final del bloque).
+  - Commit `fix(web): la escritura declara Content-Type: application/json (R3C-1, R3C-10)`.
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.
