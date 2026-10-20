@@ -21,12 +21,131 @@ import psycopg
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import event, text
+from sqlalchemy.orm import Session
 from testcontainers.community.postgres import PostgresContainer
 
 from proptech_api.acceso import identidad_actual
+from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.acceso.dominio.permisos import Alcance, Perfil
 
 pytestmark = pytest.mark.integracion
+
+
+def test_lector_arma_cada_perfil_y_su_alcance(
+    sesion_edificio: Session, identidad_edificio: Identidad
+) -> None:
+    sesion = sesion_edificio
+    admin, persona = identidad_edificio.administracion_id, identidad_edificio.persona_id
+    esperadas = set()
+    complejo_vecino = uuid.uuid4()
+    for rol, vinculo in (
+        ("super_admin", None),
+        ("administrador", None),
+        ("contador", None),
+        ("auxiliar", None),
+        ("consejo", None),
+        ("vecino", "propietario"),
+        ("vecino", "inquilino"),
+    ):
+        complejo = None if rol == "super_admin" else uuid.uuid4()
+        if vinculo:
+            complejo = complejo_vecino
+        unidad = uuid.uuid4() if vinculo else None
+        if complejo and vinculo != "inquilino":
+            sesion.execute(
+                text(
+                    "INSERT INTO complejo (id, administracion_id, nombre, localidad) "
+                    "VALUES (:id, :admin, 'Inventado', 'Mendoza')"
+                ),
+                {"id": complejo, "admin": admin},
+            )
+        if unidad:
+            sesion.execute(
+                text(
+                    "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, "
+                    "tipo, piso, coeficiente, superficie_m2) "
+                    "VALUES (:id, :admin, :complejo, :nombre, 'departamento', '1', '1', '60')"
+                ),
+                {"id": unidad, "admin": admin, "complejo": complejo, "nombre": vinculo},
+            )
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol "
+                "(administracion_id, persona_id, rol, complejo_id, unidad_id, vinculo) "
+                "VALUES (:admin, :persona, :rol, :complejo, :unidad, :vinculo)"
+            ),
+            {
+                "admin": admin,
+                "persona": persona,
+                "rol": rol,
+                "complejo": complejo,
+                "unidad": unidad,
+                "vinculo": vinculo,
+            },
+        )
+        esperadas.add(
+            (
+                Perfil(f"vecino_{vinculo}" if vinculo else rol),
+                Alcance.UNIDAD if unidad else Alcance.EDIFICIO if complejo else Alcance.PRINCIPAL,
+                complejo,
+                unidad,
+                vinculo,
+            )
+        )
+
+    assert {
+        (a.perfil, a.alcance, a.complejo_id, a.unidad_id, a.vinculo)
+        for a in cargar_asignaciones(sesion, persona)
+    } == esperadas
+
+    # EXPLAIN de la sentencia real del lector, sin forzar el planificador.
+    consultas: list[tuple[str, Any]] = []
+    conexion = sesion.connection()
+
+    def capturar(
+        _conexion: Any, _cursor: Any, sentencia: str, parametros: Any, _contexto: Any, _muchas: bool
+    ) -> None:
+        consultas.append((sentencia, parametros))
+
+    event.listen(conexion, "before_cursor_execute", capturar)
+    try:
+        cargar_asignaciones(sesion, persona)
+    finally:
+        event.remove(conexion, "before_cursor_execute", capturar)
+    sentencia, parametros = consultas[0]
+    plan = "\n".join(conexion.exec_driver_sql("EXPLAIN " + sentencia, parametros).scalars())
+    print(f"proptech_app; SET LOCAL app.administracion_id = '{admin}';\n{sentencia}\n{plan}")
+    assert "ix_asignacion_rol_persona" in plan
+
+    # B tiene una fila real; A no la ve ni consultando su persona existente.
+    admin_b, persona_b = uuid.uuid4(), uuid.uuid4()
+    sesion.execute(
+        text("SELECT set_config('app.administracion_id', :id, true)"), {"id": str(admin_b)}
+    )
+    sesion.execute(
+        text("INSERT INTO administracion (id, nombre) VALUES (:id, 'B inventada')"), {"id": admin_b}
+    )
+    sesion.execute(
+        text("INSERT INTO persona (id, administracion_id, nombre) VALUES (:id, :admin, 'B')"),
+        {"id": persona_b, "admin": admin_b},
+    )
+    sesion.execute(
+        text(
+            "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+            "VALUES (:admin, :persona, 'super_admin')"
+        ),
+        {"admin": admin_b, "persona": persona_b},
+    )
+    assert len(cargar_asignaciones(sesion, persona_b)) == 1
+    assert cargar_asignaciones(sesion, persona) == []
+    sesion.execute(
+        text("SELECT set_config('app.administracion_id', :id, true)"), {"id": str(admin)}
+    )
+    assert cargar_asignaciones(sesion, persona_b) == []
+    assert len(cargar_asignaciones(sesion, persona)) == 7
+
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 

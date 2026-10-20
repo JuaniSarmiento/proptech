@@ -463,7 +463,31 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
 
 ## 4. Aplicación y API
 
-- [ ] 4.1 `cargar_asignaciones` lee `vinculo` y arma el perfil (D2), en `backend/tests/integracion/test_alcance_api.py` como `proptech_app`: una persona con una fila de cada perfil recibe las asignaciones con el perfil y el alcance correctos, y una fila de B nunca aparece con el tenant de A. RED: con el lector mínimo adaptado en 2.1/3.4, un vecino inquilino todavía se arma como propietario porque no se lee `vinculo` (resuelto por el orquestador, 20/10/2026). Verificación (RD-1, revisión del DBA): pegar en el informe el `EXPLAIN` de la consulta de `cargar_asignaciones` (`acceso/aplicacion/autorizacion.py:31`) corriendo como `proptech_app` con el `administracion_id` (tenant) fijado, mostrando que usa `ix_asignacion_rol_persona`. Escenarios: `autorizacion-por-rol` › Propietaria de una unidad e inquilina de otra. Lecciones: L-016, L-017.
+- [x] 4.1 `cargar_asignaciones` lee `vinculo` y arma el perfil (D2), en `backend/tests/integracion/test_alcance_api.py` como `proptech_app`: una persona con una fila de cada perfil recibe las asignaciones con el perfil y el alcance correctos, y una fila de B nunca aparece con el tenant de A. RED: con el lector mínimo adaptado en 2.1/3.4, un vecino inquilino todavía se arma como propietario porque no se lee `vinculo` (resuelto por el orquestador, 20/10/2026). Verificación (RD-1, revisión del DBA): pegar en el informe el `EXPLAIN` de la consulta de `cargar_asignaciones` (`acceso/aplicacion/autorizacion.py:31`) corriendo como `proptech_app` con el `administracion_id` (tenant) fijado, mostrando que usa `ix_asignacion_rol_persona`. Escenarios: `autorizacion-por-rol` › Propietaria de una unidad e inquilina de otra. Lecciones: L-016, L-017.
+
+  EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_alcance_api.py::test_lector_arma_cada_perfil_y_su_alcance -q -s
+  13:03:15
+  E AssertionError: VECINO_PROPIETARIO / propietario != VECINO_INQUILINO / inquilino
+  1 failed, 1 warning in 5.23s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_alcance_api.py -q -s
+  13:03:30
+  6 passed, 1 warning in 8.70s
+  ```
+  EXPLAIN capturado de la consulta real del lector (sin forzar planificador):
+  ```sql
+  proptech_app; SET LOCAL app.administracion_id = '4d8aeb5e-35d7-481a-ac6d-6c055996522c';
+  SELECT rol, complejo_id, unidad_id, vinculo FROM asignacion_rol WHERE persona_id = %(persona_id)s
+  Index Scan using ix_asignacion_rol_persona on asignacion_rol  (cost=0.16..8.18 rows=1 width=96)
+    Index Cond: ((administracion_id = (NULLIF(current_setting('app.administracion_id'::text, true), ''::text))::uuid) AND (persona_id = 'a0a805e3-f463-48f9-b92f-7fd0890c9cbc'::uuid))
+  ```
+  JUICIO: siete perfiles y sus alcances exactos, propietario e inquilino de
+  dos unidades del mismo edificio, fila real de B visible en B y oculta en A.
+  La fixture verifica current_user=proptech_app, rolsuper=false, rolbypassrls=false.
+  Ruff check / format --check / mypy: limpios (227 archivos / 206 fuentes).
+  SUPUESTO: ninguno. Logs completos locales en .git/informes-roles-bloque-b/4.1-*.log.
+
 - [ ] 4.2 El endpoint de asignación (D7, RA-2) en `backend/tests/integracion/test_asignar_edificio_api.py` y `test_asignacion_validacion.py`: el super admin asigna a una persona de su administración como administrador, contador, auxiliar y consejo (201, la fila tiene ese perfil y la persona pasa a ver el complejo, y la fila de auditoría de esa acción tiene en `detalle` el `complejo_id`, el `rol` asignado y el alcance); un administrador por edificio en su complejo recibe 403 con `invitar_usuarios_y_asignar_edificios`, y en otro complejo 404; un administrador principal, 403; el super admin de A con una persona de B (UUID existente), 404 y nada escrito; un cuerpo con `nivel`, `vinculo` o `unidad_id`, o con `rol` `super_admin`, `vecino`, `titular` o `colaborador`, da 422 nombrando el campo y nada escrito. Verificar si R5 del 2a queda cubierta y decirlo en el informe. RED: con el cuerpo viejo, `rol: "administrador"` da 422 y `nivel` es obligatorio; aparte, el `detalle` de auditoría todavía no tiene `rol` ni alcance (RA-2). Escenarios: `autorizacion-por-rol` › Colaborador asigna un edificio; › Sin permiso y fuera de alcance; › Titular asigna un edificio; › Asignar a una persona de otra administración; › Cuerpo de la asignación con el vocabulario viejo o fuera de lo asignable. Lecciones: L-012, L-017.
 - [ ] 4.3 Las rutas existentes con la matriz nueva, en `backend/tests/integracion/test_alcance_api.py` y un archivo nuevo `test_perfiles_api.py`, como `proptech_app` con la identidad inyectada: un administrador por edificio crea una versión de configuración en su edificio (201, autor y auditoría) y recibe 403 al confirmar "sin saldos previos"; un administrador principal confirma en un edificio que nadie le asignó (200 y auditoría); un administrador principal recibe 403 al crear un edificio; un contador principal lista todos los edificios, lee el padrón de cualquiera (200) y recibe 403 al editar una unidad, crear una categoría y crear una versión; un auxiliar recibe 403 al crear una categoría; el consejo lee el padrón (200) y no edita una unidad (403); el vecino propietario y el inquilino ven su unidad (200), reciben 404 en la de otro vecino del mismo complejo y 403 en la configuración de su complejo; una persona administrador por edificio en A y auxiliar en B recibe 404 en C. RED: con la matriz vieja el administrador por edificio recibe 403 al crear la versión. Escenarios: `autorizacion-por-rol` › Titular; › Contador principal; › Dos asignaciones de la misma persona; › Un colaborador crea un edificio; › Un colaborador "ver" crea una categoría; › El contador no escribe; › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio; › El vecino ve su unidad; › Dos propietarios de la misma unidad; `configuracion-versionada` › Cambiar la tasa; › Un administrador del edificio cambia la tasa; › Un colaborador cambia la tasa; `edificios-y-unidades` › Confirmar sin saldos previos; › Un administrador principal confirma; › Confirmar dos veces; › Un colaborador confirma; › Lista de un colaborador; › Lista de un contador principal; › Unidad de otra administración. Lecciones: L-016, L-017.
 
