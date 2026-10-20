@@ -328,22 +328,18 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   nueva y, con auditoría nueva, el `downgrade` falla y se restaura el respaldo; la corrida de cierre en
   orden y un clon limpio en verde.
 
-### 3b · `pantallas-del-edificio` (nombre provisional) · HIGH mientras lleve el acceso de desarrollo
+### 3b · `pantallas-del-edificio` · archivado 20/10/2026 · OK
 
 - **Objetivo**: que el administrador configure su edificio desde el navegador.
-- **Entra también la carga del edificio de ejemplo en la base** (la 7.2 del 3a), movida por la firma de E1 del 3a (Juani, 16/10/2026): sólo la necesita el acceso de desarrollo.
 - **Precondición del propose**: el `shape` de cada una de las siete pantallas con Juani (una sesión
   de `impeccable shape` por pantalla, con un brief en `openspec/exploraciones/` y el OK de Juani con
   fecha). Era la tarea 8.1 de la primera versión del propose del 3a; pasó acá para no atar el cierre del 3a a siete sesiones de diseño
   (revisión del arquitecto del 16/10).
-- **Entra**: siete pantallas de la superficie del administrador (mis edificios, resumen del edificio,
-  padrón de unidades, grupos de reparto, categorías de gasto, intereses, vencimiento y fondo de
-  reserva, confirmar "sin saldos previos"); los tokens de `DESIGN.md`; el acceso de desarrollo sin
-  login de E2 (punto de entrada fuera del paquete instalado y un Compose aparte que nunca se llama
-  `compose.override.yaml`, que el 2b borra), **sólo si el 2b no llegó antes**, con un test que falla si
-  algún archivo del repositorio pone `COMPOSE_FILE` con `desarrollo` (la contención real es la RLS más
-  la identidad fija en la administración de ejemplo); y, si E1 se firma con la recomendación, el
-  comando que carga el ejemplo en la base (la 7.2 del 3a).
+- **Entró y se construyó**: las siete pantallas de la superficie del administrador (mis edificios,
+  resumen del edificio, padrón de unidades, grupos de reparto, categorías de gasto, intereses y
+  vencimiento, confirmar "sin saldos previos"); los tokens de `DESIGN.md`; una enmienda del shape
+  (19/10/2026, D-105) a todo el ancho, con menú lateral agrupado con íconos, barra superior y ayuda "?"
+  acoplada que empuja el contenido, con Mercado Pago como referencia.
 - **Reglas de diseño**: números tabulares y formato argentino en coeficientes, tasas y porcentajes; el
   estado de R01 y el de migración nunca sólo con color; una acción principal por pantalla; la web no
   calcula (la suma y su estado vienen de la API).
@@ -352,7 +348,34 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   no hay scroll horizontal; WCAG 2.2 AA sin violaciones de axe en cada estado.
   Cada pantalla tiene su ayuda "?" con las tres partes escritas (D-102, HU-T1, The Always-Help
   Rule de `DESIGN.md`, pedido de Alberto del 17/10/2026).
-- **Depende de**: 3a y los `shape`. **Habilita**: el uso real del 3 junto con el 2b.
+- **Quedó afuera, movido al change `acceso-de-desarrollo` (20/10/2026)**: el acceso de desarrollo sin
+  login de E2 (punto de entrada fuera del paquete instalado y un Compose aparte) y la carga del
+  edificio de ejemplo en la base (la 7.2 del 3a): las dos esperaban la firma HIGH de Juani (D-094) y
+  además la carga del ejemplo quedó bloqueada por un `GRANT INSERT ON auditoria` CRITICAL que tampoco
+  decide un agente solo. Ninguna de las dos la necesitaban las siete pantallas: se probaron con la API
+  simulada, una API falsa y fixtures generados por la API real (D3, D4 del design del 3b).
+- **Cerrado por**: constructor Claude Sonnet (bloques de TDD estricto), una vuelta de rompedor y
+  auditor Claude Opus, con un pulido y un rediseño de UI entre medio (L-026). **OK**; la deuda queda en
+  "Deuda del cierre del 3b" más abajo.
+- **Depende de**: 3a y los `shape`. **Habilita**: `acceso-de-desarrollo` y el uso real del 3 junto con
+  el 2b.
+
+### 3b-bis · `acceso-de-desarrollo` · HIGH y CRITICAL (D-094)
+
+- **Objetivo**: entrar a las siete pantallas del 3b contra la API real sin login, sólo en una máquina
+  de desarrollo; y cargar el edificio de ejemplo en la base para poder recorrerlas.
+- **Por qué es un change propio**: el 3b se archivó con las pantallas completas y probadas sin este
+  acceso (D3/D4 de su design); lo único pendiente es la firma HIGH de E2 del 3a (D11 del 3a, D12 del
+  3b) y, para la carga del ejemplo, un `GRANT INSERT ON auditoria TO proptech_migrador` — CRITICAL,
+  permisos sobre el log de auditoría — que la decide Juani junto con la firma, no el constructor solo.
+- **Entra**: el punto de entrada de desarrollo (`backend/desarrollo/`, fuera de `src/`) y
+  `infra/compose.desarrollo.yaml`; las guardas que prueban que nada de esto llega a producción; el
+  comando de carga del ejemplo (implementación ya escrita por el constructor del 3b, guardada sin
+  commitear en `.git/informes-3b/2.3-wip/`); el recorrido de las siete pantallas contra la API real.
+- **No entra**: ninguna pantalla, regla de negocio ni permiso de producción nuevo.
+- **Precondición**: la sección "Aprobación" de su `proposal.md` firmada por Juani o Alberto, con
+  nombre, fecha y las dos respuestas (construir el acceso; dar el `GRANT`). Sin firma, no se construye.
+- **Depende de**: 3a, 3b. **Habilita**: probar las pantallas contra datos reales antes del 2b.
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
 
@@ -865,6 +888,19 @@ firmado todavía, queda dicho en la fila.
 | RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b (el login acota quién llega a probar). Dueño propuesto, no confirmado por Juani |
 | Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | El rompedor del 3b. Dueño propuesto, no confirmado por Juani |
 | La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | Decisión tomada y declarada, no un agujero sin dueño: D-103 deja la excepción a propósito porque la migración de historia de edificios reales la va a necesitar | 7 (migración de historia de edificios reales) |
+
+### Deuda del cierre del 3b
+
+La que dejó el cierre del 3b (20/10/2026): constructor Claude Sonnet por bloques, una vuelta de
+rompedor y auditor Claude Opus, con un pulido y un rediseño de UI entre medio (L-026). Dueño asignado
+por el primer cambio que de verdad necesita que esté resuelta, no por el que suena más obvio; donde
+ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, queda dicho en la fila.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| La barra superior muestra "Administración" en vez de un usuario real | La API todavía no expone quién inició sesión (D-105d); mostrar un nombre inventado sería peor que no mostrar ninguno | 2b |
+| El encabezado de la tabla de 200 unidades no queda fijo (`sticky`) al bajar la página | La tabla sigue siendo legible, con scroll propio y operable con teclado; es una comodidad, no un defecto de acceso | polish futuro. Dueño propuesto, no confirmado por Juani |
+| La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | No es deuda nueva de este cambio: ya está decidida y declarada en D-103, y ya figura arriba en "Deuda del cierre del 3a" con dueño el cambio 7; no se repite acá | — (ver "Deuda del cierre del 3a") |
 
 ## Pendientes de arranque
 

@@ -57,13 +57,19 @@ mercado de arranque es **Mendoza**.
   primera, 12 en la segunda) y revisores de rol de backend y DBA sobre el HEAD final. **OK**; la deuda
   queda en `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 3a"), con dueño por ítem
   (mayormente el 3b, el 2b, el 15 y el 7).
-- **Próximo**: **3b `pantallas-del-edificio`** (HIGH mientras lleve el acceso de desarrollo): las siete
-  pantallas de la superficie del administrador (mis edificios, resumen del edificio, padrón de
-  unidades, grupos de reparto, categorías de gasto, intereses/vencimiento/fondo de reserva, confirmar
-  "sin saldos previos"). Cada pantalla necesita su sesión de `impeccable shape` con Juani antes del
-  propose (un brief en `openspec/exploraciones/` y el OK de Juani con fecha), y cada una lleva su ayuda
-  "?" con las tres partes escritas (D-102, HU-T1). En paralelo sigue disponible **2b, el login**
-  (CRITICAL, D-097), bloqueado por P48.
+- **Cambio 3b `pantallas-del-edificio` archivado** (20/10/2026): las siete pantallas de la superficie
+  del administrador (mis edificios, resumen del edificio, padrón de unidades, grupos de reparto,
+  categorías de gasto, intereses y vencimiento, confirmar "sin saldos previos"), a todo el ancho, con
+  menú lateral agrupado con íconos, barra superior y ayuda "?" acoplada que empuja el contenido en vez
+  de tapar (D-105, enmienda del shape del 19/10/2026 sobre Mercado Pago como referencia). Construido
+  con **Claude Sonnet como constructor** por bloques de TDD estricto, una vuelta de rompedor y auditor
+  Claude Opus (detalle en `knowledge-base/14_forma_de_trabajo.md`). **OK**; el acceso de desarrollo sin
+  login (grupo 7) y la carga del edificio de ejemplo quedaron **sin construir, a la espera de la firma
+  HIGH y CRITICAL de Juani o Alberto (D-094)**, movidos a un change propio, `acceso-de-desarrollo`. La
+  deuda del cierre queda en `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 3b"), con
+  dueño por ítem (mayormente el 2b).
+- **Próximo**: **`acceso-de-desarrollo`** (HIGH y CRITICAL, D-094), esperando esa firma; en paralelo
+  sigue disponible **2b, el login** (CRITICAL, D-097), bloqueado por P48.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -167,10 +173,11 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
-  (OK, D-103, D-104).
-- **Próximo**: 3b `pantallas-del-edificio` (las siete pantallas del administrador, cada una con su
-  `shape` previo con Juani); en paralelo, el 2b (login, bloqueado por P48). La partición del 3 es
-  E1 de la propuesta del 3a, firmada por Juani el 16/10/2026.
+  (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026; el acceso de desarrollo quedó afuera,
+  movido a `acceso-de-desarrollo`).
+- **Próximo**: `acceso-de-desarrollo` (HIGH y CRITICAL, D-094), esperando la firma de Juani o Alberto;
+  en paralelo, el 2b (login, bloqueado por P48). La partición del 3b en pantallas y acceso es
+  consecuencia de la gobernanza de D-094 sobre E2 del 3a, no un change nuevo del roadmap de 22.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

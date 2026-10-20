@@ -330,4 +330,56 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Costo**: 18 hallazgos entre las dos vueltas, todos en la primera lectura externa del código de
   Codex.
 - **Aplica a**: orquestador (al armar el brief), auditor.
+
+## L-026 · Todos los tests en verde no dice nada sobre cómo se ve la pantalla
+
+- **Origen**: cambio 3b, cierre (20/10/2026).
+- **Qué pasó**: el bloque C (las cuatro primeras pantallas) cerró con biome, tsc, vitest y el barrido
+  de Playwright en verde, y el orquestador no abrió el navegador hasta después de cerrado todo el
+  bloque. Lo que vio ahí no lo mostraba ningún test: una columna angosta centrada con demasiado aire,
+  sin lugar para la ayuda acoplada que pedía el shape. Hizo falta un pulido y, después, un rediseño a
+  todo el ancho (D-105a) sobre un cambio ya "terminado" según su propia suite.
+- **Regla**: cerrar una tarea de UI incluye mirarla con un navegador real, no sólo correr su suite; la
+  mirada va después de cada bloque de UI, no sólo al final del cambio (axe y los chequeos de 320px
+  prueban accesibilidad y layout roto, no si el diseño funciona).
+- **Costo**: aproximadamente 1 hora de Opus en el pulido y rediseño, más una vuelta de revisión de
+  Juani sobre las capturas de antes y después.
+- **Aplica a**: orquestador (después de cada bloque de UI), constructor.
+
+## L-027 · Una API falsa que acepta cualquier escritura esconde los errores de contrato
+
+- **Origen**: cambio 3b, hallazgo R3C-1 del rompedor, destapado por R3C-10.
+- **Qué pasó**: toda escritura real de la web (`fetch` del servidor de Next hacia la API) mandaba el
+  cuerpo como `text/plain` en vez de `application/json`; contra la API real, FastAPI respondía 422 en
+  cada guardado. Los 132 tests del barrido de Playwright (D7) pasaron igual: la API falsa de 3.8
+  contestaba 200 con el fixture de lectura a cualquier `POST`/`PATCH`/`PUT`, sin mirar el
+  `Content-Type` ni el cuerpo (R3C-10). El contrato estaba roto desde la primera pantalla y ningún
+  test lo vio hasta el rompedor, con la API real.
+- **Regla**: una API falsa para el navegador tiene que validar como la real (método, `Content-Type`,
+  forma del cuerpo), no sólo devolver el fixture correcto; y los fixtures de lectura y escritura tienen
+  que salir de la API real (D4), nunca de una API falsa que no se prueba a sí misma contra ese
+  contrato.
+- **Costo**: un hallazgo CRÍTICO del rompedor sobre algo que, de llegar a producción con el 2b, hubiera
+  roto el 100% de las escrituras; arreglado en el mismo cierre, pero quedó abierto (MEDIA) que ningún
+  spec de Playwright ejercita una escritura real contra la API falsa ya corregida.
+- **Aplica a**: constructor (al escribir una API falsa), rompedor, auditor.
+
+## L-028 · Las combinaciones de capas son donde fallan el foco y el Esc, y un componente solo no las ve
+
+- **Origen**: cambio 3b, revisión de rol de frontend sobre el HEAD final (RF-F-1 a RF-F-4).
+- **Qué pasó**: cada capa (menú, ayuda, panel lateral) tenía su test y pasaba sola. Combinadas,
+  fallaron cuatro casos que ningún test de un componente aislado podía ver: `MenuDelEdificio`
+  escuchaba `Esc` por su cuenta, fuera de la pila compartida, así que un `Esc` cerraba ayuda y menú a
+  la vez por debajo de 768px (RF-F-1); abrir el panel desde el estado vacío y guardar dejaba el foco
+  en `body` tras la revalidación (RF-F-2); con el panel abierto, abrir y cerrar la ayuda con `Esc`
+  mandaba el foco al botón "Ayuda" en vez de quedarse en el panel (RF-F-3); y con ayuda y panel
+  abiertos a la vez (desde 1024px), cerrar la ayuda con teclado exigía cerrar el panel entero (RF-F-4).
+- **Regla**: las combinaciones de capas que coexisten en una pantalla real (menú + ayuda, ayuda + panel,
+  las tres juntas) necesitan su propio test de integración, además del test de cada componente por
+  separado: el aislamiento que hace fácil probar un componente es exactamente lo que esconde estos
+  cuatro casos.
+- **Costo**: cuatro hallazgos de foco/teclado (una MEDIA, dos BAJA) recién vistos en la revisión de rol
+  sobre el HEAD final, no en ninguna de las suites de los componentes.
+- **Aplica a**: constructor (al escribir el test de una pantalla con más de una capa abierta), revisor
+  de rol de frontend.
 - **Aplica a**: constructor y rompedor.

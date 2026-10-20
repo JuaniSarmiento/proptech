@@ -1709,6 +1709,35 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Nombres**: el rango del recargo del segundo vencimiento vive en `vencimiento.rango_recargo.{minimo,maximo}`.
 - **Quién**: Juani, 19/10/2026, sobre la propuesta del constructor y las auditorías del 3a.
 
+## D-105 · Cierre del 3b: la enmienda del shape, el color de "fuera de tolerancia", PB1 y la barra sin usuario (20/10/2026)
+
+- **Contexto**: cuatro decisiones del cierre del 3b que no vivían en ningún lado todavía.
+- **Decisión**:
+  - **(a) Enmienda del shape (todo el ancho)**: las siete pantallas pasan de una columna angosta
+    centrada a todo el ancho del contenido, con paneles (`Panel`/`.panel`), menú lateral agrupado por
+    íconos, barra superior fija y la ayuda "?" acoplada a la derecha desde 1024px, que empuja el
+    contenido en vez de tapar. Referencia: Mercado Pago y el home banking argentino (familiaridad ya
+    instalada, D-ficha del 3b). **Descartado**: la columna angosta centrada del shape original,
+    legible pero con demasiado aire en pantallas grandes y sin lugar natural para la ayuda acoplada.
+  - **(b) "Fuera de tolerancia" y los pasos que faltan en terracota**: el único color de estado nuevo
+    que se suma es terracota, no un rojo propio. Terracota ya significa "esto necesita tu atención"
+    (la acción principal de cada pantalla); reusarlo para "fuera de tolerancia" y para un paso en
+    "falta" mantiene un solo acento (The One Voice Rule de `DESIGN.md`) en vez de sumar una familia de
+    semáforo. Siempre con texto y una marca de forma al lado (The Never Color Alone Rule).
+    **Descartado**: un rojo de alerta propio, distinto del terracota.
+  - **(c) PB1 (D5 del design del 3b)**: un edificio nuevo muestra "falta" en unidades, coeficientes y
+    saldos previos, pero los pasos de grupos, categorías e intereses y vencimiento nacen en "Hecho"
+    con los valores de los parámetros (D-042): la API no sabe si alguien los revisó, y los datos ya
+    existen desde que se crea el edificio. **Descartado**: guardar una marca de "revisado" en la base
+    para esos tres pasos, que hubiera exigido una migración y un caso de uso nuevo para una pregunta
+    (PB1) que todavía no tenía prioridad confirmada.
+  - **(d) La barra superior**: muestra el texto fijo "Administración" hasta que el 2b (login) exponga
+    quién inició sesión. **Descartado**: inventar o inferir un nombre (por ejemplo, el único titular de
+    la administración de ejemplo), que mentiría apenas una administración real tenga más de un
+    titular o colaborador.
+- **Quién**: Juani, 20/10/2026, sobre la propuesta del constructor y la revisión de frontend del
+  cierre del 3b.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había

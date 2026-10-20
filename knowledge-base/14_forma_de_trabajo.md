@@ -124,6 +124,11 @@ familia de modelo que el constructor (L-025).
   aproximadamente 1,3 millones de tokens de la cuota de ChatGPT consumidos; la ventana de 5 horas de
   Plus se agotó en aproximadamente 2,5 horas (quedó sin cuota antes de cerrar el bloque E, que terminó
   el orquestador).
+- **Medición del 20/10/2026** (cambio 3b): con **Claude Sonnet como constructor** (TDD estricto, una
+  vuelta de rompedor y auditor Claude Opus), cada bloque tardó alrededor de 1 hora real y consumió
+  entre 450 y 550 mil tokens; Codex, sobre tareas comparables del 3a, resolvía un bloque en unos 20
+  minutos. Codex vuelve a ser el constructor cuando tiene cuota disponible. El orquestador mira las
+  pantallas en un navegador real después de cada bloque de UI (L-026), no sólo al final del cambio.
 
 ## Reglas del proceso
 

@@ -15,10 +15,13 @@ idempotencia, logs en JSON y número de seguimiento de punta a punta; cerrado co
 anotada), **1d `respaldos-y-restauracion`** (`pg_dump` automático y a diario, restauración probada
 contra una base aparte), **2a `aislamiento-por-administracion`** (roles de PostgreSQL separados,
 Row-Level Security por administración y auditoría de acciones sensibles; el candado, D-097), **2c
-`endurecimiento-de-infraestructura`** (cabeceras, contenedores y CI más duros) y **3a
+`endurecimiento-de-infraestructura`** (cabeceras, contenedores y CI más duros), **3a
 `configuracion-del-edificio`** (el modelo del edificio completo: unidades, grupos de reparto,
-categorías de gasto y la configuración de intereses y vencimiento, versionada y de sólo agregar). En
-construcción: **2b `login`** y **3b `pantallas-del-edificio`** (las siete pantallas del administrador).
+categorías de gasto y la configuración de intereses y vencimiento, versionada y de sólo agregar) y
+**3b `pantallas-del-edificio`** (20/10/2026: las siete pantallas del administrador, a todo el ancho).
+El acceso de desarrollo sin login y la carga del edificio de ejemplo quedaron afuera del 3b, a la
+espera de la firma de un socio (D-094), en el change `acceso-de-desarrollo`. En construcción: **2b
+`login`**.
 Todavía no hay liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 ([`CHANGES.md`](CHANGES.md), con el detalle de cada cambio en
 [`knowledge-base/12_fichas_de_changes.md`](knowledge-base/12_fichas_de_changes.md)).
