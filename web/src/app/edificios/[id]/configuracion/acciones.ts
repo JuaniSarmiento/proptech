@@ -31,9 +31,24 @@ const _CAMPOS_CONOCIDOS = [
   "vigente_desde",
 ];
 
+// R3C-6 (rompedor 3b): un entero estricto, nunca `Number.parseInt` suelto.
+// `"1e1"` es válido en `<input type="number">` (vale 10, cumple `step=1`)
+// y `Number.parseInt("1e1")` da 1 en silencio; `"3,5"` da 3. Lo que no
+// matchea da `NaN` (→ `null` en el JSON), para que la API lo rechace con
+// un 422 real en vez de recibir un número distinto al tipeado.
+const _ENTERO_ESTRICTO = /^\d+$/;
+
+function _entero(valor: FormDataEntryValue | null, porDefecto: string): number {
+  const texto = String(valor ?? porDefecto).trim();
+  return _ENTERO_ESTRICTO.test(texto) ? Number.parseInt(texto, 10) : Number.NaN;
+}
+
 function _enteroONulo(valor: FormDataEntryValue | null): number | null {
   const texto = String(valor ?? "").trim();
-  return texto === "" ? null : Number.parseInt(texto, 10);
+  if (texto === "") {
+    return null;
+  }
+  return _ENTERO_ESTRICTO.test(texto) ? Number.parseInt(texto, 10) : Number.NaN;
 }
 
 function _textoONulo(valor: FormDataEntryValue | null): string | null {
@@ -49,10 +64,10 @@ export async function crearVersionDeConfiguracionAction(
   const modalidad = String(formData.get("modalidad_de_vencimiento") ?? "unico");
   const resultado: ResultadoApi<unknown> = await crearVersionDeConfiguracion(complejoId, {
     tasa_mensual: String(formData.get("tasa_mensual") ?? ""),
-    dias_de_gracia: Number.parseInt(String(formData.get("dias_de_gracia") ?? "0"), 10),
+    dias_de_gracia: _entero(formData.get("dias_de_gracia"), "0"),
     forma_de_calculo: String(formData.get("forma_de_calculo") ?? ""),
     porcentaje_fondo: String(formData.get("porcentaje_fondo") ?? ""),
-    dia_de_vencimiento: Number.parseInt(String(formData.get("dia_de_vencimiento") ?? "0"), 10),
+    dia_de_vencimiento: _entero(formData.get("dia_de_vencimiento"), "0"),
     modalidad_de_vencimiento: modalidad,
     dia_segundo_vencimiento:
       modalidad === "doble" ? _enteroONulo(formData.get("dia_segundo_vencimiento")) : null,
