@@ -717,7 +717,7 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   ```text
   $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k auditoria -q -p no:cacheprovider --color=no
   15:16:10
-  E AssertionError: auditoría sin persona destino (... detalle sin persona_id)
+  FAILED tests/integracion/test_asignacion_validacion.py::test_la_auditoria_de_una_asignacion_nombra_a_quien_recibe_el_perfil
   1 failed, 16 deselected, 1 warning in 5.40s
   ```
   Se reforzó el test trasladado: exige ambos UUID exactos, sin buscar texto ni
@@ -745,7 +745,60 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   y rollback de asignación/auditoría verdes. No se modifican filas históricas.
   SUPUESTO: ninguno. Logs locales `rr2-*.log`.
 
-- [ ] RR-3 (BAJA): impedir consejo duplicado por persona y edificio como `proptech_app`, manteniendo coexistencia con personal, aislamiento y downgrade. D5, RA-5; `autorizacion-por-rol` › La base sostiene la forma de cada asignación. L-016, L-018, L-019, L-020.
+- [x] RR-3 (BAJA): impedir consejo duplicado por persona y edificio como `proptech_app`, manteniendo coexistencia con personal, aislamiento y downgrade. D5, RA-5; `autorizacion-por-rol` › La base sostiene la forma de cada asignación. L-016, L-018, L-019, L-020.
+
+  Decisión: al recibir el árbol 0017 seguía siendo la cabeza, sin migraciones
+  commiteadas encima. Se elige **0018 nueva** para conservar intacta la conversión
+  revisada de 0017. Índice parcial propio para consejo, compatible con personal.
+  Se reforzaron los tests recibidos: downgrade probado por INSERT como app y
+  rechazo efectivo tras volver a subir; duplicados previos en B abortan sin ids,
+  cambios de filas, revisión ni RLS. No se deduplican datos automáticamente.
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/integracion/test_asignacion_validacion.py -k 'consejo_repetido or consejo_previamente or downgrade_de_0018 or repetir_consejo' -q -p no:cacheprovider --color=no
+  15:18:07
+  E               Failed: DID NOT RAISE UniqueViolation
+  E       Failed: DID NOT RAISE AssertionError
+  E       assert 201 == 409
+  FAILED tests/integracion/test_migracion_roles_de_la_empresa.py::test_consejo_repetido_en_el_mismo_edificio_falla_por_indice_unico
+  FAILED tests/integracion/test_migracion_roles_de_la_empresa.py::test_consejo_previamente_repetido_aborta_sin_datos_personales_ni_cambios
+  FAILED tests/integracion/test_migracion_roles_de_la_empresa.py::test_downgrade_de_0018_quita_el_indice_y_permite_el_duplicado
+  FAILED tests/integracion/test_asignacion_validacion.py::test_repetir_consejo_da_conflicto_sin_asignacion_ni_auditoria_nuevas
+  4 failed, 30 deselected, 1 warning in 14.70s
+  ```
+  La prueba existente de unidad se vio fallar antes de actualizar su cabeza:
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_unidad_edificio_inmutable.py -q -p no:cacheprovider --color=no
+  15:18:36
+  E               AssertionError: assert ('0018',) == ('0017',)
+  FAILED tests/integracion/test_unidad_edificio_inmutable.py::test_downgrade_quita_la_barrera_y_upgrade_la_reinstala_sin_perder_datos
+  1 failed, 39 passed, 1 warning in 55.44s
+  ```
+  Mutantes del FORCE final y del downgrade, con copia previa restaurada:
+  ```diff
+  -    op.execute("ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY")
+  +    # Mutante: omitir FORCE final
+  -    op.drop_index("uq_asignacion_rol_consejo_persona_complejo", table_name="asignacion_rol")
+  +    pass  # Mutante: omitir downgrade
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -k 'consejo_repetido or downgrade_de_0018' -q -p no:cacheprovider --color=no
+  15:19:46
+  E       assert [(True, False)] == [(True, True)]
+  FAILED tests/integracion/test_migracion_roles_de_la_empresa.py::test_consejo_repetido_en_el_mismo_edificio_falla_por_indice_unico
+  FAILED tests/integracion/test_migracion_roles_de_la_empresa.py::test_downgrade_de_0018_quita_el_indice_y_permite_el_duplicado
+  2 failed, 14 deselected in 7.30s
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/integracion/test_asignacion_validacion.py tests/integracion/test_unidad_edificio_inmutable.py tests/integracion/test_rls_acceso_minimo.py tests/integracion/test_catalogo_rls.py -q -p no:cacheprovider --color=no
+  15:20:05
+  71 passed, 1 warning in 63.56s (0:01:03)
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  15:21:13
+  All checks passed! / 231 files already formatted / Success: no issues found in 209 source files
+  ```
+  JUICIO: duplicado bloqueado en ambos tenants como app, coexistencia con personal,
+  RLS forzada, rollback de migración y ciclo de downgrade/upgrade verificados.
+  SUPUESTO: ninguno. Logs locales `rr3-*.log`.
 
 - [ ] RR-4 (BAJA): un 403 de `informar_pago` identifica a propietario/inquilino, sin atribuir el permiso al super admin. D8, excepción autorizada por Juani en esta corrección; `pantallas-del-edificio` › Sin permiso. L-019, L-022.
 

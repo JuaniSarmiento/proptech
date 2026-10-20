@@ -287,6 +287,19 @@ verlas. Una vuelta atrás que da más permiso del que había no es una vuelta at
 `downgrade` con pérdida (inquilino → vecino, contador → colaborador "ver", administrador principal →
 titular): la última convertiría a quien opera en quien asigna edificios.
 
+#### Corrección RR-3 · Consejo único (20/10/2026)
+
+Al iniciar las correcciones 0017 era la cabeza y no había una revisión posterior.
+Se elige una migración nueva, `0018_consejo_unico_por_edificio`, para conservar
+intacta la conversión ya commiteada y revisada de 0017. Un índice parcial único
+sobre `(administracion_id, persona_id, complejo_id) WHERE rol = 'consejo'`
+impide duplicados y permite consejo junto con personal o vecino.
+
+El upgrade usa la misma transacción y bloqueo que D5: relaja FORCE sólo para
+contar conflictos en todos los tenants, aborta con una cantidad sin ids si los
+hay, crea el índice y restaura FORCE. No elimina filas. El downgrade borra sólo
+el índice. La API traduce esta restricción a 409 `campo=rol`, igual que RR-1.
+
 ### D6 · Las políticas de RLS no cambian
 
 La exploración pedía "políticas RLS revisadas". Revisadas, no cambian: la política de `asignacion_rol`

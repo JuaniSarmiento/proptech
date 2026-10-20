@@ -47,7 +47,13 @@ def asignar_complejo_a_persona(
     rol: str,
     request_id: UUID,
 ) -> UUID:
-    with transaccion(sesion, {"uq_asignacion_rol_persona_alcance": "rol"}):
+    with transaccion(
+        sesion,
+        {
+            "uq_asignacion_rol_persona_alcance": "rol",
+            "uq_asignacion_rol_consejo_persona_complejo": "rol",
+        },
+    ):
         fila = sesion.execute(
             text(
                 "INSERT INTO asignacion_rol "

@@ -304,6 +304,25 @@ def _asignar(
     )
 
 
+def _asignar_devolviendo_id(
+    c: psycopg.Connection,
+    admin: UUID,
+    persona: UUID,
+    rol: str,
+    complejo: UUID | None,
+    unidad: UUID | None = None,
+    vinculo: str | None = None,
+) -> UUID:
+    fila = c.execute(
+        "INSERT INTO asignacion_rol "
+        "(administracion_id,persona_id,rol,complejo_id,unidad_id,vinculo) "
+        "VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
+        (admin, persona, rol, complejo, unidad, vinculo),
+    ).fetchone()
+    assert fila is not None
+    return UUID(str(fila[0]))
+
+
 def test_las_nueve_formas_validas_entran_como_app(base_roles: BaseDeEdificio) -> None:
     datos = _sembrar(base_roles)
     base_roles.migrar("upgrade", "head")
@@ -407,6 +426,104 @@ def test_unicidad_de_vecino_y_de_todas_las_combinaciones_de_personal(
                         assert c.execute(
                             "SELECT rol FROM asignacion_rol WHERE persona_id=%s", (persona,)
                         ).fetchall() == [(primero,)]
+
+
+def test_consejo_repetido_en_el_mismo_edificio_falla_por_indice_unico(
+    base_roles: BaseDeEdificio,
+) -> None:
+    """Corrección RR-3 (rompedor, BAJA): `uq_asignacion_rol_persona_alcance`
+    (0017) excluye a propósito el rol `consejo` de su `WHERE` (RA-5, convive
+    con un rol de personal), así que sin 0018 nada impedía dos filas de
+    consejo de la misma persona en el mismo edificio. L-018: se prueba
+    insertando como `proptech_app`, no leyendo el catálogo de índices."""
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    assert _catalogo(base_roles)["rls"] == [(True, True)]
+    _filas(base_roles, datos, "vinculo")  # Lee ambos tenants y niega sus cruces.
+    with base_roles.conectar_migrador() as c:
+        assert c.execute("SELECT count(*) FROM asignacion_rol").fetchone() == (0,)
+    with base_roles.conectar_app() as c, c.transaction():
+        for admin, complejo, _, _ in datos:
+            fijar_tenant(c, admin)
+            persona = _persona(c, admin)
+            _asignar(c, admin, persona, "consejo", complejo)
+            with (
+                pytest.raises(
+                    psycopg.errors.UniqueViolation,
+                    match="uq_asignacion_rol_consejo_persona_complejo",
+                ),
+                c.transaction(),
+            ):
+                _asignar(c, admin, persona, "consejo", complejo)
+            assert c.execute(
+                "SELECT count(*) FROM asignacion_rol WHERE persona_id=%s AND rol='consejo'",
+                (persona,),
+            ).fetchone() == (1,)
+            # RA-5: consejo sigue conviviendo con un rol de personal en el
+            # mismo edificio; el índice nuevo no toca esa combinación.
+            _asignar(c, admin, persona, "administrador", complejo)
+            assert c.execute(
+                "SELECT rol FROM asignacion_rol WHERE persona_id=%s ORDER BY rol", (persona,)
+            ).fetchall() == [("administrador",), ("consejo",)]
+
+
+def test_consejo_previamente_repetido_aborta_sin_datos_personales_ni_cambios(
+    base_roles: BaseDeEdificio,
+) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "0017")
+    admin, complejo, _, personas = datos[1]  # El conflicto está en el segundo tenant.
+    with base_roles.conectar_app() as c, c.transaction():
+        fijar_tenant(c, admin)
+        _asignar(c, admin, personas[3], "consejo", complejo)
+    catalogo, filas = _catalogo(base_roles), _filas(base_roles, datos, "vinculo")
+    with pytest.raises(AssertionError, match="consejos repetidos: 1") as error:
+        base_roles.migrar("upgrade", "head")
+    assert all(str(id_) not in str(error.value) for lote in datos for id_ in lote[:3])
+    assert all(str(p) not in str(error.value) for lote in datos for p in lote[3])
+    assert "Persona inventada" not in str(error.value)
+    assert _catalogo(base_roles) == catalogo
+    assert _filas(base_roles, datos, "vinculo") == filas
+    with base_roles.conectar_app() as c:
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0017",)
+
+
+def test_downgrade_de_0018_quita_el_indice_y_permite_el_duplicado(
+    base_roles: BaseDeEdificio,
+) -> None:
+    """El `downgrade` de 0018 es sólo el índice (no transforma filas, a
+    diferencia de 0017): comprobar que vuelve a permitir lo que el upgrade
+    prohíbe, y que un nuevo upgrade lo vuelve a prohibir."""
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    catalogo_con_indice = _catalogo(base_roles)
+    assert "uq_asignacion_rol_consejo_persona_complejo" in {
+        fila[0] for fila in catalogo_con_indice["indices"]
+    }
+    base_roles.migrar("downgrade", "0017")
+    assert "uq_asignacion_rol_consejo_persona_complejo" not in {
+        fila[0] for fila in _catalogo(base_roles)["indices"]
+    }
+    admin, complejo, _, _ = datos[0]
+    with base_roles.conectar_app() as c, c.transaction():
+        fijar_tenant(c, admin)
+        persona = _persona(c, admin)
+        _asignar(c, admin, persona, "consejo", complejo)
+        duplicado = _asignar_devolviendo_id(c, admin, persona, "consejo", complejo)
+        assert c.execute(
+            "SELECT count(*) FROM asignacion_rol WHERE persona_id=%s", (persona,)
+        ).fetchone() == (2,)
+        # Sacar el duplicado antes de volver a subir: 0018 no limpia datos
+        # (a diferencia de 0017), así que el upgrade falla si ya hay dos.
+        c.execute("DELETE FROM asignacion_rol WHERE id=%s", (duplicado,))
+    base_roles.migrar("upgrade", "0018")
+    with base_roles.conectar_app() as c, c.transaction():
+        fijar_tenant(c, admin)
+        with pytest.raises(psycopg.errors.UniqueViolation), c.transaction():
+            _asignar(c, admin, persona, "consejo", complejo)
+        assert c.execute(
+            "SELECT count(*) FROM asignacion_rol WHERE persona_id=%s", (persona,)
+        ).fetchone() == (1,)
 
 
 def test_personal_coexiste_con_consejo_y_vecino_y_la_unidad_admite_tres_personas(

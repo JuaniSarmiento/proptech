@@ -106,3 +106,19 @@ def test_la_auditoria_de_una_asignacion_nombra_a_quien_recibe_el_perfil(
         f"detalle={detalle}"
     )
     assert detalle.get("asignacion_id") == str(asignacion)
+
+
+def test_repetir_consejo_da_conflicto_sin_asignacion_ni_auditoria_nuevas(
+    api_edificio: ApiEdificio,
+) -> None:
+    api = api_edificio
+    api.como("super_admin")
+    consulta = "SELECT (SELECT count(*) FROM asignacion_rol), (SELECT count(*) FROM auditoria)"
+    antes = api.filas(consulta)
+    respuesta = _cliente_sin_relanzar(api).post(
+        api.ruta("/asignaciones"),
+        json={"persona_id": str(api.personas["consejo"]), "rol": "consejo"},
+    )
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {"detail": "conflicto", "campo": "rol"}
+    assert api.filas(consulta) == antes

@@ -204,7 +204,8 @@ auxiliar y consejo con complejo y sin unidad; vecino con complejo, unidad y vín
 rechazarse. Una persona MUST tener a lo sumo una relación con cada unidad. Una persona MUST tener
 también a lo sumo una asignación de rol de personal (super admin, administrador, contador o auxiliar)
 por alcance, incluido el alcance principal (RA-5): no impide, además, que esa misma persona sea
-consejo o vecino, que son asignaciones de otro tipo.
+consejo o vecino, que son asignaciones de otro tipo. Una persona MUST tener a lo sumo una
+asignación de consejo por edificio.
 
 #### Scenario: Alcance principal regalado
 
@@ -240,6 +241,19 @@ consejo o vecino, que son asignaciones de otro tipo.
   personal en ese mismo alcance
 - **THEN** la base rechaza la escritura, y esto vale también cuando las dos filas tienen `complejo_id`
   nulo (alcance principal)
+
+#### Scenario: Consejo repetido en el mismo edificio
+
+- **WHEN** como `proptech_app` se asigna consejo por segunda vez a una persona en el mismo edificio
+- **THEN** la base rechaza la segunda fila; consejo sigue coexistiendo con personal
+- **AND** por API la repetición responde 409 `campo=rol`, sin asignación ni auditoría nuevas
+
+#### Scenario: Migrar consejos previamente repetidos y volver atrás
+
+- **WHEN** hay consejos duplicados antes del upgrade 0018, incluso en otro tenant
+- **THEN** la migración aborta con su cantidad, sin ids ni datos personales y sin modificar filas, revisión ni RLS
+- **WHEN** sin duplicados se sube a 0018, se baja a 0017 y se vuelve a subir
+- **THEN** el downgrade permite duplicados, conserva filas y aislamiento, y el nuevo upgrade vuelve a impedir duplicados
 
 ### Requirement: Propietario e inquilino de una unidad
 
