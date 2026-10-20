@@ -668,7 +668,45 @@ Conteos: Vitest 282 → 298 (+16), 45 archivos; Playwright 141 → 144 (+3). Bio
 
 ## 6. Cierre de los grupos 1 a 6
 
-- [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.
+- [x] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.
+
+  **Corrida de cierre, orquestador, 20/10/2026** (después del rompedor, el auditor, la revisión de frontend y
+  todos sus arreglos). Conteos contra 1.1: backend 1737 + 1 xfailed → 1757 + 1 xfailed; web 16 → 298 tests;
+  navegador (no existía en 1.1) → 144; humo OK en los dos.
+
+  ```text
+HEAD c025332
+$ bash infra/ci/test-backend.sh
+10:09:19
+[código de salida: 0]
+tests/unitarios/test_middleware_error_inesperado.py ..                   [ 77%]
+=========== 1757 passed, 1 xfailed, 16 warnings in 621.53s (0:10:21) ===========
+$ cd web && corepack pnpm@12.10.1 biome ci
+10:19:47
+[código de salida: 0]
+Checked 139 files in 169ms. No fixes applied.
+$ cd web && corepack pnpm@12.10.1 tsc --noEmit
+10:19:47
+[código de salida: 0]
+$ bash infra/ci/test-web.sh
+10:19:51
+[código de salida: 0]
+ Test Files  45 passed (45)
+      Tests  298 passed (298)
+   Duration  10.36s (environment 39%, tests 34%, import 16%, transform 10%)
+$ bash infra/ci/test-web-navegador.sh
+10:20:03
+[código de salida: 0]
+  ✓  105 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › error_500 (500 con texto técnico) a 320px (1.3s)
+  ✓  106 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › error_500 (500 con texto técnico) a 1280px (1.4s)
+  144 passed (3.8m)
+$ bash infra/ci/humo.sh
+10:24:02
+[código de salida: 0]
+HUMO OK
+10:27:10
+  ```
+
 
 ## 7. Acceso de desarrollo sin login (HIGH): NO CONSTRUIR, espera la firma HIGH de Juani (D-094)
 
