@@ -334,8 +334,12 @@ endpoint (tarea 4.3).
 
 ### D8 · La web (E8)
 
-Los dos textos pasan a "Esto lo puede hacer el super admin de la empresa." El super admin puede todo,
-así que la frase es cierta para cualquier 403 de las pantallas del 3b, sin mapear permiso por permiso.
+Los dos textos pasan a "Esto lo puede hacer el super admin de la empresa." La frase
+corresponde a los permisos de las pantallas del 3b. Corrección RR-4 autorizada por
+Juani (20/10/2026): `informar_pago` es exclusivo de propietario e inquilino (D3),
+así que `Estados` recibe el permiso faltante y para esa acción dice "Esto lo puede
+hacer la persona propietaria o inquilina de la unidad." Las páginas conservan
+el permiso que entrega la API al construir ese estado.
 "Empresa" y "super admin" son las palabras de Alberto y de la exploración; el resto de la web dice
 "administración" para el tenant, y eso no cambia. Se actualizan `Estados.test.tsx` (hoy busca
 `/titular/`) y el test de la acción de crear edificio, viéndolos fallar primero.

@@ -30,7 +30,13 @@ export default async function PaginaConfiguracion({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
   if (historial.estado === "sin_permiso") {
-    return <Estados tipo="sinPermiso" queNoPuede="ver la configuración de este edificio" />;
+    return (
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="ver la configuración de este edificio"
+        permisoFaltante={historial.permiso}
+      />
+    );
   }
   if (historial.estado !== "ok" || vigente.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar intereses y vencimiento." />;

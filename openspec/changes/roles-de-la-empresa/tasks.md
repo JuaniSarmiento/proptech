@@ -730,7 +730,7 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   ```text
   $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k auditoria -q -p no:cacheprovider --color=no
   15:16:52
-  E assert detalle.get("asignacion_id") == str(asignacion)
+  FAILED tests/integracion/test_asignacion_validacion.py::test_la_auditoria_de_una_asignacion_nombra_a_quien_recibe_el_perfil
   1 failed, 16 deselected, 1 warning in 5.33s
   ```
   ```text
@@ -800,7 +800,66 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   RLS forzada, rollback de migración y ciclo de downgrade/upgrade verificados.
   SUPUESTO: ninguno. Logs locales `rr3-*.log`.
 
-- [ ] RR-4 (BAJA): un 403 de `informar_pago` identifica a propietario/inquilino, sin atribuir el permiso al super admin. D8, excepción autorizada por Juani en esta corrección; `pantallas-del-edificio` › Sin permiso. L-019, L-022.
+- [x] RR-4 (BAJA): un 403 de `informar_pago` identifica a propietario/inquilino, sin atribuir el permiso al super admin. D8, excepción autorizada por Juani en esta corrección; `pantallas-del-edificio` › Sin permiso. L-019, L-022.
+
+  EVIDENCIA (20/10/2026):
+  ```text
+  $ cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Estados.test.tsx
+  15:21:32
+  AssertionError: expected <p></p> to be null
+   Test Files  1 failed (1)
+        Tests  1 failed | 6 passed (7)
+     Start at  15:21:33
+  $ cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Estados.test.tsx
+  15:21:56
+   Test Files  1 passed (1)
+        Tests  7 passed (7)
+     Start at  15:21:56
+  $ cd web && date +%T && corepack pnpm@12.10.1 biome ci --colors=off
+  15:22:26
+  Checked 141 files in 66ms. No fixes applied.
+  Found 1 warning.
+  $ cd web && date +%T && corepack pnpm@12.10.1 typecheck
+  15:22:31
+  $ tsc --noEmit
+  ```
+  JUICIO: el rojo muestra el párrafo del super admin para `informar_pago`; el
+  verde exige su ausencia y el texto de propietario/inquilino, con accesibilidad.
+  Se conserva el permiso de la API en las seis páginas que lo descartaban.
+  Biome terminó en 0; aviso previo `useOptionalChain` en `edificios/page.tsx:43`
+  (archivo sin cambios). Se corrigió el formato del test nuevo. Tipos limpios.
+  SUPUESTO: no se verifica una pantalla de pagos todavía inexistente; sí el estado
+  compartido que consume su permiso. Logs locales `rr4-*.log`.
+
+  Verificación final del bloque, de a uno y en primer plano (sin ejecutar 7.2):
+  ```text
+  $ date +%T && bash infra/ci/test-backend.sh
+  15:22:55
+  =========== 2076 passed, 1 xfailed, 16 warnings in 467.74s (0:07:47) ===========
+  ```
+  ```text
+  $ date +%T && bash infra/ci/test-web.sh
+  15:30:55
+   Test Files  47 passed (47)
+        Tests  301 passed (301)
+     Start at  15:30:55
+     Duration  7.71s (environment 37%, tests 37%, import 20%, transform 6%)
+  ```
+  ```text
+  $ date +%T && bash infra/ci/humo.sh
+  15:31:13
+  HUMO OK
+  ...
+   Network proptech_borde  Removed
+   Network proptech_aplicacion  Removed
+   Network proptech_salida_worker  Removed
+   Network proptech_datos  Removed
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  15:33:41
+  All checks passed! / 231 files already formatted / Success: no issues found in 209 source files
+  ```
+  Los tres scripts terminaron con estado 0; `xfail` y avisos del backend son
+  preexistentes. La sección 7 permanece idéntica: 7.2 sigue pendiente.
 
 ## 7. Cierre
 

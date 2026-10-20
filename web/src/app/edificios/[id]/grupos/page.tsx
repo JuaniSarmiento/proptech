@@ -32,7 +32,13 @@ export default async function PaginaGrupos({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
   if (grupos.estado === "sin_permiso") {
-    return <Estados tipo="sinPermiso" queNoPuede="ver los grupos de este edificio" />;
+    return (
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="ver los grupos de este edificio"
+        permisoFaltante={grupos.permiso}
+      />
+    );
   }
   if (grupos.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar los grupos de reparto." />;

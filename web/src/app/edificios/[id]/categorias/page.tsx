@@ -31,7 +31,13 @@ export default async function PaginaCategorias({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
   if (categorias.estado === "sin_permiso") {
-    return <Estados tipo="sinPermiso" queNoPuede="ver las categorías de este edificio" />;
+    return (
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="ver las categorías de este edificio"
+        permisoFaltante={categorias.permiso}
+      />
+    );
   }
   if (categorias.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar las categorías de gasto." />;

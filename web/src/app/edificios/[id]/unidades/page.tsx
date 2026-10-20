@@ -25,7 +25,13 @@ export default async function PaginaPadron({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
   if (padron.estado === "sin_permiso") {
-    return <Estados tipo="sinPermiso" queNoPuede="ver el padrón de este edificio" />;
+    return (
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="ver el padrón de este edificio"
+        permisoFaltante={padron.permiso}
+      />
+    );
   }
   if (padron.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar el padrón de unidades." />;

@@ -25,7 +25,7 @@ type Props =
   | { tipo: "cargando" }
   | { tipo: "vacio"; mensaje: string; detalle?: string; accion?: ReactNode }
   | { tipo: "error"; mensaje: string; onReintentar: () => void }
-  | { tipo: "sinPermiso"; queNoPuede: string }
+  | { tipo: "sinPermiso"; queNoPuede: string; permisoFaltante?: string }
   | { tipo: "noExiste" }
   | { tipo: "sinSesion" };
 
@@ -94,7 +94,11 @@ export function Estados(props: Props) {
       return (
         <main className="estados estados--sin-permiso">
           <h1>No podés {props.queNoPuede}.</h1>
-          <p>Esto lo puede hacer el super admin de la empresa.</p>
+          <p>
+            {props.permisoFaltante === "informar_pago"
+              ? "Esto lo puede hacer la persona propietaria o inquilina de la unidad."
+              : "Esto lo puede hacer el super admin de la empresa."}
+          </p>
         </main>
       );
 

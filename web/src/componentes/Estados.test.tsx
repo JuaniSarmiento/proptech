@@ -55,6 +55,18 @@ describe("Estados", () => {
     await sinViolaciones(container);
   });
 
+  it("sin permiso de informar_pago: indica quién puede informar el pago", async () => {
+    const { container } = render(
+      <Estados tipo="sinPermiso" queNoPuede="informar este pago" permisoFaltante="informar_pago" />,
+    );
+    expect(screen.getByText(/informar este pago/)).toBeTruthy();
+    expect(screen.queryByText("Esto lo puede hacer el super admin de la empresa.")).toBeNull();
+    expect(
+      screen.getByText("Esto lo puede hacer la persona propietaria o inquilina de la unidad."),
+    ).toBeTruthy();
+    await sinViolaciones(container);
+  });
+
   it('no existe: "No encontramos este edificio" con enlace a Mis edificios (Edificio de otra administración)', async () => {
     const { container } = render(<Estados tipo="noExiste" />);
     expect(screen.getByText("No encontramos este edificio")).toBeTruthy();

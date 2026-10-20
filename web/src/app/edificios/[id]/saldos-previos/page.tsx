@@ -26,7 +26,9 @@ export default async function PaginaSaldosPrevios({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
   if (resumen.estado === "sin_permiso") {
-    return <Estados tipo="sinPermiso" queNoPuede="ver este edificio" />;
+    return (
+      <Estados tipo="sinPermiso" queNoPuede="ver este edificio" permisoFaltante={resumen.permiso} />
+    );
   }
   if (resumen.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar el estado del edificio." />;
