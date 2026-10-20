@@ -45,6 +45,12 @@ describe("contraste de los tokens de color (D10)", () => {
     ["color-terracota", "color-terracota-tenue"],
     ["color-terracota", "color-papel-hundido"],
     ["color-advertencia", "color-advertencia-tenue"],
+    // Rediseño a todo el ancho (20/10/2026): los paneles, la barra superior
+    // y el menú son Papel claro, y encima van la línea gris de cada panel,
+    // los enlaces y los estados.
+    ["color-grafito", "color-papel-claro"],
+    ["color-terracota", "color-papel-claro"],
+    ["color-advertencia", "color-papel-claro"],
   ])("%s sobre %s llega a 4,5:1", (texto, fondo) => {
     expect(contrasteDeTokens(texto, fondo)).toBeGreaterThanOrEqual(4.5);
   });
