@@ -209,6 +209,53 @@ de 5.1, que sigue pendiente). Tres hallazgos reales, los tres arreglados en el m
   - Suite completa 21:50:29 `test-web.sh`: `38 files, 204 passed` (vs. 203 de 5.1: +1, el caso nuevo de `tokens.test.ts`). `pnpm biome ci`/`pnpm tsc --noEmit`: limpios. Playwright final 21:50:51 `test-web-navegador.sh`: **132 passed (2.8m)**, sin procesos huérfanos ni contenedores propios.
   - Commit `docs(web): DESIGN.md con los valores reales de tokens.css (5.2)`.
 
+## Pulido visual (orquestador, 19/10/2026)
+
+Pasada de `impeccable polish` (registro product) sobre las siete pantallas, contra el shape aprobado
+y `DESIGN.md`. Capturas a 1280×800 y 320×640 (normal, vacío, 200 unidades, advertencia, nombres largos,
+error 500, 404, panel lateral y "?" abiertos), fuera del árbol versionado:
+
+- Antes: `.git/informes-3b/pulido/antes/` (32 capturas).
+- Después: `.git/informes-3b/pulido/despues/` (final) y `despues/iteracion-1/`, `despues/iteracion-2/`.
+- Script de captura: `.git/informes-3b/pulido/capturar.mjs` (web :3300, API falsa :4300).
+
+Cambios:
+
+- [x] **Bug del "Hecho" con 0 unidades**: era la API falsa, no el backend. `resumen_edificio`
+  (`backend/.../complejos/aplicacion/lectura.py:229`) da `"falta"` con 0 unidades; el escenario
+  `vacio` de `web/e2e/api-falsa.ts` sólo pisaba `cantidad_unidades` y dejaba los pasos del fixture.
+  Ahora unidades/coeficientes/categorías van en falta y `advertencia` deja coeficientes en hecho
+  (lectura.py:230-233). Rojo: 2 casos nuevos en `api-falsa.test.ts`.
+- [x] **Menú lateral**: a ≥768 px faltaba `flex-direction: column` (las secciones quedaban en una
+  línea). Ahora columna fija de 15rem, sticky, fondo Papel hundido, sección actual con fondo
+  Terracota tenue + "▸" + `aria-current`; nombre largo cortado a 3 renglones con `title`.
+- [x] **Mis edificios**: lista de movimientos (grilla por renglón, no links azules sueltos), toda la
+  fila tocable, el enlace se llama sólo como el edificio (antes su nombre accesible era todo pegado).
+- [x] **Resumen**: checklist con renglones, número, estado separado (`data-estado`, "✓ Hecho" en
+  Grafito, "○ Falta" en pastilla Terracota tenue), espacio real entre etiqueta y estado.
+- [x] **Padrón**: textos a la izquierda y números a la derecha, encabezados Label 600 Grafito,
+  identificador como texto de fila (`.boton-enlace`), tipo con su etiqueta ("Departamento"), estado
+  de coeficientes como pastilla con ✓/!/✕.
+- [x] **Panel lateral y "?"**: hojas fijas al borde derecho (antes caían en el flujo debajo de la
+  tabla), "Cerrar" arriba a la derecha, entrada con `opacity` (`@starting-style`).
+- [x] **Formularios**: `.formulario`/`.campo` con estilo propio (el gap declarado en DESIGN.md §5),
+  error en Terracota con "!", casilla antes del texto, resumen de errores en bloque.
+- [x] **Botones**: secundario como base de `button` (`:where()`), `.boton-enlace`, `.boton-icono`,
+  hover/active/disabled del principal; el estado vacío repite la acción en secundario (One Voice).
+- [x] **Grupos**: nombre en negrita + datos en Grafito, método en castellano ("por coeficiente"),
+  renglón editable con "›".
+- [x] **Categorías**: acciones calladas (borde Línea), "Desactivar" a la vista y el nombre sólo para
+  el lector, subir/bajar en casillas fijas.
+- [x] **Intereses y vencimiento**: la vigente como renglones etiqueta/valor (`<dl>`), historial como
+  línea de tiempo con fechas dd/mm/aaaa (`formato.fecha`, sin `Date`) y "Primera versión".
+- [x] **Saldos previos**: aviso "no se puede deshacer" en Advertencia tenue, casilla en renglón
+  tocable, botón deshabilitado visible como tal.
+- [x] **Estados**: error/404/403/401 centrados con aire; vacío con borde punteado; esqueleto de carga.
+- [x] **Tokens**: 6 nuevos (papel-claro, papel-hundido, linea, terracota-oscura, terracota-tenue,
+  advertencia-tenue), 8 pares de contraste nuevos en `tokens.test.ts`; `DESIGN.md` actualizado.
+- [x] **Navegador**: `web/e2e/pulido.spec.ts` (4 casos de layout real que jsdom no ve: menú apilado,
+  estado separado, panel fijo, alineación del padrón), vistos en rojo contra el build anterior.
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

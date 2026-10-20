@@ -7,6 +7,12 @@ colors:
   grafito-suave: "oklch(46% 0.012 55)"
   terracota-de-edificio: "oklch(40% 0.095 35)"
   advertencia: "oklch(48% 0.09 75)"
+  papel-claro: "oklch(99% 0.004 75)"
+  papel-hundido: "oklch(94.5% 0.008 75)"
+  linea: "oklch(89% 0.008 75)"
+  terracota-oscura: "oklch(34% 0.085 35)"
+  terracota-tenue: "oklch(94% 0.022 50)"
+  advertencia-tenue: "oklch(95% 0.03 80)"
 typography:
   titular:
     fontFamily: "Source Sans 3, ui-sans-serif, system-ui, sans-serif"
@@ -64,7 +70,7 @@ Rechaza explícitamente al sistema viejo de administración (gris y apretado), a
 
 ## 2. Colors
 
-Neutros tibios con un único acento terracota de uso escaso. Los cinco tokens del sistema, y nada más: no hay una familia de verde/rojo para "al día"/"vencido" (The Never Color Alone Rule lo prohíbe por diseño, no por omisión).
+Neutros tibios con un único acento terracota de uso escaso. Cinco tokens de base más seis de superficie (pulido visual del 3b, 19/10/2026), y nada más: no hay una familia de verde/rojo para "al día"/"vencido" (The Never Color Alone Rule lo prohíbe por diseño, no por omisión).
 
 ### Primary
 - **Terracota de edificio** (`oklch(40% 0.095 35)`): el acento. Acción principal de cada pantalla (`.boton-principal`), foco y lo que necesita la atención del usuario. Familia ladrillo, cálida y apagada, nunca un naranja saturado. Contraste sobre Papel tibio: **8,81:1**.
@@ -74,8 +80,15 @@ Neutros tibios con un único acento terracota de uso escaso. Los cinco tokens de
 - **Tinta** (`oklch(22% 0.012 55)`): texto principal, casi negro con el mismo tinte cálido, nunca `#000`. Contraste sobre Papel tibio: **15,90:1**.
 - **Grafito suave** (`oklch(46% 0.012 55)`): texto secundario, bordes de paneles y separadores de tabla/historial. Contraste sobre Papel tibio: **6,55:1**.
 
+### Superficies (pulido 3b)
+- **Papel claro** (`oklch(99% 0.004 75)`): fondo de campos y botones secundarios, un escalón más claro que el papel para que el control se lea como control.
+- **Papel hundido** (`oklch(94.5% 0.008 75)`): el segundo neutro: menú lateral, filas al pasar el mouse, esqueletos de carga, estados "ok" y "listo".
+- **Línea** (`oklch(89% 0.008 75)`): separador de renglones (listas, tabla, historial). Grafito suave queda para bordes de controles (inputs, botones), que sí necesitan 3:1.
+- **Terracota oscura** (`oklch(34% 0.085 35)`): `:hover` del botón principal.
+- **Terracota tenue** (`oklch(94% 0.022 50)`) y **Advertencia tenue** (`oklch(95% 0.03 80)`): fondos de lo que pide atención (sección actual del menú, paso que falta, "fuera de tolerancia", resumen de errores) y del aviso "no se puede deshacer". Siempre con su texto en Terracota o Advertencia encima, verificados a 4,5:1 en `tokens.test.ts`.
+
 ### Estado
-- **Advertencia** (`oklch(48% 0.09 75)`): el único color de estado que existe, para "coeficientes entre 0,9999 y 1,0001" (`EstadoDeCoeficientes`). Contraste sobre Papel tibio: **6,09:1**. "Ok" y "fuera de tolerancia" no tienen color propio: se distinguen por el TEXTO (The Never Color Alone Rule), nunca por un verde o un rojo que un vecino daltónico no vería igual.
+- **Advertencia** (`oklch(48% 0.09 75)`): el único color de estado que existe, para "coeficientes entre 0,9999 y 1,0001" (`EstadoDeCoeficientes`). Contraste sobre Papel tibio: **6,09:1**. "Ok" no tiene color propio; "fuera de tolerancia" y un paso que "falta" usan Terracota (el acento ya significa "lo que necesita tu atención"), nunca un rojo. Los tres llevan además su texto y una marca de forma (✓ ! ✕ ○, puesta por CSS con texto alternativo vacío): The Never Color Alone Rule.
 
 ### Named Rules
 **The One Voice Rule.** El terracota cubre menos del 10% de cualquier pantalla. Si todo es importante, nada lo es.
@@ -116,24 +129,29 @@ Plano por defecto. No hay capas de sombra ambiental ni tarjetas elevadas: la pro
 ### Buttons
 - **Shape:** sin bordes redondeados pronunciados, apenas un quiebre (`border-radius: 0.25rem` / 4px).
 - **Primary (`.boton-principal`):** fondo Terracota de edificio, texto Papel tibio, sin borde, `padding: 0.5rem 1rem`, `font-weight: 600`. Una sola por pantalla (The One Voice Rule): la acción principal de `EncabezadoDePantalla`, "Guardar" de cada panel, "Confirmar".
-- **Secundario / Ghost:** no existe una clase propia todavía. "Cerrar", "Reintentar", "Desactivar"/"Reactivar" y "subir"/"bajar" son `<button>` sin clase, con el estilo nativo del navegador: una decisión por omisión, no una elegida. El sistema no tiene hoy un segundo nivel de énfasis de botón.
+- **Secundario (base de `button`, con `:where()` para especificidad cero):** fondo Papel claro, borde `1px` Grafito suave, texto Tinta, `font-weight: 600`. "Cerrar", "Reintentar", "Secciones". En listas largas (Categorías) baja un escalón más: borde Línea y texto Grafito, para que nueve "Desactivar" no compitan con la acción principal.
+- **Enlace de fila (`.boton-enlace`):** un `<button>` que abre el panel lateral pero se lee como texto de la fila (identificador del padrón, nombre de un grupo o categoría): sin caja, subrayado al pasar.
+- **Ícono (`.boton-icono`):** 2rem cuadrado, "subir"/"bajar" con `aria-label`; "subir" siempre en la primera casilla y "bajar" en la segunda.
+- **Estado vacío:** repite la acción principal pero en estilo secundario (The One Voice Rule: el terracota ya está en el encabezado).
 
 ### Panels (señal del sistema)
-- **Panel lateral (`.panel-lateral`):** fondo Papel tibio, borde `1px solid` Grafito suave, la única sombra del sistema. `<div role="dialog" aria-modal="false">`, NUNCA `<dialog>` con `showModal()` (eso lo volvería modal de verdad y rompería el `Esc` propio). Atrapa el foco mientras está abierto, se cierra con un botón visible o `Esc`, devuelve el foco a quien lo abrió. Es donde viven TODOS los formularios de alta/edición del sistema: nunca una página aparte, nunca un modal bloqueante.
-- **Ayuda "?" (`.ayuda__panel`):** mismo tratamiento visual que el panel lateral (comparten la regla CSS). The Always-Help Rule: toda pantalla, del administrador y del vecino, lleva un botón "?" junto a su título, con las tres partes fijas (¿Para qué sirve esta pantalla? / ¿Qué hago acá? / ¿Y después?). Se abre al tocar o hacer clic (nunca sólo al pasar el mouse), tiene nombre accesible y se cierra con botón visible o `Esc`.
+- **Panel lateral (`.panel-lateral`):** hoja `position: fixed` pegada al borde derecho, `min(28rem, 100vw)` de ancho y scroll propio; fondo Papel tibio, borde izquierdo `1px` Grafito suave, la única sombra del sistema; entra con `opacity` vía `@starting-style`. "Cerrar" arriba a la derecha. `<div role="dialog" aria-modal="false">`, NUNCA `<dialog>` con `showModal()` (eso lo volvería modal de verdad y rompería el `Esc` propio). Atrapa el foco mientras está abierto, se cierra con un botón visible o `Esc`, devuelve el foco a quien lo abrió. Es donde viven TODOS los formularios de alta/edición del sistema: nunca una página aparte, nunca un modal bloqueante.
+- **Ayuda "?" (`.ayuda__panel`):** mismo tratamiento visual que el panel lateral (comparten la regla CSS), por encima de él (`z-index`) si se abre adentro. El botón "?" es un círculo de 1,75rem con borde Grafito suave. The Always-Help Rule: toda pantalla, del administrador y del vecino, lleva un botón "?" junto a su título, con las tres partes fijas (¿Para qué sirve esta pantalla? / ¿Qué hago acá? / ¿Y después?). Se abre al tocar o hacer clic (nunca sólo al pasar el mouse), tiene nombre accesible y se cierra con botón visible o `Esc`.
 
 ### Navigation
-- **Menú del edificio (`MenuDelEdificio`):** `<nav aria-label="Menú del edificio">` con el enlace "Mis edificios", el nombre del edificio y, adentro, un segundo `<nav aria-label="Secciones del edificio">` con la lista de secciones. La sección actual se marca con `aria-current="page"` Y con una marca de forma (`▸`), nunca sólo con color. Por debajo de 768px se pliega a un botón "Secciones" (operable con teclado, cierra con `Esc`); desde 768px el menú queda fijo a la izquierda (`flex: 0 0 14rem`) y el contenido a la derecha.
+- **Menú del edificio (`MenuDelEdificio`):** `<nav aria-label="Menú del edificio">` con el enlace "Mis edificios", el nombre del edificio y, adentro, un segundo `<nav aria-label="Secciones del edificio">` con la lista de secciones. La sección actual se marca con `aria-current="page"` Y con una marca de forma (`▸`), nunca sólo con color. Por debajo de 768px se pliega a un botón "Secciones" (operable con teclado, cierra con `Esc`); desde 768px el menú queda fijo a la izquierda (`flex: 0 0 15rem`, `position: sticky`, fondo Papel hundido) con las secciones apiladas en columna, y el contenido a la derecha (máx. 68rem). La sección actual lleva además fondo Terracota tenue. Un nombre de edificio largo se corta a tres renglones (`line-clamp`) con el nombre completo en `title`.
 
 ### Lists
-- **Listas de fila (`.lista-de-edificios`, `.grupos-de-reparto`, `.categorias-de-gasto`):** mismo patrón: `<ul>` sin viñetas, filas en `flex` con `gap: 0.5rem`, nunca una tarjeta. Cada fila es texto corrido (nombre, estado, acción), alineado por `baseline`.
+- **Listas de fila (`.lista-de-edificios`, `.grupos-de-reparto`, `.categorias-de-gasto`, `.resumen__checklist`):** mismo patrón de lista de movimientos de home banking: `<ul>`/`<ol>` sin viñetas, renglones separados por una Línea fina, nunca una tarjeta. En Mis edificios cada renglón es una grilla (nombre y localidad, unidades a la derecha, estados, "›") y toda la fila se toca, pero el enlace se llama sólo como el edificio (`::after` estirado). El checklist del resumen marca cada paso con `data-estado` (hecho: Grafito con ✓; falta: pastilla Terracota tenue con ○) y su texto.
+- **Renglones etiqueta/valor (`.renglones`, un `<dl>`):** la configuración vigente de Intereses y vencimiento como un recibo: etiqueta en Grafito a la izquierda, valor en 600 a la derecha.
 - **Historial como línea de tiempo (`.historial-de-configuracion`):** cada versión es un renglón con un borde inferior fino, sin tarjeta; "rige desde", autor y los campos que cambiaron respecto de la versión anterior, de más nueva a más vieja.
 
 ### Data Table
-- **Padrón de unidades (`.padron-de-unidades`):** `border-collapse: collapse`, celdas con borde inferior fino de Grafito suave, `white-space: nowrap`. El contenedor (`.padron-de-unidades__scroll`) scrollea horizontalmente PARA SÍ MISMO (`overflow-x: auto`): una tabla de 5 columnas y hasta 200 filas nunca empuja el ancho de la página entera a 320px.
+- **Padrón de unidades (`.padron-de-unidades`):** `border-collapse: collapse`, textos a la izquierda y números a la derecha (`.padron-de-unidades .numero-tabular`), encabezados en Label 600 Grafito con borde inferior Grafito, celdas con borde inferior Línea, fila resaltada al pasar, `white-space: nowrap`. El contenedor (`.padron-de-unidades__scroll`) scrollea horizontalmente PARA SÍ MISMO (`overflow-x: auto`): una tabla de 5 columnas y hasta 200 filas nunca empuja el ancho de la página entera a 320px.
 
 ### Inputs / Fields
-- **Estado real:** `Campo`/`Formulario` asocian cada error por programa (`aria-invalid`, `aria-describedby`, resumen enlazado arriba del formulario), pero no tienen hoy una clase de `tokens.css` propia: heredan el estilo nativo del navegador para `<input>`/`<select>`/`<label>`. Es un gap conocido, no una omisión de esta ficha: ninguna de las siete pantallas lo necesitó para pasar WCAG 2.2 AA (los navegadores dan foco visible e ilegibilidad mínima por default), pero un futuro `/impeccable polish` tiene trabajo acá.
+- **`.formulario` / `.campo`** (pulido 3b): etiqueta arriba en 600, control de 2,5rem de alto a todo el ancho, fondo Papel claro, borde Grafito suave; con error, borde Terracota y el mensaje debajo en Terracota con "!". La casilla va antes de su texto, en un renglón Papel hundido que es todo zona para tocar. El resumen de errores es un bloque Terracota tenue con borde Terracota.
+- **Foco:** `:focus-visible` global, `2px solid` Terracota con `outline-offset: 2px`.
 
 ## 6. Do's and Don'ts
 
