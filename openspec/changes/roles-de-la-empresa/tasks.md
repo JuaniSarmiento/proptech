@@ -115,10 +115,38 @@ EVIDENCIA (20/10/2026):
   SUPUESTO: ninguno. Logs y copia previa locales en `.git/informes-roles-bloque-a-v2/`.
 
 
-- [ ] 2.3 El alcance (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: `alcanza` por perfil y alcance (principal, todo complejo y unidad de la administración; por edificio, su complejo y sus unidades y ningún otro; por unidad, su unidad y su complejo, nunca otra unidad del mismo complejo), dos propietarios distintos de la misma unidad y un inquilino de otra. RED: con `alcanza` viejo, un contador principal no alcanza nada. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Contador principal; › Dos asignaciones de la misma persona (la parte del dominio). Lecciones: L-019.
+- [x] 2.3 El alcance (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: `alcanza` por perfil y alcance (principal, todo complejo y unidad de la administración; por edificio, su complejo y sus unidades y ningún otro; por unidad, su unidad y su complejo, nunca otra unidad del mismo complejo), dos propietarios distintos de la misma unidad y un inquilino de otra. RED: con `alcanza` viejo, un contador principal no alcanza nada. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Contador principal; › Dos asignaciones de la misma persona (la parte del dominio). Lecciones: L-019.
 
-  JUICIO: pendiente; depende del modelo de asignación de 2.1. No hay RED/GREEN ni
-  implementación; `alcanza` original sigue intacto.
+EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  12:11:18
+  FAILED test_alcance_de_los_nueve_perfiles[CP]
+  3 failed, 431 passed in 0.42s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso -q
+  12:11:26
+  436 passed, 1 warning in 0.57s
+  ```
+  JUICIO: los nueve perfiles cubren complejo, unidad propia, otra unidad y otro
+  edificio; incluye dos propietarios y un inquilino, y la unión de asignaciones.
+  Los casos que nacieron verdes se atacaron con el mutante de unidad (copia
+  previa local y diff real, restaurado byte a byte):
+  ```diff
+  -        if unidad_id is None or asignacion.unidad_id == unidad_id:
+  +        if asignacion.complejo_id == complejo_id:
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q -k alcance_de
+  12:11:44
+  FAILED test_alcance_de_dos_propietarios_e_inquilino_de_otra_unidad
+  3 failed, 16 passed, 415 deselected in 0.08s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso -q
+  12:11:45
+  436 passed, 1 warning in 0.53s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 225 files already formatted / Success: no issues found in 205 source files
+  ```
+  SUPUESTO: ninguno.
 
 
 ## 3. La base

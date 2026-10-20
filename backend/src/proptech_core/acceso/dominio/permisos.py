@@ -158,16 +158,14 @@ def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID 
 def alcanza(
     asignaciones: Sequence[Asignacion], complejo_id: UUID, unidad_id: UUID | None = None
 ) -> bool:
-    """D-096: titular, todo; colaborador, sólo los complejos asignados;
-    consejo, el suyo; vecino, sus unidades y su complejo (el complejo de una
-    unidad propia, aunque no se pida ninguna unidad en particular)."""
+    """Principal: toda la administración; edificio: sus unidades; vecino: las propias."""
     for asignacion in asignaciones:
-        if asignacion.rol is Rol.SUPER_ADMIN:
+        if asignacion.alcance is Alcance.PRINCIPAL:
             return True
-        if asignacion.rol in (Rol.ADMINISTRADOR, Rol.AUXILIAR, Rol.CONSEJO):
-            if asignacion.complejo_id == complejo_id:
-                return True
-        elif asignacion.rol is Rol.VECINO and asignacion.complejo_id == complejo_id:
-            if unidad_id is None or asignacion.unidad_id == unidad_id:
-                return True
+        if asignacion.complejo_id != complejo_id:
+            continue
+        if asignacion.alcance is Alcance.EDIFICIO:
+            return True
+        if unidad_id is None or asignacion.unidad_id == unidad_id:
+            return True
     return False

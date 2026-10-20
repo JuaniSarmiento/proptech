@@ -253,3 +253,43 @@ def test_rechaza_formas_invalidas_al_construir(
 ) -> None:
     with pytest.raises(ValueError):
         Asignacion(rol, complejo, unidad, vinculo)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "indice,esperados",
+    [
+        (0, (True, True, True, True)),
+        (1, (True, True, True, True)),
+        (2, (True, True, True, False)),
+        (3, (True, True, True, True)),
+        (4, (True, True, True, False)),
+        (5, (True, True, True, False)),
+        (6, (True, True, True, False)),
+        (7, (True, True, False, False)),
+        (8, (True, True, False, False)),
+    ],
+    ids=_COLUMNAS,
+)
+def test_alcance_de_los_nueve_perfiles(indice: int, esperados: tuple[bool, ...]) -> None:
+    asignaciones = [_PERFILES[indice]]
+    obtenido = (
+        alcanza(asignaciones, COMPLEJO),
+        alcanza(asignaciones, COMPLEJO, UNIDAD),
+        alcanza(asignaciones, COMPLEJO, OTRA_UNIDAD),
+        alcanza(asignaciones, OTRO_COMPLEJO, UNIDAD),
+    )
+    assert obtenido == esperados
+
+
+def test_alcance_de_dos_propietarios_e_inquilino_de_otra_unidad() -> None:
+    propietaria = [Asignacion(Rol.VECINO, COMPLEJO, UNIDAD, "propietario")]
+    propietario = [Asignacion(Rol.VECINO, COMPLEJO, UNIDAD, "propietario")]
+    inquilino = [Asignacion(Rol.VECINO, COMPLEJO, OTRA_UNIDAD, "inquilino")]
+    for persona in (propietaria, propietario):
+        assert alcanza(persona, COMPLEJO, UNIDAD) is True
+        assert alcanza(persona, COMPLEJO, OTRA_UNIDAD) is False
+    assert alcanza(inquilino, COMPLEJO, OTRA_UNIDAD) is True
+    assert alcanza(inquilino, COMPLEJO, UNIDAD) is False
+    assert alcanza(propietaria + inquilino, COMPLEJO, UNIDAD) is True
+    assert alcanza(propietaria + inquilino, COMPLEJO, OTRA_UNIDAD) is True
+    assert alcanza(propietaria + inquilino, OTRO_COMPLEJO) is False
