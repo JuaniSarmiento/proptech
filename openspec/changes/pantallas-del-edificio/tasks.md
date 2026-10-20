@@ -532,6 +532,33 @@ AssertionError: expected <button type="button" …(1)>…(1)</button> to be <but
    Start at  09:51:02
 ```
 
+### 4. Auditor fila 3: mutaciones manuales de la ayuda acoplada
+
+Copia previa en .git/informes-3b/arreglos-finales/Ayuda.pre-mutacion.tsx. Mutante 1: enfocar Cerrar ayuda al abrir; el test existente detecta la pérdida de foco. Mutante 2 (independiente): cerrar al salir el foco de la ayuda; el test existente detecta que desaparece al trabajar. Ambos se revierten íntegramente antes del verde; no se agregan aserciones que imiten la implementación.
+
+- 04-foco-rojo (09:51:21, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Ayuda.test.tsx -t "acoplada: abrirla"`
+```text
+AssertionError: expected <button type="button" …(2)>…(1)</button> to be <button type="button" …(3)>…(1)</button> // Object.is equality
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  09:51:22
+```
+
+- 04-permanencia-rojo (09:51:35, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Ayuda.test.tsx -t "queda abierta mientras"`
+```text
+TestingLibraryElementError: Unable to find an element with the text: ¿Qué hago acá?. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  09:51:35
+```
+
+- 04-verde (09:51:56, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Ayuda.test.tsx`
+```text
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  09:51:57
+```
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.
