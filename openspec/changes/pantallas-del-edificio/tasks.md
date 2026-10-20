@@ -395,6 +395,24 @@ familia por hallazgo).
     `vitest run` → `264 passed` (sólo R3C-9 y los dos casos obsoletos de
     `__rompedor__` en rojo). `pnpm tsc --noEmit`/`pnpm biome check`: limpios.
   - Commit `fix(web): dias_de_gracia/dia_de_vencimiento como enteros estrictos (R3C-6)`.
+- [x] R3C-7 (BAJA): `loading.tsx` reemplaza toda la pantalla mientras el segmento
+  carga (nunca se anida dentro de `ArmazonDelEdificio`); sin su propio
+  `<main>`/`<h1>`, axe en el navegador real da `landmark-one-main`/
+  `page-has-heading-one`.
+  - RED 22:48:56 `vitest run .../unidades/loading.test.tsx` (nuevo, componente) →
+    `expected null to be truthy` (sin `<main>` ni `<h1>`).
+  - Arreglo: los siete `loading.tsx` envuelven el esqueleto en `<main>` con
+    `<h1 className="sr-only">Cargando</h1>` (el esqueleto ya comunica el estado
+    con `role="status"`).
+  - GREEN 22:49:11 `vitest run .../unidades/loading.test.tsx` → `1 passed`.
+    `e2e/estado-de-carga.spec.ts` nuevo (reemplaza el caso del rompedor,
+    `e2e/rompedor.spec.ts`): axe en el navegador real contra `/unidades` en el
+    escenario "lento" — se corre en el barrido completo de cierre (L-010, el
+    rompedor ya lo había visto en rojo con 2 violaciones).
+  - Suite completa 22:49:50 `vitest run` → `265 passed` (sólo R3C-9 y los dos
+    casos obsoletos de `__rompedor__` en rojo). `pnpm tsc --noEmit`/`pnpm biome
+    check`: limpios.
+  - Commit `fix(web): loading.tsx con <main> y <h1> (R3C-7)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
