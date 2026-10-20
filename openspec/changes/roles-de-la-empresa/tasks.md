@@ -875,7 +875,19 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   13:45:33 bash infra/ci/test-web.sh      → 47 test files, 300 tests passed in 8.42s
   13:45:45 bash infra/ci/humo.sh          → HUMO OK, compose down -v limpio
   ```
-  vs. la 1.1 (2 failed, 2034 passed, 1 xfailed): los dos failed de la 1.1 ya
-  no están y se sumaron los tests de las tareas 2-6. No se corrió 7.2 (fuera
+  vs. la 1.1 (1757 passed, 0 failed, 1 xfailed): se sumaron 304 tests backend
+  y 2 tests web (300 frente a 298). No se corrió 7.2 (fuera
   de este alcance); esta corrida es evidencia para 7.1, no el cierre formal.
+  EVIDENCIA, auditor fila 3 (20/10/2026): comprobación documental contra la
+  salida real de 1.1; sin cambios de código.
+  ```text
+  RED $ date +%T && python3 .git/informes-roles-cierre/verificar-fila-3.py
+  16:10:26 AssertionError: línea de base 7.1 incorrecta: 2 failed, 2034 passed, 1 xfailed; 1.1 = 1757 passed, 0 failed
+  GREEN $ date +%T && python3 .git/informes-roles-cierre/verificar-fila-3.py
+  16:10:33 OK: 7.1 coincide con 1.1 (1757 passed, 0 failed, 1 xfailed)
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:10:33 All checks passed! / 231 files already formatted / Success: no issues found in 209 source files
+  ```
+  JUICIO: comparación corregida; +304 backend y +2 web. SUPUESTO: ninguno.
+
 - [ ] 7.2 Corrida de cierre después de la última vuelta (L-010): `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno (comparten contenedores con nombres del proyecto), con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA (`git rev-parse HEAD`). Verificación: los tres comandos con su salida en el informe. Escenarios: todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010.
