@@ -13,6 +13,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+import { crearGrupoAction, editarGrupoAction } from "../grupos/acciones";
+import { crearUnidadAction, editarUnidadAction } from "../unidades/acciones";
 import { crearVersionDeConfiguracionAction } from "./acciones";
 
 const UUID = "11111111-1111-1111-1111-111111111111";
@@ -92,5 +94,66 @@ describe("R3C-6 · enteros estrictos, sin parseInt permisivo", () => {
       recargo_segundo_vencimiento: "1.00",
     });
     expect(cuerpo.dia_segundo_vencimiento).not.toBe(2);
+  });
+});
+
+describe("Formato decimal de formularios: ida y vuelta como texto", () => {
+  it.each([",", "."])(
+    "configuración acepta %s y manda punto, con ceros y recargo opcional",
+    async (separador) => {
+      const cuerpo = await enviar({
+        tasa_mensual: `3${separador}00`,
+        porcentaje_fondo: `2${separador}50`,
+        dias_de_gracia: "5",
+        dia_de_vencimiento: "10",
+        modalidad_de_vencimiento: "doble",
+        dia_segundo_vencimiento: "20",
+        recargo_segundo_vencimiento: `1${separador}25`,
+        vigente_desde: "2026-11-01",
+      });
+      expect(cuerpo).toMatchObject({
+        tasa_mensual: "3.00",
+        porcentaje_fondo: "2.50",
+        recargo_segundo_vencimiento: "1.25",
+        dias_de_gracia: 5,
+      });
+    },
+  );
+
+  it.each([",", "."])(
+    "alta y edición de unidad aceptan %s sin perder precisión",
+    async (separador) => {
+      for (const accion of [crearUnidadAction, editarUnidadAction]) {
+        const datos = new FormData();
+        datos.set("unidad_id", UUID);
+        datos.set("identificador", "1A");
+        datos.set("tipo", "cochera");
+        datos.set("piso", "PB");
+        datos.set("superficie_m2", `123456789012${separador}34`);
+        datos.set("coeficiente", `0${separador}083333`);
+        expect((await accion(UUID, null, datos))?.ok).toBe(true);
+        expect(JSON.parse(ultimoCuerpo)).toMatchObject({
+          superficie_m2: "123456789012.34",
+          coeficiente: "0.083333",
+        });
+      }
+    },
+  );
+
+  it.each([",", "."])("alta y edición de coeficientes propios aceptan %s", async (separador) => {
+    for (const accion of [crearGrupoAction, editarGrupoAction]) {
+      const datos = new FormData();
+      datos.set("grupo_id", UUID);
+      datos.set("clave", "ascensor");
+      datos.set("nombre", "Ascensor");
+      datos.set("metodo", "coeficiente");
+      datos.set("modo_de_coeficientes", "propios");
+      datos.set(`unidad_${UUID}`, "on");
+      datos.set(`coeficiente_${UUID}`, `0${separador}083333`);
+      expect((await accion(UUID, [UUID], null, datos))?.ok).toBe(true);
+      expect(JSON.parse(ultimoCuerpo).unidades).toEqual([
+        { unidad_id: UUID, coeficiente: "0.083333" },
+      ]);
+    }
   });
 });

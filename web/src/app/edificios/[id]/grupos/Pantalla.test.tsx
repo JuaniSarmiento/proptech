@@ -131,6 +131,7 @@ describe("PantallaGrupos", () => {
     );
     await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
     expect(screen.getByLabelText("Nombre")).toHaveProperty("value", "Ascensor");
+    expect(screen.getByLabelText("Coeficiente de 1A")).toHaveProperty("value", "0,500000");
   });
 
   it('"Agregar grupo" abre el panel de alta, con clave, nombre, método y modo', async () => {

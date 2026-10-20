@@ -590,14 +590,7 @@ Tres casos con ids aislados del barrido de lecturas: alta desde el vacío, Conte
 
 - Verde adicional 09:56:40: `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Formulario.test.tsx e2e/api-falsa.test.ts` → `27 passed`.
 
-#- 06-verde (09:57:19, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/configuracion/Pantalla.test.tsx`
-```text
- Test Files  1 passed (1)
-      Tests  7 passed (7)
-   Start at  09:57:20
-```
-
-## 6. Auditor fila 6: ayuda limitada a versiones y vigencia
+### 6. Auditor fila 6: ayuda limitada a versiones y vigencia
 
 Base: 6/6. El ejemplo debe describir la versión anterior guardada y vigente hasta que entra la nueva; se elimina la promesa de un cálculo de liquidación inexistente.
 
@@ -608,6 +601,70 @@ TestingLibraryElementError: Unable to find an element with the text: /La versió
       Tests  1 failed | 6 skipped (7)
    Start at  09:56:59
 ```
+
+- 06-verde (09:57:19, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/configuracion/Pantalla.test.tsx`
+```text
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  09:57:20
+```
+
+### 7. Formato decimal en formularios: coma visible, punto en la API
+
+Base: 53/53. Tasas, fondo, recargo, superficies y coeficientes (unidades y grupos propios): presentación sin agrupación de miles, separador decimal con coma; las acciones normalizan sólo texto decimal con coma a punto, sin calcular, redondear ni usar Number/parseFloat. Se sigue aceptando punto; entradas ambiguas quedan para el rechazo de la API. Pruebas de ida/vuelta, ceros, precisión y conservación tras error; R3C-4 sigue comprobando id y coeficiente, ahora con coma visible.
+
+- 07-rojo (09:58:46, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/{configuracion,unidades,grupos}/*.test.*`
+```text
+AssertionError: expected { id: 'u2', coeficiente: '0.300000' } to deeply equal { id: 'u2', coeficiente: '0,300000' }
+ Test Files  4 failed | 2 passed (6)
+      Tests  8 failed | 35 passed (43)
+   Start at  09:58:46
+```
+
+- 07-verde (09:59:24, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/{configuracion,unidades,grupos}/*.test.* src/lib/formato.test.ts src/lib/test/sinNumeroSobrePlata.test.ts`
+```text
+ Test Files  8 passed (8)
+      Tests  60 passed (60)
+   Start at  09:59:25
+```
+
+
+- Primer cierre de navegador (10:00:31): `date +%T && git rev-parse --short HEAD && PROPTECH_PUERTO_API_FALSA=4500 PROPTECH_PUERTO_WEB=3500 bash infra/ci/test-web-navegador.sh` → `142 passed, 2 failed`. La expectativa de superficie aún pedía `60.25`; la pantalla conservaba correctamente `60,25`. Se corrige sólo esa expectativa, conservando el punto exigido en el JSON de la API, y se repite el cierre completo.
+
+### Corridas finales solicitadas (de a una)
+
+Commit ejecutado: `b88f639`; árbol de `web/`: `bcd4dee9a4431a70dd0321086b407f47974d6478`. El amend posterior sólo agrega esta evidencia a `tasks.md`; los archivos verificados conservan este árbol.
+
+- cierre-biome (10:04:33, salida 0): `cd web && date +%T && git rev-parse --short HEAD && corepack pnpm@12.10.1 biome ci`
+```text
+Checked 139 files in 86ms. No fixes applied.
+Found 1 warning.
+```
+
+- cierre-typescript (10:04:39, salida 0): `cd web && date +%T && git rev-parse --short HEAD && corepack pnpm@12.10.1 tsc --noEmit`
+```text
+10:04:39
+b88f639
+(node:3812808) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+```
+
+- cierre-vitest (10:04:46, salida 0): `cd web && date +%T && git rev-parse --short HEAD && corepack pnpm@12.10.1 vitest run`
+```text
+ Test Files  45 passed (45)
+      Tests  298 passed (298)
+   Start at  10:04:46
+   Duration  7.93s (environment 37%, tests 37%, import 18%, transform 8%)
+```
+
+- cierre-navegador (10:05:05, salida 0): `date +%T && git rev-parse --short HEAD && PROPTECH_PUERTO_API_FALSA=4500 PROPTECH_PUERTO_WEB=3500 bash infra/ci/test-web-navegador.sh`
+```text
+  ✓  144 [chromium] › e2e/pulido.spec.ts:146:3 › rediseño a todo el ancho › el resumen muestra la barra "N de 6 pasos" y el formulario de configuración usa todo el ancho (1.1s)
+
+  144 passed (3.0m)
+```
+
+Conteos: Vitest 282 → 298 (+16), 45 archivos; Playwright 141 → 144 (+3). Biome conserva el único aviso previo de `app/edificios/page.tsx` (useOptionalChain). La 6.1 sigue pendiente: por alcance explícito de Juani no se corrieron backend, humo ni Docker; grupo 7 y tarea 2.3 intactos.
 
 ## 6. Cierre de los grupos 1 a 6
 

@@ -139,7 +139,41 @@ describe("PantallaConfiguracion", () => {
     await usuario.click(screen.getByRole("button", { name: "Cambiar configuración" }));
     expect(screen.getByLabelText("Rige desde")).toBeTruthy();
     expect(screen.getByText(/la versión anterior no se borra/i)).toBeTruthy();
-    expect(screen.getByLabelText("Tasa mensual")).toHaveProperty("value", "3.00"); // crudo de la API, no formato argentino: se resubmite tal cual
+    expect(screen.getByLabelText("Tasa mensual")).toHaveProperty("value", "3,00"); // edición en formato argentino
+    expect(screen.getByLabelText("Fondo de reserva")).toHaveProperty("value", "0,00");
+  });
+
+  it("decimales: el recargo se muestra con coma y conserva la coma al escribir y enviar", async () => {
+    const usuario = userEvent.setup();
+    let envio: FormData | undefined;
+    const accionCrear = async (_previo: unknown, datos: FormData) => {
+      envio = datos;
+      return { erroresPorCampo: { tasa_mensual: "Revisá la tasa" }, erroresDesconocidos: [] };
+    };
+    render(
+      <PantallaConfiguracion
+        id="e1"
+        nombreEdificio="Edificio API"
+        vigente={{
+          ...V1,
+          modalidad_de_vencimiento: "doble",
+          dia_segundo_vencimiento: 20,
+          recargo_segundo_vencimiento: "1.50",
+        }}
+        historial={[V1]}
+        accionCrear={accionCrear}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Cambiar configuración" }));
+    const recargo = screen.getByLabelText("Recargo del segundo vencimiento");
+    expect(recargo).toHaveProperty("value", "1,50");
+    await usuario.clear(recargo);
+    await usuario.type(recargo, "2,75");
+    await usuario.type(screen.getByLabelText("Rige desde"), "2026-11-01");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    await screen.findAllByText("Revisá la tasa");
+    expect(envio?.get("recargo_segundo_vencimiento")).toBe("2,75");
+    expect(recargo).toHaveProperty("value", "2,75");
   });
 
   it("sin configuración vigente muestra el estado y permite crear la primera versión", () => {

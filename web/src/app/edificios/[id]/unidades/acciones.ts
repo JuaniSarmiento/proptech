@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import type { ErrorDeCampo, ResultadoApi } from "../../../../lib/api/cliente";
 import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import { crearUnidad, editarUnidad } from "../../../../lib/api/unidades";
+import { decimalParaApi } from "../../../../lib/formato";
 import type { EstadoFormularioUnidad } from "./Pantalla";
 
 const _CAMPOS_CONOCIDOS = ["identificador", "tipo", "piso", "coeficiente", "superficie_m2"];
@@ -22,8 +23,8 @@ function _datosDelFormulario(formData: FormData) {
     identificador: String(formData.get("identificador") ?? ""),
     tipo: String(formData.get("tipo") ?? ""),
     piso: String(formData.get("piso") ?? ""),
-    coeficiente: String(formData.get("coeficiente") ?? ""),
-    superficie_m2: String(formData.get("superficie_m2") ?? ""),
+    coeficiente: decimalParaApi(String(formData.get("coeficiente") ?? "")),
+    superficie_m2: decimalParaApi(String(formData.get("superficie_m2") ?? "")),
   };
 }
 

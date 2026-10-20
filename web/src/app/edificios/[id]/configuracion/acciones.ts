@@ -17,6 +17,7 @@ import { revalidatePath } from "next/cache";
 import type { ErrorDeCampo, ResultadoApi } from "../../../../lib/api/cliente";
 import { crearVersionDeConfiguracion } from "../../../../lib/api/configuracion";
 import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
+import { decimalParaApi } from "../../../../lib/formato";
 import type { EstadoFormularioVersion } from "./Pantalla";
 
 const _CAMPOS_CONOCIDOS = [
@@ -53,7 +54,7 @@ function _enteroONulo(valor: FormDataEntryValue | null): number | null {
 
 function _textoONulo(valor: FormDataEntryValue | null): string | null {
   const texto = String(valor ?? "").trim();
-  return texto === "" ? null : texto;
+  return texto === "" ? null : decimalParaApi(texto);
 }
 
 export async function crearVersionDeConfiguracionAction(
@@ -63,10 +64,10 @@ export async function crearVersionDeConfiguracionAction(
 ): Promise<EstadoFormularioVersion> {
   const modalidad = String(formData.get("modalidad_de_vencimiento") ?? "unico");
   const resultado: ResultadoApi<unknown> = await crearVersionDeConfiguracion(complejoId, {
-    tasa_mensual: String(formData.get("tasa_mensual") ?? ""),
+    tasa_mensual: decimalParaApi(String(formData.get("tasa_mensual") ?? "")),
     dias_de_gracia: _entero(formData.get("dias_de_gracia"), "0"),
     forma_de_calculo: String(formData.get("forma_de_calculo") ?? ""),
-    porcentaje_fondo: String(formData.get("porcentaje_fondo") ?? ""),
+    porcentaje_fondo: decimalParaApi(String(formData.get("porcentaje_fondo") ?? "")),
     dia_de_vencimiento: _entero(formData.get("dia_de_vencimiento"), "0"),
     modalidad_de_vencimiento: modalidad,
     dia_segundo_vencimiento:

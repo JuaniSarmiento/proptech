@@ -25,8 +25,10 @@ async function cargarUnidad(page: Page, id: string) {
   await panel.getByLabel("Identificador", { exact: true }).fill(datos.identificador);
   await panel.getByRole("combobox", { name: "Tipo", exact: true }).selectOption(datos.tipo);
   await panel.getByLabel("Piso", { exact: true }).fill(datos.piso);
-  await panel.getByLabel("Superficie (m²)", { exact: true }).fill(datos.superficie_m2);
-  await panel.getByLabel("Coeficiente", { exact: true }).fill(datos.coeficiente);
+  await panel
+    .getByLabel("Superficie (m²)", { exact: true })
+    .fill(datos.superficie_m2.replace(".", ","));
+  await panel.getByLabel("Coeficiente", { exact: true }).fill(datos.coeficiente.replace(".", ","));
   await guardarUnidad(page);
   return panel;
 }
@@ -72,9 +74,11 @@ for (const [clave, mensaje] of [
       );
       await expect(panel.getByLabel("Piso", { exact: true })).toHaveValue(datos.piso);
       await expect(panel.getByLabel("Superficie (m²)", { exact: true })).toHaveValue(
-        datos.superficie_m2,
+        datos.superficie_m2.replace(".", ","),
       );
-      await expect(panel.getByLabel("Coeficiente", { exact: true })).toHaveValue(datos.coeficiente);
+      await expect(panel.getByLabel("Coeficiente", { exact: true })).toHaveValue(
+        datos.coeficiente.replace(".", ","),
+      );
       const escritura = await (await request.get(`${baseApi}/api/__debug/ultima-escritura`)).json();
       expect(escritura.url).toBe(`/api/complejos/${id}/unidades`);
       expect(escritura.contentType).toBe("application/json");

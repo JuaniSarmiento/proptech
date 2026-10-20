@@ -25,6 +25,7 @@ import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { Grupo, Unidad } from "../../../../lib/api/tipos";
+import { decimalParaCampo } from "../../../../lib/formato";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_GRUPOS } from "./ayuda";
 
@@ -334,7 +335,8 @@ export function PantallaGrupos({
                     type="text"
                     name={`coeficiente_${unidad.id}`}
                     aria-label={`Coeficiente de ${unidad.identificador}`}
-                    defaultValue={coeficientesPrevios.get(unidad.id) ?? ""}
+                    inputMode="decimal"
+                    defaultValue={decimalParaCampo(coeficientesPrevios.get(unidad.id) ?? "")}
                   />
                 ) : null}
               </div>

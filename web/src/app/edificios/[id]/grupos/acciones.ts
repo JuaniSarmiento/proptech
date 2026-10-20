@@ -17,6 +17,7 @@ import {
   type MiembroAEnviar,
 } from "../../../../lib/api/grupos";
 import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
+import { decimalParaApi } from "../../../../lib/formato";
 import type { EstadoFormularioGrupo } from "./Pantalla";
 
 const _CAMPOS_DATOS = ["clave", "nombre", "metodo"];
@@ -36,7 +37,9 @@ function _unidadesSeleccionadas(
       continue;
     }
     const coeficiente =
-      modo === "propios" ? String(formData.get(`coeficiente_${unidadId}`) ?? "") : null;
+      modo === "propios"
+        ? decimalParaApi(String(formData.get(`coeficiente_${unidadId}`) ?? ""))
+        : null;
     seleccion.push({ unidad_id: unidadId, coeficiente });
   }
   return seleccion;

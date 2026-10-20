@@ -131,6 +131,8 @@ describe("PantallaPadron", () => {
     );
     await usuario.click(screen.getByRole("button", { name: "1A" }));
     expect(screen.getByLabelText("Identificador")).toHaveProperty("value", "1A");
+    expect(screen.getByLabelText("Superficie (m²)")).toHaveProperty("value", "60,00");
+    expect(screen.getByLabelText("Coeficiente")).toHaveProperty("value", "0,500000");
   });
 
   it("409 de identificador repetido marca el campo identificador, sin el texto técnico (Identificador repetido)", async () => {
@@ -238,6 +240,6 @@ describe("PantallaPadron", () => {
     expect({
       id: oculto.value,
       coeficiente: (screen.getByLabelText("Coeficiente") as HTMLInputElement).value,
-    }).toEqual({ id: "u2", coeficiente: "0.300000" });
+    }).toEqual({ id: "u2", coeficiente: "0,300000" });
   });
 });

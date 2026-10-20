@@ -29,7 +29,12 @@ import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { InformeDeCoeficientes, Unidad } from "../../../../lib/api/tipos";
-import { coeficiente, sumaComoPorcentaje, superficie } from "../../../../lib/formato";
+import {
+  coeficiente,
+  decimalParaCampo,
+  sumaComoPorcentaje,
+  superficie,
+} from "../../../../lib/formato";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_PADRON } from "./ayuda";
 
@@ -273,14 +278,16 @@ export function PantallaPadron({
             nombre="superficie_m2"
             etiqueta="Superficie (m²)"
             name="superficie_m2"
-            defaultValue={unidadEnEdicion?.superficie_m2}
+            inputMode="decimal"
+            defaultValue={decimalParaCampo(unidadEnEdicion?.superficie_m2)}
             required
           />
           <Campo
             nombre="coeficiente"
             etiqueta="Coeficiente"
             name="coeficiente"
-            defaultValue={unidadEnEdicion?.coeficiente}
+            inputMode="decimal"
+            defaultValue={decimalParaCampo(unidadEnEdicion?.coeficiente)}
             required
           />
           <button type="submit" className="boton-principal">

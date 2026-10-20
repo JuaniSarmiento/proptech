@@ -25,7 +25,7 @@ import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { ConfiguracionVigente, VersionDelHistorial } from "../../../../lib/api/tipos";
-import { fecha } from "../../../../lib/formato";
+import { decimalParaCampo, fecha } from "../../../../lib/formato";
 import { ArmazonDelEdificio } from "../Armazon";
 import { renglonesDeVigente, textoDeVigente } from "../textoDeVigente";
 import { AYUDA_CONFIGURACION } from "./ayuda";
@@ -125,14 +125,16 @@ export function PantallaConfiguracion({
             nombre="tasa_mensual"
             etiqueta="Tasa mensual"
             name="tasa_mensual"
-            defaultValue={vigente?.tasa_mensual}
+            inputMode="decimal"
+            defaultValue={decimalParaCampo(vigente?.tasa_mensual)}
             required
           />
           <Campo
             nombre="porcentaje_fondo"
             etiqueta="Fondo de reserva"
             name="porcentaje_fondo"
-            defaultValue={vigente?.porcentaje_fondo}
+            inputMode="decimal"
+            defaultValue={decimalParaCampo(vigente?.porcentaje_fondo)}
             required
           />
           <Campo
@@ -195,7 +197,8 @@ export function PantallaConfiguracion({
                 nombre="recargo_segundo_vencimiento"
                 etiqueta="Recargo del segundo vencimiento"
                 name="recargo_segundo_vencimiento"
-                defaultValue={vigente?.recargo_segundo_vencimiento ?? undefined}
+                inputMode="decimal"
+                defaultValue={decimalParaCampo(vigente?.recargo_segundo_vencimiento ?? undefined)}
                 required
               />
             </>

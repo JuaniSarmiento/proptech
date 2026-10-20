@@ -109,3 +109,14 @@ export function fecha(texto: string): string {
   const [, anio, mes, dia] = partes;
   return `${dia}/${mes}/${anio}`;
 }
+
+/** Valor editable, sin agrupación de miles y sin alterar sus decimales. */
+export function decimalParaCampo(texto: string | null | undefined): string {
+  return (texto ?? "").replace(".", ",");
+}
+
+/** Sólo cambia el separador de un decimal ASCII inequívoco. La API sigue
+ * validando escala, rango y entradas inválidas; nunca se interpreta miles. */
+export function decimalParaApi(texto: string): string {
+  return /^-?[0-9]+,[0-9]+$/.test(texto) ? texto.replace(",", ".") : texto;
+}

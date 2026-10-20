@@ -159,6 +159,7 @@ Plano por defecto. No hay capas de sombra ambiental ni tarjetas elevadas: la pro
 
 ### Inputs / Fields
 - **`.formulario` / `.campo`** (pulido 3b): etiqueta arriba en 600, control de 2,5rem de alto a todo el ancho, fondo Papel claro, borde Grafito suave; con error, borde Terracota y el mensaje debajo en Terracota con "!". La casilla va antes de su texto, en un renglón Papel hundido que es todo zona para tocar. El resumen de errores es un bloque Terracota tenue con borde Terracota.
+- **Campos decimales:** se editan como texto con coma decimal y sin separador de miles, conservando todos los decimales; teclado decimal en móvil. Las acciones convierten la coma a punto para la API, sin cálculo ni redondeo. También aceptan punto al escribir.
 - **Foco:** `:focus-visible` global, `2px solid` Terracota con `outline-offset: 2px`.
 
 ## 6. Do's and Don'ts
