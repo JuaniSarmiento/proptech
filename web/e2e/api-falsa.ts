@@ -77,7 +77,19 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
     if (nombreFixture === "grupos") return [];
     if (nombreFixture === "categorias") return [];
     if (nombreFixture === "versiones") return [];
-    if (nombreFixture === "resumen") return { ...datos, cantidad_unidades: 0 };
+    if (nombreFixture === "resumen") {
+      // Los pasos tienen que cuadrar con lo que daría `resumen_edificio`
+      // (backend, lectura.py) para cero unidades y cero categorías: con sólo
+      // `cantidad_unidades: 0`, el fixture seguía diciendo "Cargar unidades:
+      // Hecho" (visto en el pulido visual del 3b, 19/10/2026).
+      return {
+        ...datos,
+        cantidad_unidades: 0,
+        informe: informeConEstado("fuera_de_tolerancia", "-1.000000", "0.000000"),
+        pasos: { ...datos.pasos, unidades: "falta", coeficientes: "falta", categorias: "falta" },
+        listo_para_liquidar: false,
+      };
+    }
     return datos;
   }
 
@@ -86,7 +98,12 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
       claveEscenario === "advertencia"
         ? informeConEstado("advertencia", "0.000050", "0.999950")
         : informeConEstado("fuera_de_tolerancia", "-0.000200", "0.999800");
-    if (nombreFixture === "resumen") return { ...datos, informe };
+    if (nombreFixture === "resumen") {
+      // `resumen_edificio` da "coeficientes: hecho" con ok o advertencia y
+      // "falta" fuera de tolerancia: el paso sigue al informe, no al fixture.
+      const coeficientes = claveEscenario === "advertencia" ? "hecho" : "falta";
+      return { ...datos, informe, pasos: { ...datos.pasos, coeficientes } };
+    }
     if (nombreFixture === "unidades") return { ...datos, informe };
     return datos;
   }

@@ -87,6 +87,27 @@ describe("api-falsa", () => {
     });
   });
 
+  it('vacío: el resumen cuadra con "cero unidades" como lo calcula `resumen_edificio` (unidades, coeficientes y categorías en falta; pulido 3b: la API falsa decía "Cargar unidades: Hecho" con 0 unidades)', async () => {
+    const resumen = await (await fetch(`${base}/api/complejos/${idDe("vacio")}/resumen`)).json();
+    expect(resumen.cantidad_unidades).toBe(0);
+    expect(resumen.informe.estado).toBe("fuera_de_tolerancia");
+    expect(resumen.pasos.unidades).toBe("falta");
+    expect(resumen.pasos.coeficientes).toBe("falta");
+    expect(resumen.pasos.categorias).toBe("falta");
+    expect(resumen.listo_para_liquidar).toBe(false);
+  });
+
+  it('advertencia: el paso "coeficientes" queda hecho (la API real acepta advertencia como hecho), fuera de tolerancia en falta', async () => {
+    const advertencia = await (
+      await fetch(`${base}/api/complejos/${idDe("advertencia")}/resumen`)
+    ).json();
+    expect(advertencia.pasos.coeficientes).toBe("hecho");
+    const fuera = await (
+      await fetch(`${base}/api/complejos/${idDe("fuera_de_tolerancia")}/resumen`)
+    ).json();
+    expect(fuera.pasos.coeficientes).toBe("falta");
+  });
+
   it("advertencia y fuera de tolerancia mutan el informe (nunca el archivo real)", async () => {
     const resumenAdvertencia = await (
       await fetch(`${base}/api/complejos/${idDe("advertencia")}/resumen`)
