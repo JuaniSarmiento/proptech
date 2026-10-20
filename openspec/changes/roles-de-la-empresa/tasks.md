@@ -151,36 +151,50 @@ EVIDENCIA (20/10/2026):
 
 ## 3. La base
 
-- [ ] 3.1 Migración `0017_roles_de_la_empresa`, `upgrade` (D5), en `backend/tests/integracion/test_migracion_roles_de_la_empresa.py` con contenedor propio: sembrar en 0016, en dos administraciones, una fila de cada forma vieja (titular, colaborador "editar", colaborador "ver", consejo, vecino); `upgrade`; leer como `proptech_app` con el tenant de cada una y exigir el perfil nuevo de cada fila y ninguna con `titular`, `colaborador` ni `nivel`; `relrowsecurity` y `relforcerowsecurity` siguen prendidos y con el tenant de A no aparece ninguna fila de B; los tres objetos nuevos existen después del `upgrade`: el índice único `uq_asignacion_rol_persona_unidad` (D2), el índice único `uq_asignacion_rol_persona_alcance` (RA-5) y el índice `ix_asignacion_rol_persona` (RD-1, el que sirve a `cargar_asignaciones`). Tres rojos, cada uno sobre una copia de la migración (L-013): sin el `NO FORCE`, las filas quedan con el vocabulario viejo y la migración termina sin error (el silencio que esta tarea existe para ver); sin el `FORCE` final, el test de aislamiento falla; con un `RAISE` agregado después de convertir, la tabla queda como en 0016 y con `FORCE`. Además, dos filas de vecino de la misma persona y unidad hacen fallar el `upgrade` sin cambiar nada y con un mensaje sin ids. Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones; › La tabla sigue aislada; › Una relación repetida frena la conversión. Lecciones: L-013, L-016, L-018, L-020.
+- [x] 3.1 Migración `0017_roles_de_la_empresa`, `upgrade` (D5), en `backend/tests/integracion/test_migracion_roles_de_la_empresa.py` con contenedor propio: sembrar en 0016, en dos administraciones, una fila de cada forma vieja (titular, colaborador "editar", colaborador "ver", consejo, vecino); `upgrade`; leer como `proptech_app` con el tenant de cada una y exigir el perfil nuevo de cada fila y ninguna con `titular`, `colaborador` ni `nivel`; `relrowsecurity` y `relforcerowsecurity` siguen prendidos y con el tenant de A no aparece ninguna fila de B; los tres objetos nuevos existen después del `upgrade`: el índice único `uq_asignacion_rol_persona_unidad` (D2), el índice único `uq_asignacion_rol_persona_alcance` (RA-5) y el índice `ix_asignacion_rol_persona` (RD-1, el que sirve a `cargar_asignaciones`). Tres rojos, cada uno sobre una copia de la migración (L-013): sin el `NO FORCE`, las filas quedan con el vocabulario viejo y la migración termina sin error (el silencio que esta tarea existe para ver); sin el `FORCE` final, el test de aislamiento falla; con un `RAISE` agregado después de convertir, la tabla queda como en 0016 y con `FORCE`. Además, dos filas de vecino de la misma persona y unidad hacen fallar el `upgrade` sin cambiar nada y con un mensaje sin ids. Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones; › La tabla sigue aislada; › Una relación repetida frena la conversión. Lecciones: L-013, L-016, L-018, L-020.
 
-  EVIDENCIA (20/10/2026): experimento aislado sobre la imagen PostgreSQL del Compose,
-  con Testcontainers propio, dueño proptech_migrador sin superusuario ni BYPASSRLS,
-  dos administraciones y verificación de filas como proptech_app con cada tenant.
-  **No es la migración 0017 ni sus tests de aceptación**; comprueba la contradicción
-  de la reproducción exigida antes de implementar una migración distinta de D5.
-
+EVIDENCIA (20/10/2026):
   ```text
-  $ cd backend && date +%T && uv run pytest ../.git/informes-roles-bloque-a/test_validacion_check.py -q -s
-  11:51:54
-  NO FORCE=False; filas convertidas=0
-  NO FORCE=True; filas convertidas=2
-  E psycopg.errors.CheckViolation: check constraint "ck_asignacion_rol_rol_valido"
-    of relation "asignacion_rol" is violated by some row
-  FAILED test_la_secuencia_exigida_termina_sin_error[sin_NO_FORCE]
-  1 failed, 1 passed in 4.36s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -q
+  12:13:34
+  FAILED: Can't locate revision identified by '0017'
+  3 failed in 10.80s
   ```
+  Tres mutantes contra copia previa local, con diff real y restauración byte a byte:
+  ```diff
+  -    op.execute("ALTER TABLE asignacion_rol NO FORCE ROW LEVEL SECURITY")
+  +    # Mutante: NO FORCE omitido
+  -    op.execute("ALTER TABLE asignacion_rol FORCE ROW LEVEL SECURITY")
+  +    # Mutante: FORCE final omitido
+  +    op.execute("DO $$ BEGIN RAISE EXCEPTION 'fallo tras convertir'; END $$")
+       op.drop_column("asignacion_rol", "nivel")
+  ```
+  El comando se repitió para cada copia (logs `3.1-{sin-no-force,sin-force,raise}.log`):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py::test_upgrade_convierte_dos_administraciones_y_conserva_aislamiento -q
+  12:15:25
+  E sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation)
+  1 failed in 4.82s
+  12:15:47
+  E assert (10,) == (0,)
+  1 failed in 5.98s
+  12:16:00
+  E sqlalchemy.exc.ProgrammingError: (psycopg.errors.RaiseException) fallo tras convertir
+  1 failed in 6.45s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py tests/unitarios/acceso -q
+  12:16:17
+  439 passed, 1 warning in 11.38s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 227 files already formatted / Success: no issues found in 206 source files
+  ```
+  JUICIO: conversión exacta de diez filas, dos tenants; app sin privilegios,
+  aislamiento y tres índices. Duplicado en B aborta con contador sin ids;
+  el test con RAISE compara filas, catálogo, FORCE y revisión 0016 tras rollback.
+  Resuelto por el orquestador, 20/10/2026: CheckViolation sin NO FORCE es
+  rojo válido. El texto original de la tarea queda aclarado por esta resolución.
+  El downgrade sigue pendiente de su tarea 3.3; los fixtures actuales se adaptan
+  en 3.4 antes de la suite completa. SUPUESTO: ninguno.
 
-  JUICIO: pendiente. D5 exige recrear y validar los CHECK del vocabulario nuevo.
-  Sin NO FORCE, el UPDATE no ve filas, pero el CHECK nuevo sí valida las filas
-  existentes y rechaza titular. Por eso no se puede obtener a la vez la migración
-  de D5 y el mutante exigido por esta tarea que "termina sin error" con filas viejas.
-  No se omitió ni se dejó NOT VALID ningún CHECK para fabricar ese silencio.
-  El control con NO FORCE pasa; ambos caminos verifican FORCE restaurado y las
-  filas esperadas, incluyendo el rollback del camino que falla. El contenedor
-  del experimento fue eliminado por Testcontainers. Código y salida completos:
-  `.git/informes-roles-bloque-a/test_validacion_check.py` y `3.1-conflicto-check.log`.
-  No se implementó 0017 ni se marca esta tarea terminada.
-  SUPUESTO: ninguno para el resultado del experimento.
 
 - [ ] 3.2 La forma de cada asignación en la base (D1, D2), en el mismo archivo, como `proptech_app` en `head`: una fila válida de cada perfil y alcance entra (nueve formas); cada forma inválida falla por el `CHECK` y no deja nada (auxiliar, consejo o vecino sin complejo; super admin con complejo; vecino sin vínculo; administrador con vínculo; rol `titular`, `colaborador` y uno inventado); la misma persona propietaria e inquilina de una unidad falla por el índice único; la misma persona con dos asignaciones de rol de personal (cualquier combinación de super admin, administrador, contador o auxiliar) en el mismo alcance falla por `uq_asignacion_rol_persona_alcance` (RA-5), y esto vale también con `complejo_id` nulo en las dos (alcance principal, antes exento con un `UNIQUE` sin `NULLS NOT DISTINCT`); la misma persona con un rol de personal y, además, una fila de consejo o de vecino en el mismo edificio entra sin problema (RA-5: son asignaciones de otro tipo); dos propietarios distintos y un inquilino distinto de la misma unidad entran. Actualizar los casos de `test_rls_acceso_minimo.py` que prueban en `head` el `CHECK` de 0003 (colaborador sin nivel), sin borrar ninguno sin reemplazo. RED: con la base de 0016 los inserts del vocabulario nuevo fallan. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Super admin atado a un edificio; › Vecino sin vínculo o personal con vínculo; › Perfil desconocido; › Propietaria e inquilina de la misma unidad; › Dos roles de personal en el mismo alcance; › Dos propietarios de la misma unidad (la parte de la base). Lecciones: L-016, L-018.
 
