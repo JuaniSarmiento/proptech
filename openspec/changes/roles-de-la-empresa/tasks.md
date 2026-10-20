@@ -615,7 +615,41 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
 
 ## 5. La web
 
-- [ ] 5.1 Los textos de 403 (D8) en `web/src/componentes/Estados.test.tsx` y el test de `web/src/app/edificios/acciones.ts`: el estado "sin permiso" y el error de crear un edificio dicen "Esto lo puede hacer el super admin de la empresa." y ningún texto de `web/src` (fuera de nombres de tokens CSS) contiene "titular" ni "colaborador" (un test que recorre los archivos con la lista completa de las dos palabras). RED: hoy los dos tests encuentran "titular". Verificación: `bash infra/ci/test-web.sh` en verde. Escenarios: `pantallas-del-edificio` › Sin permiso; › Crear un edificio sin permiso. Lecciones: L-019, L-022.
+- [x] 5.1 Los textos de 403 (D8) en `web/src/componentes/Estados.test.tsx` y el test de `web/src/app/edificios/acciones.ts`: el estado "sin permiso" y el error de crear un edificio dicen "Esto lo puede hacer el super admin de la empresa." y ningún texto de `web/src` (fuera de nombres de tokens CSS) contiene "titular" ni "colaborador" (un test que recorre los archivos con la lista completa de las dos palabras). RED: hoy los dos tests encuentran "titular". Verificación: `bash infra/ci/test-web.sh` en verde. Escenarios: `pantallas-del-edificio` › Sin permiso; › Crear un edificio sin permiso. Lecciones: L-019, L-022.
+
+  EVIDENCIA (20/10/2026):
+  ```text
+  $ cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Estados.test.tsx src/app/edificios/acciones.test.ts src/lib/test/vocabulario.test.ts
+  13:13:28
+  Estados y acción: se recibió "titular de la administración"; barrido: cuatro apariciones, ambas palabras.
+  Test Files 3 failed (3) / Tests 3 failed | 5 passed (8)
+  $ cd web && date +%T && corepack pnpm@12.10.1 biome ci && corepack pnpm@12.10.1 tsc --noEmit && corepack pnpm@12.10.1 vitest run
+  13:14:33
+  Checked 141 files; sin errores, 1 warning previo useOptionalChain en app/edificios/page.tsx:43.
+  tsc --noEmit: estado 0, sin salida.
+  Test Files 47 passed (47) / Tests 300 passed (300)
+  $ date +%T && bash infra/ci/test-web.sh
+  13:16:17
+  Test Files 47 passed (47) / Tests 300 passed (300)
+  ```
+  HALLAZGO: primera corrida del script a las 13:15:05: 299 passed, 1 failed
+  en configuracion/Pantalla.test.tsx:176, recargo enviado "2,75", input "1,50".
+  Ese archivo no se modificó. Reproducción aislada y nueva suite por la falla:
+  ```text
+  $ cd web && date +%T && corepack pnpm@12.10.1 vitest run 'src/app/edificios/[id]/configuracion/Pantalla.test.tsx'
+  13:16:14
+  Test Files 1 passed (1) / Tests 8 passed (8)
+  ```
+  JUICIO: ambos textos exactos de D8 y vocabulario completo en todos los
+  archivos de web/src, incluidos tests/comentarios; sólo se excluyen nombres
+  de tokens CSS. No había test de la acción de alta: se agregó uno que pasa
+  por la acción y el cliente HTTP real, con respuesta fetch 403 controlada.
+  Aplicada impeccable/clarify con texto ya aprobado y sin rediseño.
+  La falla intermitente del recargo queda visible para el rompedor, no se
+  suprime ni se altera su test. Logs completos 5.1-*.log en .git/informes-roles-bloque-b/.
+  Ruff check / format --check / mypy: limpios (229 archivos / 208 fuentes).
+  SUPUESTO: no se atribuye causa a la intermitencia; no se verificó su origen.
+
 
 ## 6. El vocabulario que queda
 

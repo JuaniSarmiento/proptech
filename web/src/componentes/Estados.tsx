@@ -94,7 +94,7 @@ export function Estados(props: Props) {
       return (
         <main className="estados estados--sin-permiso">
           <h1>No podés {props.queNoPuede}.</h1>
-          <p>Esto lo puede hacer el titular de la administración.</p>
+          <p>Esto lo puede hacer el super admin de la empresa.</p>
         </main>
       );
 

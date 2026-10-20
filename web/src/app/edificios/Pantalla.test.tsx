@@ -91,7 +91,7 @@ describe("PantallaMisEdificios", () => {
     expect(screen.getByLabelText("Localidad")).toBeTruthy();
   });
 
-  it("403 al crear (colaborador sin permiso) muestra el resumen de error sin marcar un campo", async () => {
+  it("403 al crear (administrador sin permiso) muestra el resumen de error sin marcar un campo", async () => {
     const accionCrear = vi.fn().mockResolvedValue({
       erroresPorCampo: {},
       erroresDesconocidos: ["No podés crear un edificio nuevo."],

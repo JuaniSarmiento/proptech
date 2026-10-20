@@ -46,12 +46,12 @@ describe("Estados", () => {
     await sinViolaciones(container);
   });
 
-  it("sin permiso: dice qué no puede hacer y que lo puede hacer el titular (Sin permiso)", async () => {
+  it("sin permiso: dice qué no puede hacer y que lo puede hacer el super admin (Sin permiso)", async () => {
     const { container } = render(
       <Estados tipo="sinPermiso" queNoPuede="cambiar la configuración" />,
     );
     expect(screen.getByText(/cambiar la configuración/)).toBeTruthy();
-    expect(screen.getByText(/titular/)).toBeTruthy();
+    expect(screen.getByText("Esto lo puede hacer el super admin de la empresa.")).toBeTruthy();
     await sinViolaciones(container);
   });
 

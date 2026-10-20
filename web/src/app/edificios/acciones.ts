@@ -31,7 +31,7 @@ export async function crearEdificioAction(
     return {
       erroresPorCampo: {},
       erroresDesconocidos: [
-        "No podés crear un edificio nuevo. Esto lo puede hacer el titular de la administración.",
+        "No podés crear un edificio nuevo. Esto lo puede hacer el super admin de la empresa.",
       ],
     };
   }

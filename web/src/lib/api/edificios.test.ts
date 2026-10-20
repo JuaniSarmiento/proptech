@@ -67,7 +67,7 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
     expect(resultado).toEqual({ estado: "ok", datos: { id: "nuevo" } });
   });
 
-  it("crearEdificio con 403 da sin_permiso (colaborador sin permiso de crear)", async () => {
+  it("crearEdificio con 403 da sin_permiso (administrador sin permiso de crear)", async () => {
     vi.stubGlobal(
       "fetch",
       mockFetch({
