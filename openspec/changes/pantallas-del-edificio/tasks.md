@@ -494,6 +494,25 @@ TestingLibraryElementError: Unable to find an accessible element with the role "
    Start at  09:48:31
 ```
 
+### 2. RF-F-2: foco estable al guardar la primera alta
+
+Base: 27/27. La familia repite el defecto en unidades, grupos y categorías. En altas, el destino estable será el botón del encabezado (también al cancelar); en edición se conserva la fila de apertura.
+
+- 02-rojo (09:49:12, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/{unidades,grupos,categorias}/Pantalla.test.tsx -t RF-F-2`
+```text
+AssertionError: expected <body><div>…(1)</div></body> to be <button type="button" …(1)></button> // Object.is equality
+ Test Files  3 failed (3)
+      Tests  3 failed | 27 skipped (30)
+   Start at  09:49:12
+```
+
+- 02-verde (09:49:40, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/{unidades,grupos,categorias}/Pantalla.test.tsx`
+```text
+ Test Files  3 passed (3)
+      Tests  30 passed (30)
+   Start at  09:49:40
+```
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

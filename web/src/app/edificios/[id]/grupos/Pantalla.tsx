@@ -76,6 +76,7 @@ export function PantallaGrupos({
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [grupoEnEdicion, setGrupoEnEdicion] = useState<Grupo | null>(null);
   const [modoFormulario, setModoFormulario] = useState<ModoDeCoeficientes>("renormalizado");
+  const agregarRef = useRef<HTMLButtonElement>(null);
   const aperturaRef = useRef<HTMLElement | null>(null);
 
   const accionActiva = grupoEnEdicion ? accionEditar : accionCrear;
@@ -88,8 +89,8 @@ export function PantallaGrupos({
     }
   }, [estado]);
 
-  function abrirNuevo(evento: { currentTarget: HTMLElement }) {
-    aperturaRef.current = evento.currentTarget;
+  function abrirNuevo() {
+    aperturaRef.current = agregarRef.current;
     setGrupoEnEdicion(null);
     setModoFormulario("renormalizado");
     setPanelAbierto(true);
@@ -108,7 +109,7 @@ export function PantallaGrupos({
   );
 
   const botonAgregar = (
-    <button type="button" className="boton-principal" onClick={abrirNuevo}>
+    <button ref={agregarRef} type="button" className="boton-principal" onClick={abrirNuevo}>
       Agregar grupo
     </button>
   );
@@ -134,7 +135,11 @@ export function PantallaGrupos({
               tipo="vacio"
               mensaje="Todavía no armaste ningún grupo"
               detalle="Armá uno para cada gasto que no pagan todas las unidades, por ejemplo el ascensor."
-              accion={botonAgregar}
+              accion={
+                <button type="button" onClick={abrirNuevo}>
+                  Agregar grupo
+                </button>
+              }
             />
           ) : (
             <ul

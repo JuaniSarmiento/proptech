@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Grupo, Unidad } from "../../../../lib/api/tipos";
@@ -53,6 +53,36 @@ function accionNula() {
 }
 
 describe("PantallaGrupos", () => {
+  it("RF-F-2: guardar desde el estado vacío devuelve el foco al encabezado tras revalidar", async () => {
+    const usuario = userEvent.setup();
+    const accionCrear = vi
+      .fn()
+      .mockResolvedValue({ ok: true, erroresPorCampo: {}, erroresDesconocidos: [] });
+    const vista = (conDatos: boolean) => (
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={conDatos ? [ASCENSOR] : []}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionCrear}
+        accionEditar={accionNula}
+      />
+    );
+    const { rerender } = render(vista(false));
+    const botones = screen.getAllByRole("button", { name: "Agregar grupo" });
+    const encabezado = botones[0];
+    await usuario.click(botones[1] as HTMLElement);
+    await usuario.type(screen.getByLabelText("Clave"), "ascensor");
+    await usuario.type(screen.getByLabelText("Nombre"), "Ascensor");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(accionCrear).toHaveBeenCalledTimes(1);
+    // La respuesta del servidor reemplaza el vacío y desmonta su botón.
+    rerender(vista(true));
+    expect(document.activeElement).toBe(encabezado);
+    expect(encabezado?.isConnected).toBe(true);
+  });
+
   it('"Generales" se muestra primero, automático y sin botones de edición (Generales)', () => {
     render(
       <PantallaGrupos

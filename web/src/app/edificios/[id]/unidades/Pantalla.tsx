@@ -74,6 +74,7 @@ export function PantallaPadron({
 }: Props) {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
+  const agregarRef = useRef<HTMLButtonElement>(null);
   const aperturaRef = useRef<HTMLElement | null>(null);
 
   const accionActiva = unidadEnEdicion ? accionEditar : accionCrear;
@@ -86,8 +87,8 @@ export function PantallaPadron({
     }
   }, [estado]);
 
-  function abrirNueva(evento: { currentTarget: HTMLElement }) {
-    aperturaRef.current = evento.currentTarget;
+  function abrirNueva() {
+    aperturaRef.current = agregarRef.current;
     setUnidadEnEdicion(null);
     setPanelAbierto(true);
   }
@@ -99,7 +100,7 @@ export function PantallaPadron({
   }
 
   const botonAgregar = (
-    <button type="button" className="boton-principal" onClick={abrirNueva}>
+    <button ref={agregarRef} type="button" className="boton-principal" onClick={abrirNueva}>
       Agregar unidad
     </button>
   );
@@ -122,7 +123,11 @@ export function PantallaPadron({
               tipo="vacio"
               mensaje="Todavía no cargaste unidades"
               detalle="Empezá por la primera: identificador, tipo, superficie y coeficiente. Los datos los podés copiar de tu planilla."
-              accion={botonAgregar}
+              accion={
+                <button type="button" onClick={abrirNueva}>
+                  Agregar unidad
+                </button>
+              }
             />
           ) : (
             <div className="padron-de-unidades__scroll">

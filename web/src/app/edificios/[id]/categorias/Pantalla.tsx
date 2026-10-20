@@ -85,6 +85,7 @@ export function PantallaCategorias({
 }: Props) {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [categoriaEnEdicion, setCategoriaEnEdicion] = useState<Categoria | null>(null);
+  const agregarRef = useRef<HTMLButtonElement>(null);
   const aperturaRef = useRef<HTMLElement | null>(null);
   const botonMovidoRef = useRef<HTMLButtonElement | null>(null);
 
@@ -106,8 +107,8 @@ export function PantallaCategorias({
     }
   }, [estadoReordenar]);
 
-  function abrirNueva(evento: { currentTarget: HTMLElement }) {
-    aperturaRef.current = evento.currentTarget;
+  function abrirNueva() {
+    aperturaRef.current = agregarRef.current;
     setCategoriaEnEdicion(null);
     setPanelAbierto(true);
   }
@@ -119,7 +120,7 @@ export function PantallaCategorias({
   }
 
   const botonAgregar = (
-    <button type="button" className="boton-principal" onClick={abrirNueva}>
+    <button ref={agregarRef} type="button" className="boton-principal" onClick={abrirNueva}>
       Agregar categoría
     </button>
   );
@@ -157,7 +158,11 @@ export function PantallaCategorias({
               tipo="vacio"
               mensaje="Todavía no tenés categorías"
               detalle="Sumá una por cada tipo de gasto que pagás todos los meses, como limpieza o seguridad."
-              accion={botonAgregar}
+              accion={
+                <button type="button" onClick={abrirNueva}>
+                  Agregar categoría
+                </button>
+              }
             />
           ) : (
             <ul className="lista-de-filas categorias-de-gasto" aria-label="Categorías de gasto">

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Unidad } from "../../../../lib/api/tipos";
@@ -25,6 +25,37 @@ function accionNula() {
 }
 
 describe("PantallaPadron", () => {
+  it("RF-F-2: guardar desde el estado vacío devuelve el foco al encabezado tras revalidar", async () => {
+    const usuario = userEvent.setup();
+    const accionCrear = vi
+      .fn()
+      .mockResolvedValue({ ok: true, erroresPorCampo: {}, erroresDesconocidos: [] });
+    const vista = (conDatos: boolean) => (
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        unidades={conDatos ? [UNIDAD_1A] : []}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionCrear}
+        accionEditar={accionNula}
+      />
+    );
+    const { rerender } = render(vista(false));
+    const botones = screen.getAllByRole("button", { name: "Agregar unidad" });
+    const encabezado = botones[0];
+    await usuario.click(botones[1] as HTMLElement);
+    await usuario.type(screen.getByLabelText("Identificador"), "1A");
+    await usuario.type(screen.getByLabelText("Superficie (m²)"), "60.00");
+    await usuario.type(screen.getByLabelText("Coeficiente"), "1.000000");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(accionCrear).toHaveBeenCalledTimes(1);
+    // La respuesta del servidor reemplaza el vacío y desmonta su botón.
+    rerender(vista(true));
+    expect(document.activeElement).toBe(encabezado);
+    expect(encabezado?.isConnected).toBe(true);
+  });
+
   it('informe "fuera_de_tolerancia" con diferencia -0.000200 se muestra en texto (Fuera de tolerancia)', () => {
     render(
       <PantallaPadron
