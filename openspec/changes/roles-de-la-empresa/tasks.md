@@ -26,15 +26,15 @@ empieza. Ningún agente completa esa sección.
   Los tres comandos corrieron en orden, de a uno, sin cambios de implementación:
 
   ```text
-  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  $ date +%T && git rev-parse HEAD && bash infra/ci/test-backend.sh
   11:37:27
   bf066ce3065ab5bed3b4b8c39cb827e0d29d1c60
   =========== 1757 passed, 1 xfailed, 16 warnings in 544.73s (0:09:04) ===========
-  $ date +%T; bash infra/ci/test-web.sh
+  $ date +%T && bash infra/ci/test-web.sh
   11:46:41
    Test Files  45 passed (45)
         Tests  298 passed (298)
-  $ date +%T; bash infra/ci/humo.sh
+  $ date +%T && bash infra/ci/humo.sh
   11:47:30
   HUMO OK
   Network proptech_borde  Removed
@@ -52,17 +52,173 @@ empieza. Ningún agente completa esa sección.
 ## 2. El dominio
 
 - [ ] 2.1 Perfil y alcance (D1, D2) en `backend/tests/unitarios/acceso/test_permisos.py`: una tabla escrita a mano que, para cada forma de fila de base (`rol`, `complejo_id`, `unidad_id`, `vinculo`), espera el perfil de los siete y el alcance (principal, por edificio, por unidad); las formas inválidas (super admin con complejo, auxiliar o consejo sin complejo, vecino sin vínculo, vínculo en una fila de personal, un rol `titular` o `colaborador`) levantan al construir la asignación en vez de dar un perfil. RED: el módulo todavía no tiene `Perfil` ni `Alcance` (`ImportError`). Implementar en `acceso/dominio/permisos.py` sin tocar `Accion`. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Vecino sin vínculo o personal con vínculo (la mitad del dominio). Lecciones: L-019.
+
+  EVIDENCIA (20/10/2026):
+
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  11:50:53
+  E ImportError: cannot import name 'Alcance' from 'proptech_core.acceso.dominio.permisos'
+  ERROR tests/unitarios/acceso/test_permisos.py
+  1 error in 0.10s
+  ```
+
+  JUICIO: pendiente, sin GREEN ni implementación. El test propuesto agrega nueve formas
+  válidas y veinte inválidas; copia local completa en
+  `.git/informes-roles-bloque-a/test_permisos.2.1-rojo.py` y salida en `2.1-rojo.log`.
+  Conflicto de secuencia: los casos existentes del mismo archivo construyen titular,
+  colaborador con nivel y vecino sin vínculo al importar (`_PERFILES`, líneas 43-49).
+  El constructor nuevo debe rechazar esas formas. Además, `cargar_asignaciones`
+  (`acceso/aplicacion/autorizacion.py:14,37-41`) importa Nivel y pasa `nivel=`; su
+  adaptación está reservada a 4.1. Quitar ese argumento del constructor rompe mypy;
+  conservarlo como compatibilidad o adelantar 4.1 necesita resolver el alcance pedido.
+  No se agregó compatibilidad ni se adelantaron tareas: el archivo de tests original
+  quedó restaurado byte por byte. Se consultó el cruce con 4.1/4.2, sin respuesta al
+  momento de este registro. No se marca esta tarea como terminada.
+  SUPUESTO: ninguno; el conflicto se apoya en los llamadores actuales.
+
 - [ ] 2.2 La matriz (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: la tabla de D3 copiada a mano como literal del test (16 acciones por 9 columnas, 144 celdas), comparada **entera** contra `puede` en un complejo del alcance, y el mensaje del fallo nombra cada celda distinta; además, toda acción para una asignación por edificio en otro complejo da "no"; `crear_edificio` con `complejo_id=None` sólo para el super admin; una `Accion` sin fila se niega para todos; una persona con dos asignaciones (administrador por edificio en A, auxiliar en B) puede escribir en A y no en B; un administrador principal, para el permiso `anular_liquidacion`, con `complejo_id=None`, da "no" (RA-3: se conserva la guarda de `permisos.py:109`, que sin complejo sólo evalúa `crear_edificio`). RED: con la matriz vieja la comparación falla nombrando las celdas; mutar una celda en una copia de `permisos.py` y verla fallar (L-013). Escenarios: `autorizacion-por-rol` › La matriz completa; › Una asignación por edificio en otro complejo; › El administrador por edificio emite pero no anula; › El administrador principal corrige en cualquier edificio. Lecciones: L-013, L-019, L-022.
+
+  JUICIO: pendiente; depende de Perfil/Alcance y del constructor de 2.1, detenida por
+  el conflicto de secuencia documentado arriba. No hay RED/GREEN ni implementación.
+  La guarda RA-3 y la matriz original no se tocaron.
+
 - [ ] 2.3 El alcance (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: `alcanza` por perfil y alcance (principal, todo complejo y unidad de la administración; por edificio, su complejo y sus unidades y ningún otro; por unidad, su unidad y su complejo, nunca otra unidad del mismo complejo), dos propietarios distintos de la misma unidad y un inquilino de otra. RED: con `alcanza` viejo, un contador principal no alcanza nada. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Contador principal; › Dos asignaciones de la misma persona (la parte del dominio). Lecciones: L-019.
+
+  JUICIO: pendiente; depende del modelo de asignación de 2.1. No hay RED/GREEN ni
+  implementación; `alcanza` original sigue intacto.
+
 
 ## 3. La base
 
 - [ ] 3.1 Migración `0017_roles_de_la_empresa`, `upgrade` (D5), en `backend/tests/integracion/test_migracion_roles_de_la_empresa.py` con contenedor propio: sembrar en 0016, en dos administraciones, una fila de cada forma vieja (titular, colaborador "editar", colaborador "ver", consejo, vecino); `upgrade`; leer como `proptech_app` con el tenant de cada una y exigir el perfil nuevo de cada fila y ninguna con `titular`, `colaborador` ni `nivel`; `relrowsecurity` y `relforcerowsecurity` siguen prendidos y con el tenant de A no aparece ninguna fila de B; los tres objetos nuevos existen después del `upgrade`: el índice único `uq_asignacion_rol_persona_unidad` (D2), el índice único `uq_asignacion_rol_persona_alcance` (RA-5) y el índice `ix_asignacion_rol_persona` (RD-1, el que sirve a `cargar_asignaciones`). Tres rojos, cada uno sobre una copia de la migración (L-013): sin el `NO FORCE`, las filas quedan con el vocabulario viejo y la migración termina sin error (el silencio que esta tarea existe para ver); sin el `FORCE` final, el test de aislamiento falla; con un `RAISE` agregado después de convertir, la tabla queda como en 0016 y con `FORCE`. Además, dos filas de vecino de la misma persona y unidad hacen fallar el `upgrade` sin cambiar nada y con un mensaje sin ids. Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones; › La tabla sigue aislada; › Una relación repetida frena la conversión. Lecciones: L-013, L-016, L-018, L-020.
+
+  EVIDENCIA (20/10/2026): experimento aislado sobre la imagen PostgreSQL del Compose,
+  con Testcontainers propio, dueño proptech_migrador sin superusuario ni BYPASSRLS,
+  dos administraciones y verificación de filas como proptech_app con cada tenant.
+  **No es la migración 0017 ni sus tests de aceptación**; comprueba la contradicción
+  de la reproducción exigida antes de implementar una migración distinta de D5.
+
+  ```text
+  $ cd backend && date +%T && uv run pytest ../.git/informes-roles-bloque-a/test_validacion_check.py -q -s
+  11:51:54
+  NO FORCE=False; filas convertidas=0
+  NO FORCE=True; filas convertidas=2
+  E psycopg.errors.CheckViolation: check constraint "ck_asignacion_rol_rol_valido"
+    of relation "asignacion_rol" is violated by some row
+  FAILED test_la_secuencia_exigida_termina_sin_error[sin_NO_FORCE]
+  1 failed, 1 passed in 4.36s
+  ```
+
+  JUICIO: pendiente. D5 exige recrear y validar los CHECK del vocabulario nuevo.
+  Sin NO FORCE, el UPDATE no ve filas, pero el CHECK nuevo sí valida las filas
+  existentes y rechaza titular. Por eso no se puede obtener a la vez la migración
+  de D5 y el mutante exigido por esta tarea que "termina sin error" con filas viejas.
+  No se omitió ni se dejó NOT VALID ningún CHECK para fabricar ese silencio.
+  El control con NO FORCE pasa; ambos caminos verifican FORCE restaurado y las
+  filas esperadas, incluyendo el rollback del camino que falla. El contenedor
+  del experimento fue eliminado por Testcontainers. Código y salida completos:
+  `.git/informes-roles-bloque-a/test_validacion_check.py` y `3.1-conflicto-check.log`.
+  No se implementó 0017 ni se marca esta tarea terminada.
+  SUPUESTO: ninguno para el resultado del experimento.
+
 - [ ] 3.2 La forma de cada asignación en la base (D1, D2), en el mismo archivo, como `proptech_app` en `head`: una fila válida de cada perfil y alcance entra (nueve formas); cada forma inválida falla por el `CHECK` y no deja nada (auxiliar, consejo o vecino sin complejo; super admin con complejo; vecino sin vínculo; administrador con vínculo; rol `titular`, `colaborador` y uno inventado); la misma persona propietaria e inquilina de una unidad falla por el índice único; la misma persona con dos asignaciones de rol de personal (cualquier combinación de super admin, administrador, contador o auxiliar) en el mismo alcance falla por `uq_asignacion_rol_persona_alcance` (RA-5), y esto vale también con `complejo_id` nulo en las dos (alcance principal, antes exento con un `UNIQUE` sin `NULLS NOT DISTINCT`); la misma persona con un rol de personal y, además, una fila de consejo o de vecino en el mismo edificio entra sin problema (RA-5: son asignaciones de otro tipo); dos propietarios distintos y un inquilino distinto de la misma unidad entran. Actualizar los casos de `test_rls_acceso_minimo.py` que prueban en `head` el `CHECK` de 0003 (colaborador sin nivel), sin borrar ninguno sin reemplazo. RED: con la base de 0016 los inserts del vocabulario nuevo fallan. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Super admin atado a un edificio; › Vecino sin vínculo o personal con vínculo; › Perfil desconocido; › Propietaria e inquilina de la misma unidad; › Dos roles de personal en el mismo alcance; › Dos propietarios de la misma unidad (la parte de la base). Lecciones: L-016, L-018.
+
+  JUICIO: pendiente; depende de 0017 (3.1 detenida). No hay RED/GREEN, cambios en
+  los CHECK ni cambios a los tests de `test_rls_acceso_minimo.py`.
+
 - [ ] 3.3 El `downgrade` (D5, E7, RD-3, RD-4), en el mismo archivo: con sólo filas con forma vieja, `downgrade 0016` corre en el orden de D5 (`LOCK`, `NO FORCE`, chequeo previo de conteos, conversión, `FORCE`) y devuelve cada una a su rol y nivel exactos en las dos administraciones; el catálogo de `asignacion_rol` (columnas **excluyendo `ordinal_position`**, que cambia con el orden de creación y no es señal real de drift; `CHECK`; que ya no estén la constraint `uq_asignacion_rol_persona_unidad` ni los índices `uq_asignacion_rol_persona_alcance` y `ix_asignacion_rol_persona`; políticas; `FORCE`) queda idéntico al de antes del `upgrade`, comparado entero; después `upgrade` vuelve a pasar. Con un contador, con un administrador principal y con un vecino inquilino, por separado, el `downgrade` falla, el mensaje dice cuántas filas de cada tipo y no trae ningún id ni nombre, y ni las filas ni el esquema cambian. RED: una copia del `downgrade` que convierte el inquilino en vecino en vez de fallar pasa el caso que debía fallar, y el test lo muestra; otra copia que hace el chequeo previo de conteos antes del `LOCK`/`NO FORCE` (en vez de después, RD-3) se marca y se corrige. Escenarios: `autorizacion-por-rol` › Volver atrás sin datos nuevos; › Volver atrás con un contador o un inquilino. Lecciones: L-013, L-016, L-022.
+
+  JUICIO: pendiente; depende de 0017 (3.1 detenida). No hay RED/GREEN ni downgrade.
+  Conflicto adicional de D5 para aclarar antes de implementarlo: D2 y el upgrade
+  crean `uq_asignacion_rol_persona_unidad` como índice único parcial; el downgrade
+  lo llama constraint. Se debe precisar ese paso, sin cambiarlo por interpretación.
+
 - [ ] 3.4 Todo `INSERT` a `asignacion_rol` del repositorio (L-023): `rg` sobre el repositorio entero (`backend/`, `infra/`, `web/`, `openspec/changes/acceso-de-desarrollo/`) y, aparte, sobre `.git/informes-3b/`; pasar al vocabulario nuevo los ayudantes de `tests/integracion/conftest.py` y cada test que siembra asignaciones, con el mapeo de D5 (titular → super admin, colaborador "editar" → administrador, "ver" → auxiliar, vecino → vecino propietario). La carga del ejemplo sin commitear no se toca: se anota en el informe qué línea cambiaría. La identidad de desarrollo (fuera de este cambio, en el change `acceso-de-desarrollo`, en curso y sin firmar) necesita SUMAR una fila de rol `super_admin` a la persona de ejemplo con el vocabulario nuevo, no reemplazar lo que ya tenga (RA-1, revisión del arquitecto): se anota en el informe, y `acceso-de-desarrollo` hereda esta tarea pendiente — es ese change el que tiene que retomarla (ver `design.md`, Open Questions, "El orden con `acceso-de-desarrollo`"). Verificación: la lista del `rg` antes y después en el informe, y la suite completa del backend en verde con la misma cantidad de tests de la 1.1 más los nuevos. Escenarios: ninguno nuevo (sostiene los existentes). Lecciones: L-003, L-023.
 
+  EVIDENCIA (20/10/2026): barrido del repo entero, incluyendo infra/, web/,
+  openspec/changes/acceso-de-desarrollo/ y, aparte, .git/informes-3b/ con su 2.3-wip/.
+  Se usó rg con --hidden --no-ignore y patrón multilínea que admite SQL repartido
+  entre literales; se excluyeron .env, .env.*, especificacion/, .git/ en el barrido
+  general y carpetas de dependencias/cachés. Ningún .env fue leído ni mostrado.
+  Comando (las exclusiones anteriores se pasan como -g):
+
+  ```text
+  rg -n -i -U --hidden --no-ignore --file .git/informes-roles-bloque-a/patron-insert.txt .
+  rg -n -i -U --hidden --no-ignore --file .git/informes-roles-bloque-a/patron-insert.txt .git/informes-3b/
+  ```
+
+  Lista completa de ubicaciones ANTES (18); la segunda corrida DESPUÉS es idéntica,
+  sin modificaciones de INSERT. SQL completo local en `3.4-repo-{antes,despues}.log`
+  dentro de `.git/informes-roles-bloque-a/`:
+
+  ```text
+backend/src/proptech_core/complejos/aplicacion/escritura.py:54
+backend/tests/integracion/conftest.py:246
+backend/tests/integracion/test_alcance_api.py:152
+backend/tests/integracion/test_alcance_api.py:158
+backend/tests/integracion/test_alcance_api.py:163
+backend/tests/integracion/test_alcance_api.py:168
+backend/tests/integracion/test_alcance_api.py:174
+backend/tests/integracion/test_altas_sin_id_del_cliente.py:210
+backend/tests/integracion/test_asignar_edificio_api.py:148
+backend/tests/integracion/test_asignar_edificio_api.py:153
+backend/tests/integracion/test_asignar_edificio_api.py:159
+backend/tests/integracion/test_asignar_edificio_api.py:164
+backend/tests/integracion/test_identidad_api.py:152
+backend/tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py:59
+backend/tests/integracion/test_rls_acceso_minimo.py:311
+backend/tests/integracion/test_rls_acceso_minimo.py:350
+backend/tests/integracion/test_rls_acceso_minimo.py:361
+openspec/changes/archive/2026-10-19-configuracion-del-edificio/tasks.md:2672
+  ```
+
+  Cero INSERT en infra/, web/, acceso-de-desarrollo/ y .git/informes-3b/ (ambas
+  corridas); los archivos ignorados también se revisaron con --no-ignore.
+  En `.git/informes-3b/2.3-wip/ejemplo.py:211`, entre el INSERT de persona (203-210)
+  y crear_edificio (212), acceso-de-desarrollo debe SUMAR la fila super_admin de
+  esa persona, con complejo/unidad/vínculo nulos, conservando otras asignaciones
+  (RA-1). Material WIP intacto. Ese change hereda la tarea pendiente, como dice D5.
+  La ocurrencia archivada de 3a es evidencia histórica: no se debe reescribir.
+  JUICIO: pendiente; inventario realizado, sin conversión de fixtures ni código.
+  La suite completa verde solicitada depende también de 4.1 (SELECT nivel) y
+  4.2 (INSERT con nivel y cuerpo colaborador/consejo): cambiar sólo la siembra no
+  podría dar ese verde sobre 0017. No se adelantan esas tareas sin resolver el
+  límite del bloque. No hay RED/GREEN de implementación ni se marca [x].
+  SUPUESTO: ninguno para el barrido; el alta de ejemplo sigue pendiente.
+
+
 - [ ] 3.5 Ensayo de la migración sobre la copia más fiel disponible (RD-2, revisión del DBA): **supuesto declarado** — no hay producción ni datos reales de este sistema, nunca se desplegó (Migration Plan, "Despliegue: no hay"). Levantar el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas; volcar con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`; restaurar ese dump en una base aparte con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa `humo.sh`); sobre esa base restaurada correr `alembic upgrade` a 0017, `alembic downgrade` a 0016 y `alembic upgrade` otra vez, comparando conteos por `administracion_id` y por `rol` antes del primer `upgrade`, después del `downgrade` y después del segundo `upgrade`. Verificación: los tres conteos (antes, tras el `downgrade`, tras el segundo `upgrade`) en el informe, idénticos entre el primero y el tercero. Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones (repetida sobre la copia restaurada, no sobre datos sembrados a mano). Lecciones: L-013, L-016.
+
+  JUICIO: pendiente; el ensayo depende del upgrade y downgrade de 3.1/3.3, detenidos.
+  No se presenta el humo de 1.1 como ensayo de 0017, ni una tabla vacía como prueba
+  de conversión. No hay conteos de este ensayo ni RED/GREEN de la migración.
+  SUPUESTO declarado por el diseño (RD-2), sin verificar externamente: no hay
+  producción ni datos reales y el sistema nunca se desplegó.
+
+
+
+  EVIDENCIA de cierre del intento (no valida tareas pendientes de implementación):
+
+  ```text
+  $ date +%T && bash infra/ci/test-backend.sh
+  11:55:24
+=========== 1757 passed, 1 xfailed, 16 warnings in 427.25s (0:07:07) ===========
+  $ date +%T && bash infra/ci/humo.sh
+  12:03:03
+  HUMO OK
+ Network proptech_datos  Removed
+ Network proptech_aplicacion  Removed
+ Network proptech_borde  Removed
+ Network proptech_salida_worker  Removed
+  ```
+
+  Ambos terminaron con estado 0, en ese orden y de a uno. El humo ejecutó su
+  limpieza con `-p proptech`, sin invocaciones manuales de Docker. Logs locales:
+  `.git/informes-roles-bloque-a/cierre-{backend,humo}.log`.
+  `git diff --exit-code bf066ce -- backend infra web` terminó con estado 0:
+  sólo se documentó el intento; no quedaron cambios de aplicación, tests o infra.
+  Sólo 1.1 está completada; 2.1 a 3.5 quedan pendientes con los motivos anteriores.
 
 ## 4. Aplicación y API
 
