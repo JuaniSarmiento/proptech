@@ -138,12 +138,35 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
   return datos;
 }
 
+/** R3C-10 (rompedor 3b): la última escritura (POST/PATCH/PUT) que recibió
+ * el servidor, para que un test externo (e2e, otro proceso) pueda leerla
+ * por HTTP en `/api/__debug/ultima-escritura` — la API falsa no tenía
+ * ninguna forma de ver qué le llegó, y por eso escondió R3C-1 (el POST de
+ * la web viajaba como `text/plain` y nadie lo notó). */
+type EscrituraRecibida = { metodo: string; url: string; contentType: string; cuerpo: string };
+let _ultimaEscritura: EscrituraRecibida | null = null;
+
+function _esEscritura(metodo: string | undefined): boolean {
+  return metodo === "POST" || metodo === "PATCH" || metodo === "PUT";
+}
+
+const _ERROR_CONTENT_TYPE_INVALIDO = JSON.stringify({
+  detail: [{ type: "model_attributes_type", loc: ["body"], msg: "Content-Type inválido" }],
+});
+
 /** Crea el servidor sin levantarlo (`listen()` queda a cargo de quien lo
  * use: así se puede probar sobre un puerto al azar). */
 export function crearServidor(): Server {
   return createServer((pedido, respuesta) => {
     const url = new URL(pedido.url ?? "/", "http://localhost");
     const partes = url.pathname.split("/").filter(Boolean);
+
+    if (partes[0] === "api" && partes[1] === "__debug" && partes[2] === "ultima-escritura") {
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify(_ultimaEscritura));
+      return;
+    }
 
     if (partes[0] !== "api" || partes[1] !== "complejos") {
       respuesta.writeHead(404).end();
@@ -204,11 +227,64 @@ export function crearServidor(): Server {
       respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));
     };
 
-    if (escenario?.clave === "lento") {
-      setTimeout(enviar, 3000);
-    } else {
-      enviar();
+    if (!_esEscritura(pedido.method)) {
+      if (escenario?.clave === "lento") {
+        setTimeout(enviar, 3000);
+      } else {
+        enviar();
+      }
+      return;
     }
+
+    // R3C-10: a diferencia de un GET, una escritura SÍ mira el cuerpo que
+    // llega — antes, cualquier POST/PATCH/PUT caía en la misma `enviar()`
+    // de arriba sin que nadie leyera `pedido.method` ni el body, así que
+    // contestaba 200 con el fixture de lectura sin importar el
+    // Content-Type ni la forma del cuerpo (por eso R3C-1 pasó inadvertido
+    // en todo el barrido del navegador).
+    let cuerpo = "";
+    pedido.on("data", (trozo) => {
+      cuerpo += trozo;
+    });
+    pedido.on("end", () => {
+      const contentType = String(pedido.headers["content-type"] ?? "");
+      _ultimaEscritura = {
+        metodo: pedido.method ?? "",
+        url: pedido.url ?? "",
+        contentType,
+        cuerpo,
+      };
+
+      if (responderSegunEscenario()) {
+        return;
+      }
+      if (!/^application\/json/.test(contentType)) {
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(_ERROR_CONTENT_TYPE_INVALIDO);
+        return;
+      }
+      let cuerpoParseado: unknown;
+      try {
+        cuerpoParseado = cuerpo === "" ? {} : JSON.parse(cuerpo);
+      } catch {
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: [{ type: "json_invalid", loc: ["body"] }] }));
+        return;
+      }
+      if (
+        cuerpoParseado === null ||
+        typeof cuerpoParseado !== "object" ||
+        Array.isArray(cuerpoParseado)
+      ) {
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: [{ type: "model_attributes_type", loc: ["body"] }] }));
+        return;
+      }
+      enviar();
+    });
   });
 }
 

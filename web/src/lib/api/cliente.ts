@@ -80,11 +80,20 @@ export async function pedirApi<T>(
     return { estado: "fallo" };
   }
 
+  const cabeceras = cabecerasHaciaLaApi(opciones.cabeceras ?? new Headers());
+  if (opciones.cuerpo !== undefined) {
+    // R3C-1 (rompedor 3b): sin esto, `fetch` manda un `body` string sin
+    // Content-Type declarado y pone `text/plain;charset=UTF-8` (spec
+    // Fetch); FastAPI sólo parsea JSON si el content-type es
+    // `application/json` (o `+json`), así que daba 422 en TODA escritura.
+    cabeceras.set("Content-Type", "application/json");
+  }
+
   let respuesta: Response;
   try {
     respuesta = await fetch(`${base}${ruta}`, {
       method: opciones.metodo ?? "GET",
-      headers: cabecerasHaciaLaApi(opciones.cabeceras ?? new Headers()),
+      headers: cabeceras,
       body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
     });
   } catch {

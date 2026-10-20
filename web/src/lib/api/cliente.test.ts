@@ -46,6 +46,29 @@ describe("pedirApi", () => {
     );
   });
 
+  it("R3C-1 · con cuerpo, declara Content-Type: application/json (si no, fetch pone text/plain y FastAPI da 422)", async () => {
+    const fetchFalso = mockFetch({ status: 201, cuerpo: { id: "nuevo" } });
+    vi.stubGlobal("fetch", fetchFalso);
+    await pedirApi("/api/complejos/1/categorias", {
+      metodo: "POST",
+      cuerpo: { clave: "k", nombre: "n" },
+    });
+    const llamada = fetchFalso.mock.calls[0];
+    if (!llamada) throw new Error("fetch no se llamó");
+    const cabeceras = llamada[1]?.headers as Headers;
+    expect(cabeceras.get("content-type")).toMatch(/^application\/json/);
+  });
+
+  it("R3C-1 · sin cuerpo (GET), no fuerza ningún Content-Type", async () => {
+    const fetchFalso = mockFetch({ status: 200, cuerpo: { ok: true } });
+    vi.stubGlobal("fetch", fetchFalso);
+    await pedirApi("/api/complejos");
+    const llamada = fetchFalso.mock.calls[0];
+    if (!llamada) throw new Error("fetch no se llamó");
+    const cabeceras = llamada[1]?.headers as Headers;
+    expect(cabeceras.get("content-type")).toBeNull();
+  });
+
   it("200: ok con los datos", async () => {
     vi.stubGlobal("fetch", mockFetch({ status: 200, cuerpo: { nombre: "Edificio" } }));
     expect(await pedirApi("/api/complejos/1")).toEqual({

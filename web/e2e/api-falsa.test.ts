@@ -160,4 +160,55 @@ describe("api-falsa", () => {
     const respuesta = await fetch(`${base}/otra-cosa`);
     expect(respuesta.status).toBe(404);
   });
+
+  describe("R3C-10 · una escritura valida Content-Type y forma, no sólo la ruta", () => {
+    const id = "f760ca3b-7331-4927-96e5-54a3fbb1f3ae";
+
+    it("un POST con text/plain (lo que mandaba la web antes de R3C-1) ya no se acepta como si fuera un GET", async () => {
+      const respuesta = await fetch(`${base}/api/complejos/${id}/unidades`, {
+        method: "POST",
+        body: JSON.stringify({ identificador: "X" }),
+      });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("un POST con application/json y un objeto se acepta", async () => {
+      const respuesta = await fetch(`${base}/api/complejos/${id}/unidades`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ identificador: "X" }),
+      });
+      expect(respuesta.status).toBe(200);
+    });
+
+    it("un POST con application/json pero un arreglo (no la forma esperada) da 422", async () => {
+      const respuesta = await fetch(`${base}/api/complejos/${id}/unidades`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify([1, 2, 3]),
+      });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("el escenario 403 sigue ganando sobre la validación de Content-Type (igual que la API real: la autorización no depende del cuerpo)", async () => {
+      const respuesta = await fetch(`${base}/api/complejos/${idDe("sin_permiso_403")}/unidades`, {
+        method: "POST",
+        body: "no es json",
+      });
+      expect(respuesta.status).toBe(403);
+    });
+
+    it("/api/__debug/ultima-escritura expone el método, la URL y el Content-Type recibidos", async () => {
+      await fetch(`${base}/api/complejos/${id}/categorias`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nombre: "Y" }),
+      });
+      const depurado = await (await fetch(`${base}/api/__debug/ultima-escritura`)).json();
+      expect(depurado).toMatchObject({
+        metodo: "PATCH",
+        contentType: "application/json",
+      });
+    });
+  });
 });
