@@ -579,7 +579,39 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   SUPUESTO: ninguno. Logs locales: .git/informes-roles-bloque-b/4.3-*.log.
 
 
-- [ ] 4.4 Consistencia del vocabulario de roles asignables (RA-4, revisión del arquitecto), en un test nuevo (por ejemplo `backend/tests/unitarios/acceso/test_vocabulario_asignable.py`): el conjunto de valores del `Literal` de `CuerpoAsignacion.rol` (`proptech_api/complejos.py`), el conjunto de valores permitidos por `ck_asignacion_rol_rol_valido` (leído de la migración `0017`, no copiado a mano) y el subconjunto asignable por esta ruta del enum `Rol` de `acceso/dominio/permisos.py` tienen que ser el mismo conjunto; el test falla si alguno de los tres cambia sin que los otros dos lo acompañen. RED: se escribe el test contra el estado de hoy (el `Literal` todavía dice `colaborador | consejo`) y se lo ve fallar por la razón correcta antes de actualizar el cuerpo del endpoint en 4.2/D7. Escenarios: ninguno nuevo (sostiene la consistencia entre D7 y D1). Lecciones: L-019, L-022.
+- [x] 4.4 Consistencia del vocabulario de roles asignables (RA-4, revisión del arquitecto), en un test nuevo (por ejemplo `backend/tests/unitarios/acceso/test_vocabulario_asignable.py`): el conjunto de valores del `Literal` de `CuerpoAsignacion.rol` (`proptech_api/complejos.py`), el conjunto de valores permitidos por `ck_asignacion_rol_rol_valido` (leído de la migración `0017`, no copiado a mano) y el subconjunto asignable por esta ruta del enum `Rol` de `acceso/dominio/permisos.py` tienen que ser el mismo conjunto; el test falla si alguno de los tres cambia sin que los otros dos lo acompañen. RED: se escribe el test contra el estado de hoy (el `Literal` todavía dice `colaborador | consejo`) y se lo ve fallar por la razón correcta antes de actualizar el cuerpo del endpoint en 4.2/D7. Escenarios: ninguno nuevo (sostiene la consistencia entre D7 y D1). Lecciones: L-019, L-022.
+
+  EVIDENCIA (20/10/2026): el test ejecuta upgrade() de 0017 con `op` simulado
+  y obtiene el CHECK por su nombre; no copia su lista. Compara todos los roles
+  de base/enum y el subconjunto asignable con el Literal de la API.
+  JUICIO sobre el orden: la frase RED "antes de actualizar ... en 4.2" no puede
+  cumplirse haciendo 4.2 antes de 4.4. Se respeta el orden explícito de Juani:
+  el test nace verde y se demuestra el rojo con el Literal anterior mutado.
+  Los tres mutantes son independientes, con copia previa real en
+  .git/informes-roles-bloque-b/4.4-{api,check,enum}-original.py, sin commit y
+  restauración byte a byte antes del siguiente:
+  ```diff
+  -rol: Literal["administrador", "contador", "auxiliar", "consejo"]
+  +rol: Literal["colaborador", "consejo"]
+  -"rol IN ('super_admin', 'administrador', 'contador', 'auxiliar', 'consejo', 'vecino')",
+  +"rol IN ('super_admin', 'administrador', 'auxiliar', 'consejo', 'vecino')",
+  -AUXILIAR = "auxiliar"
+  +AUXILIAR = "auxiliar_mutante"
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_vocabulario_asignable.py -q
+  13:11:56 (inicial): 1 passed in 0.36s
+  13:12:10 (api-rojo): 1 failed in 0.41s
+  13:12:11 (check-rojo): 1 failed in 0.40s
+  13:12:13 (enum-rojo): 1 failed in 0.40s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso -q
+  13:12:14
+  437 passed, 1 warning in 0.71s
+  ```
+  JUICIO: cambiar sólo el Literal, sólo el CHECK o sólo el enum rompe el test.
+  Ruff check / format --check / mypy: limpios (229 archivos / 208 fuentes).
+  SUPUESTO: ninguno. Logs locales: .git/informes-roles-bloque-b/4.4-*.log.
+
 
 ## 5. La web
 
