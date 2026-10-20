@@ -382,6 +382,19 @@ familia por hallazgo).
     caso real ya vive en `sin-sesion.test.ts` con un UUID. `pnpm tsc --noEmit`/
     `pnpm biome check` (con `--write`): limpios.
   - Commit `fix(web): un 401 en cualquier escritura dice que la sesión expiró (R3C-8)`.
+- [x] R3C-6 (BAJA): `configuracion/acciones.ts` convertía `dias_de_gracia`/
+  `dia_de_vencimiento`/`dia_segundo_vencimiento` con `Number.parseInt` suelto:
+  `"1e1"` (válido en `<input type="number">`, vale 10) daba 1, `"3,5"` daba 3.
+  - RED 22:47:35 `vitest run .../configuracion/acciones.test.ts` (nuevo) →
+    `3 failed`: `dias_de_gracia "1e1"` se mandaba como `1`, etc.
+  - Arreglo: `_ENTERO_ESTRICTO = /^\d+$/` antes de `Number.parseInt`; lo que no
+    matchea da `NaN` (→ `null` en el JSON), para que la API lo rechace con un
+    422 real en vez de un número distinto al tipeado.
+  - GREEN 22:48:13 `vitest run .../configuracion/acciones.test.ts` → `4 passed`
+    (incluye el caso "sí se manda" con un entero real). Suite completa 22:47:53
+    `vitest run` → `264 passed` (sólo R3C-9 y los dos casos obsoletos de
+    `__rompedor__` en rojo). `pnpm tsc --noEmit`/`pnpm biome check`: limpios.
+  - Commit `fix(web): dias_de_gracia/dia_de_vencimiento como enteros estrictos (R3C-6)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
