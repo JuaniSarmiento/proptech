@@ -1,6 +1,6 @@
 # Visión y Objetivos
 
-> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-094). **El MVP arranca por
+> Alcance acordado entre el 08/10/2026 y hoy (decisiones D-003 a D-107). **El MVP arranca por
 > edificios** (D-027); los barrios privados vienen después. Las reglas que citan las historias
 > (R01 a R41) están en `05_reglas_de_negocio.md`; los términos, en `11_glosario.md`. Las reglas propias
 > de cada edificio (bonificaciones, cargos recurrentes, controles propios) entran por el motor de
@@ -24,7 +24,7 @@ el cierre da igual al centavo.
 
 1. **Meta**: que un administrador liquide y cobre un edificio mejor que con su Excel.
 2. **Se valida** reproduciendo al centavo la última liquidación de un edificio piloto y corriendo un mes en paralelo.
-3. **Usuarios**: titular, colaborador (por edificio asignado), consejo (sólo lectura) y vecino.
+3. **Usuarios**: super admin, administrador y contador (principal o por edificio), auxiliar, consejo de lectura y vecino propietario o inquilino (D-106).
 4. **Pagos**: el vecino sube su comprobante y el administrador lo confirma; la plata va directo a la cuenta del consorcio.
 5. **Intereses simples** y configurables por edificio; nunca interés sobre interés.
 6. **Cada peso de deuda vive en un solo lugar**: la cuenta corriente sólo agrega movimientos.
@@ -37,8 +37,10 @@ el cierre da igual al centavo.
 
 | Actor | Objetivo principal | Objetivos secundarios |
 |---|---|---|
-| **Administrador titular** | Liquidar y cobrar el edificio de punta a punta, mejor que con su Excel | Configurar el edificio (HU-A1), cargar el edificio desde Excel (HU-A2), cargar gastos y cargos particulares (HU-A3, HU-A3b), revisar la preliquidación (HU-A4), emitir la liquidación (HU-A5), confirmar pagos informados (HU-A6), validar con el extracto del banco (HU-A7), ver la morosidad (HU-A8), corregir errores sin perder historial (HU-A9), emitir certificados de libre deuda (HU-A10), condonar intereses y marcar gestión judicial (HU-A11, propuesta) |
-| **Colaborador** | Operar los edificios que le asignan, con nivel "ver" o "editar", sin cerrar ni anular liquidaciones ni pagos (D-037) | Las mismas acciones del titular dentro de su alcance, salvo las exclusivas del titular (matriz de permisos de D-096) |
+| **Super admin** | Liquidar y cobrar el edificio de punta a punta, mejor que con su Excel | Configurar el edificio (HU-A1), cargar el edificio desde Excel (HU-A2), cargar gastos y cargos particulares (HU-A3, HU-A3b), revisar la preliquidación (HU-A4), emitir la liquidación (HU-A5), confirmar pagos informados (HU-A6), validar con el extracto del banco (HU-A7), ver la morosidad (HU-A8), corregir errores sin perder historial (HU-A9), emitir certificados de libre deuda (HU-A10), condonar intereses y marcar gestión judicial (HU-A11, propuesta) |
+| **Administrador** | Operar y configurar los edificios de su alcance, emitir y confirmar pagos | El principal también anula, revierte o reimputa, condona, da de baja deuda y acepta alertas bloqueantes (D-106) |
+| **Contador** | Leer lo contable de su alcance, principal o por edificio | Consultar gastos, liquidaciones y comprobantes; exportar cuando el módulo lo ofrezca |
+| **Auxiliar** | Leer los edificios asignados | Consultar sin ejecutar escrituras |
 | **Vecino** | Entender su expensa y pagarla desde el celular | Entrar al portal con todas sus unidades juntas (HU-V1), ver cuánto debe (HU-V2), entender en qué se gastó la plata (HU-V3), informar un pago con su comprobante (HU-V4), descargar comprobantes (HU-V5), recibir avisos antes del vencimiento y en mora (HU-V6) |
 | **Consejo** (o comisión directiva) | Controlar las cuentas del edificio sin poder modificar nada | Ver morosidad, gastos aprobados y liquidaciones emitidas (HU-C1) |
 
@@ -51,10 +53,9 @@ el cierre da igual al centavo.
   (D-093), Alberto también construye cambios propios sobre este mismo repositorio con el ciclo OPSX.
 - **Piloto**: un edificio con contacto directo de Alberto (D-033). Mientras no estén sus datos se
   diseña con un edificio de ejemplo; M1 no se cumple sin datos reales.
-- **Usuarios** (D-009, D-037): administrador titular, colaborador, vecino y consejo; ver la tabla de
-  objetivos por actor arriba y la matriz de permisos (RBAC) en `03_actores_y_roles.md`. El inquilino
-  como rol separado queda para después del MVP; en edificios es frecuente, así que se valida con el
-  piloto que la persona de contacto alcance (D-032).
+- **Usuarios** (D-106): super admin, administrador, contador, auxiliar, consejo y vecino con vínculo
+  propietario o inquilino por unidad; el inquilino ve sólo ordinarias y el propietario ambas expensas.
+  Ver objetivos por actor y matriz RBAC en `03_actores_y_roles.md`. D-106 supera la exclusión de D-032.
 
 ## Alcance v1.0 (MVP)
 
@@ -71,7 +72,7 @@ probados.
 ## Fuera de alcance
 
 **No entra**: barrios privados en producción, cálculo del sueldo del encargado (escala SUTERH),
-inquilino como rol, Mercado Pago y otros medios de cobro integrados (MODO, débito, Red Link,
+Mercado Pago y otros medios de cobro integrados (MODO, débito, Red Link,
 Rapipago, SIRO), reservas del SUM, bot de WhatsApp, consultas de reglamento con IA, asambleas,
 órdenes de compra, tableros complejos, tesorería (saldo de caja y saldo acumulado del fondo de
 reserva), contabilidad integral, cálculo de consumos por medidor (se cargan como cargos
@@ -90,7 +91,7 @@ posteriores está en `16_proyecto_final.md`.
 
 | Hito | Cambios, en orden |
 |---|---|
-| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2 `acceso-y-aislamiento` ⓔ · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
+| **M1** | 1a `infraestructura-base` · 1b `arranque-del-sistema` · 1c `cola-logs-y-respaldos` · 1d `respaldos-y-restauracion` · 2a `aislamiento-por-administracion` ⓔ · 2.2a `roles-de-la-empresa` · 2b `login` y gestión de usuarios · 2c `endurecimiento-de-infraestructura` · 3 `configuracion-del-edificio` · 4 `motor-de-cuenta-corriente` ⓔ · 5 `importacion-desde-excel` · 6 `gastos-y-cargos` · 7 `liquidacion-y-emision` ⓔ |
 | **M2** | 8 `pagos-informados` · 6b `motor-de-reglas` ⓔ · 9 `extracto-bancario` · 10a `morosidad` · 10b `condonacion-judicial-y-libre-deuda` · 11 `portal-del-vecino` · 12 `vista-del-consejo` · 13 `avisos-por-email` |
 | **M3** | 14 `lectura-de-facturas` · 15 `piloto-en-paralelo` |
 
@@ -135,7 +136,7 @@ posterga, para validarlo con él:
 | Coeficientes | Tres fijos por unidad | Grupos de reparto definidos por edificio | Cubre más casos con el mismo trabajo (D-013) |
 | Lectura de facturas | Todo con IA | Primero el QR de ARCA, IA para el resto | Monto exacto y más barato (D-019) |
 | Fondos y tesorería | Fondo operativo, de reserva y de obras con su saldo | Fondo de reserva sólo como concepto de la expensa, sin saldo de caja | Lo que el vecino paga se refleja; el saldo acumulado no hace falta para liquidar (D-031) |
-| Roles | Inquilino, contador, proveedor, encargado, guardia | Titular, colaborador, consejo y vecino | Lo mínimo para validar (D-009, D-032, D-037) |
+| Roles | Inquilino, contador, proveedor, encargado, guardia | Super admin, administrador, contador, auxiliar, consejo y vecino propietario o inquilino | Roles reales de la empresa (D-106) |
 | Consumo de agua | Por rangos de litros | Cargo particular importado por Excel | Cubre el caso sin construir medidores (D-026) |
 | Código | 48 fragmentos | Descartado | Errores verificados (D-002) |
 
@@ -144,10 +145,10 @@ el MVP sigue en su forma (D-035 a D-039):
 
 | Tema | Documento de Alberto | MVP | Por qué |
 |---|---|---|---|
-| Permisos | ~15 áreas con 3 niveles | Titular, colaborador, consejo y vecino, con las mismas tres capas | Lo mínimo para validar (D-037) |
+| Permisos | ~15 áreas con 3 niveles | Perfil × alcance, con las mismas capas de aislamiento y permiso | Decisión de Juani (D-106) |
 | Montos | Decimal (NUMERIC 14,2) | Decimal (NUMERIC 14,2), igual que su documento | Alineado con Alberto (D-046) |
 | Cifrado con índice ciego, outbox, copiloto, bandeja de WhatsApp | Incluidos | Después del MVP | Alcance (D-039) |
-| Login | Clerk para el personal, enlace mágico para vecinos | Se define en el design del cambio 2 | No se decidió todavía (D-039) |
+| Login | Clerk para el personal, enlace mágico para vecinos | Clerk sólo para autenticación, también con contraseña para vecinos; autorización en la base | Decidido por Juani (D-107) |
 
 ## Métricas de éxito
 

@@ -24,10 +24,10 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   autenticada, nunca de un parámetro que manda el cliente (análisis H02, H14, H27). Row-Level
   Security es el segundo candado.
 - **Alcance por edificio**: dentro de su administración, cada persona ve sólo los complejos que le
-  corresponden según su rol (D-037): el titular, todos; el colaborador, los asignados; el consejo, el
-  suyo; el vecino, sus unidades. Fuera de alcance responde 404.
+  corresponden según perfil y alcance (D-106): los perfiles principales, todos; los perfiles por
+  edificio, los asignados; el vecino, sus unidades y lo que corresponde a su vínculo. Fuera de alcance responde 404.
 - **Tests mínimos**: un pedido con el identificador de otra administración no devuelve nada; una
-  consulta a la base sin fijar la administración no devuelve filas; un colaborador no ve un edificio
+  consulta a la base sin fijar la administración no devuelve filas; un administrador por edificio no ve un edificio
   no asignado de su propia administración; un vecino no ve la unidad de otro vecino; una escritura con
   el identificador de otra administración se rechaza; el worker sin administración fijada no lee nada;
   un link firmado de otra administración responde "no encontrado"; el consejo ve sólo su edificio y
@@ -699,7 +699,7 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Interés corrido** (D-081): si la fecha de corte es posterior a un vencimiento, el certificado informa
   en una línea aparte el interés corrido hasta esa fecha según R03, calculado y sin registrarlo en la
   cuenta corriente (se registra con la emisión siguiente).
-- **Firma**: lo firma el administrador titular.
+- **Firma**: lo firma el super admin (antes, administrador titular).
 - **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
   con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
   sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de
@@ -713,8 +713,8 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Propuesta**: una condonación nunca borra el recargo original. Genera un movimiento de
   **condonación de interés** (crédito) que lo neutraliza, con motivo obligatorio y visible para el
   vecino (principio 7 de Alberto) y para el consejo.
-- **Falta decidir** (Q1 de Alberto): quién aprueba la condonación (el administrador solo, con
-  auditoría posterior, o un nivel de aprobación del consejo por encima de un umbral). No se decide
+- **Falta decidir** (Q1 de Alberto): si la condonación, que ejecutan el super admin o el administrador principal (D-106),
+  necesita además aprobación del consejo por encima de un umbral. No se decide
   sin esa respuesta.
 - **Tests mínimos** (a definir con la aprobación): una condonación genera el movimiento de crédito
   sin borrar el recargo; el vecino ve el motivo; después de condonar, la función de R20 da el
@@ -743,14 +743,14 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 - **Qué resuelve**: una deuda que el consorcio da por perdida (por ejemplo, después de un remate que no
   alcanzó a cubrirla) y que la asamblea decide dar de baja.
-- **Propuesta**: el administrador titular registra una **baja de deuda** sobre la unidad, con motivo y
+- **Propuesta**: el super admin o el administrador principal registra una **baja de deuda** sobre la unidad, con motivo y
   el respaldo adjunto (acta de asamblea u orden judicial). Es un movimiento nuevo (R08): la deuda
-  original no se borra y la baja queda en un reporte propio de deudas dadas de baja. Sólo el titular
-  puede hacerlo.
+  original no se borra y la baja queda en un reporte propio de deudas dadas de baja. Sólo esos dos perfiles
+  pueden hacerlo (D-106).
 - **Alcance**: va junto con la marca de gestión judicial (R31); se decide si entra al MVP cuando se
   valide R31.
 - **Tests mínimos**: la baja deja el saldo en cero sin borrar movimientos; sin respaldo adjunto se
-  rechaza; un colaborador no puede registrarla; aparece en el reporte de bajas.
+  rechaza; un administrador por edificio no puede registrarla; aparece en el reporte de bajas.
 
 ---
 

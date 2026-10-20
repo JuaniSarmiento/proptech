@@ -1,13 +1,14 @@
 # Modelo de Datos
 
 > A partir de las migraciones reales en `backend/` (Alembic) y de las decisiones de modelado ya
-> tomadas (D-040, D-046, D-076, D-082, D-086, D-098, D-100, D-103, D-104). Desde el cierre del 2a
+> tomadas (D-040, D-046, D-076, D-082, D-086, D-098, D-100, D-103, D-104, D-106). Desde el cierre del 2a
 > (15/10/2026) ya existen, además de `trabajos_hechos`: `administracion`, `complejo` (mínimo), `unidad`
 > (mínima), `persona`, `asignacion_rol`, `accion_de_auditoria` y `auditoria` (migraciones
 > `0003_acceso_minimo` y `0004_auditoria`). Desde el cierre del 3a (19/10/2026, migraciones `0005` a
 > `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`, `grupo_unidad`,
 > `categoria_de_gasto` y `configuracion_versionada` (de sólo agregar), más cinco acciones nuevas de
-> `accion_de_auditoria`. El resto (desde el libro de movimientos) sigue siendo planificado, por cambio,
+> `accion_de_auditoria`. El 2.2a (20/10/2026, `0017` y `0018`) reemplaza los roles y
+> agrega vínculos e índices únicos en `asignacion_rol`. El resto (desde el libro de movimientos) sigue siendo planificado, por cambio,
 > y así queda marcado en cada sección.
 
 ## Dominios
@@ -52,7 +53,7 @@ erDiagram
     COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (0008, R16)"
     COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (0009, solo agregar)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (0003)"
-    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0003, opcional salvo titular)"
+    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0017, opcional para perfiles principales)"
     ASIGNACION_ROL }o--|| UNIDAD : "alcanza (0003, solo rol vecino)"
     ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010)"
 ```
@@ -80,7 +81,7 @@ erDiagram
     COMPLEJO ||--o{ REGLA_VERSIONADA : "versiona (c.6b, D-066; fuera del camino a M1)"
     GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa via GRUPO_UNIDAD (existe, 3a)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (existe, 0003, D-037)"
-    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (existe, 0003, D-037/D-076; permisos por accion, D-096)"
+    ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (existe, 0003, D-037/D-076; permisos por accion, D-106)"
     COMPLEJO ||--o{ PROVEEDOR : "factura a (c.6)"
     PROVEEDOR ||--o{ GASTO : "emite (c.6, R12)"
     GASTO ||--o{ NOTA_DE_CREDITO : "corrige (c.6, R22)"
@@ -216,34 +217,53 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   en la aplicación, con la función pura de `compartido`, no en la base.
 - **Índices**: ninguno además de los implícitos de las claves y del único de identificador.
 
-#### `persona` · existe (migración `0003`, cambio 2a, D-009, D-076)
+#### `persona` · existe (migración `0003`, cambio 2a, D-076, D-106)
 
-- **Qué es**: la identidad autenticada (administrador titular, colaborador, vecino o consejo).
-- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+- **Qué es**: la persona dentro de una administración; sus perfiles y alcances viven en
+  `asignacion_rol`. Propietario o inquilino describe su relación con cada unidad, no a la persona.
+- **Atributos actuales**: `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
   `nombre` · `TEXT NOT NULL`; `email` · `TEXT`, en minúscula (`CHECK email = lower(email)`), único
   dentro de la administración.
-- **Relaciones**: pertenece a una `administracion` (D-096 resolvió P18: una cuenta por administración,
-  no varias); tiene muchas `asignacion_rol`.
-- **Constraints**: `administracion_id NOT NULL`, RLS forzada; `UNIQUE (administracion_id, email)`. El
-  login real del personal y el acceso del vecino (contraseña / link mágico, D-097) se deciden en el
-  design del cambio 2b (D-039, D-043); hoy la identidad se inyecta en los tests, sin login.
+- **Relaciones y constraints**: pertenece a una `administracion` (D-096, una cuenta por
+  administración); tiene muchas `asignacion_rol`; RLS forzada y `UNIQUE (administracion_id, email)`.
+- **Planificado (2b, D-107)**: vincular la identidad por el id de Clerk, nunca sólo por email; Clerk
+  autentica al personal y a los vecinos con usuario y contraseña, además del link mágico. El vínculo
+  con Clerk todavía no es una columna existente; hoy se inyecta la identidad en los tests.
 
-#### `asignacion_rol` · existe (migración `0003`, cambio 2a, D-037)
+#### `asignacion_rol` · existe (migraciones `0003`, `0017` y `0018`, cambio 2.2a, D-106)
 
-- **Qué es**: la relación entre una `persona`, un rol (`titular | colaborador | consejo | vecino`,
-  `CHECK`) y su alcance.
-- **Atributos** (`0003_acceso_minimo.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
-  `persona_id` · `UUID NOT NULL` (FK compuesta a `persona`); `rol` · `TEXT NOT NULL`; `complejo_id` ·
-  `UUID`, opcional; `unidad_id` · `UUID`, opcional; `nivel` · `TEXT`, opcional (`ver | editar`).
-- **Constraints**: `CHECK ck_asignacion_rol_forma_por_rol` exige una forma distinta por rol: `titular`
-  sin `complejo_id`, sin `unidad_id` y sin `nivel`; `colaborador` con `complejo_id` y `nivel`, sin
-  `unidad_id`; `consejo` con `complejo_id`, sin `unidad_id` ni `nivel`; `vecino` con `complejo_id` y
-  `unidad_id`, sin `nivel`. El colaborador sólo ve los edificios que le asignan, con nivel "ver" o
-  "editar" (D-037); fuera de alcance responde 404.
-- **Permisos por acción (P23, resuelta en D-096)**: qué rol puede emitir, distribuir, anular una
-  liquidación, confirmar y revertir pagos, condonar, dar de baja una deuda y aceptar alertas; ver la
-  matriz completa en D-096. P20 sigue abierta: si por encima de un monto el titular necesita además
-  la aprobación del consejo antes de condonar. Ver `03_actores_y_roles.md` §RBAC.
+- **Qué es**: la relación entre una `persona`, un perfil y su alcance dentro de la administración.
+- **Atributos**: `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`; `persona_id` · `UUID NOT NULL`
+  (FK compuesta a `persona`); `rol` · `TEXT NOT NULL`; `complejo_id` · `UUID`, opcional; `unidad_id` ·
+  `UUID`, opcional; `vinculo` · `TEXT`, opcional. **No existe `nivel`** desde 0017.
+- **CHECK de vocabulario**: `ck_asignacion_rol_rol_valido` admite exactamente `super_admin`,
+  `administrador`, `contador`, `auxiliar`, `consejo` y `vecino`.
+  `ck_asignacion_rol_vinculo_valido` admite nulo, `propietario` o `inquilino`.
+- **Forma (`ck_asignacion_rol_forma_por_rol`)**:
+  - `super_admin`: sin edificio, unidad ni vínculo.
+  - `administrador` o `contador`: sin unidad ni vínculo; `complejo_id` nulo significa principal,
+    de lo contrario sólo ese edificio.
+  - `auxiliar` o `consejo`: edificio obligatorio, sin unidad ni vínculo.
+  - `vecino`: edificio, unidad y vínculo obligatorios.
+  Las FK compuestas conservan la pertenencia a administración y edificio. RLS asegura el tenant;
+  el alcance por edificio se controla en la aplicación (E2 del 2a).
+- **Índices (`0017`, salvo el de consejo en `0018`)**:
+  - `ix_asignacion_rol_persona` sobre `(administracion_id, persona_id)` para cargar asignaciones.
+  - `uq_asignacion_rol_persona_alcance` único sobre `(administracion_id, persona_id, complejo_id)`,
+    `NULLS NOT DISTINCT`, parcial para `super_admin`, `administrador`, `contador`, `auxiliar`:
+    un perfil de personal por persona y alcance, principal incluido.
+  - `uq_asignacion_rol_persona_unidad` único sobre `(administracion_id, persona_id, unidad_id)`,
+    parcial para `vecino`: un vínculo por persona y unidad, con varios propietarios por unidad.
+  - `uq_asignacion_rol_consejo_persona_complejo` único sobre
+    `(administracion_id, persona_id, complejo_id)`, parcial para `consejo`: una asignación por persona
+    y edificio (RR-3), sin limitar la cantidad de consejeros distintos.
+- **Permisos**: matriz de D-106 en `03_actores_y_roles.md`; contador principal sigue siendo de lectura.
+  P20 sólo deja pendiente una eventual aprobación adicional del consejo para condonar.
+- **Migración**: 0017 convierte titular a super admin, colaborador que edita a administrador,
+  colaborador que ve a auxiliar y vecino a propietario; 0018 agrega consejo único. Ambas validan
+  duplicados de todos los tenants bajo `ACCESS EXCLUSIVE`, con `NO FORCE` transaccional y restitución
+  de `FORCE`. El downgrade a 0016 falla sin modificar datos ante contador, administrador principal
+  o inquilino.
 
 #### `accion_de_auditoria` · existe (migración `0004`, cambio 2a, D-016; ampliado en `0010`, cambio 3a, D14)
 

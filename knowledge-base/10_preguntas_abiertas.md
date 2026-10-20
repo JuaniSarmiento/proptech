@@ -22,7 +22,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 
 - [ ] **P1 · Piloto** (ahora un edificio, D-033): quién es, qué datos puede dar (padrón, facturas, última liquidación) y cuándo. *08/10: Juani no lo sabe; se le pregunta a Alberto. Mientras tanto se diseña con un edificio de ejemplo, pero M1 no se da por cumplido sin datos reales.*
 - [x] **P2 · Tipo de complejo del MVP**: edificios primero, diseño preparado para barrios (D-027, reemplaza D-008).
-- [x] **P3 · Usuarios y roles del MVP**: titular, colaborador, consejo en sólo lectura y vecino (D-009, D-037).
+- [x] **P3 · Usuarios y roles del MVP**: perfil × alcance, super admin, administrador, contador, auxiliar,
+  consejo de lectura y vecino propietario o inquilino (D-106, reemplaza la matriz de D-096).
 - [x] **P4 · Política financiera**: decidida (D-010 a D-015). R08 y R10 vigentes (D-016). **Falta validar los defaults con un administrador o contador de Mendoza.**
 - [x] **P5 · Medios de cobro del MVP**: comprobante + OK del administrador, extracto como ayuda (D-017). La consulta UIF queda como requisito antes de integrar Mercado Pago.
 - [x] **P6 · Stack**: definido (D-020, ajustado por D-036 y D-038).
@@ -42,7 +43,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   Alberto y un administrador. Detectado en la auditoría del 13/10.
 - [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
   del cambio 8, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
-  del 13/10; no está confirmado con un abogado.
+  del 13/10; no está confirmado con un abogado. **Cerrada para la autenticación** (D-107, Juani,
+  20/10/2026): se adopta Clerk con aviso de privacidad y transferencia internacional, sólo email y
+  nombre, vínculo por id de Clerk. Sigue abierta la inscripción de la base de negocio ante la AAIP.
 - [ ] **P13 · Acceso de soporte a la cuenta de un cliente** (ProTecc 7.3 y arquitectura de Alberto):
   cuando alguien de PropTech necesite entrar a la cuenta de un administrador para ayudarlo, el acceso
   tiene que ser explícito, temporal y registrado, nunca con la contraseña del administrador. Hoy el
@@ -64,14 +67,16 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [x] **P19 · Doble vencimiento** (R26, Q9 de Alberto): si el edificio piloto usa primer y segundo
   vencimiento con recargo escalonado en vez del vencimiento único de R03. Afecta el test de M1. Se
   responde con Alberto antes del cambio 3. Resuelta en D-100 (16/10/2026).
-- [ ] **P20 · Quién aprueba una condonación** (R29, Q1 de Alberto): el titular solo, con auditoría, o el
-  consejo por encima de un umbral. Antes del cambio 10b.
+- [ ] **P20 · Aprobación adicional de una condonación** (R29, Q1 de Alberto): D-106 reserva la ejecución
+  al super admin y al administrador principal; falta decidir si además aprueba el consejo por encima
+  de un umbral. Antes del cambio 10b.
 - [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
 - [ ] **P22 · Quién usa el editor de reglas** (D-066, `13_motor_de_reglas.md`): propuesta en dos niveles,
-  valores para el titular y estructura para el equipo. Antes del cambio 6b.
-- [x] **P23 · Permisos por acción**: resuelta en D-096 con una matriz por acción (titular hace lo
-  irreversible o legal, colaborador lo que se deshace o revisa el titular, consejo mira, vecino ve lo
-  suyo). El umbral de aprobación del consejo para condonar sigue abierto en P20.
+  valores para el super admin (antes, titular) y estructura para el equipo. Antes del cambio 6b.
+- [x] **P23 · Permisos por acción**: matriz vigente en D-106 (Juani, 20/10/2026), que reemplaza la
+  de D-096. Emite todo administrador del edificio; las correcciones reservadas quedan para super
+  admin y administrador principal; contador, auxiliar y consejo sólo leen. El umbral del consejo
+  para condonar sigue abierto en P20.
 - [x] **P24 · Coeficientes de grupos parciales**: un grupo como Ascensor o Cocheras, ¿lleva coeficientes
   propios por unidad o se renormalizan los generales entre sus unidades? Antes del cambio 3. Resuelta en D-100 (16/10/2026).
 - [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
@@ -126,19 +131,16 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   todo sobre `main` (D-049), porque programaba una sola persona. Con Juani y Alberto haciendo cambios
   en el mismo repositorio, acordar si cada cambio va en su rama con pull request o si se turnan sobre
   `main`. Antes de que los dos tengan un cambio en curso al mismo tiempo.
-- [x] **P48 · A qué administración entra un email que tiene cuenta en dos** (resuelta en D-099: selector después de autenticarse) (D-096, D-097): una
-  cuenta por administración permite el mismo email en dos administraciones, y nadie definió cómo elige
-  el login a cuál entra. Opciones: la administración se elige antes del email (un enlace o un *slug*
-  por administración en la dirección de ingreso), o se resuelve después (el sistema encuentra varias
-  cuentas y pide elegir; con el link mágico del vecino, un link por cuenta o un link que lleva a
-  elegir). Vale para el vecino (link mágico) y para el personal (contraseña). **Decide**: Juani o
-  Alberto. Bloquea el 2b.
+- [x] **P48 · A qué administración entra una persona con cuenta en dos**: resuelta por Juani en
+  D-099 (16/10/2026). Primero se autentica y después elige "¿A cuál querés entrar?" entre sus
+  administraciones; con una sola cuenta entra directo. Vale para personal y vecinos; el método de
+  autenticación actual es Clerk (D-107), sin enlazar personas sólo por email.
 
 ## Resumen por el cambio al que bloquean
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
-- **P18 y P23**: resueltas (D-096); ya no bloquean el cambio 2 (2a y 2b, D-097).
+- **P18 y P23**: resueltas (D-096 para P18, D-106 para la matriz de P23); ya no bloquean el cambio 2 (2a y 2b, D-097).
 - **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
@@ -157,8 +159,16 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
   visibilidad al repositorio y del primer despliegue.
 - **P48**: resuelta en D-099 (selector después de autenticarse); ya no bloquea el 2b.
-- **Login**: decidido en D-097 (contraseña para el personal, link mágico para el vecino). **Proveedores
-  de IA y email**: se deciden en el design de los cambios 2b, 8, 13 y 14.
+- **Login y usuarios**: decididos en D-107 y RA-6 (20/10/2026): Clerk autentica, también con
+  contraseña para vecinos, y la base autoriza. En 2b el super admin invita al personal con perfil y
+  alcance; los vecinos se dan de alta desde el padrón, con vínculo e invitación por mail.
+- **Pendientes del design del 2.2a**: el orden de `acceso-de-desarrollo` se ajusta al 2b (con login,
+  sólo carga del ejemplo); sumar la fila `super_admin` y firmar el `GRANT INSERT ON auditoria` al
+  migrador sigue pendiente de Juani o Alberto en ese change. RA-6 y E8 quedaron respondidas;
+  la aprobación adicional del consejo se mantiene en P20. Ver la ficha 3b-bis.
+- **Costo de Clerk**: verificar en su página vigente antes del piloto (15, D-107).
+- **Proveedores de IA y email**: se deciden en el design de 8, 13 y 14; el 2b resuelve los envíos de
+  autenticación e invitaciones al integrar Clerk.
 
 ## Para Alberto
 
@@ -191,9 +201,9 @@ alguna no la sabés, ponelo así: también es una respuesta.
 #### P22 · ¿Quién usa el editor de reglas?
 
 - **Contexto**: el editor visual de GoRules permite cambiar las reglas de cada edificio.
-- **Opciones**: sólo el equipo de PropTech; o el titular cambia valores (porcentajes, montos) y la
+- **Opciones**: sólo el equipo de PropTech; o el super admin cambia valores (porcentajes, montos) y la
   estructura la armamos nosotros.
-- **Lo que proponemos**: los dos niveles. El titular cambia valores con el modo "sólo valores" de
+- **Lo que proponemos**: los dos niveles. El super admin cambia valores con el modo "sólo valores" de
   jdm-editor, y la estructura de una regla la armamos nosotros.
 - **Cuándo**: antes del cambio 6b, el del motor de reglas.
 
@@ -245,8 +255,10 @@ alguna no la sabés, ponelo así: también es una respuesta.
 #### P20 · Quién aprueba una condonación de intereses
 
 - **Contexto**: cuando un vecino discute un recargo y se lo perdonan.
-- **Opciones**: el titular solo, con registro; o el consejo cuando supera un monto.
-- **Lo que proponemos**: el titular solo, con el motivo registrado y visible para el consejo.
+- **Opciones**: super admin o administrador principal, con registro; o aprobación adicional del
+  consejo cuando supera un monto.
+- **Lo que proponemos**: super admin o administrador principal, con el motivo registrado y visible
+  para el consejo; falta decidir el umbral de aprobación adicional (D-106).
 - **Cuándo**: antes del cambio 10b.
 
 #### P45 · Validar la propuesta de valor y el precio
@@ -298,7 +310,7 @@ alguna no la sabés, ponelo así: también es una respuesta.
 | P14 · Plazo del libre deuda | Días: | |
 | P15 · Ingresos mayores que gastos | ☐ Crédito ☐ Fondo ☐ Otra | |
 | P16 · Unidades del consorcio | ☐ Se reparte ☐ Gasto | |
-| P20 · Aprobar condonación | ☐ Titular ☐ Consejo | |
+| P20 · Aprobación adicional de condonación | ☐ Sin aprobación adicional ☐ Consejo por umbral | |
 | P45 · Entrevistas de precio | ☐ Te presento a ☐ No | |
 | P43 · ProTecc público | ☐ Sí ☐ Sacarlo | |
 | P44 · Licencia | ☐ Reservar ☐ Licenciar | |

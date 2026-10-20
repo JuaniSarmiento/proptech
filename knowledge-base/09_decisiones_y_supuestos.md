@@ -1473,6 +1473,8 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 
 ## D-096 · Una cuenta por administración y permisos por acción (P18, P23)
 
+Reemplazada por D-106 (la matriz de permisos; P18 se conserva).
+
 - **Fecha**: 15/10/2026
 - **Decisión**:
   - **P18 · Vecino con unidades en dos administraciones**: para el MVP, **una cuenta por
@@ -1519,6 +1521,8 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Quién**: Juani, como socio (D-094). Alberto puede revisarla antes de que se codee el cambio 2.
 
 ## D-097 · El cambio 2 se parte en 2a (el candado), 2b (el login) y 2c (el endurecimiento), y el método de login
+
+Reemplazada por D-107 (el método de login; la partición del cambio 2 se conserva).
 
 - **Fecha**: 15/10/2026 (ajustada el mismo día, antes de publicarse, con la revisión del arquitecto que
   Juani aprobó aplicar)
@@ -1737,6 +1741,74 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
     titular o colaborador.
 - **Quién**: Juani, 20/10/2026, sobre la propuesta del constructor y la revisión de frontend del
   cierre del 3b.
+
+## D-106 · Roles de la empresa: perfil y alcance (20/10/2026)
+
+- **Contexto**: Alberto trajo los roles que usa una administración y Juani cerró los puntos 3 a 8 de
+  `openspec/exploraciones/2026-10-20-roles-de-la-empresa-y-login.md`. El cambio **2.2a
+  `roles-de-la-empresa`** los construyó antes del login, con identidad inyectada.
+- **Decisión**: la matriz de permisos de D-096 queda reemplazada por perfil × alcance:
+
+  | Perfil | Alcance | Qué puede |
+  |---|---|---|
+  | Super admin | Toda la administración | Todo, incluidos crear edificios, invitar usuarios y asignar perfiles y alcances |
+  | Administrador | Principal (toda la administración) o por edificio | Padrón, gastos, preparar, emitir y distribuir liquidaciones, confirmar pagos, aceptar alertas no bloqueantes y crear versiones de configuración |
+  | Contador | Principal o por edificio | Sólo lectura de lo contable; la exportación llega con los módulos que la ofrecen |
+  | Auxiliar | Por edificio | Sólo lectura del edificio |
+  | Consejo | Su edificio | Sólo lectura de gastos, liquidaciones, comprobantes, morosidad y configuración |
+  | Vecino propietario | Sus unidades | Todas las expensas de sus unidades, ordinarias y extraordinarias; informa pagos |
+  | Vecino inquilino | Sus unidades | Sólo expensas ordinarias; informa pagos |
+
+  Emiten y distribuyen el **super admin y todo administrador con alcance sobre el edificio**. Anular
+  liquidaciones, revertir o reimputar pagos, condonar intereses, dar de baja deuda, aceptar alertas
+  bloqueantes y confirmar **"sin saldos previos"** queda reservado al **super admin y al administrador
+  principal**. Crear una versión de configuración lo puede hacer **todo administrador del edificio**,
+  además del super admin (E3); contador, auxiliar y consejo pueden leerla (E6). Fuera de alcance sigue
+  siendo 404; dentro del alcance, sin permiso, 403 (D-037, D-076).
+- **Forma en la base (E1, E2)**: seis valores de `rol` (`super_admin`, `administrador`, `contador`,
+  `auxiliar`, `consejo`, `vecino`); principal se deduce de `complejo_id IS NULL`, sin columna `nivel`.
+  `vinculo` (`propietario` o `inquilino`) es atributo de la relación **persona-unidad**, obligatorio
+  sólo para vecinos. Una persona puede ser propietaria de una unidad e inquilina de otra; una sola
+  relación por persona y unidad. Puede haber varios propietarios de la misma unidad: cada uno ve la
+  cuenta completa y cualquiera informa pagos. Un perfil de personal por persona y alcance, principal
+  incluido (RA-5); consejo único por persona y edificio (RR-3, migración 0018).
+- **Migración y correcciones firmadas**: E1 a E8 aprobadas por Juani el 20/10/2026; 0017 convierte
+  titular en super admin, colaborador que edita en administrador, colaborador que ve en auxiliar y
+  vecino en propietario. El downgrade falla sin modificar datos ante contadores, administradores
+  principales o inquilinos (E7). RR-1 a RR-4 llevan firma aparte de Juani en `610eb4a`: 409 al repetir
+  perfil, auditoría con la persona destinataria, consejo único y texto del 403 según la acción.
+  E8 usa "Esto lo puede hacer el super admin de la empresa." donde corresponde ese permiso.
+- **Barrio**: un barrio con torres o sectores es **un consorcio**; sus sectores son grupos de reparto.
+  No se agrega una entidad que agrupe consorcios.
+- **Descartado**: la matriz titular/colaborador de D-096, propietario o inquilino como atributo de la
+  persona, un rol distinto para cada alcance y varios consorcios para representar los sectores.
+  D-032 queda superada para el inquilino y D-037 para los perfiles; se conservan las dos capas de
+  aislamiento de D-076 y la cuenta por administración de D-096. P20 sigue abierta sólo para la
+  aprobación adicional del consejo por encima de un umbral.
+- **Límite de lo construido**: el 2.2a construye perfiles, vínculos, permisos y sus restricciones. La
+  lectura de ordinarias del inquilino y las lecturas contables se construyen con 6, 7, 11 y 12; la
+  gestión de usuarios va en 2b.
+- **Quién**: Juani, 20/10/2026.
+
+## D-107 · Clerk sólo para la autenticación, también para vecinos (20/10/2026)
+
+- **Contexto**: puntos 1, 2 y 9 de
+  `openspec/exploraciones/2026-10-20-roles-de-la-empresa-y-login.md`, decididos por Juani antes del
+  login. D-097 descartaba Clerk cuando sólo el personal tenía contraseña.
+- **Decisión**: el cambio 2b usa **Clerk sólo para autenticar** al personal y a los vecinos. Los vecinos
+  también tienen usuario y contraseña, además del link mágico. **La autorización sigue en nuestra
+  base**: administración, perfiles, alcances y RLS; la identidad se vincula a `persona` por el **id de
+  Clerk**, nunca sólo por email. D-099 conserva el selector de administración después de autenticarse.
+  El servidor de Next guarda el token (D-036); el design del 2b resuelve esa integración.
+- **Privacidad y costo**: aviso de privacidad conforme a la ley 25.326, incluida la transferencia
+  internacional; Clerk guarda sólo **email y nombre**. La elección cierra P12 **para la autenticación**;
+  la inscripción de la base de negocio ante la AAIP sigue pendiente. Antes del piloto (15) se verifica
+  el costo real de Clerk en su página vigente.
+- **Gestión de usuarios (RA-6)**: junto con el login, el super admin invita al personal con su perfil y
+  alcance; los vecinos se dan de alta desde el padrón, con su vínculo e invitación por mail.
+- **Descartado**: el método propio de D-097, contraseña sólo para el personal y link mágico como único
+  acceso del vecino. Se reemplaza ese método; no cambia la autorización ni la partición 2a/2b/2c.
+- **Quién**: Juani, 20/10/2026.
 
 ## Supuestos
 

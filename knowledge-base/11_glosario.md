@@ -16,19 +16,34 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 ## El complejo y sus partes
 
 - **Administración**: el cliente que paga PropTech: una empresa o persona que administra uno o varios complejos. Es el **tenant**: todo dato pertenece a una administración y ninguna ve los datos de otra (R10, D-076).
-- **Complejo**: la comunidad que se administra, siempre dentro de una administración. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). Es un **alcance**: cada persona ve los complejos que le permite su rol (D-037, D-076). En el modelo de datos de la especificación se llamaba `consorcios`.
+- **Complejo**: la comunidad que se administra, siempre dentro de una administración. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). Es un **alcance**: cada persona ve los complejos que le permite su perfil (D-076, D-106). Un barrio con torres o sectores es un solo consorcio; sus sectores son grupos de reparto (D-106). En el modelo de datos de la especificación se llamaba `consorcios`.
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.
 - **Unidad funcional (UF)**: el objeto sobre el que se liquida la expensa. En un edificio, un departamento (piso y letra), una cochera, una baulera o un local; en un barrio, un **lote** (manzana y número). Su identificador sólo es único dentro de su complejo.
 - **Tipo de unidad**: departamento, cochera, baulera o local en un edificio; lote en un barrio. Cada una tiene su coeficiente y se liquida por separado.
 - **Estado de la unidad**: baldío, en obra, habitado o desocupado. Se usa en barrios; en edificios está desactivado.
-- **Propietario**: el titular de la unidad. **Inquilino**: quien la ocupa sin ser titular. **Usuario**: la persona que entra al sistema; una misma persona puede tener varias unidades.
+- **Propietario**: titular de una unidad; ve todas sus expensas. Puede haber varios propietarios con cuenta propia para la misma unidad. **Inquilino**: ocupa la unidad y ve sólo sus expensas ordinarias. Son valores de `vinculo` en la relación persona-unidad, no atributos de la persona (D-106). **Usuario**: la persona que entra al sistema; puede tener varias unidades y vínculos distintos.
 
 ## Las personas
 
-- **Administrador**: opera el complejo y es el comprador de PropTech.
-- **Administrador titular**: quien manda en la administración (D-037). **Colaborador**: personal de la administración, sólo en los edificios que le asignan, con permiso de ver o editar. Qué puede hacer cada uno, acción por acción: ver la matriz de D-096.
-- **Consejo** o **comisión directiva**: propietarios que controlan las cuentas y autorizan gastos.
-- **Vecino**: propietario o inquilino que usa el portal.
+- **Super admin**: perfil que administra toda la empresa, incluidos edificios, usuarios y roles.
+- **Administrador**: opera y configura los edificios de su alcance; emite liquidaciones y confirma pagos.
+- **Administrador principal**: administrador con alcance sobre toda la empresa. Además puede anular,
+  revertir o reimputar, condonar, dar de baja deuda, aceptar alertas bloqueantes y confirmar "sin saldos
+  previos", igual que el super admin (D-106).
+- **Administrador por edificio**: el mismo perfil, limitado a sus edificios asignados; configura y emite,
+  pero las correcciones reservadas requieren super admin o administrador principal.
+- **Contador**: perfil de lectura contable, principal o por edificio; exporta cuando el módulo lo ofrece.
+- **Auxiliar**: perfil de sólo lectura por edificio.
+- **Consejo** o **comisión directiva**: propietarios que controlan las cuentas; en el sistema sólo leen
+  gastos, liquidaciones, comprobantes, morosidad y configuración. Una asignación por persona y edificio
+  (RR-3); la aprobación adicional para condonar por encima de un umbral sigue abierta (P20).
+- **Vecino**: propietario o inquilino que usa el portal e informa pagos de sus unidades.
+- **Alcance**: qué parte de la administración cubre una asignación. Principal significa toda la
+  empresa (`complejo_id` nulo); por edificio, el complejo asignado; por unidad, la del vínculo vecino.
+  Principal y por edificio son alcances del mismo perfil, no roles distintos.
+- **Titular y colaborador (vocabulario anterior al 20/10/2026)**: "titular" en specs y decisiones
+  anteriores significa super admin. Colaborador que editaba pasó a administrador por edificio;
+  colaborador que sólo veía, a auxiliar. El titular de una unidad sigue significando propietario.
 - **Encargado** (edificio) o **intendente** (barrio): personal que reporta novedades y da conformidad de trabajos. En el MVP, su sueldo entra como gasto desde el recibo del contador (D-028).
 - **Proveedor**: quien presta un servicio y factura al complejo.
 

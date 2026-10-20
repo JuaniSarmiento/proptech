@@ -2,18 +2,19 @@
 
 Los flujos centrales del MVP, armados a partir de las historias de `06_funcionalidades.md`, las
 reglas de `05_reglas_de_negocio.md` y las fichas de `12_fichas_de_changes.md`. Cada paso cita su HU,
-su R o su D. **Ningún flujo describe código que ya corre**: todos corresponden a cambios todavía no
-construidos (desde el 3 en adelante); el flujo es el contrato que ese cambio tiene que cumplir, no un
-reporte de lo que ya existe. Donde una regla todavía no está validada (propuesta) o una pregunta
-abierta condiciona un paso, el flujo lo marca en vez de inventar el comportamiento.
+su R o su D. Los flujos son contratos de cada cambio: la configuración ya se construyó en 3a/3b;
+los pasos financieros siguen pendientes. Los permisos vigentes son los de D-106. Donde una regla
+todavía no está validada (propuesta) o una pregunta abierta condiciona un paso, el flujo lo marca en
+vez de inventar el comportamiento.
 
 ## Flujo 1 · Alta del edificio y carga de la semilla
 
 - **Disparador**: el administrador crea un edificio nuevo en el sistema.
-- **Actor**: administrador titular.
+- **Actor**: super admin y administrador del edificio; crear el edificio es exclusivo del super
+  admin y confirmar "sin saldos previos" del super admin o administrador principal (D-106).
 - **Cambio**: 3 `configuracion-del-edificio` (HIGH, D-087, D-094).
 - **Pasos**:
-  1. El administrador crea el edificio; el sistema copia los valores de `config/parametros.yaml`
+  1. El super admin crea el edificio; el sistema copia los valores de `config/parametros.yaml`
      (tasa de interés, días de gracia, forma de cálculo, fondo de reserva en 0%, categorías de gasto,
      grupos de reparto típicos, tipos de unidad, estados desactivados) a su configuración (D-042,
      HU-A1).
@@ -44,7 +45,8 @@ abierta condiciona un paso, el flujo lo marca en vez de inventar el comportamien
 
 - **Disparador**: el administrador sube la planilla del edificio real (unidades y, opcionalmente,
   saldos por período).
-- **Actor**: administrador titular.
+- **Actor**: super admin (antes, administrador titular); confirmar "sin saldos previos" también
+  corresponde al administrador principal (D-106). Los permisos de importación se precisan en el 5.
 - **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2). El cambio pide la aprobación escrita de uno de
   los dos socios (D-077, D-094).
 - **Pasos**:
@@ -64,8 +66,8 @@ abierta condiciona un paso, el flujo lo marca en vez de inventar el comportamien
      las obligaciones (con detalle por período) o la obligación "saldo inicial" (si vino como total
      único) usando el caso de uso de saldo inicial del cambio 4 (R09), y se **cierra** para ese
      edificio.
-  7. Si el edificio no tiene saldos previos (es nuevo, como el de ejemplo), el administrador confirma
-     directamente "sin saldos previos", que cierra el importador con todas las unidades en cero
+  7. Si el edificio no tiene saldos previos (es nuevo, como el de ejemplo), el super admin o el
+     administrador principal confirma directamente "sin saldos previos", que cierra el importador con todas las unidades en cero
      (D-082); así el control duro de R34 no lo bloquea para siempre.
 - **Secuencia**:
 
@@ -102,7 +104,7 @@ sequenceDiagram
 ## Flujo 3 · Carga y aprobación de gastos
 
 - **Disparador**: llega una factura o el administrador necesita cargar un gasto o un cargo particular.
-- **Actor**: administrador titular o colaborador con nivel "editar".
+- **Actor**: super admin o administrador con alcance sobre el edificio (D-106).
 - **Cambio**: 6 `gastos-y-cargos` (carga manual, HU-A3, HU-A3b); 14 `lectura-de-facturas` (QR + IA,
   no entra todavía en el cambio 6).
 - **Pasos**:
@@ -132,7 +134,8 @@ sequenceDiagram
 ## Flujo 4 · Preliquidación y emisión
 
 - **Disparador**: cierra el período y el administrador quiere liquidar.
-- **Actor**: administrador titular.
+- **Actor**: super admin o administrador del edificio para preparar, emitir y distribuir; anular
+  y aceptar alertas bloqueantes requiere super admin o administrador principal (D-106).
 - **Cambio**: 7 `liquidacion-y-emision` (crítico, el de mayor intersección de reglas del MVP).
 - **Pasos · preliquidación (sin efectos)**:
   1. El sistema reparte los gastos aprobados del período por grupo de reparto (R01, mayor resto R07),
@@ -199,8 +202,8 @@ sequenceDiagram
 ## Flujo 5 · Pago informado y confirmación
 
 - **Disparador**: el vecino transfiere y sube el comprobante, o el administrador lo carga por él.
-- **Actor**: vecino (sube) y administrador (confirmar es del titular y del colaborador; revertir o
-  reimputar es sólo del titular, matriz de D-096).
+- **Actor**: vecino (sube); super admin o cualquier administrador del edificio (confirma); super
+  admin o administrador principal (revierte o reimputa), según D-106.
 - **Cambio**: 8 `pagos-informados` (crítico).
 - **Pasos**:
   1. El vecino sube el comprobante (BNA+, Mercado Pago u otro); la IA precarga monto, fecha y número
@@ -232,12 +235,12 @@ sequenceDiagram
   - Reimputar y que falle a mitad de camino: no queda ningún movimiento aplicado (los dos o ninguno).
 - **Pendiente**: la elección del proveedor de IA para leer comprobantes (a decidir en el design);
   interés sobre un pago revertido o reimputado (P29); un número de operación único por banco, no sólo
-  por complejo (P40). Quién puede confirmar, revertir y reimputar ya quedó resuelto en D-096 (P23).
+  por complejo (P40). Quién puede confirmar, revertir y reimputar ya quedó resuelto en D-106 (P23).
 
 ## Flujo 6 · Conciliación con el extracto bancario
 
 - **Disparador**: el administrador sube el extracto del banco del período.
-- **Actor**: administrador titular o colaborador.
+- **Actor**: super admin o administrador con alcance sobre el edificio (D-106).
 - **Cambio**: 9 `extracto-bancario` (HU-A7).
 - **Pasos**:
   1. El administrador sube el extracto (CSV o Excel); un adaptador por banco y formato lo interpreta.
@@ -261,7 +264,7 @@ sequenceDiagram
 ## Flujo 7 · Morosidad: ver quién debe
 
 - **Disparador**: el administrador o el consejo quieren ver el estado de la deuda del edificio.
-- **Actor**: administrador titular, colaborador o consejo (sólo lectura).
+- **Actor**: super admin, administrador, contador, auxiliar o consejo, dentro de su alcance (sólo lectura).
 - **Cambio**: 10a `morosidad` (de sólo lectura, no escribe en la cuenta corriente).
 - **Pasos**:
   1. El sistema calcula, para cada unidad, la deuda vencida, la antigüedad de la deuda más vieja y los
@@ -284,7 +287,8 @@ sequenceDiagram
 
 - **Disparador**: un vecino discute un recargo (condonación); una deuda pasa a manos del abogado
   (gestión judicial); se vende una unidad y hace falta un certificado de deuda.
-- **Actor**: administrador titular (ciclo completo).
+- **Actor**: super admin o administrador principal para condonar (D-106); el certificado lo firma
+  el super admin, antes llamado titular (R21).
 - **Cambio**: 10b `condonacion-judicial-y-libre-deuda` (propuestas R29 y R31; R21 vigente). El cambio
   pide la aprobación escrita de uno de los dos socios (D-077, D-094).
 - **Pasos · condonación (propuesta, R29)**:
@@ -300,7 +304,7 @@ sequenceDiagram
      restarlos del saldo, los pagos informados todavía no confirmados.
   6. Si la fecha de corte es posterior a un vencimiento, el certificado informa en una línea aparte el
      interés corrido hasta esa fecha (calculado, sin registrarlo en la cuenta corriente, D-081).
-  7. El administrador titular lo firma.
+  7. El super admin lo firma (R21).
 - **Casos de error**:
   - Una condonación que borra el recargo original: no es el diseño (nunca se borra).
   - Condonar sin motivo: rechazado.

@@ -19,9 +19,16 @@ Row-Level Security por administración y auditoría de acciones sensibles; el ca
 `configuracion-del-edificio`** (el modelo del edificio completo: unidades, grupos de reparto,
 categorías de gasto y la configuración de intereses y vencimiento, versionada y de sólo agregar) y
 **3b `pantallas-del-edificio`** (20/10/2026: las siete pantallas del administrador, a todo el ancho).
-El acceso de desarrollo sin login y la carga del edificio de ejemplo quedaron afuera del 3b, a la
-espera de la firma de un socio (D-094), en el change `acceso-de-desarrollo`. En construcción: **2b
-`login`**.
+También quedó archivado el **2.2a `roles-de-la-empresa`** (20/10/2026): perfil × alcance, matriz
+nueva de permisos y vínculo propietario/inquilino por unidad (D-106), con las 17 tareas hechas y
+cierre 7.2 en `4c24333`.
+
+**Próximo: 2b `login` con Clerk sólo para autenticación y gestión de usuarios** (D-107); autorización
+en la base, contraseña también para vecinos, personal invitado por el super admin con perfil y
+alcance, vecinos desde el padrón con vínculo e invitación por mail. Requiere su propuesta CRITICAL
+firmada (D-094). El acceso de desarrollo y la carga del ejemplo quedaron fuera del 3b: con el login,
+`acceso-de-desarrollo` se reduce a la carga del ejemplo, todavía sin firma para sumar la fila
+`super_admin` y el `GRANT INSERT ON auditoria` al migrador.
 Todavía no hay liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 ([`CHANGES.md`](CHANGES.md), con el detalle de cada cambio en
 [`knowledge-base/12_fichas_de_changes.md`](knowledge-base/12_fichas_de_changes.md)).

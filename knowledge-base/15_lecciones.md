@@ -383,3 +383,36 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Aplica a**: constructor (al escribir el test de una pantalla con más de una capa abierta), revisor
   de rol de frontend.
 - **Aplica a**: constructor y rompedor.
+
+## L-029 · La firma del cambio no firma por sí sola sus correcciones posteriores
+
+- **Origen**: cambio 2.2a, auditoría, hallazgo ALTO, 20/10/2026.
+- **Qué pasó**: después de la firma de E1 a E8 entraron una regla nueva de base (consejo único,
+  migración 0018) y un texto nuevo de 403. El brief del orquestador decía que corregir al rompedor
+  estaba dentro del alcance, pero eso no era una firma del socio sobre esas reglas nuevas. Juani
+  firmó RR-1 a RR-4 aparte en `610eb4a`.
+- **Regla**: una regla nueva de base o de texto que entra después de la firma necesita su propia
+  aprobación escrita y fechada del socio; el constructor no atribuye esa aprobación al socio por
+  inferencia del brief.
+- **Aplica a**: orquestador, constructor y auditor.
+
+## L-030 · El brief separa las resoluciones de orden de las decisiones de permisos
+
+- **Origen**: cambio 2.2a, primera vuelta del bloque A, 20/10/2026.
+- **Qué pasó**: con el pedido "no improvises", Codex completó sólo 1.1 y frenó ante conflictos de
+  orden o redacción. Hizo falta otro brief para distinguir esos ajustes de las decisiones sobre
+  quién puede hacer qué.
+- **Regla**: el brief declara qué conflictos de orden o texto puede resolver el constructor, dejando
+  autoría y motivo, y qué cambios de permisos debe llevar al socio. "No improvises" solo no define
+  ese límite.
+- **Aplica a**: orquestador (al escribir el brief) y constructor.
+
+## L-031 · La evidencia de cierre corresponde al último commit del bloque
+
+- **Origen**: cambio 2.2a, cierre 7.2, 20/10/2026; precisa L-010.
+- **Qué pasó**: una corrida previa a los últimos commits del bloque obligó a repetir el backend para
+  tener evidencia del código final; costó unos 8 minutos adicionales en 7.2.
+- **Regla**: las suites de cierre van después de los últimos commits del bloque; se anota el SHA de
+  cada corrida. Si cambia el código después, se repite la verificación sobre el commit final antes
+  de marcar el cierre.
+- **Aplica a**: constructor, orquestador y auditor.

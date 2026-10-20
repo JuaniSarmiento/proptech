@@ -2,63 +2,69 @@
 
 ## Actores del sistema
 
-| Rol | Qué hace |
-|---|---|
-| **Administrador titular** | Configura el edificio, carga gastos, liquida, confirma pagos, ve la morosidad; las acciones exclusivas del titular están en la matriz de D-096 |
-| **Colaborador** | Personal de la administración: sólo los edificios que le asignan, con nivel "ver" o "editar" |
-| **Vecino** | Persona de contacto de una o varias unidades (propietario o no): ve su deuda, entiende su expensa, informa pagos |
-| **Consejo** | Sólo lectura de morosidad, gastos y liquidaciones de su edificio |
+El modelo del MVP es **perfil × alcance** (D-106, Juani, 20/10/2026). La autorización vive en la base;
+Clerk sólo autentica y se integra en el 2b (D-107), junto con la gestión de usuarios.
 
-El inquilino como rol separado queda para después del MVP; en edificios es frecuente, así que se
-valida con el piloto que la persona de contacto alcance (D-032).
+| Perfil | Alcance | Qué hace |
+|---|---|---|
+| **Super admin** | Toda la administración | Opera y configura; crea edificios e invita al personal con perfil y alcance |
+| **Administrador principal** | Toda la administración | Opera y configura todos sus edificios; puede ejecutar las correcciones reservadas |
+| **Administrador por edificio** | Los edificios asignados | Opera y configura, emite y confirma pagos en esos edificios |
+| **Contador** | Principal o por edificio | Sólo lectura de lo contable; luego exporta, cuando el módulo lo ofrezca |
+| **Auxiliar** | Por edificio | Sólo lectura del edificio |
+| **Consejo** | Su edificio | Sólo lectura de gastos, liquidaciones, comprobantes, morosidad y configuración |
+| **Vecino propietario** | Sus unidades | Ve ordinarias y extraordinarias e informa pagos |
+| **Vecino inquilino** | Sus unidades | Ve sólo ordinarias e informa pagos |
+
+Propietario o inquilino es un atributo de la relación persona-unidad. Una persona puede tener varios
+vínculos en distintos edificios y administraciones (D-099), con un solo vínculo por unidad. Varios
+propietarios de una unidad tienen cuentas propias, ven la cuenta completa y cualquiera informa un
+pago. Hay un solo perfil de personal por persona y alcance, principal incluido (RA-5), y una sola
+asignación de consejo por persona y edificio (RR-3). Consejo único no significa un solo consejero
+por edificio.
 
 ### Las dos capas de aislamiento (D-076)
 
 - **Administración** (el tenant): el cliente que paga PropTech. Todo dato pertenece a una
-  administración y ninguna consulta, archivo, caché o proceso devuelve datos de otra. Sale de la
-  identidad autenticada, nunca de un parámetro que manda el cliente (R10).
-- **Alcance por edificio**: dentro de su administración, cada persona ve sólo los complejos que le
-  corresponden según su rol: el titular, todos; el colaborador, los asignados; el consejo, el suyo; el
-  vecino, sus unidades. Fuera de alcance responde 404; sin permiso, 403 con el permiso faltante
-  (D-037).
+  administración; ninguna consulta, archivo, caché o proceso devuelve datos de otra. Sale de la
+  identidad autenticada, nunca de un parámetro del cliente (R10).
+- **Alcance por edificio**: super admin, administrador principal y contador principal alcanzan todos
+  los edificios de su administración. Los perfiles por edificio alcanzan sólo los asignados; el
+  vecino, sus unidades. Fuera de alcance responde 404; dentro del alcance pero sin permiso, 403 con
+  el permiso faltante (D-037). El alcance principal no concede escritura al contador.
 
-### Los cuatro roles del MVP (D-037, amplía D-009)
+## RBAC · Matriz de permisos (D-106, reemplaza la matriz de D-096)
 
-Se mantienen las tres capas de la arquitectura de Alberto (administración deducida del login, alcance
-por edificio, permiso por rol), con cuatro roles:
+SA: super admin; AP: administrador principal; AE: administrador por edificio; CP/CE: contador principal
+o por edificio; AX: auxiliar; CO: consejo; VP/VI: vecino propietario o inquilino. Cada permiso se
+comprueba dentro del alcance de la asignación. Las 16 acciones conservan su nombre en el dominio.
 
-- **Titular**: todo, incluido cerrar liquidaciones y anular pagos.
-- **Colaborador**: sólo los edificios asignados, nivel "ver" o "editar"; no cierra ni anula.
-- **Consejo**: sólo lectura de su edificio.
-- **Vecino**: sus unidades.
+| Acción | SA | AP | AE | CP | CE | AX | CO | VP | VI |
+|---|---|---|---|---|---|---|---|---|---|
+| Cargar gastos y preparar liquidación | Sí | Sí | Sí | No | No | No | No | No | No |
+| Emitir y distribuir liquidación | Sí | Sí | Sí | No | No | No | No | No | No |
+| Anular liquidación | Sí | Sí | No | No | No | No | No | No | No |
+| Confirmar pago informado | Sí | Sí | Sí | No | No | No | No | No | No |
+| Revertir o reimputar pago | Sí | Sí | No | No | No | No | No | No | No |
+| Condonar intereses | Sí | Sí | No | No | No | No | No | No | No |
+| Dar de baja deuda | Sí | Sí | No | No | No | No | No | No | No |
+| Aceptar alertas no bloqueantes | Sí | Sí | Sí | No | No | No | No | No | No |
+| Aceptar alertas bloqueantes | Sí | Sí | No | No | No | No | No | No | No |
+| Invitar usuarios y asignar edificios | Sí | No | No | No | No | No | No | No | No |
+| Informar pago | No | No | No | No | No | No | No | Sí | Sí |
+| Crear edificio | Sí | No | No | No | No | No | No | No | No |
+| Crear versión de configuración | Sí | Sí | Sí | No | No | No | No | No | No |
+| Confirmar sin saldos previos | Sí | Sí | No | No | No | No | No | No | No |
+| Configurar padrón | Sí | Sí | Sí | No | No | No | No | No | No |
+| Ver configuración del edificio | Sí | Sí | Sí | Sí | Sí | Sí | Sí | No | No |
 
-Descartado: las ~15 áreas con 3 niveles del documento de arquitectura de Alberto (se suman cuando un
-cliente las pida) y los actores contador, encargado y proveedor como usuarios del sistema (entran
-como datos del dominio, no como roles que inician sesión).
+Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
+7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó
+el vínculo y el dominio; los cambios 6, 7 y 11 deben aplicar ese filtro.
 
-## RBAC · Matriz de permisos
-
-Lo que D-037, D-076 y R10 ya deciden, por nivel de alcance (la primera capa del aislamiento), más la
-tercera capa, el **permiso por acción**, que fijó D-096 (resuelve P23).
-
-| Rol | Alcance (D-037, D-076) | Lectura | Escritura general | Acciones de D-096 (emitir, distribuir, anular, confirmar/revertir pago, condonar, dar de baja, aceptar alerta) |
-|---|---|---|---|---|
-| **Titular** | Todos los complejos de su administración | Todo | Todo, incluido cerrar liquidaciones y anular pagos (D-037) | Todas: emite y distribuye, anula, confirma y revierte pagos, condona, da de baja una deuda, acepta cualquier alerta |
-| **Colaborador** | Sólo los complejos que le asignan dentro de su administración | Según su nivel | Nivel "ver" (sólo lectura) o "editar" (según D-037); **no cierra ni anula** liquidaciones | Con nivel "editar": carga gastos y prepara la liquidación, confirma un pago informado, acepta alertas que no bloquean. **No** emite, no distribuye, no anula, no revierte un pago, no condona, no da de baja una deuda, no acepta una alerta que bloquea. Con nivel "ver", ninguna acción de escritura |
-| **Consejo** | Su complejo, dentro de la administración | Morosidad, gastos y liquidaciones de su complejo | Ninguna (sólo lectura, D-037) | Ninguna: ve la carga de gastos y ve cuándo se condona un interés (con el motivo), pero no ejecuta ninguna acción |
-| **Vecino** | Sus unidades, dentro de la administración | Su deuda, su expensa, sus pagos y comprobantes | Informa sus propios pagos (R11); no confirma, no condona, no anula | Ve su cuenta e informa pagos (R11); **confirmarlo** es acción del administrador |
-
-**Las dos capas siguen siendo distintas** (D-076): esta tabla cubre el **alcance por edificio** (quién
-ve qué complejo), el **permiso general por rol** (D-037) y, ahora, el **permiso por acción** (D-096).
-Fuera de alcance responde 404; dentro de alcance pero sin el permiso de esa acción, 403 con el permiso
-faltante (D-037).
-
-**Sigue abierta P20**: la matriz fija que condonar es acción exclusiva del titular, pero no si por
-encima de un monto hace falta además la aprobación del consejo antes de condonar; esa parte de la
-pregunta no se cierra acá.
-
-**R41 (propuesta)** ya proponía que sólo el titular da de baja una deuda; D-096 lo confirma para el
-resto de la columna de acciones.
+**P20 sigue abierta**: D-106 fija quién ejecuta una condonación (super admin o administrador principal),
+pero falta decidir si un monto exige además la aprobación del consejo. R41 sigue siendo propuesta;
+la baja de deuda, si se valida, queda reservada a esos mismos perfiles.
 
 ## Rutas públicas
 
@@ -73,20 +79,21 @@ unidad:
 Estas dos rutas **no son una decisión de negocio sobre qué queda público**: son endpoints técnicos
 que no tienen por qué pasar por el login, igual que cualquier healthcheck de Compose.
 
-**Desde el cierre del 2a (15/10/2026)** existen además tres rutas de dominio
+**Desde el cierre del 2a (15/10/2026)** existen, entre otras, estas rutas de dominio
 (`backend/src/proptech_api/complejos.py`), y las tres **exigen identidad** (`Depends(identidad_actual)`)
 y sesión con tenant (`Depends(sesion_con_tenant)`): ninguna es pública.
 
 - `GET /complejos/{complejo_id}`: 404 si no existe o está fuera de alcance (indistinguible entre los
   dos casos, D-037).
 - `GET /unidades/{unidad_id}`: mismo criterio de 404.
-- `POST /complejos/{complejo_id}/asignaciones`: 403 con `permiso_faltante` si la identidad no puede
-  asignar roles (deuda R5, dueño el 2b: el contrato de error de este endpoint con `unidad_id` del
-  vecino, ver "Deuda del cierre del 2a" en `12_fichas_de_changes.md`).
+- `POST /complejos/{complejo_id}/asignaciones`: sólo el super admin; 403 con
+  `permiso_faltante` si falta el permiso. Desde el 2.2a acepta `administrador`, `contador`, `auxiliar`
+  o `consejo` por edificio. Rechaza `nivel`, `vinculo` y `unidad_id` con 422; duplicar el perfil da 409
+  (RR-1). R5 del 2a se cerró en la tarea 4.2.
 
-El resto de `web/src/app/` (`layout.tsx`, `page.tsx`) sigue sin pantallas de dominio. Sin login (2b),
-`identidad_actual` siempre da 401 en producción: las tres rutas son hoy inalcanzables fuera de los
-tests, que inyectan la identidad directamente.
+El 3a sumó las demás rutas de configuración y el 3b sus siete pantallas. Sin login (2b),
+`identidad_actual` sigue dando 401 en producción: las rutas de dominio se prueban con identidad
+inyectada. El 2.2a no agregó rutas.
 
 **Lo que queda por decidir** (no se asume "ninguna" sin confirmarlo en el *design* del cambio 2b,
 D-039): qué pantallas del portal del vecino o del login quedan accesibles sin sesión (por ejemplo, la
@@ -94,6 +101,6 @@ propia pantalla de login); y si un **link firmado** de descarga (D-070: PDF de l
 comprobantes, facturas, con vencimiento entre un minuto y una hora) cuenta como "ruta pública" en el
 sentido de este documento o es un mecanismo aparte que no requiere sesión activa pero sí una firma
 válida: ese punto tampoco está resuelto todavía y se deja así, sin asumir una respuesta. Se completa
-junto con el explore del cambio 2b (login del personal y del vecino, D-039, D-097). Ya no queda
+junto con el explore del cambio 2b (login con Clerk del personal y del vecino, D-107). Ya no queda
 condicionado por P18 (una cuenta por administración, D-096): el login resuelve siempre dentro de una
 sola administración.

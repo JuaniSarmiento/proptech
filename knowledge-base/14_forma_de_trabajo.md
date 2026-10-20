@@ -130,6 +130,10 @@ familia de modelo que el constructor (L-025).
   minutos. Codex vuelve a ser el constructor cuando tiene cuota disponible. El orquestador mira las
   pantallas en un navegador real después de cada bloque de UI (L-026), no sólo al final del cambio.
 
+**Esquema del 2.2a (20/10/2026)**: Codex construye, Claude rompe y audita; Juani corre el script de
+firma de la propuesta y firma aparte las correcciones posteriores que agregan reglas (RR-1 a RR-4,
+`610eb4a`, L-029).
+
 ## Reglas del proceso
 
 - **De a un cambio por vez**, en el orden de `CHANGES.md`, con la ficha detallada de cada uno en

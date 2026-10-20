@@ -11,7 +11,7 @@ regla citada vive en `05_reglas_de_negocio.md`.
 
 ### HU-T1 · Entender para qué sirve cada pantalla
 
-**Como** cualquier usuario (administrador, colaborador, vecino o consejo) **quiero** tocar un "?" en
+**Como** cualquier usuario (super admin, administrador, contador, auxiliar, vecino o consejo) **quiero** tocar un "?" en
 cada pantalla y leer para qué sirve y qué hago ahí **para** usarla sin preguntarle a nadie.
 Pedido de Alberto (17/10/2026, D-102). Vale para **todas** las historias de abajo.
 
@@ -34,13 +34,19 @@ login todavía no existen (2b en adelante).
 
 ## Épica: Administrador
 
+Los actores siguen la matriz de D-106: super admin y todo administrador del edificio operan,
+configuran y emiten. Anular, revertir o reimputar, condonar, dar de baja deuda, aceptar alertas
+bloqueantes y confirmar "sin saldos previos" requieren super admin o administrador principal.
+Crear edificios e invitar usuarios es exclusivo del super admin. Las historias conservan su alcance;
+contador, auxiliar y consejo sólo leen dentro del suyo.
+
 ### HU-A1 · Configurar el edificio
 
 Como administrador, quiero configurar las reglas de mi edificio (intereses, grupos de reparto,
 categorías de gasto, fondo de reserva) para que el sistema liquide como dice su reglamento.
 
 **Criterios de aceptación**:
-- Dado un edificio nuevo, cuando lo creo, entonces arranca con los valores del archivo de
+- Dado un edificio nuevo, cuando lo creo como super admin, entonces arranca con los valores del archivo de
   parámetros (D-042): 3% mensual simple, 0 días de gracia, cálculo proporcional por día, un grupo
   "Generales" con todas las unidades por coeficiente, las categorías precargadas, sin fondo de
   reserva y con los estados de unidad desactivados (R01, R02, R03, R15, R16).
@@ -54,8 +60,8 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
 - *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
   escalonado (R26) entra acá si Alberto confirma que el piloto lo usa (ProTecc G4, Q9).
 
-**Construido** (3b, `pantallas-del-edificio`): el administrador hace todo esto desde el navegador, sin
-`curl` — "Mis edificios" (crear el edificio), "Resumen" (el checklist de puesta a punto y "listo para
+**Construido** (3b, `pantallas-del-edificio`): desde el navegador, sin `curl`, "Mis edificios"
+(crear el edificio, sólo super admin), "Resumen" (el checklist de puesta a punto y "listo para
 liquidar", calculados por la API), "Padrón de unidades", "Grupos de reparto", "Categorías de gasto" e
 "Intereses y vencimiento" (cambiar la tasa o el fondo de reserva, con la versión anterior conservada).
 
@@ -229,7 +235,8 @@ Como administrador, quiero ver quién debe, cuánto y desde cuándo.
 
 ### HU-A9 · Corregir un error
 
-Como administrador, quiero corregir un pago o un cargo mal registrado sin perder el historial.
+Como super admin o administrador principal, quiero corregir un pago o un cargo mal registrado sin
+perder el historial.
 
 **Criterios de aceptación**:
 - Dado un movimiento equivocado, cuando lo corrijo, entonces se agrega un movimiento nuevo con
@@ -256,8 +263,8 @@ el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21,
 
 ### HU-A11 · Condonar intereses y marcar la gestión judicial *(propuesta, cambio 10b, D-078)*
 
-Como administrador, quiero condonar un recargo discutido y marcar las unidades que están en juicio,
-para que el sistema las trate como corresponde.
+Como super admin o administrador principal, quiero condonar un recargo discutido y marcar las
+unidades que están en juicio, para que el sistema las trate como corresponde.
 
 **Criterios de aceptación**:
 - Dado un recargo por mora que el vecino discute, cuando lo condono con un motivo, entonces se
@@ -272,14 +279,19 @@ para que el sistema las trate como corresponde.
 
 ## Épica: Vecino
 
+El propietario ve todas las expensas de sus unidades; el inquilino, sólo las ordinarias, también en
+los PDFs y comprobantes descargables (D-106). Una persona puede tener ambos vínculos en unidades
+distintas. Varios propietarios de la misma unidad ven su cuenta completa y cualquiera informa pagos.
+
 ### HU-V1 · Entrar al portal
 
-Como vecino, quiero entrar desde el celular con mi email para ver lo de mis unidades.
+Como vecino, quiero entrar desde el celular con mi usuario y contraseña de Clerk (también con
+link mágico) para ver lo de mis unidades (D-107).
 
 **Criterios de aceptación**:
-- Dado un vecino registrado como contacto de una o varias unidades, cuando entra, entonces ve todas
-  las suyas juntas (por ejemplo, su departamento y su cochera) y nunca las de otro vecino ni las de
-  otro edificio (R10, D-029).
+- Dado un vecino de alta desde el padrón, con vínculo e invitación por mail para una o varias
+  unidades, cuando entra, entonces ve todas las suyas juntas (por ejemplo, su departamento y su
+  cochera), también en edificios distintos, y nunca unidades ajenas (R10, D-029, D-106).
 - Dado un vecino con iPhone, cuando entra por primera vez, entonces el portal le ofrece instalarlo
   en la pantalla de inicio.
 
@@ -301,10 +313,10 @@ Como vecino, quiero ver cuánto debo y cuándo vence.
 Como vecino, quiero entender en qué se gastó la plata y por qué cambió mi expensa.
 
 **Criterios de aceptación**:
-- Dada una liquidación emitida, cuando la abro, entonces veo los gastos en dos bloques (ordinaria
-  y extraordinaria) y, dentro de cada uno, agrupados por categoría (encargado, seguridad, limpieza,
-  ascensor, servicios) con su subtotal y su porcentaje; además, mi parte de cada grupo de reparto,
-  el fondo de reserva y mis intereses (R16).
+- Dada una liquidación emitida, cuando la abro como propietario, entonces veo ordinarias y
+  extraordinarias; como inquilino, sólo ordinarias (D-106). Dentro de los bloques que me corresponden
+  veo los gastos agrupados por categoría (encargado, seguridad, limpieza, ascensor, servicios), con
+  subtotal y porcentaje, mi parte de cada grupo de reparto, fondo de reserva e intereses (R16).
 - Dadas dos liquidaciones seguidas, entonces veo cuánto cambió mi expensa y qué conceptos explican
   la diferencia.
 
@@ -329,8 +341,8 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
 Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos confirmados.
 
 **Criterios de aceptación**:
-- Dado un período emitido de mi unidad, cuando pido su PDF, entonces descargo el mismo comprobante
-  que se emitió, con el código de la unidad.
+- Dado un período emitido de mi unidad, cuando pido su PDF, entonces descargo el comprobante
+  de mi vínculo, con el código de la unidad; como inquilino no recibo extraordinarias (D-106).
 - Dado un período todavía no emitido, entonces no aparece para descargar.
 - Dado que pido el detalle de pagos, entonces veo sólo los confirmados de mis unidades, nunca los de
   otra unidad ni los que siguen informados o fueron rechazados (R10, R11).

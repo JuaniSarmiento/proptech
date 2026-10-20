@@ -78,10 +78,12 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
 
 ## Seguridad
 
-- **Autenticación**: login del personal y enlace mágico o alternativa para el vecino; el método
-  concreto se decide en el *design* del cambio 2b `login` (D-039, D-043, D-097). El servidor de
-  Next guarda el token de sesión; el navegador nunca lo ve (D-036). **Hoy (hasta el 2b)**: la identidad
-  se inyecta directamente en los tests (`identidad_actual` da 401 en producción, D7); no hay login real.
+- **Autenticación (D-107)**: Clerk autentica al personal y a los vecinos, con usuario y contraseña
+  también para vecinos, además de link mágico. La autorización permanece en la base (D-106): tenant,
+  perfiles, alcances y RLS. La identidad se vincula por id de Clerk, nunca sólo por email; Clerk guarda
+  sólo email y nombre, con aviso de privacidad y transferencia internacional. El servidor de Next
+  guarda el token de sesión; el navegador nunca lo ve (D-036). El design del 2b resuelve la integración
+  y la gestión de usuarios. **Hoy (hasta el 2b)**: identidad inyectada en tests y 401 en producción.
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
   tres roles con `roles.py antes`/`despues`, y es el único dueño de `auditoria`); `proptech_migrador`

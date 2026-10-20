@@ -68,8 +68,16 @@ mercado de arranque es **Mendoza**.
   HIGH y CRITICAL de Juani o Alberto (D-094)**, movidos a un change propio, `acceso-de-desarrollo`. La
   deuda del cierre queda en `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 3b"), con
   dueño por ítem (mayormente el 2b).
-- **Próximo**: **`acceso-de-desarrollo`** (HIGH y CRITICAL, D-094), esperando esa firma; en paralelo
-  sigue disponible **2b, el login** (CRITICAL, D-097), bloqueado por P48.
+- **Cambio 2.2a `roles-de-la-empresa` archivado** (20/10/2026): perfil × alcance, matriz de D-106,
+  propietario/inquilino por relación persona-unidad, migraciones 0017/0018, personal único por alcance
+  y consejo único por persona y edificio. Codex construye, Claude rompe y audita; Juani firmó E1 a E8
+  y RR-1 a RR-4 aparte (`610eb4a`). Las 17 tareas están hechas; 7.2 en `4c24333`. Deuda y límites en
+  `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2.2a").
+- **Próximo**: **2b, login con Clerk sólo para autenticación y gestión de usuarios** (CRITICAL,
+  D-107): autorización en la base, contraseña también para vecinos, personal invitado por el super
+  admin con perfil y alcance, vecinos desde el padrón con vínculo e invitación por mail. P48 resuelta
+  en D-099; el 2b requiere firma propia. Con el login, `acceso-de-desarrollo` se reduce a la carga del
+  ejemplo, con fila `super_admin` y `GRANT INSERT ON auditoria` al migrador pendientes de firma.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -79,13 +87,14 @@ mercado de arranque es **Mendoza**.
   los casos de borde para decidir antes de su cambio (P24 a P41), la validación de los valores de
   plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
   administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
-  (P47), a qué administración entra un email con cuenta en dos (P48). P18 y P23 se resolvieron en D-096.
+  (P47). P48 resuelta en D-099 (selector). P18 conserva D-096; la matriz de P23 fue reemplazada por D-106.
+  P12 quedó cerrada para autenticación en D-107; sigue abierta para la base de negocio.
 
 ## Stack Tecnológico
 
 - **Backend**: Python + FastAPI + SQLAlchemy + PostgreSQL, migraciones con Alembic. Redis + worker ARQ
   para PDFs, emails e IA (D-038).
-- **Frontend**: Next.js (App Router) + TypeScript, áreas de titular/colaborador, consejo y vecino,
+- **Frontend**: Next.js (App Router) + TypeScript, áreas de super admin/administrador, contador, auxiliar, consejo y vecino,
   instalable como PWA. El servidor de Next guarda el token; el navegador nunca lo ve (D-036). Sin app nativa. Toda interfaz pasa por la skill **impeccable**.
 - **Monolito modular** (D-040): `backend/src/proptech_core` con los módulos `complejos`, `acceso`,
   `gastos`, `liquidacion`, `cuenta_corriente`, `pagos`, `avisos`, `politicas` (el motor de reglas,
@@ -116,7 +125,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 |---|---|---|
 | `knowledge-base/01_vision_y_objetivos.md` | Propósito, objetivos por actor, alcance, hitos M1 a M3, diferencias con la spec | Se reescribe |
 | `knowledge-base/02_descripcion_general.md` | Stack, arquitectura general, integraciones externas | Se reescribe |
-| `knowledge-base/03_actores_y_roles.md` | Actores, RBAC (acciones por rol según D-096), rutas públicas | Se reescribe |
+| `knowledge-base/03_actores_y_roles.md` | Actores, RBAC (perfil × alcance según D-106), rutas públicas | Se reescribe |
 | `knowledge-base/04_modelo_de_datos.md` | Dominios, ERD (existente y planificado), entidades y seed data | Se reescribe |
 | `knowledge-base/05_reglas_de_negocio.md` | R01 a R41 (agrupadas por dominio, estado vigente, propuesta o pendiente): prorrateo, estados, intereses, imputación, redondeo, pagos, facturas, ordinaria/extraordinaria, cargos particulares, fondo de reserva, categorías de gasto. **Cada regla vigente es un test** | Se reescribe |
 | `knowledge-base/06_funcionalidades.md` | Historias de usuario (HU-\*) por épica, con criterios de aceptación y reglas relacionadas | Se reescribe |
@@ -130,7 +139,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio**: constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
 | `knowledge-base/16_proyecto_final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `CHANGES.md` | **Los 22 cambios en orden, con su estado**: arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
+| `CHANGES.md` | **Los 24 cambios en orden, con su estado**: arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani (o a Alberto,
 si el cambio es de él)**. Si cambia una decisión, se escribe una decisión nueva; nunca se edita una
@@ -166,18 +175,19 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md), con el detalle de cada cambio
 en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.md). Resumen:
 
-- **Total**: 23 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, y el 3 partido en 3a y 3b por
-  E1 del propose del 3a), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
+- **Total**: 24 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, el 3 en 3a y 3b y
+  el 2.2a de roles agregado por Juani el 20/10/2026), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
   `1a → 1b → 1c → 1d → 2a → 3a → 4 → 5 → 6 → 7` (2b, 2c y 3b en paralelo).
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
   (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026; el acceso de desarrollo quedó afuera,
-  movido a `acceso-de-desarrollo`).
-- **Próximo**: `acceso-de-desarrollo` (HIGH y CRITICAL, D-094), esperando la firma de Juani o Alberto;
-  en paralelo, el 2b (login, bloqueado por P48). La partición del 3b en pantallas y acceso es
-  consecuencia de la gobernanza de D-094 sobre E2 del 3a, no un change nuevo del roadmap de 22.
+  movido a `acceso-de-desarrollo`); 2.2a `roles-de-la-empresa` (20/10/2026, D-106).
+- **Próximo**: 2b, login con Clerk y gestión de usuarios (D-107), después del 2.2a. P48 resuelta en
+  D-099; requiere propuesta CRITICAL firmada. `acceso-de-desarrollo` sigue sin firma y con el login se
+  reduce a la carga del ejemplo. La partición de pantallas y acceso deriva de D-094; el 2.2a tiene
+  numeración propia, entre 2a y 2b, sin renumerar los demás changes.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

@@ -123,7 +123,8 @@ El explore propio (`openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md`, 
 partirlo, Juani lo aprobó el mismo día y la revisión del arquitecto separó además el endurecimiento
 (D-097): el **2a** es el candado y se prueba sin login; el **2b** es el login; el **2c** es el
 endurecimiento de infraestructura que el candado no necesita. Objetivo común: que cada persona entre y
-vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en D-096.
+vea sólo lo suyo, aunque el código tenga un error. P18 conserva D-096; la matriz de P23 se
+reemplazó por D-106 en el 2.2a y el método de login por D-107 en el 2b.
 
 ### 2a · `aislamiento-por-administracion` · crítico
 
@@ -180,35 +181,76 @@ vea sólo lo suyo, aunque el código tenga un error. P18 y P23 se resolvieron en
   auditor dio **OK con deuda anotada**; la deuda queda en "Deuda del cierre del 2a" más abajo, con dueño
   por ítem (mayormente el 2b y el 15).
 
-### 2b · `login` (nombre provisional) · crítico
+### 2.2a · `roles-de-la-empresa` · archivado 20/10/2026 · CRITICAL
 
-- **Objetivo**: que cada persona entre a su administración: el personal con contraseña, el vecino con
-  link mágico por mail (D-097).
-- **Historias**: HU-V1. **Decisiones**: D-036, D-039, D-043, D-096, D-097.
-- **Entra**: login del personal (titular, colaborador, consejo) con contraseña; link mágico del vecino
-  (token de un solo uso con vencimiento corto); la sesión del lado del servidor de Next (D-036); límite
-  de intentos en el login (por cuenta y, más laxo, por IP, para no bloquear a un edificio detrás del
-  mismo wifi); auditoría de `ingreso_exitoso` e `ingreso_fallido` con `acceso.aplicacion` (cada acción
-  nueva, con su migración de vocabulario); CSP en Next; la pantalla de login; qué rutas quedan sin
-  sesión.
-- **No entra**: el puerto de email completo, con reintentos y plantillas (13); las pantallas del portal
-  (11) y del consejo (12).
-- **Deuda del 2a con dueño este cambio** (L-012, D-098): ver "Deuda del cierre del 2a" más arriba (R5,
-  R9, V2-7, D-1, D-2 y D-6 (V3-5 pasó al 2c el 16/10/2026), más el aviso de que la primera FK legítima hacia `auditoria` frena
-  cada arranque).
-- **Depende de**: 2a. **Habilita**: el uso por una persona y el despliegue: lo piden 11 y 15 (no el 3,
-  que se construye con la identidad inyectada).
-- **Bloqueado por**: **P48** (a qué administración entra un email con cuenta en dos).
-- **Decidir en el design**: cómo se manda el mail del link mágico antes del cambio 13 (un envío mínimo
-  en este cambio o adelantar parte del puerto del 13); si el límite de intentos falla abierto o cerrado
-  cuando Redis no responde (el explore sugiere abierto, como ya trata a Redis `/api/salud`); el reset de
-  contraseña del personal (asistido por el titular o por mail).
-- **Que intente romper el rompedor**: fuerza bruta contra el login; un vecino abriendo pantallas del
-  personal; un link mágico reusado, vencido o reenviado; el login entrando a la cuenta equivocada
-  cuando el mismo email existe en dos administraciones; el límite de intentos bloqueando a todo un
-  edificio por IP compartida; el token de sesión visible en el navegador.
-- **Terminado cuando**: el personal y el vecino entran a su administración y a ninguna otra; los
-  intentos fallidos se limitan y se auditan.
+- **Objetivo**: construir los perfiles y alcances reales de la empresa antes de conectar el login.
+- **Reglas y decisiones**: R10, D-076, D-106; Clerk se registra aparte en D-107 y se construye en 2b.
+- **Entró**: matriz perfil × alcance, `vinculo` propietario/inquilino en la relación persona-unidad,
+  migraciones 0017 y 0018, personal único por persona y alcance y consejo único por persona y
+  edificio. El super admin y todo administrador del edificio emiten y configuran; las correcciones
+  reservadas y "sin saldos previos" requieren super admin o administrador principal. RLS conserva
+  el tenant y la aplicación el alcance por edificio. Asignaciones por edificio sólo por super admin,
+  sin `nivel`, con 409 al repetir, 422 por campos ajenos y auditoría de la persona destinataria.
+- **No entró**: login ni gestión de usuarios (2b); lecturas de ordinarias para el inquilino y lecturas
+  contables (6, 7, 10a, 11, 12); carga del ejemplo y acceso de desarrollo.
+- **Firmado por Juani (20/10/2026)**: E1 a E8 en la propuesta; RR-1 a RR-4 con firma propia en
+  `610eb4a`. No se extiende esa firma a reglas posteriores por inferencia del brief.
+- **Deuda del 2a resuelta**: R5, contrato de error de asignación, tarea 4.2; cuerpo por edificio con
+  extras prohibidos y rechazo 422 de `unidad_id` y `vinculo`, también con ids válidos ajenos.
+- **Depende de**: 2a y 3a/3b, cuya configuración y textos adapta. **Habilita**: 2b.
+- **Cierre**: 17 tareas `[x]`; 7.2 documentada en `4c24333`. Corridas sobre `835a002`: backend 2076
+  passed y 1 xfailed (+319 respecto de 1.1), web 301 (+3), navegador 144 y humo OK. Ensayo del respaldo
+  restaurado ampliado a 0018/0016/0018, con 10 asignaciones y origen intacto.
+- **Auditoría**: una vuelta de Claude sobre la construcción de Codex; el ALTO de firma y las filas
+  2 a 4 se atendieron en el cierre. Los límites de revisión y el supuesto RD-2 quedan abajo en
+  "Deuda del cierre del 2.2a". Artefactos en
+  `openspec/changes/archive/2026-10-20-roles-de-la-empresa/`.
+
+### 2b · `login` y gestión de usuarios · crítico
+
+- **Objetivo**: que el personal y los vecinos entren con Clerk, y que el super admin gestione las
+  invitaciones, perfiles y alcances de su administración.
+- **Historias**: HU-V1. **Decisiones**: D-036, D-039, D-096 (cuenta por administración), D-099,
+  D-106 y D-107 (reemplaza el método de D-097).
+- **Entra**:
+  - Clerk **sólo para autenticar**, con usuario y contraseña también para vecinos, link mágico y
+    recuperación. La autorización sigue en nuestra base: tenant, perfiles, alcance y RLS. La identidad
+    se vincula por el **id de Clerk**, nunca sólo por email.
+  - Sesión del lado del servidor de Next (D-036), selector de administración después de autenticarse
+    (D-099), pantalla de login, rutas sin sesión y CSP. Límite de intentos por cuenta y por IP sin
+    bloquear a todo un edificio; el design define la integración con los controles de Clerk.
+  - **Gestión de usuarios (RA-6)**: el super admin invita al personal con perfil y alcance (principal
+    o por edificio según el perfil); los vecinos se dan de alta desde el padrón, con unidad y vínculo
+    propietario/inquilino, y reciben la invitación por mail. Se soportan varios propietarios de una
+    unidad y vínculos distintos de una persona. No delegar autorización a roles de Clerk.
+  - Auditoría de ingresos exitosos y fallidos y de la gestión sensible, con `acceso.aplicacion` y la
+    migración de vocabulario que corresponda; aviso de privacidad por la ley 25.326 y transferencia
+    internacional. Clerk guarda sólo email y nombre.
+- **No entra**: puerto de email completo con reintentos y plantillas (13), portal del vecino (11),
+  vista del consejo (12) ni carga del edificio de ejemplo (`acceso-de-desarrollo`). Verificar el costo
+  real de Clerk antes del piloto (15).
+- **Deuda heredada** (L-012): del 2a, R9, V2-7, D-1, D-2 y D-6, y el aviso de que la primera FK
+  legítima hacia `auditoria` frena el arranque; R5 ya se cerró en 2.2a y V3-5 en 2c. Del 2c, CSP y los
+  ítems cuyo dueño siga siendo 2b en su tabla. Del 3a, RF-B-4 (dueño propuesto, no confirmado por
+  Juani). Del 3b, mostrar el usuario real en la barra superior. Del 2.2a, retomar los límites de
+  revisión de RR y de la matriz antes de conectar identidades (ver tabla; dueño propuesto, no
+  confirmado por Juani).
+- **Depende de**: 2a y 2.2a. **Habilita**: uso real de las pantallas, 11 y 15.
+- **Bloqueado por**: ninguna pregunta de la exploración de roles y login; P48 se resolvió en D-099.
+  Requiere propuesta CRITICAL firmada por Juani o Alberto (D-094).
+- **Decidir en el design**: integración de Clerk con la sesión de Next y con D-099; verificación del
+  id de Clerk y sus claims; altas e invitaciones por tenant sin enlazar personas sólo por email;
+  recuperación, revocación y sincronización de identidades; qué rutas quedan sin sesión y cómo se
+  interpretan los links firmados de D-070. P12 sigue abierta para la base de negocio, no para adoptar
+  Clerk en la autenticación (D-107).
+- **Que intente romper el rompedor**: token falso, vencido o de otra cuenta; invitación reutilizada,
+  vencida o destinada a otra administración; mismo email en dos tenants; vecino entrando como
+  personal; alcance principal concedido al auxiliar; contador que escribe; identidad enlazada por
+  email en vez de id de Clerk; perfil duplicado; token visible en el navegador; bloqueo por IP
+  compartida; fuga de datos al proveedor o en los logs.
+- **Terminado cuando**: personal y vecinos entran sólo a su administración y alcance; las invitaciones
+  crean el vínculo y perfil correctos; los intentos fallidos se limitan y auditan; Clerk autentica y
+  la base conserva toda decisión de autorización.
 
 ### 2c · `endurecimiento-de-infraestructura` · MEDIUM
 
@@ -360,22 +402,23 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a y los `shape`. **Habilita**: `acceso-de-desarrollo` y el uso real del 3 junto con
   el 2b.
 
-### 3b-bis · `acceso-de-desarrollo` · HIGH y CRITICAL (D-094)
+### 3b-bis · `acceso-de-desarrollo` · HIGH y CRITICAL (D-094), sin firmar
 
-- **Objetivo**: entrar a las siete pantallas del 3b contra la API real sin login, sólo en una máquina
-  de desarrollo; y cargar el edificio de ejemplo en la base para poder recorrerlas.
-- **Por qué es un change propio**: el 3b se archivó con las pantallas completas y probadas sin este
-  acceso (D3/D4 de su design); lo único pendiente es la firma HIGH de E2 del 3a (D11 del 3a, D12 del
-  3b) y, para la carga del ejemplo, un `GRANT INSERT ON auditoria TO proptech_migrador` — CRITICAL,
-  permisos sobre el log de auditoría — que la decide Juani junto con la firma, no el constructor solo.
-- **Entra**: el punto de entrada de desarrollo (`backend/desarrollo/`, fuera de `src/`) y
-  `infra/compose.desarrollo.yaml`; las guardas que prueban que nada de esto llega a producción; el
-  comando de carga del ejemplo (implementación ya escrita por el constructor del 3b, guardada sin
-  commitear en `.git/informes-3b/2.3-wip/`); el recorrido de las siete pantallas contra la API real.
-- **No entra**: ninguna pantalla, regla de negocio ni permiso de producción nuevo.
-- **Precondición**: la sección "Aprobación" de su `proposal.md` firmada por Juani o Alberto, con
-  nombre, fecha y las dos respuestas (construir el acceso; dar el `GRANT`). Sin firma, no se construye.
-- **Depende de**: 3a, 3b. **Habilita**: probar las pantallas contra datos reales antes del 2b.
+- **Objetivo**: cargar el edificio de ejemplo para recorrer las siete pantallas contra la API real.
+  **Con el 2b se reduce a esa carga**: Clerk reemplaza la necesidad del acceso sin login (D-107).
+- **Origen**: el 3b archivó las pantallas completas sin el acceso de desarrollo ni la carga del ejemplo.
+  La propuesta actual sigue sin firma; debe ajustar su alcance si el login llega antes.
+- **Carga pendiente**: retomar la implementación guardada sin commitear en
+  `.git/informes-3b/2.3-wip/`; **sumar una fila `super_admin`** para la persona del ejemplo antes de
+  llamar a `crear_edificio`, con el vocabulario de 0017 (RD-7, RA-1). No reemplazar otras asignaciones.
+  Requiere además `GRANT INSERT ON auditoria TO proptech_migrador`, **CRITICAL y sin firmar**: lo
+  decide Juani o Alberto, no el constructor. No se otorga ese permiso al archivar el 2.2a.
+- **Si se decide construir antes del 2b**: punto de entrada en `backend/desarrollo/`, fuera de `src/`,
+  Compose aparte y guardas contra su llegada a producción; requiere firma HIGH y CRITICAL propia.
+- **Precondición**: propuesta ajustada y aprobación escrita y fechada de Juani o Alberto, incluido el
+  `GRANT`. Sin firma no se construye.
+- **Depende de**: 3a, 3b y 2.2a; con 2b, sólo la carga del ejemplo. **Habilita**: recorrido con datos
+  de ejemplo, nunca datos personales reales.
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
 
@@ -448,6 +491,9 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 6 · `gastos-y-cargos`
 
 - **Objetivo**: cargar los gastos del mes y los cargos de cada unidad, listos para liquidar.
+- **Lecturas y vínculos (D-106)**: contador (principal o por edificio) y consejo leen los gastos y
+  comprobantes de su alcance, sin escribir. Preparar la separación de ordinarias y extraordinarias
+  para que el inquilino vea sólo ordinarias; el propietario ve ambas. El 2.2a sólo creó el vínculo.
 - **Historias**: HU-A3 (carga manual, incluido el sueldo del encargado), HU-A3b. **Reglas**: R01
   (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R12 (la clave de factura
   `cuit + ptoVta + tipoCmp + nroCmp`, que usa el control de duplicados del 7), R13, R14, R16, R22.
@@ -473,6 +519,11 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
+- **Permisos y lecturas (D-106)**: emite y distribuye el super admin y todo administrador del edificio;
+  anular o aceptar alertas bloqueantes requiere super admin o administrador principal. Contador y
+  consejo leen dentro de su alcance, sin escribir (P39 sigue abierta). El propietario ve ambas
+  expensas; el inquilino sólo ordinarias, también en su PDF y links de descarga. Probar que el filtro
+  no dependa del navegador ni exponga extraordinarias por descarga directa.
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
@@ -664,10 +715,15 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 11 · `portal-del-vecino`
 
 - **Objetivo**: que el vecino entienda su expensa y pague desde el celular.
+- **Vínculos y lecturas (D-106)**: cada propietario ve la cuenta completa de su unidad y cualquiera
+  informa un pago; el inquilino sólo ve ordinarias, incluidos los PDFs y comprobantes descargables.
+  Una persona puede tener vínculos distintos por unidad. Las lecturas del contador y del consejo
+  respetan su alcance y no habilitan escritura ni el acceso al portal de otra persona.
 - **Historias**: HU-V1 (pantallas), HU-V2, HU-V3, HU-V5. **Reglas**: R16 (presentación).
-- **Entra**: todas las unidades de la persona juntas; deuda y vencimiento; expensa por ordinaria,
-  extraordinaria y categoría, con la comparación contra el mes anterior; descarga de PDFs con links
-  firmados y con vencimiento (D-070); app instalable. Pasa por la skill impeccable.
+- **Entra**: todas las unidades de la persona juntas; deuda y vencimiento según su vínculo; ordinarias
+  y extraordinarias para propietarios y sólo ordinarias para inquilinos, por categoría y comparadas
+  con el mes anterior; PDFs del vínculo con links firmados y con vencimiento (D-070); app instalable.
+  Pasa por la skill impeccable.
 - **Depende de**: 10a y 2b (el vecino tiene que poder entrar). **Habilita**: 12.
 - **Distribución** (D-074): la primera vez que un vecino abre una liquidación, el portal llama al
   puerto de distribución del cambio 7.
@@ -679,8 +735,14 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 12 · `vista-del-consejo` · HIGH (D-087)
 
 - **Objetivo**: transparencia para el consejo de propietarios.
+- **Lecturas (D-106)**: consejo y contador leen gastos, liquidaciones y comprobantes de su alcance;
+  el consejo sólo su edificio, el contador principal toda su administración y el contador por
+  edificio sólo los asignados. Ninguno escribe. El consejo tiene una asignación por persona y
+  edificio (RR-3). El filtro de inquilino a ordinarias sigue en la vista por unidad del 11; no se
+  concede lectura contable de todo el edificio por ser inquilino.
 - **Historias**: HU-C1.
-- **Entra**: morosidad, gastos y liquidaciones en sólo lectura.
+- **Entra**: morosidad, gastos, liquidaciones y comprobantes en sólo lectura, con los alcances del
+  consejo y del contador definidos en D-106.
 - **Depende de**: 11.
 - **Que intente romper el rompedor**: cualquier acción de escritura desde un usuario del consejo.
 - **Terminado cuando**: se cumple HU-C1.
@@ -824,7 +886,7 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| R5: el contrato de error del endpoint de asignación (`unidad_id` del vecino) | Es contrato de error, no fuga: no escribe nada y el log no filtra; el endpoint es inalcanzable en producción hasta el login (401 siempre) | 2b (C-05b) |
+| R5: contrato de error del endpoint de asignación | Cerrada en el 2.2a, tarea 4.2: cuerpo por edificio sin vecino, `nivel`, `vinculo` ni `unidad_id`, con 422 por extras incluso con ids válidos ajenos; no escribe ni filtra | 2.2a, cerrada el 20/10/2026 |
 | R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3a (C-06a), bloqueante antes de su primera ruta nueva (tarea 2.1) |
 | R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) |
 | R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3a (C-06a), tarea 2.2 |
@@ -872,6 +934,22 @@ compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no 
 | N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | 15 (piloto), con C2V2-1 |
 | N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | 15 (piloto), con C2V2-2 |
 | N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
+
+### Deuda del cierre del 2.2a
+
+Cierre del 20/10/2026, `4c24333`. Fuente: `.git/informes-roles/auditor/informe.md`, contrastado con
+las correcciones y la evidencia final de `tasks.md` del archivado. La fila 1 (ALTO) quedó resuelta con
+la firma aparte de Juani en `610eb4a`; el ensayo pendiente de la fila 2 se amplió a 0018, la línea
+de base de la fila 3 se corrigió y la fila 4 atribuyó a Codex sus dos criterios de verificación. Esas
+correcciones están cerradas; la revisión independiente y el informe faltante siguen en la tabla.
+Quedan estos límites; ninguna fila implica aceptación o dueño confirmado por Juani:
+
+| Deuda o supuesto | Límite al cierre | Cambio |
+|---|---|---|
+| Auditor fila 2: falta lectura independiente de las correcciones RR | Se probó 0018 sobre el respaldo restaurado, pero eso no reemplaza la revisión independiente de 0018, `escritura.py`, `auditoria.py`, `Estados.tsx` y las seis páginas tocadas por RR | 2b, antes de conectar identidades. Dueño propuesto, no confirmado por Juani |
+| Auditor fila 5: el rompedor no repitió los ataques de base ni cotejó las 144 celdas del test de permisos | El auditor cotejó la matriz del código con D3, pero leer los tests del constructor no equivale a un segundo ataque independiente | 2b, antes de usar la matriz con login. Dueño propuesto, no confirmado por Juani |
+| RD-2: se supone que no hay producción ni datos reales y que nunca se desplegó | No se verificó externamente; el ensayo usa el respaldo restaurado del humo con dos administraciones inventadas, no un respaldo de producción. Si el supuesto es falso, esa evidencia no alcanza | 15, antes de migrar datos reales; validar antes si aparecen. Dueño propuesto, no confirmado por Juani |
+| Auditor fila 3: falta el informe original de Sonnet 6.1/7.1 | Hay comandos en `tasks.md` y logs locales; la comparación se corrigió, pero el resumen del orquestador no reemplaza un informe original para futuras revisiones | Próximo cierre con varios constructores, aplicar el formato de `14_forma_de_trabajo.md`. Dueño propuesto, no confirmado por Juani |
 
 ### Deuda del cierre del 3a
 

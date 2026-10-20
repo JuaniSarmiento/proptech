@@ -170,7 +170,7 @@ respeten el contrato.
 
 | Qué se toca | Quién | Por qué |
 |---|---|---|
-| **Valores** de una regla que ya existe: días, porcentajes, montos fijos | El administrador titular | Es lo que cambia en una asamblea (por ejemplo, la bonificación pasa del 10% al 15%). La tasa de interés no está acá: es un menú de configuración (D-080). Cambiar un número en una tabla probada es de bajo riesgo, y el validador lo revisa igual |
+| **Valores** de una regla que ya existe: días, porcentajes, montos fijos | El super admin (antes, titular) | Es lo que cambia en una asamblea (por ejemplo, la bonificación pasa del 10% al 15%). La tasa de interés no está acá: es un menú de configuración (D-080). Cambiar un número en una tabla probada es de bajo riesgo, y el validador lo revisa igual |
 | **Estructura** de una regla: condiciones, nodos, salidas, reglas nuevas | El equipo de PropTech | Una regla mal dibujada le cobra mal a todo un edificio, y el editor permite armar cosas que el validador tiene que atajar |
 
 Falta verificar si jdm-editor permite un modo "sólo valores". Si no lo permite, los valores se
@@ -199,7 +199,7 @@ simple y el 6b las migra al motor.
 ## Pendiente
 
 - [ ] Bajar y revisar el código del demo BRE (backend y frontend) antes del explore del cambio 6b.
-- [ ] Acordar con Alberto quién usa el editor: valores para el titular, estructura para el equipo.
+- [ ] Acordar con Alberto quién usa el editor: valores para el super admin, estructura para el equipo (P22 sigue abierta).
 - [ ] Confirmar en gorules.io que el copiloto de IA y el servidor MCP son de la plataforma paga y no
   de las librerías libres (la investigación del 13/10 dice que sí, desde unos €500 por mes).
 - [ ] Probar jdm-editor dentro de Next.js con `antd` 5.21.2 y React 19.3: nadie verificó que sean

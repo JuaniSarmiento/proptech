@@ -29,10 +29,11 @@ C-01 infraestructura-base (1a)
               └── C-04 respaldos-y-restauracion (1d)
                     └── C-05a aislamiento-por-administracion (2a)   ← el candado (D-097); desbloquea TODO lo demás
                           │
-                          ├── C-05b login (2b)                      ← para usarlo una persona: lo piden C-16 y C-20
+                          ├── C-05a-bis roles-de-la-empresa (2.2a) ← adapta 3a/3b, ya archivados
+                          │     └── C-05b login y gestión de usuarios (2b) ← Clerk; lo piden C-16 y C-20
                           ├── C-05c endurecimiento-de-infraestructura (2c)
                           │
-                          └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (propuesto, E1)
+                          └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (E1)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │
@@ -87,14 +88,17 @@ GATE 3: C-03 ✓
 GATE 4: C-04 ✓
   → C-05a aislamiento-por-administracion (solo, CRITICAL: aprobación de un socio)
 
-GATE 5: C-05a ✓                                          ← fork del cambio 2 (3 paralelos)
+GATE 5: C-05a ✓                                          ← roles antes del login
   → C-06a configuracion-del-edificio [Agente A] (HIGH: aprobación de un socio; camino crítico)
-  → C-05b login                     [Agente B] (CRITICAL: aprobación de un socio; además necesita P48)
   → C-05c endurecimiento-de-infraestructura [Agente C] (MEDIUM)
 
 GATE 6: C-06a ✓
   → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un socio)
   → C-06b pantallas-del-edificio (en paralelo; su propose espera los siete shape con Juani)
+
+GATE 6 bis: C-05a + C-06a + C-06b ✓
+  → C-05a-bis roles-de-la-empresa (2.2a, archivado)
+    → C-05b login y gestión de usuarios (Clerk, CRITICAL; P48 resuelta en D-099)
 
 GATE 7: C-07 ✓                                           ← PRIMER FORK real (2 paralelos)
   → C-08 importacion-desde-excel    [Agente A]
@@ -152,10 +156,10 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   3  │ C-03 cola-logs-y-respaldos      │         -                       │         -
   4  │ C-04 respaldos-y-restauracion   │         -                       │         -
   5  │ C-05a aislamiento-por-admin.    │         -                       │         -
-  6  │ C-06a configuracion-del-edif.   │ C-05b login                     │ C-05c endurecimiento-de-infra.
+  6  │ C-06a configuracion-del-edif.   │         -                       │ C-05c endurecimiento-de-infra.
   7  │ C-07 motor-de-cuenta-corriente  │         -                       │ C-06b pantallas-del-edificio
-  8  │ C-08 importacion-desde-excel    │ C-09 gastos-y-cargos            │         -
-  9  │ C-10 liquidacion-y-emision      │         -                       │         -
+  8  │ C-08 importacion-desde-excel    │ C-09 gastos-y-cargos            │ C-05a-bis roles-de-la-empresa
+  9  │ C-10 liquidacion-y-emision      │ C-05b login y usuarios          │         -
  10  │ C-11 pagos-informados           │         -                       │ C-19 lectura-de-facturas
  11  │ C-12 motor-de-reglas            │ C-13 extracto-bancario          │ C-14 morosidad
  12  │         -                       │ C-15 condonacion-judicial...    │ C-16 portal-del-vecino
@@ -247,27 +251,42 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-05b] `login` · 2b
-- **Estado**: `[ ]` pendiente (CRITICAL), bloqueado por P48; partido del cambio 2 por D-097 (`login` es
-  nombre provisional: lo fija su propose). Es requisito para que una persona use el sistema y para el
-  despliegue (C-16, C-20), no para construir C-06a
-- **Scope**: login del personal con contraseña y del vecino con link mágico por mail (D-097), sesión
-  del lado de Next.js (D-036), límite de intentos en el login, auditoría de login exitoso y fallido
-  sobre la tabla del 2a, CSP en Next, la pantalla de login
-- **Dependencias**: C-05a
+### [C-05a-bis] `roles-de-la-empresa` · 2.2a
+- **Estado**: `[x]` archivado (20/10/2026); 17 tareas hechas, cierre 7.2 en `4c24333`.
+  Número **2.2a** decidido por Juani; se conserva la numeración de los demás changes.
+- **Scope**: perfil × alcance, roles de la empresa, vínculo propietario/inquilino por unidad,
+  migraciones 0017/0018, matriz de D-106, personal único por alcance y consejo único por persona y
+  edificio; contrato de asignación y auditoría. Deuda y límites en la ficha del 2.2a.
+- **Dependencias**: C-05a y C-06a/C-06b (adapta configuración y textos construidos).
+- **Governance**: CRITICO; E1 a E8 y RR-1 a RR-4 firmadas por Juani (20/10/2026, `610eb4a`).
+- **Leer antes**:
+  - `knowledge-base/12_fichas_de_changes.md` §2.2a
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-106)
+  - `openspec/changes/archive/2026-10-20-roles-de-la-empresa/`
+
+---
+
+### [C-05b] `login` y gestión de usuarios · 2b
+- **Estado**: `[ ]` próximo (CRITICAL); P48 resuelta en D-099. El método de D-097 fue reemplazado por
+  D-107; requiere propuesta con firma propia de Juani o Alberto (D-094).
+- **Scope**: Clerk sólo para autenticación, usuario y contraseña también para vecinos, vínculo por
+  id de Clerk y autorización en la base; selector de administración, sesión del servidor de Next,
+  límite de intentos, auditoría y CSP. El super admin invita al personal con perfil y alcance; vecinos
+  desde el padrón con vínculo e invitación por mail. Aviso de privacidad, sólo email y nombre en
+  Clerk; costo a verificar antes del piloto. Hereda la deuda de su ficha.
+- **Dependencias**: C-05a, C-05a-bis (2.2a).
 - **Governance**: CRITICO
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §2b
-  - `openspec/exploraciones/2026-10-15-acceso-y-aislamiento.md` (secciones 1, 3 y 4)
-  - `knowledge-base/06_funcionalidades.md` §HU-V1
-  - `knowledge-base/10_preguntas_abiertas.md` (P48)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-036, D-039, D-043, D-096, D-097)
+  - `knowledge-base/12_fichas_de_changes.md` §2b y deuda del 2.2a
+  - `knowledge-base/03_actores_y_roles.md`
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-036, D-099, D-106, D-107)
+  - `openspec/exploraciones/2026-10-20-roles-de-la-empresa-y-login.md`
+  - `knowledge-base/15_lecciones.md`
 
 ---
 
 ### [C-05c] `endurecimiento-de-infraestructura` · 2c
-- **Estado**: `[ ]` propuesto el 15/10/2026 (MEDIUM, sin aprobación previa); partido del cambio 2 por
-  D-097; revisado por DevOps el 16/10/2026 contra `d0502fa`, cambios aprobados por Juani (20 tareas)
+- **Estado**: `[x]` archivado (16/10/2026), OK con deuda anotada (D-101).
 - **Scope**: cabeceras de seguridad y volúmenes de Caddy, sin `Via` ni `X-Powered-By`, también en los
   502 de Caddy, HEAD revisado; CI en pull requests (sin perder `push` a `main` ni `workflow_dispatch`)
   con límite de tiempo medido y gitleaks y `shellcheck` por digest; contenedores con
@@ -278,7 +297,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Dependencias**: C-05a
 - **Governance**: MEDIO, con regla de freno en el arranque del candado (`app.py`, `roles.py`)
 - **Leer antes**:
-  - `openspec/changes/endurecimiento-de-infraestructura/proposal.md` (incluida la pregunta P1)
+  - `openspec/changes/archive/2026-10-16-endurecimiento-de-infraestructura/proposal.md` (incluida la pregunta P1)
   - `knowledge-base/12_fichas_de_changes.md` §2c y las tablas de deuda
   - `knowledge-base/15_lecciones.md` (L-001, L-013, L-014, L-016, L-018, L-019)
   - `knowledge-base/09_decisiones_y_supuestos.md` (D-051, D-095, D-097, D-098)
@@ -286,22 +305,17 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-06a] `configuracion-del-edificio` · 3a
-- **Estado**: `[ ]` propuesto el 16/10/2026 (HIGH) y revisado por el arquitecto el mismo día
-  (bloqueantes aplicados con decisiones de Juani: B5, P19, P33), esperando la aprobación de un socio
-  con E1 a E10 (`openspec/changes/configuracion-del-edificio/proposal.md`); 24 tareas, ninguna
-  bloqueada (D-100 resolvió P19, P24 y P33); se recomienda mover la carga del ejemplo al 3b (quedan 23).
-  Propone partir el 3 en 3a y 3b (E1)
+- **Estado**: `[x]` archivado (19/10/2026), OK (D-103, D-104); deuda en su ficha.
 - **Scope**: edificio y unidad completos (tipo, coeficiente, superficie, estado de migración),
   grupos de reparto con FK compuesta por edificio y dos modos de coeficientes (D-100), categorías de
   gasto, configuración versionada de intereses, vencimiento (día fijo, único o doble con recargo) y
   fondo de reserva de sólo agregar, permisos de configuración y de lectura (el vecino ve sólo lo suyo)
-  y auditoría, API con contrato de error, el edificio de ejemplo cargado en la base con un comando
-  idempotente, y la deuda R6 y R11 del 2a y la del 1b con dueño 3
+  y auditoría, API con contrato de error, y la deuda R6 y R11 del 2a y la del 1b con dueño 3
 - **Dependencias**: C-05a
 - **Governance**: ALTO
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §3a
-  - `openspec/changes/configuracion-del-edificio/proposal.md` y `design.md`
+  - `openspec/changes/archive/2026-10-19-configuracion-del-edificio/proposal.md` y `design.md`
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Complejos (configuración del edificio)
   - `knowledge-base/06_funcionalidades.md` §HU-A1
   - `knowledge-base/09_decisiones_y_supuestos.md` (D-096, D-098, D-100)
@@ -309,22 +323,19 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-06b] `pantallas-del-edificio` · 3b (nombre provisional)
-- **Estado**: `[ ]` pendiente, nace de la partición propuesta en el 3a (E1); se propone después de los
-  siete `shape` con Juani, que son su precondición (en la primera versión del propose eran la tarea 8.1 del 3a)
-- **Scope**: las pantallas de configuración del edificio para el administrador (mis edificios,
-  resumen, padrón, grupos, categorías, intereses y fondo, confirmar "sin saldos previos"), el acceso
-  de desarrollo sin login firmado en E2 (sólo si el 2b no llegó antes), la carga del ejemplo en la base
-  si E1 se firma con esa recomendación, los tokens de `DESIGN.md` y el
-  "terminado" de frontend (teclado y foco, errores por campo, estados de carga y vacío, 320 px, WCAG
-  2.2 AA)
-- **Dependencias**: C-06a (y los briefs de `shape`)
-- **Governance**: ALTO mientras incluya el acceso de desarrollo (toca la identidad); se confirma en su
-  propose
+### [C-06b] `pantallas-del-edificio` · 3b
+- **Estado**: `[x]` archivado (20/10/2026), OK (D-105).
+- **Scope**: siete pantallas de configuración del administrador, todo el ancho, menú lateral, barra
+  superior y ayuda acoplada; teclado, errores por campo, carga, vacío, 320 px y WCAG 2.2 AA.
+  Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), sin firma;
+  con el 2b ese change se reduce a la carga del ejemplo, con fila `super_admin` y `GRANT INSERT ON
+  auditoria` al migrador pendientes de firma CRITICAL. Ver ficha 3b-bis.
+- **Dependencias**: C-06a y los briefs de `shape`.
+- **Governance**: ALTO
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §3b
-  - `PRODUCT.md`, `DESIGN.md` y los briefs de `shape` en `openspec/exploraciones/`
-  - `openspec/changes/configuracion-del-edificio/design.md` (D11 y D12)
+  - `knowledge-base/12_fichas_de_changes.md` §3b y §3b-bis
+  - `PRODUCT.md`, `DESIGN.md` y los briefs en `openspec/exploraciones/`
+  - `openspec/changes/archive/2026-10-20-pantallas-del-edificio/`
 
 ---
 
@@ -468,7 +479,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ### [C-16] `portal-del-vecino` · 11
 - **Estado**: `[ ]` pendiente
 - **Scope**: todas las unidades de la persona juntas, deuda y vencimiento, expensa por ordinaria y
-  extraordinaria con comparación contra el mes anterior, descarga de PDFs, app instalable
+  extraordinaria para propietarios y sólo ordinaria para inquilinos, comparación contra el mes
+  anterior, descarga de PDFs según vínculo, app instalable (D-106)
 - **Dependencias**: C-14, C-05b (el vecino tiene que poder entrar)
 - **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
@@ -480,7 +492,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ### [C-17] `vista-del-consejo` · 12
 - **Estado**: `[ ]` pendiente (HIGH)
-- **Scope**: morosidad, gastos y liquidaciones en sólo lectura para el consejo
+- **Scope**: morosidad, gastos, liquidaciones y comprobantes en sólo lectura para consejo y contador
+  según su alcance (D-106)
 - **Dependencias**: C-16
 - **Governance**: ALTO
 - **Leer antes**:

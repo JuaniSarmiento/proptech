@@ -97,7 +97,7 @@ Caddyfile, backups). En `backend/src/`, tres paquetes: `proptech_core` (dominio 
 | Proveedor de IA para comprobantes de pago | Precargar monto, fecha y número de operación de un comprobante (R11) | API (proveedor a elegir) | Pendiente, se decide en el *design* del cambio 8 |
 | Proveedor de email transaccional | Avisos de vencimiento y de mora (HU-V6), envío del PDF de la expensa | API/SMTP (proveedor a elegir, sin costo o el más barato, D-043) | Pendiente, se decide en el *design* del cambio 13 |
 | GoRules ZEN (`zen-engine`) + jdm-editor | Motor y editor visual de las reglas propias de cada edificio | Librería embebida en el proceso de Python (sin servicio aparte) + componente React | Decidido (D-066), cambio 6b |
-| Login (contraseña + link mágico) | Autenticación del personal (contraseña) y del vecino (link mágico por mail), método ya decidido (D-097); Clerk descartado (D-043) | Contraseña propia para el personal; envío de mail para el vecino, proveedor a elegir | Decidido el método (D-097); el *design* del cambio 2b define el envío del mail y la sesión |
+| Clerk (sólo autenticación) | Personal y vecinos con usuario y contraseña, además de link mágico; autorización en nuestra base (D-107) | Sólo email y nombre; vínculo por id de Clerk, aviso de privacidad y transferencia internacional | Decidido por Juani (20/10/2026); integración y gestión de usuarios en 2b, costo a verificar antes del piloto (15) |
 
 Mercado Pago, recaudadores (Red Link, SIRO, Rapipago) y WhatsApp Business quedan fuera del MVP (ver
 `01_vision_y_objetivos.md` §Fuera de alcance y `16_proyecto_final.md`).
