@@ -433,6 +433,46 @@ familia por hallazgo).
     limpios.
   - Commit `fix(web): grupos.json referencia unidades que existen en unidades.json (R3C-9)`.
 
+## Rediseño a todo el ancho (enmienda del shape, 20/10/2026)
+
+Pedido de Juani con la captura de Mercado Pago; dirección en la "Enmienda del 20/10/2026" de
+`openspec/exploraciones/2026-10-19-shape-pantallas-del-edificio.md`. Se mantiene terracota, OKLCH,
+números tabulares, una acción principal por pantalla, sin modales y 320 px sin scroll horizontal.
+
+- [x] Armazón común (`componentes/Armazon.tsx`): barra superior con marca, miga "Mis edificios ›
+  edificio" y el usuario ("Administración": la API no expone un nombre, no se inventa). Contenido a
+  todo el ancho, sin el máximo de 68rem. Mis edificios también usa el armazón.
+- [x] Menú agrupado ("El edificio" / "Configuración") con íconos de `lucide-react` (1.59.0, exacto) y
+  texto al lado; el nombre del edificio y "Mis edificios" pasaron a la barra superior.
+- [x] `Panel`, `FilaConIcono`, `BarraDeProgreso` nuevos; estado vacío con dibujo SVG inline y el
+  próximo paso.
+- [x] Ayuda "?" acoplada: desde 1024 px se acopla a la derecha y empuja el contenido (`:has()`), queda
+  abierta mientras se trabaja, abrirla no mueve el foco; por debajo cae en el flujo a todo el ancho.
+  Cada ayuda suma "Un ejemplo".
+- [x] `PanelLateral` variante `ancho`: "Cambiar configuración" se abre en la pantalla, a todo el ancho
+  y con los campos en columnas (mismo foco, `Esc` y devolución de foco).
+- [x] Pantallas: Resumen (checklist con barra "N de 6 pasos" + "Tu próximo paso" + datos), Unidades
+  (tabla + suma, unidades por tipo y qué falta, todo de la API salvo conteos), Grupos (+ cómo se
+  reparte), Categorías (+ conteos y cómo se usan, "Subir"/"Bajar" con texto), Intereses y
+  vencimiento (vigente e historial lado a lado), Saldos previos (+ qué significa), Mis edificios
+  (más datos por fila, con puesta a punto).
+- [x] Tests ajustados por cambio de estructura sin aflojar lo que prueban (menú, checklist del
+  resumen, nombre "Cerrar ayuda"); nuevos: `Armazon`, `Panel`, `BarraDeProgreso`, ayuda acoplada
+  (foco, queda abierta, cierra con el mismo botón, ejemplo), grupos del menú, contraste de los pares
+  sobre Papel claro, y en Playwright: ancho completo, la ayuda empuja y conserva el foco, a 320 px en
+  el flujo, barra de progreso y formulario de configuración en columnas.
+- [x] `DESIGN.md` actualizado (barra superior, menú, paneles, filas con ícono, barra de progreso,
+  ayuda acoplada, variante ancha, sombra sólo del panel flotante).
+
+Evidencia (20/10/2026):
+- `cd web && pnpm biome ci` sin errores (1 aviso previo en `app/edificios/page.tsx`, no tocado);
+  `pnpm tsc --noEmit` ok; `pnpm vitest run`: 45 archivos, 282 pruebas en verde.
+- `PROPTECH_PUERTO_API_FALSA=4300 PROPTECH_PUERTO_WEB=3300 bash infra/ci/test-web-navegador.sh`:
+  141 pasaron, 0 fallaron (barrido 5.1 con axe incluido).
+- Capturas: `.git/informes-3b/rediseno/antes/` y `.git/informes-3b/rediseno/despues/` (siete
+  pantallas a 1440x900 y 320x640, más panel de configuración, ayuda abierta, vacíos y fuera de
+  tolerancia).
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.
