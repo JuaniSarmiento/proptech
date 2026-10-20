@@ -53,6 +53,8 @@ class _DetalleAsignarEdificio(_DetalleBase):
 class _DetalleAsignacion(_DetalleAsignarEdificio):
     rol: Literal["administrador", "contador", "auxiliar", "consejo"]
     alcance: Literal["edificio"]
+    persona_id: UUID
+    asignacion_id: UUID
 
 
 class _DetalleConfiguracion(_DetalleAsignarEdificio):

@@ -130,6 +130,8 @@ configuración del edificio: ve sólo sus unidades y el complejo de cada una.
 - **WHEN** el super admin (antes, titular) asigna un complejo de su administración a una persona de su administración
   como administrador, contador, auxiliar o consejo
 - **THEN** la asignación queda guardada con ese perfil y la persona pasa a ver ese complejo
+- **AND** el detalle de auditoría incluye `complejo_id`, `rol`, `alcance`, `persona_id` de la
+  destinataria y `asignacion_id` de la fila creada; la columna `persona_id` conserva al actor
 
 #### Scenario: Perfil de personal repetido en un edificio
 

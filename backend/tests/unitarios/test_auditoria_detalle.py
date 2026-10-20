@@ -16,8 +16,14 @@ from proptech_core.acceso.dominio.permisos import Accion
 
 
 def test_detalle_valido_para_invitar_usuarios_pasa() -> None:
-    complejo_id = uuid4()
-    detalle = {"complejo_id": str(complejo_id), "rol": "administrador", "alcance": "edificio"}
+    complejo_id, persona_id, asignacion_id = uuid4(), uuid4(), uuid4()
+    detalle = {
+        "complejo_id": str(complejo_id),
+        "rol": "administrador",
+        "alcance": "edificio",
+        "persona_id": str(persona_id),
+        "asignacion_id": str(asignacion_id),
+    }
     validado = _detalle_validado(Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS, detalle)
     assert validado == detalle
 

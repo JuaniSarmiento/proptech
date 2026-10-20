@@ -1,5 +1,7 @@
 """Vocabulario asignable y campos extra rechazados en el borde (D7, R5 del 2a)."""
 
+from uuid import UUID
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -77,3 +79,30 @@ def test_asignar_un_segundo_perfil_de_personal_en_el_mismo_edificio_da_409_no_50
     assert api.filas("SELECT count(*) FROM auditoria") == auditoria
     assert respuesta.status_code == 409, (respuesta.status_code, respuesta.text)
     assert respuesta.json() == {"detail": "conflicto", "campo": "rol"}
+
+
+def test_la_auditoria_de_una_asignacion_nombra_a_quien_recibe_el_perfil(
+    api_edificio: ApiEdificio,
+) -> None:
+    """Corrección RR-2 (rompedor, MEDIA): la fila de auditoría de
+    `invitar_usuarios_y_asignar_edificios` guardaba quién asignó, el
+    edificio, el rol y el alcance, pero no a QUIÉN se le dio el perfil: ni
+    `entidad_id` (es el complejo) ni el `detalle`."""
+    api = api_edificio
+    api.como("super_admin")
+    destino = api.personas["vecino"]
+    respuesta = api.cliente.post(
+        f"/api/complejos/{api.otro}/asignaciones",
+        json={"persona_id": str(destino), "rol": "administrador"},
+    )
+    assert respuesta.status_code == 201, respuesta.text
+    asignacion = UUID(respuesta.json()["id"])
+    [(entidad, entidad_id, detalle)] = api.filas(
+        "SELECT entidad, entidad_id, detalle FROM auditoria WHERE request_id = %s",
+        (respuesta.headers["X-Request-ID"],),
+    )
+    assert detalle.get("persona_id") == str(destino), (
+        f"auditoría sin persona destino: entidad={entidad} entidad_id={entidad_id} "
+        f"detalle={detalle}"
+    )
+    assert detalle.get("asignacion_id") == str(asignacion)

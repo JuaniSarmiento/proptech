@@ -309,6 +309,9 @@ endpoint (tarea 4.3).
   asignado y el alcance (RA-2, revisión del arquitecto): sigue guardando `complejo_id`, y agrega esos
   dos campos sólo en las filas que se escriban de acá en adelante. No es una migración de vocabulario:
   las filas de auditoría anteriores no se tocan (no se pueden reescribir, D9 del 2a).
+- Corrección RR-2 autorizada por Juani (20/10/2026): el detalle nuevo también exige
+  `persona_id` (destinataria) y `asignacion_id` (fila creada). El actor sigue en la
+  columna `persona_id` de auditoría. No se reescriben registros anteriores.
 - Corrección RR-1 autorizada por Juani (20/10/2026): repetir un perfil de personal en el
   mismo edificio responde 409 `{"detail":"conflicto","campo":"rol"}` (D6 del 3a).
   Se traduce la restricción única mediante `errores.transaccion`; el rollback incluye

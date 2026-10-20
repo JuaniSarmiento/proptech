@@ -70,7 +70,13 @@ def asignar_complejo_a_persona(
             entidad="complejo",
             entidad_id=complejo_id,
             request_id=request_id,
-            detalle={"complejo_id": str(complejo_id), "rol": rol, "alcance": "edificio"},
+            detalle={
+                "complejo_id": str(complejo_id),
+                "rol": rol,
+                "alcance": "edificio",
+                "persona_id": str(persona_id),
+                "asignacion_id": str(fila.id),
+            },
         )
     # psycopg3 ya devuelve una columna uuid como `uuid.UUID`, incluso en un
     # `text()` crudo; el `str()`/`UUID()` sólo blinda el tipo para mypy.

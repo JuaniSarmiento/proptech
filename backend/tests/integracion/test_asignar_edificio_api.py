@@ -368,9 +368,10 @@ def test_super_admin_asigna_perfil_alcance_y_auditoria(api_edificio: ApiEdificio
         f"/api/complejos/{api.otro}/asignaciones", json={"persona_id": str(persona), "rol": rol}
     )
     assert respuesta.status_code == 201, respuesta.text
+    asignacion_id = respuesta.json()["id"]
     assert api.filas(
         "SELECT persona_id, rol, complejo_id, unidad_id, vinculo FROM asignacion_rol WHERE id = %s",
-        (respuesta.json()["id"],),
+        (asignacion_id,),
     ) == [(persona, rol, api.otro, None, None)]
     assert api.filas(
         "SELECT persona_id, accion, entidad_id, detalle FROM auditoria WHERE request_id = %s",
@@ -380,7 +381,14 @@ def test_super_admin_asigna_perfil_alcance_y_auditoria(api_edificio: ApiEdificio
             api.personas["super_admin"],
             "invitar_usuarios_y_asignar_edificios",
             api.otro,
-            {"complejo_id": str(api.otro), "rol": rol, "alcance": "edificio"},
+            {
+                "complejo_id": str(api.otro),
+                "rol": rol,
+                "alcance": "edificio",
+                # RR-2: la auditoría nombra a quién recibe el perfil y la fila exacta.
+                "persona_id": str(persona),
+                "asignacion_id": asignacion_id,
+            },
         )
     ]
     api.como("vecino")

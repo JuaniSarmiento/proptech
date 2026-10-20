@@ -711,7 +711,39 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   intentos, sin carpeta `rompedor_roles` (ya ausente al recibir el árbol).
   SUPUESTO: ninguno. Logs en `.git/informes-roles-rr-constructor/rr1-*.log`.
 
-- [ ] RR-2 (MEDIA): exigir en el detalle de la auditoría la persona destinataria y el id exacto de la asignación, además de rol y alcance. D7, RA-2; `autorizacion-por-rol` › Titular asigna un edificio. L-019.
+- [x] RR-2 (MEDIA): exigir en el detalle de la auditoría la persona destinataria y el id exacto de la asignación, además de rol y alcance. D7, RA-2; `autorizacion-por-rol` › Titular asigna un edificio. L-019.
+
+  EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k auditoria -q -p no:cacheprovider --color=no
+  15:16:10
+  E AssertionError: auditoría sin persona destino (... detalle sin persona_id)
+  1 failed, 16 deselected, 1 warning in 5.40s
+  ```
+  Se reforzó el test trasladado: exige ambos UUID exactos, sin buscar texto ni
+  aceptar `entidad_id` como sustituto. El id de asignación también se vio fallar
+  con copia previa, diff real y restauración byte a byte:
+  ```diff
+  -                "asignacion_id": str(fila.id),
+  +                "asignacion_id": str(persona_id),
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k auditoria -q -p no:cacheprovider --color=no
+  15:16:52
+  E assert detalle.get("asignacion_id") == str(asignacion)
+  1 failed, 16 deselected, 1 warning in 5.33s
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py tests/integracion/test_asignar_edificio_api.py tests/integracion/test_auditoria_transaccion.py tests/unitarios/test_auditoria_detalle.py -q -p no:cacheprovider --color=no
+  15:17:06
+  39 passed, 1 warning in 17.66s
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  15:17:21
+  All checks passed! / 230 files already formatted / Success: no issues found in 209 source files
+  ```
+  JUICIO: actor, destinataria y asignación quedan diferenciados; modelo estricto
+  y rollback de asignación/auditoría verdes. No se modifican filas históricas.
+  SUPUESTO: ninguno. Logs locales `rr2-*.log`.
 
 - [ ] RR-3 (BAJA): impedir consejo duplicado por persona y edificio como `proptech_app`, manteniendo coexistencia con personal, aislamiento y downgrade. D5, RA-5; `autorizacion-por-rol` › La base sostiene la forma de cada asignación. L-016, L-018, L-019, L-020.
 
