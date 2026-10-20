@@ -5,6 +5,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
+import { Ayuda } from "./Ayuda";
 import { MenuDelEdificio, type SeccionDelEdificio } from "./MenuDelEdificio";
 
 afterEach(cleanup);
@@ -61,6 +62,34 @@ describe("MenuDelEdificio", () => {
     expect(boton.getAttribute("aria-expanded")).toBe("false");
     expect(contenedor?.getAttribute("data-abierto")).toBe("false");
     expect(document.activeElement).toBe(boton);
+  });
+
+  it("RF-F-1: un Escape cierra sólo el menú abierto encima de la ayuda en móvil", async () => {
+    const usuario = userEvent.setup();
+    // JSDOM no aplica media queries; 375px representa el menú plegado.
+    const anchoAnterior = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
+    try {
+      render(
+        <>
+          <Ayuda paraQueSirve="Unidades" pasos={["Cargá una unidad"]} yDespues="Grupos" />
+          <MenuDelEdificio seccionActual="resumen" secciones={secciones} />
+        </>,
+      );
+      await usuario.click(screen.getByRole("button", { name: "Ayuda" }));
+      const seccionesBoton = screen.getByRole("button", { name: "Secciones" });
+      await usuario.click(seccionesBoton);
+      await usuario.keyboard("{Escape}");
+      expect(seccionesBoton.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(seccionesBoton);
+      expect(
+        screen.getByRole("region", { name: "Ayuda: para qué sirve esta pantalla" }),
+      ).toBeTruthy();
+      await usuario.keyboard("{Escape}");
+      expect(screen.queryByRole("region")).toBeNull();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: anchoAnterior });
+    }
   });
 
   it("agrupa las secciones bajo su título, cada grupo como lista con nombre (enmienda 20/10)", () => {

@@ -473,6 +473,27 @@ Evidencia (20/10/2026):
   pantallas a 1440x900 y 320x640, más panel de configuración, ayuda abierta, vacíos y fuera de
   tolerancia).
 
+## Arreglos de la auditoría y la revisión de frontend (20/10/2026)
+
+### 1. RF-F-1: Escape compartido del menú
+
+Base: 17/17 pruebas de Ayuda, PanelLateral y MenuDelEdificio (09:47:21). Regresión móvil con ayuda debajo del menú; el segundo Escape cierra la ayuda.
+
+- 01-rojo (09:48:10, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/MenuDelEdificio.test.tsx`
+```text
+TestingLibraryElementError: Unable to find an accessible element with the role "region" and name "Ayuda: para qué sirve esta pantalla"
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  09:48:11
+```
+
+- 01-verde (09:48:31, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/MenuDelEdificio.test.tsx`
+```text
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  09:48:31
+```
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

@@ -21,7 +21,9 @@ import {
   Tags,
   Building2 as Unidades,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+
+import { useCerrarConEscape } from "../lib/teclado/useCerrarConEscape";
 
 export type IconoDeSeccion = "resumen" | "unidades" | "grupos" | "categorias" | "configuracion";
 
@@ -60,23 +62,10 @@ export function MenuDelEdificio({ seccionActual, secciones }: Props) {
   const idDelMenu = useId();
   const botonRef = useRef<HTMLButtonElement>(null);
 
-  // Escape cierra el menú plegado desde cualquier foco dentro del widget
-  // (el botón o un enlace), no sólo cuando el foco está dentro de la lista:
-  // por eso escucha en `document` mientras está abierto, en vez de un
-  // `onKeyDown` en un contenedor sin rol interactivo.
-  useEffect(() => {
-    if (!abierto) {
-      return;
-    }
-    function alTeclado(evento: KeyboardEvent) {
-      if (evento.key === "Escape") {
-        setAbierto(false);
-        botonRef.current?.focus();
-      }
-    }
-    document.addEventListener("keydown", alTeclado);
-    return () => document.removeEventListener("keydown", alTeclado);
-  }, [abierto]);
+  useCerrarConEscape(abierto, () => {
+    setAbierto(false);
+    botonRef.current?.focus();
+  });
 
   return (
     <nav className="menu-del-edificio" aria-label="Secciones del edificio">
