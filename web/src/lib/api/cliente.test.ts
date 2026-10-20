@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { esTextoDecimalAscii, pedirApi } from "./cliente";
+import { esIdValido, esTextoDecimalAscii, pedirApi } from "./cliente";
 
 const MARCADOR = "MARCADOR_TECNICO_PRIVADO";
 
@@ -226,5 +226,21 @@ describe("esTextoDecimalAscii", () => {
     expect(esTextoDecimalAscii("1e-1")).toBe(false);
     expect(esTextoDecimalAscii(1)).toBe(false);
     expect(esTextoDecimalAscii(null)).toBe(false);
+  });
+});
+
+describe("R3C-2 · esIdValido", () => {
+  it("acepta un UUID", () => {
+    expect(esIdValido("f760ca3b-7331-4927-96e5-54a3fbb1f3ae")).toBe(true);
+  });
+
+  it("rechaza un id con ../ (intentaría redirigir la ruta de la API)", () => {
+    expect(esIdValido("../complejos/00000000-0000-0000-0000-00000000bbbb/categorias?x=")).toBe(
+      false,
+    );
+  });
+
+  it("rechaza un id corto que no es UUID", () => {
+    expect(esIdValido("1")).toBe(false);
   });
 });

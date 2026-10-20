@@ -5,7 +5,7 @@
  * también lo ve el vecino, D-076).
  */
 
-import { pedirApi, type ResultadoApi } from "./cliente";
+import { esIdValido, pedirApi, type ResultadoApi } from "./cliente";
 import type { Edificio, EdificioDeLista } from "./tipos";
 
 export async function listaDeEdificios(): Promise<ResultadoApi<EdificioDeLista[]>> {
@@ -13,7 +13,10 @@ export async function listaDeEdificios(): Promise<ResultadoApi<EdificioDeLista[]
 }
 
 export async function edificioPorId(id: string): Promise<ResultadoApi<Edificio>> {
-  return pedirApi<Edificio>(`/api/complejos/${id}`);
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<Edificio>(`/api/complejos/${encodeURIComponent(id)}`);
 }
 
 export type DatosNuevoEdificio = { nombre: string; localidad: string };
@@ -31,8 +34,11 @@ export async function crearEdificio(
 export async function confirmarSinSaldosPrevios(
   id: string,
 ): Promise<ResultadoApi<{ id: string; estado_migracion: string }>> {
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
   return pedirApi<{ id: string; estado_migracion: string }>(
-    `/api/complejos/${id}/estado-de-migracion/sin-saldos-previos`,
+    `/api/complejos/${encodeURIComponent(id)}/estado-de-migracion/sin-saldos-previos`,
     { metodo: "POST" },
   );
 }

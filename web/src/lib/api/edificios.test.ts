@@ -40,8 +40,17 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
   it("edificioPorId pide GET /api/complejos/{id}", async () => {
     const fetchFalso = mockFetch({ status: 200, cuerpo: { id: "1" } });
     vi.stubGlobal("fetch", fetchFalso);
-    await edificioPorId("1");
-    expect(fetchFalso.mock.calls[0]?.[0]).toBe("http://api-interna:8000/api/complejos/1");
+    await edificioPorId("11111111-1111-1111-1111-111111111111");
+    expect(fetchFalso.mock.calls[0]?.[0]).toBe(
+      "http://api-interna:8000/api/complejos/11111111-1111-1111-1111-111111111111",
+    );
+  });
+
+  it("R3C-2 · edificioPorId con un id que no es UUID da no_existe, sin llamar a fetch", async () => {
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    expect(await edificioPorId("../../salud")).toEqual({ estado: "no_existe" });
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 
   it("crearEdificio manda POST con nombre y localidad", async () => {
@@ -78,10 +87,10 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
       cuerpo: { id: "1", estado_migracion: "sin_saldos_previos" },
     });
     vi.stubGlobal("fetch", fetchFalso);
-    const resultado = await confirmarSinSaldosPrevios("1");
+    const resultado = await confirmarSinSaldosPrevios("11111111-1111-1111-1111-111111111111");
     const llamada = fetchFalso.mock.calls[0];
     expect(llamada?.[0]).toBe(
-      "http://api-interna:8000/api/complejos/1/estado-de-migracion/sin-saldos-previos",
+      "http://api-interna:8000/api/complejos/11111111-1111-1111-1111-111111111111/estado-de-migracion/sin-saldos-previos",
     );
     expect(llamada?.[1]?.method).toBe("POST");
     expect(resultado).toEqual({
@@ -95,9 +104,16 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
       "fetch",
       mockFetch({ status: 409, cuerpo: { detail: "conflicto", campo: "estado_migracion" } }),
     );
-    expect(await confirmarSinSaldosPrevios("1")).toEqual({
+    expect(await confirmarSinSaldosPrevios("11111111-1111-1111-1111-111111111111")).toEqual({
       estado: "conflicto",
       campo: "estado_migracion",
     });
+  });
+
+  it("R3C-2 · confirmarSinSaldosPrevios con un id que no es UUID da no_existe, sin llamar a fetch", async () => {
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    expect(await confirmarSinSaldosPrevios("1")).toEqual({ estado: "no_existe" });
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

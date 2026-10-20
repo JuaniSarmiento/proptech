@@ -22,6 +22,19 @@ export type ResultadoApi<T> =
 
 const _TEXTO_DECIMAL_ASCII = /^-?[0-9]+\.[0-9]+$/;
 
+const _UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/** R3C-2 (rompedor 3b): todo id que compone una ruta de la API (de un
+ * campo oculto del formulario, de `params.id` de la URL, o ligado con
+ * `.bind`) tiene que ser un UUID — nunca se interpola crudo. Sin esto, un
+ * `unidad_id` como `"../complejos/<otro>/categorias?x="` normaliza
+ * (`new URL`) a una ruta y un recurso distintos de los que la pantalla
+ * pensó, con el cuerpo de ESA acción. Un id que no es UUID da "no existe"
+ * (D2, misma pantalla que un 404 real), nunca un pedido con él adentro. */
+export function esIdValido(id: string): boolean {
+  return _UUID.test(id);
+}
+
 /** Si `valor` es un texto decimal ASCII válido (el único formato que la
  * API usa para plata y coeficientes, L-009): nunca `Number`/`parseFloat`. */
 export function esTextoDecimalAscii(valor: unknown): boolean {

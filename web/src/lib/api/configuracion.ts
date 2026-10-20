@@ -5,13 +5,16 @@
  * un objeto `null` daría `fallo` por error, no por un dato roto.
  */
 
-import { pedirApi, type ResultadoApi } from "./cliente";
+import { esIdValido, pedirApi, type ResultadoApi } from "./cliente";
 import type { ConfiguracionVigente, VersionDelHistorial } from "./tipos";
 
 export async function configuracionVigente(
   id: string,
 ): Promise<ResultadoApi<ConfiguracionVigente>> {
-  return pedirApi<ConfiguracionVigente>(`/api/complejos/${id}/configuracion`);
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<ConfiguracionVigente>(`/api/complejos/${encodeURIComponent(id)}/configuracion`);
 }
 
 /**
@@ -22,7 +25,12 @@ export async function configuracionVigente(
 export async function versionesDeConfiguracion(
   id: string,
 ): Promise<ResultadoApi<VersionDelHistorial[]>> {
-  return pedirApi<VersionDelHistorial[]>(`/api/complejos/${id}/configuracion/versiones`);
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<VersionDelHistorial[]>(
+    `/api/complejos/${encodeURIComponent(id)}/configuracion/versiones`,
+  );
 }
 
 export type DatosNuevaVersion = {
@@ -44,8 +52,11 @@ export async function crearVersionDeConfiguracion(
   complejoId: string,
   datos: DatosNuevaVersion,
 ): Promise<ResultadoApi<{ id: string }>> {
-  return pedirApi<{ id: string }>(`/api/complejos/${complejoId}/configuracion/versiones`, {
-    metodo: "POST",
-    cuerpo: datos,
-  });
+  if (!esIdValido(complejoId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<{ id: string }>(
+    `/api/complejos/${encodeURIComponent(complejoId)}/configuracion/versiones`,
+    { metodo: "POST", cuerpo: datos },
+  );
 }

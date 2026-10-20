@@ -5,11 +5,14 @@
  * `fallo` por error, no por un dato roto.
  */
 
-import { pedirApi, type ResultadoApi } from "./cliente";
+import { esIdValido, pedirApi, type ResultadoApi } from "./cliente";
 import type { Grupo } from "./tipos";
 
 export async function gruposDelEdificio(id: string): Promise<ResultadoApi<Grupo[]>> {
-  return pedirApi<Grupo[]>(`/api/complejos/${id}/grupos`);
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<Grupo[]>(`/api/complejos/${encodeURIComponent(id)}/grupos`);
 }
 
 export type MiembroAEnviar = { unidad_id: string; coeficiente: string | null };
@@ -28,7 +31,10 @@ export async function crearGrupo(
   complejoId: string,
   datos: DatosNuevoGrupo,
 ): Promise<ResultadoApi<{ id: string }>> {
-  return pedirApi<{ id: string }>(`/api/complejos/${complejoId}/grupos`, {
+  if (!esIdValido(complejoId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<{ id: string }>(`/api/complejos/${encodeURIComponent(complejoId)}/grupos`, {
     metodo: "POST",
     cuerpo: datos,
   });
@@ -36,12 +42,16 @@ export async function crearGrupo(
 
 export type CambiosGrupo = { nombre?: string; metodo?: string };
 
-/** Edición, primer pedido (D9): sólo nombre/método. */
+/** Edición, primer pedido (D9): sólo nombre/método. `grupoId` viene de un
+ * campo oculto (`grupos/acciones.ts`, R3C-2). */
 export async function editarGrupo(
   grupoId: string,
   cambios: CambiosGrupo,
 ): Promise<ResultadoApi<{ id: string }>> {
-  return pedirApi<{ id: string }>(`/api/grupos/${grupoId}`, {
+  if (!esIdValido(grupoId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<{ id: string }>(`/api/grupos/${encodeURIComponent(grupoId)}`, {
     metodo: "PATCH",
     cuerpo: cambios,
   });
@@ -60,7 +70,10 @@ export async function fijarMiembrosDeGrupo(
   grupoId: string,
   datos: DatosDeMiembros,
 ): Promise<ResultadoApi<{ id: string }>> {
-  return pedirApi<{ id: string }>(`/api/grupos/${grupoId}/unidades`, {
+  if (!esIdValido(grupoId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<{ id: string }>(`/api/grupos/${encodeURIComponent(grupoId)}/unidades`, {
     metodo: "PUT",
     cuerpo: datos,
   });

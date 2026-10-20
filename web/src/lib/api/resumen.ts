@@ -6,11 +6,14 @@
  * la pantalla no podría mostrar.
  */
 
-import { pedirApi, type ResultadoApi } from "./cliente";
+import { esIdValido, pedirApi, type ResultadoApi } from "./cliente";
 import type { Resumen } from "./tipos";
 
 export async function resumenDelEdificio(id: string): Promise<ResultadoApi<Resumen>> {
-  return pedirApi<Resumen>(`/api/complejos/${id}/resumen`, {
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<Resumen>(`/api/complejos/${encodeURIComponent(id)}/resumen`, {
     camposDePlata: ["informe.suma", "informe.diferencia"],
   });
 }
