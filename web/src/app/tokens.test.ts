@@ -41,6 +41,13 @@ describe("contraste de los tokens de color (D10)", () => {
   });
 });
 
+describe("escala tipográfica aplicada (tarea 5.2)", () => {
+  it("h1 usa --tipo-titular y h2 usa --tipo-titulo (D10: la escala declarada tiene que llegar a los títulos)", () => {
+    expect(_TOKENS_CSS).toMatch(/\bh1\s*\{[^}]*font-size:\s*var\(--tipo-titular\)/);
+    expect(_TOKENS_CSS).toMatch(/\bh2\s*\{[^}]*font-size:\s*var\(--tipo-titulo\)/);
+  });
+});
+
 describe("prefers-reduced-motion (tarea 3.6)", () => {
   it("pone --duracion-transicion en 0ms dentro de @media (prefers-reduced-motion: reduce)", () => {
     const bloqueReducido = _TOKENS_CSS.match(

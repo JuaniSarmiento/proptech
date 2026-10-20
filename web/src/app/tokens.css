@@ -55,6 +55,19 @@ body {
   font-size: var(--tipo-cuerpo);
 }
 
+/* Escala tipográfica (D10, tarea 3.5): declarada desde el principio pero
+ * nunca conectada a ningún título hasta la tarea 5.2 — `h1`/`h2` quedaban
+ * en el tamaño por defecto del navegador, no en `--tipo-titular`/
+ * `--tipo-titulo`. El salto de 1,25 entre niveles (D8) es el mismo que ya
+ * separa `--tipo-label` de `--tipo-cuerpo` y éste de `--tipo-titulo`. */
+h1 {
+  font-size: var(--tipo-titular);
+}
+
+h2 {
+  font-size: var(--tipo-titulo);
+}
+
 /* The Tabular Money Rule: todo importe, coeficiente o porcentaje alineado
    en columna usa esta clase (D6, D10). */
 .numero-tabular {
