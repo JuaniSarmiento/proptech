@@ -207,15 +207,15 @@ spec vigente.
 
 | Elección | Propuesta del design | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| E1 · Perfil y alcance en `asignacion_rol` | `rol` con seis valores, el alcance se deduce de `complejo_id` y `unidad_id` (sin columna `alcance`), `nivel` se borra (D1) | |
-| E2 · Propietario o inquilino | Columna `vinculo` en la fila del vecino, una relación por persona y unidad (D2) | |
-| E3 · Configuración versionada | Crear una versión de intereses y vencimiento la puede el super admin y **todo administrador** del edificio; hoy es sólo del titular (punto 3: "configuración") (D4) | Sí — Juani, 20/10/2026. Resuelve a favor de la exploración la contradicción con el 3a (antes, sólo el titular): queda **todo administrador** con alcance sobre el edificio, no sólo el principal. |
-| E4 · Confirmar "sin saldos previos" | Super admin y administrador principal, como dar de baja una deuda (D4) | Sí — Juani, 20/10/2026. Confirma la propuesta: sólo super admin y administrador principal, nunca cualquier administrador. |
-| E5 · Crear edificios y asignar | Sólo el super admin (punto 3: "edificios, usuarios y roles") (D4) | |
-| E6 · Lectura de la configuración | Contador, auxiliar y consejo leen la configuración del edificio de su alcance (D4) | |
-| E7 · Filas existentes y vuelta atrás | El vecino de hoy pasa a propietario; el `downgrade` falla ruidoso con un contador, un administrador principal o un inquilino (D5) | |
-| E8 · Texto de la web | "Esto lo puede hacer el super admin de la empresa." (D8) | Sí — Juani, 20/10/2026. En la interfaz el rol se muestra como "Super admin" (de la empresa); cierra la pregunta abierta sobre las palabras de la pantalla. |
+| E1 · Perfil y alcance en `asignacion_rol` | `rol` con seis valores, el alcance se deduce de `complejo_id` y `unidad_id` (sin columna `alcance`), `nivel` se borra (D1) | Sí, Juani 20/10/2026 |
+| E2 · Propietario o inquilino | Columna `vinculo` en la fila del vecino, una relación por persona y unidad (D2) | Sí, Juani 20/10/2026 |
+| E3 · Configuración versionada | Crear una versión de intereses y vencimiento la puede el super admin y **todo administrador** del edificio; hoy es sólo del titular (punto 3: "configuración") (D4) | Sí, Juani 20/10/2026 |
+| E4 · Confirmar "sin saldos previos" | Super admin y administrador principal, como dar de baja una deuda (D4) | Sí, Juani 20/10/2026 |
+| E5 · Crear edificios y asignar | Sólo el super admin (punto 3: "edificios, usuarios y roles") (D4) | Sí, Juani 20/10/2026 |
+| E6 · Lectura de la configuración | Contador, auxiliar y consejo leen la configuración del edificio de su alcance (D4) | Sí, Juani 20/10/2026 |
+| E7 · Filas existentes y vuelta atrás | El vecino de hoy pasa a propietario; el `downgrade` falla ruidoso con un contador, un administrador principal o un inquilino (D5) | Sí, Juani 20/10/2026 |
+| E8 · Texto de la web | "Esto lo puede hacer el super admin de la empresa." (D8) | Sí, Juani 20/10/2026 |
 
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|
-| | | |
+| Juani | 20/10/2026 | Todo el change roles-de-la-empresa tal como está en esta propuesta, con E1 a E8 aprobadas |
