@@ -481,9 +481,13 @@ presenta.
 
 Dos archivos ya validados (cambio 1b, D-053), con sus lectores propios
 (`backend/src/proptech_core/compartido/parametros.py` y `semilla.py`), alineados con R01 y el modo de
-coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a, pero el comando que carga el
-edificio de ejemplo **en la base** se movió al 3b (sólo lo necesita el acceso de desarrollo sin login,
-E6/E10 de la propuesta del 3a): hoy la semilla sigue validándose en memoria, no insertada.
+coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a. El comando que carga el
+edificio de ejemplo **en la base** pasó del 3a al 3b (E6/E10 de la propuesta del 3a) y, al archivarse
+el 3b sin el acceso de desarrollo, quedó en el change `acceso-de-desarrollo` junto con ese acceso: las
+dos cosas esperan la misma firma HIGH/CRITICAL de Juani (D-094) y, la carga, además, un
+`GRANT INSERT ON auditoria TO proptech_migrador` que tampoco decide un agente solo. Hoy la semilla
+sigue validándose en memoria, no insertada; las siete pantallas del 3b no necesitaron esta carga, se
+probaron con una API falsa y con fixtures generados por la API real.
 
 ### `config/parametros.yaml` · los valores con que arranca cada edificio nuevo (D-042)
 
@@ -521,4 +525,4 @@ Validado por `Semilla` (`semilla.py`) contra los parámetros de arriba: `version
   `10_preguntas_abiertas.md`. No se inventa acá una solución.
 - **Estado de migración**: la columna `complejo.estado_migracion` existe desde el 3a (`0005`, D-083),
   con el ejemplo pensado como `'sin_saldos_previos'`; el campo todavía no se agregó a este archivo de
-  semilla (pendiente del 3b, que es quien la carga en la base).
+  semilla (pendiente de `acceso-de-desarrollo`, que es quien lo carga en la base, sin firmar todavía).

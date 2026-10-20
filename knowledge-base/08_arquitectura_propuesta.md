@@ -21,7 +21,8 @@ proptech/
 │   ├── parametros.yaml       # valores con que arranca cada edificio nuevo (D-042)
 │   ├── semilla/              # edificio-ejemplo.yaml (D-053)
 │   └── contratos/            # request-id.json (contrato de `request_id`, L-008)
-├── web/                      # Next.js (App Router), áreas (admin) (consejo) (vecino)
+├── web/                      # Next.js (App Router); src/app/edificios/ = pantallas del administrador
+│                             # (3b); (consejo) y (vecino), sin pantallas todavía
 ├── backend/
 │   └── src/
 │       ├── proptech_core/    # dominio compartido por módulo
@@ -50,6 +51,30 @@ genéricos (`compartido`), la autorización y la auditoría son del dominio (`ac
 negocio que necesitan alcance por edificio dependen de `acceso`, nunca al revés. Cruzar esta dirección
 (por ejemplo, que `acceso` importe algo de `complejos` para resolver un nombre de edificio) es la
 regresión que el guardián de fronteras del cambio 3 en adelante tiene que impedir.
+
+## La web (`pantallas-del-edificio`, 3b)
+
+- **Lectura en el servidor, escritura con server actions** (D1 del design del 3b): cada página de
+  `web/src/app/edificios/` es un componente de servidor que pide sus datos con el cliente de abajo y
+  se los pasa a un componente de cliente; las altas y ediciones son **server actions** que llaman a la
+  misma API y devuelven un resultado tipado que el formulario muestra con `useActionState`. La web
+  llama a la API **desde el servidor de Next** (`PROPTECH_URL_API_INTERNA`), nunca desde el navegador,
+  igual en desarrollo que en producción (D11 del 3a); el acceso sin login de ese mismo D11 (E2) quedó
+  escrito pero sin construir, en el change `acceso-de-desarrollo`, a la espera de la firma HIGH de
+  Juani (D-094).
+- **Un cliente y un mapa de errores** (D2): `web/src/lib/api/` traduce cada respuesta de la API a una
+  unión discriminada (`ok`, `sin_sesion`, `sin_permiso`, `no_existe`, `conflicto`, `invalido`,
+  `fallo`); ningún texto que viene de la API llega tal cual a la pantalla (L-007), y los valores de
+  plata se validan como texto decimal, nunca como `float`.
+- **Fixtures del contrato, generados por la API real** (D4): `backend/tests/integracion/
+  test_contrato_web.py` arma un edificio y compara la forma de cada respuesta de lectura que usa la
+  web contra `web/src/lib/api/fixtures/*.json`; esos mismos fixtures alimentan los tests de la web y
+  la API falsa de Playwright (`web/e2e/api-falsa.ts`, D7, sólo Chromium). Si la API renombra un campo,
+  falla primero el test del backend.
+- La web **no calcula**: la suma de coeficientes, su estado según R01, los seis pasos de puesta a
+  punto y "listo para liquidar" vienen de `GET /api/complejos/{id}/resumen` (D5 del design del 3b,
+  requisito nuevo de `edificios-y-unidades`); el historial de configuración trae el nombre del autor
+  de cada versión con un `JOIN` a `persona` (mismo requisito nuevo de `configuracion-versionada`).
 
 ## Seguridad
 

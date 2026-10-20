@@ -25,6 +25,11 @@ Pedido de Alberto (17/10/2026, D-102). Vale para **todas** las historias de abaj
 - **Dado** un celular · **cuando** uso el "?" · **entonces** funciona tocándolo (no depende de pasar
   el mouse) y el texto se lee al tamaño normal de la pantalla.
 
+**Construido** (3b, `pantallas-del-edificio`): las siete pantallas del administrador (Mis edificios,
+Resumen, Padrón de unidades, Grupos de reparto, Categorías de gasto, Intereses y vencimiento, Confirmar
+"sin saldos previos") tienen su "?" con las tres partes. Las pantallas del vecino, del consejo y el
+login todavía no existen (2b en adelante).
+
 ---
 
 ## Épica: Administrador
@@ -48,6 +53,11 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
   simple (R03).
 - *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
   escalonado (R26) entra acá si Alberto confirma que el piloto lo usa (ProTecc G4, Q9).
+
+**Construido** (3b, `pantallas-del-edificio`): el administrador hace todo esto desde el navegador, sin
+`curl` — "Mis edificios" (crear el edificio), "Resumen" (el checklist de puesta a punto y "listo para
+liquidar", calculados por la API), "Padrón de unidades", "Grupos de reparto", "Categorías de gasto" e
+"Intereses y vencimiento" (cambiar la tasa o el fondo de reserva, con la versión anterior conservada).
 
 **Reglas relacionadas**: R01, R02, R03, R15, R16 (R26, propuesta, a confirmar).
 

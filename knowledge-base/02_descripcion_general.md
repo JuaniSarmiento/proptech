@@ -3,7 +3,7 @@
 ## Stack tecnológico
 
 Verificado contra `backend/pyproject.toml`, `backend/Dockerfile`, `web/package.json`, `web/Dockerfile`
-e `infra/compose.yaml` al 14/10/2026 (cambios 1a a 1d archivados).
+e `infra/compose.yaml` al 20/10/2026 (cambios 1a a 1d, 3a y 3b archivados).
 
 | Capa | Tecnología | Versión mínima | Fuente |
 |---|---|---|---|
@@ -33,14 +33,20 @@ e `infra/compose.yaml` al 14/10/2026 (cambios 1a a 1d archivados).
 | Frontend · gestor de paquetes | pnpm | 12.10.1 | `web/package.json` (`packageManager`) |
 | Frontend · lint y formato | Biome | 2.5.15 | `web/package.json` |
 | Frontend · tests | Vitest | 5.0.3 (con Vite fijado en 7.3.7, D-051) | `web/package.json` |
+| Frontend · tests de componentes | @testing-library/react + @testing-library/user-event | 16.3.3 / 14.6.8, con `jsdom` 30.1.3 como entorno | `web/package.json` |
+| Frontend · accesibilidad automática | axe-core | 4.14.0 (jsdom para estructura y nombres; el navegador real para contraste) | `web/package.json` |
+| Frontend · navegador real (e2e) | Playwright (`@playwright/test`) | 1.64.1, sólo Chromium | `web/package.json` |
+| Frontend · tipografía | Source Sans 3 (`@fontsource/source-sans-3`) | 5.3.1, servida desde la propia web (D10 del design del 3b) | `web/package.json` |
 | Infraestructura · orquestación | Docker Compose, proyecto `proptech` | sin versión (CLI del host) | `infra/compose.yaml` |
 
 Las piezas con su versión ya fijada en la tabla (como arq 0.28.0) pero pendientes de los cambios que
 vienen, porque lo que falta es la funcionalidad, no la versión: **Backend** worker ARQ ya anda (cambio
 1c) pero las tareas reales de PDFs, emails e IA llegan con los cambios 7, 8, 13 y 14 (D-038).
-**Frontend** PWA instalable, sin app nativa (D-020, D-036); hoy `web/src/app/` sólo tiene el esqueleto
-(`layout.tsx`, `page.tsx`, `salud-web/route.ts`) del cambio 1a/1c, sin las áreas `(admin)`, `(consejo)`
-y `(vecino)` todavía. **Infraestructura** Caddy como único proxy con HTTPS automático ya anda (D-043);
+**Frontend** PWA instalable, sin app nativa (D-020, D-036); desde el 3b, `web/src/app/edificios/`
+tiene las siete pantallas del administrador (D-105: todo el ancho, menú lateral agrupado con íconos,
+barra superior fija y ayuda "?" acoplada); las pantallas del vecino y del consejo, y el login,
+todavía no existen (2b en adelante). **Infraestructura** Caddy como único proxy con HTTPS automático
+ya anda (D-043);
 el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) está construido y
 archivado desde el cambio 1d (D-095; ver `08_arquitectura_propuesta.md` §Variables de entorno).
 
