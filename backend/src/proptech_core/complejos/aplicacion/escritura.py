@@ -1,7 +1,7 @@
 """Casos de uso de escritura de `complejos` (D7, D9, cambio 2a, tarea 6.2).
 
-`asignar_complejo_a_persona` es el único hoy, y el único marcado con
-`@accion_sensible`: inserta la fila de `asignacion_rol` y audita la acción
+`asignar_complejo_a_persona`, marcado con `@accion_sensible`, inserta la
+fila de `asignacion_rol` y audita la acción
 en la MISMA sesión (D9). El bloque usa un `SAVEPOINT`
 (`sesion.begin_nested()`) si la sesión ya venía con una transacción abierta
 — el caso normal de la API, que ya leyó antes de llegar hasta acá — o una

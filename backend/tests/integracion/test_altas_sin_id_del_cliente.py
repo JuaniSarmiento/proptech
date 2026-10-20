@@ -198,9 +198,9 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             (str(complejo_id), str(admin_id), "Complejo"),
         )
 
-        titular_id = uuid.uuid4()
+        super_admin_id = uuid.uuid4()
         destinatario_id = uuid.uuid4()
-        for pid, nombre in ((titular_id, "titular"), (destinatario_id, "destinatario")):
+        for pid, nombre in ((super_admin_id, "super_admin"), (destinatario_id, "destinatario")):
             cur.execute(
                 "INSERT INTO persona (id, administracion_id, nombre, email) "
                 "VALUES (%s, %s, %s, %s)",
@@ -209,13 +209,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
             "VALUES (%s, %s, 'super_admin')",
-            (str(admin_id), str(titular_id)),
+            (str(admin_id), str(super_admin_id)),
         )
     conexion.close()
     return {
         "administracion_id": admin_id,
         "complejo_id": complejo_id,
-        "titular": titular_id,
+        "super_admin": super_admin_id,
         "destinatario": destinatario_id,
     }
 
@@ -314,7 +314,7 @@ def test_alta_con_id_del_cliente_da_422_sin_escribir_ni_filtrar_el_valor(
     ruta_resuelta = ruta.format(complejo_id=mundo["complejo_id"])
 
     antes = _cantidad_de_asignaciones(contenedor, mundo["administracion_id"])
-    _como(app_real, mundo["administracion_id"], mundo["titular"])
+    _como(app_real, mundo["administracion_id"], mundo["super_admin"])
     try:
         respuesta = cliente.post(ruta_resuelta, json=cuerpo_con_ids_del_cliente)
     finally:

@@ -195,7 +195,7 @@ def api_edificio(
     monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     app = crear_app()
     admin, admin_b = uuid4(), uuid4()
-    personas = {rol: uuid4() for rol in ("titular", "editar", "ver", "consejo", "vecino")}
+    personas = {rol: uuid4() for rol in ("super_admin", "editar", "ver", "consejo", "vecino")}
     with TestClient(app) as cliente:
         with abrir_sesion(app.state.fabrica_de_sesiones, admin) as sesion:
             sesion.execute(
@@ -210,7 +210,7 @@ def api_edificio(
                     ),
                     {"id": persona, "admin": admin},
                 )
-            identidad = Identidad(admin, personas["titular"])
+            identidad = Identidad(admin, personas["super_admin"])
             parametros = leer_parametros(str(_PARAMETROS_DEL_REPO))
             edificios = [
                 crear_edificio(
@@ -251,11 +251,11 @@ def api_edificio(
                         "admin": admin,
                         "persona": persona,
                         "rol": {
-                            "titular": "super_admin",
+                            "super_admin": "super_admin",
                             "editar": "administrador",
                             "ver": "auxiliar",
                         }.get(rol, rol),
-                        "edificio": None if rol == "titular" else edificios[0],
+                        "edificio": None if rol == "super_admin" else edificios[0],
                         "unidad": unidades[0] if rol == "vecino" else None,
                         "vinculo": "propietario" if rol == "vecino" else None,
                     },
@@ -297,5 +297,5 @@ def api_edificio(
             categoria_ajena=categoria_ajena,
             personas=personas,
         )
-        api.como("titular")
+        api.como("super_admin")
         yield api

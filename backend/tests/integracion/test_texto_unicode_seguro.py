@@ -25,7 +25,7 @@ def test_identificador_con_caracter_invisible_no_es_otra_unidad(
     caracteres de formato (categoría Cf) y `sin_caracteres_de_control` sólo
     mira Cc: "1A" + U+200B se ve idéntico a "1A" y entra como unidad nueva."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         api.ruta("/unidades"), json={**UNIDAD, "identificador": "1A" + invisible}
     )
@@ -49,7 +49,7 @@ def test_surrogate_suelto_da_422_y_no_500(
     categoría Unicode: un `\\ud800` suelto es JSON válido, Python lo deja
     pasar como `str` (categoría Cs, no Cc) y no se puede codificar a UTF-8."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     crudo = json.dumps(cuerpo)  # ensure_ascii: el surrogate viaja como \\ud800
     respuesta = api.cliente.post(
         api.ruta(ruta), content=crudo, headers={"Content-Type": "application/json"}

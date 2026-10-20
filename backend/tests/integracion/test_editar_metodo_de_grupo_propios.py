@@ -19,7 +19,7 @@ def test_grupo_propios_no_cambia_a_metodo_sin_coeficiente_por_patch(
     (mutante M2 del informe), y entonces el CHECK de 0007 revienta como 500.
     Este test pasa HOY: es el que mata ese mutante."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(
         api.ruta("/grupos"),
         json={

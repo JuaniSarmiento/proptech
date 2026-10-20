@@ -130,7 +130,7 @@ def test_versiones_vigente_por_fecha_y_unique_violation_traducida_a_409(
     assert len(versiones) == 2
     assert versiones[0] == inicial
     nueva = versiones[1]
-    assert nueva["autor_id"] == str(api.personas["titular"])
+    assert nueva["autor_id"] == str(api.personas["super_admin"])
     assert nueva["autor_nombre"] == "Persona ficticia"
     assert nueva["creada_en"]
     assert nueva["tasa_mensual"] == "4.00"

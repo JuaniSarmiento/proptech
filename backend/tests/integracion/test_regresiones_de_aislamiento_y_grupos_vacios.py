@@ -41,8 +41,8 @@ _CUERPOS = {
 }
 
 
-def test_titular_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: ApiEdificio) -> None:
-    """Frente 1, tercer caso: identidad válida de B (titular, con su fila en
+def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: ApiEdificio) -> None:
+    """Frente 1, tercer caso: identidad válida de B (super_admin, con su fila en
     `asignacion_rol`) contra cada ruta con ids de A. Nunca 2xx; y la lista
     de edificios de B no trae los de A."""
     api = api_edificio
@@ -97,7 +97,7 @@ def test_grupo_propios_sin_miembros_no_rompe_la_lista(api_edificio: ApiEdificio)
     """a64172f: el arreglo del IN vacío. Grupo `propios` vacío, y después
     vaciar uno con miembros; la lista de grupos sigue respondiendo 200."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(
         api.ruta("/grupos"),
         json={

@@ -14,7 +14,7 @@ pytestmark = pytest.mark.integracion
 _CONFIRMAR = "/estado-de-migracion/sin-saldos-previos"
 
 
-@pytest.mark.parametrize("rol", ["titular", "editar", "ver", "consejo", "vecino"])
+@pytest.mark.parametrize("rol", ["super_admin", "editar", "ver", "consejo", "vecino"])
 def test_lista_solo_devuelve_edificios_del_alcance(api_edificio: ApiEdificio, rol: str) -> None:
     api = api_edificio
     api.como(rol)
@@ -24,7 +24,7 @@ def test_lista_solo_devuelve_edificios_del_alcance(api_edificio: ApiEdificio, ro
         {"id": str(id_), "nombre": nombre, "localidad": "Mendoza"}
         for id_, nombre in (
             [(api.edificio, "Edificio API"), (api.otro, "Otro edificio API")]
-            if rol == "titular"
+            if rol == "super_admin"
             else [(api.edificio, "Edificio API")]
         )
     ]
@@ -111,7 +111,7 @@ def test_alta_con_configuracion_inicial_y_id_propio_rechazado(api_edificio: ApiE
 
 
 @pytest.mark.parametrize("rol", ["editar", "ver", "consejo", "vecino"])
-def test_solo_titular_crea_y_confirma_con_permiso_faltante(
+def test_perfiles_por_edificio_no_crean_ni_confirman_con_permiso_faltante(
     api_edificio: ApiEdificio, rol: str
 ) -> None:
     api = api_edificio

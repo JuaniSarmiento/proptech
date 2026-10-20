@@ -51,7 +51,7 @@ def test_texto_con_caracter_de_control_da_422_y_no_500(
     api_edificio: ApiEdificio, indice: int
 ) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     cliente = TestClient(api.app, raise_server_exceptions=False)
     metodo, ruta, cuerpo = _casos(api)[indice]
     respuesta = getattr(cliente, metodo)(ruta, json=cuerpo)
@@ -64,7 +64,7 @@ def test_patch_de_grupo_con_caracter_de_control_en_el_nombre_da_422(
     contexto: str,
 ) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(
         api.ruta("/grupos"),
         json={
@@ -89,7 +89,7 @@ def test_patch_de_categoria_con_caracter_de_control_en_el_nombre_da_422(
     contexto: str,
 ) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(api.ruta("/categorias"), json={"clave": "diurna", "nombre": "Diurna"})
     assert alta.status_code == 201, alta.text
     recurso_id = str(uuid4()) if contexto == "inexistente" else alta.json()["id"]

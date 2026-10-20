@@ -21,7 +21,7 @@ def test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango(
     (`test_configuracion_invalida_da_422_antes_del_alcance_y_permiso_sin_valor`)
     sólo mira que `tasa_mensual` esté en `loc`; nunca el rango."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     cuerpo = version(tasa_mensual=tasa)
     if entrada == "alta":
         cuerpo.pop("vigente_desde")

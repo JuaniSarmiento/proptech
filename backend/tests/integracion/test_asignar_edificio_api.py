@@ -3,8 +3,8 @@ PostgreSQL real, con `crear_app()` de verdad.
 
 Contenedor propio (L-006; mismo motivo que 4.1/4.2/5.2).
 
-Escenarios de `autorizacion-por-rol`: Colaborador asigna un edificio; Sin
-permiso y fuera de alcance; Titular asigna un edificio; Asignar a una
+Escenarios de `autorizacion-por-rol`: Administrador asigna un edificio; Sin
+permiso y fuera de alcance; Super admin asigna un edificio; Asignar a una
 persona de otra administración. Lecciones: L-017.
 """
 
@@ -137,7 +137,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         )
 
         personas: dict[str, uuid.UUID] = {}
-        for nombre_rol in ("titular", "colaborador", "consejo", "vecino", "destinatario"):
+        for nombre_rol in ("super_admin", "administrador", "consejo", "vecino", "destinatario"):
             pid = uuid.uuid4()
             cur.execute(
                 "INSERT INTO persona (id, administracion_id, nombre, email) "
@@ -149,13 +149,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
             "VALUES (%s, %s, 'super_admin')",
-            (str(admin_id), str(personas["titular"])),
+            (str(admin_id), str(personas["super_admin"])),
         )
         cur.execute(
             "INSERT INTO asignacion_rol "
             "(administracion_id, persona_id, rol, complejo_id) "
             "VALUES (%s, %s, 'administrador', %s)",
-            (str(admin_id), str(personas["colaborador"]), str(complejo_asignado)),
+            (str(admin_id), str(personas["administrador"]), str(complejo_asignado)),
         )
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id) "
@@ -255,13 +255,13 @@ def _como(app: FastAPI, administracion_id: uuid.UUID, persona_id: uuid.UUID) -> 
     )
 
 
-# --- El titular asigna un edificio: 201, y el colaborador pasa a verlo (5.2) ---
+# --- El super_admin asigna un edificio: 201, y la persona pasa a verlo (5.2) ---
 
 
-def test_titular_asigna_un_complejo_y_el_colaborador_pasa_a_verlo(
+def test_super_admin_asigna_un_complejo_y_la_persona_pasa_a_verlo(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["titular"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["super_admin"])
     try:
         respuesta = cliente.post(
             f"/api/complejos/{mundo['complejo_no_asignado']}/asignaciones",
@@ -279,13 +279,13 @@ def test_titular_asigna_un_complejo_y_el_colaborador_pasa_a_verlo(
         app_real.dependency_overrides.pop(identidad_actual, None)
 
 
-# --- Colaborador "editar" en un complejo asignado: 403 con permiso_faltante ---
+# --- Administrador por edificio en un complejo asignado: 403 con permiso_faltante ---
 
 
-def test_colaborador_en_complejo_asignado_403_con_permiso_faltante(
+def test_administrador_en_complejo_asignado_403_con_permiso_faltante(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["colaborador"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["administrador"])
     try:
         respuesta = cliente.post(
             f"/api/complejos/{mundo['complejo_asignado']}/asignaciones",
@@ -300,10 +300,10 @@ def test_colaborador_en_complejo_asignado_403_con_permiso_faltante(
         app_real.dependency_overrides.pop(identidad_actual, None)
 
 
-def test_mismo_colaborador_en_complejo_no_asignado_404(
+def test_mismo_administrador_en_complejo_no_asignado_404(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["colaborador"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["administrador"])
     try:
         respuesta = cliente.post(
             f"/api/complejos/{mundo['complejo_no_asignado']}/asignaciones",
@@ -335,15 +335,15 @@ def test_consejo_y_vecino_403_dentro_de_su_alcance(
         app_real.dependency_overrides.pop(identidad_actual, None)
 
 
-# --- El titular de A asignando a una persona de B: 404, nada escrito ---
+# --- El super_admin de A asignando a una persona de B: 404, nada escrito ---
 
 
-def test_titular_asignando_a_persona_de_otra_administracion_404_y_nada_escrito(
+def test_super_admin_asignando_a_persona_de_otra_administracion_404_y_nada_escrito(
     cliente: TestClient, app_real: FastAPI, contenedor: PostgresContainer, mundo: dict[str, Any]
 ) -> None:
     antes = _cantidad_de_asignaciones(contenedor, mundo["administracion_id"])
 
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["titular"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["super_admin"])
     try:
         respuesta = cliente.post(
             f"/api/complejos/{mundo['complejo_asignado']}/asignaciones",
@@ -363,7 +363,7 @@ def test_super_admin_asigna_perfil_alcance_y_auditoria(api_edificio: ApiEdificio
     persona = api.personas["vecino"]
     api.como("vecino")
     assert api.cliente.get(f"/api/complejos/{api.otro}").status_code == 404
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         f"/api/complejos/{api.otro}/asignaciones", json={"persona_id": str(persona), "rol": rol}
     )
@@ -377,7 +377,7 @@ def test_super_admin_asigna_perfil_alcance_y_auditoria(api_edificio: ApiEdificio
         (respuesta.headers["X-Request-ID"],),
     ) == [
         (
-            api.personas["titular"],
+            api.personas["super_admin"],
             "invitar_usuarios_y_asignar_edificios",
             api.otro,
             {"complejo_id": str(api.otro), "rol": rol, "alcance": "edificio"},

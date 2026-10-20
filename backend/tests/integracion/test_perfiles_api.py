@@ -155,7 +155,7 @@ def test_perfiles_lectores_ven_padron_y_no_escriben(perfiles: ApiEdificio, rol: 
 
 def test_contador_principal_lista_tres_y_lee_cualquier_padron(perfiles: ApiEdificio) -> None:
     api = perfiles
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post("/api/complejos", json={"nombre": "Tercero", "localidad": "Mendoza"})
     assert alta.status_code == 201
     tercero = alta.json()["id"]
@@ -193,7 +193,7 @@ def test_administrador_en_a_auxiliar_en_b_no_extiende_permiso_ni_alcanza_c(
     perfiles: ApiEdificio,
 ) -> None:
     api = perfiles
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post("/api/complejos", json={"nombre": "C", "localidad": "Mendoza"})
     assert alta.status_code == 201
     c = alta.json()["id"]

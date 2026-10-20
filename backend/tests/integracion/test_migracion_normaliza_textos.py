@@ -20,7 +20,7 @@ def test_dato_cargado_sin_normalizar_no_convive_con_su_version_recortada(
     recorta: la semilla valida "1A " sin recortar) convive con la versión
     recortada que ahora manda la API: dos unidades que se ven iguales."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     with api.base.conectar_app() as conexion, conexion.transaction():
         conexion.execute("SELECT set_config('app.administracion_id', %s, true)", (str(api.admin),))
         conexion.execute(

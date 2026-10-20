@@ -101,9 +101,7 @@ def test_patch_no_mueve_la_unidad_ni_acepta_ids(api_edificio: ApiEdificio, campo
 
 
 @pytest.mark.parametrize("rol", ["consejo", "ver"])
-def test_consejo_y_colaborador_ver_leen_padron_y_no_escriben(
-    api_edificio: ApiEdificio, rol: str
-) -> None:
+def test_consejo_y_auxiliar_leen_padron_y_no_escriben(api_edificio: ApiEdificio, rol: str) -> None:
     api = api_edificio
     api.como(rol)
     for sufijo in ("/unidades", "/grupos"):

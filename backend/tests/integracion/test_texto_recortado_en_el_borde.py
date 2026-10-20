@@ -28,7 +28,7 @@ UNIDAD = {
 
 def test_identificador_con_espacio_al_final_no_es_otra_unidad(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     # "1A" ya existe en el edificio (lo siembra el fixture).
     respuesta = api.cliente.post(api.ruta("/unidades"), json={**UNIDAD, "identificador": "1A "})
     assert respuesta.status_code == 409, (respuesta.status_code, respuesta.text)
@@ -37,7 +37,7 @@ def test_identificador_con_espacio_al_final_no_es_otra_unidad(api_edificio: ApiE
 
 def test_nombre_de_categoria_con_espacio_no_es_otra_categoria(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     nombres = [c["nombre"] for c in api.cliente.get(api.ruta("/categorias")).json()]
     existente = nombres[0]
     respuesta = api.cliente.post(
@@ -49,7 +49,7 @@ def test_nombre_de_categoria_con_espacio_no_es_otra_categoria(api_edificio: ApiE
 
 def test_identificador_sin_espacios_al_borde_se_guarda_recortado(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(api.ruta("/unidades"), json={**UNIDAD, "identificador": "  9Z  "})
     assert alta.status_code == 201, alta.text
     assert alta.json()["identificador"] == "9Z"
@@ -57,7 +57,7 @@ def test_identificador_sin_espacios_al_borde_se_guarda_recortado(api_edificio: A
 
 def test_nombre_y_localidad_de_edificio_sin_espacios_al_borde(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(
         "/api/complejos", json={"nombre": "  Edificio Nuevo  ", "localidad": "  Mendoza  "}
     )
@@ -76,7 +76,7 @@ def test_nombre_de_categoria_mismo_tope_al_crear_que_al_editar(api_edificio: Api
     recortar, como el resto de la familia (`grupos.DatosGrupo`,
     `CuerpoEdicionGrupo`)."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     nombre_81_crudo_79_recortado = " " + "a" * 79 + " "
     alta = api.cliente.post(
         api.ruta("/categorias"),
@@ -92,7 +92,7 @@ def test_nombre_de_categoria_mismo_tope_al_crear_que_al_editar(api_edificio: Api
 
 def test_nombre_de_grupo_sin_espacios_al_borde(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     alta = api.cliente.post(
         api.ruta("/grupos"),
         json={

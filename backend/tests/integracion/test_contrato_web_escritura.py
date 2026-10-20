@@ -22,7 +22,7 @@ pytestmark = pytest.mark.integracion
 
 def test_alta_con_el_content_type_que_declara_pedirapi_funciona(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         api.ruta("/categorias"),
         content=json.dumps({"clave": "contrato_web", "nombre": "Contrato web"}),
@@ -39,7 +39,7 @@ def test_alta_con_el_content_type_roto_que_mandaba_la_web_antes_del_fix_sigue_da
     este test empezara a dar 201, significa que esta guarda del contrato
     dejó de servir (la API relajó su parseo sin que nadie lo decidiera)."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         api.ruta("/categorias"),
         content=json.dumps({"clave": "contrato_web_roto", "nombre": "Contrato web roto"}),

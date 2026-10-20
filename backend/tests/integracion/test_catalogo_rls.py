@@ -41,7 +41,7 @@ RESPALDO_PASSWORD = "clave-respaldo-no-real"
 #: D5: nunca se reasigna/exige administracion_id (son técnicas, o se aíslan
 #: distinto, como `administracion`).
 _TABLAS_TECNICAS = {"alembic_version", "trabajos_hechos", "accion_de_auditoria"}
-#: D5/D6: hoy sólo `asignacion_rol` (el titular no tiene complejo).
+#: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}
 
 _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS = re.compile(

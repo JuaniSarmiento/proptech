@@ -20,8 +20,8 @@ from .test_versiones_casos_de_uso import version
 pytestmark = pytest.mark.integracion
 
 
-def otro_titular(sesion: Session, identidad: Identidad, nombre: str) -> Identidad:
-    """Un segundo titular de la MISMA administración que `identidad`."""
+def otra_persona(sesion: Session, identidad: Identidad, nombre: str) -> Identidad:
+    """Otra persona de la MISMA administración que `identidad`."""
     persona_id = uuid4()
     sesion.execute(
         text("INSERT INTO persona (id, administracion_id, nombre) VALUES (:id, :admin, :nombre)"),
@@ -31,28 +31,28 @@ def otro_titular(sesion: Session, identidad: Identidad, nombre: str) -> Identida
 
 
 def test_historial_con_dos_autores(sesion_edificio: Session, identidad_edificio: Identidad) -> None:
-    nombre_titular_a = sesion_edificio.execute(
+    nombre_autor_a = sesion_edificio.execute(
         text("SELECT nombre FROM persona WHERE id=:id"), {"id": identidad_edificio.persona_id}
     ).scalar_one()
-    titular_b = otro_titular(sesion_edificio, identidad_edificio, "Titular B")
+    autor_b = otra_persona(sesion_edificio, identidad_edificio, "Autor B")
     edificio = crear(sesion_edificio, identidad_edificio)
-    version(sesion_edificio, titular_b, edificio, date(2026, 11, 2), tasa_mensual="4.00")
+    version(sesion_edificio, autor_b, edificio, date(2026, 11, 2), tasa_mensual="4.00")
 
     versiones = lectura.listar_versiones(sesion_edificio, edificio)
     assert len(versiones) == 2
     assert versiones[0]["autor_id"] == identidad_edificio.persona_id
-    assert versiones[0]["autor_nombre"] == nombre_titular_a
-    assert versiones[1]["autor_id"] == titular_b.persona_id
-    assert versiones[1]["autor_nombre"] == "Titular B"
+    assert versiones[0]["autor_nombre"] == nombre_autor_a
+    assert versiones[1]["autor_id"] == autor_b.persona_id
+    assert versiones[1]["autor_nombre"] == "Autor B"
 
 
-def test_edificio_recien_creado_trae_el_nombre_del_titular(
+def test_edificio_recien_creado_trae_el_nombre_del_autor(
     sesion_edificio: Session, identidad_edificio: Identidad
 ) -> None:
-    nombre_titular = sesion_edificio.execute(
+    nombre_autor = sesion_edificio.execute(
         text("SELECT nombre FROM persona WHERE id=:id"), {"id": identidad_edificio.persona_id}
     ).scalar_one()
     edificio = crear(sesion_edificio, identidad_edificio)
     versiones = lectura.listar_versiones(sesion_edificio, edificio)
     assert len(versiones) == 1
-    assert versiones[0]["autor_nombre"] == nombre_titular
+    assert versiones[0]["autor_nombre"] == nombre_autor

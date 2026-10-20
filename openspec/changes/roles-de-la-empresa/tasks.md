@@ -653,7 +653,23 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
 
 ## 6. El vocabulario que queda
 
-- [ ] 6.1 Barrido del vocabulario viejo (lente de verdad de los comentarios): `rg -n -i "titular|colaborador|Nivel\.|\bnivel\b"` sobre `backend/src`, `backend/migraciones/ayudas_rls.py`, `backend/tests` y `infra/`, con la lista completa en el informe; cada aparición en código o comentario se corrige o se justifica (la migración `0003` y la `0017` lo nombran a propósito, y el log de `reintentos`/`logs` usa "nivel" en otro sentido); el comentario del guardián (`_EXCEPCIONES_COMPLEJO_ID_NULO`) pasa a nombrar el alcance principal. Verificación: la segunda corrida del `rg` en el informe, sólo con las apariciones justificadas. Escenarios: ninguno (sostiene la verdad de los comentarios). Lecciones: L-022.
+- [x] 6.1 Barrido del vocabulario viejo (lente de verdad de los comentarios): `rg -n -i "titular|colaborador|Nivel\.|\bnivel\b"` sobre `backend/src`, `backend/migraciones/ayudas_rls.py`, `backend/tests` y `infra/`, con la lista completa en el informe; cada aparición en código o comentario se corrige o se justifica (la migración `0003` y la `0017` lo nombran a propósito, y el log de `reintentos`/`logs` usa "nivel" en otro sentido); el comentario del guardián (`_EXCEPCIONES_COMPLEJO_ID_NULO`) pasa a nombrar el alcance principal. Verificación: la segunda corrida del `rg` en el informe, sólo con las apariciones justificadas. Escenarios: ninguno (sostiene la verdad de los comentarios). Lecciones: L-022.
+  De 174 apariciones a 65, todas justificadas en `evidencia-6.1-vocabulario.md`
+  (logs/reintentos con "nivel" de severidad, la migración 0016→0017 histórica
+  en `test_migracion_roles_de_la_empresa.py` e `infra/ci/ensayo-roles.sh`, y
+  datos que el dominio/API deben rechazar). 27 archivos renombrados
+  mecánicamente (fixtures, nombres de test, docstrings); ningún assert ni
+  valor de rol cambiado — sólo las claves locales (`"titular"`→`"super_admin"`,
+  `"colaborador"`→`"administrador"`). El comentario de
+  `_EXCEPCIONES_COMPLEJO_ID_NULO` en `test_catalogo_rls.py` ahora nombra el
+  alcance principal. De paso se corrigió un docstring desactualizado en
+  `complejos/aplicacion/escritura.py` que decía que `asignar_complejo_a_persona`
+  era "el único" `@accion_sensible`: ya no es cierto desde las tareas 2-5 de
+  este mismo cambio (hoy hay cuatro). Guardián nuevo:
+  `backend/tests/unitarios/acceso/test_vocabulario_vigente.py`, rojo
+  confirmado con un mutante (comentario con "titular" en
+  `permisos.py`, 13:35:44) y verde tras revertirlo (13:35:48).
+  Ruff check / format --check / mypy: limpios.
 
 ## 7. Cierre
 

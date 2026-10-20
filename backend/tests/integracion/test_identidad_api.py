@@ -146,7 +146,7 @@ def dos_administraciones_con_complejo_y_unidad(
                 "VALUES (%s, %s, %s, %s)",
                 (str(persona_id), str(admin_id), f"Persona {clave}", f"persona-{clave}@ej.com"),
             )
-            # Titular (alcanza todo, D-096): esta tarea prueba el cableado de
+            # Super admin (alcanza todo, D-096): esta tarea prueba el cableado de
             # identidad, no el alcance por rol (eso es la tarea 5.2).
             cur.execute(
                 "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "

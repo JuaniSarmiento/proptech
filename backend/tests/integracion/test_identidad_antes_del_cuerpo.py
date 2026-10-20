@@ -1,7 +1,7 @@
 """Frente 1 (fila 1 del auditor): la guarda de identidad REAL de las rutas
 del 3a, sin `dependency_overrides`, y el barrido que dice verlas a todas.
 
-`api_edificio` deja inyectado al titular al final del fixture; acá se saca
+`api_edificio` deja inyectado al super_admin al final del fixture; acá se saca
 el override antes de cada pedido para que corra `identidad_actual` de
 producción (`proptech_api/acceso.py`)."""
 

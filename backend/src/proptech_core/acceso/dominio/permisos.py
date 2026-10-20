@@ -55,7 +55,7 @@ class Accion(StrEnum):
     ACEPTAR_ALERTAS_BLOQUEANTES = "aceptar_alertas_bloqueantes"
     INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS = "invitar_usuarios_y_asignar_edificios"
     #: "Ver su cuenta e informar pagos" de D-096: la única fila de la matriz
-    #: que es del vecino, no del titular/colaborador/consejo.
+    #: reservada a los perfiles de vecino.
     INFORMAR_PAGO = "informar_pago"
     CREAR_EDIFICIO = "crear_edificio"
     CREAR_VERSION_DE_CONFIGURACION = "crear_version_de_configuracion"
@@ -139,10 +139,9 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
 
 
 def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID | None) -> bool:
-    """D-096. El titular no tiene una asignación por complejo (D6: su fila
-    tiene `complejo_id = NULL`, cubre toda la administración); las demás
-    sólo cuentan si su `complejo_id` coincide con el que se está pidiendo.
-    Sin complejo sólo se evalúa crear un edificio (D5 del 3a)."""
+    """Las asignaciones principales cubren toda la administración; las otras
+    sólo cuentan si coinciden con el edificio pedido. Sin edificio sólo
+    se evalúa crear uno (D3/D4 de roles-de-la-empresa)."""
     if complejo_id is None and accion is not Accion.CREAR_EDIFICIO:
         return False
     permitidos = _MATRIZ.get(accion, frozenset())

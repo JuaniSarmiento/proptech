@@ -28,7 +28,7 @@ def test_clave_no_permitida_razonable_se_sigue_nombrando(api_edificio: ApiEdific
     """Control del arreglo (L-019): si TODA clave se blanqueara, R11 (que
     pide nombrar `id`) se rompería con este mismo cambio."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(api.ruta("/categorias"), json=_cuerpo("id"))
     assert respuesta.status_code == 422, respuesta.text
     assert respuesta.json()["detail"][0]["loc"][-1] == "id"
@@ -36,7 +36,7 @@ def test_clave_no_permitida_razonable_se_sigue_nombrando(api_edificio: ApiEdific
 
 def test_clave_no_permitida_de_10kb_no_se_hace_eco(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     clave_gigante = "x" * 10_240
     respuesta = api.cliente.post(api.ruta("/categorias"), json=_cuerpo(clave_gigante))
     assert respuesta.status_code == 422, respuesta.text
@@ -46,7 +46,7 @@ def test_clave_no_permitida_de_10kb_no_se_hace_eco(api_edificio: ApiEdificio) ->
 
 def test_clave_no_permitida_con_html_no_se_hace_eco(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     clave_con_html = "<script>alert(1)</script>"
     respuesta = api.cliente.post(api.ruta("/categorias"), json=_cuerpo(clave_con_html))
     assert respuesta.status_code == 422, respuesta.text

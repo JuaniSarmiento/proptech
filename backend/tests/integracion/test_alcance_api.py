@@ -4,9 +4,9 @@ PostgreSQL real, con `crear_app()` de verdad.
 Contenedor propio (L-006; mismo motivo que 4.1/4.2, ver el comentario largo
 en `test_tenant_por_transaccion.py`).
 
-Escenarios de `autorizacion-por-rol`: Colaborador en un edificio no
+Escenarios de `autorizacion-por-rol`: Administrador en un edificio no
 asignado; Vecino en la unidad de otro vecino; Consejo en otro edificio;
-Titular. Lecciones: L-017 (el id de otra administración es un UUID válido y
+Super admin. Lecciones: L-017 (el id de otra administración es un UUID válido y
 existente, nunca un texto que FastAPI ya rechaza con 422).
 """
 
@@ -258,7 +258,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             )
 
         personas: dict[str, uuid.UUID] = {}
-        for nombre_rol in ("titular", "colaborador", "consejo", "vecino1", "vecino2"):
+        for nombre_rol in ("super_admin", "administrador", "consejo", "vecino1", "vecino2"):
             pid = uuid.uuid4()
             cur.execute(
                 "INSERT INTO persona (id, administracion_id, nombre, email) "
@@ -270,13 +270,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
             "VALUES (%s, %s, 'super_admin')",
-            (str(admin_id), str(personas["titular"])),
+            (str(admin_id), str(personas["super_admin"])),
         )
-        # El colaborador sólo está asignado al complejo 1, nunca al 2.
+        # El administrador sólo está asignado al complejo 1, nunca al 2.
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id) "
             "VALUES (%s, %s, 'administrador', %s)",
-            (str(admin_id), str(personas["colaborador"]), str(complejo_1)),
+            (str(admin_id), str(personas["administrador"]), str(complejo_1)),
         )
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id) "
@@ -357,13 +357,13 @@ def _como(app: FastAPI, administracion_id: uuid.UUID, persona_id: uuid.UUID) -> 
     )
 
 
-# --- Colaborador en un edificio no asignado: 404 ---
+# --- Administrador en un edificio no asignado: 404 ---
 
 
-def test_colaborador_en_complejo_no_asignado_da_404(
+def test_administrador_en_complejo_no_asignado_da_404(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["colaborador"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["administrador"])
     try:
         # Su complejo asignado: 200.
         ok = cliente.get(f"/api/complejos/{mundo['complejo_1']}")
@@ -420,13 +420,13 @@ def test_consejo_en_otro_complejo_da_404(
         app_real.dependency_overrides.pop(identidad_actual, None)
 
 
-# --- El titular recibe 200 en todos los de su administración ---
+# --- El super_admin recibe 200 en todos los de su administración ---
 
 
-def test_titular_200_en_todos_los_complejos_y_unidades_de_su_administracion(
+def test_super_admin_200_en_todos_los_complejos_y_unidades_de_su_administracion(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["titular"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["super_admin"])
     try:
         for ruta in (
             f"/api/complejos/{mundo['complejo_1']}",
@@ -446,7 +446,7 @@ def test_titular_200_en_todos_los_complejos_y_unidades_de_su_administracion(
 def test_complejo_de_otra_administracion_y_uno_inexistente_dan_la_misma_respuesta(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any]
 ) -> None:
-    _como(app_real, mundo["administracion_id"], mundo["personas"]["titular"])
+    _como(app_real, mundo["administracion_id"], mundo["personas"]["super_admin"])
     try:
         de_otra_administracion = cliente.get(f"/api/complejos/{mundo['complejo_de_b']}")
         inexistente = cliente.get(f"/api/complejos/{uuid.uuid4()}")

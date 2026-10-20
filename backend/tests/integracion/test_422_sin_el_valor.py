@@ -23,7 +23,7 @@ MARCA = "Ж"
 
 def test_uuid_invalido_en_el_cuerpo_no_aparece_en_el_422(api_edificio: ApiEdificio) -> None:
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuestas = [
         api.cliente.post(
             api.ruta("/grupos"),
@@ -47,7 +47,7 @@ def test_rol_invalido_en_la_asignacion_tampoco_aparece_en_el_422(api_edificio: A
     arma pydantic — aunque ESE `msg` en particular sólo nombra los valores
     permitidos, no el que mandó el cliente."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         api.ruta("/asignaciones"),
         json={"persona_id": str(api.personas["ver"]), "rol": MARCA + "secreto"},
@@ -62,7 +62,7 @@ def test_mensaje_propio_de_un_validador_nuestro_si_se_conserva(api_edificio: Api
     (`type=value_error`, p.ej. el de `recortado_sin_control`) no se tapa —
     si `_motivo` blanqueara TODO, este mensaje también desaparecería."""
     api = api_edificio
-    api.como("titular")
+    api.como("super_admin")
     respuesta = api.cliente.post(
         api.ruta("/unidades"),
         json={

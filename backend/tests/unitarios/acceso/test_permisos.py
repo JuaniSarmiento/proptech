@@ -123,7 +123,7 @@ def test_cada_celda_de_la_matriz(nombre: str, perfil: int) -> None:
 
 @pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
 @pytest.mark.parametrize("perfil", range(9), ids=_COLUMNAS)
-def test_sin_complejo_solo_crear_edificio_para_titular(nombre: str, perfil: int) -> None:
+def test_sin_complejo_solo_crear_edificio_para_super_admin(nombre: str, perfil: int) -> None:
     esperado = nombre == "crear_edificio" and perfil == 0
     assert puede([_PERFILES[perfil]], Accion(nombre), None) is esperado
 
@@ -148,10 +148,10 @@ def test_una_accion_sin_fila_en_la_matriz_se_niega_para_todos(
         assert puede([asignacion], accion_quitada, COMPLEJO) is False, rol.value
 
 
-# --- alcanza: titular todo; colaborador/consejo su complejo; vecino su unidad ---
+# --- alcanza: super_admin todo; administrador/consejo su complejo; vecino su unidad ---
 
 
-def test_alcanza_titular_cualquier_complejo_y_unidad() -> None:
+def test_alcanza_super_admin_cualquier_complejo_y_unidad() -> None:
     asignacion = Asignacion(rol=Rol.SUPER_ADMIN, complejo_id=None)
     assert alcanza([asignacion], COMPLEJO) is True
     assert alcanza([asignacion], OTRO_COMPLEJO) is True
@@ -159,7 +159,7 @@ def test_alcanza_titular_cualquier_complejo_y_unidad() -> None:
     assert alcanza([asignacion], OTRO_COMPLEJO, OTRA_UNIDAD) is True
 
 
-def test_alcanza_colaborador_solo_el_complejo_asignado() -> None:
+def test_alcanza_administrador_solo_el_complejo_asignado() -> None:
     asignacion = Asignacion(rol=Rol.ADMINISTRADOR, complejo_id=COMPLEJO)
     assert alcanza([asignacion], COMPLEJO) is True
     assert alcanza([asignacion], OTRO_COMPLEJO) is False

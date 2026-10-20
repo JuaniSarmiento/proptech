@@ -183,9 +183,12 @@ def _sembrar_administracion_complejo_y_personas(
                 "VALUES (%s, %s, %s, 'Mendoza')",
                 (str(complejo_id), str(admin_id), "Complejo de prueba"),
             )
-            titular_id = uuid.uuid4()
-            colaborador_id = uuid.uuid4()
-            for persona_id, nombre in ((titular_id, "Titular"), (colaborador_id, "Colaborador")):
+            super_admin_id = uuid.uuid4()
+            administrador_id = uuid.uuid4()
+            for persona_id, nombre in (
+                (super_admin_id, "Super admin"),
+                (administrador_id, "Administrador"),
+            ):
                 cur.execute(
                     "INSERT INTO persona (id, administracion_id, nombre) VALUES (%s, %s, %s)",
                     (str(persona_id), str(admin_id), nombre),
@@ -193,8 +196,8 @@ def _sembrar_administracion_complejo_y_personas(
             datos = {
                 "administracion_id": admin_id,
                 "complejo_id": complejo_id,
-                "titular_id": titular_id,
-                "colaborador_id": colaborador_id,
+                "super_admin_id": super_admin_id,
+                "administrador_id": administrador_id,
             }
     finally:
         conexion.close()
@@ -243,7 +246,7 @@ def test_asignar_complejo_deja_una_fila_de_asignacion_y_una_de_auditoria(
 ) -> None:
     datos = _sembrar_administracion_complejo_y_personas(contenedor)
     identidad = Identidad(
-        administracion_id=datos["administracion_id"], persona_id=datos["titular_id"]
+        administracion_id=datos["administracion_id"], persona_id=datos["super_admin_id"]
     )
     request_id = uuid.uuid4()
 
@@ -254,7 +257,7 @@ def test_asignar_complejo_deja_una_fila_de_asignacion_y_una_de_auditoria(
             sesion,
             identidad,
             complejo_id=datos["complejo_id"],
-            persona_id=datos["colaborador_id"],
+            persona_id=datos["administrador_id"],
             rol="administrador",
             request_id=request_id,
         )
@@ -268,7 +271,7 @@ def test_asignar_complejo_deja_una_fila_de_asignacion_y_una_de_auditoria(
         ).all()
         assert len(filas_auditoria) == 1
         fila = filas_auditoria[0]
-        assert fila.persona_id == datos["titular_id"]
+        assert fila.persona_id == datos["super_admin_id"]
         assert fila.accion == Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS.value
         assert fila.entidad == "complejo"
         assert fila.entidad_id == datos["complejo_id"]
@@ -288,7 +291,7 @@ def test_una_falla_forzada_despues_de_registrar_revierte_la_asignacion_y_la_fila
 ) -> None:
     datos = _sembrar_administracion_complejo_y_personas(contenedor)
     identidad = Identidad(
-        administracion_id=datos["administracion_id"], persona_id=datos["titular_id"]
+        administracion_id=datos["administracion_id"], persona_id=datos["super_admin_id"]
     )
 
     registrar_real = auditoria_modulo.registrar
@@ -307,7 +310,7 @@ def test_una_falla_forzada_despues_de_registrar_revierte_la_asignacion_y_la_fila
                 sesion,
                 identidad,
                 complejo_id=datos["complejo_id"],
-                persona_id=datos["colaborador_id"],
+                persona_id=datos["administrador_id"],
                 rol="administrador",
                 request_id=uuid.uuid4(),
             )
@@ -331,7 +334,7 @@ def test_una_asignacion_rechazada_por_el_check_no_deja_nada(
     porque nunca hubo nada que escribir ahí."""
     datos = _sembrar_administracion_complejo_y_personas(contenedor)
     identidad = Identidad(
-        administracion_id=datos["administracion_id"], persona_id=datos["titular_id"]
+        administracion_id=datos["administracion_id"], persona_id=datos["super_admin_id"]
     )
 
     sesion = _sesion_app(contenedor)
@@ -346,7 +349,7 @@ def test_una_asignacion_rechazada_por_el_check_no_deja_nada(
                 sesion,
                 identidad,
                 complejo_id=datos["complejo_id"],
-                persona_id=datos["colaborador_id"],
+                persona_id=datos["administrador_id"],
                 rol="vecino",
                 request_id=uuid.uuid4(),
             )
@@ -376,7 +379,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
     exige una fila por Accion."""
     datos = _sembrar_administracion_complejo_y_personas(contenedor)
     identidad = Identidad(
-        administracion_id=datos["administracion_id"], persona_id=datos["titular_id"]
+        administracion_id=datos["administracion_id"], persona_id=datos["super_admin_id"]
     )
 
     _INVOCADORES: dict[Accion, Callable[[Session], UUID]] = {
@@ -413,7 +416,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion,
             identidad,
             complejo_id=datos["complejo_id"],
-            persona_id=datos["colaborador_id"],
+            persona_id=datos["administrador_id"],
             rol="administrador",
             request_id=uuid.uuid4(),
         ),
