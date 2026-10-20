@@ -164,7 +164,8 @@ body {
 }
 
 .lista-de-edificios,
-.grupos-de-reparto {
+.grupos-de-reparto,
+.categorias-de-gasto {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -174,11 +175,18 @@ body {
 }
 
 .lista-de-edificios__fila a,
-.grupos-de-reparto__fila {
+.grupos-de-reparto__fila,
+.categorias-de-gasto__fila {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: baseline;
+}
+
+.categorias-de-gasto__orden {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 /* La tabla del padrón (D6, tarea 4.3): este contenedor scrollea para sí
