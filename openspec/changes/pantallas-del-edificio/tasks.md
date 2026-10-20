@@ -336,6 +336,33 @@ familia por hallazgo).
     .../grupos/Pantalla.test.tsx .../unidades/Pantalla.test.tsx` → `3 files, 27
     passed`. `pnpm tsc --noEmit`/`pnpm biome check`: limpios.
   - Commit `fix(web): cambiar de fila con el panel abierto ya no mezcla dos entidades (R3C-4)`.
+- [x] R3C-2 (MEDIA): los ids de `lib/api/*.ts` (campo oculto, `params.id` de la
+  URL, o ligados con `.bind`) se interpolaban crudos en la ruta de la API;
+  `new URL` normaliza `../`, así que un id manipulado podía mandar el cuerpo de
+  una acción a otra ruta/método, o pedir rutas fuera de `/api/complejos`.
+  - RED 22:42:00 `vitest run src/lib/api/{edificios,unidades,categorias,grupos,
+    configuracion,resumen}.test.ts` → `24 failed`: cada función seguía armando
+    la ruta con ids cortos ("1", "c1"...) e intentando `fetch`.
+  - Arreglo: `esIdValido` (regex de forma UUID) en `cliente.ts`; cada función de
+    los 6 archivos que compone una ruta con un id valida ANTES de llamar a
+    `pedirApi` (da `no_existe` sin tocar `fetch`) y además
+    `encodeURIComponent`-ea el id ya válido.
+  - Hubo que reemplazar los ids cortos de los tests existentes (`"1"`, `"c1"`,
+    `"u1"`, `"g1"`...) por UUIDs de prueba, porque dejaron de alcanzar `fetch`;
+    se agregó un caso "id inválido → no_existe sin llamar a fetch" por función
+    tocada.
+  - GREEN 22:43:36 `vitest run src/lib/api/{edificios,unidades,categorias,grupos,
+    configuracion,resumen,cliente}.test.ts` → `7 files, 66 passed`. Suite
+    completa 22:43:40 `vitest run` → `254 passed`, sólo los 3 hallazgos que
+    todavía faltan (R3C-8, R3C-9, y un caso de `__rompedor__` que pasó a ser
+    inválido PORQUE el fix ya no deja que esa escritura llegue a ningún lado)
+    en rojo. `pnpm tsc --noEmit`/`pnpm biome check` (con `--write` para formato):
+    limpios.
+  - **Supuesto**: no se tocaron `orden: string[]` (`reordenarCategorias`) ni los
+    ids que viajan en el CUERPO (nunca en la URL): el riesgo de R3C-2 es
+    interpolación en la ruta, no un id de más en un JSON que la API real valida
+    igual.
+  - Commit `fix(web): valida que todo id de ruta sea UUID antes de armar el pedido (R3C-2)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
