@@ -306,7 +306,8 @@ EVIDENCIA (20/10/2026):
   Cada tipo nuevo bloquea con sus conteos (2, 3 y 4), sin ids ni nombres;
   filas, esquema, FORCE y versión quedan intactos tras cada rechazo.
   resuelto por el orquestador, 20/10/2026: DROP INDEX para el índice parcial;
-  también se excluye dtd_identifier (7 → 9 al recrear nivel, rojo a 12:22:51,
+  la exclusión de dtd_identifier la decidió el constructor (Codex), 20/10/2026
+  (7 → 9 al recrear nivel, rojo a 12:22:51,
   `3.3-catalogo-detalle.log`), porque identifica la posición del atributo igual
   que ordinal_position. No es drift estructural; design aclarado.
   SUPUESTO: ninguno.
@@ -387,7 +388,7 @@ EVIDENCIA (20/10/2026): barrido completo con rg multilínea, también ignorados;
   SUPUESTO: ninguno para el barrido ni las verificaciones.
 
 
-- [x] 3.5 Ensayo de la migración sobre la copia más fiel disponible (RD-2, revisión del DBA): **supuesto declarado** — no hay producción ni datos reales de este sistema, nunca se desplegó (Migration Plan, "Despliegue: no hay"). Levantar el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas; volcar con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`; restaurar ese dump en una base aparte con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa `humo.sh`); sobre esa base restaurada correr `alembic upgrade head` (0018, ampliado en el cierre), `alembic downgrade` a 0016 y `alembic upgrade` otra vez, comparando conteos por `administracion_id` y por `rol` antes del primer `upgrade`, después del `downgrade` y después del segundo `upgrade`. Verificación: los tres conteos (antes, tras el `downgrade`, tras el segundo `upgrade`) en el informe, idénticos entre antes y downgrade con el vocabulario viejo, y entre el primero y el tercero al aplicar el mapeo de D5 (resuelto por el orquestador, 20/10/2026: los textos de rol cambian a propósito). Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones (repetida sobre la copia restaurada, no sobre datos sembrados a mano). Lecciones: L-013, L-016.
+- [x] 3.5 Ensayo de la migración sobre la copia más fiel disponible (RD-2, revisión del DBA): **supuesto declarado** — no hay producción ni datos reales de este sistema, nunca se desplegó (Migration Plan, "Despliegue: no hay"). Levantar el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas; volcar con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`; restaurar ese dump en una base aparte con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa `humo.sh`); sobre esa base restaurada correr `alembic upgrade head` (0018, ampliado en el cierre), `alembic downgrade` a 0016 y `alembic upgrade` otra vez, comparando conteos por `administracion_id` y por `rol` antes del primer `upgrade`, después del `downgrade` y después del segundo `upgrade`. Verificación: los tres conteos (antes, tras el `downgrade`, tras el segundo `upgrade`) en el informe, idénticos entre antes y downgrade con el vocabulario viejo, y entre el primero y el tercero al aplicar el mapeo de D5 (criterio decidido por el constructor (Codex), 20/10/2026: los textos de rol cambian a propósito y comparar sin mapear rechazaría una conversión correcta). Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones (repetida sobre la copia restaurada, no sobre datos sembrados a mano). Lecciones: L-013, L-016.
 
   SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   datos reales; nunca se desplegó. Se ensaya la copia más fiel disponible.
@@ -413,8 +414,9 @@ EVIDENCIA (20/10/2026): barrido completo con rg multilínea, también ignorados;
   | Tras downgrade | A y B, cada una | colaborador=2, consejo=1, titular=1, vecino=1 |
   | Tras segundo upgrade | A y B, cada una | administrador=1, auxiliar=1, consejo=1, super_admin=1, vecino=1 |
 
-  resuelto por el orquestador, 20/10/2026: la igualdad entre primer y tercer
-  conteo se evalúa con el mapeo de D5; los nombres de rol cambian a propósito.
+  El constructor (Codex) decidió, 20/10/2026, evaluar la igualdad entre primer
+  y tercer conteo con el mapeo de D5: los nombres de rol cambian a propósito,
+  por lo que exigir igualdad cruda rechazaría la conversión correcta.
   Antes y downgrade son idénticos crudos; ambos upgrades son idénticos crudos.
   El oráculo exige las filas de ambos tenants; verifica RLS habilitada/forzada
   y que el origen no cambie. Backup/restore y Docker sólo por el script de CI.
@@ -454,6 +456,17 @@ EVIDENCIA (20/10/2026): barrido completo con rg multilínea, también ignorados;
   ambos limpiaron sus recursos. Bash -n y ShellCheck 0.10.0 limpios (16:09:18).
   16:10:11 `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy`: limpios (231 archivos, 209 fuentes).
   Logs completos: `.git/informes-roles-cierre/fila-2-{rojo,verde}.log`.
+  EVIDENCIA, auditor fila 4 (20/10/2026), sólo documentación; código intacto:
+  ```text
+  RED $ date +%T && python3 .git/informes-roles-cierre/verificar-fila-4.py
+  16:10:49 AssertionError: design D5: dtd_identifier: falta atribuir la decisión al constructor (Codex) | design D5: dtd_identifier: todavía atribuido al orquestador | tasks 3.3: dtd_identifier: falta atribuir la decisión al constructor (Codex) | tasks 3.5: criterio: falta atribuir la decisión al constructor (Codex) | tasks 3.5: criterio: todavía atribuido al orquestador | tasks 3.5: explicación: falta atribuir la decisión al constructor (Codex) | tasks 3.5: explicación: todavía atribuido al orquestador
+  GREEN $ date +%T && python3 .git/informes-roles-cierre/verificar-fila-4.py
+  16:11:05 OK: dtd_identifier y criterio D5 atribuidos al constructor (Codex), con motivos
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:11:05 All checks passed! / 231 files already formatted / Success: no issues found in 209 source files
+  ```
+  JUICIO: decisiones atribuidas a Codex; DROP INDEX conserva su autoría real.
+  SUPUESTO: ninguno; motivos documentados, sin cambiar el comportamiento.
 
 
 ## 4. Aplicación y API
