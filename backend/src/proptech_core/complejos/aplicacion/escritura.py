@@ -2,7 +2,8 @@
 
 `asignar_complejo_a_persona`, marcado con `@accion_sensible`, inserta la
 fila de `asignacion_rol` y audita la acción
-en la MISMA sesión (D9). El bloque usa un `SAVEPOINT`
+en la MISMA sesión (D9). El bloque usa `transaccion` para traducir duplicados a `Conflicto` (D6),
+con un `SAVEPOINT`
 (`sesion.begin_nested()`) si la sesión ya venía con una transacción abierta
 — el caso normal de la API, que ya leyó antes de llegar hasta acá — o una
 transacción propia (`sesion.begin()`) si no, como en un caso de uso que abre
@@ -46,8 +47,7 @@ def asignar_complejo_a_persona(
     rol: str,
     request_id: UUID,
 ) -> UUID:
-    bloque = sesion.begin_nested() if sesion.in_transaction() else sesion.begin()
-    with bloque:
+    with transaccion(sesion, {"uq_asignacion_rol_persona_alcance": "rol"}):
         fila = sesion.execute(
             text(
                 "INSERT INTO asignacion_rol "

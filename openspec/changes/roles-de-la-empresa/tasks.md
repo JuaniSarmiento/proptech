@@ -671,6 +671,52 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   `permisos.py`, 13:35:44) y verde tras revertirlo (13:35:48).
   Ruff check / format --check / mypy: limpios.
 
+## Correcciones del rompedor (RR)
+
+Informe: `.git/informes-roles/rompedor/informe.md` (leído entero). Se conserva el
+árbol recibido en `.git/informes-roles-rr-constructor/inicial/`; la evidencia de
+esta sección corresponde a corridas nuevas, con cada corrección aislada.
+
+- [x] RR-1 (MEDIA): traducir el perfil de personal duplicado a 409 con el cuerpo de D6 del 3a (`detail=conflicto`, `campo=rol`), sin asignación ni auditoría nuevas. Revisar la familia de escrituras y trasladar los siete intentos verdes a `test_perfiles_api.py`. D7; `autorizacion-por-rol` › Titular asigna un edificio / Sin permiso y fuera de alcance. L-017, L-019, L-020, L-022.
+
+  EVIDENCIA (20/10/2026, corridas nuevas):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py -k segundo_perfil -q -p no:cacheprovider --color=no
+  15:14:25
+  E assert 500 == 409
+  3 failed, 13 deselected, 1 warning in 7.89s
+  ```
+  Los siete intentos trasladados ya eran verdes: se verificaron con dos guardas
+  mutadas en `permisos.py` (copia previa y restauración byte a byte):
+  ```diff
+  +    if asignaciones:
+  +        return True
+  ```
+  Ese mismo diff de dos líneas se aplicó al inicio de `puede` y de `alcanza`.
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_perfiles_api.py -k 'lectores_no_escriben or administrador_por_edificio_no_toca or principal_no_cruza or propietaria_de_una' -q -p no:cacheprovider --color=no
+  15:14:44
+  7 failed, 11 deselected, 1 warning in 7.89s
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_asignacion_validacion.py tests/integracion/test_perfiles_api.py tests/integracion/test_asignar_edificio_api.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_edificios_api.py tests/integracion/test_configuracion_api.py tests/integracion/test_padron_api.py -q -p no:cacheprovider --color=no
+  15:14:59
+  139 passed, 1 warning in 40.69s
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  15:15:45
+  All checks passed! / 230 files already formatted / Success: no issues found in 209 source files
+  ```
+  JUICIO: contrato completo de conflicto y rollback verificados; las otras
+  escrituras del módulo ya usan `transaccion`. Traslado definitivo de los siete
+  intentos, sin carpeta `rompedor_roles` (ya ausente al recibir el árbol).
+  SUPUESTO: ninguno. Logs en `.git/informes-roles-rr-constructor/rr1-*.log`.
+
+- [ ] RR-2 (MEDIA): exigir en el detalle de la auditoría la persona destinataria y el id exacto de la asignación, además de rol y alcance. D7, RA-2; `autorizacion-por-rol` › Titular asigna un edificio. L-019.
+
+- [ ] RR-3 (BAJA): impedir consejo duplicado por persona y edificio como `proptech_app`, manteniendo coexistencia con personal, aislamiento y downgrade. D5, RA-5; `autorizacion-por-rol` › La base sostiene la forma de cada asignación. L-016, L-018, L-019, L-020.
+
+- [ ] RR-4 (BAJA): un 403 de `informar_pago` identifica a propietario/inquilino, sin atribuir el permiso al super admin. D8, excepción autorizada por Juani en esta corrección; `pantallas-del-edificio` › Sin permiso. L-019, L-022.
+
 ## 7. Cierre
 
 - [x] 7.1 El barrido de rutas protegidas (`test_rutas_protegidas.py`) y el guardián del catálogo (`test_catalogo_rls.py`) siguen en verde sin cambiar su lista de rutas ni sus excepciones (este cambio no suma rutas ni tablas), y el test de fronteras de módulos sigue en verde. Verificación: los tres archivos corridos con su salida. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente). Lecciones: L-016.

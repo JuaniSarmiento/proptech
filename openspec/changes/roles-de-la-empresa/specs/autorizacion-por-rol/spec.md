@@ -131,6 +131,12 @@ configuración del edificio: ve sólo sus unidades y el complejo de cada una.
   como administrador, contador, auxiliar o consejo
 - **THEN** la asignación queda guardada con ese perfil y la persona pasa a ver ese complejo
 
+#### Scenario: Perfil de personal repetido en un edificio
+
+- **WHEN** el super admin asigna administrador, auxiliar o contador a una persona que ya tiene
+  un perfil de personal en ese edificio
+- **THEN** recibe 409 `{"detail":"conflicto","campo":"rol"}`, sin filas nuevas de asignación ni auditoría
+
 #### Scenario: Asignar a una persona de otra administración
 
 - **WHEN** el super admin de A intenta asignar un complejo a una persona de B (id con formato válido)

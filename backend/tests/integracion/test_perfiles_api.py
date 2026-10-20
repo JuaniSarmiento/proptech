@@ -217,3 +217,169 @@ def test_administrador_en_a_auxiliar_en_b_no_extiende_permiso_ni_alcanza_c(
         api.cliente.post(f"/api/complejos/{c}/configuracion/versiones", json=version()).status_code
         == 404
     )
+
+
+# Intentos verdes del rompedor, trasladados desde test_rr_intentos.py.
+
+
+def _persona_con(api: ApiEdificio, nombre: str, filas: list[tuple[object, ...]]) -> UUID:
+    persona = api.personas.setdefault(nombre, uuid4())
+    with api.base.conectar_app() as c, c.transaction():
+        c.execute("SELECT set_config('app.administracion_id', %s, true)", (str(api.admin),))
+        c.execute(
+            "INSERT INTO persona (id, administracion_id, nombre) VALUES (%s, %s, 'Rompedor')",
+            (persona, api.admin),
+        )
+        for rol, complejo, unidad, vinculo in filas:
+            c.execute(
+                "INSERT INTO asignacion_rol "
+                "(administracion_id, persona_id, rol, complejo_id, unidad_id, vinculo) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (api.admin, persona, rol, complejo, unidad, vinculo),
+            )
+    return persona
+
+
+def _otra_unidad_del_edificio(api: ApiEdificio) -> UUID:
+    [(unidad,)] = api.filas(
+        "SELECT id FROM unidad WHERE complejo_id = %s AND id <> %s", (api.edificio, api.unidad)
+    )
+    # `api.filas()` devuelve `list[Any]` (helper de test): blindar el tipo
+    # para mypy, mismo patrón que `escritura.py` con una columna uuid cruda.
+    return UUID(str(unidad))
+
+
+def _escrituras(api: ApiEdificio, edificio: UUID, unidad: UUID) -> list[tuple[str, str, object]]:
+    base = f"/api/complejos/{edificio}"
+    return [
+        ("post", f"{base}/configuracion/versiones", version()),
+        ("post", f"{base}{_CONFIRMAR}", None),
+        (
+            "post",
+            f"{base}/unidades",
+            {
+                "identificador": "RR",
+                "tipo": "departamento",
+                "piso": "9",
+                "coeficiente": "0.100000",
+                "superficie_m2": "60.00",
+            },
+        ),
+        ("patch", f"/api/unidades/{unidad}", {"piso": "7"}),
+        ("post", f"{base}/categorias", {"clave": "rr", "nombre": "Rompedor"}),
+        (
+            "post",
+            f"{base}/asignaciones",
+            {"persona_id": str(api.personas["ver"]), "rol": "contador"},
+        ),
+    ]
+
+
+def _huella(api: ApiEdificio) -> list[object]:
+    return [
+        api.filas("SELECT count(*) FROM asignacion_rol"),
+        api.filas("SELECT count(*) FROM auditoria"),
+        api.filas("SELECT count(*) FROM configuracion_versionada"),
+        api.filas("SELECT count(*), max(piso) FROM unidad"),
+        api.filas("SELECT count(*) FROM categoria_de_gasto"),
+        api.filas("SELECT id, estado_migracion FROM complejo ORDER BY id"),
+    ]
+
+
+@pytest.mark.parametrize("perfil", ["contador_p", "contador_e", "ver", "consejo"])
+def test_lectores_no_escriben_nada_por_ninguna_ruta(api_edificio: ApiEdificio, perfil: str) -> None:
+    api = api_edificio
+    if perfil == "contador_p":
+        _persona_con(api, perfil, [("contador", None, None, None)])
+    elif perfil == "contador_e":
+        _persona_con(api, perfil, [("contador", api.edificio, None, None)])
+    api.como(perfil)
+    antes = _huella(api)
+    for metodo, ruta, cuerpo in _escrituras(api, api.edificio, api.unidad):
+        r = getattr(api.cliente, metodo)(ruta, json=cuerpo) if cuerpo else api.cliente.post(ruta)
+        assert r.status_code == 403, (perfil, ruta, r.status_code, r.text)
+    r = api.cliente.post("/api/complejos", json={"nombre": "X", "localidad": "Mendoza"})
+    assert r.status_code == 403
+    assert _huella(api) == antes
+
+
+def test_administrador_por_edificio_no_toca_el_otro_edificio_ni_otra_administracion(
+    api_edificio: ApiEdificio,
+) -> None:
+    api = api_edificio
+    api.como("editar")
+    antes = _huella(api)
+    for edificio, unidad in ((api.otro, api.otra_unidad), (api.ajeno, api.unidad_ajena)):
+        assert api.cliente.get(f"/api/complejos/{edificio}").status_code == 404
+        assert api.cliente.get(f"/api/unidades/{unidad}").status_code == 404
+        for metodo, ruta, cuerpo in _escrituras(api, edificio, unidad):
+            r = (
+                getattr(api.cliente, metodo)(ruta, json=cuerpo)
+                if cuerpo
+                else api.cliente.post(ruta)
+            )
+            assert r.status_code == 404, (ruta, r.status_code, r.text)
+    assert {e["id"] for e in api.cliente.get("/api/complejos").json()} == {str(api.edificio)}
+    assert _huella(api) == antes
+
+
+def test_administrador_principal_no_cruza_de_administracion_ni_asigna(
+    api_edificio: ApiEdificio,
+) -> None:
+    api = api_edificio
+    _persona_con(api, "ap", [("administrador", None, None, None)])
+    api.como("ap")
+    antes = _huella(api)
+    for metodo, ruta, cuerpo in _escrituras(api, api.ajeno, api.unidad_ajena):
+        r = getattr(api.cliente, metodo)(ruta, json=cuerpo) if cuerpo else api.cliente.post(ruta)
+        assert r.status_code == 404, (ruta, r.status_code)
+    r = api.cliente.post(
+        api.ruta("/asignaciones"),
+        json={"persona_id": str(api.personas["ver"]), "rol": "contador"},
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"]["permiso_faltante"] == "invitar_usuarios_y_asignar_edificios"
+    assert _huella(api) == antes
+    ids = {e["id"] for e in api.cliente.get("/api/complejos").json()}
+    assert ids == {str(api.edificio), str(api.otro)}
+
+
+def test_propietaria_de_una_e_inquilina_de_otra_ve_las_dos_y_nada_mas(
+    api_edificio: ApiEdificio,
+) -> None:
+    api = api_edificio
+    segunda = _otra_unidad_del_edificio(api)
+    _persona_con(
+        api,
+        "mixta",
+        [
+            ("vecino", api.edificio, api.unidad, "propietario"),
+            ("vecino", api.edificio, segunda, "inquilino"),
+        ],
+    )
+    _persona_con(api, "solo_inquilina", [("vecino", api.edificio, segunda, "inquilino")])
+    for nombre, propias in (("mixta", {api.unidad, segunda}), ("solo_inquilina", {segunda})):
+        api.como(nombre)
+        for unidad in (api.unidad, segunda, api.otra_unidad, api.unidad_ajena):
+            esperado = 200 if unidad in propias else 404
+            assert api.cliente.get(f"/api/unidades/{unidad}").status_code == esperado
+        for sufijo in (
+            "/resumen",
+            "/unidades",
+            "/grupos",
+            "/categorias",
+            "/configuracion",
+            "/configuracion/versiones",
+        ):
+            r = api.cliente.get(api.ruta(sufijo))
+            assert r.status_code == 403, (nombre, sufijo, r.status_code)
+        assert api.cliente.get(f"/api/complejos/{api.otro}").status_code == 404
+        antes = _huella(api)
+        for metodo, ruta, cuerpo in _escrituras(api, api.edificio, segunda):
+            r = (
+                getattr(api.cliente, metodo)(ruta, json=cuerpo)
+                if cuerpo
+                else api.cliente.post(ruta)
+            )
+            assert r.status_code == 403, (nombre, ruta, r.status_code)
+        assert _huella(api) == antes

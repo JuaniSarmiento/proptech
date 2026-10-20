@@ -309,6 +309,10 @@ endpoint (tarea 4.3).
   asignado y el alcance (RA-2, revisión del arquitecto): sigue guardando `complejo_id`, y agrega esos
   dos campos sólo en las filas que se escriban de acá en adelante. No es una migración de vocabulario:
   las filas de auditoría anteriores no se tocan (no se pueden reescribir, D9 del 2a).
+- Corrección RR-1 autorizada por Juani (20/10/2026): repetir un perfil de personal en el
+  mismo edificio responde 409 `{"detail":"conflicto","campo":"rol"}` (D6 del 3a).
+  Se traduce la restricción única mediante `errores.transaccion`; el rollback incluye
+  asignación y auditoría.
 - **R5 del 2a** (el contrato de error de `unidad_id` en este cuerpo): se verifica con el cuerpo nuevo en
   la tarea 4.2; si queda cubierto, la fila de deuda se cierra al archivar.
 
