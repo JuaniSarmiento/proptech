@@ -36,6 +36,15 @@ describe("contraste de los tokens de color (D10)", () => {
     ["color-terracota", "color-papel"],
     ["color-grafito", "color-papel"],
     ["color-advertencia", "color-papel"],
+    // Pulido 3b: cada par nuevo que la interfaz usa como texto sobre fondo.
+    ["color-tinta", "color-papel-claro"],
+    ["color-tinta", "color-papel-hundido"],
+    ["color-grafito", "color-papel-hundido"],
+    ["color-grafito", "color-linea"],
+    ["color-papel", "color-terracota-oscura"],
+    ["color-terracota", "color-terracota-tenue"],
+    ["color-terracota", "color-papel-hundido"],
+    ["color-advertencia", "color-advertencia-tenue"],
   ])("%s sobre %s llega a 4,5:1", (texto, fondo) => {
     expect(contrasteDeTokens(texto, fondo)).toBeGreaterThanOrEqual(4.5);
   });

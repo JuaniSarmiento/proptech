@@ -28,6 +28,18 @@
   --color-terracota: oklch(40% 0.095 35);
   --color-advertencia: oklch(48% 0.09 75);
 
+  /* Superficies y líneas (pulido 3b, 19/10/2026): un segundo neutro para
+     el menú y los estados, una línea fina para separar renglones (más
+     clara que Grafito, que queda para bordes de controles) y dos fondos
+     tenues para los estados que piden atención. Verificados en
+     `tokens.test.ts` como todos los demás. */
+  --color-papel-claro: oklch(99% 0.004 75);
+  --color-papel-hundido: oklch(94.5% 0.008 75);
+  --color-linea: oklch(89% 0.008 75);
+  --color-terracota-oscura: oklch(34% 0.085 35);
+  --color-terracota-tenue: oklch(94% 0.022 50);
+  --color-advertencia-tenue: oklch(95% 0.03 80);
+
   --tipo-fuente-base: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
 
   --tipo-label: 0.8rem;
@@ -48,11 +60,41 @@
   }
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
   background-color: var(--color-papel);
   color: var(--color-tinta);
   font-family: var(--tipo-fuente-base);
   font-size: var(--tipo-cuerpo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-terracota);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+/* Foco del sistema: siempre visible, en terracota, separado del control
+   para que no se confunda con su borde (WCAG 2.4.7 / 2.4.13). */
+:focus-visible {
+  outline: 2px solid var(--color-terracota);
+  outline-offset: 2px;
+}
+
+.texto-secundario {
+  color: var(--color-grafito);
 }
 
 /* Escala tipográfica (D10, tarea 3.5): declarada desde el principio pero
@@ -62,10 +104,15 @@ body {
  * separa `--tipo-label` de `--tipo-cuerpo` y éste de `--tipo-titulo`. */
 h1 {
   font-size: var(--tipo-titular);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
 h2 {
   font-size: var(--tipo-titulo);
+  line-height: 1.3;
+  margin: 0;
 }
 
 /* The Tabular Money Rule: todo importe, coeficiente o porcentaje alineado
@@ -91,41 +138,188 @@ h2 {
   border: 0;
 }
 
-/* Panel lateral y ayuda (D8, tarea 3.6): plano por defecto, sin sombra
-   salvo abiertos; sólo confirman el cambio de estado con `opacity`, nunca
-   con una propiedad de layout, y respetan `prefers-reduced-motion`. */
-.panel-lateral,
-.ayuda__panel {
-  background-color: var(--color-papel);
-  border: 1px solid var(--color-grafito);
-  box-shadow: 0 2px 8px oklch(22% 0.012 55 / 15%);
-  opacity: 1;
-  transition: opacity var(--duracion-transicion) ease-out;
+/* ------------------------------------------------------------------ */
+/* Botones (pulido 3b). La base va con `:where()` (especificidad cero):
+   así cualquier clase de abajo la pisa sin pelear por `:hover`.        */
+/* ------------------------------------------------------------------ */
+
+:where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
 }
 
-/* Layout de las pantallas del edificio (D10, tarea 4.1-4.4): menú fijo a
-   la izquierda desde ~768 px; por debajo se pliega a "Secciones" (el
-   estado ya lo maneja `MenuDelEdificio`, acá sólo se traduce a CSS). A
-   320 px nada de esto puede generar scroll horizontal de la página
-   entera (gotcha real, visto en Playwright): la tabla del padrón scrollea
-   ADENTRO de su propio contenedor, nunca la página. */
+:where(button) {
+  min-height: 2.25rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--color-grafito);
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-claro);
+  color: var(--color-tinta);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color var(--duracion-transicion) ease-out;
+}
+
+:where(button:hover) {
+  background-color: var(--color-papel-hundido);
+}
+
+:where(button:active) {
+  background-color: var(--color-linea);
+}
+
+/* Botón principal (D8, "El recibo prolijo"): el único acento terracota de
+   cada pantalla, nunca más de uno por vista (The One Voice Rule). */
+.boton-principal {
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: var(--color-terracota);
+  color: var(--color-papel);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.boton-principal:hover {
+  background-color: var(--color-terracota-oscura);
+}
+
+.boton-principal:disabled {
+  background-color: var(--color-linea);
+  color: var(--color-grafito);
+  cursor: not-allowed;
+}
+
+/* Un botón que se lee como texto de la fila (abrir una unidad, un grupo,
+   una categoría): sin caja, subrayado al pasar. Sigue siendo `<button>`
+   porque abre el panel lateral, no navega. */
+.boton-enlace {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-tinta);
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+
+.boton-enlace:hover {
+  background: none;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.boton-icono {
+  width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  font-size: var(--tipo-label);
+}
+
+/* ------------------------------------------------------------------ */
+/* Armazón del edificio: menú fijo a la izquierda desde 768 px; por      */
+/* debajo se pliega a "Secciones". A 320 px nada de esto puede generar    */
+/* scroll horizontal de la página (la tabla scrollea ADENTRO de su caja). */
+/* ------------------------------------------------------------------ */
+
 .armazon-del-edificio {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  min-height: 100vh;
+}
+
+.armazon-del-edificio__contenido,
+.pantalla-mis-edificios {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.25rem 1rem 3rem;
+  min-width: 0;
+}
+
+.pantalla-mis-edificios {
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.menu-del-edificio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: var(--color-papel-hundido);
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.menu-del-edificio__volver {
+  align-self: flex-start;
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.menu-del-edificio__volver::before {
+  content: "← " / "";
+}
+
+.menu-del-edificio__volver:hover {
+  color: var(--color-tinta);
+  text-decoration: underline;
+}
+
+/* Un nombre de 200 caracteres no se come el menú: tres renglones y el
+   resto en el `title` (el lector de pantalla lee el texto completo). */
+.menu-del-edificio__nombre {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.menu-del-edificio__boton {
+  align-self: flex-start;
 }
 
 .menu-del-edificio__lista {
   display: none;
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0 0;
+  margin: 0.25rem 0 0;
 }
 
 .menu-del-edificio__lista[data-abierto="true"] {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
+}
+
+.menu-del-edificio__lista a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  color: var(--color-tinta);
+  text-decoration: none;
+}
+
+.menu-del-edificio__lista a:hover {
+  background-color: var(--color-linea);
+}
+
+/* Sección actual: `aria-current` + la marca de forma "▸" (que viene en el
+   texto) + el fondo tenue. Nunca sólo el color. */
+.menu-del-edificio__lista a[aria-current="page"] {
+  background-color: var(--color-terracota-tenue);
+  color: var(--color-terracota);
+  font-weight: 600;
 }
 
 @media (min-width: 768px) {
@@ -134,104 +328,853 @@ h2 {
   }
 
   .menu-del-edificio {
-    flex: 0 0 14rem;
+    position: sticky;
+    top: 0;
+    flex: 0 0 15rem;
+    align-self: flex-start;
+    min-height: 100vh;
+    padding: 1.5rem 1rem;
+    border-bottom: none;
+    border-right: 1px solid var(--color-linea);
+  }
+
+  .menu-del-edificio__lista {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-linea);
   }
 
   .menu-del-edificio__boton {
     display: none;
   }
 
+  /* El bug del pulido 3b: acá faltaba `flex-direction: column` y las cinco
+     secciones quedaban en una sola línea ("GruposCategorías…"). */
   .menu-del-edificio__lista {
     display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
   }
 
   .armazon-del-edificio__contenido {
     flex: 1;
-    min-width: 0;
+    max-width: 68rem;
+    padding: 2rem 2.5rem 4rem;
+  }
+
+  .pantalla-mis-edificios {
+    padding: 2.5rem 2.5rem 4rem;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Encabezado de pantalla y ayuda "?"                                   */
+/* ------------------------------------------------------------------ */
 
 .encabezado-de-pantalla {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-linea);
 }
 
 .encabezado-de-pantalla__titulo {
   display: flex;
   align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+/* Una lista que arranca justo debajo del encabezado no repite su línea:
+   la del encabezado ya separa. */
+.encabezado-de-pantalla
++ :is(.lista-de-edificios, .resumen__checklist, .grupos-de-reparto, .categorias-de-gasto) {
+  margin-top: -0.75rem;
+  border-top: none;
+}
+
+.ayuda__boton {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.75rem;
+  min-height: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 50%;
+  border-color: var(--color-grafito);
+  background-color: transparent;
+  color: var(--color-grafito);
+  font-weight: 700;
+}
+
+.ayuda__boton:hover {
+  background-color: var(--color-papel-hundido);
+  color: var(--color-tinta);
+}
+
+/* Panel lateral y ayuda (D8, tarea 3.6): hojas pegadas al borde derecho
+   que flotan sobre la pantalla sin bloquearla (nunca modal). Plano por
+   defecto: la única sombra del sistema, y sólo existe abiertos. Confirman
+   el cambio de estado con `opacity` (`@starting-style`), nunca con una
+   propiedad de layout, y respetan `prefers-reduced-motion`. */
+.panel-lateral,
+.ayuda__panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(28rem, 100vw);
+  padding: 1.5rem;
+  overflow-y: auto;
+  background-color: var(--color-papel);
+  border-left: 1px solid var(--color-grafito);
+  box-shadow: 0 2px 8px oklch(22% 0.012 55 / 15%);
+  opacity: 1;
+  transition: opacity var(--duracion-transicion) ease-out;
+}
+
+@starting-style {
+  .panel-lateral,
+  .ayuda__panel {
+    opacity: 0;
+  }
+}
+
+.ayuda__panel {
+  z-index: 30;
+}
+
+.panel-lateral > h2,
+.ayuda__panel > h2:first-of-type {
+  padding-right: 6rem;
+}
+
+.panel-lateral__cerrar,
+.ayuda__cerrar {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+}
+
+.ayuda__panel h2 {
+  font-size: var(--tipo-cuerpo);
+  margin-top: 0.5rem;
+}
+
+.ayuda__panel ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.ayuda__panel li + li {
+  margin-top: 0.375rem;
+}
+
+/* La casilla de cada unidad en el panel de grupos (va antes de las reglas
+   de `.campo` por especificidad: biome noDescendingSpecificity). */
+.grupos-de-reparto__unidad label {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-/* Botón principal (D8, "El recibo prolijo"): el único acento terracota de
-   cada pantalla, nunca más de uno por vista (The One Voice Rule). */
-.boton-principal {
-  background-color: var(--color-terracota);
-  color: var(--color-papel);
-  border: none;
-  border-radius: 0.25rem;
-  padding: 0.5rem 1rem;
+/* ------------------------------------------------------------------ */
+/* Formularios (el gap de DESIGN.md §5 Inputs: ya tienen clase propia)  */
+/* ------------------------------------------------------------------ */
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formulario > button[type="submit"] {
+  align-self: flex-start;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
   font-weight: 600;
 }
 
-.lista-de-edificios,
-.grupos-de-reparto,
-.categorias-de-gasto {
-  list-style: none;
-  padding: 0;
+.campo input:not([type="checkbox"]),
+.campo select,
+.grupos-de-reparto__unidad input[type="text"] {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-grafito);
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-claro);
+  font-weight: 400;
+}
+
+.campo input[aria-invalid="true"] {
+  border-color: var(--color-terracota);
+  box-shadow: 0 0 0 1px var(--color-terracota);
+}
+
+.campo__error {
+  color: var(--color-terracota);
+  font-weight: 400;
+}
+
+.campo__error::before {
+  content: "! " / "";
+  font-weight: 700;
+}
+
+/* La casilla va ANTES de su texto (patrón de cualquier formulario), y el
+   renglón entero es la zona para tocar. */
+.campo:has(> input[type="checkbox"]) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+}
+
+.campo:has(> input[type="checkbox"]) > label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.campo > input[type="checkbox"] {
+  order: -1;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.125rem 0 0;
+  accent-color: var(--color-terracota);
+}
+
+.campo > input[type="checkbox"] ~ .campo__error {
+  flex-basis: 100%;
+}
+
+.formulario fieldset {
   margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-linea);
+  border-radius: 0.25rem;
+}
+
+.formulario legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.formulario__resumen {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-terracota);
+  border-radius: 0.25rem;
+  background-color: var(--color-terracota-tenue);
+}
+
+.formulario__resumen p {
+  font-weight: 600;
+}
+
+.formulario__resumen ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.aviso {
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-advertencia-tenue);
+}
+
+.aviso::before {
+  content: "! " / "";
+  font-weight: 700;
+  color: var(--color-advertencia);
+}
+
+/* ------------------------------------------------------------------ */
+/* Estados (D8, tarea 3.7)                                              */
+/* ------------------------------------------------------------------ */
+
+.estados--error,
+.estados--sin-permiso,
+.estados--no-existe,
+.estados--sin-sesion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+}
+
+.estados--error h1,
+.estados--sin-permiso h1,
+.estados--no-existe h1,
+.estados--sin-sesion h1 {
+  font-size: var(--tipo-titulo);
+  line-height: 1.3;
+}
+
+.estados--vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  border: 1px dashed var(--color-grafito);
+  border-radius: 0.375rem;
+}
+
+.estados--vacio p {
+  font-weight: 600;
+}
+
+/* The One Voice Rule: el encabezado ya tiene la acción principal en
+   terracota; el estado vacío repite el siguiente paso en segundo plano. */
+.estados--vacio .boton-principal {
+  border: 1px solid var(--color-grafito);
+  background-color: var(--color-papel-claro);
+  color: var(--color-tinta);
+}
+
+.estados--vacio .boton-principal:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+.estados--cargando {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-width: 40rem;
+  padding: 2rem 1rem;
 }
 
-.lista-de-edificios__fila a,
-.grupos-de-reparto__fila,
-.categorias-de-gasto__fila {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: baseline;
+.estados__esqueleto-linea {
+  height: 1rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
 }
 
-.categorias-de-gasto__orden {
-  display: flex;
-  gap: 0.25rem;
-  margin-left: auto;
+.estados__esqueleto-linea:first-child {
+  width: 45%;
+  height: 1.5rem;
 }
 
-.historial-de-configuracion {
+.estados__esqueleto-linea:nth-child(2) {
+  width: 90%;
+}
+
+.estados__esqueleto-linea:nth-child(3) {
+  width: 70%;
+}
+
+/* Estado de R01 (The Never Color Alone Rule): texto + la marca de forma
+   (✓ ! ✕), y recién después el color. Ok y advertencia no piden acción
+   urgente; "fuera de tolerancia" sí, por eso va en terracota (lo que
+   necesita la atención del administrador). */
+.estado-de-coeficientes {
+  align-self: flex-start;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+  font-weight: 600;
+}
+
+.estado-de-coeficientes::before {
+  content: "✓ " / "";
+}
+
+.estado-de-coeficientes--advertencia {
+  background-color: var(--color-advertencia-tenue);
+  color: var(--color-advertencia);
+}
+
+.estado-de-coeficientes--advertencia::before {
+  content: "! " / "";
+}
+
+.estado-de-coeficientes--fuera-de-tolerancia {
+  background-color: var(--color-terracota-tenue);
+  color: var(--color-terracota);
+}
+
+.estado-de-coeficientes--fuera-de-tolerancia::before {
+  content: "✕ " / "";
+}
+
+.estado-confirmado {
+  align-self: flex-start;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+  font-weight: 600;
+}
+
+.estado-confirmado::before {
+  content: "✓ " / "";
+}
+
+/* ------------------------------------------------------------------ */
+/* Mis edificios: lista de movimientos de home banking, no tarjetas.    */
+/* Toda la fila se toca (el enlace del nombre se estira con ::after), y */
+/* el nombre accesible del enlace es sólo el del edificio.              */
+/* ------------------------------------------------------------------ */
+
+.lista-de-edificios {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.lista-de-edificios__fila {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "identidad flecha"
+    "unidades flecha"
+    "estados flecha";
+  align-items: center;
+  gap: 0.375rem 1.5rem;
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid var(--color-linea);
+  transition: background-color var(--duracion-transicion) ease-out;
+}
+
+.lista-de-edificios__fila:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+.lista-de-edificios__identidad {
+  grid-area: identidad;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  min-width: 0;
 }
 
-.historial-de-configuracion__fila {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-grafito);
+.lista-de-edificios__nombre {
+  color: var(--color-tinta);
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
-/* La tabla del padrón (D6, tarea 4.3): este contenedor scrollea para sí
-   mismo con `overflow-x: auto` — así una tabla ancha (5 columnas, hasta
-   200 filas) nunca empuja el ancho de la página entera a 320 px. */
+.lista-de-edificios__nombre::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.lista-de-edificios__fila:hover .lista-de-edificios__nombre {
+  text-decoration: underline;
+}
+
+.lista-de-edificios__localidad {
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+}
+
+.lista-de-edificios__unidades {
+  grid-area: unidades;
+  text-align: left;
+}
+
+.lista-de-edificios__estados {
+  grid-area: estados;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.lista-de-edificios .estado-de-coeficientes {
+  padding: 0;
+  background: none;
+}
+
+.lista-de-edificios__migracion {
+  color: var(--color-grafito);
+}
+
+.lista-de-edificios__flecha {
+  grid-area: flecha;
+  color: var(--color-grafito);
+  font-size: var(--tipo-titulo);
+}
+
+@media (min-width: 768px) {
+  .lista-de-edificios__fila {
+    grid-template-columns: minmax(0, 1.2fr) 7rem minmax(0, 2fr) auto;
+    grid-template-areas: "identidad unidades estados flecha";
+  }
+
+  .lista-de-edificios__unidades {
+    text-align: right;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Resumen: checklist de puesta a punto                                 */
+/* ------------------------------------------------------------------ */
+
+.resumen__listo {
+  align-self: flex-start;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-hundido);
+  font-weight: 700;
+}
+
+.resumen__listo::before {
+  content: "✓ " / "";
+}
+
+.resumen__checklist {
+  max-width: 44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-linea);
+}
+
+.resumen__paso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 0.5rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.resumen__paso a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+  color: var(--color-tinta);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.resumen__paso a:hover {
+  text-decoration: underline;
+}
+
+.resumen__numero {
+  flex: none;
+  width: 1.25rem;
+  color: var(--color-grafito);
+  text-align: left;
+}
+
+.resumen__estado {
+  flex: none;
+  padding: 0.125rem 0.625rem;
+  border-radius: 1rem;
+  font-size: var(--tipo-label);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.resumen__paso[data-estado="hecho"] a {
+  color: var(--color-grafito);
+  font-weight: 400;
+}
+
+.resumen__paso[data-estado="hecho"] .resumen__estado {
+  color: var(--color-grafito);
+}
+
+.resumen__paso[data-estado="hecho"] .resumen__estado::before {
+  content: "✓ " / "";
+}
+
+.resumen__paso[data-estado="falta"] .resumen__estado {
+  background-color: var(--color-terracota-tenue);
+  color: var(--color-terracota);
+}
+
+.resumen__paso[data-estado="falta"] .resumen__estado::before {
+  content: "○ " / "";
+}
+
+.resumen__datos {
+  color: var(--color-grafito);
+}
+
+/* ------------------------------------------------------------------ */
+/* Padrón de unidades                                                   */
+/* ------------------------------------------------------------------ */
+
+/* La tabla (D6, tarea 4.3): este contenedor scrollea para sí mismo con
+   `overflow-x: auto`, así una tabla ancha nunca empuja el ancho de la
+   página entera a 320 px. */
 .padron-de-unidades__scroll {
   overflow-x: auto;
   max-width: 100%;
 }
 
 .padron-de-unidades {
-  border-collapse: collapse;
   width: 100%;
+  border-collapse: collapse;
 }
 
 .padron-de-unidades th,
 .padron-de-unidades td {
-  padding: 0.35rem 0.5rem;
-  border-bottom: 1px solid var(--color-grafito);
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--color-linea);
+  text-align: left;
   white-space: nowrap;
+}
+
+.padron-de-unidades th {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  border-bottom-color: var(--color-grafito);
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  font-weight: 600;
+}
+
+/* Gana a `.padron-de-unidades td` (The Tabular Money Rule: los números
+   siempre a la derecha). */
+.padron-de-unidades .numero-tabular {
+  text-align: right;
+}
+
+.padron-de-unidades tbody tr:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+/* ------------------------------------------------------------------ */
+/* Grupos y categorías: renglones con borde inferior fino               */
+/* ------------------------------------------------------------------ */
+
+.grupos-de-reparto,
+.categorias-de-gasto,
+.historial-de-configuracion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.grupos-de-reparto__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.875rem 0.5rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.grupos-de-reparto__datos {
+  min-width: 0;
+}
+
+/* Un grupo editable es un renglón entero para tocar, con su "›" como en
+   Mis edificios. */
+.grupos-de-reparto__fila > .boton-enlace {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  flex-wrap: wrap;
+  /* El espacio entre nombre y datos: en un ítem flex el espacio inicial
+     del `<span>` se colapsa ("Ascensor· por…"). */
+  column-gap: 0.25rem;
+}
+
+.grupos-de-reparto__fila > .boton-enlace::after {
+  content: "›" / "";
+  margin-left: auto;
+  padding-left: 1rem;
+  color: var(--color-grafito);
+  font-size: var(--tipo-titulo);
+  line-height: 1;
+}
+
+.grupos-de-reparto__nombre {
+  font-weight: 700;
+}
+
+.grupos-de-reparto__meta {
+  color: var(--color-grafito);
+  font-weight: 400;
+}
+
+.grupos-de-reparto__nota {
+  margin-top: 0.25rem;
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+}
+
+.grupos-de-reparto__unidad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.grupos-de-reparto__unidad input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--color-terracota);
+}
+
+.grupos-de-reparto__unidad input[type="text"] {
+  width: 9rem;
+}
+
+.categorias-de-gasto__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "nombre estado"
+    "accion orden";
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 0.5rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.categorias-de-gasto__nombre {
+  grid-area: nombre;
+  justify-self: start;
+}
+
+.categorias-de-gasto__estado {
+  grid-area: estado;
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+}
+
+.categorias-de-gasto__accion {
+  grid-area: accion;
+  justify-self: start;
+}
+
+.categorias-de-gasto__orden {
+  grid-area: orden;
+  display: grid;
+  grid-template-columns: 2rem 2rem;
+  gap: 0.25rem;
+}
+
+/* "Subir" siempre en la primera casilla y "bajar" en la segunda: si falta
+   uno (primera o última categoría), el otro no se corre de lugar. */
+.categorias-de-gasto__subir {
+  grid-column: 1;
+}
+
+.categorias-de-gasto__bajar {
+  grid-column: 2;
+}
+
+.categorias-de-gasto :is(.boton-secundario, .boton-icono) {
+  border-color: var(--color-linea);
+  background-color: transparent;
+  color: var(--color-grafito);
+}
+
+.categorias-de-gasto :is(.boton-secundario, .boton-icono):hover {
+  border-color: var(--color-grafito);
+  background-color: var(--color-papel-hundido);
+  color: var(--color-tinta);
+}
+
+.categorias-de-gasto .boton-secundario {
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  font-weight: 400;
+}
+
+.categorias-de-gasto__fila[data-activa="false"] .categorias-de-gasto__nombre {
+  color: var(--color-grafito);
+  font-weight: 400;
+}
+
+@media (min-width: 768px) {
+  .categorias-de-gasto__fila {
+    grid-template-columns: minmax(0, 1fr) 7rem 7.5rem 4.25rem;
+    grid-template-areas: "nombre estado accion orden";
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Intereses y vencimiento: la vigente como renglones de recibo, y el   */
+/* historial como línea de tiempo.                                      */
+/* ------------------------------------------------------------------ */
+
+.configuracion__vigente {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.renglones {
+  max-width: 32rem;
+  margin: 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.renglones__fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0.5rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.renglones dt {
+  color: var(--color-grafito);
+}
+
+.renglones dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.historial-de-configuracion__fila {
+  display: grid;
+  gap: 0.125rem 1.5rem;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.historial-de-configuracion__detalle {
+  color: var(--color-grafito);
+}
+
+@media (min-width: 768px) {
+  .historial-de-configuracion__fila {
+    grid-template-columns: 13rem minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Confirmar "sin saldos previos"                                       */
+/* ------------------------------------------------------------------ */
+
+.saldos-previos {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 40rem;
 }
