@@ -903,4 +903,50 @@ esta sección corresponde a corridas nuevas, con cada corrección aislada.
   ```
   JUICIO: comparación corregida; +304 backend y +2 web. SUPUESTO: ninguno.
 
-- [ ] 7.2 Corrida de cierre después de la última vuelta (L-010): `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno (comparten contenedores con nombres del proyecto), con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA (`git rev-parse HEAD`). Verificación: los tres comandos con su salida en el informe. Escenarios: todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010.
+- [x] 7.2 Corrida de cierre después de la última vuelta (L-010): `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno (comparten contenedores con nombres del proyecto), con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA (`git rev-parse --short HEAD`). Verificación: los cuatro comandos con su salida en el informe. Escenarios: todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010.
+
+  EVIDENCIA (20/10/2026, hora local ART), después de los tres arreglos del auditor.
+  RED: no aplica; corrida de verificación sobre el código final, sin comportamiento
+  nuevo (mismo criterio que 1.1). Los cuatro comandos corrieron en primer plano,
+  de a uno y en este orden, sobre HEAD `835a002`, con árbol limpio:
+
+  ```text
+  $ date +%T && git rev-parse --short HEAD && bash infra/ci/test-backend.sh
+  16:11:22 SHA 835a002
+  =========== 2076 passed, 1 xfailed, 16 warnings in 511.69s (0:08:31) ===========
+  $ date +%T && git rev-parse --short HEAD && bash infra/ci/test-web.sh
+  16:20:01 SHA 835a002
+  Test Files  47 passed (47)
+  Tests  301 passed (301)
+  $ date +%T && git rev-parse --short HEAD && bash infra/ci/test-web-navegador.sh
+  16:20:14 SHA 835a002
+  144 passed (3.1m)
+  $ date +%T && git rev-parse --short HEAD && bash infra/ci/humo.sh
+  16:23:33 SHA 835a002
+  HUMO OK
+  ```
+
+  | Suite | 1.1 | 7.2 | Comparación |
+  |---|---|---|---|
+  | Backend | 1757 passed, 1 xfailed | 2076 passed, 1 xfailed | +319, 0 failed |
+  | Web | 298 passed (45 archivos) | 301 passed (47 archivos) | +3 tests, +2 archivos |
+  | Navegador | No se midió | 144 passed | Sin línea de base en 1.1 |
+  | Humo | HUMO OK | HUMO OK | Conservado |
+
+  JUICIO: los cuatro scripts terminaron con exit 0. Backend: 2077 recolectados
+  frente a 1758; ninguno omitido ni deseleccionado. Se conserva el único xfail
+  estricto previo de 1.1 y sus 16 warnings. Humo terminó su limpieza con exit 0.
+  Logs completos: `.git/informes-roles-cierre/7.2-{backend,web,navegador,humo}.log`.
+  SUPUESTO: ninguno nuevo; se conserva el supuesto RD-2 declarado en 3.5.
+
+  Cierre adicional del bloque, después de los cuatro scripts (última línea real):
+  ```text
+  $ date +%T && git rev-parse --short HEAD && bash infra/ci/test-backend.sh
+  16:25:40 SHA 835a002
+  =========== 2076 passed, 1 xfailed, 16 warnings in 539.32s (0:08:59) ===========
+  ```
+  JUICIO: cierre adicional exit 0, mismo conteo y mismo xfail.
+  ```text
+  $ cd backend && date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:35:16 All checks passed! / 231 files already formatted / Success: no issues found in 209 source files
+  ```
