@@ -28,22 +28,16 @@ def existe_persona(sesion: Session, persona_id: UUID) -> bool:
 def cargar_asignaciones(sesion: Session, persona_id: UUID) -> list[Asignacion]:
     filas = sesion.execute(
         text(
-            "SELECT rol, complejo_id, unidad_id, nivel FROM asignacion_rol "
-            "WHERE persona_id = :persona_id"
+            "SELECT rol, complejo_id, unidad_id FROM asignacion_rol WHERE persona_id = :persona_id"
         ),
         {"persona_id": str(persona_id)},
     ).all()
     return [
         Asignacion(
-            rol=Rol(
-                "super_admin"
-                if fila.rol == "titular"
-                else ("administrador" if fila.nivel == "editar" else "auxiliar")
-                if fila.rol == "colaborador"
-                else fila.rol
-            ),
+            rol=Rol(fila.rol),
             complejo_id=fila.complejo_id,
             unidad_id=fila.unidad_id,
+            # 4.1 leerá el vínculo real; los vecinos existentes de 0016 son propietarios.
             vinculo="propietario" if fila.rol == "vecino" else None,
         )
         for fila in filas

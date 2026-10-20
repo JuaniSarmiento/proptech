@@ -230,7 +230,8 @@ Corre como `proptech_migrador`, en una sola transacción, con el patrón de `001
    LEVEL SECURITY`: el migrador es dueño y, sin `FORCE`, la política no lo filtra; con `FORCE`, un
    `UPDATE` sin tenant toca cero filas y termina bien, en silencio.
 2. Chequeo previo: si hay dos filas de vecino de la misma persona y unidad, `RAISE EXCEPTION` con la
-   cantidad, sin ids ni nombres.
+   cantidad, sin ids ni nombres. El mismo chequeo cuenta duplicados de personal
+   por alcance antes de crear el índice de RA-5, para que su error tampoco filtre ids.
 3. Borrar los tres `CHECK`, sumar `vinculo`, convertir: `titular` → `super_admin`; `colaborador` con
    `editar` → `administrador`; `colaborador` con `ver` → `auxiliar`; `vecino` → `vinculo =
    'propietario'`; borrar `nivel`; crear los `CHECK` nuevos y tres objetos nuevos:

@@ -98,11 +98,14 @@ def test_permisos_de_categorias_y_versiones_con_cuerpos_validos(
     if rol != "editar":
         assert categoria.json()["detail"]["permiso_faltante"] == "configurar_padron"
     configuracion = api.cliente.post(api.ruta("/configuracion/versiones"), json=version())
-    assert configuracion.status_code == 403
-    assert configuracion.json()["detail"]["permiso_faltante"] == "crear_version_de_configuracion"
+    assert configuracion.status_code == (201 if rol == "editar" else 403)
+    if rol != "editar":
+        assert (
+            configuracion.json()["detail"]["permiso_faltante"] == "crear_version_de_configuracion"
+        )
     assert api.filas(
         "SELECT count(*) FROM configuracion_versionada WHERE complejo_id=%s", (api.edificio,)
-    ) == [(1,)]
+    ) == [(2 if rol == "editar" else 1,)]
 
 
 def test_versiones_vigente_por_fecha_y_unique_violation_traducida_a_409(

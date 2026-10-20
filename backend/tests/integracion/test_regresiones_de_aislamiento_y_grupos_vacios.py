@@ -57,7 +57,7 @@ def test_titular_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: ApiEd
         )
         conexion.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
-            "VALUES (%s, %s, 'titular')",
+            "VALUES (%s, %s, 'super_admin')",
             (api.admin_ajena, persona_b),
         )
     grupo_a = api.filas(

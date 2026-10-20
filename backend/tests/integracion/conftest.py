@@ -244,16 +244,20 @@ def api_edificio(
                 sesion.execute(
                     text(
                         "INSERT INTO asignacion_rol "
-                        "(administracion_id, persona_id, rol, complejo_id, unidad_id, nivel) "
-                        "VALUES (:admin, :persona, :rol, :edificio, :unidad, :nivel)"
+                        "(administracion_id, persona_id, rol, complejo_id, unidad_id, vinculo) "
+                        "VALUES (:admin, :persona, :rol, :edificio, :unidad, :vinculo)"
                     ),
                     {
                         "admin": admin,
                         "persona": persona,
-                        "rol": "colaborador" if rol in ("editar", "ver") else rol,
+                        "rol": {
+                            "titular": "super_admin",
+                            "editar": "administrador",
+                            "ver": "auxiliar",
+                        }.get(rol, rol),
                         "edificio": None if rol == "titular" else edificios[0],
                         "unidad": unidades[0] if rol == "vecino" else None,
-                        "nivel": rol if rol in ("editar", "ver") else None,
+                        "vinculo": "propietario" if rol == "vecino" else None,
                     },
                 )
             sesion.commit()

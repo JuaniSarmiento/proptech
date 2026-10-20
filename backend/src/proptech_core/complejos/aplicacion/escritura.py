@@ -52,17 +52,19 @@ def asignar_complejo_a_persona(
         fila = sesion.execute(
             text(
                 "INSERT INTO asignacion_rol "
-                "(administracion_id, persona_id, rol, complejo_id, nivel) "
-                "VALUES (:administracion_id, :persona_id, :rol, :complejo_id, :nivel) "
+                "(administracion_id, persona_id, rol, complejo_id) "
+                "VALUES (:administracion_id, :persona_id, :rol, :complejo_id) "
                 "RETURNING id"
             ),
             {
                 # Siempre de la identidad (D7): nunca de un campo del pedido.
                 "administracion_id": str(identidad.administracion_id),
                 "persona_id": str(persona_id),
-                "rol": rol,
+                # Adaptación al esquema 0017; el cuerpo nuevo y su auditoría van en 4.2.
+                "rol": ("administrador" if nivel == "editar" else "auxiliar")
+                if rol == "colaborador"
+                else rol,
                 "complejo_id": str(complejo_id),
-                "nivel": nivel,
             },
         ).one()
         registrar(

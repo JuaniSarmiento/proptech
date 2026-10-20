@@ -150,7 +150,7 @@ def dos_administraciones_con_complejo_y_unidad(
             # identidad, no el alcance por rol (eso es la tarea 5.2).
             cur.execute(
                 "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
-                "VALUES (%s, %s, 'titular')",
+                "VALUES (%s, %s, 'super_admin')",
                 (str(admin_id), str(persona_id)),
             )
             datos[clave] = {

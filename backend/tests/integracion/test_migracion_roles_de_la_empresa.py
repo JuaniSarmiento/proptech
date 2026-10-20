@@ -513,3 +513,32 @@ def test_downgrade_emite_lock_no_force_y_despues_chequea_conteos(
         < salida.index("DROP INDEX ix_asignacion_rol_persona")
         < salida.index("DROP COLUMN vinculo")
     )
+
+
+def test_personal_legado_repetido_aborta_con_conteo_sin_ids(base_roles: BaseDeEdificio) -> None:
+    datos = _sembrar(base_roles)
+    admin, complejo, _, personas = datos[1]
+    for persona, rol, edificio, nivel in [
+        (personas[0], "titular", None, None),
+        (personas[1], "colaborador", complejo, "ver"),
+    ]:
+        with base_roles.conectar_app() as c, c.transaction():
+            fijar_tenant(c, admin)
+            fila = c.execute(
+                "INSERT INTO asignacion_rol "
+                "(administracion_id,persona_id,rol,complejo_id,nivel) "
+                "VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                (admin, persona, rol, edificio, nivel),
+            ).fetchone()
+            assert fila is not None
+            duplicado = fila[0]
+        catalogo, filas = _catalogo(base_roles), _filas(base_roles, datos, "nivel")
+        with pytest.raises(AssertionError, match="personal repetido: 1") as error:
+            base_roles.migrar("upgrade", "0017")
+        assert str(persona) not in str(error.value)
+        assert str(admin) not in str(error.value)
+        assert _catalogo(base_roles) == catalogo
+        assert _filas(base_roles, datos, "nivel") == filas
+        with base_roles.conectar_app() as c, c.transaction():
+            fijar_tenant(c, admin)
+            c.execute("DELETE FROM asignacion_rol WHERE id=%s", (duplicado,))

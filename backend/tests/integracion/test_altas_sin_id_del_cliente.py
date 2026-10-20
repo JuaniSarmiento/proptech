@@ -208,7 +208,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             )
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
-            "VALUES (%s, %s, 'titular')",
+            "VALUES (%s, %s, 'super_admin')",
             (str(admin_id), str(titular_id)),
         )
     conexion.close()

@@ -146,13 +146,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
 
         cur.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
-            "VALUES (%s, %s, 'titular')",
+            "VALUES (%s, %s, 'super_admin')",
             (str(admin_id), str(personas["titular"])),
         )
         cur.execute(
             "INSERT INTO asignacion_rol "
-            "(administracion_id, persona_id, rol, complejo_id, nivel) "
-            "VALUES (%s, %s, 'colaborador', %s, 'editar')",
+            "(administracion_id, persona_id, rol, complejo_id) "
+            "VALUES (%s, %s, 'administrador', %s)",
             (str(admin_id), str(personas["colaborador"]), str(complejo_asignado)),
         )
         cur.execute(
@@ -162,8 +162,8 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         )
         cur.execute(
             "INSERT INTO asignacion_rol "
-            "(administracion_id, persona_id, rol, complejo_id, unidad_id) "
-            "VALUES (%s, %s, 'vecino', %s, %s)",
+            "(administracion_id, persona_id, rol, complejo_id, unidad_id, vinculo) "
+            "VALUES (%s, %s, 'vecino', %s, %s, 'propietario')",
             (
                 str(admin_id),
                 str(personas["vecino"]),

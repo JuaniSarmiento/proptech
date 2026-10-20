@@ -30,6 +30,13 @@ def upgrade() -> None:
             IF repetidas > 0 THEN
                 RAISE EXCEPTION 'roles de la empresa: relaciones repetidas: %', repetidas;
             END IF;
+            SELECT count(*) INTO repetidas FROM (
+                SELECT 1 FROM asignacion_rol WHERE rol IN ('titular', 'colaborador')
+                GROUP BY administracion_id, persona_id, complejo_id HAVING count(*) > 1
+            ) AS conflictos;
+            IF repetidas > 0 THEN
+                RAISE EXCEPTION 'roles de la empresa: personal repetido: %', repetidas;
+            END IF;
         END $$
     """)
     for nombre in ("rol_valido", "nivel_valido", "forma_por_rol"):

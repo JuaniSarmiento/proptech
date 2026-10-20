@@ -65,6 +65,6 @@ def test_rol_y_nivel_validos_dan_201(api_edificio: ApiEdificio, cuerpo: dict[str
     api = api_edificio
     api.como("titular")
     respuesta = api.cliente.post(
-        api.ruta("/asignaciones"), json={"persona_id": str(api.personas["ver"]), **cuerpo}
+        api.ruta("/asignaciones"), json={"persona_id": str(api.personas["vecino"]), **cuerpo}
     )
     assert respuesta.status_code == 201, (respuesta.status_code, respuesta.text)
