@@ -289,6 +289,31 @@ familia por hallazgo).
     `web/src/__rompedor__/` y `web/e2e/rompedor.spec.ts` no se borran (formato
     propio del rompedor, no tocado a propósito: se borran al final del bloque).
   - Commit `fix(web): la escritura declara Content-Type: application/json (R3C-1, R3C-10)`.
+- [x] R3C-3 (ALTA): `<form action={fn}>` (`Formulario.tsx`) se resetea solo al
+  terminar la acción (React 19), sin importar si vuelve con error; los `Campo`
+  son no controlados (`defaultValue`). Un 403/422/409 al guardar vaciaba todo lo
+  tipeado — contradice la spec ("sin perder lo cargado").
+  - RED 22:34:40 `vitest run src/componentes/Formulario.test.tsx` → `R3C-3 · un
+    403/422/409 de la acción no borra lo cargado` falla: `expected '' to be
+    'PB-LOCAL'`.
+  - Arreglo: `Formulario` captura `new FormData(formulario)` en `onSubmit` (antes
+    de que la acción corra) y, en un `useEffect` sobre
+    `[erroresPorCampo, erroresDesconocidos]`, repone cada campo que el reset dejó
+    vacío con lo capturado.
+  - GREEN 22:36:32 `vitest run src/componentes/Formulario.test.tsx` → `7 passed`
+    (los 6 casos viejos del componente siguen en verde). El caso ya existente de
+    la misma familia en `src/__rompedor__/pantallas.test.tsx` (`unidades/
+    Pantalla.tsx` completo) también pasa a verde con este mismo cambio, sin
+    tocarlo.
+  - `pnpm tsc --noEmit`: limpio (tuvo que tipar `namedItem` con
+    `instanceof HTMLInputElement/HTMLTextAreaElement/HTMLSelectElement`, no un
+    cast — `RadioNodeList` no es asignable a `HTMLInputElement`).
+    `pnpm biome check` sobre los dos archivos: limpio (un
+    `useExhaustiveDependencies` suprimido a propósito y declarado: el efecto
+    depende de la IDENTIDAD de los errores, no de `hayErrores`, porque dos
+    envíos fallidos seguidos dan el mismo `true` y el efecto no volvería a
+    correr).
+  - Commit `fix(web): un 403/422/409 ya no borra lo cargado en el panel (R3C-3)`.
 
 ## 6. Cierre de los grupos 1 a 6
 
