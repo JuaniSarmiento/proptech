@@ -387,78 +387,73 @@ EVIDENCIA (20/10/2026): barrido completo con rg multilínea, también ignorados;
   SUPUESTO: ninguno para el barrido ni las verificaciones.
 
 
-- [x] 3.5 Ensayo de la migración sobre la copia más fiel disponible (RD-2, revisión del DBA): **supuesto declarado** — no hay producción ni datos reales de este sistema, nunca se desplegó (Migration Plan, "Despliegue: no hay"). Levantar el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas; volcar con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`; restaurar ese dump en una base aparte con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa `humo.sh`); sobre esa base restaurada correr `alembic upgrade` a 0017, `alembic downgrade` a 0016 y `alembic upgrade` otra vez, comparando conteos por `administracion_id` y por `rol` antes del primer `upgrade`, después del `downgrade` y después del segundo `upgrade`. Verificación: los tres conteos (antes, tras el `downgrade`, tras el segundo `upgrade`) en el informe, idénticos entre antes y downgrade con el vocabulario viejo, y entre el primero y el tercero al aplicar el mapeo de D5 (resuelto por el orquestador, 20/10/2026: los textos de rol cambian a propósito). Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones (repetida sobre la copia restaurada, no sobre datos sembrados a mano). Lecciones: L-013, L-016.
+- [x] 3.5 Ensayo de la migración sobre la copia más fiel disponible (RD-2, revisión del DBA): **supuesto declarado** — no hay producción ni datos reales de este sistema, nunca se desplegó (Migration Plan, "Despliegue: no hay"). Levantar el stack de humo (`infra/ci/humo.sh`) con sus dos administraciones sembradas; volcar con `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`; restaurar ese dump en una base aparte con `bash infra/respaldos/restaurar.sh <archivo_dump> proptech_restauracion` (el mismo camino que usa `humo.sh`); sobre esa base restaurada correr `alembic upgrade head` (0018, ampliado en el cierre), `alembic downgrade` a 0016 y `alembic upgrade` otra vez, comparando conteos por `administracion_id` y por `rol` antes del primer `upgrade`, después del `downgrade` y después del segundo `upgrade`. Verificación: los tres conteos (antes, tras el `downgrade`, tras el segundo `upgrade`) en el informe, idénticos entre antes y downgrade con el vocabulario viejo, y entre el primero y el tercero al aplicar el mapeo de D5 (resuelto por el orquestador, 20/10/2026: los textos de rol cambian a propósito). Escenarios: `autorizacion-por-rol` › Conversión en dos administraciones (repetida sobre la copia restaurada, no sobre datos sembrados a mano). Lecciones: L-013, L-016.
 
-SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
+  SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   datos reales; nunca se desplegó. Se ensaya la copia más fiel disponible.
-  EVIDENCIA (20/10/2026): test operativo nuevo `infra/ci/ensayo-roles.sh`.
-  El primer ensayo nació verde sobre 0017; se verificó su rojo con una copia
-  previa real del script, diff completo y restauración byte a byte (L-013):
-  ```text
-  $ date +%T && bash infra/ci/ensayo-roles.sh
-  12:46:32
-  ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0017/0016/0017 y origen intacto
-  ```
+  EVIDENCIA original (20/10/2026, ciclo 0017/0016/0017), resumida en el cierre:
+  el ensayo nació verde; su mutante omitía el segundo upgrade (copia previa y
+  restauración byte a byte, L-013):
   ```diff
   -migrar_restaurada upgrade 0017 # segundo upgrade
   +: # mutante: segundo upgrade omitido
   ```
   ```text
   $ date +%T && bash infra/ci/ensayo-roles.sh
-  12:47:44  (copia mutada)
-  ERROR: conteos nuevo no coinciden con D5: ['A|colaborador|2', 'A|consejo|1', 'A|titular|1', 'A|vecino|1', 'B|colaborador|2', 'B|consejo|1', 'B|titular|1', 'B|vecino|1']
-  exit 1; limpieza del proyecto proptech terminada
-  $ date +%T && bash infra/ci/ensayo-roles.sh
-  12:48:31  (script restaurado)
-  ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0017/0016/0017 y origen intacto
+  12:46:32 ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0017/0016/0017 y origen intacto
+  12:47:44 RED (mutante): ERROR: conteos nuevo no coinciden con D5: ['A|colaborador|2', ...]
+  12:48:31 GREEN (restaurado): ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0017/0016/0017 y origen intacto
   ```
-  Tres conteos completos, leídos como proptech_app con SET LOCAL por tenant:
+  Conteos originales como proptech_app con SET LOCAL por tenant:
   A = 10000000-0000-0000-0000-000000000001; B = 10000000-0000-0000-0000-000000000002.
 
   | Momento | Administración | Conteos por rol |
   |---|---|---|
-  | Antes del primer upgrade | A | colaborador=2, consejo=1, titular=1, vecino=1 |
-  | Antes del primer upgrade | B | colaborador=2, consejo=1, titular=1, vecino=1 |
-  | Tras downgrade | A | colaborador=2, consejo=1, titular=1, vecino=1 |
-  | Tras downgrade | B | colaborador=2, consejo=1, titular=1, vecino=1 |
-  | Tras segundo upgrade | A | administrador=1, auxiliar=1, consejo=1, super_admin=1, vecino=1 |
-  | Tras segundo upgrade | B | administrador=1, auxiliar=1, consejo=1, super_admin=1, vecino=1 |
+  | Antes del primer upgrade | A y B, cada una | colaborador=2, consejo=1, titular=1, vecino=1 |
+  | Tras downgrade | A y B, cada una | colaborador=2, consejo=1, titular=1, vecino=1 |
+  | Tras segundo upgrade | A y B, cada una | administrador=1, auxiliar=1, consejo=1, super_admin=1, vecino=1 |
 
   resuelto por el orquestador, 20/10/2026: la igualdad entre primer y tercer
   conteo se evalúa con el mapeo de D5; los nombres de rol cambian a propósito.
-  Cada colaborador de la siembra tiene un nivel distinto. Antes y downgrade
-  son idénticos crudos; primer y segundo upgrade son idénticos crudos. El
-  oráculo exige las filas de ambos tenants: nunca acepta una tabla vacía.
-  El script levanta el stack completo de humo, lo lleva a 0016 y siembra ahí;
-  pide `compose exec -T respaldos /usr/local/bin/respaldar.sh --una-vez`, restaura
-  con `bash infra/respaldos/restaurar.sh <dump> proptech_restauracion`, aplica
-  roles antes (pg_restore usa --no-owner), migra sólo la restaurada y aplica
-  roles despues. Verifica RLS habilitada/forzada y que el origen no cambie.
-  Docker sólo dentro del script de CI, siempre `docker compose -p proptech`;
-  los tres ensayos terminaron con down -v del mismo proyecto. Dumps/conteos
-  conservados en `.git/informes-roles-bloque-a-v2/3.5-fqkwXJ/` (ensayo final).
-  Logs: `3.5-{inicial,rojo,verde}.log`. Bash -n y ShellCheck 0.10.0 limpios;
-  binario temporal en `.git/informes-roles-bloque-a-v2/herramientas/`, sin
-  instalación ni configuración global.
-  EVIDENCIA de cierre del bloque, comandos completos, en ese orden y de a uno:
+  Antes y downgrade son idénticos crudos; ambos upgrades son idénticos crudos.
+  El oráculo exige las filas de ambos tenants; verifica RLS habilitada/forzada
+  y que el origen no cambie. Backup/restore y Docker sólo por el script de CI.
+  Logs originales en `.git/informes-roles-bloque-a-v2/3.5-{inicial,rojo,verde}.log`;
+  dumps/conteos finales originales en `3.5-fqkwXJ/` dentro de esa carpeta.
+  Cierre original del bloque, de a uno:
   ```text
   $ date +%T && bash infra/ci/test-backend.sh
-  12:49:38
-  =========== 2037 passed, 1 xfailed, 16 warnings in 475.50s (0:07:55) ===========
+  12:49:38 =========== 2037 passed, 1 xfailed, 16 warnings in 475.50s (0:07:55) ===========
   $ date +%T && bash infra/ci/humo.sh
-  12:57:43
-  HUMO OK
-  ...
-   Network proptech_datos  Removed
-   Network proptech_borde  Removed
-   Network proptech_salida_worker  Removed
-   Network proptech_aplicacion  Removed
+  12:57:43 HUMO OK (exit 0 y limpieza del proyecto proptech terminada)
   $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
   All checks passed! / 227 files already formatted / Success: no issues found in 206 source files
   ```
-  JUICIO: ambos scripts terminaron con estado 0; cierre verde (2038 tests,
-  +280 frente a 1.1; mismo xfail previo del cambio 7). Las ocho tareas del bloque
-  están completas. Logs completos locales: `cierre-{backend,humo}.log`.
+
+  EVIDENCIA, auditor fila 2, **ampliado en el cierre** (20/10/2026, HEAD `610eb4a`):
+  primero se agregó la comprobación de revisión real, manteniendo upgrade 0017;
+  después del rojo se cambiaron ambos upgrades a head. No se mutó la migración.
+  ```text
+  RED $ date +%T && git rev-parse --short HEAD && bash infra/ci/ensayo-roles.sh
+  16:08:21 610eb4a
+  ERROR: revisión restaurada esperada=0018 obtenida=0017
+  GREEN $ date +%T && git rev-parse --short HEAD && bash infra/ci/ensayo-roles.sh
+  16:09:07 610eb4a
+  CONTEOS antes: A|colaborador|2, A|consejo|1, A|titular|1, A|vecino|1, B|colaborador|2, B|consejo|1, B|titular|1, B|vecino|1
+  REVISION RESTAURADA: 0018
+  CONTEOS primer_upgrade: A|administrador|1, A|auxiliar|1, A|consejo|1, A|super_admin|1, A|vecino|1, B|administrador|1, B|auxiliar|1, B|consejo|1, B|super_admin|1, B|vecino|1
+  REVISION RESTAURADA: 0016
+  CONTEOS downgrade: A|colaborador|2, A|consejo|1, A|titular|1, A|vecino|1, B|colaborador|2, B|consejo|1, B|titular|1, B|vecino|1
+  REVISION RESTAURADA: 0018
+  CONTEOS segundo_upgrade: A|administrador|1, A|auxiliar|1, A|consejo|1, A|super_admin|1, A|vecino|1, B|administrador|1, B|auxiliar|1, B|consejo|1, B|super_admin|1, B|vecino|1
+  ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0018/0016/0018 y origen intacto
+  ```
+  JUICIO: 10 asignaciones conservadas; 0018/0016/0018 comprobado en la base
+  restaurada. Conteos legados idénticos antes/downgrade y nuevos idénticos en
+  ambos upgrades, con el mapeo de D5. Origen intacto. RED exit 1; GREEN exit 0;
+  ambos limpiaron sus recursos. Bash -n y ShellCheck 0.10.0 limpios (16:09:18).
+  16:10:11 `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy`: limpios (231 archivos, 209 fuentes).
+  Logs completos: `.git/informes-roles-cierre/fila-2-{rojo,verde}.log`.
 
 
 ## 4. Aplicación y API

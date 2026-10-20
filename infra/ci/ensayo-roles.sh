@@ -113,6 +113,16 @@ PY
 migrar_restaurada() {
   compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones alembic "$@"
 }
+verificar_revision() {
+  local esperada="$1" obtenida
+  obtenida="$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
+    -qAt -v ON_ERROR_STOP=1 -c 'SELECT version_num FROM alembic_version')"
+  if [ "$obtenida" != "$esperada" ]; then
+    echo "ERROR: revisión restaurada esperada=$esperada obtenida=$obtenida" >&2
+    return 1
+  fi
+  echo "REVISION RESTAURADA: $obtenida"
+}
 
 conteos "$BASE_ORIGEN" "$CARPETA_ENSAYO/origen.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/origen.txt"
@@ -135,14 +145,17 @@ conteos proptech_restauracion "$CARPETA_ENSAYO/antes.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/antes.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
 
-migrar_restaurada upgrade 0017
+migrar_restaurada upgrade head
+verificar_revision 0018
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
 migrar_restaurada downgrade 0016
+verificar_revision 0016
 conteos proptech_restauracion "$CARPETA_ENSAYO/downgrade.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/downgrade.txt"
 cmp "$CARPETA_ENSAYO/antes.txt" "$CARPETA_ENSAYO/downgrade.txt"
-migrar_restaurada upgrade 0017 # segundo upgrade
+migrar_restaurada upgrade head # segundo upgrade
+verificar_revision 0018
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"
@@ -150,4 +163,4 @@ compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones \
   python -m proptech_core.compartido.roles despues
 conteos "$BASE_ORIGEN" "$CARPETA_ENSAYO/origen_despues.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/origen_despues.txt"
-echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0017/0016/0017 y origen intacto"
+echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0018/0016/0018 y origen intacto"
