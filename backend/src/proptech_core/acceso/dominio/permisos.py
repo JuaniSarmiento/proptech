@@ -108,46 +108,33 @@ class Asignacion:
         return Alcance.UNIDAD if self.unidad_id is not None else Alcance.EDIFICIO
 
 
-#: La matriz de D-096, escrita a mano (no generada desde el código): para
-#: cada acción, el conjunto de (rol, nivel) que puede hacerla. El nivel es
-#: `None` salvo para `COLABORADOR` (D-037): el nivel "ver" sólo permite
-#: leer la configuración del edificio (D5 del 3a). Una
-#: `Accion` sin entrada aquí se niega para todos (`.get(..., frozenset())`
-#: en `puede`, nunca `[accion]`).
+# D3: cada celda es (perfil, alcance). Una acción ausente se niega.
+_SA = (Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)
+_AP = (Perfil.ADMINISTRADOR, Alcance.PRINCIPAL)
+_AE = (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)
+_CP = (Perfil.CONTADOR, Alcance.PRINCIPAL)
+_CE = (Perfil.CONTADOR, Alcance.EDIFICIO)
+_AX = (Perfil.AUXILIAR, Alcance.EDIFICIO)
+_CO = (Perfil.CONSEJO, Alcance.EDIFICIO)
+_VP = (Perfil.VECINO_PROPIETARIO, Alcance.UNIDAD)
+_VI = (Perfil.VECINO_INQUILINO, Alcance.UNIDAD)
 _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
-    Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION: frozenset(
-        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
-    ),
-    Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.ANULAR_LIQUIDACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.CONFIRMAR_PAGO_INFORMADO: frozenset(
-        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
-    ),
-    Accion.REVERTIR_O_REIMPUTAR_PAGO: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.CONDONAR_INTERESES: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.DAR_DE_BAJA_DEUDA: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: frozenset(
-        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
-    ),
-    Accion.ACEPTAR_ALERTAS_BLOQUEANTES: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset(
-        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}
-    ),
-    Accion.INFORMAR_PAGO: frozenset({(Perfil.VECINO_PROPIETARIO, Alcance.UNIDAD)}),
-    Accion.CREAR_EDIFICIO: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
-    Accion.CONFIGURAR_PADRON: frozenset(
-        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
-    ),
-    Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset(
-        {
-            (Perfil.SUPER_ADMIN, Alcance.PRINCIPAL),
-            (Perfil.ADMINISTRADOR, Alcance.EDIFICIO),
-            (Perfil.AUXILIAR, Alcance.EDIFICIO),
-            (Perfil.CONSEJO, Alcance.EDIFICIO),
-        }
-    ),
+    Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION: frozenset({_SA, _AP, _AE}),
+    Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: frozenset({_SA, _AP, _AE}),
+    Accion.ANULAR_LIQUIDACION: frozenset({_SA, _AP}),
+    Accion.CONFIRMAR_PAGO_INFORMADO: frozenset({_SA, _AP, _AE}),
+    Accion.REVERTIR_O_REIMPUTAR_PAGO: frozenset({_SA, _AP}),
+    Accion.CONDONAR_INTERESES: frozenset({_SA, _AP}),
+    Accion.DAR_DE_BAJA_DEUDA: frozenset({_SA, _AP}),
+    Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: frozenset({_SA, _AP, _AE}),
+    Accion.ACEPTAR_ALERTAS_BLOQUEANTES: frozenset({_SA, _AP}),
+    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset({_SA}),
+    Accion.INFORMAR_PAGO: frozenset({_VP, _VI}),
+    Accion.CREAR_EDIFICIO: frozenset({_SA}),
+    Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({_SA, _AP, _AE}),
+    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({_SA, _AP}),
+    Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE}),
+    Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
 }
 
 
@@ -160,7 +147,7 @@ def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID 
         return False
     permitidos = _MATRIZ.get(accion, frozenset())
     for asignacion in asignaciones:
-        if asignacion.rol is not Rol.SUPER_ADMIN and asignacion.complejo_id != complejo_id:
+        if asignacion.alcance is not Alcance.PRINCIPAL and asignacion.complejo_id != complejo_id:
             continue
         clave = (asignacion.perfil, asignacion.alcance)
         if clave in permitidos:

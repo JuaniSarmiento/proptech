@@ -86,11 +86,34 @@ EVIDENCIA (20/10/2026, segunda vuelta):
   SUPUESTO: ninguno. Logs locales en `.git/informes-roles-bloque-a-v2/`.
 
 
-- [ ] 2.2 La matriz (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: la tabla de D3 copiada a mano como literal del test (16 acciones por 9 columnas, 144 celdas), comparada **entera** contra `puede` en un complejo del alcance, y el mensaje del fallo nombra cada celda distinta; además, toda acción para una asignación por edificio en otro complejo da "no"; `crear_edificio` con `complejo_id=None` sólo para el super admin; una `Accion` sin fila se niega para todos; una persona con dos asignaciones (administrador por edificio en A, auxiliar en B) puede escribir en A y no en B; un administrador principal, para el permiso `anular_liquidacion`, con `complejo_id=None`, da "no" (RA-3: se conserva la guarda de `permisos.py:109`, que sin complejo sólo evalúa `crear_edificio`). RED: con la matriz vieja la comparación falla nombrando las celdas; mutar una celda en una copia de `permisos.py` y verla fallar (L-013). Escenarios: `autorizacion-por-rol` › La matriz completa; › Una asignación por edificio en otro complejo; › El administrador por edificio emite pero no anula; › El administrador principal corrige en cualquier edificio. Lecciones: L-013, L-019, L-022.
+- [x] 2.2 La matriz (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: la tabla de D3 copiada a mano como literal del test (16 acciones por 9 columnas, 144 celdas), comparada **entera** contra `puede` en un complejo del alcance, y el mensaje del fallo nombra cada celda distinta; además, toda acción para una asignación por edificio en otro complejo da "no"; `crear_edificio` con `complejo_id=None` sólo para el super admin; una `Accion` sin fila se niega para todos; una persona con dos asignaciones (administrador por edificio en A, auxiliar en B) puede escribir en A y no en B; un administrador principal, para el permiso `anular_liquidacion`, con `complejo_id=None`, da "no" (RA-3: se conserva la guarda de `permisos.py:109`, que sin complejo sólo evalúa `crear_edificio`). RED: con la matriz vieja la comparación falla nombrando las celdas; mutar una celda en una copia de `permisos.py` y verla fallar (L-013). Escenarios: `autorizacion-por-rol` › La matriz completa; › Una asignación por edificio en otro complejo; › El administrador por edificio emite pero no anula; › El administrador principal corrige en cualquier edificio. Lecciones: L-013, L-019, L-022.
 
-  JUICIO: pendiente; depende de Perfil/Alcance y del constructor de 2.1, detenida por
-  el conflicto de secuencia documentado arriba. No hay RED/GREEN ni implementación.
-  La guarda RA-3 y la matriz original no se tocaron.
+EVIDENCIA (20/10/2026):
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  12:09:52
+  19 failed, 405 passed in 0.43s
+  $ date +%T && cd backend && uv run pytest tests/unitarios/acceso/test_permisos.py::test_matriz_entera_con_cada_celda_distinta_en_el_mensaje -q
+  12:10:31
+  E AssertionError: anular_liquidacion/AE: True != False
+  1 failed in 0.05s
+  ```
+  Mutante sobre copia previa local (L-013), diff real; restaurada y comparada byte a byte:
+  ```diff
+  -    Accion.ANULAR_LIQUIDACION: frozenset({_SA, _AP}),
+  +    Accion.ANULAR_LIQUIDACION: frozenset({_SA, _AP, _AE}),
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso tests/integracion/test_alcance_api.py tests/integracion/test_asignar_edificio_api.py -q
+  12:10:33
+  437 passed, 1 warning in 10.74s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 225 files already formatted / Success: no issues found in 205 source files
+  ```
+  JUICIO: matriz literal de 144 celdas, comparación entera con diferencias por
+  celda; pruebas sin fila, fuera de alcance, dos asignaciones y RA-3 verdes.
+  SUPUESTO: ninguno. Logs y copia previa locales en `.git/informes-roles-bloque-a-v2/`.
+
 
 - [ ] 2.3 El alcance (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: `alcanza` por perfil y alcance (principal, todo complejo y unidad de la administración; por edificio, su complejo y sus unidades y ningún otro; por unidad, su unidad y su complejo, nunca otra unidad del mismo complejo), dos propietarios distintos de la misma unidad y un inquilino de otra. RED: con `alcanza` viejo, un contador principal no alcanza nada. Escenarios: `autorizacion-por-rol` › Colaborador en un edificio no asignado; › Vecino en la unidad de otro vecino; › Consejo en otro edificio; › Contador principal; › Dos asignaciones de la misma persona (la parte del dominio). Lecciones: L-019.
 

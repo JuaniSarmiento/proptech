@@ -29,32 +29,86 @@ OTRO_COMPLEJO = uuid.uuid4()
 UNIDAD = uuid.uuid4()
 OTRA_UNIDAD = uuid.uuid4()
 
-# D-096 y D5 del 3a, escritos a mano: titular, editar, ver, consejo, vecino.
-_MATRIZ_A_MANO: dict[str, tuple[bool, bool, bool, bool, bool]] = {
-    "cargar_gastos_y_preparar_liquidacion": (True, True, False, False, False),
-    "emitir_y_distribuir_liquidacion": (True, False, False, False, False),
-    "anular_liquidacion": (True, False, False, False, False),
-    "confirmar_pago_informado": (True, True, False, False, False),
-    "revertir_o_reimputar_pago": (True, False, False, False, False),
-    "condonar_intereses": (True, False, False, False, False),
-    "dar_de_baja_deuda": (True, False, False, False, False),
-    "aceptar_alertas_no_bloqueantes": (True, True, False, False, False),
-    "aceptar_alertas_bloqueantes": (True, False, False, False, False),
-    "invitar_usuarios_y_asignar_edificios": (True, False, False, False, False),
-    "informar_pago": (False, False, False, False, True),
-    "crear_edificio": (True, False, False, False, False),
-    "crear_version_de_configuracion": (True, False, False, False, False),
-    "confirmar_sin_saldos_previos": (True, False, False, False, False),
-    "configurar_padron": (True, True, False, False, False),
-    "ver_configuracion_del_edificio": (True, True, True, True, False),
+# D3 copiada A MANO: SA, AP, AE, CP, CE, AX, CO, VP, VI.
+_MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
+    "cargar_gastos_y_preparar_liquidacion": (
+        True,
+        True,
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ),
+    "emitir_y_distribuir_liquidacion": (True, True, True, False, False, False, False, False, False),
+    "anular_liquidacion": (True, True, False, False, False, False, False, False, False),
+    "confirmar_pago_informado": (True, True, True, False, False, False, False, False, False),
+    "revertir_o_reimputar_pago": (True, True, False, False, False, False, False, False, False),
+    "condonar_intereses": (True, True, False, False, False, False, False, False, False),
+    "dar_de_baja_deuda": (True, True, False, False, False, False, False, False, False),
+    "aceptar_alertas_no_bloqueantes": (True, True, True, False, False, False, False, False, False),
+    "aceptar_alertas_bloqueantes": (True, True, False, False, False, False, False, False, False),
+    "invitar_usuarios_y_asignar_edificios": (
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ),
+    "informar_pago": (False, False, False, False, False, False, False, True, True),
+    "crear_edificio": (True, False, False, False, False, False, False, False, False),
+    "crear_version_de_configuracion": (True, True, True, False, False, False, False, False, False),
+    "confirmar_sin_saldos_previos": (True, True, False, False, False, False, False, False, False),
+    "configurar_padron": (True, True, True, False, False, False, False, False, False),
+    "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
 }
 _PERFILES = [
     Asignacion(Rol.SUPER_ADMIN, None),
+    Asignacion(Rol.ADMINISTRADOR, None),
     Asignacion(Rol.ADMINISTRADOR, COMPLEJO),
+    Asignacion(Rol.CONTADOR, None),
+    Asignacion(Rol.CONTADOR, COMPLEJO),
     Asignacion(Rol.AUXILIAR, COMPLEJO),
     Asignacion(Rol.CONSEJO, COMPLEJO),
-    Asignacion(Rol.VECINO, COMPLEJO, unidad_id=UNIDAD, vinculo="propietario"),
+    Asignacion(Rol.VECINO, COMPLEJO, UNIDAD, "propietario"),
+    Asignacion(Rol.VECINO, COMPLEJO, UNIDAD, "inquilino"),
 ]
+_COLUMNAS = ["SA", "AP", "AE", "CP", "CE", "AX", "CO", "VP", "VI"]
+
+
+def test_matriz_entera_con_cada_celda_distinta_en_el_mensaje() -> None:
+    diferencias = []
+    for nombre, fila in _MATRIZ_A_MANO.items():
+        for columna, asignacion, esperado in zip(_COLUMNAS, _PERFILES, fila, strict=True):
+            obtenido = puede([asignacion], Accion(nombre), COMPLEJO)
+            if obtenido != esperado:
+                diferencias.append(f"{nombre}/{columna}: {obtenido} != {esperado}")
+    assert not diferencias, "\n".join(diferencias)
+
+
+@pytest.mark.parametrize("asignacion", [a for a in _PERFILES if a.complejo_id is not None])
+@pytest.mark.parametrize("accion", list(Accion))
+def test_fuera_del_complejo_nadie_puede(asignacion: Asignacion, accion: Accion) -> None:
+    assert puede([asignacion], accion, OTRO_COMPLEJO) is False
+
+
+def test_dos_asignaciones_no_prestan_el_permiso_al_otro_edificio() -> None:
+    asignaciones = [
+        Asignacion(Rol.ADMINISTRADOR, COMPLEJO),
+        Asignacion(Rol.AUXILIAR, OTRO_COMPLEJO),
+    ]
+    assert puede(asignaciones, Accion.CONFIGURAR_PADRON, COMPLEJO) is True
+    assert puede(asignaciones, Accion.CONFIGURAR_PADRON, OTRO_COMPLEJO) is False
+
+
+def test_ra3_principal_no_evalua_anular_sin_complejo() -> None:
+    assert puede([Asignacion(Rol.ADMINISTRADOR, None)], Accion.ANULAR_LIQUIDACION, None) is False
 
 
 def _asignacion_de(rol: Rol) -> Asignacion:
@@ -62,13 +116,13 @@ def _asignacion_de(rol: Rol) -> Asignacion:
 
 
 @pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
-@pytest.mark.parametrize("perfil", range(5), ids=["titular", "editar", "ver", "consejo", "vecino"])
+@pytest.mark.parametrize("perfil", range(9), ids=_COLUMNAS)
 def test_cada_celda_de_la_matriz(nombre: str, perfil: int) -> None:
     assert puede([_PERFILES[perfil]], Accion(nombre), COMPLEJO) is _MATRIZ_A_MANO[nombre][perfil]
 
 
 @pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
-@pytest.mark.parametrize("perfil", range(5), ids=["titular", "editar", "ver", "consejo", "vecino"])
+@pytest.mark.parametrize("perfil", range(9), ids=_COLUMNAS)
 def test_sin_complejo_solo_crear_edificio_para_titular(nombre: str, perfil: int) -> None:
     esperado = nombre == "crear_edificio" and perfil == 0
     assert puede([_PERFILES[perfil]], Accion(nombre), None) is esperado
