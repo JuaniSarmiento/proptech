@@ -275,3 +275,161 @@ def test_vecino_repetido_aborta_sin_cambiar_nada_ni_publicar_ids(
     assert "Persona inventada" not in str(error.value)
     assert _catalogo(base_roles) == catalogo
     assert _filas(base_roles, datos, "nivel") == filas
+
+
+def _persona(c: psycopg.Connection, admin: UUID) -> UUID:
+    persona = uuid4()
+    c.execute(
+        "INSERT INTO persona (id,administracion_id,nombre) VALUES (%s,%s,'Perfil ficticio')",
+        (persona, admin),
+    )
+    return persona
+
+
+def _asignar(
+    c: psycopg.Connection,
+    admin: UUID,
+    persona: UUID,
+    rol: str,
+    complejo: UUID | None,
+    unidad: UUID | None = None,
+    vinculo: str | None = None,
+) -> None:
+    c.execute(
+        "INSERT INTO asignacion_rol "
+        "(administracion_id,persona_id,rol,complejo_id,unidad_id,vinculo) "
+        "VALUES (%s,%s,%s,%s,%s,%s)",
+        (admin, persona, rol, complejo, unidad, vinculo),
+    )
+
+
+def test_las_nueve_formas_validas_entran_como_app(base_roles: BaseDeEdificio) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    with base_roles.conectar_app() as c, c.transaction():
+        for admin, complejo, unidad, _ in datos:
+            fijar_tenant(c, admin)
+            formas = [
+                ("super_admin", None, None, None),
+                ("administrador", None, None, None),
+                ("administrador", complejo, None, None),
+                ("contador", None, None, None),
+                ("contador", complejo, None, None),
+                ("auxiliar", complejo, None, None),
+                ("consejo", complejo, None, None),
+                ("vecino", complejo, unidad, "propietario"),
+                ("vecino", complejo, unidad, "inquilino"),
+            ]
+            for rol, edificio, u, vinculo in formas:
+                persona = _persona(c, admin)
+                _asignar(c, admin, persona, rol, edificio, u, vinculo)
+                assert c.execute(
+                    "SELECT rol,complejo_id,unidad_id,vinculo FROM asignacion_rol "
+                    "WHERE persona_id=%s",
+                    (persona,),
+                ).fetchall() == [(rol, edificio, u, vinculo)]
+
+
+def test_cada_forma_invalida_falla_por_check_y_no_deja_filas(base_roles: BaseDeEdificio) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    with base_roles.conectar_app() as c, c.transaction():
+        for admin, complejo, unidad, _ in datos:
+            fijar_tenant(c, admin)
+            formas = [
+                ("super_admin", complejo, None, None),
+                ("super_admin", None, unidad, None),
+                ("super_admin", None, None, "propietario"),
+                ("administrador", complejo, unidad, None),
+                ("administrador", None, None, "propietario"),
+                ("contador", complejo, unidad, None),
+                ("contador", None, None, "inquilino"),
+                ("auxiliar", None, None, None),
+                ("auxiliar", complejo, unidad, None),
+                ("auxiliar", complejo, None, "propietario"),
+                ("consejo", None, None, None),
+                ("consejo", complejo, unidad, None),
+                ("consejo", complejo, None, "inquilino"),
+                ("vecino", None, unidad, "propietario"),
+                ("vecino", complejo, None, "propietario"),
+                ("vecino", complejo, unidad, None),
+                ("vecino", complejo, unidad, "inventado"),
+                ("titular", None, None, None),
+                ("colaborador", complejo, None, None),
+                ("inventado", complejo, None, None),
+            ]
+            for rol, edificio, u, vinculo in formas:
+                persona = _persona(c, admin)
+                with pytest.raises(psycopg.errors.CheckViolation), c.transaction():
+                    _asignar(c, admin, persona, rol, edificio, u, vinculo)
+                assert c.execute(
+                    "SELECT count(*) FROM asignacion_rol WHERE persona_id=%s", (persona,)
+                ).fetchone() == (0,)
+
+
+def test_unicidad_de_vecino_y_de_todas_las_combinaciones_de_personal(
+    base_roles: BaseDeEdificio,
+) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    with base_roles.conectar_app() as c, c.transaction():
+        for admin, complejo, unidad, _ in datos:
+            fijar_tenant(c, admin)
+            persona = _persona(c, admin)
+            _asignar(c, admin, persona, "vecino", complejo, unidad, "propietario")
+            with (
+                pytest.raises(
+                    psycopg.errors.UniqueViolation, match="uq_asignacion_rol_persona_unidad"
+                ),
+                c.transaction(),
+            ):
+                _asignar(c, admin, persona, "vecino", complejo, unidad, "inquilino")
+            assert c.execute(
+                "SELECT vinculo FROM asignacion_rol WHERE persona_id=%s", (persona,)
+            ).fetchall() == [("propietario",)]
+            for edificio, roles in [
+                (None, ("super_admin", "administrador", "contador")),
+                (complejo, ("administrador", "contador", "auxiliar")),
+            ]:
+                for primero in roles:
+                    for segundo in roles:
+                        persona = _persona(c, admin)
+                        _asignar(c, admin, persona, primero, edificio)
+                        with (
+                            pytest.raises(
+                                psycopg.errors.UniqueViolation,
+                                match="uq_asignacion_rol_persona_alcance",
+                            ),
+                            c.transaction(),
+                        ):
+                            _asignar(c, admin, persona, segundo, edificio)
+                        assert c.execute(
+                            "SELECT rol FROM asignacion_rol WHERE persona_id=%s", (persona,)
+                        ).fetchall() == [(primero,)]
+
+
+def test_personal_coexiste_con_consejo_y_vecino_y_la_unidad_admite_tres_personas(
+    base_roles: BaseDeEdificio,
+) -> None:
+    datos = _sembrar(base_roles)
+    base_roles.migrar("upgrade", "head")
+    with base_roles.conectar_app() as c, c.transaction():
+        for admin, complejo, unidad, _ in datos:
+            fijar_tenant(c, admin)
+            for rol in ("administrador", "contador", "auxiliar"):
+                persona = _persona(c, admin)
+                _asignar(c, admin, persona, rol, complejo)
+                _asignar(c, admin, persona, "consejo", complejo)
+                _asignar(c, admin, persona, "vecino", complejo, unidad, "propietario")
+                assert c.execute(
+                    "SELECT rol FROM asignacion_rol WHERE persona_id=%s ORDER BY rol", (persona,)
+                ).fetchall() == sorted([(rol,), ("consejo",), ("vecino",)])
+            personas = [_persona(c, admin) for _ in range(3)]
+            for persona, vinculo in zip(
+                personas, ("propietario", "propietario", "inquilino"), strict=True
+            ):
+                _asignar(c, admin, persona, "vecino", complejo, unidad, vinculo)
+            assert c.execute(
+                "SELECT vinculo FROM asignacion_rol WHERE persona_id=ANY(%s) ORDER BY vinculo",
+                (personas,),
+            ).fetchall() == [("inquilino",), ("propietario",), ("propietario",)]

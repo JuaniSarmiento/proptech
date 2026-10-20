@@ -309,8 +309,8 @@ def test_asignacion_con_unidad_de_otro_complejo_de_la_misma_administracion_falla
             with pytest.raises(psycopg.errors.ForeignKeyViolation):
                 cur.execute(
                     "INSERT INTO asignacion_rol "
-                    "(administracion_id, persona_id, rol, complejo_id, unidad_id) "
-                    "VALUES (%s, %s, 'vecino', %s, %s)",
+                    "(administracion_id, persona_id, rol, complejo_id, unidad_id, vinculo) "
+                    "VALUES (%s, %s, 'vecino', %s, %s, 'propietario')",
                     (
                         str(admin_a),
                         str(persona_id),
@@ -323,52 +323,46 @@ def test_asignacion_con_unidad_de_otro_complejo_de_la_misma_administracion_falla
         conexion.close()
 
 
-# --- CHECK por rol: vecino sin unidad, colaborador sin nivel ---
+# --- CHECK por rol: vecino sin unidad, auxiliar sin complejo ---
 
 
 @pytest.mark.parametrize(
     "columnas_extra",
     [
         {"rol": "vecino", "sin": "unidad_id"},
-        {"rol": "colaborador", "sin": "nivel"},
+        {"rol": "auxiliar", "sin": "complejo_id"},
     ],
-    ids=["vecino_sin_unidad", "colaborador_sin_nivel"],
+    ids=["vecino_sin_unidad", "auxiliar_sin_complejo"],
 )
 def test_asignacion_incompleta_para_su_rol_falla_por_check(
     contenedor: PostgresContainer,
     dos_administraciones: dict[str, Any],
     columnas_extra: dict[str, str],
 ) -> None:
-    conexion = _conectar(contenedor, MIGRADOR_USER, MIGRADOR_PASSWORD)
+    conexion = _conectar(contenedor, APP_USER, APP_PASSWORD)
     admin_a = dos_administraciones["a"]["administracion_id"]
+    persona = dos_administraciones["a"]["persona_id"]
     try:
         with conexion.cursor() as cur:
-            cur.execute("SELECT set_config('app.administracion_id', %s, false)", (str(admin_a),))
+            cur.execute("SELECT set_config('app.administracion_id', %s, true)", (str(admin_a),))
             rol = columnas_extra["rol"]
-            if rol == "vecino":
-                sql = (
+            with pytest.raises(psycopg.errors.CheckViolation), conexion.transaction():
+                cur.execute(
                     "INSERT INTO asignacion_rol "
-                    "(administracion_id, persona_id, rol, complejo_id) VALUES (%s, %s, %s, %s)"
+                    "(administracion_id, persona_id, rol, complejo_id, vinculo) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (
+                        admin_a,
+                        persona,
+                        rol,
+                        None
+                        if columnas_extra["sin"] == "complejo_id"
+                        else dos_administraciones["a"]["complejo_id"],
+                        "propietario" if rol == "vecino" else None,
+                    ),
                 )
-                parametros = (
-                    str(admin_a),
-                    str(dos_administraciones["a"]["persona_id"]),
-                    rol,
-                    str(dos_administraciones["a"]["complejo_id"]),
-                )
-            else:
-                sql = (
-                    "INSERT INTO asignacion_rol "
-                    "(administracion_id, persona_id, rol, complejo_id) VALUES (%s, %s, %s, %s)"
-                )
-                parametros = (
-                    str(admin_a),
-                    str(dos_administraciones["a"]["persona_id"]),
-                    rol,
-                    str(dos_administraciones["a"]["complejo_id"]),
-                )
-            with pytest.raises(psycopg.errors.CheckViolation):
-                cur.execute(sql, parametros)
+            cur.execute("SELECT count(*) FROM asignacion_rol WHERE persona_id = %s", (persona,))
+            assert cur.fetchone() == (0,)
     finally:
         conexion.rollback()
         conexion.close()

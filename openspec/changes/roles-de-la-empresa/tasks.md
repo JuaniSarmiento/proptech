@@ -198,8 +198,58 @@ EVIDENCIA (20/10/2026):
 
 - [ ] 3.2 La forma de cada asignación en la base (D1, D2), en el mismo archivo, como `proptech_app` en `head`: una fila válida de cada perfil y alcance entra (nueve formas); cada forma inválida falla por el `CHECK` y no deja nada (auxiliar, consejo o vecino sin complejo; super admin con complejo; vecino sin vínculo; administrador con vínculo; rol `titular`, `colaborador` y uno inventado); la misma persona propietaria e inquilina de una unidad falla por el índice único; la misma persona con dos asignaciones de rol de personal (cualquier combinación de super admin, administrador, contador o auxiliar) en el mismo alcance falla por `uq_asignacion_rol_persona_alcance` (RA-5), y esto vale también con `complejo_id` nulo en las dos (alcance principal, antes exento con un `UNIQUE` sin `NULLS NOT DISTINCT`); la misma persona con un rol de personal y, además, una fila de consejo o de vecino en el mismo edificio entra sin problema (RA-5: son asignaciones de otro tipo); dos propietarios distintos y un inquilino distinto de la misma unidad entran. Actualizar los casos de `test_rls_acceso_minimo.py` que prueban en `head` el `CHECK` de 0003 (colaborador sin nivel), sin borrar ninguno sin reemplazo. RED: con la base de 0016 los inserts del vocabulario nuevo fallan. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Super admin atado a un edificio; › Vecino sin vínculo o personal con vínculo; › Perfil desconocido; › Propietaria e inquilina de la misma unidad; › Dos roles de personal en el mismo alcance; › Dos propietarios de la misma unidad (la parte de la base). Lecciones: L-016, L-018.
 
-  JUICIO: pendiente; depende de 0017 (3.1 detenida). No hay RED/GREEN, cambios en
-  los CHECK ni cambios a los tests de `test_rls_acceso_minimo.py`.
+EVIDENCIA (20/10/2026): los cuatro tests nuevos nacieron verdes a las
+  12:18:19 (7 passed in 22.19s); los CHECK/índices ya se crearon por D5 en 3.1.
+  Se verificaron sus rojos sobre copias previas locales, restauradas byte a byte:
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -q -k 'formas or invalida or unicidad or personal'
+  12:18:56  (copia del test contra 0016)
+  E psycopg.errors.UndefinedColumn: column "vinculo" does not exist
+  4 failed, 3 deselected in 13.91s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py::test_cada_forma_invalida_falla_por_check_y_no_deja_filas -q
+  12:19:19  (CHECK de forma abierto)
+  E Failed: DID NOT RAISE CheckViolation
+  1 failed in 6.23s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py::test_unicidad_de_vecino_y_de_todas_las_combinaciones_de_personal -q
+  12:19:47  (sin índices únicos)
+  E Failed: DID NOT RAISE UniqueViolation
+  1 failed in 5.87s
+  12:20:01  (NULLS DISTINCT)
+  E Failed: DID NOT RAISE UniqueViolation
+  1 failed in 4.79s
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py::test_personal_coexiste_con_consejo_y_vecino_y_la_unidad_admite_tres_personas -q
+  12:20:17  (índice de personal extendido a consejo/vecino)
+  E psycopg.errors.UniqueViolation: uq_asignacion_rol_persona_alcance
+  1 failed in 5.98s
+  ```
+  Diffs reales completos en los logs locales `3.2-*.log`; extractos de las copias:
+  ```diff
+  -    base_roles.migrar("upgrade", "head")
+  +    base_roles.migrar("upgrade", "0016")
+  -        "(rol = 'super_admin' AND complejo_id IS NULL AND unidad_id IS NULL "
+  +        "TRUE OR (rol = 'super_admin' AND complejo_id IS NULL AND unidad_id IS NULL "
+  -        "CREATE UNIQUE INDEX uq_asignacion_rol_persona_unidad ON asignacion_rol "
+  +        "CREATE INDEX uq_asignacion_rol_persona_unidad ON asignacion_rol "
+  -        "(administracion_id, persona_id, complejo_id) NULLS NOT DISTINCT "
+  +        "(administracion_id, persona_id, complejo_id) NULLS DISTINCT "
+  -        "WHERE rol IN ('super_admin', 'administrador', 'contador', 'auxiliar')"
+  +        "WHERE rol IN ('super_admin', 'administrador', 'contador', 'auxiliar', 'consejo', 'vecino')"
+  ```
+  ```text
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_migracion_roles_de_la_empresa.py -q
+  12:20:27
+  7 passed in 18.78s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 227 files already formatted / Success: no issues found in 206 source files
+  ```
+  JUICIO: nueve formas válidas y veinte inválidas, en ambos tenants como app;
+  todas las combinaciones de personal por alcance, NULL incluido, y coexistencia.
+  Vecino sin unidad y colaborador sin nivel del test viejo se reemplazan por
+  vecino sin unidad y auxiliar sin complejo; la FK usa vecino propietario válido.
+  Resuelto por el orquestador, 20/10/2026: la suite de test_rls_acceso_minimo
+  ejecuta downgrade base al cerrar. Su verde se completa después del downgrade
+  de 3.3; hasta entonces esta tarea conserva [ ]. SUPUESTO: ninguno.
+
 
 - [ ] 3.3 El `downgrade` (D5, E7, RD-3, RD-4), en el mismo archivo: con sólo filas con forma vieja, `downgrade 0016` corre en el orden de D5 (`LOCK`, `NO FORCE`, chequeo previo de conteos, conversión, `FORCE`) y devuelve cada una a su rol y nivel exactos en las dos administraciones; el catálogo de `asignacion_rol` (columnas **excluyendo `ordinal_position`**, que cambia con el orden de creación y no es señal real de drift; `CHECK`; que ya no estén la constraint `uq_asignacion_rol_persona_unidad` ni los índices `uq_asignacion_rol_persona_alcance` y `ix_asignacion_rol_persona`; políticas; `FORCE`) queda idéntico al de antes del `upgrade`, comparado entero; después `upgrade` vuelve a pasar. Con un contador, con un administrador principal y con un vecino inquilino, por separado, el `downgrade` falla, el mensaje dice cuántas filas de cada tipo y no trae ningún id ni nombre, y ni las filas ni el esquema cambian. RED: una copia del `downgrade` que convierte el inquilino en vecino en vez de fallar pasa el caso que debía fallar, y el test lo muestra; otra copia que hace el chequeo previo de conteos antes del `LOCK`/`NO FORCE` (en vez de después, RD-3) se marca y se corrige. Escenarios: `autorizacion-por-rol` › Volver atrás sin datos nuevos; › Volver atrás con un contador o un inquilino. Lecciones: L-013, L-016, L-022.
 
