@@ -1,13 +1,37 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useActionState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
 import { Campo, Formulario } from "./Formulario";
 
 afterEach(cleanup);
+
+type EstadoDePrueba = { erroresPorCampo: Record<string, string>; erroresDesconocidos: string[] };
+
+/** Envoltorio minimal con `useActionState`, igual que cada pantalla real
+ * (D8): el reset automático de React 19 (R3C-3) es del `<form action>`
+ * ligado a una acción, no algo que `Formulario` sola pueda disparar. */
+function FormularioDePrueba({
+  accion,
+}: {
+  accion: (previo: EstadoDePrueba | null, datos: FormData) => Promise<EstadoDePrueba>;
+}) {
+  const [estado, enviar] = useActionState(accion, null);
+  return (
+    <Formulario
+      erroresPorCampo={estado?.erroresPorCampo ?? {}}
+      erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+      action={enviar}
+    >
+      <Campo nombre="identificador" etiqueta="Identificador" name="identificador" />
+      <button type="submit">Guardar</button>
+    </Formulario>
+  );
+}
 
 describe("Formulario", () => {
   it("un error de campo marca aria-invalid y aria-describedby, y el resumen enlaza al campo (Identificador repetido)", async () => {
@@ -76,6 +100,21 @@ describe("Formulario", () => {
     expect(formulario?.getAttribute("aria-label")).toBe("Formulario de prueba");
     formulario?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     expect(alEnviar).toHaveBeenCalledTimes(1);
+  });
+
+  it("R3C-3 · un 403/422/409 de la acción no borra lo cargado (React 19 resetea el <form> al terminar la acción)", async () => {
+    const accion = vi
+      .fn<(previo: EstadoDePrueba | null, datos: FormData) => Promise<EstadoDePrueba>>()
+      .mockResolvedValue({
+        erroresPorCampo: {},
+        erroresDesconocidos: ["No podés modificar el padrón de unidades."],
+      });
+    const usuario = userEvent.setup();
+    render(<FormularioDePrueba accion={accion} />);
+    await usuario.type(screen.getByLabelText("Identificador"), "PB-LOCAL");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(screen.getByText(/No podés modificar el padrón/)).toBeTruthy());
+    expect((screen.getByLabelText("Identificador") as HTMLInputElement).value).toBe("PB-LOCAL");
   });
 
   it("sin violaciones de axe, con errores", async () => {

@@ -14,6 +14,8 @@ import {
   type FormHTMLAttributes,
   type ReactNode,
   useContext,
+  useEffect,
+  useRef,
 } from "react";
 
 type Props = {
@@ -51,9 +53,58 @@ export function Formulario({
 }: Props) {
   const hayErrores = Object.keys(erroresPorCampo).length > 0 || erroresDesconocidos.length > 0;
 
+  const formularioRef = useRef<HTMLFormElement>(null);
+  // R3C-3 (rompedor 3b): un `<form action={fn}>` con una acción función se
+  // resetea solo cuando la acción TERMINA, sin importar si devuelve un
+  // estado de error (React 19, mismo comportamiento que un submit nativo
+  // exitoso) — y los `Campo` son no controlados (`defaultValue`), así que
+  // vuelven a su valor por defecto. Guardamos lo tipeado ANTES de que la
+  // acción corra y, si vuelve con error, lo reponemos: perder un 403/422/409
+  // contradice la spec ("sin perder lo cargado").
+  const ultimoEnvioRef = useRef<Record<string, string>>({});
+
+  function alEnviar(evento: Parameters<NonNullable<typeof onSubmit>>[0]) {
+    const formulario = evento.currentTarget;
+    const valores: Record<string, string> = {};
+    for (const [clave, valor] of new FormData(formulario).entries()) {
+      if (typeof valor === "string") {
+        valores[clave] = valor;
+      }
+    }
+    ultimoEnvioRef.current = valores;
+    onSubmit?.(evento);
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: depende de erroresPorCampo/erroresDesconocidos (cambian de identidad en cada resultado nuevo de la acción), no de hayErrores (sería el mismo `true` entre dos envíos fallidos seguidos y el efecto no volvería a correr).
+  useEffect(() => {
+    if (!hayErrores) {
+      return;
+    }
+    const formulario = formularioRef.current;
+    if (!formulario) {
+      return;
+    }
+    for (const [nombre, valor] of Object.entries(ultimoEnvioRef.current)) {
+      const campo = formulario.elements.namedItem(nombre);
+      const esCampoDeTexto =
+        campo instanceof HTMLInputElement ||
+        campo instanceof HTMLTextAreaElement ||
+        campo instanceof HTMLSelectElement;
+      if (esCampoDeTexto && !campo.value) {
+        campo.value = valor;
+      }
+    }
+  }, [erroresPorCampo, erroresDesconocidos]);
+
   return (
     <_ContextoDeErrores.Provider value={erroresPorCampo}>
-      <form className="formulario" action={action} onSubmit={onSubmit} aria-label={ariaLabel}>
+      <form
+        ref={formularioRef}
+        className="formulario"
+        action={action}
+        onSubmit={alEnviar}
+        aria-label={ariaLabel}
+      >
         {hayErrores ? (
           <div role="alert" aria-label="Resumen de errores" className="formulario__resumen">
             <p>Revisá estos datos:</p>
