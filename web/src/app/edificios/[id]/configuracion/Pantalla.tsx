@@ -16,8 +16,9 @@ import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantal
 import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { ConfiguracionVigente, VersionDelHistorial } from "../../../../lib/api/tipos";
+import { fecha } from "../../../../lib/formato";
 import { ArmazonDelEdificio } from "../Armazon";
-import { textoDeVigente } from "../textoDeVigente";
+import { renglonesDeVigente, textoDeVigente } from "../textoDeVigente";
 import { AYUDA_CONFIGURACION } from "./ayuda";
 import { camposCambiados } from "./historial";
 
@@ -91,11 +92,25 @@ export function PantallaConfiguracion({
         accionPrincipal={botonCambiar}
       />
 
-      <p className="configuracion__vigente">{textoDeVigente(vigente)}</p>
+      <section className="configuracion__vigente" aria-labelledby="titulo-vigente">
+        <h2 id="titulo-vigente">Configuración vigente</h2>
+        {vigente === null ? (
+          <p>{textoDeVigente(vigente)}</p>
+        ) : (
+          <dl className="renglones">
+            {renglonesDeVigente(vigente).map((renglon) => (
+              <div key={renglon.etiqueta} className="renglones__fila">
+                <dt>{renglon.etiqueta}</dt>
+                <dd className="numero-tabular">{renglon.valor}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
 
       <h2>Historial</h2>
       {historial.length === 0 ? (
-        <p>Todavía no hay versiones.</p>
+        <p className="texto-secundario">Todavía no hay versiones.</p>
       ) : (
         <ol className="historial-de-configuracion" aria-label="Historial de configuración">
           {masNuevaPrimero.map((version) => {
@@ -105,10 +120,15 @@ export function PantallaConfiguracion({
             const cambios = camposCambiados(version, anterior);
             return (
               <li key={version.id} className="historial-de-configuracion__fila">
-                <p>
-                  Rige desde <strong>{version.vigente_desde}</strong> · {version.autor_nombre}
+                <p className="historial-de-configuracion__fecha">
+                  Rige desde{" "}
+                  <strong className="numero-tabular">{fecha(version.vigente_desde)}</strong>
                 </p>
-                {cambios.length > 0 ? <p>Cambió: {cambios.join(", ")}</p> : null}
+                <p className="historial-de-configuracion__detalle">
+                  {version.autor_nombre}
+                  {anterior === null ? " · Primera versión" : null}
+                  {cambios.length > 0 ? ` · Cambió: ${cambios.join(", ")}` : null}
+                </p>
               </li>
             );
           })}

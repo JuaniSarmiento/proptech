@@ -96,3 +96,16 @@ export function diferenciaComoPorcentaje(texto: string): string {
   const magnitud = esFalta ? texto.slice(1) : texto;
   return `${esFalta ? "falta" : "sobra"} ${sumaComoPorcentaje(magnitud)}`;
 }
+
+/** Una fecha ISO de la API (`"2026-10-20"`) como día/mes/año argentino
+ * (`"20/10/2026"`), cortando el TEXTO: nunca pasa por `Date`, que la
+ * interpreta en UTC y en Mendoza la corre un día para atrás. Lo que no es
+ * una fecha ISO vuelve tal cual (nunca "Invalid Date" en pantalla). */
+export function fecha(texto: string): string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+  if (!partes) {
+    return texto;
+  }
+  const [, anio, mes, dia] = partes;
+  return `${dia}/${mes}/${anio}`;
+}

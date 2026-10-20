@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   coeficiente,
   diferenciaComoPorcentaje,
+  fecha,
   porcentaje,
   sumaComoPorcentaje,
   superficie,
@@ -57,5 +58,16 @@ describe("rechazo de formatos que no son texto decimal ASCII (L-008)", () => {
   ])("%s: %s", (_motivo, texto) => {
     expect(() => coeficiente(texto)).toThrow();
     expect(() => sumaComoPorcentaje(texto)).toThrow();
+  });
+});
+
+describe("fecha", () => {
+  it("una fecha ISO de la API como día/mes/año argentino, sin pasar por Date (pulido 3b)", () => {
+    expect(fecha("2026-10-20")).toBe("20/10/2026");
+    expect(fecha("2027-01-05")).toBe("05/01/2027");
+  });
+
+  it("un texto que no es una fecha ISO se devuelve tal cual, nunca un 'Invalid Date'", () => {
+    expect(fecha("mañana")).toBe("mañana");
   });
 });

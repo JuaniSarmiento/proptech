@@ -62,6 +62,36 @@ describe("PantallaConfiguracion", () => {
     expect(filas[1]?.textContent).toContain("Alberto");
   });
 
+  it('el historial muestra "rige desde" en día/mes/año y la vigente como renglones etiqueta/valor (pulido 3b)', () => {
+    render(
+      <PantallaConfiguracion
+        id="e1"
+        nombreEdificio="Edificio API"
+        vigente={V2}
+        historial={[V1, V2]}
+        accionCrear={accionNula}
+      />,
+    );
+    const historial = screen.getByRole("list", { name: "Historial de configuración" });
+    expect(historial.textContent).toContain("20/10/2026");
+    expect(historial.textContent).not.toContain("2026-10-20");
+    const vigente = screen.getByRole("region", { name: "Configuración vigente" });
+    const terminos = within(vigente)
+      .getAllByRole("term")
+      .map((t) => t.textContent);
+    expect(terminos).toEqual([
+      "Tasa de interés mensual",
+      "Fondo de reserva",
+      "Días de gracia",
+      "Forma de cálculo",
+      "Vencimiento",
+    ]);
+    const valores = within(vigente)
+      .getAllByRole("definition")
+      .map((d) => d.textContent);
+    expect(valores).toEqual(["4,00 %", "2,00 %", "5", "Proporcional por día", "Día 10"]);
+  });
+
   it("la primera versión del historial no muestra campos cambiados", () => {
     render(
       <PantallaConfiguracion
