@@ -19,7 +19,35 @@ empieza. Ningún agente completa esa sección.
 
 ## 1. Línea de base
 
-- [ ] 1.1 Correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); si algo falla, frenar e informarlo como falla previa. Verificación: los tres comandos con su salida en el informe. Escenarios: ninguno (medición de partida). Lecciones: L-003, L-010.
+- [x] 1.1 Correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); si algo falla, frenar e informarlo como falla previa. Verificación: los tres comandos con su salida en el informe. Escenarios: ninguno (medición de partida). Lecciones: L-003, L-010.
+
+  EVIDENCIA (20/10/2026, HEAD `bf066ce3065ab5bed3b4b8c39cb827e0d29d1c60`):
+  RED: no aplica; esta tarea mide la línea de base y no cambia comportamiento.
+  Los tres comandos corrieron en orden, de a uno, sin cambios de implementación:
+
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  11:37:27
+  bf066ce3065ab5bed3b4b8c39cb827e0d29d1c60
+  =========== 1757 passed, 1 xfailed, 16 warnings in 544.73s (0:09:04) ===========
+  $ date +%T; bash infra/ci/test-web.sh
+  11:46:41
+   Test Files  45 passed (45)
+        Tests  298 passed (298)
+  $ date +%T; bash infra/ci/humo.sh
+  11:47:30
+  HUMO OK
+  Network proptech_borde  Removed
+  ```
+
+  JUICIO: línea de base verde (1758 tests backend recolectados, ninguno omitido;
+  el `xfail(strict=True)` F2c de `test_zz_rompedor_v3_agotada_con_efecto.py` es deuda
+  preexistente del cambio 7: el hilo puede confirmar después de agotar los reintentos).
+  Humo terminó con estado 0; siembra, backup, restauración y limpieza del proyecto
+  `proptech` por el script original. Logs completos locales en
+  `.git/informes-roles-bloque-a/1.1-{backend,web,humo}.log`.
+  SUPUESTO: ninguno para esta medición.
+
 
 ## 2. El dominio
 
