@@ -673,5 +673,24 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
 
 ## 7. Cierre
 
-- [ ] 7.1 El barrido de rutas protegidas (`test_rutas_protegidas.py`) y el guardián del catálogo (`test_catalogo_rls.py`) siguen en verde sin cambiar su lista de rutas ni sus excepciones (este cambio no suma rutas ni tablas), y el test de fronteras de módulos sigue en verde. Verificación: los tres archivos corridos con su salida. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente). Lecciones: L-016.
+- [x] 7.1 El barrido de rutas protegidas (`test_rutas_protegidas.py`) y el guardián del catálogo (`test_catalogo_rls.py`) siguen en verde sin cambiar su lista de rutas ni sus excepciones (este cambio no suma rutas ni tablas), y el test de fronteras de módulos sigue en verde. Verificación: los tres archivos corridos con su salida. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente). Lecciones: L-016.
+  Sin cambios en `_TABLAS_TECNICAS` ni en `_EXCEPCIONES_COMPLEJO_ID_NULO`
+  (sólo su comentario, ver 6.1); `test_rutas_protegidas.py` sin tocar.
+
+  ```
+  13:36:08 tests/unitarios/test_fronteras_de_modulos.py -q   → 5 passed in 0.24s
+  13:36:12 tests/integracion/test_rutas_protegidas.py -q    → 67 passed in 7.13s
+  13:36:24 tests/integracion/test_catalogo_rls.py -q        → 12 passed in 4.41s
+  ```
+
+  Corrida de cierre (L-010), de a uno, SHA b2e8672 (commit de 6.1):
+
+  ```
+  13:37:28 bash infra/ci/test-backend.sh  → 2061 passed, 1 xfailed, 16 warnings in 476.20s (0:07:56)
+  13:45:33 bash infra/ci/test-web.sh      → 47 test files, 300 tests passed in 8.42s
+  13:45:45 bash infra/ci/humo.sh          → HUMO OK, compose down -v limpio
+  ```
+  vs. la 1.1 (2 failed, 2034 passed, 1 xfailed): los dos failed de la 1.1 ya
+  no están y se sumaron los tests de las tareas 2-6. No se corrió 7.2 (fuera
+  de este alcance); esta corrida es evidencia para 7.1, no el cierre formal.
 - [ ] 7.2 Corrida de cierre después de la última vuelta (L-010): `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno (comparten contenedores con nombres del proyecto), con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA (`git rev-parse HEAD`). Verificación: los tres comandos con su salida en el informe. Escenarios: todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010.
