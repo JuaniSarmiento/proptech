@@ -17,6 +17,16 @@ Alberto, con su nombre, la fecha, el alcance aprobado y la respuesta a E1 a E8 (
 D-094). Si una elección se rechaza, se corrigen `design.md` y las specs antes de empezar. Sin eso, no se
 empieza. Ningún agente completa esa sección.
 
+Resoluciones de esta vuelta, **resuelto por el orquestador, 20/10/2026**:
+- 2.1 incluye el constructor y la adaptación mínima de sus llamadores y tests.
+  4.1/4.2 conservan sus tests y comportamiento nuevos; antes de 0017 se lee
+  sólo el esquema actual, sin anticipar la lectura de `vinculo`.
+- 3.1: el mutante sin `NO FORCE` que falla con `CheckViolation` es rojo válido;
+  la conversión exacta por rol sigue siendo la exigencia.
+- D5: el índice parcial se borra con `DROP INDEX`; frase corregida en design.
+- 3.4: sumar `super_admin` en el ejemplo corresponde a `acceso-de-desarrollo`;
+  ese material no se toca.
+
 ## 1. Línea de base
 
 - [x] 1.1 Correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); si algo falla, frenar e informarlo como falla previa. Verificación: los tres comandos con su salida en el informe. Escenarios: ninguno (medición de partida). Lecciones: L-003, L-010.
@@ -51,31 +61,30 @@ empieza. Ningún agente completa esa sección.
 
 ## 2. El dominio
 
-- [ ] 2.1 Perfil y alcance (D1, D2) en `backend/tests/unitarios/acceso/test_permisos.py`: una tabla escrita a mano que, para cada forma de fila de base (`rol`, `complejo_id`, `unidad_id`, `vinculo`), espera el perfil de los siete y el alcance (principal, por edificio, por unidad); las formas inválidas (super admin con complejo, auxiliar o consejo sin complejo, vecino sin vínculo, vínculo en una fila de personal, un rol `titular` o `colaborador`) levantan al construir la asignación en vez de dar un perfil. RED: el módulo todavía no tiene `Perfil` ni `Alcance` (`ImportError`). Implementar en `acceso/dominio/permisos.py` sin tocar `Accion`. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Vecino sin vínculo o personal con vínculo (la mitad del dominio). Lecciones: L-019.
+- [x] 2.1 Perfil y alcance (D1, D2) en `backend/tests/unitarios/acceso/test_permisos.py`: una tabla escrita a mano que, para cada forma de fila de base (`rol`, `complejo_id`, `unidad_id`, `vinculo`), espera el perfil de los siete y el alcance (principal, por edificio, por unidad); las formas inválidas (super admin con complejo, auxiliar o consejo sin complejo, vecino sin vínculo, vínculo en una fila de personal, un rol `titular` o `colaborador`) levantan al construir la asignación en vez de dar un perfil. RED: el módulo todavía no tiene `Perfil` ni `Alcance` (`ImportError`). Implementar en `acceso/dominio/permisos.py` sin tocar `Accion`. Escenarios: `autorizacion-por-rol` › Alcance principal regalado; › Vecino sin vínculo o personal con vínculo (la mitad del dominio). Lecciones: L-019.
 
-  EVIDENCIA (20/10/2026):
-
+EVIDENCIA (20/10/2026, segunda vuelta):
   ```text
   $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q
-  11:50:53
-  E ImportError: cannot import name 'Alcance' from 'proptech_core.acceso.dominio.permisos'
-  ERROR tests/unitarios/acceso/test_permisos.py
-  1 error in 0.10s
+  12:08:15
+  E ImportError: cannot import name 'Alcance'
+  1 error in 0.11s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  12:08:41
+  197 passed in 0.17s
+  $ cd backend && date +%T && uv run pytest tests/unitarios/acceso tests/integracion/test_alcance_api.py tests/integracion/test_asignar_edificio_api.py tests/integracion/test_identidad_api.py -q
+  12:08:54
+  218 passed, 1 warning in 13.24s
+  $ cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 225 files already formatted / Success: no issues found in 205 source files
   ```
+  JUICIO: nueve formas válidas y 21 inválidas; sin `nivel` en Asignacion.
+  Resuelto por el orquestador, 20/10/2026: se adaptaron en el mismo commit
+  los tests existentes y cargar_asignaciones. Este último traduce el vocabulario
+  de 0016 leyendo `nivel`; aún no consulta `vinculo` (reservado a 4.1).
+  La matriz conserva sus permisos anteriores para cambiarla con el rojo de 2.2.
+  SUPUESTO: ninguno. Logs locales en `.git/informes-roles-bloque-a-v2/`.
 
-  JUICIO: pendiente, sin GREEN ni implementación. El test propuesto agrega nueve formas
-  válidas y veinte inválidas; copia local completa en
-  `.git/informes-roles-bloque-a/test_permisos.2.1-rojo.py` y salida en `2.1-rojo.log`.
-  Conflicto de secuencia: los casos existentes del mismo archivo construyen titular,
-  colaborador con nivel y vecino sin vínculo al importar (`_PERFILES`, líneas 43-49).
-  El constructor nuevo debe rechazar esas formas. Además, `cargar_asignaciones`
-  (`acceso/aplicacion/autorizacion.py:14,37-41`) importa Nivel y pasa `nivel=`; su
-  adaptación está reservada a 4.1. Quitar ese argumento del constructor rompe mypy;
-  conservarlo como compatibilidad o adelantar 4.1 necesita resolver el alcance pedido.
-  No se agregó compatibilidad ni se adelantaron tareas: el archivo de tests original
-  quedó restaurado byte por byte. Se consultó el cruce con 4.1/4.2, sin respuesta al
-  momento de este registro. No se marca esta tarea como terminada.
-  SUPUESTO: ninguno; el conflicto se apoya en los llamadores actuales.
 
 - [ ] 2.2 La matriz (D3) en `backend/tests/unitarios/acceso/test_permisos.py`: la tabla de D3 copiada a mano como literal del test (16 acciones por 9 columnas, 144 celdas), comparada **entera** contra `puede` en un complejo del alcance, y el mensaje del fallo nombra cada celda distinta; además, toda acción para una asignación por edificio en otro complejo da "no"; `crear_edificio` con `complejo_id=None` sólo para el super admin; una `Accion` sin fila se niega para todos; una persona con dos asignaciones (administrador por edificio en A, auxiliar en B) puede escribir en A y no en B; un administrador principal, para el permiso `anular_liquidacion`, con `complejo_id=None`, da "no" (RA-3: se conserva la guarda de `permisos.py:109`, que sin complejo sólo evalúa `crear_edificio`). RED: con la matriz vieja la comparación falla nombrando las celdas; mutar una celda en una copia de `permisos.py` y verla fallar (L-013). Escenarios: `autorizacion-por-rol` › La matriz completa; › Una asignación por edificio en otro complejo; › El administrador por edificio emite pero no anula; › El administrador principal corrige en cualquier edificio. Lecciones: L-013, L-019, L-022.
 

@@ -268,7 +268,7 @@ reales, así que no se le quita nada a nadie que exista.
    `complejo_id` nulo, `vecino` con `vinculo = 'inquilino'`.
 4. Si no, la vuelta exacta: `super_admin` → `titular`; `administrador` → `colaborador` con `editar`;
    `auxiliar` → `colaborador` con `ver`; `vecino` sin vínculo; `nivel` vuelve. Se borran, en este orden
-   (RD-4, revisión del DBA): la constraint `uq_asignacion_rol_persona_unidad`, el índice
+   (RD-4, revisión del DBA): el índice `uq_asignacion_rol_persona_unidad` (`DROP INDEX`), el índice
    `uq_asignacion_rol_persona_alcance` (RA-5) y el índice `ix_asignacion_rol_persona` (RD-1), y por
    último la columna `vinculo`; se recrean los tres `CHECK` de 0003 y se borra el `CHECK` nuevo. **No
    hay índice de 0003 ni de 0016 que restaurar**: `asignacion_rol` no tenía ningún índice más allá de la

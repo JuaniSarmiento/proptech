@@ -14,7 +14,15 @@ import uuid
 import pytest
 
 from proptech_core.acceso.dominio import permisos
-from proptech_core.acceso.dominio.permisos import Accion, Asignacion, Nivel, Rol, alcanza, puede
+from proptech_core.acceso.dominio.permisos import (
+    Accion,
+    Alcance,
+    Asignacion,
+    Perfil,
+    Rol,
+    alcanza,
+    puede,
+)
 
 COMPLEJO = uuid.uuid4()
 OTRO_COMPLEJO = uuid.uuid4()
@@ -41,11 +49,11 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, bool, bool, bool, bool]] = {
     "ver_configuracion_del_edificio": (True, True, True, True, False),
 }
 _PERFILES = [
-    Asignacion(Rol.TITULAR, None),
-    Asignacion(Rol.COLABORADOR, COMPLEJO, nivel=Nivel.EDITAR),
-    Asignacion(Rol.COLABORADOR, COMPLEJO, nivel=Nivel.VER),
+    Asignacion(Rol.SUPER_ADMIN, None),
+    Asignacion(Rol.ADMINISTRADOR, COMPLEJO),
+    Asignacion(Rol.AUXILIAR, COMPLEJO),
     Asignacion(Rol.CONSEJO, COMPLEJO),
-    Asignacion(Rol.VECINO, COMPLEJO, unidad_id=UNIDAD),
+    Asignacion(Rol.VECINO, COMPLEJO, unidad_id=UNIDAD, vinculo="propietario"),
 ]
 
 
@@ -81,7 +89,7 @@ def test_una_accion_sin_fila_en_la_matriz_se_niega_para_todos(
     del matriz_sin_una_fila[accion_quitada]
     monkeypatch.setattr(permisos, "_MATRIZ", matriz_sin_una_fila)
 
-    for rol in Rol:
+    for rol in (Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.AUXILIAR, Rol.CONSEJO, Rol.VECINO):
         asignacion = _asignacion_de(rol)
         assert puede([asignacion], accion_quitada, COMPLEJO) is False, rol.value
 
@@ -90,7 +98,7 @@ def test_una_accion_sin_fila_en_la_matriz_se_niega_para_todos(
 
 
 def test_alcanza_titular_cualquier_complejo_y_unidad() -> None:
-    asignacion = Asignacion(rol=Rol.TITULAR, complejo_id=None)
+    asignacion = Asignacion(rol=Rol.SUPER_ADMIN, complejo_id=None)
     assert alcanza([asignacion], COMPLEJO) is True
     assert alcanza([asignacion], OTRO_COMPLEJO) is True
     assert alcanza([asignacion], COMPLEJO, UNIDAD) is True
@@ -98,7 +106,7 @@ def test_alcanza_titular_cualquier_complejo_y_unidad() -> None:
 
 
 def test_alcanza_colaborador_solo_el_complejo_asignado() -> None:
-    asignacion = Asignacion(rol=Rol.COLABORADOR, complejo_id=COMPLEJO, nivel=Nivel.EDITAR)
+    asignacion = Asignacion(rol=Rol.ADMINISTRADOR, complejo_id=COMPLEJO)
     assert alcanza([asignacion], COMPLEJO) is True
     assert alcanza([asignacion], OTRO_COMPLEJO) is False
 
@@ -110,7 +118,9 @@ def test_alcanza_consejo_solo_su_complejo() -> None:
 
 
 def test_alcanza_vecino_su_complejo_y_su_unidad_no_otra() -> None:
-    asignacion = Asignacion(rol=Rol.VECINO, complejo_id=COMPLEJO, unidad_id=UNIDAD)
+    asignacion = Asignacion(
+        rol=Rol.VECINO, complejo_id=COMPLEJO, unidad_id=UNIDAD, vinculo="propietario"
+    )
     # Su complejo, sin pedir una unidad en particular: sí.
     assert alcanza([asignacion], COMPLEJO) is True
     # Su propia unidad: sí.
@@ -125,3 +135,67 @@ def test_alcanza_vecino_su_complejo_y_su_unidad_no_otra() -> None:
 def test_alcanza_sin_ninguna_asignacion_es_falso() -> None:
     assert alcanza([], COMPLEJO) is False
     assert alcanza([], COMPLEJO, UNIDAD) is False
+
+
+# D1/D2: literal independiente de la implementación.
+@pytest.mark.parametrize(
+    "rol,complejo,unidad,vinculo,perfil,alcance",
+    [
+        ("super_admin", None, None, None, Perfil.SUPER_ADMIN, Alcance.PRINCIPAL),
+        ("administrador", None, None, None, Perfil.ADMINISTRADOR, Alcance.PRINCIPAL),
+        ("administrador", COMPLEJO, None, None, Perfil.ADMINISTRADOR, Alcance.EDIFICIO),
+        ("contador", None, None, None, Perfil.CONTADOR, Alcance.PRINCIPAL),
+        ("contador", COMPLEJO, None, None, Perfil.CONTADOR, Alcance.EDIFICIO),
+        ("auxiliar", COMPLEJO, None, None, Perfil.AUXILIAR, Alcance.EDIFICIO),
+        ("consejo", COMPLEJO, None, None, Perfil.CONSEJO, Alcance.EDIFICIO),
+        ("vecino", COMPLEJO, UNIDAD, "propietario", Perfil.VECINO_PROPIETARIO, Alcance.UNIDAD),
+        ("vecino", COMPLEJO, UNIDAD, "inquilino", Perfil.VECINO_INQUILINO, Alcance.UNIDAD),
+    ],
+)
+def test_perfil_y_alcance_de_cada_forma(
+    rol: str,
+    complejo: uuid.UUID | None,
+    unidad: uuid.UUID | None,
+    vinculo: str | None,
+    perfil: Perfil,
+    alcance: Alcance,
+) -> None:
+    asignacion = Asignacion(Rol(rol), complejo, unidad, vinculo)
+    assert asignacion.perfil is perfil
+    assert asignacion.alcance is alcance
+
+
+@pytest.mark.parametrize(
+    "rol,complejo,unidad,vinculo",
+    [
+        ("super_admin", COMPLEJO, None, None),
+        ("super_admin", None, UNIDAD, None),
+        ("super_admin", None, None, "propietario"),
+        ("administrador", COMPLEJO, UNIDAD, None),
+        ("administrador", None, UNIDAD, None),
+        ("administrador", COMPLEJO, None, "propietario"),
+        ("contador", COMPLEJO, UNIDAD, None),
+        ("contador", None, None, "inquilino"),
+        ("auxiliar", None, None, None),
+        ("auxiliar", COMPLEJO, UNIDAD, None),
+        ("auxiliar", COMPLEJO, None, "propietario"),
+        ("consejo", None, None, None),
+        ("consejo", COMPLEJO, UNIDAD, None),
+        ("consejo", COMPLEJO, None, "inquilino"),
+        ("vecino", None, UNIDAD, "propietario"),
+        ("vecino", COMPLEJO, None, "propietario"),
+        ("vecino", COMPLEJO, UNIDAD, None),
+        ("vecino", COMPLEJO, UNIDAD, "inventado"),
+        ("titular", None, None, None),
+        ("colaborador", COMPLEJO, None, None),
+        ("inventado", COMPLEJO, None, None),
+    ],
+)
+def test_rechaza_formas_invalidas_al_construir(
+    rol: str,
+    complejo: uuid.UUID | None,
+    unidad: uuid.UUID | None,
+    vinculo: str | None,
+) -> None:
+    with pytest.raises(ValueError):
+        Asignacion(rol, complejo, unidad, vinculo)  # type: ignore[arg-type]

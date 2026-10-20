@@ -14,15 +14,28 @@ from uuid import UUID
 
 
 class Rol(StrEnum):
-    TITULAR = "titular"
-    COLABORADOR = "colaborador"
+    SUPER_ADMIN = "super_admin"
+    ADMINISTRADOR = "administrador"
+    CONTADOR = "contador"
+    AUXILIAR = "auxiliar"
     CONSEJO = "consejo"
     VECINO = "vecino"
 
 
-class Nivel(StrEnum):
-    VER = "ver"
-    EDITAR = "editar"
+class Perfil(StrEnum):
+    SUPER_ADMIN = "super_admin"
+    ADMINISTRADOR = "administrador"
+    CONTADOR = "contador"
+    AUXILIAR = "auxiliar"
+    CONSEJO = "consejo"
+    VECINO_PROPIETARIO = "vecino_propietario"
+    VECINO_INQUILINO = "vecino_inquilino"
+
+
+class Alcance(StrEnum):
+    PRINCIPAL = "principal"
+    EDIFICIO = "edificio"
+    UNIDAD = "unidad"
 
 
 class Accion(StrEnum):
@@ -59,7 +72,40 @@ class Asignacion:
     rol: Rol
     complejo_id: UUID | None
     unidad_id: UUID | None = None
-    nivel: Nivel | None = None
+    vinculo: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "rol", Rol(self.rol))
+        if self.rol is Rol.VECINO:
+            valido = (
+                self.complejo_id is not None
+                and self.unidad_id is not None
+                and self.vinculo in ("propietario", "inquilino")
+            )
+        else:
+            valido = self.unidad_id is None and self.vinculo is None
+            if self.rol is Rol.SUPER_ADMIN:
+                valido = valido and self.complejo_id is None
+            elif self.rol in (Rol.AUXILIAR, Rol.CONSEJO):
+                valido = valido and self.complejo_id is not None
+        if not valido:
+            raise ValueError("forma de asignación inválida para el rol")
+
+    @property
+    def perfil(self) -> Perfil:
+        if self.rol is Rol.VECINO:
+            return (
+                Perfil.VECINO_PROPIETARIO
+                if self.vinculo == "propietario"
+                else Perfil.VECINO_INQUILINO
+            )
+        return Perfil(self.rol.value)
+
+    @property
+    def alcance(self) -> Alcance:
+        if self.complejo_id is None:
+            return Alcance.PRINCIPAL
+        return Alcance.UNIDAD if self.unidad_id is not None else Alcance.EDIFICIO
 
 
 #: La matriz de D-096, escrita a mano (no generada desde el código): para
@@ -68,34 +114,38 @@ class Asignacion:
 #: leer la configuración del edificio (D5 del 3a). Una
 #: `Accion` sin entrada aquí se niega para todos (`.get(..., frozenset())`
 #: en `puede`, nunca `[accion]`).
-_MATRIZ: dict[Accion, frozenset[tuple[Rol, Nivel | None]]] = {
+_MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION: frozenset(
-        {(Rol.TITULAR, None), (Rol.COLABORADOR, Nivel.EDITAR)}
+        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
     ),
-    Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: frozenset({(Rol.TITULAR, None)}),
-    Accion.ANULAR_LIQUIDACION: frozenset({(Rol.TITULAR, None)}),
+    Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.ANULAR_LIQUIDACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
     Accion.CONFIRMAR_PAGO_INFORMADO: frozenset(
-        {(Rol.TITULAR, None), (Rol.COLABORADOR, Nivel.EDITAR)}
+        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
     ),
-    Accion.REVERTIR_O_REIMPUTAR_PAGO: frozenset({(Rol.TITULAR, None)}),
-    Accion.CONDONAR_INTERESES: frozenset({(Rol.TITULAR, None)}),
-    Accion.DAR_DE_BAJA_DEUDA: frozenset({(Rol.TITULAR, None)}),
+    Accion.REVERTIR_O_REIMPUTAR_PAGO: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.CONDONAR_INTERESES: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.DAR_DE_BAJA_DEUDA: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
     Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: frozenset(
-        {(Rol.TITULAR, None), (Rol.COLABORADOR, Nivel.EDITAR)}
+        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
     ),
-    Accion.ACEPTAR_ALERTAS_BLOQUEANTES: frozenset({(Rol.TITULAR, None)}),
-    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset({(Rol.TITULAR, None)}),
-    Accion.INFORMAR_PAGO: frozenset({(Rol.VECINO, None)}),
-    Accion.CREAR_EDIFICIO: frozenset({(Rol.TITULAR, None)}),
-    Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({(Rol.TITULAR, None)}),
-    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({(Rol.TITULAR, None)}),
-    Accion.CONFIGURAR_PADRON: frozenset({(Rol.TITULAR, None), (Rol.COLABORADOR, Nivel.EDITAR)}),
+    Accion.ACEPTAR_ALERTAS_BLOQUEANTES: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: frozenset(
+        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}
+    ),
+    Accion.INFORMAR_PAGO: frozenset({(Perfil.VECINO_PROPIETARIO, Alcance.UNIDAD)}),
+    Accion.CREAR_EDIFICIO: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL)}),
+    Accion.CONFIGURAR_PADRON: frozenset(
+        {(Perfil.SUPER_ADMIN, Alcance.PRINCIPAL), (Perfil.ADMINISTRADOR, Alcance.EDIFICIO)}
+    ),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset(
         {
-            (Rol.TITULAR, None),
-            (Rol.COLABORADOR, Nivel.EDITAR),
-            (Rol.COLABORADOR, Nivel.VER),
-            (Rol.CONSEJO, None),
+            (Perfil.SUPER_ADMIN, Alcance.PRINCIPAL),
+            (Perfil.ADMINISTRADOR, Alcance.EDIFICIO),
+            (Perfil.AUXILIAR, Alcance.EDIFICIO),
+            (Perfil.CONSEJO, Alcance.EDIFICIO),
         }
     ),
 }
@@ -110,13 +160,9 @@ def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID 
         return False
     permitidos = _MATRIZ.get(accion, frozenset())
     for asignacion in asignaciones:
-        clave: tuple[Rol, Nivel | None]
-        if asignacion.rol is Rol.TITULAR:
-            clave = (asignacion.rol, None)
-        elif asignacion.complejo_id == complejo_id:
-            clave = (asignacion.rol, asignacion.nivel)
-        else:
+        if asignacion.rol is not Rol.SUPER_ADMIN and asignacion.complejo_id != complejo_id:
             continue
+        clave = (asignacion.perfil, asignacion.alcance)
         if clave in permitidos:
             return True
     return False
@@ -129,9 +175,9 @@ def alcanza(
     consejo, el suyo; vecino, sus unidades y su complejo (el complejo de una
     unidad propia, aunque no se pida ninguna unidad en particular)."""
     for asignacion in asignaciones:
-        if asignacion.rol is Rol.TITULAR:
+        if asignacion.rol is Rol.SUPER_ADMIN:
             return True
-        if asignacion.rol in (Rol.COLABORADOR, Rol.CONSEJO):
+        if asignacion.rol in (Rol.ADMINISTRADOR, Rol.AUXILIAR, Rol.CONSEJO):
             if asignacion.complejo_id == complejo_id:
                 return True
         elif asignacion.rol is Rol.VECINO and asignacion.complejo_id == complejo_id:

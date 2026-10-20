@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from proptech_core.acceso.dominio.permisos import Asignacion, Nivel, Rol
+from proptech_core.acceso.dominio.permisos import Asignacion, Rol
 
 
 def existe_persona(sesion: Session, persona_id: UUID) -> bool:
@@ -35,10 +35,16 @@ def cargar_asignaciones(sesion: Session, persona_id: UUID) -> list[Asignacion]:
     ).all()
     return [
         Asignacion(
-            rol=Rol(fila.rol),
+            rol=Rol(
+                "super_admin"
+                if fila.rol == "titular"
+                else ("administrador" if fila.nivel == "editar" else "auxiliar")
+                if fila.rol == "colaborador"
+                else fila.rol
+            ),
             complejo_id=fila.complejo_id,
             unidad_id=fila.unidad_id,
-            nivel=Nivel(fila.nivel) if fila.nivel else None,
+            vinculo="propietario" if fila.rol == "vecino" else None,
         )
         for fila in filas
     ]
