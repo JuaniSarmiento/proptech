@@ -590,6 +590,25 @@ Tres casos con ids aislados del barrido de lecturas: alta desde el vacío, Conte
 
 - Verde adicional 09:56:40: `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/componentes/Formulario.test.tsx e2e/api-falsa.test.ts` → `27 passed`.
 
+#- 06-verde (09:57:19, salida 0): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/configuracion/Pantalla.test.tsx`
+```text
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  09:57:20
+```
+
+## 6. Auditor fila 6: ayuda limitada a versiones y vigencia
+
+Base: 6/6. El ejemplo debe describir la versión anterior guardada y vigente hasta que entra la nueva; se elimina la promesa de un cálculo de liquidación inexistente.
+
+- 06-rojo (09:56:58, salida 1): `cd web && date +%T && corepack pnpm@12.10.1 vitest run src/app/edificios/\[id\]/configuracion/Pantalla.test.tsx -t "Auditor fila 6"`
+```text
+TestingLibraryElementError: Unable to find an element with the text: /La versión anterior queda guardada y rige hasta que entra en vigencia la nueva\./. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  09:56:59
+```
+
 ## 6. Cierre de los grupos 1 a 6
 
 - [ ] 6.1 Corrida de cierre **después de la vuelta de rompedor y auditor y sus arreglos** (L-010), de a uno: `test-backend.sh`, `pnpm biome ci`, `pnpm tsc --noEmit`, `test-web.sh`, `test-web-navegador.sh` y `humo.sh`, con conteos comparados contra 1.1 (L-003) y el commit. Verificación: el informe trae comandos, salida y hora de cada uno. Escenarios: todos los de los grupos 1 a 6. Lecciones: L-003, L-005, L-010.

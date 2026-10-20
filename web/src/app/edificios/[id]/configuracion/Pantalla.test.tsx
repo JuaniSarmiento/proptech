@@ -43,6 +43,25 @@ function accionNula() {
 }
 
 describe("PantallaConfiguracion", () => {
+  it("Auditor fila 6: el ejemplo de ayuda explica la vigencia de versiones guardadas", async () => {
+    const usuario = userEvent.setup();
+    render(
+      <PantallaConfiguracion
+        id="e1"
+        nombreEdificio="Edificio API"
+        vigente={V1}
+        historial={[V1]}
+        accionCrear={accionNula}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Ayuda" }));
+    expect(
+      screen.getByText(
+        /La versión anterior queda guardada y rige hasta que entra en vigencia la nueva\./,
+      ),
+    ).toBeTruthy();
+  });
+
   it("el historial muestra las dos versiones, la nueva con su autor y la tasa como campo cambiado", () => {
     render(
       <PantallaConfiguracion

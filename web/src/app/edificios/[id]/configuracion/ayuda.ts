@@ -10,6 +10,6 @@ export const AYUDA_CONFIGURACION = {
     "La versión anterior queda guardada en el historial, nunca se borra.",
   ],
   ejemplo:
-    "Si desde el 1 de noviembre la tasa pasa de 3,00 % a 4,00 %, cargás una versión nueva que rige desde esa fecha. Octubre se sigue calculando con 3,00 %.",
+    "Si desde el 1 de noviembre la tasa pasa de 3,00 % a 4,00 %, cargás una versión nueva que rige desde esa fecha. La versión anterior queda guardada y rige hasta que entra en vigencia la nueva.",
   yDespues: "La nueva configuración se aplica a partir de la fecha que elegiste.",
 };
