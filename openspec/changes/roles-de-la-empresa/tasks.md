@@ -529,7 +529,55 @@ SUPUESTO declarado por RD-2 (sin verificar externamente): no hay producción ni
   Ruff check / format --check / mypy: limpios (227 archivos / 206 fuentes).
   SUPUESTO: ninguno. Logs locales: .git/informes-roles-bloque-b/4.2-*.log.
 
-- [ ] 4.3 Las rutas existentes con la matriz nueva, en `backend/tests/integracion/test_alcance_api.py` y un archivo nuevo `test_perfiles_api.py`, como `proptech_app` con la identidad inyectada: un administrador por edificio crea una versión de configuración en su edificio (201, autor y auditoría) y recibe 403 al confirmar "sin saldos previos"; un administrador principal confirma en un edificio que nadie le asignó (200 y auditoría); un administrador principal recibe 403 al crear un edificio; un contador principal lista todos los edificios, lee el padrón de cualquiera (200) y recibe 403 al editar una unidad, crear una categoría y crear una versión; un auxiliar recibe 403 al crear una categoría; el consejo lee el padrón (200) y no edita una unidad (403); el vecino propietario y el inquilino ven su unidad (200), reciben 404 en la de otro vecino del mismo complejo y 403 en la configuración de su complejo; una persona administrador por edificio en A y auxiliar en B recibe 404 en C. RED: con la matriz vieja el administrador por edificio recibe 403 al crear la versión. Escenarios: `autorizacion-por-rol` › Titular; › Contador principal; › Dos asignaciones de la misma persona; › Un colaborador crea un edificio; › Un colaborador "ver" crea una categoría; › El contador no escribe; › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio; › El vecino ve su unidad; › Dos propietarios de la misma unidad; `configuracion-versionada` › Cambiar la tasa; › Un administrador del edificio cambia la tasa; › Un colaborador cambia la tasa; `edificios-y-unidades` › Confirmar sin saldos previos; › Un administrador principal confirma; › Confirmar dos veces; › Un colaborador confirma; › Lista de un colaborador; › Lista de un contador principal; › Unidad de otra administración. Lecciones: L-016, L-017.
+- [x] 4.3 Las rutas existentes con la matriz nueva, en `backend/tests/integracion/test_alcance_api.py` y un archivo nuevo `test_perfiles_api.py`, como `proptech_app` con la identidad inyectada: un administrador por edificio crea una versión de configuración en su edificio (201, autor y auditoría) y recibe 403 al confirmar "sin saldos previos"; un administrador principal confirma en un edificio que nadie le asignó (200 y auditoría); un administrador principal recibe 403 al crear un edificio; un contador principal lista todos los edificios, lee el padrón de cualquiera (200) y recibe 403 al editar una unidad, crear una categoría y crear una versión; un auxiliar recibe 403 al crear una categoría; el consejo lee el padrón (200) y no edita una unidad (403); el vecino propietario y el inquilino ven su unidad (200), reciben 404 en la de otro vecino del mismo complejo y 403 en la configuración de su complejo; una persona administrador por edificio en A y auxiliar en B recibe 404 en C. RED: con la matriz vieja el administrador por edificio recibe 403 al crear la versión. Escenarios: `autorizacion-por-rol` › Titular; › Contador principal; › Dos asignaciones de la misma persona; › Un colaborador crea un edificio; › Un colaborador "ver" crea una categoría; › El contador no escribe; › El consejo edita una unidad de su edificio; › El consejo lee el padrón; › El vecino pide la configuración de su edificio; › El vecino pide la configuración de otro edificio; › El vecino ve su unidad; › Dos propietarios de la misma unidad; `configuracion-versionada` › Cambiar la tasa; › Un administrador del edificio cambia la tasa; › Un colaborador cambia la tasa; `edificios-y-unidades` › Confirmar sin saldos previos; › Un administrador principal confirma; › Confirmar dos veces; › Un colaborador confirma; › Lista de un colaborador; › Lista de un contador principal; › Unidad de otra administración. Lecciones: L-016, L-017.
+
+  EVIDENCIA (20/10/2026): las rutas ya usan la matriz del bloque A; no se
+  cambia un permiso para fabricar implementación. Los 11 tests nuevos
+  nacieron verdes a las 13:09:27 (11 passed, 1 warning in 7.60s).
+  Copia previa real: .git/informes-roles-bloque-b/4.3-permisos-original.py.
+  Seis mutantes independientes, sin commit, restaurados byte a byte cada vez:
+  ```diff
+  -Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({_SA, _AP, _AE}),
+  +Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({_SA}),
+  -Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({_SA, _AP}),
+  +Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({_SA, _AE}),
+  -Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE}),
+  +Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
+  -Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
+  +Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE}),
+  -if unidad_id is None or asignacion.unidad_id == unidad_id:
+  +if True:  # mutante: cualquier unidad del edificio
+  -if asignacion.alcance is not Alcance.PRINCIPAL and asignacion.complejo_id != complejo_id:
+  +if False:  # mutante: una asignación habilita todos los edificios
+  ```
+  Todos los comandos siguientes desde backend, con `date +%T &&` antes:
+  ```text
+  uv run pytest tests/integracion/test_perfiles_api.py::test_administrador_edificio_crea_version_con_autor_y_auditoria_y_no_confirma -q
+  13:09:55 E assert 403 == 201 / 1 failed, 1 warning in 5.57s
+  uv run pytest tests/integracion/test_perfiles_api.py::test_administrador_principal_confirma_sin_asignacion_y_no_crea_edificio -q
+  13:10:02 E assert 403 == 200 / 1 failed, 1 warning in 5.60s
+  uv run pytest tests/integracion/test_perfiles_api.py::test_perfiles_lectores_ven_padron_y_no_escriben -q
+  13:10:09 E assert 200 == 403 / 4 failed, 1 warning in 6.00s
+  uv run pytest tests/integracion/test_perfiles_api.py::test_perfiles_lectores_ven_padron_y_no_escriben -q
+  13:10:16 E assert 403 == 200 / 4 failed, 1 warning in 6.01s
+  uv run pytest tests/integracion/test_perfiles_api.py::test_vecinos_ven_su_unidad_y_no_la_ajena_ni_configuracion -q
+  13:10:23 E assert 200 == 404 / 3 failed, 1 warning in 5.74s
+  uv run pytest tests/integracion/test_perfiles_api.py::test_administrador_en_a_auxiliar_en_b_no_extiende_permiso_ni_alcanza_c -q
+  13:10:30 E assert 201 == 403 / 1 failed, 1 warning in 5.62s
+  uv run pytest tests/integracion/test_perfiles_api.py tests/integracion/test_alcance_api.py tests/integracion/test_edificios_api.py tests/integracion/test_configuracion_api.py tests/integracion/test_padron_api.py tests/unitarios/acceso/test_permisos.py -q
+  13:10:39
+  539 passed, 1 warning in 30.16s
+  ```
+  JUICIO: autor y auditoría al crear versión; principal confirma sin asignación
+  por edificio, segundo intento 409, crear edificio 403. Contadores de ambos
+  alcances, auxiliar y consejo leen y no escriben; principal lista tres edificios;
+  propietario, inquilino y copropietario ven su unidad y no la ajena del mismo
+  edificio. Identidad mixta no hereda permisos de A en B ni accede a C.
+  Se corren también los escenarios existentes de alcance y aislamiento. Emitir
+  y corregir aún no tienen rutas: se sostienen por la matriz unitaria firmada.
+  Ruff check / format --check / mypy: limpios (228 archivos / 207 fuentes).
+  SUPUESTO: ninguno. Logs locales: .git/informes-roles-bloque-b/4.3-*.log.
+
 
 - [ ] 4.4 Consistencia del vocabulario de roles asignables (RA-4, revisión del arquitecto), en un test nuevo (por ejemplo `backend/tests/unitarios/acceso/test_vocabulario_asignable.py`): el conjunto de valores del `Literal` de `CuerpoAsignacion.rol` (`proptech_api/complejos.py`), el conjunto de valores permitidos por `ck_asignacion_rol_rol_valido` (leído de la migración `0017`, no copiado a mano) y el subconjunto asignable por esta ruta del enum `Rol` de `acceso/dominio/permisos.py` tienen que ser el mismo conjunto; el test falla si alguno de los tres cambia sin que los otros dos lo acompañen. RED: se escribe el test contra el estado de hoy (el `Literal` todavía dice `colaborador | consejo`) y se lo ve fallar por la razón correcta antes de actualizar el cuerpo del endpoint en 4.2/D7. Escenarios: ninguno nuevo (sostiene la consistencia entre D7 y D1). Lecciones: L-019, L-022.
 
