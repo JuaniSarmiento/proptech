@@ -586,3 +586,12 @@ Next recibe `CLERK_SECRET_KEY` desde el entorno (nunca el navegador; la API sigu
 humo se usa una clave de prueba no válida contra Clerk, y la verificación del token sigue siendo sin red con
 claves locales. La clave real vive sólo en `infra/.env` (la carga Juani) y en producción. E8 queda: hablan con
 Clerk el worker (invitaciones) y el servidor de Next (sesión); la API nunca.
+
+
+## E17 · Ingreso con Google (21/10/2026)
+
+Pedido de Juani durante la 8.1: sumar Google como forma de ingresar. Se activó en el panel de Clerk de
+desarrollo (credenciales compartidas de Clerk; producción necesita las propias, change 15). No cambia el
+código del login (el componente de Clerk muestra el botón) ni la regla de aceptación: el email verificado
+tiene que coincidir con el de la invitación (E7). Cambia el aviso de privacidad (Clerk recibe también la foto
+de perfil de Google). Pendiente de la firma de Juani (E17 en la sección Aprobación del proposal).
