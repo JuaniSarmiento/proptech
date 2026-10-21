@@ -68,6 +68,7 @@ _MARCADOR = "marcador-nunca-tendria-que-salir-en-una-respuesta"
 _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     ("/api/sesion/ingreso", "POST"),
     ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
+    ("/api/invitaciones/{invitacion_id}/revocar", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva

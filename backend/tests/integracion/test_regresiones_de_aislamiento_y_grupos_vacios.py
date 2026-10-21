@@ -79,6 +79,8 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             unidad_id=api.unidad,
             grupo_id=grupo_a,
             categoria_id=categoria_a,
+            invitacion_id=uuid4(),
+            asignacion_id=uuid4(),
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
         respuesta = api.cliente.request(

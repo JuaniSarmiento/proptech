@@ -5,6 +5,7 @@ del 3a, sin `dependency_overrides`, y el barrido que dice verlas a todas.
 el override antes de cada pedido para que corra `identidad_actual` de
 producción (`proptech_api/acceso.py`)."""
 
+import uuid
 from typing import Any
 
 import pytest
@@ -23,6 +24,10 @@ def _resolver(api: ApiEdificio, ruta: str) -> str:
         unidad_id=api.unidad,
         grupo_id=api.grupo_ajeno,
         categoria_id=api.categoria_ajena,
+        # 5.6: no hacen falta filas reales acá tampoco — este archivo nunca
+        # llega a tocar la base (prueba justo lo contrario, D7).
+        invitacion_id=uuid.uuid4(),
+        asignacion_id=uuid.uuid4(),
     )
 
 
