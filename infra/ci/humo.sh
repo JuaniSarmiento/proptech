@@ -37,7 +37,7 @@ export PROPTECH_GID
 # en compose.yaml (lo que de verdad hace falta para lo destructivo, como
 # `down -v`, es que no dependa de un archivo que alguien podría tocar).
 compose() {
-  docker compose -p proptech --env-file .env.example "$@"
+  docker compose -p proptech --env-file .env.example -f compose.yaml -f compose.humo.yaml "$@"
 }
 
 STACK_LEVANTADO=0

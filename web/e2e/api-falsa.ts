@@ -9,12 +9,14 @@
  * este archivo como script (`test-web-navegador.sh`) es quien la levanta.
  */
 
+import { verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
+import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
 const _DIR_FIXTURES = join(_AQUI, "../src/lib/api/fixtures");
@@ -157,11 +159,73 @@ const _ERROR_CONTENT_TYPE_INVALIDO = JSON.stringify({
 
 /** Crea el servidor sin levantarlo (`listen()` queda a cargo de quien lo
  * use: así se puede probar sobre un puerto al azar). */
-export function crearServidor(): Server {
+export function crearServidor(
+  configuracion = {
+    jwtKey: process.env.CLERK_JWT_KEY ?? "",
+    origen: process.env.PROPTECH_URL_WEB ?? "http://127.0.0.1:3100",
+  },
+): Server {
   const unidadesCreadas = new Map<string, Json>();
   return createServer((pedido, respuesta) => {
     const url = new URL(pedido.url ?? "/", "http://localhost");
     const partes = url.pathname.split("/").filter(Boolean);
+
+    // L-027: ninguna cookie autentica a la API, ni siquiera en pruebas.
+    let valido = false;
+    try {
+      const bearer = /^Bearer ([^.\s]+\.[^.\s]+\.[^.\s]+)$/.exec(
+        pedido.headers.authorization ?? "",
+      );
+      if (bearer?.[1]) {
+        const [cabecera, cuerpo, firma] = bearer[1].split(".");
+        if (!cabecera || !cuerpo || !firma) throw new Error("formato JWT");
+        const algoritmo = JSON.parse(Buffer.from(cabecera, "base64url").toString());
+        const claims = JSON.parse(Buffer.from(cuerpo, "base64url").toString());
+        const ahora = Date.now() / 1000;
+        valido =
+          algoritmo.alg === "RS256" &&
+          verify(
+            "RSA-SHA256",
+            Buffer.from(`${cabecera}.${cuerpo}`),
+            configuracion.jwtKey,
+            Buffer.from(firma, "base64url"),
+          ) &&
+          typeof claims.exp === "number" &&
+          ahora < claims.exp + 5 &&
+          typeof claims.nbf === "number" &&
+          ahora >= claims.nbf - 5 &&
+          claims.iss === EMISOR &&
+          claims.azp === configuracion.origen &&
+          claims.sub === "user_prueba";
+      }
+    } catch {
+      /* Un 401 uniforme, sin errores del verificador ni credenciales. */
+    }
+    const esSesion = url.pathname === "/api/sesion";
+    const selector = pedido.headers["x-proptech-administracion"];
+    if (!valido || (!esSesion && selector !== undefined && selector !== ADMINISTRACION)) {
+      respuesta.writeHead(401).end();
+      return;
+    }
+    if (esSesion) {
+      if (pedido.method !== "GET") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      respuesta.writeHead(200, { "content-type": "application/json" }).end(
+        JSON.stringify({
+          persona: { nombre: "Persona de prueba" },
+          administraciones: [{ id: ADMINISTRACION, nombre: "Administración de prueba" }],
+        }),
+      );
+      return;
+    }
+    if (url.pathname === "/api/sesion/ingreso") {
+      respuesta
+        .writeHead(pedido.method === "POST" ? 200 : 405, { "content-type": "application/json" })
+        .end("{}");
+      return;
+    }
 
     if (partes[0] === "api" && partes[1] === "__debug" && partes[2] === "ultima-escritura") {
       respuesta

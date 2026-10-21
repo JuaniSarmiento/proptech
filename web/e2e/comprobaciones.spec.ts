@@ -8,8 +8,8 @@
  * el stack).
  */
 
-import { expect, test } from "@playwright/test";
 import { anchoExcedeLaVentana, contornoDeFocoCalculado } from "./comprobaciones";
+import { expect, test } from "./prueba";
 
 test.describe("320 px sin scroll horizontal", () => {
   test("la portada real, servida por next start, entra en 320 px", async ({ page }) => {

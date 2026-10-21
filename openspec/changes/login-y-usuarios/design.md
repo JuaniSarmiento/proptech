@@ -483,14 +483,15 @@ CRITICAL; no alcanza con un interruptor de configuración.
 | `CLERK_PARTES_AUTORIZADAS` | `api`, `web` | No | Orígenes del sitio, separados por comas |
 | `CLERK_EMISOR` | `api` | No | URL exacta del Frontend API de la instancia; obligatoria con clave |
 | `INVITACIONES_CLAVE_CIFRADO` | `api` | **Sí** | 32 bytes en base64, `SecretStr`; obligatoria para invitar; nunca Clerk ni ARQ |
-| `CLERK_SECRET_KEY` | `worker`, `web` | **Sí** | `SecretStr` en el worker; nunca en la API |
+| `CLERK_SECRET_KEY` | `worker`, `web` | **Sí** | Servidor de Next y worker (`SecretStr`); nunca en la API ni el navegador; E16 firmada |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `web` (al construir la imagen) | No | Se inyecta como argumento de construcción |
 | `PROPTECH_URL_PUBLICA` | `worker`, `web` | No | Base de la dirección de regreso de la invitación |
 
 Todas se leen de `infra/.env`, que carga Juani y nunca entra al repo. `infra/.env.example` y la tabla del
-README las nombran sin valores. El CI y el humo arrancan sin `CLERK_JWT_KEY` ni `CLERK_SECRET_KEY` (login
-apagado) y con una clave publicable de prueba con forma válida e inventada, que no es secreta (SUPUESTO
-abajo).
+README las nombran sin valores. E16, firmada por Juani el 21/10/2026: los tests y CI usan en Next
+una `CLERK_SECRET_KEY` ficticia no válida contra Clerk y claves RSA locales para `jwtKey`. El humo
+arranca con login de API apagado (sin `CLERK_JWT_KEY`) y su override de Compose entrega sólo a Next
+la secreta ficticia. La clave publicable de prueba es inventada y nunca pertenece a una instancia.
 
 ## Lo que Juani hace en Clerk (tarea 8.1)
 
@@ -530,9 +531,9 @@ abajo).
   la tarea 8.2: con la web sólo en `aplicacion`, el ingreso real funciona y el log de la web no tiene
   ningún error de conexión hacia `clerk`; si aparece, la web necesita una red de salida (decisión de
   Juani).
-- [Sin claves en el CI] → el login apagado responde 401 como hoy; la web arranca con una clave publicable
-  de prueba. SUPUESTO: `@clerk/nextjs` arranca con una clave publicable con forma válida aunque la
-  instancia no exista; dato que lo discrimina: `humo.sh` en verde con la web sana.
+- [Claves de prueba en CI, E16 firmada] → Next usa una secreta ficticia y `jwtKey` local; el humo
+  conserva el login de API apagado y da a Next una publicable inventada y una secreta ficticia.
+  La instancia de prueba no existe; el humo debe terminar con la web sana.
 - [28 tareas] → D0.
 - [Las pruebas de navegador con sesión] → SUPUESTO: Playwright arma una sesión de prueba poniendo un
   `__session` firmado con la clave local (la misma que recibe `jwtKey` en la corrida de prueba) y un
@@ -577,7 +578,7 @@ ejecuta `assertKey(secretKey)` antes de `authenticateRequest`, así que exige `C
 token se verifica sin red con `jwtKey`; y la CSP automática (6.2) la genera ese mismo middleware. Contradice
 E8 y el supuesto de que el CI y el humo corren sin clave secreta.
 
-Decisión propuesta (pendiente de la firma de Juani, E16 en la sección Aprobación del proposal): el servidor de
+Decisión aprobada por Juani el 21/10/2026 (E16, sección Aprobación del proposal, `2212c9e`): el servidor de
 Next recibe `CLERK_SECRET_KEY` desde el entorno (nunca el navegador; la API sigue sin tenerla). En tests, CI y
 humo se usa una clave de prueba no válida contra Clerk, y la verificación del token sigue siendo sin red con
 claves locales. La clave real vive sólo en `infra/.env` (la carga Juani) y en producción. E8 queda: hablan con

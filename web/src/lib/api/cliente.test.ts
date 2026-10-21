@@ -85,9 +85,11 @@ describe("pedirApi", () => {
     });
   });
 
-  it("401: sin_sesion", async () => {
+  it("401: redirige al ingreso", async () => {
     vi.stubGlobal("fetch", mockFetch({ status: 401, cuerpo: { detail: MARCADOR } }));
-    expect(await pedirApi("/api/complejos")).toEqual({ estado: "sin_sesion" });
+    await expect(pedirApi("/api/complejos")).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("403 con permiso: sin_permiso", async () => {
@@ -189,7 +191,6 @@ describe("pedirApi", () => {
   // cerrado que el cliente sí extrae a propósito (D2) — plantarlo ahí
   // probaría otra cosa, no L-007.
   it.each([
-    ["401", { status: 401, cuerpo: { detail: MARCADOR } }],
     [
       "403",
       {

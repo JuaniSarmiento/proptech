@@ -1,3 +1,5 @@
+import { esES } from "@clerk/localizations";
+import { ClerkProvider } from "@clerk/nextjs";
 import type { ReactNode } from "react";
 import "@fontsource/source-sans-3/400.css";
 import "@fontsource/source-sans-3/600.css";
@@ -11,7 +13,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ClerkProvider localization={esES}>{children}</ClerkProvider>
+      </body>
     </html>
   );
 }

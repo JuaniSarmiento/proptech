@@ -7,8 +7,8 @@
  * axe (son de documento completo); hace falta el navegador real.
  */
 
-import { expect, test } from "@playwright/test";
 import { sinViolacionesEnElNavegador } from "./accesibilidad";
+import { expect, test } from "./prueba";
 
 const _LENTO = "00000000-0000-0000-0000-000000000002"; // escenarios.ts: "lento", responde a los 3s
 

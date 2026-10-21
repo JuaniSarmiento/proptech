@@ -48,6 +48,10 @@ esperar_puerto() {
   exec 3>&- 2>/dev/null || true
 }
 
+# E16: credenciales ficticias y RSA local, también en CI; sin archivos .env.
+# shellcheck source=web/e2e/configurar-clerk.sh
+source e2e/configurar-clerk.sh
+
 corepack pnpm@12.10.1 build
 
 corepack pnpm@12.10.1 exec tsx e2e/api-falsa.ts &
@@ -58,4 +62,4 @@ PORT="$PUERTO_WEB" corepack pnpm@12.10.1 start &
 PID_WEB=$!
 esperar_puerto "$PUERTO_WEB"
 
-corepack pnpm@12.10.1 exec playwright test
+corepack pnpm@12.10.1 exec playwright test "$@"

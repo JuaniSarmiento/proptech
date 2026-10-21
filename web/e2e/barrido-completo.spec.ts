@@ -19,7 +19,6 @@
  * `test-web-navegador.sh --list` o en la salida de la corrida.
  */
 
-import { expect, test } from "@playwright/test";
 import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import {
   anchoExcedeLaVentana,
@@ -27,6 +26,7 @@ import {
   elFocoVolvioAlCuerpo,
 } from "./comprobaciones";
 import { ESCENARIOS } from "./escenarios";
+import { expect, test } from "./prueba";
 
 type Pantalla = {
   clave: string;

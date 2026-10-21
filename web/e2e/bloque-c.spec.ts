@@ -8,8 +8,8 @@
  * por sí solo sin tocar el trabajo de 5.1.
  */
 
-import { expect, test } from "@playwright/test";
 import { anchoExcedeLaVentana } from "./comprobaciones";
+import { expect, test } from "./prueba";
 
 const _ID_NORMAL = "f760ca3b-7331-4927-96e5-54a3fbb1f3ae"; // edificio.json: sin escenario, fixtures sin mutar
 const _ID_VACIO = "00000000-0000-0000-0000-000000000001"; // escenarios.ts: "vacio"

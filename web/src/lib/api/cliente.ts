@@ -8,6 +8,7 @@
  */
 
 import { cabecerasHaciaLaApi } from "../seguimiento";
+import { irAlIngreso, sesionActual } from "../sesion";
 
 export type ErrorDeCampo = { campo: string; motivo: string };
 
@@ -93,7 +94,13 @@ export async function pedirApi<T>(
     return { estado: "fallo" };
   }
 
+  const sesion = await sesionActual();
+  if (!sesion) return irAlIngreso();
   const cabeceras = cabecerasHaciaLaApi(opciones.cabeceras ?? new Headers());
+  cabeceras.set("Authorization", `Bearer ${sesion.token}`);
+  if (sesion.administracionId) {
+    cabeceras.set("X-Proptech-Administracion", sesion.administracionId);
+  }
   if (opciones.cuerpo !== undefined) {
     // R3C-1 (rompedor 3b): sin esto, `fetch` manda un `body` string sin
     // Content-Type declarado y pone `text/plain;charset=UTF-8` (spec
@@ -106,6 +113,7 @@ export async function pedirApi<T>(
   try {
     respuesta = await fetch(`${base}${ruta}`, {
       method: opciones.metodo ?? "GET",
+      cache: "no-store",
       headers: cabeceras,
       body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
     });
@@ -114,7 +122,7 @@ export async function pedirApi<T>(
   }
 
   if (respuesta.status === 401) {
-    return { estado: "sin_sesion" };
+    return irAlIngreso(sesion.regreso);
   }
   if (respuesta.status === 404) {
     return { estado: "no_existe" };

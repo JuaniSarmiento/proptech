@@ -1,0 +1,5 @@
+# E16: exclusivamente para humo.sh. Esta clave inventada no existe en Clerk.
+services:
+  web:
+    environment:
+      CLERK_SECRET_KEY: sk_test_sin_validez_solo_pruebas

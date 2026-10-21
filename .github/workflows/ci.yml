@@ -39,6 +39,9 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
+    env:
+      # E16: inventada, no válida contra Clerk; nunca un secreto real en CI.
+      CLERK_SECRET_KEY: sk_test_sin_validez_solo_pruebas
     # D5: medido en menos de 20s en vitest; sumar el navegador real (3.8:
     # `next build` + Chromium) deja un margen bastante más generoso.
     timeout-minutes: 15

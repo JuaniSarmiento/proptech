@@ -5,7 +5,7 @@
  * el flujo debajo de la tabla pasaron todas las suites anteriores.
  */
 
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "./prueba";
 
 const _ID_NORMAL = "f760ca3b-7331-4927-96e5-54a3fbb1f3ae";
 

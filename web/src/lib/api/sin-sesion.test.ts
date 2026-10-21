@@ -37,30 +37,34 @@ afterAll(async () => {
   await new Promise<void>((ok) => servidor.close(() => ok()));
 });
 
-const MENSAJE_SESION = /sesión expiró/i;
-
-describe("R3C-8 · un 401 en una escritura dice que la sesión expiró, en toda acción", () => {
+describe("R3C-8 · un 401 en una escritura redirige al ingreso, en toda acción", () => {
   it("unidades · crearUnidadAction", async () => {
     const datos = new FormData();
     datos.set("identificador", "1A");
-    const estado = await crearUnidadAction(UUID, null, datos);
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = crearUnidadAction(UUID, null, datos);
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("categorías · crearCategoriaAction (panel)", async () => {
     const datos = new FormData();
     datos.set("clave", "ascensor");
     datos.set("nombre", "Ascensor");
-    const estado = await crearCategoriaAction(UUID, null, datos);
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = crearCategoriaAction(UUID, null, datos);
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("categorías · cambiarEstadoCategoriaAction (lista)", async () => {
     const datos = new FormData();
     datos.set("categoria_id", UUID);
     datos.set("activa", "false");
-    const estado = await cambiarEstadoCategoriaAction(UUID, null, datos);
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = cambiarEstadoCategoriaAction(UUID, null, datos);
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("grupos · crearGrupoAction", async () => {
@@ -68,8 +72,10 @@ describe("R3C-8 · un 401 en una escritura dice que la sesión expiró, en toda 
     datos.set("clave", "ascensor");
     datos.set("nombre", "Ascensor");
     datos.set("metodo", "coeficiente");
-    const estado = await crearGrupoAction(UUID, [], null, datos);
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = crearGrupoAction(UUID, [], null, datos);
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("configuración · crearVersionDeConfiguracionAction", async () => {
@@ -77,12 +83,16 @@ describe("R3C-8 · un 401 en una escritura dice que la sesión expiró, en toda 
     datos.set("dias_de_gracia", "5");
     datos.set("dia_de_vencimiento", "10");
     datos.set("modalidad_de_vencimiento", "unico");
-    const estado = await crearVersionDeConfiguracionAction(UUID, null, datos);
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = crearVersionDeConfiguracionAction(UUID, null, datos);
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 
   it("saldos previos · confirmarSinSaldosPreviosAction", async () => {
-    const estado = await confirmarSinSaldosPreviosAction(UUID, null, new FormData());
-    expect(estado?.erroresDesconocidos.join(" ")).toMatch(MENSAJE_SESION);
+    const estado = confirmarSinSaldosPreviosAction(UUID, null, new FormData());
+    await expect(estado).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 });

@@ -1,5 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
+import { expect, type Page, test } from "./prueba";
+import { cabecerasDePrueba } from "./sesion-local";
 
 const datos = {
   identificador: "NUEVA-3B",
@@ -42,7 +43,9 @@ test("Auditor 4: guarda una unidad por la pantalla y comprueba el JSON recibido 
   await expect(panel).toHaveCount(0);
   await expect(page.getByRole("cell", { name: datos.identificador })).toBeVisible();
   await expect(page.getByRole("button", { name: "Agregar unidad", exact: true })).toBeFocused();
-  const respuesta = await request.get(`${baseApi}/api/__debug/ultima-escritura`);
+  const respuesta = await request.get(`${baseApi}/api/__debug/ultima-escritura`, {
+    headers: cabecerasDePrueba(),
+  });
   expect(respuesta.ok()).toBe(true);
   const escritura = await respuesta.json();
   expect(escritura).toMatchObject({
@@ -79,7 +82,11 @@ for (const [clave, mensaje] of [
       await expect(panel.getByLabel("Coeficiente", { exact: true })).toHaveValue(
         datos.coeficiente.replace(".", ","),
       );
-      const escritura = await (await request.get(`${baseApi}/api/__debug/ultima-escritura`)).json();
+      const escritura = await (
+        await request.get(`${baseApi}/api/__debug/ultima-escritura`, {
+          headers: cabecerasDePrueba(),
+        })
+      ).json();
       expect(escritura.url).toBe(`/api/complejos/${id}/unidades`);
       expect(escritura.contentType).toBe("application/json");
       expect(JSON.parse(escritura.cuerpo)).toEqual(datos);
