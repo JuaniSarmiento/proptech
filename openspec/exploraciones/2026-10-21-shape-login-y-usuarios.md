@@ -91,3 +91,5 @@ Decisión del constructor (21/10/2026, L-030): Personal filtra las asignaciones 
 se muestran en el padrón. El GET /api/personal exige super admin: otros perfiles ven Sin permiso,
 como establece D5; no se amplía su lectura. Se conserva el sistema visual existente; no hacen falta
 probes ni mock nuevos porque el shape cerrado fija composición, componentes y tokens.
+
+OK de los ajustes al construir: **Juani, 21/10/2026**, tal como quedaron en `e74a1d1` y `3f3b0a0` (con el texto corregido de la invitación fallida).
