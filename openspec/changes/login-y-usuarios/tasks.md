@@ -820,6 +820,27 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.
+  **BLOQUEADA (constructor, 21/10/2026):** el SDK real exige una clave secreta antes de
+  verificar `jwtKey`, aun con `__session` RS256 local y `__client_uat` coherente.
+  El design pide CI/humo sin `CLERK_SECRET_KEY`; no invento una clave secreta ni un bypass.
+  Se fijaron sólo las dependencias y se conserva la sonda manual reproducible; no hay integración
+  en producción, encabezados nuevos, acción de selector ni `[x]`. No llegué a Playwright:
+  el requisito previo ya falla dentro de `clerkMiddleware`, antes de alcanzar Next o un handshake.
+  ```text
+  RED $ cd web; date +%T; CLERK_SECRET_KEY= NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= corepack pnpm@12.10.1 exec tsx e2e/sondas/clerk-sin-secreta.ts
+  15:14:44 / Error: @clerk/nextjs: Missing secretKey. (exit 1)
+  GREEN: pendiente; requiere resolver esta contradicción con Juani (L-029/L-030).
+  ```
+  Documentación oficial consultada el 21/10/2026:
+  [Next 16: proxy.ts y opciones jwtKey/authorizedParties/secretKey](https://clerk.com/docs/reference/nextjs/clerk-middleware),
+  [CSP automática, strict, nonce y ClerkProvider dynamic](https://clerk.com/docs/guides/secure/best-practices/csp-headers).
+  Versiones fijadas: `@clerk/nextjs` 7.9.19 y `@clerk/localizations` 4.24.0, instaladas con
+  `corepack pnpm@12.10.1 add --save-exact`. Fuente adicional verificada: el SDK instalado
+  (`dist/esm/server/clerkMiddleware.js`) ejecuta `assertKey(secretKey)` antes de `authenticateRequest`.
+  Controles: `biome ci` (exit 0, un warning previo en `edificios/page.tsx`), `tsc --noEmit`,
+  `ruff check .`, `ruff format --check .` (272 archivos) y `mypy` (248 fuentes) limpios.
+  Regresión de dependencias: `date +%T; bash infra/ci/test-web.sh`, 15:16:04 / 301 passed.
+  Ese verde previo no verifica la integración pendiente ni reemplaza el cierre de L-031.
 - [ ] 6.2 CSP (D4, deuda del 2c): `contentSecurityPolicy` estricta con nonce y las directivas de la documentación de Clerk más `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`; un test lee la cabecera de dos pedidos y exige nonces distintos, ninguna `unsafe-eval` y la lista exacta de directivas (comparada entera, L-022); un test de render de una página autenticada busca el token de prueba y la clave publicable fuera del lugar previsto en el HTML y no lo encuentra. RED: hoy no hay cabecera CSP. Escenarios: `autenticacion-con-clerk` › Política de contenido; › El token no está en la página. Lecciones: L-012, L-022.
 - [ ] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
 
