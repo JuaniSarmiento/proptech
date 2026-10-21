@@ -3,19 +3,26 @@ real muestra el uso de los índices por administración y de
 `ix_invitacion_persona`, sin forzar el planificador.
 
 Escenarios de `gestion-de-usuarios`: Quitar la única asignación; Revocar
-una invitación enviada; El último super admin. Lecciones: L-016.
+una invitación enviada; El último super admin (también en carrera, R2B-2:
+el chequeo bloquea las filas de super admin con `FOR UPDATE` antes de
+contarlas). Lecciones: L-016.
 """
 
 from __future__ import annotations
 
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import psycopg
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import event, text
 
+from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso, quitar_asignacion
+from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.sobres import generar
 from proptech_core.compartido.base_de_datos import abrir_sesion
 
@@ -175,6 +182,91 @@ def test_el_unico_super_admin_no_puede_quitarse_su_asignacion(api_edificio: ApiE
     assert api_edificio.filas(
         "SELECT count(*) FROM asignacion_rol WHERE id=%s", (asignacion_id,)
     ) == [(1,)]
+
+
+def _superusuario_del_contenedor(api_edificio: ApiEdificio) -> psycopg.Connection:
+    c = api_edificio.base.contenedor
+    return psycopg.connect(
+        host=c.get_container_host_ip(),
+        port=c.get_exposed_port(5432),
+        dbname=api_edificio.base.nombre,
+        user=c.username,
+        password=c.password,
+    )
+
+
+def test_dos_quitas_simultaneas_dejan_un_solo_super_admin(api_edificio: ApiEdificio) -> None:
+    """R2B-2 (rompedor 2b): con dos super admins, dos pedidos que se quitan
+    a la vez no tienen que dejar la administración sin ninguno. Para no
+    depender de la suerte del reloj, una conexión de superusuario del
+    contenedor toma `FOR UPDATE` sobre las dos filas primero: los dos
+    pedidos hacen su lectura bloqueada y quedan esperando; al soltar, la
+    intercalación que el código permite queda determinista."""
+    fabrica = api_edificio.app.state.fabrica_de_sesiones
+    segunda = uuid.uuid4()
+    with abrir_sesion(fabrica, api_edificio.admin) as sesion:
+        sesion.execute(
+            text(
+                "INSERT INTO persona (id, administracion_id, nombre) "
+                "VALUES (:id, :admin, 'Segunda super admin')"
+            ),
+            {"id": segunda, "admin": api_edificio.admin},
+        )
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": api_edificio.admin, "persona": segunda},
+        )
+        sesion.commit()
+    filas = api_edificio.filas(
+        "SELECT id, persona_id FROM asignacion_rol WHERE rol='super_admin' ORDER BY id"
+    )
+    assert len(filas) == 2
+    asignaciones: list[uuid.UUID] = [f[0] for f in filas]
+    actores = {f[0]: f[1] for f in filas}
+
+    def _quitar(asignacion: uuid.UUID) -> str:
+        # Cada super admin se quita a sí mismo (o al otro: da igual).
+        identidad = Identidad(api_edificio.admin, actores[asignacion])
+        sesion = abrir_sesion(fabrica, api_edificio.admin)
+        try:
+            quitar_asignacion(sesion, identidad, asignacion, uuid.uuid4())
+        except ConflictoDeAcceso:
+            return "409"
+        finally:
+            sesion.close()
+        return "quitada"
+
+    candado = _superusuario_del_contenedor(api_edificio)
+    try:
+        candado.execute(
+            "SELECT id FROM asignacion_rol WHERE id = ANY(%s) FOR UPDATE", (asignaciones,)
+        )
+        with ThreadPoolExecutor(max_workers=2) as ejecutor:
+            futuros = [ejecutor.submit(_quitar, a) for a in asignaciones]
+            limite = time.monotonic() + 15
+            while time.monotonic() < limite:
+                fila_de_espera = candado.execute(
+                    "SELECT count(*) FROM pg_stat_activity WHERE datname = %s "
+                    "AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()",
+                    (api_edificio.base.nombre,),
+                ).fetchone()
+                assert fila_de_espera is not None
+                (esperando,) = fila_de_espera
+                if esperando >= 2:
+                    break
+                time.sleep(0.05)
+            candado.commit()  # suelta las filas
+            resultados = sorted(f.result(timeout=15) for f in futuros)
+    finally:
+        candado.close()
+
+    restantes = api_edificio.filas("SELECT count(*) FROM asignacion_rol WHERE rol='super_admin'")
+    assert restantes == [(1,)] and resultados == ["409", "quitada"], (
+        f"resultados={resultados}, super admins que quedan={restantes[0][0]}"
+    )
 
 
 def test_explain_el_listado_usa_los_indices_por_administracion_y_de_invitacion(

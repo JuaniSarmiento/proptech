@@ -313,10 +313,18 @@ def quitar_asignacion(
         sesion.rollback()
         raise AsignacionNoEncontrada
     if fila.rol == "super_admin":
-        cantidad_de_super_admins = sesion.execute(
-            text("SELECT count(*) FROM asignacion_rol WHERE rol = 'super_admin'")
-        ).scalar_one()
-        if cantidad_de_super_admins <= 1:
+        # R2B-2: `FOR UPDATE` bloquea las filas de super admin de la
+        # administración ANTES de contarlas (Postgres no admite `FOR
+        # UPDATE` junto a un `count(*)`, así que se cuentan las filas ya
+        # traídas). Sin este bloqueo, dos pedidos que se quitan a la vez
+        # leen el mismo `count` con MVCC (sin candado) y los dos deciden
+        # que queda otro super admin; con el bloqueo, el segundo pedido
+        # espera al `DELETE` (o rollback) del primero y vuelve a contar
+        # sobre lo que de verdad queda.
+        super_admins = sesion.execute(
+            text("SELECT id FROM asignacion_rol WHERE rol = 'super_admin' FOR UPDATE")
+        ).all()
+        if len(super_admins) <= 1:
             sesion.rollback()
             raise ConflictoDeAcceso("super_admin")
     sesion.execute(
