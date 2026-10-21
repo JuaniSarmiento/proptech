@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# RD-2: respaldo real del stack de humo, restaurado aparte y migrado ida/vuelta.
+# RD-2 y 2b/3.3: respaldo del humo restaurado aparte, ida/vuelta hasta 0020.
 # Supuesto del design: no hay producción ni datos reales. Todo lo sembrado es ficticio.
 set -euo pipefail
 
 RAIZ_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ_REPO/infra"
-mkdir -p "$RAIZ_REPO/.git/informes-roles-bloque-a-v2"
-CARPETA_ENSAYO="$(mktemp -d "$RAIZ_REPO/.git/informes-roles-bloque-a-v2/3.5-XXXXXX")"
+mkdir -p "$RAIZ_REPO/.git/informes-login-bloque-a"
+CARPETA_ENSAYO="$(mktemp -d "$RAIZ_REPO/.git/informes-login-bloque-a/3.3-XXXXXX")"
 mkdir "$CARPETA_ENSAYO/respaldos"
 export PROPTECH_DIR_RESPALDOS="$CARPETA_ENSAYO/respaldos"
 PROPTECH_UID="$(id -u)"
@@ -82,6 +82,10 @@ DO $$ BEGIN
  THEN RAISE EXCEPTION 'se filtró otra administración'; END IF;
 END $$;
 SELECT 'A',rol,count(*) FROM asignacion_rol GROUP BY rol ORDER BY rol;
+SELECT 'A','tabla:persona',count(*) FROM persona
+ UNION ALL SELECT 'A','tabla:complejo',count(*) FROM complejo
+ UNION ALL SELECT 'A','tabla:unidad',count(*) FROM unidad
+ UNION ALL SELECT 'A','tabla:asignacion_rol',count(*) FROM asignacion_rol;
 SELECT set_config('app.administracion_id','10000000-0000-0000-0000-000000000002',true) AS tenant \gset
 DO $$ BEGIN
  IF EXISTS (SELECT 1 FROM asignacion_rol
@@ -89,6 +93,10 @@ DO $$ BEGIN
  THEN RAISE EXCEPTION 'se filtró otra administración'; END IF;
 END $$;
 SELECT 'B',rol,count(*) FROM asignacion_rol GROUP BY rol ORDER BY rol;
+SELECT 'B','tabla:persona',count(*) FROM persona
+ UNION ALL SELECT 'B','tabla:complejo',count(*) FROM complejo
+ UNION ALL SELECT 'B','tabla:unidad',count(*) FROM unidad
+ UNION ALL SELECT 'B','tabla:asignacion_rol',count(*) FROM asignacion_rol;
 COMMIT;
 SQL
 }
@@ -102,6 +110,8 @@ modo, archivo = sys.argv[1:]
 esperados = ({"titular": 1, "colaborador": 2, "consejo": 1, "vecino": 1}
              if modo == "legado" else
              {"super_admin": 1, "administrador": 1, "auxiliar": 1, "consejo": 1, "vecino": 1})
+esperados.update({"tabla:persona": 5, "tabla:complejo": 2, "tabla:unidad": 2,
+                  "tabla:asignacion_rol": 5})
 filas = Path(archivo).read_text().splitlines()
 obtenido = sorted(filas)
 esperado = sorted(f"{tenant}|{rol}|{n}" for tenant in ("A", "B") for rol,n in esperados.items())
@@ -146,7 +156,7 @@ verificar_conteos legado "$CARPETA_ENSAYO/antes.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
 
 migrar_restaurada upgrade head
-verificar_revision 0018
+verificar_revision 0020
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
 migrar_restaurada downgrade 0016
@@ -155,7 +165,7 @@ conteos proptech_restauracion "$CARPETA_ENSAYO/downgrade.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/downgrade.txt"
 cmp "$CARPETA_ENSAYO/antes.txt" "$CARPETA_ENSAYO/downgrade.txt"
 migrar_restaurada upgrade head # segundo upgrade
-verificar_revision 0018
+verificar_revision 0020
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"

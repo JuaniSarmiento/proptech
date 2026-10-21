@@ -245,7 +245,64 @@ la cuenta de Clerk (8.1).
   y al head de Alembic; las comparaciones siguen siendo de conjuntos exactos, sin sumar permisos.
   Las migraciones mantienen listas literales independientes del enum vivo.
 
-- [ ] 3.3 Vuelta atrás, búsqueda y ensayo (DBA): `downgrade` de 0020 y de 0019 deja el catálogo de `persona`, `accion_de_auditoria` y las políticas igual que antes del `upgrade`, comparado entero, incluidos índices, restricciones y permisos de `invitacion` (ausente al bajar, restaurada al subir), con `vence NOT NULL` (L-022); 0019 borra primero la política, después el único y al final la columna; el `downgrade` de 0020 falla sin tocar nada si hay una fila de auditoría con un valor nuevo; `rg` de todo `INSERT` a `persona` y a `accion_de_auditoria` en el repositorio entero, incluidos `infra/ci/humo.sh` y `openspec/changes/acceso-de-desarrollo/` (L-023), con la lista en el informe; y el ensayo `upgrade`/`downgrade`/`upgrade` sobre la copia restaurada del humo, con los pasos del Migration Plan del 2.2a, comparando conteos por administración. RED: una copia del `downgrade` que borra la columna antes que la política falla por la dependencia; una que omite un índice o permiso al subir deja el catálogo distinto y la comparación lo nombra. Escenarios: ninguno nuevo (sostiene la forma de la base). Lecciones: L-013, L-022, L-023.
+- [x] 3.3 Vuelta atrás, búsqueda y ensayo (DBA): `downgrade` de 0020 y de 0019 deja el catálogo de `persona`, `accion_de_auditoria` y las políticas igual que antes del `upgrade`, comparado entero, incluidos índices, restricciones y permisos de `invitacion` (ausente al bajar, restaurada al subir), con `vence NOT NULL` (L-022); 0019 borra primero la política, después el único y al final la columna; el `downgrade` de 0020 falla sin tocar nada si hay una fila de auditoría con un valor nuevo; `rg` de todo `INSERT` a `persona` y a `accion_de_auditoria` en el repositorio entero, incluidos `infra/ci/humo.sh` y `openspec/changes/acceso-de-desarrollo/` (L-023), con la lista en el informe; y el ensayo `upgrade`/`downgrade`/`upgrade` sobre la copia restaurada del humo, con los pasos del Migration Plan del 2.2a, comparando conteos por administración. RED: una copia del `downgrade` que borra la columna antes que la política falla por la dependencia; una que omite un índice o permiso al subir deja el catálogo distinto y la comparación lo nombra. Escenarios: ninguno nuevo (sostiene la forma de la base). Lecciones: L-013, L-022, L-023.
+
+  ```text
+  RED ensayo $ cd backend; date +%T; uv run pytest tests/infra/test_ensayo_login.py -q
+  10:37:03
+  AssertionError: ['0018', '0018'] != ['0020', '0020']; 1 failed in 0.12s
+  RED catálogo $ date +%T; python3 .atl/bloque-a/mutar-catalogo.py orden indice permiso
+  10:37:50 (pytest con plugin local: aplica la copia después del setup y la foto inicial válida)
+  ```
+  Copias previas propias y diff real; los originales se restauran byte a byte en `finally` (L-013).
+  Cada mutante corre `uv run pytest -p plugin_catalogo tests/integracion/test_reversion_login.py::test_catalogo_completo_en_cada_revision_y_segundo_upgrade -q -s`:
+
+  ```diff
+  # 10:37:58, mover la columna al principio de downgrade (antes de política y único)
+  +    op.drop_column("persona", "clerk_usuario_id")
+       op.execute("DROP POLICY persona_por_identidad_clerk ON persona")
+  -    op.drop_column("persona", "clerk_usuario_id")
+  # DependentObjectsStillExist: policy persona_por_identidad_clerk depends on column clerk_usuario_id
+  # 1 failed in 8.11s
+  # 10:38:07, omitir el índice sólo después de tomar la foto completa original
+  -    op.create_index("ix_invitacion_persona", "invitacion", ["administracion_id", "persona_id"])
+  # AssertionError: Catálogo distinto: invitacion.indice.ix_invitacion_persona
+  # 1 failed in 9.24s
+  # 10:38:17, omitir el permiso efectivo tras los grants por defecto y explícito
+  +    op.execute("REVOKE UPDATE ON invitacion FROM proptech_app")
+  # AssertionError: Catálogo distinto: invitacion.permiso.proptech_app.UPDATE
+  # 1 failed in 10.09s
+  ```
+
+  ```text
+  GREEN $ cd backend; date +%T; uv run pytest tests/integracion/test_reversion_login.py tests/infra/test_ensayo_login.py -q
+  10:38:49
+  3 passed in 12.68s
+  GREEN ensayo $ git rev-parse HEAD; date +%T; bash infra/ci/ensayo-roles.sh
+  fc9fce663b6ae5d1bb636358412a581ba3c54427 / 10:40:11
+  REVISION RESTAURADA: 0020
+  REVISION RESTAURADA: 0016
+  REVISION RESTAURADA: 0020
+  Conteos de ambas administraciones antes/tras downgrade: titular=1, colaborador=2, consejo=1, vecino=1.
+  En ambos upgrades: super_admin=1, administrador=1, auxiliar=1, consejo=1, vecino=1 por administración.
+  En todos los pasos: persona=5, complejo=2, unidad=2, asignacion_rol=5 por administración; cmp iguales.
+  Informe del ensayo: .git/informes-login-bloque-a/3.3-NwDDCa
+  Exit 0; limpieza de proptech terminada (contenedores, volúmenes y redes del ensayo retirados).
+  $ date +%T; cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:42:05
+  All checks passed! / 242 files already formatted
+  Success: no issues found in 218 source files
+  ```
+  El catálogo compara columnas/defaults/NULL, restricciones, índices, ACL completas, triggers,
+  propietarios y todas las políticas de public; excluye sólo identificadores y huecos físicos de
+  columnas borradas. El caso con auditoría confirma FK, catálogo, revisión y filas sin cambios.
+  Búsqueda de 10:39:36: 25 archivos / 47 coincidencias; lista y líneas completas en
+  [evidencia-inserts.md](evidencia-inserts.md), incluidos los chequeos explícitos sin INSERT del humo
+  y de `acceso-de-desarrollo`. No requirieron cambios. `bash -n` pasa; `shellcheck` no está instalado.
+  Supuesto del design, no verificado fuera de las pruebas: no hay producción ni datos reales.
+  Decisión del constructor (L-030/L-031): la evidencia de cierre se agrega debajo después de este
+  commit; quedará sin un commit posterior para conservar ambas suites después del último SHA.
+
 
 ## 4. La identidad en la API
 
