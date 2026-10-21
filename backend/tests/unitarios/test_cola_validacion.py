@@ -29,7 +29,10 @@ _AJUSTES_SIN_USAR = RedisSettings(host="redis-no-se-usa.invalid", port=1)
 
 async def _encolar(**datos: Any) -> None:
     cola = AdaptadorColaArq(_AJUSTES_SIN_USAR)
-    base = {"clave": "clave-valida", "request_id": "3f2c1a00-0001-4001-8001-000000000001"}
+    base: dict[str, Any] = {
+        "clave": "clave-valida",
+        "request_id": "3f2c1a00-0001-4001-8001-000000000001",
+    }
     base.update(datos)
     await cola.encolar("tarea_de_prueba", **base)
 

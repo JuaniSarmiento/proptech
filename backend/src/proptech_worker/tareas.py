@@ -7,14 +7,22 @@ fuera de rango; Sin ruta pública para la tarea de prueba.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Protocol
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from sqlalchemy import text
 
+from proptech_core.acceso.adaptadores.clerk_http import ClerkNoDisponible, ClerkRechazoDefinitivo
+from proptech_core.acceso.puertos import ClienteDeClerk
+from proptech_core.compartido.base_de_datos import abrir_sesion
 from proptech_core.compartido.cola import ResultadoEncolado
 from proptech_core.compartido.idempotencia import ejecutar_una_vez
 from proptech_core.compartido.reintentos import ErrorPasajero, reintentable
 from proptech_core.compartido.seguimiento import con_seguimiento_de_tarea
+
+_logger_invitaciones = logging.getLogger("proptech_worker.tareas.invitaciones")
 
 #: Nombre de la tarea tal como queda registrada en ARQ y en `trabajos_hechos`.
 NOMBRE_TAREA_DE_PRUEBA = "tarea_de_prueba"
@@ -148,3 +156,234 @@ async def tarea_de_prueba(
         asyncio.to_thread(_registrar_en_un_hilo, fabrica, clave=clave, request_id=request_id),
         timeout=COTA_OPERACION_S,
     )
+
+
+# --- 2b, tarea 5.4: el worker habla con Clerk (D7) ------------------------
+#
+# `enviar_invitacion` y `revocar_invitacion_en_clerk` son las primeras
+# tareas con un efecto real (D7, nota de `COTA_OPERACION_S` arriba): la
+# idempotencia no es la de `ejecutar_una_vez` (una clave en
+# `trabajos_hechos`), sino la del propio estado de `invitacion` (D3, D7):
+# sólo se llama a Clerk si la fila sigue `pendiente`, y el `UPDATE` que la
+# mueve de estado exige ese mismo `pendiente` en el `WHERE`, así que un
+# trabajo repetido después de que la fila ya cambió no vuelve a llamar al
+# servidor ni a pisar un estado posterior.
+
+
+def _uuid_desde_texto(valor: Any) -> Any:
+    """Los dos ids llegan como texto (D2: la cola nunca transporta tipos
+    propios, cola.py). En modo estricto pydantic rechaza convertir un texto
+    a `UUID` (exige una instancia ya hecha); este validador lo intenta
+    ANTES de esa comprobación: si no es texto, lo deja pasar tal cual (un
+    `int` o un `bool` siguen rechazados por el chequeo estricto de tipo,
+    nunca por éste), y si es texto mal formado, `UUID()` levanta su propio
+    `ValueError`, que pydantic envuelve nombrando el campo."""
+    return UUID(valor) if isinstance(valor, str) else valor
+
+
+class _ArgumentosEnviarInvitacion(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    administracion_id: UUID
+    invitacion_id: UUID
+    sobre: str = Field(min_length=1)
+
+    _ids_desde_texto = field_validator("administracion_id", "invitacion_id", mode="before")(
+        _uuid_desde_texto
+    )
+
+
+class _ArgumentosRevocarInvitacion(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    administracion_id: UUID
+    invitacion_id: UUID
+
+    _ids_desde_texto = field_validator("administracion_id", "invitacion_id", mode="before")(
+        _uuid_desde_texto
+    )
+
+
+def _leer_invitacion_para_enviar(
+    fabrica: Any, *, administracion_id: UUID, invitacion_id: UUID
+) -> str | None:
+    """El email de la persona si la invitación sigue `pendiente` bajo el
+    tenant (D7, 2a); `None` si no existe (id ajeno o de otra administración,
+    RLS da cero filas) o si ya no está `pendiente` (ya enviada, revocada o
+    repetida)."""
+    with abrir_sesion(fabrica, administracion_id) as sesion:
+        fila = sesion.execute(
+            text(
+                "SELECT i.estado, p.email FROM invitacion i "
+                "JOIN persona p ON p.administracion_id = i.administracion_id "
+                "AND p.id = i.persona_id "
+                "WHERE i.id = :invitacion AND i.administracion_id = :admin"
+            ),
+            {"invitacion": str(invitacion_id), "admin": str(administracion_id)},
+        ).first()
+        sesion.rollback()
+    if fila is None or fila.estado != "pendiente":
+        return None
+    email: str = fila.email
+    return email
+
+
+def _marcar_invitacion_enviada_o_fallida(
+    fabrica: Any,
+    *,
+    administracion_id: UUID,
+    invitacion_id: UUID,
+    estado: str,
+    clerk_invitacion_id: str | None,
+) -> None:
+    """Sólo mueve la fila si TODAVÍA está `pendiente` (D7): un trabajo
+    repetido que llegó a llamar a Clerk dos veces (no debería, por la
+    lectura de arriba, pero el `WHERE` es el candado real) no pisa un
+    estado que un intento anterior ya haya fijado."""
+    with abrir_sesion(fabrica, administracion_id) as sesion:
+        sesion.execute(
+            text(
+                "UPDATE invitacion SET estado=:estado, clerk_invitacion_id=:clerk_id "
+                "WHERE id=:invitacion AND administracion_id=:admin AND estado='pendiente'"
+            ),
+            {
+                "estado": estado,
+                "clerk_id": clerk_invitacion_id,
+                "invitacion": str(invitacion_id),
+                "admin": str(administracion_id),
+            },
+        )
+        sesion.commit()
+
+
+@con_seguimiento_de_tarea
+@reintentable
+async def enviar_invitacion(
+    ctx: dict[str, Any],
+    *,
+    request_id: str,
+    clave: str,
+    administracion_id: Any,
+    invitacion_id: Any,
+    sobre: Any,
+    **datos: Any,
+) -> bool:
+    """`enviar_invitacion(administracion_id, invitacion_id, sobre)` (D7):
+    nunca recibe ni transporta el email ni el token crudo; el email sale de
+    la base, bajo el tenant, y el sobre viaja sin abrirse hacia
+    `redirect_url`. 4xx (salvo 429) definitivo → `fallida`, sin reintento;
+    429, 5xx o sin respuesta → `ErrorPasajero`, reintentable."""
+    try:
+        argumentos = _ArgumentosEnviarInvitacion(
+            administracion_id=administracion_id, invitacion_id=invitacion_id, sobre=sobre
+        )
+    except ValidationError as error:
+        campo = error.errors()[0]["loc"][0]
+        raise ArgumentoDeTareaInvalido(f"enviar_invitacion: {campo}") from None
+
+    fabrica = ctx["fabrica_de_sesiones"]
+    email = await asyncio.to_thread(
+        _leer_invitacion_para_enviar,
+        fabrica,
+        administracion_id=argumentos.administracion_id,
+        invitacion_id=argumentos.invitacion_id,
+    )
+    if email is None:
+        _logger_invitaciones.info("invitacion_no_pendiente", extra={"tarea": "enviar_invitacion"})
+        return True
+
+    clerk: ClienteDeClerk = ctx["clerk"]
+    configuracion = ctx["configuracion_app"]
+    dias = ctx["parametros"].invitaciones.vencimiento_dias
+    redirect_url = f"{configuracion.proptech_url_publica}/invitacion/{sobre}"
+    try:
+        clerk_invitacion_id = await clerk.invitar(
+            email=email, redirect_url=redirect_url, expires_in_days=dias
+        )
+    except ClerkRechazoDefinitivo:
+        await asyncio.to_thread(
+            _marcar_invitacion_enviada_o_fallida,
+            fabrica,
+            administracion_id=argumentos.administracion_id,
+            invitacion_id=argumentos.invitacion_id,
+            estado="fallida",
+            clerk_invitacion_id=None,
+        )
+        return False
+    except ClerkNoDisponible as error:
+        raise ErrorPasajero("clerk no disponible") from error
+
+    await asyncio.to_thread(
+        _marcar_invitacion_enviada_o_fallida,
+        fabrica,
+        administracion_id=argumentos.administracion_id,
+        invitacion_id=argumentos.invitacion_id,
+        estado="enviada",
+        clerk_invitacion_id=clerk_invitacion_id,
+    )
+    return True
+
+
+def _leer_clerk_id_para_revocar(
+    fabrica: Any, *, administracion_id: UUID, invitacion_id: UUID
+) -> str | None:
+    """El `clerk_invitacion_id` de la fila bajo el tenant (D7, 2a); `None`
+    si la fila no existe (id ajeno) o si nunca se llegó a enviar (no hay
+    nada que revocar en Clerk: el estado ya quedó `revocada` en la base por
+    la misma transacción que generó este trabajo)."""
+    with abrir_sesion(fabrica, administracion_id) as sesion:
+        fila = sesion.execute(
+            text(
+                "SELECT clerk_invitacion_id FROM invitacion "
+                "WHERE id=:invitacion AND administracion_id=:admin"
+            ),
+            {"invitacion": str(invitacion_id), "admin": str(administracion_id)},
+        ).first()
+        sesion.rollback()
+    if fila is None:
+        return None
+    clerk_id: str | None = fila.clerk_invitacion_id
+    return clerk_id
+
+
+@con_seguimiento_de_tarea
+@reintentable
+async def revocar_invitacion_en_clerk(
+    ctx: dict[str, Any],
+    *,
+    request_id: str,
+    clave: str,
+    administracion_id: Any,
+    invitacion_id: Any,
+    **datos: Any,
+) -> bool:
+    """`revocar_invitacion_en_clerk(administracion_id, invitacion_id)` (D7):
+    la fila ya quedó `revocada` en la base (5.2, misma transacción que la
+    reinvitación); esta tarea sólo avisa a Clerk si llegó a enviarse."""
+    try:
+        argumentos = _ArgumentosRevocarInvitacion(
+            administracion_id=administracion_id, invitacion_id=invitacion_id
+        )
+    except ValidationError as error:
+        raise ArgumentoDeTareaInvalido(
+            f"revocar_invitacion_en_clerk: {error.errors()[0]['loc'][0]}"
+        ) from None
+
+    fabrica = ctx["fabrica_de_sesiones"]
+    clerk_invitacion_id = await asyncio.to_thread(
+        _leer_clerk_id_para_revocar,
+        fabrica,
+        administracion_id=argumentos.administracion_id,
+        invitacion_id=argumentos.invitacion_id,
+    )
+    if clerk_invitacion_id is None:
+        return True
+
+    clerk: ClienteDeClerk = ctx["clerk"]
+    try:
+        await clerk.revocar(clerk_invitacion_id)
+    except ClerkRechazoDefinitivo:
+        return False
+    except ClerkNoDisponible as error:
+        raise ErrorPasajero("clerk no disponible") from error
+    return True

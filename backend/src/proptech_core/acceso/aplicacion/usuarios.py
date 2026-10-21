@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from proptech_core.acceso.aplicacion.auditoria import registrar
-from proptech_core.acceso.aplicacion.entrega import crear_invitacion, encolar_envio
+from proptech_core.acceso.aplicacion.entrega import EXPIRA_EN_S, crear_invitacion, encolar_envio
 from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.puertos import ColaDeInvitaciones
@@ -134,6 +134,7 @@ async def encolar_alta(
             "revocar_invitacion_en_clerk",
             clave=f"revocar:{id_}",
             request_id=str(request_id),
+            expira_en_s=EXPIRA_EN_S,
             administracion_id=str(identidad.administracion_id),
             invitacion_id=str(id_),
         )

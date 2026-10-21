@@ -39,6 +39,11 @@ def crear_invitacion(
     return id_, sobre
 
 
+#: Retención ARQ del trabajo (D7, RB2b-7): si nunca corre, expira a la hora;
+#: un intento ya iniciado puede retenerlo hasta `job_timeout` más (30 s).
+EXPIRA_EN_S = 3600
+
+
 async def encolar_envio(
     cola: ColaDeInvitaciones, admin: UUID, invitacion: UUID, sobre: str, request_id: UUID
 ) -> None:
@@ -46,6 +51,7 @@ async def encolar_envio(
         "enviar_invitacion",
         clave=f"invitacion:{invitacion}",
         request_id=str(request_id),
+        expira_en_s=EXPIRA_EN_S,
         administracion_id=str(admin),
         invitacion_id=str(invitacion),
         sobre=sobre,

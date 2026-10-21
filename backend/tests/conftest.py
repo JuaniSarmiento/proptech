@@ -116,6 +116,11 @@ def ajustes_del_worker(
     os.environ["REDIS_PORT"] = str(redis_contenedor.get_exposed_port(6379))
     os.environ["REDIS_PASSWORD"] = REDIS_PASSWORD_DE_PRUEBA
     os.environ["PROPTECH_PARAMETROS"] = str(parametros_del_repo)
+    # D7 (2b, tarea 5.4): el worker exige las dos al arrancar; nunca una
+    # clave real, nunca contra `api.clerk.com` (los tests del adaptador
+    # usan `base_url` propia, nunca esta variable).
+    os.environ["CLERK_SECRET_KEY"] = "sk_test_no_real_0000000000000000000000"
+    os.environ["PROPTECH_URL_PUBLICA"] = "https://proptech-test.invalid"
 
     return importlib.import_module("proptech_worker.ajustes")
 
@@ -145,12 +150,25 @@ async def cola_de_prueba_aislada(
     )
 
     class _ColaAislada:
-        async def encolar(self, tarea: str, *, clave: str, request_id: str, **datos: Any) -> object:
+        async def encolar(
+            self,
+            tarea: str,
+            *,
+            clave: str,
+            request_id: str,
+            expira_en_s: int | None = None,
+            **datos: Any,
+        ) -> object:
             from proptech_core.compartido.cola import ResultadoEncolado, validar_datos
 
             validar_datos(datos)
             resultado = await pool.enqueue_job(
-                tarea, _job_id=clave, request_id=request_id, clave=clave, **datos
+                tarea,
+                _job_id=clave,
+                _expires=expira_en_s,
+                request_id=request_id,
+                clave=clave,
+                **datos,
             )
             return (
                 ResultadoEncolado.YA_ENCOLADO if resultado is None else ResultadoEncolado.ENCOLADO

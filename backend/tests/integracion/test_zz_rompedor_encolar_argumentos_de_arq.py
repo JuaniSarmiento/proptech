@@ -6,6 +6,7 @@ genera uno al azar (se pierde la deduplicación), y cualquier
 """
 
 import uuid
+from typing import Any
 
 import pytest
 from arq.connections import RedisSettings
@@ -45,11 +46,12 @@ async def test_un_dato_con_nombre_de_opcion_de_arq_se_rechaza(
     redis_contenedor: DockerContainer, opcion: str
 ) -> None:
     cola = _cola(redis_contenedor)
+    extra: dict[str, Any] = {opcion: "arq:queue:nadie" if opcion == "_queue_name" else 1}
     with pytest.raises(ValueError):
         await cola.encolar(
             "tarea_de_prueba",
             clave=f"opcion-{uuid.uuid4()}",
             request_id=_RID,
             fallar_veces=0,
-            **{opcion: "arq:queue:nadie" if opcion == "_queue_name" else 1},
+            **extra,
         )

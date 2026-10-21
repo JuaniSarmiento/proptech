@@ -158,7 +158,13 @@ class AdaptadorColaArq:
         return self._pool
 
     async def encolar(
-        self, tarea: str, *, clave: str, request_id: str, **datos: Any
+        self,
+        tarea: str,
+        *,
+        clave: str,
+        request_id: str,
+        expira_en_s: int | None = None,
+        **datos: Any,
     ) -> ResultadoEncolado:
         _validar_clave(clave)
         _validar_nombres_de_datos(datos)
@@ -170,7 +176,12 @@ class AdaptadorColaArq:
             async with asyncio.timeout(PLAZO_ENCOLADO_S):
                 pool = await self._obtener_pool()
                 resultado = await pool.enqueue_job(
-                    tarea, _job_id=clave, request_id=request_id, clave=clave, **datos
+                    tarea,
+                    _job_id=clave,
+                    _expires=expira_en_s,
+                    request_id=request_id,
+                    clave=clave,
+                    **datos,
                 )
         except (TimeoutError, redis.exceptions.RedisError, OSError) as error:
             # Se descarta el pool: el próximo encolado reconecta en vez de

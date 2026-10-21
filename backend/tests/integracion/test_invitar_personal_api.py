@@ -82,6 +82,7 @@ def test_super_admin_invita(
         "tarea",
         "clave",
         "request_id",
+        "expira_en_s",
         "administracion_id",
         "invitacion_id",
         "sobre",

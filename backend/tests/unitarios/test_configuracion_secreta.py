@@ -92,8 +92,14 @@ def test_url_sqlalchemy_sigue_devolviendo_la_contrasena_real(
 def test_get_secret_value_solo_aparece_en_configuracion_o_conexion_redis() -> None:
     """D18: el valor real de un secreto se lee sólo en el borde. Recorre el
     código fuente y exige que `get_secret_value` no aparezca en ningún otro
-    archivo (p.ej. en `salud.py` o en un router)."""
-    archivos_permitidos = {"configuracion.py", "conexion_redis.py"}
+    archivo (p.ej. en `salud.py` o en un router).
+
+    `sobres.py` (D6, cambio 2b) y `clerk_http.py` (D7, cambio 2b tarea 5.4)
+    son también borde: cifran/descifran el sobre de la invitación y
+    autentican contra Clerk respectivamente, y ninguno de los dos existía
+    cuando se escribió esta lista (deuda pre-existente, nunca actualizada
+    en 5.2)."""
+    archivos_permitidos = {"configuracion.py", "conexion_redis.py", "sobres.py", "clerk_http.py"}
     ofensores = []
     for archivo in RAIZ_SRC.rglob("*.py"):
         if archivo.name in archivos_permitidos:

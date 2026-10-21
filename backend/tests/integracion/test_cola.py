@@ -7,6 +7,7 @@ L-007.
 
 import json
 import uuid
+from typing import Any
 
 import pytest
 import redis.asyncio as redis_asincronico
@@ -120,7 +121,7 @@ async def test_argumento_float_o_decimal_se_rechaza_antes_de_tocar_redis(
     redis_contenedor: DockerContainer,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: object,
-    datos: dict[str, object],
+    datos: dict[str, Any],
     fragmento_esperado: str,
 ) -> None:
     configuracion = _configuracion(monkeypatch, tmp_path, redis_contenedor)

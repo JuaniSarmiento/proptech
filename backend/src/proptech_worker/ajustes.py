@@ -14,6 +14,9 @@ import sys
 from types import TracebackType
 from typing import Any
 
+import arq
+
+from proptech_core.acceso.adaptadores.clerk_http import AdaptadorClerkHttp
 from proptech_core.compartido.base_de_datos import (
     RolDeAplicacionInseguro,
     crear_engine,
@@ -29,7 +32,7 @@ from proptech_core.compartido.configuracion import Configuracion, ConfiguracionI
 from proptech_core.compartido.logs import FormateadorJSON, configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.compartido.reintentos import PoliticaReintentos
-from proptech_worker.tareas import tarea_de_prueba
+from proptech_worker.tareas import enviar_invitacion, revocar_invitacion_en_clerk, tarea_de_prueba
 
 _logger = logging.getLogger("proptech_worker.ajustes")
 
@@ -145,7 +148,15 @@ try:
 except ConfiguracionInvalida as _error_de_arranque:
     _logger.error("arranque_fallido", extra={"causa": str(_error_de_arranque)})
     raise
-leer_parametros(_configuracion.proptech_parametros)
+_PARAMETROS = leer_parametros(_configuracion.proptech_parametros)
+
+# D7 (2b, tarea 5.4): sin estas dos el worker no puede armar `redirect_url`
+# ni autenticarse contra Clerk; faltan rápido, igual que el resto de D11,
+# antes de que ARQ intente conectarse a Redis.
+if _configuracion.clerk_secret_key is None or _configuracion.proptech_url_publica is None:
+    _causa = "Falta configurar: CLERK_SECRET_KEY, PROPTECH_URL_PUBLICA"
+    _logger.error("arranque_fallido", extra={"causa": _causa})
+    raise ConfiguracionInvalida(_causa)
 
 #: Espera base e intentos máximos de producción (D3): 2, 4, 8, 16 s.
 POLITICA_DE_PRODUCCION = PoliticaReintentos()
@@ -212,6 +223,14 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     ctx["engine"] = engine
     ctx["fabrica_de_sesiones"] = fabrica
     ctx["politica"] = POLITICA_DE_PRODUCCION
+    # D7 (2b, tarea 5.4): la clave vive sólo en el worker, nunca en la API.
+    # El arranque ya exigió que no sea `None` (arriba); sin ese chequeo acá
+    # mypy no puede angostar el tipo a `SecretStr`.
+    if _configuracion.clerk_secret_key is None:  # pragma: no cover - ya lo exigió el arranque
+        raise ConfiguracionInvalida("Falta configurar: CLERK_SECRET_KEY")
+    ctx["clerk"] = AdaptadorClerkHttp(_configuracion.clerk_secret_key)
+    ctx["configuracion_app"] = _configuracion
+    ctx["parametros"] = _PARAMETROS
 
 
 async def on_shutdown(ctx: dict[str, Any]) -> None:
@@ -225,7 +244,22 @@ class AjustesDelWorker:
     atributos de clase (`arq.worker.get_kwargs`) para construir el
     `arq.Worker`."""
 
-    functions = (tarea_de_prueba,)
+    functions = (
+        tarea_de_prueba,
+        # D7 (2b, tarea 5.4): `job_timeout=30` y `keep_result=0` propios,
+        # distintos del default del worker (120 y 3600): nada de lo que
+        # Clerk devuelve se conserva como resultado del trabajo.
+        #
+        # `arq.func` tipa su primer argumento como `WorkerCoroutine`, un
+        # `Protocol` que además exige el atributo `__qualname__: str`; la
+        # pila `@con_seguimiento_de_tarea`/`@reintentable` devuelve
+        # `Callable[..., Awaitable[R]]` (genérico, D3), un tipo abstracto
+        # que no expone esa clase de atributo aunque la función real sí lo
+        # tenga en tiempo de ejecución (es la misma función de
+        # `tarea_de_prueba`, de ahí abajo, sin pasar por `arq.func`).
+        arq.func(enviar_invitacion, timeout=30, keep_result=0),  # type: ignore[arg-type]
+        arq.func(revocar_invitacion_en_clerk, timeout=30, keep_result=0),  # type: ignore[arg-type]
+    )
     #: El worker reintenta más que la API al conectar a Redis (D4): un
     #: reinicio de Redis no tiene por qué tirar abajo los trabajos ya
     #: tomados.
