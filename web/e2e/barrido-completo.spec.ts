@@ -83,6 +83,14 @@ for (const pantalla of _PANTALLAS_POR_EDIFICIO) {
           await page.setViewportSize({ width: ancho, height: 900 });
           const respuesta = await page.goto(pantalla.ruta(escenario.id));
           expect(respuesta?.status() ?? 0, "no puede ser un 5xx").toBeLessThan(500);
+          if (escenario.clave === "sin_sesion_401") {
+            // 2b/6.1: se abandona esta pantalla. Ingreso y su accesibilidad son del grupo 7.
+            await expect(page).toHaveURL(/\/ingresar\?/);
+            expect(new URL(page.url()).searchParams.get("regreso")).toBe(
+              pantalla.ruta(escenario.id),
+            );
+            return;
+          }
           await page.waitForLoadState("networkidle");
 
           expect(

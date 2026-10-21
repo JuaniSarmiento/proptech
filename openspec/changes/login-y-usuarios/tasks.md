@@ -874,8 +874,71 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   15:51:52 / All checks passed! / 273 files already formatted / no issues found in 249 source files
   ```
   `biome ci` exit 0 (único warning previo en edificios/page.tsx) y `tsc --noEmit` exit 0.
-- [ ] 6.2 CSP (D4, deuda del 2c): `contentSecurityPolicy` estricta con nonce y las directivas de la documentación de Clerk más `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`; un test lee la cabecera de dos pedidos y exige nonces distintos, ninguna `unsafe-eval` y la lista exacta de directivas (comparada entera, L-022); un test de render de una página autenticada busca el token de prueba y la clave publicable fuera del lugar previsto en el HTML y no lo encuentra. RED: hoy no hay cabecera CSP. Escenarios: `autenticacion-con-clerk` › Política de contenido; › El token no está en la página. Lecciones: L-012, L-022.
-  El bloqueo previo quedó resuelto con E16 firmada por Juani (`2212c9e`); implementación y evidencia pendientes.
+  Corrección del cierre (constructor, L-030): el barrido anterior aplicaba axe al 404 del ingreso
+  después del 401. El grupo 7 no está construido; ahora esos doce casos exigen redirección y regreso
+  exacto, sin evaluar la pantalla abandonada. El resto conserva accesibilidad, teclado y anchos.
+  ```text
+  RED $ date +%T; bash infra/ci/test-web-navegador.sh
+  16:03:57–16:09:41 / 138 passed, 12 failed: axe sobre /ingresar (grupo 7 pendiente).
+  MUTANTE $ bash infra/ci/test-web-navegador.sh e2e/barrido-completo.spec.ts --grep 'Resumen.*sin_sesion.*320px'
+  16:10:36 (hora del wrapper Python) / 1 failed: esperaba /ingresar, recibió /edificios/…000006.
+  ```
+  ```diff
+  -    return irAlIngreso(sesion.regreso);
+  +    return { estado: "sin_sesion" };
+  ```
+  Restaurado byte a byte en `finally`; sin cambio de producción.
+  ```text
+  GREEN $ date +%T; bash infra/ci/test-web-navegador.sh e2e/barrido-completo.spec.ts --grep sin_sesion
+  16:10:58 / 12 passed (8.7s).
+  ```
+- [x] 6.2 CSP (D4, deuda del 2c): `contentSecurityPolicy` estricta con nonce y las directivas de la documentación de Clerk más `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`; un test lee la cabecera de dos pedidos y exige nonces distintos, ninguna `unsafe-eval` y la lista exacta de directivas (comparada entera, L-022); un test de render de una página autenticada busca el token de prueba y la clave publicable fuera del lugar previsto en el HTML y no lo encuentra. RED: hoy no hay cabecera CSP. Escenarios: `autenticacion-con-clerk` › Política de contenido; › El token no está en la página. Lecciones: L-012, L-022.
+  Resuelto con E16 firmada por Juani (`2212c9e`). CSP automática del SDK, `ClerkProvider dynamic`,
+  y eliminación de `unsafe-inline`/`unsafe-eval` de **script-src** en la respuesta y en la cabecera
+  que Next recibe. Se conserva la excepción de estilos. No cambia autenticación ni permisos.
+  Hallazgo: Clerk 7.9.19 deja `unsafe-inline` incluso con `strict`; el filtro cumple D4 y este brief.
+  El test compara las once directivas y todas sus fuentes, sin resumir; incluye público + autenticado.
+  Decisión del constructor (L-030): el nonce se exige en todas las raíces del HTML original y en
+  los inline del DOM; los hijos externos cargados por scripts confiables los cubre `strict-dynamic`.
+  El SDK puede retirar o reinsertar su script al abortar la red de la fixture. La publicable se
+  permite sólo como atributo del SDK y sus campos de bootstrap RSC; token y secreta, en ningún lugar.
+  Fuentes consultadas el 21/10/2026: [CSP de Clerk, strict y dynamic](https://clerk.com/docs/guides/secure/best-practices/csp-headers)
+  y [script-src / strict-dynamic](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src#strict-dynamic).
+  ```text
+  RED $ date +%T; bash infra/ci/test-web-navegador.sh e2e/csp.spec.ts
+  15:54:51 / 2 failed, 1 passed: Next debe responder con CSP / Received: undefined.
+  GREEN $ date +%T; bash infra/ci/test-web-navegador.sh e2e/csp.spec.ts e2e/sesion.spec.ts
+  16:00:15 / 6 passed (5.7s): política entera, tres nonces, scripts y ausencia de fugas.
+  GREEN $ cd web; date +%T; corepack pnpm@12.10.1 exec vitest run src/proxy.test.ts src/lib/api/sesion.test.ts src/lib/sesion.test.ts
+  15:59:39 / 22 passed (3 archivos).
+  GREEN $ date +%T; env -u CLERK_SECRET_KEY -u CLERK_JWT_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsucHJvcHRlY2gtcHJ1ZWJhLmludmFsaWQk corepack pnpm@12.10.1 build
+  15:59:52 / exit 0: build sin secreta; Next la recibe sólo en ejecución.
+  ```
+  Mutantes (copia propia y restauración byte a byte en `finally`; cada corrida ejecutó
+  `bash infra/ci/test-web-navegador.sh e2e/csp.spec.ts --grep <nombre>` (hora del wrapper Python); los tres primeros,
+  `HTML y RSC`; el cuarto, `CSP completa`). Cada uno: **1 failed**, exit 1.
+  ```diff
+  # 15:57:22 / token en HTML
+  -  return <PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} />;
+  +  return <><p>{(await import("../../lib/sesion").then(m => m.sesionActual()))?.token}</p><PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} /></>;
+  # 15:57:38 / publicable fuera del bootstrap
+  -  return <PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} />;
+  +  return <><p>{process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}</p><PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} /></>;
+  # 15:57:52 / secreta en HTML
+  -  return <PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} />;
+  +  return <><p>{process.env.CLERK_SECRET_KEY}</p><PantallaMisEdificios edificios={edificios} accionCrear={crearEdificioAction} /></>;
+  # 15:58:06 / fuente extra: se detecta aunque las demás directivas sigan presentes
+         "object-src": ["'none'"],
+  +      "img-src": ["https://sobrante.invalid"],
+  ```
+  ```text
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:11:34 / All checks passed! / 273 files already formatted / no issues found in 249 source files
+  ```
+  `biome ci` exit 0 (warning previo de edificios/page.tsx) y `tsc --noEmit` exit 0.
+  Decisión del constructor (L-031): las cuatro suites de cierre van después del último commit,
+  una vez y en primer plano; su evidencia documental se agrega debajo sin otro commit de código.
+
 - [x] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
   Decisión del constructor (L-030): las variables opcionales quedan comentadas en el ejemplo y
   como referencias sin valor en Compose. Así se omiten cuando faltan, sin convertir un PEM vacío

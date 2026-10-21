@@ -282,6 +282,9 @@ Se propone aceptarlo y compensar:
   `clerkMiddleware({ contentSecurityPolicy: { strict: true, directives: … } })`, las directivas de *CSP
   headers* y `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`,
   `form-action 'self'`. Sin `unsafe-eval`. `style-src 'unsafe-inline'` lo exige Clerk; se declara.
+  Implementación del constructor (6.2): el SDK fijado conserva `unsafe-inline` en scripts aun con
+  `strict`. Se quitan ambas palabras de `script-src` en las CSP de respuesta y de petición hacia
+  Next, conservando el nonce automático y `ClerkProvider dynamic`.
 - El token nunca se pasa a un componente de cliente ni se escribe en un log de la web; un test recorre el
   HTML de una página autenticada buscándolo.
 
