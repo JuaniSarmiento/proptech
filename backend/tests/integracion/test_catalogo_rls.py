@@ -606,3 +606,46 @@ def test_lista_blanca_rechaza_politicas_parecidas(
             assert any(tabla in p and nombre in p for p in problemas), problemas
         finally:
             conexion.rollback()
+
+
+@pytest.mark.parametrize("defecto", ["qual", "cmd", "roles", "restrictiva", "nombre", "with_check"])
+def test_lista_blanca_de_invitacion_es_exacta(
+    contenedor: PostgresContainer, esquema: None, defecto: str
+) -> None:
+    nombre = "otra_por_token" if defecto == "nombre" else "invitacion_por_token"
+    condicion = (
+        "token_resumen = decode(nullif(current_setting('app.invitacion_token',true),''),'hex') AND "
+        "nullif(current_setting('app.administracion_id',true),'') IS NULL"
+    )
+    if defecto == "qual":
+        condicion += " OR true"
+    with (
+        psycopg.connect(
+            host=contenedor.get_container_host_ip(),
+            port=contenedor.get_exposed_port(5432),
+            dbname=contenedor.dbname,
+            user=ARRANQUE_USER,
+            password=ARRANQUE_PASSWORD,
+        ) as conexion,
+        conexion.cursor() as cur,
+    ):
+        try:
+            cur.execute("DROP POLICY invitacion_por_token ON invitacion")
+            cur.execute(
+                sql.SQL("CREATE POLICY {} ON invitacion AS {} FOR {} TO {} USING ({})").format(
+                    sql.Identifier(nombre),
+                    sql.SQL("RESTRICTIVE" if defecto == "restrictiva" else "PERMISSIVE"),
+                    sql.SQL("ALL" if defecto == "cmd" else "SELECT"),
+                    sql.Identifier(APP_USER) if defecto == "roles" else sql.SQL("PUBLIC"),
+                    sql.SQL(condicion),
+                )
+            )
+            if defecto == "with_check":
+                cur.execute(
+                    "UPDATE pg_policy SET polwithcheck=polqual "
+                    "WHERE polrelid='invitacion'::regclass AND polname='invitacion_por_token'"
+                )
+            problemas = revisar_catalogo(cur)
+            assert any("invitacion" in p and nombre in p for p in problemas), problemas
+        finally:
+            conexion.rollback()

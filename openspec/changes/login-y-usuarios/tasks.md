@@ -137,7 +137,7 @@ la cuenta de Clerk (8.1).
 
 ## 3. La base
 
-- [ ] 3.1 Migración `0019_vinculo_con_clerk` (D2) en `backend/tests/integracion/test_migracion_vinculo_con_clerk.py`, como `proptech_app` en `head`: la columna, su `CHECK` y el único `(clerk_usuario_id, administracion_id)` se prueban insertando (dos personas de A con el mismo id fallan; el mismo id en A y en B entra; un id sin forma falla); `abrir_sesion_por_identidad` sin tenant devuelve sólo las personas de ese id, de A y de B, y cero filas de `asignacion_rol`, `complejo` y `unidad`; por esa vía `UPDATE`, `DELETE` e `INSERT` sobre `persona` no escriben nada; con la variable vacía o ausente, cero filas; con identidad de B y tenant de A fijados a la vez sólo se ven las filas de A, nunca las de B; repetir con el resumen de una invitación de B tras 0020. El reset de `base_de_datos.py:186-196` limpia las tres variables de D2 al devolver la conexión, incluso tras `SET` sin `LOCAL`, commit, rollback y conexión rota, con un pool de una conexión. Adjuntar `EXPLAIN` como `proptech_app` de resolver la identidad (`WHERE clerk_usuario_id = :sub`), con RLS activa y datos representativos de dos administraciones, mostrando el uso del único con la identidad primero. El guardián conserva su regla actual y sólo agrega la lista blanca exacta de D2: tabla, nombre, `cmd = SELECT`, permisiva, roles, `qual` completo y `with_check` nulo. RED: sin la migración, la columna no existe; una copia de la política sin `FOR SELECT` deja actualizar y el test lo muestra; una política `FOR SELECT` en otra tabla y otra con el nombre correcto pero `qual` distinto hacen fallar al guardián; una copia sin el `AND` de tenant deja ver B con las dos variables fijadas y falla; quitar cada uno de los tres `RESET` deja residuos y falla (L-013, L-020). Escenarios: `aislamiento-por-administracion` › Lectura por identidad verificada; › La lectura por identidad no escribe; › Política extra fuera de lo permitido; `autenticacion-con-clerk` › Dos personas con el mismo id de Clerk; › La misma identidad en dos administraciones; `aislamiento-por-administracion` › Identidad o resumen junto con tenant; › Reset de las tres variables del pool. Lecciones: L-013, L-016, L-018, L-020.
+- [x] 3.1 Migración `0019_vinculo_con_clerk` (D2) en `backend/tests/integracion/test_migracion_vinculo_con_clerk.py`, como `proptech_app` en `head`: la columna, su `CHECK` y el único `(clerk_usuario_id, administracion_id)` se prueban insertando (dos personas de A con el mismo id fallan; el mismo id en A y en B entra; un id sin forma falla); `abrir_sesion_por_identidad` sin tenant devuelve sólo las personas de ese id, de A y de B, y cero filas de `asignacion_rol`, `complejo` y `unidad`; por esa vía `UPDATE`, `DELETE` e `INSERT` sobre `persona` no escriben nada; con la variable vacía o ausente, cero filas; con identidad de B y tenant de A fijados a la vez sólo se ven las filas de A, nunca las de B; repetir con el resumen de una invitación de B tras 0020. El reset de `base_de_datos.py:186-196` limpia las tres variables de D2 al devolver la conexión, incluso tras `SET` sin `LOCAL`, commit, rollback y conexión rota, con un pool de una conexión. Adjuntar `EXPLAIN` como `proptech_app` de resolver la identidad (`WHERE clerk_usuario_id = :sub`), con RLS activa y datos representativos de dos administraciones, mostrando el uso del único con la identidad primero. El guardián conserva su regla actual y sólo agrega la lista blanca exacta de D2: tabla, nombre, `cmd = SELECT`, permisiva, roles, `qual` completo y `with_check` nulo. RED: sin la migración, la columna no existe; una copia de la política sin `FOR SELECT` deja actualizar y el test lo muestra; una política `FOR SELECT` en otra tabla y otra con el nombre correcto pero `qual` distinto hacen fallar al guardián; una copia sin el `AND` de tenant deja ver B con las dos variables fijadas y falla; quitar cada uno de los tres `RESET` deja residuos y falla (L-013, L-020). Escenarios: `aislamiento-por-administracion` › Lectura por identidad verificada; › La lectura por identidad no escribe; › Política extra fuera de lo permitido; `autenticacion-con-clerk` › Dos personas con el mismo id de Clerk; › La misma identidad en dos administraciones; `aislamiento-por-administracion` › Identidad o resumen junto con tenant; › Reset de las tres variables del pool. Lecciones: L-013, L-016, L-018, L-020.
 
   ```text
   RED $ cd backend; date +%T; uv run pytest tests/integracion/test_migracion_vinculo_con_clerk.py -x -q
@@ -196,7 +196,55 @@ la cuenta de Clerk (8.1).
   Decisión del constructor (L-030): la repetición con resumen de B exige 0020; la ejecuto en 3.2.
   Mantengo 3.1 sin marcar hasta pegar esa evidencia, aunque su implementación y regresión ya pasan.
 
-- [ ] 3.2 Migración `0020_invitaciones` (D6, D7, D13), en `backend/tests/integracion/test_migracion_invitaciones.py`, como `proptech_app`: la tabla `invitacion` aislada por tenant, con su FK compuesta a `persona` (una persona de B falla con el tenant de A), su `CHECK` de estado y de forma de `clerk_invitacion_id`, `vence NOT NULL`, el único de `token_resumen`, `ix_invitacion_persona (administracion_id, persona_id)` para historial y listado, y `uq_invitacion_abierta (administracion_id, persona_id) WHERE estado IN ('pendiente','enviada','fallida')` para buscar y asegurar una invitación abierta por persona; la política `invitacion_por_token` (`FOR SELECT`, qual completo de D6) recibe el hexadecimal del resumen en `app.invitacion_token`, devuelve sólo esa fila sin tenant y no escribe; con tenant A y resumen de B no aporta filas de B; RLS filtra filas, no columnas; adjuntar `EXPLAIN` como `proptech_app` de la búsqueda `WHERE token_resumen = :resumen` sin tenant, con RLS activa, usando el único del resumen; los ocho valores nuevos de `accion_de_auditoria` existen y `auditoria` acepta una fila de cada uno. El guardián acepta esta segunda política y ninguna otra. RED: sin la migración, la tabla no existe; un `INSERT` en `auditoria` con `ingreso_exitoso` falla por la FK al vocabulario. Escenarios: `aislamiento-por-administracion` › Lectura por identidad verificada (la parte de la invitación); `auditoria-de-acciones` › Evento de acceso. Lecciones: L-016, L-018.
+- [x] 3.2 Migración `0020_invitaciones` (D6, D7, D13), en `backend/tests/integracion/test_migracion_invitaciones.py`, como `proptech_app`: la tabla `invitacion` aislada por tenant, con su FK compuesta a `persona` (una persona de B falla con el tenant de A), su `CHECK` de estado y de forma de `clerk_invitacion_id`, `vence NOT NULL`, el único de `token_resumen`, `ix_invitacion_persona (administracion_id, persona_id)` para historial y listado, y `uq_invitacion_abierta (administracion_id, persona_id) WHERE estado IN ('pendiente','enviada','fallida')` para buscar y asegurar una invitación abierta por persona; la política `invitacion_por_token` (`FOR SELECT`, qual completo de D6) recibe el hexadecimal del resumen en `app.invitacion_token`, devuelve sólo esa fila sin tenant y no escribe; con tenant A y resumen de B no aporta filas de B; RLS filtra filas, no columnas; adjuntar `EXPLAIN` como `proptech_app` de la búsqueda `WHERE token_resumen = :resumen` sin tenant, con RLS activa, usando el único del resumen; los ocho valores nuevos de `accion_de_auditoria` existen y `auditoria` acepta una fila de cada uno. El guardián acepta esta segunda política y ninguna otra. RED: sin la migración, la tabla no existe; un `INSERT` en `auditoria` con `ingreso_exitoso` falla por la FK al vocabulario. Escenarios: `aislamiento-por-administracion` › Lectura por identidad verificada (la parte de la invitación); `auditoria-de-acciones` › Evento de acceso. Lecciones: L-016, L-018.
+
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_migracion_invitaciones.py -x -q -k tabla_y_aislamiento
+  10:28:58
+  E psycopg.errors.UndefinedTable: relation "invitacion" does not exist
+  18 deselected, 1 error in 7.34s
+  RED $ date +%T; uv run pytest tests/integracion/test_migracion_invitaciones.py -x -q -k vocabulario
+  10:29:07
+  E ForeignKeyViolation: auditoria viola fk_auditoria_accion al insertar ingreso_exitoso
+  1 failed, 18 deselected in 7.63s
+  RED oráculos anteriores $ date +%T; uv run pytest tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_auditoria_tabla.py::test_accion_de_auditoria_coincide_con_accion tests/integracion/test_unidad_edificio_inmutable.py -q
+  10:31:33
+  4 failed, 6 passed, 1 warning in 19.50s (ocho eventos nuevos y head distinto de 0018).
+  GREEN $ date +%T; uv run pytest tests/integracion/test_migracion_invitaciones.py tests/integracion/test_migracion_vinculo_con_clerk.py tests/integracion/test_catalogo_rls.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_auditoria_tabla.py tests/integracion/test_unidad_edificio_inmutable.py -q -s
+  10:32:28
+  101 passed, 2 warnings in 73.31s (0:01:13)
+  GREEN tras evitar el aviso nuevo de Alembic $ date +%T; uv run pytest tests/integracion/test_unidad_edificio_inmutable.py -q
+  10:34:32
+  6 passed in 8.89s
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 239 files already formatted
+  Success: no issues found in 215 source files
+  EXPLAIN como proptech_app, RLS ENABLE/FORCE, 1000 invitaciones históricas por administración:
+  Index Scan using uq_invitacion_token_resumen on invitacion
+    Index Cond: (token_resumen = '\x61af52ff86a3b70d7a571e61c8d38c169df9d5d9205846b6d0169446d8560d3d'::bytea)
+    Filter: (((token_resumen = decode(NULLIF(current_setting('app.invitacion_token'::text, true), ''::text), 'hex'::text)) AND (NULLIF(current_setting('app.administracion_id'::text, true), ''::text) IS NULL)) OR (administracion_id = (NULLIF(current_setting('app.administracion_id'::text, true), ''::text))::uuid))
+  ```
+  Mutantes sobre copia propia previa, diff real y restauración byte a byte (L-013),
+  `date +%T; python3` (runner con pytest); 10:30:49:
+
+  ```diff
+  # test_migracion_invitaciones.py -q -k resumen_b_con_tenant_a
+  -        "AND nullif(current_setting('app.administracion_id', true), '') IS NULL)"
+  +        ")"
+  # 10:30:49, B aporta una fila; 1 failed, 18 deselected in 7.24s
+  # test_catalogo_rls.py -q -k 'lista_blanca_de_invitacion and (qual or cmd or roles or restrictiva or with_check)'
+  -        if clave in _EXCEPCIONES_DE_LECTURA:
+  +        if nombre == "invitacion_por_token":
+  +            permitida = True
+  +        elif clave in _EXCEPCIONES_DE_LECTURA:
+  # 10:30:58, AssertionError: []; 5 failed, 20 deselected in 4.36s
+  ```
+  Cierre pendiente de 3.1: `test_resumen_b_con_tenant_a_no_aporta_b` pasa en la corrida de 10:32:28
+  (también en la primera de 10:29:54, 53 passed). Ahora sí marco 3.1 y 3.2.
+  Decisión del constructor (L-030): actualizo sólo los oráculos previos al vocabulario firmado de D13
+  y al head de Alembic; las comparaciones siguen siendo de conjuntos exactos, sin sumar permisos.
+  Las migraciones mantienen listas literales independientes del enum vivo.
+
 - [ ] 3.3 Vuelta atrás, búsqueda y ensayo (DBA): `downgrade` de 0020 y de 0019 deja el catálogo de `persona`, `accion_de_auditoria` y las políticas igual que antes del `upgrade`, comparado entero, incluidos índices, restricciones y permisos de `invitacion` (ausente al bajar, restaurada al subir), con `vence NOT NULL` (L-022); 0019 borra primero la política, después el único y al final la columna; el `downgrade` de 0020 falla sin tocar nada si hay una fila de auditoría con un valor nuevo; `rg` de todo `INSERT` a `persona` y a `accion_de_auditoria` en el repositorio entero, incluidos `infra/ci/humo.sh` y `openspec/changes/acceso-de-desarrollo/` (L-023), con la lista en el informe; y el ensayo `upgrade`/`downgrade`/`upgrade` sobre la copia restaurada del humo, con los pasos del Migration Plan del 2.2a, comparando conteos por administración. RED: una copia del `downgrade` que borra la columna antes que la política falla por la dependencia; una que omite un índice o permiso al subir deja el catálogo distinto y la comparación lo nombra. Escenarios: ninguno nuevo (sostiene la forma de la base). Lecciones: L-013, L-022, L-023.
 
 ## 4. La identidad en la API

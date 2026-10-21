@@ -518,6 +518,18 @@ def test_una_accion_que_no_está_en_accion_de_auditoria_falla_por_fk(
         conexion.close()
 
 
+_EVENTOS_DEL_2B = {
+    "ingreso_exitoso",
+    "ingreso_fallido",
+    "alta_inicial",
+    "invitar_personal",
+    "dar_de_alta_vecino",
+    "aceptar_invitacion",
+    "revocar_invitacion",
+    "quitar_asignacion",
+}
+
+
 def test_accion_de_auditoria_coincide_con_accion(
     contenedor: PostgresContainer, esquema: None
 ) -> None:
@@ -528,7 +540,7 @@ def test_accion_de_auditoria_coincide_con_accion(
             en_la_tabla = {fila[0] for fila in cur.fetchall()}
     finally:
         conexion.close()
-    assert en_la_tabla == {accion.value for accion in Accion}
+    assert en_la_tabla == {accion.value for accion in Accion} | _EVENTOS_DEL_2B
 
 
 # --- Auditoría de otra administración: RLS de D5 también aplica acá ---

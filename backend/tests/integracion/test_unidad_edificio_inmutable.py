@@ -1,9 +1,11 @@
 """R3B-5: la pertenencia de una unidad es inmutable también por SQL real."""
 
+from pathlib import Path
 from uuid import uuid4
 
 import psycopg
 import pytest
+from alembic.script import ScriptDirectory
 
 from ._edificios import BaseDeEdificio, Edificios, fijar_tenant, insertar_unidad
 
@@ -108,6 +110,10 @@ def test_downgrade_quita_la_barrera_y_upgrade_la_reinstala_sin_perder_datos(
                 "SELECT administracion_id, complejo_id, identificador FROM unidad WHERE id = %s",
                 (unidad,),
             ).fetchone() == (admin, destino, "1A")
-            assert app.execute("SELECT version_num FROM alembic_version").fetchone() == ("0018",)
+            assert app.execute("SELECT version_num FROM alembic_version").fetchone() == (
+                ScriptDirectory(
+                    str(Path(__file__).resolve().parents[2] / "migraciones")
+                ).get_current_head(),
+            )
     finally:
         base.migrar("upgrade", "head")
