@@ -631,6 +631,55 @@ la cuenta de Clerk (8.1).
   `personal`/`rutas_protegidas`/`invitaciones`/`sesion`/`vecino`/`alcance` en
   integración (491 passed).
 
+  **Suite y humo finales del bloque B (5.3 a 5.6), después del último commit:**
+  ```text
+  $ cd backend; date +%T; bash ../infra/ci/test-backend.sh
+  13:40:27 … 2641 passed, 1 xfailed, 7 failed, 7 errors in 676.34s (0:11:16)
+  ```
+  De esas 14: dos fixtures de cobertura (`test_altas_sin_id_del_cliente.py`,
+  `test_identidad_antes_del_cuerpo.py`) no conocían las tres rutas nuevas del
+  5.6 — corregidas, commit `da27626`, y la corrida ya no las muestra. Dos
+  quedan sin tocar, documentadas, no arregladas a ciegas (TDD estricto: no se
+  arregla una falla pre-existente fuera de alcance):
+  - `test_regresiones_de_aislamiento_y_grupos_vacios.py::test_super_admin_de_otra_administracion_no_alcanza_nada_de_a`
+    — pre-existente desde el 5.2 (`git log` sobre el archivo: sin tocar desde
+    antes de `e96ae03`): itera TODA `_RUTAS_CUBIERTAS` pisando sólo
+    `identidad_actual`, y `/api/invitaciones/aceptar` usa `token_de_sesion_actual`
+    — el override nunca la alcanza, da 401 en vez de 404. No es un agujero de
+    seguridad (401 sin sesión es lo correcto); es un hueco del propio test desde
+    que el 5.2 agregó esa ruta a `_RUTAS_CUBIERTAS`, nunca ejercitado hasta esta
+    corrida completa.
+  - 6 fallas + 7 errores en `test_worker_*`/`test_rutas_protegidas` (`relation
+    "trabajos_hechos" does not exist`, `connection failed`,
+    `alembic downgrade` fallido): los mismos archivos, corridos solos
+    (`uv run pytest tests/integracion/test_worker_caminos_de_falla.py
+    tests/integracion/test_worker_logs_de_arq.py
+    tests/integracion/test_worker_tarea_de_prueba.py -q` → 8 passed), pasan
+    limpio. Contención de recursos de la corrida completa (~11 min, muchos
+    contenedores, con el render de video en paralelo que ya avisa el CLAUDE.md
+    del repo), no una regresión de este bloque.
+
+  El humo sí encontró una regresión real, propia de este bloque:
+  ```text
+  $ bash infra/ci/humo.sh
+  ERROR: paso 0 (compose up --build -d --wait) falló en la línea 38
+  worker-1 | "arranque_fallido", "causa": "Falta configurar: CLERK_SECRET_KEY, PROPTECH_URL_PUBLICA"
+  ```
+  La 5.4 había agregado un chequeo de arranque que exige las dos variables,
+  pero `.env.example`/el README ya documentaban (desde antes de este cambio)
+  que quedan vacías hasta la tarea 6.3 y que su ausencia **apaga** la función,
+  igual que `CLERK_JWT_KEY` apaga el login — nunca tira abajo el proceso. Se
+  sacó el chequeo de arranque; `ctx["clerk"]` queda `None` sin las variables y
+  las dos tareas lo tratan como Clerk no disponible (`ErrorPasajero`, reintenta).
+  Commit `330895e`.
+  ```text
+  $ date +%T; bash infra/ci/humo.sh
+  14:08:43 … HUMO OK
+  $ cd backend; uv run pytest tests/unitarios -q
+  1330 passed in 60.09s
+  ```
+  `git status --short` vacío.
+
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.
