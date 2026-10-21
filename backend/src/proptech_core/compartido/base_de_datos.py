@@ -107,6 +107,16 @@ def abrir_sesion_por_identidad(fabrica: sessionmaker[Session], sub: str) -> Sess
     return fabrica(info={"identidad_clerk": sub})
 
 
+def abrir_sesion_por_token_de_invitacion(
+    fabrica: sessionmaker[Session], resumen_hex: str
+) -> Session:
+    """D6: busca la invitación por el resumen de su token (los 64 caracteres
+    hexadecimales del SHA-256, nunca el token crudo ni el sobre), sin tenant:
+    la política `invitacion_por_token` (migración 0020) sólo filtra cuando
+    `app.administracion_id` está vacío, así que esta sesión nunca lo fija."""
+    return fabrica(info={"invitacion_token": resumen_hex})
+
+
 def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
     """Registra en `fabrica` un evento `after_begin` (D4) que, al abrir cada
     transacción, fija `app.administracion_id` a partir de
@@ -134,6 +144,12 @@ def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
             connection.execute(
                 text("SELECT set_config('app.identidad_clerk', :valor, true)"),
                 {"valor": identidad_clerk},
+            )
+        invitacion_token = session.info.get("invitacion_token")
+        if invitacion_token is not None:
+            connection.execute(
+                text("SELECT set_config('app.invitacion_token', :valor, true)"),
+                {"valor": invitacion_token},
             )
         administracion_id = session.info.get("administracion_id")
         if administracion_id is None:

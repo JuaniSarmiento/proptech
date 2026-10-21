@@ -582,7 +582,34 @@ la cuenta de Clerk (8.1).
   conjunta y pasó sola y en la corrida completa siguiente: parece un flake de
   timing ajeno a este cambio (no toca `salud.py` ni nada de Clerk), no una
   regresión real; queda anotado, no corregido a ciegas.
-- [ ] 5.5 Aceptar la invitación (D6) en `backend/tests/integracion/test_aceptar_invitacion_api.py` y la ruta `POST /api/invitaciones/aceptar`: el invitado con el email principal correcto, `email_verified is True` y sobre válido queda vinculado, la invitación `aceptada`, fila `aceptar_invitacion`, y su siguiente pedido entra; dan el mismo 404 sin escribir: otro email, token inventado, token aceptado, revocado o vencido, invitación todavía `pendiente`, persona ya vinculada a otro id, identidad ya vinculada a otra persona de esa administración, token sin claim `email`, email no verificado (`email_verified=false`, ausente o texto `"true"`), sobre alterado; comparar el cuerpo exacto `{"detail":"no encontrado"}` en todos esos 404; el email principal en mayúsculas coincide tras normalizar a minúsculas; sin sesión válida y con cuerpo roto o sin `token`, 401 y cero SQL; con sesión válida y JSON roto, sin `token`, campos extra o tipo incorrecto, 422 sin repetir valores; dos aceptaciones simultáneas (dos hilos, dos conexiones) dejan un solo vínculo y una sola fila. RED: la ruta no existe; una copia que sólo compara `email` acepta el caso no verificado y falla; otra que acepta sobres sin autenticarlos falla con el sobre alterado. Escenarios: `gestion-de-usuarios` › Aceptación correcta; › Email no verificado; › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida; › Email principal en mayúsculas; › Otro email; › Token reusado o vencido; › Dos aceptaciones a la vez. Lecciones: L-016, L-017, L-020.
+- [x] 5.5 Aceptar la invitación (D6) en `backend/tests/integracion/test_aceptar_invitacion_api.py` y la ruta `POST /api/invitaciones/aceptar`: el invitado con el email principal correcto, `email_verified is True` y sobre válido queda vinculado, la invitación `aceptada`, fila `aceptar_invitacion`, y su siguiente pedido entra; dan el mismo 404 sin escribir: otro email, token inventado, token aceptado, revocado o vencido, invitación todavía `pendiente`, persona ya vinculada a otro id, identidad ya vinculada a otra persona de esa administración, token sin claim `email`, email no verificado (`email_verified=false`, ausente o texto `"true"`), sobre alterado; comparar el cuerpo exacto `{"detail":"no encontrado"}` en todos esos 404; el email principal en mayúsculas coincide tras normalizar a minúsculas; sin sesión válida y con cuerpo roto o sin `token`, 401 y cero SQL; con sesión válida y JSON roto, sin `token`, campos extra o tipo incorrecto, 422 sin repetir valores; dos aceptaciones simultáneas (dos hilos, dos conexiones) dejan un solo vínculo y una sola fila. RED: la ruta no existe; una copia que sólo compara `email` acepta el caso no verificado y falla; otra que acepta sobres sin autenticarlos falla con el sobre alterado. Escenarios: `gestion-de-usuarios` › Aceptación correcta; › Email no verificado; › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida; › Email principal en mayúsculas; › Otro email; › Token reusado o vencido; › Dos aceptaciones a la vez. Lecciones: L-016, L-017, L-020.
+  La ruta, el cuerpo (`CuerpoAceptar`) y las dos guardas (`RutaConTokenVerificado`,
+  401 antes del parseo del cuerpo) ya existían desde 5.1/5.2; lo que faltaba era
+  `aplicacion/invitaciones.py:aceptar()`, que sólo tiraba `InvitacionNoDisponible`
+  siempre. Implementado: abre el sobre (D6, `SobreInvalido` → 404 sin tocar la
+  base), busca la invitación SIN tenant por el resumen (sesión nueva
+  `abrir_sesion_por_token_de_invitacion`, que sumé a `base_de_datos.py` fijando
+  `app.invitacion_token` vía la política `invitacion_por_token` de la 0020), y
+  recién con el `administracion_id` de esa fila abre una segunda sesión CON
+  tenant y hace `SELECT ... FOR UPDATE OF i` sobre la invitación (serializa dos
+  aceptaciones a la vez): exige `estado='enviada'` (ni `pendiente` ni ningún
+  estado terminal), `vence > ahora`, el email normalizado igual, la persona sin
+  otro vínculo y la identidad sin otra persona en esa administración; sólo ahí
+  vincula, marca `aceptada` y audita (`EventoDeAcceso.ACEPTAR_INVITACION`,
+  detalle vacío) en una única transacción.
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_aceptar_invitacion_api.py -q
+  13:20:18 / 3 failed (aceptación correcta, mayúsculas, dos a la vez), 18 passed
+            (los 18 de rechazo ya pasaban contra el stub que siempre da 404).
+  GREEN $ date +%T; uv run pytest tests/integracion/test_aceptar_invitacion_api.py -q
+  13:20:34 / 21 passed
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 271 files already formatted / no issues found in 247 source files
+  ```
+  Regresión: suite unitaria completa (1330 passed) y un barrido de
+  `sesion`/`identidad`/`invitaciones`/`rutas_protegidas`/`tenant` en integración
+  (469 passed) tras tocar `base_de_datos.py` (módulo compartido por toda sesión
+  con tenant).
 - [ ] 5.6 Listar, revocar y quitar (D5) en `backend/tests/integracion/test_personal_api.py` y las rutas `GET /api/personal`, `POST /api/invitaciones/{id}/revocar` y `DELETE /api/asignaciones/{id}`: la lista trae personas, asignaciones y estado de invitación (con "vencida" calculada) sólo de la administración; adjuntar `EXPLAIN` como `proptech_app` del listado real con tenant, sobre personas, asignaciones e invitaciones, mostrando el uso de los índices por administración y `ix_invitacion_persona`; revocar deja `revocada`, encola la revocación en Clerk y el token ya no se acepta; quitar la única asignación de un auxiliar hace que su próximo pedido responda 401; el único super admin no puede quitarse su asignación (409); filas `revocar_invitacion` y `quitar_asignacion`; un no super admin recibe 403 en las tres. RED: las rutas no existen. Escenarios: `gestion-de-usuarios` › Quitar la única asignación; › Revocar una invitación enviada; › El último super admin. Lecciones: L-016.
 
 ## 6. Web e infraestructura
