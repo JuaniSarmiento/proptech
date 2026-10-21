@@ -42,3 +42,20 @@ export function crearToken(cambios: Record<string, unknown> = {}) {
 export function cabecerasDePrueba() {
   return { authorization: `Bearer ${crearToken()}`, "x-proptech-administracion": ADMINISTRACION };
 }
+
+/** R2B-4 (rompedor 2b): el `__session` y el `__client_uat` de un contexto
+ * de prueba tienen que salir de la MISMA lectura del reloj. Si se leyeran
+ * por separado (una para `crearToken()`, otra después para
+ * `__client_uat`), un cambio de segundo entre las dos deja `iat <
+ * __client_uat`, y @clerk/backend responde con un handshake hacia el
+ * emisor `.invalid` que esta suite no sabe resolver. `duracionS` (una
+ * hora por defecto) cubre con margen cualquier test real: el token de
+ * 60s por defecto de `crearToken()` vencía en cualquier test de más de
+ * 65s desde que se armó el contexto. */
+export function cookiesDeContextoDePrueba(duracionS = 3600) {
+  const ahora = Math.floor(Date.now() / 1000);
+  return {
+    session: crearToken({ iat: ahora, nbf: ahora, exp: ahora + duracionS }),
+    clientUat: String(ahora),
+  };
+}

@@ -29,3 +29,20 @@ test("6.1: el 401 de la API lleva al ingreso y conserva el padrón como regreso"
   await expect(page).toHaveURL(/\/ingresar\?/);
   expect(new URL(page.url()).searchParams.get("regreso")).toBe(ruta);
 });
+
+test("R2B-4: el fixture de sesión nunca dispara el handshake de Clerk", async ({ page }) => {
+  // El rompedor 2b encontró que `prueba.ts` leía el reloj dos veces (una
+  // para `crearToken()`, otra para `__client_uat`): si el segundo
+  // cambiaba entre medio, @clerk/backend veía `iat < __client_uat` y
+  // respondía con un handshake (307) hacia el emisor `.invalid`, que esta
+  // suite no sabe resolver. Con `cookiesDeContextoDePrueba` (una sola
+  // lectura) ese handshake no tiene que dispararse nunca.
+  const motivos: string[] = [];
+  page.on("response", (respuesta) => {
+    const motivo = respuesta.headers()["x-clerk-auth-reason"];
+    if (motivo) motivos.push(motivo);
+  });
+  const respuesta = await page.goto("/edificios/00000000-0000-0000-0000-000000000001/unidades");
+  expect(respuesta?.status(), JSON.stringify(motivos)).toBe(200);
+  expect(motivos).toEqual([]);
+});
