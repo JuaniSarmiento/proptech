@@ -1069,6 +1069,12 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
 - [x] 7.3 Pantalla de personal (D5), según el shape: lista con perfil, alcance y estado de invitación, invitar con perfil y alcance, revocar y quitar, con su ayuda "?" (D-102), estados de `pantallas-del-edificio`, errores asociados al campo y combinaciones de capas (panel + ayuda + menú, L-028); sin los controles para quien no es super admin. Playwright contra la API falsa que valida método, `Content-Type` y forma del cuerpo de cada escritura (L-027); mirada a 320 y 1280 px. RED: la página no existe. Escenarios: `gestion-de-usuarios` › Invitar desde la pantalla; › Error asociado al campo. Lecciones: L-026, L-027, L-028.
   Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
   sin Reenviar ni Reintentar; fallida dice "No se pudo enviar todavía; se reintenta solo".
+  **Corrección del auditor del 2b (fila 2, 21/10/2026):** ese texto era falso — el worker NO
+  reintenta un 4xx definitivo (`tareas.py:278-292`) — y no tenía firma. Corregido a "No se pudo
+  enviar. Revocala e invitá de nuevo." en `web/src/app/personal/estados.ts` (comparte módulo con
+  el padrón de vecinos), con el test de `Pantalla.test.tsx:72` y de `e2e/personal.spec.ts`
+  actualizados primero (RED) y la pantalla recién después (GREEN); capturas regeneradas en
+  `.git/informes-2b/pantallas/personal-{1440,320}.png`.
   Decisión del constructor (L-030): lista sólo personal; GET exige super admin según D5, por eso
   otros perfiles ven Sin permiso. No se cambia la API para ofrecerles una lista de lectura.
   Decisión del constructor: "Mi administración" es un menú lateral nuevo (no existía fuera de un
@@ -1279,6 +1285,16 @@ Logs: `/tmp/informes-2b-cierre/{backend,web,navegador,navegador2,humo}.log` (fue
   **Hecho (21/10/2026, 16:10):** instancia de desarrollo `PropTech` en Clerk. El orquestador configuró el panel con permiso de Juani (email con código y link, contraseña, teléfono y nombre de usuario apagados, nombre opcional, Google activo con credenciales compartidas de desarrollo, acceso Invite-only, bloqueo de cuenta activo, claims de sesión `email` y `email_verified`), y le pasó sólo los valores públicos (publishable key, URL del Frontend API, JWKS public key). **Juani cargó en `infra/.env` las seis variables**, incluidas la clave secreta y `INVITACIONES_CLAVE_CIFRADO`, que ningún agente vio, y lo confirmó por escrito en la conversación ("listo"). Ningún agente abrió `infra/.env`. Google requiere la firma de E17 (pendiente). Pendiente de verificar en 8.2: que Compose lea el PEM multilínea entre comillas.
 
 - [ ] 8.2 Verificación real, con Juani al teclado y el stack local con la instancia de desarrollo: alta inicial de una administración de prueba con un email de Juani; llega el mail de Clerk; registrarse, volver por la invitación y entrar; comprobar que los claims firmados contienen el email principal y su verificación booleana, también al cambiar el principal y con un secundario verificado; si el par no representa al principal, frenar sin habilitar la aceptación; ingresar con contraseña y con link por email; selector con una segunda administración; invitar a un email que ya tiene usuario en Clerk (Open Questions: anotar a qué pantalla lleva el link); fallar la contraseña hasta el bloqueo; salir. El orquestador anota cada paso con hora, la fila de auditoría que dejó y si el log de la web tiene errores de conexión hacia Clerk (dato que discrimina el SUPUESTO de la red de la web). Verificación: el informe con cada paso. Escenarios: `autenticacion-con-clerk` › Muchos intentos sobre una cuenta; todos los de ingreso, de punta a punta. Lecciones: L-026.
+  **Pasos sumados por el auditor del 2b (fila 4, 21/10/2026), hoy SUPUESTO porque la 8.2 no corrió
+  todavía — agregar explícitamente a la verificación real:**
+  - Que Compose lea bien el `CLERK_JWT_KEY` multilínea entre comillas (el login arranca prendido,
+    sin fallar al levantar el stack).
+  - Ingresar con Google con un email invitado, y comprobar que con un Gmail distinto del invitado
+    NO entra.
+  - Reinvitar a una persona que ya tiene una invitación en estado `enviada` (`ignore_existing`).
+  - Revocar una invitación mientras el worker la está enviando, y comprobar en el panel de Clerk
+    que quedó revocada de verdad (R2B-1 contra Clerk real, no contra el servidor falso).
+  - Que `email_verified` llegue como booleano en los claims, no como string ni constante.
 
 ## 9. Cierre
 

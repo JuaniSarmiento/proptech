@@ -79,6 +79,10 @@ Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contr
   "Cerrar sesión" sin distinguir el motivo. Selector: sólo nombres entregados por GET /api/sesion.
 - 7.3 y 7.4: sin Reenviar ni Reintentar invitaciones. Estado fallida: "No se pudo enviar todavía;
   se reintenta solo". Revocar y Quitar usan exclusivamente los contratos existentes.
+  **Corrección del auditor del 2b (fila 2, 21/10/2026):** ese texto es falso; el worker NO
+  reintenta un 4xx definitivo (`backend/src/proptech_worker/tareas.py:278-292`, spec
+  `gestion-de-usuarios` "sin reintentos"). Texto real: "No se pudo enviar. Revocala e invitá de
+  nuevo.", usando la acción "Revocar" que ya existe en esa fila.
 - 7.2 sigue siendo borrador, con responsable, contacto y conservación visiblemente pendientes de
   Juani; no se marca completa.
 - Capturas a 1440 y 320 px, según el brief de esta segunda vuelta.
