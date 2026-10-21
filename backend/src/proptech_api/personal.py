@@ -14,10 +14,16 @@ from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.aplicacion.datos_de_usuario import email_valido, nombre_valido
 from proptech_core.acceso.aplicacion.usuarios import (
+    AsignacionNoEncontrada,
     ConflictoDeAcceso,
+    InvitacionNoRevocable,
     dar_de_alta_vecino,
     encolar_alta,
+    encolar_revocacion,
     invitar_personal,
+    listar_personal,
+    quitar_asignacion,
+    revocar_invitacion,
 )
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
@@ -151,3 +157,44 @@ async def alta_vecino(
         "asignacion_id": str(alta.asignacion_id),
         "invitacion_id": str(alta.invitacion_id) if alta.invitacion_id else None,
     }
+
+
+@router.get("/personal")
+async def listar(
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, Any]]:
+    autorizar(sesion, identidad)
+    return listar_personal(sesion)
+
+
+@router.post("/invitaciones/{invitacion_id}/revocar")
+async def revocar(
+    invitacion_id: UUID,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, bool]:
+    autorizar(sesion, identidad)
+    request_id = UUID(request_id_actual.get() or "")
+    try:
+        revocar_invitacion(sesion, identidad, invitacion_id, request_id)
+    except InvitacionNoRevocable:
+        raise HTTPException(404, detail="no encontrado") from None
+    await encolar_revocacion(request.app.state.cola, identidad, invitacion_id, request_id)
+    return {"revocada": True}
+
+
+@router.delete("/asignaciones/{asignacion_id}")
+async def quitar(
+    asignacion_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, bool]:
+    autorizar(sesion, identidad)
+    request_id = UUID(request_id_actual.get() or "")
+    try:
+        quitar_asignacion(sesion, identidad, asignacion_id, request_id)
+    except AsignacionNoEncontrada:
+        raise HTTPException(404, detail="no encontrado") from None
+    return {"quitada": True}

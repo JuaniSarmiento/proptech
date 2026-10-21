@@ -610,7 +610,26 @@ la cuenta de Clerk (8.1).
   `sesion`/`identidad`/`invitaciones`/`rutas_protegidas`/`tenant` en integración
   (469 passed) tras tocar `base_de_datos.py` (módulo compartido por toda sesión
   con tenant).
-- [ ] 5.6 Listar, revocar y quitar (D5) en `backend/tests/integracion/test_personal_api.py` y las rutas `GET /api/personal`, `POST /api/invitaciones/{id}/revocar` y `DELETE /api/asignaciones/{id}`: la lista trae personas, asignaciones y estado de invitación (con "vencida" calculada) sólo de la administración; adjuntar `EXPLAIN` como `proptech_app` del listado real con tenant, sobre personas, asignaciones e invitaciones, mostrando el uso de los índices por administración y `ix_invitacion_persona`; revocar deja `revocada`, encola la revocación en Clerk y el token ya no se acepta; quitar la única asignación de un auxiliar hace que su próximo pedido responda 401; el único super admin no puede quitarse su asignación (409); filas `revocar_invitacion` y `quitar_asignacion`; un no super admin recibe 403 en las tres. RED: las rutas no existen. Escenarios: `gestion-de-usuarios` › Quitar la única asignación; › Revocar una invitación enviada; › El último super admin. Lecciones: L-016.
+- [x] 5.6 Listar, revocar y quitar (D5) en `backend/tests/integracion/test_personal_api.py` y las rutas `GET /api/personal`, `POST /api/invitaciones/{id}/revocar` y `DELETE /api/asignaciones/{id}`: la lista trae personas, asignaciones y estado de invitación (con "vencida" calculada) sólo de la administración; adjuntar `EXPLAIN` como `proptech_app` del listado real con tenant, sobre personas, asignaciones e invitaciones, mostrando el uso de los índices por administración y `ix_invitacion_persona`; revocar deja `revocada`, encola la revocación en Clerk y el token ya no se acepta; quitar la única asignación de un auxiliar hace que su próximo pedido responda 401; el único super admin no puede quitarse su asignación (409); filas `revocar_invitacion` y `quitar_asignacion`; un no super admin recibe 403 en las tres. RED: las rutas no existen. Escenarios: `gestion-de-usuarios` › Quitar la única asignación; › Revocar una invitación enviada; › El último super admin. Lecciones: L-016.
+  Sin migración nueva: `uq_persona_administracion_email`/`uq_persona_clerk_administracion`
+  (persona, 0003/0019), `ix_asignacion_rol_persona` (0017) e `ix_invitacion_persona`
+  (0020) ya alcanzan. `listar_personal`/`revocar_invitacion`/`quitar_asignacion`
+  nuevas en `usuarios.py`, mismo `PERMISO`/`autorizar()` que invitar (sólo SA, sin
+  `complejo_id`). El EXPLAIN necesitó volumen real (400 filas sintéticas +
+  `ANALYZE`, sin forzar el planificador, mismo criterio que `test_alcance_api`):
+  con sólo las 5 personas de la fixture, Postgres prefiere `Seq Scan` sin que
+  importe el índice.
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_personal_api.py -q
+  13:32:41 / 6 failed: las rutas no existen (404) y `listar_personal` no existe.
+  GREEN $ date +%T; uv run pytest tests/integracion/test_personal_api.py -q
+  13:32:54 / 6 passed
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 272 files already formatted / no issues found in 248 source files
+  ```
+  Regresión: suite unitaria completa (1330 passed) y un barrido de
+  `personal`/`rutas_protegidas`/`invitaciones`/`sesion`/`vecino`/`alcance` en
+  integración (491 passed).
 
 ## 6. Web e infraestructura
 

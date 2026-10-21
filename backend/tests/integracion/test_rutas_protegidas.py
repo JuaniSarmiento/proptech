@@ -73,6 +73,9 @@ _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST"
 _RUTAS_CUBIERTAS = {
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
+    ("/api/personal", "GET"),
+    ("/api/invitaciones/{invitacion_id}/revocar", "POST"),
+    ("/api/asignaciones/{asignacion_id}", "DELETE"),
     ("/api/invitaciones/aceptar", "POST"),
     ("/api/sesion", "GET"),
     ("/api/sesion/ingreso", "POST"),
@@ -223,6 +226,10 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "categoria_id": categoria_id,
         "persona_sin_asignacion": persona_sin_asignacion,
         "otra_persona": otra_persona,
+        # No hacen falta filas reales (5.6): `autorizar()` corta por permiso
+        # antes de buscar cualquiera de los dos ids.
+        "invitacion_id": uuid.uuid4(),
+        "asignacion_id": uuid.uuid4(),
     }
 
 
@@ -285,6 +292,8 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     ruta_resuelta = ruta.format(**mundo)
     if metodo == "GET":
         return cliente.get(ruta_resuelta)
+    if metodo == "DELETE":
+        return cliente.delete(ruta_resuelta)
     if "/configuracion/versiones" in ruta:
         from .test_configuracion_api import version
 

@@ -1,6 +1,8 @@
 """D5/D7: personas y asignaciones del tenant, con invitación y auditoría atómicas."""
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
@@ -199,3 +201,134 @@ def dar_de_alta_vecino(
         request_id=request_id,
         evento=EventoDeAcceso.DAR_DE_ALTA_VECINO,
     )
+
+
+class InvitacionNoRevocable(Exception):
+    """No está abierta (`pendiente`/`enviada`/`fallida`) o es de otra
+    administración: RLS ya la filtra, da el mismo caso que no existir."""
+
+
+class AsignacionNoEncontrada(Exception):
+    """De otra administración (RLS) o directamente inexistente."""
+
+
+def listar_personal(sesion: Session) -> list[dict[str, Any]]:
+    """D5: personas, sus asignaciones y la invitación más reciente, sólo de
+    la administración (RLS, nunca un `WHERE` propio). `vencida` se calcula
+    acá: una invitación abierta (`pendiente`/`enviada`/`fallida`) cuyo
+    `vence` ya pasó, nunca se reescribe sola en la base."""
+    ahora = datetime.now(UTC)
+    personas = sesion.execute(
+        text("SELECT id, nombre, email, clerk_usuario_id FROM persona ORDER BY nombre")
+    ).all()
+    asignaciones: dict[UUID, list[dict[str, Any]]] = {}
+    for fila in sesion.execute(
+        text("SELECT id, persona_id, rol, complejo_id, unidad_id, vinculo FROM asignacion_rol")
+    ):
+        asignaciones.setdefault(fila.persona_id, []).append(
+            {
+                "asignacion_id": str(fila.id),
+                "rol": fila.rol,
+                "complejo_id": str(fila.complejo_id) if fila.complejo_id else None,
+                "unidad_id": str(fila.unidad_id) if fila.unidad_id else None,
+                "vinculo": fila.vinculo,
+            }
+        )
+    invitaciones: dict[UUID, dict[str, Any]] = {}
+    for fila in sesion.execute(
+        text(
+            "SELECT DISTINCT ON (persona_id) persona_id, id, estado, vence FROM invitacion "
+            "ORDER BY persona_id, creada_en DESC"
+        )
+    ):
+        estado = fila.estado
+        if estado in ("pendiente", "enviada", "fallida") and fila.vence <= ahora:
+            estado = "vencida"
+        invitaciones[fila.persona_id] = {"invitacion_id": str(fila.id), "estado": estado}
+    return [
+        {
+            "persona_id": str(p.id),
+            "nombre": p.nombre,
+            "email": p.email,
+            "vinculado": p.clerk_usuario_id is not None,
+            "asignaciones": asignaciones.get(p.id, []),
+            "invitacion": invitaciones.get(p.id),
+        }
+        for p in personas
+    ]
+
+
+def revocar_invitacion(
+    sesion: Session, identidad: Identidad, invitacion_id: UUID, request_id: UUID
+) -> None:
+    """D5/D7: revoca sólo si sigue abierta; el worker avisa a Clerk después
+    (`encolar_revocacion`), nunca acá adentro de la transacción."""
+    fila = sesion.execute(
+        text(
+            "UPDATE invitacion SET estado = 'revocada' "
+            "WHERE id = :invitacion AND estado IN ('pendiente', 'enviada', 'fallida') "
+            "RETURNING persona_id"
+        ),
+        {"invitacion": invitacion_id},
+    ).first()
+    if fila is None:
+        sesion.rollback()
+        raise InvitacionNoRevocable
+    registrar(
+        sesion,
+        identidad,
+        EventoDeAcceso.REVOCAR_INVITACION,
+        entidad="invitacion",
+        entidad_id=invitacion_id,
+        request_id=request_id,
+        detalle={},
+    )
+    sesion.commit()
+
+
+async def encolar_revocacion(
+    cola: ColaDeInvitaciones, identidad: Identidad, invitacion_id: UUID, request_id: UUID
+) -> None:
+    await cola.encolar(
+        "revocar_invitacion_en_clerk",
+        clave=f"revocar:{invitacion_id}",
+        request_id=str(request_id),
+        expira_en_s=EXPIRA_EN_S,
+        administracion_id=str(identidad.administracion_id),
+        invitacion_id=str(invitacion_id),
+    )
+
+
+def quitar_asignacion(
+    sesion: Session, identidad: Identidad, asignacion_id: UUID, request_id: UUID
+) -> None:
+    """D5: el único super admin no puede perder su única asignación (409,
+    `ConflictoDeAcceso("super_admin")`); cualquier otra, con o sin ella la
+    persona sigue teniendo alguna, se quita sin más condición."""
+    fila = sesion.execute(
+        text("SELECT persona_id, rol FROM asignacion_rol WHERE id = :asignacion"),
+        {"asignacion": asignacion_id},
+    ).first()
+    if fila is None:
+        sesion.rollback()
+        raise AsignacionNoEncontrada
+    if fila.rol == "super_admin":
+        cantidad_de_super_admins = sesion.execute(
+            text("SELECT count(*) FROM asignacion_rol WHERE rol = 'super_admin'")
+        ).scalar_one()
+        if cantidad_de_super_admins <= 1:
+            sesion.rollback()
+            raise ConflictoDeAcceso("super_admin")
+    sesion.execute(
+        text("DELETE FROM asignacion_rol WHERE id = :asignacion"), {"asignacion": asignacion_id}
+    )
+    registrar(
+        sesion,
+        identidad,
+        EventoDeAcceso.QUITAR_ASIGNACION,
+        entidad="persona",
+        entidad_id=fila.persona_id,
+        request_id=request_id,
+        detalle={},
+    )
+    sesion.commit()
