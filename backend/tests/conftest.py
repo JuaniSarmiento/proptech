@@ -184,9 +184,9 @@ async def cola_de_prueba_aislada(
 def esquema_migrado(postgres_contenedor: PostgresContainer, roles_reales: None) -> None:
     """Corre las migraciones a `head` una sola vez por sesión, para los
     tests que necesitan `trabajos_hechos` real (cambio 1c, tareas 5.5 a
-    5.8). No hace `downgrade`: los tests de la migración misma (5.1, 5.2)
-    manejan su propio ciclo completo y corren antes, en orden alfabético de
-    archivo, dejando el contenedor en `base` cuando terminan."""
+    5.8). No hace `downgrade`: los tests que necesitan bajar revisiones usan
+    bases propias por módulo; nunca borran este esquema compartido, sin
+    importar en qué orden los ejecute pytest."""
     entorno = {
         **os.environ,
         "POSTGRES_HOST": postgres_contenedor.get_container_host_ip(),

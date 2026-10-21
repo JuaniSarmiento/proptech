@@ -19,51 +19,70 @@ import io
 import json
 import logging
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import text
-from testcontainers.community.postgres import PostgresContainer
+
+from ._edificios import BaseDeEdificio
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 
 pytestmark = pytest.mark.integracion
 
 
-def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
-    import os
+@pytest.fixture
+def _logging_restaurado() -> Iterator[None]:
+    loggers = [logging.getLogger()] + [
+        logger
+        for logger in logging.Logger.manager.loggerDict.values()
+        if isinstance(logger, logging.Logger)
+    ]
+    originales = [
+        (
+            logger,
+            logger.handlers[:],
+            logger.filters[:],
+            logger.level,
+            logger.propagate,
+            logger.disabled,
+        )
+        for logger in loggers
+    ]
+    try:
+        yield
+    finally:
+        for logger, handlers, filtros, nivel, propaga, deshabilitado in originales:
+            logger.handlers[:] = handlers
+            logger.filters[:] = filtros
+            logger.setLevel(nivel)
+            logger.propagate = propaga
+            logger.disabled = deshabilitado
 
-    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
 
-    entorno = {
-        **os.environ,
-        "POSTGRES_HOST": contenedor.get_container_host_ip(),
-        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
-        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
-        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
-        "POSTGRES_DB": contenedor.dbname,
-    }
+def _alembic_env(base: BaseDeEdificio) -> dict[str, str]:
+    entorno = dict(base.entorno)
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
         entorno.pop(variable, None)
     return entorno
 
 
-def _engine_directo(contenedor: PostgresContainer) -> sa.Engine:
+def _engine_directo(base: BaseDeEdificio) -> sa.Engine:
+    contenedor = base.contenedor
     url = (
         f"postgresql+psycopg://{contenedor.username}:{contenedor.password}"
         f"@{contenedor.get_container_host_ip()}:{contenedor.get_exposed_port(5432)}"
-        f"/{contenedor.dbname}"
+        f"/{base.nombre}"
     )
     return sa.create_engine(url)
 
 
 def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
-    postgres_contenedor: PostgresContainer,
-    roles_reales: None,
+    base_para_migraciones: BaseDeEdificio,
 ) -> None:
-    env = _alembic_env(postgres_contenedor)
+    env = _alembic_env(base_para_migraciones)
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         cwd=RAIZ_BACKEND,
@@ -73,7 +92,7 @@ def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
         text=True,
     )
     try:
-        engine = _engine_directo(postgres_contenedor)
+        engine = _engine_directo(base_para_migraciones)
         with engine.connect() as conexion:
             columnas = {
                 fila[0]: fila[1]
@@ -147,7 +166,7 @@ def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
             text=True,
         )
 
-    engine = _engine_directo(postgres_contenedor)
+    engine = _engine_directo(base_para_migraciones)
     with engine.connect() as conexion:
         existe = conexion.execute(
             text(
@@ -160,13 +179,13 @@ def test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra(
 
 
 def test_migrar_en_el_mismo_proceso_no_deshabilita_un_logger_ya_configurado(
-    postgres_contenedor: PostgresContainer,
+    base_para_migraciones: BaseDeEdificio,
     monkeypatch: pytest.MonkeyPatch,
-    roles_reales: None,
+    _logging_restaurado: None,
 ) -> None:
     from proptech_core.compartido.logs import configurar_logs
 
-    env = _alembic_env(postgres_contenedor)
+    env = _alembic_env(base_para_migraciones)
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)

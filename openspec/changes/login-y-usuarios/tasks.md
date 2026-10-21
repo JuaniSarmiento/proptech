@@ -697,6 +697,54 @@ Arreglo (sólo el test, sin cambiar producción): las dos rutas de la segunda gu
 
 Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14:13:08, 13 passed): contención de recursos con un render de video en paralelo; la corrida de cierre lo confirma.
 
+## Aislamiento entre tests del 2b
+
+- [x] A1 Aislar las bases de los tests que hacen `downgrade base` y restaurar los logs globales, sin cambiar sus aserciones; verificar los órdenes que reproducían la contaminación y los tres archivos de worker afectados.
+
+  Decisión del constructor (21/10/2026, L-030): esta corrección de fixtures pertenece al cierre del
+  bloque B; no agrega reglas de autenticación, permisos ni datos. Reutilizo la base propia por módulo
+  del patrón del 2.2a. La atribución anterior a contención de recursos queda reemplazada por esta
+  reproducción de contaminación del esquema de sesión.
+  Bisección: las migraciones nuevas de vínculo e invitaciones seguidas del worker dieron
+  `38 passed` (14:29:14–14:29:29). Envío + migraciones antiguas + worker dieron
+  `3 failed, 6 passed` (14:29:41–14:29:55). Reducido a cada test contaminante:
+
+  ```text
+  # Desde backend; cada comando empieza con date +%T y termina con date +%T.
+  $ date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py::test_envio_exitoso_guarda_el_id_y_marca_enviada tests/integracion/test_migracion_trabajos_hechos.py::test_upgrade_head_crea_trabajos_hechos_y_downgrade_la_borra tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento -q -p no:randomly --tb=short
+  14:30:47–14:30:56 RED: psycopg.errors.UndefinedTable: relation "trabajos_hechos" does not exist
+  FAILED test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento[asyncio]
+  1 failed, 2 passed, 1 warning in 7.71s
+  $ date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py::test_envio_exitoso_guarda_el_id_y_marca_enviada tests/integracion/test_idempotencia.py::test_primera_ejecucion_corre_el_efecto_y_registra_la_clave tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento -q -p no:randomly --tb=short
+  14:32:13–14:32:22 RED: psycopg.errors.UndefinedTable: relation "trabajos_hechos" does not exist
+  1 failed, 2 passed, 1 warning in 7.57s
+  $ date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py::test_envio_exitoso_guarda_el_id_y_marca_enviada tests/integracion/test_migraciones_y_salud_real.py::test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento -q -p no:randomly --tb=short
+  14:32:32–14:32:42 RED: psycopg.errors.UndefinedTable: relation "trabajos_hechos" does not exist
+  1 failed, 2 passed, 1 warning in 8.95s
+  $ date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py::test_envio_exitoso_guarda_el_id_y_marca_enviada tests/integracion/test_migracion_trabajos_hechos.py::test_migrar_en_el_mismo_proceso_no_deshabilita_un_logger_ya_configurado tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento -q -p no:randomly --tb=short
+  14:32:54–14:33:03 RED: psycopg.errors.UndefinedTable: relation "trabajos_hechos" does not exist
+  1 failed, 2 passed, 3 warnings in 7.06s
+  ```
+  Hace falta la terna: el primer test inicializa `esquema_migrado` (scope sesión), el segundo borra
+  las tablas y el tercero reutiliza el fixture cacheado. El par sin esa inicialización previa pasa
+  y no representa el orden real de la suite. Ninguna aserción nueva nació verde.
+  La primera corrección mostró otro estado global contaminado (14:36:32–14:37:05): Alembic en
+  proceso pisaba los logs y el worker encontraba `0 == 4` reintentos. Su test ahora restaura
+  handlers, filtros, nivel, propagación y disabled de los loggers previos. Además, la base aislada
+  empieza con `roles.antes()`; los dos arranques completos de `base_del_edificio` se conservan,
+  pero el ciclo hasta `base` no pasa por `despues()` (que cambia el dueño de auditoría).
+  ```text
+  # GREEN: los mismos cuatro comandos mínimos de arriba, sin mutantes ni cambios de aserciones.
+  14:39:48–14:39:58: 3 passed, 1 warning in 7.94s (tabla)
+  14:39:58–14:40:07: 3 passed, 1 warning in 8.21s (idempotencia)
+  14:40:07–14:40:18: 3 passed, 1 warning in 9.16s (salud)
+  14:40:18–14:40:26: 3 passed, 3 warnings in 6.63s (logs)
+  $ cd backend; date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py tests/integracion/test_idempotencia.py tests/integracion/test_migracion_trabajos_hechos.py tests/integracion/test_migraciones_y_salud_real.py tests/integracion/test_worker_caminos_de_falla.py tests/integracion/test_worker_logs_de_arq.py tests/integracion/test_worker_tarea_de_prueba.py -q -p no:randomly --tb=short
+  14:38:53–14:39:19: 24 passed, 10 warnings in 24.77s
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  14:40:26: All checks passed! / 272 files already formatted / Success: no issues found in 248 source files
+  ```
+
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.

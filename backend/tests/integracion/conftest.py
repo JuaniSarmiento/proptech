@@ -41,14 +41,15 @@ def _variables_ampliadas_por_defecto(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(scope="module")
-def base_del_edificio(
+def base_para_migraciones(
     postgres_contenedor: PostgresContainer, roles_reales: None
 ) -> Iterator[BaseDeEdificio]:
-    """Reutiliza el contenedor/roles de sesión, con una base propia por módulo.
+    """Base vacía propia por módulo, apta para un downgrade total.
 
     Sólo CREATE/DROP DATABASE usa el arranque. Los escenarios y la siembra
     conectan como proptech_app; Alembic conecta como proptech_migrador.
-    El ciclo downgrade/upgrade nunca altera el esquema de otro test.
+    Sólo prepara roles antes: despues transfiere la auditoría al arranque,
+    por lo que el migrador ya no podría deshacer 0004 hasta base.
     """
     nombre = f"proptech_edificio_{uuid4().hex}"
     with psycopg.connect(
@@ -77,13 +78,21 @@ def base_del_edificio(
             },
         )
         try:
-            for _ in range(2):
-                base.roles("antes")
-                base.migrar("upgrade", "head")
-                base.roles("despues")
+            base.roles("antes")
             yield base
         finally:
             arranque.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(nombre)))
+
+
+@pytest.fixture(scope="module")
+def base_del_edificio(base_para_migraciones: BaseDeEdificio) -> BaseDeEdificio:
+    """Dos arranques completos sobre una base propia, sin depender del orden."""
+    base = base_para_migraciones
+    for _ in range(2):
+        base.roles("antes")
+        base.migrar("upgrade", "head")
+        base.roles("despues")
+    return base
 
 
 @pytest.fixture

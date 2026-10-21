@@ -6,27 +6,16 @@ import time
 from pathlib import Path
 
 import pytest
-from testcontainers.community.postgres import PostgresContainer
+
+from ._edificios import BaseDeEdificio
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 
 pytestmark = pytest.mark.integracion
 
 
-def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
-    import os
-
-    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
-
-    entorno = {
-        **os.environ,
-        "POSTGRES_HOST": contenedor.get_container_host_ip(),
-        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
-        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
-        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
-        "POSTGRES_DB": contenedor.dbname,
-    }
+def _alembic_env(base: BaseDeEdificio) -> dict[str, str]:
+    entorno = dict(base.entorno)
     # 6.1/D11: Alembic no depende de Redis ni de los parámetros del sistema.
     # Se borran explícitamente (no basta con no setearlas: el fixture de
     # integración las deja puestas en el entorno del proceso de pytest, y
@@ -37,11 +26,11 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
     return entorno
 
 
-def _version_actual(contenedor: PostgresContainer) -> str:
+def _version_actual(base: BaseDeEdificio) -> str:
     resultado = subprocess.run(
         ["uv", "run", "alembic", "current"],
         cwd=RAIZ_BACKEND,
-        env=_alembic_env(contenedor),
+        env=_alembic_env(base),
         capture_output=True,
         text=True,
         check=True,
@@ -50,10 +39,9 @@ def _version_actual(contenedor: PostgresContainer) -> str:
 
 
 def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
-    postgres_contenedor: PostgresContainer,
-    roles_reales: None,
+    base_para_migraciones: BaseDeEdificio,
 ) -> None:
-    env = _alembic_env(postgres_contenedor)
+    env = _alembic_env(base_para_migraciones)
 
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
@@ -66,7 +54,7 @@ def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
     # No se fija a "0001": la migración 0002 (cambio 1c, tarea 5.1) agregó una
     # revisión después, y "head" avanza con cada migración nueva. Lo que este
     # test afirma es que "upgrade head" deja la base en la punta de la cadena.
-    assert "(head)" in _version_actual(postgres_contenedor)
+    assert "(head)" in _version_actual(base_para_migraciones)
 
     subprocess.run(
         ["uv", "run", "alembic", "downgrade", "base"],
@@ -76,13 +64,12 @@ def test_upgrade_head_registra_0001_y_downgrade_la_deja_sin_revision(
         capture_output=True,
         text=True,
     )
-    assert _version_actual(postgres_contenedor) == ""
+    assert _version_actual(base_para_migraciones) == ""
 
 
 def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
-    postgres_contenedor: PostgresContainer,
+    base_para_migraciones: BaseDeEdificio,
     monkeypatch: pytest.MonkeyPatch,
-    roles_reales: None,
 ) -> None:
     from proptech_api.salud import _verificador_con_engine
     from proptech_core.compartido.base_de_datos import crear_engine
@@ -90,7 +77,7 @@ def test_verificador_real_contra_el_contenedor_y_contra_puerto_sin_servidor(
 
     from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
 
-    env = _alembic_env(postgres_contenedor)
+    env = _alembic_env(base_para_migraciones)
     for clave, valor in env.items():
         if clave.startswith("POSTGRES_"):
             monkeypatch.setenv(clave, valor)

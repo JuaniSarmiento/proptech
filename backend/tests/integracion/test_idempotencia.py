@@ -14,31 +14,20 @@ from pathlib import Path
 import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
-from testcontainers.community.postgres import PostgresContainer
 
 from proptech_core.compartido.base_de_datos import crear_engine, crear_fabrica_de_sesiones
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.idempotencia import ejecutar_una_vez
+
+from ._edificios import BaseDeEdificio
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
 
 pytestmark = pytest.mark.integracion
 
 
-def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
-    import os
-
-    from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
-
-    entorno = {
-        **os.environ,
-        "POSTGRES_HOST": contenedor.get_container_host_ip(),
-        "POSTGRES_PORT": str(contenedor.get_exposed_port(5432)),
-        # El rol real del migrador (D1, D2, tarea 2.2), que `roles_reales` ya creó.
-        "POSTGRES_MIGRADOR_USER": MIGRADOR_USER_DE_SESION,
-        "POSTGRES_MIGRADOR_PASSWORD": MIGRADOR_PASSWORD_DE_SESION,
-        "POSTGRES_DB": contenedor.dbname,
-    }
+def _alembic_env(base: BaseDeEdificio) -> dict[str, str]:
+    entorno = dict(base.entorno)
     for variable in ("REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "PROPTECH_PARAMETROS"):
         entorno.pop(variable, None)
     return entorno
@@ -46,16 +35,13 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
 
 @pytest.fixture
 def fabrica(
-    postgres_contenedor: PostgresContainer,
+    base_para_migraciones: BaseDeEdificio,
     monkeypatch: pytest.MonkeyPatch,
-    roles_reales: None,
 ) -> Iterator[sessionmaker[Session]]:
-    """Migra a `head`, entrega una fábrica de sesiones y, al terminar,
-    vuelve a `base` para no dejarle estado a otros tests del mismo
-    contenedor de sesión (L-006)."""
+    """Ida y vuelta sobre la base propia del módulo, nunca la de sesión."""
     from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
 
-    env = _alembic_env(postgres_contenedor)
+    env = _alembic_env(base_para_migraciones)
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         cwd=RAIZ_BACKEND,
