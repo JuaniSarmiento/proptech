@@ -680,6 +680,23 @@ la cuenta de Clerk (8.1).
   ```
   `git status --short` vacío.
 
+**Corrección del orquestador al cierre del bloque B (21/10/2026)**: `test_regresiones_de_aislamiento_y_grupos_vacios.py::test_super_admin_de_otra_administracion_no_alcanza_nada_de_a` recorría todas las rutas protegidas esperando 404 con la identidad de un super admin de B, y no conocía las rutas nuevas del 2b. No era preexistente: lo rompió este change desde la 5.2. Rojo, corrido solo:
+
+```text
+$ uv run pytest tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -q
+14:13:08  FAILED ... [('POST', '/api/invitaciones/aceptar', 401, ...)]   1 failed
+14:14:49  FAILED ... [('POST', '/api/personal/invitaciones', 422, ...)]   (cuerpo de prueba inválido)
+          ... ('POST', '/api/sesion/ingreso', 200, '{"registrado":true}')
+```
+
+Arreglo (sólo el test, sin cambiar producción): las dos rutas de la segunda guarda (`/api/sesion`, `/api/invitaciones/aceptar`) se saltean nombradas, porque su aislamiento lo prueban sus propios tests; `GET /api/personal` y `POST /api/sesion/ingreso` son de alcance propio de la sesión, y para el personal se agrega la aserción de que la lista de B no trae a nadie de A; `POST /api/personal/invitaciones` ahora manda una invitación con alcance en un edificio de A y exige 404. Verde:
+
+```text
+14:15:46  2 passed
+```
+
+Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14:13:08, 13 passed): contención de recursos con un render de video en paralelo; la corrida de cierre lo confirma.
+
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.

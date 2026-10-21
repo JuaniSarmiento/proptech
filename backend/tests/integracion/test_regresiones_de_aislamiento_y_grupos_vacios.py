@@ -41,6 +41,13 @@ _CUERPOS = {
 }
 
 
+#: Rutas de la segunda guarda del 2b (`token_de_sesion_actual`, D3 y RB2b-2): no
+#: reciben una identidad con persona, así que el override de `identidad_actual`
+#: no aplica y no tienen un recurso de A que alcanzar. Su aislamiento lo prueban
+#: sus propios tests (`test_sesion_api.py`, `test_aceptar_invitacion_api.py`).
+_RUTAS_CON_TOKEN_SIN_PERSONA = frozenset({"/api/sesion", "/api/invitaciones/aceptar"})
+
+
 def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: ApiEdificio) -> None:
     """Frente 1, tercer caso: identidad válida de B (super_admin, con su fila en
     `asignacion_rol`) contra cada ruta con ids de A. Nunca 2xx; y la lista
@@ -74,6 +81,12 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
     for ruta, metodo in sorted(_RUTAS_CUBIERTAS):
         if ruta == "/api/complejos":
             continue
+        if ruta in _RUTAS_CON_TOKEN_SIN_PERSONA:
+            continue
+        if (ruta, metodo) in {("/api/personal", "GET"), ("/api/sesion/ingreso", "POST")}:
+            # Alcance propio de la sesión (B), sin ids de A en la ruta: el personal se
+            # comprueba abajo (que no traiga a nadie de A); el ingreso registra el de B.
+            continue
         resuelta = ruta.format(
             complejo_id=api.edificio,
             unidad_id=api.unidad,
@@ -83,6 +96,15 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             asignacion_id=uuid4(),
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
+        if ruta == "/api/personal/invitaciones":
+            # Invitar a alguien con alcance en un edificio de A: tiene que dar 404.
+            cuerpo = {
+                "nombre": "Ajena",
+                "email": "ajena@ejemplo.test",
+                "rol": "administrador",
+                "alcance": "edificio",
+                "complejo_id": str(api.edificio),
+            }
         respuesta = api.cliente.request(
             metodo, resuelta, json=None if metodo == "GET" or "sin-saldos" in ruta else cuerpo
         )
@@ -91,6 +113,14 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
     lista = api.cliente.get("/api/complejos")
     assert lista.status_code == 200
     assert {str(api.edificio), str(api.otro)}.isdisjoint({e["id"] for e in lista.json()})
+    personal = api.cliente.get("/api/personal")
+    assert personal.status_code == 200
+    personas_de_a = {
+        str(f[0])
+        for f in api.filas("SELECT id FROM persona WHERE administracion_id = %s", (api.admin,))
+    }
+    assert personas_de_a, "el escenario tiene que tener personas en A"
+    assert personas_de_a.isdisjoint({p["persona_id"] for p in personal.json()})
     assert api.filas("SELECT count(*) FROM unidad")[0][0] == antes
     assert not fallas, fallas
 
