@@ -1023,6 +1023,18 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   detenidas conservan `[ ]` y no tienen implementación ni evidencia TDD inventada. Las suites de cierre
   se correrán tras el commit de este borrador, una vez y en primer plano; pegaré sus resultados bajo 7.4
   sin un nuevo commit de código (L-031). No se hacen 8.2 ni tareas del grupo 9.
+  **Oráculo del navegador (L-019):** las dos pruebas Playwright nacieron verdes tras la implementación.
+  Copia previa en `.git/informes-2b/privacidad-antes-del-mutante.tsx`, mutación temporal de dos líneas:
+  ```diff
+  -          titulo="Aviso de privacidad"
+  +          titulo="Texto de privacidad"
+  ```
+  ```text
+  $ date +%T; bash infra/ci/test-web-navegador.sh privacidad.spec.ts --timeout=5000 --output=../.git/informes-2b/playwright-mutante
+  16:40:41 / 2 failed: no encuentra heading "Aviso de privacidad" (1440 y 320).
+  ```
+  Restaurado byte a byte en `finally`; `git diff --exit-code -- web/src/app/privacidad/page.tsx` en verde.
+  No se commiteó el mutante. Log: `.git/informes-2b/logs/7.2-mutante-navegador.log`.
   **Pendiente, no marcada:** borrador en `web/src/app/privacidad/page.tsx`, ruta pública `/privacidad`.
   Faltan identidad legal, domicilio y contacto del responsable, conservación y aprobación del texto por Juani
   (7.2 lo exige expresamente). No invento esos datos ni afirmo cumplimiento legal del borrador.
@@ -1043,6 +1055,22 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   para el mismo vínculo/unidad devuelve 409; la misma operación ausente de 7.3 impide cerrar ese estado.
   No se implementa ni se marca 7.4 con un reintento que sólo refresque la pantalla o cambie el vínculo.
   Se conserva el padrón existente. Sin código ni rojo/verde.
+
+  **Verificaciones posteriores al último commit del bloque, `390b22e8e6497426435b7dd639da4cce3edd8799` (L-031):**
+  Corridas secuenciales, en primer plano. La evidencia posterior al commit queda sin commitear en este archivo.
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-web.sh
+  16:39:53 / Test Files 52 passed (52); Tests 332 passed (332), 35.20s.
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-web-navegador.sh --output=../.git/informes-2b/playwright-cierre
+  16:41:06 / 152 passed (3.8m).
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  16:45:25 / =========== 2659 passed, 1 xfailed, 18 warnings in 617.16s (0:10:17) ===========
+  ```
+  Logs: `.git/informes-2b/logs/cierre-{web,navegador,backend}.log`.
+  El mutante de 7.2 fue temporal y restaurado; no cambió el código de ese SHA.
+  Backend sin modificar; no corresponde el humo condicionado a cambios en backend.
+  7.0 es la única tarea marcada. 7.2 tiene borrador probado pero no aprobación ni datos del responsable;
+  7.1/7.3/7.4 siguen detenidas por los contratos señalados. No se corrieron pruebas reales de Clerk.
 
 ## 8. Con Clerk de verdad
 
