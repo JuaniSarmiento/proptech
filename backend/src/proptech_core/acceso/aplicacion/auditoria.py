@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 
@@ -61,9 +62,14 @@ class _DetalleConfiguracion(_DetalleAsignarEdificio):
     vigente_desde: date
 
 
+class _DetalleIngresoFallido(_DetalleBase):
+    motivo: Literal["sin_asignacion"]
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
-_MODELOS_DE_DETALLE: dict[Accion, type[_DetalleBase]] = {
+_MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso, type[_DetalleBase]] = {
+    EventoDeAcceso.INGRESO_FALLIDO: _DetalleIngresoFallido,
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignacion,
     Accion.CREAR_EDIFICIO: _DetalleAsignarEdificio,
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
@@ -71,7 +77,7 @@ _MODELOS_DE_DETALLE: dict[Accion, type[_DetalleBase]] = {
 }
 
 
-def _detalle_validado(accion: Accion, detalle: dict[str, Any]) -> dict[str, Any]:
+def _detalle_validado(accion: Accion | EventoDeAcceso, detalle: dict[str, Any]) -> dict[str, Any]:
     modelo = _MODELOS_DE_DETALLE.get(accion, _DetalleBase)
     try:
         validado = modelo.model_validate(detalle)
@@ -87,7 +93,7 @@ def _detalle_validado(accion: Accion, detalle: dict[str, Any]) -> dict[str, Any]
 def registrar(
     sesion: Session,
     identidad: Identidad,
-    accion: Accion,
+    accion: Accion | EventoDeAcceso,
     *,
     entidad: str,
     entidad_id: UUID,

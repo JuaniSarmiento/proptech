@@ -66,6 +66,7 @@ _MARCADOR = "marcador-nunca-tendria-que-salir-en-una-respuesta"
 #: porque no hay nada a lo que sumarle `id`. `.../sin-saldos-previos` es de
 #: la tarea 6.1, que todavía no existe en este cambio.
 _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
+    ("/api/sesion/ingreso", "POST"),
     ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
 }
 

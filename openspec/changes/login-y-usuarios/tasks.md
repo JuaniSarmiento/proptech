@@ -361,7 +361,51 @@ la cuenta de Clerk (8.1).
   All checks passed! / 245 files already formatted / no issues found in 221 source files
   ```
 
-- [ ] 4.2 La sesión y los ingresos (D3, D8), en `backend/tests/integracion/test_sesion_api.py`: `GET /api/sesion` lista las administraciones vinculadas con asignación (nombre de la persona y de cada una), nada de otra administración, y omite una administración donde la persona no tiene asignación; `POST /api/sesion/ingreso` deja exactamente una fila `ingreso_exitoso` con la persona, la administración y el `request_id`; una persona vinculada sin asignaciones recibe 401 y deja una fila `ingreso_fallido` con `motivo = sin_asignacion`, confirmada aunque la respuesta sea 401; ningún detalle tiene email, token ni `sub`. RED: las rutas no existen (404 en vez de 200). Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones (la parte de la API); › Ingreso a una administración; › Persona sin asignación; › Identidad sin vínculo; › Vinculada sin asignación. Lecciones: L-007, L-016.
+- [x] 4.2 La sesión y los ingresos (D3, D8), en `backend/tests/integracion/test_sesion_api.py`: `GET /api/sesion` lista las administraciones vinculadas con asignación (nombre de la persona y de cada una), nada de otra administración, y omite una administración donde la persona no tiene asignación; `POST /api/sesion/ingreso` deja exactamente una fila `ingreso_exitoso` con la persona, la administración y el `request_id`; una persona vinculada sin asignaciones recibe 401 y deja una fila `ingreso_fallido` con `motivo = sin_asignacion`, confirmada aunque la respuesta sea 401; ningún detalle tiene email, token ni `sub`. RED: las rutas no existen (404 en vez de 200). Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones (la parte de la API); › Ingreso a una administración; › Persona sin asignación; › Identidad sin vínculo; › Vinculada sin asignación. Lecciones: L-007, L-016.
+
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_sesion_api.py -x -q
+  11:09:22
+  FAILED test_sesion_solo_lista_vinculos_con_asignacion: assert 404 == 200; 1 failed in 5.62s
+  GREEN $ cd backend; date +%T; uv run pytest tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_rutas_protegidas.py -q
+  11:12:28
+  119 passed, 1 warning in 21.85s
+  ```
+  Mutantes sobre copias propias, diff real y `PYTHONPATH` a la copia (originales intactos):
+
+  ```diff
+  # 11:14:10, pytest test_sesion_api.py -q -k solo_lista
+  -            if not cargar_asignaciones(sesion, identidad.persona_id):
+  +            if False:
+  # 1 failed, 2 deselected: se listó la administración sin asignación.
+  # 11:14:18, mismo archivo -k deja_una_fila
+  +        return
+           registrar(
+  # 1 failed, 2 deselected: no quedó ingreso_exitoso.
+  # 11:14:25, mismo archivo -k sin_asignacion
+  -            sesion.commit()
+  +            sesion.rollback()
+  # 1 failed, 2 deselected: ingreso_fallido no confirmado.
+  ```
+  Decisiones del constructor (L-030): anticipo de 4.3 el enum `EventoDeAcceso` y su soporte en
+  `registrar`, y de 4.4 la clase `RutaConTokenVerificado`: D3/D8 los requieren en estas rutas.
+  El barrido ya cubre las dos rutas nuevas; el contrato completo y aceptar siguen en 4.4/5.5.
+  Corrijo el auxiliar de pruebas para derivar un sub único de cada clave RSA efímera; el sub
+  constante dejaba vínculos entre casos de una misma base. La primera regresión completa se
+  interrumpió limpiamente tras detectar ese defecto y el inventario de POST sin cuerpo desactualizado.
+
+  Retoma tras el corte: se revisó el diff y se conservaron el RED y los mutantes anteriores.
+  ```text
+  GREEN $ cd backend; date +%T; uv run pytest tests/integracion/test_sesion_api.py -q
+  11:54:40 / 3 passed, 1 warning in 6.50s
+  GREEN $ date +%T; for archivo in test_identidad_clerk_api.py test_rutas_protegidas.py test_altas_sin_id_del_cliente.py; do uv run pytest tests/integracion/$archivo -q; done
+  11:55:00 / 43 passed; 73 passed; 8 passed (archivos separados, secuenciales).
+  GREEN $ uv run pytest tests/unitarios/acceso/test_ruta_con_identidad.py -q; uv run pytest tests/unitarios/test_auditoria_detalle.py -q
+  2 passed; 5 passed.
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 249 files already formatted / no issues found in 225 source files
+  ```
+
 - [ ] 4.3 Deuda del 2a con dueño 2b (L-012): **V2-7**, `@accion_sensible` falla al registrar dos casos con la misma acción o evento, y se reescribe el test de `test_auditoria_transaccion.py:416` hasta verlo rojo con un segundo caso (D13); **D-1 y D-6**, un test por cada una de las cinco comparaciones de `_verificar_politica_de_auditoria` sin cubrir (nombre, `PERMISSIVE`, comando, roles, `WITH CHECK`) y una sonda de `TRUNCATE` que no dependa de la palabra en mayúsculas, cada una vista roja con una copia mutada; **R9**, con identidades reales de la misma administración, la diferencia de tiempo entre un 403 y un 404 medida en 200 pedidos de cada uno y comparada con la de dos 404, con el criterio y el resultado en el informe (si hay diferencia explotable, frenar y volver a Juani). **D-2** queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se verifica que 0019 y 0020 no agregan ninguna. Escenarios: `auditoria-de-acciones` › Dos casos de uso con la misma acción. Lecciones: L-012, L-013, L-019.
 - [ ] 4.4 Dos guardas y parseo (D3, RB2b-2) en el barrido y los tests de rutas: `token_de_sesion_actual` verifica sin SQL; `identidad_actual` depende de ella y resuelve persona completa. Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` usan `Depends(token_de_sesion_actual)` sin persona, con `RutaConTokenVerificado`, variante de `RutaConIdentidad` cuya guarda reducida usa la misma dependencia, solver y overrides. Ninguna se agrega a `_RUTAS_PUBLICAS` (sólo `/api/salud`). El barrido compara el conjunto exacto de rutas con cada guarda, exige 401 y cero SQL sin token o con sesión inválida, incluso con JSON roto, cuerpo ausente y encabezado de administración no UUID. Con sesión válida sin persona, sesión llega al caso de uso y aceptar puede vincular; JSON roto o sin `token` en aceptar da 422, sin resolver persona completa; con cuerpo parseable la guarda corre una sola vez. RED: el barrido actual no reconoce la segunda dependencia y las rutas no existen; una copia que les exige persona completa rechaza la aceptación correcta y falla; sacar la dependencia o volver a la guarda equivocada en el parser rompe el barrido. Escenarios: `autenticacion-con-clerk` › Dos rutas con token sin persona; `gestion-de-usuarios` › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida. Lecciones: L-013, L-017, L-019, L-022.
 

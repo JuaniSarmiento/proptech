@@ -1,5 +1,6 @@
 """Clerk local: claves efímeras y API real como proptech_app, sin red externa."""
 
+import hashlib
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
@@ -32,16 +33,23 @@ def clerk_falso(monkeypatch: pytest.MonkeyPatch) -> rsa.RSAPrivateKey:
 def api_clerk(clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio) -> Iterator[ApiEdificio]:
     api_edificio.app.dependency_overrides.pop(identidad_actual)
     api_edificio.filas(
-        "UPDATE persona SET clerk_usuario_id = 'user_Prueba' WHERE id = %s RETURNING id",
-        (api_edificio.personas["editar"],),
+        "UPDATE persona SET clerk_usuario_id = %s WHERE id = %s RETURNING id",
+        (sub_de(clerk_falso), api_edificio.personas["editar"]),
     )
     yield api_edificio
+
+
+def sub_de(clave: rsa.RSAPrivateKey) -> str:
+    publica = clave.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return "user_" + hashlib.sha256(publica).hexdigest()[:32]
 
 
 def token(clave: rsa.RSAPrivateKey, **cambios: Any) -> str:
     ahora = int(datetime.now(UTC).timestamp())
     claims = {
-        "sub": "user_Prueba",
+        "sub": sub_de(clave),
         "email": "invitada@example.invalid",
         "email_verified": True,
         "iss": "https://clerk.invalid",

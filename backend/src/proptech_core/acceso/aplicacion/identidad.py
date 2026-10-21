@@ -7,7 +7,9 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
+from proptech_core.acceso.aplicacion.auditoria import registrar
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
+from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.base_de_datos import abrir_sesion, abrir_sesion_por_identidad
 
@@ -27,7 +29,9 @@ def personas_vinculadas(fabrica: sessionmaker[Session], sub: str) -> list[Identi
     return [Identidad(f.administracion_id, f.id) for f in filas]
 
 
-def resolver(fabrica: sessionmaker[Session], sub: str, selector: str | None) -> Identidad:
+def resolver(
+    fabrica: sessionmaker[Session], sub: str, selector: str | None, *, request_id: UUID
+) -> Identidad:
     personas = personas_vinculadas(fabrica, sub)
     if not personas:
         _logger.info(
@@ -52,5 +56,15 @@ def resolver(fabrica: sessionmaker[Session], sub: str, selector: str | None) -> 
         identidad = candidatas[0]
     with abrir_sesion(fabrica, identidad.administracion_id) as sesion:
         if not cargar_asignaciones(sesion, identidad.persona_id):
+            registrar(
+                sesion,
+                identidad,
+                EventoDeAcceso.INGRESO_FALLIDO,
+                entidad="persona",
+                entidad_id=identidad.persona_id,
+                request_id=request_id,
+                detalle={"motivo": "sin_asignacion"},
+            )
+            sesion.commit()
             raise IdentidadNoDisponible
     return identidad

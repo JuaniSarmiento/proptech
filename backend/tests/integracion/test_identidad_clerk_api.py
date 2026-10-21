@@ -12,7 +12,7 @@ from sqlalchemy import event
 from ._api_edificios import ApiEdificio
 from ._clerk import api_clerk as api_clerk
 from ._clerk import clerk_falso as clerk_falso
-from ._clerk import encabezados, token
+from ._clerk import encabezados, sub_de, token
 
 pytestmark = pytest.mark.integracion
 
@@ -207,8 +207,8 @@ def test_selector_solo_administraciones_vinculadas(
         persona = uuid4()
         conexion.execute(
             "INSERT INTO persona (id, administracion_id, nombre, clerk_usuario_id) "
-            "VALUES (%s, %s, 'Otra ficticia', 'user_Prueba')",
-            (persona, api_clerk.admin_ajena),
+            "VALUES (%s, %s, 'Otra ficticia', %s)",
+            (persona, api_clerk.admin_ajena, sub_de(clerk_falso)),
         )
         conexion.execute(
             "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "

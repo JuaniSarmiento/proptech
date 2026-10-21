@@ -34,7 +34,7 @@ from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
 from testcontainers.community.postgres import PostgresContainer
 
-from proptech_api.acceso import identidad_actual
+from proptech_api.acceso import identidad_actual, token_de_sesion_actual
 from proptech_core.acceso.dominio.identidad import Identidad
 
 from ._barrido_de_rutas import depende_de as _depende_de
@@ -67,6 +67,8 @@ _RUTAS_PUBLICAS = {
 #: estructural falla nombrándolo: es la señal de que una ruta nueva no pasó
 #: por este archivo.
 _RUTAS_CUBIERTAS = {
+    ("/api/sesion", "GET"),
+    ("/api/sesion/ingreso", "POST"),
     ("/api/complejos/{complejo_id}/categorias", "GET"),
     ("/api/complejos/{complejo_id}/categorias", "POST"),
     ("/api/categorias/{categoria_id}", "PATCH"),
@@ -263,7 +265,8 @@ def test_cada_ruta_del_candado_depende_de_identidad_actual(
     app_real: FastAPI, ruta_y_metodo: tuple[str, str]
 ) -> None:
     ruta, metodo = ruta_y_metodo
-    assert _depende_de(app_real, ruta, metodo, identidad_actual), (
+    guarda = token_de_sesion_actual if ruta == "/api/sesion" else identidad_actual
+    assert _depende_de(app_real, ruta, metodo, guarda), (
         f"{metodo} {ruta} no depende de identidad_actual"
     )
 
@@ -347,6 +350,11 @@ def test_cada_ruta_con_identidad_sin_asignacion_nunca_da_200_ni_201(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any], ruta_y_metodo: tuple[str, str]
 ) -> None:
     ruta, metodo = ruta_y_metodo
+    if ruta.startswith("/api/sesion"):
+        # Estas rutas comprueban el vínculo real, sin el override de dominio.
+        respuesta = _pedido(cliente, ruta, metodo, mundo)
+        assert respuesta.status_code == 401
+        return
     app_real.dependency_overrides[identidad_actual] = lambda: Identidad(
         administracion_id=mundo["administracion_id"],
         persona_id=mundo["persona_sin_asignacion"],

@@ -9,6 +9,7 @@ from collections.abc import Callable, Coroutine, Iterator
 from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.dependencies.utils import get_dependant, solve_dependencies
@@ -26,6 +27,7 @@ from proptech_core.acceso.dominio.token import (
     verificar_token_de_sesion,
 )
 from proptech_core.compartido.base_de_datos import abrir_sesion
+from proptech_core.compartido.seguimiento import request_id_actual
 
 
 def token_de_sesion_actual(request: Request) -> TokenVerificado:
@@ -57,6 +59,7 @@ def identidad_actual(
             request.app.state.fabrica_de_sesiones,
             token.sub,
             request.headers.get("X-Proptech-Administracion"),
+            request_id=UUID(request_id_actual.get() or ""),
         )
     except IdentidadNoDisponible:
         raise HTTPException(status_code=401) from None
@@ -83,6 +86,10 @@ def sesion_con_tenant(
 
 def _exigir_identidad(identidad: Identidad = Depends(identidad_actual)) -> None:
     """Árbol reducido: sólo identidad, nunca sesión ni SQL de dominio."""
+
+
+def _exigir_token(token: TokenVerificado = Depends(token_de_sesion_actual)) -> None:
+    """Árbol reducido de las rutas anteriores al vínculo de persona."""
 
 
 #: RF-B-2 (revisión final, 19/10/2026): el `detail` exacto con el que
@@ -112,9 +119,11 @@ class RutaConIdentidad(APIRoute):
     obligatorias y verificadas por el barrido.
     """
 
+    guarda: Callable[..., None] = staticmethod(_exigir_identidad)
+
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         handler = super().get_route_handler()
-        guarda = get_dependant(path=self.path_format, call=_exigir_identidad)
+        guarda = get_dependant(path=self.path_format, call=self.guarda)
 
         async def con_identidad(request: Request) -> Response:
             try:
@@ -142,3 +151,7 @@ class RutaConIdentidad(APIRoute):
                 raise
 
         return con_identidad
+
+
+class RutaConTokenVerificado(RutaConIdentidad):
+    guarda: Callable[..., None] = staticmethod(_exigir_token)
