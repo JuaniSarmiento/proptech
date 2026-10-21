@@ -207,8 +207,13 @@ class EstadosDeUnidad(_Base):
     estados: list[EstadoDeUnidad] = Field(min_length=1)
 
 
+class Invitaciones(_Base):
+    vencimiento_dias: int = Field(ge=1)
+
+
 class Parametros(_Base):
     version: Literal[1]
+    invitaciones: Invitaciones
     intereses: Intereses
     fondo_de_reserva: FondoDeReserva
     vencimiento: Vencimiento

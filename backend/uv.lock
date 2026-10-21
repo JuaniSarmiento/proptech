@@ -610,6 +610,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "arq" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -635,6 +636,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.20.0,<1.21.0" },
     { name = "arq", specifier = "==0.28.0" },
+    { name = "cryptography", specifier = "==50.0.2" },
     { name = "fastapi", specifier = ">=0.143.0,<0.144.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6,<3.4.0" },
     { name = "pydantic", specifier = ">=2.14.0,<2.15.0" },

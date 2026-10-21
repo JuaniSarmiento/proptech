@@ -28,6 +28,7 @@ _SECRETO = "SECRETO-ABC"
 
 _PARAMETROS_VALIDOS: dict[str, Any] = {
     "version": 1,
+    "invitaciones": {"vencimiento_dias": 7},
     "intereses": {
         "tasa_mensual": "3.00",
         "dias_de_gracia": 0,

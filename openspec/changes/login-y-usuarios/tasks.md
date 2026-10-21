@@ -475,7 +475,38 @@ la cuenta de Clerk (8.1).
 
 ## 5. Gestión de usuarios
 
-- [ ] 5.1 Alta inicial (D10) en `backend/tests/integracion/test_alta_inicial.py`: el comando crea administración, persona, asignación `super_admin`, invitación pendiente y fila `alta_inicial` con la persona como actor, en una transacción, como `proptech_app`, sin tocar otra administración; con email inválido o nombre vacío termina con error que nombra el campo sin el valor y no escribe nada; repetirlo con el mismo email sobre una administración que ya tiene super admin falla sin escribir. Verificar el permiso existente de D10 sin crear rol ni `GRANT` nuevo: `proptech_app` ya puede insertar administraciones con el tenant nuevo, desde el comando o cualquier camino de la API. Restringirlo exige otra decisión CRITICAL. RED: el módulo no existe. Escenarios: `gestion-de-usuarios` › Primera administración; › Datos inválidos. Lecciones: L-016.
+- [x] 5.1 Alta inicial (D10) en `backend/tests/integracion/test_alta_inicial.py`: el comando crea administración, persona, asignación `super_admin`, invitación pendiente y fila `alta_inicial` con la persona como actor, en una transacción, como `proptech_app`, sin tocar otra administración; con email inválido o nombre vacío termina con error que nombra el campo sin el valor y no escribe nada; repetirlo con el mismo email sobre una administración que ya tiene super admin falla sin escribir. Verificar el permiso existente de D10 sin crear rol ni `GRANT` nuevo: `proptech_app` ya puede insertar administraciones con el tenant nuevo, desde el comando o cualquier camino de la API. Restringirlo exige otra decisión CRITICAL. RED: el módulo no existe. Escenarios: `gestion-de-usuarios` › Primera administración; › Datos inválidos. Lecciones: L-016.
+  Decisiones de orden del constructor (L-030): el alta necesita la invitación de D6/D7;
+  anticipo el generador del sobre, el puerto de cola y `invitaciones.vencimiento_dias`
+  (7 en el YAML, obligatorio y entero positivo). `cryptography==50.0.2` pasa de transitiva
+  a directa usando la versión del lock. Las fixtures de parámetros suman el campo obligatorio.
+  La repetición se prueba contra el MISMO tenant, fijando el generador de UUID en el test.
+  D10 crea un tenant nuevo en cada comando: no se inventa unicidad global por nombre o email.
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_alta_inicial.py -x -q
+  12:06:06 / 1 failed: no existe acceso.aplicacion.alta_inicial.
+  RED $ date +%T; uv run pytest tests/unitarios/acceso/test_sobres.py -q
+  12:06:34 / 2 failed: no existe sobres y el esquema rechaza invitaciones como extra.
+  ```
+  Copias propias `.atl/bloque-b/mut51-*`, originales intactos:
+  ```diff
+  # 12:08:40, pytest test_alta_inicial.py -q -k 'datos_invalidos and email': 1 failed.
+  - email = email_valido(email)
+  + email = email.lower()
+  # 12:09:11, -k comando_y_rollback: 1 failed, assert 1 == 0 (quedó administración).
+  + if nombre == "Ficticia rollback":
+  +     sesion.commit()
+    registrar(...)
+  ```
+  ```text
+  GREEN $ date +%T; uv run pytest tests/integracion/test_alta_inicial.py -q
+  12:09:18 / 5 passed, 1 warning in 6.01s (incluye main() real y rollback ante fallo de auditoría).
+  GREEN $ uv run pytest tests/unitarios/acceso/test_sobres.py tests/unitarios/test_parametros.py tests/unitarios/test_rompedor_cargador_yaml_clave_no_string.py tests/unitarios/test_rompedor_cargador_yaml_contenido_filtrado.py tests/unitarios/test_rompedor_parametros_tasa_negativa_mensaje.py tests/unitarios/test_rompedor_patrones_fullmatch_salto_de_linea.py -q
+  112 passed in 0.24s
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 261 files already formatted / no issues found in 237 source files
+  ```
+
 - [ ] 5.2 Invitar personal (D5, D7) en `backend/tests/integracion/test_invitar_personal_api.py` y la ruta `POST /api/personal/invitaciones`: el super admin invita administrador y contador (principal y por edificio), auxiliar y consejo (por edificio): 201, persona creada o reusada por email en minúsculas, asignación correcta, invitación pendiente con `token_resumen` y `vence` según `invitaciones.vencimiento_dias` de `config/parametros.yaml` (7, validado como los demás parámetros), trabajo encolado sólo con ids y sobre cifrado de D6 (sin token crudo ni email, nunca en la respuesta), fila `invitar_personal` sin email; persona ya vinculada: asignación sin invitación nueva; segunda invitación abierta: bloquea persona, revoca la anterior antes de insertar la nueva y deja una sola abierta; probar desde `pendiente`, `enviada`, `fallida` y vencida, y que el enlace anterior da 404; administrador principal, contador o vecino: 403 con `invitar_usuarios_y_asignar_edificios`; complejo de B con UUID real: 404; auxiliar o consejo principal: 422 nombrando el alcance; `rol` `super_admin`, `vecino` o un campo extra: 422 nombrando el campo; perfil repetido: 409 `campo=rol`. Nada escrito en cada error. RED: la ruta no existe. Escenarios: `gestion-de-usuarios` › Un administrador principal invita; › Contador principal; › Alcance que el perfil no admite; › Perfil repetido; › Perfil no invitable; › Reinvitar revoca la anterior. Lecciones: L-016, L-017.
 - [ ] 5.3 Alta de vecinos desde el padrón (D5) en `backend/tests/integracion/test_alta_de_vecinos_api.py` y la ruta `POST /api/unidades/{unidad_id}/vecinos`: dos propietarios distintos de una unidad, la misma persona propietaria de una e inquilina de otra (una sola persona, una sola invitación abierta), la misma persona con dos vínculos en la misma unidad (409), un vecino propietario que intenta dar de alta (403), unidad de B con UUID real (404), `vinculo` fuera de la lista (422); fila `dar_de_alta_vecino` con `persona_id` y `asignacion_id`, sin email. RED: la ruta no existe. Escenarios: `gestion-de-usuarios` › Dos propietarios de una unidad; › Propietaria de una e inquilina de otra; › Propietaria e inquilina de la misma unidad; › Un vecino da de alta a otro; › Unidad de otra administración. Lecciones: L-016, L-017.
 - [ ] 5.4 El envío por el worker (D7) en `backend/tests/integracion/test_envio_de_invitaciones.py` y `backend/tests/unitarios/acceso/test_clerk_http.py`, contra un servidor HTTP falso que exige `POST /v1/invitations`, `Authorization: Bearer <clave de prueba>`, `Content-Type: application/json` y el cuerpo con `email_address`, `redirect_url` que lleva sólo el sobre cifrado de D6, sin token crudo ni resumen, `notify: true`, `expires_in_days` y `ignore_existing` (L-027): éxito guarda `clerk_invitacion_id` y deja `enviada`; Clerk apagado, lento y que no responde corta la llamada HTTP a los 10 s y reintenta sin retener el trabajo más allá del plazo de D7; dos 503 y después éxito, `enviada` con un solo id; 422 deja `fallida` sin reintentos; un trabajo repetido sobre una `enviada` no llama al servidor; la revocación llama a `POST /v1/invitations/{id}/revoke`; ningún log tiene el email, el token, el sobre ni el cuerpo de la respuesta (captura de todos los niveles y todos los loggers, no sólo ERROR, C2V2-2); el tenant del trabajo se valida como en el 2a. Inspeccionar los argumentos serializados en Redis: sólo ids y sobre, nunca token crudo ni email; comprobar `_expires=3600`, plazo original sin extender al reintentar, `job_timeout=30`, `keep_result=0`, TTL y borrado tras éxito, falla definitiva y agotamiento (máximo 3630 s, D7); ningún resultado conserva argumentos. `httpx` y `cryptography` pasan a dependencias directas con versión fijada. RED: el puerto y el adaptador no existen; una copia del servidor falso que acepta cualquier cuerpo deja pasar un `redirect_url` con token crudo en lugar de sobre y el test del adaptador lo muestra. Escenarios: `gestion-de-usuarios` › Envío exitoso; › Reintento tras una caída; › Trabajo repetido; › Rechazo definitivo; › Revocar una invitación enviada (la parte de Clerk); › Entrega sin token crudo. Lecciones: L-001, L-007, L-009, L-013, L-027.
