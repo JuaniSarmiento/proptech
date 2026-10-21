@@ -105,6 +105,19 @@ a {
   color: var(--color-grafito);
 }
 
+/* Lectura pública del 2b: misma escala y papel, con una medida cómoda. */
+.pagina-lectura {
+  max-width: 70ch;
+  margin-inline: auto;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.pagina-lectura section {
+  display: grid;
+  gap: 0.75rem;
+}
+
 /* Escala tipográfica (D10, tarea 3.5): declarada desde el principio pero
  * nunca conectada a ningún título hasta la tarea 5.2 — `h1`/`h2` quedaban
  * en el tamaño por defecto del navegador, no en `--tipo-titular`/

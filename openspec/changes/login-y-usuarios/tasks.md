@@ -1000,11 +1000,49 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
 
 ## 7. Pantallas (bloqueado por el shape)
 
-- [ ] 7.0 **Bloqueante del grupo**: `shape` de las pantallas de ingreso, selector, aceptar invitación, aviso de privacidad, barra superior, personal y vecinos del padrón, acordado con Juani con la skill impeccable (como el del 3b, `openspec/exploraciones/2026-10-19-shape-pantallas-del-edificio.md`), guardado en `openspec/exploraciones/` y firmado por Juani con fecha. Sin eso, ninguna tarea de 7.1 a 7.4 empieza. Verificación: el archivo del shape con la firma. Escenarios: `gestion-de-usuarios` › Pantallas de gestión de usuarios (la precondición). Lecciones: L-026.
+- [x] 7.0 **Bloqueante del grupo**: `shape` de las pantallas de ingreso, selector, aceptar invitación, aviso de privacidad, barra superior, personal y vecinos del padrón, acordado con Juani con la skill impeccable (como el del 3b, `openspec/exploraciones/2026-10-19-shape-pantallas-del-edificio.md`), guardado en `openspec/exploraciones/` y firmado por Juani con fecha. Sin eso, ninguna tarea de 7.1 a 7.4 empieza. Verificación: el archivo del shape con la firma. Escenarios: `gestion-de-usuarios` › Pantallas de gestión de usuarios (la precondición). Lecciones: L-026.
+  **7.0 verificada:** shape completo en `openspec/exploraciones/2026-10-21-shape-login-y-usuarios.md`, aprobado por Juani el 21/10/2026, commit `db8329b`.
 - [ ] 7.1 Ingreso, selector, aceptar invitación y barra superior (D3, D6, D12), según el shape: `/ingresar` y `/registrarse` con los componentes de Clerk en castellano y la apariencia de `DESIGN.md`, enlace al aviso; `/elegir-administracion` (directo con una sola); `/invitacion/[sobre]`, sin recursos de terceros, sin caché ni referente, con limpieza de la URL al terminar (D6); la barra superior con nombre, administración, "Salir" y "Cambiar de administración" (deuda del 3b). Tests de componentes y Playwright contra la API falsa ampliada, que valida `Authorization` y `X-Proptech-Administracion` como la real (L-027); capturas a 320 y 1280 px mirada en navegador real (L-026). RED: las páginas no existen y la barra dice "Administración". Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones; › Enlace desde el ingreso; `pantallas-del-edificio` › Quién entró; › Salir; `gestion-de-usuarios` › Aceptación correcta (la parte de la web). Lecciones: L-026, L-027, L-028.
+  **Detenida por el constructor (L-029/L-030):** el shape pide quién invita, administración y perfil/unidad antes de aceptar, distinguir email distinto y perfil/cantidad de edificios en el selector. D3 sólo entrega nombres; D6 no ofrece lectura previa y exige un 404 uniforme para todos los rechazos. No agrego una consulta de datos personales ni distingo rechazos sin decisión firmada. Consulta pendiente a Juani; 7.2–7.4 no dependen de esta ampliación.
 - [ ] 7.2 Aviso de privacidad (ley 25.326), sin sesión, según el shape: qué guarda Clerk (email y nombre), transferencia internacional, finalidad, responsable y derechos de acceso, rectificación y supresión. El constructor arma el borrador; **Juani aprueba el texto** antes de marcar la tarea. Test de que la ruta responde sin sesión y tiene cada una de esas partes; mirada en navegador real. RED: la ruta no existe. Escenarios: `autenticacion-con-clerk` › Aviso sin sesión. Lecciones: L-026.
+  ```text
+  RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/privacidad/page.test.tsx
+  16:36:12 / Failed to resolve import "./page"; Test Files 1 failed (1). La ruta todavía no existe.
+  GREEN $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/privacidad/page.test.tsx
+  16:36:45 / Test Files 1 passed (1); Tests 1 passed (1).
+  $ bash infra/ci/test-web-navegador.sh privacidad.spec.ts
+  2 passed (2.5s), axe sin violaciones a 1440 y 320; ambas capturas vistas con Read/view_image.
+  GREEN $ date +%T; corepack pnpm@12.10.1 --dir web test
+  16:37:52 / Test Files 52 passed (52); Tests 332 passed (332).
+  $ corepack pnpm@12.10.1 --dir web exec tsc --noEmit
+  exit 0. Biome: sin errores; advertencia previa useOptionalChain en edificios/page.tsx:43 (no modificado).
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  16:38:35 / All checks passed! / 273 files already formatted / no issues found in 249 source files.
+  ```
+  Decisión del constructor (L-030): implemento sólo el borrador independiente de 7.2; las tareas
+  detenidas conservan `[ ]` y no tienen implementación ni evidencia TDD inventada. Las suites de cierre
+  se correrán tras el commit de este borrador, una vez y en primer plano; pegaré sus resultados bajo 7.4
+  sin un nuevo commit de código (L-031). No se hacen 8.2 ni tareas del grupo 9.
+  **Pendiente, no marcada:** borrador en `web/src/app/privacidad/page.tsx`, ruta pública `/privacidad`.
+  Faltan identidad legal, domicilio y contacto del responsable, conservación y aprobación del texto por Juani
+  (7.2 lo exige expresamente). No invento esos datos ni afirmo cumplimiento legal del borrador.
+  Referencia de derechos: https://www.argentina.gob.ar/aaip/datospersonales/derechos
+  Capturas: `.git/informes-2b/pantallas/privacidad-{1440,320}.png`; lectura centrada de 70ch,
+  escala y colores existentes, sin defectos materiales tras la mirada. Logs en `.git/informes-2b/logs/7.2-*`.
 - [ ] 7.3 Pantalla de personal (D5), según el shape: lista con perfil, alcance y estado de invitación, invitar con perfil y alcance, revocar y quitar, con su ayuda "?" (D-102), estados de `pantallas-del-edificio`, errores asociados al campo y combinaciones de capas (panel + ayuda + menú, L-028); sin los controles para quien no es super admin. Playwright contra la API falsa que valida método, `Content-Type` y forma del cuerpo de cada escritura (L-027); mirada a 320 y 1280 px. RED: la página no existe. Escenarios: `gestion-de-usuarios` › Invitar desde la pantalla; › Error asociado al campo. Lecciones: L-026, L-027, L-028.
+  **Detenida por el constructor (L-029/L-030):** el shape exige Reenviar y Reintentar tras fallo de Clerk,
+  pero no existe ruta de reenvío. `usuarios._alta` inserta siempre una asignación nueva; repetir el mismo
+  perfil y alcance responde 409 (`test_ajeno_y_duplicado` / `test_reinvitar_revoca_la_anterior` en
+  `backend/tests/integracion/test_invitar_personal_api.py`, la reinvitación agrega otro perfil).
+  No quito y recreo asignaciones ni agrego otro perfil para simular un reenvío: cambiaría permisos.
+  Consulta pendiente a Juani sobre operación nueva o ajuste explícito del shape. Sin código ni rojo/verde.
 - [ ] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
+
+  **Dependencia sin resolver, declarada por el constructor:** el estado del shape "No se pudo enviar"
+  con "Reintentar" también aplica a las invitaciones del padrón. D5 tiene alta de vecino, pero repetirla
+  para el mismo vínculo/unidad devuelve 409; la misma operación ausente de 7.3 impide cerrar ese estado.
+  No se implementa ni se marca 7.4 con un reintento que sólo refresque la pantalla o cambie el vínculo.
+  Se conserva el padrón existente. Sin código ni rojo/verde.
 
 ## 8. Con Clerk de verdad
 
