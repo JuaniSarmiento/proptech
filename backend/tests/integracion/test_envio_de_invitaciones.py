@@ -341,6 +341,64 @@ async def test_revocar_sin_clerk_id_no_llama_a_nadie(
 
 
 @pytest.mark.anyio
+async def test_revocar_con_el_envio_en_vuelo_no_deja_abierta_la_invitacion_de_clerk(
+    ajustes_del_worker: Any, esquema_migrado: None, postgres_contenedor: PostgresContainer
+) -> None:
+    """R2B-1 (rompedor 2b): el super admin revoca (o reinvita, 5.2) mientras
+    el `POST /invitations` todavía está en vuelo. Clerk ya mandó el mail,
+    pero la invitación de Clerk no tiene que quedar abierta (escenario
+    "Revocar una invitación enviada")."""
+    fila = _crear_invitacion_pendiente(postgres_contenedor, email="carrera@example.invalid")
+
+    def _clerk(_metodo: str, ruta: str, *_: Any) -> tuple[int, dict[str, Any]]:
+        if ruta == "/invitations":
+            # La revocación se confirma mientras Clerk procesa el POST.
+            _fijar_estado(
+                postgres_contenedor,
+                fila["administracion_id"],
+                fila["invitacion_id"],
+                estado="revocada",
+                clerk_invitacion_id=None,
+            )
+            return 201, {"id": "inv_carrera01"}
+        return 200, {"id": "inv_carrera01", "status": "revoked"}
+
+    from proptech_worker.tareas import enviar_invitacion, revocar_invitacion_en_clerk
+
+    with ServidorClerkFalso(_clerk) as servidor:
+        clerk = AdaptadorClerkHttp(SecretStr(CLAVE_DE_PRUEBA), base_url=servidor.base_url)
+        ctx = _ctx(ajustes_del_worker, _fabrica_con_tenant(ajustes_del_worker), clerk)
+        await enviar_invitacion(
+            ctx,
+            request_id=str(uuid.uuid4()),
+            clave=f"invitacion:{fila['invitacion_id']}",
+            administracion_id=str(fila["administracion_id"]),
+            invitacion_id=str(fila["invitacion_id"]),
+            sobre=SOBRE,
+        )
+        # El trabajo que encoló la revocación de la API, que puede correr
+        # antes o después: acá corre después, y no tiene que duplicar daño.
+        await revocar_invitacion_en_clerk(
+            ctx,
+            request_id=str(uuid.uuid4()),
+            clave=f"revocar:{fila['invitacion_id']}",
+            administracion_id=str(fila["administracion_id"]),
+            invitacion_id=str(fila["invitacion_id"]),
+        )
+
+    rutas = [p["ruta"] for p in servidor.pedidos]
+    estado, clerk_id = _leer_fila(
+        postgres_contenedor, fila["administracion_id"], fila["invitacion_id"]
+    )
+    assert rutas[0] == "/invitations"  # el mail con el sobre ya salió
+    assert estado == "revocada"
+    # Lo que la spec exige: Clerk recibe la revocación de lo que sí creó.
+    assert "/invitations/inv_carrera01/revoke" in rutas, (
+        f"Clerk sólo recibió {rutas}; clerk_invitacion_id en la base: {clerk_id!r}"
+    )
+
+
+@pytest.mark.anyio
 async def test_reintento_tras_caidas_y_exito_final_deja_un_solo_id(
     ajustes_del_worker: Any,
     esquema_migrado: None,

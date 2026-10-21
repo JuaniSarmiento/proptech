@@ -235,16 +235,25 @@ def _marcar_invitacion_enviada_o_fallida(
     invitacion_id: UUID,
     estado: str,
     clerk_invitacion_id: str | None,
-) -> None:
-    """Sólo mueve la fila si TODAVÍA está `pendiente` (D7): un trabajo
-    repetido que llegó a llamar a Clerk dos veces (no debería, por la
-    lectura de arriba, pero el `WHERE` es el candado real) no pisa un
-    estado que un intento anterior ya haya fijado."""
+) -> str | None:
+    """Guarda el `clerk_invitacion_id` SIEMPRE que la fila siga existiendo
+    bajo el tenant (R2B-1): si sólo se guardara cuando la fila está
+    `pendiente`, una revocación que gana la carrera (la deja `revocada`
+    antes de que Clerk conteste) hace perder el id para siempre, y
+    `revocar_invitacion_en_clerk` nunca encuentra qué revocar. El `estado`
+    en cambio sólo se pisa si la fila TODAVÍA está `pendiente`: un trabajo
+    repetido, o uno que llegó tarde después de una revocación, nunca
+    retrocede un estado final (`revocada`/`fallida`) que ya haya quedado
+    escrito. Devuelve el estado final de la fila (`None` si ya no existe),
+    para que `enviar_invitacion` sepa si tiene que revocar ella misma."""
     with abrir_sesion(fabrica, administracion_id) as sesion:
-        sesion.execute(
+        fila = sesion.execute(
             text(
-                "UPDATE invitacion SET estado=:estado, clerk_invitacion_id=:clerk_id "
-                "WHERE id=:invitacion AND administracion_id=:admin AND estado='pendiente'"
+                "UPDATE invitacion SET "
+                "clerk_invitacion_id = COALESCE(:clerk_id, clerk_invitacion_id), "
+                "estado = CASE WHEN estado = 'pendiente' THEN :estado ELSE estado END "
+                "WHERE id=:invitacion AND administracion_id=:admin "
+                "RETURNING estado"
             ),
             {
                 "estado": estado,
@@ -252,8 +261,9 @@ def _marcar_invitacion_enviada_o_fallida(
                 "invitacion": str(invitacion_id),
                 "admin": str(administracion_id),
             },
-        )
+        ).first()
         sesion.commit()
+    return fila.estado if fila is not None else None
 
 
 @con_seguimiento_de_tarea
@@ -318,7 +328,7 @@ async def enviar_invitacion(
     except ClerkNoDisponible as error:
         raise ErrorPasajero("clerk no disponible") from error
 
-    await asyncio.to_thread(
+    estado_final = await asyncio.to_thread(
         _marcar_invitacion_enviada_o_fallida,
         fabrica,
         administracion_id=argumentos.administracion_id,
@@ -326,6 +336,19 @@ async def enviar_invitacion(
         estado="enviada",
         clerk_invitacion_id=clerk_invitacion_id,
     )
+    if estado_final == "revocada":
+        # R2B-1: la revocaron (o la reinvitaron) mientras este POST estaba
+        # en vuelo. El id recién quedó guardado más arriba; el trabajo de
+        # revocación que encoló ese pedido pudo haber corrido ANTES y no
+        # haber encontrado nada, así que la invitación de Clerk nunca
+        # queda abierta: la revocamos nosotros mismos, en el mismo
+        # trabajo, en vez de depender de un trabajo ya terminado.
+        try:
+            await clerk.revocar(clerk_invitacion_id)
+        except ClerkRechazoDefinitivo:
+            pass
+        except ClerkNoDisponible as error:
+            raise ErrorPasajero("clerk no disponible") from error
     return True
 
 
