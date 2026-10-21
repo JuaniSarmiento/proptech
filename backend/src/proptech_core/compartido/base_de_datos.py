@@ -102,6 +102,11 @@ def abrir_sesion(fabrica: sessionmaker[Session], administracion_id: uuid.UUID | 
     return fabrica(info={"administracion_id": administracion_id})
 
 
+def abrir_sesion_por_identidad(fabrica: sessionmaker[Session], sub: str) -> Session:
+    """D2: lectura de personas por una identidad ya verificada, sin tenant."""
+    return fabrica(info={"identidad_clerk": sub})
+
+
 def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
     """Registra en `fabrica` un evento `after_begin` (D4) que, al abrir cada
     transacción, fija `app.administracion_id` a partir de
@@ -124,6 +129,12 @@ def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
     def _after_begin(
         session: Session, transaction: SessionTransaction, connection: Connection
     ) -> None:
+        identidad_clerk = session.info.get("identidad_clerk")
+        if identidad_clerk is not None:
+            connection.execute(
+                text("SELECT set_config('app.identidad_clerk', :valor, true)"),
+                {"valor": identidad_clerk},
+            )
         administracion_id = session.info.get("administracion_id")
         if administracion_id is None:
             return
@@ -194,6 +205,8 @@ def registrar_reset_del_tenant_al_devolver(engine: Engine) -> None:
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute("RESET app.administracion_id")
+                cursor.execute("RESET app.identidad_clerk")
+                cursor.execute("RESET app.invitacion_token")
                 dbapi_connection.commit()
             finally:
                 cursor.close()

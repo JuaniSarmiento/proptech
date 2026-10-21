@@ -48,6 +48,28 @@ _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS = re.compile(
     r"current_setting\(\s*'app\.administracion_id'(?:::text)?\s*,\s*true\s*\)", re.IGNORECASE
 )
 
+# Expresiones normalizadas por PostgreSQL (pg_get_expr), comparación completa D2/D6.
+_EXCEPCIONES_DE_LECTURA = {
+    ("public", "persona", "persona_por_identidad_clerk"): (
+        "SELECT",
+        "PERMISSIVE",
+        ("public",),
+        "((clerk_usuario_id = "
+        "NULLIF(current_setting('app.identidad_clerk'::text, true), ''::text)) "
+        "AND (NULLIF(current_setting('app.administracion_id'::text, true), ''::text) IS NULL))",
+        None,
+    ),
+    ("public", "invitacion", "invitacion_por_token"): (
+        "SELECT",
+        "PERMISSIVE",
+        ("public",),
+        "((token_resumen = decode(NULLIF(current_setting('app.invitacion_token'::text, true), "
+        "''::text), 'hex'::text)) AND "
+        "(NULLIF(current_setting('app.administracion_id'::text, true), ''::text) IS NULL))",
+        None,
+    ),
+}
+
 
 # --- El guardián mismo ---
 
@@ -77,19 +99,31 @@ def _rls_forzada(cur: psycopg.Cursor, tabla: str) -> bool:
     return fila is not None and bool(fila[0]) and bool(fila[1])
 
 
-def _politica_de_dos_argumentos(cur: psycopg.Cursor, tabla: str) -> bool:
+def _politicas_invalidas(cur: psycopg.Cursor, tabla: str) -> list[str]:
     cur.execute(
-        "SELECT qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = %s",
+        "SELECT schemaname,tablename,policyname,cmd,permissive,roles,qual,with_check "
+        "FROM pg_policies WHERE schemaname = 'public' AND tablename = %s",
         (tabla,),
     )
     filas = cur.fetchall()
     if not filas:
-        return False
-    return all(
-        _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS.search(qual or "")
-        and _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS.search(with_check or "")
-        for qual, with_check in filas
-    )
+        return ["(ausente)"]
+    invalidas = []
+    for esquema, nombre_tabla, nombre, cmd, permisiva, roles, qual, with_check in filas:
+        clave = (esquema, nombre_tabla, nombre)
+        if clave in _EXCEPCIONES_DE_LECTURA:
+            permitida = (cmd, permisiva, tuple(roles), qual, with_check) == _EXCEPCIONES_DE_LECTURA[
+                clave
+            ]
+        else:
+            # Regla ordinaria intacta: tenant de dos argumentos en ambos lados.
+            permitida = bool(
+                _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS.search(qual or "")
+                and _PATRON_CURRENT_SETTING_DOS_ARGUMENTOS.search(with_check or "")
+            )
+        if not permitida:
+            invalidas.append(nombre)
+    return invalidas
 
 
 def _app_tiene_los_cuatro_permisos(cur: psycopg.Cursor, tabla: str) -> bool:
@@ -199,9 +233,11 @@ def revisar_catalogo(cur: psycopg.Cursor) -> list[str]:
             columna_aislante = "id" if tabla == "administracion" else "administracion_id"
             if not _rls_forzada(cur, tabla):
                 problemas.append(f"{tabla}: RLS no está activada y forzada")
-            if not _politica_de_dos_argumentos(cur, tabla):
+            invalidas = _politicas_invalidas(cur, tabla)
+            if invalidas:
                 problemas.append(
-                    f"{tabla}: no tiene política contra current_setting('app.administracion_id', "
+                    f"{tabla}: política {', '.join(invalidas)} no cumple "
+                    f"current_setting('app.administracion_id', "
                     f"true) sobre {columna_aislante}, o le falta el segundo argumento"
                 )
             if tabla in _TABLAS_DE_SOLO_AGREGAR:
@@ -521,3 +557,52 @@ def test_tabla_fuera_de_la_lista_con_solo_select_insert_se_rechaza(
         ],
     )
     assert problemas == [f"{tabla}: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE"]
+
+
+@pytest.mark.parametrize(
+    "defecto", ["otra_tabla", "qual", "cmd", "roles", "restrictiva", "nombre", "with_check"]
+)
+def test_lista_blanca_rechaza_politicas_parecidas(
+    contenedor: PostgresContainer, esquema: None, defecto: str
+) -> None:
+    tabla = "complejo" if defecto == "otra_tabla" else "persona"
+    nombre = "otra_identidad" if defecto == "nombre" else "persona_por_identidad_clerk"
+    condicion = ("nombre" if defecto == "otra_tabla" else "clerk_usuario_id") + (
+        " = nullif(current_setting('app.identidad_clerk',true),'') AND "
+        "nullif(current_setting('app.administracion_id',true),'') IS NULL"
+    )
+    if defecto == "qual":
+        condicion += " OR true"
+    with (
+        psycopg.connect(
+            host=contenedor.get_container_host_ip(),
+            port=contenedor.get_exposed_port(5432),
+            dbname=contenedor.dbname,
+            user=ARRANQUE_USER,
+            password=ARRANQUE_PASSWORD,
+        ) as conexion,
+        conexion.cursor() as cur,
+    ):
+        try:
+            cur.execute("DROP POLICY persona_por_identidad_clerk ON persona")
+            cur.execute(
+                sql.SQL("CREATE POLICY {} ON {} AS {} FOR {} TO {} USING ({})").format(
+                    sql.Identifier(nombre),
+                    sql.Identifier(tabla),
+                    sql.SQL("RESTRICTIVE" if defecto == "restrictiva" else "PERMISSIVE"),
+                    sql.SQL("ALL" if defecto == "cmd" else "SELECT"),
+                    sql.Identifier(APP_USER) if defecto == "roles" else sql.SQL("PUBLIC"),
+                    sql.SQL(condicion),
+                )
+            )
+            if defecto == "with_check":
+                # Estado de catálogo hostil: DDL no permite WITH CHECK en SELECT.
+                # Sólo esta transacción del contenedor; rollback en finally.
+                cur.execute(
+                    "UPDATE pg_policy SET polwithcheck=polqual "
+                    "WHERE polrelid='persona'::regclass AND polname='persona_por_identidad_clerk'"
+                )
+            problemas = revisar_catalogo(cur)
+            assert any(tabla in p and nombre in p for p in problemas), problemas
+        finally:
+            conexion.rollback()
