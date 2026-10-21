@@ -292,7 +292,12 @@ async def enviar_invitacion(
         _logger_invitaciones.info("invitacion_no_pendiente", extra={"tarea": "enviar_invitacion"})
         return True
 
-    clerk: ClienteDeClerk = ctx["clerk"]
+    clerk: ClienteDeClerk | None = ctx["clerk"]
+    if clerk is None:
+        # Sin CLERK_SECRET_KEY (D7, hoy en blanco en `.env.example`): apaga
+        # el envío, nunca al worker entero (mismo criterio que D1 con
+        # CLERK_JWT_KEY). Reintenta como si Clerk no respondiera.
+        raise ErrorPasajero("CLERK_SECRET_KEY no configurada")
     configuracion = ctx["configuracion_app"]
     dias = ctx["parametros"].invitaciones.vencimiento_dias
     redirect_url = f"{configuracion.proptech_url_publica}/invitacion/{sobre}"
@@ -379,7 +384,9 @@ async def revocar_invitacion_en_clerk(
     if clerk_invitacion_id is None:
         return True
 
-    clerk: ClienteDeClerk = ctx["clerk"]
+    clerk: ClienteDeClerk | None = ctx["clerk"]
+    if clerk is None:
+        raise ErrorPasajero("CLERK_SECRET_KEY no configurada")
     try:
         await clerk.revocar(clerk_invitacion_id)
     except ClerkRechazoDefinitivo:

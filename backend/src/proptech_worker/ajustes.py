@@ -150,14 +150,6 @@ except ConfiguracionInvalida as _error_de_arranque:
     raise
 _PARAMETROS = leer_parametros(_configuracion.proptech_parametros)
 
-# D7 (2b, tarea 5.4): sin estas dos el worker no puede armar `redirect_url`
-# ni autenticarse contra Clerk; faltan rápido, igual que el resto de D11,
-# antes de que ARQ intente conectarse a Redis.
-if _configuracion.clerk_secret_key is None or _configuracion.proptech_url_publica is None:
-    _causa = "Falta configurar: CLERK_SECRET_KEY, PROPTECH_URL_PUBLICA"
-    _logger.error("arranque_fallido", extra={"causa": _causa})
-    raise ConfiguracionInvalida(_causa)
-
 #: Espera base e intentos máximos de producción (D3): 2, 4, 8, 16 s.
 POLITICA_DE_PRODUCCION = PoliticaReintentos()
 
@@ -223,12 +215,17 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     ctx["engine"] = engine
     ctx["fabrica_de_sesiones"] = fabrica
     ctx["politica"] = POLITICA_DE_PRODUCCION
-    # D7 (2b, tarea 5.4): la clave vive sólo en el worker, nunca en la API.
-    # El arranque ya exigió que no sea `None` (arriba); sin ese chequeo acá
-    # mypy no puede angostar el tipo a `SecretStr`.
-    if _configuracion.clerk_secret_key is None:  # pragma: no cover - ya lo exigió el arranque
-        raise ConfiguracionInvalida("Falta configurar: CLERK_SECRET_KEY")
-    ctx["clerk"] = AdaptadorClerkHttp(_configuracion.clerk_secret_key)
+    # D7 (2b): la clave vive sólo en el worker, nunca en la API. Ausente
+    # (como hoy en `.env.example`, README "tarea 6.3") apaga el envío sin
+    # tirar abajo el worker entero, mismo criterio que `CLERK_JWT_KEY`
+    # ausente apaga el login (D1): `enviar_invitacion`/
+    # `revocar_invitacion_en_clerk` ven `ctx["clerk"] is None` y reintentan
+    # como si Clerk no respondiera, nunca crashean el proceso.
+    ctx["clerk"] = (
+        AdaptadorClerkHttp(_configuracion.clerk_secret_key)
+        if _configuracion.clerk_secret_key is not None
+        else None
+    )
     ctx["configuracion_app"] = _configuracion
     ctx["parametros"] = _PARAMETROS
 
