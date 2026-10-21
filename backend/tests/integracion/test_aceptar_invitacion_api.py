@@ -161,6 +161,53 @@ def test_email_con_signo_kelvin_no_coincide_con_su_version_ascii(
     assert r.status_code == 404, f"{r.status_code} {r.text}; vínculo={vinculo}"
 
 
+def test_identidad_con_persona_en_b_y_otro_email_no_acepta_el_sobre_de_a(
+    clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RB2b-post-4 (revisión backend post-rompedor,
+    `.git/informes-2b/revision-post-rompedor/backend.md`): el caso
+    `otro_email` de `test_mismo_404_uniforme_sin_escribir` prueba la misma
+    barrera con una identidad SIN tenant (nunca vinculada a ninguna
+    persona). Acá la identidad YA tiene una persona vinculada en la
+    administración B, con su propio email, distinto del de la invitación
+    de A: de todos modos tiene que dar 404 sobre el sobre de A, sin
+    aceptar nada ni tocar la invitación."""
+    preparar(api_edificio, monkeypatch)
+    sub = sub_de(clerk_falso)
+    with abrir_sesion(api_edificio.app.state.fabrica_de_sesiones, api_edificio.admin_ajena) as s:
+        persona_b = uuid4()
+        s.execute(
+            text(
+                "INSERT INTO persona (id, administracion_id, nombre, email, clerk_usuario_id) "
+                "VALUES (:id, :admin, 'Persona en B', 'persona-b@example.invalid', :sub)"
+            ),
+            {"id": persona_b, "admin": api_edificio.admin_ajena, "sub": sub},
+        )
+        s.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": api_edificio.admin_ajena, "persona": persona_b},
+        )
+        s.commit()
+
+    fila = _crear_invitacion(api_edificio, email=EMAIL)
+    antes = _conteos(api_edificio)
+    r = api_edificio.cliente.post(
+        "/api/invitaciones/aceptar",
+        json={"token": fila["sobre"]},
+        headers=encabezados(clerk_falso, email="persona-b@example.invalid", email_verified=True),
+    )
+    assert r.status_code == 404, r.text
+    assert r.json() == {"detail": "no encontrado"}
+    assert _conteos(api_edificio) == antes
+    (estado,) = api_edificio.filas(
+        "SELECT estado FROM invitacion WHERE id=%s", (fila["invitacion_id"],)
+    )[0]
+    assert estado == "enviada"
+
+
 @pytest.mark.parametrize(
     "caso",
     [

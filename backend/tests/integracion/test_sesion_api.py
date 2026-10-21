@@ -51,6 +51,37 @@ def test_sesion_solo_lista_vinculos_con_asignacion(
     )
 
 
+def test_identidad_vinculada_solo_a_b_no_muestra_nada_de_a(
+    clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio
+) -> None:
+    """RB2b-post-4 (revisión backend post-rompedor,
+    `.git/informes-2b/revision-post-rompedor/backend.md`): `api_clerk`
+    (usado arriba) ya vincula la identidad con una persona de A; acá la
+    identidad está vinculada ÚNICAMENTE a B, nunca a A, y `GET
+    /api/sesion` no tiene que traer nada de A."""
+    sub = sub_de(clerk_falso)
+    with api_edificio.base.conectar_app() as conexion, conexion.transaction():
+        conexion.execute(
+            "SELECT set_config('app.administracion_id', %s, true)", (str(api_edificio.admin_ajena),)
+        )
+        persona = uuid4()
+        conexion.execute(
+            "INSERT INTO persona (id, administracion_id, nombre, clerk_usuario_id) "
+            "VALUES (%s, %s, 'Sólo en B', %s)",
+            (persona, api_edificio.admin_ajena, sub),
+        )
+        conexion.execute(
+            "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+            "VALUES (%s, %s, 'super_admin')",
+            (api_edificio.admin_ajena, persona),
+        )
+    respuesta = api_edificio.cliente.get("/api/sesion", headers=encabezados(clerk_falso))
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert [a["id"] for a in cuerpo["administraciones"]] == [str(api_edificio.admin_ajena)]
+    assert str(api_edificio.admin) not in str(cuerpo)
+
+
 def test_ingreso_deja_una_fila_con_request_id(
     api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey
 ) -> None:

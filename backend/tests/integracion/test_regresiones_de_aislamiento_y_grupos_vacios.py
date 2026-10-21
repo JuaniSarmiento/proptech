@@ -44,7 +44,9 @@ _CUERPOS = {
 #: Rutas de la segunda guarda del 2b (`token_de_sesion_actual`, D3 y RB2b-2): no
 #: reciben una identidad con persona, así que el override de `identidad_actual`
 #: no aplica y no tienen un recurso de A que alcanzar. Su aislamiento lo prueban
-#: sus propios tests (`test_sesion_api.py`, `test_aceptar_invitacion_api.py`).
+#: (RB2b-post-4) `test_aceptar_invitacion_api.py::
+#: test_identidad_con_persona_en_b_y_otro_email_no_acepta_el_sobre_de_a` y
+#: `test_sesion_api.py::test_identidad_vinculada_solo_a_b_no_muestra_nada_de_a`.
 _RUTAS_CON_TOKEN_SIN_PERSONA = frozenset({"/api/sesion", "/api/invitaciones/aceptar"})
 
 
