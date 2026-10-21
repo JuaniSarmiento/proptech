@@ -287,7 +287,12 @@ def _rutas_post_de_dominio(app: FastAPI) -> list[tuple[str, str]]:
 
 
 def test_toda_ruta_post_tiene_cuerpo_de_prueba(app_real: FastAPI) -> None:
-    encontradas = set(_rutas_post_de_dominio(app_real)) - _RUTAS_SIN_CUERPO
+    encontradas = (
+        set(_rutas_post_de_dominio(app_real))
+        - _RUTAS_SIN_CUERPO
+        - {("/api/invitaciones/aceptar", "POST")}
+    )
+    # D6 tiene su contrato de cuerpo propio en test_dos_guardas/test_aceptar_invitacion_api.
     declaradas = set(_CUERPOS_DE_PRUEBA.keys())
     sin_cuerpo = encontradas - declaradas
     assert not sin_cuerpo, f"ruta(s) POST sin cuerpo de prueba en _CUERPOS_DE_PRUEBA: {sin_cuerpo}"

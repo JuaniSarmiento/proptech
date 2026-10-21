@@ -119,6 +119,7 @@ class RutaConIdentidad(APIRoute):
     obligatorias y verificadas por el barrido.
     """
 
+    normalizar_error_de_parseo = False
     guarda: Callable[..., None] = staticmethod(_exigir_identidad)
 
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
@@ -148,10 +149,21 @@ class RutaConIdentidad(APIRoute):
                         )
                         if resuelto.errors:
                             raise RequestValidationError(resuelto.errors) from None
+                    if self.normalizar_error_de_parseo:
+                        raise RequestValidationError(
+                            [
+                                {
+                                    "type": "json_invalid",
+                                    "loc": ("body", "token"),
+                                    "msg": "JSON inválido",
+                                }
+                            ]
+                        ) from None
                 raise
 
         return con_identidad
 
 
 class RutaConTokenVerificado(RutaConIdentidad):
+    normalizar_error_de_parseo = True
     guarda: Callable[..., None] = staticmethod(_exigir_token)

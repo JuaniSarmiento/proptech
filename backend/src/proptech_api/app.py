@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
-from proptech_api import complejos, salud, sesion
+from proptech_api import complejos, invitaciones, salud, sesion
 from proptech_api.cuerpos import manejador_422
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.compartido.base_de_datos import (
@@ -113,6 +113,7 @@ def crear_app() -> FastAPI:
     app.include_router(complejos.router)
     app.include_router(sesion.router)
     app.include_router(sesion.router_de_token)
+    app.include_router(invitaciones.router_de_token)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
     app.add_exception_handler(RequestValidationError, manejador_422)

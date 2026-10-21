@@ -56,6 +56,8 @@ RESPALDO_PASSWORD = "clave-respaldo-no-real"
 #: Pública a propósito: no pasa por identidad ni por tenant (D11).
 _RUTAS_PUBLICAS = {
     ("/api/salud", "GET"),
+}
+_RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
     ("/docs/oauth2-redirect", "GET"),
     ("/redoc", "GET"),
@@ -66,7 +68,10 @@ _RUTAS_PUBLICAS = {
 #: Si `_rutas_reales_del_candado()` devuelve algo que no está acá, el test
 #: estructural falla nombrándolo: es la señal de que una ruta nueva no pasó
 #: por este archivo.
+_RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST")}
+
 _RUTAS_CUBIERTAS = {
+    ("/api/invitaciones/aceptar", "POST"),
     ("/api/sesion", "GET"),
     ("/api/sesion/ingreso", "POST"),
     ("/api/complejos/{complejo_id}/categorias", "GET"),
@@ -253,7 +258,7 @@ def cliente(app_real: FastAPI) -> Iterator[TestClient]:
 
 
 def test_las_rutas_del_candado_son_exactamente_las_cubiertas_acá(app_real: FastAPI) -> None:
-    rutas_reales = _rutas_reales_del_candado(app_real) - _RUTAS_PUBLICAS
+    rutas_reales = _rutas_reales_del_candado(app_real) - _RUTAS_PUBLICAS - _RUTAS_DOCUMENTACION
     assert rutas_reales == _RUTAS_CUBIERTAS, (
         f"rutas no cubiertas por este archivo: {rutas_reales - _RUTAS_CUBIERTAS}; "
         f"cubiertas pero ya no existen: {_RUTAS_CUBIERTAS - rutas_reales}"
@@ -265,7 +270,7 @@ def test_cada_ruta_del_candado_depende_de_identidad_actual(
     app_real: FastAPI, ruta_y_metodo: tuple[str, str]
 ) -> None:
     ruta, metodo = ruta_y_metodo
-    guarda = token_de_sesion_actual if ruta == "/api/sesion" else identidad_actual
+    guarda = token_de_sesion_actual if (ruta, metodo) in _RUTAS_CON_TOKEN else identidad_actual
     assert _depende_de(app_real, ruta, metodo, guarda), (
         f"{metodo} {ruta} no depende de identidad_actual"
     )
@@ -350,7 +355,7 @@ def test_cada_ruta_con_identidad_sin_asignacion_nunca_da_200_ni_201(
     cliente: TestClient, app_real: FastAPI, mundo: dict[str, Any], ruta_y_metodo: tuple[str, str]
 ) -> None:
     ruta, metodo = ruta_y_metodo
-    if ruta.startswith("/api/sesion"):
+    if ruta.startswith("/api/sesion") or (ruta, metodo) in _RUTAS_CON_TOKEN:
         # Estas rutas comprueban el vínculo real, sin el override de dominio.
         respuesta = _pedido(cliente, ruta, metodo, mundo)
         assert respuesta.status_code == 401
@@ -398,7 +403,9 @@ def test_ruta_montada_con_prefijo_de_inclusion_sin_cubrir_se_detecta() -> None:
         "el barrido no vio la ruta montada con include_router(prefix=...): "
         f"rutas detectadas: {rutas}"
     )
-    assert rutas - _RUTAS_PUBLICAS - _RUTAS_CUBIERTAS == {("/api/sin-cubrir", "GET")}
+    assert rutas - _RUTAS_PUBLICAS - _RUTAS_DOCUMENTACION - _RUTAS_CUBIERTAS == {
+        ("/api/sin-cubrir", "GET")
+    }
 
 
 def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
@@ -417,7 +424,9 @@ def test_ruta_agregada_directo_a_la_app_sin_cubrir_se_detecta() -> None:
         "el barrido no vio la ruta agregada con add_api_route directo a la app: "
         f"rutas detectadas: {rutas}"
     )
-    assert rutas - _RUTAS_PUBLICAS - _RUTAS_CUBIERTAS == {("/api/directo-sin-cubrir", "GET")}
+    assert rutas - _RUTAS_PUBLICAS - _RUTAS_DOCUMENTACION - _RUTAS_CUBIERTAS == {
+        ("/api/directo-sin-cubrir", "GET")
+    }
 
 
 # --- RF-B-3 (revisión final, 19/10/2026): el barrido de SQL puede fallar ---
@@ -461,3 +470,49 @@ def test_mutante_ruta_que_toca_la_base_antes_de_la_identidad_hace_fallar_el_barr
 
     assert respuesta.status_code == 401
     assert sentencias != [], "el mutante no tocó la base: este escenario no probaría nada (L-019)"
+
+
+def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
+    from ._barrido_de_rutas import rutas_efectivas
+
+    reales = {
+        (r.path, m)
+        for r in rutas_efectivas(app_real)
+        for m in r.methods
+        if _depende_de(app_real, r.path, m, token_de_sesion_actual)
+        and not _depende_de(app_real, r.path, m, identidad_actual)
+    }
+    assert reales == _RUTAS_CON_TOKEN
+    assert _RUTAS_PUBLICAS == {("/api/salud", "GET")}
+
+
+@pytest.mark.parametrize("ruta_y_metodo", sorted(_RUTAS_CUBIERTAS))
+@pytest.mark.parametrize("cuerpo", [b'{"token":"sobre"}', b"", b"{", b"\xff"])
+@pytest.mark.parametrize("authorization", [None, "Bearer invalido"])
+def test_dos_guardas_401_cero_sql_con_cualquier_cuerpo(
+    cliente: TestClient,
+    app_real: FastAPI,
+    mundo: dict[str, Any],
+    ruta_y_metodo: tuple[str, str],
+    cuerpo: bytes,
+    authorization: str | None,
+) -> None:
+    from sqlalchemy import event
+
+    sentencias: list[str] = []
+
+    def contar(*args: Any) -> None:
+        sentencias.append(args[2])
+
+    headers = {"Content-Type": "application/json", "X-Proptech-Administracion": "no-uuid"}
+    if authorization:
+        headers["Authorization"] = authorization
+    ruta, metodo = ruta_y_metodo
+    event.listen(app_real.state.engine, "before_cursor_execute", contar)
+    try:
+        r = cliente.request(metodo, ruta.format(**mundo), content=cuerpo, headers=headers)
+    finally:
+        event.remove(app_real.state.engine, "before_cursor_execute", contar)
+    assert r.status_code == 401, (metodo, ruta, r.text)
+    assert r.json() == {"detail": "Unauthorized"}
+    assert sentencias == []

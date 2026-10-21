@@ -443,7 +443,35 @@ la cuenta de Clerk (8.1).
   All checks passed! / 250 files already formatted / no issues found in 226 source files
   ```
 
-- [ ] 4.4 Dos guardas y parseo (D3, RB2b-2) en el barrido y los tests de rutas: `token_de_sesion_actual` verifica sin SQL; `identidad_actual` depende de ella y resuelve persona completa. Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` usan `Depends(token_de_sesion_actual)` sin persona, con `RutaConTokenVerificado`, variante de `RutaConIdentidad` cuya guarda reducida usa la misma dependencia, solver y overrides. Ninguna se agrega a `_RUTAS_PUBLICAS` (sólo `/api/salud`). El barrido compara el conjunto exacto de rutas con cada guarda, exige 401 y cero SQL sin token o con sesión inválida, incluso con JSON roto, cuerpo ausente y encabezado de administración no UUID. Con sesión válida sin persona, sesión llega al caso de uso y aceptar puede vincular; JSON roto o sin `token` en aceptar da 422, sin resolver persona completa; con cuerpo parseable la guarda corre una sola vez. RED: el barrido actual no reconoce la segunda dependencia y las rutas no existen; una copia que les exige persona completa rechaza la aceptación correcta y falla; sacar la dependencia o volver a la guarda equivocada en el parser rompe el barrido. Escenarios: `autenticacion-con-clerk` › Dos rutas con token sin persona; `gestion-de-usuarios` › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida. Lecciones: L-013, L-017, L-019, L-022.
+- [x] 4.4 Dos guardas y parseo (D3, RB2b-2) en el barrido y los tests de rutas: `token_de_sesion_actual` verifica sin SQL; `identidad_actual` depende de ella y resuelve persona completa. Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` usan `Depends(token_de_sesion_actual)` sin persona, con `RutaConTokenVerificado`, variante de `RutaConIdentidad` cuya guarda reducida usa la misma dependencia, solver y overrides. Ninguna se agrega a `_RUTAS_PUBLICAS` (sólo `/api/salud`). El barrido compara el conjunto exacto de rutas con cada guarda, exige 401 y cero SQL sin token o con sesión inválida, incluso con JSON roto, cuerpo ausente y encabezado de administración no UUID. Con sesión válida sin persona, sesión llega al caso de uso y aceptar puede vincular; JSON roto o sin `token` en aceptar da 422, sin resolver persona completa; con cuerpo parseable la guarda corre una sola vez. RED: el barrido actual no reconoce la segunda dependencia y las rutas no existen; una copia que les exige persona completa rechaza la aceptación correcta y falla; sacar la dependencia o volver a la guarda equivocada en el parser rompe el barrido. Escenarios: `autenticacion-con-clerk` › Dos rutas con token sin persona; `gestion-de-usuarios` › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida. Lecciones: L-013, L-017, L-019, L-022.
+
+  Decisión de orden del constructor (L-030): anticipo el adaptador HTTP de aceptar y
+  su contrato de cuerpo; la operación de vínculo real es 5.5. La guarda se prueba con
+  el caso de uso sustituido (una sesión sin persona llega a él), sin atribuir esto a Juani.
+  El barrido real ya incluye aceptar; `_RUTAS_PUBLICAS` sólo tiene salud. La documentación
+  automática se contabiliza aparte. El barrido de altas excluye aceptar porque D6 tiene
+  contrato propio de cuerpo, probado acá y ampliado en 5.5.
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/unitarios/acceso/test_dos_guardas.py -x -q
+  12:01:14 / 1 failed: no existe proptech_api.invitaciones.
+  GREEN $ date +%T; uv run pytest tests/integracion/test_rutas_protegidas.py -q
+  12:02:24 / 269 passed, 1 warning in 18.63s
+  GREEN $ uv run pytest tests/integracion/test_altas_sin_id_del_cliente.py -q
+  8 passed, 1 warning in 4.67s (archivo siguiente, sin simultaneidad).
+  GREEN $ date +%T; uv run pytest tests/unitarios/acceso/test_dos_guardas.py tests/unitarios/acceso/test_ruta_con_identidad.py -q
+  12:03:04 / 19 passed, 1 warning in 0.38s
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 253 files already formatted / no issues found in 229 source files
+  ```
+  Mutantes en copias `.atl/bloque-b/mut44-*`, originales intactos, mismo test unitario:
+  ```diff
+  # 12:03:03: 4 failed, 13 passed (el parser intenta resolver persona completa).
+  - guarda = staticmethod(_exigir_token)
+  + guarda = staticmethod(_exigir_identidad)
+  # 12:03:04: 12 failed, 5 passed (se quitó la dependencia declarada de aceptar).
+  - token: TokenVerificado = Depends(token_de_sesion_actual)
+  + token: TokenVerificado = None
+  ```
 
 ## 5. Gestión de usuarios
 
