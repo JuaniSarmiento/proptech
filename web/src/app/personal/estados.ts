@@ -2,14 +2,16 @@
  * Estado de la invitación en castellano simple (D7: `pendiente | enviada |
  * aceptada | fallida | revocada`, más `vencida` calculada por la API).
  * Ajuste del shape resuelto por el orquestador, 21/10/2026: sin "Reenviar"
- * ni "Reintentar"; "fallida" dice que el worker reintenta solo (E8).
+ * ni "Reintentar". Corregido por el auditor del 2b (fila 2, 21/10/2026):
+ * el worker NO reintenta un 4xx definitivo (`tareas.py:278-292`); "fallida"
+ * ofrece la acción real, que ya existe en esta fila: revocar e invitar de nuevo.
  */
 const _ESTADOS: Record<string, string> = {
   pendiente: "Pendiente",
   enviada: "Enviada",
   aceptada: "Aceptada",
   vencida: "Vencida",
-  fallida: "No se pudo enviar todavía; se reintenta solo",
+  fallida: "No se pudo enviar. Revocala e invitá de nuevo.",
   revocada: "Revocada",
 };
 

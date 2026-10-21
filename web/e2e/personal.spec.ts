@@ -7,7 +7,9 @@ import { cookiesDeContextoDePrueba } from "./sesion-local";
 const DIR = resolve("../.git/informes-2b/pantallas");
 
 for (const ancho of [1440, 320]) {
-  test(`7.3 personal: lista, estado fallida sin Reintentar, a ${ancho}`, async ({ page }) => {
+  test(`7.3 personal: lista, estado fallida ofrece revocar e invitar de nuevo, a ${ancho}`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: ancho, height: 900 });
     await page.goto("/personal");
     await expect(page.getByRole("heading", { name: "Personal", exact: true })).toBeVisible();
@@ -18,8 +20,9 @@ for (const ancho of [1440, 320]) {
     // (misma fuente que el padrón de 7.4). Personal es sólo personal.
     await expect(page.getByText("Deco Vecino")).toHaveCount(0);
     await expect(page.getByText(/^vecino$/i)).toHaveCount(0);
-    // Ajuste del shape (21/10/2026): sin "Reenviar" ni "Reintentar".
-    await expect(page.getByText("No se pudo enviar todavía; se reintenta solo")).toBeVisible();
+    // Ajuste del shape (21/10/2026), corregido por el auditor del 2b (fila 2): sin
+    // "Reenviar" ni "Reintentar"; el worker NO reintenta un 4xx definitivo.
+    await expect(page.getByText("No se pudo enviar. Revocala e invitá de nuevo.")).toBeVisible();
     await expect(page.getByRole("button", { name: /reenviar/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /reintentar/i })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

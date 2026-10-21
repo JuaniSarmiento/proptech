@@ -67,9 +67,12 @@ describe("PantallaPersonal", () => {
     const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
     expect(within(filaBeto).getByText("Auxiliar")).toBeTruthy();
     expect(within(filaBeto).getByText(/Torre Norte/)).toBeTruthy();
-    // Ajuste del shape (21/10/2026): sin "Reintentar", "fallida" explica que
-    // el worker reintenta solo.
-    expect(within(filaBeto).getByText("No se pudo enviar todavía; se reintenta solo")).toBeTruthy();
+    // Ajuste del shape (21/10/2026), corregido por el auditor del 2b (fila 2, 21/10/2026):
+    // el worker NO reintenta un 4xx definitivo (tareas.py:278-292); "fallida" ofrece la
+    // acción real, que ya existe en esta fila: revocar e invitar de nuevo.
+    expect(
+      within(filaBeto).getByText("No se pudo enviar. Revocala e invitá de nuevo."),
+    ).toBeTruthy();
     expect(within(filaBeto).queryByText(/reintentar/i)).toBeNull();
     expect(screen.queryByRole("button", { name: /reenviar/i })).toBeNull();
   });
