@@ -151,6 +151,15 @@ def test_none(claves: tuple[str, str], claims: dict[str, Any]) -> None:
         ("exp", AHORA - 6, "token_vencido"),
         ("nbf", AHORA + 6, "token_no_vigente"),
         ("iat", AHORA + 6, "token_no_vigente"),
+        # Rompedor 2b, familia 1 (sin hallazgo): el "/" y el prefijo no
+        # cuelan por una comparación permisiva (el patrón del CVE de `in`
+        # de PyJWT 2.10.0 con `issuer`; acá 2.15.1, comparación exacta).
+        ("azp", ORIGEN + "/", "parte_no_autorizada"),
+        ("iss", EMISOR + "/", "emisor_invalido"),
+        ("iss", "https://instancia-ficticia", "emisor_invalido"),
+        ("sub", ["user_abc"], "sujeto_invalido"),
+        ("sub", "user_١٢", "sujeto_invalido"),  # dígitos arábigo-índicos, no ASCII
+        ("aud", "otra", "token_invalido"),
     ],
 )
 def test_claim_roto(
@@ -208,7 +217,7 @@ def test_bordes_con_reloj_inyectado(
         rechazar(token, claves[1], motivo, ahora)
 
 
-@pytest.mark.parametrize("valor", ["AUSENTE", False, "true", "false", 1, None])
+@pytest.mark.parametrize("valor", ["AUSENTE", False, "true", "false", "1", 1, None])
 def test_email_solo_verificado_si_booleano_true(
     claves: tuple[str, str], claims: dict[str, Any], valor: Any
 ) -> None:
