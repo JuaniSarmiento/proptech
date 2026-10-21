@@ -31,7 +31,35 @@ la cuenta de Clerk (8.1).
 
 ## 1. Línea de base
 
-- [ ] 1.1 Correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); si algo falla, frenar e informarlo como falla previa. Verificación: los cuatro comandos con su salida en el informe. Escenarios: ninguno (medición de partida). Lecciones: L-003, L-010.
+- [x] 1.1 Correr `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, y anotar la cantidad de tests de cada lado, la hora y el commit (`git rev-parse HEAD`); si algo falla, frenar e informarlo como falla previa. Verificación: los cuatro comandos con su salida en el informe. Escenarios: ninguno (medición de partida). Lecciones: L-003, L-010.
+
+  Evidencia 1.1, HEAD de las cuatro corridas: `0e6cf9c5746792651204a97624acff80fb4c52c2`.
+  Decisión del constructor (L-030): esta tarea mide la base existente; no tiene código ni rojo
+  funcional que fabricar. Registro los cuatro verdes y conservo el `xfail` previo del cambio 7.
+
+  ```text
+  $ date +%T; bash infra/ci/test-backend.sh
+  09:51:59
+  =========== 2076 passed, 1 xfailed, 16 warnings in 643.86s (0:10:43) ===========
+  $ date +%T; bash infra/ci/test-web.sh
+  10:02:54
+  Test Files  47 passed (47)
+  Tests  301 passed (301)
+  $ date +%T; bash infra/ci/test-web-navegador.sh
+  10:03:20
+  144 passed (3.3m)
+  $ date +%T; bash infra/ci/humo.sh
+  10:07:04
+  HUMO OK
+  limpieza terminada: contenedores, volúmenes y redes del proyecto proptech retirados (exit 0).
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  10:09:42
+  All checks passed! / 231 files already formatted
+  Success: no issues found in 209 source files
+  ```
+  El `xfail(strict=True)` es F2c del worker, deuda documentada del cambio 7; no se omitieron casos.
+  Las 16 advertencias del backend son previas (ARQ/Redis); web también emite avisos previos de canvas.
+
 
 ## 2. Verificar el token sin red
 
