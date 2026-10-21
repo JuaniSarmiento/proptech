@@ -63,7 +63,44 @@ la cuenta de Clerk (8.1).
 
 ## 2. Verificar el token sin red
 
-- [ ] 2.1 `verificar_token_de_sesion` (D1) en `backend/tests/unitarios/acceso/test_token.py`, con un par de claves RSA de 2048 bits generado en el test: un token válido devuelve `sub`, `email` y `email_verificado` booleano; dan `TokenInvalido` con un motivo de la lista cerrada, por separado, la firma con otra clave, `alg: none`, `HS256` firmado con el PEM público como secreto, vigencia fuera de la tolerancia de 5 s, `nbf` futuro, `iat` futuro, `iss` ausente o de otra instancia aun con firma y `azp` válidos, `azp` ajeno, `azp` ausente, `sub` ausente, `sub` sin forma `user_…` o con caracteres no ASCII, `sts = pending`, y un token que no es JWT; ningún `str(error)` contiene el token ni el texto de PyJWT (L-007). Probar con `ahora` fijo muy alejado del reloj real: `ahora = exp - leeway - 1`, `exp - leeway` (válidos), `exp + leeway + 1` (inválido), `exp + leeway - 1` (válido), `exp + leeway` (inválido), `nbf - leeway - 1` (inválido) y `nbf - leeway` (válido), con los otros tiempos compatibles; rechazar tiempos ausentes, texto y booleanos. PyJWT 2.15 lleva `verify_exp=False`, `verify_nbf=False` y `verify_iat=False`; los tres se validan a mano según D1. RED: el módulo no existe (`ImportError`); una copia que usa el reloj real cambia el resultado de esos mismos casos y falla; después, una copia de la función sin `algorithms=["RS256"]` deja pasar el `HS256` y el test lo muestra (L-013). Sumar `pyjwt[crypto]` 2.15 con versión fijada. Los claims `email_verified` ausente, `false` o texto nunca producen `email_verificado=True`. Escenarios: `autenticacion-con-clerk` › Token firmado con otra clave; › Algoritmo cambiado; › Token vencido o todavía no válido; › Token de otra aplicación; › Bordes con reloj inyectado; › Emisor de otra instancia. Lecciones: L-007, L-008, L-013, L-019.
+- [x] 2.1 `verificar_token_de_sesion` (D1) en `backend/tests/unitarios/acceso/test_token.py`, con un par de claves RSA de 2048 bits generado en el test: un token válido devuelve `sub`, `email` y `email_verificado` booleano; dan `TokenInvalido` con un motivo de la lista cerrada, por separado, la firma con otra clave, `alg: none`, `HS256` firmado con el PEM público como secreto, vigencia fuera de la tolerancia de 5 s, `nbf` futuro, `iat` futuro, `iss` ausente o de otra instancia aun con firma y `azp` válidos, `azp` ajeno, `azp` ausente, `sub` ausente, `sub` sin forma `user_…` o con caracteres no ASCII, `sts = pending`, y un token que no es JWT; ningún `str(error)` contiene el token ni el texto de PyJWT (L-007). Probar con `ahora` fijo muy alejado del reloj real: `ahora = exp - leeway - 1`, `exp - leeway` (válidos), `exp + leeway + 1` (inválido), `exp + leeway - 1` (válido), `exp + leeway` (inválido), `nbf - leeway - 1` (inválido) y `nbf - leeway` (válido), con los otros tiempos compatibles; rechazar tiempos ausentes, texto y booleanos. PyJWT 2.15 lleva `verify_exp=False`, `verify_nbf=False` y `verify_iat=False`; los tres se validan a mano según D1. RED: el módulo no existe (`ImportError`); una copia que usa el reloj real cambia el resultado de esos mismos casos y falla; después, una copia de la función sin `algorithms=["RS256"]` deja pasar el `HS256` y el test lo muestra (L-013). Sumar `pyjwt[crypto]` 2.15 con versión fijada. Los claims `email_verified` ausente, `false` o texto nunca producen `email_verificado=True`. Escenarios: `autenticacion-con-clerk` › Token firmado con otra clave; › Algoritmo cambiado; › Token vencido o todavía no válido; › Token de otra aplicación; › Bordes con reloj inyectado; › Emisor de otra instancia. Lecciones: L-007, L-008, L-013, L-019.
+
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/unitarios/acceso/test_token.py
+  10:11:50
+  E ModuleNotFoundError: No module named 'proptech_core.acceso.dominio.token'
+  ERROR tests/unitarios/acceso/test_token.py / 1 error during collection in 0.13s
+  GREEN $ cd backend; date +%T; uv run pytest tests/unitarios/acceso tests/unitarios/test_fronteras_de_modulos.py -q
+  10:13:25
+  503 passed, 1 warning in 3.33s (incluye los 60 casos nuevos del token).
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 233 files already formatted
+  Success: no issues found in 211 source files
+  ```
+  Mutantes sobre copia previa propia (L-013), diff real, ejecutados por
+  `python3 .atl/bloque-a/mutar-token.py`; original restaurado byte a byte en `finally`:
+
+  ```diff
+  # 10:13:05; pytest test_token.py -q -k test_bordes_con_reloj_inyectado
+  -    instante = ahora.timestamp()
+  +    instante = datetime.now().timestamp()
+  # 7 failed, 2 passed, 51 deselected in 0.48s
+  # 10:13:06; pytest test_token.py -q -k test_hs256_con_pem_publico
+  -            algorithms=["RS256"],
+  # AssertionError: algoritmo_invalido != token_invalido; 1 failed, 59 deselected in 0.11s
+  # 10:13:07; mismo test, mutante sin verificación de firma
+  -            algorithms=["RS256"],
+  +            algorithms=None,
+  -            options={
+  +            options={"verify_signature": False,
+  # Failed: DID NOT RAISE TokenInvalido; 1 failed, 59 deselected in 0.13s
+  ```
+  Decisión del constructor (L-030): corrijo la descripción del mutante, no la autenticación.
+  PyJWT 2.15.1 exige `algorithms` y además rechaza PEM como secreto HMAC: quitar sólo la lista
+  falla cerrado, no acepta HS256. Registro ese resultado y el mutante adicional sin firma que sí
+  lo acepta y queda rojo. El token HMAC de ataque se construye manualmente con el PEM público.
+  Fijo `pyjwt[crypto]==2.15.1` (rama 2.15 del design); ninguna clave se escribe en disco.
+
 - [ ] 2.2 Configuración de Clerk (D1, tabla de "Configuración y secretos") en `compartido/configuracion.py`, leída igual por la API y el worker (L-009), con tests de cada forma rota (L-002): sin `CLERK_JWT_KEY` arranca y queda en "login apagado"; con un PEM vacío, recortado, de clave privada, de clave EC o RSA de 1024 bits no arranca y el error nombra la variable sin repetir el valor; `CLERK_PARTES_AUTORIZADAS` rechaza comodines, espacios internos, esquemas que no son `http`/`https` y una lista vacía; `CLERK_EMISOR` exige una URL exacta de instancia con clave configurada y rechaza vacío, comodines, espacios y rutas extra; `CLERK_SECRET_KEY` e `INVITACIONES_CLAVE_CIFRADO` son `SecretStr` y su `repr` no las muestra; la clave propia exige base64 válido de 32 bytes, es obligatoria al habilitar invitaciones y nunca se inyecta al worker ni a la web. RED: los campos no existen. Escenarios: `autenticacion-con-clerk` › Login sin configurar. Lecciones: L-002, L-009.
 
 ## 3. La base
