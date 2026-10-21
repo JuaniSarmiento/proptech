@@ -1191,6 +1191,88 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   7.0 es la única tarea marcada. 7.2 tiene borrador probado pero no aprobación ni datos del responsable;
   7.1/7.3/7.4 siguen detenidas por los contratos señalados. No se corrieron pruebas reales de Clerk.
 
+## Correcciones del rompedor (R2B)
+
+Arreglo de los 4 hallazgos de `.git/informes-2b/rompedor/informe.md` (una vuelta, 21/10/2026). No
+agregan reglas nuevas: hacen que el código cumpla lo ya firmado (escenario "Revocar una invitación
+enviada", "sólo el super admin", "nunca sin super admin", email en minúsculas). Los tests del
+rompedor se movieron a su lugar definitivo (`backend/tests/rompedor_2b/` y
+`web/e2e/rompedor-2b.spec.ts` ya no existen); commit por arreglo.
+
+- [x] **R2B-1 (MEDIA)**: el worker guarda `clerk_invitacion_id` aunque la fila ya esté `revocada`
+  (antes el `UPDATE` exigía `estado='pendiente'`, así que el id se perdía) y, si quedó así, revoca
+  en Clerk en el mismo trabajo (`enviar_invitacion`) en vez de depender de un trabajo de revocación
+  que ya pudo haber corrido sin encontrar nada. Opción elegida: la más simple de las dos que
+  planteaba el informe. Test movido a
+  `backend/tests/integracion/test_envio_de_invitaciones.py::test_revocar_con_el_envio_en_vuelo_no_deja_abierta_la_invitacion_de_clerk`.
+  Commit `5a07645`.
+  ```
+  $ date +%T && uv run pytest tests/integracion/test_envio_de_invitaciones.py::test_revocar_con_el_envio_en_vuelo_no_deja_abierta_la_invitacion_de_clerk -q
+  18:20:39  (rojo, antes del arreglo) AssertionError: Clerk sólo recibió ['/invitations']
+  18:20:45  (verde, después) 9 passed
+  ```
+
+- [x] **R2B-2 (BAJA)**: `quitar_asignacion` bloquea las filas de super admin de la administración
+  (`SELECT id ... WHERE rol='super_admin' FOR UPDATE`) antes de contarlas; Postgres no admite
+  `FOR UPDATE` junto a un `count(*)`, así que se cuentan las filas ya traídas. Test de carrera
+  (candado de superusuario del contenedor, dos `quitar_asignacion` reales) movido a
+  `backend/tests/integracion/test_personal_api.py::test_dos_quitas_simultaneas_dejan_un_solo_super_admin`.
+  Commit `2f64bda`.
+  ```
+  $ date +%T && uv run pytest tests/rompedor_2b/test_r2b_2_ultimo_super_admin_en_carrera.py -q
+  18:21:39  (rojo) resultados=['quitada', 'quitada'], super admins que quedan=0
+  18:22:05  (verde) 7 passed
+  ```
+
+- [x] **R2B-3 (BAJA)**: la aceptación compara emails con minúsculas SÓLO en `A-Z` (`_minusculas_ascii`,
+  `invitaciones.py`); cualquier otro carácter queda exactamente como llegó, así un carácter no ASCII
+  (el signo Kelvin `U+212A`, cuyo `.lower()` de Python da `"k"`) nunca termina igualando a uno ASCII.
+  Opción elegida: la primera de las dos que planteaba el informe (minúsculas sólo ASCII), no rechazar
+  emails no ASCII. Test movido a
+  `backend/tests/integracion/test_aceptar_invitacion_api.py::test_email_con_signo_kelvin_no_coincide_con_su_version_ascii`.
+  Commit `63c2e5d`.
+  ```
+  $ date +%T && uv run pytest tests/rompedor_2b/test_r2b_3_email_con_signo_kelvin.py -q
+  18:23:40  (rojo) 200 {"aceptada":true}; assert 200 == 404
+  18:24:00  (verde, junto con el resto de aceptar) 22 passed
+  ```
+  Los intentos sin hallazgo de la familia 1 del rompedor (token: `azp`/`iss` con "/" o prefijo,
+  `sub` como lista o con dígitos arábigo-índicos, `aud` presente, `email_verified="1"`) se agregaron
+  a las tablas ya existentes de `test_token.py` en vez de duplicarlas. Commit `f99ffdc`.
+
+- [x] **R2B-4 (BAJA, arnés de pruebas)**: `cookiesDeContextoDePrueba` (`web/e2e/sesion-local.ts`) lee
+  el reloj una sola vez para el `iat` del token y el `__client_uat`, y da al token una hora de vida
+  (antes 60s). `prueba.ts` ya la usa; evidencia roja/verde determinística (mock de `Date.now()`
+  simulando un cambio de segundo) en `web/e2e/sesion-local.test.ts`, corrida 3 veces estable, y un
+  test end-to-end nuevo en `sesion.spec.ts` que confirma que el handshake de Clerk nunca se dispara.
+  Commit `9eb0976`.
+  ```
+  $ for i in 1 2 3; do corepack pnpm@12.10.1 vitest run e2e/sesion-local.test.ts; done
+  18:35:32 / 18:35:33 / 18:35:33  → 3 passed, las 3 corridas
+  $ for i in 1 2 3; do corepack pnpm@12.10.1 exec playwright test e2e/sesion.spec.ts -g "R2B-4" --project=chromium; done
+  18:37:08 / 18:37:10 / 18:37:12  → 1 passed, las 3 corridas
+  ```
+  La primera corrida de `test-web-navegador.sh` completo (ver abajo) encontró el mismo patrón de dos
+  lecturas del reloj en otros tres specs que reconstruyen la sesión a mitad de test
+  (`acceso-pantallas.spec.ts`, `personal.spec.ts`, `vecinos-del-padron.spec.ts`); se corrigieron con
+  el mismo helper, ahora con overrides de token. Commit `2b570b3`.
+
+**Suites finales, una vez y después del último commit (`2b570b3`), de a una:**
+```
+$ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+18:38:04 / 9eb0976... / 2669 passed, 1 xfailed, 18 warnings in 707.53s (0:11:47)
+$ date +%T; git rev-parse HEAD; bash infra/ci/test-web.sh
+18:50:11 / 9eb0976... / Test Files 59 passed (59); Tests 379 passed (379), 45.53s
+$ date +%T; git rev-parse HEAD; bash infra/ci/test-web-navegador.sh   (primera corrida)
+18:51:xx / 9eb0976... / 1 failed (acceso-pantallas.spec.ts, mismo patrón de R2B-4), 168 passed
+$ date +%T; git rev-parse HEAD; bash infra/ci/test-web-navegador.sh   (segunda corrida, tras 2b570b3)
+18:57:51 / 2b570b3... / 169 passed (4.7m)
+$ date +%T; git rev-parse HEAD; bash infra/ci/humo.sh
+19:02:58 / 2b570b3... / exit=0 (15 pasos, limpieza compose down -v sin errores)
+```
+Logs: `/tmp/informes-2b-cierre/{backend,web,navegador,navegador2,humo}.log` (fuera del repo).
+`git status --short` vacío tras el último commit.
+
 ## 8. Con Clerk de verdad
 
 - [x] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
