@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import { expect, test } from "./prueba";
-import { crearToken } from "./sesion-local";
+import { cookiesDeContextoDePrueba } from "./sesion-local";
 
 const DIR = resolve("../.git/informes-2b/pantallas");
 
@@ -70,9 +70,11 @@ test("7.3 revocar y quitar actualizan la fila sin recargar a mano", async ({ pag
 
 test("7.3 sin permiso: Estados sinPermiso, sin la tabla", async ({ page, context, baseURL }) => {
   await context.clearCookies();
+  // R2B-4: una sola lectura del reloj para iat y __client_uat.
+  const { session, clientUat } = cookiesDeContextoDePrueba({ sub: "user_sin_permiso" });
   await context.addCookies([
-    { name: "__session", value: crearToken({ sub: "user_sin_permiso" }), url: baseURL! },
-    { name: "__client_uat", value: String(Math.floor(Date.now() / 1000)), url: baseURL! },
+    { name: "__session", value: session, url: baseURL! },
+    { name: "__client_uat", value: clientUat, url: baseURL! },
   ]);
   await page.goto("/personal");
   await expect(page.getByRole("heading", { name: /No podés/ })).toBeVisible();

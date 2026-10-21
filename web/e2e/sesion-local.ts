@@ -52,10 +52,10 @@ export function cabecerasDePrueba() {
  * hora por defecto) cubre con margen cualquier test real: el token de
  * 60s por defecto de `crearToken()` vencía en cualquier test de más de
  * 65s desde que se armó el contexto. */
-export function cookiesDeContextoDePrueba(duracionS = 3600) {
+export function cookiesDeContextoDePrueba(cambios: Record<string, unknown> = {}, duracionS = 3600) {
   const ahora = Math.floor(Date.now() / 1000);
   return {
-    session: crearToken({ iat: ahora, nbf: ahora, exp: ahora + duracionS }),
+    session: crearToken({ iat: ahora, nbf: ahora, exp: ahora + duracionS, ...cambios }),
     clientUat: String(ahora),
   };
 }

@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import { expect, test } from "./prueba";
-import { crearToken } from "./sesion-local";
+import { cookiesDeContextoDePrueba } from "./sesion-local";
 
 const mensaje = "Este enlace ya no sirve. Pedile a tu administración que te invite de nuevo.";
 for (const ancho of [1440, 320]) {
@@ -22,9 +22,11 @@ for (const ancho of [1440, 320]) {
     mkdirSync(dir, { recursive: true });
     await sinViolacionesEnElNavegador(page);
     await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
+    // R2B-4: una sola lectura del reloj para iat y __client_uat.
+    const { session, clientUat } = cookiesDeContextoDePrueba({ sub: "user_varias" });
     await context.addCookies([
-      { name: "__session", value: crearToken({ sub: "user_varias" }), url: baseURL! },
-      { name: "__client_uat", value: String(Math.floor(Date.now() / 1000)), url: baseURL! },
+      { name: "__session", value: session, url: baseURL! },
+      { name: "__client_uat", value: clientUat, url: baseURL! },
     ]);
     await page.goto("/elegir-administracion");
     await expect(page.getByRole("heading", { name: "Elegí una administración" })).toBeVisible();

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import { EDIFICIO_API } from "./api-falsa";
 import { expect, test } from "./prueba";
-import { crearToken } from "./sesion-local";
+import { cookiesDeContextoDePrueba } from "./sesion-local";
 
 const DIR = resolve("../.git/informes-2b/pantallas");
 
@@ -55,9 +55,11 @@ test("7.4 sin permiso para leer personal: padrón normal, sin columna ni secció
   baseURL,
 }) => {
   await context.clearCookies();
+  // R2B-4: una sola lectura del reloj para iat y __client_uat.
+  const { session, clientUat } = cookiesDeContextoDePrueba({ sub: "user_sin_permiso" });
   await context.addCookies([
-    { name: "__session", value: crearToken({ sub: "user_sin_permiso" }), url: baseURL! },
-    { name: "__client_uat", value: String(Math.floor(Date.now() / 1000)), url: baseURL! },
+    { name: "__session", value: session, url: baseURL! },
+    { name: "__client_uat", value: clientUat, url: baseURL! },
   ]);
   await page.goto(`/edificios/${EDIFICIO_API}/unidades`);
   await expect(page.getByRole("heading", { name: "Padrón de unidades" })).toBeVisible();
