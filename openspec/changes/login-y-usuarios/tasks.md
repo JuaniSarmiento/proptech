@@ -939,6 +939,24 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   Decisión del constructor (L-031): las cuatro suites de cierre van después del último commit,
   una vez y en primer plano; su evidencia documental se agrega debajo sin otro commit de código.
 
+  **Cierre del bloque C después del último commit, HEAD `020a2182dfef4d63839bce839dbbb41cf654003e`:**
+  Ejecutadas de a una, una vez sobre este SHA, en primer plano y sin cambios de código posteriores.
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-web.sh
+  16:12:02–16:13:05 (21/10/2026), exit 0 / 331 passed (51 archivos).
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-web-navegador.sh
+  16:13:28–16:17:40, exit 0 / 150 passed (4.0m).
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  16:18:24–16:29:11, exit 0
+  =========== 2659 passed, 1 xfailed, 18 warnings in 640.34s (0:10:40) ===========
+  $ date +%T; git rev-parse HEAD; bash infra/ci/humo.sh
+  16:29:36–16:31:54, exit 0 / HUMO OK; limpieza terminada.
+  GET /api/complejos desde afuera: 404; X-Proptech-Origen: caddy.
+  ```
+  Se conserva el único xfail previo. El rojo inicial del barrido motivó el ajuste de su oráculo
+  documentado en 6.1; esta repetición verifica el commit final (L-031). Sólo esta evidencia queda
+  sin commit, para mantener las suites después del último commit. Grupos 7 y 8 sin construir.
+
 - [x] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
   Decisión del constructor (L-030): las variables opcionales quedan comentadas en el ejemplo y
   como referencias sin valor en Compose. Así se omiten cuando faltan, sin convertir un PEM vacío
@@ -990,7 +1008,9 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
 
 ## 8. Con Clerk de verdad
 
-- [ ] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
+- [x] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
+  **Hecho (21/10/2026, 16:10):** instancia de desarrollo `PropTech` en Clerk. El orquestador configuró el panel con permiso de Juani (email con código y link, contraseña, teléfono y nombre de usuario apagados, nombre opcional, Google activo con credenciales compartidas de desarrollo, acceso Invite-only, bloqueo de cuenta activo, claims de sesión `email` y `email_verified`), y le pasó sólo los valores públicos (publishable key, URL del Frontend API, JWKS public key). **Juani cargó en `infra/.env` las seis variables**, incluidas la clave secreta y `INVITACIONES_CLAVE_CIFRADO`, que ningún agente vio, y lo confirmó por escrito en la conversación ("listo"). Ningún agente abrió `infra/.env`. Google requiere la firma de E17 (pendiente). Pendiente de verificar en 8.2: que Compose lea el PEM multilínea entre comillas.
+
 - [ ] 8.2 Verificación real, con Juani al teclado y el stack local con la instancia de desarrollo: alta inicial de una administración de prueba con un email de Juani; llega el mail de Clerk; registrarse, volver por la invitación y entrar; comprobar que los claims firmados contienen el email principal y su verificación booleana, también al cambiar el principal y con un secundario verificado; si el par no representa al principal, frenar sin habilitar la aceptación; ingresar con contraseña y con link por email; selector con una segunda administración; invitar a un email que ya tiene usuario en Clerk (Open Questions: anotar a qué pantalla lleva el link); fallar la contraseña hasta el bloqueo; salir. El orquestador anota cada paso con hora, la fila de auditoría que dejó y si el log de la web tiene errores de conexión hacia Clerk (dato que discrimina el SUPUESTO de la red de la web). Verificación: el informe con cada paso. Escenarios: `autenticacion-con-clerk` › Muchos intentos sobre una cuenta; todos los de ingreso, de punta a punta. Lecciones: L-026.
 
 ## 9. Cierre
