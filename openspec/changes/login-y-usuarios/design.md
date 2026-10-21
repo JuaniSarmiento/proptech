@@ -568,3 +568,17 @@ abajo).
 - **Borrar el usuario de Clerk** cuando se le quita la última asignación en todas sus administraciones.
 - **El texto legal del aviso de privacidad**: el constructor arma un borrador con lo que exige la ley
   25.326; lo aprueba Juani antes de publicarlo (tarea 7.2).
+
+
+## E16 · La clave secreta de Clerk en el servidor de Next (21/10/2026)
+
+Hallazgo del constructor en 6.1 (`c624735`, `e79c346`): en `@clerk/nextjs` 7.9.19, `clerkMiddleware`
+ejecuta `assertKey(secretKey)` antes de `authenticateRequest`, así que exige `CLERK_SECRET_KEY` aun cuando el
+token se verifica sin red con `jwtKey`; y la CSP automática (6.2) la genera ese mismo middleware. Contradice
+E8 y el supuesto de que el CI y el humo corren sin clave secreta.
+
+Decisión propuesta (pendiente de la firma de Juani, E16 en la sección Aprobación del proposal): el servidor de
+Next recibe `CLERK_SECRET_KEY` desde el entorno (nunca el navegador; la API sigue sin tenerla). En tests, CI y
+humo se usa una clave de prueba no válida contra Clerk, y la verificación del token sigue siendo sin red con
+claves locales. La clave real vive sólo en `infra/.env` (la carga Juani) y en producción. E8 queda: hablan con
+Clerk el worker (invitaciones) y el servidor de Next (sesión); la API nunca.
