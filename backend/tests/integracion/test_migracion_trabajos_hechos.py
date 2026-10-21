@@ -54,10 +54,10 @@ def _logging_restaurado() -> Iterator[None]:
     try:
         yield
     finally:
-        for logger, handlers, filtros, nivel, propaga, deshabilitado in originales:
+        for logger, handlers, filtros, severidad, propaga, deshabilitado in originales:
             logger.handlers[:] = handlers
             logger.filters[:] = filtros
-            logger.setLevel(nivel)
+            logger.setLevel(severidad)
             logger.propagate = propaga
             logger.disabled = deshabilitado
 

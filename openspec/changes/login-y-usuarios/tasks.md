@@ -775,6 +775,31 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   Pego después la evidencia final en este archivo, sin otro commit posterior a las suites,
   para que ambas corridas correspondan al último HEAD solicitado.
 
+- [x] A3 Corregir el nombre local del fixture de logs que rechaza el guardián de vocabulario; repetir el cierre sobre el nuevo commit (L-031).
+
+  Primera corrida completa, en primer plano después de A1/A2, HEAD `9d8187f`:
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  14:41:15–14:53:22
+  ====== 1 failed, 2655 passed, 1 xfailed, 18 warnings in 716.38s (0:11:56) ======
+  FAILED tests/unitarios/acceso/test_vocabulario_vigente.py::test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes
+  ```
+  Todas las víctimas originales pasaron, con cero errores de conexión. El único rojo es propio
+  del constructor: llamó `nivel` a la severidad del logger, palabra que el guardián rechaza fuera de
+  su lista de archivos de logs. Decisión del constructor (L-030): renombrarla a `severidad`,
+  conservando intactos el guardián, su lista blanca y todas sus aserciones.
+  ```text
+  $ cd backend; date +%T; uv run pytest tests/unitarios/acceso/test_vocabulario_vigente.py -q -p no:randomly --tb=short
+  14:53:32–14:53:33 RED: assert ['backend/tests/integracion/test_migracion_trabajos_hechos.py:57:...nivel...', '...logger.setLevel(nivel)'] == []
+  1 failed in 0.18s
+  $ cd backend; date +%T; uv run pytest tests/unitarios/acceso/test_vocabulario_vigente.py tests/integracion/test_migracion_trabajos_hechos.py -q -p no:randomly --tb=short
+  14:53:55–14:54:07 GREEN: 3 passed, 2 warnings in 9.61s
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  14:54:08: All checks passed! / 272 files already formatted / Success: no issues found in 248 source files
+  ```
+  El cierre de A1/A2 se repite después del commit de esta corrección; la evidencia final se pega
+  debajo de esta tarea, sin un commit posterior a las suites.
+
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.
