@@ -1,12 +1,13 @@
-"""Identidad inyectable y la sesión con tenant (D7, cambio 2a).
+"""Token local, identidad vinculada y sesión con tenant (D1 a D3 del 2b).
 
-`identidad_actual` responde siempre 401, sin tocar la base: hasta el cambio
-2b (el login) nadie se puede autenticar de verdad. Los tests la reemplazan
-con `app.dependency_overrides[identidad_actual]`.
+Los overrides de FastAPI siguen permitiendo inyectar la identidad en tests.
+Sin token válido, ninguna dependencia abre una sesión de base.
 """
 
+import re
 from collections.abc import Callable, Coroutine, Iterator
 from contextlib import AsyncExitStack
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request
@@ -17,12 +18,48 @@ from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as HTTPExceptionDeStarlette
 from starlette.responses import Response
 
+from proptech_core.acceso.aplicacion.identidad import IdentidadNoDisponible, resolver
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.acceso.dominio.token import (
+    TokenInvalido,
+    TokenVerificado,
+    verificar_token_de_sesion,
+)
 from proptech_core.compartido.base_de_datos import abrir_sesion
 
 
-def identidad_actual() -> Identidad:
-    raise HTTPException(status_code=401)
+def token_de_sesion_actual(request: Request) -> TokenVerificado:
+    configuracion = getattr(request.app.state, "configuracion", None)
+    valores = request.headers.getlist("authorization")
+    if len(valores) != 1 or configuracion is None or configuracion.clerk_jwt_key is None:
+        raise HTTPException(status_code=401)
+    coincidencia = re.fullmatch(r"Bearer ([^\s,]+)", valores[0], flags=re.ASCII)
+    if coincidencia is None:
+        raise HTTPException(status_code=401)
+    try:
+        return verificar_token_de_sesion(
+            coincidencia[1],
+            configuracion.clerk_jwt_key,
+            configuracion.clerk_partes_autorizadas,
+            configuracion.clerk_emisor,
+            datetime.now(UTC),
+        )
+    except TokenInvalido:
+        raise HTTPException(status_code=401) from None
+
+
+def identidad_actual(
+    request: Request,
+    token: TokenVerificado = Depends(token_de_sesion_actual),
+) -> Identidad:
+    try:
+        return resolver(
+            request.app.state.fabrica_de_sesiones,
+            token.sub,
+            request.headers.get("X-Proptech-Administracion"),
+        )
+    except IdentidadNoDisponible:
+        raise HTTPException(status_code=401) from None
 
 
 def sesion_con_tenant(

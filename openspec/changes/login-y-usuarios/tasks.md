@@ -319,7 +319,48 @@ la cuenta de Clerk (8.1).
 
 ## 4. La identidad en la API
 
-- [ ] 4.1 `identidad_actual` real (D1, D2, D3) en `backend/tests/integracion/test_identidad_clerk_api.py`, con la app real, tokens del Clerk falso y un contador de sentencias SQL: sin encabezado, con `Bearer` vacío, con dos tokens, y con cada token inválido de 2.1, 401 con cuerpo y encabezados idénticos y **cero** sentencias; token válido sin vínculo, 401 idéntico, sin leer `complejo`, `unidad` ni `asignacion_rol`, y una línea `ingreso_sin_vinculo` sin email, token ni `sub` en claro; persona vinculada en A con asignación, 200 en un complejo de su alcance; vinculada en A y en B, 401 sin encabezado de selector, 200 con A, 401 con el id de un tercero real; vinculada sólo en A con el encabezado de B, 401 sin ninguna lectura de B; sin `CLERK_JWT_KEY`, 401 a todo. `X-Proptech-Administracion` se recibe como texto y se valida después del token y del vínculo: un no UUID sin sesión da 401 con cero SQL, y con sesión válida da 401, nunca 422. El barrido de rutas sigue exigiendo 401 sin SQL. RED: hoy todo es 401, así que el caso "vinculada en A con asignación" falla primero. Escenarios: `autenticacion-con-clerk` › Persona vinculada con asignación; › Token válido sin vínculo; › Elegir una administración ajena; › Varias sin elegir; › Login sin configurar; `autorizacion-por-rol` › Pedido sin identidad; › Token inválido; › Token válido sin vínculo; `aislamiento-por-administracion` › Encabezado o parámetro con otra administración; › Selector con una administración ajena. Lecciones: L-007, L-016, L-017, L-019.
+- [x] 4.1 `identidad_actual` real (D1, D2, D3) en `backend/tests/integracion/test_identidad_clerk_api.py`, con la app real, tokens del Clerk falso y un contador de sentencias SQL: sin encabezado, con `Bearer` vacío, con dos tokens, y con cada token inválido de 2.1, 401 con cuerpo y encabezados idénticos y **cero** sentencias; token válido sin vínculo, 401 idéntico, sin leer `complejo`, `unidad` ni `asignacion_rol`, y una línea `ingreso_sin_vinculo` sin email, token ni `sub` en claro; persona vinculada en A con asignación, 200 en un complejo de su alcance; vinculada en A y en B, 401 sin encabezado de selector, 200 con A, 401 con el id de un tercero real; vinculada sólo en A con el encabezado de B, 401 sin ninguna lectura de B; sin `CLERK_JWT_KEY`, 401 a todo. `X-Proptech-Administracion` se recibe como texto y se valida después del token y del vínculo: un no UUID sin sesión da 401 con cero SQL, y con sesión válida da 401, nunca 422. El barrido de rutas sigue exigiendo 401 sin SQL. RED: hoy todo es 401, así que el caso "vinculada en A con asignación" falla primero. Escenarios: `autenticacion-con-clerk` › Persona vinculada con asignación; › Token válido sin vínculo; › Elegir una administración ajena; › Varias sin elegir; › Login sin configurar; `autorizacion-por-rol` › Pedido sin identidad; › Token inválido; › Token válido sin vínculo; `aislamiento-por-administracion` › Encabezado o parámetro con otra administración; › Selector con una administración ajena. Lecciones: L-007, L-016, L-017, L-019.
+
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_identidad_clerk_api.py -x -q
+  10:58:02
+  FAILED test_vinculada_con_asignacion_entra: assert 401 == 200; 1 failed in 8.45s
+  ```
+  Mutantes sobre copias propias en `.atl/bloque-b/mutante-*`, con `PYTHONPATH` a esa copia;
+  originales sin mutar. Diffs reales contra el original (L-013):
+
+  ```diff
+  # 11:01:09, pytest test_identidad_clerk_api.py -q -k firma
+  +                "verify_signature": False,
+  # 1 failed, 19 deselected: SQL ejecutado con firma falsa.
+  # 11:03:23, mismo archivo -k selector
+  +    selector = None
+  # 1 failed, 20 deselected: selector ajeno aceptado (200).
+  # 11:03:31, mismo archivo -k sin_vinculo
+  -            "sub_resumen": hashlib.sha256(sub.encode()).hexdigest()[:12],
+  +            "sub_resumen": sub,
+  # 1 failed, 20 deselected: resumen del log incorrecto.
+  ```
+  Decisión del constructor (L-030): anticipo `token_de_sesion_actual` de 4.4 porque es la
+  dependencia explícita de `identidad_actual` en D3. El barrido de dos guardas sigue en 4.4.
+  Los tres RESET de RA2b-2 ya estaban implementados y probados en 3.1.
+
+  ```diff
+  # 11:07:36, copia propia; pytest test_identidad_clerk_api.py -q -k 'invalidos or apagado'
+  +    return TokenVerificado("user_Prueba", None, False)
+  # 40 failed, 3 deselected: todos los rechazos y el cero SQL nacidos verdes fallan.
+  ```
+  ```text
+  GREEN $ cd backend; date +%T; uv run pytest tests/integracion/test_identidad_clerk_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/acceso/test_ruta_con_identidad.py -q
+  11:05:27
+  112 passed, 1 warning in 21.14s
+  GREEN suite completa $ cd backend; date +%T; uv run pytest -q
+  10:59:27
+  2259 passed, 1 xfailed, 16 warnings in 547.64s (0:09:07)
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 245 files already formatted / no issues found in 221 source files
+  ```
+
 - [ ] 4.2 La sesión y los ingresos (D3, D8), en `backend/tests/integracion/test_sesion_api.py`: `GET /api/sesion` lista las administraciones vinculadas con asignación (nombre de la persona y de cada una), nada de otra administración, y omite una administración donde la persona no tiene asignación; `POST /api/sesion/ingreso` deja exactamente una fila `ingreso_exitoso` con la persona, la administración y el `request_id`; una persona vinculada sin asignaciones recibe 401 y deja una fila `ingreso_fallido` con `motivo = sin_asignacion`, confirmada aunque la respuesta sea 401; ningún detalle tiene email, token ni `sub`. RED: las rutas no existen (404 en vez de 200). Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones (la parte de la API); › Ingreso a una administración; › Persona sin asignación; › Identidad sin vínculo; › Vinculada sin asignación. Lecciones: L-007, L-016.
 - [ ] 4.3 Deuda del 2a con dueño 2b (L-012): **V2-7**, `@accion_sensible` falla al registrar dos casos con la misma acción o evento, y se reescribe el test de `test_auditoria_transaccion.py:416` hasta verlo rojo con un segundo caso (D13); **D-1 y D-6**, un test por cada una de las cinco comparaciones de `_verificar_politica_de_auditoria` sin cubrir (nombre, `PERMISSIVE`, comando, roles, `WITH CHECK`) y una sonda de `TRUNCATE` que no dependa de la palabra en mayúsculas, cada una vista roja con una copia mutada; **R9**, con identidades reales de la misma administración, la diferencia de tiempo entre un 403 y un 404 medida en 200 pedidos de cada uno y comparada con la de dos 404, con el criterio y el resultado en el informe (si hay diferencia explotable, frenar y volver a Juani). **D-2** queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se verifica que 0019 y 0020 no agregan ninguna. Escenarios: `auditoria-de-acciones` › Dos casos de uso con la misma acción. Lecciones: L-012, L-013, L-019.
 - [ ] 4.4 Dos guardas y parseo (D3, RB2b-2) en el barrido y los tests de rutas: `token_de_sesion_actual` verifica sin SQL; `identidad_actual` depende de ella y resuelve persona completa. Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` usan `Depends(token_de_sesion_actual)` sin persona, con `RutaConTokenVerificado`, variante de `RutaConIdentidad` cuya guarda reducida usa la misma dependencia, solver y overrides. Ninguna se agrega a `_RUTAS_PUBLICAS` (sólo `/api/salud`). El barrido compara el conjunto exacto de rutas con cada guarda, exige 401 y cero SQL sin token o con sesión inválida, incluso con JSON roto, cuerpo ausente y encabezado de administración no UUID. Con sesión válida sin persona, sesión llega al caso de uso y aceptar puede vincular; JSON roto o sin `token` en aceptar da 422, sin resolver persona completa; con cuerpo parseable la guarda corre una sola vez. RED: el barrido actual no reconoce la segunda dependencia y las rutas no existen; una copia que les exige persona completa rechaza la aceptación correcta y falla; sacar la dependencia o volver a la guarda equivocada en el parser rompe el barrido. Escenarios: `autenticacion-con-clerk` › Dos rutas con token sin persona; `gestion-de-usuarios` › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida. Lecciones: L-013, L-017, L-019, L-022.

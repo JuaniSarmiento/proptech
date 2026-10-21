@@ -94,6 +94,9 @@ def crear_app() -> FastAPI:
             app.state.engine.dispose()
 
     app = FastAPI(title="PropTech API", lifespan=lifespan)
+    app.state.configuracion = configuracion
+    if configuracion.clerk_jwt_key is None:
+        _logger.info("login_sin_configurar")
     app.state.parametros = parametros
     # La cola queda cableada (D4): el pool de ARQ es perezoso (sólo conecta
     # al primer uso), así que armarla acá no intenta hablar con Redis y la
