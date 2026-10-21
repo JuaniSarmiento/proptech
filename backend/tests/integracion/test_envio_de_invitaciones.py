@@ -399,6 +399,112 @@ async def test_revocar_con_el_envio_en_vuelo_no_deja_abierta_la_invitacion_de_cl
 
 
 @pytest.mark.anyio
+async def test_reintento_tras_revocacion_en_vuelo_revoca_en_clerk(
+    ajustes_del_worker: Any, esquema_migrado: None, postgres_contenedor: PostgresContainer
+) -> None:
+    """RB2b-post-1 (revisión backend post-rompedor, `.git/informes-2b/
+    revision-post-rompedor/backend.md`): si la revocación inline del mismo
+    trabajo (R2B-1, líneas 339-351) falla con un error pasajero (Clerk
+    429/5xx), ARQ reintenta `enviar_invitacion`; el reintento ya no
+    encuentra la fila `pendiente` (`_leer_invitacion_para_enviar` corta en
+    la línea 224 porque el estado ya es `revocada`) y hoy devuelve `True`
+    sin volver a intentar la revocación: la invitación de Clerk queda
+    abierta para siempre. El reintento tiene que revocar si la fila quedó
+    `revocada` con un `clerk_invitacion_id` ya guardado."""
+    fila = _crear_invitacion_pendiente(postgres_contenedor, email="reintento@example.invalid")
+    intentos_de_revoke: list[int] = []
+
+    def _clerk(_metodo: str, ruta: str, *_: Any) -> tuple[int, dict[str, Any]]:
+        if ruta == "/invitations":
+            # La revocación gana la carrera mientras el POST está en vuelo.
+            _fijar_estado(
+                postgres_contenedor,
+                fila["administracion_id"],
+                fila["invitacion_id"],
+                estado="revocada",
+                clerk_invitacion_id=None,
+            )
+            return 201, {"id": "inv_reintento01"}
+        if ruta == "/invitations/inv_reintento01/revoke":
+            intentos_de_revoke.append(1)
+            if len(intentos_de_revoke) == 1:
+                # La revocación INLINE del mismo trabajo falla (pasajero).
+                return 503, {"errors": []}
+            return 200, {"id": "inv_reintento01", "status": "revoked"}
+        return 404, {}
+
+    from proptech_worker.tareas import enviar_invitacion
+
+    with ServidorClerkFalso(_clerk) as servidor:
+        clerk = AdaptadorClerkHttp(SecretStr(CLAVE_DE_PRUEBA), base_url=servidor.base_url)
+        ctx = _ctx(ajustes_del_worker, _fabrica_con_tenant(ajustes_del_worker), clerk)
+
+        with pytest.raises(arq.Retry):
+            await enviar_invitacion(
+                ctx,
+                request_id=str(uuid.uuid4()),
+                clave=f"invitacion:{fila['invitacion_id']}",
+                administracion_id=str(fila["administracion_id"]),
+                invitacion_id=str(fila["invitacion_id"]),
+                sobre=SOBRE,
+            )
+        # El reintento de ARQ: la misma tarea, un trabajo nuevo (job_try 2).
+        ctx["job_try"] = 2
+        resultado = await enviar_invitacion(
+            ctx,
+            request_id=str(uuid.uuid4()),
+            clave=f"invitacion:{fila['invitacion_id']}",
+            administracion_id=str(fila["administracion_id"]),
+            invitacion_id=str(fila["invitacion_id"]),
+            sobre=SOBRE,
+        )
+        rutas = [p["ruta"] for p in servidor.pedidos]
+
+    estado, clerk_id = _leer_fila(
+        postgres_contenedor, fila["administracion_id"], fila["invitacion_id"]
+    )
+    assert resultado is True
+    assert estado == "revocada"
+    assert clerk_id == "inv_reintento01"
+    assert rutas.count("/invitations/inv_reintento01/revoke") == 2, (
+        f"Clerk recibió {rutas}; se esperaban dos intentos de revocación"
+    )
+
+
+@pytest.mark.anyio
+async def test_reintento_sobre_revocada_sin_clerk_id_no_llama_a_clerk(
+    ajustes_del_worker: Any, esquema_migrado: None, postgres_contenedor: PostgresContainer
+) -> None:
+    """Triangulación de RB2b-post-1: si la fila quedó `revocada` pero nunca
+    llegó a guardarse un `clerk_invitacion_id` (la revocación ganó la
+    carrera ANTES de que el primer intento mandara nada a Clerk), el
+    reintento no tiene nada que revocar y no llama al servidor."""
+    fila = _crear_invitacion_pendiente(postgres_contenedor, email="sinclerk@example.invalid")
+    _fijar_estado(
+        postgres_contenedor,
+        fila["administracion_id"],
+        fila["invitacion_id"],
+        estado="revocada",
+        clerk_invitacion_id=None,
+    )
+    from proptech_worker.tareas import enviar_invitacion
+
+    with ServidorClerkFalso(lambda *_: (201, {"id": "no_deberia_llamarse"})) as servidor:
+        clerk = AdaptadorClerkHttp(SecretStr(CLAVE_DE_PRUEBA), base_url=servidor.base_url)
+        ctx = _ctx(ajustes_del_worker, _fabrica_con_tenant(ajustes_del_worker), clerk)
+        resultado = await enviar_invitacion(
+            ctx,
+            request_id=str(uuid.uuid4()),
+            clave=f"invitacion:{fila['invitacion_id']}",
+            administracion_id=str(fila["administracion_id"]),
+            invitacion_id=str(fila["invitacion_id"]),
+            sobre=SOBRE,
+        )
+        assert servidor.pedidos == []
+    assert resultado is True
+
+
+@pytest.mark.anyio
 async def test_reintento_tras_caidas_y_exito_final_deja_un_solo_id(
     ajustes_del_worker: Any,
     esquema_migrado: None,

@@ -228,6 +228,35 @@ def _leer_invitacion_para_enviar(
     return email
 
 
+def _leer_revocada_para_reintentar(
+    fabrica: Any, *, administracion_id: UUID, invitacion_id: UUID
+) -> str | None:
+    """RB2b-post-1 (revisión backend post-rompedor): el `clerk_invitacion_id`
+    si la fila quedó `revocada` con un id guardado; `None` si la fila no
+    existe, si no está `revocada` (volvió a `pendiente` por otra vía, o
+    quedó `enviada`/`fallida`) o si nunca llegó a guardar un id (la
+    revocación ganó la carrera antes de que este trabajo mandara nada a
+    Clerk: no hay nada que revocar). Lo usa el reintento de
+    `enviar_invitacion` cuando `_leer_invitacion_para_enviar` ya no
+    encuentra la fila `pendiente` (línea 224): la revocación INLINE del
+    primer intento (R2B-1, más abajo) pudo haber fallado con un error
+    pasajero y, sin este chequeo, ese reintento devuelve `True` sin volver
+    a intentarla, dejando la invitación abierta en Clerk para siempre."""
+    with abrir_sesion(fabrica, administracion_id) as sesion:
+        fila = sesion.execute(
+            text(
+                "SELECT estado, clerk_invitacion_id FROM invitacion "
+                "WHERE id=:invitacion AND administracion_id=:admin"
+            ),
+            {"invitacion": str(invitacion_id), "admin": str(administracion_id)},
+        ).first()
+        sesion.rollback()
+    if fila is None or fila.estado != "revocada" or fila.clerk_invitacion_id is None:
+        return None
+    clerk_id: str = fila.clerk_invitacion_id
+    return clerk_id
+
+
 def _marcar_invitacion_enviada_o_fallida(
     fabrica: Any,
     *,
@@ -300,6 +329,30 @@ async def enviar_invitacion(
     )
     if email is None:
         _logger_invitaciones.info("invitacion_no_pendiente", extra={"tarea": "enviar_invitacion"})
+        # RB2b-post-1: este reintento puede ser justo el que sigue a una
+        # revocación en carrera cuya revocación inline (más abajo) falló
+        # con un error pasajero. Si quedó `revocada` con un id guardado,
+        # todavía hay algo que revocar en Clerk antes de dar el trabajo
+        # por terminado.
+        clerk_id_pendiente_de_revocar = await asyncio.to_thread(
+            _leer_revocada_para_reintentar,
+            fabrica,
+            administracion_id=argumentos.administracion_id,
+            invitacion_id=argumentos.invitacion_id,
+        )
+        if clerk_id_pendiente_de_revocar is None:
+            return True
+        clerk_de_reintento: ClienteDeClerk | None = ctx["clerk"]
+        if clerk_de_reintento is None:
+            raise ErrorPasajero("CLERK_SECRET_KEY no configurada")
+        try:
+            await clerk_de_reintento.revocar(clerk_id_pendiente_de_revocar)
+        except ClerkRechazoDefinitivo:
+            # 404 o "ya revocada": idéntico criterio al de la revocación
+            # inline de más abajo, cuenta como éxito.
+            pass
+        except ClerkNoDisponible as error:
+            raise ErrorPasajero("clerk no disponible") from error
         return True
 
     clerk: ClienteDeClerk | None = ctx["clerk"]
