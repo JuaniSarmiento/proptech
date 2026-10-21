@@ -842,6 +842,14 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   Regresión de dependencias: `date +%T; bash infra/ci/test-web.sh`, 15:16:04 / 301 passed.
   Ese verde previo no verifica la integración pendiente ni reemplaza el cierre de L-031.
 - [ ] 6.2 CSP (D4, deuda del 2c): `contentSecurityPolicy` estricta con nonce y las directivas de la documentación de Clerk más `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`; un test lee la cabecera de dos pedidos y exige nonces distintos, ninguna `unsafe-eval` y la lista exacta de directivas (comparada entera, L-022); un test de render de una página autenticada busca el token de prueba y la clave publicable fuera del lugar previsto en el HTML y no lo encuentra. RED: hoy no hay cabecera CSP. Escenarios: `autenticacion-con-clerk` › Política de contenido; › El token no está en la página. Lecciones: L-012, L-022.
+  **BLOQUEADA por 6.1 (constructor, 21/10/2026):** D4 exige la CSP automática de
+  `clerkMiddleware`. En el SDK fijado el chequeo de clave secreta ocurre antes de generar esa
+  cabecera. Aplicar otra CSP o habilitar el SDK con una clave inventada no resuelve el contrato
+  firmado. No construyo una alternativa ni marco `[x]`; falta el rojo/verde de la respuesta real
+  de Next y el render autenticado. La sonda de 6.1 es evidencia del bloqueo, no evidencia de CSP.
+  La [documentación oficial de CSP](https://clerk.com/docs/guides/secure/best-practices/csp-headers)
+  confirma `strict: true`, nonce por pedido, `ClerkProvider dynamic` y la excepción de estilos.
+  RED/GREEN: no ejecutados; tarea dependiente, sin cambios de código.
 - [ ] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
 
 ## 7. Pantallas (bloqueado por el shape)
