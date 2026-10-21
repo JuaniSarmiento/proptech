@@ -11,10 +11,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/pasos.sh"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-if [ ! -f .env ]; then
-  echo "infra/.env no existe; generándolo desde .env.example para el CI" >&2
-  cp .env.example .env
-fi
+# El humo usa exclusivamente el ejemplo público: nunca lee el entorno privado.
+# No heredar claves del shell ni habilitar login/invitaciones en esta corrida.
+unset CLERK_JWT_KEY CLERK_SECRET_KEY CLERK_PARTES_AUTORIZADAS CLERK_EMISOR
+unset INVITACIONES_CLAVE_CIFRADO PROPTECH_URL_PUBLICA
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_$(printf '%s' 'proptech-prueba.clerk.accounts.dev$' | base64 | tr -d '\n')"
+export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 SENUELO_BACKEND="../backend/.env"
 SENUELO_WEB="../web/.env"
@@ -35,7 +37,7 @@ export PROPTECH_GID
 # en compose.yaml (lo que de verdad hace falta para lo destructivo, como
 # `down -v`, es que no dependa de un archivo que alguien podría tocar).
 compose() {
-  docker compose -p proptech "$@"
+  docker compose -p proptech --env-file .env.example "$@"
 }
 
 STACK_LEVANTADO=0
@@ -126,6 +128,25 @@ echo "$respuesta_salud"
 echo "$respuesta_salud" | grep -q '"estado":"ok"'
 echo "$respuesta_salud" | grep -q '"base":"ok"'
 echo "$respuesta_salud" | grep -q '"cola":"ok"'
+
+for servicio_sin_clerk in api worker; do
+  compose exec -T "$servicio_sin_clerk" python -c '
+import os
+variables = ("CLERK_JWT_KEY", "CLERK_PARTES_AUTORIZADAS", "CLERK_EMISOR",
+             "CLERK_SECRET_KEY", "INVITACIONES_CLAVE_CIFRADO", "PROPTECH_URL_PUBLICA")
+assert all(variable not in os.environ for variable in variables), "el humo no debe configurar Clerk"
+'
+done
+
+paso 1a "el borde de Caddy rechaza /api/complejos con 404 y marca propia (RA2b-1)"
+cabeceras_borde="${CARPETA_RESPALDOS_HUMO}/cabeceras-borde.txt"
+codigo_borde=$(curl -sS -D "$cabeceras_borde" -o /dev/null -w '%{http_code}' \
+  -H 'Authorization: Bearer prueba-del-borde' http://localhost/api/complejos)
+echo "GET /api/complejos desde afuera: ${codigo_borde}"
+[ "$codigo_borde" = "404" ]
+tr -d '\r' < "$cabeceras_borde" | rg -qi '^X-Proptech-Origen: caddy$'
+rm -f "$cabeceras_borde"
+echo "ok: 404 de Caddy con X-Proptech-Origen: caddy"
 
 paso 1b "segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no tiene que fallar"
 # `down` sin `-v`: conserva los volúmenes (datos_postgres, datos_redis), como

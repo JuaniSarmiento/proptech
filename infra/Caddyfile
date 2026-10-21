@@ -22,8 +22,14 @@
 	# pasar por otro pedido.
 	request_header X-Request-ID {http.request.uuid}
 
-	handle /api/* {
+	handle /api/salud {
 		reverse_proxy api:8000
+	}
+
+	# D4/RA2b-1: este 404 nace acá, sin tocar Next ni FastAPI.
+	handle /api/* {
+		header X-Proptech-Origen caddy
+		respond 404
 	}
 
 	handle {

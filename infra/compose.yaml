@@ -189,6 +189,11 @@ services:
       # subred entera (si no, cualquier contenedor de la red podría mentir
       # su IP de origen).
       FORWARDED_ALLOW_IPS: "172.28.0.254"
+      # D1/D6: sin configurar se omiten; una cadena vacía no es una clave.
+      CLERK_JWT_KEY:
+      CLERK_PARTES_AUTORIZADAS:
+      CLERK_EMISOR:
+      INVITACIONES_CLAVE_CIFRADO:
       # D18/M14, tarea 7.1: opcionales con default en `Configuracion`
       # (`configuracion.py`); se pasan explícitas acá (con el MISMO default
       # que el código, vía `${VAR:-default}`) para que una sola tabla de
@@ -237,6 +242,9 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:?falta REDIS_PASSWORD}"
       PROPTECH_PARAMETROS: /app/config/parametros.yaml
+      # D7: la clave secreta de Clerk vive en worker/web, nunca en la API.
+      CLERK_SECRET_KEY:
+      PROPTECH_URL_PUBLICA:
       # D18/M14, tarea 7.1: gemelo de la API (L-009), mismos defaults.
       DB_POOL_PRE_PING: "${DB_POOL_PRE_PING:-true}"
       DB_POOL_SIZE: "${DB_POOL_SIZE:-5}"
@@ -314,6 +322,8 @@ services:
     <<: *logs
     build:
       context: ../web
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
     image: proptech-web:local
     restart: unless-stopped
     # D3 (tarea 3.2): imagen propia con `USER proptech` (web/Dockerfile).
@@ -329,6 +339,10 @@ services:
       # No es secreto (D8): el nombre del servicio en la red `aplicacion` de
       # Compose, fijo.
       PROPTECH_URL_API_INTERNA: http://api:8000
+      CLERK_JWT_KEY:
+      CLERK_PARTES_AUTORIZADAS:
+      CLERK_SECRET_KEY:
+      PROPTECH_URL_PUBLICA:
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)throw new Error(r.status)}).catch(()=>process.exit(1))"]
       interval: 5s

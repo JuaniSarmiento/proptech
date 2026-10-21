@@ -850,7 +850,46 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   La [documentación oficial de CSP](https://clerk.com/docs/guides/secure/best-practices/csp-headers)
   confirma `strict: true`, nonce por pedido, `ClerkProvider dynamic` y la excepción de estilos.
   RED/GREEN: no ejecutados; tarea dependiente, sin cambios de código.
-- [ ] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
+- [x] 6.3 Caddy, Compose y variables (D4, tabla de "Configuración y secretos"): `Caddyfile` con `handle /api/salud` al proxy de la API, después `handle /api/* { respond 404 }` con `header X-Proptech-Origen caddy` en ese bloque, y al final el bloque de Next; `compose.yaml` con cada variable sólo en sus servicios (la secreta nunca en `api`), la clave publicable como argumento de construcción de la web; `infra/.env.example` y la tabla del README con los nombres, sin valores; `humo.sh` arranca sin claves de Clerk (login apagado) con una clave publicable de prueba inventada, y comprueba que `/api/salud` responde y `/api/complejos` desde afuera da 404 con `X-Proptech-Origen: caddy` y no llega a Next ni a la API. RED: el humo nuevo falla porque hoy `/api/complejos` llega a la API (401). Escenarios: `autenticacion-con-clerk` › La API desde afuera; › La salud sigue pública. Lecciones: L-002, L-023.
+  Decisión del constructor (L-030): las variables opcionales quedan comentadas en el ejemplo y
+  como referencias sin valor en Compose. Así se omiten cuando faltan, sin convertir un PEM vacío
+  en login apagado ni cambiar la validación de 2.2. `compose config` representa esa ausencia como
+  `null`; el humo comprueba además que no existen en el entorno real de API/worker. La clave
+  publicable queda vacía en el ejemplo; sólo el humo genera su valor público inventado.
+  El humo usa `--env-file .env.example` y elimina las variables de Clerk heredadas: no lee `.env`.
+  ```text
+  RED $ date +%T; bash infra/ci/humo.sh
+  15:17:28 / GET /api/complejos desde afuera: 401
+  ERROR: paso 1a … [ "$codigo_borde" = "404" ] (exit 1)
+  RED $ cd backend; date +%T; uv run pytest tests/infra/test_clerk_en_compose.py -q
+  15:19:16 / 3 failed: faltan las variables y el argumento de construcción.
+  GREEN $ date +%T; uv run pytest tests/infra/test_clerk_en_compose.py tests/unitarios/test_configuracion_clerk.py tests/infra/test_readme_variables.py -q
+  15:20:27 / 64 passed in 10.20s
+  ```
+  Mutantes de Compose (copia propia previa, diff real, restaurada byte a byte en `finally`):
+  ```diff
+  # 15:23:59 / test_cada_variable_solo_en_los_servicios_firmados: 1 failed
+       CLERK_EMISOR:
+  +      CLERK_SECRET_KEY: ""
+  # 15:24:00 / test_compose_resuelve_el_ejemplo…: 1 failed
+  -      CLERK_JWT_KEY:
+  +      CLERK_JWT_KEY: ""
+  ```
+  Decisión del constructor (L-030): el chequeo nuevo es el paso 1a; actualizo el oráculo y
+  el nombre del test de pasos de 25 a 26 (rojo 15:24:05 / 1 failed, 189 passed).
+  No cambia permisos, autenticación ni datos. `bash -n infra/ci/humo.sh` limpio.
+  ```text
+  GREEN $ date +%T; bash infra/ci/humo.sh
+  15:20:28 / GET /api/complejos desde afuera: 404; X-Proptech-Origen: caddy; HUMO OK (exit 0)
+  GREEN $ cd backend; date +%T; uv run pytest tests/infra -q
+  15:24:56 / 190 passed in 25.46s
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 273 files already formatted / no issues found in 249 source files
+  ```
+  Decisión del constructor (L-030/L-031): el cierre de bloque se corre tras este commit,
+  de a uno y en primer plano; su evidencia se agregará acá sin otro commit de código.
+  El token inventado del humo sólo comprueba el borde con login apagado; no equivale a una
+  sesión válida de Clerk. La integración autenticada permanece pendiente en 6.1/6.2.
 
 ## 7. Pantallas (bloqueado por el shape)
 

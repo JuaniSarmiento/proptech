@@ -11,6 +11,7 @@ WORKDIR /app
 RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 RUN corepack pnpm@12.10.1 build
 
 FROM node:24.21.0-alpine AS final
