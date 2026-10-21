@@ -202,6 +202,24 @@ const _PERSONAL_DE_PRUEBA = [
     ],
     invitacion: { invitacion_id: "00000000-0000-0000-0000-000000000303", estado: "pendiente" },
   },
+  {
+    persona_id: "00000000-0000-0000-0000-000000000104",
+    nombre: "Deco Vecino",
+    email: "deco@test.com",
+    vinculado: false,
+    asignaciones: [
+      {
+        asignacion_id: "00000000-0000-0000-0000-000000000204",
+        rol: "vecino",
+        complejo_id: null,
+        // Unidad "1A" de `fixtures/unidades.json` (7.4): el padrón de
+        // cualquier edificio en la API falsa devuelve ese fixture fijo.
+        unidad_id: "153ca513-698c-4f13-8186-f1f28f10ea40",
+        vinculo: "propietario",
+      },
+    ],
+    invitacion: { invitacion_id: "00000000-0000-0000-0000-000000000304", estado: "pendiente" },
+  },
 ];
 
 function _esEscritura(metodo: string | undefined): boolean {
@@ -480,6 +498,67 @@ export function crearServidor(
       respuesta
         .writeHead(200, { "content-type": "application/json" })
         .end(JSON.stringify({ quitada: true }));
+      return;
+    }
+    // 7.4: alta de vecino, mismo contrato que invitar personal (nombre,
+    // email, vínculo en vez de rol/alcance).
+    if (/^\/api\/unidades\/[^/]+\/vecinos$/.test(url.pathname)) {
+      if (pedido.method !== "POST") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      let crudo = "";
+      pedido.on("data", (t) => {
+        crudo += t;
+      });
+      pedido.on("end", () => {
+        if (!/^application\/json/.test(String(pedido.headers["content-type"]))) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(_ERROR_CONTENT_TYPE_INVALIDO);
+          return;
+        }
+        let cuerpo: Record<string, unknown>;
+        try {
+          const parseado = JSON.parse(crudo);
+          cuerpo =
+            parseado !== null && typeof parseado === "object" && !Array.isArray(parseado)
+              ? parseado
+              : {};
+        } catch {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "json_invalid", loc: ["body"] }] }));
+          return;
+        }
+        const email = String(cuerpo.email ?? "");
+        const vinculo = String(cuerpo.vinculo ?? "");
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "value_error", loc: ["body", "email"] }] }));
+          return;
+        }
+        if (vinculo !== "propietario" && vinculo !== "inquilino") {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "literal_error", loc: ["body", "vinculo"] }] }));
+          return;
+        }
+        if (email === "ya-vinculado@test.com") {
+          respuesta
+            .writeHead(409, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: "conflicto", campo: "vinculo" }));
+          return;
+        }
+        respuesta.writeHead(201, { "content-type": "application/json" }).end(
+          JSON.stringify({
+            persona_id: "00000000-0000-0000-0000-000000000904",
+            asignacion_id: "00000000-0000-0000-0000-000000000905",
+            invitacion_id: "00000000-0000-0000-0000-000000000906",
+          }),
+        );
+      });
       return;
     }
 

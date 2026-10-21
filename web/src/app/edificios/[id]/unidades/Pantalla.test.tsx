@@ -1,10 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Unidad } from "../../../../lib/api/tipos";
+import type { VecinoDeUnidad } from "../../../../lib/api/vecinos";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaPadron } from "./Pantalla";
 
@@ -241,5 +242,126 @@ describe("PantallaPadron", () => {
       id: oculto.value,
       coeficiente: (screen.getByLabelText("Coeficiente") as HTMLInputElement).value,
     }).toEqual({ id: "u2", coeficiente: "0,300000" });
+  });
+});
+
+describe("PantallaPadron, vecinos (7.4)", () => {
+  const VECINO_PENDIENTE: VecinoDeUnidad = {
+    persona_id: "p1",
+    asignacion_id: "a1",
+    nombre: "Vecino Uno",
+    vinculo: "propietario",
+    invitacion: { invitacion_id: "i1", estado: "pendiente" },
+  };
+  const VECINO_ACEPTADO: VecinoDeUnidad = {
+    persona_id: "p2",
+    asignacion_id: "a2",
+    nombre: "Vecino Dos",
+    vinculo: "inquilino",
+    invitacion: { invitacion_id: "i2", estado: "aceptada" },
+  };
+
+  function accionSimpleNula() {
+    return Promise.resolve(null);
+  }
+
+  it("sin vecinosPorUnidad (no super admin): sin columna Vecinos ni sección en el panel", async () => {
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio"
+        unidades={[UNIDAD_1A]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionSimpleNula}
+        accionEditar={accionSimpleNula}
+      />,
+    );
+    expect(screen.queryByRole("columnheader", { name: "Vecinos" })).toBeNull();
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    expect(screen.queryByRole("heading", { name: "Vecinos" })).toBeNull();
+  });
+
+  it("con vecinosPorUnidad: columna con cantidad y pendientes; sección con Revocar y Quitar", async () => {
+    const usuario = userEvent.setup();
+    const mapa = new Map([["u1", [VECINO_PENDIENTE, VECINO_ACEPTADO]]]);
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio"
+        unidades={[UNIDAD_1A]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionSimpleNula}
+        accionEditar={accionSimpleNula}
+        vecinosPorUnidad={mapa}
+        accionAltaVecino={accionSimpleNula}
+        accionRevocarVecino={accionSimpleNula}
+        accionQuitarVecino={accionSimpleNula}
+      />,
+    );
+    const fila = screen.getByRole("button", { name: "1A" }).closest("tr") as HTMLElement;
+    expect(within(fila).getByText("2 (1 pendiente)")).toBeTruthy();
+
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    expect(screen.getByRole("heading", { name: "Vecinos" })).toBeTruthy();
+    const filaUno = screen.getByText("Vecino Uno").closest("li") as HTMLElement;
+    expect(within(filaUno).getByText(/Propietario.*Pendiente/)).toBeTruthy();
+    expect(within(filaUno).getByRole("button", { name: "Revocar" })).toBeTruthy();
+    const filaDos = screen.getByText("Vecino Dos").closest("li") as HTMLElement;
+    expect(within(filaDos).getByText(/Inquilino.*Aceptada/)).toBeTruthy();
+    expect(within(filaDos).queryByRole("button", { name: "Revocar" })).toBeNull();
+    expect(within(filaDos).getByRole("button", { name: "Quitar" })).toBeTruthy();
+  });
+
+  it("agregar vecino manda unidad_id, nombre, email y vínculo a la acción", async () => {
+    const usuario = userEvent.setup();
+    const accionAlta = vi
+      .fn()
+      .mockResolvedValue({ erroresPorCampo: {}, erroresDesconocidos: [], ok: true });
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio"
+        unidades={[UNIDAD_1A]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionSimpleNula}
+        accionEditar={accionSimpleNula}
+        vecinosPorUnidad={new Map()}
+        accionAltaVecino={accionAlta}
+        accionRevocarVecino={accionSimpleNula}
+        accionQuitarVecino={accionSimpleNula}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    await usuario.type(screen.getByLabelText("Nombre del vecino"), "Nuevo Vecino");
+    await usuario.type(screen.getByLabelText("Email del vecino"), "vecino@test.com");
+    await usuario.click(screen.getByRole("button", { name: "Agregar vecino" }));
+    expect(accionAlta).toHaveBeenCalledTimes(1);
+    const form = accionAlta.mock.calls[0]?.[1] as FormData;
+    expect(form.get("unidad_id")).toBe("u1");
+    expect(form.get("nombre")).toBe("Nuevo Vecino");
+    expect(form.get("email")).toBe("vecino@test.com");
+    expect(form.get("vinculo")).toBe("propietario");
+  });
+
+  it("sin violaciones de axe con la sección de vecinos abierta", async () => {
+    const usuario = userEvent.setup();
+    const mapa = new Map([["u1", [VECINO_PENDIENTE]]]);
+    const { container } = render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio"
+        unidades={[UNIDAD_1A]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionSimpleNula}
+        accionEditar={accionSimpleNula}
+        vecinosPorUnidad={mapa}
+        accionAltaVecino={accionSimpleNula}
+        accionRevocarVecino={accionSimpleNula}
+        accionQuitarVecino={accionSimpleNula}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    await sinViolaciones(container);
   });
 });

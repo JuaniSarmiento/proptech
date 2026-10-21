@@ -1832,6 +1832,19 @@ h2 {
   white-space: normal;
 }
 
+/* Vecinos del padrón (7.4): sección adicional dentro del mismo panel
+ * lateral de editar unidad, separada del formulario de la unidad por un
+ * borde (nunca un segundo panel: D8, los formularios viven en el lateral). */
+.panel-lateral__seccion {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-linea);
+}
+.panel-lateral__seccion h3 {
+  font-size: var(--tipo-cuerpo);
+}
+
 /* Personal (7.3): una línea de texto por asignación, nunca un ícono por
  * fila dentro de la celda — con ícono la tabla no entraba en 1440px. */
 .fila-de-asignacion {

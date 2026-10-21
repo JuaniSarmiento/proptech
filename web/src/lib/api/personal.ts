@@ -82,6 +82,13 @@ export type DatosDeVecino = {
   vinculo: string;
 };
 
+// Las funciones puras (`vecinosPorUnidad`, `etiquetaDeVinculo`) viven en
+// `./vecinos`, no acá: ese archivo lo importa por VALOR un componente de
+// cliente, y este módulo arrastra `pedirApi`/`server-only` (gotcha real,
+// ver el comentario de `./vecinos`). Re-exportadas para el código de
+// servidor que ya las importaba de acá (`page.tsx`).
+export { etiquetaDeVinculo, type VecinoDeUnidad, vecinosPorUnidad } from "./vecinos";
+
 export async function altaDeVecino(
   unidadId: string,
   datos: DatosDeVecino,

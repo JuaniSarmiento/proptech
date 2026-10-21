@@ -29,12 +29,14 @@ import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { InformeDeCoeficientes, Unidad } from "../../../../lib/api/tipos";
+import { etiquetaDeVinculo, type VecinoDeUnidad } from "../../../../lib/api/vecinos";
 import {
   coeficiente,
   decimalParaCampo,
   sumaComoPorcentaje,
   superficie,
 } from "../../../../lib/formato";
+import { ESTADOS_REVOCABLES, textoDeEstadoDeInvitacion } from "../../../personal/estados";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_PADRON } from "./ayuda";
 
@@ -44,10 +46,23 @@ export type EstadoFormularioUnidad = {
   ok?: boolean;
 } | null;
 
+export type EstadoFormularioVecino = EstadoFormularioUnidad;
+export type EstadoAccionSimple = { ok?: boolean; error?: string } | null;
+
 type AccionUnidad = (
   estadoPrevio: EstadoFormularioUnidad,
   formData: FormData,
 ) => Promise<EstadoFormularioUnidad>;
+
+type AccionVecino = (
+  estadoPrevio: EstadoFormularioVecino,
+  formData: FormData,
+) => Promise<EstadoFormularioVecino>;
+
+type AccionSimple = (
+  estadoPrevio: EstadoAccionSimple,
+  formData: FormData,
+) => Promise<EstadoAccionSimple>;
 
 type Props = {
   id: string;
@@ -56,6 +71,12 @@ type Props = {
   informe: InformeDeCoeficientes;
   accionCrear: AccionUnidad;
   accionEditar: AccionUnidad;
+  /** 7.4: `null` cuando quien mira no puede leer `/api/personal` (D5, sólo
+   * super admin) — esta pantalla entonces no muestra la sección Vecinos. */
+  vecinosPorUnidad?: Map<string, VecinoDeUnidad[]> | null;
+  accionAltaVecino?: AccionVecino;
+  accionRevocarVecino?: AccionSimple;
+  accionQuitarVecino?: AccionSimple;
 };
 
 const _TIPOS: Array<{ valor: string; etiqueta: string; plural: string; icono: LucideIcon }> = [
@@ -76,6 +97,10 @@ export function PantallaPadron({
   informe,
   accionCrear,
   accionEditar,
+  vecinosPorUnidad = null,
+  accionAltaVecino = async () => null,
+  accionRevocarVecino = async () => null,
+  accionQuitarVecino = async () => null,
 }: Props) {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
@@ -145,26 +170,41 @@ export function PantallaPadron({
                     <th>Piso</th>
                     <th className="numero-tabular">Superficie (m²)</th>
                     <th className="numero-tabular">Coeficiente</th>
+                    {vecinosPorUnidad ? <th>Vecinos</th> : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {unidades.map((unidad) => (
-                    <tr key={unidad.id}>
-                      <td>
-                        <button
-                          type="button"
-                          className="boton-enlace"
-                          onClick={(e) => abrirEdicion(unidad, e)}
-                        >
-                          {unidad.identificador}
-                        </button>
-                      </td>
-                      <td>{etiquetaDeTipo(unidad.tipo)}</td>
-                      <td>{unidad.piso}</td>
-                      <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
-                      <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>
-                    </tr>
-                  ))}
+                  {unidades.map((unidad) => {
+                    const vecinos = vecinosPorUnidad?.get(unidad.id) ?? [];
+                    const pendientes = vecinos.filter(
+                      (v) => v.invitacion && v.invitacion.estado !== "aceptada",
+                    ).length;
+                    return (
+                      <tr key={unidad.id}>
+                        <td>
+                          <button
+                            type="button"
+                            className="boton-enlace"
+                            onClick={(e) => abrirEdicion(unidad, e)}
+                          >
+                            {unidad.identificador}
+                          </button>
+                        </td>
+                        <td>{etiquetaDeTipo(unidad.tipo)}</td>
+                        <td>{unidad.piso}</td>
+                        <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
+                        <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>
+                        {vecinosPorUnidad ? (
+                          <td>
+                            {vecinos.length}
+                            {pendientes > 0
+                              ? ` (${pendientes} pendiente${pendientes > 1 ? "s" : ""})`
+                              : ""}
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -294,7 +334,129 @@ export function PantallaPadron({
             Guardar
           </button>
         </Formulario>
+
+        {/* 7.4: sólo con una unidad existente (no al crear) y sólo si esta
+         * sesión puede leer vecinos (super admin, D5). Formulario propio,
+         * HERMANO del de arriba: dos `<form>` anidados no son válidos. */}
+        {unidadEnEdicion && vecinosPorUnidad ? (
+          <SeccionVecinos
+            unidadId={unidadEnEdicion.id}
+            vecinos={vecinosPorUnidad.get(unidadEnEdicion.id) ?? []}
+            accionAlta={accionAltaVecino}
+            accionRevocar={accionRevocarVecino}
+            accionQuitar={accionQuitarVecino}
+          />
+        ) : null}
       </PanelLateral>
     </ArmazonDelEdificio>
+  );
+}
+
+function SeccionVecinos({
+  unidadId,
+  vecinos,
+  accionAlta,
+  accionRevocar,
+  accionQuitar,
+}: {
+  unidadId: string;
+  vecinos: VecinoDeUnidad[];
+  accionAlta: AccionVecino;
+  accionRevocar: AccionSimple;
+  accionQuitar: AccionSimple;
+}) {
+  const [estado, enviar] = useActionState(accionAlta, null);
+  return (
+    <div className="panel-lateral__seccion">
+      <h3>Vecinos</h3>
+      {vecinos.length === 0 ? (
+        <p className="texto-secundario">Todavía no hay vecinos cargados.</p>
+      ) : (
+        <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Vecinos">
+          {vecinos.map((vecino) => (
+            <li key={vecino.asignacion_id} className="fila-de-asignacion">
+              <span>
+                <strong>{vecino.nombre}</strong>
+                <span className="texto-secundario">
+                  {" "}
+                  · {etiquetaDeVinculo(vecino.vinculo)}
+                  {vecino.invitacion
+                    ? ` · ${textoDeEstadoDeInvitacion(vecino.invitacion.estado)}`
+                    : ""}
+                </span>
+              </span>
+              <BotonesDeVecino
+                vecino={vecino}
+                accionRevocar={accionRevocar}
+                accionQuitar={accionQuitar}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      <Formulario
+        erroresPorCampo={estado?.erroresPorCampo ?? {}}
+        erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+        action={enviar}
+        aria-label="Agregar vecino"
+      >
+        <input type="hidden" name="unidad_id" value={unidadId} />
+        <Campo nombre="nombre" etiqueta="Nombre del vecino" name="nombre" required />
+        <Campo nombre="email" etiqueta="Email del vecino" name="email" type="email" required />
+        <label className="campo">
+          Vínculo
+          <select name="vinculo" defaultValue="propietario">
+            <option value="propietario">Propietario</option>
+            <option value="inquilino">Inquilino</option>
+          </select>
+        </label>
+        <button type="submit" className="boton-principal">
+          Agregar vecino
+        </button>
+      </Formulario>
+    </div>
+  );
+}
+
+function BotonesDeVecino({
+  vecino,
+  accionRevocar,
+  accionQuitar,
+}: {
+  vecino: VecinoDeUnidad;
+  accionRevocar: AccionSimple;
+  accionQuitar: AccionSimple;
+}) {
+  const [estadoRevocar, enviarRevocar] = useActionState(accionRevocar, null);
+  const [estadoQuitar, enviarQuitar] = useActionState(accionQuitar, null);
+  if (estadoQuitar?.ok) {
+    return <span className="texto-secundario">Quitado</span>;
+  }
+  const puedeRevocar =
+    vecino.invitacion && ESTADOS_REVOCABLES.has(vecino.invitacion.estado) && !estadoRevocar?.ok;
+  return (
+    <span className="fila-de-asignacion__accion">
+      {puedeRevocar ? (
+        <form action={enviarRevocar}>
+          <input type="hidden" name="invitacion_id" value={vecino.invitacion?.invitacion_id} />
+          <button type="submit" className="boton-enlace">
+            Revocar
+          </button>
+        </form>
+      ) : estadoRevocar?.ok ? (
+        <span className="texto-secundario">Revocada</span>
+      ) : null}
+      <form action={enviarQuitar}>
+        <input type="hidden" name="asignacion_id" value={vecino.asignacion_id} />
+        <button type="submit" className="boton-enlace">
+          Quitar
+        </button>
+      </form>
+      {estadoQuitar?.error ? (
+        <p role="alert" className="campo__error">
+          {estadoQuitar.error}
+        </p>
+      ) : null}
+    </span>
   );
 }

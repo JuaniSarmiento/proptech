@@ -6,8 +6,15 @@
 import { ErrorDePantalla } from "../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../componentes/Estados";
 import { edificioPorId } from "../../../../lib/api/edificios";
+import { listarPersonal, vecinosPorUnidad } from "../../../../lib/api/personal";
 import { padronDelEdificio } from "../../../../lib/api/unidades";
-import { crearUnidadAction, editarUnidadAction } from "./acciones";
+import {
+  altaVecinoAction,
+  crearUnidadAction,
+  editarUnidadAction,
+  quitarVecinoAction,
+  revocarVecinoAction,
+} from "./acciones";
 import { PantallaPadron } from "./Pantalla";
 
 type Props = {
@@ -16,7 +23,14 @@ type Props = {
 
 export default async function PaginaPadron({ params }: Props) {
   const { id } = await params;
-  const [edificio, padron] = await Promise.all([edificioPorId(id), padronDelEdificio(id)]);
+  const [edificio, padron, personal] = await Promise.all([
+    edificioPorId(id),
+    padronDelEdificio(id),
+    listarPersonal(),
+  ]);
+  // 7.4: sin ruta de lectura por unidad (D5), se deriva de `/api/personal`
+  // (sólo super admin, L-030); `null` = esta pantalla no muestra vecinos.
+  const vecinos = personal.estado === "ok" ? vecinosPorUnidad(personal.datos) : null;
 
   if (padron.estado === "sin_sesion") {
     return <Estados tipo="sinSesion" />;
@@ -47,6 +61,10 @@ export default async function PaginaPadron({ params }: Props) {
       informe={padron.datos.informe}
       accionCrear={crearUnidadAction.bind(null, id)}
       accionEditar={editarUnidadAction.bind(null, id)}
+      vecinosPorUnidad={vecinos}
+      accionAltaVecino={altaVecinoAction.bind(null, id)}
+      accionRevocarVecino={revocarVecinoAction.bind(null, id)}
+      accionQuitarVecino={quitarVecinoAction.bind(null, id)}
     />
   );
 }

@@ -1101,10 +1101,47 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   por Playwright). axe sin violaciones (lista, panel de invitar abierto, sin permiso).
   Suite completa: 17:29:08 / 56 archivos, 360 tests. `biome ci` exit 0 (sólo warnings previos).
   `tsc --noEmit` exit 0.
-- [ ] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
+- [x] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
 
   Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
   el estado fallida y la ausencia de reenvío también rigen en vecinos.
+
+  Decisión del constructor (L-030, no de autenticación/permisos nueva): D5 no define una ruta de
+  lectura de vecinos por unidad; se derivan de `GET /api/personal` (misma fuente que 7.3), filtrando
+  `rol === "vecino"`. Por eso la columna "Vecinos" y la sección del panel SÓLO existen si esta
+  sesión puede leer `/api/personal` (super admin); para cualquier otro perfil el padrón se ve
+  exactamente igual que antes de 7.4, sin la columna ni la sección (no se amplía esa lectura: sin
+  endpoints nuevos, como pide el brief). "Mismas exigencias que 7.3" se interpretó incluyendo
+  Revocar y Quitar sobre la invitación del vecino (los mismos contratos existentes).
+  ```text
+  RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run "src/app/edificios/[id]/unidades"
+  17:35:16 / "Failed to resolve import server-only" — un componente de CLIENTE
+  (`unidades/Pantalla.tsx`) importaba por VALOR `etiquetaDeVinculo` desde
+  `lib/api/personal.ts`, que arrastra `pedirApi`/`sesion.ts` (`server-only`). Real, no
+  inyectado: lo encontró `vitest` al correr el primer test con datos. Fix: funciones puras
+  (`vecinosPorUnidad`, `etiquetaDeVinculo`) movidas a `lib/api/vecinos.ts`, sin esa cadena.
+  GREEN $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run "src/app/edificios/[id]/unidades"
+  17:36:14 / 12 passed (las 12 preexistentes, sin romperse: los props nuevos son opcionales).
+  Tests nuevos (`Pantalla.test.tsx`, describe "vecinos"): 17:36:50 / 15 passed (4 nuevos).
+  Mutante (L-019) sobre el texto de pendientes ("PEND" en vez de "pendiente"): 17:36:57,
+  1 failed; restaurado, 17:37:03, 15 passed.
+  `acciones.test.ts` (nuevo): 17:37:21, 3 passed; mutante del mensaje de conflicto de vínculo:
+  17:37:24, 1 failed; restaurado, 17:37:27, 3 passed.
+  API falsa (L-027), ruta `/api/unidades/:id/vecinos`: 17:38:34, 28 passed (5 nuevos, método/
+  Content-Type/forma del cuerpo). Mutante del email de conflicto: 17:38:37, 1 failed;
+  restaurado, 17:38:40, 28 passed.
+  $ date +%T; bash infra/ci/test-web-navegador.sh vecinos-del-padron.spec.ts (puertos 3700/4700)
+  17:41:09 / 4 passed (nació verde: columna "1 (1 pendiente)", panel con "Deco Vecino",
+  error asociado al campo email, Revocar/Quitar, y sin permiso sin columna ni sección).
+  ```
+  **Mirada (L-026):** `.git/informes-2b/pantallas/vecinos-{1440,320}.png`. Mismo estilo que la
+  sección de asignaciones de 7.3 (`.fila-de-asignacion`, sin ícono); separada del formulario de la
+  unidad por `.panel-lateral__seccion` (borde superior). A 320 sin scroll horizontal de página.
+  axe sin violaciones. El panel lateral (position:fixed) recorta en la captura de página completa
+  por debajo de "Email del vecino" a 1440 — comportamiento ya existente del componente
+  `PanelLateral`, no nuevo de esta tarea.
+  Suite completa: 17:41:33 / 57 archivos, 372 tests. `biome ci` exit 0 (sólo warnings previos, el
+  mismo patrón `baseURL!` de `acceso-pantallas.spec.ts` en los dos specs nuevos). `tsc --noEmit` exit 0.
 
   **Verificaciones posteriores al último commit del bloque, `390b22e8e6497426435b7dd639da4cce3edd8799` (L-031):**
   Corridas secuenciales, en primer plano. La evidencia posterior al commit queda sin commitear en este archivo.

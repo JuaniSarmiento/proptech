@@ -74,7 +74,7 @@ it("GET /api/personal: super admin ve la lista; sin permiso da 403; sólo GET", 
   const lista = await fetch(`${base}/api/personal`, { headers: cabecerasDePrueba() });
   expect(lista.status).toBe(200);
   const datos = await lista.json();
-  expect(datos).toHaveLength(3);
+  expect(datos).toHaveLength(4);
   expect(datos[1].invitacion).toEqual({
     invitacion_id: "00000000-0000-0000-0000-000000000302",
     estado: "fallida",
@@ -179,4 +179,39 @@ it("revocar y quitar: 200 con un id real, 404 con el sentinel, sólo su método"
       })
     ).status,
   ).toBe(404);
+});
+
+it.each([
+  { body: { nombre: "V", email: "sin-punto@x", vinculo: "propietario" }, status: 422 },
+  { body: { nombre: "V", email: "v@test.com", vinculo: "dueño" }, status: 422 },
+  { body: { nombre: "V", email: "v@test.com", vinculo: "inquilino" }, status: 201 },
+  { body: { nombre: "V", email: "ya-vinculado@test.com", vinculo: "propietario" }, status: 409 },
+])(
+  "POST /api/unidades/:id/vecinos valida el contrato firmado (D5): %j",
+  async ({ body, status }) => {
+    const res = await fetch(`${base}/api/unidades/153ca513-698c-4f13-8186-f1f28f10ea40/vecinos`, {
+      method: "POST",
+      headers: { ...cabecerasDePrueba(), "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(status);
+  },
+);
+it("alta de vecino exige Content-Type y POST", async () => {
+  expect(
+    (
+      await fetch(`${base}/api/unidades/153ca513-698c-4f13-8186-f1f28f10ea40/vecinos`, {
+        method: "POST",
+        headers: cabecerasDePrueba(),
+        body: "{}",
+      })
+    ).status,
+  ).toBe(422);
+  expect(
+    (
+      await fetch(`${base}/api/unidades/153ca513-698c-4f13-8186-f1f28f10ea40/vecinos`, {
+        headers: cabecerasDePrueba(),
+      })
+    ).status,
+  ).toBe(405);
 });
