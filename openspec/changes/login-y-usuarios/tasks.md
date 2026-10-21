@@ -101,7 +101,39 @@ la cuenta de Clerk (8.1).
   lo acepta y queda rojo. El token HMAC de ataque se construye manualmente con el PEM público.
   Fijo `pyjwt[crypto]==2.15.1` (rama 2.15 del design); ninguna clave se escribe en disco.
 
-- [ ] 2.2 Configuración de Clerk (D1, tabla de "Configuración y secretos") en `compartido/configuracion.py`, leída igual por la API y el worker (L-009), con tests de cada forma rota (L-002): sin `CLERK_JWT_KEY` arranca y queda en "login apagado"; con un PEM vacío, recortado, de clave privada, de clave EC o RSA de 1024 bits no arranca y el error nombra la variable sin repetir el valor; `CLERK_PARTES_AUTORIZADAS` rechaza comodines, espacios internos, esquemas que no son `http`/`https` y una lista vacía; `CLERK_EMISOR` exige una URL exacta de instancia con clave configurada y rechaza vacío, comodines, espacios y rutas extra; `CLERK_SECRET_KEY` e `INVITACIONES_CLAVE_CIFRADO` son `SecretStr` y su `repr` no las muestra; la clave propia exige base64 válido de 32 bytes, es obligatoria al habilitar invitaciones y nunca se inyecta al worker ni a la web. RED: los campos no existen. Escenarios: `autenticacion-con-clerk` › Login sin configurar. Lecciones: L-002, L-009.
+- [x] 2.2 Configuración de Clerk (D1, tabla de "Configuración y secretos") en `compartido/configuracion.py`, leída igual por la API y el worker (L-009), con tests de cada forma rota (L-002): sin `CLERK_JWT_KEY` arranca y queda en "login apagado"; con un PEM vacío, recortado, de clave privada, de clave EC o RSA de 1024 bits no arranca y el error nombra la variable sin repetir el valor; `CLERK_PARTES_AUTORIZADAS` rechaza comodines, espacios internos, esquemas que no son `http`/`https` y una lista vacía; `CLERK_EMISOR` exige una URL exacta de instancia con clave configurada y rechaza vacío, comodines, espacios y rutas extra; `CLERK_SECRET_KEY` e `INVITACIONES_CLAVE_CIFRADO` son `SecretStr` y su `repr` no las muestra; la clave propia exige base64 válido de 32 bytes, es obligatoria al habilitar invitaciones y nunca se inyecta al worker ni a la web. RED: los campos no existen. Escenarios: `autenticacion-con-clerk` › Login sin configurar. Lecciones: L-002, L-009.
+
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/unitarios/test_configuracion_clerk.py -q
+  10:15:30
+  E AttributeError: 'Configuracion' object has no attribute 'clerk_jwt_key'
+  53 failed in 5.70s (incluidos los dos arranques que ignoraban variables rotas).
+  GREEN $ cd backend; date +%T; uv run pytest tests/unitarios tests/infra/test_readme_variables.py -q
+  10:17:17
+  1309 passed, 1 warning in 45.93s
+  GREEN tras restaurar el mutante $ date +%T; uv run pytest tests/unitarios/test_configuracion_clerk.py tests/infra/test_readme_variables.py -q
+  10:19:04
+  61 passed in 5.60s
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 234 files already formatted
+  Success: no issues found in 212 source files
+  ```
+  Sonda `.env`, sin abrir ningún archivo: copia propia previa, diff real, restauración byte a byte.
+  `date +%T; python3` (runner con `subprocess.run` de pytest), 10:18:58:
+
+  ```diff
+  -    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+  +    model_config = SettingsConfigDict(env_prefix="", extra="ignore", env_file="prohibido.env")
+  # uv run pytest tests/unitarios/test_configuracion_clerk.py -q -k no_lee_archivos_env
+  # AssertionError: assert 'prohibido.env' is None
+  # 1 failed, 52 deselected in 0.13s
+  ```
+  El assert del mutante ocurre antes de construir el lector; nunca intenta leer ese archivo.
+  Decisiones del constructor (L-030): anticipo sólo las siete filas documentales de 6.3 al sumar
+  los nombres vacíos en `.env.example`, para conservar verde el guardián bidireccional del README.
+  El cableado por servicio sigue en 6.3. `clave_para_invitar()` exige la clave propia en el borde
+  de invitaciones, como D6; no se exige al mero arranque del worker, que debe transportarlas sin ella.
+
 
 ## 3. La base
 

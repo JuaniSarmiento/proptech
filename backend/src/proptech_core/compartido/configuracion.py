@@ -21,10 +21,15 @@ cumpla `^proptech_[a-z_]{1,40}$` (D1, L-008); el rol de arranque no, porque no e
 un nombre que este proyecto elija.
 """
 
+import base64
+import binascii
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, ValidationError, field_validator
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from pydantic import Field, SecretStr, ValidationError, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -70,6 +75,25 @@ def _nombre_de_rol_valido(valor: str) -> str:
     valor = _recortado_sin_cambios(valor)
     if not _PATRON_NOMBRE_DE_ROL.fullmatch(valor):
         raise ValueError("no cumple el patrón de nombre de rol (^proptech_[a-z_]{1,40}$)")
+    return valor
+
+
+def _url_sin_ruta(valor: str) -> str:
+    """URL exacta, sin credenciales, comodines, espacios ni componentes extra (D1)."""
+    if not valor or "*" in valor or any(c.isspace() for c in valor):
+        raise ValueError("URL inválida")
+    partes = urlsplit(valor)
+    if (
+        partes.scheme not in {"http", "https"}
+        or not partes.hostname
+        or partes.username is not None
+        or partes.password is not None
+        or partes.path
+        or partes.query
+        or partes.fragment
+    ):
+        raise ValueError("URL inválida")
+    _ = partes.port  # También rechaza puertos mal formados, sin repetir el valor.
     return valor
 
 
@@ -178,6 +202,60 @@ class _LectorDeApp(_LectorPostgresComun):
     db_pool_recycle_s: int = Field(default=1800, ge=60, le=86400)
     db_pool_timeout_s: int = Field(default=5, ge=1, le=60)
     db_connect_timeout_s: int = Field(default=2, ge=1, le=30)
+
+    clerk_jwt_key: str | None = None
+    clerk_partes_autorizadas: str | None = None
+    clerk_emisor: str | None = None
+    clerk_secret_key: SecretStr | None = None
+    invitaciones_clave_cifrado: SecretStr | None = None
+    proptech_url_publica: str | None = None
+
+    @field_validator("clerk_jwt_key")
+    @classmethod
+    def _clave_publica_rsa(cls, valor: str | None) -> str | None:
+        if valor is not None:
+            try:
+                clave = load_pem_public_key(valor.encode())
+            except ValueError, TypeError:
+                raise ValueError("se requiere una clave pública RSA PEM") from None
+            if not isinstance(clave, RSAPublicKey) or clave.key_size < 2048:
+                raise ValueError("se requiere una clave pública RSA de al menos 2048 bits")
+        return valor
+
+    @field_validator("clerk_partes_autorizadas")
+    @classmethod
+    def _partes_autorizadas(cls, valor: str | None, info: ValidationInfo) -> str | None:
+        if valor is None:
+            if info.data.get("clerk_jwt_key") is not None:
+                raise ValueError("se requieren orígenes autorizados con la clave configurada")
+            return None
+        for origen in valor.split(","):
+            _url_sin_ruta(origen)
+            partes = urlsplit(origen)
+            if partes.scheme == "http" and partes.hostname != "localhost":
+                raise ValueError("HTTP sólo se admite para localhost")
+        return valor
+
+    @field_validator("clerk_emisor")
+    @classmethod
+    def _emisor_exacto(cls, valor: str | None, info: ValidationInfo) -> str | None:
+        if valor is None:
+            if info.data.get("clerk_jwt_key") is not None:
+                raise ValueError("se requiere el emisor con la clave configurada")
+            return None
+        return _url_sin_ruta(valor)
+
+    @field_validator("invitaciones_clave_cifrado")
+    @classmethod
+    def _clave_de_cifrado(cls, valor: SecretStr | None) -> SecretStr | None:
+        if valor is not None:
+            try:
+                datos = base64.b64decode(valor.get_secret_value(), validate=True)
+            except ValueError, binascii.Error:
+                raise ValueError("se requiere base64 de 32 bytes") from None
+            if len(datos) != 32:
+                raise ValueError("se requiere base64 de 32 bytes")
+        return valor
 
     @field_validator("postgres_user")
     @classmethod
@@ -335,6 +413,12 @@ class Configuracion(_ConfiguracionPostgresBase):
     db_pool_recycle_s: int
     db_pool_timeout_s: int
     db_connect_timeout_s: int
+    clerk_jwt_key: str | None
+    clerk_partes_autorizadas: tuple[str, ...]
+    clerk_emisor: str | None
+    clerk_secret_key: SecretStr | None
+    invitaciones_clave_cifrado: SecretStr | None
+    proptech_url_publica: str | None
 
     def __init__(self) -> None:
         try:
@@ -357,3 +441,19 @@ class Configuracion(_ConfiguracionPostgresBase):
         self.db_pool_recycle_s = base.db_pool_recycle_s
         self.db_pool_timeout_s = base.db_pool_timeout_s
         self.db_connect_timeout_s = base.db_connect_timeout_s
+        self.clerk_jwt_key = base.clerk_jwt_key
+        self.clerk_partes_autorizadas = (
+            tuple(base.clerk_partes_autorizadas.split(","))
+            if base.clerk_partes_autorizadas is not None
+            else ()
+        )
+        self.clerk_emisor = base.clerk_emisor
+        self.clerk_secret_key = base.clerk_secret_key
+        self.invitaciones_clave_cifrado = base.invitaciones_clave_cifrado
+        self.proptech_url_publica = base.proptech_url_publica
+
+    def clave_para_invitar(self) -> SecretStr:
+        """Exige la clave propia al habilitar invitaciones, sin exigirla al worker (D6)."""
+        if self.invitaciones_clave_cifrado is None:
+            raise ConfiguracionInvalida("Falta configurar: INVITACIONES_CLAVE_CIFRADO")
+        return self.invitaciones_clave_cifrado

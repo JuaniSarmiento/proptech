@@ -168,6 +168,13 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `RESPALDO_INTERVALO_SEGUNDOS` | `respaldos` | Opcional (60 a 604800) | 86400 (diario) | Cada cuánto corre un backup, además del de arranque |
 | `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
 | `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite |
+| `CLERK_JWT_KEY` | API, web (cableado en 2b, tarea 6.3) | Opcional; ausente apaga login, presente exige PEM RSA público de al menos 2048 bits | sin valor | Verificación local RS256; sale sólo del entorno |
+| `CLERK_PARTES_AUTORIZADAS` | API, web (2b, tarea 6.3) | Obligatoria con clave JWT | sin valor | Orígenes exactos separados por comas, HTTPS o HTTP para localhost |
+| `CLERK_EMISOR` | API (2b, tarea 6.3) | Obligatoria con clave JWT | sin valor | URL exacta de la instancia de Clerk, sin rutas extra |
+| `CLERK_SECRET_KEY` | Worker, web (2b, tarea 6.3) | Necesaria para enviar invitaciones; nunca en la API | sin valor | Secreto de Clerk, protegido con `SecretStr` en el backend |
+| `INVITACIONES_CLAVE_CIFRADO` | Sólo API (2b, tarea 6.3) | Obligatoria al invitar | sin valor | Clave propia de 32 bytes en base64, `SecretStr`; nunca worker ni web |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Web al construir (2b, tarea 6.3) | Necesaria para configurar Clerk en la web | sin valor | Clave publicable; Juani carga la de su instancia |
+| `PROPTECH_URL_PUBLICA` | Worker, web (2b, tarea 6.3) | Necesaria para los enlaces de invitación | sin valor | Base pública de la dirección de regreso |
 
 Las cuatro `POSTGRES_*_PASSWORD` (arranque, migrador, app y respaldo) tienen que ser **distintas
 entre sí** (R8, vuelta 2 del 2a): `roles antes` rechaza el arranque si dos coinciden, sin mostrar
