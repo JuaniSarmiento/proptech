@@ -29,7 +29,7 @@ la política de RLS de `persona`, el vocabulario de la auditoría y la superfici
 
 **Se propone y se espera la aprobación escrita y fechada de uno de los dos socios (Juani o Alberto)
 antes de construir** (D-094). El constructor no arranca hasta que la sección "Aprobación", al final de
-este archivo, tenga el nombre, la fecha, el alcance aprobado y la respuesta a cada elección E1 a E14.
+este archivo, tenga el nombre, la fecha, el alcance aprobado y la respuesta a cada elección E1 a E15.
 Ningún agente completa esa sección. Un socio puede aprobar el cambio y rechazar una elección; entonces
 el design y las specs se corrigen antes de construir. Una regla nueva que entre después de la firma (una
 corrección del rompedor que agregue una restricción de base, un texto o un permiso) lleva su propia firma
@@ -42,8 +42,8 @@ a Clerk.
 ## What Changes
 
 - **La API verifica el token de sesión de Clerk sin red** (E2): RS256 con la clave pública PEM del
-  entorno (`CLERK_JWT_KEY`), `exp` y `nbf`, `azp` contra la lista de orígenes autorizados, `sub` con
-  formato de usuario de Clerk; cualquier otra cosa da 401 sin tocar la base. Sin clave configurada, el
+  entorno (`CLERK_JWT_KEY`), `exp` y `nbf` contra un reloj inyectado (5 s de tolerancia), `iss` exacto
+  de la instancia, `azp` contra la lista de orígenes autorizados y `sub` con formato de usuario de Clerk; cualquier otra cosa da 401 sin tocar la base. Sin clave configurada, el
   login queda apagado y todo sigue respondiendo 401, como hoy.
 - **`identidad_actual` resuelve la persona por el id de Clerk** (E3): columna nueva
   `persona.clerk_usuario_id`, única **por administración** (no global: la misma persona de Clerk puede
@@ -60,11 +60,15 @@ a Clerk.
   con varios propietarios por unidad y vínculos distintos de una persona. Lista, revoca invitaciones y
   quita asignaciones. La invitación la manda Clerk por mail; la crea el worker (E8), que ya tiene salida
   a Internet, con reintentos e idempotencia.
-- **Aceptar la invitación** (E7): un token propio de un solo uso viaja en la dirección de regreso de la
-  invitación de Clerk; al volver, la API exige ese token **y** que el email verificado por Clerk coincida
-  con el de la persona. Sólo entonces escribe `clerk_usuario_id`. Nunca se vincula por email solo.
+- **Aceptar la invitación** (E7): un sobre cifrado de un token propio de un solo uso viaja en la dirección
+  de regreso de Clerk; el token crudo no viaja en ARQ ni en esa dirección (D6, D7). Al volver, la API
+  exige el sobre válido **y** los claims firmados del email principal y `email_verified=true`, con el
+  email normalizado a minúsculas igual al de la persona. Sólo entonces escribe `clerk_usuario_id`.
+  Nunca se vincula por email solo.
 - **Alta inicial de una administración** (E11): comando de operador que crea la administración, su super
-  admin y su invitación. Sin esto no hay forma de que entre la primera persona.
+  admin y su invitación. `proptech_app` ya tiene `INSERT`: también cualquier camino de la API puede
+  crear administraciones; restringirlo sería otra decisión CRITICAL (E11). Sin el alta inicial no hay
+  forma de que entre la primera persona.
 - **Auditoría de ingresos** (E9, E14): `ingreso_exitoso` al entrar a una administración;
   `ingreso_fallido` cuando hay persona vinculada sin asignación vigente; la gestión de usuarios con sus
   propios eventos. Lo que nunca llega a nuestra base (contraseñas erradas, cuentas bloqueadas) queda en
@@ -83,8 +87,15 @@ a Clerk.
 - **`acceso-de-desarrollo` se reduce a la carga del ejemplo** (E12): con el login, la puerta sin login
   sobra. Se propone cerrarla y cargar el ejemplo por el mismo camino del alta inicial, sin el `GRANT
   INSERT ON auditoria` al migrador que ese change tenía pendiente de firma.
+- **Dependencia de Clerk** (E15): si no responde, nadie puede entrar ni renovar la sesión (unos 60 s).
+  Se propone aceptarla; un login propio de respaldo y su costo quedan descartados en D14.
 - **Secretos**: las claves de Clerk salen del entorno (`infra/.env`, que carga Juani, nunca en el repo);
+  la clave propia de cifrado de invitaciones vive sólo en la API;
   `infra/.env.example` y la tabla de variables del README nombran las variables sin valores.
+
+La revisión deja **28 tareas**: agrega la 4.4 para las dos guardas. La fila E1 conserva el conteo
+original de 27 porque la sección de aprobación sólo se amplía con E15; D0 y `tasks.md` llevan el
+conteo vigente. Todas las elecciones, incluida E15, siguen pendientes de firma humana.
 
 ## Capabilities
 
@@ -112,16 +123,18 @@ a Clerk.
 ## Que intente romper el rompedor
 
 - **El token**: firmado con otra clave, con `alg: none` o `HS256` usando la clave pública como secreto,
-  vencido por un segundo, con `nbf` futuro, de otra aplicación (`azp` ajeno o ausente), sin `sub`, con un
+  vencido por un segundo fuera de la tolerancia, con `nbf` futuro fuera de ella, de otra aplicación (`azp` ajeno o ausente), sin `sub`, con un
   `sub` que no tiene forma de usuario de Clerk, con espacios o dos tokens en el encabezado. Cada uno 401
-  sin ninguna sentencia SQL.
+  sin ninguna sentencia SQL. Probar además `iss` de otra instancia y los bordes exactos del reloj
+  inyectado de D1.
 - **El vínculo**: una identidad de Clerk vinculada en A que pide B poniendo el id de B en el encabezado
   del selector; la misma identidad en A y en B sin elegir; una persona con asignación vencida o quitada;
   dos personas de la misma administración con el mismo `clerk_usuario_id`; la política de lectura por
   identidad usada para escribir; el valor de esa variable de sesión que sobreviva a la transacción.
 - **La invitación**: reusada, vencida, revocada, de otra administración, aceptada con otra cuenta de
   Clerk cuyo email no coincide, aceptada dos veces en paralelo, aceptada por una identidad que ya tiene
-  otra persona en esa administración; un token adivinable o que aparezca en un log.
+  otra persona en esa administración; un email coincidente sin verificar; un sobre alterado; un token
+  crudo en ARQ o en la URL, o un sobre que aparezca en un log; el TTL de ARQ y su borrado tras una falla.
 - **Quién invita**: un administrador principal, un contador o un vecino que invite; un super admin que
   invite a alguien con alcance principal de auxiliar o de consejo; un perfil duplicado (RA-5) o un
   consejo duplicado (RR-3) por invitación; un vecino dado de alta en la unidad de otra administración
@@ -142,6 +155,7 @@ cada lección").
 
 | Lección | Tareas |
 |---|---|
+| L-001 · una dependencia que no responde | 5.4 (Clerk falso que no responde, con plazo de 10 s) |
 | L-002 · la configuración se rompe de muchas formas | 2.2 (clave PEM ausente, vacía, mal formada, con otro algoritmo; orígenes con espacios o comodines) |
 | L-003 · contar los tests | 1.1 y 9.2 |
 | L-005 · verde es todo el workflow | convención de `tasks.md` y 9.2 |
@@ -163,10 +177,10 @@ cada lección").
 | L-029 · la firma no cubre correcciones | sección "Aprobación" y convención de `tasks.md` |
 | L-030 · el brief separa orden de permisos | convención de `tasks.md` ("Qué resuelve el constructor") |
 
-L-001, L-004, L-006, L-008, L-011, L-014, L-015 y L-021 no aplican: no hay dependencias que se cuelgan
-en el camino de la API (la verificación no usa red), comandos destructivos nuevos, validación de texto
-nueva fuera del id de Clerk (que usa la regla de L-008 sin ser texto libre), hilos ni Bash nuevo más que
-el humo.
+L-004, L-006, L-011, L-014, L-015 y L-021 no tienen una tarea propia en este propose: las revisiones
+independientes las cubre el ciclo de trabajo; no hay comandos destructivos nuevos ni Bash nuevo más
+que el humo. L-008 sí aplica al id de Clerk (2.1); L-001, al envío (5.4), que usa red aunque la
+verificación de la API no la use.
 
 ## Fuera del cambio
 
@@ -191,14 +205,15 @@ Archivos de `knowledge-base/` (listado del directorio, 21/10/2026): `01_vision_y
 `15_lecciones.md`, `16_proyecto_final.md`, `README.md`. Este propose no edita ninguno: lo hace quien
 archiva.
 
-- `09_decisiones_y_supuestos.md`: **APPEND**. D-108 con las elecciones E1 a E14 tal como las firme el
+- `09_decisiones_y_supuestos.md`: **APPEND**. D-108 con las elecciones E1 a E15 tal como las firme el
   socio, incluida la que **ajusta D-036** (el `__session` de Clerk es legible desde el navegador; se
   compensa con 60 segundos de vida, Caddy sin `/api/*` público y CSP; D-036 lleva la marca "corregida en
   parte por D-108") y la que acota "única" del vínculo a "única por administración". Un supuesto SU-01
   si al archivar sigue sin verificarse cómo se comporta una invitación a un email que ya tiene usuario
   en Clerk (design, Open Questions).
 - `02_descripcion_general.md`: **REWRITE** de integraciones externas (Clerk: qué guarda, qué no, quién
-  lo llama) y de las dependencias nuevas (`pyjwt[crypto]`, `@clerk/nextjs`, `@clerk/localizations`).
+  lo llama) y de las dependencias nuevas (`pyjwt[crypto]`, `cryptography`, `@clerk/nextjs` y
+  `@clerk/localizations`).
 - `03_actores_y_roles.md`: **REWRITE** de "Rutas públicas" (`/ingresar`, `/privacidad`, la aceptación
   de invitaciones; `/api/*` deja de publicarse) y de cómo nace cada perfil (invitación, alta inicial).
 - `04_modelo_de_datos.md`: **REWRITE** de `persona` (`clerk_usuario_id`, unicidad por administración,
@@ -232,13 +247,14 @@ archiva.
   `compartido/base_de_datos.py` (sesión con identidad verificada antes del tenant),
   `compartido/configuracion.py` (variables de Clerk), `proptech_api/acceso.py` (`identidad_actual`
   real), routers nuevos de sesión, personal, vecinos e invitaciones, `proptech_worker` (tarea de envío),
-  migraciones `0019` y `0020`.
+  migraciones `0019` y `0020`. Las dos rutas sin persona completa usan una guarda de token verificado
+  y siguen en el barrido protegido, nunca en `_RUTAS_PUBLICAS` (4.4).
 - **Web**: `proxy.ts`, `lib/api/cliente.ts` (encabezados de sesión), páginas nuevas, barra superior.
 - **Infra**: `Caddyfile` (sólo `/api/salud` público), `compose.yaml` (variables de Clerk por servicio),
   `infra/.env.example`, `humo.sh` (sin claves reales: el login apagado no rompe el arranque).
-- **Dependencias nuevas**: `pyjwt[crypto]` (API y worker), `@clerk/nextjs` y `@clerk/localizations`
+- **Dependencias nuevas**: `pyjwt[crypto]` 2.15 y `cryptography` para los sobres (API), `@clerk/nextjs` y `@clerk/localizations`
   (web), con versión fijada. El worker ya tiene `httpx` disponible sólo como dependencia de desarrollo;
-  pasa a dependencia directa si lo usa el adaptador (design D8).
+  pasa a dependencia directa si lo usa el adaptador (design D7).
 - **Servicio externo**: Clerk (cuenta a cargo de Juani). Ningún test ni CI lo llama.
 - **Contrato**: `/api/*` deja de ser alcanzable desde afuera de Caddy salvo `/api/salud` (**BREAKING**).
 - **Datos**: columna nueva en `persona` y tabla nueva `invitacion`; hoy no hay datos reales (RD-2 del
@@ -267,6 +283,7 @@ fijaron, cada una con su alternativa descartada y el costo de revertir en `desig
 | E12 · `acceso-de-desarrollo` | Cerrar el acceso sin login y cargar el ejemplo por el camino de E11, sin `GRANT INSERT ON auditoria` al migrador (D11) | |
 | E13 · Pantallas de Clerk | Componentes prearmados de Clerk en castellano, con la apariencia de `DESIGN.md`, para ingresar y registrarse; el resto, nuestras (D12) | |
 | E14 · Vocabulario de auditoría | Eventos de acceso que no son permisos: `ingreso_exitoso`, `ingreso_fallido`, `alta_inicial`, `invitar_personal`, `dar_de_alta_vecino`, `aceptar_invitacion`, `revocar_invitacion`, `quitar_asignacion` (D13) | |
+| E15 · Dependencia de Clerk | Si Clerk no responde, nadie puede entrar ni renovar la sesión (unos 60 s): se acepta la dependencia (D14) | |
 
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|

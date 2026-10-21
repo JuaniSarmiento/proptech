@@ -9,8 +9,9 @@ una administración, sin que Clerk decida nunca qué puede ver o hacer (D-107, D
 
 La API SHALL aceptar como identidad sólo un token de sesión de Clerk recibido en el encabezado
 `Authorization: Bearer`, firmado con RS256 por la clave pública configurada, vigente según `exp` y
-`nbf`, con `azp` igual a uno de los orígenes autorizados configurados y con un `sub` con forma de
-usuario de Clerk. Cualquier otro token, uno ausente o un encabezado con más de un token MUST responder
+`nbf` contra un `ahora` UTC inyectado con tolerancia de 5 s, con `iss` igual a la URL exacta del
+Frontend API de la instancia configurada, con `azp` igual a uno de los orígenes autorizados y con un
+`sub` con forma de usuario de Clerk. Cualquier otro token, uno ausente o un encabezado con más de un token MUST responder
 401 sin ejecutar ninguna sentencia SQL y sin llamar a ningún servicio externo. El cuerpo y los
 encabezados del 401 MUST ser idénticos en todos los casos, salvo el `X-Request-ID`, y nunca MUST
 repetir el token ni el texto de error de la librería que lo verificó.
@@ -28,7 +29,7 @@ repetir el token ni el texto de error de la librería que lo verificó.
 
 #### Scenario: Token vencido o todavía no válido
 
-- **WHEN** llega un token cuyo `exp` ya pasó, o cuyo `nbf` todavía no llegó
+- **WHEN** llega un token con `ahora >= exp + 5`, o con `ahora < nbf - 5`
 - **THEN** la respuesta es 401, idéntica a la de un pedido sin token
 
 #### Scenario: Token de otra aplicación
@@ -41,6 +42,33 @@ repetir el token ni el texto de error de la librería que lo verificó.
 
 - **WHEN** la API arranca sin clave pública de Clerk configurada y llega cualquier pedido con un token
 - **THEN** la respuesta es 401, igual que antes del login, y la API arranca igual
+
+#### Scenario: Bordes con reloj inyectado
+
+- **WHEN** con `leeway = 5` y los otros tiempos compatibles se verifica el token usando como `ahora`
+  `exp - leeway - 1`, `exp - leeway`, `exp + leeway - 1`, `exp + leeway` y `exp + leeway + 1`
+- **THEN** los tres primeros son válidos y los dos últimos no, aunque el reloj real indique otra fecha
+
+#### Scenario: Emisor de otra instancia
+
+- **WHEN** el token tiene firma y `azp` válidos, pero `iss` falta o pertenece a otra instancia de Clerk
+- **THEN** la respuesta es 401 y no se ejecutó ninguna sentencia SQL
+
+### Requirement: Dos guardas según la ruta
+
+Los endpoints de dominio SHALL exigir `identidad_actual`, que depende de `token_de_sesion_actual`.
+Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` SHALL exigir el token verificado sin persona
+completa mediante `Depends(token_de_sesion_actual)` y `RutaConTokenVerificado`, variante de
+`RutaConIdentidad` que usa esa misma guarda ante errores de parseo. Ambas MUST permanecer en el
+barrido de rutas protegidas y MUST NOT figurar en `_RUTAS_PUBLICAS`. Sin sesión válida, incluso con
+JSON roto o cuerpo ausente, MUST responder 401 y cero SQL antes de cualquier error del cuerpo.
+
+#### Scenario: Dos rutas con token sin persona
+
+- **WHEN** se pide cualquiera de esas dos rutas sin token o con sesión inválida, con cuerpo correcto,
+  ausente o JSON roto
+- **THEN** responde el mismo 401 y no se ejecutó ninguna sentencia SQL; con token válido sin persona,
+  la guarda deja pasar al caso de uso sin exigir un vínculo previo
 
 ### Requirement: La identidad se vincula por el id de Clerk, una vez por administración
 
@@ -86,7 +114,8 @@ administraciones. Si la lista tiene una sola, la web MUST entrar directo; si tie
 "¿A cuál querés entrar?" antes de cualquier pantalla de dominio. La administración elegida MUST viajar
 del servidor de la web a la API y la API MUST usarla sólo si la identidad verificada tiene ahí una
 persona vinculada con asignación; si no, o si la identidad tiene varias y no eligió ninguna, la
-respuesta MUST ser el mismo 401.
+respuesta MUST ser el mismo 401. El encabezado `X-Proptech-Administracion` MUST leerse como texto y
+validarse como UUID sólo después del token y del vínculo; un no UUID MUST responder 401, nunca 422.
 
 #### Scenario: Una sola administración
 
@@ -107,6 +136,11 @@ respuesta MUST ser el mismo 401.
 
 - **WHEN** una identidad vinculada en A y en B pide un complejo sin administración elegida
 - **THEN** la respuesta es 401
+
+#### Scenario: Selector con texto que no es UUID
+
+- **WHEN** un pedido manda `X-Proptech-Administracion: no-es-uuid` sin token de sesión
+- **THEN** responde 401 con cero SQL; con token válido también responde 401, nunca 422
 
 ### Requirement: Ingresos auditados
 
@@ -158,7 +192,8 @@ pedido, sin `unsafe-eval`, que permita sólo los orígenes de Clerk que su docum
 #### Scenario: La API desde afuera
 
 - **WHEN** desde afuera de Caddy se pide `/api/complejos` con un token válido
-- **THEN** la respuesta es 404 de Caddy y la API no recibió el pedido
+- **THEN** la respuesta es 404 con `X-Proptech-Origen: caddy`, armada por el bloque explícito de Caddy,
+  y ni Next ni la API recibieron el pedido
 
 #### Scenario: La salud sigue pública
 
@@ -193,3 +228,14 @@ una invitación MUST enlazarlo.
 
 - **WHEN** alguien abre la pantalla de ingreso o la de aceptar una invitación
 - **THEN** tiene un enlace al aviso de privacidad, operable con teclado
+
+### Requirement: Dependencia de Clerk para entrar y renovar
+
+Si Clerk no responde, el sistema SHALL impedir nuevos ingresos y renovaciones. Un token ya emitido
+MAY seguir verificándose sin red hasta `exp + 5`, unos 60 s más; MUST NOT extenderse localmente ni
+ofrecerse un login propio de respaldo (E15).
+
+#### Scenario: Clerk no responde
+
+- **WHEN** Clerk deja de responder mientras hay un token de sesión ya emitido
+- **THEN** no se puede entrar ni renovar, y el token deja de admitirse al llegar a `exp + 5`

@@ -12,7 +12,10 @@ Un operador del sistema SHALL poder crear, con un comando fuera de la web, una a
 su primera persona como super admin y una invitación para ella. El comando MUST escribir con el rol de
 la aplicación y el tenant de la administración nueva, MUST dejar una fila de auditoría `alta_inicial`
 cuyo actor es esa persona, y MUST NOT tocar ninguna otra administración. Repetirlo con el mismo email
-sobre una administración que ya tiene super admin MUST fallar sin escribir nada.
+sobre una administración que ya tiene super admin MUST fallar sin escribir nada. `proptech_app` ya
+tiene `INSERT` en `administracion`: no hace falta rol ni permiso nuevo. Cualquier camino de la API
+con ese rol puede fijar el tenant nuevo y crear administraciones; restringirlo sería otra decisión
+CRITICAL (E11).
 
 #### Scenario: Primera administración
 
@@ -68,6 +71,13 @@ si no, queda una invitación pendiente de envío.
 - **WHEN** el super admin invita a un auxiliar o a un consejo con alcance principal
 - **THEN** la respuesta es 422 nombrando el alcance y no queda nada escrito
 
+#### Scenario: Reinvitar revoca la anterior
+
+- **WHEN** se vuelve a invitar a una persona sin vínculo con una invitación pendiente, enviada o fallida,
+  aunque esté vencida
+- **THEN** en una transacción se revoca primero la anterior y se crea la nueva, queda una sola abierta
+  y el enlace anterior responde 404 al intentar aceptarlo
+
 #### Scenario: Perfil repetido
 
 - **WHEN** el super admin invita como administrador del edificio A a una persona que ya lo es
@@ -105,11 +115,21 @@ responder 409. Las reglas de reuso de la persona y de la invitación son las del
 
 Una invitación pendiente SHALL enviarse fuera del pedido que la creó, por el proceso de trabajos en
 segundo plano, pidiéndole a Clerk que mande su mail de invitación con una dirección de regreso que
-lleva un token propio de un solo uso. El envío MUST ser idempotente (un trabajo repetido sobre una
-invitación ya enviada no vuelve a llamar a Clerk) y MUST reintentarse ante una falla transitoria de Clerk. Una falla definitiva MUST
-dejar la invitación como fallida, visible para el super admin. Ni el email, ni el token, ni el cuerpo de
+lleva sólo el sobre cifrado autenticado de un token propio de un solo uso (D6). El token crudo
+MUST NOT viajar en los argumentos de ARQ ni en `redirect_url`; el resumen MUST NOT usarse como
+credencial. ARQ MUST recibir sólo los ids de administración e invitación y el sobre, sin email, con
+retención máxima de 3630 s desde el encolado original, sin renovar el plazo al reintentar y sin
+conservar resultados. El token crudo sólo existe en memoria de la API; la base guarda sólo su resumen. El envío MUST ser idempotente (un trabajo repetido sobre una invitación ya enviada
+no vuelve a llamar a Clerk) y MUST reintentarse ante una falla transitoria. Una falla definitiva MUST
+dejar la invitación como fallida, visible para el super admin. Ni el email, ni el token, ni el sobre, ni el cuerpo de
 la respuesta de Clerk MUST aparecer en un log ni en la auditoría. La base MUST guardar sólo un resumen
 no reversible del token.
+
+#### Scenario: Entrega sin token crudo
+
+- **WHEN** se encola y se envía una invitación, con éxito, falla definitiva o reintentos agotados
+- **THEN** Redis y `redirect_url` llevan sólo el sobre cifrado, nunca el token crudo ni el resumen como
+  credencial, y los datos del trabajo desaparecen al terminar o a más tardar a los 3630 s del encolado
 
 #### Scenario: Envío exitoso
 
@@ -135,17 +155,43 @@ no reversible del token.
 
 Una persona autenticada en Clerk SHALL poder aceptar una invitación presentando su token de un solo uso.
 La aceptación MUST exigir que la invitación exista, esté enviada, no esté vencida, revocada ni
-aceptada, que el email verificado por Clerk coincida con el de la persona invitada, que la persona no
+aceptada, que el claim firmado `email_verified` sea el booleano `true` y que el claim `email` del principal,
+normalizado a minúsculas, coincida con el de la persona invitada, que la persona no
 esté vinculada a otro id de Clerk y que la identidad no esté vinculada a otra persona de esa
 administración. Si todo se cumple, MUST escribir el vínculo, marcar la invitación aceptada y dejar una
-fila `aceptar_invitacion`, todo en una transacción. Cualquier falla MUST responder el mismo 404, sin
-decir cuál condición falló, y no escribir nada. Dos aceptaciones simultáneas del mismo token MUST dejar
-un solo vínculo.
+fila `aceptar_invitacion`, todo en una transacción. Antes de mirar el cuerpo, un token de sesión
+ausente o inválido MUST responder el 401 común con cero SQL. Con sesión válida, JSON roto, falta de `token`, tipo incorrecto o campos extra MUST responder 422
+sin repetir valores. Un cuerpo válido MUST llevar el sobre en `token`; la API lo descifra y autentica.
+Todo rechazo de aceptación MUST responder 404 con `{"detail":"no encontrado"}`, sin decir cuál
+condición falló y sin escribir. El éxito MUST responder 200 con `{"aceptada":true}`. Dos aceptaciones
+simultáneas del mismo token MUST dejar un solo vínculo.
 
 #### Scenario: Aceptación correcta
 
 - **WHEN** la persona invitada se registra en Clerk con el email de la invitación y vuelve con el token
 - **THEN** su persona queda vinculada a su id de Clerk, la invitación queda aceptada y puede entrar
+
+#### Scenario: Email no verificado
+
+- **WHEN** una sesión válida trae el email principal de la invitación pero `email_verified` es `false`,
+  falta o es el texto `"true"`
+- **THEN** responde 404 con `{"detail":"no encontrado"}` y no vincula ni escribe nada
+
+#### Scenario: Email principal en mayúsculas
+
+- **WHEN** una sesión válida con `email_verified=true` trae el email principal en mayúsculas y el
+  sobre correcto
+- **THEN** la aceptación compara en minúsculas y vincula correctamente
+
+#### Scenario: Autenticación antes del cuerpo
+
+- **WHEN** se acepta sin token de sesión válido y el cuerpo no tiene `token` o es JSON roto
+- **THEN** responde 401 y cero SQL, antes de cualquier error del cuerpo
+
+#### Scenario: Cuerpo inválido con sesión válida
+
+- **WHEN** se acepta con token de sesión válido y JSON roto, sin `token`, con tipo incorrecto o campos extra
+- **THEN** responde 422 nombrando el campo sin repetir valores y sin escribir
 
 #### Scenario: Otro email
 

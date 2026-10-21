@@ -8,7 +8,9 @@ consulta a la base. Con un token válido, la identidad MUST resolverse leyendo s
 identidad de Clerk con una persona y sus asignaciones; si no hay persona vinculada en la administración
 en uso, o no tiene ninguna asignación, la respuesta MUST ser el mismo 401, con el mismo cuerpo y los
 mismos encabezados salvo el `X-Request-ID`, sin leer ningún dato de dominio. Los tests pueden seguir
-inyectando la identidad.
+inyectando la identidad. `GET /api/sesion` y `POST /api/invitaciones/aceptar` MUST exigir la
+segunda guarda, `token_de_sesion_actual`, sin persona completa; siguen protegidas y fuera de
+`_RUTAS_PUBLICAS`, también ante JSON roto. El barrido MUST comprobar ambas dependencias.
 
 #### Scenario: Pedido sin identidad
 
