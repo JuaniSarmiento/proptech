@@ -20,12 +20,19 @@ import {
   type LucideIcon,
   Tags,
   Building2 as Unidades,
+  Users,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { useCerrarConEscape } from "../lib/teclado/useCerrarConEscape";
 
-export type IconoDeSeccion = "resumen" | "unidades" | "grupos" | "categorias" | "configuracion";
+export type IconoDeSeccion =
+  | "resumen"
+  | "unidades"
+  | "grupos"
+  | "categorias"
+  | "configuracion"
+  | "personal";
 
 export type SeccionDelEdificio = {
   clave: string;
@@ -41,11 +48,16 @@ const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
   grupos: Layers,
   categorias: Tags,
   configuracion: CalendarClock,
+  personal: Users,
 };
 
 type Props = {
   seccionActual: string;
   secciones: SeccionDelEdificio[];
+  /** El menú se reusa fuera de un edificio (7.3, grupo "Mi administración");
+   * el nombre accesible del `<nav>` cambia según el contexto, nunca el
+   * layout ni el resto del comportamiento. */
+  nombreAccesible?: string;
 };
 
 /** Las secciones agrupadas en el orden en que aparece cada grupo. */
@@ -57,7 +69,11 @@ function agrupar(secciones: SeccionDelEdificio[]): Array<[string, SeccionDelEdif
   return [...grupos.entries()];
 }
 
-export function MenuDelEdificio({ seccionActual, secciones }: Props) {
+export function MenuDelEdificio({
+  seccionActual,
+  secciones,
+  nombreAccesible = "Secciones del edificio",
+}: Props) {
   const [abierto, setAbierto] = useState(false);
   const idDelMenu = useId();
   const botonRef = useRef<HTMLButtonElement>(null);
@@ -68,7 +84,7 @@ export function MenuDelEdificio({ seccionActual, secciones }: Props) {
   });
 
   return (
-    <nav className="menu-del-edificio" aria-label="Secciones del edificio">
+    <nav className="menu-del-edificio" aria-label={nombreAccesible}>
       <button
         ref={botonRef}
         type="button"

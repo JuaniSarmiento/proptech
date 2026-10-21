@@ -73,7 +73,7 @@ function textoSeguro(valor: unknown, porDefecto: string): string {
 }
 
 type OpcionesDePedido = {
-  metodo?: "GET" | "POST" | "PATCH" | "PUT";
+  metodo?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   cuerpo?: unknown;
   cabeceras?: Headers;
   /** Caminos (`"informe.suma"`) dentro de la respuesta 2xx que tienen que

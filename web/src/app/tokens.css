@@ -1823,3 +1823,24 @@ h2 {
     max-width: 8rem;
   }
 }
+
+/* Personal (7.3): a diferencia del padrón de unidades, cada celda lleva
+ * texto de largo variable (nombre + email, perfiles con su edificio); sin
+ * esto, `white-space: nowrap` (heredado) obligaba a todo en una línea y la
+ * tabla se salía del panel a 1440px. */
+.padron-de-unidades--envuelto td {
+  white-space: normal;
+}
+
+/* Personal (7.3): una línea de texto por asignación, nunca un ícono por
+ * fila dentro de la celda — con ícono la tabla no entraba en 1440px. */
+.fila-de-asignacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fila-de-asignacion__accion {
+  flex: none;
+}

@@ -149,6 +149,61 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
 type EscrituraRecibida = { metodo: string; url: string; contentType: string; cuerpo: string };
 let _ultimaEscritura: EscrituraRecibida | null = null;
 
+/** Personal de prueba (7.3): un `super_admin` ya vinculado, un `contador`
+ * con invitación `fallida` (worker, sin "Reintentar") y un `auxiliar` con
+ * invitación `pendiente`, ambos de "Edificio API" (`lista.json`). */
+export const EDIFICIO_API = "a08ae80a-8d7e-47eb-9b37-f36b7be80114";
+const _PERSONAL_DE_PRUEBA = [
+  {
+    persona_id: "00000000-0000-0000-0000-000000000101",
+    nombre: "Ana Superadmin",
+    email: "ana@test.com",
+    vinculado: true,
+    asignaciones: [
+      {
+        asignacion_id: "00000000-0000-0000-0000-000000000201",
+        rol: "super_admin",
+        complejo_id: null,
+        unidad_id: null,
+        vinculo: null,
+      },
+    ],
+    invitacion: { invitacion_id: "00000000-0000-0000-0000-000000000301", estado: "aceptada" },
+  },
+  {
+    persona_id: "00000000-0000-0000-0000-000000000102",
+    nombre: "Beto Contador",
+    email: "beto@test.com",
+    vinculado: false,
+    asignaciones: [
+      {
+        asignacion_id: "00000000-0000-0000-0000-000000000202",
+        rol: "contador",
+        complejo_id: EDIFICIO_API,
+        unidad_id: null,
+        vinculo: null,
+      },
+    ],
+    invitacion: { invitacion_id: "00000000-0000-0000-0000-000000000302", estado: "fallida" },
+  },
+  {
+    persona_id: "00000000-0000-0000-0000-000000000103",
+    nombre: "Caro Auxiliar",
+    email: "caro@test.com",
+    vinculado: false,
+    asignaciones: [
+      {
+        asignacion_id: "00000000-0000-0000-0000-000000000203",
+        rol: "auxiliar",
+        complejo_id: EDIFICIO_API,
+        unidad_id: null,
+        vinculo: null,
+      },
+    ],
+    invitacion: { invitacion_id: "00000000-0000-0000-0000-000000000303", estado: "pendiente" },
+  },
+];
+
 function _esEscritura(metodo: string | undefined): boolean {
   return metodo === "POST" || metodo === "PATCH" || metodo === "PUT";
 }
@@ -292,6 +347,139 @@ export function crearServidor(
       respuesta
         .writeHead(pedido.method === "POST" ? 200 : 405, { "content-type": "application/json" })
         .end(JSON.stringify({ registrado: true }));
+      return;
+    }
+
+    // 7.3: Personal (D5). Reusa el patrón de `esAceptar` (autentica antes
+    // de mirar el cuerpo, 405 fuera de su método, 422 nombra el campo).
+    if (url.pathname === "/api/personal") {
+      if (pedido.method !== "GET") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      if (identidad === "user_sin_permiso") {
+        respuesta.writeHead(403, { "content-type": "application/json" }).end(
+          JSON.stringify({
+            detail: { permiso_faltante: "invitar_usuarios_y_asignar_edificios" },
+          }),
+        );
+        return;
+      }
+      if (identidad === "user_personal_error") {
+        respuesta
+          .writeHead(500, { "content-type": "text/plain" })
+          .end("Traceback (most recent call last): algo técnico que no es para el usuario");
+        return;
+      }
+      const responder = () => {
+        respuesta
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify(identidad === "user_personal_vacio" ? [] : _PERSONAL_DE_PRUEBA));
+      };
+      if (identidad === "user_personal_lento") {
+        setTimeout(responder, 3000);
+      } else {
+        responder();
+      }
+      return;
+    }
+    if (url.pathname === "/api/personal/invitaciones") {
+      if (pedido.method !== "POST") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      let crudo = "";
+      pedido.on("data", (t) => {
+        crudo += t;
+      });
+      pedido.on("end", () => {
+        if (!/^application\/json/.test(String(pedido.headers["content-type"]))) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(_ERROR_CONTENT_TYPE_INVALIDO);
+          return;
+        }
+        let cuerpo: Record<string, unknown>;
+        try {
+          const parseado = JSON.parse(crudo);
+          cuerpo =
+            parseado !== null && typeof parseado === "object" && !Array.isArray(parseado)
+              ? parseado
+              : {};
+        } catch {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "json_invalid", loc: ["body"] }] }));
+          return;
+        }
+        const email = String(cuerpo.email ?? "");
+        const rol = String(cuerpo.rol ?? "");
+        const alcance = String(cuerpo.alcance ?? "");
+        const complejoId = cuerpo.complejo_id;
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "value_error", loc: ["body", "email"] }] }));
+          return;
+        }
+        const soloEdificio = rol === "auxiliar" || rol === "consejo";
+        if (
+          (alcance === "edificio") !== (complejoId !== undefined) ||
+          (soloEdificio && alcance === "principal")
+        ) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "value_error", loc: ["body", "alcance"] }] }));
+          return;
+        }
+        if (email === "ya-invitado@test.com") {
+          respuesta
+            .writeHead(409, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: "conflicto", campo: "rol" }));
+          return;
+        }
+        respuesta.writeHead(201, { "content-type": "application/json" }).end(
+          JSON.stringify({
+            persona_id: "00000000-0000-0000-0000-000000000901",
+            asignacion_id: "00000000-0000-0000-0000-000000000902",
+            invitacion_id: "00000000-0000-0000-0000-000000000903",
+          }),
+        );
+      });
+      return;
+    }
+    if (/^\/api\/invitaciones\/[^/]+\/revocar$/.test(url.pathname)) {
+      if (pedido.method !== "POST") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      const id = url.pathname.split("/")[3];
+      if (id === "00000000-0000-0000-0000-0000000000ee") {
+        respuesta
+          .writeHead(404, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: "no encontrado" }));
+        return;
+      }
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify({ revocada: true }));
+      return;
+    }
+    if (/^\/api\/asignaciones\/[^/]+$/.test(url.pathname)) {
+      if (pedido.method !== "DELETE") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      const id = url.pathname.split("/")[3];
+      if (id === "00000000-0000-0000-0000-0000000000ee") {
+        respuesta
+          .writeHead(404, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: "no encontrado" }));
+        return;
+      }
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify({ quitada: true }));
       return;
     }
 

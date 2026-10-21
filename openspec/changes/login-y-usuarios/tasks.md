@@ -1066,11 +1066,41 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   Referencia de derechos: https://www.argentina.gob.ar/aaip/datospersonales/derechos
   Capturas: `.git/informes-2b/pantallas/privacidad-{1440,320}.png`; lectura centrada de 70ch,
   escala y colores existentes, sin defectos materiales tras la mirada. Logs en `.git/informes-2b/logs/7.2-*`.
-- [ ] 7.3 Pantalla de personal (D5), según el shape: lista con perfil, alcance y estado de invitación, invitar con perfil y alcance, revocar y quitar, con su ayuda "?" (D-102), estados de `pantallas-del-edificio`, errores asociados al campo y combinaciones de capas (panel + ayuda + menú, L-028); sin los controles para quien no es super admin. Playwright contra la API falsa que valida método, `Content-Type` y forma del cuerpo de cada escritura (L-027); mirada a 320 y 1280 px. RED: la página no existe. Escenarios: `gestion-de-usuarios` › Invitar desde la pantalla; › Error asociado al campo. Lecciones: L-026, L-027, L-028.
+- [x] 7.3 Pantalla de personal (D5), según el shape: lista con perfil, alcance y estado de invitación, invitar con perfil y alcance, revocar y quitar, con su ayuda "?" (D-102), estados de `pantallas-del-edificio`, errores asociados al campo y combinaciones de capas (panel + ayuda + menú, L-028); sin los controles para quien no es super admin. Playwright contra la API falsa que valida método, `Content-Type` y forma del cuerpo de cada escritura (L-027); mirada a 320 y 1280 px. RED: la página no existe. Escenarios: `gestion-de-usuarios` › Invitar desde la pantalla; › Error asociado al campo. Lecciones: L-026, L-027, L-028.
   Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
   sin Reenviar ni Reintentar; fallida dice "No se pudo enviar todavía; se reintenta solo".
   Decisión del constructor (L-030): lista sólo personal; GET exige super admin según D5, por eso
   otros perfiles ven Sin permiso. No se cambia la API para ofrecerles una lista de lectura.
+  Decisión del constructor: "Mi administración" es un menú lateral nuevo (no existía fuera de un
+  edificio); reusa `MenuDelEdificio` (generaliza su `aria-label` con `nombreAccesible`, agrega el
+  ícono "personal") y se agrega también a `/edificios` para que haya cómo llegar a `/personal`.
+  ```text
+  RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/personal/Pantalla.test.tsx
+  17:18:27 / 6 passed — nació verde (implementación y test se escribieron juntos por la
+  complejidad del formulario). Oráculo (L-019) con dos mutantes:
+    1) `estados.ts`, texto de "fallida" → "No se pudo enviar": 17:18:33, 1 failed, 5 passed.
+       Restaurado; 17:18:38, 6 passed.
+    2) sin el `useEffect` que cierra el panel al aceptar (bug real, encontrado armando el spec
+       de Playwright, no inyectado a propósito): 17:24:40, 1 failed — el panel seguía abierto.
+       Agregado el `useEffect` (mismo patrón RF-F-2 de `unidades/Pantalla.tsx`); 17:24:46, 6 passed.
+  `acciones.test.ts`: 17:18:57, 3 passed; mutante del mensaje de conflicto de rol: 17:19:01,
+  1 failed; restaurado, 17:19:03, 3 passed.
+  API falsa (L-027), `e2e/autenticacion-api-falsa.test.ts`: 17:22:01, 23 passed (7 nuevos, método/
+  Content-Type/forma del cuerpo de personal, invitar, revocar, quitar). Mutante del email de
+  conflicto: 17:22:05, 1 failed; restaurado, 17:22:08, 23 passed.
+  $ date +%T; bash infra/ci/test-web-navegador.sh personal.spec.ts (puertos 3700/4700)
+  17:25:00 / 1 failed (getByLabel ambiguo: el `<label>` de un `<select>` concatena todas las
+  `<option>`, no sólo la elegida — mismo gotcha que ya resolvía `escrituras-unidades.spec.ts` con
+  `getByRole("combobox")`; adoptado acá). 17:27:27 / 5 passed.
+  ```
+  **Mirada (L-026):** `.git/informes-2b/pantallas/personal-{1440,320}.png`. A 1440 la tabla con un
+  ícono por asignación (`FilaConIcono`) no entraba en el panel (`Acción` cortada); rediseñada como
+  texto plano por asignación (`.fila-de-asignacion`) y agregado `padron-de-unidades--envuelto`
+  (`white-space: normal`, heredado por defecto de `.padron-de-unidades`). A 320 el padrón scrollea
+  horizontal dentro de su contenedor (mismo patrón que `unidades`), sin scroll de página (verificado
+  por Playwright). axe sin violaciones (lista, panel de invitar abierto, sin permiso).
+  Suite completa: 17:29:08 / 56 archivos, 360 tests. `biome ci` exit 0 (sólo warnings previos).
+  `tsc --noEmit` exit 0.
 - [ ] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
 
   Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:

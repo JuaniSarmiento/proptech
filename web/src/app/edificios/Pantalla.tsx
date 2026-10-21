@@ -21,9 +21,11 @@ import { EncabezadoDePantalla } from "../../componentes/EncabezadoDePantalla";
 import { EstadoDeCoeficientes } from "../../componentes/EstadoDeCoeficientes";
 import { Estados } from "../../componentes/Estados";
 import { Campo, Formulario } from "../../componentes/Formulario";
+import { MenuDelEdificio } from "../../componentes/MenuDelEdificio";
 import { Panel } from "../../componentes/Panel";
 import { PanelLateral } from "../../componentes/PanelLateral";
 import { textoEstadoDeMigracion } from "../../lib/textoDeEstados";
+import { seccionesDeLaAdministracion } from "../personal/secciones";
 import { AYUDA_MIS_EDIFICIOS } from "./ayuda";
 
 export type EdificioConEstado = {
@@ -60,7 +62,15 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
   const [estado, enviar] = useActionState(accionCrear, null);
 
   return (
-    <Armazon>
+    <Armazon
+      menu={
+        <MenuDelEdificio
+          seccionActual=""
+          secciones={seccionesDeLaAdministracion()}
+          nombreAccesible="Tu administración"
+        />
+      }
+    >
       <EncabezadoDePantalla
         titulo="Mis edificios"
         ayuda={<Ayuda {...AYUDA_MIS_EDIFICIOS} />}
