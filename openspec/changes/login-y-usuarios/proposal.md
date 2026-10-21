@@ -269,22 +269,22 @@ fijaron, cada una con su alternativa descartada y el costo de revertir en `desig
 
 | Elección | Propuesta del design | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| E1 · Un solo change | Login y gestión de usuarios en un change de 27 tareas, aunque la regla de `config.yaml` pide partir desde unas veinte: sin invitación no hay vínculo y el login solo no deja entrar a nadie (D0) | |
-| E2 · Verificar el token | PyJWT con la clave pública PEM del entorno, sin red ni SDK de Clerk en la API (D1) | |
-| E3 · El vínculo | `persona.clerk_usuario_id` único por administración, con una política de lectura extra por identidad verificada (D2) | |
-| E4 · El selector | La administración elegida viaja en un encabezado de Next a la API y vale sólo si la identidad tiene persona vinculada ahí; cookie `HttpOnly` en la web (D3) | |
-| E5 · El token en el navegador | Aceptar el `__session` legible de Clerk (60 s) contra D-036 y compensar con Caddy sin `/api/*` público y CSP estricta con nonce (D4) | |
-| E6 · Quién invita | Sólo el super admin, al personal y a los vecinos (la matriz de D-106 tal cual) (D5) | |
-| E7 · Aceptar la invitación | Token propio de un solo uso en la dirección de regreso de Clerk, más el email verificado de Clerk igual al de la persona (D6) | |
-| E8 · Quién habla con Clerk | El worker crea y revoca las invitaciones; la clave secreta vive en el worker y en la web, nunca en la API (D7) | |
-| E9 · Qué se audita | `ingreso_exitoso` al entrar; `ingreso_fallido` con persona vinculada sin asignación; el resto en Clerk y en un log sin datos personales (D8) | |
-| E10 · Límite de intentos | El bloqueo por cuenta de Clerk (10 intentos, una hora), sin límite propio por IP (D9) | |
-| E11 · Alta inicial | Comando de operador como `proptech_app` con el tenant nuevo fijado; el actor de la auditoría es el super admin creado (D10) | |
-| E12 · `acceso-de-desarrollo` | Cerrar el acceso sin login y cargar el ejemplo por el camino de E11, sin `GRANT INSERT ON auditoria` al migrador (D11) | |
-| E13 · Pantallas de Clerk | Componentes prearmados de Clerk en castellano, con la apariencia de `DESIGN.md`, para ingresar y registrarse; el resto, nuestras (D12) | |
-| E14 · Vocabulario de auditoría | Eventos de acceso que no son permisos: `ingreso_exitoso`, `ingreso_fallido`, `alta_inicial`, `invitar_personal`, `dar_de_alta_vecino`, `aceptar_invitacion`, `revocar_invitacion`, `quitar_asignacion` (D13) | |
-| E15 · Dependencia de Clerk | Si Clerk no responde, nadie puede entrar ni renovar la sesión (unos 60 s): se acepta la dependencia (D14) | |
+| E1 · Un solo change | Login y gestión de usuarios en un change de 27 tareas, aunque la regla de `config.yaml` pide partir desde unas veinte: sin invitación no hay vínculo y el login solo no deja entrar a nadie (D0) | Sí, Juani 21/10/2026 |
+| E2 · Verificar el token | PyJWT con la clave pública PEM del entorno, sin red ni SDK de Clerk en la API (D1) | Sí, Juani 21/10/2026 |
+| E3 · El vínculo | `persona.clerk_usuario_id` único por administración, con una política de lectura extra por identidad verificada (D2) | Sí, Juani 21/10/2026 |
+| E4 · El selector | La administración elegida viaja en un encabezado de Next a la API y vale sólo si la identidad tiene persona vinculada ahí; cookie `HttpOnly` en la web (D3) | Sí, Juani 21/10/2026 |
+| E5 · El token en el navegador | Aceptar el `__session` legible de Clerk (60 s) contra D-036 y compensar con Caddy sin `/api/*` público y CSP estricta con nonce (D4) | Sí, Juani 21/10/2026 |
+| E6 · Quién invita | Sólo el super admin, al personal y a los vecinos (la matriz de D-106 tal cual) (D5) | Sí, Juani 21/10/2026 |
+| E7 · Aceptar la invitación | Token propio de un solo uso en la dirección de regreso de Clerk, más el email verificado de Clerk igual al de la persona (D6) | Sí, Juani 21/10/2026 |
+| E8 · Quién habla con Clerk | El worker crea y revoca las invitaciones; la clave secreta vive en el worker y en la web, nunca en la API (D7) | Sí, Juani 21/10/2026 |
+| E9 · Qué se audita | `ingreso_exitoso` al entrar; `ingreso_fallido` con persona vinculada sin asignación; el resto en Clerk y en un log sin datos personales (D8) | Sí, Juani 21/10/2026 |
+| E10 · Límite de intentos | El bloqueo por cuenta de Clerk (10 intentos, una hora), sin límite propio por IP (D9) | Sí, Juani 21/10/2026 |
+| E11 · Alta inicial | Comando de operador como `proptech_app` con el tenant nuevo fijado; el actor de la auditoría es el super admin creado (D10) | Sí, Juani 21/10/2026 |
+| E12 · `acceso-de-desarrollo` | Cerrar el acceso sin login y cargar el ejemplo por el camino de E11, sin `GRANT INSERT ON auditoria` al migrador (D11) | Sí, Juani 21/10/2026 |
+| E13 · Pantallas de Clerk | Componentes prearmados de Clerk en castellano, con la apariencia de `DESIGN.md`, para ingresar y registrarse; el resto, nuestras (D12) | Sí, Juani 21/10/2026 |
+| E14 · Vocabulario de auditoría | Eventos de acceso que no son permisos: `ingreso_exitoso`, `ingreso_fallido`, `alta_inicial`, `invitar_personal`, `dar_de_alta_vecino`, `aceptar_invitacion`, `revocar_invitacion`, `quitar_asignacion` (D13) | Sí, Juani 21/10/2026 |
+| E15 · Dependencia de Clerk | Si Clerk no responde, nadie puede entrar ni renovar la sesión (unos 60 s): se acepta la dependencia (D14) | Sí, Juani 21/10/2026 |
 
 | Socio (Juani o Alberto) | Fecha | Alcance aprobado |
 |---|---|---|
-| | | |
+| Juani | 21/10/2026 | Todo el change login-y-usuarios tal como está en esta propuesta, con E1 a E15 aprobadas |
