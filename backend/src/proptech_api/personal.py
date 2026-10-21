@@ -15,13 +15,14 @@ from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.aplicacion.datos_de_usuario import email_valido, nombre_valido
 from proptech_core.acceso.aplicacion.usuarios import (
     ConflictoDeAcceso,
+    dar_de_alta_vecino,
     encolar_alta,
     invitar_personal,
 )
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
-from proptech_core.complejos.aplicacion.lectura import cargar_complejo
+from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 PERMISO = Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS
@@ -92,6 +93,53 @@ async def invitar(
         rol=datos.rol,
         alcance=datos.alcance,
         complejo_id=datos.complejo_id,
+        parametros=request.app.state.parametros,
+        configuracion=request.app.state.configuracion,
+        request_id=request_id,
+    )
+    sesion.commit()
+    await encolar_alta(request.app.state.cola, identidad, alta, request_id)
+    return {
+        "persona_id": str(alta.persona_id),
+        "asignacion_id": str(alta.asignacion_id),
+        "invitacion_id": str(alta.invitacion_id) if alta.invitacion_id else None,
+    }
+
+
+class CuerpoVecino(CuerpoDeAlta):
+    nombre: Annotated[str, AfterValidator(lambda valor: nombre_valido(valor))]
+    email: Annotated[str, AfterValidator(email_valido)]
+    vinculo: Literal["propietario", "inquilino"]
+
+
+@router.post("/unidades/{unidad_id}/vecinos", status_code=201)
+async def alta_vecino(
+    unidad_id: UUID,
+    request: Request,
+    cuerpo: Annotated[Any, Body()] = None,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str | None]:
+    unidad = cargar_unidad(sesion, unidad_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if unidad is None or not alcanza(asignaciones, unidad.complejo_id, unidad_id):
+        raise HTTPException(404, detail="no encontrado")
+    autorizar(sesion, identidad, unidad.complejo_id)
+    try:
+        datos = CuerpoVecino.model_validate(cuerpo)
+    except ValidationError as error:
+        raise RequestValidationError(
+            [dict(e, loc=("body", *e["loc"])) for e in error.errors()]
+        ) from None
+    request_id = UUID(request_id_actual.get() or "")
+    alta = dar_de_alta_vecino(
+        sesion,
+        identidad,
+        nombre=datos.nombre,
+        email=datos.email,
+        vinculo=datos.vinculo,
+        complejo_id=unidad.complejo_id,
+        unidad_id=unidad_id,
         parametros=request.app.state.parametros,
         configuracion=request.app.state.configuracion,
         request_id=request_id,

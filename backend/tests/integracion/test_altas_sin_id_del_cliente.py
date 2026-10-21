@@ -99,6 +99,11 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "metodo": "coeficiente",
         "unidades": [],
     },
+    ("/api/unidades/{unidad_id}/vecinos", "POST"): lambda mundo: {
+        "nombre": "Ficticia",
+        "email": "vecina@example.invalid",
+        "vinculo": "propietario",
+    },
     ("/api/personal/invitaciones", "POST"): lambda mundo: {
         "nombre": "Ficticia",
         "email": "nueva@example.invalid",
@@ -205,6 +210,13 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
             (str(complejo_id), str(admin_id), "Complejo"),
         )
 
+        unidad_id = uuid.uuid4()
+        cur.execute(
+            "INSERT INTO unidad (id,administracion_id,complejo_id,identificador,tipo,"
+            "piso,coeficiente,superficie_m2) VALUES (%s,%s,%s,'1A','departamento','1',"
+            "'0.5','60')",
+            (unidad_id, admin_id, complejo_id),
+        )
         super_admin_id = uuid.uuid4()
         destinatario_id = uuid.uuid4()
         for pid, nombre in ((super_admin_id, "super_admin"), (destinatario_id, "destinatario")):
@@ -223,6 +235,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "administracion_id": admin_id,
         "complejo_id": complejo_id,
         "super_admin": super_admin_id,
+        "unidad_id": unidad_id,
         "destinatario": destinatario_id,
     }
 
@@ -323,7 +336,7 @@ def test_alta_con_id_del_cliente_da_422_sin_escribir_ni_filtrar_el_valor(
         "administracion_id": _MARCADOR,
         "complejo_id": _MARCADOR,
     }
-    ruta_resuelta = ruta.format(complejo_id=mundo["complejo_id"])
+    ruta_resuelta = ruta.format(**mundo)
 
     antes = _cantidad_de_asignaciones(contenedor, mundo["administracion_id"])
     _como(app_real, mundo["administracion_id"], mundo["super_admin"])

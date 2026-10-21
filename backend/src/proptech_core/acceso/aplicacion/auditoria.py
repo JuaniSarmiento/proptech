@@ -62,6 +62,11 @@ class _DetalleConfiguracion(_DetalleAsignarEdificio):
     vigente_desde: date
 
 
+class _DetallePersonaAsignacion(_DetalleBase):
+    persona_id: UUID
+    asignacion_id: UUID
+
+
 class _DetalleInvitarPersonal(_DetalleBase):
     persona_id: UUID
     asignacion_id: UUID
@@ -76,6 +81,7 @@ class _DetalleIngresoFallido(_DetalleBase):
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso, type[_DetalleBase]] = {
+    EventoDeAcceso.DAR_DE_ALTA_VECINO: _DetallePersonaAsignacion,
     EventoDeAcceso.INVITAR_PERSONAL: _DetalleInvitarPersonal,
     EventoDeAcceso.INGRESO_FALLIDO: _DetalleIngresoFallido,
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignacion,

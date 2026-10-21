@@ -71,6 +71,7 @@ _RUTAS_DOCUMENTACION = {
 _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST")}
 
 _RUTAS_CUBIERTAS = {
+    ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/invitaciones/aceptar", "POST"),
     ("/api/sesion", "GET"),

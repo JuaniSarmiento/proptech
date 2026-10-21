@@ -49,7 +49,7 @@ def _persona_bloqueada(
     return fila.id, fila.clerk_usuario_id
 
 
-def invitar_personal(
+def _alta(
     sesion: Session,
     identidad: Identidad,
     *,
@@ -61,6 +61,9 @@ def invitar_personal(
     parametros: Parametros,
     configuracion: Configuracion,
     request_id: UUID,
+    unidad_id: UUID | None = None,
+    vinculo: str | None = None,
+    evento: EventoDeAcceso = EventoDeAcceso.INVITAR_PERSONAL,
 ) -> AltaDeUsuario:
     try:
         with sesion.begin_nested():
@@ -70,13 +73,16 @@ def invitar_personal(
             asignacion = sesion.execute(
                 text(
                     "INSERT INTO asignacion_rol (administracion_id,persona_id,"
-                    "rol,complejo_id) VALUES (:admin,:persona,:rol,:complejo) RETURNING id"
+                    "rol,complejo_id,unidad_id,vinculo) "
+                    "VALUES (:admin,:persona,:rol,:complejo,:unidad,:vinculo) RETURNING id"
                 ),
                 {
                     "admin": identidad.administracion_id,
                     "persona": persona,
                     "rol": rol,
                     "complejo": complejo_id,
+                    "unidad": unidad_id,
+                    "vinculo": vinculo,
                 },
             ).scalar_one()
             revocadas: tuple[UUID, ...] = ()
@@ -99,15 +105,14 @@ def invitar_personal(
             registrar(
                 sesion,
                 identidad,
-                EventoDeAcceso.INVITAR_PERSONAL,
+                evento,
                 entidad="persona",
                 entidad_id=persona,
                 request_id=request_id,
                 detalle={
                     "persona_id": str(persona),
                     "asignacion_id": str(asignacion),
-                    "rol": rol,
-                    "alcance": alcance,
+                    **({"rol": rol, "alcance": alcance} if unidad_id is None else {}),
                 },
             )
             return AltaDeUsuario(persona, asignacion, invitacion, sobre, revocadas)
@@ -115,8 +120,9 @@ def invitar_personal(
         if isinstance(error.orig, UniqueViolation) and error.orig.diag.constraint_name in {
             "uq_asignacion_rol_persona_alcance",
             "uq_asignacion_rol_consejo_persona_complejo",
+            "uq_asignacion_rol_persona_unidad",
         }:
-            raise ConflictoDeAcceso("rol") from None
+            raise ConflictoDeAcceso("vinculo" if unidad_id is not None else "rol") from None
         raise
 
 
@@ -135,3 +141,60 @@ async def encolar_alta(
         await encolar_envio(
             cola, identidad.administracion_id, alta.invitacion_id, alta.sobre, request_id
         )
+
+
+def invitar_personal(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    nombre: str,
+    email: str,
+    rol: str,
+    alcance: str,
+    complejo_id: UUID | None,
+    parametros: Parametros,
+    configuracion: Configuracion,
+    request_id: UUID,
+) -> AltaDeUsuario:
+    return _alta(
+        sesion,
+        identidad,
+        nombre=nombre,
+        email=email,
+        rol=rol,
+        alcance=alcance,
+        complejo_id=complejo_id,
+        parametros=parametros,
+        configuracion=configuracion,
+        request_id=request_id,
+    )
+
+
+def dar_de_alta_vecino(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    nombre: str,
+    email: str,
+    vinculo: str,
+    complejo_id: UUID,
+    unidad_id: UUID,
+    parametros: Parametros,
+    configuracion: Configuracion,
+    request_id: UUID,
+) -> AltaDeUsuario:
+    return _alta(
+        sesion,
+        identidad,
+        nombre=nombre,
+        email=email,
+        rol="vecino",
+        alcance="unidad",
+        complejo_id=complejo_id,
+        unidad_id=unidad_id,
+        vinculo=vinculo,
+        parametros=parametros,
+        configuracion=configuracion,
+        request_id=request_id,
+        evento=EventoDeAcceso.DAR_DE_ALTA_VECINO,
+    )
