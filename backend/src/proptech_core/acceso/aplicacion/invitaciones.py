@@ -21,6 +21,17 @@ from proptech_core.compartido.base_de_datos import (
 )
 from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 
+_MINUSCULAS_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _minusculas_ascii(valor: str) -> str:
+    """Minúsculas SÓLO para `A-Z` (R2B-3): cualquier otro carácter queda
+    exactamente como llegó. `str.lower()` es consciente de Unicode y pliega
+    letras que no son la misma: `"\\u212a".lower() == "k"` (el signo
+    Kelvin). Con esta función ese carácter nunca cambia, así que nunca
+    termina igualando a una `k` ASCII."""
+    return valor.translate(_MINUSCULAS_ASCII)
+
 
 class InvitacionNoDisponible(Exception):
     """Respuesta uniforme sin datos del destinatario."""
@@ -51,7 +62,7 @@ def aceptar(
         # resumen (D7), así que acá termina sin tocar la base.
         raise InvitacionNoDisponible from None
     resumen_hex = hashlib.sha256(token_crudo.encode()).hexdigest()
-    email_normalizado = token.email.lower()
+    email_normalizado = _minusculas_ascii(token.email)
 
     # Primera consulta, SIN tenant (D6): el único candado es el resumen de
     # 64 caracteres hexadecimales, vía `invitacion_por_token` (migración
@@ -85,7 +96,7 @@ def aceptar(
             fila_bloqueada is None
             or fila_bloqueada.estado != "enviada"
             or fila_bloqueada.vence <= ahora
-            or fila_bloqueada.email.lower() != email_normalizado
+            or _minusculas_ascii(fila_bloqueada.email) != email_normalizado
             or fila_bloqueada.clerk_usuario_id is not None
         ):
             sesion.rollback()

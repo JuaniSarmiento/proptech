@@ -4,8 +4,9 @@ aceptaciones a la vez dejan un solo vínculo.
 
 Escenarios de `gestion-de-usuarios`: Aceptación correcta; Email no
 verificado; Autenticación antes del cuerpo; Cuerpo inválido con sesión
-válida; Email principal en mayúsculas; Otro email; Token reusado o
-vencido; Dos aceptaciones a la vez. Lecciones: L-016, L-017, L-020.
+válida; Email principal en mayúsculas; Otro email (también con el signo
+Kelvin, R2B-3); Token reusado o vencido; Dos aceptaciones a la vez.
+Lecciones: L-016, L-017, L-020.
 """
 
 from __future__ import annotations
@@ -134,6 +135,30 @@ def test_email_en_mayusculas_coincide_tras_normalizar(
         headers=encabezados(clerk_falso, email="INVITADA@EXAMPLE.INVALID", email_verified=True),
     )
     assert r.status_code == 200, r.text
+
+
+def test_email_con_signo_kelvin_no_coincide_con_su_version_ascii(
+    clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R2B-3 (rompedor 2b): `"\\u212a".lower() == "k"` (el signo Kelvin, que
+    se VE como una "K" mayúscula) y `"\\u212b".lower() == "å"` (el signo
+    Angstrom). Una identidad verificada con `\\u212aarina@...` no tiene que
+    aceptar la invitación de `karina@...`: son buzones distintos, aunque
+    `str.lower()` los pliegue al mismo texto."""
+    preparar(api_edificio, monkeypatch)
+    invitada = "karina@example.invalid"
+    otro_buzon = "Karina@example.invalid"  # noqa: RUF001 - signo Kelvin, no la letra K
+    assert otro_buzon != invitada and otro_buzon.lower() == invitada
+    fila = _crear_invitacion(api_edificio, email=invitada)
+    r = api_edificio.cliente.post(
+        "/api/invitaciones/aceptar",
+        json={"token": fila["sobre"]},
+        headers=encabezados(clerk_falso, email=otro_buzon, email_verified=True),
+    )
+    vinculo = api_edificio.filas(
+        "SELECT clerk_usuario_id FROM persona WHERE id=%s", (fila["persona_id"],)
+    )
+    assert r.status_code == 404, f"{r.status_code} {r.text}; vínculo={vinculo}"
 
 
 @pytest.mark.parametrize(
