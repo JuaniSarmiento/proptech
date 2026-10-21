@@ -1279,6 +1279,17 @@ $ date +%T; git rev-parse HEAD; bash infra/ci/humo.sh
 Logs: `/tmp/informes-2b-cierre/{backend,web,navegador,navegador2,humo}.log` (fuera del repo).
 `git status --short` vacío tras el último commit.
 
+**Corrección del auditor del 2b (fila 6, 21/10/2026):** `test-web.sh` de arriba corrió sobre
+`9eb0976`, no sobre el HEAD real de ese momento (`ee6a659`/`2b570b3` tocan `web/e2e/sesion-local.ts`,
+que vitest también corre). Repetido sobre el HEAD después de las correcciones de las filas 2 y 4:
+
+```
+$ date +%T; git rev-parse --short HEAD; bash infra/ci/test-web.sh
+19:15:12 / 3f3b0a0 / Test Files  59 passed (59); Tests  379 passed (379), Duration 63.49s
+$ date +%T; git rev-parse --short HEAD; bash infra/ci/test-web-navegador.sh
+19:16:18 / 3f3b0a0 / 169 passed (5.1m)
+```
+
 ## 8. Con Clerk de verdad
 
 - [x] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
