@@ -99,6 +99,12 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "metodo": "coeficiente",
         "unidades": [],
     },
+    ("/api/personal/invitaciones", "POST"): lambda mundo: {
+        "nombre": "Ficticia",
+        "email": "nueva@example.invalid",
+        "rol": "contador",
+        "alcance": "principal",
+    },
     ("/api/complejos", "POST"): lambda mundo: {"nombre": "Edificio", "localidad": "Mendoza"},
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),

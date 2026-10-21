@@ -141,8 +141,11 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
 def puede(asignaciones: Sequence[Asignacion], accion: Accion, complejo_id: UUID | None) -> bool:
     """Las asignaciones principales cubren toda la administración; las otras
     sólo cuentan si coinciden con el edificio pedido. Sin edificio sólo
-    se evalúa crear uno (D3/D4 de roles-de-la-empresa)."""
-    if complejo_id is None and accion is not Accion.CREAR_EDIFICIO:
+    se evalúa crear uno o gestionar usuarios (D5 del login, E6)."""
+    if complejo_id is None and accion not in {
+        Accion.CREAR_EDIFICIO,
+        Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS,
+    }:
         return False
     permitidos = _MATRIZ.get(accion, frozenset())
     for asignacion in asignaciones:

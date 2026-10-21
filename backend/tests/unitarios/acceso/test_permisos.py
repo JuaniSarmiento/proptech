@@ -123,8 +123,8 @@ def test_cada_celda_de_la_matriz(nombre: str, perfil: int) -> None:
 
 @pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
 @pytest.mark.parametrize("perfil", range(9), ids=_COLUMNAS)
-def test_sin_complejo_solo_crear_edificio_para_super_admin(nombre: str, perfil: int) -> None:
-    esperado = nombre == "crear_edificio" and perfil == 0
+def test_sin_complejo_crear_e_invitar_para_super_admin(nombre: str, perfil: int) -> None:
+    esperado = nombre in {"crear_edificio", "invitar_usuarios_y_asignar_edificios"} and perfil == 0
     assert puede([_PERFILES[perfil]], Accion(nombre), None) is esperado
 
 
