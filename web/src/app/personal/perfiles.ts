@@ -31,9 +31,17 @@ export function etiquetaDePerfil(rol: string): string {
 
 const _QUE_PUEDE: Record<Rol, string> = {
   super_admin: "Administra toda la empresa: invita personal y crea edificios.",
+  // D-106: anular liquidaciones, revertir o reimputar pagos y condonar
+  // intereses quedan reservados al super admin y al administrador
+  // principal; un administrador por edificio emite y confirma, pero no.
   administrador:
-    "Carga gastos, emite liquidaciones y confirma pagos, de la empresa o de un edificio.",
-  contador: "Carga gastos, emite liquidaciones y confirma pagos; no anula ni revierte pagos.",
+    "Carga gastos, emite liquidaciones y confirma pagos, de la empresa o de un edificio; " +
+    "anular, revertir o condonar es sólo del administrador principal.",
+  // D-106: el contador es sólo lectura de lo contable (sin ninguna celda
+  // de escritura en `_MATRIZ`, `permisos.py`); antes este texto decía lo
+  // mismo que el administrador, al revés de la matriz.
+  contador:
+    "Sólo lectura de lo contable: ve gastos, liquidaciones y pagos; no carga ni confirma nada.",
   auxiliar: "Ve la configuración de su edificio; no carga ni aprueba nada.",
   consejo: "Ve la configuración de su edificio; no carga ni aprueba nada.",
 };

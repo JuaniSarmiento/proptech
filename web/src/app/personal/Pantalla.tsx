@@ -284,8 +284,24 @@ export function PantallaPersonal({
     }
   }, [estado]);
 
+  // Corrección L-026 (mirada de `personal-1440.png`, 21/10/2026): Personal
+  // y el padrón de vecinos (7.4) leen la misma fuente (`GET /api/personal`,
+  // L-030), así que una fila con `rol: "vecino"` puede llegar acá. Esta
+  // pantalla es sólo personal (super admin, administrador, contador,
+  // auxiliar, consejo); los vecinos viven en el padrón de unidades. Se
+  // descartan las asignaciones de vecino, y con ellas la persona entera si
+  // no le queda ninguna otra: así nunca aparece en la tabla ni en "Por
+  // perfil", y nunca con alcance "Toda la empresa" (que para un vecino ni
+  // siquiera es una forma válida, D-106: su alcance es su unidad).
+  const personal = personas
+    .map((persona) => ({
+      ...persona,
+      asignaciones: persona.asignaciones.filter((a) => a.rol !== "vecino"),
+    }))
+    .filter((persona) => persona.asignaciones.length > 0);
+
   const porPerfil = new Map<string, number>();
-  for (const persona of personas) {
+  for (const persona of personal) {
     for (const asignacion of persona.asignaciones) {
       porPerfil.set(asignacion.rol, (porPerfil.get(asignacion.rol) ?? 0) + 1);
     }
@@ -322,7 +338,7 @@ export function PantallaPersonal({
           titulo="Quién trabaja con vos"
           descripcion="Tocá Invitar a alguien para sumar a una persona."
         >
-          {personas.length === 0 ? (
+          {personal.length === 0 ? (
             <Estados
               tipo="vacio"
               mensaje="Todavía no invitaste a nadie"
@@ -346,7 +362,7 @@ export function PantallaPersonal({
                   </tr>
                 </thead>
                 <tbody>
-                  {personas.map((persona) => (
+                  {personal.map((persona) => (
                     <FilaDePersona
                       key={persona.persona_id}
                       persona={persona}

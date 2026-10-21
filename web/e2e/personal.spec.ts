@@ -13,6 +13,11 @@ for (const ancho of [1440, 320]) {
     await expect(page.getByRole("heading", { name: "Personal", exact: true })).toBeVisible();
     await expect(page.getByText("Ana Superadmin")).toBeVisible();
     await expect(page.getByText("Beto Contador")).toBeVisible();
+    // Corrección L-026 (21/10/2026): `_PERSONAL_DE_PRUEBA` también trae a
+    // "Deco Vecino" (rol "vecino"), igual que puede traer la API real
+    // (misma fuente que el padrón de 7.4). Personal es sólo personal.
+    await expect(page.getByText("Deco Vecino")).toHaveCount(0);
+    await expect(page.getByText(/^vecino$/i)).toHaveCount(0);
     // Ajuste del shape (21/10/2026): sin "Reenviar" ni "Reintentar".
     await expect(page.getByText("No se pudo enviar todavía; se reintenta solo")).toBeVisible();
     await expect(page.getByRole("button", { name: /reenviar/i })).toHaveCount(0);

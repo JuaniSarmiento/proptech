@@ -157,6 +157,47 @@ describe("PantallaPersonal", () => {
     expect(screen.getByText("Todavía no invitaste a nadie")).toBeTruthy();
   });
 
+  it("un vecino en los datos de la API nunca aparece en Personal ni en el conteo (corrección L-026)", () => {
+    // Personal vive de la misma fuente que el padrón de 7.4 (`GET
+    // /api/personal`), que puede traer filas con `rol: "vecino"` (ver
+    // `_PERSONAL_DE_PRUEBA` de `e2e/api-falsa.ts`, "Deco Vecino"). Esta
+    // pantalla sólo muestra personal: super admin, administrador, contador,
+    // auxiliar y consejo; los vecinos viven en el padrón de unidades.
+    const conVecino: Persona[] = [
+      ...PERSONAS,
+      {
+        persona_id: "p3",
+        nombre: "Deco Vecino",
+        email: "deco@test.com",
+        vinculado: false,
+        asignaciones: [
+          {
+            asignacion_id: "a3",
+            rol: "vecino",
+            complejo_id: null,
+            unidad_id: "u1",
+            vinculo: "propietario",
+          },
+        ],
+        invitacion: { invitacion_id: "i3", estado: "pendiente" },
+      },
+    ];
+    render(
+      <PantallaPersonal
+        personas={conVecino}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionSimpleNula}
+      />,
+    );
+    expect(screen.queryByText("Deco Vecino")).toBeNull();
+    expect(screen.queryByText(/^vecino$/i)).toBeNull();
+    // Las dos personas de personal siguen ahí: no se vacía la tabla entera.
+    expect(screen.getByText("Ana Pérez")).toBeTruthy();
+    expect(screen.getByText("Beto Gómez")).toBeTruthy();
+  });
+
   it("sin violaciones de axe, con datos y con el panel de invitar abierto", async () => {
     const usuario = userEvent.setup();
     const { container } = render(

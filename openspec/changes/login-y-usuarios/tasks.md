@@ -1101,6 +1101,38 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   por Playwright). axe sin violaciones (lista, panel de invitar abierto, sin permiso).
   Suite completa: 17:29:08 / 56 archivos, 360 tests. `biome ci` exit 0 (sólo warnings previos).
   `tsc --noEmit` exit 0.
+
+  **Corrección del orquestador al mirar la pantalla (L-026, 21/10/2026), sobre
+  `.git/informes-2b/pantallas/personal-1440.png`:** dos errores de contenido, no de diseño.
+  1) "Qué puede cada perfil" describía al contador como si cargara gastos, emitiera
+  liquidaciones y confirmara pagos — al revés de D-106 y de `permisos.py` (el contador no
+  tiene ninguna celda de escritura en `_MATRIZ`, sólo lectura). El texto del administrador
+  tampoco decía que anular, revertir o condonar es sólo del principal. Arreglado en
+  `perfiles.ts` (`_QUE_PUEDE`); super admin, auxiliar y consejo ya coincidían con la matriz.
+  2) Personal mostraba vecinos ("Deco Vecino · vecino · Toda la empresa" y "vecino" en el
+  conteo "Por perfil"): Personal y el padrón de 7.4 leen la misma fuente (`GET /api/personal`,
+  L-030), así que una fila con `rol: "vecino"` puede llegar acá. Personal es sólo personal; los
+  vecinos viven en el padrón. Arreglado filtrando las asignaciones de vecino (y la persona
+  entera si no le queda ninguna otra) en `Pantalla.tsx`, antes de armar la tabla y "Por perfil".
+  ```text
+  RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/personal/perfiles.test.ts
+  17:51:49 / 2 failed, 1 passed (contador escribía, administrador sin "principal").
+  GREEN $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/personal/perfiles.test.ts
+  17:51:58 / 3 passed.
+  RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/personal/Pantalla.test.tsx
+  17:52:10 / 1 failed, 6 passed ("Deco Vecino" visible).
+  GREEN $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/personal/
+  17:52:35 / 13 passed (3 archivos: perfiles.test.ts nuevo, Pantalla.test.tsx, acciones.test.ts).
+  Mutante (L-019) sobre el filtro de vecino (`rol !== "vecino"` → `rol !== "nadie"`):
+  17:52:47, 1 failed; restaurado, 17:52:54, 13 passed.
+  `biome ci` exit 0 (sólo los 2 warnings previos de `baseURL!`). `tsc --noEmit` exit 0 (17:53:15).
+  ```
+  **Mirada posterior:** `.git/informes-2b/pantallas/personal-1440.png` (regenerada, Playwright
+  contra la API falsa, puertos 3800/4800): el contador ya dice "Sólo lectura de lo contable",
+  el administrador aclara "sólo del administrador principal" para anular/revertir/condonar, y
+  "Deco Vecino" ya no aparece en la tabla ni en "Por perfil" (queda sólo en el padrón de 7.4).
+  Añadida también la aserción en `e2e/personal.spec.ts` (mismo fixture, sin tocar
+  `_PERSONAL_DE_PRUEBA`).
 - [x] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
 
   Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
