@@ -304,6 +304,19 @@ la cuenta de Clerk (8.1).
   commit; quedará sin un commit posterior para conservar ambas suites después del último SHA.
 
 
+  Cierre del bloque, posterior al último commit `1d6b916a0d2f47cd354365141dec794070479f52` (L-031), de a uno y sin procesos en segundo plano:
+
+  ```text
+  $ date +%T; bash infra/ci/test-backend.sh
+  10:42:49
+  =========== 2239 passed, 1 xfailed, 16 warnings in 537.65s (0:08:57) ===========
+  $ date +%T; bash infra/ci/humo.sh
+  10:52:01
+  HUMO OK
+  Exit 0; limpieza de proptech terminada antes de 10:54:35.
+  ```
+  Se recolectaron 2240 casos: 163 más que los 2077 de 1.1; mismo xfail y mismas 16 advertencias.
+
 ## 4. La identidad en la API
 
 - [ ] 4.1 `identidad_actual` real (D1, D2, D3) en `backend/tests/integracion/test_identidad_clerk_api.py`, con la app real, tokens del Clerk falso y un contador de sentencias SQL: sin encabezado, con `Bearer` vacío, con dos tokens, y con cada token inválido de 2.1, 401 con cuerpo y encabezados idénticos y **cero** sentencias; token válido sin vínculo, 401 idéntico, sin leer `complejo`, `unidad` ni `asignacion_rol`, y una línea `ingreso_sin_vinculo` sin email, token ni `sub` en claro; persona vinculada en A con asignación, 200 en un complejo de su alcance; vinculada en A y en B, 401 sin encabezado de selector, 200 con A, 401 con el id de un tercero real; vinculada sólo en A con el encabezado de B, 401 sin ninguna lectura de B; sin `CLERK_JWT_KEY`, 401 a todo. `X-Proptech-Administracion` se recibe como texto y se valida después del token y del vínculo: un no UUID sin sesión da 401 con cero SQL, y con sesión válida da 401, nunca 422. El barrido de rutas sigue exigiendo 401 sin SQL. RED: hoy todo es 401, así que el caso "vinculada en A con asignación" falla primero. Escenarios: `autenticacion-con-clerk` › Persona vinculada con asignación; › Token válido sin vínculo; › Elegir una administración ajena; › Varias sin elegir; › Login sin configurar; `autorizacion-por-rol` › Pedido sin identidad; › Token inválido; › Token válido sin vínculo; `aislamiento-por-administracion` › Encabezado o parámetro con otra administración; › Selector con una administración ajena. Lecciones: L-007, L-016, L-017, L-019.
