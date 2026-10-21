@@ -745,6 +745,36 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   14:40:26: All checks passed! / 272 files already formatted / Success: no issues found in 248 source files
   ```
 
+- [x] A2 Un solo ciclo de vida de `TestClient` por app en el barrido de rutas; comprobar en PostgreSQL real que al cerrar los fixtures no quedan conexiones nuevas, sin depender del recolector de basura.
+
+  Bisección de los errores de conexión: envío → rutas dio `332 passed` (14:29:42–14:30:19),
+  reset del pool → rutas dio `326 passed` (14:31:09–14:31:39) y once archivos anteriores
+  (migraciones, personal, reset, reversión y roles) → rutas dieron `385 passed`
+  (14:33:27–14:36:07). Esos siete errores originales todavía no están reproducidos.
+  Sí hay una fuga reproducible: `app_real` y `cliente` entran cada uno en `TestClient` para la misma
+  app; el segundo arranque pisa `app.state.engine` y ambos cierres descartan sólo el segundo pool.
+  La regresión retiene los engines y consulta `pg_stat_activity` tras cerrar los fixtures, limpiándolos
+  incluso si falla. No cambia producción ni las aserciones existentes de autorización/SQL.
+  ```text
+  $ cd backend; date +%T; uv run pytest tests/integracion/test_rutas_protegidas.py::test_el_cliente_cierra_sus_conexiones_sin_depender_del_gc -q -p no:randomly --tb=short
+  14:36:18–14:36:25 RED: AssertionError: el cliente dejó conexiones abiertas
+  ERROR test_rutas_protegidas.py::test_el_cliente_cierra_sus_conexiones_sin_depender_del_gc
+  1 passed, 1 warning, 1 error in 5.67s
+  ```
+  El error de teardown es el rojo esperado: la aserción mide el recurso después del cierre.
+
+  ```text
+  $ cd backend; date +%T; uv run pytest tests/integracion/test_rutas_protegidas.py::test_el_cliente_cierra_sus_conexiones_sin_depender_del_gc -q -p no:randomly --tb=short
+  14:37:06–14:37:12 GREEN: 1 passed, 1 warning in 4.75s
+  $ cd backend; date +%T; uv run pytest tests/integracion/test_envio_de_invitaciones.py tests/integracion/test_reset_de_pool_tras_corte.py tests/integracion/test_rutas_protegidas.py -q -p no:randomly --tb=short
+  14:39:06–14:39:41 GREEN: 335 passed, 3 warnings in 33.38s
+  $ cd backend; date +%T; uv run ruff check . && uv run ruff format --check . && uv run mypy
+  14:41:04: All checks passed! / 272 files already formatted / Success: no issues found in 248 source files
+  ```
+  Decisión del constructor (L-030/L-031): los commits de A1 y A2 preceden al cierre completo.
+  Pego después la evidencia final en este archivo, sin otro commit posterior a las suites,
+  para que ambas corridas correspondan al último HEAD solicitado.
+
 ## 6. Web e infraestructura
 
 - [ ] 6.1 Clerk en Next (D3, D12): `@clerk/nextjs` y `@clerk/localizations` con versión fijada; `web/src/proxy.ts` con `clerkMiddleware({ jwtKey, authorizedParties })`; `lib/sesion.ts` (único lugar que llama a `auth()`); `pedirApi` manda `Authorization: Bearer` y `X-Proptech-Administracion` desde el servidor, y un 401 de la API lleva al ingreso con la dirección de regreso validada (sólo rutas propias que empiezan con `/` y no con `//`); acción de servidor que escribe la cookie `proptech_administracion` (`HttpOnly`, `SameSite=Lax`, `Secure` en producción) sólo con un id que vino en `GET /api/sesion`. Tests en vitest: los encabezados salen en cada pedido; sin sesión no se llama a la API; la cookie rechaza un id que no vino de la API; el regreso a `//otro` o `https://otro` abre "Mis edificios". Verificar con Playwright que una sesión de prueba se arma con un `__session` firmado por la clave local y `__client_uat` (SUPUESTO de design); si no alcanza, frenar y volver a Juani **sin** crear ninguna variable que saltee la sesión. Simular Clerk sin respuesta: sin token no se entra, no se renueva y un token previo se rechaza al alcanzar `exp + 5`, sin login de respaldo (D14). RED: `pedirApi` no manda los encabezados; una copia que conserva la sesión después de ese corte falla con Clerk apagado. Escenarios: `pantallas-del-edificio` › Sesión vencida; › Regreso a un sitio ajeno; `autenticacion-con-clerk` › El token no está en la página (la parte del cliente); › Clerk no responde. Lecciones: L-019, L-027.

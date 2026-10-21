@@ -236,7 +236,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
 @pytest.fixture
 def app_real(
     contenedor: PostgresContainer, esquema: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> Iterator[FastAPI]:
+) -> FastAPI:
     monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
     monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
     monkeypatch.setenv("POSTGRES_APP_USER", APP_USER)
@@ -252,15 +252,58 @@ def app_real(
 
     from proptech_api.app import crear_app
 
-    app = crear_app()
-    with TestClient(app):
-        yield app
+    return crear_app()
 
 
 @pytest.fixture
 def cliente(app_real: FastAPI) -> Iterator[TestClient]:
+    # Un solo TestClient abre y cierra el lifespan de esta app.
     with TestClient(app_real) as cliente:
         yield cliente
+
+
+@pytest.fixture
+def _sin_conexiones_huerfanas(
+    contenedor: PostgresContainer, esquema: None, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    from sqlalchemy import Engine
+
+    from proptech_api import app as modulo_app
+    from proptech_core.compartido.base_de_datos import crear_engine
+
+    engines: list[Engine] = []
+
+    def registrar_engine(*args: Any, **kwargs: Any) -> Engine:
+        engine = crear_engine(*args, **kwargs)
+        # Referencias fuertes: el cierre debe funcionar sin esperar al GC.
+        engines.append(engine)
+        return engine
+
+    def conexiones() -> set[int]:
+        with _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD) as c:
+            return {
+                fila[0]
+                for fila in c.execute(
+                    "SELECT pid FROM pg_stat_activity WHERE datname = current_database() "
+                    "AND application_name = 'proptech-api'"
+                ).fetchall()
+            }
+
+    anteriores = conexiones()
+    monkeypatch.setattr(modulo_app, "crear_engine", registrar_engine)
+    try:
+        yield
+        assert conexiones() - anteriores == set(), "el cliente dejó conexiones abiertas"
+    finally:
+        for engine in engines:
+            engine.dispose()
+
+
+def test_el_cliente_cierra_sus_conexiones_sin_depender_del_gc(
+    _sin_conexiones_huerfanas: None, cliente: TestClient
+) -> None:
+    # La comprobación corre al cerrar ambos fixtures, en PostgreSQL real.
+    cliente.get("/api/complejos")
 
 
 # --- Estructural: ninguna ruta nueva se queda afuera de este archivo ---
