@@ -133,15 +133,22 @@ _R = TypeVar("_R")
 #: Caso de uso marcado -> Accion que audita (D9). Nunca se edita a mano
 #: fuera del decorador: lo llena `accion_sensible` cuando el módulo del
 #: caso de uso se importa.
-_CASOS_SENSIBLES: dict[Accion, Callable[..., Any]] = {}
+_CASOS_SENSIBLES: dict[Accion | EventoDeAcceso, Callable[..., Any]] = {}
 
 
-def accion_sensible(accion: Accion) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+def accion_sensible(
+    accion: Accion | EventoDeAcceso,
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """Marca `funcion` como el caso de uso que audita `accion` (D9): no
     cambia su comportamiento, sólo la suma al registro que recorre el test
     de la tarea 6.2."""
 
     def decorador(funcion: Callable[_P, _R]) -> Callable[_P, _R]:
+        if anterior := _CASOS_SENSIBLES.get(accion):
+            raise ValueError(
+                f"{accion.value}: casos sensibles duplicados: "
+                f"{anterior.__qualname__} y {funcion.__qualname__}"
+            )
         _CASOS_SENSIBLES[accion] = funcion
 
         @functools.wraps(funcion)
@@ -153,7 +160,7 @@ def accion_sensible(accion: Accion) -> Callable[[Callable[_P, _R]], Callable[_P,
     return decorador
 
 
-def casos_sensibles_registrados() -> dict[Accion, Callable[..., Any]]:
+def casos_sensibles_registrados() -> dict[Accion | EventoDeAcceso, Callable[..., Any]]:
     """Copia del registro (nunca el dict real): quien lo use no puede
     mutarlo por accidente."""
     return dict(_CASOS_SENSIBLES)

@@ -406,7 +406,43 @@ la cuenta de Clerk (8.1).
   All checks passed! / 249 files already formatted / no issues found in 225 source files
   ```
 
-- [ ] 4.3 Deuda del 2a con dueño 2b (L-012): **V2-7**, `@accion_sensible` falla al registrar dos casos con la misma acción o evento, y se reescribe el test de `test_auditoria_transaccion.py:416` hasta verlo rojo con un segundo caso (D13); **D-1 y D-6**, un test por cada una de las cinco comparaciones de `_verificar_politica_de_auditoria` sin cubrir (nombre, `PERMISSIVE`, comando, roles, `WITH CHECK`) y una sonda de `TRUNCATE` que no dependa de la palabra en mayúsculas, cada una vista roja con una copia mutada; **R9**, con identidades reales de la misma administración, la diferencia de tiempo entre un 403 y un 404 medida en 200 pedidos de cada uno y comparada con la de dos 404, con el criterio y el resultado en el informe (si hay diferencia explotable, frenar y volver a Juani). **D-2** queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se verifica que 0019 y 0020 no agregan ninguna. Escenarios: `auditoria-de-acciones` › Dos casos de uso con la misma acción. Lecciones: L-012, L-013, L-019.
+- [x] 4.3 Deuda del 2a con dueño 2b (L-012): **V2-7**, `@accion_sensible` falla al registrar dos casos con la misma acción o evento, y se reescribe el test de `test_auditoria_transaccion.py:416` hasta verlo rojo con un segundo caso (D13); **D-1 y D-6**, un test por cada una de las cinco comparaciones de `_verificar_politica_de_auditoria` sin cubrir (nombre, `PERMISSIVE`, comando, roles, `WITH CHECK`) y una sonda de `TRUNCATE` que no dependa de la palabra en mayúsculas, cada una vista roja con una copia mutada; **R9**, con identidades reales de la misma administración, la diferencia de tiempo entre un 403 y un 404 medida en 200 pedidos de cada uno y comparada con la de dos 404, con el criterio y el resultado en el informe (si hay diferencia explotable, frenar y volver a Juani). **D-2** queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se verifica que 0019 y 0020 no agregan ninguna. Escenarios: `auditoria-de-acciones` › Dos casos de uso con la misma acción. Lecciones: L-012, L-013, L-019.
+  ```text
+  RED $ cd backend; date +%T; uv run pytest tests/integracion/test_auditoria_transaccion.py -q -k test_rojo
+  11:56:49 / 2 failed, 5 deselected: DID NOT RAISE ValueError (acción y evento duplicados).
+  ```
+  Mutantes en copias `.atl/bloque-b/mut43-*`, PYTHONPATH a cada copia, originales intactos:
+  ```diff
+  # 11:58:38 nombre / 11:58:44 permisiva / 11:58:51 comando / 11:58:58 roles / 11:59:05 with_check
+  # uv run pytest tests/integracion/test_deuda_acceso_2b.py -q -k cada_comparacion
+  - if <comparación individual de _verificar_politica_de_auditoria>:
+  + if False:
+  # Cada copia: 1 failed, 4 passed; la comparación omitida deja pasar su catálogo alterado.
+  # 11:59:13, plugin de ataque a la base de tests, -k 'truncate_se_prueba or migraciones_no'
+  + catalogo.execute("DROP TRIGGER trg_auditoria_sin_truncate ON auditoria")
+  + catalogo.execute("CREATE TABLE ancla (id bigint REFERENCES auditoria(id))")
+  # 3 failed: ambas grafías de truncate dejan de bloquear y aparece la FK.
+  # 11:59:30, plugin de latencia -k tiempos_403
+  + if respuesta.status_code == 403:
+  +     time.sleep(0.020)
+  # 1 failed: supera el umbral de discriminación temporal.
+  ```
+  Criterio del constructor para R9: 10 calentamientos y 200 pedidos por clase,
+  rotando el orden; medianas y MAD, diferencia <= max(5 ms, diferencia entre dos 404 +
+  3 MAD). Es un ensayo local con ruido de transporte, no una demostración sobre Internet.
+  Primera medición válida: 403=7.554 ms, 404=7.067 ms, control=0.117 ms, MAD=0.502 ms;
+  diferencia=0.487 ms < 5 ms. Identidad de Clerk real y rol vecino de la misma administración.
+  El primer intento usó el detalle público para vecinos (200): se corrigió el ensayo a
+  `/resumen`, que exige `ver_configuracion_del_edificio`; no se cambió autorización.
+
+  ```text
+  GREEN $ cd backend; date +%T; uv run pytest tests/integracion/test_deuda_acceso_2b.py -q -s; uv run pytest tests/integracion/test_auditoria_transaccion.py -q
+  11:59:48 / 9 passed, 1 warning in 11.17s; 7 passed in 4.58s (secuenciales).
+  R9 final: 7.953 / 7.585 / 7.605 ms; diferencia=0.368; control=0.020; MAD=0.638; umbral=5 ms.
+  $ uv run ruff check . && uv run ruff format --check . && uv run mypy
+  All checks passed! / 250 files already formatted / no issues found in 226 source files
+  ```
+
 - [ ] 4.4 Dos guardas y parseo (D3, RB2b-2) en el barrido y los tests de rutas: `token_de_sesion_actual` verifica sin SQL; `identidad_actual` depende de ella y resuelve persona completa. Sólo `GET /api/sesion` y `POST /api/invitaciones/aceptar` usan `Depends(token_de_sesion_actual)` sin persona, con `RutaConTokenVerificado`, variante de `RutaConIdentidad` cuya guarda reducida usa la misma dependencia, solver y overrides. Ninguna se agrega a `_RUTAS_PUBLICAS` (sólo `/api/salud`). El barrido compara el conjunto exacto de rutas con cada guarda, exige 401 y cero SQL sin token o con sesión inválida, incluso con JSON roto, cuerpo ausente y encabezado de administración no UUID. Con sesión válida sin persona, sesión llega al caso de uso y aceptar puede vincular; JSON roto o sin `token` en aceptar da 422, sin resolver persona completa; con cuerpo parseable la guarda corre una sola vez. RED: el barrido actual no reconoce la segunda dependencia y las rutas no existen; una copia que les exige persona completa rechaza la aceptación correcta y falla; sacar la dependencia o volver a la guarda equivocada en el parser rompe el barrido. Escenarios: `autenticacion-con-clerk` › Dos rutas con token sin persona; `gestion-de-usuarios` › Autenticación antes del cuerpo; › Cuerpo inválido con sesión válida. Lecciones: L-013, L-017, L-019, L-022.
 
 ## 5. Gestión de usuarios

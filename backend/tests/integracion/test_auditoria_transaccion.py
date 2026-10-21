@@ -447,34 +447,26 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion.close()
 
 
+@pytest.mark.parametrize("evento", [Accion.CREAR_EDIFICIO, "ingreso_exitoso"])
 def test_rojo_un_caso_marcado_que_no_registra_no_pasa_el_sweep(
-    contenedor: PostgresContainer, esquema: None
+    monkeypatch: pytest.MonkeyPatch, evento: Accion | str
 ) -> None:
-    """L-013: sobre una COPIA del registro (`casos_sensibles_registrados()`
-    ya devuelve una, nunca el dict real), se agrega un caso de uso falso que
-    jamás llama a `registrar()`, y se repite la misma aserción del sweep
-    real para verla fallar."""
+    """V2-7: ejercita el decorador real con dos casos para la misma acción."""
+    monkeypatch.setattr(auditoria_modulo, "_CASOS_SENSIBLES", {})
 
-    def _caso_falso_que_no_registra(sesion: Session) -> None:
-        with sesion.begin_nested() if sesion.in_transaction() else sesion.begin():
-            pass  # a propósito: nunca llama a registrar().
+    def primero() -> None:
+        pass
 
-    registro_falso = {
-        **casos_sensibles_registrados(),
-        Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: _caso_falso_que_no_registra,
-    }
-    assert Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES in registro_falso
+    def segundo() -> None:
+        pass
 
-    sesion = _sesion_app(contenedor)
-    try:
-        _caso_falso_que_no_registra(sesion)
-        sesion.commit()
-        filas = sesion.execute(
-            text("SELECT 1 FROM auditoria WHERE accion = :accion"),
-            {"accion": Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES.value},
-        ).all()
-        with pytest.raises(AssertionError):
-            assert len(filas) == 1, "se esperaba 1 fila de auditoría para este caso marcado"
-    finally:
-        sesion.rollback()
-        sesion.close()
+    from proptech_core.acceso.dominio.eventos import EventoDeAcceso
+
+    accion = evento if isinstance(evento, Accion) else EventoDeAcceso(evento)
+    auditoria_modulo.accion_sensible(accion)(primero)
+    with pytest.raises(ValueError) as error:
+        auditoria_modulo.accion_sensible(accion)(segundo)
+    assert accion.value in str(error.value)
+    assert "primero" in str(error.value)
+    assert "segundo" in str(error.value)
+    assert auditoria_modulo.casos_sensibles_registrados() == {accion: primero}
