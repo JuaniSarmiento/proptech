@@ -726,8 +726,8 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   1 failed, 2 passed, 3 warnings in 7.06s
   ```
   Hace falta la terna: el primer test inicializa `esquema_migrado` (scope sesión), el segundo borra
-  las tablas y el tercero reutiliza el fixture cacheado. El par sin esa inicialización previa pasa
-  y no representa el orden real de la suite. Ninguna aserción nueva nació verde.
+  las tablas y el tercero reutiliza el fixture cacheado. Un par sin esa inicialización previa no
+  ejercita el fixture cacheado del orden real de la suite. Ninguna aserción nueva nació verde.
   La primera corrección mostró otro estado global contaminado (14:36:32–14:37:05): Alembic en
   proceso pisaba los logs y el worker encontraba `0 == 4` reintentos. Su test ahora restaura
   handlers, filtros, nivel, propagación y disabled de los loggers previos. Además, la base aislada
@@ -799,6 +799,23 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   ```
   El cierre de A1/A2 se repite después del commit de esta corrección; la evidencia final se pega
   debajo de esta tarea, sin un commit posterior a las suites.
+
+  **Cierre completo después del último commit, HEAD `935fb6acd56440cfad5553df3bdbcdb09115466d`:**
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+  14:54:20–15:08:44 (21/10/2026), en primer plano, exit 0
+  =========== 2656 passed, 1 xfailed, 18 warnings in 855.46s (0:14:15) ===========
+  ```
+  Cero failed y cero errors; las seis víctimas del worker y todo el barrido de rutas pasaron.
+  Se conserva el único xfail previo. La regresión de cierre de conexiones suma un test (2657 recolectados).
+  ```text
+  $ date +%T; git rev-parse HEAD; bash infra/ci/humo.sh
+  15:08:57–15:11:31 (21/10/2026), mismo HEAD, en primer plano, exit 0
+  HUMO OK
+  ```
+  La limpieza del script también terminó con exit 0. La restauración conservó revisión 0020,
+  conteos por administración y políticas de RLS. Sólo esta evidencia documental queda sin commit,
+  conforme a la decisión de L-030/L-031 de mantener las suites después del último commit.
 
 ## 6. Web e infraestructura
 
