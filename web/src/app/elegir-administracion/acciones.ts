@@ -1,7 +1,9 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { esIdValido, pedirApi } from "../../lib/api/cliente";
+import { regresoSeguro } from "../../lib/sesion";
 
 export async function elegirAdministracionAction(id: string): Promise<boolean> {
   if (!esIdValido(id)) return false;
@@ -17,6 +19,17 @@ export async function elegirAdministracionAction(id: string): Promise<boolean> {
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
-  await pedirApi("/api/sesion/ingreso", { metodo: "POST" });
-  return true;
+  const ingreso = await pedirApi("/api/sesion/ingreso", { metodo: "POST" });
+  return ingreso.estado === "ok";
+}
+
+export async function entrarAction(
+  regreso: string,
+  _previo: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const id = String(form.get("administracion_id") ?? "");
+  if (!(await elegirAdministracionAction(id)))
+    return "No pudimos ingresar. Volvé a elegir tu administración.";
+  redirect(regresoSeguro(regreso));
 }

@@ -68,3 +68,22 @@ para entrar. Cuando acepte, aparece como 'Aceptada' y ya puede ingresar."
   viven en el padrón).
 
 OK del brief: **Juani, 21/10/2026** (en la conversación: "sisi").
+
+## Ajustes al construir
+
+Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
+
+- 7.1: aceptar no consulta la invitación. Dice "Aceptá tu invitación", explica la acción y ofrece
+  "Aceptar e ingresar". Los nombres se consultan sólo después del éxito. Todo rechazo muestra
+  "Este enlace ya no sirve. Pedile a tu administración que te invite de nuevo."; con sesión ofrece
+  "Cerrar sesión" sin distinguir el motivo. Selector: sólo nombres entregados por GET /api/sesion.
+- 7.3 y 7.4: sin Reenviar ni Reintentar invitaciones. Estado fallida: "No se pudo enviar todavía;
+  se reintenta solo". Revocar y Quitar usan exclusivamente los contratos existentes.
+- 7.2 sigue siendo borrador, con responsable, contacto y conservación visiblemente pendientes de
+  Juani; no se marca completa.
+- Capturas a 1440 y 320 px, según el brief de esta segunda vuelta.
+
+Decisión del constructor (21/10/2026, L-030): Personal filtra las asignaciones del personal; vecinos
+se muestran en el padrón. El GET /api/personal exige super admin: otros perfiles ven Sin permiso,
+como establece D5; no se amplía su lectura. Se conserva el sistema visual existente; no hacen falta
+probes ni mock nuevos porque el shape cerrado fija composición, componentes y tokens.

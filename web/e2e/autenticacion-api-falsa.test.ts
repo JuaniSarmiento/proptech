@@ -40,3 +40,32 @@ it("GET /api/sesion funciona sin selector; POST no sustituye GET", async () => {
   });
   expect((await fetch(`${base}/api/sesion`, { method: "POST", headers })).status).toBe(405);
 });
+
+it.each([
+  { body: {}, status: 422 },
+  { body: { token: 2 }, status: 422 },
+  { body: { token: "sobre-valido", extra: true }, status: 422 },
+  { body: { token: "sobre-vencido" }, status: 404 },
+  { body: { token: "email-distinto" }, status: 404 },
+  { body: { token: "sobre-valido" }, status: 200 },
+])("aceptar valida el contrato firmado: %j", async ({ body, status }) => {
+  const res = await fetch(`${base}/api/invitaciones/aceptar`, {
+    method: "POST",
+    headers: {
+      ...cabecerasDePrueba(),
+      "content-type": "application/json",
+      "x-proptech-administracion": "ajena-ignorada-en-aceptar",
+    },
+    body: JSON.stringify(body),
+  });
+  expect(res.status).toBe(status);
+  if (status === 404) expect(await res.json()).toEqual({ detail: "no encontrado" });
+});
+it("aceptar autentica antes del JSON roto y sólo permite POST", async () => {
+  expect(
+    (await fetch(`${base}/api/invitaciones/aceptar`, { method: "POST", body: "{" })).status,
+  ).toBe(401);
+  expect(
+    (await fetch(`${base}/api/invitaciones/aceptar`, { headers: cabecerasDePrueba() })).status,
+  ).toBe(405);
+});

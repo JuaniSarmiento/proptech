@@ -1002,8 +1002,33 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
 
 - [x] 7.0 **Bloqueante del grupo**: `shape` de las pantallas de ingreso, selector, aceptar invitación, aviso de privacidad, barra superior, personal y vecinos del padrón, acordado con Juani con la skill impeccable (como el del 3b, `openspec/exploraciones/2026-10-19-shape-pantallas-del-edificio.md`), guardado en `openspec/exploraciones/` y firmado por Juani con fecha. Sin eso, ninguna tarea de 7.1 a 7.4 empieza. Verificación: el archivo del shape con la firma. Escenarios: `gestion-de-usuarios` › Pantallas de gestión de usuarios (la precondición). Lecciones: L-026.
   **7.0 verificada:** shape completo en `openspec/exploraciones/2026-10-21-shape-login-y-usuarios.md`, aprobado por Juani el 21/10/2026, commit `db8329b`.
-- [ ] 7.1 Ingreso, selector, aceptar invitación y barra superior (D3, D6, D12), según el shape: `/ingresar` y `/registrarse` con los componentes de Clerk en castellano y la apariencia de `DESIGN.md`, enlace al aviso; `/elegir-administracion` (directo con una sola); `/invitacion/[sobre]`, sin recursos de terceros, sin caché ni referente, con limpieza de la URL al terminar (D6); la barra superior con nombre, administración, "Salir" y "Cambiar de administración" (deuda del 3b). Tests de componentes y Playwright contra la API falsa ampliada, que valida `Authorization` y `X-Proptech-Administracion` como la real (L-027); capturas a 320 y 1280 px mirada en navegador real (L-026). RED: las páginas no existen y la barra dice "Administración". Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones; › Enlace desde el ingreso; `pantallas-del-edificio` › Quién entró; › Salir; `gestion-de-usuarios` › Aceptación correcta (la parte de la web). Lecciones: L-026, L-027, L-028.
-  **Detenida por el constructor (L-029/L-030):** el shape pide quién invita, administración y perfil/unidad antes de aceptar, distinguir email distinto y perfil/cantidad de edificios en el selector. D3 sólo entrega nombres; D6 no ofrece lectura previa y exige un 404 uniforme para todos los rechazos. No agrego una consulta de datos personales ni distingo rechazos sin decisión firmada. Consulta pendiente a Juani; 7.2–7.4 no dependen de esta ampliación.
+- [x] 7.1 Ingreso, selector, aceptar invitación y barra superior (D3, D6, D12), según el shape: `/ingresar` y `/registrarse` con los componentes de Clerk en castellano y la apariencia de `DESIGN.md`, enlace al aviso; `/elegir-administracion` (directo con una sola); `/invitacion/[sobre]`, sin recursos de terceros, sin caché ni referente, con limpieza de la URL al terminar (D6); la barra superior con nombre, administración, "Salir" y "Cambiar de administración" (deuda del 3b). Tests de componentes y Playwright contra la API falsa ampliada, que valida `Authorization` y `X-Proptech-Administracion` como la real (L-027); capturas a 320 y 1280 px mirada en navegador real (L-026). RED: las páginas no existen y la barra dice "Administración". Escenarios: `autenticacion-con-clerk` › Una sola administración; › Dos administraciones; › Enlace desde el ingreso; `pantallas-del-edificio` › Quién entró; › Salir; `gestion-de-usuarios` › Aceptación correcta (la parte de la web). Lecciones: L-026, L-027, L-028.
+  Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
+  sin consulta previa; rechazo uniforme de D6; sólo nombres en selector. Resolución en el shape.
+  Decisión del constructor (L-030): se aplica la lectura acotada del brief, sin releer toda la KB
+  que sugiere el contexto genérico de OPSX. Capturas a 1440 y 320 según este pedido.
+  ```text
+  RED $ date +%T; bash infra/ci/test-web-navegador.sh acceso-pantallas.spec.ts (puertos 3700/4700)
+  17:07:11 / 4 failed: getByRole('alert') ambigua, matchea también el
+  route-announcer de Next (role="alert") además de nuestro mensaje uniforme.
+  Fix: `.filter({ hasText: mensaje })` en el spec (ambigüedad real, no de montaje).
+  GREEN $ date +%T; mismo comando
+  17:07:57 / 7 passed (19.9s).
+  Mutante (L-019) sobre invitacion/acciones.test.ts, nacido verde: cambié el
+  redirect de éxito en acciones.ts de `?aceptada=1` a sin query.
+  $ date +%T; corepack pnpm@12.10.1 exec vitest run src/app/invitacion/acciones.test.ts
+  17:09:11 / 1 failed, 3 passed: digest no matchea `?aceptada=1`. Revertido
+  byte a byte (`git diff --stat` vacío); 17:09:15 / 4 passed de nuevo.
+  ```
+  Suite completa: 17:05:42 / 54 archivos, 344 tests pasados (`vitest run`).
+  Biome: 2 errores reales encontrados y corregidos antes del commit: `<a href="">`
+  inválido en `ingresar/Pantalla.tsx` (ahora botón con `location.reload()`) y
+  formato en `invitacion/Pantalla.tsx`; `biome ci` exit 0 tras el fix.
+  `tsc --noEmit` exit 0.
+  Capturas 1440/320 miradas con Read: `.git/informes-2b/pantallas/{ingresar,selector,invitacion,barra}-{1440,320}.png`.
+  Sin defectos materiales; el menú de cuenta a 320px se superpone al título al
+  abrirse (comportamiento esperado de un desplegable, mismo patrón `<details>`
+  que el resto del sistema), sin scroll horizontal.
 - [ ] 7.2 Aviso de privacidad (ley 25.326), sin sesión, según el shape: qué guarda Clerk (email y nombre), transferencia internacional, finalidad, responsable y derechos de acceso, rectificación y supresión. El constructor arma el borrador; **Juani aprueba el texto** antes de marcar la tarea. Test de que la ruta responde sin sesión y tiene cada una de esas partes; mirada en navegador real. RED: la ruta no existe. Escenarios: `autenticacion-con-clerk` › Aviso sin sesión. Lecciones: L-026.
   ```text
   RED $ date +%T; corepack pnpm@12.10.1 --dir web exec vitest run src/app/privacidad/page.test.tsx
@@ -1042,19 +1067,14 @@ Los `test_worker_*` que fallaron en la corrida completa pasan corridos solos (14
   Capturas: `.git/informes-2b/pantallas/privacidad-{1440,320}.png`; lectura centrada de 70ch,
   escala y colores existentes, sin defectos materiales tras la mirada. Logs en `.git/informes-2b/logs/7.2-*`.
 - [ ] 7.3 Pantalla de personal (D5), según el shape: lista con perfil, alcance y estado de invitación, invitar con perfil y alcance, revocar y quitar, con su ayuda "?" (D-102), estados de `pantallas-del-edificio`, errores asociados al campo y combinaciones de capas (panel + ayuda + menú, L-028); sin los controles para quien no es super admin. Playwright contra la API falsa que valida método, `Content-Type` y forma del cuerpo de cada escritura (L-027); mirada a 320 y 1280 px. RED: la página no existe. Escenarios: `gestion-de-usuarios` › Invitar desde la pantalla; › Error asociado al campo. Lecciones: L-026, L-027, L-028.
-  **Detenida por el constructor (L-029/L-030):** el shape exige Reenviar y Reintentar tras fallo de Clerk,
-  pero no existe ruta de reenvío. `usuarios._alta` inserta siempre una asignación nueva; repetir el mismo
-  perfil y alcance responde 409 (`test_ajeno_y_duplicado` / `test_reinvitar_revoca_la_anterior` en
-  `backend/tests/integracion/test_invitar_personal_api.py`, la reinvitación agrega otro perfil).
-  No quito y recreo asignaciones ni agrego otro perfil para simular un reenvío: cambiaría permisos.
-  Consulta pendiente a Juani sobre operación nueva o ajuste explícito del shape. Sin código ni rojo/verde.
+  Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
+  sin Reenviar ni Reintentar; fallida dice "No se pudo enviar todavía; se reintenta solo".
+  Decisión del constructor (L-030): lista sólo personal; GET exige super admin según D5, por eso
+  otros perfiles ven Sin permiso. No se cambia la API para ofrecerles una lista de lectura.
 - [ ] 7.4 Vecinos en el padrón (D5), según el shape: dentro de cada unidad, sus vecinos con vínculo y estado de invitación y el alta con nombre, email y vínculo, sólo para el super admin. Mismas exigencias que 7.3. RED: el padrón no muestra vecinos. Escenarios: `gestion-de-usuarios` › Un administrador abre el padrón; › Pantallas de gestión de usuarios. Lecciones: L-026, L-027, L-028.
 
-  **Dependencia sin resolver, declarada por el constructor:** el estado del shape "No se pudo enviar"
-  con "Reintentar" también aplica a las invitaciones del padrón. D5 tiene alta de vecino, pero repetirla
-  para el mismo vínculo/unidad devuelve 409; la misma operación ausente de 7.3 impide cerrar ese estado.
-  No se implementa ni se marca 7.4 con un reintento que sólo refresque la pantalla o cambie el vínculo.
-  Se conserva el padrón existente. Sin código ni rojo/verde.
+  Ajuste del shape resuelto por el orquestador, 21/10/2026, para respetar el contrato firmado:
+  el estado fallida y la ausencia de reenvío también rigen en vecinos.
 
   **Verificaciones posteriores al último commit del bloque, `390b22e8e6497426435b7dd639da4cce3edd8799` (L-031):**
   Corridas secuenciales, en primer plano. La evidencia posterior al commit queda sin commitear en este archivo.

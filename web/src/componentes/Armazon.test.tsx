@@ -5,6 +5,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
 import { Armazon } from "./Armazon";
+import { SesionDePantalla } from "./SesionDePantalla";
 
 afterEach(cleanup);
 
@@ -26,14 +27,24 @@ describe("Armazon", () => {
     expect(within(screen.getByRole("main")).getByRole("heading", { level: 1 })).toBeTruthy();
   });
 
-  it("fuera de un edificio no muestra miga, y el usuario es el rol (la API no expone un nombre)", () => {
+  it("fuera de un edificio muestra la persona y su administración real", () => {
     render(
-      <Armazon>
-        <h1>Mis edificios</h1>
-      </Armazon>,
+      <SesionDePantalla
+        value={{
+          datos: {
+            persona: { nombre: "Ana Ejemplo" },
+            administraciones: [{ id: "a", nombre: "Administración del Parque" }],
+          },
+          administracionId: "a",
+        }}
+      >
+        <Armazon>
+          <h1>Mis edificios</h1>
+        </Armazon>
+      </SesionDePantalla>,
     );
     expect(screen.queryByRole("navigation", { name: "Estás en" })).toBeNull();
-    expect(within(screen.getByRole("banner")).getByText("Administración")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("Ana Ejemplo")).toBeTruthy();
   });
 
   it("sin violaciones de axe", async () => {

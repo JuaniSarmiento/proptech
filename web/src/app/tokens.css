@@ -1761,3 +1761,65 @@ h2 {
 .saldos-previos .formulario {
   max-width: 40rem;
 }
+
+/* Acceso y cuenta: los mismos tokens y componentes del administrador. */
+.pagina-acceso {
+  max-width: 30rem;
+  margin: 2rem auto;
+  display: grid;
+  gap: 1.5rem;
+}
+.pagina-acceso .panel {
+  display: grid;
+  gap: 1rem;
+}
+.clerk-proptech {
+  width: 100%;
+  max-width: 100%;
+}
+.clerk-campo {
+  border: 1px solid var(--color-grafito);
+}
+.cuenta-en-barra {
+  margin-left: auto;
+  min-width: 0;
+  position: relative;
+}
+.cuenta-en-barra summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.cuenta-en-barra summary span {
+  min-width: 0;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cuenta-en-barra small {
+  display: block;
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cuenta-en-barra__opciones {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--color-papel-claro);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-control);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 12rem;
+}
+@media (max-width: 639px) {
+  .cuenta-en-barra summary span {
+    max-width: 8rem;
+  }
+}

@@ -172,6 +172,7 @@ export function crearServidor(
 
     // L-027: ninguna cookie autentica a la API, ni siquiera en pruebas.
     let valido = false;
+    let identidad = "";
     try {
       const bearer = /^Bearer ([^.\s]+\.[^.\s]+\.[^.\s]+)$/.exec(
         pedido.headers.authorization ?? "",
@@ -182,6 +183,7 @@ export function crearServidor(
         const algoritmo = JSON.parse(Buffer.from(cabecera, "base64url").toString());
         const claims = JSON.parse(Buffer.from(cuerpo, "base64url").toString());
         const ahora = Date.now() / 1000;
+        identidad = claims.sub;
         valido =
           algoritmo.alg === "RS256" &&
           verify(
@@ -196,14 +198,29 @@ export function crearServidor(
           ahora >= claims.nbf - 5 &&
           claims.iss === EMISOR &&
           claims.azp === configuracion.origen &&
-          claims.sub === "user_prueba";
+          [
+            "user_prueba",
+            "user_varias",
+            "user_sin_permiso",
+            "user_personal_vacio",
+            "user_personal_error",
+            "user_personal_lento",
+          ].includes(claims.sub);
       }
     } catch {
       /* Un 401 uniforme, sin errores del verificador ni credenciales. */
     }
     const esSesion = url.pathname === "/api/sesion";
     const selector = pedido.headers["x-proptech-administracion"];
-    if (!valido || (!esSesion && selector !== undefined && selector !== ADMINISTRACION)) {
+    const esAceptar = url.pathname === "/api/invitaciones/aceptar";
+    if (
+      !valido ||
+      (!esSesion &&
+        !esAceptar &&
+        selector !== undefined &&
+        selector !== ADMINISTRACION &&
+        !(identidad === "user_varias" && selector === "10000000-0000-0000-0000-000000000002"))
+    ) {
       respuesta.writeHead(401).end();
       return;
     }
@@ -215,15 +232,66 @@ export function crearServidor(
       respuesta.writeHead(200, { "content-type": "application/json" }).end(
         JSON.stringify({
           persona: { nombre: "Persona de prueba" },
-          administraciones: [{ id: ADMINISTRACION, nombre: "Administración de prueba" }],
+          administraciones: [
+            { id: ADMINISTRACION, nombre: "Administración de prueba" },
+            ...(identidad === "user_varias"
+              ? [
+                  {
+                    id: "10000000-0000-0000-0000-000000000002",
+                    nombre: "Administración del Parque",
+                  },
+                ]
+              : []),
+          ],
         }),
       );
+      return;
+    }
+    if (esAceptar) {
+      if (pedido.method !== "POST") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      let crudo = "";
+      pedido.on("data", (t) => {
+        crudo += t;
+      });
+      pedido.on("end", () => {
+        let cuerpo: unknown;
+        try {
+          cuerpo = JSON.parse(crudo);
+        } catch {
+          cuerpo = null;
+        }
+        const valido =
+          cuerpo !== null &&
+          typeof cuerpo === "object" &&
+          !Array.isArray(cuerpo) &&
+          Object.keys(cuerpo).length === 1 &&
+          typeof (cuerpo as Record<string, unknown>).token === "string" &&
+          /^application\/json/.test(String(pedido.headers["content-type"]));
+        if (!valido) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: [{ type: "value_error", loc: ["body", "token"] }] }));
+          return;
+        }
+        if ((cuerpo as { token: string }).token !== "sobre-valido") {
+          respuesta
+            .writeHead(404, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: "no encontrado" }));
+          return;
+        }
+        respuesta
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify({ aceptada: true }));
+      });
       return;
     }
     if (url.pathname === "/api/sesion/ingreso") {
       respuesta
         .writeHead(pedido.method === "POST" ? 200 : 405, { "content-type": "application/json" })
-        .end("{}");
+        .end(JSON.stringify({ registrado: true }));
       return;
     }
 

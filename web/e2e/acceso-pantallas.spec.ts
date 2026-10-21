@@ -1,0 +1,78 @@
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { sinViolacionesEnElNavegador } from "./accesibilidad";
+import { expect, test } from "./prueba";
+import { crearToken } from "./sesion-local";
+
+const mensaje = "Este enlace ya no sirve. Pedile a tu administración que te invite de nuevo.";
+for (const ancho of [1440, 320]) {
+  test(`7.1 ingreso sin Clerk, selector, invitación y barra a ${ancho}`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await page.setViewportSize({ width: ancho, height: 900 });
+    await context.clearCookies();
+    await page.goto("/ingresar");
+    await expect(page.getByRole("heading", { name: "Ingresar", exact: true })).toBeVisible();
+    await expect(page.getByText("No pudimos conectar con el servicio de ingreso.")).toBeVisible({
+      timeout: 15000,
+    });
+    const dir = resolve("../.git/informes-2b/pantallas");
+    mkdirSync(dir, { recursive: true });
+    await sinViolacionesEnElNavegador(page);
+    await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
+    await context.addCookies([
+      { name: "__session", value: crearToken({ sub: "user_varias" }), url: baseURL! },
+      { name: "__client_uat", value: String(Math.floor(Date.now() / 1000)), url: baseURL! },
+    ]);
+    await page.goto("/elegir-administracion");
+    await expect(page.getByRole("heading", { name: "Elegí una administración" })).toBeVisible();
+    await sinViolacionesEnElNavegador(page);
+    await page.screenshot({ path: `${dir}/selector-${ancho}.png`, fullPage: true });
+    await page.getByRole("button", { name: "Administración de prueba", exact: true }).click();
+    await expect(page).toHaveURL(/edificios$/);
+    await expect(page.getByRole("banner")).toContainText("Persona de prueba");
+    await page.locator(".cuenta-en-barra summary").click();
+    await expect(page.getByRole("link", { name: "Cambiar de administración" })).toBeVisible();
+    await page.screenshot({ path: `${dir}/barra-${ancho}.png`, fullPage: true });
+    await page.goto("/invitacion/sobre-valido");
+    await expect(page.getByRole("heading", { name: "Aceptá tu invitación" })).toBeVisible();
+    await expect(page.getByText("Administración de prueba", { exact: true })).toHaveCount(0);
+    await sinViolacionesEnElNavegador(page);
+    await page.screenshot({ path: `${dir}/invitacion-${ancho}.png`, fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      ancho,
+    );
+    await page.getByRole("button", { name: "Aceptar e ingresar", exact: true }).click();
+    await expect(page).toHaveURL(/elegir-administracion\?aceptada=1/);
+    await expect(page.getByText("Invitación aceptada.", { exact: true })).toBeVisible();
+  });
+}
+for (const sobre of ["sobre-vencido", "sobre-usado", "sobre-revocado", "email-distinto"]) {
+  test(`7.1 rechazo uniforme: ${sobre}, sin recursos de terceros`, async ({ page }) => {
+    const terceros: string[] = [];
+    page.on("request", (r) => {
+      if (!r.url().startsWith("http://127.0.0.1:")) terceros.push(r.url());
+    });
+    const res = await page.goto(`/invitacion/${sobre}`);
+    expect(res?.headers()["referrer-policy"]).toBe("no-referrer");
+    expect(res?.headers()["cache-control"]).toContain("no-store");
+    await page.getByRole("button", { name: "Aceptar e ingresar" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: mensaje })).toHaveText(mensaje);
+    await expect(page.getByRole("link", { name: "Cerrar sesión" })).toBeVisible();
+    expect(terceros).toEqual([]);
+  });
+}
+test("7.1 una sola entra directo, cookie httpOnly y salida disponible", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/elegir-administracion");
+  await expect(page).toHaveURL(/edificios$/);
+  expect(
+    (await context.cookies()).find((c) => c.name === "proptech_administracion")?.httpOnly,
+  ).toBe(true);
+  await page.locator(".cuenta-en-barra summary").click();
+  await expect(page.getByRole("link", { name: "Cerrar sesión" })).toBeVisible();
+});

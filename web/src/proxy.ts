@@ -36,6 +36,11 @@ const middlewareDeClerk = clerkMiddleware(
 export default async function proxy(...argumentos: Parameters<typeof middlewareDeClerk>) {
   const respuesta = await middlewareDeClerk(...argumentos);
   if (!respuesta) return respuesta;
+  const pedido = argumentos[0];
+  if (pedido.nextUrl.pathname.startsWith("/invitacion/")) {
+    respuesta.headers.set("Referrer-Policy", "no-referrer");
+    respuesta.headers.set("Cache-Control", "no-store");
+  }
   // Clerk 7.9.19 conserva unsafe-inline incluso con strict. Quitarlo tanto de
   // la respuesta como de la CSP que Next lee para aplicar el nonce al render.
   for (const nombre of [

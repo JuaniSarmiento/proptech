@@ -9,8 +9,10 @@
  * el armazón no necesita saber si está abierta.
  */
 
-import { Building2, ChevronRight, UserRound } from "lucide-react";
+import { Building2, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { CuentaEnBarra } from "./CuentaEnBarra";
 
 type Props = {
   publico?: boolean;
@@ -44,16 +46,7 @@ export function Armazon({ edificio, menu, children, publico = false }: Props) {
             </ol>
           </nav>
         ) : null}
-        {/* La API todavía no expone quién inició sesión (no hay un "yo"):
-         * se muestra el rol de esta superficie, nunca un nombre inventado. */}
-        {publico ? null : (
-          <p className="barra-superior__usuario">
-            <span className="barra-superior__avatar" aria-hidden="true">
-              <UserRound size={16} strokeWidth={2} />
-            </span>
-            Administración
-          </p>
-        )}
+        {publico ? null : <CuentaEnBarra />}
       </header>
       <div className="armazon__cuerpo">
         {menu}
