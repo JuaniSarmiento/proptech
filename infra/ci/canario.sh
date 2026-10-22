@@ -40,8 +40,19 @@ it("canario roto a propósito", () => {
 EOF
 fi
 
+# OPS-2: en backend, test-backend.sh acepta argumentos opcionales que pasa
+# a pytest (sin argumentos corre la suite completa, igual que antes). El
+# canario le pasa sólo el archivo roto para no repetir toda la suite al
+# final de cada corrida del CI; el camino que ejercita —este mismo
+# script, con el mismo `set -euo pipefail` y el mismo `uv run pytest`— es
+# idéntico al que usa el paso normal.
+ARGS_EXTRA=()
+if [ "$LADO" = "backend" ]; then
+  ARGS_EXTRA=("$ARCHIVO_ROTO")
+fi
+
 echo "--- canario ($LADO): corriendo $SCRIPT_DE_TEST con un test roto a propósito ---"
-if bash "$SCRIPT_DE_TEST"; then
+if bash "$SCRIPT_DE_TEST" "${ARGS_EXTRA[@]}"; then
   echo "ERROR: el canario esperaba que el script de test fallara y terminó en 0" >&2
   exit 1
 fi
