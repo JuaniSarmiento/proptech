@@ -292,3 +292,4 @@ fijaron, cada una con su alternativa descartada y el costo de revertir en `desig
 | Juani | 21/10/2026 | Todo el change login-y-usuarios tal como está en esta propuesta, con E1 a E15 aprobadas |
 | Juani | 21/10/2026 | E16: la clave secreta de Clerk en el servidor de Next, tal como está en el proposal y en el design |
 | Juani | 21/10/2026 | E17: el ingreso con Google, tal como está en el proposal y en el design |
+| Juani | 21/10/2026 | Decisiones de cierre del design: R2B-3 con minúsculas sólo ASCII y el caso no ASCII aceptado; la 8.2 acortada con el resto como deuda declarada; el aviso de privacidad como borrador con los datos legales como deuda antes de producción |

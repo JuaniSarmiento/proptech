@@ -328,7 +328,7 @@ revertir**: una fila de la matriz, su test de 144 a 153 celdas y el permiso de d
   y calcula el resumen del token recuperado; el token crudo sólo existe en memoria de la API.
 - La API exige `email` no vacío y **`email_verified is True`**, ambos claims firmados del token de
   sesión (fuentes de RB2b-3 en Context). No acepta `"true"`, valores ausentes ni un email secundario
-  como prueba del principal. Compara `email.lower()` con el email de la persona, guardado en minúsculas.
+  como prueba del principal. Compara el email pasado a minúsculas sólo ASCII (A-Z, R2B-3) con el de la persona, guardado en minúsculas (ver Decisiones de cierre).
   Busca la invitación por `token_resumen` con `invitacion_por_token`, `FOR SELECT`, cuyo `qual` completo
   es `token_resumen = decode(nullif(current_setting('app.invitacion_token', true), ''), 'hex') AND
   nullif(current_setting('app.administracion_id', true), '') IS NULL`. `app.invitacion_token` lleva
@@ -595,3 +595,23 @@ desarrollo (credenciales compartidas de Clerk; producción necesita las propias,
 código del login (el componente de Clerk muestra el botón) ni la regla de aceptación: el email verificado
 tiene que coincidir con el de la invitación (E7). Cambia el aviso de privacidad (Clerk recibe también la foto
 de perfil de Google). Pendiente de la firma de Juani (E17 en la sección Aprobación del proposal).
+
+## Decisiones de cierre (21/10/2026)
+
+Decididas por Juani en la conversación del 21/10/2026 y firmadas en la tabla de Aprobación.
+
+1. **R2B-3, minúsculas sólo ASCII en la aceptación.** La aceptación compara el email del token pasado
+   a minúsculas sólo A-Z, para que una mayúscula no ASCII no permita aceptar la invitación de otro
+   buzón. El alta del email sigue usando `str.lower()` (`datos_de_usuario.py:16`) y el CHECK de la
+   migración 0003 también. **Caso aceptado**: un email con una mayúscula no ASCII (por ejemplo
+   `Ärni@...`) se guarda en minúscula y, si Clerk lo entrega con la mayúscula, su dueño recibe 404 al
+   aceptar (RB2b-post-2). Es raro y falla cerrado; unificar la comparación en todo el sistema
+   necesita una migración y queda como deuda.
+2. **La 8.2 se acorta.** Con Juani al teclado se verifica: registrarse desde el mail y entrar, Google
+   con el email invitado y el rechazo con otro Gmail, y revocar una invitación comprobándolo en el
+   panel de Clerk. Quedan como deuda declarada (SUPUESTO en el informe): ingreso con link por email,
+   bloqueo por intentos fallidos, selector con una segunda administración, email secundario y
+   cambio del principal, reinvitar con una `enviada` y revocar en vuelo contra Clerk real (este
+   último cubierto contra el Clerk falso por RB2b-post-1).
+3. **Aviso de privacidad (7.2).** Queda como borrador visible, con responsable, contacto y
+   conservación marcados como pendientes. Completarlos es deuda obligatoria antes de producción.
