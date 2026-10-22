@@ -1398,6 +1398,49 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
     (puertos 3850/4850) → 172 passed, incluidos los 3 nuevos de `ticket-de-invitacion.spec.ts`
     (21/10/2026 21:54-21:59), SHA de la corrida `3c5b7b548766636ce32ecac9b97488aab5b1fa8a`.
 
+  **Informe de la 8.2 corta (decisión de cierre 2, firmada en `2eb8271`), 21/10/2026, stack de Compose
+  en `6df8535` + web reconstruida en `bb0592b`, instancia de desarrollo de Clerk real.** Orquestador
+  anotando; Juani al teclado para registrarse; el resto con su sesión en el navegador.
+  ```
+  21:23  PEM multilínea: API y web lo reciben (empieza con BEGIN PUBLIC KEY, 8 saltos); el worker no
+         lo recibe (por diseño). /api/salud 200; /api/sesion desde afuera 404 (Caddy);
+         /personal sin sesión → 307 /ingresar?regreso=%2Fpersonal. Logs sin errores.
+  21:26:58 alta_inicial (comando D10, email de Juani) → administración 8bd64910…; invitación
+         `enviada` con id de Clerk; auditoría `alta_inicial`. Mail de Clerk recibido 21:27.
+  21:3x  Link del mail → /ingresar?regreso=/invitacion/… ; "Crear cuenta desde mi invitación" →
+         Clerk: "El acceso a esta funcionalidad está restringido". HALLAZGO: se perdía
+         __clerk_ticket (arreglado en 90131a6, ver arriba).
+  22:00  Web reconstruida; /invitacion/x?__clerk_ticket=abc arma ingresar y registrarse con el ticket.
+  22:0x  /ingresar con ticket muestra "This invitation refers to a non-existing identification"
+         (SignIn con ticket de un usuario que no existe); "Crear cuenta desde mi invitación" →
+         registro con email y contraseña OK.
+  22:07:07 auditoría `aceptar_invitacion`; invitación `aceptada`; persona vinculada a Clerk.
+         Pantalla: "Invitación aceptada" + selector con la única administración.
+  22:08:30 auditoría `ingreso_exitoso` al entrar.
+  22:09:51 Invitar a alguien (Administrador, toda la empresa, alias +revocar del email de Juani) →
+         `invitar_personal`; invitación `enviada` con id de Clerk.
+  22:10:04 Revocar → `revocar_invitacion`; fila `revocada`; panel de Clerk (Invitations, All):
+         el alias figura **Revoked** y la primera **Accepted**.
+  ```
+  Errores de conexión de la web hacia Clerk en el log: ninguno en la ventana de la prueba (discrimina
+  el SUPUESTO de la red de la web: la web alcanza Clerk).
+  **Pendiente con Juani**: Google con el email invitado y el rechazo con otro Gmail (el orquestador no
+  inicia sesión en proveedores de identidad).
+  **Deuda declarada** (decisión de cierre 2): link por email, bloqueo por intentos, segunda
+  administración, email secundario y cambio del principal, reinvitar con una `enviada`, revocar en
+  vuelo contra Clerk real.
+  **Hallazgos de la prueba, quedan como deuda (JUICIO del orquestador, confianza alta: vistos en
+  pantalla):**
+  1. Quien llega por primera vez desde el mail cae en Ingresar y ve un error de Clerk en inglés;
+     convendría que el link lleve al registro o traducir/ocultar ese error.
+  2. Tras aceptar, con una sola administración se muestra el selector (el shape dice "entra
+     directo").
+  3. Personal: el botón "Quitar" cae en la columna de Invitación y la columna Acción queda
+     desalineada; además se ofrece "Quitar" sobre el único super admin (la API lo rechaza, R2B-2).
+  4. El menú lateral sólo muestra "Personal": no hay entrada a "Mis edificios".
+  5. Los logs del worker y de httpx salen sin interpolar (`"HTTP Request: %s %s ..."`): en producción
+     un error de Clerk no dice a qué URL ni qué respondió.
+
 ## 9. Cierre
 
 - [x] 9.1 `acceso-de-desarrollo` (D11, E12 firmada 21/10/2026): reescritos `proposal.md`, `design.md`, `tasks.md` y su spec delta para dejarlo en la carga del ejemplo por el camino de D10 (como `proptech_app`, nunca `proptech_migrador`), sin acceso sin login ni `GRANT INSERT ON auditoria`; ese change sigue sin firma propia (tabla "Aprobación" vacía, a la espera de Juani o Alberto). Verificación: `openspec validate acceso-de-desarrollo --strict` → `Change 'acceso-de-desarrollo' is valid` (21/10/2026 21:57:43). Escenarios: ninguno de este cambio. Lecciones: L-029.
