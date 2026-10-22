@@ -1491,3 +1491,39 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
   contenedor, al mismo path bind-mounteado). No se tocó esa carpeta, el stack ni sus contenedores. No se
   intentó arreglar: se frena acá y se informa, tal como pide la convención de la línea 1-4 de este archivo.
   `test-web.sh`, `test-web-navegador.sh` y `humo.sh` quedan pendientes.
+
+  **Re-corrida (orden del orquestador, 21/10/2026, misma noche)**: la causa de la falla anterior era del
+  orquestador al levantar el stack sin el `mkdir -p` previo que pide el README — Docker creó
+  `infra/datos-respaldos/` como root. Ya devuelta a `juanisarmiento:juanisarmiento`; el contenedor de
+  respaldos escribe bien (respaldo real generado 22:28:51: `proptech-20261022T012851Z.dump` y
+  `.ultimo-ok`, no tocados). Retomé desde el paso (2) sobre el mismo HEAD `b85adf8` (sin commits nuevos
+  entre medio).
+
+  ```text
+  $ git rev-parse --short HEAD
+  b85adf8
+  $ date +%T; bash infra/ci/test-backend.sh
+  22:29:08
+  FAILED tests/infra/test_compose.py::test_gitignore_ignora_la_carpeta_de_respaldos
+    OSError: [Errno 39] Directory not empty: '.../infra/datos-respaldos'
+  FAILED tests/unitarios/acceso/test_vocabulario_vigente.py::test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes
+    UnicodeDecodeError: 'utf-8' codec can't decode byte 0x95 in position 129
+  2 failed, 2673 passed, 1 xfailed, 18 warnings in 615.17s (0:10:15)
+  ```
+
+  SHA de esta corrida: `b85adf8`. Dos fallas nuevas, las dos por la misma causa: ahora hay un backup
+  **real** adentro de `infra/datos-respaldos/` (antes el directorio estaba vacío para cualquier corrida de
+  test). Ninguna falla es del código del cambio:
+  - `test_gitignore_ignora_la_carpeta_de_respaldos` (línea 409 de `tests/infra/test_compose.py`) escribe un
+    `.dump` de prueba y al final hace `carpeta.rmdir()` asumiendo que queda vacía; con `proptech-20261022T012851Z.dump`
+    y `.ultimo-ok` real adentro, `rmdir()` falla con `Directory not empty`. No borré nada de esa carpeta.
+  - `test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes` (línea 52 de
+    `tests/unitarios/acceso/test_vocabulario_vigente.py`) recorre todo `infra/**/*` con `archivo.read_text()`
+    buscando vocabulario viejo; sólo excluye `.pyc` y archivos ocultos, así que ahora intenta leer como UTF-8
+    el `.dump` binario real y revienta con `UnicodeDecodeError`.
+  Comparación con 1.1 (2076 passed) y con la corrida anterior de 9.2 (2674 passed, 1 failed): 2673 passed,
+  2 failed, mismo 1 xfailed, mismos 18 warnings — un test menos contado como passed porque
+  `test_gitignore_ignora_la_carpeta_de_respaldos` ahora falla más temprano en el `try` (antes llegaba a la
+  misma falla por otra vía, con `PermissionError`; ahora pasa el `assert` y falla en el `finally`). No se
+  tocó ningún archivo real de `infra/datos-respaldos/`, no se arregló ningún test: se frena otra vez acá,
+  mismo motivo que antes (línea 1-4). `test-web.sh`, `test-web-navegador.sh` y `humo.sh` siguen pendientes.
