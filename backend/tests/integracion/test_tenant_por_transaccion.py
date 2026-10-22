@@ -29,7 +29,7 @@ from typing import Any
 
 import psycopg
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.community.postgres import PostgresContainer
 
@@ -175,6 +175,33 @@ def fabrica_pool_1(
         engine.dispose()
 
 
+@pytest.fixture
+def motor_y_fabrica_pool_1(
+    contenedor: PostgresContainer, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[Engine, sessionmaker[Session]]]:
+    """Gemelo de `fabrica_pool_1`, pero expone también el `Engine`: N-c (D-02,
+    `12_fichas_de_changes.md:959`) necesita abrir una `Connection` propia con
+    `engine.connect()` y mantenerla fuera del pool entre dos transacciones,
+    para que ninguna de las dos pase por `checkin` — el cinturón de R7
+    resetea `app.administracion_id` justo ahí y tapa si el `SET` de D4 es
+    realmente local a la transacción o quedó de sesión."""
+    monkeypatch.setenv("POSTGRES_HOST", contenedor.get_container_host_ip())
+    monkeypatch.setenv("POSTGRES_PORT", str(contenedor.get_exposed_port(5432)))
+    monkeypatch.setenv("POSTGRES_APP_USER", APP_USER)
+    monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD)
+    monkeypatch.setenv("POSTGRES_DB", contenedor.dbname)
+    monkeypatch.setenv("DB_POOL_SIZE", "1")
+
+    engine = crear_engine(Configuracion())
+    fabrica = crear_fabrica_de_sesiones(engine)
+    registrar_tenant_por_administracion(fabrica)
+    registrar_reset_del_tenant_al_devolver(engine)
+    try:
+        yield engine, fabrica
+    finally:
+        engine.dispose()
+
+
 def _complejos_visibles(sesion: Session) -> list[str]:
     filas = sesion.execute(text("SELECT nombre FROM complejo ORDER BY nombre")).fetchall()
     return [fila[0] for fila in filas]
@@ -279,6 +306,56 @@ def test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin(
         assert _complejos_visibles(sesion_2) == []
     finally:
         sesion_2.close()
+
+
+# --- N-c (D-02): el SET de D4 es local a la transacción, no de sesión ---
+
+
+def test_set_config_de_administracion_id_no_sobrevive_al_commit_sin_pasar_por_checkin(
+    motor_y_fabrica_pool_1: tuple[Engine, sessionmaker[Session]],
+    dos_administraciones_con_complejo: dict[str, Any],
+) -> None:
+    """N-c (deuda D-02, `12_fichas_de_changes.md:959`): hasta este test, nada
+    daba rojo si `set_config('app.administracion_id', ..., true)` (D4,
+    `after_begin`) se cambiara por `set_config(..., false)` — un `SET` de
+    sesión en vez de uno local a la transacción. Los tests de "no hereda" de
+    arriba no lo detectan: cada `commit` de una `Session` del ORM devuelve la
+    conexión al pool (`checkin`) y la vuelve a sacar (`checkout`) para la
+    transacción siguiente, así que el cinturón de R7
+    (`registrar_reset_del_tenant_al_devolver`) resetea `app.administracion_id`
+    en CADA commit, se haya fijado con `true` o con `false`. El resultado es
+    el mismo en los dos casos y el mutante queda tapado.
+
+    Por eso las dos sesiones de este test comparten la MISMA `Connection`,
+    abierta a mano con `engine.connect()` y nunca devuelta al pool entre una
+    sesión y la otra (`sesion.close()` sobre una sesión ligada a una
+    `Connection` externa no dispara `checkin`, sólo `conexion.close()` lo
+    hace, al final). Si el `SET` de la primera transacción fuera de sesión
+    (mutante `false`), nada lo limpia entre medio y la segunda sesión — sin
+    tenant — vería las filas de A.
+    """
+    engine, fabrica = motor_y_fabrica_pool_1
+    admin_a = dos_administraciones_con_complejo["a"]["administracion_id"]
+
+    conexion = engine.connect()
+    try:
+        sesion_1 = fabrica(bind=conexion, info={"administracion_id": admin_a})
+        try:
+            assert _complejos_visibles(sesion_1) == ["Complejo A"]
+            sesion_1.commit()
+        finally:
+            sesion_1.close()
+
+        # Misma `conexion` que arriba, todavía sin pasar por el pool: si
+        # `set_config` fue realmente local a la transacción (D4), acá no
+        # queda nada fijado y la política de RLS (D5) da cero filas.
+        sesion_2 = fabrica(bind=conexion, info={"administracion_id": None})
+        try:
+            assert _complejos_visibles(sesion_2) == []
+        finally:
+            sesion_2.close()
+    finally:
+        conexion.close()
 
 
 # --- Una segunda transacción en el mismo pedido sigue viendo A (D4) ---
