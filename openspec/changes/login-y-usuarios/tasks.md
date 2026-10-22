@@ -1371,6 +1371,32 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
   - Revocar una invitación mientras el worker la está enviando, y comprobar en el panel de Clerk
     que quedó revocada de verdad (R2B-1 contra Clerk real, no contra el servidor falso).
   - Que `email_verified` llegue como booleano en los claims, no como string ni constante.
+  - **Hallazgo de la 8.2: el ticket de Clerk se perdía** (21/10/2026). Contra Clerk real en modo
+    invite-only, el mail de invitación llega a `/invitacion/<sobre>` con `__clerk_ticket` en la
+    URL, pero esa página y el link "Crear cuenta desde mi invitación" de `Pantalla.tsx` armaban los
+    links a `/ingresar` y `/registrarse` sólo con `regreso`: `<SignUp>` nunca veía el ticket en su
+    URL y Clerk respondía "El acceso a esta funcionalidad está restringido en este momento".
+    Arreglo (Juani dio el OK explícito para esta corrección puntual, "sii", 21/10/2026): nuevo
+    `ticketSeguro` en `web/src/lib/sesion.ts` (texto opaco, largo acotado a 2048, alfabeto
+    base64url + punto, se descarta si no cumple y nunca se mezcla con `regreso`); se propaga como
+    query param propio por `web/src/app/invitacion/[sobre]/page.tsx`, `web/src/app/ingresar/Pantalla.tsx`
+    (`signInUrl`, `CerrarSesion` y el link de registro), `web/src/app/ingresar/[[...paso]]/page.tsx`
+    y `web/src/app/registrarse/[[...paso]]/page.tsx`; `web/src/proxy.ts` aplica
+    `Referrer-Policy: no-referrer` y `Cache-Control: no-store` a `/ingresar` y `/registrarse` cuando
+    llevan el ticket, igual que ya hacía con `/invitacion/`. TDD estricto, rojo visto antes del
+    arreglo en `web/src/app/invitacion/[sobre]/page.test.tsx` y `web/src/app/ingresar/Pantalla.test.tsx`
+    (2 tests en rojo por falta de ticket; 5 ya verdes describían el comportamiento sin tocar),
+    triangulado con un ticket con espacio/ñ y uno de 3000 caracteres (ambos descartados). E2E nuevo
+    `web/e2e/ticket-de-invitacion.spec.ts` sigue el camino completo invitación → ingreso → "Crear
+    cuenta desde mi invitación" con el ticket conservado, y las cabeceras en ambas rutas.
+    **SUPUESTO** (L-027, no resuelto acá): no se construyó un Clerk falso que rechace el registro
+    sin ticket en los e2e, porque `e2e/prueba.ts` aborta toda red hacia `clerk.*`/`cloudflare.*` —
+    no hay frontend API falso de Clerk en este arnés, sólo la API falsa de PropTech
+    (`web/e2e/api-falsa.ts`). Commits: `fix(web)` con el arreglo y los tests, y este `docs(openspec)`.
+    Evidencia: `corepack pnpm@12.10.1 biome ci` y `tsc --noEmit` limpios; `bash infra/ci/test-web.sh`
+    → 60 archivos, 385 tests, verde (21/10/2026 21:53-21:54); `bash infra/ci/test-web-navegador.sh`
+    (puertos 3850/4850) → 172 passed, incluidos los 3 nuevos de `ticket-de-invitacion.spec.ts`
+    (21/10/2026 21:54-21:59), SHA de la corrida `3c5b7b548766636ce32ecac9b97488aab5b1fa8a`.
 
 ## 9. Cierre
 
