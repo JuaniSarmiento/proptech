@@ -956,7 +956,7 @@ compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no 
 | N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | 15 (piloto), nota |
 | N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | 15 (piloto), con C2V2-1 |
 | N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | 15 (piloto), con C2V2-2 |
-| N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
+| N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 — **CERRADA** (`7555b59`): `test_set_config_de_administracion_id_no_sobrevive_al_commit_sin_pasar_por_checkin` en `backend/tests/integracion/test_tenant_por_transaccion.py`. Dos sesiones ligadas a la MISMA `Connection` (sin pasar por `checkin`, que tapaba el mutante vía R7); rojo confirmado con `set_config(..., true→false)` (assert en `test_tenant_por_transaccion.py:354`, 2026-10-22 12:48:51) y con quitar el reset del `checkin` (rojo cae en el test preexistente `test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin`, `test_tenant_por_transaccion.py:306`, 2026-10-22 12:49:21); verde final `10 passed` (2026-10-22 12:49:40) | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
 
 ### Deuda del cierre del 2.2a
 
