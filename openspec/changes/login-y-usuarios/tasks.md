@@ -1527,3 +1527,47 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
   misma falla por otra vía, con `PermissionError`; ahora pasa el `assert` y falla en el `finally`). No se
   tocó ningún archivo real de `infra/datos-respaldos/`, no se arregló ningún test: se frena otra vez acá,
   mismo motivo que antes (línea 1-4). `test-web.sh`, `test-web-navegador.sh` y `humo.sh` siguen pendientes.
+
+  **Decisión del orquestador**: los dos tests eran frágiles (suponían la carpeta vacía, cuando el propio
+  README manda crearla y el stack real la llena), no el código del cambio; se arreglan los tests, sin
+  tocar los respaldos reales ni `backend/src`. RED ya visto en la corrida de las 22:29 de arriba (SHA
+  `b85adf8`): `OSError: Directory not empty` y `UnicodeDecodeError` leyendo el `.dump`.
+
+  - `test_gitignore_ignora_la_carpeta_de_respaldos` (`test_compose.py`): ahora recuerda si la carpeta ya
+    existía, usa su propio archivo (`...-prueba-gitignore.dump`, que no puede pisar un backup real y de
+    todos modos cae bajo `infra/datos-respaldos/` de `.gitignore`) y sólo hace `rmdir()` si la carpeta no
+    existía antes (si ya había respaldos reales, no es del test borrarla ni está vacía).
+  - `test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes` (`test_vocabulario_vigente.py`): cambia
+    `(RAIZ / carpeta).rglob("*")` por `git ls-files <carpeta>` desde la raíz, así lo ignorado por git
+    (respaldos reales, `.env`) nunca se lee. Recuento de archivos versionados bajo `backend/src`,
+    `backend/tests` e `infra` con el filtro de siempre (sin `.pyc`, sin partes que empiecen con `.`):
+    264 antes (sobre lo versionado; el método viejo daba 265 sólo porque contaba además el `.dump` real,
+    que no es del repo) y 264 después — no bajó ningún archivo versionado.
+
+  GREEN, con los respaldos reales todavía adentro de `infra/datos-respaldos/` (no se tocaron):
+  ```text
+  $ date +%T; uv run pytest tests/infra/test_compose.py tests/unitarios/acceso/test_vocabulario_vigente.py -v
+  22:43:37
+  57 passed in 0.92s
+  ```
+  Commit `7607863` (`test(infra): ...`).
+
+  Corrida completa sobre HEAD `7607863`, de a uno:
+  ```text
+  $ date +%T; bash infra/ci/test-backend.sh
+  22:43:51
+  2675 passed, 1 xfailed, 18 warnings in 617.92s (0:10:17)
+  $ date +%T; bash infra/ci/test-web.sh
+  22:54:23
+  Test Files  60 passed (60)
+  Tests  385 passed (385)
+  $ date +%T; bash infra/ci/test-web-navegador.sh
+  22:55:10
+  172 passed (4.2m)
+  ```
+  Comparación con 1.1 (backend 2076 passed/1 xfailed/16 warnings; web 47 archivos/301 tests;
+  web-navegador 144 passed): backend +599 (2675 vs 2076, mismo 1 xfailed de F2c, 2 warnings más sin
+  investigar); web +13 archivos y +84 tests (60/385 vs 47/301); web-navegador +28 (172 vs 144). Las tres
+  verdes, SHA `7607863` para las tres. `humo.sh` sigue pendiente del orquestador (stack `proptech` en vivo
+  en 80/443 para la prueba manual con Juani; no se corrió ni se tocó). 9.2 sigue sin `[x]` hasta que corra
+  el humo.
