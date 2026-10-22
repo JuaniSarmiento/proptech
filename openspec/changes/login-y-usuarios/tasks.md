@@ -1455,7 +1455,7 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
 ## 9. Cierre
 
 - [x] 9.1 `acceso-de-desarrollo` (D11, E12 firmada 21/10/2026): reescritos `proposal.md`, `design.md`, `tasks.md` y su spec delta para dejarlo en la carga del ejemplo por el camino de D10 (como `proptech_app`, nunca `proptech_migrador`), sin acceso sin login ni `GRANT INSERT ON auditoria`; ese change sigue sin firma propia (tabla "Aprobación" vacía, a la espera de Juani o Alberto). Verificación: `openspec validate acceso-de-desarrollo --strict` → `Change 'acceso-de-desarrollo' is valid` (21/10/2026 21:57:43). Escenarios: ninguno de este cambio. Lecciones: L-029.
-- [ ] 9.2 Corrida de cierre después de la última vuelta y del último commit (L-010, L-031): el barrido de rutas con la lista nueva comparada entera (públicas: `/api/salud`; con token: las de sesión, personal, vecinos e invitaciones), el guardián del catálogo con su lista blanca exacta y el test de fronteras, que suma prohibir que `proptech_api` importe `acceso.adaptadores` (cliente de Clerk), con rojo al introducir ese import en una copia; después `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA de cada corrida. Verificación: los comandos con su salida en el informe. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente); todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010, L-022, L-031.
+- [x] 9.2 Corrida de cierre después de la última vuelta y del último commit (L-010, L-031): el barrido de rutas con la lista nueva comparada entera (públicas: `/api/salud`; con token: las de sesión, personal, vecinos e invitaciones), el guardián del catálogo con su lista blanca exacta y el test de fronteras, que suma prohibir que `proptech_api` importe `acceso.adaptadores` (cliente de Clerk), con rojo al introducir ese import en una copia; después `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA de cada corrida. Verificación: los comandos con su salida en el informe. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente); todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010, L-022, L-031.
 
   **PARCIAL, no cerrada** (orden del orquestador, 21/10/2026): el `humo.sh` queda pendiente a propósito —
   hay un stack de Compose con proyecto `proptech` corriendo en 80/443 para una prueba manual con Juani, y
@@ -1582,3 +1582,11 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
   verdes, SHA `7607863` para las tres. `humo.sh` sigue pendiente del orquestador (stack `proptech` en vivo
   en 80/443 para la prueba manual con Juani; no se corrió ni se tocó). 9.2 sigue sin `[x]` hasta que corra
   el humo.
+
+  **Humo (orquestador, 22/10/2026, sobre `1ea0d8b`, sólo docs después de `7607863`):**
+  ```
+  $ bash infra/ci/humo.sh
+  09:38:57 → 09:41:14, exit 0 (27 pasos; limpieza compose down -v sin errores)
+  ```
+  Antes se bajó el stack de la 8.2 (`docker compose down`); el `down -v` del humo se llevó sus
+  volúmenes de prueba (respaldo de las 22:28 del 21/10 en `infra/datos-respaldos/`).
