@@ -1,61 +1,59 @@
 ## Purpose
 
-Permite entrar a las pantallas del administrador contra la API real sin login, sólo en una máquina de
-desarrollo, sin código que saltee la identidad en el paquete instalado ni en la imagen de producción
-(D11 y E2 del 3a). Se construye sólo con la firma HIGH de un socio (D-094).
+Permite recorrer las pantallas del administrador contra la API real en desarrollo, con el edificio de
+ejemplo cargado, entrando siempre por el login real (Clerk de desarrollo) y sin ningún camino que
+saltee la identidad — ni en desarrollo —, cargando el ejemplo por el camino de alta inicial (D10 de
+`login-y-usuarios`) en vez de un punto de entrada propio sin login (D11 del mismo design, E12). Se
+construye sólo con la firma HIGH de un socio (D-094).
 
 ## ADDED Requirements
 
-### Requirement: El acceso de desarrollo no viaja a producción
+### Requirement: Ningún camino entra sin login, ni en desarrollo
 
-El punto de entrada de desarrollo SHALL vivir fuera del paquete instalado del backend y MUST NOT estar
-en la imagen de producción. La app de producción MUST seguir respondiendo 401 a todo pedido de dominio
-sin identidad. Ningún archivo bajo `backend/src/` MUST cambiar para este acceso.
+El sistema SHALL mantener un solo camino de identidad — el login real de `login-y-usuarios` — en
+cualquier entorno. Ningún archivo de este change SHALL agregar un punto de entrada, variable de
+entorno o archivo de Compose que reemplace o saltee esa identidad. La app SHALL responder 401 a todo
+pedido de dominio sin sesión válida, en desarrollo igual que en producción.
 
-#### Scenario: La imagen de producción
+#### Scenario: Pedido de dominio sin sesión, en desarrollo
 
-- **WHEN** se construye la imagen del backend y se lista su contenido
-- **THEN** no hay ningún archivo del punto de entrada de desarrollo
+- **WHEN** se pide una ruta de dominio a la API de desarrollo sin un token de sesión válido
+- **THEN** la respuesta es 401, igual que en producción
 
-#### Scenario: Producción sin identidad
+#### Scenario: El repositorio no tiene un punto de entrada propio
 
-- **WHEN** se pide una ruta de dominio a la app de producción sin identidad
-- **THEN** la respuesta es 401, igual que antes de este cambio
+- **WHEN** se busca en el repositorio un punto de entrada que reemplace la identidad por fuera del
+  login
+- **THEN** no existe ninguno: ni `backend/desarrollo/`, ni `compose.desarrollo.yaml`, ni una variable
+  que lo active
 
-### Requirement: Sólo lo levanta un archivo de Compose aparte
+### Requirement: La carga del ejemplo usa la identidad de `proptech_app`, por el camino de D10
 
-El acceso de desarrollo SHALL levantarse sólo sumando a mano un archivo de Compose propio, que MUST NOT
-llamarse `compose.override.yaml` (Compose lo carga solo) y que MUST publicar la API sólo en
-`127.0.0.1`. `compose.yaml` MUST NOT referenciarlo, ningún archivo del repositorio MUST poner
-`COMPOSE_FILE` con ese archivo, y el humo MUST nombrar `compose.yaml` de forma explícita.
+El comando que carga el edificio de ejemplo (capability `datos-semilla`) SHALL correr con las
+credenciales de `proptech_app` — las mismas que usan la API y el worker en producción — fijando el
+tenant de la administración de ejemplo y creando su `super_admin` en la misma transacción, siguiendo
+la misma forma que D10 usa para el alta inicial. El comando MUST NOT requerir ni otorgar ningún
+permiso nuevo sobre `auditoria` ni sobre ninguna otra tabla.
 
-#### Scenario: Un archivo que activa el override
+#### Scenario: La carga corre como `proptech_app`
 
-- **WHEN** un archivo del repositorio pone `COMPOSE_FILE` con el archivo de desarrollo
-- **THEN** la suite falla nombrando el archivo
+- **WHEN** se corre el comando de carga del edificio de ejemplo
+- **THEN** se conecta con las credenciales de `proptech_app`, nunca con las de `proptech_migrador`
 
-#### Scenario: El humo sin archivo explícito
+#### Scenario: Ningún permiso nuevo sobre `auditoria`
 
-- **WHEN** el humo llama a `docker compose` sin `-f compose.yaml`
-- **THEN** la suite falla
+- **WHEN** se revisan los permisos de `proptech_migrador` después de este change
+- **THEN** sigue sin `INSERT`, `UPDATE` ni `DELETE` sobre `auditoria`; no se otorgó ningún `GRANT`
+  nuevo a ningún rol para este change
 
-### Requirement: Identidad fija en la administración de ejemplo
+### Requirement: Se recorre con el login real, no con un bypass
 
-El punto de entrada SHALL usar siempre la identidad del titular de la administración de ejemplo y
-MUST negarse a arrancar si esa administración no existe en la base, o si la base tiene alguna otra
-administración. Con esa identidad, la RLS MUST impedir leer o escribir cualquier otra administración.
+Con el edificio de ejemplo cargado, el recorrido de las pantallas del administrador contra la API real
+SHALL hacerse entrando con una cuenta de Clerk de desarrollo vinculada a la persona titular de la
+administración de ejemplo (su `super_admin`), nunca reemplazando la identidad por otro medio.
 
-#### Scenario: Base sin el ejemplo
+#### Scenario: Entrar a las pantallas con el ejemplo cargado
 
-- **WHEN** se arranca el punto de entrada sobre una base sin la administración de ejemplo
-- **THEN** no arranca y dice que falta cargar el ejemplo
-
-#### Scenario: Base con otra administración
-
-- **WHEN** se arranca el punto de entrada sobre una base que tiene la administración de ejemplo y otra
-- **THEN** no arranca y no lee nada de la otra administración
-
-#### Scenario: Las pantallas contra la API real
-
-- **WHEN** con el acceso levantado se abre "Mis edificios" en el navegador
+- **WHEN** con el ejemplo cargado se entra a "Mis edificios" con la cuenta de Clerk de desarrollo
+  vinculada a la administración de ejemplo
 - **THEN** se ve el edificio de ejemplo y sólo ése
