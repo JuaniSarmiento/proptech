@@ -15,5 +15,6 @@ console.log(createPublicKey(process.env.PROPTECH_CLAVE_PRIVADA_PRUEBA).export({ 
 export CLERK_PARTES_AUTORIZADAS="$PROPTECH_URL_WEB"
 export CLERK_SECRET_KEY="sk_test_sin_validez_solo_pruebas"
 # pk_live con dominio .invalid: fixture del protocolo de producción; no es una instancia.
-export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_live_$(printf '%s' 'clerk.proptech-prueba.invalid$' | base64 | tr -d '\n')"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_live_$(printf '%s' 'clerk.proptech-prueba.invalid$' | base64 | tr -d '\n')"
+export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 export CLERK_TELEMETRY_DISABLED=1

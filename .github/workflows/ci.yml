@@ -15,8 +15,10 @@ jobs:
     # D5 (tarea 4.3): medido con `gh run view` sobre el CI real: 4m26s,
     # 5m18s, 5m32s y 9m08s en las últimas cuatro corridas (tendencia
     # creciente). 20 min deja margen sin ser tan laxo como para no cortar
-    # un cuelgue real.
-    timeout-minutes: 20
+    # un cuelgue real. Subido a 30 el 22/10/2026: con el 2b la suite pasó a
+    # 11m24s y `canario.sh` la corre entera otra vez, así que 20 cortaba a una
+    # corrida verde (run 39783653827). Deuda: que el canario no repita todo.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -98,7 +100,7 @@ jobs:
           # máquina tenía OTRO digest para el mismo tag.
           docker run --rm -v "$GITHUB_WORKSPACE":/repo -w /repo \
             koalaman/shellcheck:v0.11.0@sha256:b9389b73c8f26f710a7171cb7d8848a34a9c1e07a7865e727c9ec4ce99f9a83f \
-            $(find infra -name '*.sh')
+            $(find infra web/e2e -name '*.sh')
 
   secretos:
     runs-on: ubuntu-24.04

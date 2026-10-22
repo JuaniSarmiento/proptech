@@ -144,7 +144,7 @@ codigo_borde=$(curl -sS -D "$cabeceras_borde" -o /dev/null -w '%{http_code}' \
   -H 'Authorization: Bearer prueba-del-borde' http://localhost/api/complejos)
 echo "GET /api/complejos desde afuera: ${codigo_borde}"
 [ "$codigo_borde" = "404" ]
-tr -d '\r' < "$cabeceras_borde" | rg -qi '^X-Proptech-Origen: caddy$'
+tr -d '\r' < "$cabeceras_borde" | grep -qi '^X-Proptech-Origen: caddy$'
 rm -f "$cabeceras_borde"
 echo "ok: 404 de Caddy con X-Proptech-Origen: caddy"
 

@@ -13,3 +13,30 @@ condition = "AND"
 regexTarget = "line"
 paths = ['''^web/src/lib/api/[^/]+\.test\.ts$''']
 regexes = ['''http://api-interna:8000/api/[A-Za-z0-9/_.-]+''']
+
+# Falsos positivos del CI del 22/10/2026 (2b), los tres revisados a mano y acotados igual que el de
+# arriba: por archivo Y por el texto exacto, nunca la regla entera.
+# 1. UUID de una administración de prueba en la API falsa de los e2e.
+[[allowlists]]
+description = "UUID de fixture EDIFICIO_API en la API falsa de los e2e"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^web/e2e/api-falsa\.ts$''']
+regexes = ['''EDIFICIO_API = "a08ae80a-8d7e-47eb-9b37-f36b7be80114"''']
+
+# 2. Clave PUBLICABLE de Clerk inventada en la evidencia del 2b: decodifica a
+#    `clerk.proptech-prueba.invalido$`, un dominio que no existe.
+[[allowlists]]
+description = "Clave publicable ficticia de Clerk (dominio .invalido) en tasks.md del 2b"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^openspec/changes/(archive/2026-10-22-)?login-y-usuarios/tasks\.md$''']
+regexes = ['''pk_live_Y2xlcmsucHJvcHRlY2gtcHJ1ZWJhLmludmFsaWQk''']
+
+# 3. Token literal de prueba del humo para comprobar que Caddy corta /api/* desde afuera.
+[[allowlists]]
+description = "Bearer de prueba del borde en el humo"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^infra/ci/humo\.sh$''']
+regexes = ['''Bearer prueba-del-borde''']
