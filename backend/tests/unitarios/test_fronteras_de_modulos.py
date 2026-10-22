@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 RAIZ_SRC = Path(__file__).resolve().parents[2] / "src" / "proptech_core"
+RAIZ_API = Path(__file__).resolve().parents[2] / "src" / "proptech_api"
 
 
 def _imports_de(archivo: Path) -> list[tuple[int, str | None]]:
@@ -112,6 +113,75 @@ def test_el_checker_encuentra_un_import_de_acceso_agregado_a_una_copia(
                 break
 
     assert ofensores == ["base_de_datos.py"], ofensores
+
+
+# --- proptech_api no importa acceso.adaptadores (cliente de Clerk) ---
+# (tarea 9.2): proptech_api es la capa HTTP y debe hablar con `acceso` sólo
+# vía `aplicacion`/`dominio`; `adaptadores` es infraestructura (el cliente
+# HTTP de Clerk) y no es parte del contrato de esa capa.
+
+
+def _importa_adaptadores_de_acceso(archivo: Path) -> bool:
+    """True si el archivo importa `proptech_core.acceso.adaptadores` o algo
+    dentro, por cualquiera de las formas de import absoluto de Python."""
+    objetivo = "proptech_core.acceso.adaptadores"
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Import):
+            for alias in nodo.names:
+                if alias.name == objetivo or alias.name.startswith(objetivo + "."):
+                    return True
+        elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+            if nodo.module == objetivo or nodo.module.startswith(objetivo + "."):
+                return True
+            if nodo.module == "proptech_core.acceso" and any(
+                alias.name == "adaptadores" for alias in nodo.names
+            ):
+                return True
+    return False
+
+
+def test_proptech_api_no_importa_acceso_adaptadores() -> None:
+    ofensores = [
+        str(archivo.relative_to(RAIZ_API.parent))
+        for archivo in sorted(RAIZ_API.rglob("*.py"))
+        if _importa_adaptadores_de_acceso(archivo)
+    ]
+    assert ofensores == [], f"proptech_api no puede importar acceso.adaptadores: {ofensores}"
+
+
+@pytest.fixture
+def copia_de_proptech_api() -> Iterator[Path]:
+    """Copia real de `proptech_api/` en una carpeta temporal (no el árbol
+    del repo): la mutación no toca ni un byte del código real."""
+    import shutil
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        destino = Path(carpeta) / "proptech_api"
+        shutil.copytree(RAIZ_API, destino)
+        yield destino
+
+
+def test_el_checker_encuentra_un_import_de_adaptadores_agregado_a_una_copia(
+    copia_de_proptech_api: Path,
+) -> None:
+    archivo_mutado = copia_de_proptech_api / "acceso.py"
+    texto_original = archivo_mutado.read_text(encoding="utf-8")
+    assert "acceso.adaptadores" not in texto_original
+
+    texto_mutado = (
+        "from proptech_core.acceso.adaptadores.clerk_http import AdaptadorClerkHttp  # noqa\n"
+        + texto_original
+    )
+    assert texto_mutado != texto_original
+    archivo_mutado.write_text(texto_mutado, encoding="utf-8")
+
+    ofensores = [
+        archivo.name
+        for archivo in sorted(copia_de_proptech_api.rglob("*.py"))
+        if _importa_adaptadores_de_acceso(archivo)
+    ]
+    assert ofensores == ["acceso.py"], ofensores
 
 
 def test_compartido_no_importa_complejos() -> None:
