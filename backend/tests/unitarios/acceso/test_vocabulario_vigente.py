@@ -1,6 +1,7 @@
 """Los nombres y comentarios describen los perfiles vigentes (L-022)."""
 
 import re
+import subprocess
 from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parents[4]
@@ -50,12 +51,26 @@ def _justificada(ruta: str, linea: str) -> bool:
     )
 
 
+def _versionados(carpeta: str) -> list[Path]:
+    """Archivos bajo `carpeta` que git tiene versionados, vistos desde la
+    raíz del repo: lo ignorado (respaldos reales, `.env`) nunca aparece acá,
+    a diferencia de un `rglob` sobre el filesystem."""
+    salida = subprocess.run(
+        ["git", "ls-files", carpeta],
+        cwd=str(_RAIZ),
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    return [_RAIZ / linea for linea in salida.splitlines() if linea]
+
+
 def test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes() -> None:
     archivos = [_RAIZ / "backend/migraciones/ayudas_rls.py"]
     for carpeta in ("backend/src", "backend/tests", "infra"):
         archivos.extend(
             archivo
-            for archivo in (_RAIZ / carpeta).rglob("*")
+            for archivo in _versionados(carpeta)
             if archivo.is_file()
             and archivo.suffix != ".pyc"
             and not any(parte.startswith(".") for parte in archivo.relative_to(_RAIZ).parts)

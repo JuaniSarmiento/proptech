@@ -410,8 +410,13 @@ def test_gitignore_ignora_la_carpeta_de_respaldos() -> None:
     import subprocess
 
     carpeta = RAIZ / "infra" / "datos-respaldos"
+    carpeta_ya_existia = carpeta.exists()
     carpeta.mkdir(exist_ok=True)
-    archivo_de_prueba = carpeta / "proptech-20261014T000000Z.dump"
+    # Sufijo propio (L-031, 9.2): con la carpeta real llena de respaldos de
+    # un stack corriendo en vivo, un nombre genérico podría coincidir con un
+    # backup real; éste nunca lo hace y de todos modos cae bajo el patrón de
+    # `.gitignore`, que ignora la carpeta entera.
+    archivo_de_prueba = carpeta / "proptech-20261014T000000Z-prueba-gitignore.dump"
     archivo_de_prueba.write_text("contenido-de-prueba, no un backup real")
     try:
         resultado = subprocess.run(
@@ -424,7 +429,11 @@ def test_gitignore_ignora_la_carpeta_de_respaldos() -> None:
         )
     finally:
         archivo_de_prueba.unlink()
-        carpeta.rmdir()
+        if not carpeta_ya_existia:
+            # Sólo borramos la carpeta si la creó este test: si ya tenía
+            # respaldos reales (o la creó el README antes de levantar el
+            # stack), no es nuestra para borrar y además no está vacía.
+            carpeta.rmdir()
 
 
 def test_env_example_trae_las_variables_de_respaldos() -> None:
