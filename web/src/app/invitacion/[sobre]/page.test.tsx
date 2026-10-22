@@ -1,0 +1,47 @@
+import { auth } from "@clerk/nextjs/server";
+import type { ReactElement } from "react";
+import { afterEach, expect, it, vi } from "vitest";
+import Invitacion from "./page";
+
+afterEach(() => {
+  vi.mocked(auth).mockClear();
+});
+
+const SOBRE = "sobre-1";
+
+function sinSesion() {
+  vi.mocked(auth).mockResolvedValueOnce({ userId: null } as Awaited<ReturnType<typeof auth>>);
+}
+
+async function enlacesDeInvitacion(ticket?: string) {
+  sinSesion();
+  const elemento = (await Invitacion({
+    params: Promise.resolve({ sobre: SOBRE }),
+    searchParams: Promise.resolve(ticket === undefined ? {} : { __clerk_ticket: ticket }),
+  })) as ReactElement<{ ingreso: string; registro: string }>;
+  return { ingreso: elemento.props.ingreso, registro: elemento.props.registro };
+}
+
+it("8.2 RED: sin ticket, ingreso y registro no llevan __clerk_ticket", async () => {
+  const { ingreso, registro } = await enlacesDeInvitacion();
+  expect(ingreso).toBe(`/ingresar?regreso=%2Finvitacion%2F${SOBRE}`);
+  expect(registro).toBe(`/registrarse?regreso=%2Finvitacion%2F${SOBRE}`);
+});
+
+it("8.2: con el __clerk_ticket de Clerk en la URL, lo conserva en los dos links sin mezclarlo con el regreso", async () => {
+  const { ingreso, registro } = await enlacesDeInvitacion("abc.123-xyz_9");
+  for (const href of [ingreso, registro]) {
+    const url = new URL(href, "https://x.invalid");
+    expect(url.searchParams.get("__clerk_ticket")).toBe("abc.123-xyz_9");
+    expect(url.searchParams.get("regreso")).toBe(`/invitacion/${SOBRE}`);
+  }
+});
+
+it.each([
+  ["caracteres fuera de lo seguro para URL", "con espacio y ñ"],
+  ["demasiado largo", "a".repeat(3000)],
+])("8.2: descarta un ticket inválido (%s)", async (_nombre, ticketInvalido) => {
+  const { ingreso, registro } = await enlacesDeInvitacion(ticketInvalido);
+  expect(ingreso).not.toContain("__clerk_ticket");
+  expect(registro).not.toContain("__clerk_ticket");
+});

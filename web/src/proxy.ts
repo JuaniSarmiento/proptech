@@ -37,7 +37,15 @@ export default async function proxy(...argumentos: Parameters<typeof middlewareD
   const respuesta = await middlewareDeClerk(...argumentos);
   if (!respuesta) return respuesta;
   const pedido = argumentos[0];
-  if (pedido.nextUrl.pathname.startsWith("/invitacion/")) {
+  // El ticket de invitación de Clerk (`__clerk_ticket`) viaja en la URL hasta
+  // /registrarse e /ingresar (8.2): mismas cabeceras que /invitacion/ cuando
+  // lo llevan, para no dejarlo en el referrer ni en una caché intermedia.
+  const { pathname } = pedido.nextUrl;
+  const conTicket = pedido.nextUrl.searchParams.has("__clerk_ticket");
+  if (
+    pathname.startsWith("/invitacion/") ||
+    (conTicket && (pathname === "/ingresar" || pathname === "/registrarse"))
+  ) {
     respuesta.headers.set("Referrer-Policy", "no-referrer");
     respuesta.headers.set("Cache-Control", "no-store");
   }

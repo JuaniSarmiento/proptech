@@ -47,23 +47,35 @@ function EsperaDeClerk() {
     <Estados tipo="cargando" />
   );
 }
-function CerrarSesion({ regreso }: { regreso: string }) {
+function CerrarSesion({ regreso, ticket }: { regreso: string; ticket: string | null }) {
   const clerk = useClerk();
   useEffect(() => {
-    void clerk.signOut({ redirectUrl: `/ingresar?${new URLSearchParams({ regreso })}` });
-  }, [clerk, regreso]);
+    void clerk.signOut({
+      redirectUrl: `/ingresar?${new URLSearchParams({
+        regreso,
+        ...(ticket ? { __clerk_ticket: ticket } : {}),
+      })}`,
+    });
+  }, [clerk, regreso, ticket]);
   return <EsperaDeClerk />;
 }
 export function PantallaIngreso({
   regreso,
   registro = false,
   cerrar = false,
+  ticket = null,
 }: {
   regreso: string;
   registro?: boolean;
   cerrar?: boolean;
+  ticket?: string | null;
 }) {
   const destino = `/elegir-administracion?${new URLSearchParams({ regreso })}`;
+  // El ticket de invitación de Clerk (`__clerk_ticket`) viaja sólo como query
+  // param propio, nunca mezclado con `regreso`: <SignUp>/<SignIn> lo leen de
+  // la URL de la página donde están montados, no de un prop (D-107, 8.2).
+  const conTicket = (base: Record<string, string>) =>
+    new URLSearchParams({ ...base, ...(ticket ? { __clerk_ticket: ticket } : {}) });
   return (
     <Armazon publico>
       <div className="pagina-acceso">
@@ -89,13 +101,13 @@ export function PantallaIngreso({
           </ClerkLoading>
           <ClerkLoaded>
             {cerrar ? (
-              <CerrarSesion regreso={regreso} />
+              <CerrarSesion regreso={regreso} ticket={ticket} />
             ) : registro ? (
               <SignUp
                 appearance={apariencia}
                 routing="hash"
                 forceRedirectUrl={regreso}
-                signInUrl={`/ingresar?${new URLSearchParams({ regreso })}`}
+                signInUrl={`/ingresar?${conTicket({ regreso })}`}
               />
             ) : (
               <SignIn
@@ -109,9 +121,7 @@ export function PantallaIngreso({
         </Panel>
         <p className="texto-secundario">¿Te invitaron? Revisá tu mail: el enlace te trae acá.</p>
         {regreso.startsWith("/invitacion/") && !registro ? (
-          <a href={`/registrarse?${new URLSearchParams({ regreso })}`}>
-            Crear cuenta desde mi invitación
-          </a>
+          <a href={`/registrarse?${conTicket({ regreso })}`}>Crear cuenta desde mi invitación</a>
         ) : null}
         <a href="/privacidad">Aviso de privacidad</a>
       </div>
