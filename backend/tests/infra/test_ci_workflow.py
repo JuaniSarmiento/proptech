@@ -149,9 +149,11 @@ def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
 #: shellcheck y secretos, menos de 20s cada uno. `web` subió de 5 a 15
 #: (tarea 3.8 del 3b: sumó `next build` + Chromium real sobre vitest, que
 #: solo); sin medición real de CI todavía, 15 deja margen sobre lo que se
-#: vio en esta máquina (unos 90s de punta a punta).
+#: vio en esta máquina (unos 90s de punta a punta). `backend` subió de 20 a
+#: 30 el 22/10/2026: la suite pasó a 9-11 min y `canario.sh` la repite entera,
+#: así que 20 cortó una corrida verde (run 39783653827).
 _TIMEOUT_MINUTES_ESPERADO = {
-    "backend": 20,
+    "backend": 30,
     "humo": 15,
     "web": 15,
     "shellcheck": 5,
