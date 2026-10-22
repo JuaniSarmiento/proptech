@@ -173,11 +173,19 @@ describe("api-falsa", () => {
       expect(respuesta.status).toBe(422);
     });
 
-    it("un POST con application/json y un objeto se acepta", async () => {
+    it("un POST con application/json y un cuerpo que cumple el contrato de unidades se acepta", async () => {
+      // QA-1: `{ identificador: "X" }` solo ya no alcanza — la real exige
+      // también tipo/piso/coeficiente/superficie_m2 (CuerpoUnidad).
       const respuesta = await pedir(`${base}/api/complejos/${id}/unidades`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ identificador: "X" }),
+        body: JSON.stringify({
+          identificador: "X",
+          tipo: "departamento",
+          piso: "1",
+          coeficiente: "0.010000",
+          superficie_m2: "40.00",
+        }),
       });
       expect(respuesta.status).toBe(200);
     });
@@ -191,25 +199,141 @@ describe("api-falsa", () => {
       expect(respuesta.status).toBe(422);
     });
 
-    it("el escenario 403 sigue ganando sobre la validación de Content-Type (igual que la API real: la autorización no depende del cuerpo)", async () => {
+    it("QA-1: la validación de Content-Type ahora corre ANTES que el escenario (el Content-Type/cuerpo se resuelve siempre antes del chequeo manual de permiso, igual que en la API real)", async () => {
+      // Antes de QA-1 este mismo pedido daba 403 ("el escenario gana"):
+      // responderSegunEscenario() corría antes del chequeo de Content-Type.
+      // El informe de cimientos (05-qa.md, QA-1) señaló esa rama como parte
+      // del mismo hallazgo: se invierte el orden a propósito.
       const respuesta = await pedir(`${base}/api/complejos/${idDe("sin_permiso_403")}/unidades`, {
         method: "POST",
         body: "no es json",
       });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("el escenario 403 sigue ganando cuando el Content-Type y el cuerpo son válidos (la autorización no depende del cuerpo)", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${idDe("sin_permiso_403")}/unidades`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          identificador: "X",
+          tipo: "departamento",
+          piso: "1",
+          coeficiente: "0.010000",
+          superficie_m2: "40.00",
+        }),
+      });
       expect(respuesta.status).toBe(403);
     });
 
-    it("/api/__debug/ultima-escritura expone el método, la URL y el Content-Type recibidos", async () => {
-      await pedir(`${base}/api/complejos/${id}/categorias`, {
+    it("/api/__debug/ultima-escritura expone el método, la URL y el Content-Type recibidos, incluso de un PATCH que la ruta no declara (405)", async () => {
+      // `categorias` anidada bajo /complejos/{id} sólo declara POST
+      // (complejos.py): este PATCH ahora da 405 (QA-1), pero el servidor
+      // sigue registrando la escritura recibida ANTES de rechazarla — el
+      // propósito del endpoint de depuración es ver qué llegó, no sólo lo
+      // que se aceptó.
+      const rechazo = await pedir(`${base}/api/complejos/${id}/categorias`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ nombre: "Y" }),
       });
+      expect(rechazo.status).toBe(405);
       const depurado = await (await pedir(`${base}/api/__debug/ultima-escritura`)).json();
       expect(depurado).toMatchObject({
         metodo: "PATCH",
         contentType: "application/json",
       });
+    });
+  });
+
+  describe("QA-1 (informe de cimientos, 05-qa.md) · la escritura genérica valida método y contrato, no sólo Content-Type", () => {
+    const id = "f760ca3b-7331-4927-96e5-54a3fbb1f3ae";
+
+    it("POST a configuracion/versiones con cuerpo vacío da 422 (faltan campos obligatorios)", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/configuracion/versiones`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("POST a configuracion/versiones con un campo no declarado da 422", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/configuracion/versiones`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clave_inventada: 1 }),
+      });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("POST a configuracion (sólo declara GET) con un cuerpo cualquiera da 405", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/configuracion`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ x: 1 }),
+      });
+      expect(respuesta.status).toBe(405);
+    });
+
+    it("PUT a unidades (sólo declara POST) con un cuerpo cualquiera da 405", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/unidades`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ x: 1 }),
+      });
+      expect(respuesta.status).toBe(405);
+    });
+
+    it("DELETE a configuracion sin cuerpo da 405", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/configuracion`, {
+        method: "DELETE",
+      });
+      expect(respuesta.status).toBe(405);
+    });
+
+    it("POST a grupos vacío da 422 (faltan clave/nombre/metodo)", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/grupos`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(respuesta.status).toBe(422);
+    });
+
+    it("triangulación: POST a grupos con un cuerpo válido sigue dando 200", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/grupos`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clave: "ascensor", nombre: "Ascensor", metodo: "coeficiente" }),
+      });
+      expect(respuesta.status).toBe(200);
+    });
+
+    it("triangulación: POST a configuracion/versiones con un cuerpo válido sigue dando 200", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/configuracion/versiones`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tasa_mensual: "2.50",
+          dias_de_gracia: 5,
+          forma_de_calculo: "proporcional_por_dia",
+          porcentaje_fondo: "10.00",
+          dia_de_vencimiento: 10,
+          modalidad_de_vencimiento: "unico",
+          vigente_desde: "2026-01-01",
+        }),
+      });
+      expect(respuesta.status).toBe(200);
+    });
+
+    it("triangulación: POST a categorias con un campo de tipo incorrecto da 422", async () => {
+      const respuesta = await pedir(`${base}/api/complejos/${id}/categorias`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clave: "limpieza", nombre: 123 }),
+      });
+      expect(respuesta.status).toBe(422);
     });
   });
 });

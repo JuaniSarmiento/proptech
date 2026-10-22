@@ -230,6 +230,141 @@ const _ERROR_CONTENT_TYPE_INVALIDO = JSON.stringify({
   detail: [{ type: "model_attributes_type", loc: ["body"], msg: "Content-Type inválido" }],
 });
 
+/**
+ * QA-1 (informe de cimientos, 05-qa.md) / L-027: hasta acá, la rama
+ * genérica de escritura de más abajo (`enviar()`) sólo miraba el
+ * Content-Type y que el cuerpo fuera un objeto JSON — aceptaba CUALQUIER
+ * método en CUALQUIER ruta con CUALQUIER campo (6 casos del rompedor: 200
+ * donde la API real da 422 o 405). Esta tabla es la "forma explícita de
+ * ruta→método→campos" que el arreglo pide como alternativa a derivar un
+ * OpenAPI (elegida por ser la más chica: 4 rutas, un único método de
+ * escritura cada una — ver justificación completa en el commit).
+ *
+ * Las claves son las mismas de `_RUTAS` arriba (el resto de la URL bajo
+ * `/api/complejos/{id}/`); cada método declara sus campos tal como los
+ * valida `backend/src/proptech_api/complejos.py` (líneas exactas abajo),
+ * con `opcional` para los que la real admite ausentes (tienen default).
+ * Si la real agrega un método o un campo a una de estas rutas y esta
+ * tabla no se actualiza, el test de contrato de más abajo (que compara
+ * contra el OpenAPI real) tiene que fallar primero.
+ */
+type _TipoDeCampo = "texto" | "entero" | "booleano" | "arreglo";
+type _EsquemaDeCampo = { tipo: _TipoDeCampo; opcional?: true };
+type _ContratoDeRuta = Partial<
+  Record<"POST" | "PATCH" | "PUT" | "DELETE", Record<string, _EsquemaDeCampo>>
+>;
+
+const _CONTRATO_DE_ESCRITURA: Record<string, _ContratoDeRuta> = {
+  "": {}, // ver_complejo (complejos.py:287): sólo GET.
+  resumen: {}, // resumen_edificio (complejos.py:263): sólo GET.
+  configuracion: {}, // vigente_del_edificio (complejos.py:502): sólo GET.
+  unidades: {
+    // alta_unidad (complejos.py:341) = CuerpoUnidad = DatosUnidad, sin
+    // campos opcionales (D7, R3A-1/R3A-6).
+    POST: {
+      identificador: { tipo: "texto" },
+      tipo: { tipo: "texto" },
+      piso: { tipo: "texto" },
+      coeficiente: { tipo: "texto" }, // Coeficiente: "construido sólo desde texto" (coeficientes.py:30).
+      superficie_m2: { tipo: "texto" }, // Superficie: mismo patrón (D-046, nunca float).
+    },
+  },
+  grupos: {
+    // alta_grupo (complejos.py:394) = CuerpoGrupo = DatosGrupo + modo/unidades opcionales.
+    POST: {
+      clave: { tipo: "texto" },
+      nombre: { tipo: "texto" },
+      metodo: { tipo: "texto" },
+      modo_de_coeficientes: { tipo: "texto", opcional: true },
+      unidades: { tipo: "arreglo", opcional: true },
+    },
+  },
+  categorias: {
+    // alta_categoria (complejos.py:456) = CuerpoCategoria = CategoriaDeGasto (sólo clave y nombre).
+    POST: {
+      clave: { tipo: "texto" },
+      nombre: { tipo: "texto" },
+    },
+  },
+  "configuracion/versiones": {
+    // alta_version (complejos.py:525) = CuerpoVersion = ConfiguracionEdificio + vigente_desde.
+    POST: {
+      tasa_mensual: { tipo: "texto" }, // Porcentaje: mismo patrón que Coeficiente, texto.
+      dias_de_gracia: { tipo: "entero" },
+      forma_de_calculo: { tipo: "texto" },
+      porcentaje_fondo: { tipo: "texto" },
+      dia_de_vencimiento: { tipo: "entero" },
+      modalidad_de_vencimiento: { tipo: "texto" },
+      dia_segundo_vencimiento: { tipo: "entero", opcional: true },
+      recargo_segundo_vencimiento: { tipo: "texto", opcional: true },
+      vigente_desde: { tipo: "texto" },
+    },
+  },
+};
+
+function _tipoCoincide(tipo: _TipoDeCampo, valor: unknown): boolean {
+  switch (tipo) {
+    case "texto":
+      return typeof valor === "string";
+    case "entero":
+      return typeof valor === "number" && Number.isInteger(valor);
+    case "booleano":
+      return typeof valor === "boolean";
+    case "arreglo":
+      return Array.isArray(valor);
+  }
+}
+
+/** Mismos nombres de `type` que usa pydantic v2 para un error de tipo
+ * (no de valor): así un 422 de la API falsa se parece al de la real,
+ * aunque esta tabla no reimplemente sus validadores de dominio. */
+function _tipoPydantic(tipo: _TipoDeCampo): string {
+  switch (tipo) {
+    case "texto":
+      return "string_type";
+    case "entero":
+      return "int_type";
+    case "booleano":
+      return "bool_type";
+    case "arreglo":
+      return "list_type";
+  }
+}
+
+/** Métodos de escritura que la ruta real declara para este `resto` (sin
+ * contar GET, que siempre está permitido y se maneja aparte). */
+function _metodosDeEscrituraPermitidos(resto: string): Set<string> {
+  return new Set(Object.keys(_CONTRATO_DE_ESCRITURA[resto] ?? {}));
+}
+
+/** `null` si el cuerpo cumple el contrato de `resto`/`metodo`; si no, la
+ * lista de errores con la misma forma que `manejador_422` (cuerpos.py):
+ * cada uno nombra el campo (`loc`) y el motivo (`type`), nunca el valor. */
+function _erroresDeContrato(
+  resto: string,
+  metodo: string,
+  cuerpo: Record<string, unknown>,
+): { type: string; loc: string[] }[] | null {
+  const campos = _CONTRATO_DE_ESCRITURA[resto]?.[metodo as "POST" | "PATCH" | "PUT" | "DELETE"];
+  if (!campos) return null; // el 405 de método ya se resolvió antes de llegar acá.
+  const errores: { type: string; loc: string[] }[] = [];
+  for (const clave of Object.keys(cuerpo)) {
+    if (!(clave in campos)) {
+      errores.push({ type: "extra_forbidden", loc: ["body", clave] });
+    }
+  }
+  for (const [clave, esquema] of Object.entries(campos)) {
+    if (!(clave in cuerpo)) {
+      if (!esquema.opcional) errores.push({ type: "missing", loc: ["body", clave] });
+      continue;
+    }
+    if (!_tipoCoincide(esquema.tipo, cuerpo[clave])) {
+      errores.push({ type: _tipoPydantic(esquema.tipo), loc: ["body", clave] });
+    }
+  }
+  return errores.length > 0 ? errores : null;
+}
+
 /** Crea el servidor sin levantarlo (`listen()` queda a cargo de quien lo
  * use: así se puede probar sobre un puerto al azar). */
 export function crearServidor(
@@ -638,12 +773,23 @@ export function crearServidor(
       respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));
     };
 
-    if (!_esEscritura(pedido.method)) {
+    const metodo = pedido.method ?? "GET";
+
+    if (metodo === "GET") {
       if (escenario?.clave === "lento") {
         setTimeout(enviar, 3000);
       } else {
         enviar();
       }
+      return;
+    }
+
+    if (!_esEscritura(metodo)) {
+      // QA-1 (caso "DELETE configuracion sin cuerpo"): un verbo que
+      // ninguna ruta de `complejos.py` declara nunca (DELETE, HEAD con
+      // cuerpo, lo que sea) — 405 inmediato, sin leer el cuerpo: la ruta
+      // real tampoco lo lee, lo rechaza en el ruteo.
+      respuesta.writeHead(405).end();
       return;
     }
 
@@ -660,19 +806,33 @@ export function crearServidor(
     pedido.on("end", () => {
       const contentType = String(pedido.headers["content-type"] ?? "");
       _ultimaEscritura = {
-        metodo: pedido.method ?? "",
+        metodo,
         url: pedido.url ?? "",
         contentType,
         cuerpo,
       };
 
-      if (responderSegunEscenario()) {
-        return;
-      }
+      // QA-1 (informe 05-qa.md): de acá para abajo, TODO lo que valida la
+      // FORMA del pedido (Content-Type, método declarado, JSON válido,
+      // forma del cuerpo, contrato de campos) corre ANTES que cualquier
+      // escenario por `id` (403/404/401/500/lento) — en la API real esa
+      // validación pasa en la etapa de resolución de dependencias de
+      // FastAPI, siempre antes de que el handler llegue a su chequeo
+      // manual de permiso o existencia. Antes, `responderSegunEscenario()`
+      // corría primero acá y un escenario como `sin_permiso_403` "ganaba"
+      // aunque el Content-Type fuera inválido (visto por el rompedor); el
+      // test que afirmaba eso como correcto se actualizó más abajo.
       if (!/^application\/json/.test(contentType)) {
         respuesta
           .writeHead(422, { "content-type": "application/json" })
           .end(_ERROR_CONTENT_TYPE_INVALIDO);
+        return;
+      }
+      if (!_metodosDeEscrituraPermitidos(resto).has(metodo)) {
+        // QA-1 (casos "POST configuracion" y "PUT unidades"): la ruta
+        // existe (por eso no dio 404 más arriba) pero no declara este
+        // método — el mismo 405 que da el ruteo real.
+        respuesta.writeHead(405).end();
         return;
       }
       let cuerpoParseado: unknown;
@@ -694,7 +854,24 @@ export function crearServidor(
           .end(JSON.stringify({ detail: [{ type: "model_attributes_type", loc: ["body"] }] }));
         return;
       }
-      if (pedido.method === "POST" && resto === "unidades") {
+      const erroresDeContrato = _erroresDeContrato(
+        resto,
+        metodo,
+        cuerpoParseado as Record<string, unknown>,
+      );
+      if (erroresDeContrato) {
+        // QA-1 (casos "{}"/"clave_inventada" en configuracion/versiones y
+        // grupos): campo de más, de menos o de tipo incorrecto — 422 con
+        // la misma forma que `manejador_422` (cuerpos.py), nunca el valor.
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: erroresDeContrato }));
+        return;
+      }
+      if (responderSegunEscenario()) {
+        return;
+      }
+      if (metodo === "POST" && resto === "unidades") {
         if (id === ESCRITURAS_UNIDADES.rechazo403) {
           respuesta
             .writeHead(403, { "content-type": "application/json" })
