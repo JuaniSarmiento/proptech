@@ -285,17 +285,45 @@ distintas. Varios propietarios de la misma unidad ven su cuenta completa y cualq
 
 ### HU-V1 · Entrar al portal
 
-Como vecino, quiero entrar desde el celular con mi usuario y contraseña de Clerk (también con
-link mágico) para ver lo de mis unidades (D-107).
+Como vecino, quiero entrar desde el celular con mi usuario y contraseña de Clerk, con link mágico o
+con Google, para ver lo de mis unidades (D-107, D-108).
+
+**Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026): el ingreso, el selector de
+administración y la invitación. Ver "lo de mis unidades" (el portal propiamente dicho) **lo construye
+el cambio 11**: hoy, al entrar, el vecino sólo ve el estado vacío del portal.
 
 **Criterios de aceptación**:
 - Dado un vecino de alta desde el padrón, con vínculo e invitación por mail para una o varias
   unidades, cuando entra, entonces ve todas las suyas juntas (por ejemplo, su departamento y su
-  cochera), también en edificios distintos, y nunca unidades ajenas (R10, D-029, D-106).
+  cochera), también en edificios distintos, y nunca unidades ajenas (R10, D-029, D-106). **Pendiente
+  de 11**: hoy no hay nada que mostrar todavía.
+- Dado un vecino invitado, cuando acepta la invitación con contraseña, con el link del mail o con
+  Google (el email verificado de Google tiene que coincidir con el invitado), entonces queda
+  vinculado a esa persona y entra; con otro Gmail no entra (construido, 2b).
 - Dado un vecino con iPhone, cuando entra por primera vez, entonces el portal le ofrece instalarlo
-  en la pantalla de inicio.
+  en la pantalla de inicio. **Pendiente de 11**.
 
 **Reglas relacionadas**: R10.
+
+### HU-SA1 · Invitar y gestionar usuarios (super admin)
+
+Como super admin, quiero invitar al personal con su perfil y alcance, y dar de alta vecinos desde el
+padrón, para que cada uno entre con su propia cuenta (RA-6, D-106, D-107).
+
+**Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026).
+
+**Criterios de aceptación**:
+- Dado el super admin en `/personal`, cuando invita a alguien con un perfil y alcance válidos,
+  entonces se crea la invitación, el worker la envía por Clerk y queda `enviada` hasta que se acepte.
+- Dado el super admin en el padrón de un edificio, cuando da de alta un vecino con su unidad y
+  vínculo (propietario o inquilino), entonces puede haber varios propietarios por unidad y vínculos
+  distintos de una misma persona en unidades distintas.
+- Dado el super admin, cuando revoca una invitación `enviada`, entonces queda `revocada` y Clerk la
+  marca revocada; el link ya no sirve para aceptar.
+- Dado alguien que no es super admin, cuando abre `/personal`, entonces no ve los controles de
+  invitar, revocar ni quitar.
+
+**Reglas relacionadas**: R10, D-106.
 
 ### HU-V2 · Ver cuánto debo
 

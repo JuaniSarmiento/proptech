@@ -3,7 +3,8 @@
 ## Actores del sistema
 
 El modelo del MVP es **perfil × alcance** (D-106, Juani, 20/10/2026). La autorización vive en la base;
-Clerk sólo autentica y se integra en el 2b (D-107), junto con la gestión de usuarios.
+Clerk sólo autentica, desde el cambio 2b `login-y-usuarios` (archivado 22/10/2026, D-107, D-108),
+junto con la gestión de usuarios.
 
 | Perfil | Alcance | Qué hace |
 |---|---|---|
@@ -22,6 +23,23 @@ propietarios de una unidad tienen cuentas propias, ven la cuenta completa y cual
 pago. Hay un solo perfil de personal por persona y alcance, principal incluido (RA-5), y una sola
 asignación de consejo por persona y edificio (RR-3). Consejo único no significa un solo consejero
 por edificio.
+
+### Cómo nace cada perfil (2b, D-107)
+
+- **Alta inicial** (D-108, E11): un comando de operador (nunca la API) crea la primera
+  administración, su super admin y su invitación; es el único camino para que entre la primera
+  persona de una administración nueva.
+- **Personal** (administrador, contador, auxiliar, consejo): el super admin invita desde
+  `/personal` con perfil y alcance; el worker crea la invitación en Clerk y la envía por mail
+  (reintentos e idempotencia).
+- **Vecinos**: el super admin los da de alta desde el padrón del edificio (vínculo propietario o
+  inquilino, varios propietarios por unidad); la invitación la manda Clerk por mail.
+- **Aceptación**: un token propio de un solo uso viaja junto al `__clerk_ticket` de Clerk en la
+  dirección de regreso; la API exige ese token **y** el email verificado de Clerk igual al de la
+  persona (normalizado a minúsculas sólo ASCII, R2B-3) antes de escribir `persona.clerk_usuario_id`.
+  Nunca se vincula por email solo.
+- **Ingreso con Google** (D-108, E17): también disponible, sólo por invitación; el email verificado
+  de Google tiene que coincidir con el de la invitación.
 
 ### Las dos capas de aislamiento (D-076)
 
@@ -91,16 +109,23 @@ y sesión con tenant (`Depends(sesion_con_tenant)`): ninguna es pública.
   o `consejo` por edificio. Rechaza `nivel`, `vinculo` y `unidad_id` con 422; duplicar el perfil da 409
   (RR-1). R5 del 2a se cerró en la tarea 4.2.
 
-El 3a sumó las demás rutas de configuración y el 3b sus siete pantallas. Sin login (2b),
-`identidad_actual` sigue dando 401 en producción: las rutas de dominio se prueban con identidad
-inyectada. El 2.2a no agregó rutas.
+El 3a sumó las demás rutas de configuración y el 3b sus siete pantallas. El 2.2a no agregó rutas.
 
-**Lo que queda por decidir** (no se asume "ninguna" sin confirmarlo en el *design* del cambio 2b,
-D-039): qué pantallas del portal del vecino o del login quedan accesibles sin sesión (por ejemplo, la
-propia pantalla de login); y si un **link firmado** de descarga (D-070: PDF de la expensa,
-comprobantes, facturas, con vencimiento entre un minuto y una hora) cuenta como "ruta pública" en el
-sentido de este documento o es un mecanismo aparte que no requiere sesión activa pero sí una firma
-válida: ese punto tampoco está resuelto todavía y se deja así, sin asumir una respuesta. Se completa
-junto con el explore del cambio 2b (login con Clerk del personal y del vecino, D-107). Ya no queda
-condicionado por P18 (una cuenta por administración, D-096): el login resuelve siempre dentro de una
-sola administración.
+**Desde el cierre del 2b (22/10/2026, D-107, D-108), el login está construido y `identidad_actual`
+resuelve la persona real por el token de Clerk** (ya no inyectada salvo en tests):
+
+- **Caddy deja de publicar `/api/*`** salvo `/api/salud` (`infra/Caddyfile`): un token copiado del
+  navegador no tiene a dónde ir desde afuera; toda la API es interna a la red de Compose.
+  **BREAKING** respecto de antes del 2b, sin efecto real porque nadie llamaba a la API desde afuera.
+- **Rutas de la web sin sesión** (`web/src/proxy.ts`): `/ingresar`, `/registrarse`,
+  `/elegir-administracion`, `/invitacion/[sobre]` y `/privacidad` (aviso de privacidad, borrador,
+  tarea 7.2 pendiente de aprobación). Cualquier otra ruta sin sesión redirige a `/ingresar`.
+- **El vínculo con la API nunca pasa por el cliente**: el servidor de Next manda el token de sesión y
+  la administración elegida; `X-Proptech-Administracion` se valida después del token y del vínculo,
+  nunca antes.
+- Los **links firmados de D-070** (PDF, comprobantes, facturas) no entraron en el 2b; el design deja
+  escrito que no reemplazan la sesión. Los arma el cambio 7.
+
+Ya no queda condicionado por P18 (una cuenta por administración, D-096): el vínculo con Clerk es
+único **por administración**, así que la misma persona de Clerk puede tener cuenta en dos
+administraciones distintas (D-108).

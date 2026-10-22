@@ -3,7 +3,8 @@
 ## Stack tecnológico
 
 Verificado contra `backend/pyproject.toml`, `backend/Dockerfile`, `web/package.json`, `web/Dockerfile`
-e `infra/compose.yaml` al 20/10/2026 (cambios 1a a 1d, 3a y 3b archivados).
+e `infra/compose.yaml` al 22/10/2026 (cambios 1a a 1d, 2a, 2.2a, 2c, 3a, 3b y 2b `login-y-usuarios`
+archivados).
 
 | Capa | Tecnología | Versión mínima | Fuente |
 |---|---|---|---|
@@ -38,14 +39,20 @@ e `infra/compose.yaml` al 20/10/2026 (cambios 1a a 1d, 3a y 3b archivados).
 | Frontend · navegador real (e2e) | Playwright (`@playwright/test`) | 1.64.1, sólo Chromium | `web/package.json` |
 | Frontend · tipografía | Source Sans 3 (`@fontsource/source-sans-3`) | 5.3.1, servida desde la propia web (D10 del design del 3b) | `web/package.json` |
 | Infraestructura · orquestación | Docker Compose, proyecto `proptech` | sin versión (CLI del host) | `infra/compose.yaml` |
+| Backend · verificación de token | pyjwt[crypto] | 2.15.1 (exacta) | `backend/pyproject.toml` |
+| Backend · sobres de invitación | cryptography | 50.0.2 (exacta) | `backend/pyproject.toml` |
+| Frontend · autenticación | `@clerk/nextjs` | 7.9.19 | `web/package.json` |
+| Frontend · autenticación (i18n) | `@clerk/localizations` | 4.24.0 | `web/package.json` |
 
 Las piezas con su versión ya fijada en la tabla (como arq 0.28.0) pero pendientes de los cambios que
 vienen, porque lo que falta es la funcionalidad, no la versión: **Backend** worker ARQ ya anda (cambio
 1c) pero las tareas reales de PDFs, emails e IA llegan con los cambios 7, 8, 13 y 14 (D-038).
 **Frontend** PWA instalable, sin app nativa (D-020, D-036); desde el 3b, `web/src/app/edificios/`
 tiene las siete pantallas del administrador (D-105: todo el ancho, menú lateral agrupado con íconos,
-barra superior fija y ayuda "?" acoplada); las pantallas del vecino y del consejo, y el login,
-todavía no existen (2b en adelante). **Infraestructura** Caddy como único proxy con HTTPS automático
+barra superior fija y ayuda "?" acoplada); desde el 2b, `web/src/app/{ingresar,registrarse,elegir-administracion,invitacion,privacidad,personal}/`
+tienen login, selector, invitaciones, aviso de privacidad (borrador) y gestión de personal; el alta de
+vecinos se hace desde el padrón del edificio (`web/src/app/edificios/[id]`, D5); las pantallas propias
+del vecino y del consejo todavía no existen (11, 12). **Infraestructura** Caddy como único proxy con HTTPS automático
 ya anda (D-043);
 el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) está construido y
 archivado desde el cambio 1d (D-095; ver `08_arquitectura_propuesta.md` §Variables de entorno).
@@ -68,8 +75,9 @@ D-046):
   `auditoria`, con `SET LOCAL` por transacción y `current_setting(..., missing_ok=true)` + `nullif`
   (una conexión sin tenant fijado falla cerrada); cuatro roles de PostgreSQL por responsabilidad (el de
   arranque, `proptech_migrador`, `proptech_app`, `proptech_respaldo`), ninguno con la contraseña del
-  superusuario salvo el rol de arranque mismo; sin login todavía (2b), la identidad se inyecta en los
-  tests. Detalle completo en `08_arquitectura_propuesta.md` §Seguridad y `04_modelo_de_datos.md`.
+  superusuario salvo el rol de arranque mismo; desde el 2b (22/10/2026), `identidad_actual` resuelve la
+  persona real por el token de Clerk verificado sin red; los tests siguen pudiendo inyectar la
+  identidad. Detalle completo en `08_arquitectura_propuesta.md` §Seguridad y `04_modelo_de_datos.md`.
 - La cuenta corriente es un libro de sólo agregar movimientos (R08).
 - Tests en tres niveles: unitarios (reglas, sin base), integración (PostgreSQL real en Docker) y
   aceptación (la liquidación del piloto al centavo).
@@ -97,7 +105,7 @@ Caddyfile, backups). En `backend/src/`, tres paquetes: `proptech_core` (dominio 
 | Proveedor de IA para comprobantes de pago | Precargar monto, fecha y número de operación de un comprobante (R11) | API (proveedor a elegir) | Pendiente, se decide en el *design* del cambio 8 |
 | Proveedor de email transaccional | Avisos de vencimiento y de mora (HU-V6), envío del PDF de la expensa | API/SMTP (proveedor a elegir, sin costo o el más barato, D-043) | Pendiente, se decide en el *design* del cambio 13 |
 | GoRules ZEN (`zen-engine`) + jdm-editor | Motor y editor visual de las reglas propias de cada edificio | Librería embebida en el proceso de Python (sin servicio aparte) + componente React | Decidido (D-066), cambio 6b |
-| Clerk (sólo autenticación) | Personal y vecinos con usuario y contraseña, además de link mágico; autorización en nuestra base (D-107) | Sólo email y nombre; vínculo por id de Clerk, aviso de privacidad y transferencia internacional | Decidido por Juani (20/10/2026); integración y gestión de usuarios en 2b, costo a verificar antes del piloto (15) |
+| Clerk (sólo autenticación) | Personal y vecinos con usuario y contraseña, link mágico y Google (D-107, D-108); autorización sigue en nuestra base | Clerk guarda email, nombre y, con Google, la foto de perfil (aviso de privacidad, borrador); vínculo por `persona.clerk_usuario_id`, único **por administración**; token verificado sin red (PyJWT, clave PEM) por la API; hablan con Clerk el worker (invitaciones) y el servidor de Next (sesión, `CLERK_SECRET_KEY`), nunca la API | **Construido y archivado** (cambio 2b `login-y-usuarios`, 22/10/2026). Costo real a verificar antes del piloto (15); doble factor y borrado de usuarios en Clerk, pendientes de decisión |
 
 Mercado Pago, recaudadores (Red Link, SIRO, Rapipago) y WhatsApp Business quedan fuera del MVP (ver
 `01_vision_y_objetivos.md` §Fuera de alcance y `16_proyecto_final.md`).

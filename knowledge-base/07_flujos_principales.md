@@ -7,6 +7,45 @@ los pasos financieros siguen pendientes. Los permisos vigentes son los de D-106.
 todavía no está validada (propuesta) o una pregunta abierta condiciona un paso, el flujo lo marca en
 vez de inventar el comportamiento.
 
+## Flujo 0 · Ingreso, invitación y aceptación (login)
+
+- **Disparador**: una administración nueva se crea, o el super admin invita a alguien.
+- **Actor**: super admin (invita), personal y vecinos (aceptan e ingresan).
+- **Cambio**: 2b `login-y-usuarios` (CRITICAL, D-094, D-107, D-108; archivado 22/10/2026).
+- **Pasos**:
+  1. **Alta inicial** (E11): un comando de operador crea la primera administración, su super admin
+     y su invitación. Es el único camino para que entre la primera persona de una administración
+     nueva; la API nunca crea administraciones por su cuenta.
+  2. **Invitar**: el super admin invita personal (perfil y alcance) desde `/personal`, o da de alta
+     un vecino desde el padrón del edificio (vínculo y unidad). El worker crea la invitación en
+     Clerk y la manda por mail, con reintentos e idempotencia (`ignore_existing`).
+  3. **Aceptar**: el mail lleva a `/ingresar?regreso=/invitacion/<sobre>` con `__clerk_ticket` en la
+     URL (propagado como `ticketSeguro` por toda la cadena de páginas, L-032). Un usuario nuevo ve
+     "This invitation refers to a non-existing identification" en el `SignIn` de Clerk hasta que
+     elige "Crear cuenta desde mi invitación"; ahí se registra con email y contraseña (o con
+     Google). La API exige el sobre válido **y** el email verificado de Clerk igual al de la persona
+     (minúsculas sólo ASCII, R2B-3) antes de escribir `persona.clerk_usuario_id` (D6). Se audita
+     `aceptar_invitacion`.
+  4. **Ingresar**: con una sola administración entra directo; con varias, `/elegir-administracion`
+     muestra las suyas y la elección viaja en una cookie `HttpOnly`. Se audita `ingreso_exitoso`; una
+     persona vinculada sin asignación vigente recibe 401 y deja `ingreso_fallido` (`motivo =
+     sin_asignacion`), sin datos personales en el detalle.
+  5. **Google** (E17): disponible además de contraseña y link mágico; sólo entra si el email
+     verificado de Google coincide con el invitado. Con otro Gmail, Clerk lo manda a su página
+     alojada en inglés (hallazgo, deuda: debería volver a `/ingresar` con un mensaje propio).
+- **Casos de error**:
+  - Token de sesión firmado con otra clave, vencido, de otra aplicación (`azp`) o sin forma de
+    usuario de Clerk: 401 sin ninguna sentencia SQL.
+  - Invitación reusada, vencida, revocada, de otra administración o aceptada con un email que no
+    coincide: 404 uniforme, sin distinguir el motivo (D6).
+  - Identidad vinculada en una administración que pide otra sin elegirla: 401 sin encabezado de
+    selector; con el id de una administración ajena en el selector, 401 sin ninguna lectura de esa
+    administración.
+  - **Abierto (SU-01)**: invitar a un email que ya tiene cuenta en Clerk no se probó contra Clerk
+    real; sigue como supuesto no verificado (`09_decisiones_y_supuestos.md`).
+- **Fuera de este flujo**: webhooks de Clerk (no se usan); doble factor del personal; borrado del
+  usuario de Clerk al quitar la última asignación (decisiones pendientes).
+
 ## Flujo 1 · Alta del edificio y carga de la semilla
 
 - **Disparador**: el administrador crea un edificio nuevo en el sistema.
@@ -352,3 +391,6 @@ Comunes a varios flujos, no se repiten en cada uno:
   factura duplicada, ingresos mayores que los gastos) no se pueden aceptar nunca.
 - **Aislamiento entre administraciones y alcance por edificio** (R10, D-076): se prueba en cada flujo
   que cruza una unidad, un edificio o una administración; se construye una sola vez, en el cambio 2.
+- **Sin identidad real no hay acceso** (2a, 2b): desde el cierre del 2b (22/10/2026) `identidad_actual`
+  resuelve la persona real por el token de Clerk verificado sin red; un token inválido o una persona
+  sin vínculo siguen dando 401, igual que antes del login (Flujo 0).

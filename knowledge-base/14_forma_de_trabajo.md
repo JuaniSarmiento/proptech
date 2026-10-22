@@ -79,6 +79,17 @@ informe.
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
 
+**Verificación real con un servicio externo de identidad** (desde el 2b `login-y-usuarios`,
+22/10/2026): cuando un cambio integra un proveedor externo de autenticación (Clerk y lo que venga
+después), el cierre no se da por completo con tests contra un doble falso, aunque pasen todos. Antes
+de archivar, **el socio que corresponda se sienta al teclado** y recorre el camino real contra la
+instancia de desarrollo del proveedor (alta, invitación, aceptación, ingreso, revocación), con el
+orquestador anotando hora y la fila de auditoría que deja cada paso. Es la única forma en que se
+encontró el hallazgo del `__clerk_ticket` perdido (L-032): el doble falso de los tests e2e no modela
+el modo restringido del proveedor real. El alcance de esa corrida puede acortarse por decisión del
+socio (como pasó en el 2b, decisión de cierre 2), dejando el resto como deuda declarada, nunca
+asumida como probada.
+
 ## Lecciones
 
 Antes de empezar cada cambio, **el constructor y el rompedor leen `15_lecciones.md`**: es la lista de

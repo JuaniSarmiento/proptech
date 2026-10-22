@@ -206,51 +206,67 @@ reemplazó por D-106 en el 2.2a y el método de login por D-107 en el 2b.
   "Deuda del cierre del 2.2a". Artefactos en
   `openspec/changes/archive/2026-10-20-roles-de-la-empresa/`.
 
-### 2b · `login` y gestión de usuarios · crítico
+### 2b · `login-y-usuarios` · archivado 22/10/2026 · CRITICAL
 
 - **Objetivo**: que el personal y los vecinos entren con Clerk, y que el super admin gestione las
   invitaciones, perfiles y alcances de su administración.
-- **Historias**: HU-V1. **Decisiones**: D-036, D-039, D-096 (cuenta por administración), D-099,
-  D-106 y D-107 (reemplaza el método de D-097).
-- **Entra**:
+- **Historias**: HU-V1 (la parte de entrar; "ver mis unidades" queda para el 11), HU-SA1 (nueva,
+  `06_funcionalidades.md`). **Decisiones**: D-036 (corregida en parte), D-039, D-096 (cuenta por
+  administración, acotada a "por administración" en D-108), D-099, D-106, D-107 (reemplaza el método
+  de D-097) y **D-108** (las elecciones E1 a E17 y las tres decisiones de cierre).
+- **Entró**:
   - Clerk **sólo para autenticar**, con usuario y contraseña también para vecinos, link mágico y
-    recuperación. La autorización sigue en nuestra base: tenant, perfiles, alcance y RLS. La identidad
-    se vincula por el **id de Clerk**, nunca sólo por email.
-  - Sesión del lado del servidor de Next (D-036), selector de administración después de autenticarse
-    (D-099), pantalla de login, rutas sin sesión y CSP. Límite de intentos por cuenta y por IP sin
-    bloquear a todo un edificio; el design define la integración con los controles de Clerk.
-  - **Gestión de usuarios (RA-6)**: el super admin invita al personal con perfil y alcance (principal
-    o por edificio según el perfil); los vecinos se dan de alta desde el padrón, con unidad y vínculo
-    propietario/inquilino, y reciben la invitación por mail. Se soportan varios propietarios de una
-    unidad y vínculos distintos de una persona. No delegar autorización a roles de Clerk.
-  - Auditoría de ingresos exitosos y fallidos y de la gestión sensible, con `acceso.aplicacion` y la
-    migración de vocabulario que corresponda; aviso de privacidad por la ley 25.326 y transferencia
-    internacional. Clerk guarda sólo email y nombre.
-- **No entra**: puerto de email completo con reintentos y plantillas (13), portal del vecino (11),
-  vista del consejo (12) ni carga del edificio de ejemplo (`acceso-de-desarrollo`). Verificar el costo
-  real de Clerk antes del piloto (15).
-- **Deuda heredada** (L-012): del 2a, R9, V2-7, D-1, D-2 y D-6, y el aviso de que la primera FK
-  legítima hacia `auditoria` frena el arranque; R5 ya se cerró en 2.2a y V3-5 en 2c. Del 2c, CSP y los
-  ítems cuyo dueño siga siendo 2b en su tabla. Del 3a, RF-B-4 (dueño propuesto, no confirmado por
-  Juani). Del 3b, mostrar el usuario real en la barra superior. Del 2.2a, retomar los límites de
-  revisión de RR y de la matriz antes de conectar identidades (ver tabla; dueño propuesto, no
-  confirmado por Juani).
+    Google (E17). La autorización sigue en nuestra base: tenant, perfiles, alcance y RLS. La identidad
+    se vincula por `persona.clerk_usuario_id` (migración `0019`), único **por administración**, nunca
+    sólo por email.
+  - La API verifica el token de Clerk **sin red** (PyJWT 2.15.1 + clave PEM del entorno); sesión del
+    lado del servidor de Next (D-036, D4, con `CLERK_SECRET_KEY` también en Next, E16); selector de
+    administración después de autenticarse (`/elegir-administracion`, D-099); CSP estricta con nonce
+    (6.2, cierra la deuda del 2c); Caddy deja de publicar `/api/*` salvo `/api/salud` (cierra RF-B-4
+    del 3a, **BREAKING** sin efecto real).
+  - **Gestión de usuarios (RA-6)**: el super admin invita al personal con perfil y alcance (migración
+    `0020`, tabla `invitacion`) y da de alta vecinos desde el padrón, con unidad y vínculo
+    propietario/inquilino. Varios propietarios por unidad y vínculos distintos de una persona. El
+    worker crea y envía la invitación con reintentos e idempotencia; se acepta con un token propio de
+    un solo uso **y** el email verificado de Clerk igual al de la persona (minúsculas sólo ASCII,
+    R2B-3).
+  - Auditoría de ingresos (`ingreso_exitoso`, `ingreso_fallido`) y de la gestión sensible, ocho eventos
+    nuevos en `accion_de_auditoria` (D13). Barra superior con el usuario real (cierra deuda del 3b).
+  - Pantallas (shape firmado por Juani, `openspec/exploraciones/`): `/ingresar`, `/registrarse`,
+    `/elegir-administracion`, `/invitacion/[sobre]`, `/privacidad` (aviso, **borrador**), `/personal`;
+    alta de vecinos integrada al padrón del edificio.
+- **No entró**: puerto de email completo con reintentos y plantillas (13), portal del vecino (11),
+  vista del consejo (12), carga del edificio de ejemplo (`acceso-de-desarrollo`, reducido por E12, sin
+  firma propia todavía), verificación del costo real de Clerk (15).
+- **Tarea sin construir, a propósito**: **7.2, el aviso de privacidad, queda `[ ]` y en borrador**
+  (decisión de cierre 3, D-108): faltan responsable, contacto y conservación; completarlos es deuda
+  obligatoria antes de producción. Es la única de las 37 tareas sin marcar.
+- **Deuda heredada, resuelta en este cierre** (L-012): del 2a, R9, V2-7, D-1 y D-6 (tarea 4.3); D-2
+  queda verificada como restricción, no removida (sigue aplicando al próximo cambio que referencie
+  `auditoria`). Del 2c, CSP (tarea 6.2). Del 3a, RF-B-4. Del 3b, el usuario real en la barra superior.
+- **Deuda heredada, NO confirmada como resuelta**: del 2.2a, la revisión independiente de los ataques
+  de base RR-1 a RR-4 y el cotejo de las 144 celdas del test de permisos contra D-106 (filas 2 y 5 de
+  "Deuda del cierre del 2.2a"). El propose de este cambio lo proponía como blanco explícito del
+  rompedor; no se encontró en `tasks.md` ni en los informes del rompedor/auditor del 2b evidencia de
+  que se haya ejecutado como acción separada. Quedan abiertas, sin dueño nuevo.
+- **Deuda nueva de este cierre** (deuda del cierre del 2b, ver tabla más abajo): SU-01 (invitación a un
+  email con cuenta previa en Clerk, no verificada), la 8.2 acortada (deuda declarada: link por email,
+  bloqueo por intentos, segunda administración, email secundario, reinvitar, revocar contra Clerk
+  real en vuelo), y los 7 hallazgos de la verificación real del 21-22/10/2026.
 - **Depende de**: 2a y 2.2a. **Habilita**: uso real de las pantallas, 11 y 15.
-- **Bloqueado por**: ninguna pregunta de la exploración de roles y login; P48 se resolvió en D-099.
-  Requiere propuesta CRITICAL firmada por Juani o Alberto (D-094).
-- **Decidir en el design**: integración de Clerk con la sesión de Next y con D-099; verificación del
-  id de Clerk y sus claims; altas e invitaciones por tenant sin enlazar personas sólo por email;
-  recuperación, revocación y sincronización de identidades; qué rutas quedan sin sesión y cómo se
-  interpretan los links firmados de D-070. P12 sigue abierta para la base de negocio, no para adoptar
-  Clerk en la autenticación (D-107).
-- **Que intente romper el rompedor**: token falso, vencido o de otra cuenta; invitación reutilizada,
-  vencida o destinada a otra administración; mismo email en dos tenants; vecino entrando como
-  personal; alcance principal concedido al auxiliar; contador que escribe; identidad enlazada por
-  email en vez de id de Clerk; perfil duplicado; token visible en el navegador; bloqueo por IP
-  compartida; fuga de datos al proveedor o en los logs.
-- **Terminado cuando**: personal y vecinos entran sólo a su administración y alcance; las invitaciones
-  crean el vínculo y perfil correctos; los intentos fallidos se limitan y auditan; Clerk autentica y
-  la base conserva toda decisión de autorización.
+- **Firmado por Juani**: E1 a E15 el 21/10/2026 (`2212c9e`); E16 y E17 el 21/10/2026, misma tabla; las
+  tres decisiones de cierre (R2B-3, 8.2 acortada, aviso de privacidad como borrador) el 21/10/2026.
+- **Cierre (22/10/2026)**: 36 de 37 tareas `[x]` (7.2 en borrador, sin marcar). Una vuelta de rompedor
+  y auditor (4 hallazgos, `.git/informes-2b/rompedor/informe.md`, corregidos el mismo día) más
+  correcciones post-rompedor (RB2b-post-1 a 4). Verificación real con Juani al teclado contra Clerk de
+  desarrollo (8.2, acortada por decisión de cierre 2): registro desde el mail, Google con el email
+  invitado y el rechazo con otro Gmail, revocar una invitación y confirmarlo en el panel de Clerk.
+  Hallazgo propio de la 8.2: el `__clerk_ticket` se perdía entre páginas (L-032, arreglado el mismo
+  día, `90131a6`). Corrida de cierre sobre `7607863`: backend 2675 passed + 1 xfailed (+599 sobre
+  1.1), web 385 (+84), web-navegador 172 (+28); humo verde sobre `1ea0d8b` (22/10/2026, 09:38-09:41).
+  Dos tests de infraestructura frágiles (asumían `infra/datos-respaldos/` vacía) se corrigieron sin
+  tocar `backend/src` (`7607863`).
+- **Artefactos**: `openspec/changes/archive/2026-10-22-login-y-usuarios/`.
 
 ### 2c · `endurecimiento-de-infraestructura` · MEDIUM
 
@@ -402,23 +418,30 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a y los `shape`. **Habilita**: `acceso-de-desarrollo` y el uso real del 3 junto con
   el 2b.
 
-### 3b-bis · `acceso-de-desarrollo` · HIGH y CRITICAL (D-094), sin firmar
+### 3b-bis · `acceso-de-desarrollo` · HIGH, sin firmar (reescrito tras el cierre del 2b, 22/10/2026)
 
-- **Objetivo**: cargar el edificio de ejemplo para recorrer las siete pantallas contra la API real.
-  **Con el 2b se reduce a esa carga**: Clerk reemplaza la necesidad del acceso sin login (D-107).
-- **Origen**: el 3b archivó las pantallas completas sin el acceso de desarrollo ni la carga del ejemplo.
-  La propuesta actual sigue sin firma; debe ajustar su alcance si el login llega antes.
-- **Carga pendiente**: retomar la implementación guardada sin commitear en
-  `.git/informes-3b/2.3-wip/`; **sumar una fila `super_admin`** para la persona del ejemplo antes de
-  llamar a `crear_edificio`, con el vocabulario de 0017 (RD-7, RA-1). No reemplazar otras asignaciones.
-  Requiere además `GRANT INSERT ON auditoria TO proptech_migrador`, **CRITICAL y sin firmar**: lo
-  decide Juani o Alberto, no el constructor. No se otorga ese permiso al archivar el 2.2a.
-- **Si se decide construir antes del 2b**: punto de entrada en `backend/desarrollo/`, fuera de `src/`,
-  Compose aparte y guardas contra su llegada a producción; requiere firma HIGH y CRITICAL propia.
-- **Precondición**: propuesta ajustada y aprobación escrita y fechada de Juani o Alberto, incluido el
-  `GRANT`. Sin firma no se construye.
-- **Depende de**: 3a, 3b y 2.2a; con 2b, sólo la carga del ejemplo. **Habilita**: recorrido con datos
-  de ejemplo, nunca datos personales reales.
+- **Objetivo**: cargar el edificio de ejemplo para recorrer las siete pantallas contra la API real,
+  entrando por el login de verdad. **Reducido por E12** (firmada por Juani en el 2b, 21/10/2026): con
+  Clerk construido, el acceso sin login sobra y es una puerta más que podría llegar a producción.
+- **Descartado por D11 del design del 2b**: el punto de entrada sin login (`backend/desarrollo/`,
+  `compose.desarrollo.yaml`) y sus guardas, **y el `GRANT INSERT ON auditoria TO proptech_migrador`**
+  que este change tenía pendiente de firma. No se construyen ni se piden: la carga corre como
+  `proptech_app`, que ya tiene `SELECT, INSERT` sobre `auditoria` (el mismo permiso del que depende
+  D10, `alta inicial`), así que el `GRANT` al migrador no hace falta.
+- **Gobernanza**: queda **HIGH** (toca cómo se carga identidad y datos en el log de auditoría, aunque
+  con el mismo mecanismo que ya usa D10). Ya no hay una segunda decisión CRITICAL: al no pedirse el
+  `GRANT`, no queda nada que toque permisos sobre `auditoria` por fuera de lo que D10 ya firmó con E11.
+- **Lo único que construye**: la carga del edificio de ejemplo (7.2 del 3a, D9/E6/E10) reescrita sobre
+  el camino de **D10 · Alta inicial** del 2b (el comando corre con las credenciales de `proptech_app`,
+  nunca `proptech_migrador`, fija el tenant de la administración de ejemplo y crea su fila
+  `super_admin` en la misma transacción) y el recorrido de las siete pantallas del 3b contra la API
+  real con ese ejemplo cargado.
+- **L-029**: la firma de E12 en el proposal del 2b aprueba la *decisión de forma*, no estos artefactos
+  reescritos; este change sigue necesitando su propia firma en su sección "Aprobación".
+- **Precondición**: tabla "Aprobación" vacía en `openspec/changes/acceso-de-desarrollo/proposal.md`, a
+  la espera de Juani o Alberto. Sin firma no se construye.
+- **Depende de**: 3a, 3b, 2.2a y 2b (D10, D11, E11, E12). **Habilita**: recorrido con datos de ejemplo,
+  nunca datos personales reales.
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
 
@@ -835,7 +858,7 @@ el 1d ya está en sus tareas (D-090).
 | Restauración con `-U` y la ruta del `.env`, retención que no borra el ciclo en curso, rechazo de uid 0, shellcheck en el CI, `-p proptech` en el humo | 1d |
 | Roles de PostgreSQL para RLS (migrador y aplicación) | 2a |
 | Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) — **cerrada en el 2c (las cinco cosas, tareas 3.1 a 4.3 y 7.1)** |
-| CSP en Next | 2b (una CSP sin pantallas no prueba nada; la primera es la de login) |
+| CSP en Next | 2b — **cerrada en el 2b (tarea 6.2)**: CSP estricta con nonce, resuelto E16 |
 | Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3a (tareas 2.3 y 2.4; el tope del YAML ya estaba hecho) |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
@@ -888,11 +911,11 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 |---|---|---|
 | R5: contrato de error del endpoint de asignación | Cerrada en el 2.2a, tarea 4.2: cuerpo por edificio sin vecino, `nivel`, `vinculo` ni `unidad_id`, con 422 por extras incluso con ids válidos ajenos; no escribe ni filtra | 2.2a, cerrada el 20/10/2026 |
 | R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3a (C-06a), bloqueante antes de su primera ruta nueva (tarea 2.1) |
-| R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) |
+| R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) — **cerrada en el 2b (tarea 4.3)**: 200 pedidos por clase, diferencia 0.368ms bajo el umbral de 5ms |
 | R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3a (C-06a), tarea 2.2 |
 | V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | 15 (piloto), antes de operar la base con el superusuario |
 | V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados — **cerrada en el 2c (6.1)** |
-| V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b), antes del primer segundo caso con una misma acción |
+| V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b) — **cerrada en el 2b (tarea 4.3)**: el test se reescribió y se vio rojo con un segundo caso |
 | V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | 15 (piloto), antes de tener cortes de base con tráfico real |
 | V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 — **cerrada en el 2c (6.0)** |
 | V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | 15 (piloto), revisar con el monitoreo del servidor real |
@@ -903,12 +926,12 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | V3-15: README desactualizado (el worker sí tiene salida, el 1d no está "Propuesto", faltan las contraseñas distintas) y el humo no mira `relrowsecurity` | Dos frases falsas y un requisito no escrito, no una fuga | 2c (C-05c), con la tabla de variables del README y el humo con pasos nombrados — **cerrada en el 2c (7.1 y 5.4)** |
 | Chequeo 5: 25 archivos de test de RLS, permisos y rutas que nadie abrió ni mutó | El comportamiento de aislamiento sí se probó de caja negra con scripts propios; lo que no se sabe es si esos tests pueden dar rojo | 15 (piloto), una pasada de mutación antes de cargar datos reales |
 | Chequeo 5: ninguna verificación de arranque mira las políticas de las tablas de negocio (`complejo`, `unidad` y las otras), sólo las de `auditoria` | El diseño (D2) sólo promete esa verificación para la auditoría; para el resto no hay promesa rota, pero Juani decidió prometerlo | 15 (piloto) — decisión de Juani, no deuda sin dueño (D-098) |
-| D-1: de las 7 comparaciones de `_verificar_politica_de_auditoria`, 5 no tienen test que las exija (nombre, PERMISSIVE, comando, roles, WITH CHECK) | Hoy el código anda (caja negra); son mutantes vivos, no una falla observada | 2b (C-05b), junto con V3-5 |
-| D-2: la primera FK legítima hacia `auditoria` frena todo arranque (exit 1 en `despues`, con `SQLSTATE 0A000` y no el texto "FK") | Es lo diseñado (ruidoso en vez de ciego), pero nadie lo documentó como restricción del esquema | 2b (C-05b), antes de diseñar cualquier tabla que referencie `auditoria` |
+| D-1: de las 7 comparaciones de `_verificar_politica_de_auditoria`, 5 no tienen test que las exija (nombre, PERMISSIVE, comando, roles, WITH CHECK) | Hoy el código anda (caja negra); son mutantes vivos, no una falla observada | 2b (C-05b), junto con V3-5 — **cerrada en el 2b (tarea 4.3)**: un test por cada comparación, visto rojo con copia mutada |
+| D-2: la primera FK legítima hacia `auditoria` frena todo arranque (exit 1 en `despues`, con `SQLSTATE 0A000` y no el texto "FK") | Es lo diseñado (ruidoso en vez de ciego), pero nadie lo documentó como restricción del esquema | 2b (C-05b) — **verificada, no cerrada, en el 2b**: queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se confirmó que 0019/0020 no agregan ninguna; la primera tabla que sí la necesite vuelve a frenar el arranque, a propósito |
 | D-4: `vuelta-3/arbol/backend/.venv` de la copia del rompedor es un symlink al `.venv` real del repo; un `uv run`/`uv sync` desde ahí redirige la instalación editable | Hoy no hay daño (el `.pth` volvió a apuntar al repo); es el entorno de trabajo efímero del rompedor, no el repo | orquestador — borrar el symlink o el `arbol/` entero antes de reusar `vuelta-3/mutar.py`, no es un cambio del roadmap |
 | D-5: `infra/ci/humo.sh` está en git como `100644` (sin `+x`); el CI lo corre con `bash` y no falla | Corrido a mano como `./humo.sh` da "Permiso denegado"; no afecta al CI | 2c (C-05c), con el humo con pasos nombrados — **cerrada en el 2c (commit de `humo.sh` con +x)** |
-| D-6: el test de M5 detecta "sin sonda de TRUNCATE" sólo porque la palabra `"TRUNCATE"` en mayúsculas no aparece en el aviso de catálogo | El caso de la FK lo sigue cubriendo | 2b (C-05b), con D-1 |
-| Aviso para el 2b: la primera FK legítima hacia `auditoria` va a frenar cada arranque (V3-2, mismo mecanismo que D-2); contemplarlo antes de agregar cualquier referencia nueva a `auditoria` | Es el comportamiento diseñado, no una falla nueva | 2b (C-05b) |
+| D-6: el test de M5 detecta "sin sonda de TRUNCATE" sólo porque la palabra `"TRUNCATE"` en mayúsculas no aparece en el aviso de catálogo | El caso de la FK lo sigue cubriendo | 2b (C-05b), con D-1 — **cerrada en el 2b (tarea 4.3)**: sonda que no depende de la palabra en mayúsculas |
+| Aviso para el 2b: la primera FK legítima hacia `auditoria` va a frenar cada arranque (V3-2, mismo mecanismo que D-2); contemplarlo antes de agregar cualquier referencia nueva a `auditoria` | Es el comportamiento diseñado, no una falla nueva | Vigente: 0019/0020 no agregaron FK hacia `auditoria`; sigue aplicando al primer cambio que sí lo haga |
 
 D-3 (la evidencia de `tasks.md` 13.3 mostraba otro mutante que el M5 original) no entra en esta tabla:
 el rompedor sugirió corregirla "en la misma pasada que V3-10", y se corrigió en ese mismo commit
@@ -963,7 +986,7 @@ firmado todavía, queda dicho en la fila.
 |---|---|---|
 | No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | 15 (piloto). Dueño propuesto, no confirmado por Juani |
 | `complejo.localidad` puede quedar `''` en los edificios que vienen del 2a (el backfill de `0005` usa `server_default=""`); el `CHECK` de texto no vacío de `0016` la excluye a propósito, por ese mismo motivo (RF-D-2, hallado en la propia migración) | La API ya rechaza `''` en `localidad` con 422 (`CuerpoEdificio.localidad`); el agujero es sólo por SQL directo y sólo sobre edificios que ya existían antes del 3a | 3b (editar la localidad desde el padrón y agregar ahí el `CHECK`) |
-| RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b (el login acota quién llega a probar). Dueño propuesto, no confirmado por Juani |
+| RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b — **cerrada en el 2b**: Caddy deja de publicar `/api/*` salvo `/api/salud`; un anónimo ya no llega a sondear métodos ni rutas de la API (design D3) |
 | Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | El rompedor del 3b. Dueño propuesto, no confirmado por Juani |
 | La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | Decisión tomada y declarada, no un agujero sin dueño: D-103 deja la excepción a propósito porque la migración de historia de edificios reales la va a necesitar | 7 (migración de historia de edificios reales) |
 
@@ -976,9 +999,29 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| La barra superior muestra "Administración" en vez de un usuario real | La API todavía no expone quién inició sesión (D-105d); mostrar un nombre inventado sería peor que no mostrar ninguno | 2b |
+| La barra superior muestra "Administración" en vez de un usuario real | La API todavía no expone quién inició sesión (D-105d); mostrar un nombre inventado sería peor que no mostrar ninguno | 2b — **cerrada en el 2b (tarea 7.1)**: muestra nombre, administración, "Salir" y "Cambiar de administración" |
 | El encabezado de la tabla de 200 unidades no queda fijo (`sticky`) al bajar la página | La tabla sigue siendo legible, con scroll propio y operable con teclado; es una comodidad, no un defecto de acceso | polish futuro. Dueño propuesto, no confirmado por Juani |
 | La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | No es deuda nueva de este cambio: ya está decidida y declarada en D-103, y ya figura arriba en "Deuda del cierre del 3a" con dueño el cambio 7; no se repite acá | — (ver "Deuda del cierre del 3a") |
+
+### Deuda del cierre del 2b (D-108, 22/10/2026)
+
+Cierre con una vuelta de rompedor y auditor más correcciones post-rompedor, y verificación real
+acortada con Juani al teclado (decisión de cierre 2). 7.2 (aviso de privacidad) quedó en borrador, sin
+marcar. Dueño asignado por el primer cambio que de verdad necesita que esté resuelta (L-012); donde
+ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, queda dicho en la fila.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| SU-01: invitar a un email que ya tiene usuario en Clerk, sin verificar contra Clerk real | La 8.2 acortada no llegó a probar este caso; lo que se vio fue el camino de un email nuevo | Antes de que un vecino o personal con cuenta previa necesite una invitación nueva, o antes del 15 (ver `09_decisiones_y_supuestos.md` SU-01) |
+| 8.2 acortada (decisión de cierre 2): sin verificar ingreso con link por email, bloqueo por intentos fallidos, selector con una segunda administración, email secundario y cambio del principal, reinvitar con una invitación `enviada`, revocar en vuelo contra Clerk real | Decisión de Juani, no un agujero sin dueño; lo cubierto alcanza para registrarse, entrar, Google y revocar | 15 (piloto), antes de operar con usuarios reales. Dueño propuesto, no confirmado por Juani |
+| El rechazo de un Gmail no invitado termina en la página alojada de Clerk, en inglés y fuera de la app | No hay fuga de datos; sólo la experiencia es pobre | polish futuro. Dueño propuesto, no confirmado por Juani |
+| Levantar el stack sin `mkdir -p infra/datos-respaldos` del README deja la carpeta como root y el contenedor de respaldos reinicia en bucle | El README ya lo pide; es un error de quien levanta el stack, no del código | DevOps (documentar o automatizar el `mkdir`). Dueño propuesto, no confirmado por Juani |
+| Con una sola administración, tras aceptar la invitación se muestra el selector igual (el shape dice "entra directo") | Entra, sólo con un paso de más | 7.1, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| Pantalla de personal: el botón "Quitar" cae en la columna de Invitación (desalineado) y se ofrece sobre el único super admin (la API lo rechaza, R2B-2) | La API frena la acción peligrosa; es un defecto visual y de affordance | 7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| El menú lateral sólo muestra "Personal": no hay entrada a "Mis edificios" | Se llega por URL directa; falta el acceso desde el menú | 7.1/7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| Los logs del worker y de httpx salen sin interpolar (`"HTTP Request: %s %s ..."`) | En producción un error de Clerk no dice a qué URL ni qué respondió; no es una fuga, es falta de información | 15 (piloto), antes de depender de esos logs para diagnosticar. Dueño propuesto, no confirmado por Juani |
+| Deuda heredada del 2.2a (filas 2 y 5 de "Deuda del cierre del 2.2a"): revisión independiente de RR-1 a RR-4 y cotejo de las 144 celdas, propuesta como blanco del rompedor del 2b | No se encontró evidencia en `tasks.md` ni en los informes del rompedor/auditor de que se haya ejecutado como acción separada; queda igual que antes del 2b | 2b original lo proponía; sin confirmación, pasa intacta al próximo cambio que toque identidades |
+| El aviso de privacidad (`/privacidad`) es un borrador: faltan identidad legal, domicilio y contacto del responsable, y la conservación | Decidido así por Juani (decisión de cierre 3); publicar sin esos datos sería afirmar un cumplimiento legal no verificado | Antes de producción, obligatorio. Dueño: Juani (aprueba el texto final, tarea 7.2) |
 
 ## Pendientes de arranque
 

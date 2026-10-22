@@ -135,6 +135,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   D-099 (16/10/2026). Primero se autentica y después elige "¿A cuál querés entrar?" entre sus
   administraciones; con una sola cuenta entra directo. Vale para personal y vecinos; el método de
   autenticación actual es Clerk (D-107), sin enlazar personas sólo por email.
+- [ ] **P49 · Doble factor para el personal**: Clerk lo ofrece; activarlo es una decisión de producto,
+  no técnica. Surge del design del 2b (`openspec/changes/archive/2026-10-22-login-y-usuarios/design.md`,
+  Open Questions). Antes de ofrecerlo al piloto (15) o antes, si Alberto lo pide.
+- [ ] **P50 · Borrar el usuario de Clerk cuando se le quita la última asignación**: hoy sólo se corta el
+  acceso (la próxima vez que pida algo da 401); el usuario sigue existiendo en el panel de Clerk. Surge
+  del design del 2b. Antes del 15 o de una decisión de Juani.
 
 ## Resumen por el cambio al que bloquean
 
@@ -159,9 +165,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P43 y P44**: el material de ProTecc en el repositorio público y la licencia, antes de darle
   visibilidad al repositorio y del primer despliegue.
 - **P48**: resuelta en D-099 (selector después de autenticarse); ya no bloquea el 2b.
-- **Login y usuarios**: decididos en D-107 y RA-6 (20/10/2026): Clerk autentica, también con
-  contraseña para vecinos, y la base autoriza. En 2b el super admin invita al personal con perfil y
-  alcance; los vecinos se dan de alta desde el padrón, con vínculo e invitación por mail.
+- **Login y usuarios**: **construido y archivado** (cambio 2b `login-y-usuarios`, 22/10/2026, D-107,
+  D-108): Clerk autentica, también con contraseña y Google para vecinos, y la base autoriza; el super
+  admin invita al personal con perfil y alcance y da de alta vecinos desde el padrón, con vínculo e
+  invitación por mail. Quedan P49 (doble factor) y P50 (borrado en Clerk) como preguntas nuevas que
+  dejó su design, y SU-01 como supuesto no verificado (invitar a un email que ya tiene usuario en
+  Clerk; `09_decisiones_y_supuestos.md`).
 - **Pendientes del design del 2.2a**: el orden de `acceso-de-desarrollo` se ajusta al 2b (con login,
   sólo carga del ejemplo); sumar la fila `super_admin` y firmar el `GRANT INSERT ON auditoria` al
   migrador sigue pendiente de Juani o Alberto en ese change. RA-6 y E8 quedaron respondidas;

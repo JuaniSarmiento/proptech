@@ -29,8 +29,8 @@ C-01 infraestructura-base (1a)
               └── C-04 respaldos-y-restauracion (1d)
                     └── C-05a aislamiento-por-administracion (2a)   ← el candado (D-097); desbloquea TODO lo demás
                           │
-                          ├── C-05a-bis roles-de-la-empresa (2.2a) ← adapta 3a/3b, ya archivados
-                          │     └── C-05b login y gestión de usuarios (2b) ← Clerk; lo piden C-16 y C-20
+                          ├── C-05a-bis roles-de-la-empresa (2.2a) ← archivado
+                          │     └── C-05b login-y-usuarios (2b) ← archivado; Clerk; lo piden C-16 y C-20
                           ├── C-05c endurecimiento-de-infraestructura (2c)
                           │
                           └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (E1)
@@ -98,7 +98,7 @@ GATE 6: C-06a ✓
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
-    → C-05b login y gestión de usuarios (Clerk, CRITICAL; P48 resuelta en D-099)
+    → C-05b login-y-usuarios (2b, archivado 22/10/2026; Clerk, CRITICAL; P48 resuelta en D-099)
 
 GATE 7: C-07 ✓                                           ← PRIMER FORK real (2 paralelos)
   → C-08 importacion-desde-excel    [Agente A]
@@ -159,7 +159,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   6  │ C-06a configuracion-del-edif.   │         -                       │ C-05c endurecimiento-de-infra.
   7  │ C-07 motor-de-cuenta-corriente  │         -                       │ C-06b pantallas-del-edificio
   8  │ C-08 importacion-desde-excel    │ C-09 gastos-y-cargos            │ C-05a-bis roles-de-la-empresa
-  9  │ C-10 liquidacion-y-emision      │ C-05b login y usuarios          │         -
+  9  │ C-10 liquidacion-y-emision      │ C-05b login-y-usuarios          │         -
  10  │ C-11 pagos-informados           │         -                       │ C-19 lectura-de-facturas
  11  │ C-12 motor-de-reglas            │ C-13 extracto-bancario          │ C-14 morosidad
  12  │         -                       │ C-15 condonacion-judicial...    │ C-16 portal-del-vecino
@@ -266,21 +266,26 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-05b] `login` y gestión de usuarios · 2b
-- **Estado**: `[ ]` próximo (CRITICAL); P48 resuelta en D-099. El método de D-097 fue reemplazado por
-  D-107; requiere propuesta con firma propia de Juani o Alberto (D-094).
-- **Scope**: Clerk sólo para autenticación, usuario y contraseña también para vecinos, vínculo por
-  id de Clerk y autorización en la base; selector de administración, sesión del servidor de Next,
-  límite de intentos, auditoría y CSP. El super admin invita al personal con perfil y alcance; vecinos
-  desde el padrón con vínculo e invitación por mail. Aviso de privacidad, sólo email y nombre en
-  Clerk; costo a verificar antes del piloto. Hereda la deuda de su ficha.
+### [C-05b] `login-y-usuarios` · 2b
+- **Estado**: `[x]` archivado (22/10/2026); 36 de 37 tareas hechas (7.2, aviso de privacidad, queda
+  en borrador a propósito, D-108 decisión de cierre 3). P48 resuelta en D-099. El método de D-097 fue
+  reemplazado por D-107; E1 a E17 firmadas por Juani (D-108, 21/10/2026).
+- **Scope**: Clerk sólo para autenticación, usuario y contraseña también para vecinos, link mágico y
+  Google (E17); vínculo por `persona.clerk_usuario_id` único por administración, autorización en la
+  base; selector de administración, sesión del servidor de Next (con `CLERK_SECRET_KEY`, E16), límite
+  de intentos por cuenta de Clerk, auditoría de ingresos y CSP estricta con nonce. El super admin
+  invita al personal con perfil y alcance; vecinos desde el padrón con vínculo e invitación por mail.
+  Caddy deja de publicar `/api/*` salvo `/api/salud`. Aviso de privacidad **en borrador**, sin los
+  datos legales del responsable; costo de Clerk a verificar antes del piloto. Cierra deuda de 2a (R9,
+  V2-7, D-1, D-6), 2c (CSP) y 3a (RF-B-4); hereda el resto en su ficha, más la nueva de este cierre
+  (SU-01, 8.2 acortada, 7 hallazgos).
 - **Dependencias**: C-05a, C-05a-bis (2.2a).
 - **Governance**: CRITICO
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §2b y deuda del 2.2a
+  - `knowledge-base/12_fichas_de_changes.md` §2b y "Deuda del cierre del 2b"
   - `knowledge-base/03_actores_y_roles.md`
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-036, D-099, D-106, D-107)
-  - `openspec/exploraciones/2026-10-20-roles-de-la-empresa-y-login.md`
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-036, D-099, D-106, D-107, D-108)
+  - `openspec/changes/archive/2026-10-22-login-y-usuarios/`
   - `knowledge-base/15_lecciones.md`
 
 ---

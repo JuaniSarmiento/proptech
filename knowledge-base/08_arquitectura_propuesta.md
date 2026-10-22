@@ -78,12 +78,23 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
 
 ## Seguridad
 
-- **Autenticación (D-107)**: Clerk autentica al personal y a los vecinos, con usuario y contraseña
-  también para vecinos, además de link mágico. La autorización permanece en la base (D-106): tenant,
-  perfiles, alcances y RLS. La identidad se vincula por id de Clerk, nunca sólo por email; Clerk guarda
-  sólo email y nombre, con aviso de privacidad y transferencia internacional. El servidor de Next
-  guarda el token de sesión; el navegador nunca lo ve (D-036). El design del 2b resuelve la integración
-  y la gestión de usuarios. **Hoy (hasta el 2b)**: identidad inyectada en tests y 401 en producción.
+- **Autenticación (D-107, D-108; construida y archivada en el cambio 2b `login-y-usuarios`,
+  22/10/2026)**: Clerk autentica al personal y a los vecinos, con usuario y contraseña también para
+  vecinos, link mágico y Google (E17). La autorización permanece en la base (D-106): tenant, perfiles,
+  alcances y RLS. La identidad se vincula por `persona.clerk_usuario_id`, único **por administración**
+  (D2, D-108), nunca sólo por email. Clerk guarda email, nombre y, con Google, la foto de perfil (aviso
+  de privacidad en `/privacidad`, **borrador**: faltan los datos legales del responsable antes de
+  producción, deuda obligatoria).
+  - **La API verifica el token sin red**: PyJWT con la clave pública PEM del entorno (`CLERK_JWT_KEY`),
+    `exp`/`nbf` contra un reloj inyectado (5 s de tolerancia), `iss` exacto, `azp` contra los orígenes
+    autorizados y `sub` con forma de usuario de Clerk; cualquier otra cosa da 401 sin tocar la base.
+  - **El servidor de Next guarda el token de sesión** (D-036, el `__session` de Clerk es legible desde
+    el navegador por 60 s; D-108 lo acota con Caddy sin `/api/*` público y CSP estricta con nonce) y
+    **también recibe `CLERK_SECRET_KEY`** (E16: `clerkMiddleware` de `@clerk/nextjs` 7.9.19 lo exige
+    aun verificando sin red). Hablan con Clerk el worker (invitaciones) y el servidor de Next (sesión);
+    **la API nunca**.
+  - **Caddy deja de publicar `/api/*`** salvo `/api/salud` (`infra/Caddyfile`): toda la API queda
+    interna a la red de Compose.
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
   tres roles con `roles.py antes`/`despues`, y es el único dueño de `auditoria`); `proptech_migrador`
@@ -94,7 +105,7 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
   `POSTGRES_RESPALDO_PASSWORD`, sin superusuario, con `BYPASSRLS` y `pg_read_all_data`, sólo para
   `pg_dump`). Ningún servicio permanente tiene la contraseña del superusuario (R8).
 - **Autorización**: tres capas: administración (tenant, deducida del login), alcance por edificio
-  según el rol, permiso por acción (D-037, matriz de D-096). Fuera de alcance responde 404; sin permiso,
+  según el rol, permiso por acción (D-037, matriz de D-106). Fuera de alcance responde 404; sin permiso,
   403 con el permiso faltante. Row-Level Security de PostgreSQL es el segundo candado del aislamiento
   entre administraciones (R10, D-076), con `SET LOCAL` por transacción y `current_setting(...,
   missing_ok=true)` + `nullif` para que una conexión sin tenant fijado falle cerrada, nunca abierta.

@@ -416,3 +416,56 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   cada corrida. Si cambia el código después, se repite la verificación sobre el commit final antes
   de marcar el cierre.
 - **Aplica a**: constructor, orquestador y auditor.
+
+## L-032 · El doble falso de un proveedor de identidad no modela su modo restringido
+
+- **Origen**: cambio 2b `login-y-usuarios`, verificación real (8.2), 21/10/2026.
+- **Qué pasó**: contra Clerk real en modo *invite-only*, el mail de invitación llega a
+  `/invitacion/<sobre>` con `__clerk_ticket` en la URL. Esa página y el link "Crear cuenta desde mi
+  invitación" armaban los links a `/ingresar` y `/registrarse` sólo con `regreso`: `<SignUp>` nunca
+  veía el ticket y Clerk respondía "El acceso a esta funcionalidad está restringido en este momento".
+  Todos los tests e2e pasaban: el Clerk falso de ese arnés (`web/e2e/prueba.ts` aborta toda red hacia
+  `clerk.*`/`cloudflare.*`) no tiene frontend API falso de Clerk, así que ningún test podía ver el
+  rechazo por falta de ticket.
+- **Regla**: cuando un proveedor externo tiene un modo restringido o invite-only, el doble falso de
+  los tests automáticos no alcanza para probarlo: ese modo se verifica contra la instancia real del
+  proveedor (ver `14_forma_de_trabajo.md`, "Verificación real con un servicio externo de identidad”),
+  y se declara como SUPUESTO mientras no haya un doble falso que lo modele.
+- **Costo**: un hallazgo que sólo apareció con Juani al teclado contra Clerk real, después de que 2259
+  tests de backend y 385 de web pasaran en verde; arreglado el mismo día (`90131a6`).
+- **Aplica a**: constructor (al escribir el doble falso de un proveedor externo), orquestador (al
+  decidir qué va a verificación real).
+
+## L-033 · Un test de infraestructura no puede suponer una carpeta real vacía
+
+- **Origen**: cambio 2b, corrida de cierre (9.2), 21-22/10/2026.
+- **Qué pasó**: dos tests de `backend/tests/infra/` suponían que `infra/datos-respaldos/` estaba
+  vacía: uno creaba un archivo de prueba y hacía `rmdir()` al final; el otro recorría `infra/**/*` con
+  `rglob` y leía cada archivo como texto. En cuanto el README manda crear esa carpeta y el stack real
+  la llena con backups (`.dump` binarios), los dos fallan: `rmdir()` con "Directory not empty" y el
+  `rglob` con `UnicodeDecodeError` al leer un binario como UTF-8.
+- **Regla**: un test que toca una carpeta real del repositorio (no una temporal propia) nunca asume su
+  contenido; recuerda si existía antes de tocarla, usa un nombre de archivo propio que no pueda pisar
+  un dato real, y recorre sólo lo versionado (`git ls-files`) en vez de todo el filesystem cuando lo
+  que busca es código, no datos.
+- **Costo**: dos corridas completas de `test-backend.sh` (≈20 minutos) repetidas por una falla de
+  infraestructura, no del código del cambio.
+- **Aplica a**: constructor (al escribir un test contra una carpeta real), rompedor.
+
+## L-034 · Un mutante que rompe la autenticación no prueba una aserción de aislamiento
+
+- **Origen**: cambio 2b, corrección post-rompedor RB2b-post-4, 21/10/2026.
+- **Qué pasó**: el RED de un test de aislamiento (identidad vinculada sólo a B no ve nada de A) mutaba
+  `info={"identidad_clerk": sub}` → `info={"identidad_clerk_mutada": sub}` en `base_de_datos.py`. Eso
+  rompe la autenticación entera (401 en vez del 200 esperado) y el test falla, pero por el motivo
+  equivocado: no prueba que la política de aislamiento filtre, prueba que sin identidad nada entra,
+  algo que ya cubren otros tests.
+- **Regla**: un mutante que hace fallar un test tiene que fallar **en la aserción que el test dice
+  probar**, no en un paso anterior de la cadena (acá, la resolución de identidad). Con defensa en
+  profundidad (dos capas independientes, como `identidad.py` y la política RLS de la migración 0019),
+  se verifica cada capa por separado antes de combinarlas: mutar sólo una tiene que dejar a la otra
+  filtrando igual y el test en verde; el rojo real sale de quitar el filtro en las dos a la vez.
+- **Costo**: un RED mal elegido que parecía válido (el test fallaba) pero no ejercitaba lo que decía
+  probar; corregido en la misma vuelta, sin cambiar el código de producción.
+- **Aplica a**: constructor y rompedor (al elegir qué mutar para un RED), auditor (al leer si el rojo
+  cae en la aserción correcta).

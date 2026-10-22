@@ -170,3 +170,25 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **RLS** (Row-Level Security): el filtro de PostgreSQL que deja a cada administración ver sólo sus filas (R10).
 - **Respaldo y restauración**: la copia diaria de la base y la forma de volver a cargarla en otra base para probarla (cambio 1d).
 
+## Login y usuarios (cambio 2b, D-107, D-108)
+
+- **Vínculo con Clerk**: la columna `persona.clerk_usuario_id`, que liga una identidad verificada de
+  Clerk con una `persona` de una administración. Único **por administración**, no global: la misma
+  identidad de Clerk puede tener cuenta en dos administraciones distintas (D-096 P18, D-099). Nunca se
+  crea por email solo.
+- **Invitación**: la fila en `invitacion` que habilita a una persona a vincularse con Clerk y entrar;
+  de un solo uso, con estado (`pendiente`, `enviada`, `aceptada`, `fallida`, `revocada`) y un token
+  propio que nunca viaja en claro (D6). La crea el worker al hablar con Clerk.
+- **Alta inicial**: el comando de operador (nunca la API) que crea la primera administración, su super
+  admin y su invitación; el único camino para que entre la primera persona de una administración nueva
+  (D10, E11).
+- **Selector (de administración)**: la pantalla `/elegir-administracion` que aparece cuando una
+  identidad verificada tiene vínculo en más de una administración; con una sola, entra directo. La
+  elección viaja en una cookie `HttpOnly` (D3, D-099).
+- **Ticket de Clerk** (`__clerk_ticket`): el parámetro que Clerk agrega a la dirección de regreso de
+  una invitación aceptada en modo *invite-only*; sin propagarlo hasta `<SignUp>`, Clerk rechaza el
+  registro ("acceso restringido"). Se propaga como `ticketSeguro`, nunca mezclado con `regreso`
+  (L-032).
+- **Sobre** (de invitación): el identificador cifrado que viaja en la URL de regreso y que la API
+  descifra para ubicar la invitación, distinto del token crudo (que nunca viaja) y del ticket de Clerk.
+

@@ -1810,12 +1810,95 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   acceso del vecino. Se reemplaza ese método; no cambia la autorización ni la partición 2a/2b/2c.
 - **Quién**: Juani, 20/10/2026.
 
+## D-108 · Login y usuarios: elecciones E1 a E17 del cambio 2b (21/10/2026)
+
+- **Contexto**: cierre del cambio 2b `login-y-usuarios` (CRITICAL, D-094), archivado el 22/10/2026.
+  Firmado por Juani en la tabla "Aprobación" de `proposal.md` (`2212c9e` para E1-E15, E16 y E17
+  firmadas el 21/10/2026 en la misma tabla).
+- **Decisión**: quedan aprobadas, cada una con su alternativa descartada y su costo de revertir en
+  `design.md` (`openspec/changes/archive/2026-10-22-login-y-usuarios/design.md`):
+  - **E1-E15** (propuesta original): un solo change para login y gestión de usuarios (E1); la API
+    verifica el token con PyJWT y la clave pública PEM, sin red (E2); el vínculo es
+    `persona.clerk_usuario_id` con una política de lectura extra por identidad verificada (E3); el
+    selector viaja en un encabezado de Next, cookie `HttpOnly` (E4); se acepta el `__session` legible
+    de Clerk por 60 s, compensado con Caddy sin `/api/*` público y CSP con nonce (E5); sólo el super
+    admin invita, matriz de D-106 (E6); la invitación se acepta con un token propio de un solo uso más
+    el email verificado de Clerk (E7); el worker habla con Clerk, la clave secreta vive en el worker y
+    en la web, nunca en la API (E8); se auditan `ingreso_exitoso` e `ingreso_fallido` con persona
+    vinculada sin asignación, el resto en Clerk (E9); el límite de intentos es el de la cuenta de
+    Clerk, sin límite propio por IP (E10); el alta inicial es un comando de operador (E11);
+    `acceso-de-desarrollo` se reduce a la carga del ejemplo, sin el `GRANT INSERT ON auditoria` (E12);
+    las pantallas de ingresar/registrarse usan componentes prearmados de Clerk en castellano (E13);
+    vocabulario de auditoría cerrado de ocho eventos (E14); se acepta la dependencia de Clerk para
+    entrar y renovar la sesión, unos 60 s (E15).
+  - **E16** (21/10/2026, hallazgo del constructor en 6.1, `c624735`/`e79c346`): `clerkMiddleware` de
+    `@clerk/nextjs` 7.9.19 exige `CLERK_SECRET_KEY` aun verificando el token sin red. El **servidor de
+    Next** también recibe `CLERK_SECRET_KEY` desde el entorno (nunca el navegador; la API sigue sin
+    tenerla); tests, CI y humo usan una clave de prueba no válida contra Clerk. Corrige E8: hablan con
+    Clerk el worker y el servidor de Next, nunca la API. Alternativa descartada: verificar en Next con
+    código propio en vez de `clerkMiddleware`.
+  - **E17** (21/10/2026, pedido de Juani durante la 8.1): ingreso con Google, activado con credenciales
+    compartidas de Clerk en desarrollo (producción necesita las propias, cambio 15). No cambia la
+    regla de aceptación: el email verificado de Google tiene que coincidir con el de la invitación
+    (E7). Clerk recibe también la foto de perfil de Google; el aviso de privacidad lo dice. Alternativa
+    descartada: sólo email y contraseña.
+- **Corrige D-036 en parte**: D-036 decía que el servidor de Next guarda el token y el navegador nunca
+  lo ve. E5/D4 lo acota: el `__session` de Clerk **es legible desde el navegador por diseño de Clerk**,
+  compensado con una vida de 60 s, Caddy sin `/api/*` público (salvo `/api/salud`) y CSP estricta con
+  nonce. D-036 queda **corregida en parte por D-108**: la garantía ya no es "el navegador nunca lo ve"
+  sino "el navegador lo ve por poco tiempo y no tiene a dónde usarlo".
+- **Acota "única" del vínculo**: `persona.clerk_usuario_id` es único **por administración**
+  (`uq_persona_clerk_administracion` sobre `(clerk_usuario_id, administracion_id)`, migración `0019`),
+  no global. La misma identidad de Clerk puede tener cuenta en dos administraciones distintas, D-096
+  P18 y D-099 ya contemplaban ese caso.
+- **Decisiones de cierre** (21/10/2026, firmadas en la misma tabla de Aprobación):
+  1. **R2B-3**: la aceptación compara el email del token pasado a minúsculas **sólo ASCII** (A-Z) con
+     el de la persona; el alta y el `CHECK` de la migración `0003` siguen usando `str.lower()`. Caso
+     aceptado: un email con una mayúscula no ASCII (`Ärni@...`) falla cerrado (404) si Clerk lo entrega
+     con la mayúscula; unificar la comparación en todo el sistema queda como deuda, necesita una
+     migración.
+  2. **La 8.2 se acorta**: verificación real con Juani al teclado limitada a registrarse desde el mail
+     y entrar, Google con el email invitado y el rechazo con otro Gmail, y revocar una invitación
+     comprobándolo en el panel de Clerk. Quedan como deuda declarada: link por email, bloqueo por
+     intentos, segunda administración, email secundario y cambio del principal, reinvitar con una
+     `enviada`, revocar en vuelo contra Clerk real.
+  3. **El aviso de privacidad (7.2) queda como borrador**: sin los datos legales del responsable, su
+     contacto ni la conservación. Completarlos es deuda obligatoria antes de producción; la tarea 7.2
+     **no se marcó `[x]`**.
+- **Quién**: Juani, 21/10/2026 (E1-E17 y las tres decisiones de cierre, todas en la tabla "Aprobación"
+  de `proposal.md`).
+
 ## Supuestos
 
-*(Sección nueva de Active Stack v1. Vacía por ahora: ningún supuesto del proyecto se había
-registrado antes con este formato. Lo que se daba por cierto sin verificar vive disperso dentro de
-cada decisión, marcado "a validar" o "pendiente"; ver especialmente las reglas marcadas "a validar
-(P42)" en `05_reglas_de_negocio.md` y las preguntas abiertas en `10_preguntas_abiertas.md`. Un
-supuesto nuevo se agrega acá como `SU-01`, con su origen, el riesgo si es falso y cómo validarlo; no
-se migran retroactivamente los existentes para no inventar un origen que no quedó registrado como
-tal en su momento.)*
+*(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive
+disperso dentro de cada decisión, marcado "a validar" o "pendiente"; ver especialmente las reglas
+marcadas "a validar (P42)" en `05_reglas_de_negocio.md` y las preguntas abiertas en
+`10_preguntas_abiertas.md`. No se migran retroactivamente para no inventar un origen que no quedó
+registrado como tal en su momento.)*
+
+### SU-01 · Invitar a un email que ya tiene usuario en Clerk (cambio 2b, 22/10/2026)
+
+- **Origen**: `design.md` del 2b, Open Questions. La 8.2 original preveía probar este caso contra
+  Clerk real y anotar a qué pantalla lleva el link; la decisión de cierre 2 (D-108) acortó la 8.2 y
+  este caso específico no quedó en la lista de lo verificado ni en la deuda declarada explícitamente.
+- **Lo que sí se observó en la 8.2** (`tasks.md`, informe del 21/10/2026, con un email **nuevo** para
+  Clerk): el link del mail de invitación siempre lleva a `/ingresar?regreso=/invitacion/...` (nunca
+  directo a `/registrarse`); para ese usuario nuevo, `/ingresar` con el ticket muestra el `SignIn` de
+  Clerk con "This invitation refers to a non-existing identification" hasta que se elige "Crear cuenta
+  desde mi invitación", que lleva al registro. Esto confirma el mecanismo general (el link resuelve
+  siempre contra `/ingresar`), pero **no** es el caso de SU-01: ahí el email no tenía cuenta previa en
+  Clerk.
+- **Lo que sigue sin verificarse**: invitar a un email que **ya** tiene una cuenta de Clerk (el vecino
+  con unidades en dos administraciones, o el administrador que también es vecino). Con
+  `ignoreExisting: false` Clerk rechazaría crear la invitación; con `true` la crea, pero no está
+  verificado si el link, para ese usuario existente, lleva a `/ingresar` con el ingreso normal (sin el
+  mensaje de "non-existing identification") o a un error distinto.
+- **Riesgo si es falso** (si el link no resuelve a un ingreso normal para un usuario existente): un
+  vecino o personal con cuenta previa de Clerk no puede aceptar una invitación nueva por esta vía;
+  necesitaría un camino aparte (mostrar invitaciones pendientes después de ingresar, con el token
+  igual de un solo uso), que según el design "vuelve a Juani antes de construirse".
+- **Cómo validarlo**: en la instancia de desarrollo, invitar desde `/personal` o el padrón a un email
+  que ya tenga cuenta de Clerk (por ejemplo, con alias `+algo` del mismo buzón si Clerk los trata como
+  cuentas distintas, o una segunda cuenta de prueba) y ver a qué pantalla lleva el link.
+- **Dueño**: 2b queda cerrado sin resolverlo; antes de que un vecino o personal con cuenta en otra
+  administración necesite una invitación nueva, o antes del piloto (15).

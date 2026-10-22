@@ -73,11 +73,24 @@ mercado de arranque es **Mendoza**.
   y consejo único por persona y edificio. Codex construye, Claude rompe y audita; Juani firmó E1 a E8
   y RR-1 a RR-4 aparte (`610eb4a`). Las 17 tareas están hechas; 7.2 en `4c24333`. Deuda y límites en
   `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2.2a").
-- **Próximo**: **2b, login con Clerk sólo para autenticación y gestión de usuarios** (CRITICAL,
-  D-107): autorización en la base, contraseña también para vecinos, personal invitado por el super
-  admin con perfil y alcance, vecinos desde el padrón con vínculo e invitación por mail. P48 resuelta
-  en D-099; el 2b requiere firma propia. Con el login, `acceso-de-desarrollo` se reduce a la carga del
-  ejemplo, con fila `super_admin` y `GRANT INSERT ON auditoria` al migrador pendientes de firma.
+- **Cambio 2b `login-y-usuarios` archivado** (22/10/2026, CRITICAL, D-107, D-108): Clerk sólo para
+  autenticación (usuario y contraseña también para vecinos, link mágico y Google, E17); autorización
+  en la base; `persona.clerk_usuario_id` único **por administración** (migración 0019); invitaciones
+  (migración 0020, tabla `invitacion`) con worker que las envía y reintenta; el super admin invita al
+  personal con perfil y alcance y da de alta vecinos desde el padrón; selector de administración,
+  sesión del servidor de Next (con `CLERK_SECRET_KEY`, E16); CSP estricta con nonce; Caddy deja de
+  publicar `/api/*` salvo `/api/salud`. Cierra deuda de 2a (R9, V2-7, D-1, D-6), 2c (CSP) y 3a (RF-B-4);
+  usuario real en la barra superior (deuda del 3b). Construido con una vuelta de rompedor y auditor,
+  más verificación real con Juani al teclado contra Clerk de desarrollo (acortada por decisión de
+  Juani, D-108). **36 de 37 tareas**: la 7.2 (aviso de privacidad) queda **en borrador, sin marcar**, a
+  la espera de los datos legales del responsable antes de producción (decisión de Juani). Deuda y
+  límites, incluido SU-01 (invitar a un email con cuenta previa en Clerk, no verificado), en
+  `knowledge-base/12_fichas_de_changes.md` ("Deuda del cierre del 2b").
+- **Próximo**: **`acceso-de-desarrollo`, reducido a la carga del edificio de ejemplo** (HIGH, sin
+  firma propia todavía): con el login construido, se descartó el punto de entrada sin login y el
+  `GRANT INSERT ON auditoria` al migrador (D11 del design del 2b, E12); la carga corre como
+  `proptech_app` por el camino de "alta inicial" (D10 del 2b), con su fila `super_admin`. Requiere la
+  firma de Juani o Alberto en su propia sección "Aprobación".
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -87,8 +100,10 @@ mercado de arranque es **Mendoza**.
   los casos de borde para decidir antes de su cambio (P24 a P41), la validación de los valores de
   plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
   administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
-  (P47). P48 resuelta en D-099 (selector). P18 conserva D-096; la matriz de P23 fue reemplazada por D-106.
-  P12 quedó cerrada para autenticación en D-107; sigue abierta para la base de negocio.
+  (P47), doble factor para el personal (P49) y borrar el usuario de Clerk al quitar la última
+  asignación (P50). P48 resuelta en D-099 (selector). P18 conserva D-096, acotado por D-108 a "única
+  por administración"; la matriz de P23 fue reemplazada por D-106. P12 quedó cerrada para
+  autenticación en D-107; sigue abierta para la base de negocio.
 
 ## Stack Tecnológico
 

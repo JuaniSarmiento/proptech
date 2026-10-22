@@ -8,8 +8,10 @@
 > `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`, `grupo_unidad`,
 > `categoria_de_gasto` y `configuracion_versionada` (de sólo agregar), más cinco acciones nuevas de
 > `accion_de_auditoria`. El 2.2a (20/10/2026, `0017` y `0018`) reemplaza los roles y
-> agrega vínculos e índices únicos en `asignacion_rol`. El resto (desde el libro de movimientos) sigue siendo planificado, por cambio,
-> y así queda marcado en cada sección.
+> agrega vínculos e índices únicos en `asignacion_rol`. El 2b `login-y-usuarios` (22/10/2026,
+> migraciones `0019` y `0020`) agrega `persona.clerk_usuario_id` (único por administración) y la tabla
+> `invitacion`, más ocho eventos de acceso al vocabulario de `accion_de_auditoria`. El resto (desde el
+> libro de movimientos) sigue siendo planificado, por cambio, y así queda marcado en cada sección.
 
 ## Dominios
 
@@ -223,12 +225,20 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   `asignacion_rol`. Propietario o inquilino describe su relación con cada unidad, no a la persona.
 - **Atributos actuales**: `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
   `nombre` · `TEXT NOT NULL`; `email` · `TEXT`, en minúscula (`CHECK email = lower(email)`), único
-  dentro de la administración.
+  dentro de la administración; `clerk_usuario_id` · `TEXT`, opcional (migración `0019`, cambio 2b,
+  D2/D-108).
 - **Relaciones y constraints**: pertenece a una `administracion` (D-096, una cuenta por
   administración); tiene muchas `asignacion_rol`; RLS forzada y `UNIQUE (administracion_id, email)`.
-- **Planificado (2b, D-107)**: vincular la identidad por el id de Clerk, nunca sólo por email; Clerk
-  autentica al personal y a los vecinos con usuario y contraseña, además del link mágico. El vínculo
-  con Clerk todavía no es una columna existente; hoy se inyecta la identidad en los tests.
+- **`clerk_usuario_id`** (migración `0019`, D2, D-108): formato `^user_[A-Za-z0-9]{1,64}$`
+  (`ck_persona_clerk_usuario_id`); único **por administración**, no global
+  (`uq_persona_clerk_administracion` sobre `(clerk_usuario_id, administracion_id)`): la misma
+  identidad de Clerk puede tener una cuenta en dos administraciones distintas (D-096 P18, D-099). Se
+  escribe una sola vez, al aceptar la invitación (D6), y nunca por email solo.
+- **Política extra de lectura** (`persona_por_identidad_clerk`, migración `0019`): además de la
+  política por tenant, `persona` sólo se puede **leer** filtrando por
+  `clerk_usuario_id = current_setting('app.identidad_clerk')` cuando no hay tenant fijado —
+  defensa en profundidad junto con el filtro de la aplicación en `identidad.py` (verificado con
+  mutantes independientes sobre cada capa, L-034).
 
 #### `asignacion_rol` · existe (migraciones `0003`, `0017` y `0018`, cambio 2.2a, D-106)
 
@@ -264,6 +274,26 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   duplicados de todos los tenants bajo `ACCESS EXCLUSIVE`, con `NO FORCE` transaccional y restitución
   de `FORCE`. El downgrade a 0016 falla sin modificar datos ante contador, administrador principal
   o inquilino.
+
+#### `invitacion` · existe (migración `0020`, cambio 2b, D6, D7, D-108)
+
+- **Qué es**: una invitación de personal o de vecino, de un solo uso, con su estado y el resumen de
+  un token propio (nunca el token crudo). Aislada por administración (`aislar_por_administracion`).
+- **Atributos**: `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`; `persona_id` · `UUID NOT NULL`
+  (FK compuesta a `persona`); `estado` · `TEXT NOT NULL` (`pendiente`, `enviada`, `aceptada`,
+  `fallida`, `revocada`); `token_resumen` · `BYTEA NOT NULL`, único (nunca el token en claro, D6);
+  `clerk_invitacion_id` · `TEXT`, formato `^inv_[A-Za-z0-9]+$`; `vence` · `TIMESTAMPTZ NOT NULL`;
+  `creada_por` · `UUID NOT NULL` (FK compuesta a `persona`); `creada_en` · `TIMESTAMPTZ NOT NULL`.
+- **Índices**: `uq_invitacion_abierta`, único parcial sobre `(administracion_id, persona_id)` para los
+  estados `pendiente`, `enviada` y `fallida`: una persona no puede tener dos invitaciones abiertas a
+  la vez (reintentar usa `ignore_existing`, no una fila nueva).
+- **Política de lectura por token** (`invitacion_por_token`): se puede leer sin tenant fijado
+  filtrando por `token_resumen = decode(current_setting('app.invitacion_token'), 'hex')` — es lo que
+  permite resolver la página de aceptación antes de que la persona tenga sesión.
+- **Vocabulario de auditoría que suma** (`0020`, D13): `ingreso_exitoso`, `ingreso_fallido`,
+  `alta_inicial`, `invitar_personal`, `dar_de_alta_vecino`, `aceptar_invitacion`, `revocar_invitacion`,
+  `quitar_asignacion`. El `downgrade` borra primero estos eventos del vocabulario: si ya hay historia
+  real con ellos, la FK de `auditoria` frena el retroceso (mismo mecanismo que D-2 del 2a).
 
 #### `accion_de_auditoria` · existe (migración `0004`, cambio 2a, D-016; ampliado en `0010`, cambio 3a, D14)
 
