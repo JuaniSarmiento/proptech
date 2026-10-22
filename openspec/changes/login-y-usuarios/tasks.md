@@ -1290,6 +1290,60 @@ $ date +%T; git rev-parse --short HEAD; bash infra/ci/test-web-navegador.sh
 19:16:18 / 3f3b0a0 / 169 passed (5.1m)
 ```
 
+**Correcciones de la revisión backend post-rompedor (RB2b-post, 21/10/2026),
+`.git/informes-2b/revision-post-rompedor/backend.md`.** OK de Juani para este arreglo puntual, dado
+en la conversación con el orquestador ("si", 21/10/2026): hace verdadera la corrección R2B-1 ya
+escrita en el design, sin agregar reglas nuevas.
+
+- [x] **RB2b-post-1 (BLOQUEANTE)**: el reintento de ARQ sobre `enviar_invitacion` (`tareas.py`), tras
+  que la revocación inline del primer intento fallara con un error pasajero de Clerk (429/5xx), ya no
+  encontraba la fila `pendiente` y devolvía `True` sin volver a intentar la revocación: la invitación
+  quedaba abierta en Clerk para siempre. Ahora `_leer_revocada_para_reintentar` revoca si la fila
+  quedó `revocada` con un `clerk_invitacion_id` guardado (idempotente: 404 o "ya revocada" cuentan
+  como éxito); sin id guardado, no llama a Clerk (triangulación). Test nuevo
+  `test_envio_de_invitaciones.py::test_reintento_tras_revocacion_en_vuelo_revoca_en_clerk` y
+  `::test_reintento_sobre_revocada_sin_clerk_id_no_llama_a_clerk`. Commit `4723c47`.
+  ```
+  RED $ date +%T && uv run pytest tests/integracion/test_envio_de_invitaciones.py -q -k "reintento_tras_revocacion_en_vuelo_revoca_en_clerk or reintento_sobre_revocada_sin_clerk_id"
+  20:43:33  1 failed, 1 passed: "Clerk recibió ['/invitations', '/invitations/inv_reintento01/revoke']; se esperaban dos intentos de revocación" (assert 1 == 2)
+  GREEN $ date +%T && uv run pytest tests/integracion/test_envio_de_invitaciones.py -q
+  20:44:01  11 passed in 11.00s
+  $ date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  20:44:17  All checks passed! / 273 files already formatted / no issues found in 249 source files
+  ```
+
+- [x] **RB2b-post-4 (hueco de prueba de f1b1fff)**: `test_mismo_404_uniforme_sin_escribir` (caso
+  `otro_email`) probaba la barrera de email con una identidad sin tenant; `test_sesion_api.py` sólo
+  ejercía un sub ya vinculado a A. Dos tests nuevos: identidad con persona en B y otro email no acepta
+  el sobre de A (`test_aceptar_invitacion_api.py::test_identidad_con_persona_en_b_y_otro_email_no_acepta_el_sobre_de_a`),
+  e identidad vinculada SÓLO a B no muestra nada de A en `GET /api/sesion`
+  (`test_sesion_api.py::test_identidad_vinculada_solo_a_b_no_muestra_nada_de_a`). Comentario de
+  `test_regresiones_de_aislamiento_y_grupos_vacios.py:44-48` corregido para nombrar estos dos tests en
+  vez de darlo por hecho. Ambos pasaban ya (L-019: mutante sobre copia propia, diff real, restaurado
+  byte a byte). Commit `7d448e4`.
+  ```
+  RED (a) $ date +%T && uv run pytest tests/integracion/test_aceptar_invitacion_api.py -q -k persona_en_b
+  20:45:58  1 failed: {"aceptada":true}; assert 200 == 404 (mutante: `or _minusculas_ascii(...) != email_normalizado` → `or False` en invitaciones.py)
+  RED (b) $ date +%T && uv run pytest tests/integracion/test_sesion_api.py -q -k solo_a_b
+  20:47:15  1 failed: {"detail":"Unauthorized"}; assert 401 == 200 (mutante: `info={"identidad_clerk": sub}` → `info={"identidad_clerk_mutada": sub}` en base_de_datos.py)
+  ```
+  Restaurados ambos originales byte a byte; `git diff --quiet -- backend/src` limpio salvo el fix de
+  RB2b-post-1 (el único cambio real de `backend/src` de esta vuelta).
+  ```
+  GREEN $ date +%T && uv run pytest tests/integracion/test_aceptar_invitacion_api.py tests/integracion/test_sesion_api.py tests/integracion/test_envio_de_invitaciones.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -q
+  20:47:49  61 passed in 30.57s
+  $ date +%T && uv run ruff check . && uv run ruff format --check . && uv run mypy
+  20:47:45  All checks passed! / 273 files already formatted / no issues found in 249 source files
+  ```
+
+**Suite de cierre de RB2b-post, después del último commit (`7d448e4`):**
+```
+$ date +%T; git rev-parse HEAD; bash infra/ci/test-backend.sh
+20:48:52 / 7d448e415fd997d9ed12a4e04033c1721a20519e / 2673 passed, 1 xfailed, 18 warnings in 641.82s (0:10:41)
+```
+`git status --short` vacío tras el último commit. OK de Juani sobre este arreglo puntual dado en la
+conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya escrita en el design.
+
 ## 8. Con Clerk de verdad
 
 - [x] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
