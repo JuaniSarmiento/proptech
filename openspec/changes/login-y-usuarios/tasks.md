@@ -1360,7 +1360,7 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
 - [x] 8.1 **Juani crea la cuenta de Clerk y carga las claves en `infra/.env`** (el agente nunca toca credenciales), con la configuración de "Lo que Juani hace en Clerk" del design (modo *Invite-only*, contraseña y link por email, bloqueo de cuenta, claims `email = {{user.primary_email_address}}` y `email_verified = {{user.email_verified}}` (booleano, nunca constante), nombre opcional; `CLERK_EMISOR` de la misma instancia y clave propia `INVITACIONES_CLAVE_CIFRADO`). Verificación: Juani confirma por escrito, con fecha, que está hecho; ningún agente abre `infra/.env`. Escenarios: ninguno (precondición del bloque). Lecciones: ninguna.
   **Hecho (21/10/2026, 16:10):** instancia de desarrollo `PropTech` en Clerk. El orquestador configuró el panel con permiso de Juani (email con código y link, contraseña, teléfono y nombre de usuario apagados, nombre opcional, Google activo con credenciales compartidas de desarrollo, acceso Invite-only, bloqueo de cuenta activo, claims de sesión `email` y `email_verified`), y le pasó sólo los valores públicos (publishable key, URL del Frontend API, JWKS public key). **Juani cargó en `infra/.env` las seis variables**, incluidas la clave secreta y `INVITACIONES_CLAVE_CIFRADO`, que ningún agente vio, y lo confirmó por escrito en la conversación ("listo"). Ningún agente abrió `infra/.env`. Google requiere la firma de E17 (pendiente). Pendiente de verificar en 8.2: que Compose lea el PEM multilínea entre comillas.
 
-- [ ] 8.2 Verificación real, con Juani al teclado y el stack local con la instancia de desarrollo: alta inicial de una administración de prueba con un email de Juani; llega el mail de Clerk; registrarse, volver por la invitación y entrar; comprobar que los claims firmados contienen el email principal y su verificación booleana, también al cambiar el principal y con un secundario verificado; si el par no representa al principal, frenar sin habilitar la aceptación; ingresar con contraseña y con link por email; selector con una segunda administración; invitar a un email que ya tiene usuario en Clerk (Open Questions: anotar a qué pantalla lleva el link); fallar la contraseña hasta el bloqueo; salir. El orquestador anota cada paso con hora, la fila de auditoría que dejó y si el log de la web tiene errores de conexión hacia Clerk (dato que discrimina el SUPUESTO de la red de la web). Verificación: el informe con cada paso. Escenarios: `autenticacion-con-clerk` › Muchos intentos sobre una cuenta; todos los de ingreso, de punta a punta. Lecciones: L-026.
+- [x] 8.2 Verificación real, con Juani al teclado y el stack local con la instancia de desarrollo: alta inicial de una administración de prueba con un email de Juani; llega el mail de Clerk; registrarse, volver por la invitación y entrar; comprobar que los claims firmados contienen el email principal y su verificación booleana, también al cambiar el principal y con un secundario verificado; si el par no representa al principal, frenar sin habilitar la aceptación; ingresar con contraseña y con link por email; selector con una segunda administración; invitar a un email que ya tiene usuario en Clerk (Open Questions: anotar a qué pantalla lleva el link); fallar la contraseña hasta el bloqueo; salir. El orquestador anota cada paso con hora, la fila de auditoría que dejó y si el log de la web tiene errores de conexión hacia Clerk (dato que discrimina el SUPUESTO de la red de la web). Verificación: el informe con cada paso. Escenarios: `autenticacion-con-clerk` › Muchos intentos sobre una cuenta; todos los de ingreso, de punta a punta. Lecciones: L-026.
   **Pasos sumados por el auditor del 2b (fila 4, 21/10/2026), hoy SUPUESTO porque la 8.2 no corrió
   todavía — agregar explícitamente a la verificación real:**
   - Que Compose lea bien el `CLERK_JWT_KEY` multilínea entre comillas (el login arranca prendido,
@@ -1424,8 +1424,19 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
   ```
   Errores de conexión de la web hacia Clerk en el log: ninguno en la ventana de la prueba (discrimina
   el SUPUESTO de la red de la web: la web alcanza Clerk).
-  **Pendiente con Juani**: Google con el email invitado y el rechazo con otro Gmail (el orquestador no
-  inicia sesión en proveedores de identidad).
+  **Google, con Juani al teclado (22/10/2026):**
+  ```
+  09:37:22 Cerrar sesión → "Continuar con Google" con el email invitado → auditoría `ingreso_exitoso`,
+           misma persona vinculada (count de personas con clerk_usuario_id = 1).
+  09:38    "Continuar con Google" con OTRO Gmail → no entra: Clerk lo manda a su página alojada
+           (fun-scorpion-7697.accounts.dev/sign-in?...); sin auditoría nueva, sin persona nueva, y el
+           panel de Clerk (Users, All) lista un solo usuario.
+  ```
+  6. (hallazgo, deuda) El rechazo de un Gmail no invitado termina en la página alojada de Clerk, en
+     inglés y fuera de la app, en vez de volver a `/ingresar` con un mensaje propio.
+  7. (hallazgo, deuda DevOps) Levantar el stack sin el `mkdir -p infra/datos-respaldos` del README
+     deja la carpeta como root: el contenedor de respaldos queda reiniciando ("no tiene permiso de
+     escritura") y sólo se ve en su log. Le pasó al orquestador en esta prueba; se corrigió con chown.
   **Deuda declarada** (decisión de cierre 2): link por email, bloqueo por intentos, segunda
   administración, email secundario y cambio del principal, reinvitar con una `enviada`, revocar en
   vuelo contra Clerk real.
