@@ -1445,3 +1445,49 @@ conversación del 21/10/2026 ("si"), que hace verdadera la corrección R2B-1 ya 
 
 - [x] 9.1 `acceso-de-desarrollo` (D11, E12 firmada 21/10/2026): reescritos `proposal.md`, `design.md`, `tasks.md` y su spec delta para dejarlo en la carga del ejemplo por el camino de D10 (como `proptech_app`, nunca `proptech_migrador`), sin acceso sin login ni `GRANT INSERT ON auditoria`; ese change sigue sin firma propia (tabla "Aprobación" vacía, a la espera de Juani o Alberto). Verificación: `openspec validate acceso-de-desarrollo --strict` → `Change 'acceso-de-desarrollo' is valid` (21/10/2026 21:57:43). Escenarios: ninguno de este cambio. Lecciones: L-029.
 - [ ] 9.2 Corrida de cierre después de la última vuelta y del último commit (L-010, L-031): el barrido de rutas con la lista nueva comparada entera (públicas: `/api/salud`; con token: las de sesión, personal, vecinos e invitaciones), el guardián del catálogo con su lista blanca exacta y el test de fronteras, que suma prohibir que `proptech_api` importe `acceso.adaptadores` (cliente de Clerk), con rojo al introducir ese import en una copia; después `bash infra/ci/test-backend.sh`, `bash infra/ci/test-web.sh`, `bash infra/ci/test-web-navegador.sh` y `bash infra/ci/humo.sh`, en ese orden y de a uno, con la cantidad de tests de cada lado comparada con la 1.1, la hora y el SHA de cada corrida. Verificación: los comandos con su salida en el informe. Escenarios: `autorizacion-por-rol` › Las rutas de hoy siguen cubiertas (existente); todos los del cambio, por última vez juntos. Lecciones: L-003, L-005, L-010, L-022, L-031.
+
+  **PARCIAL, no cerrada** (orden del orquestador, 21/10/2026): el `humo.sh` queda pendiente a propósito —
+  hay un stack de Compose con proyecto `proptech` corriendo en 80/443 para una prueba manual con Juani, y
+  `humo.sh` usa el mismo nombre de proyecto; no se corrió ni se tocó ese stack. `test-web.sh` y
+  `test-web-navegador.sh` tampoco se corrieron: `test-backend.sh` falló y la convención de esta tasks.md
+  (línea 1-4) manda frenar e informar, no seguir con la siguiente corrida ni arreglarlo.
+
+  El test de fronteras no prohibía todavía que `proptech_api` importe `acceso.adaptadores`: se agregó
+  (sólo test, ningún archivo de `backend/src` tocado) en
+  `backend/tests/unitarios/test_fronteras_de_modulos.py`, con rojo real visto introduciendo el import en
+  el archivo real `backend/src/proptech_api/acceso.py` (revertido después; `git diff --quiet -- backend/src`
+  limpio) y, aparte, con la copia temporal de siempre (L-013) como prueba de que el checker detecta la
+  violación. Commit `d5a3ee4` (`test(arquitectura): ...`), ANTES de las suites completas, sobre HEAD
+  `c175feb`.
+
+  ```text
+  $ git rev-parse --short HEAD   # antes de empezar
+  c175feb
+  $ date +%T; uv run pytest tests/unitarios/test_fronteras_de_modulos.py -k proptech_api_no_importa -v
+  22:14:14   (con el import agregado a mano en acceso.py real)
+  1 failed — AssertionError: proptech_api no puede importar acceso.adaptadores: ['proptech_api/acceso.py']
+  $ sed -i '1d' src/proptech_api/acceso.py   # revierto la línea agregada a mano
+  $ git diff --quiet -- src && echo limpio
+  limpio
+  $ git commit ...   # d5a3ee4
+  $ date +%T; uv run pytest tests/unitarios/test_barrido_de_rutas.py tests/integracion/test_rutas_protegidas.py tests/integracion/test_catalogo_rls.py tests/unitarios/test_fronteras_de_modulos.py -v
+  22:14:48
+  369 passed, 1 warning in 22.88s
+  $ date +%T; bash infra/ci/test-backend.sh
+  22:15:26
+  FAILED tests/infra/test_compose.py::test_gitignore_ignora_la_carpeta_de_respaldos
+    PermissionError: [Errno 13] Permission denied:
+    '/home/juanisarmiento/Proyectos/PropTech/infra/datos-respaldos/proptech-20261014T000000Z.dump'
+  1 failed, 2674 passed, 1 xfailed, 18 warnings in 633.11s (0:10:33)
+  ```
+
+  SHA de la corrida de backend: `d5a3ee4` (el commit del test de fronteras; nada se commiteó después).
+  Comparación con 1.1 (2076 passed, 1 xfailed, 16 warnings en 643.86s): +598 tests (2674 vs 2076, por las
+  vueltas del cambio desde la base), mismo 1 xfailed (F2c, deuda documentada del cambio 7), 2 warnings más
+  (18 vs 16, no investigado — la corrida se frenó por la falla real). La falla es de infraestructura, no
+  del código del cambio: `infra/datos-respaldos/` quedó `drwxr-xr-x root:root` (vacío para mi usuario al
+  listarlo) con un `.dump` adentro que ese test no puede leer; coincide con el stack de Compose `proptech`
+  que está corriendo en vivo para la prueba manual con Juani (ese stack hace backups como root dentro del
+  contenedor, al mismo path bind-mounteado). No se tocó esa carpeta, el stack ni sus contenedores. No se
+  intentó arreglar: se frena acá y se informa, tal como pide la convención de la línea 1-4 de este archivo.
+  `test-web.sh`, `test-web-navegador.sh` y `humo.sh` quedan pendientes.
