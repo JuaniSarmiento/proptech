@@ -1873,6 +1873,53 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Quién**: Juani, 21/10/2026 (E1-E17 y las tres decisiones de cierre, todas en la tabla "Aprobación"
   de `proposal.md`).
 
+## D-109 · Decisiones de negocio para el núcleo financiero, Juani 22/10/2026
+
+- **Contexto**: la auditoría de cimientos del 22/10/2026
+  (`openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`) dejó seis preguntas de negocio
+  bloqueando el propose del change 4 `motor-de-cuenta-corriente` (P10, P11, P21, P31, P34, P42). Juani
+  respondió cinco de las seis en conversación con el orquestador el 22/10/2026; P42 (validar con un
+  contador o administrador de Mendoza) queda pendiente, sin bloquear la construcción.
+- **Decisión**:
+  1. **P10 · Redondeo (R07)**: medio hacia arriba, como `REDONDEAR` de Excel (0,125 → 0,13). **Por
+     qué**: el test de aceptación de M1 reproduce al centavo la liquidación real que Alberto hace en
+     Excel, y Excel redondea así por defecto. **Sub-pregunta abierta para Alberto**: a qué unidad va
+     el centavo sobrante en su planilla. **Propuesta mientras tanto**: el método del mayor resto, ya
+     vigente en R07 (a la unidad que más perdió al redondear; en caso de empate, a la de menor número
+     de unidad).
+  2. **P11 · Cambio de titular a mitad de período (R32)**: lo decide el administrador en cada cambio
+     de titular, con dos opciones configurables e independientes, cada una con su default:
+     - **Expensa del mes de la venta**: por defecto, la unidad entera; alternativa, prorrateo por días
+       entre vendedor y comprador.
+     - **Deuda previa**: por defecto sigue en la unidad y el comprador la hereda (así lo establece el
+       Código Civil y Comercial — **SUPUESTO no verificado con abogado**, ver SU-02); alternativa,
+       queda a nombre del vendedor.
+     **Por qué las dos opciones desde el arranque**: Juani eligió explícitamente incluir "deuda a
+     nombre del vendedor" en el change 4 sabiendo que obliga a una cuenta de persona además de la
+     cuenta de unidad. Todo cambio de titular queda registrado (fecha, quién eligió qué opción y
+     cuándo) y auditado (R08/D-016). Si la unidad cambia de titular con deuda, el sistema avisa, sin
+     bloquear.
+  3. **P21 · Umbrales (R23, R30)**: gasto atípico (R23) = más del doble o menos de la mitad del
+     promedio de los últimos 6 períodos de ese proveedor en ese edificio; un proveedor sin historial no
+     se marca (evita un falso positivo por falta de datos). Saldo chico (R30) = $500. **Los dos
+     umbrales son configurables por edificio**, como parámetros con vigencia (igual que R03).
+  4. **P31 · Moroso crítico (R20) y deuda de sólo interés**: una deuda que es sólo interés **no** cuenta
+     como moroso crítico; tiene su propia etiqueta "deuda de intereses", con un aviso más suave. Un
+     saldo por debajo del umbral de R30 (punto 3) tampoco cuenta como vencido para R20. **En los dos
+     casos la deuda sigue existiendo**, figura en la cuenta corriente de la unidad y en el certificado
+     de libre deuda (R21): lo que cambia es la etiqueta y la intensidad del aviso, nunca el monto.
+  5. **P34 · Fecha de corte del interés (R03)**: el interés corre hasta el **cierre del período**, no
+     hasta la fecha en que se aprieta "emitir" ni hasta el vencimiento siguiente; el interés posterior
+     al cierre entra en el período siguiente. **Sub-pregunta abierta para Alberto**: confirmar que su
+     Excel corta el interés en la misma fecha.
+  6. **P42 · Contador o administrador de Mendoza**: sigue pendiente, sin nombre todavía. El change 4 se
+     construye con los valores de los puntos 1 a 5 (y el resto de lo marcado "a validar (P42)" en R03,
+     R05, R09, R11), y esa validación se hace **antes del piloto** (15), no antes de construir.
+- **Descartado**: esperar la respuesta de Alberto o del contador de P42 para arrancar el propose del 4;
+  dejaría parado el change crítico más grande del roadmap por una validación que, según D-089, corrige
+  después sin tocar código (son parámetros, no estructura).
+- **Quién**: Juani, 22/10/2026, en conversación con el orquestador.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive
@@ -1907,3 +1954,16 @@ registrado como tal en su momento.)*
   cuentas distintas, o una segunda cuenta de prueba) y ver a qué pantalla lleva el link.
 - **Dueño**: 2b queda cerrado sin resolverlo; antes de que un vecino o personal con cuenta en otra
   administración necesite una invitación nueva, o antes del piloto (15).
+
+### SU-02 · Herencia de la deuda previa al comprador en un cambio de titular (R32, D-109, 22/10/2026)
+
+- **Origen**: D-109, punto 2 (resuelve P11). El default "la deuda previa la hereda el comprador" se
+  apoya en que así lo establece el Código Civil y Comercial argentino para las deudas de expensas de
+  una unidad transmitida.
+- **No verificado**: ningún abogado revisó esta afirmación para este proyecto. Es la lectura de Juani
+  al fijar el default, no una cita verificada del articulado.
+- **Riesgo si es falso**: el sistema ofrecería como default "recomendado" una regla distinta de la que
+  exige la norma, justo en el punto donde más se discute una venta. El riesgo queda acotado porque la
+  regla es configurable: el administrador puede elegir "deuda a nombre del vendedor" caso por caso.
+- **Cómo validarlo**: con un abogado o contador, en la misma sesión que P42.
+- **Dueño**: antes del piloto (15), junto con P42.

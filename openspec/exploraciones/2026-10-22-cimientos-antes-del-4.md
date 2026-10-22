@@ -82,17 +82,19 @@ movimientos.
 
 ## Preguntas de negocio para Juani y Alberto, antes del propose
 
-Seis preguntas sin respuesta técnica posible: alguien tiene que decidirlas con criterio de negocio
-(contador, administrador o los propios socios) antes de que el design del 4 pueda fijar la regla.
+**Actualizado 22/10/2026**: Juani respondió cinco de las seis preguntas en conversación con el
+orquestador; quedan registradas en D-109 (`09_decisiones_y_supuestos.md`). P42 sigue abierta y ya no
+bloquea el propose (se valida antes del piloto, 15). Dos sub-preguntas quedan para Alberto (marcadas
+abajo).
 
-| id | la pregunta, en castellano llano | por qué importa para la plata |
-|---|---|---|
-| **P10** | ¿Redondeás al centavo "a lo bancario" (0,125 → 0,12) o "medio hacia arriba" (0,125 → 0,13)? | Decide a qué unidad le toca el centavo sobrante en **cada** reparto, todos los meses; sin esto no hay invariante que probar. |
-| **P11** | Cuando una unidad cambia de titular a mitad de período (venta), ¿quién responde la expensa de ese período y la deuda anterior: quien vendía o quien compra? | Define a quién se le factura y a quién se le reclama la mora justo en el momento en que más se discute una expensa. |
-| **P21** | ¿A partir de qué monto un gasto se marca "atípico" para revisión (R23), y por debajo de qué saldo un deudor chico no genera interés ni se persigue (R30)? | Fija el umbral entre "vale la pena revisar/cobrar" y "ruido"; sin número, R23 y R30 no tienen con qué comparar. |
-| **P31** | Si el saldo vencido de una unidad es sólo interés (el capital ya está pagado), ¿cuenta igual como "moroso crítico"? | De eso depende si se bloquean beneficios a alguien que, en los hechos, ya pagó el capital. |
-| **P34** | El interés de una emisión, ¿corre hasta la fecha de emisión, hasta el cierre del período o hasta el vencimiento siguiente? | Cambia el monto exacto que ve el vecino en cada expensa con mora; es el cálculo más replicado del sistema. |
-| **P42** | ¿Conseguimos a un contador o administrador real de Mendoza para validar los valores por defecto (tasa 3% mensual, días de gracia, redondeo)? | El 4 arranca codeando con esos defaults; migrar liquidaciones ya emitidas si están mal es mucho más caro que preguntar antes. |
+| id | la pregunta, en castellano llano | por qué importa para la plata | respuesta (D-109, 22/10/2026) |
+|---|---|---|---|
+| **P10** | ¿Redondeás al centavo "a lo bancario" (0,125 → 0,12) o "medio hacia arriba" (0,125 → 0,13)? | Decide a qué unidad le toca el centavo sobrante en **cada** reparto, todos los meses; sin esto no hay invariante que probar. | **Resuelta**: medio hacia arriba, como `REDONDEAR` de Excel. Queda para Alberto a qué unidad va el centavo sobrante en su planilla. |
+| **P11** | Cuando una unidad cambia de titular a mitad de período (venta), ¿quién responde la expensa de ese período y la deuda anterior: quien vendía o quien compra? | Define a quién se le factura y a quién se le reclama la mora justo en el momento en que más se discute una expensa. | **Resuelta**: lo decide el administrador por cada cambio, con dos opciones configurables y sus defaults (R32): expensa del mes a la unidad entera (o prorrateo por días) y deuda previa al comprador (o a nombre del vendedor, con cuenta de persona). Deuda previa al comprador es SUPUESTO sin verificar con abogado (SU-02). |
+| **P21** | ¿A partir de qué monto un gasto se marca "atípico" para revisión (R23), y por debajo de qué saldo un deudor chico no genera interés ni se persigue (R30)? | Fija el umbral entre "vale la pena revisar/cobrar" y "ruido"; sin número, R23 y R30 no tienen con qué comparar. | **Resuelta**: atípico es más del doble o menos de la mitad del promedio de 6 períodos del proveedor (sin historial, no se marca); saldo chico es $500. Ambos configurables por edificio. |
+| **P31** | Si el saldo vencido de una unidad es sólo interés (el capital ya está pagado), ¿cuenta igual como "moroso crítico"? | De eso depende si se bloquean beneficios a alguien que, en los hechos, ya pagó el capital. | **Resuelta**: no cuenta como moroso crítico; etiqueta propia "deuda de intereses" con aviso más suave. Un saldo bajo el umbral de R30 tampoco cuenta como vencido. |
+| **P34** | El interés de una emisión, ¿corre hasta la fecha de emisión, hasta el cierre del período o hasta el vencimiento siguiente? | Cambia el monto exacto que ve el vecino en cada expensa con mora; es el cálculo más replicado del sistema. | **Resuelta**: hasta el cierre del período. Queda para Alberto confirmar que su Excel corta igual. |
+| **P42** | ¿Conseguimos a un contador o administrador real de Mendoza para validar los valores por defecto (tasa 3% mensual, días de gracia, redondeo)? | El 4 arranca codeando con esos defaults; migrar liquidaciones ya emitidas si están mal es mucho más caro que preguntar antes. | **Sigue abierta**: sin nombre todavía. No bloquea construir el 4; se valida antes del piloto (15). |
 
 ## Lo que va a otros changes (no bloquea el propose del 4)
 
@@ -136,7 +138,8 @@ no evidencia (observación del propio auditor en 08-auditor.md).
 
 ## Siguiente paso
 
-El propose del change 4 arranca una vez que Juani y Alberto respondan el grupo de preguntas de
-negocio (P10, P11, P21, P31, P34, P42); el design del 4 trae resuelta la lista de decisiones de
-diseño de arriba, con cada opción descartada y su costo de reversión por escrito, como pide
-`14_forma_de_trabajo.md`.
+El grupo de preguntas de negocio quedó respondido por D-109 (22/10/2026): P10, P11, P21, P31 y P34.
+P42 sigue abierta, sin bloquear el propose (se valida antes del piloto, 15), igual que las dos
+sub-preguntas que quedaron para Alberto (P10 y P34, ver tabla arriba). El propose del change 4 puede
+arrancar; el design del 4 trae resuelta la lista de decisiones de diseño de arriba, con cada opción
+descartada y su costo de reversión por escrito, como pide `14_forma_de_trabajo.md`.

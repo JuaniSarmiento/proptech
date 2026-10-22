@@ -146,7 +146,7 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 ## Dominio: Cuenta corriente
 
-## R03 · Intereses por mora · Vigente (D-010) · a validar (P42)
+## R03 · Intereses por mora · Vigente (D-010, D-109) · a validar (P42)
 
 - **Tipo**: interés **simple**, siempre. No se cobra interés sobre interés (art. 770 del Código
   Civil y Comercial). No es configurable.
@@ -161,13 +161,18 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 - **Propuestas relacionadas**: vencimiento en día inhábil (R35) y tasa propia para la extraordinaria
   (R36).
+- **Hasta qué fecha corre el interés de cada emisión** (D-109, resuelve P34): hasta el **cierre del
+  período**, nunca hasta la fecha en que se aprieta "emitir" ni hasta el vencimiento siguiente. El
+  interés generado después del cierre entra en el período siguiente. Queda abierta para Alberto la
+  sub-pregunta de confirmar que su Excel corta el interés en la misma fecha.
 - **Cuándo se registra**: al emitir la liquidación siguiente, como un débito con su detalle
   (obligación, días, tasa, base). El número no cambia cada vez que el vecino entra al portal.
 - **Historia**: cada liquidación guarda la configuración con la que se calculó. Cambiar la tasa
   no altera liquidaciones ya emitidas.
 - **Tests mínimos**: pago parcial reduce la base; días de gracia no generan interés; un pago después
   de los días de gracia genera interés desde el vencimiento; cambio de tasa entre períodos; nunca hay
-  interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo.
+  interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo; el
+  interés devengado después del cierre del período no se cobra en esa emisión, sino en la siguiente.
 
 ## R04 · Orden de imputación · Vigente (D-011)
 
@@ -216,7 +221,7 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   del saldo anterior en la expensa siguiente; el saldo anterior que muestra la expensa coincide con el
   calculado desde el libro a la fecha de emisión.
 
-## R07 · Precisión y redondeo · Vigente (D-015, D-046)
+## R07 · Precisión y redondeo · Vigente (D-015, D-046, D-109) · a validar (P42)
 
 - **Representación** (D-046): todo importe es `Decimal` en Python, construido desde texto
   (`Decimal("0.10")`, nunca `Decimal(0.1)`), `NUMERIC(14,2)` en la base y texto en el JSON. Nunca
@@ -229,8 +234,9 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Garantía**: la suma de las partes es siempre igual al gasto, al centavo; ninguna unidad se
   aparta más de un centavo de su parte exacta.
 - **Intereses**: se calculan con precisión completa y se redondean al centavo una sola vez, al registrarse.
-- **Modo de redondeo**: *pendiente (P10)*. Bancario o medio hacia arriba; hasta decidirlo, ningún
-  test fija el resultado de un caso que termine exactamente en medio centavo.
+- **Modo de redondeo** (D-109, resuelve P10): medio hacia arriba, como `REDONDEAR` de Excel
+  (0,125 → 0,13). Queda abierta para Alberto la sub-pregunta de a qué unidad va el centavo sobrante en
+  su planilla; mientras tanto se usa el método del mayor resto, ya vigente arriba.
 - **Tests mínimos**: un `float` en un monto hace fallar la prueba; $1.000.000 entre 150 unidades suma exacto; empate de fracciones es
   determinista; un reparto entre 1 unidad devuelve el total.
 
@@ -283,16 +289,17 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   ya está marcada "falta validar". No se decide sin esa respuesta.
 - **Tests mínimos**: a definir si se confirma el esquema.
 
-## R30 · Umbral mínimo de saldos por redondeo · Propuesta (ProTecc D3) · extiende R07
+## R30 · Umbral mínimo de saldos por redondeo · Vigente (D-109) · extiende R07 · a validar (P42)
 
 - **Qué resuelve**: saldos chicos (a favor o en contra) que quedan de intereses o pagos parciales,
   por debajo de lo que tiene sentido reclamar o devolver.
-- **Propuesta**: definir un umbral mínimo (por ejemplo, configurable por edificio) por debajo del
-  cual el saldo no genera reclamo de cobranza ni devolución automática, y se arrastra con R06 hasta
-  que se acumula o se liquida junto con otro movimiento.
-- **Falta decidir**: el valor del umbral y si es fijo o configurable por edificio.
-- **Tests mínimos** (a definir con el umbral): un saldo por debajo del umbral no dispara un aviso de
-  mora; un saldo por encima sigue el camino normal de R03/R20.
+- **Regla** (D-109, resuelve P21): el umbral es **$500**, configurable por edificio como parámetro
+  con vigencia (igual que R03). Por debajo del umbral, el saldo no genera reclamo de cobranza ni
+  devolución automática, y se arrastra con R06 hasta que se acumula o se liquida junto con otro
+  movimiento. Un saldo por debajo del umbral tampoco cuenta como vencido para R20 (moroso crítico,
+  D-109, resuelve P31).
+- **Tests mínimos**: un saldo por debajo de $500 no dispara un aviso de mora ni cuenta como vencido
+  para R20; un saldo igual o por encima sigue el camino normal de R03/R20.
 
 ---
 
@@ -386,18 +393,18 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   asociada se rechaza; una factura y su nota de crédito con el mismo número no se marcan como
   duplicadas entre sí.
 
-## R23 · Control de monto atípico contra el historial del proveedor · Propuesta (ProTecc A2)
+## R23 · Control de monto atípico contra el historial del proveedor · Vigente (D-109) · a validar (P42)
 
 - **Qué resuelve**: una factura leída por IA con un monto mal leído (por ejemplo, $38.900 en vez de
   $389.000).
-- **Propuesta**: antes de aprobar un gasto leído por IA, comparar su importe contra el historial de
-  ese proveedor en el edificio (últimos períodos) y marcarlo para revisión manual si se aparta mucho
-  de lo habitual.
-- **Falta decidir**: el umbral de "atípico" y si se valida con un administrador o contador antes de
-  fijarlo.
-- **Tests mínimos** (a definir con el umbral): un monto dentro de lo habitual no se marca; un monto
-  muy por encima o por debajo del historial se marca para revisión; un proveedor sin historial previo
-  no genera falso positivo por falta de datos.
+- **Regla** (D-109, resuelve P21): antes de aprobar un gasto leído por IA, se compara su importe
+  contra el promedio de los **últimos 6 períodos** de ese proveedor en el edificio. Se marca para
+  revisión manual si supera el **doble** o es menor que la **mitad** de ese promedio. Un proveedor
+  **sin historial** en el edificio no se marca (evita un falso positivo por falta de datos).
+- **Configurable por edificio**, como parámetro con vigencia (igual que R03).
+- **Tests mínimos**: un monto dentro de lo habitual no se marca; un monto que más que duplica el
+  promedio de 6 períodos se marca para revisión; un monto menor a la mitad del promedio se marca; un
+  proveedor sin historial previo no genera falso positivo por falta de datos.
 
 ## R38 · Ingresos del consorcio · Propuesta (D-071)
 
@@ -731,13 +738,28 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
   cálculos.
 
-## R32 · Cambio de titular a mitad de período · Pendiente (P11)
+## R32 · Cambio de titular a mitad de período · Vigente (D-109)
 
 - **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
-  anterior. Hoy ninguna regla dice a quién se le imputa cada cosa ni qué ve cada uno en el portal.
-- **A definir**: si la expensa del período sigue a la unidad o a la persona; qué pasa con la deuda
-  anterior y con el crédito a favor; cómo se relaciona con el certificado de libre deuda (R21).
-- **Tests mínimos**: a definir cuando se responda P11.
+  anterior.
+- **Regla** (D-109, resuelve P11): el administrador decide en cada cambio de titular, con dos
+  decisiones configurables e independientes, cada una con un default:
+  - **Expensa del mes de la venta**: por defecto la unidad entera responde completa; alternativa,
+    prorrateo por días entre vendedor y comprador.
+  - **Deuda previa**: por defecto sigue en la unidad y el comprador la hereda (así lo establece el
+    Código Civil y Comercial — **SUPUESTO no verificado con abogado**, ver SU-02 en
+    `09_decisiones_y_supuestos.md`); alternativa, queda a nombre del vendedor, lo que requiere una
+    **cuenta de persona** además de la cuenta de la unidad.
+  Todo cambio de titular queda registrado con fecha, quién eligió qué opción y cuándo, y auditado
+  (R08/D-016). Si la unidad cambia de titular con deuda pendiente, el sistema avisa, sin bloquear la
+  operación. La relación con el certificado de libre deuda (R21) se resuelve en el *design* del
+  cambio 4: el saldo a la fecha de corte sigue viviendo en la cuenta elegida para la deuda previa.
+- **Tests mínimos**: con el default, la expensa del mes de la venta queda entera a cargo de la unidad
+  y la deuda previa pasa al comprador; con prorrateo por días, vendedor y comprador se dividen la
+  expensa del mes exacto; con "deuda a nombre del vendedor", la deuda previa se mueve a una cuenta de
+  persona y la unidad queda en cero por ese concepto; todo cambio de titular deja un registro con
+  fecha, elección y responsable; una unidad con deuda que cambia de titular genera un aviso, nunca un
+  bloqueo.
 
 ## R41 · Baja de deuda incobrable · Propuesta (D-071)
 

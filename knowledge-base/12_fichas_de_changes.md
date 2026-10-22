@@ -469,7 +469,11 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
 - **Depende de**: 2a y 3a (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
   **Habilita**: 5, 6, 7.
-- **Bloqueado por**: P10, P11, P21, P31, P34 y P42 (la sesión con un contador o administrador).
+- **Bloqueado por**: nada que impida construir. El grupo B de preguntas de negocio (P10, P11, P21,
+  P31 y P34) quedó resuelto por D-109 (22/10/2026); quedan abiertas dos sub-preguntas para Alberto (a
+  qué unidad va el centavo sobrante, P10; si su Excel corta el interés en la misma fecha, P34) y P42
+  (la sesión con un contador o administrador), ninguna de las tres bloquea el propose ni la
+  construcción: se resuelven antes del piloto (15).
 - **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
   `leer_parametros` y verificar con un test que `Dinero` rechaza ceros de más (`1.0000`).
 - **Decidir en el design** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
@@ -487,15 +491,19 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   los repiten con lo real; hay pruebas de propiedades del
   mayor resto (la suma siempre da exacta); el test de concurrencia contra PostgreSQL real pasa; un
   intento de modificar un movimiento rebota.
-- **Precondiciones de la auditoría de cimientos (22/10/2026)**: antes de este propose, Juani y
-  Alberto responden P10, P11, P21, P31, P34 y P42 (ver arriba, "Bloqueado por"), y el design trae
-  resuelta la lista completa de decisiones de diseño (dueño de tablas de sólo agregar, dueño de
-  `emision`, idempotencia de punta a punta, redondeo y precisión del reparto con invariantes,
-  commit-y-encolar con reproceso, errores de campo y `pesos()`, contrato de error uniforme, patrón
-  puertos/adaptadores del libro, reglas nuevas del test de fronteras, auditoría del coeficiente, el
-  contrato de la API falsa para los formularios nuevos y el canario que no repita la suite entera).
-  Detalle completo, con criterio de terminado por ítem, en
-  `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
+- **Precondiciones de la auditoría de cimientos (22/10/2026)**: el grupo B de preguntas de negocio
+  (P10, P11, P21, P31 y P34) quedó respondido por D-109 (22/10/2026). Quedan sin bloquear el propose
+  ni la construcción: las dos sub-preguntas abiertas para Alberto (a qué unidad va el centavo
+  sobrante, P10; si su Excel corta el interés en la misma fecha, P34) y P42 (la sesión con un contador
+  o administrador de Mendoza) — las tres se resuelven antes del piloto (15). Por D-109 (P11), el 4
+  suma una **cuenta de persona**, además de la cuenta de unidad, para la opción "deuda a nombre del
+  vendedor" en un cambio de titular. El design del 4 sigue trayendo resuelta la lista completa de
+  decisiones de diseño (dueño de tablas de sólo agregar, dueño de `emision`, idempotencia de punta a
+  punta, redondeo y precisión del reparto con invariantes, commit-y-encolar con reproceso, errores de
+  campo y `pesos()`, contrato de error uniforme, patrón puertos/adaptadores del libro, reglas nuevas
+  del test de fronteras, auditoría del coeficiente, el contrato de la API falsa para los formularios
+  nuevos y el canario que no repita la suite entera). Detalle completo, con criterio de terminado por
+  ítem, en `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
