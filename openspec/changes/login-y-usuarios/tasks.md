@@ -1324,11 +1324,22 @@ escrita en el design, sin agregar reglas nuevas.
   ```
   RED (a) $ date +%T && uv run pytest tests/integracion/test_aceptar_invitacion_api.py -q -k persona_en_b
   20:45:58  1 failed: {"aceptada":true}; assert 200 == 404 (mutante: `or _minusculas_ascii(...) != email_normalizado` → `or False` en invitaciones.py)
-  RED (b) $ date +%T && uv run pytest tests/integracion/test_sesion_api.py -q -k solo_a_b
-  20:47:15  1 failed: {"detail":"Unauthorized"}; assert 401 == 200 (mutante: `info={"identidad_clerk": sub}` → `info={"identidad_clerk_mutada": sub}` en base_de_datos.py)
-  ```
-  Restaurados ambos originales byte a byte; `git diff --quiet -- backend/src` limpio salvo el fix de
-  RB2b-post-1 (el único cambio real de `backend/src` de esta vuelta).
+  RED (b), corregido el 21/10/2026 (L-019): el rojo de abajo quedó mal — mutaba
+  `info={"identidad_clerk": sub}` → `info={"identidad_clerk_mutada": sub}` en
+  base_de_datos.py, lo que rompe la autenticación (401 Unauthorized) y no prueba
+  la aserción de aislamiento del test. Mutante correcto: `identidad.py` y la
+  política RLS `persona_por_identidad_clerk` (migración 0019) filtran por
+  identidad en dos capas independientes (defensa en profundidad); mutar sólo
+  una deja a la otra filtrando igual y el test sigue en verde (verificado
+  probando cada capa por separado antes de combinarlas). Rojo real quitando el
+  filtro en las dos a la vez: `WHERE clerk_usuario_id = :sub` de la consulta en
+  `identidad.py` y la cláusula `clerk_usuario_id = nullif(current_setting
+  ('app.identidad_clerk', true), '') AND` de la política en la migración 0019.
+  $ date +%T && uv run pytest tests/integracion/test_sesion_api.py -q -k solo_a_b
+  21:20:39  1 failed: assert ['997b66ce-...administraciones de A...'] == ['012649be-...'] (B esperado solo); 200 == 200, no 401
+  Restaurados ambos originales byte a byte; `git diff --quiet -- backend/src` limpio.
+  $ date +%T && uv run pytest tests/integracion/test_sesion_api.py -q
+  21:21:05  4 passed in 9.93s
   ```
   GREEN $ date +%T && uv run pytest tests/integracion/test_aceptar_invitacion_api.py tests/integracion/test_sesion_api.py tests/integracion/test_envio_de_invitaciones.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py -q
   20:47:49  61 passed in 30.57s
