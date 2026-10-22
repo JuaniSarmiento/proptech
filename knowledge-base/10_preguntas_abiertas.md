@@ -37,10 +37,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P10 · Modo de redondeo al centavo**: R07 y D-046 dicen "al centavo, una sola vez" pero no
   cómo: redondeo bancario (`0.125` da `0.12`) o medio hacia arriba (`0.125` da `0.13`). Cambia a qué
   unidad le toca el centavo sobrante y cómo cierra cada interés. Se responde con un contador o
-  administrador de Mendoza. Detectado en la auditoría del 13/10.
+  administrador de Mendoza. Detectado en la auditoría del 13/10. **Bloquea el propose del 4
+  (auditoría de cimientos 22/10/2026)**.
 - [ ] **P11 · Cambio de titular a mitad de período**: quién responde por la expensa del período en
   curso y por la deuda anterior cuando una unidad se vende o cambia de titular (R32). Se responde con
-  Alberto y un administrador. Detectado en la auditoría del 13/10.
+  Alberto y un administrador. Detectado en la auditoría del 13/10. **Bloquea el propose del 4
+  (auditoría de cimientos 22/10/2026)**.
 - [ ] **P12 · Inscripción de la base de datos ante la AAIP** (ley 25.326): requisito a verificar antes
   del cambio 8, porque el sistema guarda datos personales reales de vecinos. Surge de la investigación
   del 13/10; no está confirmado con un abogado. **Cerrada para la autenticación** (D-107, Juani,
@@ -71,6 +73,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   al super admin y al administrador principal; falta decidir si además aprueba el consejo por encima
   de un umbral. Antes del cambio 10b.
 - [ ] **P21 · Umbrales** de monto atípico (R23) y de saldos chicos (R30). Antes de los cambios 14 y 4.
+  **Bloquea el propose del 4 (auditoría de cimientos 22/10/2026)**.
 - [ ] **P22 · Quién usa el editor de reglas** (D-066, `13_motor_de_reglas.md`): propuesta en dos niveles,
   valores para el super admin (antes, titular) y estructura para el equipo. Antes del cambio 6b.
 - [x] **P23 · Permisos por acción**: matriz vigente en D-106 (Juani, 20/10/2026), que reemplaza la
@@ -93,13 +96,15 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P30 · Un mismo CBU que paga varias unidades** de la misma persona: qué unidad se sugiere. Antes
   del cambio 9.
 - [ ] **P31 · Moroso crítico y saldos chicos**: si cuenta como vencida una liquidación cuyo saldo es sólo
-  interés, o un saldo por debajo del umbral de R30. Antes del cambio 4.
+  interés, o un saldo por debajo del umbral de R30. Antes del cambio 4. **Bloquea el propose del 4
+  (auditoría de cimientos 22/10/2026)**.
 - [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
   fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
 - [x] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
   edificio o cargado al emitir. Antes del cambio 3. Resuelta en D-100 (16/10/2026).
 - [ ] **P34 · Hasta qué fecha calcula el interés cada emisión**: la de emisión, el cierre del período o
-  el vencimiento siguiente (R03). Antes del cambio 4.
+  el vencimiento siguiente (R03). Antes del cambio 4. **Bloquea el propose del 4 (auditoría de
+  cimientos 22/10/2026)**.
 - [x] **P35 · Cómo bajan el residual de una obligación los créditos que no son pagos**: con una
   imputación propia y un destino fijo por tipo de crédito (D-086, R05).
 - [ ] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
@@ -116,6 +121,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P42 · Validar los valores de plata con un administrador o contador de Mendoza**: los defaults
   de R03 (tasa, gracia, forma de cálculo) y las definiciones de D-082 y D-086 marcadas "a validar".
   Antes del cambio 4. (P4 quedó cerrada como decisión, pero esta validación sigue pendiente.)
+  **Bloquea el propose del 4 (auditoría de cimientos 22/10/2026)**.
 - [ ] **P43 · El contenido derivado de ProTecc en el repositorio público**: la exploración de dolores y
   las reglas citan el documento privado ProTecc v3.5. Confirmar con Alberto que puede ser público, o
   sacarlo del repositorio. Antes de dar visibilidad al repositorio.

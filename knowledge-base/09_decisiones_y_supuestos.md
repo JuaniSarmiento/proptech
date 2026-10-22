@@ -1788,6 +1788,11 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Límite de lo construido**: el 2.2a construye perfiles, vínculos, permisos y sus restricciones. La
   lectura de ordinarias del inquilino y las lecturas contables se construyen con 6, 7, 11 y 12; la
   gestión de usuarios va en 2b.
+- **Aclaración del 22/10/2026** (PER-1 de la auditoría de cimientos, sin cambio de regla): "Todo" en
+  la fila del super admin no incluye `informar_pago`: esa acción queda reservada a propietario e
+  inquilino (ver sus filas en la misma tabla), tal como ya lo implementan `permisos.py` y su test
+  desde el cierre del 2.2a. La tabla de arriba no lo decía explícito; el código y el test siempre lo
+  aplicaron así.
 - **Quién**: Juani, 20/10/2026.
 
 ## D-107 · Clerk sólo para la autenticación, también para vecinos (20/10/2026)

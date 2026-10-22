@@ -469,3 +469,64 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   probar; corregido en la misma vuelta, sin cambiar el código de producción.
 - **Aplica a**: constructor y rompedor (al elegir qué mutar para un RED), auditor (al leer si el rojo
   cae en la aserción correcta).
+
+## L-035 · Un test que existe no es un test que vigila
+
+- **Origen**: auditoría de cimientos, 22/10/2026 (informes `03-dba.md` y `07-deuda-y-kb.md`, cierre
+  en `7555b59`/`d63a409` y `8b8ee52`/`437466b`).
+- **Qué pasó**: dos garantías distintas tenían un archivo de test, y ninguna estaba realmente
+  vigilada. El tenant por transacción (D4) tenía su test en verde, pero el reset de checkin (R7) lo
+  tapaba: cualquier mutante que cambiara el `SET LOCAL` por un `SET` de sesión seguía dando verde,
+  porque el cinturón de seguridad entraba antes de que el mutante importara. El control de dueño de
+  las tablas de sólo agregar tenía un sólo caso (`configuracion_versionada`), marcado `xfail`: el
+  archivo existía, corría en CI, y no tenía ni un caso **verde** que probara que el discriminante
+  funcionaba cuando debía fallar.
+- **Regla**: que un test exista y corra en CI no dice que vigile la garantía que nombra. Antes de
+  confiar en él, se verifica que (a) tenga al menos un caso verde real, no sólo casos `xfail`, y (b)
+  un mutante dirigido a la garantía específica (no a un paso anterior de la cadena, L-034) lo haga
+  fallar. Un test sin esas dos cosas es un archivo con el nombre de una garantía, no la garantía.
+- **Costo**: dos garantías centrales del aislamiento multi-tenant (D4 y el dueño de las tablas de
+  sólo agregar) llevaban días o semanas sin vigilancia real, descubierto sólo por la auditoría de
+  cimientos, no por el ciclo normal de construcción.
+- **Aplica a**: constructor (al escribir el primer test de una garantía nueva), rompedor, auditor.
+
+## L-036 · El discriminante de un permiso de dueño en Postgres es `NO FORCE ROW LEVEL SECURITY`, no `DISABLE TRIGGER ALL`
+
+- **Origen**: auditoría de cimientos, 22/10/2026 (`03-dba.md`, DBA-1; test en `8b8ee52`).
+- **Qué pasó**: la sonda obvia para probar "quién es dueño de esta tabla" parecía ser
+  `ALTER TABLE ... DISABLE TRIGGER ALL`: si el rol puede desactivar los triggers, es dueño. Falla
+  como discriminante porque toda tabla con una foreign key tiene triggers internos de Postgres
+  (`RI_ConstraintTrigger_*`, marcados `tgisinternal=true`) que exigen **superusuario** para
+  desactivarse con `ALL`, sin importar quién sea el dueño real: tanto `auditoria` (dueño el rol de
+  arranque) como `configuracion_versionada` (dueño el migrador) daban el mismo
+  "permission denied: ... is a system trigger", escondiendo la diferencia real entre las dos.
+  `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY` sí discrimina: Postgres lo exige únicamente al dueño
+  (o a un superusuario), sin triggers de por medio, y es universal para cualquier tabla con RLS
+  forzada (D5 ya lo exige en todas las de `_TABLAS_DE_SOLO_AGREGAR`).
+- **Regla**: al probar quién es dueño de una tabla en PostgreSQL, el discriminante es una operación
+  que **sólo el dueño** puede hacer sin más permiso (como `NO FORCE ROW LEVEL SECURITY` o cambiar su
+  dueño), nunca una que además requiera un privilegio de servidor (superusuario) que tapa la
+  diferencia entre "dueño" y "no dueño". Antes de adoptar una sonda de permisos, confirmarla a mano
+  contra dos tablas con dueños distintos conocidos.
+- **Costo**: ninguno en producción; detectado y corregido dentro del mismo informe, antes de
+  commitear el test con la sonda equivocada.
+- **Aplica a**: DBA, constructor (al escribir un test de permisos sobre PostgreSQL).
+
+## L-037 · Después de un push a `main`, se espera el CI completo antes de decir "listo"
+
+- **Origen**: auditoría de cimientos, 22/10/2026 (`04-devops.md`, OPS-1; arreglos `ad5bc90` y
+  `55e18a0`).
+- **Qué pasó**: dos rojos de `main` el mismo día, los dos por la misma causa raíz. `ad5bc90` subió el
+  timeout del job `backend` a 30 minutos para que el canario no lo cortara, pero no esperó a que el
+  propio CI corriera `test_ci_workflow.py` (que fija ese número en un test) antes de considerar
+  resuelto el problema: ese test seguía esperando 20 minutos, y `main` quedó en rojo
+  (run 39795326523) hasta `55e18a0`. El mismo día, un arreglo anterior (`rg` ausente del runner de
+  GitHub en el script de humo) se dio por bueno sin ver el run completo en verde.
+- **Regla**: un arreglo de CI (o cualquier push a `main`) no se declara terminado por "el cambio es
+  correcto a simple vista" ni por corridas locales: se espera el run completo de GitHub Actions sobre
+  ese commit y se lee su resultado antes de decir "listo" o de seguir con el siguiente arreglo. Si el
+  run tarda, se espera; no se apila un segundo arreglo sobre un primero sin confirmar.
+- **Costo**: dos rojos de `main` en un mismo día, con el arreglo correcto demorado por no haber
+  esperado la confirmación del primero.
+- **Aplica a**: quien toca `.github/workflows/`, orquestador (antes de reportar un arreglo de CI como
+  cerrado).

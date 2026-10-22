@@ -487,6 +487,15 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   los repiten con lo real; hay pruebas de propiedades del
   mayor resto (la suma siempre da exacta); el test de concurrencia contra PostgreSQL real pasa; un
   intento de modificar un movimiento rebota.
+- **Precondiciones de la auditoría de cimientos (22/10/2026)**: antes de este propose, Juani y
+  Alberto responden P10, P11, P21, P31, P34 y P42 (ver arriba, "Bloqueado por"), y el design trae
+  resuelta la lista completa de decisiones de diseño (dueño de tablas de sólo agregar, dueño de
+  `emision`, idempotencia de punta a punta, redondeo y precisión del reparto con invariantes,
+  commit-y-encolar con reproceso, errores de campo y `pesos()`, contrato de error uniforme, patrón
+  puertos/adaptadores del libro, reglas nuevas del test de fronteras, auditoría del coeficiente, el
+  contrato de la API falsa para los formularios nuevos y el canario que no repita la suite entera).
+  Detalle completo, con criterio de terminado por ítem, en
+  `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
@@ -615,6 +624,10 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Terminado cuando**: se cumplen HU-A4 y HU-A5; **con los datos del piloto, reproduce su última
   liquidación al centavo** (test de aceptación de M1; si los datos todavía no están, se corre con el
   edificio de ejemplo y M1 queda pendiente de ese test).
+- **Deuda de la auditoría de cimientos del 22/10/2026 (DBA-2)**: `grupos.py:90` escanea
+  `grupo_unidad` completo para armar la liquidación mensual (Seq Scan sobre 125k filas sintéticas);
+  falta un índice con prefijo `(administracion_id, complejo_id)` antes de que este cambio corra con
+  datos reales. Detalle en `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
 
 ---
 
@@ -842,6 +855,12 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   la lista de servicios escrita a mano y los `exit 1` del humo sin línea.
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto) y P12.
+- **Deuda de la auditoría de cimientos del 22/10/2026 (OPS-3, OPS-4, OPS-5, OPS-6, OPS-7, OPS-8)**:
+  ningún modo de falla tiene métrica ni alerta (respaldo fallido, tarea agotada); deploy a producción
+  sin documentar y sin rollback de imagen ensayado en producción real; `stderr` de `pg_dump`
+  descartado; el `mkdir` del README falla en silencio si se saltea; `-p proptech` con `down -v` en
+  scripts de operación puede borrar volúmenes del stack manual; imágenes de ejecución sólo por tag,
+  no por digest. Detalle en `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
 - **Terminado cuando**: el cierre del mes coincide con el del administrador y un backup se restauró
   con éxito.
 
