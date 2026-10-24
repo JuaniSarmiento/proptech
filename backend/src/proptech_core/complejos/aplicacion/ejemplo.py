@@ -4,8 +4,8 @@ design de `login-y-usuarios`).
 
 Corre siempre con las credenciales de `proptech_app` -- nunca
 `proptech_migrador` -- sobre una administración de ejemplo con id fijo (no
-generado), para que `cargar()` sea idempotente: la administración y su
-titular `super_admin` se crean una sola vez, y el edificio se carga por los
+generado), para que `cargar()` sea idempotente: la administración y la `persona` con su
+`asignacion_rol` de `super_admin` se crean una sola vez, y el edificio se carga por los
 mismos casos de uso que usa la API (`crear_edificio`, `crear_unidad`,
 `crear_grupo`, `confirmar_sin_saldos_previos`), todo en una transacción. El
 comando MUST NOT pedir ni otorgar ningún permiso nuevo: `proptech_app` ya
@@ -59,11 +59,11 @@ from proptech_core.complejos.aplicacion.unidades import crear_unidad
 #: `acceso-de-desarrollo`): nunca generado, para que `cargar()` compare contra
 #: la misma fila en cada corrida en vez de crear una nueva administración.
 ADMINISTRACION_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e0")
-PERSONA_TITULAR_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e1")
+PERSONA_SUPER_ADMIN_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e1")
 NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
-NOMBRE_TITULAR_EJEMPLO = "Super admin de ejemplo"
+NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
-EMAIL_TITULAR_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
+EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 
 
 def _ruta_semilla_por_defecto() -> Path:
@@ -114,10 +114,10 @@ def _crear_desde_cero(
             "VALUES (:id, :admin, :nombre, :email)"
         ),
         {
-            "id": PERSONA_TITULAR_EJEMPLO_ID,
+            "id": PERSONA_SUPER_ADMIN_EJEMPLO_ID,
             "admin": ADMINISTRACION_EJEMPLO_ID,
-            "nombre": NOMBRE_TITULAR_EJEMPLO,
-            "email": EMAIL_TITULAR_EJEMPLO,
+            "nombre": NOMBRE_SUPER_ADMIN_EJEMPLO,
+            "email": EMAIL_SUPER_ADMIN_EJEMPLO,
         },
     )
     sesion.execute(
@@ -125,15 +125,15 @@ def _crear_desde_cero(
             "INSERT INTO asignacion_rol(administracion_id, persona_id, rol) "
             "VALUES (:admin, :persona, 'super_admin')"
         ),
-        {"admin": ADMINISTRACION_EJEMPLO_ID, "persona": PERSONA_TITULAR_EJEMPLO_ID},
+        {"admin": ADMINISTRACION_EJEMPLO_ID, "persona": PERSONA_SUPER_ADMIN_EJEMPLO_ID},
     )
-    identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_TITULAR_EJEMPLO_ID)
+    identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_SUPER_ADMIN_EJEMPLO_ID)
     registrar(
         sesion,
         identidad,
         EventoDeAcceso.ALTA_INICIAL,
         entidad="persona",
-        entidad_id=PERSONA_TITULAR_EJEMPLO_ID,
+        entidad_id=PERSONA_SUPER_ADMIN_EJEMPLO_ID,
         request_id=request_id,
     )
 
