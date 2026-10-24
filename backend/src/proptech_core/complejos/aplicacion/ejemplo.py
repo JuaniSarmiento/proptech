@@ -65,6 +65,7 @@ NOMBRE_TITULAR_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
 EMAIL_TITULAR_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 
+
 def _ruta_semilla_por_defecto() -> Path:
     """Relativa a `PROPTECH_PARAMETROS` (D-042), nunca calculada por la
     profundidad del archivo: esa cuenta difiere entre la corrida local (bajo

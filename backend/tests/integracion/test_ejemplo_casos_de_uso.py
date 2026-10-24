@@ -246,8 +246,7 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
     with abrir_sesion(fabrica, primera.administracion_id) as sesion:
         coeficiente = sesion.execute(
             text(
-                "SELECT coeficiente::text FROM unidad "
-                "WHERE complejo_id=:id AND identificador='1A'"
+                "SELECT coeficiente::text FROM unidad WHERE complejo_id=:id AND identificador='1A'"
             ),
             {"id": primera.complejo_id},
         ).scalar_one()
