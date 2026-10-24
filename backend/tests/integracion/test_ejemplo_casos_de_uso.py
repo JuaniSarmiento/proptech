@@ -26,20 +26,20 @@ import os
 import threading
 from collections.abc import Iterator
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
 import sqlalchemy.exc
 from psycopg import sql
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from testcontainers.community.postgres import PostgresContainer
 
 from proptech_core.compartido.base_de_datos import abrir_sesion, registrar_tenant_por_administracion
-from proptech_core.compartido.parametros import leer_parametros
-from proptech_core.compartido.semilla import leer_semilla
+from proptech_core.compartido.parametros import Parametros, leer_parametros
+from proptech_core.compartido.semilla import Semilla, leer_semilla
 from proptech_core.complejos.aplicacion import ejemplo
 
 from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
@@ -53,23 +53,25 @@ _PARAMETROS = _RAIZ / "config" / "parametros.yaml"
 _SEMILLA = _RAIZ / "config" / "semilla" / "edificio-ejemplo.yaml"
 
 
-def _parametros():
+def _parametros() -> Parametros:
     return leer_parametros(str(_PARAMETROS))
 
 
-def _semilla():
+def _semilla() -> Semilla:
     return leer_semilla(str(_SEMILLA), _parametros())
 
 
-def _contar(fabrica, tabla: str, admin_id) -> int:
+def _contar(fabrica: sessionmaker[Session], tabla: str, admin_id: UUID) -> int:
     # `api_edificio.filas()` fija el tenant al admin PROPIO de ese fixture
     # (D4): para contar filas de la administración de ejemplo (otro tenant)
     # hay que abrir una sesión con SU id, no reusar esa conexión.
     with abrir_sesion(fabrica, admin_id) as sesion:
-        return sesion.execute(
-            text(f"SELECT count(*) FROM {tabla} WHERE administracion_id = :id"),  # noqa: S608
-            {"id": admin_id},
-        ).scalar_one()
+        return int(
+            sesion.execute(
+                text(f"SELECT count(*) FROM {tabla} WHERE administracion_id = :id"),  # noqa: S608
+                {"id": admin_id},
+            ).scalar_one()
+        )
 
 
 @pytest.fixture
@@ -115,7 +117,7 @@ def base_fresca(
             arranque.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(nombre)))
 
 
-def _fabrica_app(base: BaseDeEdificio) -> tuple:
+def _fabrica_app(base: BaseDeEdificio) -> tuple[Engine, sessionmaker[Session]]:
     def _conectar() -> object:
         conexion = base.conectar_app()
         conexion.autocommit = False
@@ -258,7 +260,7 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
 def test_dos_cargas_en_paralelo_dejan_un_solo_ejemplo(base_fresca: BaseDeEdificio) -> None:
     parametros = _parametros()
     semilla = _semilla()
-    resultados: list[object] = [None, None]
+    resultados: list[ejemplo.ResultadoCarga | Exception | None] = [None, None]
 
     def _correr(indice: int) -> None:
         engine, fabrica = _fabrica_app(base_fresca)
@@ -281,8 +283,10 @@ def test_dos_cargas_en_paralelo_dejan_un_solo_ejemplo(base_fresca: BaseDeEdifici
         if isinstance(resultado, Exception):
             raise resultado
 
-    assert {r.hizo_algo for r in resultados} == {True, False}  # type: ignore[union-attr]
-    admin_id = resultados[0].administracion_id  # type: ignore[union-attr]
+    cargas = [r for r in resultados if isinstance(r, ejemplo.ResultadoCarga)]
+    assert len(cargas) == 2
+    assert {r.hizo_algo for r in cargas} == {True, False}
+    admin_id = cargas[0].administracion_id
     engine, fabrica = _fabrica_app(base_fresca)
     try:
         with abrir_sesion(fabrica, admin_id) as sesion:
