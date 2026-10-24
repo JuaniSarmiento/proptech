@@ -418,7 +418,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a y los `shape`. **Habilita**: `acceso-de-desarrollo` y el uso real del 3 junto con
   el 2b.
 
-### 3b-bis · `acceso-de-desarrollo` · HIGH, sin firmar (reescrito tras el cierre del 2b, 22/10/2026)
+### 3b-bis · `acceso-de-desarrollo` · HIGH, archivado OK (24/10/2026, D-110)
 
 - **Objetivo**: cargar el edificio de ejemplo para recorrer las siete pantallas contra la API real,
   entrando por el login de verdad. **Reducido por E12** (firmada por Juani en el 2b, 21/10/2026): con
@@ -438,8 +438,13 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   real con ese ejemplo cargado.
 - **L-029**: la firma de E12 en el proposal del 2b aprueba la *decisión de forma*, no estos artefactos
   reescritos; este change sigue necesitando su propia firma en su sección "Aprobación".
-- **Precondición**: tabla "Aprobación" vacía en `openspec/changes/acceso-de-desarrollo/proposal.md`, a
-  la espera de Juani o Alberto. Sin firma no se construye.
+- **Cierre**: firmado por Emiliano Caceres el 24/10/2026 (D-110, que además extiende quién puede firmar
+  HIGH/CRITICAL a Juani, Alberto o Emiliano). Construido y verificado: `ejemplo.py` corre como
+  `proptech_app`, probado contra PostgreSQL real; recorrido a mano de las siete pantallas del 3b contra
+  la API real con el ejemplo cargado, entrando con Clerk de desarrollo, en 1280 px, 320 px y con
+  teclado. **OK**; deuda y hallazgos (fallas de portabilidad Windows en la suite de pytest, `humo.sh`
+  sin forma de aislarse de un stack real, el CVE de Next.js 16.4.0 ya resuelto con la actualización a
+  16.4.3) quedan en D-110.
 - **Depende de**: 3a, 3b, 2.2a y 2b (D10, D11, E11, E12). **Habilita**: recorrido con datos de ejemplo,
   nunca datos personales reales.
 

@@ -34,6 +34,7 @@ def _correr_script(cuerpo: str) -> subprocess.CompletedProcess[str]:
         ["bash", "-c", script],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=10,
         check=False,
     )
@@ -85,7 +86,7 @@ def test_humo_usa_pasos_sh_en_sus_26_pasos() -> None:
     """humo.sh tiene que fuentear pasos.sh y anunciar sus 26 pasos con
     `paso N "descripción"`, no con `echo "--- (N) descripción ---"` suelto
     (que no deja nada para que el trap reporte al fallar)."""
-    texto = HUMO.read_text()
+    texto = HUMO.read_text(encoding="utf-8")
     assert "pasos.sh" in texto, "humo.sh no fuentea infra/ci/pasos.sh"
     llamadas_a_paso = re.findall(r'^\s*paso\s+\S+\s+"', texto, flags=re.MULTILINE)
     assert len(llamadas_a_paso) == 26, (

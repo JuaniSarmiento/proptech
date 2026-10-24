@@ -332,9 +332,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[x]` archivado (20/10/2026), OK (D-105).
 - **Scope**: siete pantallas de configuración del administrador, todo el ancho, menú lateral, barra
   superior y ayuda acoplada; teclado, errores por campo, carga, vacío, 320 px y WCAG 2.2 AA.
-  Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), sin firma;
-  con el 2b ese change se reduce a la carga del ejemplo, con fila `super_admin` y `GRANT INSERT ON
-  auditoria` al migrador pendientes de firma CRITICAL. Ver ficha 3b-bis.
+  Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), archivado OK el
+  24/10/2026 (D-110): el acceso sin login se descartó por D11 del 2b, y la carga del ejemplo corre como
+  `proptech_app` (D10 del 2b), sin `GRANT` nuevo. Ver ficha 3b-bis.
 - **Dependencias**: C-06a y los briefs de `shape`.
 - **Governance**: ALTO
 - **Leer antes**:
