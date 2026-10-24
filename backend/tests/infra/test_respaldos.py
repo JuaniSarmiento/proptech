@@ -870,7 +870,7 @@ class TestSalud:
     ) -> None:
         carpeta = tmp_path / "respaldos"
         carpeta.mkdir()
-        (carpeta / ".ultimo-ok").write_text(contenido)
+        (carpeta / ".ultimo-ok").write_text(contenido, encoding="utf-8")
         resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert resultado.returncode != 0
 

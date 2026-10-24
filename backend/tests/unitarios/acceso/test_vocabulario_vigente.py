@@ -80,7 +80,7 @@ def test_fuentes_nombres_y_comentarios_usan_perfiles_vigentes() -> None:
         f"{ruta}:{numero}:{linea.strip()}"
         for archivo in sorted(archivos)
         for ruta in [archivo.relative_to(_RAIZ).as_posix()]
-        for numero, linea in enumerate(archivo.read_text().splitlines(), 1)
+        for numero, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1)
         if _PATRON.search(linea) and not _justificada(ruta, linea)
     ]
     assert inesperadas == []

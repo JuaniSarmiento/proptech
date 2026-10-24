@@ -28,7 +28,7 @@ def test_toda_invocacion_de_docker_compose_lleva_p_proptech() -> None:
     """L-006: lo destructivo (sobre todo `down -v`) apunta siempre al
     proyecto `proptech`, sin depender de que `name: proptech` siga en
     `compose.yaml`."""
-    texto = HUMO.read_text()
+    texto = HUMO.read_text(encoding="utf-8")
     for linea in _lineas_no_comentario(texto):
         if _PATRON_DOCKER_COMPOSE.search(linea):
             assert "-p proptech" in linea, (
@@ -52,7 +52,7 @@ def test_el_valor_cliente_del_paso_7_es_un_uuid_canonico() -> None:
     `validar_request_id` (`seguimiento.py`) sola, sin que Caddy tenga que
     pisar nada: el paso 7 pasaría igual aunque Caddy no pisara el
     encabezado."""
-    texto = HUMO.read_text()
+    texto = HUMO.read_text(encoding="utf-8")
     coincidencia = re.search(r'valor_cliente="([^"]*)"', texto)
     assert coincidencia is not None, "no se encontró la asignación de valor_cliente en el paso 7"
     valor_cliente = coincidencia.group(1)
@@ -70,7 +70,7 @@ def test_el_humo_cuenta_salud_degradada_y_f7c_en_api_y_worker() -> None:
     mismo argumento vale para `salud_degradada` (5.1): el único servicio que
     lo loguea es `api`. El conteo de los tres tiene que mirar, como mínimo,
     `api` y `worker`."""
-    texto = HUMO.read_text()
+    texto = HUMO.read_text(encoding="utf-8")
     for patron in ("traceback_crudo_descartado", "mensaje_no_texto", "salud_degradada"):
         llamada = re.search(rf'cantidad_\w+=\$\(contar_evento "{patron}"([^)]*)\)', texto)
         assert llamada is not None, (
@@ -114,7 +114,7 @@ def test_limpiar_despausa_antes_del_down_v() -> None:
     pausada hasta entonces es un estado que nadie pidió). Se verifica el
     ORDEN textual dentro de la función `limpiar`, no sólo que las tres
     líneas existan en algún lado del archivo."""
-    texto = HUMO.read_text()
+    texto = HUMO.read_text(encoding="utf-8")
     inicio = texto.index("limpiar() {")
     fin = texto.index("\n}\n", inicio)
     cuerpo_limpiar = texto[inicio:fin]

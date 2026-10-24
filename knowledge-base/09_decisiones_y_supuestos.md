@@ -1422,7 +1422,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 
 - **Fecha**: 14/10/2026
 - **Decisión**: los cambios de nivel **CRITICAL** y **HIGH** los puede aprobar **cualquiera de los
-  dos socios, Juani o Alberto**, dejándolo **por escrito y con fecha** en la propuesta del cambio (el
+  dos socios, Juani/Alberto/Emiliano**, dejándolo **por escrito y con fecha** en la propuesta del cambio (el
   mismo lugar donde hoy queda la aprobación de Juani, por ejemplo en `respaldos-y-restauracion` para
   HIGH o en los cambios críticos del roadmap para CRITICAL). No hace falta que apruebe el que no
   programa ese cambio puntual: alcanza con que uno de los dos lo haga constar, con su nombre y la
@@ -1436,10 +1436,10 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   sólo él) y que cada socio apruebe únicamente lo que programa (deja sin aprobador a un cambio CRITICAL
   que programe el otro, si el primero no está disponible).
 - **Por qué**: con Alberto trabajando cambios propios sobre el mismo repositorio, exigir siempre la
-  aprobación de Juani específicamente frena cambios CRITICAL o HIGH que Alberto puede evaluar y
-  aprobar él mismo con el mismo criterio de socio. La gobernanza sigue siendo humana y explícita
+  aprobación de Juani específicamente frena cambios CRITICAL o HIGH que Alberto y Emiliano puedan evaluar y
+  aprobar ellos mismos con el mismo criterio de socio. La gobernanza sigue siendo humana y explícita
   (nunca un agente la completa, D-087): sólo se amplía quién puede ser ese humano.
-- **Quién**: Juani, 14/10/2026 (acordado para que Alberto pueda trabajar con autonomía real sobre sus
+- **Quién**: Juani, 14/10/2026 (acordado para que Alberto y Emiliano puedan trabajar con autonomía real sobre sus
   propios cambios).
 
 ## D-095 · El cierre del 1d: elecciones de código y aceptación de la deuda (14/10) · corrige en parte a D-090
@@ -1919,6 +1919,47 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   dejaría parado el change crítico más grande del roadmap por una validación que, según D-089, corrige
   después sin tocar código (son parámetros, no estructura).
 - **Quién**: Juani, 22/10/2026, en conversación con el orquestador.
+
+## D-110 · Cierre de `acceso-de-desarrollo`: firma HIGH y resultado (24/10/2026)
+
+- **Decisión**: Emiliano Caceres aprobó la sección "Aprobación" de `proposal.md` el 24/10/2026, con el
+  alcance exacto de D1/D2 del design del change (carga del edificio de ejemplo como `proptech_app` por
+  el camino de D10 de `login-y-usuarios`, sin `GRANT` nuevo ni punto de entrada sin login; recorrido de
+  las siete pantallas del 3b entrando con Clerk de desarrollo). El change quedó **OK**, archivado el
+  24/10/2026 (`openspec/changes/archive/2026-10-24-acceso-de-desarrollo/`).
+- **Quién puede firmar HIGH/CRITICAL**: a partir de este cierre, la gobernanza de D-094 reconoce a
+  **Juani, Alberto o Emiliano** como firmantes válidos de un change CRITICAL o HIGH (antes sólo
+  nombraba a Juani o Alberto); la sección "Gobernanza" de este change y la de `CLAUDE.md`/`AGENTS.md`
+  quedan alineadas con esta decisión.
+- **Lo que construyó**: `backend/src/proptech_core/complejos/aplicacion/ejemplo.py` (comando de carga
+  idempotente, corre como `proptech_app`) y su test de integración contra PostgreSQL real
+  (`backend/tests/integracion/test_ejemplo_casos_de_uso.py`), cubriendo los 7 escenarios de
+  `datos-semilla`. Verificado a mano contra la API real: login con Clerk de desarrollo, selector de
+  administración, las siete pantallas del 3b con el edificio de ejemplo cargado (13 unidades,
+  coeficientes al 100%, puesta a punto 6/6), en 1280 px, 320 px y con teclado.
+- **Hallazgo durante la verificación, corregido**: la ruta por defecto de la semilla
+  (`_RUTA_SEMILLA_POR_DEFECTO`) calculaba su ubicación contando carpetas desde el archivo
+  (`parents[5]`), un valor correcto sólo para la corrida local bajo `backend/` pero no para la imagen
+  de Docker (`/app/src/...`, una carpeta menos de profundidad hasta la raíz). Se corrigió para
+  derivarla de `Configuracion().proptech_parametros` (D-042), igual que ya hace el resto del proyecto
+  con `parametros.yaml`.
+- **Deuda y límites descubiertos, sin resolver en este change**:
+  - La suite de backend tiene fallas reales de portabilidad Windows (señales POSIX que `arq` usa y no
+    existen en Windows; permisos NTFS vs. POSIX en los tests de `respaldos`/`restaurar`; el plugin
+    `docker compose` no se descubre en un shell con `PATH` mínimo en Windows) que sólo se resuelven
+    corriendo en el entorno real del proyecto (Linux, CI o contenedores) — no son bugs de la app.
+  - `infra/ci/humo.sh` tiene el nombre de proyecto de Compose (`-p proptech`) fijo en el script, sin
+    override por variable de entorno: no se puede correr aislado de un stack real ya levantado sin
+    editar el script. Al correrlo contra el stack real (aprobado por Emiliano), `proptech-respaldos-1`
+    no llegó a sano por el mismo problema de finales de línea CRLF que ya tienen `respaldar.sh` y
+    `restaurar.sh` en un checkout de Windows (`env: 'bash\r': No such file or directory`) — mismo
+    origen que la deuda ya anotada del cierre del 1d.
+  - Next.js estaba fijado en 16.4.0, con una vulnerabilidad de seguridad conocida que bloqueaba
+    `next build` (`SecurityFatalError`). Se actualizó a 16.4.3 (parche menor, sin breaking changes;
+    sólo tocó `web/package.json` y el lockfile) para poder correr `test-web-navegador.sh`.
+  - La tabla del padrón de unidades, en 320 px, es horizontalmente scrolleable pero sin ninguna pista
+    visual de que haya columnas fuera de vista — mejora de UX menor, no bloqueante.
+- **Quién**: Emiliano Caceres, 24/10/2026, verificación con Playwright contra el stack real.
 
 ## Supuestos
 
