@@ -1932,10 +1932,15 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   ratificada por ella.
 - **Lo que construyó**: `backend/src/proptech_core/complejos/aplicacion/ejemplo.py` (comando de carga
   idempotente, corre como `proptech_app`) y su test de integración contra PostgreSQL real
-  (`backend/tests/integracion/test_ejemplo_casos_de_uso.py`), cubriendo los 7 escenarios de
-  `datos-semilla`. Verificado a mano contra la API real: login con Clerk de desarrollo, selector de
-  administración, las siete pantallas del 3b con el edificio de ejemplo cargado (13 unidades,
-  coeficientes al 100%, puesta a punto 6/6), en 1280 px, 320 px y con teclado.
+  (`backend/tests/integracion/test_ejemplo_casos_de_uso.py`), cubriendo los 6 escenarios del
+  requisito "Carga del edificio de ejemplo en la base" de `datos-semilla` (el séptimo, "Fuera de
+  desarrollo no corre", llegó el 25/10 con D-112). Verificado a mano contra la API real: login con
+  Clerk de desarrollo, selector de administración, las siete pantallas del 3b con el edificio de
+  ejemplo cargado (13 unidades, coeficientes al 100%, puesta a punto 6/6), en 1280 px, 320 px y con
+  teclado. Cómo se vinculó la cuenta de Clerk a la persona `super_admin` del ejemplo no quedó
+  escrito, así que esa verificación todavía no la puede repetir otra persona: queda como deuda a cargo
+  de Emiliano ("Deuda del cierre de `acceso-de-desarrollo`", `12_fichas_de_changes.md`) y es el
+  origen de L-039.
 - **Hallazgo durante la verificación, corregido**: la ruta por defecto de la semilla
   (`_RUTA_SEMILLA_POR_DEFECTO`) calculaba su ubicación contando carpetas desde el archivo
   (`parents[5]`), un valor correcto sólo para la corrida local bajo `backend/` pero no para la imagen
