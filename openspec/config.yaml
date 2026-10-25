@@ -41,15 +41,15 @@ context: |
   NUMERIC(14,2), texto en JSON, nunca float (R07, D-046); la cuenta corriente sólo agrega movimientos (R08); el
   tenant es la administración y sale del login, nunca del cliente; el edificio es un alcance dentro de
   ella, controlado por rol (R10, D-076); intereses simples (R03); TDD estricto en el
-  núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana de uno de los
-  dos socios, Juani o Alberto, antes de escribir código, D-094); nunca secretos ni datos personales reales en el repo (es público).
+  núcleo financiero; cobros y cuenta corriente son dominio CRITICAL (aprobación humana de Juani,
+  Alberto o Emiliano, antes de escribir código, D-094, D-111); nunca secretos ni datos personales reales en el repo (es público).
 
 rules:
   proposal:
     - Citar las historias (HU-...), reglas (R..) y decisiones (D-...) de knowledge-base/ que el cambio cubre.
     - "Incluir una sección '## Knowledge Base Impact' que nombre cada archivo de knowledge-base/ que el cambio afecta y si necesita REWRITE o APPEND; si no afecta ninguno, escribir 'none' y una línea de por qué."
     - Incluir una sección de qué queda fuera del cambio.
-    - Declarar el nivel de gobernanza del cambio (CRITICAL, HIGH, MEDIUM o LOW) y, si es CRITICAL o HIGH, pedir la aprobación de uno de los dos socios (Juani o Alberto), por escrito y con fecha, antes de construir (D-094).
+    - Declarar el nivel de gobernanza del cambio (CRITICAL, HIGH, MEDIUM o LOW) y, si es CRITICAL o HIGH, pedir la aprobación de Juani, Alberto o Emiliano, por escrito y con fecha, antes de construir (D-094, D-111).
     - Citar las lecciones de knowledge-base/15_lecciones.md que aplican y cómo las cubre cada tarea.
   tasks:
     - Cada regla de negocio que toque el cambio tiene su tarea de test antes que la de implementación.
@@ -60,7 +60,7 @@ operations:
   apply:
     guidance:
       - "TDD estricto: ver el test fallar antes de escribir el código que lo hace pasar."
-      - No tocar cobros ni cuenta corriente sin aprobación explícita de uno de los dos socios (Juani o Alberto, D-094).
+      - No tocar cobros ni cuenta corriente sin aprobación explícita de Juani, Alberto o Emiliano (D-094, D-111).
   archive:
     guidance:
       - Actualizar knowledge-base/ según la sección Knowledge Base Impact; decisiones nuevas sólo se agregan.

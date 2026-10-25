@@ -144,7 +144,7 @@ M2 y M3.
 
 ### Plan óptimo con 3 agentes
 
-> **Hoy programa una sola persona por change** (Juani o Alberto, `knowledge-base/14_forma_de_trabajo.md`):
+> **Hoy programa una sola persona por change** (Juani, Alberto o Emiliano, `knowledge-base/14_forma_de_trabajo.md`):
 > esta tabla muestra el paralelismo que el árbol de dependencias permitiría si hubiera tres agentes
 > trabajando a la vez, no el reparto real.
 
@@ -333,7 +333,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Scope**: siete pantallas de configuración del administrador, todo el ancho, menú lateral, barra
   superior y ayuda acoplada; teclado, errores por campo, carga, vacío, 320 px y WCAG 2.2 AA.
   Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), archivado OK el
-  24/10/2026 (D-110): el acceso sin login se descartó por D11 del 2b, y la carga del ejemplo corre como
+  24/10/2026 (D-110; firma de Emiliano ratificada por D-111): el acceso sin login se descartó por D11 del 2b, y la carga del ejemplo corre como
   `proptech_app` (D10 del 2b), sin `GRANT` nuevo. Ver ficha 3b-bis.
 - **Dependencias**: C-06a y los briefs de `shape`.
 - **Governance**: ALTO

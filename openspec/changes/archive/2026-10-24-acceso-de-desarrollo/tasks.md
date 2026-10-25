@@ -4,7 +4,7 @@ tsc --noEmit` y `bash infra/ci/test-web.sh`; en el backend, `bash infra/ci/test-
 archivos tocados (L-005). Cada tarea nombra los escenarios que cubre.
 
 **NO CONSTRUIR**: todo el change es **HIGH**. Precondición: la sección "Aprobación" de `proposal.md`
-firmada por Juani/Alberto/Emiliano, con nombre, fecha y la respuesta. Este `tasks.md` reemplaza por completo
+firmada por Juani o Alberto (desde D-111, también Emiliano), con nombre, fecha y la respuesta. Este `tasks.md` reemplaza por completo
 la versión anterior (el punto de entrada sin login, sus guardas, y la carga del ejemplo como
 `proptech_migrador` con `GRANT`): los tres quedan descartados por D11 del design de `login-y-usuarios`
 (E12, firmada 21/10/2026). L-029 aplica: esa firma no cubre estas tareas reescritas, que necesitan la

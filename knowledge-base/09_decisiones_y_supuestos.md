@@ -1418,11 +1418,11 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Quién**: Juani, 14/10/2026 (preparación del repositorio para que Alberto empiece a usar Active
   Stack v1).
 
-## D-094 · Gobernanza compartida entre los dos socios para CRITICAL y HIGH
+## D-094 · Gobernanza compartida entre los dos socios para CRITICAL y HIGH · *corregida en parte por D-111*
 
 - **Fecha**: 14/10/2026
 - **Decisión**: los cambios de nivel **CRITICAL** y **HIGH** los puede aprobar **cualquiera de los
-  dos socios, Juani/Alberto/Emiliano**, dejándolo **por escrito y con fecha** en la propuesta del cambio (el
+  dos socios, Juani o Alberto**, dejándolo **por escrito y con fecha** en la propuesta del cambio (el
   mismo lugar donde hoy queda la aprobación de Juani, por ejemplo en `respaldos-y-restauracion` para
   HIGH o en los cambios críticos del roadmap para CRITICAL). No hace falta que apruebe el que no
   programa ese cambio puntual: alcanza con que uno de los dos lo haga constar, con su nombre y la
@@ -1436,10 +1436,10 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   sólo él) y que cada socio apruebe únicamente lo que programa (deja sin aprobador a un cambio CRITICAL
   que programe el otro, si el primero no está disponible).
 - **Por qué**: con Alberto trabajando cambios propios sobre el mismo repositorio, exigir siempre la
-  aprobación de Juani específicamente frena cambios CRITICAL o HIGH que Alberto y Emiliano puedan evaluar y
-  aprobar ellos mismos con el mismo criterio de socio. La gobernanza sigue siendo humana y explícita
+  aprobación de Juani específicamente frena cambios CRITICAL o HIGH que Alberto puede evaluar y
+  aprobar él mismo con el mismo criterio de socio. La gobernanza sigue siendo humana y explícita
   (nunca un agente la completa, D-087): sólo se amplía quién puede ser ese humano.
-- **Quién**: Juani, 14/10/2026 (acordado para que Alberto y Emiliano puedan trabajar con autonomía real sobre sus
+- **Quién**: Juani, 14/10/2026 (acordado para que Alberto pueda trabajar con autonomía real sobre sus
   propios cambios).
 
 ## D-095 · El cierre del 1d: elecciones de código y aceptación de la deuda (14/10) · corrige en parte a D-090
@@ -1922,15 +1922,14 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 
 ## D-110 · Cierre de `acceso-de-desarrollo`: firma HIGH y resultado (24/10/2026)
 
+- **Fecha**: 24/10/2026
 - **Decisión**: Emiliano Caceres aprobó la sección "Aprobación" de `proposal.md` el 24/10/2026, con el
   alcance exacto de D1/D2 del design del change (carga del edificio de ejemplo como `proptech_app` por
   el camino de D10 de `login-y-usuarios`, sin `GRANT` nuevo ni punto de entrada sin login; recorrido de
   las siete pantallas del 3b entrando con Clerk de desarrollo). El change quedó **OK**, archivado el
   24/10/2026 (`openspec/changes/archive/2026-10-24-acceso-de-desarrollo/`).
-- **Quién puede firmar HIGH/CRITICAL**: a partir de este cierre, la gobernanza de D-094 reconoce a
-  **Juani, Alberto o Emiliano** como firmantes válidos de un change CRITICAL o HIGH (antes sólo
-  nombraba a Juani o Alberto); la sección "Gobernanza" de este change y la de `CLAUDE.md`/`AGENTS.md`
-  quedan alineadas con esta decisión.
+- **Quién firmó**: la habilitación de Emiliano como firmante es D-111, posterior; esta firma queda
+  ratificada por ella.
 - **Lo que construyó**: `backend/src/proptech_core/complejos/aplicacion/ejemplo.py` (comando de carga
   idempotente, corre como `proptech_app`) y su test de integración contra PostgreSQL real
   (`backend/tests/integracion/test_ejemplo_casos_de_uso.py`), cubriendo los 7 escenarios de
@@ -1959,7 +1958,35 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
     sólo tocó `web/package.json` y el lockfile) para poder correr `test-web-navegador.sh`.
   - La tabla del padrón de unidades, en 320 px, es horizontalmente scrolleable pero sin ninguna pista
     visual de que haya columnas fuera de vista — mejora de UX menor, no bloqueante.
+- **Descartado**: mantener el punto de entrada sin login y el `GRANT INSERT ON auditoria` a
+  `proptech_migrador` (el alcance original de este change), ya descartados por D11 del design de
+  `login-y-usuarios` (E12); es la alternativa que registra la tabla "Aprobación" del `proposal.md`.
 - **Quién**: Emiliano Caceres, 24/10/2026, verificación con Playwright contra el stack real.
+
+## D-111 · Emiliano Caceres firma changes HIGH y CRITICAL · corrige en parte a D-094
+
+- **Fecha**: 25/10/2026
+- **Decisión**: Emiliano Caceres, desarrollador del equipo, puede aprobar changes **HIGH** y
+  **CRITICAL** igual que Juani y Alberto: los firmantes válidos pasan a ser **Juani, Alberto o
+  Emiliano**, por escrito y con fecha en la sección "Aprobación" del `proposal.md`, con las mismas
+  reglas de D-094 (alcanza con uno; nunca la completa un agente, D-087). La firma de Emiliano sobre
+  `acceso-de-desarrollo` (D-110, 24/10/2026) queda **ratificada** por esta decisión.
+  - Se alinean `openspec/config.yaml`, `14_forma_de_trabajo.md`, `CLAUDE.md`, `AGENTS.md` y
+    `CHANGES.md` donde dicen quién aprueba.
+  - D-094 queda **corregida en parte**: cambia quién firma; el resto de su esquema sigue igual.
+- **Descartado**:
+  - **B, "no firma por ahora"** (Emiliano programa, pero firman Juani o Alberto): obliga a firmar
+    después del hecho el change ya construido, contra L-029, y deja a un desarrollador del equipo sin
+    poder aprobar lo que evalúa con el mismo criterio que los otros dos.
+  - **C, "sólo HIGH"** (CRITICAL, acceso y plata, sigue en Juani o Alberto): suma una regla de alcance
+    más en `config.yaml` y una segunda categoría de firmante, cuando Juani decide confiarle a Emiliano
+    el mismo criterio en los dos niveles.
+- **Por qué**: Emiliano ya trabaja changes propios sobre el repositorio; la razón de D-094 (no frenar
+  un cambio CRITICAL o HIGH porque el único que puede firmar no está) aplica igual. La ampliación de
+  firmantes la decide Juani, dueño del proyecto (`14_forma_de_trabajo.md`), en una decisión propia, y
+  no la escribe el mismo que firma (ver la lección del cierre de `acceso-de-desarrollo` en
+  `15_lecciones.md`).
+- **Quién**: Juani, 25/10/2026, en conversación con el orquestador.
 
 ## Supuestos
 

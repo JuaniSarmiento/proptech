@@ -90,8 +90,8 @@ mercado de arranque es **Mendoza**.
   ejemplo, reescrita sobre el camino de "alta inicial" (D10 del 2b) para correr como `proptech_app`
   (nunca `proptech_migrador`), sin ningún `GRANT` nuevo; recorrido verificado a mano de las siete
   pantallas del 3b contra la API real, entrando con Clerk de desarrollo, en 1280 px, 320 px y con
-  teclado. Firmado por Emiliano Caceres (D-110 extiende la firma HIGH/CRITICAL de D-094 a Juani,
-  Alberto o Emiliano). **OK**; deuda y hallazgos (fallas de portabilidad Windows en la suite de
+  teclado. Firmado por Emiliano Caceres, firma ratificada por D-111 (Juani, 25/10/2026), que lo suma
+  como firmante HIGH/CRITICAL junto a Juani y Alberto. **OK**; deuda y hallazgos (fallas de portabilidad Windows en la suite de
   pytest, `humo.sh` sin forma de aislarse de un stack real levantado, el CVE de Next.js 16.4.0 resuelto
   con la actualización a 16.4.3) quedan en D-110 y en la ficha 3b-bis de
   `knowledge-base/12_fichas_de_changes.md`.
@@ -235,14 +235,14 @@ fundación la pisa o la regenera con contenido que no es el nuestro:
 **openspec fijado en 1.13.0**: instalar con `npm install -g @fission-ai/openspec@1.13.0`, sin rango
 abierto. No instalar la última versión de npm sin verificar antes que coincide.
 
-**Gobernanza CRITICAL y HIGH, a cargo de cualquiera de los dos socios** (D-094): la propuesta de un
-cambio CRITICAL o HIGH la aprueba **Juani/Alberto/Emiliano**, dejándolo por escrito y con fecha en la
-propuesta. No hace falta que apruebe el que no programa ese cambio puntual.
+**Gobernanza CRITICAL y HIGH, a cargo de Juani, Alberto o Emiliano** (D-094, D-111): la propuesta de
+un cambio CRITICAL o HIGH la aprueba **Juani, Alberto o Emiliano**, dejándolo por escrito y con fecha
+en la propuesta. No hace falta que apruebe el que no programa ese cambio puntual.
 
 - **La plata nunca pasa por una cuenta de PropTech** (D-005). En el MVP no hay pagos integrados:
   el vecino informa con su comprobante y el administrador confirma (D-017, R11).
 - **Cobros y cuenta corriente son dominio CRITICAL** (governance global): se propone y se espera
-  aprobación de uno de los dos socios antes de escribir código ahí.
+  aprobación de Juani, Alberto o Emiliano antes de escribir código ahí.
 - **Base congelada** (D-087, D-089): nada de R42 en adelante y la base no se reabre salvo por hallazgos
   del código o respuestas a las preguntas abiertas.
 - **TDD estricto en el núcleo**: cada regla vigente tiene sus tests mínimos escritos en
@@ -283,7 +283,7 @@ archive` y una actualización de `knowledge-base/` según su sección "Knowledge
 El proponente escribe `proposal.md`/`design.md`/`tasks.md`; el constructor implementa con TDD
 estricto; el rompedor intenta romperlo y deja cada falla como un test; el auditor da el veredicto
 final (**OK** o **NO con motivos**) y un cambio queda aprobado cuando lo da. Los cambios CRITICAL o
-HIGH llevan además la aprobación escrita de uno de los dos socios antes de codear (D-094).
+HIGH llevan además la aprobación escrita de Juani, Alberto o Emiliano antes de codear (D-094, D-111).
 
 Aplicar TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas
 duras prevalecen.
@@ -321,7 +321,7 @@ falta.
   el email destinatario de la invitación dado el token (sin romper la protección
   anti-enumeración), y que el frontend muestre "Esta invitación es para X, estás logueado como Y,
   cerrá sesión primero" cuando no coincidan. Toca el dominio de acceso (gobernanza CRÍTICA): requiere
-  aprobación de Juani o Alberto antes de codear (D-094).
+  aprobación de Juani, Alberto o Emiliano antes de codear (D-094, D-111).
 
 ### Gaps de UX / validación a documentar o mejorar
 
@@ -451,7 +451,7 @@ Administrador·Toda la empresa debería poder ver el personal que está **por de
 jerarquía (Contador, Auxiliar, Consejo, otros Administradores de un edificio) para poder gestionar su
 equipo, pero **nunca** ver ni gestionar al super_admin (no hay visibilidad "hacia arriba"). Esto es
 una decisión de negocio/alcance de permisos (dominio acceso, gobernanza CRÍTICA) — no implementar sin
-que lo validen Juani o Alberto; queda anotado acá para cuando se defina el alcance de
+que lo valide Juani, Alberto o Emiliano (D-094, D-111); queda anotado acá para cuando se defina el alcance de
 `acceso-de-desarrollo` o un change dedicado a esto.
 
 ### Hallazgo nuevo — invitar el mismo email dos veces con roles distintos no actualiza el nombre

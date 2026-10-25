@@ -438,8 +438,8 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   real con ese ejemplo cargado.
 - **L-029**: la firma de E12 en el proposal del 2b aprueba la *decisión de forma*, no estos artefactos
   reescritos; este change sigue necesitando su propia firma en su sección "Aprobación".
-- **Cierre**: firmado por Emiliano Caceres el 24/10/2026 (D-110, que además extiende quién puede firmar
-  HIGH/CRITICAL a Juani, Alberto o Emiliano). Construido y verificado: `ejemplo.py` corre como
+- **Cierre**: firmado por Emiliano Caceres el 24/10/2026 (D-110); la firma la ratifica D-111 (Juani,
+  25/10/2026), que suma a Emiliano como firmante HIGH/CRITICAL junto a Juani y Alberto. Construido y verificado: `ejemplo.py` corre como
   `proptech_app`, probado contra PostgreSQL real; recorrido a mano de las siete pantallas del 3b contra
   la API real con el ejemplo cargado, entrando con Clerk de desarrollo, en 1280 px, 320 px y con
   teclado. **OK**; deuda y hallazgos (fallas de portabilidad Windows en la suite de pytest, `humo.sh`
@@ -750,7 +750,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   pagos en revisión listados aparte (R21, ProTecc G3). La marca de gestión judicial se expone como
   consulta para que la usen el cambio 13 (avisos) y la **exclusión en la función de R20**, que este
   cambio agrega a la función del cambio 4 (D-078).
-- **Ciclo**: completo, con aprobación de uno de los dos socios antes de codear (D-077, D-094). Si R29 sigue sin saber quién
+- **Ciclo**: completo, con aprobación de Juani, Alberto o Emiliano antes de codear (D-077, D-094, D-111). Si R29 sigue sin saber quién
   aprueba una condonación, esa parte se separa y el resto avanza.
 - **Depende de**: 10a. **Habilita**: 13.
 - **Bloqueado por**: P14, P20 y P32.
