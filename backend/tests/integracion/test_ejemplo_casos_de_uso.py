@@ -364,7 +364,7 @@ def _entorno_del_comando(
     """Sólo las credenciales de la app (nunca las del migrador como tales):
     si `_main` leyera otro par de variables, la carga no tendría con qué
     conectarse. `PROPTECH_ENTORNO` se quita siempre del entorno heredado y
-    se pone sólo si el test lo pide (D2 del PR #1, Juani 25/10/2026)."""
+    se pone sólo si el test lo pide (D-112, Juani 25/10/2026)."""
     variables = {
         clave_entorno: valor
         for clave_entorno, valor in os.environ.items()

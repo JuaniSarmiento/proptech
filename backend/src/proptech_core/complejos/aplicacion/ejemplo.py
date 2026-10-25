@@ -65,7 +65,7 @@ NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
 NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
 EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
-#: Guarda de entorno (D2 del PR #1, Juani 25/10/2026): el módulo viaja en la
+#: Guarda de entorno (D-112, Juani 25/10/2026): el módulo viaja en la
 #: imagen de producción (`COPY src`), así que el comando se niega a correr salvo
 #: que el entorno diga explícitamente que es una máquina de desarrollo.
 ENTORNO_DE_DESARROLLO = "desarrollo"

@@ -1991,6 +1991,26 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   no la escribe el mismo que firma (L-038).
 - **Quién**: Juani, 25/10/2026, en conversación con el orquestador.
 
+## D-112 · Guarda de entorno en el comando del edificio de ejemplo (25/10/2026)
+
+- **Fecha**: 25/10/2026
+- **Decisión**: `python -m proptech_core.complejos.aplicacion.ejemplo cargar` **no corre** salvo que
+  `PROPTECH_ENTORNO` valga exactamente `desarrollo` (sin mayúsculas ni espacios). Sin eso sale con
+  código 1, lo dice en stderr y no escribe nada; la guarda va antes de leer la configuración y antes
+  de conectarse a la base. La variable se documenta comentada en `infra/.env.example`, sólo para
+  desarrollo; Compose no la pasa a ningún servicio, se da al correr el comando
+  (`docker compose exec -e PROPTECH_ENTORNO=desarrollo api python -m ...`).
+- **Descartado**:
+  - **Dejar el comando sin candado** y registrarlo como riesgo aceptado: el módulo viaja en la imagen
+    de producción (`COPY src`) y, con las credenciales reales de la API, crearía ahí una
+    administración con id público y un `super_admin` sin invitación.
+  - **Moverlo a `backend/desarrollo/`**, fuera de la imagen: el spec `acceso-de-desarrollo` prohíbe
+    justamente esa carpeta (escenario "El repositorio no tiene un punto de entrada propio").
+- **Por qué**: protege contra correrlo por accidente en producción con un costo mínimo (una variable y
+  un `if`). No protege contra quien ya opera el contenedor de producción y pone la variable a mano;
+  para eso no hay guarda de aplicación que alcance.
+- **Quién**: Juani, 25/10/2026, en conversación con el orquestador (revisión del PR #1, BE-2).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive

@@ -448,7 +448,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Revisión del PR #1 (25/10/2026)**: backend, DBA, QA, arquitecto y auditor (informes en
   `.git/informes-pr1/`, fuera de git). Corregido en el mismo PR: D-094 vuelve a su texto y la firma de
   Emiliano se ratifica en D-111; el comando sólo corre con `PROPTECH_ENTORNO=desarrollo` (guarda de
-  entorno, decisión de Juani del 25/10/2026, para que el módulo que viaja en la imagen de producción
+  entorno, D-112, para que el módulo que viaja en la imagen de producción
   no cree un `super_admin` ahí); hay tests que corren el comando real (rol `proptech_app`, códigos de
   salida, "ya estaba", rechazo del migrador) y el mutante M9 ya no sobrevive; 04, 08, 10 y el README
   dicen lo que hay. El resto queda en "Deuda del cierre de `acceso-de-desarrollo`" más abajo.

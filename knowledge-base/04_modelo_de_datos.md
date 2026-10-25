@@ -532,13 +532,15 @@ presenta.
 Dos archivos ya validados (cambio 1b, D-053), con sus lectores propios
 (`backend/src/proptech_core/compartido/parametros.py` y `semilla.py`), alineados con R01 y el modo de
 coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a. El edificio de ejemplo se
-carga **en la base** con `python -m proptech_core.complejos.aplicacion.ejemplo cargar`
+carga **en la base** con
+`docker compose exec -e PROPTECH_ENTORNO=desarrollo api python -m proptech_core.complejos.aplicacion.ejemplo cargar`
 (`acceso-de-desarrollo`, archivado el 24/10/2026, D-110): corre como `proptech_app`, nunca como
 `proptech_migrador`, y no pide ningún `GRANT` nuevo (`proptech_app` ya tiene `SELECT, INSERT` sobre
 `auditoria`). Usa una administración con id fijo (`00000000-0000-4000-8000-0000000000e0`) y crea en la
 misma transacción su `persona` `super_admin` (`…e1`, email ficticio, sin `clerk_usuario_id`) y el
 edificio por los mismos casos de uso que la API; es idempotente (la segunda corrida dice "ya estaba" y,
-si el ejemplo cambió en la base, falla sin escribir). Sólo corre con `PROPTECH_ENTORNO=desarrollo`.
+si el ejemplo cambió en la base, falla sin escribir). Sólo corre con `PROPTECH_ENTORNO=desarrollo` (D-112): sin esa variable sale con 1 sin
+conectarse ni escribir.
 
 ### `config/parametros.yaml` · los valores con que arranca cada edificio nuevo (D-042)
 

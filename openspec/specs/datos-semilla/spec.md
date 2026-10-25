@@ -104,7 +104,10 @@ y MUST NOT tocar ninguna otra administración. Nada lo corre al arrancar. Correr
 duplicar nada, y la comparación MUST abarcar sólo lo que sale de la semilla (unidades, grupos y estado
 de migración), no lo que viene de los parámetros (D-042): si el ejemplo ya está cargado igual, termina
 con código 0 diciendo que no hizo nada; si está cargado distinto, termina con código distinto de 0 sin
-escribir nada. Una carga a medias MUST NOT quedar: todo en una transacción.
+escribir nada. Una carga a medias MUST NOT quedar: todo en una transacción. Precondición (D-112):
+el comando MUST NOT correr salvo que `PROPTECH_ENTORNO` valga exactamente `desarrollo`; sin eso
+termina con código distinto de 0, lo dice y no se conecta ni escribe nada. Los escenarios de abajo
+suponen esa variable puesta.
 
 #### Scenario: Primera carga
 
@@ -134,6 +137,13 @@ escribir nada. Una carga a medias MUST NOT quedar: todo en una transacción.
 
 - **WHEN** después de cargarlo se edita una unidad del ejemplo y se corre el comando otra vez
 - **THEN** termina con código distinto de 0, dice qué difiere y no escribe nada
+
+#### Scenario: Fuera de desarrollo no corre
+
+- **WHEN** se corre el comando sin `PROPTECH_ENTORNO=desarrollo` (ausente, otro valor, otra mayúscula
+  o con espacios)
+- **THEN** termina con código distinto de 0, dice que hace falta `PROPTECH_ENTORNO=desarrollo` y no
+  se conecta a la base ni escribe nada
 
 #### Scenario: Otras administraciones no se tocan
 
