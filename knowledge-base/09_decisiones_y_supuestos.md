@@ -1984,8 +1984,7 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Por qué**: Emiliano ya trabaja changes propios sobre el repositorio; la razón de D-094 (no frenar
   un cambio CRITICAL o HIGH porque el único que puede firmar no está) aplica igual. La ampliación de
   firmantes la decide Juani, dueño del proyecto (`14_forma_de_trabajo.md`), en una decisión propia, y
-  no la escribe el mismo que firma (ver la lección del cierre de `acceso-de-desarrollo` en
-  `15_lecciones.md`).
+  no la escribe el mismo que firma (L-038).
 - **Quién**: Juani, 25/10/2026, en conversación con el orquestador.
 
 ## Supuestos

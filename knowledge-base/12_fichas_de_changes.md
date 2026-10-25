@@ -445,6 +445,13 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   teclado. **OK**; deuda y hallazgos (fallas de portabilidad Windows en la suite de pytest, `humo.sh`
   sin forma de aislarse de un stack real, el CVE de Next.js 16.4.0 ya resuelto con la actualización a
   16.4.3) quedan en D-110.
+- **Revisión del PR #1 (25/10/2026)**: backend, DBA, QA, arquitecto y auditor (informes en
+  `.git/informes-pr1/`, fuera de git). Corregido en el mismo PR: D-094 vuelve a su texto y la firma de
+  Emiliano se ratifica en D-111; el comando sólo corre con `PROPTECH_ENTORNO=desarrollo` (guarda de
+  entorno, decisión de Juani del 25/10/2026, para que el módulo que viaja en la imagen de producción
+  no cree un `super_admin` ahí); hay tests que corren el comando real (rol `proptech_app`, códigos de
+  salida, "ya estaba", rechazo del migrador) y el mutante M9 ya no sobrevive; 04, 08, 10 y el README
+  dicen lo que hay. El resto queda en "Deuda del cierre de `acceso-de-desarrollo`" más abajo.
 - **Depende de**: 3a, 3b, 2.2a y 2b (D10, D11, E11, E12). **Habilita**: recorrido con datos de ejemplo,
   nunca datos personales reales.
 
@@ -1054,6 +1061,27 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | Los logs del worker y de httpx salen sin interpolar (`"HTTP Request: %s %s ..."`) | En producción un error de Clerk no dice a qué URL ni qué respondió; no es una fuga, es falta de información | 15 (piloto), antes de depender de esos logs para diagnosticar. Dueño propuesto, no confirmado por Juani |
 | Deuda heredada del 2.2a (filas 2 y 5 de "Deuda del cierre del 2.2a"): revisión independiente de RR-1 a RR-4 y cotejo de las 144 celdas, propuesta como blanco del rompedor del 2b | No se encontró evidencia en `tasks.md` ni en los informes del rompedor/auditor de que se haya ejecutado como acción separada; queda igual que antes del 2b | 2b original lo proponía; sin confirmación, pasa intacta al próximo cambio que toque identidades |
 | El aviso de privacidad (`/privacidad`) es un borrador: faltan identidad legal, domicilio y contacto del responsable, y la conservación | Decidido así por Juani (decisión de cierre 3); publicar sin esos datos sería afirmar un cumplimiento legal no verificado | Antes de producción, obligatorio. Dueño: Juani (aprueba el texto final, tarea 7.2) |
+
+### Deuda del cierre de `acceso-de-desarrollo` (3b-bis, D-110; revisión del PR #1, 25/10/2026)
+
+La que dejó la revisión del PR #1 (backend, DBA, QA, arquitecto y auditor; `05-auditor.md`, "Deuda
+aceptable"), más lo que Juani decidió el 25/10/2026. Los códigos (BE-, DB-, QA-, AR-) son los de esos
+informes. Dueño asignado por el primer cambio que de verdad necesita que esté resuelta (L-012); donde
+ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, queda dicho en la fila.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| **Cómo se vinculó una cuenta de Clerk a la persona `super_admin` del ejemplo (`…e1`) no está escrito** (BE-1, DB-6, AR-7, QA-4). `ejemplo.py` la crea sin `clerk_usuario_id` ni invitación, y el único camino del código que lo completa es aceptar una invitación (`invitaciones.py:119`); por eso el recorrido de la tarea 1.1 no lo puede repetir otra persona, y tampoco trae capturas | Decisión de Juani (25/10/2026): el vínculo **no se rediseña** (nada de invitaciones para el ejemplo) y queda como deuda registrada. Si el paso fue un `UPDATE` a mano, se aparta de "nunca un punto de entrada que reemplace la identidad" del spec, y eso se ve recién cuando esté escrito | Dueño: **Emiliano**, que tiene que dejar escrito el paso exacto (comando o pantalla, con qué rol y contra qué base) para que otra persona pueda repetir la 1.1 |
+| Dos cuentas de Mailinator (`proptechqa-director@…` y `proptechqa-gerente@…`) quedaron nombradas en `CLAUDE.md`/`AGENTS.md`, en un repo público; las bandejas de Mailinator son públicas (BE-7) | Son cuentas del Clerk **de desarrollo**, no de producción; nadie verificó si siguen activas | **Pendiente de Juani**: decidir si se borran del Clerk de desarrollo |
+| Contrato de errores del comando: los errores de configuración, de rol y de base salen como traceback crudo, y todo sale con el mismo código 1, incluida la guarda de entorno (BE-3, QA-3) | Es un comando de desarrollo, nunca expuesto a un usuario; el mensaje útil está en la última línea | polish futuro. Dueño propuesto, no confirmado por Juani |
+| El comando exige `REDIS_HOST` y `REDIS_PASSWORD` aunque no usa Redis (QA-3) | Con valores cualesquiera corre; sólo es fricción | polish futuro. Dueño propuesto, no confirmado por Juani |
+| La comparación de idempotencia sólo se prueba en una de sus ramas: los mutantes M5 a M8 (modo de los grupos, `estado_migracion`, tipo y piso de la unidad, conjunto de grupos) sobreviven; con cualquiera de ellos un ejemplo cambiado se informa como "ya estaba" (QA-2) | Afecta sólo a datos de ejemplo en desarrollo; M3 (la comparación entera) sí muere por la aserción | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| El test de "dos cargas a la vez" no fuerza la concurrencia (pasa igual si los hilos corren uno después del otro) y la rama de reintento con `RuntimeError` no la alcanza ningún test (QA-7, DB-3) | En READ COMMITTED el `INSERT … ON CONFLICT` del perdedor espera al ganador, así que el caso real termina en "ya estaba" | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| `SELECT id FROM complejo … LIMIT 1` sin `ORDER BY`, y la comparación no mira la `persona` del ejemplo (DB-4) | La administración de ejemplo tiene un solo complejo; nada la crea con dos | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| El ejemplo no se puede borrar: `auditoria` y "Generales" lo impiden por diseño (DB-5) | Es la protección correcta; para rehacer el ejemplo se recrea la base de desarrollo | — (se registra para que nadie lo intente borrar por SQL) |
+| `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani |
+| La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
+| Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | polish futuro. Dueño propuesto, no confirmado por Juani |
 
 ## Pendientes de arranque
 
