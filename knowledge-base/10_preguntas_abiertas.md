@@ -176,9 +176,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   invitación por mail. Quedan P49 (doble factor) y P50 (borrado en Clerk) como preguntas nuevas que
   dejó su design, y SU-01 como supuesto no verificado (invitar a un email que ya tiene usuario en
   Clerk; `09_decisiones_y_supuestos.md`).
-- **Pendientes del design del 2.2a**: el orden de `acceso-de-desarrollo` se ajusta al 2b (con login,
-  sólo carga del ejemplo); sumar la fila `super_admin` y firmar el `GRANT INSERT ON auditoria` al
-  migrador sigue pendiente de Juani o Alberto en ese change. RA-6 y E8 quedaron respondidas;
+- **Pendientes del design del 2.2a**: `acceso-de-desarrollo` quedó archivado el 24/10/2026 (D-110,
+  firma ratificada por D-111): la fila `super_admin` se crea con la carga del ejemplo como
+  `proptech_app` y el `GRANT INSERT ON auditoria` al migrador no se pidió. RA-6 y E8 quedaron respondidas;
   la aprobación adicional del consejo se mantiene en P20. Ver la ficha 3b-bis.
 - **Costo de Clerk**: verificar en su página vigente antes del piloto (15, D-107).
 - **Proveedores de IA y email**: se deciden en el design de 8, 13 y 14; el 2b resuelve los envíos de

@@ -23,12 +23,14 @@ También quedó archivado el **2.2a `roles-de-la-empresa`** (20/10/2026): perfil
 nueva de permisos y vínculo propietario/inquilino por unidad (D-106), con las 17 tareas hechas y
 cierre 7.2 en `4c24333`.
 
-**Próximo: 2b `login` con Clerk sólo para autenticación y gestión de usuarios** (D-107); autorización
-en la base, contraseña también para vecinos, personal invitado por el super admin con perfil y
-alcance, vecinos desde el padrón con vínculo e invitación por mail. Requiere su propuesta CRITICAL
-firmada (D-094). El acceso de desarrollo y la carga del ejemplo quedaron fuera del 3b: con el login,
-`acceso-de-desarrollo` se reduce a la carga del ejemplo, todavía sin firma para sumar la fila
-`super_admin` y el `GRANT INSERT ON auditoria` al migrador.
+También quedaron archivados el **2b `login-y-usuarios`** (22/10/2026, D-107, D-108): Clerk sólo para
+autenticación, autorización en la base, personal invitado por el super admin con perfil y alcance y
+vecinos desde el padrón; y **`acceso-de-desarrollo`** (24/10/2026, D-110, firma ratificada por D-111):
+la carga del edificio de ejemplo como `proptech_app`, sin `GRANT` nuevo ni acceso sin login, que sólo
+corre con `PROPTECH_ENTORNO=desarrollo`.
+
+**Próximo: cambio 4 `motor-de-cuenta-corriente`** (CRITICAL, requiere su propuesta firmada, D-094,
+D-111).
 Todavía no hay liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
 ([`CHANGES.md`](CHANGES.md), con el detalle de cada cambio en
 [`knowledge-base/12_fichas_de_changes.md`](knowledge-base/12_fichas_de_changes.md)).

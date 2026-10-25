@@ -297,7 +297,8 @@ nacionales a ARS 2.950 por unidad, **AccessIN** como competidor mendocino en bar
 
 ## Hallazgos de QA manual (23/10/2026, previos a `acceso-de-desarrollo`)
 
-Barrido exploratorio con Playwright sobre el stack local (changes 1 a 6b ya archivados), clickeando
+Barrido exploratorio con Playwright sobre el stack local (archivados hasta ese día: 1a a 1d, 2a, 2c,
+2.2a, 2b, 3a y 3b; 4 en adelante todavía no existen), clickeando
 pantallas reales y probando valores límite en cada formulario. Objetivo: juntar todo lo que hay que
 arreglar o documentar antes/durante `acceso-de-desarrollo`. **Nunca se guardan credenciales acá** (el
 repo es público): las cuentas de prueba se recrean a mano siguiendo esta misma guía cuando hagan
@@ -397,8 +398,8 @@ Confirmado con sesión real logueada, los dos alcances:
     edificios correctamente escopeado (ven sólo el suyo) pero sin ocultar nada por permiso de acción.
   No es un agujero de seguridad (el backend es la autoridad real en todos los casos probados), pero
   es un problema de UX sistémico, no puntual de un rol: cualquier pantalla con un botón de acción
-  probablemente tenga el mismo gap. Antes de construir pantallas nuevas (`acceso-de-desarrollo` en
-  adelante), conviene que el frontend lea la matriz de permisos (ya expuesta por el backend de algún
+  probablemente tenga el mismo gap. Antes de construir pantallas nuevas (las de los
+  changes que vienen después de `acceso-de-desarrollo`, archivado el 24/10/2026), conviene que el frontend lea la matriz de permisos (ya expuesta por el backend de algún
   modo, a confirmar cómo) y oculte/deshabilite en vez de dejar que el usuario choque con el mensaje de
   error recién al final.
 
