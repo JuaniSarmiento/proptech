@@ -5,9 +5,12 @@ reescrita sobre D1 del design (corre como `proptech_app`, nunca
 Escenarios de `datos-semilla` (Primera carga / Segunda carga igual / Cambiar
 los parámetros no hace fallar / Dos cargas a la vez / El ejemplo cambió en la
 base / Otras administraciones no se tocan) y de `acceso-de-desarrollo` (La
-carga corre como `proptech_app` / Ningún permiso nuevo sobre `auditoria`),
-más la propiedad de diseño "sin tenant no escribe nada" (D1: `cargar()`
-depende de que la `fabrica` tenga registrado `registrar_tenant_por_administracion`).
+carga corre como `proptech_app`, vigilado por los tests del comando real al
+final del archivo), más la propiedad de diseño "sin tenant no escribe nada"
+(D1: `cargar()` depende de que la `fabrica` tenga registrado
+`registrar_tenant_por_administracion`) y la guarda de entorno del comando.
+"Ningún permiso nuevo sobre `auditoria`" no se mira acá: lo cubre
+`test_auditoria_tabla.py`.
 
 Nota de diseño de los tests: "Generales" MUST NOT poder borrarse, ni por SQL
 (R3A-3, migración 0011) y `auditoria` MUST NOT admitir DELETE para ningún rol
@@ -39,7 +42,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from testcontainers.community.postgres import PostgresContainer
 
-from proptech_core.compartido.base_de_datos import abrir_sesion, registrar_tenant_por_administracion
+from proptech_core.compartido.base_de_datos import (
+    abrir_sesion,
+    crear_engine,
+    registrar_tenant_por_administracion,
+)
+from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.parametros import Parametros, leer_parametros
 from proptech_core.compartido.semilla import Semilla, leer_semilla
 from proptech_core.complejos.aplicacion import ejemplo
@@ -430,4 +438,63 @@ def test_el_comando_no_corre_fuera_de_desarrollo(
 
     assert resultado.returncode != 0, resultado.stdout
     assert "PROPTECH_ENTORNO=desarrollo" in resultado.stderr
+    assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
+
+
+def test_el_comando_real_carga_como_proptech_app_y_la_segunda_vez_dice_ya_estaba(
+    base_fresca: BaseDeEdificio,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`_main` tal como lo llama `python -m` (QA-1, BE-5, DB-9): la conexión
+    que arma el propio comando es `proptech_app`, la primera carga sale con 0
+    y "ejemplo cargado", y la segunda con 0 y "ya estaba" sin escribir nada."""
+    for variable, valor in _entorno_del_comando(
+        base_fresca,
+        usuario=APP_USER_DE_SESION,
+        clave=APP_PASSWORD_DE_SESION,
+        entorno="desarrollo",
+    ).items():
+        monkeypatch.setenv(variable, valor)
+
+    usuarios: list[str] = []
+
+    def _espia(configuracion: Configuracion) -> Engine:
+        engine = crear_engine(configuracion)
+        with engine.connect() as conexion:
+            usuarios.append(str(conexion.execute(text("SELECT current_user")).scalar_one()))
+        return engine
+
+    monkeypatch.setattr(ejemplo, "crear_engine", _espia)
+
+    assert ejemplo._main(["cargar"]) == 0
+    primera = capsys.readouterr()
+    assert "ejemplo cargado" in primera.out, primera.err
+    assert usuarios == ["proptech_app"]
+    escritas = _filas_escritas(base_fresca)
+    assert escritas["administracion"] == 1
+    assert escritas["complejo"] == 1
+
+    assert ejemplo._main(["cargar"]) == 0
+    segunda = capsys.readouterr()
+    assert "ya estaba" in segunda.out, segunda.err
+    assert usuarios == ["proptech_app", "proptech_app"]
+    assert _filas_escritas(base_fresca) == escritas
+
+
+def test_el_comando_real_se_niega_a_correr_como_el_migrador(base_fresca: BaseDeEdificio) -> None:
+    """Con las credenciales del migrador puestas como las de la app, el
+    comando sale con 1 por `RolDeAplicacionInseguro` (el control de `_main`,
+    no un permiso que falte más adelante) y no escribe nada."""
+    resultado = _correr_comando(
+        _entorno_del_comando(
+            base_fresca,
+            usuario=MIGRADOR_USER_DE_SESION,
+            clave=MIGRADOR_PASSWORD_DE_SESION,
+            entorno="desarrollo",
+        )
+    )
+
+    assert resultado.returncode == 1, resultado.stdout
+    assert "RolDeAplicacionInseguro" in resultado.stderr, resultado.stderr[-2000:]
     assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
