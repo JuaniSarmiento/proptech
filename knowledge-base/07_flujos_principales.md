@@ -86,8 +86,8 @@ vez de inventar el comportamiento.
   saldos por período).
 - **Actor**: super admin (antes, administrador titular); confirmar "sin saldos previos" también
   corresponde al administrador principal (D-106). Los permisos de importación se precisan en el 5.
-- **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2). El cambio pide la aprobación escrita de uno de
-  los dos socios (D-077, D-094).
+- **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2). El cambio pide la aprobación escrita de Juani,
+  Alberto o Emiliano (D-077, D-094, D-111).
 - **Pasos**:
   1. El administrador sube el Excel con la hoja principal (piso, departamento, tipo, propietario,
      contacto, coeficiente, saldo inicial, interés ya devengado) y, si el edificio lo tiene, la hoja
@@ -329,7 +329,7 @@ sequenceDiagram
 - **Actor**: super admin o administrador principal para condonar (D-106); el certificado lo firma
   el super admin, antes llamado titular (R21).
 - **Cambio**: 10b `condonacion-judicial-y-libre-deuda` (propuestas R29 y R31; R21 vigente). El cambio
-  pide la aprobación escrita de uno de los dos socios (D-077, D-094).
+  pide la aprobación escrita de Juani, Alberto o Emiliano (D-077, D-094, D-111).
 - **Pasos · condonación (propuesta, R29)**:
   1. El administrador condona un recargo con un motivo obligatorio.
   2. El sistema registra un movimiento de **condonación de interés** (crédito) que neutraliza el

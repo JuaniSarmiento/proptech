@@ -93,7 +93,7 @@ GATE 5: C-05a ✓                                          ← roles antes del l
   → C-05c endurecimiento-de-infraestructura [Agente C] (MEDIUM)
 
 GATE 6: C-06a ✓
-  → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un socio)
+  → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un firmante de D-111)
   → C-06b pantallas-del-edificio (en paralelo; su propose espera los siete shape con Juani)
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
@@ -105,10 +105,10 @@ GATE 7: C-07 ✓                                           ← PRIMER FORK real 
   → C-09 gastos-y-cargos            [Agente B]
 
 GATE 8: C-08 + C-09 ✓
-  → C-10 liquidacion-y-emision (solo, CRITICAL: aprobación de un socio; el más grande del MVP)
+  → C-10 liquidacion-y-emision (solo, CRITICAL: aprobación de un firmante de D-111; el más grande del MVP)
 
 GATE 9: C-10 ✓                                           ← SEGUNDO FORK (2 paralelos)
-  → C-11 pagos-informados           [Agente A] (CRITICAL: aprobación de un socio)
+  → C-11 pagos-informados           [Agente A] (CRITICAL: aprobación de un firmante de D-111)
   → C-19 lectura-de-facturas        [Agente C] (necesita también C-09)
 
 GATE 10: C-11 ✓                                          ← TERCER FORK (3 paralelos)
@@ -117,11 +117,11 @@ GATE 10: C-11 ✓                                          ← TERCER FORK (3 pa
   → C-14 morosidad                  [Agente C]
 
 GATE 11: C-14 ✓                                          ← CUARTO FORK (2 paralelos)
-  → C-15 condonacion-judicial-y-libre-deuda [Agente B] (CRITICAL: aprobación de un socio)
+  → C-15 condonacion-judicial-y-libre-deuda [Agente B] (CRITICAL: aprobación de un firmante de D-111)
   → C-16 portal-del-vecino                  [Agente C] (necesita también C-05b)
 
 GATE 12: C-16 ✓
-  → C-17 vista-del-consejo (HIGH: revisión de un socio)   [Agente C]
+  → C-17 vista-del-consejo (HIGH: revisión de un firmante de D-111)   [Agente C]
 
 GATE 13: C-11 + C-15 ✓
   → C-18 avisos-por-email   [Agente B]

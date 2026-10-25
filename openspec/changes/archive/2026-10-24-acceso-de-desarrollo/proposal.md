@@ -125,7 +125,7 @@ Archivos de `knowledge-base/` (listado del directorio, 21/10/2026): `01` a `16` 
 
 ## Aprobación
 
-Gobernanza HIGH (ver Gobernanza). La completa, a mano, Juani o Alberto. Ningún agente la escribe.
+Gobernanza HIGH (ver Gobernanza). La completa, a mano, Juani o Alberto (desde D-111, también Emiliano, que ratifica la firma de abajo). Ningún agente la escribe.
 
 | Elección | Propuesta | Aprobada (sí / no, con motivo) |
 |---|---|---|

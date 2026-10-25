@@ -6,7 +6,7 @@ Permite recorrer las pantallas del administrador contra la API real en desarroll
 ejemplo cargado, entrando siempre por el login real (Clerk de desarrollo) y sin ningún camino que
 saltee la identidad — ni en desarrollo —, cargando el ejemplo por el camino de alta inicial (D10 de
 `login-y-usuarios`) en vez de un punto de entrada propio sin login (D11 del mismo design, E12). Se
-construye sólo con la firma HIGH de un socio (D-094).
+construye sólo con la firma HIGH de Juani, Alberto o Emiliano (D-094, D-111).
 
 ## Requirements
 
