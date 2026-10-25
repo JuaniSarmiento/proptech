@@ -1971,6 +1971,10 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   Emiliano**, por escrito y con fecha en la sección "Aprobación" del `proposal.md`, con las mismas
   reglas de D-094 (alcanza con uno; nunca la completa un agente, D-087). La firma de Emiliano sobre
   `acceso-de-desarrollo` (D-110, 24/10/2026) queda **ratificada** por esta decisión.
+  - **Excepción a L-038, autorizada por Juani el 25/10/2026**: esta ampliación y la ratificación
+    entran en el mismo PR que la firma que usan, porque cuando se detectó el problema el change ya
+    estaba construido y firmado. Es la única vez: de acá en adelante rige L-038 (la ampliación se
+    decide y se mergea antes, en otro PR).
   - Se alinean `openspec/config.yaml`, `14_forma_de_trabajo.md`, `CLAUDE.md`, `AGENTS.md` y
     `CHANGES.md` donde dicen quién aprueba.
   - D-094 queda **corregida en parte**: cambia quién firma; el resto de su esquema sigue igual.

@@ -545,6 +545,8 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   parte a la anterior sin reescribirla, y que se mergea **antes** y en otro PR que el de la primera
   firma que la usa. En ese mismo cambio se alinean todas las fuentes que nombran firmantes
   (`config.yaml`, `14`, `CLAUDE.md`, `AGENTS.md`).
+  La propia D-111 entró en el mismo PR que la firma que ratifica: fue una excepción autorizada por
+  Juani el 25/10/2026, porque el change ya estaba construido y firmado; no es precedente.
 - **Costo**: la firma del change, su "archivado OK" y las tareas marcadas quedaron en duda hasta que
   Juani ratificó con D-111; un PR de cierre volvió a revisión.
 - **Aplica a**: quien firma, orquestador (al aceptar una firma), auditor.
