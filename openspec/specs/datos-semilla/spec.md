@@ -107,7 +107,7 @@ con código 0 diciendo que no hizo nada; si está cargado distinto, termina con 
 escribir nada. Una carga a medias MUST NOT quedar: todo en una transacción. Precondición (D-112):
 el comando MUST NOT correr salvo que `PROPTECH_ENTORNO` valga exactamente `desarrollo`; sin eso
 termina con código distinto de 0, lo dice y no se conecta ni escribe nada. Los escenarios de abajo
-suponen esa variable puesta.
+suponen esa variable puesta, salvo "Fuera de desarrollo no corre".
 
 #### Scenario: Primera carga
 

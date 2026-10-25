@@ -2001,8 +2001,9 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Fecha**: 25/10/2026
 - **Decisión**: `python -m proptech_core.complejos.aplicacion.ejemplo cargar` **no corre** salvo que
   `PROPTECH_ENTORNO` valga exactamente `desarrollo` (sin mayúsculas ni espacios). Sin eso sale con
-  código 1, lo dice en stderr y no escribe nada; la guarda va antes de leer la configuración y antes
-  de conectarse a la base. La variable se documenta comentada en `infra/.env.example`, sólo para
+  código 1, lo dice en stderr y no escribe nada; la guarda va antes de conectarse a la base (lo vigila
+  `test_la_guarda_corre_antes_de_conectar_a_la_base`); hoy además corre antes de leer la configuración,
+  pero eso no tiene test propio (RV-1, deuda menor). La variable se documenta comentada en `infra/.env.example`, sólo para
   desarrollo; Compose no la pasa a ningún servicio, se da al correr el comando
   (`docker compose exec -e PROPTECH_ENTORNO=desarrollo api python -m ...`).
 - **Descartado**:
