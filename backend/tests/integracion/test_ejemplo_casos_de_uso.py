@@ -419,12 +419,13 @@ def _filas_escritas(base: BaseDeEdificio) -> dict[str, int]:
 _SIN_ESCRITURAS = {"administracion": 0, "persona": 0, "complejo": 0, "auditoria": 0}
 
 
-@pytest.mark.parametrize("entorno", [None, "produccion"])
+@pytest.mark.parametrize("entorno", [None, "produccion", "Desarrollo", " desarrollo "])
 def test_el_comando_no_corre_fuera_de_desarrollo(
     base_fresca: BaseDeEdificio, entorno: str | None
 ) -> None:
-    """Guarda de entorno (D2 del PR #1): sin `PROPTECH_ENTORNO=desarrollo` el
-    comando sale con error, dice por qué y no escribe nada en la base."""
+    """Guarda de entorno (D-112): sin `PROPTECH_ENTORNO=desarrollo` el comando
+    sale con error, dice por qué y no escribe nada en la base. La comparación es
+    exacta: ni mayúsculas ni espacios alrededor cuentan como "desarrollo"."""
     assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
 
     resultado = _correr_comando(
@@ -439,6 +440,33 @@ def test_el_comando_no_corre_fuera_de_desarrollo(
     assert resultado.returncode != 0, resultado.stdout
     assert "PROPTECH_ENTORNO=desarrollo" in resultado.stderr
     assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
+
+
+def test_la_guarda_corre_antes_de_conectar_a_la_base() -> None:
+    """Sin `PROPTECH_ENTORNO` y con una base inalcanzable, el comando sale por
+    la guarda, sin intentar conectarse: si la guarda corriera después de
+    conectar (por ejemplo, después de `verificar_rol_de_aplicacion_seguro`),
+    lo que saldría es el error de conexión, no su mensaje (D-112)."""
+    variables = {
+        clave_entorno: valor
+        for clave_entorno, valor in os.environ.items()
+        if not clave_entorno.startswith(("POSTGRES_", "PROPTECH_ENTORNO"))
+    }
+    variables.update(
+        {
+            "POSTGRES_HOST": "127.0.0.1",
+            "POSTGRES_PORT": "1",
+            "POSTGRES_DB": "proptech_inalcanzable",
+            "POSTGRES_APP_USER": APP_USER_DE_SESION,
+            "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
+        }
+    )
+
+    resultado = _correr_comando(variables)
+
+    assert resultado.returncode == 1, resultado.stdout
+    assert "PROPTECH_ENTORNO=desarrollo" in resultado.stderr, resultado.stderr[-2000:]
+    assert "Traceback" not in resultado.stderr
 
 
 def test_el_comando_real_carga_como_proptech_app_y_la_segunda_vez_dice_ya_estaba(
