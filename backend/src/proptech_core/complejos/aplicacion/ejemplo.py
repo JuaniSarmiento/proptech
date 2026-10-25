@@ -22,6 +22,7 @@ cuente como "el ejemplo cambió".
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from collections.abc import Callable
@@ -64,6 +65,10 @@ NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
 NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
 EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
+#: Guarda de entorno (D2 del PR #1, Juani 25/10/2026): el módulo viaja en la
+#: imagen de producción (`COPY src`), así que el comando se niega a correr salvo
+#: que el entorno diga explícitamente que es una máquina de desarrollo.
+ENTORNO_DE_DESARROLLO = "desarrollo"
 
 
 def _ruta_semilla_por_defecto() -> Path:
@@ -362,6 +367,14 @@ def _main(argv: list[str]) -> int:
     cargar_parser = subparsers.add_parser("cargar", help="Carga el edificio de ejemplo en la base")
     cargar_parser.add_argument("--semilla", default=None)
     args = parser.parse_args(argv)
+
+    if os.environ.get("PROPTECH_ENTORNO") != ENTORNO_DE_DESARROLLO:
+        print(
+            "este comando es sólo para desarrollo: no corre sin "
+            f"PROPTECH_ENTORNO={ENTORNO_DE_DESARROLLO}; no se escribió nada",
+            file=sys.stderr,
+        )
+        return 1
 
     configuracion = Configuracion()
     parametros = leer_parametros(configuracion.proptech_parametros)

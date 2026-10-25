@@ -23,6 +23,8 @@ cargar, así que usan `base_fresca`, una base propia y nueva por test.
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -42,7 +44,12 @@ from proptech_core.compartido.parametros import Parametros, leer_parametros
 from proptech_core.compartido.semilla import Semilla, leer_semilla
 from proptech_core.complejos.aplicacion import ejemplo
 
-from ..conftest import MIGRADOR_PASSWORD_DE_SESION, MIGRADOR_USER_DE_SESION
+from ..conftest import (
+    APP_PASSWORD_DE_SESION,
+    APP_USER_DE_SESION,
+    MIGRADOR_PASSWORD_DE_SESION,
+    MIGRADOR_USER_DE_SESION,
+)
 from ._api_edificios import ApiEdificio
 from ._edificios import BaseDeEdificio
 
@@ -331,3 +338,96 @@ def test_sin_tenant_registrado_no_escribe_nada(base_fresca: BaseDeEdificio) -> N
             assert sesion.execute(text("SELECT count(*) FROM administracion")).scalar_one() == 0
     finally:
         engine.dispose()
+
+
+# --- El comando real (`python -m proptech_core.complejos.aplicacion.ejemplo cargar`) ---
+#
+# Los tests de arriba llaman a `cargar()` con una fábrica que arma el propio
+# test: no pueden dar rojo por nada que cambie en `_main` (QA-1, mutante M9 del
+# PR #1). Estos corren el comando como lo corre una persona, contra una base
+# propia, y miran el código de salida, el mensaje y lo que quedó escrito.
+
+_BACKEND = Path(__file__).resolve().parents[2]
+
+
+def _entorno_del_comando(
+    base: BaseDeEdificio, *, usuario: str, clave: str, entorno: str | None
+) -> dict[str, str]:
+    """Sólo las credenciales de la app (nunca las del migrador como tales):
+    si `_main` leyera otro par de variables, la carga no tendría con qué
+    conectarse. `PROPTECH_ENTORNO` se quita siempre del entorno heredado y
+    se pone sólo si el test lo pide (D2 del PR #1, Juani 25/10/2026)."""
+    variables = {
+        clave_entorno: valor
+        for clave_entorno, valor in os.environ.items()
+        if not clave_entorno.startswith(("POSTGRES_", "PROPTECH_ENTORNO"))
+    }
+    variables.update(
+        {
+            "POSTGRES_HOST": base.contenedor.get_container_host_ip(),
+            "POSTGRES_PORT": str(base.contenedor.get_exposed_port(5432)),
+            "POSTGRES_DB": base.nombre,
+            "POSTGRES_APP_USER": usuario,
+            "POSTGRES_APP_PASSWORD": clave,
+        }
+    )
+    if entorno is not None:
+        variables["PROPTECH_ENTORNO"] = entorno
+    return variables
+
+
+def _correr_comando(variables: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "proptech_core.complejos.aplicacion.ejemplo", "cargar"],
+        cwd=_BACKEND,
+        env=variables,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
+def _filas_escritas(base: BaseDeEdificio) -> dict[str, int]:
+    """Con el superusuario del contenedor (sin RLS): cuenta TODO lo que hay,
+    de cualquier administración, en las tablas que la carga escribiría."""
+    with psycopg.connect(
+        host=base.contenedor.get_container_host_ip(),
+        port=base.contenedor.get_exposed_port(5432),
+        user=base.contenedor.username,
+        password=base.contenedor.password,
+        dbname=base.nombre,
+        autocommit=True,
+    ) as conexion:
+        conteos: dict[str, int] = {}
+        for tabla in ("administracion", "persona", "complejo", "auditoria"):
+            fila = conexion.execute(
+                sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
+            ).fetchone()
+            assert fila is not None
+            conteos[tabla] = int(fila[0])
+        return conteos
+
+
+_SIN_ESCRITURAS = {"administracion": 0, "persona": 0, "complejo": 0, "auditoria": 0}
+
+
+@pytest.mark.parametrize("entorno", [None, "produccion"])
+def test_el_comando_no_corre_fuera_de_desarrollo(
+    base_fresca: BaseDeEdificio, entorno: str | None
+) -> None:
+    """Guarda de entorno (D2 del PR #1): sin `PROPTECH_ENTORNO=desarrollo` el
+    comando sale con error, dice por qué y no escribe nada en la base."""
+    assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
+
+    resultado = _correr_comando(
+        _entorno_del_comando(
+            base_fresca,
+            usuario=APP_USER_DE_SESION,
+            clave=APP_PASSWORD_DE_SESION,
+            entorno=entorno,
+        )
+    )
+
+    assert resultado.returncode != 0, resultado.stdout
+    assert "PROPTECH_ENTORNO=desarrollo" in resultado.stderr
+    assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
