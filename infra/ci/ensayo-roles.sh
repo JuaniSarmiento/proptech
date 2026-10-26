@@ -41,8 +41,55 @@ MIGRADOR="$(compose run --rm --no-deps -T migraciones printenv POSTGRES_MIGRADOR
 devolver_al_migrador() {
   compose exec -T db psql -U "$USUARIO_DB" -d "$1" -v ON_ERROR_STOP=1 \
     -v migrador="$MIGRADOR" <<'SQL'
+-- Paso 1 del rollback: el arranque ve todas las filas, sin filtrado por RLS.
+DO $$ DECLARE tabla text; tiene_filas boolean; BEGIN
+    FOREACH tabla IN ARRAY ARRAY['cuenta','emision','evento_de_emision','obligacion','movimiento','imputacion'] LOOP
+        IF to_regclass(format('public.%I',tabla)) IS NOT NULL THEN
+            EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I)',tabla) INTO tiene_filas;
+            IF tiene_filas THEN RAISE EXCEPTION 'el libro tiene filas en %',tabla; END IF;
+        END IF;
+    END LOOP;
+END $$;
+SELECT to_regclass('public.cuenta') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE cuenta OWNER TO :"migrador";
+ALTER FUNCTION fn_cuenta_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.emision') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE emision OWNER TO :"migrador";
+ALTER FUNCTION fn_emision_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.evento_de_emision') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE evento_de_emision OWNER TO :"migrador";
+ALTER FUNCTION fn_evento_de_emision_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.obligacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE obligacion OWNER TO :"migrador";
+ALTER FUNCTION fn_obligacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.movimiento') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE movimiento OWNER TO :"migrador";
+ALTER FUNCTION fn_movimiento_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.imputacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE imputacion OWNER TO :"migrador";
+ALTER FUNCTION fn_imputacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.configuracion_versionada') IS NOT NULL AS existe \gset
+\if :existe
 ALTER TABLE configuracion_versionada OWNER TO :"migrador";
 ALTER FUNCTION fn_configuracion_versionada_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.auditoria') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE auditoria OWNER TO :"migrador";
+ALTER FUNCTION fn_auditoria_bloqueada() OWNER TO :"migrador";
+\endif
 SQL
 }
 devolver_al_migrador "$BASE_ORIGEN"
@@ -140,6 +187,12 @@ PY
 migrar_restaurada() {
   compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones alembic "$@"
 }
+# DB-8: la forma del esquema, no sólo los conteos. Sin los tokens aleatorios de PG18.
+esquema() {
+  echo "ESQUEMA: pg_dump --schema-only -U $USUARIO_DB -d proptech_restauracion -> $1"
+  compose exec -T db pg_dump --schema-only -U "$USUARIO_DB" -d proptech_restauracion \
+    | grep -Ev '^\\(un)?restrict |^-- Dumped (from|by) ' >"$1"
+}
 verificar_revision() {
   local esperada="$1" obtenida
   obtenida="$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
@@ -174,9 +227,10 @@ devolver_al_migrador proptech_restauracion
 conteos proptech_restauracion "$CARPETA_ENSAYO/antes.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/antes.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
+esquema "$CARPETA_ENSAYO/esquema_antes.sql"
 
 migrar_restaurada upgrade head
-verificar_revision 0022
+verificar_revision 0023
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
 migrar_restaurada downgrade 0016
@@ -184,8 +238,11 @@ verificar_revision 0016
 conteos proptech_restauracion "$CARPETA_ENSAYO/downgrade.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/downgrade.txt"
 cmp "$CARPETA_ENSAYO/antes.txt" "$CARPETA_ENSAYO/downgrade.txt"
+esquema "$CARPETA_ENSAYO/esquema_downgrade.sql"
+diff -u "$CARPETA_ENSAYO/esquema_antes.sql" "$CARPETA_ENSAYO/esquema_downgrade.sql"
+echo "ESQUEMA RESTAURADO: diff vacío entre esquema_antes.sql y esquema_downgrade.sql"
 migrar_restaurada upgrade head # segundo upgrade
-verificar_revision 0022
+verificar_revision 0023
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"
@@ -193,4 +250,4 @@ compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones \
   python -m proptech_core.compartido.roles despues
 conteos "$BASE_ORIGEN" "$CARPETA_ENSAYO/origen_despues.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/origen_despues.txt"
-echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0018/0016/0018 y origen intacto"
+echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0023/0016/0023 y origen intacto"

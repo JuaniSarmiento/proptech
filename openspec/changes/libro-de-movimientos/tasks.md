@@ -26,7 +26,7 @@ avisarle a Juani antes.
 
 ## 1. Tablas del libro y su protección (design D1, D2, D5, D13)
 
-- [ ] 1.1 **Migración `0023`, parte A: `cuenta`, `candado_de_cuenta`, `emision`, `evento_de_emision`.**
+- [x] 1.1 **Migración `0023`, parte A: `cuenta`, `candado_de_cuenta`, `emision`, `evento_de_emision`.**
   Antes de escribirla, `rg` del repo entero por `0023` (choque con el 3c) y por escrituras en estas tablas
   desde `infra/` (L-023). Tests de integración, como `proptech_app` con tenant: los dos dueños y ninguno
   rechazados; único de la cuenta de unidad; período que no es primer día de mes rechazado; único de
@@ -47,7 +47,7 @@ avisarle a Juani antes.
   L-023, L-034, L-036.
   Escenarios adicionales (RC-09): `libro-de-movimientos` › Los triggers frenan aun con permiso de escritura.
 
-- [ ] 1.2 **Migración `0023`, parte B: `tipo_de_movimiento`, `obligacion`, `movimiento`, `imputacion`.** Tests como en 1.1, más:
+- [x] 1.2 **Migración `0023`, parte B: `tipo_de_movimiento`, `obligacion`, `movimiento`, `imputacion`.** Tests como en 1.1, más:
   importe negativo y obligación en cero rechazados; `num_nonnulls(emision_id, operacion_id)`; los únicos
   de D5 (obligación por emisión y cuenta, `operacion_id`, interés por obligación y corte, `corrige_a` una
   sola vez); coherencia `tipo`/`sentido`/destino fijo; imputación de un débito rechazada **por la FK** de
@@ -83,7 +83,7 @@ avisarle a Juani antes.
   `imputacion-de-creditos` › Dos imputaciones con la misma fecha de registro (E7).
   Escenarios adicionales (RC-09): `libro-de-movimientos` › Débito de corrección sin referencia.
 
-- [ ] 1.3 **Las seis tablas en la lista única; `roles despues` y el chequeo de arranque las cubren.**
+- [x] 1.3 **Las seis tablas en la lista única; `roles despues` y el chequeo de arranque las cubren.**
   Sumar las seis a `compartido/tablas_protegidas.py` con su texto y sus tres triggers (D1 del 4a); cambiar `despues()` de `roles.py` para dar al migrador
   `GRANT REFERENCES` sobre las seis tablas protegidas del libro (E15, AR-1); no sobre
   `candado_de_cuenta`, que ya pertenece al migrador. Agregar `tipo_de_movimiento` a
@@ -125,7 +125,7 @@ avisarle a Juani antes.
 
 ## 2. Reglas puras del libro (design D0, D6, D8)
 
-- [ ] 2.1 **Orden de imputación y destinos fijos.** `dominio/imputacion.py` con `Componente`,
+- [x] 2.1 **Orden de imputación y destinos fijos.** `dominio/imputacion.py` con `Componente`,
   `ORDEN_DE_IMPUTACION` e `imputar(deudas, importe, destino)`. Tests, sin base: el ejemplo de R04; pago
   parcial que cubre la ordinaria antes que la extraordinaria; el fondo entre ordinaria y extraordinaria
   (E5, provisorio); pago exacto de un período; sobrante; destino fijo de condonación, ajuste de interés y
@@ -142,7 +142,7 @@ avisarle a Juani antes.
   ajuste de interés baja sólo el interés que compensa; › Una bonificación va a la ordinaria de su período;
   › Destino fijo sin un componente que absorba; › Dos créditos que juntos superan la deuda; › Importe no positivo; › Bonificación de una emisión anulada. Lecciones:
   L-019, L-034.
-- [ ] 2.2 **Estado de una cuenta: residual, crédito a favor y saldo anterior.** `dominio/estado.py` con
+- [x] 2.2 **Estado de una cuenta: residual, crédito a favor y saldo anterior.** `dominio/estado.py` con
   `calcular_estado`. Tests, sin base: capital desglosado en tres componentes; residual nunca negativo;
   crédito a favor por crédito; deuda total sin duplicar la obligación vieja (R06); saldo anterior sin la
   emisión pedida, con y sin crédito a favor (semántica exacta de D12). Guardar el snapshot publicado
@@ -159,7 +159,7 @@ avisarle a Juani antes.
   Capital desglosado; › Saldo anterior sin débito nuevo; › Pagar marzo lo saca del saldo anterior; `imputacion-de-creditos` › Imputaciones efectivas reducen
   deuda; › Tope luego de corregir el interés.
   Lecciones: L-019, L-034, L-035.
-- [ ] 2.3 **Lo que no cuenta: emisión anulada, contra-asiento, ajuste enlazado y exceso.** Tests, sin
+- [x] 2.3 **Lo que no cuenta: emisión anulada, contra-asiento, ajuste enlazado y exceso.** Tests, sin
   base: anular deja la deuda como antes de emitir; el pago imputado a la emisión anulada vuelve como
   crédito; el ajuste que compensaba el interés anulado tampoco cuenta (D-085); el par corregido no cuenta y
   las imputaciones de otros créditos no se tocan; corregir un interés ya cubierto devuelve el exceso al
@@ -180,7 +180,7 @@ avisarle a Juani antes.
 
 ## 3. Casos de uso sobre la base (design D2 a D5, D7, D8, D12)
 
-- [ ] 3.1 **Cuenta de unidad y candado.** `aplicacion/cuentas.py`: `cuenta_de_unidad` (crea si falta,
+- [x] 3.1 **Cuenta de unidad y candado.** `aplicacion/cuentas.py`: `cuenta_de_unidad` (crea si falta,
   `ON CONFLICT (administracion_id, unidad_id) WHERE unidad_id IS NOT NULL DO NOTHING` y lee) y `bloquear_cuentas`. Tests contra PostgreSQL: dos pedidos, y dos
   transacciones simultáneas, devuelven la misma cuenta; una unidad de otro edificio da `NoEncontrado`;
   `bloquear_cuentas` sin una fila de candado la recrea; el candado nace en la misma transacción
@@ -207,7 +207,7 @@ avisarle a Juani antes.
   REPEATABLE READ no usa una foto vieja; `aislamiento-por-administracion` › La app no borra candados. Lecciones: L-034.
   Escenarios adicionales (RC-09): `imputacion-de-creditos` › Varias cuentas prebloqueadas y rebloqueo interno.
 
-- [ ] 3.2 **`registrar_emision`.** Tests contra PostgreSQL: registra emisión y obligaciones; la misma dos
+- [x] 3.2 **`registrar_emision`.** Tests contra PostgreSQL: registra emisión y obligaciones; la misma dos
   veces no duplica; el mismo id con otro importe da `Conflicto("emision_id")`; segunda del período sin
   anular da `Conflicto("periodo")`; después de anular, intento 2; período inválido, sin obligaciones o con
   una unidad repetida dan `EntradaInvalida` con el campo; el crédito a favor de una cuenta se imputa a la
@@ -218,7 +218,7 @@ avisarle a Juani antes.
   período; › Emitir de nuevo después de anular; › La misma emisión dos veces; › El mismo id con otras
   obligaciones; `imputacion-de-creditos` › El crédito a favor se imputa en la emisión siguiente.
   Lecciones: L-017, L-034.
-- [ ] 3.3 **`anular_emision`.** Tests contra PostgreSQL: agrega el evento con motivo y responsable sin
+- [x] 3.3 **`anular_emision`.** Tests contra PostgreSQL: agrega el evento con motivo y responsable sin
   tocar otra fila (conteo de filas por tabla antes y después); motivo en blanco rechazado con el campo;
   la segunda anulación se rechaza siempre con `Conflicto("emision_id")`, mismo o distinto
   motivo, y sigue habiendo un solo evento (R17); `emision_id` inexistente y de otra administración dan `NoEncontrado` sin insertar (QA-3);
@@ -230,7 +230,7 @@ avisarle a Juani antes.
   crédito (contra la base). Lecciones: L-034.
   Escenarios adicionales (RC-09): `libro-de-movimientos` › Anular una emisión inexistente; › `libro-de-movimientos` › Anular una emisión de otra administración.
 
-- [ ] 3.4 **`registrar_credito`.** Tests contra PostgreSQL: bloquea la cuenta, corre `imputar_pendientes`
+- [x] 3.4 **`registrar_credito`.** Tests contra PostgreSQL: bloquea la cuenta, corre `imputar_pendientes`
   e imputa con R04 o con su destino fijo; el mismo `operacion_id` dos veces, un movimiento y un juego de
   imputaciones; con otro importe, `Conflicto("operacion_id")`; `correccion` y `saldo_inicial` rechazados
   como tipo; destino fijo sin destino rechazado con `EntradaInvalida("destino")`;
@@ -244,7 +244,7 @@ avisarle a Juani antes.
   `imputacion-de-creditos` › El ejemplo de R04 (contra la base); › Pago mayor que la deuda;
   `libro-de-movimientos` › El mismo crédito dos veces; › Registrar crédito en cuenta inexistente;
   › Registrar crédito en cuenta de otra administración. Lecciones: L-017, L-034.
-- [ ] 3.5 **`corregir`.** Tests contra PostgreSQL: contra-asiento de un pago (la cuenta vuelve a deber, los
+- [x] 3.5 **`corregir`.** Tests contra PostgreSQL: contra-asiento de un pago (la cuenta vuelve a deber, los
   dos quedan, la corrección referencia); de un interés ya cubierto (el exceso vuelve como crédito);
   segunda corrección del mismo movimiento y de un movimiento de una emisión
   anulada dan `Conflicto("movimiento_id")`; un crédito de corrección equivocado ($50.000 en vez de
@@ -285,7 +285,7 @@ avisarle a Juani antes.
   aserción, conservando FK/únicos; para sentido igual el test exige rechazo antes del INSERT.
   Escenarios adicionales (RC-09): `correccion-de-movimientos` › Contra-asiento de un interés cubierto; › `correccion-de-movimientos` › Corregir el crédito que contra-asentó un interés; › `correccion-de-movimientos` › Contra-asiento de un débito de corrección; › `correccion-de-movimientos` › Contra-asiento sobre emisión anulada; › `correccion-de-movimientos` › Crédito sobre obligación que no cuenta; › `correccion-de-movimientos` › Obligación inexistente; › `correccion-de-movimientos` › Obligación de otra administración; › `correccion-de-movimientos` › Replay con otros datos de negocio; › `correccion-de-movimientos` › Error de base con transacción recuperable; › `correccion-de-movimientos` › El original restaurado no se contra-asienta otra vez; › `correccion-de-movimientos` › Corrección con el mismo sentido que su blanco.
 
-- [ ] 3.6 **Concurrencia contra PostgreSQL real.** Con dos conexiones y barreras en los puntos de decisión: dos pagos de $60.000
+- [x] 3.6 **Concurrencia contra PostgreSQL real.** Con dos conexiones y barreras en los puntos de decisión: dos pagos de $60.000
   a la vez sobre $100.000 de deuda (deuda cero, $20.000 a favor, imputaciones suman $100.000); dos
   emisiones del mismo período (una pasa, la otra `Conflicto("periodo")` por el único de `intento`); una
   emisión de diez cuentas de $40.000 cada una y un pago de $40.000 de una de ellas desde deuda cero,
@@ -309,7 +309,7 @@ avisarle a Juani antes.
   Cuentas distintas no se esperan; `libro-de-movimientos` › Dos emisiones simultáneas del mismo período;
   `aislamiento-por-administracion` › Un candado borrado no abre un hueco; › Borrado entre insertar y bloquear; `imputacion-de-creditos` ›
   Emisiones con unidades nuevas cruzadas. Lecciones: L-011, L-020, L-034.
-- [ ] 3.7 **Lecturas.** `estado_de_cuenta`, `deuda_del_edificio` y `saldo_anterior`. Tests contra
+- [x] 3.7 **Lecturas.** `estado_de_cuenta`, `deuda_del_edificio` y `saldo_anterior`. Tests contra
   PostgreSQL: lecturas con una sola sentencia SQL (CTEs) y por tanto una sola snapshot en READ
   COMMITTED; una escritura concurrente no produce mezcla de movimientos e imputaciones (BE-6).
   Para edificio, partir de `cuenta` con JOIN o `= ANY(ids)`; nunca filtrar sólo por `complejo_id`
@@ -352,7 +352,9 @@ avisarle a Juani antes.
   excepciones; › La liquidación nombra una tabla del libro; › La cuenta corriente nombra una tabla de
   complejos; › Sin la excepción de lectura; › Una tabla sin dueño declarado; › SQL del libro fuera del módulo; › OF y funciones no son tablas. Lecciones: L-013, L-022,
   L-029.
-- [ ] 4.2 **Permiso `corregir_movimiento`, migración `0024` y auditoría de la corrección.** `Accion` y
+- [ ] 4.2 **Permiso `corregir_movimiento`, migración `0024` y auditoría de la corrección.**
+  **Recibe de la 1.4 (F1-04)**: el ciclo `pg_dump` hasta `0024` y vuelta, que bajar `0024` con una
+  corrección auditada dé `23503` y volver a subir a `0024` con revisión y conteos. `Accion` y
   `_MATRIZ` (`{_SA, _AP}`); `0024` con el literal; modelo de detalle `extra="forbid"` sin motivo ni
   importe; `corregir` registra en la misma transacción y no repite en la idempotencia. Tests: la fila de la
   matriz para los nueve perfiles; el vocabulario contiene el valor; la fila de auditoría y su detalle; una
@@ -514,3 +516,39 @@ saltos de línea sólo dentro de las tareas, excluyendo Workflow follow-up y los
 `git rev-parse HEAD` -> `4d94532b188aac96fa3f7d9144c22b31d225a368`; cambios sólo en el árbol,
 sin commit ni push. Estas verificaciones documentales no prueban el comportamiento propuesto de la
 futura implementación ni sustituyen la revisión de especialistas y la firma humana.
+
+
+## Registro del apply, fases 1 a 3 (26/10/2026)
+
+Constructor: Claude (Opus), en la sesión de Juani, con la tabla de Aprobación firmada por él
+(commit `891ac38`). La fase 1 la empezó Codex (sin cuota a mitad); su trabajo se revisó contra la
+auditoría `.git/informes-libro-de-movimientos/10-dba-fase1-parcial.md` y se completó. Rojos,
+verdes y mutantes, con comando y salida, en `.git/4b-fase1-logs/` (los de Codex) y
+`.git/4b-fase1-logs/claude/` (los de esta construcción).
+
+- 1.4 queda abierta: el ensayo con un compose aislado se corre al cierre de esta construcción y su
+  salida se pega acá; lo que depende de `0024` pasó a la 4.2 (F1-04).
+- Desvíos con su porqué:
+  - `0023` suma FK directas a `complejo` en `evento_de_emision`, `obligacion`, `movimiento` e
+    `imputacion`: la regla de catálogo de D5 (`test_catalogo_rls`) las exige y no se pueden agregar
+    después de `roles despues` (DB-5).
+  - La sonda de `roles despues` compara el mensaje por prefijo (`startswith(mensaje)`), no por
+    subcadena ni con la operación: `emision no admite` está dentro de `evento_de_emision no admite`
+    (QA-15) y la sonda heredada pedía la operación, que rompía la fijación de
+    `test_roles_solo_agregar`.
+  - `antes()` le da al candado `SELECT, INSERT, UPDATE` (sin DELETE) también en un segundo deploy
+    (F1-06); la `0023` revoca DELETE después de `aislar_por_administracion` (F1-01).
+  - El libro no nombra `unidad` ni `complejo` en su SQL (E11): la unidad o el edificio ajenos los
+    rechaza la FK compuesta, traducida a `NoEncontrado` dentro de un SAVEPOINT.
+  - "Hoy" de la corrección: `complejos.hoy_en_mendoza` no se puede importar (D0); el libro repite la
+    regla (Mendoza, instante con zona) con un `reloj` inyectable.
+  - El criterio del plan de 3.7 exige además que el índice usado sobre las tablas grandes tenga
+    `cuenta_id` en su condición: con tres administraciones el prefijo de la RLS solo no aparece como
+    `Seq Scan` y el mutante "sin acceso por cuenta" sobrevivía.
+- Pendiente dentro de lo construido (no bloquea las fases 1 a 3, se anota para el rompedor):
+  - 3.5 no audita: la auditoría y el permiso `corregir_movimiento` son de la 4.2.
+  - 3.6: el mutante que quita sólo el único de `intento` no se corrió (el único es del arranque).
+  - 3.1: la coincidencia de tenant se prueba en `exigir_identidad` y en `registrar_emision`; el
+    mutante que la quita no se corrió por función.
+  - F1-09 y F1-10 de la auditoría quedan como notas (listas paralelas en `roles.py` y en el ensayo;
+    `test_unicos` sin `constraint_name`).
