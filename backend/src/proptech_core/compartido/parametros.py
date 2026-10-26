@@ -299,7 +299,3 @@ def leer_parametros(ruta: str) -> Parametros:
         return Parametros(**datos)
     except ValidationError as error:
         raise ParametrosInvalidos(_formatear_errores(error)) from None
-    except TypeError as error:
-        # p.ej. la raíz es un mapa pero con claves no-string, o algo que
-        # pydantic no puede siquiera intentar validar como kwargs.
-        raise ParametrosInvalidos(f"parámetros inválidos: {error}") from None

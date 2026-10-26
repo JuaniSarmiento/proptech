@@ -2155,7 +2155,7 @@ Success: no issues found in 271 source files
 GREEN del grupo: 5.3 / GREEN-grupo5-final 11:32:28, 102 passed; consumidores restantes 5.1 / GREEN-consumidores-bajada 11:34:29 (92 passed y un fallo histórico), corregido y reejecutado en GREEN-reversion-login 11:36:18 (2 passed). No hay fallos pendientes de esos conjuntos.
 
 
-- [ ] 6.1 **`except TypeError` muerto y los ceros de más de `Dinero` (D-114.6).** Tests: en
+- [x] 6.1 **`except TypeError` muerto y los ceros de más de `Dinero` (D-114.6).** Tests: en
   `leer_parametros`, raíz que no es un mapa y claves que no son texto fallan con `ParametrosInvalidos`
   cortados por `cargar_yaml`, sin traceback; el mismo par en el lector de la semilla (L-009);
   `desde_decimal(Decimal("1.0000"))` y `desde_decimal(Decimal("0.3000"))` dan `1.00` y `0.30`;
@@ -2166,6 +2166,162 @@ GREEN del grupo: 5.3 / GREEN-grupo5-final 11:32:28, 102 passed; consumidores res
   patrón del texto con `\d{1,4}` y `quantize` (acepta `"1.0000"`). Escenarios: `representacion-de-montos`
   › Ceros de más desde la base; › Un decimal que cambiaría; › Ceros de más en texto. Lecciones: L-009,
   L-013, L-007, L-035.
+
+**EVIDENCIA · 26/10/2026 · constructor (codex)**
+```text
+GREEN-fijacion
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:37:30
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 10 items
+
+tests/unitarios/test_deuda_d053.py ..........                            [100%]
+
+============================== 10 passed in 0.09s ==============================
+```
+
+Mutante yaml-raiz (quita el `isinstance(datos, dict)` de `cargador_yaml.cargar_yaml`), con el
+`except TypeError` ya borrado de `leer_parametros`:
+```diff
+--- respaldo
++++ mutante
+@@ -102,8 +102,6 @@
+ 
+     if datos is None:
+         raise ErrorDeCarga("YAML mal formado: el archivo está vacío")
+-    if not isinstance(datos, dict):
+-        raise ErrorDeCarga(f"la raíz del YAML debe ser un mapa, no {type(datos).__name__}")
+     return datos
+```
+
+RED-yaml-raiz (codex, 11:37:56): `assert isinstance(capturado, error)` → `AssertionError: se esperaba
+ParametrosInvalidos, se obtuvo TypeError` (y lo mismo para `SemillaInvalida`), 2 failed / 2 passed.
+
+**EVIDENCIA · 26/10/2026 · constructor (verificación propia, no confío en que lo de codex esté
+completo — repito el mutante yo mismo)**
+```text
+RED-yaml-raiz (reproducido)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:41:13
+AssertionError: se esperaba ParametrosInvalidos, se obtuvo TypeError
+assert False
+ +  where False = isinstance(TypeError('proptech_core.compartido.parametros.Parametros() argument after ** must be a mapping, not list'), <class 'proptech_core.compartido.parametros.ParametrosInvalidos'>)
+AssertionError: se esperaba SemillaInvalida, se obtuvo TypeError
+FAILED tests/unitarios/test_deuda_d053.py::test_yaml_corta_raiz_y_claves_sin_valores[- MARCADOR_PRIVADO-parametros]
+FAILED tests/unitarios/test_deuda_d053.py::test_yaml_corta_raiz_y_claves_sin_valores[- MARCADOR_PRIVADO-semilla]
+2 failed, 8 passed in 0.12s
+```
+Revertido a mano (mismo diff, en reversa) sobre `cargador_yaml.py`.
+```text
+GREEN-yaml-raiz (mutante revertido)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:41:28
+10 passed in 0.09s
+```
+
+Mutante decimal-redondeado (quita `if cuantizado != valor: raise MontoInvalido(...)` en
+`Dinero.desde_decimal`):
+```diff
+--- respaldo
++++ mutante
+@@ -72,8 +72,6 @@
+             cuantizado = valor.quantize(_CERO)
+         except InvalidOperation:
+             raise MontoInvalido("el monto está fuera de rango o tiene demasiados dígitos") from None
+-        if cuantizado != valor:
+-            raise MontoInvalido("el monto no puede tener más de dos decimales")
+         return cls(str(cuantizado))
+```
+
+RED-decimal-redondeado (codex, 11:37:56): `pytest.raises(MontoInvalido)` → `Failed: DID NOT RAISE
+MontoInvalido` para `1.005` y `1.0001`, 2 failed.
+
+**EVIDENCIA · 26/10/2026 · constructor (verificación propia)**
+```text
+RED-decimal-redondeado (reproducido)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:40:51
+FAILED tests/unitarios/test_deuda_d053.py::test_decimal_que_cambiaria_no_se_redondea[1.005] - Failed: DID NOT RAISE MontoInvalido
+FAILED tests/unitarios/test_deuda_d053.py::test_decimal_que_cambiaria_no_se_redondea[1.0001] - Failed: DID NOT RAISE MontoInvalido
+2 failed, 8 passed in 0.11s
+```
+Revertido (se repone el `if cuantizado != valor: raise MontoInvalido(...)`).
+```text
+GREEN-decimal-redondeado (mutante revertido)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:41:00
+10 passed in 0.09s
+```
+
+Mutante texto-largo (afloja `_PATRON`/`_TEXTO_PATRON` de `\d{1,2}` a `\d{1,4}` en `dinero.py`). Codex
+dejó este mutante **aplicado y sin revertir** en el árbol de trabajo al quedarse sin cuota (sin rojo
+capturado). Lo completo yo:
+```diff
+--- respaldo
++++ mutante
+@@ -1,6 +1,6 @@
+ """Tipo Dinero (D5): representación de montos sobre Decimal, nunca float.
+ 
+-Se construye sólo desde texto (`^-?\\d{1,12}(\\.\\d{1,2})?$`, 12 enteros = NUMERIC(14,2)),
++Se construye sólo desde texto (`^-?\\d{1,12}(\\.\\d{1,4})?$`, 12 enteros = NUMERIC(14,2)),
+ se serializa siempre como texto con dos decimales. Sólo permite suma, resta y negación
+ entre montos; el reparto y el redondeo viven en reparto.py (R07, D-046).
+ """
+@@ -23,8 +23,8 @@
+ #   un `\n` final del string, así que `.match()` aceptaba "1.00\n" (auditor,
+ #   cambio 1b vuelta 3; misma familia que L-002). `fullmatch` exige consumir
+ #   el string entero, así que ese `\n` sobrante lo rechaza.
+-_PATRON = re.compile(r"^-?\d{1,12}(\.\d{1,2})?$", re.ASCII)
+-_TEXTO_PATRON = r"^-?\d{1,12}(\.\d{1,2})?$"
++_PATRON = re.compile(r"^-?\d{1,12}(\.\d{1,4})?$", re.ASCII)
++_TEXTO_PATRON = r"^-?\d{1,12}(\.\d{1,4})?$"
+ _CERO = Decimal("0.00")
+```
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED-texto-largo (mutante seguía aplicado tal como lo dejó codex)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:40:13
+FAILED tests/unitarios/test_deuda_d053.py::test_texto_con_ceros_sobrantes_se_rechaza[1.0000] - Failed: DID NOT RAISE MontoInvalido
+FAILED tests/unitarios/test_deuda_d053.py::test_texto_con_ceros_sobrantes_se_rechaza[1.000] - Failed: DID NOT RAISE MontoInvalido
+2 failed, 8 passed in 0.12s
+```
+Revertido a `\d{1,2}` en `_PATRON`, `_TEXTO_PATRON` y el docstring del módulo.
+```text
+GREEN-texto-largo (mutante revertido)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py
+time: 11:40:33
+10 passed in 0.09s
+```
+
+**EVIDENCIA · 26/10/2026 · constructor — cierre de 6.1, los tres mutantes revertidos**
+```text
+GREEN final (lint + tipos + safety net)
+command: cd backend && uv run ruff check src/proptech_core/compartido/dinero.py src/proptech_core/compartido/parametros.py tests/unitarios/test_deuda_d053.py
+time: 11:41:36 (primera corrida: I001 import sin ordenar + 2× E501 en el test nuevo; corregido a mano)
+All checks passed!
+command: uv run ruff format --check <los mismos 3 archivos>
+(falta línea en blanco tras el docstring del módulo del test; corregido)
+3 files already formatted
+command: uv run mypy <los mismos 3 archivos>
+time: 11:42:07
+Success: no issues found in 3 source files
+
+command: bash infra/ci/test-backend.sh tests/unitarios/test_deuda_d053.py tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py tests/unitarios/test_umbral_parametros.py tests/infra/test_perfil_hypothesis.py
+time: 11:42:11
+138 passed in 0.34s
+
+command: bash infra/ci/test-backend.sh tests/unitarios/test_semilla.py tests/unitarios/test_semilla_comando.py tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla_texto_compartido.py
+time: 11:42:19
+47 passed in 0.80s
+```
+Estado final en el árbol: sólo quedan el borrado del `except TypeError` en `parametros.py` y la
+aclaración del docstring de `desde_decimal` en `dinero.py` (sin cambio de lógica: la comparación
+`cuantizado != valor` sigue intacta — ya aceptaba `1.0000`/`0.3000` porque `Decimal.__eq__` compara
+valor, no representación). `cargador_yaml.py` queda sin diff contra HEAD.
 
 ## 7. Cierre
 

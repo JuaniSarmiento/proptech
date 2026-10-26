@@ -55,8 +55,8 @@ class Dinero:
     @classmethod
     def desde_decimal(cls, valor: Decimal) -> Dinero:
         """Para adaptadores (SQLAlchemy, etc.): valida que sea finito, que
-        tenga **a lo sumo dos decimales exactos** (rechaza, no redondea, si
-        cuantizar a dos decimales cambiaría el valor) y que esté dentro del
+        no cambie al cuantizar a dos decimales (acepta ceros sobrantes como
+        1.0000 y 0.3000, pero rechaza 1.005 y 1.0001) y que esté dentro del
         rango de NUMERIC(14,2).
 
         Antes (cambio 1b, vuelta 4) `quantize` redondeaba en silencio
