@@ -23,6 +23,13 @@ el código y MUST nombrar el ciclo encontrado.
 - **WHEN** en una copia temporal del código se agrega a `acceso` un import de `complejos.aplicacion`
 - **THEN** el test da rojo nombrando el ciclo `acceso → complejos → acceso`
 
+#### Scenario: Un ciclo de tres módulos
+
+- **WHEN** en una copia temporal `cuenta_corriente` importa `complejos.aplicacion` y `acceso` importa
+  `cuenta_corriente.aplicacion`
+- **THEN** el test da rojo nombrando `acceso → cuenta_corriente → complejos → acceso`, aunque ningún par
+  se importe en las dos direcciones
+
 ### Requirement: Entre módulos sólo se importa la capa de aplicación
 
 Un módulo SHALL importar de otro módulo de `proptech_core` sólo su capa `aplicacion`. Las únicas
@@ -40,6 +47,22 @@ cuenta como módulo de dominio, y `proptech_api` y `proptech_worker` quedan fuer
 
 - **WHEN** en una copia temporal se agrega a `complejos/aplicacion` un import de `acceso.dominio.token`
 - **THEN** el test da rojo nombrando el archivo y el submódulo importado
+
+#### Scenario: Las tres formas de escribir un import
+
+- **WHEN** en copias temporales se agrega el mismo import prohibido como `import a.b.c`,
+  `from a.b import c` y `from a import b`
+- **THEN** el test da rojo en las tres
+
+#### Scenario: Un destino con prefijo parecido a una excepción
+
+- **WHEN** en una copia temporal `complejos` importa `acceso.dominio.identidad_x`
+- **THEN** el test da rojo
+
+#### Scenario: Un import relativo entre módulos
+
+- **WHEN** en una copia temporal se agrega a `complejos` un `from ...acceso.dominio import token`
+- **THEN** el test da rojo
 
 #### Scenario: Un import de adaptadores ajenos
 
@@ -85,3 +108,19 @@ El módulo `cuenta_corriente` SHALL existir como paquete, aunque esté vacío, y
 - **WHEN** en una copia temporal se agrega a `cuenta_corriente/aplicacion` un import de
   `compartido.cola`
 - **THEN** el test da rojo nombrando el archivo
+
+### Requirement: El dominio no depende de su propia infraestructura
+
+Todo archivo bajo `dominio/` SHALL NOT importar la `aplicacion`, los `adaptadores` ni los `puertos` de
+su propio módulo, ni `sqlalchemy` ni `psycopg` (D-021, D-114.7).
+
+#### Scenario: El dominio de hoy pasa
+
+- **WHEN** se corre el test sobre el árbol del repositorio
+- **THEN** no hay ofensores
+
+#### Scenario: El dominio importa la base
+
+- **WHEN** en copias temporales un archivo de `complejos/dominio/` importa `sqlalchemy`, o
+  `complejos.aplicacion.escritura`
+- **THEN** el test da rojo en cada una, nombrando el archivo

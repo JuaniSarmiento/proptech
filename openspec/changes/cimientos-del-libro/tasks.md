@@ -2,185 +2,243 @@ Convención: en cada tarea el test va primero y se lo ve fallar (RED) antes del 
 se anota en el informe con el comando, su salida y la hora. **El rojo cuenta sólo si cae en la aserción
 que el test dice probar** (L-034): un `ModuleNotFoundError` o un `ImportError` no es un rojo. Cuando el
 módulo todavía no existe, primero se crea vacío (la función existe y devuelve vacío o `None`) y el rojo
-se mide contra eso. "Verde" en el backend es `bash infra/ci/test-backend.sh` sobre los archivos tocados,
-más `ruff check`, `ruff format --check` y `mypy` (L-005). Cada tarea nombra los escenarios que cubre
-(`capability` › escenario) y las lecciones que aplica.
+se mide contra eso. Un test que nace verde porque el comportamiento ya existe se declara como
+**fijación** y se lo ve fallar con un mutante en una copia o un savepoint (L-013, L-019, L-035).
+"Verde" en el backend es `bash infra/ci/test-backend.sh` sobre los archivos tocados, más `ruff check`,
+`ruff format --check` y `mypy` (L-005). Cada tarea nombra los escenarios que cubre (`capability` ›
+escenario) y las lecciones que aplica.
 
 **NO CONSTRUIR**: el change es **HIGH**. Precondición: la sección "Aprobación" de `proposal.md`
 firmada por Juani, Alberto o Emiliano, con nombre, fecha y la respuesta a cada elección (D-094, D-111).
 Una regla nueva que entre después de la firma necesita firma propia (L-029).
 
-**Orden obligatorio**: el grupo 3 (la columna nueva de `configuracion_versionada`) va **antes** del
-grupo 5 (la tabla pasa al rol de arranque). Al revés, la migración `0021` falla por no ser el migrador
-el dueño (design D8).
+**Orden obligatorio**: el grupo 3 (columna nueva y trigger por sentencia de `configuracion_versionada`)
+va **antes** del grupo 5 (la tabla pasa al rol de arranque). Al revés, `0021` falla porque el migrador
+ya no es el dueño (design D8).
+
+**Cantidad**: 20 tareas, en el límite de `config.yaml`. Las dos que sumó la revisión salen de D-114:
+1.4 (regla (e), D-114.7) y 4.3 (la auditoría partida en unidades y grupos, al sumar `crear_unidad` y
+`crear_grupo`, D-114.3). Si en la
+construcción alguna no entra en medio día, el corte natural es el grupo 4 como change propio (4a-bis),
+que no depende de los grupos 1, 2 ni 5; se le avisa a Juani antes de partir.
 
 ## 1. Fronteras entre módulos (design D4)
 
-- [ ] 1.1 **Paquete `cuenta_corriente/` vacío y regla (a), sin ciclos.** Crear
-  `proptech_core/cuenta_corriente/` con `__init__.py`, `dominio/__init__.py` y `aplicacion/__init__.py`
-  vacíos. Test nuevo en `tests/unitarios/test_fronteras_de_modulos.py`: arma el grafo módulo → módulo
-  (sin `compartido`) con todas las capas y exige que no tenga ciclos, listando los módulos recorridos.
-  RED: con la función de detección devolviendo siempre "sin ciclos", el mutante en copia (agregar a
-  `acceso` un import de `complejos.aplicacion`) **pasa**; se escribe la detección y el mutante da rojo
-  nombrando `acceso → complejos → acceso`. Verificación: árbol real en verde, mutante en rojo.
-  Escenarios: `fronteras-de-modulos` › El código de hoy no tiene ciclos; › Un ciclo agregado a una
-  copia. Lecciones: L-013, L-019, L-035.
-- [ ] 1.2 **Regla (b), entre módulos sólo `aplicacion`.** Test con el diccionario de excepciones por
-  submódulo destino y su motivo (`acceso.dominio.identidad`, `acceso.dominio.permisos`,
-  `acceso.dominio.eventos`), `proptech_api` y `proptech_worker` fuera. RED: sin la excepción de
-  `acceso.dominio.eventos`, el árbol real da rojo en `complejos/aplicacion/ejemplo.py:39` (prueba de
-  que la regla mira de verdad); con la excepción, verde. Dos mutantes en copia: un import de
-  `acceso.dominio.token` y uno de `acceso.adaptadores` desde `complejos`, cada uno rojo nombrando
-  archivo y destino. Escenarios: `fronteras-de-modulos` › Las excepciones de hoy pasan; › Un import de
-  dominio ajeno sin excepción; › Un import de adaptadores ajenos. Lecciones: L-013, L-021 (el mutante
-  de adaptadores no es el mismo camino que el de dominio), L-035.
+- [ ] 1.1 **Recolector de imports, paquete vacío y regla (a), sin ciclos.** Corregir el recolector de
+  `tests/unitarios/test_fronteras_de_modulos.py` para que registre el submódulo en las tres formas
+  (`import a.b.c`, `from a.b import c`, `from a import b`) y resuelva los relativos por `level`; RED:
+  con el recolector de hoy, `from proptech_core.compartido import cola` no aparece como `compartido.cola`.
+  Crear `proptech_core/cuenta_corriente/` con `__init__.py`, `dominio/__init__.py` y
+  `aplicacion/__init__.py` vacíos. Test de ciclos de cualquier largo, que lista los módulos recorridos.
+  RED: con la detección devolviendo "sin ciclos", los mutantes en copia pasan; con la detección, dan rojo
+  el de dos nodos (`acceso → complejos → acceso`) y el de tres (`acceso → cuenta_corriente → complejos →
+  acceso`, que un chequeo por pares no ve). Escenarios: `fronteras-de-modulos` › El código de hoy no
+  tiene ciclos; › Un ciclo agregado a una copia; › Un ciclo de tres módulos. Lecciones: L-013, L-019,
+  L-035.
+- [ ] 1.2 **Regla (b), entre módulos sólo `aplicacion`.** Diccionario de excepciones por destino, con
+  su motivo (`acceso.dominio.identidad`, `acceso.dominio.permisos`, `acceso.dominio.eventos`), comparado
+  por segmentos completos; `proptech_api` y `proptech_worker` fuera; imports relativos entre módulos
+  prohibidos. RED: sin la excepción de `acceso.dominio.eventos`, el árbol real da rojo en
+  `complejos/aplicacion/ejemplo.py:39`. Mutantes en copia: `acceso.dominio.token` en las tres formas de
+  import; `acceso.adaptadores`; `acceso.dominio.identidad_x`; `from ...acceso.dominio import token`.
+  Cada uno rojo nombrando archivo y destino. Escenarios: `fronteras-de-modulos` › Las excepciones de hoy
+  pasan; › Un import de dominio ajeno sin excepción; › Las tres formas de escribir un import; › Un
+  destino con prefijo parecido a una excepción; › Un import relativo entre módulos; › Un import de
+  adaptadores ajenos. Lecciones: L-013, L-021, L-035.
 - [ ] 1.3 **Regla (c), `dominio/` sólo usa lo puro de `compartido`, y regla (d) de
-  `cuenta_corriente`.** Lista permitida (`dinero`, `coeficientes`, `porcentaje`, `superficie`,
-  `texto`, `tipos_de_unidad`, `reparto`) con `parametros` como excepción con motivo; `cuenta_corriente`
+  `cuenta_corriente`.** Lista permitida con `parametros` como excepción con motivo; `cuenta_corriente`
   no importa `compartido.cola` ni `liquidacion`. RED de (c): sin `parametros` en la excepción, el árbol
-  real da rojo en `complejos/dominio/configuracion.py:11`. Mutantes en copia: `dominio/` importando
-  `compartido.base_de_datos`; un `compartido/nuevo.py` creado en la copia e importado desde `dominio/`
-  (rojo sin que nadie lo haya escrito en ninguna lista); `cuenta_corriente/aplicacion` importando
-  `compartido.cola`. Escenarios: `fronteras-de-modulos` › El dominio de hoy pasa; › El dominio importa
-  la base; › Un submódulo nuevo de compartido; › El paquete existe y pasa; › La cuenta corriente
-  importa la cola. Lecciones: L-013, L-022 (lista permitida, no de prohibidos).
+  real da rojo en `complejos/dominio/configuracion.py:11`. Mutantes en copia, cada uno en las tres
+  formas de import: `dominio/` importando `compartido.base_de_datos`; un `compartido/nuevo.py` creado en
+  la copia e importado desde `dominio/`; `cuenta_corriente/aplicacion` importando `compartido.cola`.
+  Escenarios: `fronteras-de-modulos` › El dominio de hoy pasa (regla c); › El dominio importa la base
+  (regla c); › Un submódulo nuevo de compartido; › El paquete existe y pasa; › La cuenta corriente
+  importa la cola. Lecciones: L-013, L-022.
+- [ ] 1.4 **Regla (e), el dominio no depende de su propia infraestructura (D-114.7).** Un archivo de
+  `dominio/` no importa la `aplicacion`, los `adaptadores` ni los `puertos` de su módulo, ni `sqlalchemy`
+  ni `psycopg`. Nace verde sobre el árbol real (fijación); mutantes en copia: `complejos/dominio/`
+  importando `sqlalchemy` y `complejos.aplicacion.escritura`, cada uno rojo nombrando el archivo.
+  Escenarios: `fronteras-de-modulos` › El dominio de hoy pasa (regla e); › El dominio importa la base
+  (regla e). Lecciones: L-013, L-035.
 
 ## 2. Montos y reparto (design D5 a D7)
 
 - [ ] 2.1 **`hypothesis` y aritmética de `Dinero`.** Sumar `hypothesis` con versión exacta al grupo
-  `dev` y a `uv.lock`, con los perfiles `ci` (`derandomize=True`) y local. Tests en
-  `tests/unitarios/test_dinero.py`: suma y resta exactas, negación, `sumar([])` da `"0.00"`, operandos
-  `int`, `float`, `Decimal` y texto dan `TypeError`, desborde de `NUMERIC(14,2)` da `MontoInvalido`,
-  multiplicar y dividir dan `TypeError`. RED: con `__add__`, `__sub__`, `__neg__` y `sumar` existiendo y
-  devolviendo `Dinero("0.00")`, falla la aserción de valor. Actualizar el docstring de `dinero.py`.
-  Escenarios: `representacion-de-montos` › Suma y resta exactas; › Sumar un número que no es monto;
-  › Desborde; › Sumar una lista vacía; › Sin multiplicación. Lecciones: L-034.
+  `dev` y a `uv.lock`, con los perfiles `ci` (`derandomize=True`, `deadline=None`) y local, elegidos por
+  variable de entorno en `infra/ci/test-backend.sh`, más un test de infra que fije que el CI usa `ci`.
+  Tests: suma y resta exactas, negación (incluido `"0.00"`), `sumar([])` da `"0.00"`, operandos `int`,
+  `float`, `Decimal` y texto dan `TypeError`, desborde da `MontoInvalido`, multiplicar y dividir dan
+  `TypeError`, y el resultado no cambia bajo un `localcontext` con precisión 10 y otro modo de redondeo.
+  RED: con los métodos existiendo y devolviendo `Dinero("0.00")`, falla la aserción de valor. Actualizar
+  el docstring de `dinero.py`. Escenarios: `representacion-de-montos` › Suma y resta exactas;
+  › Negación; › Sumar un número que no es monto; › Desborde; › Sumar una lista vacía; › Sin
+  multiplicación. Lecciones: L-034.
 - [ ] 2.2 **Redondeo medio hacia arriba para montos sueltos.** `redondear_al_centavo` en
   `compartido/reparto.py`. Tests: 0.125 → 0.13, 0.124999 → 0.12, -0.125 → -0.13, `float` rechazado,
-  `NaN` e infinito rechazados. RED: con la función devolviendo `ROUND_HALF_EVEN` (mutante deliberado
-  en la versión vacía, anotado), 0.125 da 0.12 y falla la aserción. Escenarios: `reparto-de-montos`
-  › El medio sube; › Float rechazado. Lecciones: L-034, L-008.
-- [ ] 2.3 **Orden natural para el desempate.** `clave_de_orden_natural(identificador, id)`. Tests:
-  "1" < "2" < "10"; "2B" < "10A"; "a2" y "A2" no empatan al final (desempata el texto original y luego
-  el UUID); dos identificadores iguales ordenan por UUID; dígitos no ASCII no se leen como número
-  (L-008). RED: con la clave devolviendo el texto plano, "10" queda antes que "2". Escenarios:
-  `reparto-de-montos` › Orden natural, no de texto. Lecciones: L-008.
-- [ ] 2.4 **`repartir` por mayor resto, con ejemplos.** Tests de ejemplo de R07 y de la spec: un
-  millón entre 150 (100 partes de 6.666,67 y 50 de 6.666,66), una sola parte, pesos que no suman 1,
-  total cero, $2,00 entre tres (y la comparación explícita con medio hacia arriba que daría 2,01), el
-  centavo al mayor resto, total negativo, "1", "2", "10" con el centavo por orden natural, el mismo
-  reparto 100 veces con las partes en otro orden, y cada rechazo de `RepartoInvalido` (total `float`,
-  sin partes, peso negativo, peso `float`, pesos en cero, claves repetidas). RED: con `repartir`
-  existiendo y devolviendo cada parte en cero, falla la suma. Escenarios: `reparto-de-montos` › los
-  cuatro de "El reparto suma exacto el total", los tres de "Cada parte se trunca...", los dos de "El
-  empate se resuelve siempre igual" y los dos de "El reparto rechaza entradas...". Lecciones: L-034.
-- [ ] 2.5 **Propiedades del reparto con `hypothesis` y oráculo propio.** Test en
-  `tests/unitarios/test_reparto_propiedades.py`: totales y pesos generados (incluido el borde de 12
-  dígitos y pesos con 6 decimales), oráculo con `fractions.Fraction` que **no** importa ni repite la
-  función de producción; propiedades: suma exacta, distancia menor a un centavo, centavo extra sólo a
-  restos mayores o iguales, independencia del orden. RED real: en una copia de `reparto.py` (L-013),
-  cambiar el truncado por `ROUND_HALF_UP` y ver que la propiedad de suma exacta encuentra un
-  contraejemplo; restaurar y ver verde. Escenarios: `reparto-de-montos` › Un error de fórmula
-  compartido no pasa. Lecciones: L-013, L-019, L-035.
+  `NaN` e infinito rechazados, 999999999999.995 da `MontoInvalido`, mismo resultado bajo otro
+  `localcontext`. RED: con la versión vacía usando `ROUND_HALF_EVEN` (mutante deliberado, anotado),
+  0.125 da 0.12. Escenarios: `reparto-de-montos` › El medio sube; › Float rechazado. Lecciones: L-034,
+  L-008.
+- [ ] 2.3 **Orden natural para el desempate, con tramos etiquetados.** `clave_de_orden_natural
+  (identificador, id)`, cada tramo `(0, int)` o `(1, texto)`. Tests con el orden esperado escrito:
+  "L-PB", "1A", "C1", "B1", "10A" dan "1A", "10A", "B1", "C1", "L-PB"; "PB", "1", "1A", "A1" dan "1",
+  "1A", "A1", "PB", sin `TypeError`; "1" < "2" < "10"; "2B" < "10A"; "a2" y "A2" desempatan por el texto
+  original y luego por el UUID; identificadores iguales ordenan por UUID; "١٠" (dígitos no ASCII) va
+  como texto, después de "10". RED: con la clave devolviendo el texto plano, "10" queda antes que "2" y
+  "L-PB" antes que "1A". Escenarios: `reparto-de-montos` › Orden natural, no de texto; › Identificadores
+  que empiezan con letra y con número. Lecciones: L-008.
+- [ ] 2.4 **`repartir` por mayor resto, con ejemplos.** Tests: un millón entre 150 (100 de 6.666,67 y 50
+  de 6.666,66); una sola parte; pesos 0.4999 y 0.5 dan **49,99 y 50,01**; total cero; $2,00 entre tres
+  (y la comparación explícita con medio hacia arriba que daría 2,01); 0.333333/0.333333/0.333334;
+  **$0,05 entre 0.6/0.25/0.15 da 0,03/0,01/0,01**; total negativo; "1", "2", "10" con el centavo por
+  orden natural; el mismo reparto 100 veces con las partes en otro orden; $0,01 entre 150 da un centavo a
+  la primera por orden; una parte con peso 0 recibe 0,00; y cada rechazo de `RepartoInvalido` (total
+  `float`, sin partes, peso negativo, peso `float` o `int`, peso `NaN`, infinito o con más de 6
+  decimales, pesos en cero, claves repetidas), con `Decimal("1E+2")` escalado sin `float`. El total cero
+  nace verde contra el stub en cero: se declara fijación. RED: con `repartir` devolviendo cada parte en
+  cero, falla la suma. Escenarios: `reparto-de-montos` › los de "El reparto suma exacto el total", "Cada
+  parte se trunca...", "El empate se resuelve siempre igual" y "El reparto rechaza entradas...".
+  Lecciones: L-034.
+- [ ] 2.5 **Propiedades del reparto con `hypothesis`, oráculo propio y un mutante por propiedad.** Test en
+  `tests/unitarios/test_reparto_propiedades.py`: totales y pesos generados (borde de 12 dígitos, pesos de
+  6 decimales), estrategia que **fuerza empates** (pesos de `sampled_from` de un conjunto chico, pesos
+  iguales) y mezcla identificadores con letra y con número; oráculo con `fractions.Fraction` que no
+  importa ni repite la producción. RED real, cada mutante en una copia de `reparto.py` (L-013), rojo en
+  su propiedad: `ROUND_HALF_UP` por parte (suma exacta); desempate por posición de entrada (orden);
+  centavo al mayor peso (restos); sin normalizar por la suma de pesos (distancia). Escenarios:
+  `reparto-de-montos` › Un error de fórmula compartido no pasa; › Cada propiedad tiene su mutante.
+  Lecciones: L-013, L-019, L-035.
 
 ## 3. Umbral de saldos chicos (R30, design D8), antes del grupo 5
 
 - [ ] 3.1 **El umbral en `parametros.yaml`.** Sección `cuenta_corriente.umbral_saldo_chico: "500.00"`
-  y su validación. Tests en el lector: el archivo del repositorio devuelve 500.00; el umbral faltante,
-  vacío, en blanco, `"-0.01"`, con tres decimales y como número YAML falla nombrando
-  `cuenta_corriente.umbral_saldo_chico` sin repetir el valor; `"0.00"` se acepta. RED: con el campo
-  declarado y opcional, el archivo sin umbral pasa y falla la aserción de "falta". Escenarios:
+  y su validación. Tests: el archivo del repositorio devuelve 500.00; el umbral faltante, vacío, en
+  blanco, `"-0.01"`, con tres decimales, como número YAML, con espacio al principio o salto de línea al
+  final falla nombrando `cuenta_corriente.umbral_saldo_chico` sin repetir el valor; `"0.00"` se acepta.
+  RED: con el campo declarado y opcional, el archivo sin umbral pasa. Escenarios:
   `parametros-del-sistema` › El archivo del repositorio es válido y tiene los defaults; › Umbral de
   saldos chicos inválido; › Umbral en cero. Lecciones: L-002, L-007, L-008.
-- [ ] 3.2 **Migración `0021`: la columna, sus versiones viejas y su bajada.** Tests de integración
-  contra PostgreSQL real: subir sobre una base en `0020` con versiones cargadas deja cada una con
-  "500.00" y ninguna otra columna cambia (comparación fila por fila); el trigger de `UPDATE` no se
-  dispara al subir; después de subir no hay default en la columna (un `INSERT` sin umbral falla por
-  `NOT NULL`); `CHECK` rechaza un negativo; `proptech_app` no puede `UPDATE` del umbral; bajar como
-  dueño restaura el esquema exacto de `0020` y volver a subir funciona. Antes de cerrar: `rg` de todo
-  `INSERT INTO configuracion_versionada` en el repo entero (backend, `infra/`, semillas) y ajustar los
-  que la columna sin default rompe (L-023). RED: con `0021` vacía, falla la aserción de la columna.
-  Escenarios: `configuracion-versionada` › Versiones anteriores a este cambio; › El umbral no se edita
-  por SQL. Lecciones: L-023, L-018.
-- [ ] 3.3 **El umbral en el dominio, la versión nueva y la API.** `ConfiguracionEdificio` con el
-  campo opcional; `desde_parametros` lo toma del archivo; `crear_version_de_configuracion` hereda el de
-  la versión inmediatamente anterior en vigencia o, si no hay, el de parámetros; lectura y API lo
-  devuelven como texto; el cuerpo lo acepta opcional y rechaza `500` (número JSON), "-1.00", "1.001" y
-  "abc" con 422 nombrando el campo. Web: regenerar los fixtures que salen de la API real y sumar el
-  campo al tipo de la respuesta; `pnpm biome ci`, `pnpm tsc --noEmit` y `bash infra/ci/test-web.sh` en
-  verde, ninguna pantalla cambia. RED: con el campo existiendo y el caso de uso ignorándolo, la versión
-  nueva queda con 500 en vez de heredar 300. Escenarios: `configuracion-versionada` › Versión nueva sin
-  umbral; › Primera versión de un edificio nuevo; › Umbral explícito; › Umbral inválido. Lecciones:
-  L-027 (la API falsa acepta el campo sólo como lo acepta la real), L-009.
+- [ ] 3.2 **Migración `0021`: la columna, el trigger por sentencia, las versiones viejas y su bajada.**
+  Tests de integración contra PostgreSQL real, leyendo **como rol de arranque** (como migrador sin tenant
+  se comparan dos conjuntos vacíos, DB-3): subir sobre `0020` con versiones cargadas deja cada una en
+  "500.00" y ninguna otra columna cambia (fila por fila); el trigger de `UPDATE` no se dispara al subir,
+  con su mutante (`ADD COLUMN NULL` y después `UPDATE ... SET 500`, que como dueño da el error del
+  trigger); no queda default (un `INSERT` sin umbral falla por `NOT NULL`); el `CHECK` rechaza "-0.01" y
+  acepta "0.00"; `UPDATE ... WHERE false` y `DELETE ... WHERE false` como dueño fallan con el error del
+  trigger por sentencia, igual que `INSERT ... ON CONFLICT DO UPDATE`; el `UPDATE` del umbral como
+  `proptech_app` falla con SQLSTATE `42501`; bajar como dueño restaura el esquema de `0020` (comparado
+  con `pg_dump -s` o `information_schema`, no `pg_attribute` crudo, DB-2) y volver a subir deja **todos**
+  los umbrales en "500.00", también uno que estaba en "300.00". Antes de cerrar: `rg` de todo `INSERT INTO
+  configuracion_versionada` en el repo entero y ajustar los que la columna sin default rompe (L-023).
+  RED: con `0021` vacía, falla la aserción de la columna. Escenarios: `configuracion-versionada`
+  › Versiones anteriores a este cambio; › El umbral no se edita por SQL; `aislamiento-por-administracion`
+  › Sentencia sin filas; › Insertar con actualización ante conflicto. Lecciones: L-023, L-018.
+- [ ] 3.3 **El umbral en el dominio, las versiones, el alta del edificio y la API (D-114.1).**
+  `ConfiguracionEdificio` con el campo opcional y no negativo; `desde_parametros` lo toma del archivo;
+  `crear_version_de_configuracion` hereda el de la versión inmediatamente anterior por `vigente_desde`
+  (aunque sea futura) o, si no hay, el de parámetros; `crear_edificio` sin umbral toma el de parámetros;
+  lectura y API lo devuelven como texto. Tests: v1 (hoy, 300), v2 (diciembre, 700), v3 (enero, sin
+  umbral) da 700, y v4 (noviembre, sin umbral) da 300; `null` explícito igual que ausente; "0.00" y
+  "750.00" explícitos; `POST /api/complejos` con `configuracion_inicial` sin umbral responde 201 con
+  "500.00"; `500` (número JSON), "-1.00", "1.001" y "abc" dan 422 nombrando el campo, en versiones y en
+  el alta. Web: regenerar los fixtures que salen de la API real y sumar el campo al tipo de la respuesta;
+  `pnpm biome ci`, `pnpm tsc --noEmit` y `bash infra/ci/test-web.sh` en verde, ninguna pantalla cambia.
+  RED: con el campo existiendo y el caso de uso ignorándolo, v3 queda en 500. Escenarios:
+  `configuracion-versionada` › Versión nueva sin umbral; › Hereda de la anterior por fecha, aunque sea
+  futura; › Null explícito; › Primera versión de un edificio nuevo; › Umbral explícito; › Umbral
+  inválido. Lecciones: L-027, L-009.
 
 ## 4. Auditoría de los cambios del padrón (design D9)
 
-- [ ] 4.1 **Vocabulario: migración `0022` y `EventoDelPadron`.** Los cinco eventos al vocabulario de
-  `accion_de_auditoria` y al enum; `registrar()` los acepta con el detalle `{complejo_id, campos}`.
-  Tests: la base acepta cada evento nuevo y rechaza uno inventado; el detalle con una clave extra o con
-  un valor (por ejemplo `coeficiente_nuevo`) se rechaza antes de escribir, sin repetir el valor; bajar
-  `0022` restaura el vocabulario de `0021` y no baja si un evento ya se usó. RED: con el enum
-  existiendo y `0022` vacía, la base rechaza `editar_unidad` y falla la aserción de aceptación.
-  Escenarios: `auditoria-de-acciones` › Acción fuera de la lista; › Clave no permitida en el detalle.
-  Lecciones: L-007, L-034.
-- [ ] 4.2 **Los cinco casos de uso auditan en su transacción.** `editar_unidad`, `editar_grupo`,
-  `fijar_unidades`, `editar_categoria` y `reordenar_categorias` reciben `identidad` y `request_id`, la
-  API se los pasa, y registran su evento sólo si algo cambió. Tests de integración contra PostgreSQL
-  real: cambiar el coeficiente deja `editar_unidad` con `campos: ["coeficiente"]` y sin los valores;
-  fijar unidades deja `fijar_unidades`; un identificador repetido no deja fila y la unidad sigue igual;
-  los cinco una vez cada uno dejan cinco filas con cinco eventos distintos; la suite de "una acción por
-  caso de uso" sigue en verde. RED: con los parámetros nuevos recibidos y sin llamar a `registrar()`,
-  falla la aserción de la fila. Mutante extra: registrar fuera de la transacción (después del commit)
-  hace que el caso que falla deje fila (L-019). Escenarios: `auditoria-de-acciones` › Cambiar el
-  coeficiente de una unidad; › Fijar las unidades de un grupo; › El cambio que falla no deja
-  auditoría; › Cada caso de uso con su evento; › Dos casos de uso con la misma acción. Lecciones:
+- [ ] 4.1 **Vocabulario y detalle: migración `0022`, `EventoDelPadron` y sus modelos.** Los siete
+  eventos al vocabulario y al enum; un modelo de detalle por evento (D9) con `extra="forbid"`. Tests: la
+  base acepta cada evento y rechaza uno inventado; se rechazan antes de escribir, sin repetir el valor,
+  `editar_grupo` con `campos: ["coeficiente"]` y `editar_unidad` con un valor del piso; bajar `0022`
+  restaura el vocabulario de `0021`; con una fila `editar_unidad` en `auditoria`, bajar `0022` falla con
+  `23503` (el punto de no retorno del Migration Plan). Los rechazos nacen verdes contra
+  `_MODELOS_DE_DETALLE.get(..., _DetalleBase)`: fijación con un mutante de modelo permisivo
+  (`extra="allow"`). RED de la aceptación: con el enum y `0022` vacía, la base rechaza `editar_unidad`.
+  Escenarios: `auditoria-de-acciones` › Acción fuera de la lista; › Clave no permitida en el detalle;
+  › Un campo que no es de ese evento. Lecciones: L-007, L-034, L-035.
+- [ ] 4.2 **Unidades: `crear_unidad` y `editar_unidad` auditan en su transacción.** Reciben `identidad` y
+  `request_id`, la API se los pasa, registran sólo si algo cambió comparando valores normalizados. Tests
+  contra PostgreSQL real: el coeficiente de "0.050000" a "0.060000" y el piso dejan `editar_unidad` con
+  `campos` `coeficiente` y `piso`, el anterior y el nuevo del coeficiente, y sin valores del piso; alta
+  con "0.080000" deja `crear_unidad` con el nuevo; guardar los mismos valores, incluido "0.05" contra
+  "0.050000", no deja fila (mutante: registrar siempre); un identificador repetido no deja fila y la
+  unidad sigue igual (mutante que **sí** discrimina: registrar en otra sesión con commit propio, antes
+  del `UPDATE`); si `registrar()` falla, la unidad sigue igual y la respuesta no repite ningún valor
+  (mutante: `try/except` que se trague el error). Escenarios: `auditoria-de-acciones` › Cambiar el
+  coeficiente de una unidad; › Alta de una unidad y de un grupo (unidad); › Guardar sin cambios; › El
+  cambio que falla no deja auditoría; › Si la auditoría falla, el cambio no queda. Lecciones: L-019,
+  L-034.
+- [ ] 4.3 **Grupos y categorías: `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria` y
+  `reordenar_categorias`.** Mismo patrón que 4.2. Tests: en un grupo con coeficientes propios, cambiar
+  uno, agregar otro y quitar un tercero deja `fijar_unidades` con las tres unidades, anterior y nuevo
+  (vacío el anterior de la agregada y el nuevo de la quitada); fijar los mismos miembros con los mismos
+  coeficientes no deja fila; `crear_grupo` con propios deja el nuevo de cada miembro; editar y reordenar
+  categorías dejan sólo nombres de campos; los siete eventos una vez cada uno dejan siete filas
+  distintas, y la suite de "una acción por caso de uso" sigue en verde. RED: con los parámetros nuevos y
+  sin llamar a `registrar()`, falla la aserción de la fila. Escenarios: `auditoria-de-acciones`
+  › Fijar las unidades de un grupo; › Coeficientes propios de un grupo; › Alta de una unidad y de un
+  grupo (grupo); › Cada caso de uso con su evento; › Dos casos de uso con la misma acción. Lecciones:
   L-019, L-034.
 
-## 5. Dueño de las tablas de sólo agregar (design D1 a D3), después del grupo 3
+## 5. Dueño de las tablas de sólo agregar (design D0 a D3), después del grupo 3
 
-- [ ] 5.1 **El rol de arranque es dueño de `configuracion_versionada`.** Borrar el
-  `xfail(strict=True)` de `test_dueno_de_tablas_solo_agregar.py`: RED, el caso
-  `configuracion_versionada` da rojo en su aserción (el migrador puede `NO FORCE`). Generalizar
-  `_TABLA_EXCLUIDA_DE_LA_REASIGNACION` a conjunto y transferir en `despues()` la tabla y las funciones
-  de sus triggers; GREEN. Tests nuevos: volumen del 3a (tabla del migrador, `0021` pendiente) migra y
-  termina del rol de arranque; con la tabla ya del rol de arranque, una migración de prueba con un
-  `ALTER TABLE` falla con `must be owner` sin quedar a medias; bajar `0021` como migrador falla y, con
-  la tabla devuelta por el rol de arranque, baja y vuelve a subir sin perder versiones (patrón de
-  `test_auditoria_tabla.py:1052`). Adaptar los tests que bajan migraciones después de `despues()`.
-  Escenarios: `aislamiento-por-administracion` › El migrador no es dueño de una tabla de sólo agregar;
-  › Volumen del 3a, donde el migrador era dueño; › Una migración futura sobre una tabla protegida;
-  › Bajar la migración que agrega el umbral; › Arranque repetido. Lecciones: L-036, L-035.
-- [ ] 5.2 **`despues()` verifica la protección por el efecto en cada tabla.** Generalizar la
-  verificación de `auditoria` a toda tabla del conjunto (design D2): RLS y `FORCE`, triggers y sus
-  funciones, `UPDATE` y `DELETE` reales con el SQLSTATE y el texto de **esa** tabla, `TRUNCATE`
-  ejecutado donde no hay FK entrante y por catálogo donde sí (dicho en el docstring), filas padre
-  armadas en el `SAVEPOINT` cuando la tabla está vacía. Tests, cada uno con su mutante sobre la base
-  de prueba antes de correr `despues()`: trigger de `UPDATE` deshabilitado; función reemplazada por una
-  que devuelve la fila; un `DELETE` frenado por otro error; tabla vacía (la verificación igual prueba
-  el bloqueo); los cuatro rojos nombran la tabla y no confirman ningún cambio de dueño. RED: con la
-  verificación generalizada devolviendo "sin faltantes", el trigger deshabilitado pasa. Escenarios:
-  `aislamiento-por-administracion` › Trigger deshabilitado; › Función de bloqueo reemplazada por una
-  que no hace nada; › Otro error frena el intento. Lecciones: L-018, L-022, L-034.
+- [ ] 5.1 **Una sola fuente y el rol de arranque como dueño de `configuracion_versionada`.** Crear
+  `compartido/tablas_protegidas.py` (D0) y hacer que `roles.py` y el test de dueño lo lean. Borrar el
+  `xfail(strict=True)` de `test_dueno_de_tablas_solo_agregar.py`: RED, el caso `configuracion_versionada`
+  da rojo en su aserción. Excluir el conjunto de la reasignación y transferir en `despues()` la tabla y
+  las funciones de sus triggers; GREEN. Tests: volumen del 3a, armado devolviendo **la tabla y su
+  función** al migrador (con el `despues()` nuevo, `0021` fallaría), migra y termina del rol de arranque;
+  con la tabla ya del rol de arranque, una migración de prueba que hace un cambio que sale bien y después
+  un `ALTER TABLE` falla con `must be owner`, el primer cambio no queda y `alembic_version` no cambia;
+  bajar `0021` como migrador falla y, con tabla y función devueltas, baja y vuelve a subir con todo en
+  500 (patrón de `test_auditoria_tabla.py:1052`). Adaptar los tests que bajan migraciones después de
+  `despues()`. Escenarios: `aislamiento-por-administracion` › El migrador no es dueño de una tabla de
+  sólo agregar; › Volumen del 3a, donde el migrador era dueño; › Una migración futura sobre una tabla
+  protegida; › Bajar la migración que agrega el umbral; › Arranque repetido. Lecciones: L-036, L-035.
+- [ ] 5.2 **`despues()` verifica la protección por el efecto, sin armar filas (D-114.4).**
+  `_verificar_tabla_protegida` para cada tabla del conjunto salvo `auditoria` (D2): RLS y `FORCE`,
+  triggers declarados en D0 y sus funciones del rol de arranque, `UPDATE ... WHERE false`,
+  `DELETE ... WHERE false` y `TRUNCATE` (con `CASCADE` si tiene FK entrante) en savepoints revertidos,
+  exigiendo `P0001` y el texto de esa tabla. Tests, cada uno con su mutante sobre la base de prueba antes
+  de `despues()`: trigger por sentencia deshabilitado; función reemplazada por una que devuelve sin
+  error; `DISABLE ROW LEVEL SECURITY` con `FORCE` intacto; un `DELETE` frenado por otro error; con la
+  tabla vacía la verificación igual prueba el bloqueo; una tabla de prueba con FK entrante prueba
+  `TRUNCATE ... CASCADE` y no deja nada borrado; una tabla del conjunto que no existe se saltea y se dice
+  en la salida. Los rojos nombran la tabla y no confirman ningún cambio de dueño. RED: con la
+  verificación devolviendo "sin faltantes", el trigger deshabilitado pasa. Escenarios:
+  `aislamiento-por-administracion` › Trigger deshabilitado; › Función de bloqueo reemplazada por una que
+  no hace nada; › RLS deshabilitada con FORCE intacto; › Otro error frena el intento; › TRUNCATE con una
+  FK entrante; › Una tabla del conjunto no existe. Lecciones: L-018, L-022, L-034.
 - [ ] 5.3 **Los procesos no arrancan si una tabla protegida tiene otro dueño.**
-  `verificar_tablas_de_solo_agregar(engine)` en `base_de_datos.py`, llamada en la API, el worker,
-  `alta_inicial` y `ejemplo` junto al chequeo de rol que ya existe. Tests: con
-  `configuracion_versionada` del migrador, la API no arranca y el log nombra la tabla y el motivo sin
-  ningún valor; con una tabla del conjunto inexistente, tampoco; con todo en orden arranca; el conjunto
-  comparado es exactamente `auditoria` más `_TABLAS_DE_SOLO_AGREGAR` (mutante: sacar una tabla del
-  conjunto del chequeo y ver rojo). Revisar los tests que levantan la app sin migrar. RED: con la
-  función existiendo y sin consultar el catálogo, la API arranca con la tabla del migrador.
-  Escenarios: `aislamiento-por-administracion` › Una tabla quedó del migrador; › Todo en orden.
-  Lecciones: L-016, L-018, L-022, L-007.
+  `verificar_tablas_de_solo_agregar(engine)` y `TablasDeSoloAgregarDesprotegidas` en `base_de_datos.py`,
+  con `schemaname = 'public'`, llamada en la API, el worker, `alta_inicial` y `ejemplo`; la API y el worker
+  la atrapan y registran `arranque_fallido`. Sin variable para saltearlo: los tests que levantan la app
+  sin migrar usan `monkeypatch`. Tests: con `configuracion_versionada` del migrador no arrancan la API, el
+  worker, `alta_inicial` ni `ejemplo`, y el log `arranque_fallido` nombra la tabla sin valores; con una
+  tabla homónima del rol de arranque en otro esquema, tampoco; con una tabla del conjunto inexistente,
+  tampoco; con todo en orden arrancan; el conjunto de D0 coincide con el catálogo (una tabla de prueba
+  con `FORCE` y trigger de bloqueo fuera del conjunto da rojo nombrándola). RED: con la función sin
+  consultar el catálogo, la API arranca con la tabla del migrador. Escenarios:
+  `aislamiento-por-administracion` › Una tabla quedó del migrador; › Una tabla homónima en otro esquema;
+  › El conjunto coincide con el catálogo; › Todo en orden. Lecciones: L-016, L-018, L-022, L-007.
 
-## 6. Deuda D-053 (design D10)
+## 6. Deuda D-053 (design D5, D10)
 
-- [ ] 6.1 **`except TypeError` muerto y ceros de más.** Tests primero: en `leer_parametros`, raíz que
-  no es un mapa y claves que no son texto fallan con `ParametrosInvalidos` cortados por `cargar_yaml`,
-  sin traceback; el mismo par en el lector de la semilla (L-009); `Dinero("1.0000")` y
-  `Dinero("1.000")` fallan. Después se borra el `except TypeError` y los tests siguen en verde. RED:
-  mutar en una copia (L-013) `cargar_yaml` para que deje pasar una raíz lista y ver que el test cae en
-  su aserción (no en un `TypeError` sin atrapar que el test confunda con el error esperado). Escenarios:
-  `representacion-de-montos` › Ceros de más. Lecciones: L-009, L-013, L-007.
+- [ ] 6.1 **`except TypeError` muerto y los ceros de más de `Dinero` (D-114.6).** Tests: en
+  `leer_parametros`, raíz que no es un mapa y claves que no son texto fallan con `ParametrosInvalidos`
+  cortados por `cargar_yaml`, sin traceback; el mismo par en el lector de la semilla (L-009);
+  `desde_decimal(Decimal("1.0000"))` y `desde_decimal(Decimal("0.3000"))` dan `1.00` y `0.30`;
+  `desde_decimal` de `1.005` y `1.0001` falla; `Dinero("1.0000")` y `Dinero("1.000")` fallan. Todos nacen
+  verdes (fijación). Se borra el `except TypeError` y **después** se corre el mutante de `cargar_yaml`
+  que deja pasar una raíz lista (con el `except` todavía, lo atraparía). Mutantes de `Dinero`, cada uno
+  rojo en su aserción: `desde_decimal` sin la comparación `cuantizado != valor` (acepta `1.005`); el
+  patrón del texto con `\d{1,4}` y `quantize` (acepta `"1.0000"`). Escenarios: `representacion-de-montos`
+  › Ceros de más desde la base; › Un decimal que cambiaría; › Ceros de más en texto. Lecciones: L-009,
+  L-013, L-007, L-035.
 
 ## 7. Cierre
 

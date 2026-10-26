@@ -27,7 +27,8 @@ total, al centavo. Cada parte exacta es el total por su peso dividido por la sum
 #### Scenario: Pesos que no suman uno
 
 - **WHEN** se reparten $100,00 entre dos partes con pesos 0.4999 y 0.5
-- **THEN** cada parte es proporcional a su peso sobre 0.9999 y la suma da $100,00
+- **THEN** la primera recibe $49,99 y la segunda $50,01 (cada parte sobre 0.9999, no sobre 1), y la
+  suma da $100,00
 
 #### Scenario: Total cero
 
@@ -51,6 +52,11 @@ o más de su parte exacta. Un total negativo se reparte como el positivo, con el
 - **WHEN** se reparten $100,00 entre tres partes con pesos 0.333333, 0.333333 y 0.333334
 - **THEN** la tercera recibe $33,34 y las otras dos $33,33
 
+#### Scenario: Mayor resto, no mayor peso
+
+- **WHEN** se reparten $0,05 entre tres partes con pesos 0.6, 0.25 y 0.15
+- **THEN** reciben $0,03, $0,01 y $0,01 (dar el centavo al de mayor peso daría $0,04, $0,01 y $0,00)
+
 #### Scenario: Total negativo
 
 - **WHEN** se reparten -$2,00 entre las mismas tres partes de igual peso
@@ -58,14 +64,21 @@ o más de su parte exacta. Un total negativo se reparte como el positivo, con el
 
 ### Requirement: El empate se resuelve siempre igual
 
-Ante restos iguales, el centavo SHALL ir primero a la parte con menor clave de orden, y la clave MUST
-ordenar los identificadores de unidad en orden natural (los tramos de dígitos como número), con el id
-como último desempate. El resultado MUST NOT depender del orden en que llegan las partes.
+Ante restos iguales, el centavo SHALL ir primero a la parte con menor clave de orden. La clave MUST
+ordenar los identificadores en orden natural: tramos de dígitos ASCII como número, tramos de texto sin
+distinguir mayúsculas, y un tramo de dígitos antes que uno de texto; el id es el último desempate. El
+resultado MUST NOT depender del orden en que llegan las partes.
 
 #### Scenario: Orden natural, no de texto
 
 - **WHEN** se reparten $2,00 en partes iguales entre las unidades "1", "2" y "10"
 - **THEN** "1" y "2" reciben $0,67 y "10" recibe $0,66
+
+#### Scenario: Identificadores que empiezan con letra y con número
+
+- **WHEN** se ordenan con la clave los identificadores "L-PB", "1A", "C1", "B1" y "10A" (los de la
+  semilla del edificio de ejemplo)
+- **THEN** el orden es "1A", "10A", "B1", "C1", "L-PB", sin error
 
 #### Scenario: Mismo resultado con las partes en otro orden
 
@@ -94,13 +107,20 @@ pesos son cero o dos partes comparten clave.
 El reparto SHALL tener pruebas de propiedades sobre totales y pesos generados, con un oráculo que
 calcula la parte exacta con aritmética racional y no reusa la función de producción. Las propiedades
 MUST incluir: suma exacta, distancia menor a un centavo, centavo extra sólo a restos mayores o iguales,
-y resultado independiente del orden.
+y resultado independiente del orden; la generación MUST forzar empates de resto y mezclar
+identificadores que empiezan con letra y con número.
 
 #### Scenario: Un error de fórmula compartido no pasa
 
 - **WHEN** en una copia de la función de producción se reemplaza el truncado por un redondeo medio
   hacia arriba
 - **THEN** la prueba de propiedades encuentra un contraejemplo y da rojo en la aserción de suma exacta
+
+#### Scenario: Cada propiedad tiene su mutante
+
+- **WHEN** en copias de la función se desempata por la posición de entrada, se da el centavo al mayor
+  peso en vez de al mayor resto, o se deja de normalizar por la suma de los pesos
+- **THEN** cada copia da rojo en la propiedad que le corresponde (orden, restos y distancia)
 
 ### Requirement: Un monto suelto se redondea medio hacia arriba
 

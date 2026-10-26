@@ -36,6 +36,11 @@ fuera del rango de `NUMERIC(14,2)` MUST fallar con el error de monto inválido, 
 - **WHEN** se suman `"0.10"` y `"0.20"`, y se resta `"0.30"` al resultado
 - **THEN** la suma es `"0.30"` y la resta `"0.00"`
 
+#### Scenario: Negación
+
+- **WHEN** se niega el monto `"12.50"` y el monto `"0.00"`
+- **THEN** dan `"-12.50"` y `"0.00"`
+
 #### Scenario: Sumar un número que no es monto
 
 - **WHEN** se suma el monto `"1.00"` con el `int` `1`, el `float` `0.5` o el `Decimal` `"0.5"`
@@ -51,12 +56,25 @@ fuera del rango de `NUMERIC(14,2)` MUST fallar con el error de monto inválido, 
 - **WHEN** se suman los montos de una lista vacía con la función de suma de montos
 - **THEN** el resultado es `"0.00"`
 
-### Requirement: Un monto con ceros de más se rechaza
+### Requirement: Un decimal de la base con ceros de más se acepta si el valor no cambia
 
-Un texto con más de dos decimales SHALL rechazarse aunque los decimales sobrantes sean ceros: el monto
-nunca normaliza en silencio la entrada (deuda D-053).
+Convertir un valor decimal que llega de la base (incluido el resultado de un `SUM()` o de una columna
+sin escala) SHALL aceptar ceros de más cuando llevarlo a dos decimales no cambia el valor, y MUST
+rechazar con el error de monto inválido todo valor que cambiaría o perdería precisión. Un texto con más
+de dos decimales MUST seguir rechazándose, aunque sean ceros (D-114.6, corrige la nota de D-053).
 
-#### Scenario: Ceros de más
+#### Scenario: Ceros de más desde la base
 
-- **WHEN** se construye un monto desde `"1.0000"` o `"1.000"`
+- **WHEN** se convierte el decimal `1.0000`, o el `0.3000` que devuelve un `SUM()` sobre una columna
+  sin escala
+- **THEN** el monto es `"1.00"` y `"0.30"`, respectivamente
+
+#### Scenario: Un decimal que cambiaría
+
+- **WHEN** se convierte el decimal `1.005` o `1.0001`
+- **THEN** la conversión falla con el error de monto inválido, en lugar de redondear
+
+#### Scenario: Ceros de más en texto
+
+- **WHEN** se construye un monto desde el texto `"1.0000"` o `"1.000"`
 - **THEN** cada construcción falla con el error de monto inválido

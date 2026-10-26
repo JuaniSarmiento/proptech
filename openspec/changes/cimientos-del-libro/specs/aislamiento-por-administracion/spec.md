@@ -45,61 +45,112 @@ idempotente y funcionar también sobre un volumen de datos que ya existía.
 
 El paso de roles posterior a las migraciones SHALL dejar cada tabla del conjunto de sólo agregar, y las
 funciones de sus triggers, con dueño el rol de arranque, y el paso anterior MUST NOT devolvérselas al
-migrador. Una tabla que se sume al conjunto MUST quedar cubierta sin cambiar el paso de roles.
+migrador. El conjunto MUST declararse en un solo lugar, que leen el paso de roles, el chequeo de
+arranque y los tests.
 
 #### Scenario: Volumen del 3a, donde el migrador era dueño
 
-- **WHEN** se levanta el stack sobre un volumen donde `configuracion_versionada` es de
-  `proptech_migrador`
+- **WHEN** se levanta el stack sobre un volumen donde `configuracion_versionada` y su función de
+  bloqueo son de `proptech_migrador`
 - **THEN** las migraciones pendientes corren como migrador, y al terminar el paso posterior la tabla y
   su función de bloqueo son del rol de arranque
 
 #### Scenario: Una migración futura sobre una tabla protegida
 
 - **WHEN** con `configuracion_versionada` ya del rol de arranque, una migración nueva corrida como
-  `proptech_migrador` intenta un `ALTER TABLE` sobre ella
-- **THEN** la migración falla con el error de no ser el dueño y no queda aplicada a medias
+  `proptech_migrador` hace un cambio que sale bien y después un `ALTER TABLE` sobre ella
+- **THEN** la migración falla con el error de no ser el dueño, el primer cambio tampoco queda y
+  `alembic_version` no cambia
 
 #### Scenario: Bajar la migración que agrega el umbral
 
 - **WHEN** se intenta bajar la migración `0021` como `proptech_migrador` después del paso posterior
-- **THEN** falla por no ser el dueño, y con la tabla devuelta al migrador por el rol de arranque baja y
-  vuelve a subir sin perder versiones
+- **THEN** falla por no ser el dueño; con la tabla y su función devueltas al migrador por el rol de
+  arranque, baja y vuelve a subir sin perder versiones, y todas quedan con umbral "500.00" (un umbral
+  distinto que se haya cargado se pierde)
+
+### Requirement: Toda tabla de sólo agregar bloquea también por sentencia
+
+Toda tabla del conjunto de sólo agregar, salvo `auditoria`, SHALL tener, además de sus triggers por
+fila, un trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` con la misma función de bloqueo
+(D-114.4). Ese trigger MUST bloquear también `INSERT ... ON CONFLICT DO UPDATE`.
+
+#### Scenario: Sentencia sin filas
+
+- **WHEN** como rol dueño se corre `UPDATE configuracion_versionada SET tasa_mensual = tasa_mensual
+  WHERE false` o `DELETE FROM configuracion_versionada WHERE false`, con la tabla vacía
+- **THEN** la base lo rechaza con el error del trigger
+
+#### Scenario: Insertar con actualización ante conflicto
+
+- **WHEN** se inserta una versión con `ON CONFLICT DO UPDATE`
+- **THEN** la base lo rechaza con el error del trigger, aunque no haya conflicto
 
 ### Requirement: La protección de cada tabla de sólo agregar se verifica por el efecto
 
 Al terminar, el paso de roles SHALL confirmar en cada tabla del conjunto: RLS habilitada y forzada,
-triggers de bloqueo presentes y habilitados, sus funciones del rol de arranque, y que un `UPDATE` y un
-`DELETE` reales fallen con el error del trigger. `TRUNCATE` MUST probarse ejecutado, o por catálogo sólo
-si una FK entrante lo impide. Si algo falta, MUST fallar nombrándolo, sin confirmar nada.
+triggers de bloqueo presentes y habilitados, sus funciones del rol de arranque, y que `UPDATE`,
+`DELETE` y `TRUNCATE` ejecutados fallen con el error del trigger de esa tabla. Si algo falta, MUST
+fallar nombrándolo, sin confirmar nada.
 
 #### Scenario: Trigger deshabilitado
 
-- **WHEN** antes del paso posterior alguien deshabilitó el trigger de `UPDATE` de
+- **WHEN** antes del paso posterior alguien deshabilitó el trigger por sentencia de
   `configuracion_versionada`
 - **THEN** el paso falla nombrando la tabla y el trigger, y no confirma ningún cambio de dueño
 
 #### Scenario: Función de bloqueo reemplazada por una que no hace nada
 
-- **WHEN** la función del trigger de `configuracion_versionada` fue reemplazada por una que devuelve la
-  fila sin error
+- **WHEN** la función del trigger de `configuracion_versionada` fue reemplazada por una que devuelve sin
+  error
 - **THEN** el paso falla diciendo que la tabla admite `UPDATE`
+
+#### Scenario: RLS deshabilitada con FORCE intacto
+
+- **WHEN** `configuracion_versionada` tiene `FORCE ROW LEVEL SECURITY` pero RLS deshabilitada
+- **THEN** el paso falla nombrando la tabla
 
 #### Scenario: Otro error frena el intento
 
-- **WHEN** el intento de `DELETE` falla por un motivo distinto del error del trigger
+- **WHEN** el intento de `DELETE` falla con un error distinto del texto del trigger de esa tabla
 - **THEN** el paso falla diciendo que no pudo confirmar el bloqueo, en lugar de darlo por bueno
+
+#### Scenario: TRUNCATE con una FK entrante
+
+- **WHEN** una tabla del conjunto tiene una FK que la referencia
+- **THEN** el bloqueo de `TRUNCATE` se prueba con `TRUNCATE ... CASCADE` dentro de un savepoint que se
+  revierte, exigiendo el error del trigger de esa tabla
+
+#### Scenario: Una tabla del conjunto no existe
+
+- **WHEN** el paso posterior corre y una tabla del conjunto no existe todavía
+- **THEN** la saltea y lo dice en su salida, y el chequeo de arranque de los procesos es el que la
+  rechaza
 
 ### Requirement: Los procesos no arrancan si una tabla de sólo agregar tiene otro dueño
 
-La API y el worker SHALL verificar al arrancar, antes de aceptar pedidos o tareas, que cada tabla del
-conjunto de sólo agregar existe y es de un rol superusuario; si no, MUST NOT arrancar y MUST nombrar
-cada tabla con problema, sin mostrar ningún valor de configuración.
+La API, el worker y los comandos que ya verifican su rol SHALL verificar al arrancar que cada tabla del
+conjunto existe en el esquema `public` y es de un rol superusuario; si no, MUST NOT arrancar, con un
+error propio registrado como `arranque_fallido` que nombra cada tabla sin ningún valor. MUST NOT
+existir forma de saltear el chequeo por configuración.
 
 #### Scenario: Una tabla quedó del migrador
 
-- **WHEN** `configuracion_versionada` es de `proptech_migrador` y arranca la API
-- **THEN** la API no arranca y el log nombra `configuracion_versionada` y el motivo
+- **WHEN** `configuracion_versionada` es de `proptech_migrador` y arranca la API, el worker,
+  `alta_inicial` o la carga del ejemplo
+- **THEN** ninguno arranca y el log `arranque_fallido` nombra `configuracion_versionada` y el motivo
+
+#### Scenario: Una tabla homónima en otro esquema
+
+- **WHEN** la tabla de `public` es del migrador y existe otra con el mismo nombre, del rol de arranque,
+  en otro esquema o como tabla temporal
+- **THEN** la API no arranca
+
+#### Scenario: El conjunto coincide con el catálogo
+
+- **WHEN** existe en `public` una tabla con `FORCE ROW LEVEL SECURITY` y un trigger de bloqueo de
+  `UPDATE` que no está en el conjunto
+- **THEN** un test lo detecta nombrando la tabla
 
 #### Scenario: Todo en orden
 

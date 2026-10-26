@@ -5,30 +5,44 @@
 ### Requirement: Cada versión lleva su umbral de saldos chicos
 
 Cada versión de configuración SHALL guardar el umbral de saldos chicos de R30 como monto no negativo
-(D-109.3). Si una versión nueva no lo trae, MUST tomar el de la versión vigente del edificio, y en la
-primera versión el de `parametros.yaml`. La lectura de versiones MUST devolverlo como texto con dos
-decimales. Las versiones previas a este cambio MUST quedar con $500,00.
+(D-109.3). Si una versión nueva no lo trae (ausente o `null`), MUST tomar el de la versión
+inmediatamente anterior por `vigente_desde`, aunque sea futura, y si no hay ninguna, el de
+`parametros.yaml` (D-114.1). La lectura MUST devolverlo como texto con dos decimales.
 
 #### Scenario: Versión nueva sin umbral
 
-- **WHEN** un edificio tiene vigente una versión con umbral "300.00" y el administrador crea una versión
-  nueva cambiando sólo la tasa
+- **WHEN** un edificio tiene vigente una versión con umbral "300.00" y se crea una versión nueva
+  cambiando sólo la tasa
 - **THEN** la versión nueva tiene umbral "300.00" y la anterior sigue igual
+
+#### Scenario: Hereda de la anterior por fecha, aunque sea futura
+
+- **WHEN** v1 rige desde hoy con umbral "300.00", v2 está programada para diciembre con "700.00", y se
+  crea v3 para enero sin umbral
+- **THEN** v3 tiene "700.00"; y una v4 creada para noviembre sin umbral tiene "300.00"
+
+#### Scenario: Null explícito
+
+- **WHEN** el cuerpo de una versión nueva trae el umbral en `null`
+- **THEN** el resultado es el mismo que si el campo no viniera
 
 #### Scenario: Primera versión de un edificio nuevo
 
-- **WHEN** se crea un edificio y con él su primera versión de configuración
-- **THEN** la versión tiene el umbral de `parametros.yaml`, "500.00"
+- **WHEN** se crea un edificio con su configuración inicial sin umbral
+- **THEN** la respuesta es 201 y la primera versión tiene el umbral de `parametros.yaml`, "500.00"
 
 #### Scenario: Umbral explícito
 
-- **WHEN** el administrador crea una versión con umbral "750.00"
-- **THEN** la versión queda con "750.00" y la lectura lo devuelve igual
+- **WHEN** un cliente de la API crea una versión con umbral "750.00", o en el alta del edificio con
+  "0.00"
+- **THEN** la versión queda con ese valor y la lectura lo devuelve igual (en el 4a no hay pantalla que
+  lo cargue)
 
 #### Scenario: Umbral inválido
 
-- **WHEN** el umbral llega como `500` (número JSON), "-1.00", "1.001" o "abc"
-- **THEN** la respuesta es 422 nombrando el umbral, sin repetir el valor, y no se crea la versión
+- **WHEN** el umbral llega como `500` (número JSON), "-1.00", "1.001" o "abc", en una versión o en el
+  alta de un edificio
+- **THEN** la respuesta es 422 nombrando el umbral, sin repetir el valor, y no se crea nada
 
 #### Scenario: Versiones anteriores a este cambio
 
@@ -38,4 +52,5 @@ decimales. Las versiones previas a este cambio MUST quedar con $500,00.
 #### Scenario: El umbral no se edita por SQL
 
 - **WHEN** `proptech_app` intenta `UPDATE` del umbral de una versión existente
-- **THEN** la base lo rechaza, igual que con cualquier otra columna de la versión
+- **THEN** la base lo rechaza por permisos (SQLSTATE `42501`), y como rol dueño lo rechaza el trigger
+  de bloqueo
