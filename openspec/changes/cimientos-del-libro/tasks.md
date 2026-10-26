@@ -2331,6 +2331,112 @@ valor, no representación). `cargador_yaml.py` queda sin diff contra HEAD.
   completo de GitHub Actions leído en verde antes de decir "listo". Si el código cambia después, la
   corrida queda vencida y se repite. Lecciones: L-003, L-010, L-031, L-037.
 
+**EVIDENCIA · 26/10/2026 · constructor — corrida de cierre, SIN push (no autorizado para este
+constructor)**
+
+SHA: `d562ac1` (commit de la 6.1, HEAD de `change/cimientos-del-libro` en este momento).
+
+```text
+EVIDENCIA — número de tests, HEAD vs main@de3c710
+command: cd backend && uv run pytest --collect-only -q
+time: 12:03:27
+2840 tests collected (HEAD d562ac1)
+
+command: (worktree temporal en /tmp, checkout de3c710) cd backend && uv sync --locked && uv run pytest --collect-only -q
+time: 12:03:42
+2689 tests collected (main@de3c710)
+No bajó: +151 tests sobre main (los grupos 1 a 6 de este change). Nada que explicar por este lado.
+```
+
+```text
+EVIDENCIA — ruff/mypy backend (como el CI)
+command: cd backend && uv run ruff check . && uv run ruff format --check .
+time: 12:03:56
+All checks passed! / 298 files already formatted
+command: uv run mypy
+time: 12:04:01
+Success: no issues found in 272 source files
+```
+
+```text
+EVIDENCIA — web: Biome, tsc, vitest, Playwright (Chromium)
+command: cd web && pnpm biome ci
+time: 12:04:04
+exit=0, Checked 190 files, Found 7 warnings (preexistentes, ningún archivo de web tocado por este
+constructor — ni la 6.1 ni esta corrida escribieron nada bajo web/)
+command: pnpm tsc --noEmit
+time: 12:04:19
+sin salida (0 errores)
+command: bash infra/ci/test-web.sh
+time: 12:04:23
+Test Files 60 passed (60) / Tests 395 passed (395), 37.29s
+command: bash infra/ci/test-web-navegador.sh
+time: 12:05:10
+172 passed (4.2m) — next build + next start + Playwright Chromium, sin Docker, nunca toca el compose
+`proptech` ni blendpos-*/proxy-app-1.
+```
+
+```text
+EVIDENCIA — bash infra/ci/test-backend.sh (suite completa) — ROJO
+command: bash infra/ci/test-backend.sh
+time inicio: 11:45:27  time fin: ~11:57 (716.66s, 0:11:56)
+========= 22 failed, 2481 passed, 1 xfailed, 18 warnings, 336 errors in 716.66s (0:11:56) =========
+(2481+22+336+1 = 2840, coincide con el collect-only de arriba: no es que falten tests, es que fallan
+de verdad)
+```
+
+Diagnóstico de la causa (no es la 6.1; no toqué `roles.py`, `base_de_datos.py` ni migraciones):
+```text
+EVIDENCIA — reproducido aislado, con el mismo HEAD
+command: bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py
+time: 11:59:35
+================= 34 passed, 1 warning, 291 errors in 82.55s (0:01:22) =================
+
+command: bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py -x
+time: 11:59:44
+ERROR at setup of test_el_cliente_cierra_sus_conexiones_sin_depender_del_gc
+  ... src/proptech_api/app.py:92: in lifespan -> verificar_tablas_de_solo_agregar(engine)
+  proptech_core.compartido.base_de_datos.TablasDeSoloAgregarDesprotegidas:
+  tablas de sólo agregar desprotegidas: auditoria: dueño no superusuario;
+  configuracion_versionada: dueño no superusuario
+```
+```text
+EVIDENCIA — el diff de la 6.1 no toca nada de esto
+command: git diff --stat 1672614 HEAD
+time: 12:03:xx
+ backend/src/proptech_core/compartido/dinero.py     |   4 +-
+ backend/src/proptech_core/compartido/parametros.py |   4 -
+ backend/tests/unitarios/test_deuda_d053.py         |  50 +++++++
+ openspec/changes/cimientos-del-libro/tasks.md      | 158 ++++++++++++++++++++-
+(roles.py, base_de_datos.py y alembic/ no aparecen)
+```
+
+**JUICIO (constructor, confianza alta — reproducido dos veces de forma determinística, aislado, y
+confirmado por `git diff --stat` que el único commit de la 6.1 no toca ninguno de los archivos
+involucrados):** el fallo es de **antes de la 6.1**, nace en `1672614` ("proteger las tablas de sólo
+agregar al arrancar", grupo 5.3). Esa tarea agregó `verificar_tablas_de_solo_agregar()` al lifespan de
+arranque de la API; cualquier test que construye `app_real`/`TestClient` ahora pasa por esa
+verificación. El cierre del grupo 5.3 (`GREEN-grupo5-final`, 102 passed) nunca corrió
+`tests/integracion/test_rutas_protegidas.py` — no estaba en su lista de archivos — así que este hueco
+quedó sin ver hasta esta corrida de cierre, que es justo lo que la 7.1 existe para atrapar. No
+diagnostiqué la causa EXACTA dentro de `roles.py::despues()` (candidatos: el rol de arranque del
+contenedor de test no queda `rolsuper` donde se espera, o algo en el orden
+`alembic upgrade head` → `roles despues` no deja ambas tablas con el dueño correcto) — eso es trabajo
+de otro constructor/rompedor sobre el grupo 5.3, fuera del alcance que se me dio (6.1 + 7.1).
+
+**No ejecuté `bash infra/ci/humo.sh`.** Lee su propio código (`infra/ci/humo.sh:39-64`): define
+`compose() { docker compose -p proptech ... }` y el `trap limpiar EXIT` hace SIEMPRE
+`compose down -v --remove-orphans` sobre el proyecto `proptech` (pase o falle el resto del script).
+Correrlo bajaría y borraría los volúmenes de ese proyecto Compose. Según la instrucción recibida, no lo
+corrí.
+
+**No pusheé la rama** (instrucción explícita) **ni leí CI de GitHub Actions** (no hay push). El resto
+de la 7.1 tal como está escrita en la tarea (push + CI verde) queda sin cumplir a propósito.
+
+Dejo el casillero sin marcar: la corrida de cierre existe y está documentada, pero no es verde — el
+backend tiene 22 failed / 336 errors por una causa ajena a este constructor. No marco [x] una corrida
+roja.
+
 ## Workflow follow-up
 
 - Romper y auditar (ciclo completo, `14_forma_de_trabajo.md`); rompedor y auditor de una familia de
