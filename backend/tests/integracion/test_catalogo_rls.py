@@ -52,7 +52,14 @@ _TABLAS_TECNICAS = {
 _PERMISOS_ANGOSTOS = {"candado_de_cuenta": {"SELECT", "INSERT", "UPDATE"}}
 #: 4b: el libro tiene trigger por sentencia; la sonda no necesita una fila (y sus NOT NULL
 #: harían falsa la inserción mínima).
-_SONDA_SIN_FILA = {"cuenta", "emision", "evento_de_emision", "obligacion", "movimiento", "imputacion"}
+_SONDA_SIN_FILA = {
+    "cuenta",
+    "emision",
+    "evento_de_emision",
+    "obligacion",
+    "movimiento",
+    "imputacion",
+}
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}
 
