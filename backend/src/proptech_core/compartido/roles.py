@@ -30,7 +30,7 @@ _TABLAS_EXCLUIDAS_DE_LA_REASIGNACION = frozenset(TABLAS_DE_SOLO_AGREGAR)
 #: `accion_de_auditoria` (vuelta 2, R3): el vocabulario de D1 es sólo
 #: `SELECT` para la app, nunca los cuatro permisos del grant amplio.
 _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset(
-    {"alembic_version", "auditoria", "accion_de_auditoria"}
+    {"alembic_version", "auditoria", "accion_de_auditoria", "tipo_de_movimiento"}
 )
 
 # D0: conjunto derivado de la declaración única; auditoria conserva su sonda propia.
@@ -43,7 +43,11 @@ _TABLAS_DE_SOLO_AGREGAR = frozenset(TABLAS_DE_SOLO_AGREGAR)
 #: `GRANT` explícito de `antes()`; los `ALTER DEFAULT PRIVILEGES` igual le dan
 #: a la app los cuatro permisos la primera vez que Alembic la crea. La app sí
 #: necesita LEERLA (confirmar que las migraciones corrieron); nunca escribirla.
-_TABLAS_DE_SOLO_LECTURA_PARA_LA_APP = frozenset({"alembic_version"})
+_TABLAS_DE_SOLO_LECTURA_PARA_LA_APP = frozenset({"alembic_version", "tipo_de_movimiento"})
+
+#: E2 (DB-11): la app bloquea y crea el candado, nunca lo borra. `antes()` no le
+#: devuelve DELETE en un segundo deploy (F1-06).
+_PERMISOS_ANGOSTOS_DE_LA_APP = {"candado_de_cuenta": "SELECT, INSERT, UPDATE"}
 
 
 def _conectar(configuracion: ConfiguracionDeArranque) -> psycopg.Connection:
@@ -200,9 +204,10 @@ def _otorgar_permisos_explicitos_a_la_app(cur: psycopg.Cursor, app: str) -> None
     for tabla in _tablas_de_public(cur):
         if tabla in _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP | _TABLAS_DE_SOLO_AGREGAR:
             continue
+        permisos = _PERMISOS_ANGOSTOS_DE_LA_APP.get(tabla, "SELECT, INSERT, UPDATE, DELETE")
         cur.execute(
-            sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {tabla} TO {app};").format(
-                tabla=sql.Identifier(tabla), app=sql.Identifier(app)
+            sql.SQL("GRANT {permisos} ON {tabla} TO {app};").format(
+                permisos=sql.SQL(permisos), tabla=sql.Identifier(tabla), app=sql.Identifier(app)
             )
         )
     for secuencia in _secuencias_de_public(cur):
@@ -676,7 +681,11 @@ def _verificar_tabla_protegida(
             try:
                 cur.execute(sentencia)
             except psycopg.Error as error:
-                if error.sqlstate != "P0001" or declaracion.mensaje not in str(error):
+                # Prefijo, no subcadena: "emision no admite" está DENTRO de
+                # "evento_de_emision no admite" (QA-15 del 4b), pero no al principio.
+                if error.sqlstate != "P0001" or not (error.diag.message_primary or "").startswith(
+                    declaracion.mensaje
+                ):
                     faltantes.append(
                         f"no se pudo confirmar bloqueo de {nombre}: "
                         f"error distinto (SQLSTATE {error.sqlstate})"
@@ -695,8 +704,7 @@ def _verificar_tabla_protegida(
 def despues(configuracion: ConfiguracionDeArranque) -> None:
     """El paso `despues` de D2 (D9, D0 del 4a), en una sola transacción.
 
-    Para cada tabla de `TABLAS_DE_SOLO_AGREGAR` que exista (hoy `auditoria` y
-    `configuracion_versionada`): la transfiere al rol de arranque junto con las
+    Para cada tabla de `TABLAS_DE_SOLO_AGREGAR` que exista: la transfiere al arranque con las
     funciones de sus triggers (con `search_path` vacío), le saca a la app
     `UPDATE`/`DELETE`/`TRUNCATE` y le deja sólo `SELECT, INSERT`. Una tabla
     declarada que no existe se saltea con un aviso, sin error.
@@ -719,6 +727,7 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
     Alembic: no se corre sobre revisiones intermedias.
     """
     app = ConfiguracionDeAppSoloPostgres()
+    migrador = ConfiguracionDelMigrador()
 
     conexion = _conectar(configuracion)
     try:
@@ -753,12 +762,34 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                             sql.Identifier(tabla), sql.Identifier(app.postgres_user)
                         )
                     )
+                    # E15: REFERENCES sólo en las seis tablas del libro; sin propiedad ni DML.
+                    if tabla in {
+                        "cuenta",
+                        "emision",
+                        "evento_de_emision",
+                        "obligacion",
+                        "movimiento",
+                        "imputacion",
+                    }:
+                        cur.execute(
+                            sql.SQL("GRANT REFERENCES ON {} TO {}").format(
+                                sql.Identifier("public", tabla),
+                                sql.Identifier(migrador.postgres_user),
+                            )
+                        )
                     if not TABLAS_DE_SOLO_AGREGAR[tabla].verificacion_con_fila:
                         _verificar_tabla_protegida(
                             cur, tabla, TABLAS_DE_SOLO_AGREGAR[tabla], configuracion.postgres_user
                         )
                 else:
                     print(f"tabla protegida {tabla}: no existe, se saltea")
+            # El candado permite bloquear/actualizar, pero nunca borrar desde la app (E2).
+            if _existe_tabla(cur, "candado_de_cuenta"):
+                cur.execute(
+                    sql.SQL("REVOKE DELETE ON candado_de_cuenta FROM {}").format(
+                        sql.Identifier(app.postgres_user)
+                    )
+                )
             # Revisión final (19/10/2026), arreglo 8: `REVOKE ALL` primero
             # (deshace lo que los DEFAULT PRIVILEGES regalaron, cualquiera
             # sea el permiso) y recién después el `GRANT SELECT` angosto —

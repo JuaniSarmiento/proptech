@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from alembic.script import ScriptDirectory
 from psycopg import sql
 
 from ._edificios import BaseDeEdificio
@@ -62,7 +63,7 @@ def test_deploy_3a_y_rollback(base_para_migraciones: BaseDeEdificio) -> None:
         ).fetchone() == (base.contenedor.username,)
     with pytest.raises(AssertionError, match="must be owner"):
         base.migrar("downgrade", "0020")
-    devolver_configuracion(base)
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0020")
     base.migrar("upgrade", "head")
     with arranque(base) as c:
@@ -81,9 +82,10 @@ def test_migracion_futura_revierte_todo(
     raiz = Path(__file__).resolve().parents[2]
     copia = tmp_path / "migraciones"
     shutil.copytree(raiz / "migraciones", copia)
-    (copia / "versions" / "0023_sonda.py").write_text("""from alembic import op
-revision = '0023'
-down_revision = '0022'
+    cabeza = ScriptDirectory(str(raiz / "migraciones")).get_current_head()
+    (copia / "versions" / "sonda_atomica.py").write_text(f"""from alembic import op
+revision = 'sonda_atomica'
+down_revision = {cabeza!r}
 def upgrade():
     op.execute('CREATE TABLE sonda_atomica (id int)')
     op.execute('ALTER TABLE configuracion_versionada ADD COLUMN no_debe_quedar int')
@@ -106,4 +108,4 @@ def downgrade():
     assert r.returncode != 0 and "must be owner" in r.stderr
     with arranque(base) as c:
         assert c.execute("SELECT to_regclass('public.sonda_atomica')").fetchone() == (None,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0022",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == (cabeza,)
