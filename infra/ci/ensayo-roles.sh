@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RD-2 y 2b/3.3: respaldo del humo restaurado aparte, ida/vuelta hasta 0020.
+# RD-2 y 2b/3.3: respaldo del humo restaurado aparte, ida/vuelta hasta la cabeza de Alembic.
 # Supuesto del design: no hay producción ni datos reales. Todo lo sembrado es ficticio.
 set -euo pipefail
 
@@ -156,7 +156,7 @@ verificar_conteos legado "$CARPETA_ENSAYO/antes.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
 
 migrar_restaurada upgrade head
-verificar_revision 0020
+verificar_revision 0022
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
 migrar_restaurada downgrade 0016
@@ -165,7 +165,7 @@ conteos proptech_restauracion "$CARPETA_ENSAYO/downgrade.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/downgrade.txt"
 cmp "$CARPETA_ENSAYO/antes.txt" "$CARPETA_ENSAYO/downgrade.txt"
 migrar_restaurada upgrade head # segundo upgrade
-verificar_revision 0020
+verificar_revision 0022
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"

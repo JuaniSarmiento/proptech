@@ -67,40 +67,9 @@ class BaseDeEdificio:
 
     def devolver_tablas_protegidas(self) -> None:
         """Sólo tests: procedimiento firmado de rollback, rol de arranque explícito."""
-        from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
-
-        c = self.contenedor
-        with psycopg.connect(
-            host=c.get_container_host_ip(),
-            port=c.get_exposed_port(5432),
-            user=c.username,
-            password=c.password,
-            dbname=self.nombre,
-            autocommit=True,
-        ) as conexion:
-            for tabla in TABLAS_DE_SOLO_AGREGAR:
-                fila = conexion.execute("SELECT to_regclass(%s)", (f"public.{tabla}",)).fetchone()
-                if fila is None or fila[0] is None:
-                    continue
-                conexion.execute(
-                    sql.SQL("ALTER TABLE {} OWNER TO {}").format(
-                        sql.Identifier("public", tabla),
-                        sql.Identifier(self.entorno["POSTGRES_MIGRADOR_USER"]),
-                    )
-                )
-                funciones = conexion.execute(
-                    "SELECT DISTINCT p.proname FROM pg_trigger t "
-                    "JOIN pg_proc p ON p.oid=t.tgfoid "
-                    "WHERE t.tgrelid=to_regclass(%s) AND NOT t.tgisinternal",
-                    (f"public.{tabla}",),
-                ).fetchall()
-                for funcion in funciones:
-                    conexion.execute(
-                        sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
-                            sql.Identifier("public", funcion[0]),
-                            sql.Identifier(self.entorno["POSTGRES_MIGRADOR_USER"]),
-                        )
-                    )
+        devolver_tablas_protegidas(
+            self.contenedor, self.nombre, self.entorno["POSTGRES_MIGRADOR_USER"]
+        )
 
     def conectar_app(self) -> psycopg.Connection:
         return psycopg.connect(
@@ -182,3 +151,43 @@ def insertar_miembro(
         "modo_de_coeficientes, coeficiente) VALUES (%s, %s, %s, %s, %s, %s)",
         (administracion_id, complejo_id, grupo_id, unidad_id, modo, coeficiente),
     )
+
+
+def devolver_tablas_protegidas(contenedor: PostgresContainer, base: str, migrador: str) -> None:
+    """Sólo tests: procedimiento firmado de rollback, rol de arranque explícito.
+
+    Después de `roles despues` las tablas de sólo agregar son del rol de
+    arranque y el migrador ya no puede bajarlas: esto se las devuelve antes
+    de un `alembic downgrade`, igual que el Migration Plan (D-114.5).
+    """
+    from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
+
+    with psycopg.connect(
+        host=contenedor.get_container_host_ip(),
+        port=contenedor.get_exposed_port(5432),
+        user=contenedor.username,
+        password=contenedor.password,
+        dbname=base,
+        autocommit=True,
+    ) as conexion:
+        for tabla in TABLAS_DE_SOLO_AGREGAR:
+            fila = conexion.execute("SELECT to_regclass(%s)", (f"public.{tabla}",)).fetchone()
+            if fila is None or fila[0] is None:
+                continue
+            conexion.execute(
+                sql.SQL("ALTER TABLE {} OWNER TO {}").format(
+                    sql.Identifier("public", tabla), sql.Identifier(migrador)
+                )
+            )
+            funciones = conexion.execute(
+                "SELECT DISTINCT p.proname FROM pg_trigger t "
+                "JOIN pg_proc p ON p.oid=t.tgfoid "
+                "WHERE t.tgrelid=to_regclass(%s) AND NOT t.tgisinternal",
+                (f"public.{tabla}",),
+            ).fetchall()
+            for funcion in funciones:
+                conexion.execute(
+                    sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
+                        sql.Identifier("public", funcion[0]), sql.Identifier(migrador)
+                    )
+                )

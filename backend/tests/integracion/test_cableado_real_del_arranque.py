@@ -38,6 +38,8 @@ from testcontainers.community.postgres import PostgresContainer
 
 from proptech_core.compartido.base_de_datos import RolDeAplicacionInseguro
 
+from ._edificios import devolver_tablas_protegidas
+
 pytestmark = pytest.mark.integracion
 
 #: Con el patrón `proptech_[a-z_]{1,40}` (D1, L-008): en el test de R8 este
@@ -108,9 +110,16 @@ def esquema(contenedor: PostgresContainer) -> Iterator[None]:
         _entorno_de_roles(contenedor),
     )
     _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+    # D3 del 4a: la base queda como la deja el deploy real (`infra/compose.yaml`),
+    # con `roles despues`; sin ese paso la API y el worker no arrancan, a propósito.
+    _correr(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+        _entorno_de_roles(contenedor),
+    )
     try:
         yield
     finally:
+        devolver_tablas_protegidas(contenedor, contenedor.dbname, MIGRADOR_USER)
         _correr(["uv", "run", "alembic", "downgrade", "base"], _alembic_env(contenedor))
 
 

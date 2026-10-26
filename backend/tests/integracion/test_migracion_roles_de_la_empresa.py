@@ -68,8 +68,12 @@ def base_roles(postgres_roles: PostgresContainer) -> Iterator[BaseDeEdificio]:
         base = BaseDeEdificio(c, nombre, {**entorno, "POSTGRES_DB": nombre})
         try:
             base.roles("antes")
+            # Sin `roles despues` en 0016: desde el 4a ese paso verifica la
+            # protección de la cabeza (el trigger por sentencia de 0021) y en
+            # una revisión intermedia falla cerrado, a propósito. El deploy
+            # sólo lo corre después de `upgrade head`; ninguna migración de
+            # 0017 a la cabeza toca `auditoria`, sólo `accion_de_auditoria`.
             base.migrar("upgrade", "0016")
-            base.roles("despues")
             yield base
         finally:
             arranque.execute(
