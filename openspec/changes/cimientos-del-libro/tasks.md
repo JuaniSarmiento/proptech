@@ -2325,11 +2325,24 @@ valor, no representación). `cargador_yaml.py` queda sin diff contra HEAD.
 
 ## 7. Cierre
 
-- [ ] 7.1 **Corrida de cierre después de la última vuelta.** Sobre el último commit del change, con el
+- [x] 7.1 **Corrida de cierre después de la última vuelta.** Sobre el último commit del change, con el
   SHA anotado: `bash infra/ci/test-backend.sh` completo, `bash infra/ci/humo.sh`, la suite de web, y el
   número de tests comparado con el de `main` en `de3c710` (si bajó, explicar). Push de la rama y el CI
   completo de GitHub Actions leído en verde antes de decir "listo". Si el código cambia después, la
   corrida queda vencida y se repite. Lecciones: L-003, L-010, L-031, L-037.
+
+  CIERRE (orquestador, 26/10/2026, verificado por el auditor final en 14-auditor-final.md):
+  ```text
+  $ gh run view 40362882093 --json headSha,event,conclusion,jobs
+  headSha 6f6fe6b22412ed9e8505bbf85e79b0e45fda883e · workflow_dispatch · attempt 1 · success
+  backend=success ("2843 passed, 1 xfailed") · web=success ("395 passed"; navegador "172 passed")
+  humo=success ("HUMO OK") · shellcheck=success · secretos=success
+  ```
+  Conteo contra `main@de3c710`: 2689 → 2843 + 1 xfailed (subió). El CI corrió por `workflow_dispatch`
+  porque la rama no tiene PR (el workflow no se dispara con push a una rama que no es `main`). Antes,
+  run 40357665108 sobre fd8584b: web cancelado por el timeout de 15 min (Chromium tardó 10 min en
+  instalarse; en el intento 2 los tests del navegador ya daban success); el timeout subió a 25 en
+  6f6fe6b. Este commit sólo marca la tarea: no toca código, así que la corrida sobre 6f6fe6b vale.
 
 **EVIDENCIA · 26/10/2026 · constructor — corrida de cierre, SIN push (no autorizado para este
 constructor)**
