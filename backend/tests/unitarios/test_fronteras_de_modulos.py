@@ -4,13 +4,16 @@ Recorre los imports con `ast`, nunca ejecutando el código de `proptech_core`.
 """
 
 import ast
+import os
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-RAIZ_SRC = Path(__file__).resolve().parents[2] / "src" / "proptech_core"
+RAIZ_SRC = Path(
+    os.environ.get("FRONTERAS_RAIZ", Path(__file__).resolve().parents[2] / "src" / "proptech_core")
+)
 RAIZ_API = Path(__file__).resolve().parents[2] / "src" / "proptech_api"
 
 
@@ -25,8 +28,8 @@ def _imports_de(archivo: Path) -> list[tuple[int, str | None]]:
                 resultado.append((0, alias.name))
         elif isinstance(nodo, ast.ImportFrom):
             resultado.append((nodo.level, nodo.module))
-            if nodo.module in (None, "proptech_core"):
-                for alias in nodo.names:
+            for alias in nodo.names:
+                if alias.name != "*":
                     prefijo = f"{nodo.module}." if nodo.module else ""
                     resultado.append((nodo.level, prefijo + alias.name))
     return resultado
@@ -207,3 +210,249 @@ def test_compartido_no_importa_ningun_modulo_de_dominio() -> None:
         d: archivos for d in dominios if (archivos := _archivos_que_importan("compartido", d))
     }
     assert ofensores == {}, ofensores
+
+
+@pytest.mark.parametrize(
+    "sentencia",
+    [
+        "import proptech_core.compartido.cola",
+        "from proptech_core.compartido import cola",
+        "from proptech_core import compartido",
+    ],
+)
+def test_recolector_conserva_submodulo(tmp_path: Path, sentencia: str) -> None:
+    archivo = tmp_path / "ejemplo.py"
+    archivo.write_text(sentencia)
+    destino = (
+        "proptech_core.compartido"
+        if sentencia.endswith("import compartido")
+        else "proptech_core.compartido.cola"
+    )
+    assert (0, destino) in _imports_de(archivo)
+
+
+def _destinos(archivo: Path, raiz: Path) -> Iterator[tuple[bool, tuple[str, ...]]]:
+    paquete = ("proptech_core", *archivo.relative_to(raiz).parts[:-1])
+    for level, module in _imports_de(archivo):
+        if module is None:
+            continue
+        partes = tuple(module.split("."))
+        if level:
+            partes = (*paquete[: len(paquete) - level + 1], *partes)
+        yield bool(level), partes
+
+
+def _modulos(raiz: Path) -> list[str]:
+    return sorted(
+        p.name
+        for p in raiz.iterdir()
+        if p.is_dir() and not p.name.startswith("_") and p.name != "compartido"
+    )
+
+
+def _ciclos(raiz: Path) -> list[str]:
+    modulos = _modulos(raiz)
+    grafo: dict[str, set[str]] = {m: set() for m in modulos}
+    for origen in modulos:
+        for archivo in (raiz / origen).rglob("*.py"):
+            for _, destino in _destinos(archivo, raiz):
+                if (
+                    len(destino) > 1
+                    and destino[0] == "proptech_core"
+                    and destino[1] in grafo
+                    and destino[1] != origen
+                ):
+                    grafo[origen].add(destino[1])
+    ciclos: set[str] = set()
+
+    def visitar(camino: list[str]) -> None:
+        for siguiente in sorted(grafo[camino[-1]]):
+            if siguiente in camino:
+                ciclo = camino[camino.index(siguiente) :]
+                inicio = ciclo.index(min(ciclo))
+                ciclo = ciclo[inicio:] + ciclo[:inicio]
+                ciclos.add(" → ".join([*ciclo, ciclo[0]]))
+            else:
+                visitar([*camino, siguiente])
+
+    for modulo in modulos:
+        visitar([modulo])
+    return sorted(ciclos)
+
+
+def test_sin_ciclos_entre_modulos() -> None:
+    modulos = _modulos(RAIZ_SRC)
+    assert "cuenta_corriente" in modulos, modulos
+    print("Módulos recorridos:", modulos)
+    assert _ciclos(RAIZ_SRC) == []
+
+
+@pytest.fixture
+def copia_core(tmp_path: Path) -> Path:
+    import shutil
+
+    destino = tmp_path / "proptech_core"
+    shutil.copytree(RAIZ_SRC, destino)
+    return destino
+
+
+@pytest.mark.parametrize("tres", [False, True])
+def test_ciclos_de_cualquier_largo(copia_core: Path, tres: bool) -> None:
+    archivo = copia_core / "acceso" / "mutante.py"
+    destino = "cuenta_corriente" if tres else "complejos"
+    archivo.write_text(f"import proptech_core.{destino}.aplicacion")
+    if tres:
+        (copia_core / "cuenta_corriente" / "mutante.py").write_text(
+            "import proptech_core.complejos.aplicacion"
+        )
+    esperado = (
+        "acceso → cuenta_corriente → complejos → acceso" if tres else "acceso → complejos → acceso"
+    )
+    assert esperado in _ciclos(copia_core)
+
+
+_EXCEPCIONES_ENTRE_MODULOS = {
+    "acceso.dominio.eventos": "El vocabulario viaja con registrar y los eventos del padrón (D9)",
+    "acceso.dominio.identidad": "Identidad viaja en los casos de uso auditados",
+    "acceso.dominio.permisos": "Accion viaja en los casos de uso auditados",
+}
+
+
+def _entre_modulos(raiz: Path) -> list[str]:
+    ofensores = []
+    for origen in _modulos(raiz):
+        for archivo in sorted((raiz / origen).rglob("*.py")):
+            for relativo, destino in _destinos(archivo, raiz):
+                if (
+                    len(destino) < 2
+                    or destino[0] != "proptech_core"
+                    or destino[1] in (origen, "compartido")
+                ):
+                    continue
+                publico = len(destino) > 2 and destino[2] == "aplicacion"
+                excepcion = any(
+                    destino[1 : 1 + len(d.split("."))] == tuple(d.split("."))
+                    for d in _EXCEPCIONES_ENTRE_MODULOS
+                )
+                if relativo or not (publico or excepcion):
+                    ofensores.append(f"{archivo.relative_to(raiz)}: {'.'.join(destino)}")
+    return ofensores
+
+
+def test_entre_modulos_solo_aplicacion() -> None:
+    assert _entre_modulos(RAIZ_SRC) == []
+
+
+@pytest.mark.parametrize(
+    "sentencia,destino",
+    [
+        ("import proptech_core.acceso.dominio.token", "acceso.dominio.token"),
+        ("from proptech_core.acceso.dominio import token", "acceso.dominio.token"),
+        ("from proptech_core.acceso import dominio", "acceso.dominio"),
+        ("import proptech_core.acceso.adaptadores", "acceso.adaptadores"),
+        ("import proptech_core.acceso.dominio.identidad_x", "acceso.dominio.identidad_x"),
+        ("from ...acceso.dominio import token", "acceso.dominio.token"),
+    ],
+)
+def test_mutantes_entre_modulos(copia_core: Path, sentencia: str, destino: str) -> None:
+    archivo = copia_core / "complejos" / "aplicacion" / "mutante.py"
+    archivo.write_text(sentencia)
+    ofensores = _entre_modulos(copia_core)
+    assert any("mutante.py" in o and destino in o for o in ofensores), ofensores
+
+
+_PUROS = {
+    "dinero",
+    "coeficientes",
+    "porcentaje",
+    "superficie",
+    "texto",
+    "tipos_de_unidad",
+    "reparto",
+}
+_EXCEPCIONES_PUROS = {"parametros": "ConfiguracionEdificio.desde_parametros requiere Parametros"}
+
+
+def _dominio_compartido(raiz: Path) -> list[str]:
+    ofensores = []
+    for archivo in sorted(raiz.rglob("*.py")):
+        if "dominio" not in archivo.relative_to(raiz).parts:
+            continue
+        for _, destino in _destinos(archivo, raiz):
+            if (
+                destino[:2] == ("proptech_core", "compartido")
+                and len(destino) > 2
+                and destino[2] not in _PUROS | _EXCEPCIONES_PUROS.keys()
+            ):
+                ofensores.append(f"{archivo.relative_to(raiz)}: {'.'.join(destino)}")
+    return ofensores
+
+
+def _cuenta_corriente(raiz: Path) -> list[str]:
+    ofensores = []
+    for archivo in sorted((raiz / "cuenta_corriente").rglob("*.py")):
+        for _, destino in _destinos(archivo, raiz):
+            if destino[:3] == ("proptech_core", "compartido", "cola") or destino[:2] == (
+                "proptech_core",
+                "liquidacion",
+            ):
+                ofensores.append(f"{archivo.relative_to(raiz)}: {'.'.join(destino)}")
+    return ofensores
+
+
+def test_dominio_solo_usa_compartido_puro() -> None:
+    assert _dominio_compartido(RAIZ_SRC) == []
+
+
+def test_cuenta_corriente_no_encola_ni_liquida() -> None:
+    assert _cuenta_corriente(RAIZ_SRC) == []
+
+
+@pytest.mark.parametrize(
+    "forma", ["import {d}", "from {p} import {n}", "from proptech_core import {mod}"]
+)
+@pytest.mark.parametrize("caso", ["base_de_datos", "nuevo", "cola"])
+def test_mutantes_compartido(copia_core: Path, forma: str, caso: str) -> None:
+    destino = f"proptech_core.compartido.{caso}"
+    # La tercera forma importa compartido; se agrega el submódulo con from compartido.
+    sentencia = forma.format(d=destino, p="proptech_core.compartido", n=caso, mod="compartido")
+    if forma.endswith("{mod}"):
+        sentencia = f"from proptech_core.compartido.{caso} import algo"
+    if caso == "cola":
+        archivo = copia_core / "cuenta_corriente" / "aplicacion" / "mutante.py"
+        verificar = _cuenta_corriente
+    else:
+        archivo = copia_core / "complejos" / "dominio" / "mutante.py"
+        verificar = _dominio_compartido
+    (copia_core / "compartido" / "nuevo.py").touch()
+    archivo.write_text(sentencia)
+    ofensores = verificar(copia_core)
+    assert any("mutante.py" in o and destino in o for o in ofensores), ofensores
+
+
+def _dominio_sin_infraestructura(raiz: Path) -> list[str]:
+    ofensores = []
+    for archivo in sorted(raiz.rglob("*.py")):
+        relativos = archivo.relative_to(raiz).parts
+        if "dominio" not in relativos:
+            continue
+        for _, destino in _destinos(archivo, raiz):
+            propio = (
+                destino[:2] == ("proptech_core", relativos[0])
+                and len(destino) > 2
+                and destino[2] in {"aplicacion", "adaptadores", "puertos"}
+            )
+            if propio or destino[0] in {"sqlalchemy", "psycopg"}:
+                ofensores.append(f"{archivo.relative_to(raiz)}: {'.'.join(destino)}")
+    return ofensores
+
+
+def test_dominio_no_depende_de_infraestructura() -> None:
+    assert _dominio_sin_infraestructura(RAIZ_SRC) == []
+
+
+@pytest.mark.parametrize("destino", ["sqlalchemy", "proptech_core.complejos.aplicacion.escritura"])
+def test_mutantes_infraestructura(copia_core: Path, destino: str) -> None:
+    archivo = copia_core / "complejos" / "dominio" / "mutante.py"
+    archivo.write_text(f"import {destino}")
+    assert any("mutante.py" in o and destino in o for o in _dominio_sin_infraestructura(copia_core))

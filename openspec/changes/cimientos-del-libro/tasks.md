@@ -24,7 +24,7 @@ que no depende de los grupos 1, 2 ni 5; se le avisa a Juani antes de partir.
 
 ## 1. Fronteras entre módulos (design D4)
 
-- [ ] 1.1 **Recolector de imports, paquete vacío y regla (a), sin ciclos.** Corregir el recolector de
+- [x] 1.1 **Recolector de imports, paquete vacío y regla (a), sin ciclos.** Corregir el recolector de
   `tests/unitarios/test_fronteras_de_modulos.py` para que registre el submódulo en las tres formas
   (`import a.b.c`, `from a.b import c`, `from a import b`) y resuelva los relativos por `level`; RED:
   con el recolector de hoy, `from proptech_core.compartido import cola` no aparece como `compartido.cola`.
@@ -35,7 +35,7 @@ que no depende de los grupos 1, 2 ni 5; se le avisa a Juani antes de partir.
   acceso`, que un chequeo por pares no ve). Escenarios: `fronteras-de-modulos` › El código de hoy no
   tiene ciclos; › Un ciclo agregado a una copia; › Un ciclo de tres módulos. Lecciones: L-013, L-019,
   L-035.
-- [ ] 1.2 **Regla (b), entre módulos sólo `aplicacion`.** Diccionario de excepciones por destino, con
+- [x] 1.2 **Regla (b), entre módulos sólo `aplicacion`.** Diccionario de excepciones por destino, con
   su motivo (`acceso.dominio.identidad`, `acceso.dominio.permisos`, `acceso.dominio.eventos`), comparado
   por segmentos completos; `proptech_api` y `proptech_worker` fuera; imports relativos entre módulos
   prohibidos. RED: sin la excepción de `acceso.dominio.eventos`, el árbol real da rojo en
@@ -45,7 +45,7 @@ que no depende de los grupos 1, 2 ni 5; se le avisa a Juani antes de partir.
   pasan; › Un import de dominio ajeno sin excepción; › Las tres formas de escribir un import; › Un
   destino con prefijo parecido a una excepción; › Un import relativo entre módulos; › Un import de
   adaptadores ajenos. Lecciones: L-013, L-021, L-035.
-- [ ] 1.3 **Regla (c), `dominio/` sólo usa lo puro de `compartido`, y regla (d) de
+- [x] 1.3 **Regla (c), `dominio/` sólo usa lo puro de `compartido`, y regla (d) de
   `cuenta_corriente`.** Lista permitida con `parametros` como excepción con motivo; `cuenta_corriente`
   no importa `compartido.cola` ni `liquidacion`. RED de (c): sin `parametros` en la excepción, el árbol
   real da rojo en `complejos/dominio/configuracion.py:11`. Mutantes en copia, cada uno en las tres
@@ -54,12 +54,519 @@ que no depende de los grupos 1, 2 ni 5; se le avisa a Juani antes de partir.
   Escenarios: `fronteras-de-modulos` › El dominio de hoy pasa (regla c); › El dominio importa la base
   (regla c); › Un submódulo nuevo de compartido; › El paquete existe y pasa; › La cuenta corriente
   importa la cola. Lecciones: L-013, L-022.
-- [ ] 1.4 **Regla (e), el dominio no depende de su propia infraestructura (D-114.7).** Un archivo de
+- [x] 1.4 **Regla (e), el dominio no depende de su propia infraestructura (D-114.7).** Un archivo de
   `dominio/` no importa la `aplicacion`, los `adaptadores` ni los `puertos` de su módulo, ni `sqlalchemy`
   ni `psycopg`. Nace verde sobre el árbol real (fijación); mutantes en copia: `complejos/dominio/`
   importando `sqlalchemy` y `complejos.aplicacion.escritura`, cada uno rojo nombrando el archivo.
   Escenarios: `fronteras-de-modulos` › El dominio de hoy pasa (regla e); › El dominio importa la base
   (regla e). Lecciones: L-013, L-035.
+
+
+  **EVIDENCIA · 26/10/2026 · constructor**
+
+  Fijación: el árbol actual ya cumple (e); RED mediante ambos mutantes en copia.
+
+
+Mutante sqlalchemy, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'import sqlalchemy'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_no_depende_de_infraestructura
+time: 10:35:09
+__________________ test_dominio_no_depende_de_infraestructura __________________
+
+    def test_dominio_no_depende_de_infraestructura() -> None:
+>       assert _dominio_sin_infraestructura(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...: sqlalchemy'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: sqlalchemy'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:398: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_no_depende_de_infraestructura
+============================== 1 failed in 0.05s ===============================
+```
+Mutante proptech_core.complejos.aplicacion.escritura, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'import proptech_core.complejos.aplicacion.escritura'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_no_depende_de_infraestructura
+time: 10:35:10
+__________________ test_dominio_no_depende_de_infraestructura __________________
+
+    def test_dominio_no_depende_de_infraestructura() -> None:
+>       assert _dominio_sin_infraestructura(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...on.escritura'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.complejos.aplicacion.escritura'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:398: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_no_depende_de_infraestructura
+============================== 1 failed in 0.05s ===============================
+```
+
+```text
+GREEN (mutantes descartados)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:35:26
+.......                                                                  [100%]
+
+============================== 34 passed in 0.78s ==============================
+ruff check: All checks passed!
+ruff format --check: 1 file already formatted
+mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1 source file
+```
+
+
+  **EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:33:50
+=================================== FAILURES ===================================
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...s.Parametros'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/dominio/configuracion.py: proptech_core.compartido.parametros'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:356: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+========================= 1 failed, 30 passed in 0.72s =========================
+```
+
+Mutante base_de_datos-0, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'import proptech_core.compartido.base_de_datos', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:04
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...ase_de_datos'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante base_de_datos-1, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'from proptech_core.compartido import base_de_datos', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:04
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...ase_de_datos'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante base_de_datos-2, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'from proptech_core.compartido.base_de_datos import algo', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:05
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...e_datos.algo'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante nuevo-0, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'import proptech_core.compartido.nuevo', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:05
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...artido.nuevo'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante nuevo-1, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'from proptech_core.compartido import nuevo', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:06
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...artido.nuevo'] == []
+E         
+E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante nuevo-2, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/dominio/mutante.py': 'from proptech_core.compartido.nuevo import algo', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+time: 10:35:07
+____________________ test_dominio_solo_usa_compartido_puro _____________________
+
+    def test_dominio_solo_usa_compartido_puro() -> None:
+>       assert _dominio_compartido(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/d...o.nuevo.algo'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:357: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_dominio_solo_usa_compartido_puro
+============================== 1 failed in 0.05s ===============================
+```
+Mutante cola-0, copia temporal previa del árbol; se descarta al salir.
+```text
+{'cuenta_corriente/aplicacion/mutante.py': 'import proptech_core.compartido.cola', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+time: 10:35:07
+__________________ test_cuenta_corriente_no_encola_ni_liquida __________________
+
+    def test_cuenta_corriente_no_encola_ni_liquida() -> None:
+>       assert _cuenta_corriente(RAIZ_SRC) == []
+E       AssertionError: assert ['cuenta_corr...partido.cola'] == []
+E         
+E         Left contains one more item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:361: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+============================== 1 failed in 0.04s ===============================
+```
+Mutante cola-1, copia temporal previa del árbol; se descarta al salir.
+```text
+{'cuenta_corriente/aplicacion/mutante.py': 'from proptech_core.compartido import cola', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+time: 10:35:08
+__________________ test_cuenta_corriente_no_encola_ni_liquida __________________
+
+    def test_cuenta_corriente_no_encola_ni_liquida() -> None:
+>       assert _cuenta_corriente(RAIZ_SRC) == []
+E       AssertionError: assert ['cuenta_corr...partido.cola'] == []
+E         
+E         Left contains one more item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:361: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+============================== 1 failed in 0.04s ===============================
+```
+Mutante cola-2, copia temporal previa del árbol; se descarta al salir.
+```text
+{'cuenta_corriente/aplicacion/mutante.py': 'from proptech_core.compartido.cola import algo', 'compartido/nuevo.py': ''}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+time: 10:35:08
+__________________ test_cuenta_corriente_no_encola_ni_liquida __________________
+
+    def test_cuenta_corriente_no_encola_ni_liquida() -> None:
+>       assert _cuenta_corriente(RAIZ_SRC) == []
+E       AssertionError: assert ['cuenta_corr...do.cola.algo'] == []
+E         
+E         Left contains 2 more items, first extra item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:361: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_cuenta_corriente_no_encola_ni_liquida
+============================== 1 failed in 0.04s ===============================
+```
+
+```text
+GREEN (mutantes descartados)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:35:26
+.......                                                                  [100%]
+
+============================== 34 passed in 0.78s ==============================
+ruff check: All checks passed!
+ruff format --check: 1 file already formatted
+mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1 source file
+```
+
+
+  **EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:33:24
+=================================== FAILURES ===================================
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a...entoDeAcceso'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/aplicacion/ejemplo.py: proptech_core.acceso.dominio.eventos'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:312: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+========================= 1 failed, 19 passed in 0.57s =========================
+```
+
+Mutante import-0, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'import proptech_core.acceso.dominio.token'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:00
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a...ominio.token'] == []
+E         
+E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio.token'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+Mutante import-1, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'from proptech_core.acceso.dominio import token'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:01
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a...ominio.token'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+Mutante import-2, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'from proptech_core.acceso import dominio'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:01
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a...ceso.dominio'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+Mutante import-3, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'import proptech_core.acceso.adaptadores'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:02
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a....adaptadores'] == []
+E         
+E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.adaptadores'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+Mutante import-4, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'import proptech_core.acceso.dominio.identidad_x'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:02
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a....identidad_x'] == []
+E         
+E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio.identidad_x'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+Mutante import-5, copia temporal previa del árbol; se descarta al salir.
+```text
+{'complejos/aplicacion/mutante.py': 'from ...acceso.dominio import token'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+time: 10:35:03
+______________________ test_entre_modulos_solo_aplicacion ______________________
+
+    def test_entre_modulos_solo_aplicacion() -> None:
+>       assert _entre_modulos(RAIZ_SRC) == []
+E       AssertionError: assert ['complejos/a...ominio.token'] == []
+E         
+E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:314: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_entre_modulos_solo_aplicacion
+============================== 1 failed in 0.06s ===============================
+```
+
+```text
+GREEN (mutantes descartados)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:35:26
+.......                                                                  [100%]
+
+============================== 34 passed in 0.78s ==============================
+ruff check: All checks passed!
+ruff format --check: 1 file already formatted
+mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1 source file
+```
+
+
+  **EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:32:29
+        "from proptech_core import compartido",
+    ])
+    def test_recolector_conserva_submodulo(tmp_path: Path, sentencia: str) -> None:
+        archivo = tmp_path / "ejemplo.py"
+        archivo.write_text(sentencia)
+        destino = "proptech_core.compartido" if sentencia.endswith("import compartido") else "proptech_core.compartido.cola"
+>       assert (0, destino) in _imports_de(archivo)
+E       AssertionError: assert (0, 'proptech_core.compartido.cola') in [(0, 'proptech_core.compartido')]
+E        +  where [(0, 'proptech_core.compartido')] = _imports_de(PosixPath('/tmp/pytest-of-juanisarmiento/pytest-5/test_recolector_conserva_submo1/ejemplo.py'))
+
+tests/unitarios/test_fronteras_de_modulos.py:221: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_recolector_conserva_submodulo[from proptech_core.compartido import cola]
+========================= 1 failed, 9 passed in 0.31s ==========================
+```
+
+```text
+RED detección inicialmente vacía
+time: 10:33:02
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+        archivo.write_text(f"import proptech_core.{destino}.aplicacion")
+        if tres:
+            (copia_core / "cuenta_corriente" / "mutante.py").write_text("import proptech_core.complejos.aplicacion")
+        esperado = "acceso → cuenta_corriente → complejos → acceso" if tres else "acceso → complejos → acceso"
+>       assert esperado in _ciclos(copia_core)
+E       AssertionError: assert 'acceso → cuenta_corriente → complejos → acceso' in []
+E        +  where [] = _ciclos(PosixPath('/tmp/pytest-of-juanisarmiento/pytest-7/test_ciclos_de_cualquier_largo1/proptech_core'))
+
+tests/unitarios/test_fronteras_de_modulos.py:267: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_ciclos_de_cualquier_largo[False]
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_ciclos_de_cualquier_largo[True]
+========================= 2 failed, 11 passed in 0.34s =========================
+```
+
+Mutante ciclo-dos, copia temporal previa del árbol; se descarta al salir.
+```text
+{'acceso/mutante.py': 'import proptech_core.complejos.aplicacion'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_sin_ciclos_entre_modulos
+time: 10:34:59
+        print("Módulos recorridos:", modulos)
+>       assert _ciclos(RAIZ_SRC) == []
+E       AssertionError: assert ['acceso → co...jos → acceso'] == []
+E         
+E         Left contains one more item: 'acceso → complejos → acceso'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:269: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Módulos recorridos: ['acceso', 'complejos', 'cuenta_corriente']
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_sin_ciclos_entre_modulos
+============================== 1 failed in 0.06s ===============================
+```
+Mutante ciclo-tres, copia temporal previa del árbol; se descarta al salir.
+```text
+{'acceso/mutante.py': 'import proptech_core.cuenta_corriente.aplicacion', 'cuenta_corriente/mutante.py': 'import proptech_core.complejos.aplicacion'}
+command: FRONTERAS_RAIZ=<copia> bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_sin_ciclos_entre_modulos
+time: 10:34:59
+        print("Módulos recorridos:", modulos)
+>       assert _ciclos(RAIZ_SRC) == []
+E       AssertionError: assert ['acceso → cu...jos → acceso'] == []
+E         
+E         Left contains one more item: 'acceso → cuenta_corriente → complejos → acceso'
+E         Use -v to get more diff
+
+tests/unitarios/test_fronteras_de_modulos.py:269: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Módulos recorridos: ['acceso', 'complejos', 'cuenta_corriente']
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_fronteras_de_modulos.py::test_sin_ciclos_entre_modulos
+============================== 1 failed in 0.06s ===============================
+```
+
+```text
+GREEN (mutantes descartados)
+command: bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py
+time: 10:35:26
+.......                                                                  [100%]
+
+============================== 34 passed in 0.78s ==============================
+ruff check: All checks passed!
+ruff format --check: 1 file already formatted
+mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1 source file
+```
 
 ## 2. Montos y reparto (design D5 a D7)
 
