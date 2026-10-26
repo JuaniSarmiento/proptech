@@ -2017,6 +2017,31 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   para eso no hay guarda de aplicación que alcance.
 - **Quién**: Juani, 25/10/2026, en conversación con el orquestador (revisión del PR #1, BE-2).
 
+## D-113 · Redondeo en dos pasos y cierre del período el último día del mes (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Contexto**: preguntas P-7 y P-3 de la exploración del motor de cuenta corriente
+  (`openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`, sección 9). P-7 bloqueaba el 4a
+  `cimientos-del-libro`; P-3 bloqueaba el 4c y, si el cierre era un día por edificio, también el 4a.
+- **Decisión**:
+  1. **P-7 · Redondeo en dos pasos** (precisa D-109.1 y R07): "medio hacia arriba" (D-109.1) se usa
+     para el interés y los montos sueltos, una sola vez, al registrarse. El **reparto de un gasto entre
+     unidades** usa el **mayor resto**: cada parte se trunca al centavo y los centavos que faltan van,
+     de a uno, a las partes con mayor fracción descartada, con un desempate determinista que fija el
+     design del 4a. Así la suma de las partes cierra exacta con el total.
+  2. **P-3 · Cierre del período** (precisa D-109.5 y R03): el cierre del período es el **último día
+     del mes**. Por eso el 4a **no** agrega una columna de día de cierre por edificio.
+- **Descartado**:
+  - Para P-7: redondear cada parte del reparto medio hacia arriba; la suma de las partes no cierra con
+    el total (por ejemplo, $2,00 entre tres da tres partes de $0,67, que suman $2,01).
+  - Para P-3: el día del vencimiento, y un día de cierre que fije cada edificio. Este último exigía una
+    columna nueva en el 4a sin un pedido real; se agrega después si Alberto lo pide (A-2: si su Excel
+    corta el interés al cierre del período).
+- **Por qué**: P-7 es la única lectura en la que R07 (la suma siempre exacta) y D-109.1 (medio hacia
+  arriba, como `REDONDEAR` de Excel) no se contradicen. P-3 fija la fecha de corte del interés de
+  D-109.5 con la regla más simple, igual para todos los edificios, sin una columna que nadie pidió.
+- **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive
