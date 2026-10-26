@@ -2210,6 +2210,28 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Deuda**: la tabla del 4a en `12_fichas_de_changes.md` (§4, "4a · deuda del cierre").
 - **Quién**: Juani, 26/10/2026 (firma, merge y archivo).
 
+## D-120 · `/personal` jerárquica aprobada en principio, cambia D-106 (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Decisión**: se aprueba la sugerencia de Emiliano del 23/10/2026 (P66): un Administrador·Toda la
+  empresa puede **ver** (y, si el change de acceso que la construya lo decide, gestionar) al personal
+  que está **por debajo** suyo en la jerarquía — Contador, Auxiliar, Consejo, Administrador de un
+  edificio — pero **nunca** ve ni gestiona al super_admin; no hay visibilidad "hacia arriba". El
+  alcance de esta decisión es sólo el principio: amplía D-106 en la dimensión "quién puede ver
+  `/personal`", hoy binaria (`permisos.py:_MATRIZ`, `INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS` sólo `_SA`).
+- **Por qué**: a medida que crecen las administraciones, que el 100% de la gestión de personal pase
+  por el super_admin es un cuello de botella operativo; dejarlo así "después iba a traer problemas"
+  (Emiliano, 26/10/2026).
+- **No se construye acá**: dominio acceso es CRITICAL. Por tamaño y gobernanza no se construye dentro
+  del 3c `pulido-de-la-configuracion` (P68 la deja afuera junto con los otros ítems de acceso del QA);
+  requiere su propio change de acceso, con propuesta, revisores de a uno y la sección "Aprobación"
+  firmada aparte antes de escribir código (D-094, D-111).
+- **Pendiente de ese change futuro**: el alcance exacto de "gestionar" (sólo ver, o también invitar y
+  quitar asignaciones de quienes están por debajo) y si cambia algo en `invitaciones.py` o sólo en la
+  lectura de `/personal`.
+- **Quién**: Emiliano Caceres, 26/10/2026 (D-110/D-111 extienden la firma CRITICAL a Juani, Alberto o
+  Emiliano).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive
