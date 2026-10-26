@@ -17,6 +17,7 @@ from proptech_core.cuenta_corriente.aplicacion.errores import (
     IdentidadDeOtraAdministracion,
     NoEncontrado,
     exigir_transaccion,
+    traducir,
 )
 
 _TOMADAS = "cuenta_corriente.cuentas_bloqueadas"
@@ -41,9 +42,9 @@ def exigir_identidad(sesion: Session, identidad: Identidad) -> UUID:
 
 
 def _exigir_read_committed(sesion: Session) -> None:
-    nivel = sesion.execute(text("SELECT current_setting('transaction_isolation')")).scalar_one()
-    if nivel != "read committed":
-        raise AislamientoNoAdmitido(f"el candado exige read committed, no {nivel}")
+    vigente = sesion.execute(text("SELECT current_setting('transaction_isolation')")).scalar_one()
+    if vigente != "read committed":
+        raise AislamientoNoAdmitido(f"el candado exige read committed, no {vigente}")
 
 
 def bloquear_cuentas(sesion: Session, cuenta_ids: Sequence[UUID]) -> None:
@@ -106,29 +107,24 @@ def crear_cuentas_de_unidades(
     exigir_transaccion(sesion)
     unidades = sorted(set(unidad_ids))
     administracion = tenant(sesion)
-    visibles = sesion.execute(
-        text(
-            "SELECT count(*) FROM unidad WHERE complejo_id = :complejo AND id = ANY(:ids)"
-        ).bindparams(_IDS),
-        {"complejo": complejo_id, "ids": unidades},
-    ).scalar_one()
-    if visibles != len(unidades):
-        raise NoEncontrado
     ahora = datetime.now(UTC)
-    sesion.execute(
-        text(
-            "INSERT INTO cuenta (id, administracion_id, complejo_id, unidad_id, creada_en) "
-            "SELECT gen_random_uuid(), :administracion, :complejo, u, :ahora "
-            "FROM unnest(:ids) AS u ORDER BY u "
-            "ON CONFLICT (administracion_id, unidad_id) WHERE unidad_id IS NOT NULL DO NOTHING"
-        ).bindparams(_IDS),
-        {
-            "administracion": administracion,
-            "complejo": complejo_id,
-            "ids": unidades,
-            "ahora": ahora,
-        },
-    )
+    # E11: el libro no nombra `unidad` en su SQL; la unidad de otro edificio o de otra
+    # administración la rechaza la FK compuesta, traducida a NoEncontrado (D4).
+    with traducir(sesion, {}, frozenset({"fk_cuenta_unidad", "fk_cuenta_complejo"})):
+        sesion.execute(
+            text(
+                "INSERT INTO cuenta (id, administracion_id, complejo_id, unidad_id, creada_en) "
+                "SELECT gen_random_uuid(), :administracion, :complejo, u, :ahora "
+                "FROM unnest(:ids) AS u ORDER BY u "
+                "ON CONFLICT (administracion_id, unidad_id) WHERE unidad_id IS NOT NULL DO NOTHING"
+            ).bindparams(_IDS),
+            {
+                "administracion": administracion,
+                "complejo": complejo_id,
+                "ids": unidades,
+                "ahora": ahora,
+            },
+        )
     filas = sesion.execute(
         text(
             "SELECT unidad_id, id, complejo_id FROM cuenta WHERE unidad_id = ANY(:ids)"

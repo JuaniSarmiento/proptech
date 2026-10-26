@@ -66,6 +66,15 @@ FROM cuentas c ORDER BY c.id
 """
 
 
+#: La foto de varias cuentas por id (`estado_de_cuenta`, imputar_pendientes, el 7 y el 8).
+SENTENCIA_DE_CUENTAS = _FOTO
+#: La del edificio: enumera `cuenta` por (administracion_id, complejo_id) y lee el resto por cuenta.
+SENTENCIA_DEL_EDIFICIO = _FOTO.replace(
+    "WHERE c.administracion_id = t.adm AND c.id = ANY(:ids)",
+    "WHERE c.administracion_id = t.adm AND c.complejo_id = :complejo",
+)
+
+
 @dataclass(frozen=True)
 class FotoDeCuenta:
     cuenta_id: UUID
@@ -160,15 +169,7 @@ def estado_de_cuenta(sesion: Session, *, cuenta_id: UUID) -> EstadoDeCuenta:
 
 def deuda_del_edificio(sesion: Session, *, complejo_id: UUID) -> list[DeudaDeCuenta]:
     """Una sola sentencia: enumera `cuenta` del edificio y lee el resto por `= ANY(ids)`."""
-    filas = sesion.execute(
-        text(
-            _FOTO.replace(
-                "WHERE c.administracion_id = t.adm AND c.id = ANY(:ids)",
-                "WHERE c.administracion_id = t.adm AND c.complejo_id = :complejo",
-            )
-        ),
-        {"complejo": complejo_id},
-    ).all()
+    filas = sesion.execute(text(SENTENCIA_DEL_EDIFICIO), {"complejo": complejo_id}).all()
     return [
         DeudaDeCuenta(
             f.cuenta_id,

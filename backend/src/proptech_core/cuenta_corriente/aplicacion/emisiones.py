@@ -131,13 +131,6 @@ def registrar_emision(
     previo = _replay(sesion, emision_id, complejo_id, periodo, obligaciones)
     if previo is not None:
         return previo
-    if (
-        sesion.execute(
-            text("SELECT 1 FROM complejo WHERE id = :c"), {"c": complejo_id}
-        ).one_or_none()
-        is None
-    ):
-        raise NoEncontrado
     # Paso 2: intentos y anulaciones del período, antes de insertar.
     intentos = sesion.execute(
         text(
@@ -152,7 +145,8 @@ def registrar_emision(
     intento = max((f.intento for f in intentos), default=0) + 1
     # Paso 3: insertar con su árbitro; otro id en el mismo intento es 23505 traducido.
     instante = reloj()
-    with traducir(sesion, {"uq_emision_intento": "periodo"}):
+    # E11: sin nombrar `complejo` en el SQL del libro; la FK lo rechaza (NoEncontrado).
+    with traducir(sesion, {"uq_emision_intento": "periodo"}, frozenset({"fk_emision_complejo"})):
         nueva = sesion.execute(
             text(
                 "INSERT INTO emision (id, administracion_id, complejo_id, periodo, intento, "

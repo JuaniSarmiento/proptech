@@ -95,10 +95,11 @@ def test_unidad_ajena_no_encontrada(
 ) -> None:
     u = mundo.unidad_otro_complejo if cual == "otro_edificio" else mundo.unidad_b
     with sesion_app(base_del_edificio, mundo.admin) as s:
-        escrituras = contar_escrituras(s)
+        # E11: el libro no lee `unidad`; la FK compuesta rechaza el INSERT dentro de un SAVEPOINT.
         with pytest.raises(NoEncontrado):
             cuentas.cuenta_de_unidad(s, complejo_id=mundo.complejo, unidad_id=u)
-        assert escrituras == []
+        assert s.execute(text("SELECT count(*) FROM cuenta")).scalar_one() == 0
+        assert s.execute(text("SELECT 1")).scalar_one() == 1  # la transacción sigue usable
 
 
 def test_fuera_de_transaccion(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:

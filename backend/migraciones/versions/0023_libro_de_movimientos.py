@@ -62,8 +62,11 @@ def upgrade() -> None:
         );
     """)
     # Tablas nuevas y vacías: constraints e índices transaccionales antes de publicarlas.
-    # ix_obligacion_cuenta_periodo: lectura por administración/cuenta, ordenada por período.
-    # ix_movimiento_cuenta/ix_imputacion_cuenta: lectura por administración y cuenta.
+    # Índices y la consulta que sirven (DB-6, F1-07): los tres sirven a la foto de
+    # `cuenta_corriente.aplicacion.lecturas`, cuyas subconsultas filtran
+    # `WHERE x.administracion_id = <tenant> AND x.cuenta_id = c.id` sobre obligacion (ix_obligacion_
+    # cuenta_periodo), movimiento (ix_movimiento_cuenta) e imputacion (ix_imputacion_cuenta), tanto
+    # en SENTENCIA_DE_CUENTAS como en SENTENCIA_DEL_EDIFICIO (3.7 fija ambos planes).
     op.execute("""
         ALTER TABLE cuenta ADD CONSTRAINT ck_cuenta_duenio CHECK
         (num_nonnulls(unidad_id,persona_id)=1);
