@@ -88,7 +88,7 @@ fila, un trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` con la misma f
 
 ### Requirement: La protección de cada tabla de sólo agregar se verifica por el efecto
 
-Al terminar, el paso de roles SHALL confirmar en cada tabla del conjunto: RLS habilitada y forzada,
+Al terminar, el paso de roles SHALL confirmar en cada tabla del conjunto (salvo `auditoria`, que conserva la verificación con fila que ya tenía, ver E1 de la propuesta): RLS habilitada y forzada,
 triggers de bloqueo presentes y habilitados, sus funciones del rol de arranque, y que `UPDATE`,
 `DELETE` y `TRUNCATE` ejecutados fallen con el error del trigger de esa tabla. Si algo falta, MUST
 fallar nombrándolo, sin confirmar nada.

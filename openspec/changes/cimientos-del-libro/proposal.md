@@ -61,7 +61,7 @@ Juani respondió hoy P-7 y P-3 (D-113). Las demás **no bloquean** este change y
 
 ## What Changes
 
-- **Fronteras entre módulos con cuatro reglas nuevas** sobre un paquete `cuenta_corriente/` vacío: sin
+- **Fronteras entre módulos con cinco reglas nuevas** sobre un paquete `cuenta_corriente/` vacío: sin
   ciclos entre módulos; entre módulos sólo se importa `aplicacion`, con excepciones nombradas y con
   motivo; `dominio/` sólo importa de `compartido` una lista permitida; y `dominio/` no importa su propia
   infraestructura ni `sqlalchemy` o `psycopg` (D-114.7). Además, `cuenta_corriente` no importa la cola ni
@@ -173,7 +173,7 @@ Archivos de `knowledge-base/` (listado del directorio, 26/10/2026): `01` a `16` 
 | `09_decisiones_y_supuestos.md` | **APPEND** (al archivar) | Dueño de las tablas de sólo agregar, la sonda por sentencia y el préstamo acotado por escrito (DBA-1); las reglas de fronteras con sus excepciones; la partición del 4 en 4a a 4d; el desempate y el total negativo si se firman |
 | `04_modelo_de_datos.md` | **REWRITE** | `configuracion_versionada` con la columna del umbral y el trigger por sentencia; dueño de las tablas de sólo agregar; vocabulario de `accion_de_auditoria` con los siete eventos del padrón |
 | `05_reglas_de_negocio.md` | **REWRITE** | R07: "cada parte se trunca" en vez de "se redondea", el desempate y los dos pasos; R30: dónde vive el umbral; R03: el cierre del período es el último día del mes (D-113). Por respuesta a preguntas abiertas, como permite D-089 |
-| `08_arquitectura_propuesta.md` | **REWRITE** | Sección "Fronteras entre módulos" con las tres reglas y sus excepciones; `reparto` en `compartido`; dueño de las tablas de sólo agregar y el chequeo de arranque |
+| `08_arquitectura_propuesta.md` | **REWRITE** | Sección "Fronteras entre módulos" con las cinco reglas y sus excepciones; `reparto` en `compartido`; dueño de las tablas de sólo agregar y el chequeo de arranque |
 | `02_descripcion_general.md` | **REWRITE** | `hypothesis` en la tabla de versiones del stack |
 | `10_preguntas_abiertas.md` | **REWRITE** | Quitar P10 y P11 como bloqueantes del 4 (`:155`) y P42 "antes del cambio 4" (`:163`); P-3 y P-7 respondidas (D-113); **sumar P-1, P-2, P-4, P-5, P-6 y P-8**, cada una con el sub-change que bloquea, y **A-1 a A-4** en la sección "Para Alberto": hoy sólo viven en la exploración |
 | `07_flujos_principales.md` | **REWRITE** | `:140`, los bloqueantes viejos |
@@ -190,7 +190,7 @@ escribe. Cada elección tiene su alternativa descartada y el costo de revertir e
 
 | Elección | Propuesta del design | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| E1 · Dueño de las tablas de sólo agregar | El rol de arranque, como `auditoria`, para `configuracion_versionada` y toda tabla futura del conjunto, declarado en un solo lugar; `despues()` verifica la protección por el efecto con el trigger por sentencia (D-114.4); la API, el worker y los comandos no arrancan si el dueño es otro, sin forma de saltearlo; el préstamo para migraciones futuras queda escrito y sin construir; rollback con punto de no retorno (D-114.5) (D0 a D3, Migration Plan) | |
+| E1 · Dueño de las tablas de sólo agregar | El rol de arranque, como `auditoria`, para `configuracion_versionada` y toda tabla futura del conjunto, declarado en un solo lugar; `despues()` verifica la protección por el efecto con el trigger por sentencia (D-114.4), **salvo `auditoria`**, que queda con su trigger por fila y su sonda actual porque es del rol de arranque desde el 2a y el migrador ya no puede alterarla: es una excepción a la letra de D-114.4 que se firma acá; la API, el worker y los comandos no arrancan si el dueño es otro, sin forma de saltearlo; el préstamo para migraciones futuras queda escrito y sin construir; rollback con punto de no retorno (D-114.5) (D0 a D3, Migration Plan) | |
 | E2 · Reglas de fronteras | Sin ciclos; entre módulos sólo `aplicacion`, con excepciones `acceso.dominio.identidad`, `acceso.dominio.permisos` y `acceso.dominio.eventos` (esta última, nueva); `dominio/` sólo importa de `compartido` una lista permitida, con `parametros` como excepción; `dominio/` no importa su propia infraestructura (D-114.7); `cuenta_corriente` no importa la cola ni `liquidacion` (D4) | |
 | E3 · Desempate del mayor resto | Orden natural del identificador, números antes que letras ("1A", "10A", "B1", "C1", "L-PB"), y el id como último desempate; provisorio hasta A-1 (D6) | |
 | E4 · Aritmética de `Dinero` | Sólo suma, resta y negación entre montos, sin salir de `NUMERIC(14,2)`; el redondeo es una función aparte y el reparto trabaja en centavos enteros (D5, D7) | |
