@@ -2042,7 +2042,7 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   D-109.5 con la regla más simple, igual para todos los edificios, sin una columna que nadie pidió.
 - **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
 
-## D-114 · Elecciones del 4a `cimientos-del-libro` después de la revisión del propose (26/10/2026)
+## D-114 · Elecciones del 4a `cimientos-del-libro` después de la revisión del propose (26/10/2026) · *corregida en parte por D-115*
 
 - **Fecha**: 26/10/2026
 - **Contexto**: cinco revisores de rol (arquitecto, analista, DBA, backend, QA) y el auditor revisaron
@@ -2090,6 +2090,125 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Por qué**: cierran las contradicciones y los huecos que los revisores encontraron antes de la firma
   HIGH del 4a, y cada una deja la opción más barata de sostener para el 4b, el 4c y el 7.
 - **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
+
+## D-115 · Dueño de las tablas de sólo agregar, `auditoria` fuera del trigger por sentencia y el préstamo por escrito · corrige en parte a D-114
+
+- **Fecha**: 26/10/2026
+- **Contexto**: E1 de la sección "Aprobación" del 4a `cimientos-del-libro`, firmada por Juani el
+  26/10/2026 (`openspec/changes/archive/2026-10-26-cimientos-del-libro/proposal.md`), DBA-1 de la
+  auditoría de cimientos y RB-10 del rompedor del apply (`11-rompedor.md`).
+- **Decisión**:
+  1. **El rol de arranque (superusuario) es dueño de toda tabla de sólo agregar**, como `auditoria`
+     desde el 2a. La lista vive en un solo lugar, `compartido/tablas_protegidas.py`
+     (`TABLAS_DE_SOLO_AGREGAR`): hoy `auditoria` y `configuracion_versionada`, y el 4b suma sus seis
+     tablas ahí. `roles antes` no se las devuelve al migrador; `roles despues` les transfiere tabla y
+     función y verifica la protección por el efecto (D-114.4). La API, el worker, `alta_inicial` y
+     `ejemplo` no arrancan si alguna falta o tiene un dueño que no es superusuario, y no hay variable ni
+     bandera que lo saltee.
+  2. **`auditoria` queda fuera del trigger por sentencia de D-114.4.** D-114.4 dice "toda tabla de sólo
+     agregar lleva [...] un trigger [...] FOR EACH STATEMENT"; `auditoria` no lo lleva y conserva su
+     trigger por fila, su `BEFORE TRUNCATE` y su sonda con fila. Es del rol de arranque desde el 2a, así
+     que el migrador ya no puede sumarle un trigger, y su sonda con fila no necesita filas padre. La
+     regla de D-114.4 rige para `configuracion_versionada` y para toda tabla **nueva** del conjunto.
+     D-114 queda **corregida en parte** (sólo su punto 4).
+  3. **El préstamo de propiedad para una migración futura queda escrito y sin construir**: la migración
+     declara qué tablas protegidas toca; `antes()` le presta la propiedad al migrador sólo de ésas y
+     sólo si esa migración está pendiente; `despues()` la devuelve y verifica con la sonda. Hasta que
+     un change lo necesite, un `ALTER` sobre una tabla protegida falla con `must be owner`, que es el
+     comportamiento seguro. El primero que lo va a necesitar es el `ALTER` de R23 sobre
+     `configuracion_versionada` (6 o 14).
+- **Descartado**: (b) el migrador dueño (una migración podría `NO FORCE` y reescribir el libro); (c) un
+  rol de propiedad aparte (con membresía equivale a (b), sin ella a (a) con un rol más); un préstamo
+  general en cada `antes()`; construir el préstamo ahora, sin un caso real que lo ejercite.
+- **Costo**: la excepción vivía sólo en la sección "Aprobación" del propose y en el design; un lector
+  de D-114.4 a secas creía que `auditoria` tenía el trigger. Sin esta decisión, el 4b la habría buscado.
+- **Quién**: Juani, 26/10/2026, al firmar E1 del 4a; registrada al archivar (RB-10).
+
+## D-116 · Fronteras entre módulos: cinco reglas por lista permitida (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Contexto**: E2 del 4a, firmada por Juani; precisa D-021 y D-040. Lo vigila
+  `backend/tests/unitarios/test_fronteras_de_modulos.py`; spec `fronteras-de-modulos`.
+- **Decisión**: sobre el paquete `proptech_core.cuenta_corriente/` (creado vacío en el 4a):
+  - **(a)** sin ciclos entre módulos, de cualquier largo;
+  - **(b)** entre módulos sólo se importa `aplicacion`, con tres excepciones globales por destino:
+    `acceso.dominio.identidad`, `acceso.dominio.permisos` y `acceso.dominio.eventos` (nueva: el
+    vocabulario de auditoría viaja con `registrar()`); comparadas por segmento completo. Los imports
+    relativos entre módulos quedan prohibidos. `proptech_api` y `proptech_worker` quedan fuera (raíz de
+    composición);
+  - **(c)** `dominio/` sólo importa de `compartido` una lista permitida (`dinero`, `coeficientes`,
+    `porcentaje`, `superficie`, `texto`, `tipos_de_unidad`, `reparto`), con `parametros` como excepción
+    para `complejos/dominio/configuracion.py`;
+  - **(d)** `cuenta_corriente` no importa `compartido.cola` ni `liquidacion`;
+  - **(e)** un archivo de `dominio/` no importa la `aplicacion`, los `adaptadores` ni los `puertos` de su
+    módulo, ni `sqlalchemy` ni `psycopg` (D-114.7).
+  - **Límite declarado, no vigilado**: las reglas miran imports directos; lo transitivo (la excepción
+    `parametros` arrastra lectura de archivos, `cuenta_corriente → acceso.aplicacion.<algo que encola>`)
+    pasa.
+- **Descartado**: lista de prohibidos (falla abierta); relajar (b) a "no importar `adaptadores`";
+  mover `Identidad`, `Accion` y los eventos a `compartido`; mover `ejemplo.py` a una raíz de
+  composición ya (AR-5, queda para cuando se toque ese archivo).
+- **Por qué**: los controles tienen que existir antes de la primera tabla de plata (4b), no al lado.
+- **Quién**: Juani, 26/10/2026, al firmar E2 del 4a.
+
+## D-117 · El cambio 4 se parte en 4a, 4b, 4c y 4d (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Decisión**: el 4 `motor-de-cuenta-corriente` se construye en cuatro sub-changes, sin renumerar C-08
+  en adelante (precedente D-097): **4a** `cimientos-del-libro` (HIGH; archivado el 26/10/2026),
+  **4b** `libro-de-movimientos`, **4c** `intereses-saldo-inicial-y-moroso` y **4d**
+  `cambio-de-titular` (los tres CRITICAL). El 6 puede arrancar tras el 4a si no escribe en el libro
+  (S-04); el 5 necesita el 4c; el 7, el 4b y el 4c; el 4d va después del 7 y no bloquea M1.
+- **Descartado**: un solo change de cuarenta y tantas tareas, con la excepción registrada como la del
+  1c (D-088): el 1c era infraestructura, éste es plata, y el riesgo de un diff que no termina de
+  moverse lo paga el rompedor.
+- **Por qué**: lo recomendó la exploración del 22/10/2026
+  (`openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md` §8); deja la parte HIGH sin plata
+  primero y aísla lo que bloquean las preguntas abiertas.
+- **Quién**: Juani, 26/10/2026 (commit `3c56343` en `CHANGES.md`); hasta este registro sólo vivía en
+  el roadmap.
+
+## D-118 · Reparto: desempate por orden natural, total negativo simétrico y aritmética mínima de `Dinero` (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Contexto**: E3, E4 y E8 del 4a, firmadas por Juani; precisan R07, D-046, D-053 y D-113.
+- **Decisión**:
+  1. **Desempate del mayor resto** (E3, provisorio hasta A-1): a igual fracción descartada, el centavo
+     va por orden natural del identificador, con los números antes que las letras ("1A", "10A", "B1",
+     "C1", "L-PB"), y el id de la unidad como último desempate (`clave_de_orden_natural` en
+     `compartido/reparto.py`). Si Alberto contesta otra cosa en A-1, cambia una función pura y sus
+     tests, sin tocar datos, mientras ningún reparto se persista.
+  2. **Total negativo simétrico** (E8): un total negativo se reparte como el positivo con el signo
+     cambiado, truncando hacia cero. Ni R07 ni D-113 lo decían.
+  3. **Aritmética de `Dinero`** (E4): sólo suma, resta y negación entre montos, y `sumar()`, sin salir
+     de `NUMERIC(14,2)`; nada de multiplicar ni dividir. El reparto trabaja en centavos enteros y el
+     redondeo medio hacia arriba es una función aparte (`redondear_al_centavo`).
+- **Descartado**: orden de texto plano ("10A" antes que "2B"); el UUID solo; letras antes que números;
+  aritmética completa con `Decimal`; redondear cada parte medio hacia arriba (D-113).
+- **Quién**: Juani, 26/10/2026, al firmar el 4a.
+
+## D-119 · Cierre del 4a `cimientos-del-libro`: firma HIGH y resultado (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Decisión**: Juani firmó la sección "Aprobación" el 26/10/2026 (E1 a E8 tal como están, con la
+  excepción de `auditoria` de E1, registrada en D-115). El change quedó archivado el 26/10/2026
+  (`openspec/changes/archive/2026-10-26-cimientos-del-libro/`), mergeado en `main` en `583f2f7`.
+- **Cierre**: dos vueltas de verify. En la 1, el auditor bloqueó por RB-1 (`infra/ci/ensayo-roles.sh` no
+  devolvía `configuracion_versionada` al migrador antes del `downgrade 0016`, y nadie lo había corrido) y
+  por la 7.1 sin humo ni CI. En la 2 se arregló el script (`c345467`) y se corrió en un compose aislado
+  (`ENSAYO ROLES OK`, sin tocar el proyecto `proptech`), y el auditor final aprobó
+  (`14-auditor-final.md`). CI verde en `6f6fe6b` (run 40362882093: 2843 passed + 1 xfailed en backend,
+  395 web, 172 navegador, `HUMO OK`) y en `583f2f7` (run 40373908235, los cinco jobs). La suite de
+  backend pasó de 2689 tests en `de3c710` a 2843.
+- **Gotchas que costaron**:
+  - El chequeo de arranque nuevo rompió 357 tests en archivos de otros grupos que la 5.3 no corrió; se
+    vieron recién en la 7.1 y costaron dos informes de constructor y el commit `e57ccd0` (L-041).
+  - El job `web` del CI pasa de 15 a 25 minutos (`6f6fe6b`): instalar Chromium tardó 10 minutos en el
+    runner y cortó el job dos veces, con los tests del navegador sin fallar (L-044).
+  - `0022` es el punto de no retorno del rollback (D-114.5): en cuanto se registra un evento del padrón,
+    bajarla choca con la FK de `auditoria` (`23503`) y la única vuelta atrás es restaurar el respaldo.
+- **Deuda**: la tabla del 4a en `12_fichas_de_changes.md` (§4, "4a · deuda del cierre").
+- **Quién**: Juani, 26/10/2026 (firma, merge y archivo).
 
 ## Supuestos
 

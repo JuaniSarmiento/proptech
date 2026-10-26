@@ -500,11 +500,12 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio · partido en 4a, 4b, 4c y 4d
 
 > **Partido** (exploración del 4, `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`
-> §8): **4a** `cimientos-del-libro` (HIGH, propose en revisión), **4b** `libro-de-movimientos`, **4c**
-> `intereses-saldo-inicial-y-moroso` y **4d** `cambio-de-titular` (los tres CRITICAL; el 4d puede ir
-> después del 7 y no bloquea M1). Dependencias en `CHANGES.md` [C-07a] a [C-07d]: el 6 puede arrancar
-> tras el 4a si no escribe en el libro, el 5 necesita el 4c y el 7 el 4b y el 4c. Esta ficha queda
-> como entrada común; el detalle por sub-change lo escribe cada propose.
+> §8, D-117): **4a** `cimientos-del-libro` (HIGH, **archivado el 26/10/2026**, D-119; su ficha va abajo),
+> **4b** `libro-de-movimientos`, **4c** `intereses-saldo-inicial-y-moroso` y **4d** `cambio-de-titular`
+> (los tres CRITICAL; el 4d puede ir después del 7 y no bloquea M1). Dependencias en `CHANGES.md`
+> [C-07a] a [C-07d]: el 6 puede arrancar tras el 4a si no escribe en el libro, el 5 necesita el 4c y el
+> 7 el 4b y el 4c. Esta ficha queda como entrada común; el detalle por sub-change lo escribe cada
+> propose.
 
 - **Objetivo**: el corazón de la plata: que cada peso de deuda viva en un solo lugar y nunca se pierda un centavo.
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05 (con los créditos que no son pagos,
@@ -512,15 +513,19 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   de saldo inicial), R13 (orden de imputación por tipo).
 - **Decisiones**: D-010, D-011, D-012, D-015, D-016, D-024, D-046, D-068, D-073, D-074, D-080, D-081,
   D-082, D-086.
-- **Propuestas** (entran si se validan): R30 (umbral de saldos chicos), R35 (intereses desde el día
-  hábil), R36 (tasa propia de la extraordinaria), R39 (sin intereses ni moroso crítico para unidades del
-  consorcio).
+- **Vigente desde D-109**: R30 (umbral de saldos chicos). El 4a ya guarda el umbral por versión de
+  configuración; su efecto sobre el moroso crítico (R20) lo construye el 4c.
+- **Propuestas** (entran si se validan): R35 (intereses desde el día hábil), R36 (tasa propia de la
+  extraordinaria), R39 (sin intereses ni moroso crítico para unidades del consorcio). Hoy no tienen
+  ninguna marca en el modelo (ni en `unidad` ni en `configuracion_versionada`): el change que las
+  valide agrega la columna que necesite.
 - **Entra**: libro de movimientos de sólo agregar, sin campo saldo; obligaciones, pagos e
   imputaciones; intereses simples calculados al registrarse; reparto por **mayor resto** como función
-  pública de `proptech_core` (la usa el cambio 6); correcciones con contra-asiento; dos fechas por
+  pública (hecho en el 4a: `compartido/reparto.py`, la usan el 4b, el 6 y el 7); correcciones con
+  contra-asiento; dos fechas por
   pago (registro y valor); caso de uso de saldo inicial (con detalle por período o total único);
-  bloqueo para pagos simultáneos de la misma unidad; umbral mínimo para saldos chicos de redondeo
-  (R30, propuesta: entra si se valida y se fija el umbral, ProTecc D3); **la función pura de moroso crítico** (R20, D-074), como consulta sobre
+  bloqueo para pagos simultáneos de la misma unidad; el efecto del umbral de saldos chicos (R30,
+  vigente; el número ya vive en `configuracion_versionada` desde el 4a, ProTecc D3); **la función pura de moroso crítico** (R20, D-074), como consulta sobre
   el libro que usan los cambios 8, 10a y 10b; el saldo excluye todo movimiento generado por una
   emisión anulada, incluidos los ajustes de interés que la compensaban (D-073, D-079, D-084, D-085).
   **Contrato mínimo de emisión** (D-086): este cambio define la entidad emisión con lo justo para el
@@ -528,17 +533,25 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   generó; el cambio 7 la completa con la preliquidación, los controles y la distribución. La anulación en sí se construye en el cambio 7: acá se prueba con
   una emisión marcada como anulada en el test.
 - **No entra**: la pantalla para confirmar pagos (8); la importación del Excel (5); la emisión (7).
-- **Depende de**: 2a y 3a (el menú de intereses versionado y las marcas que usan R35, R36 y R39).
-  **Habilita**: 5, 6, 7.
-- **Bloqueado por**: nada que impida construir. El grupo B de preguntas de negocio (P10, P11, P21,
-  P31 y P34) quedó resuelto por D-109 (22/10/2026); quedan abiertas dos sub-preguntas para Alberto (a
-  qué unidad va el centavo sobrante, P10; si su Excel corta el interés en la misma fecha, P34) y P42
-  (la sesión con un contador o administrador), ninguna de las tres bloquea el propose ni la
-  construcción: se resuelven antes del piloto (15).
-- **Deuda técnica del 1b** (D-053): limpiar el `except TypeError` que no se alcanza en
-  `leer_parametros` y verificar con un test que `Dinero` rechaza ceros de más (`1.0000`).
-- **Decidir en el design** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
-  cuenta durante una imputación; el desempate determinista del mayor resto.
+- **Depende de**: 2a, 3a (el menú de intereses versionado) y, para el 4b en adelante, el 4a.
+  **Habilita**: 5, 6 (desde el 4a, si no escribe en el libro), 7.
+- **Bloqueado por**: P10, P11 y P42 ya no bloquean (D-109 punto 6). Cada sub-change tiene las suyas en
+  `10_preguntas_abiertas.md`: el 4b, P-8 (repositorio sin puerto) y P-6 (pantalla de corrección); el
+  4c, P-4 y P-5; el 4d, P-1 y P-2. Para Alberto, A-1 a A-4 (A-1 puede cambiar el desempate del 4a sin
+  tocar datos).
+- **Deuda técnica del 1b** (D-053): **cerrada en el 4a**. Se borró el `except TypeError` muerto de
+  `leer_parametros` (y el par del lector de la semilla) con tests que muestran que otra capa ya corta
+  esos caminos, y quedó escrito y probado con mutantes que `Dinero.desde_decimal` **acepta** ceros de
+  más cuando el valor no cambia (`Decimal("1.0000")` da `1.00`) y rechaza lo que cambiaría, mientras
+  que el texto (`Dinero("1.0000")`) los rechaza (D-114.6, que corrige la nota de D-053).
+- **Decidir en el design del 4b** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
+  cuenta durante una imputación. El desempate del mayor resto ya está decidido (D-118).
+- **Lo que el 4b recibe hecho del 4a**: sus seis tablas se declaran en
+  `compartido/tablas_protegidas.py` y nacen con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
+  TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la
+  misma función; `roles despues` las transfiere y verifica sin cambiar su lógica. Ese trigger por
+  sentencia **bloquea `INSERT ... ON CONFLICT DO UPDATE`** aunque no haya conflicto: la idempotencia
+  del libro va con `ON CONFLICT DO NOTHING` y leyendo la fila existente.
 - **Que intente romper el rompedor**: dos pagos simultáneos a la misma unidad; un pago parcial
   seguido de otro que completa; un pago mayor a la deuda; un pago con fecha valor anterior a una
   corrección; intereses sobre intereses; un reparto que pierde o gana un centavo; editar o borrar un
@@ -558,13 +571,49 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   sobrante, P10; si su Excel corta el interés en la misma fecha, P34) y P42 (la sesión con un contador
   o administrador de Mendoza) — las tres se resuelven antes del piloto (15). Por D-109 (P11), el 4
   suma una **cuenta de persona**, además de la cuenta de unidad, para la opción "deuda a nombre del
-  vendedor" en un cambio de titular. El design del 4 sigue trayendo resuelta la lista completa de
-  decisiones de diseño (dueño de tablas de sólo agregar, dueño de `emision`, idempotencia de punta a
-  punta, redondeo y precisión del reparto con invariantes, commit-y-encolar con reproceso, errores de
-  campo y `pesos()`, contrato de error uniforme, patrón puertos/adaptadores del libro, reglas nuevas
-  del test de fronteras, auditoría del coeficiente, el contrato de la API falsa para los formularios
-  nuevos y el canario que no repita la suite entera). Detalle completo, con criterio de terminado por
-  ítem, en `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
+  vendedor" en un cambio de titular. **Resueltas en el 4a**: dueño de las tablas de sólo agregar
+  (D-115), redondeo y precisión del reparto con invariantes (D-113, D-118), reglas nuevas del test de
+  fronteras (D-116) y auditoría del coeficiente (D-114.2, D-114.3). **Siguen para los sub-changes
+  siguientes**: dueño de `emision`, idempotencia de punta a punta, commit-y-encolar con reproceso,
+  errores de campo y `pesos()`, contrato de error uniforme, patrón puertos/adaptadores del libro, el
+  contrato de la API falsa para los formularios nuevos y el canario que no repita la suite entera.
+  Detalle completo, con criterio de terminado por ítem, en
+  `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
+
+#### 4a · `cimientos-del-libro` · HIGH · archivado 26/10/2026 (D-119)
+
+- **Qué dejó**: cinco reglas de fronteras sobre `cuenta_corriente/` vacío (D-116); las tablas de sólo
+  agregar del rol de arranque, verificadas por el efecto y con chequeo de arranque (D-115);
+  `compartido/reparto.py` (mayor resto en centavos enteros, desempate por orden natural, total negativo
+  simétrico) y `redondear_al_centavo`, con propiedades en `hypothesis` (D-113, D-118); suma, resta y
+  negación de `Dinero`; el umbral de R30 en `configuracion_versionada` (`0021`, D-114.1) y en
+  `parametros.yaml`; siete eventos del padrón auditados con el coeficiente anterior y el nuevo
+  (`0022`, D-114.2, D-114.3); la deuda D-053 cerrada (D-114.6). Sin pantallas.
+- **Firma**: Juani, 26/10/2026, E1 a E8. **Archivo**:
+  `openspec/changes/archive/2026-10-26-cimientos-del-libro/`. **Merge**: `583f2f7`.
+- **Rollback**: con punto de no retorno en el primer evento del padrón registrado (D-114.5); el
+  procedimiento está en el "Migration Plan" del design archivado.
+
+##### 4a · deuda del cierre
+
+La "Deuda aceptada" del design archivado más la deuda nueva de la auditoría final
+(`14-auditor-final.md`). Los códigos son los de los informes en `.git/informes-cimientos-del-libro/`.
+Dueño por el primer cambio que necesita que esté resuelta (L-012); donde no lo firmó nadie, la fila lo
+dice.
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar` sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro | El filtro está; falta el test que lo vigile | 4b, que suma tablas a la lista. Dueño propuesto, no confirmado por Juani |
+| RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive; tampoco se registra qué unidades entran o salen de un grupo `renormalizado` | Los coeficientes sí se registran; falta el nombre del campo y la pertenencia en un caso | El próximo cambio que toque `grupos.py` (3c o 6). Dueño propuesto, no confirmado por Juani |
+| RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | Hoy no tiene consumidor | 4c, primer consumidor (interés). Dueño propuesto, no confirmado por Juani |
+| RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Nadie cambia el contexto decimal hoy | 4b. Dueño propuesto, no confirmado por Juani |
+| RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes | El mutante de vocabulario hace un trabajo equivalente (auditoría del apply) | — (se registra, no se reabre) |
+| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | Se corrió en el cierre del 4a (`ENSAYO ROLES OK`, proyecto aislado) | 4b, que vuelve a tocar la propiedad de tablas. Dueño propuesto, no confirmado por Juani |
+| El mensaje del ensayo `ciclo 0018/0016/0018` ya no es verdad (14-auditor-final) | Es texto de salida; el ensayo hace lo correcto | Quien toque `ensayo-roles.sh`. Dueño propuesto, no confirmado por Juani |
+| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | Sólo pasa si alguien la deja exportada después del ensayo | Quien toque `restaurar.sh` o el ensayo. Dueño propuesto, no confirmado por Juani |
+| Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
+| Revisión del propose, deuda aceptada del design: AR-5 (mover `ejemplo.py` a una raíz de composición), AR-7 (las reglas de fronteras miran sólo imports directos), AR-9 (dirección de los eventos); DB-2 (comparar el esquema de `0020` con `pg_dump -s` o `information_schema`, no con `pg_attribute` crudo); AN-7 y AN-9 | Escritas en el design (D4, D9) y en las specs | AR-5: quien toque `ejemplo.py`; el resto, sin dueño. Propuesto, no confirmado por Juani |
+| QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | El design los mandó a las tareas 3.2, 4.1, 5.1 y 5.2 "si entraban"; lo que no, al 4b. Al archivar no se verificó cuáles entraron | **4b**, dueño fijado por el design del 4a |
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
@@ -579,7 +628,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   unidad** contra el listado del administrador, con aceptación registrada de las diferencias y cierre
   del importador al confirmar (D-068); saldos iniciales usando el caso de uso del cambio 4.
 - **No entra**: importar gastos o cargos (6).
-- **Depende de**: 3, 4. **Habilita**: 7 y el test de M1.
+- **Depende de**: 3 y el 4c (saldo inicial; el 4c ya trae el 4a y el 4b). **Habilita**: 7 y el test de M1.
 - **Bloqueado por**: P24 (coeficientes de grupos parciales).
 - **Que intente romper el rompedor**: un archivo con columnas cambiadas de lugar, celdas vacías,
   números con coma y con punto, coeficientes que suman 0,9999; el mismo archivo subido dos veces; un
@@ -596,7 +645,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   comprobantes de su alcance, sin escribir. Preparar la separación de ordinarias y extraordinarias
   para que el inquilino vea sólo ordinarias; el propietario ve ambas. El 2.2a sólo creó el vínculo.
 - **Historias**: HU-A3 (carga manual, incluido el sueldo del encargado), HU-A3b. **Reglas**: R01
-  (reparto de cada gasto en su grupo, usando el mayor resto del cambio 4), R12 (la clave de factura
+  (reparto de cada gasto en su grupo, usando el mayor resto del 4a, `compartido/reparto.py`), R12 (la clave de factura
   `cuit + ptoVta + tipoCmp + nroCmp`, que usa el control de duplicados del 7), R13, R14, R16, R22.
 - **Propuestas** (entran si se validan): R38 (ingresos del consorcio) y las **consultas** que usan los
   controles de R34 "gasto mensual obligatorio faltante" e "ingresos mayores que los gastos" (el control
@@ -608,7 +657,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   Excel; aprobación; nota de crédito asociada a la factura que corrige, con su monto topeado al de
   esa factura (R22, ProTecc H1).
 - **No entra**: la lectura de facturas por QR e IA (14): acá la carga es manual.
-- **Depende de**: 3, 4. **Habilita**: 7, 14.
+- **Depende de**: 3 y el 4a (el reparto por mayor resto); si escribe en el libro, también el 4b (S-04, sin verificar contra R14 y R25). **Habilita**: 7, 14.
 - **Bloqueado por**: P15, P17, P25, P36 y P37.
 - **Que intente romper el rompedor**: un gasto sin categoría que se aprueba; un cargo particular que
   termina repartido entre todos; un gasto de otro edificio; un importe con tres decimales; aprobar

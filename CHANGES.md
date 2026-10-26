@@ -36,11 +36,11 @@ gates están en el árbol de abajo.
 3. CONFIGURACIÓN DEL EDIFICIO
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
-   👉 3c pulido: bugs + ubicación + pisos  ← en paralelo al 4a
+   👉 3c pulido: bugs + ubicación + pisos  ← en paralelo, fuera del camino crítico
 
 4. LA PLATA (cuenta corriente)
-   👉 4a cimientos: reparto al centavo, umbral de $500
-   ⏳ 4b libro de movimientos (deudas y pagos)
+   ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
+   👉 4b libro de movimientos (deudas y pagos)
    ⏳ 4c intereses y moroso
    ⏳ 4d cambio de titular (va después del 7)
 
@@ -81,7 +81,7 @@ C-01 infraestructura-base (1a)
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │     └── C-06c pulido-de-la-configuracion (3c) ← en paralelo al 4a, fuera del camino crítico
                                 │
-                                └── C-07a cimientos-del-libro (4a)        ← el 4 partido en 4a a 4d (exploración del 4, §8)
+                                └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
                                       ├── C-09 gastos-y-cargos (6)        ← tras el 4a si no escribe en el libro (S-04); si escribe, tras el 4b
                                       │
@@ -142,7 +142,7 @@ GATE 5: C-05a ✓                                          ← roles antes del l
 
 GATE 6: C-06a ✓
   → C-06b pantallas-del-edificio (archivado; su propose esperó los siete shape con Juani)
-  → C-07a cimientos-del-libro [Agente A] (4a, HIGH: aprobación de un firmante de D-111; camino crítico)
+  → C-07a cimientos-del-libro [Agente A] (4a, HIGH; archivado 26/10/2026, firma de Juani, D-119)
   → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: aprobación de un firmante de D-111;
     en paralelo al 4a, fuera del camino crítico; necesita también C-06b y C-05b, archivados)
 
@@ -150,7 +150,7 @@ GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
     → C-05b login-y-usuarios (2b, archivado 22/10/2026; Clerk, CRITICAL; P48 resuelta en D-099)
 
-GATE 7: C-07a ✓                                          ← PRIMER FORK real (2 paralelos)
+GATE 7: C-07a ✓ (26/10/2026)                             ← PRIMER FORK real (2 paralelos)
   → C-07b libro-de-movimientos [Agente A] (4b, CRITICAL: aprobación de un firmante de D-111)
   → C-09 gastos-y-cargos        [Agente B] (sólo si no escribe en el libro, SUPUESTO S-04 sin
     verificar contra R14 y R25; si escribe, pasa al GATE 8)
@@ -206,8 +206,8 @@ trabajo: cada sub-change es una parte del mismo 4, y el 6 deja de esperar el lib
 
 > **Hoy programa una sola persona por change** (Juani, Alberto o Emiliano, `knowledge-base/14_forma_de_trabajo.md`):
 > esta tabla muestra el paralelismo que el árbol de dependencias permitiría si hubiera tres agentes
-> trabajando a la vez, no el reparto real. El reparto real del paso 7 sí es en paralelo: el 4a lo
-> lleva su propose en revisión y el 3c lo propone Emiliano (pedido de Juani, 26/10/2026).
+> trabajando a la vez, no el reparto real. El reparto real del paso 7 fue en paralelo: el 4a quedó
+> archivado el 26/10/2026 y el 3c lo propone Emiliano (pedido de Juani, 26/10/2026).
 
 ```
 Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ Agente C (Frontend/IA)
@@ -440,23 +440,25 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 > resueltas en D-113.
 
 ### [C-07a] `cimientos-del-libro` · 4a
-- **Estado**: `[ ]` propose en revisión (rama `change/cimientos-del-libro`, D-113)
+- **Estado**: `[x]` archivado (26/10/2026), OK (D-115 a D-119); mergeado en `583f2f7`, CI verde en ese
+  SHA (run 40373908235). Deuda en la ficha 4 ("4a · deuda del cierre")
 - **Scope**: reglas nuevas del test de fronteras sobre un `cuenta_corriente/` vacío; dueño de las
   tablas de sólo agregar y chequeo de arranque; `compartido/reparto.py`, aritmética de `Dinero` y
-  `hypothesis`; columnas nuevas de `configuracion_versionada` (umbral de R30); auditoría del
-  coeficiente; deuda D-053 del 1b. Sin pantallas
+  `hypothesis`; columna nueva de `configuracion_versionada` (umbral de R30, `0021`); auditoría del
+  padrón con el coeficiente (`0022`); deuda D-053 del 1b. Sin pantallas
 - **Dependencias**: C-05a, C-06a
-- **Governance**: ALTO
+- **Governance**: ALTO; E1 a E8 firmadas por Juani (26/10/2026)
 - **Leer antes**:
+  - `openspec/changes/archive/2026-10-26-cimientos-del-libro/`
   - `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md` §4 y §8
   - `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`
   - `knowledge-base/12_fichas_de_changes.md` §4
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-040, D-053, D-109, D-113)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-040, D-053, D-109, D-113 a D-119)
 
 ---
 
 ### [C-07b] `libro-de-movimientos` · 4b
-- **Estado**: `[ ]` pendiente (CRITICAL)
+- **Estado**: `[ ]` pendiente, el próximo del camino crítico (CRITICAL; lo bloquea P56)
 - **Scope**: `cuenta` (de unidad o de persona), `emision`, `evento_de_emision`, `obligacion`,
   `movimiento` e `imputacion` de sólo agregar, con RLS y claves naturales; concurrencia; R04, R05, R06,
   R08, R13; HU-A9 (ruta, permiso y contrato de error); saldo sin anuladas; la API que el 4 le expone al
@@ -469,6 +471,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Cuenta corriente
   - `knowledge-base/06_funcionalidades.md` §HU-A9
   - `knowledge-base/10_preguntas_abiertas.md` (P55, P56)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-114.4, D-115: cómo nacen sus tablas de sólo
+    agregar y por qué la idempotencia va con `ON CONFLICT DO NOTHING`)
+  - `knowledge-base/15_lecciones.md` (L-041 a L-044)
 
 ---
 

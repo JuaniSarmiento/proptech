@@ -165,9 +165,11 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   texto de D-040 y necesita la firma de Juani. Bloquea el 4b.
 - [ ] **P57 · El centavo del reparto en el Excel de Alberto** (A-1; formaliza la sub-pregunta de P10):
   cuando un gasto no cierra al centavo, ¿qué hace con el que sobra o falta, y a qué unidad va si hay
-  empate? Antes del piloto, no bloquea construir.
+  empate? Mientras tanto el 4a desempata por orden natural del identificador (D-118); si la respuesta es
+  otra, cambia una función pura sin tocar datos. Antes del piloto, no bloquea construir.
 - [ ] **P58 · El corte del interés en el Excel de Alberto** (A-2; formaliza la sub-pregunta de P34): ¿su
-  Excel corta el interés al cierre del período? Antes del piloto.
+  Excel corta el interés al cierre del período? El sistema lo corta el último día del mes (D-113); si
+  Alberto usa otro día, se agrega un día de cierre por edificio. Antes del piloto.
 - [ ] **P59 · Doble vencimiento e interés diario en el piloto** (A-3, H-10, R26): el doble vencimiento
   con recargo que ya acepta la configuración, ¿se usa en el edificio piloto, y cómo convive con el
   interés diario? Antes del piloto.
@@ -220,7 +222,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la
   quinta y la sexta revisión, cada uno con el cambio antes del cual se decide.
 - **P19**: resuelta en D-100 (vencimiento único o doble, por edificio); ya no bloquea el cambio 3.
-- **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
+- **P21**: resuelta en D-109; el umbral de R30 ya se guarda por versión de configuración desde el 4a, y el
+  de R23 entra con el 6 o el 14.
 - **P22**: quién usa el editor de reglas, antes del 6b.
 - **P42**: validar los valores de plata con un administrador o contador, antes del piloto (D-109), junto con
   P10 y P17 en la misma sesión. P19, P24 y P33 ya no bloquean el cambio 3 (D-100); los rangos y

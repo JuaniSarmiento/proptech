@@ -137,8 +137,9 @@ sequenceDiagram
     (R08), nunca reabriendo la migración.
   - Dos errores de signo opuesto en dos unidades que dan el total correcto: la comparación por unidad
     igual los muestra como dos diferencias (R09, D-068).
-- **Pendiente**: el modo de redondeo (P10) y el cambio de titular a mitad de período (P11), ambos antes
-  de este cambio; validar los valores de plata con un administrador o contador (P42).
+- **Pendiente**: validar los valores de plata con un administrador o contador antes del piloto (P42),
+  sin bloquear la construcción. P10 y P11 quedaron resueltas por D-109, y el redondeo en dos pasos y el
+  cierre del período por D-113.
 
 ## Flujo 3 · Carga y aprobación de gastos
 

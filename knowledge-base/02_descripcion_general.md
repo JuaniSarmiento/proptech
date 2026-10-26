@@ -4,7 +4,8 @@
 
 Verificado contra `backend/pyproject.toml`, `backend/Dockerfile`, `web/package.json`, `web/Dockerfile`
 e `infra/compose.yaml` al 22/10/2026 (cambios 1a a 1d, 2a, 2.2a, 2c, 3a, 3b y 2b `login-y-usuarios`
-archivados).
+archivados); la fila de `hypothesis` se sumó con el 4a `cimientos-del-libro` (26/10/2026), el resto no
+se volvió a verificar.
 
 | Capa | Tecnología | Versión mínima | Fuente |
 |---|---|---|---|
@@ -24,6 +25,7 @@ archivados).
 | Backend · tipado estático | mypy | 2.4.0 (modo `strict`, plugin de pydantic) | `backend/pyproject.toml` |
 | Backend · tests | pytest | 9.1.1 | `backend/pyproject.toml` |
 | Backend · tests de integración | testcontainers[postgres] | 4.15.0 (PostgreSQL real en Docker) | `backend/pyproject.toml` |
+| Backend · pruebas de propiedades | hypothesis | 6.170.11 (exacta; perfil `ci` con `derandomize=True`, elegido por `HYPOTHESIS_PROFILE` en `infra/ci/test-backend.sh`; 4a) | `backend/pyproject.toml` (`dependency-groups.dev`) |
 | Base de datos (imagen) | PostgreSQL | `postgres:18.6-trixie` | `infra/compose.yaml` |
 | Cola/caché (imagen) | Redis | `redis:8.10.2-trixie` | `infra/compose.yaml` (D-091) |
 | Proxy (imagen) | Caddy | `caddy:2.11.7-alpine` | `infra/compose.yaml` |

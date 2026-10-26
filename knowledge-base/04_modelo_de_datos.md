@@ -10,8 +10,11 @@
 > `accion_de_auditoria`. El 2.2a (20/10/2026, `0017` y `0018`) reemplaza los roles y
 > agrega vínculos e índices únicos en `asignacion_rol`. El 2b `login-y-usuarios` (22/10/2026,
 > migraciones `0019` y `0020`) agrega `persona.clerk_usuario_id` (único por administración) y la tabla
-> `invitacion`, más ocho eventos de acceso al vocabulario de `accion_de_auditoria`. El resto (desde el
-> libro de movimientos) sigue siendo planificado, por cambio, y así queda marcado en cada sección.
+> `invitacion`, más ocho eventos de acceso al vocabulario de `accion_de_auditoria`. El 4a
+> `cimientos-del-libro` (26/10/2026, migraciones `0021` y `0022`) suma a `configuracion_versionada` la
+> columna del umbral de R30 y un trigger de bloqueo por sentencia, la pasa al rol de arranque como
+> `auditoria`, y agrega siete eventos del padrón al vocabulario. El resto (desde el libro de
+> movimientos) sigue siendo planificado, por cambio, y así queda marcado en cada sección.
 
 ## Dominios
 
@@ -306,14 +309,24 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 - **Acciones que suma el 3a** (`0010_acciones_de_configuracion.py`, literales e independientes del enum,
   D14): `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`,
   `configurar_padron`, `ver_configuracion_del_edificio`.
+- **Eventos del padrón que suma el 4a** (`0022_eventos_del_padron.py`, enum `EventoDelPadron` de
+  `acceso/dominio/eventos.py`; D-016, D-114.2, D-114.3): `crear_unidad`, `editar_unidad`,
+  `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria`, `reordenar_categorias`. El
+  detalle de cada uno guarda `complejo_id`, los nombres de los campos cambiados y, sólo para el
+  coeficiente, el valor anterior y el nuevo (de la unidad o de cada miembro con coeficiente propio de un
+  grupo); nunca otros valores. Se registran en la misma transacción que el cambio. Bajar `0022` choca
+  con la FK de `auditoria` (`23503`) en cuanto se registró un evento: es el punto de no retorno del
+  4a (D-114.5).
 
 #### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
 
 - **Qué es**: el registro de acciones sensibles, de sólo agregar: nunca se edita ni se borra, ni
   siquiera por su dueño (dos triggers, `BEFORE UPDATE OR DELETE` por fila y `BEFORE TRUNCATE` por
   sentencia, levantan excepción para cualquier rol). El migrador la crea; el paso de roles `despues()`
-  se la transfiere al rol de arranque (superusuador, D2), el único que podría desactivar el trigger o
-  el `FORCE`, y ningún servicio permanente tiene su contraseña.
+  se la transfiere al rol de arranque (superusuario, D2), el único que podría desactivar el trigger o
+  el `FORCE`, y ningún servicio permanente tiene su contraseña. Es la única tabla de sólo agregar **sin**
+  trigger por sentencia: ya era del rol de arranque desde el 2a y el migrador no puede alterarla, así
+  que conserva su sonda con fila (excepción firmada en E1 del 4a, D-115).
 - **Atributos**: `id` · `BIGINT IDENTITY` PK; `administracion_id` · `UUID NOT NULL`; `persona_id` ·
   `UUID NOT NULL`; `accion` · `TEXT NOT NULL` (FK a `accion_de_auditoria`); `entidad` · `TEXT NOT NULL`;
   `entidad_id` · `UUID NOT NULL`; `detalle` · `JSONB NOT NULL`, default `{}`; `request_id` · `UUID
@@ -384,7 +397,8 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 - **Qué es**: la configuración de intereses (R03), fondo de reserva (R15) y vencimiento (R26, D-100) de
   un complejo, **versionada con fecha y autor**, de sólo agregar: no se edita ni se borra, ni por su
   autor, también por SQL. La vigente para una fecha es la versión de mayor `vigente_desde` que no la
-  supera; cada liquidación referencia la que usó (decidido en el design del 3a).
+  supera; cada liquidación referencia la que usó (decidido en el design del 3a). Desde el 4a es del
+  **rol de arranque** (ver "Dueño de las tablas de sólo agregar" más abajo).
 - **Atributos** (`0009_configuracion_versionada.py`): `id` · `UUID` PK; `administracion_id`/
   `complejo_id` · `UUID NOT NULL`; `vigente_desde` · `DATE NOT NULL`; `tasa_mensual` ·
   `NUMERIC(4,2) NOT NULL`, `CHECK BETWEEN 0 AND 10`; `dias_de_gracia` · `SMALLINT NOT NULL`, `CHECK
@@ -393,16 +407,42 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   `dia_de_vencimiento` · `SMALLINT NOT NULL`, `CHECK BETWEEN 1 AND 28`; `modalidad_de_vencimiento` ·
   `TEXT NOT NULL`, `CHECK IN ('unico', 'doble')`; `dia_segundo_vencimiento` · `SMALLINT`, opcional;
   `recargo_segundo_vencimiento` · `NUMERIC(5,2)`, opcional (0,01 a 20,00%); `autor_id` · `UUID NOT NULL`
-  (FK compuesta a `persona`); `creada_en` · `TIMESTAMPTZ NOT NULL`, default `now()`.
+  (FK compuesta a `persona`); `creada_en` · `TIMESTAMPTZ NOT NULL`, default `now()`;
+  `umbral_saldo_chico` · `NUMERIC(14,2) NOT NULL`, `CHECK (umbral_saldo_chico >= 0)`
+  (`ck_configuracion_umbral`, migración `0021`, 4a): el umbral de R30, **sin default en la base**
+  (D-042). Las versiones anteriores al 4a quedaron en 500,00 (D-109); una versión nueva sin umbral
+  hereda el de la inmediatamente anterior por `vigente_desde`, aunque sea futura, y si no hay ninguna
+  el de `parametros.yaml` (D-114.1). Su efecto sobre el moroso crítico (R20) es del 4c.
 - **Relaciones**: pertenece a un `complejo`; cada `liquidacion` referenciará la versión vigente al
   emitir (cambio 7).
 - **Constraints**: `uq_configuracion_vigencia` (una versión por fecha y complejo);
   `ck_configuracion_vencimiento_coherente` (modalidad `unico` exige los dos campos del segundo
   vencimiento en `NULL`; `doble` los exige completos y coherentes: el segundo día es posterior al
   primero, hasta el día 28, con recargo positivo). RLS con permisos reducidos a `SELECT, INSERT`
-  (`aislar_por_administracion(..., permisos="SELECT, INSERT")`); dos triggers
+  (`aislar_por_administracion(..., permisos="SELECT, INSERT")`); tres triggers con la misma función
   (`fn_configuracion_versionada_bloqueada`) rechazan cualquier `UPDATE`, `DELETE` o `TRUNCATE`, también
-  por SQL como `proptech_app`.
+  por SQL como `proptech_app`: por fila (`trg_configuracion_sin_update_delete`), `BEFORE TRUNCATE`
+  (`trg_configuracion_sin_truncate`) y `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT`
+  (`trg_configuracion_sin_update_delete_por_sentencia`, `0021`, D-114.4). El de sentencia también
+  bloquea `INSERT ... ON CONFLICT DO UPDATE`, aunque no haya conflicto; `ON CONFLICT DO NOTHING` no.
+
+#### Dueño de las tablas de sólo agregar (4a, D-114.4, D-115)
+
+- **Una sola lista**: `backend/src/proptech_core/compartido/tablas_protegidas.py`
+  (`TABLAS_DE_SOLO_AGREGAR`) declara cada tabla con el texto de su `RAISE` y los nombres de sus
+  triggers. Hoy: `auditoria` y `configuracion_versionada`; el 4b suma las seis del libro.
+- **Dueño**: el rol de arranque (superusuario). `roles antes` no se las devuelve al migrador; `roles
+  despues` les transfiere tabla y función, revoca `UPDATE, DELETE, TRUNCATE` a la app y verifica la
+  protección **por el efecto**, sin armar filas: `UPDATE t SET c = c WHERE false`, `DELETE FROM t WHERE
+  false` y `TRUNCATE` (con `CASCADE` si tiene FK entrante), cada uno en su `SAVEPOINT`, exigiendo
+  `P0001` y el texto del `RAISE`. `auditoria` conserva su sonda con fila (D-115).
+- **Chequeo de arranque**: la API, el worker, `alta_inicial` y `ejemplo` no arrancan si alguna tabla de
+  la lista falta en `public` o tiene un dueño que no es superusuario
+  (`verificar_tablas_de_solo_agregar`, excepción `TablasDeSoloAgregarDesprotegidas`); no hay variable
+  que lo saltee.
+- **Toda tabla nueva del conjunto** nace con trigger por fila de `UPDATE` y `DELETE`, `BEFORE TRUNCATE`
+  y el trigger por sentencia, los tres con la misma función. Un `ALTER` posterior falla con `must be
+  owner` hasta que exista el préstamo de propiedad, escrito en D-115 y sin construir.
 
 #### `regla_versionada` · planificada (cambio 6b, D-066; fuera del camino a M1)
 

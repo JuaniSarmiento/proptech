@@ -95,11 +95,18 @@ mercado de arranque es **Mendoza**.
   pytest, `humo.sh` sin forma de aislarse de un stack real levantado, el CVE de Next.js 16.4.0 resuelto
   con la actualización a 16.4.3) quedan en D-110 y en la ficha 3b-bis de
   `knowledge-base/12_fichas_de_changes.md`.
-- **Próximo**: **cambio 4, `motor-de-cuenta-corriente`**, partido en 4a `cimientos-del-libro` (HIGH,
-  propose en revisión), 4b `libro-de-movimientos`, 4c `intereses-saldo-inicial-y-moroso` y 4d
-  `cambio-de-titular` (los tres CRITICAL). En paralelo al 4a, fuera del camino crítico, el 3c
-  `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la ubicación del edificio
-  con listas encadenadas y la cantidad de pisos.
+- **Cambio 4a `cimientos-del-libro` archivado** (26/10/2026, HIGH, D-115 a D-119): cinco reglas de
+  fronteras sobre `cuenta_corriente/` vacío; las tablas de sólo agregar pasan al rol de arranque, con
+  sonda por el efecto y chequeo de arranque (`compartido/tablas_protegidas.py`); reparto por mayor resto
+  y redondeo medio hacia arriba en `compartido/reparto.py`, con `hypothesis`; suma y resta de `Dinero`;
+  el umbral de R30 por versión de configuración (`0021`); siete eventos del padrón auditados (`0022`);
+  deuda D-053 cerrada. Firmó Juani E1 a E8. **OK**; deuda en la ficha 4 de
+  `knowledge-base/12_fichas_de_changes.md` ("4a · deuda del cierre").
+- **Próximo**: **4b `libro-de-movimientos`** (CRITICAL; P56 lo bloquea), después 4c
+  `intereses-saldo-inicial-y-moroso` y 4d `cambio-de-titular` (los dos CRITICAL). En paralelo, fuera
+  del camino crítico, el 3c `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la
+  ubicación del edificio con listas encadenadas y la cantidad de pisos; y el 6 si no escribe en el
+  libro.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -212,12 +219,12 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
   (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026), 2.2a `roles-de-la-empresa`
-  (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108) y `acceso-de-desarrollo`
-  (24/10/2026, D-110, D-111).
-- **En curso, en paralelo**: el 4a `cimientos-del-libro` (HIGH, propose en revisión en la rama
-  `change/cimientos-del-libro`, D-113) y el 3c `pulido-de-la-configuracion` (HIGH, por proponer, lo
-  propone Emiliano desde su exploración del 26/10/2026). Las migraciones del 3c van después de las del
-  4a (`0021`, `0022`). La numeración 3c y 4a a 4d no renumera los demás changes (precedente D-097).
+  (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
+  (24/10/2026, D-110, D-111) y 4a `cimientos-del-libro` (26/10/2026, D-119).
+- **Siguen, en paralelo**: el 4b `libro-de-movimientos` (CRITICAL, por proponer) y el 3c
+  `pulido-de-la-configuracion` (HIGH, por proponer, lo propone Emiliano desde su exploración del
+  26/10/2026). Las migraciones del 3c van después de las del 4a (`0021`, `0022`). La numeración 3c y 4a
+  a 4d no renumera los demás changes (precedente D-097).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

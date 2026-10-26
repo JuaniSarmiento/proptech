@@ -146,7 +146,7 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 ## Dominio: Cuenta corriente
 
-## R03 · Intereses por mora · Vigente (D-010, D-109) · a validar (P42)
+## R03 · Intereses por mora · Vigente (D-010, D-109, D-113) · a validar (P42)
 
 - **Tipo**: interés **simple**, siempre. No se cobra interés sobre interés (art. 770 del Código
   Civil y Comercial). No es configurable.
@@ -163,8 +163,10 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   (R36).
 - **Hasta qué fecha corre el interés de cada emisión** (D-109, resuelve P34): hasta el **cierre del
   período**, nunca hasta la fecha en que se aprieta "emitir" ni hasta el vencimiento siguiente. El
-  interés generado después del cierre entra en el período siguiente. Queda abierta para Alberto la
-  sub-pregunta de confirmar que su Excel corta el interés en la misma fecha.
+  interés generado después del cierre entra en el período siguiente.
+- **Cierre del período** (D-113, resuelve P-3): el **último día del mes**, igual para todos los
+  edificios; no hay día de cierre por edificio. Queda abierta para Alberto (A-2) confirmar que su Excel
+  corta el interés en esa fecha; si pide un día propio, se agrega después.
 - **Cuándo se registra**: al emitir la liquidación siguiente, como un débito con su detalle
   (obligación, días, tasa, base). El número no cambia cada vez que el vecino entra al portal.
 - **Historia**: cada liquidación guarda la configuración con la que se calculó. Cambiar la tasa
@@ -221,24 +223,34 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   del saldo anterior en la expensa siguiente; el saldo anterior que muestra la expensa coincide con el
   calculado desde el libro a la fecha de emisión.
 
-## R07 · Precisión y redondeo · Vigente (D-015, D-046, D-109) · a validar (P42)
+## R07 · Precisión y redondeo · Vigente (D-015, D-046, D-109, D-113, D-118) · a validar (P42)
 
 - **Representación** (D-046): todo importe es `Decimal` en Python, construido desde texto
   (`Decimal("0.10")`, nunca `Decimal(0.1)`), `NUMERIC(14,2)` en la base y texto en el JSON. Nunca
   `float`. El frontend no calcula montos: sólo los formatea.
 - **Coeficientes que no suman exacto 1**: ver R01 (tolerancia ±0,0001; se reparte proporcional a la
   suma real).
-- **Reparto**: cada parte se redondea al centavo; la diferencia hasta el total exacto se asigna de
-  a un centavo a las unidades con mayor fracción descartada (método del mayor resto). En empate,
-  por orden de identificador de la unidad, para que el resultado sea determinista.
+- **Redondeo en dos pasos** (D-113, resuelve P-7): son dos operaciones distintas que nunca se mezclan.
+  - **Reparto de un total entre partes** (método del mayor resto): cada parte se **trunca** al
+    centavo; los centavos que faltan hasta el total van de a uno a las partes con mayor fracción
+    descartada. A igual fracción, por **orden natural del identificador** de la unidad, con los
+    números antes que las letras ("1A", "10A", "B1", "C1", "L-PB"), y el id como último desempate
+    (D-118, provisorio hasta A-1). Un total negativo se reparte como el positivo con el signo cambiado,
+    truncando hacia cero (D-118).
+  - **Monto suelto** (interés, montos que no se reparten): se calcula con precisión completa y se
+    redondea al centavo **una sola vez**, al registrarse, **medio hacia arriba**, como `REDONDEAR` de
+    Excel (D-109, resuelve P10: 0,125 → 0,13; en los negativos se aleja del cero).
+  - Redondear cada parte del reparto medio hacia arriba está descartado: la suma no cierra ($2,00 entre
+    tres da tres de $0,67, que suman $2,01).
 - **Garantía**: la suma de las partes es siempre igual al gasto, al centavo; ninguna unidad se
   aparta más de un centavo de su parte exacta.
-- **Intereses**: se calculan con precisión completa y se redondean al centavo una sola vez, al registrarse.
-- **Modo de redondeo** (D-109, resuelve P10): medio hacia arriba, como `REDONDEAR` de Excel
-  (0,125 → 0,13). Queda abierta para Alberto la sub-pregunta de a qué unidad va el centavo sobrante en
-  su planilla; mientras tanto se usa el método del mayor resto, ya vigente arriba.
+- **Dónde vive** (4a): `proptech_core/compartido/reparto.py` (`repartir`, `clave_de_orden_natural`,
+  `redondear_al_centavo`); el reparto trabaja en centavos enteros. Entre montos sólo hay suma, resta y
+  negación (D-118).
 - **Tests mínimos**: un `float` en un monto hace fallar la prueba; $1.000.000 entre 150 unidades suma exacto; empate de fracciones es
-  determinista; un reparto entre 1 unidad devuelve el total.
+  determinista; un reparto entre 1 unidad devuelve el total. Hechos en el 4a, más las propiedades con
+  `hypothesis` (suma exacta, distancia menor a un centavo, orden de los restos, mismo resultado con las
+  partes permutadas).
 
 ## R08 · Correcciones · Vigente (D-016)
 
@@ -294,7 +306,13 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Qué resuelve**: saldos chicos (a favor o en contra) que quedan de intereses o pagos parciales,
   por debajo de lo que tiene sentido reclamar o devolver.
 - **Regla** (D-109, resuelve P21): el umbral es **$500**, configurable por edificio como parámetro
-  con vigencia (igual que R03). Por debajo del umbral, el saldo no genera reclamo de cobranza ni
+  con vigencia (igual que R03).
+- **Dónde vive** (4a, D-114.1): en cada versión de `configuracion_versionada`
+  (`umbral_saldo_chico`, sin default en la base). Una versión nueva que no lo trae hereda el de la
+  inmediatamente anterior por `vigente_desde`, aunque sea futura; si no hay ninguna, el de
+  `config/parametros.yaml` (`cuenta_corriente.umbral_saldo_chico: "500.00"`). Se carga por la API de
+  versiones y en el alta del edificio; ninguna pantalla lo muestra todavía. Contra qué se compara (P-4,
+  P-5) y su efecto sobre R20 son del 4c. Por debajo del umbral, el saldo no genera reclamo de cobranza ni
   devolución automática, y se arrastra con R06 hasta que se acumula o se liquida junto con otro
   movimiento. Un saldo por debajo del umbral tampoco cuenta como vencido para R20 (moroso crítico,
   D-109, resuelve P31).

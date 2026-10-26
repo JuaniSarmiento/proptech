@@ -147,7 +147,9 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## Términos de las reglas de plata
 
-- **Mayor resto**: el método de reparto que redondea cada parte al centavo y asigna los centavos que faltan, de a uno, a las unidades con mayor fracción descartada. La suma da siempre exacta (R07).
+- **Reparto por mayor resto**: el método para repartir un total entre unidades. Cada parte se **trunca** al centavo y los centavos que faltan van, de a uno, a las unidades con mayor fracción descartada; a igual fracción, por orden natural del identificador (D-118). La suma da siempre exacta (R07, D-113). No se mezcla con el redondeo medio hacia arriba.
+- **Redondeo medio hacia arriba**: el redondeo al centavo de un monto suelto (el interés, un monto que no se reparte), como `REDONDEAR` de Excel: 0,125 da 0,13. Se aplica una sola vez, al registrarse (D-109, D-113).
+- **Cierre del período**: el último día del mes; hasta esa fecha corre el interés de cada emisión, igual para todos los edificios (R03, D-113).
 - **Ajuste de interés**: el crédito que se registra al confirmar un pago cuando una emisión ya había cobrado interés por días posteriores a la transferencia. Queda enlazado al pago y a esa emisión (R11).
 - **Bonificación por pronto pago**: el descuento sobre la ordinaria prorrateada para quien paga todo lo del período hasta el día límite. Se registra al confirmar el pago (R37, propuesta).
 - **Control bloqueante**: un control antes de emitir que impide emitir; si es **duro**, no se puede aceptar (saldos iniciales sin validar, factura duplicada, ingresos mayores que los gastos). Una **advertencia** sólo avisa (R34).

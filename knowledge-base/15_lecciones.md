@@ -268,6 +268,12 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   en la 3) aparecieron recién cuando alguien salió del encuadre dictado, no cuando coincidieron dentro
   de él.
 - **Aplica a**: auditor.
+- **Ocurrencia (4a `cimientos-del-libro`, revisión del propose, 26/10/2026, `06-auditor.md`)**: la misma
+  falla con otro canal. Al DBA le llegó como pregunta la hipótesis del arquitecto (AR-1, opción 2: "¿un
+  trigger `FOR EACH STATEMENT` se dispara con `UPDATE t SET c = c WHERE false`?"), que no estaba en el
+  brief común; la coincidencia entre AR-1 y DB-5 fue una verificación encadenada, no dos opiniones.
+  Pasarle a un revisor la hipótesis de otro sirve para verificarla, pero **rompe la independencia**: si
+  se hace, se declara en el informe consolidado y el acuerdo cuenta como uno.
 
 ## L-022 · Un chequeo que compara un resumen no ve lo que el resumen esconde
 
@@ -587,3 +593,84 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   se escriben en el repo: es público y las bandejas de Mailinator también (BE-7, P67).
 - **Costo**: dos rondas de prueba y un hallazgo de "bug de rol" que no era del código.
 - **Aplica a**: QA, rompedor y quien verifique a mano algo que manda emails (2b, 13, 15).
+
+## L-041 · Si una tarea agrega un chequeo que bloquea el arranque, su verde es la suite completa
+
+- **Origen**: 4a `cimientos-del-libro`, auditoría del apply, vuelta 1 (`12-auditor-apply.md`, 26/10/2026).
+- **Qué pasó**: la 5.3 agregó el chequeo que impide arrancar si una tabla de sólo agregar tiene otro
+  dueño y marcó verde con su grupo ("102 passed"). Ese mismo cambio rompió 357 tests de otros
+  archivos, que levantaban la app o armaban bases sin el paso de roles; salieron recién en la corrida
+  de cierre (7.1). El `[x]` era verdadero sobre lo que corrió y falso sobre lo que rompió.
+- **Regla**: una tarea que agrega un chequeo de arranque (o cualquier cosa que corre en toda fixture
+  que levante la app o la base) cierra con la suite completa, no con la de su grupo. "No hay fallos
+  pendientes de esos conjuntos" no es un verde.
+- **Costo**: dos informes de constructor (uno con un diagnóstico equivocado de la causa) y el commit
+  `e57ccd0` para rearmar las bases de test como el deploy real.
+- **Aplica a**: constructor, auditor (al leer un `[x]`).
+
+## L-042 · Este repo no corre CI en una rama sin PR: "pusheé" no es "leí el CI verde"
+
+- **Origen**: 4a `cimientos-del-libro`, auditoría del apply, vuelta 1 (`12-auditor-apply.md`).
+- **Qué pasó**: la rama `change/cimientos-del-libro` estaba pusheada y se daba por corriendo en CI,
+  pero `.github/workflows/ci.yml` sólo se dispara con push a `main`, `pull_request` o
+  `workflow_dispatch`: `gh run list --commit 25bbaa7` estaba vacío. Se cerró con `gh workflow run CI
+  --ref change/cimientos-del-libro` sobre el SHA final.
+- **Regla**: antes de citar el CI de una rama, `gh run list --commit <sha>`; si está vacío, se dispara
+  (`workflow_dispatch` o un PR) y se lee el run sobre ese SHA. Complementa L-037, que es sobre `main`.
+- **Costo**: la 7.1 bloqueada una vuelta por un CI que nunca había existido.
+- **Aplica a**: orquestador, constructor, auditor.
+
+## L-043 · Un script de mantenimiento que no está en el CI se ejecuta en su test o en el cierre
+
+- **Origen**: 4a `cimientos-del-libro`, RB-1 del rompedor y auditoría del apply (`11-rompedor.md`,
+  `12-auditor-apply.md`, `14-auditor-final.md`).
+- **Qué pasó**: `infra/ci/ensayo-roles.sh` quedó roto por el 4a (no devolvía `configuracion_versionada`
+  al migrador antes del `downgrade 0016`, `must be owner`). `test_ensayo_login` sólo compara un número
+  de revisión en el texto del script, así que siguió verde. Dos agentes lo afirmaron con "confianza
+  alta" sin correrlo; recién al correrlo en un compose aislado se vio el rojo y después el verde.
+- **Regla**: si un script de mantenimiento (ensayo, restauración, rollback) no corre en CI, o su test
+  lo ejecuta, o el cierre del change que lo toca lo corre y pega comando y salida. Leer el texto no lo
+  prueba. Se corre con un `COMPOSE_PROJECT_NAME` propio, nunca contra `proptech`.
+- **Costo**: una vuelta de verify entera (RB-1 bloqueante) y el arreglo `c345467`; el ensayo sigue sin
+  CI (deuda del 4a).
+- **Aplica a**: constructor, rompedor, auditor.
+
+## L-044 · Un timeout se sube mirando el tiempo de cada paso, no el del job
+
+- **Origen**: 4a `cimientos-del-libro`, auditoría final (`14-auditor-final.md`, 26/10/2026).
+- **Qué pasó**: el job `web` se cortó dos veces por el límite de 15 minutos (run 40357665108). Por paso,
+  la instalación de Chromium tardaba 10 minutos y los tests del navegador ya daban success en el
+  intento 2; el cuello no eran los tests. Se subió a 25 minutos (`6f6fe6b`); la corrida siguiente
+  instaló Chromium en 25 segundos y el job entero tardó 7.
+- **Regla**: antes de tocar un `timeout-minutes`, leer la duración de cada paso del run cortado y
+  nombrar el que se pasa. Si es un paso de instalación, el arreglo de fondo es cachearlo; subir el
+  límite sólo compra margen. Y como dice L-037, `test_ci_workflow.py` fija ese número: se espera el run.
+- **Costo**: dos corridas del job `web` perdidas y un commit de CI extra antes de poder cerrar la 7.1.
+- **Aplica a**: quien toca `.github/workflows/`, orquestador.
+
+## L-045 · El scratchpad es un canal compartido entre revisores que ningún prompt cierra
+
+- **Origen**: 4a `cimientos-del-libro`, revisión del propose (`06-auditor.md`, 26/10/2026).
+- **Qué pasó**: los cinco revisores de rol escribían en el mismo scratchpad; QA pudo ver `reglas.py` e
+  `imports.py` del arquitecto. No se sabe si los abrió, y por eso no se puede afirmar que su acuerdo con
+  el arquitecto fuera independiente.
+- **Regla**: revisores que tienen que ser independientes trabajan en directorios separados (uno por
+  revisor) y no leen el de los otros. Si eso no se puede garantizar, el informe consolidado lo declara
+  y un acuerdo entre ellos cuenta como una sola opinión.
+- **Costo**: la independencia de QA quedó como supuesto en el veredicto del propose.
+- **Aplica a**: orquestador (al lanzar revisores), auditor.
+
+## L-046 · Una prueba sobre la implementación propia del revisor es evidencia de esa implementación, no del design
+
+- **Origen**: 4a `cimientos-del-libro`, revisión del propose (`06-auditor.md`, QA-3 y AN-1).
+- **Qué pasó**: QA escribió su propia versión del orden natural y mostró que levantaba `TypeError` al
+  comparar un entero con un texto; lo informó con confianza alta como falla del design. El `TypeError`
+  dependía de cómo QA lo había implementado ("la implementación ingenua"), no de lo que el design
+  decía.
+- **Regla**: si un revisor prueba un design escribiendo su propio código, el resultado se archiva como
+  evidencia de **ese** código y la conclusión sobre el design como juicio, con la confianza bajada a
+  media. Lo que cuenta es mostrar que el design permite o exige esa implementación.
+- **Costo**: un hallazgo sobrecalibrado que el auditor tuvo que bajar; el design terminó fijando los
+  tramos etiquetados `(0, int)` y `(1, texto)` para que no haya lectura posible que compare tipos
+  distintos.
+- **Aplica a**: revisores de rol (QA, analista), auditor.

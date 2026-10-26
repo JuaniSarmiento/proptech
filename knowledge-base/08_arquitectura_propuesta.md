@@ -34,7 +34,7 @@ proptech/
 │       │   ├── pagos/
 │       │   ├── avisos/
 │       │   ├── politicas/    # el motor de reglas, 13_motor_de_reglas.md
-│       │   └── compartido/   # Dinero, sesión de base, tenancy, auditoría
+│       │   └── compartido/   # Dinero, reparto, sesión de base, tenancy, tablas protegidas
 │       ├── proptech_api/     # routers FastAPI
 │       └── proptech_worker/  # tareas (ARQ)
 └── infra/                    # Docker Compose, Caddyfile, backups
@@ -49,8 +49,27 @@ Dirección de dependencia fijada al cerrar el cambio 2a (ficha 2a de `12_fichas_
 `acceso` no importa `complejos`, y `compartido` no importa `acceso`: la sesión de base y el tenant son
 genéricos (`compartido`), la autorización y la auditoría son del dominio (`acceso`), y los módulos de
 negocio que necesitan alcance por edificio dependen de `acceso`, nunca al revés. Cruzar esta dirección
-(por ejemplo, que `acceso` importe algo de `complejos` para resolver un nombre de edificio) es la
-regresión que el guardián de fronteras del cambio 3 en adelante tiene que impedir.
+(por ejemplo, que `acceso` importe algo de `complejos` para resolver un nombre de edificio) es una
+regresión.
+
+**Las cinco reglas que vigila el test** (4a, D-116; `backend/tests/unitarios/test_fronteras_de_modulos.py`,
+spec `fronteras-de-modulos`), sobre imports directos en sus tres formas, con un mutante por regla:
+
+| regla | qué exige | excepciones, con su motivo |
+|---|---|---|
+| (a) | sin ciclos entre módulos, de cualquier largo | — |
+| (b) | entre módulos sólo se importa `aplicacion`; nada de imports relativos entre módulos | `acceso.dominio.identidad` y `acceso.dominio.permisos` (`Identidad` y `Accion` viajan en todo caso de uso auditado); `acceso.dominio.eventos` (el vocabulario de auditoría viaja con `registrar()`). `proptech_api` y `proptech_worker` quedan fuera: son la raíz de composición |
+| (c) | `dominio/` sólo importa de `compartido` `dinero`, `coeficientes`, `porcentaje`, `superficie`, `texto`, `tipos_de_unidad` y `reparto` | `parametros`, para `complejos/dominio/configuracion.py` (`desde_parametros`) |
+| (d) | `cuenta_corriente` no importa `compartido.cola` ni `liquidacion` | — |
+| (e) | un archivo de `dominio/` no importa la `aplicacion`, los `adaptadores` ni los `puertos` de su módulo, ni `sqlalchemy` ni `psycopg` | — |
+
+`cuenta_corriente/` existe desde el 4a, vacío (`dominio/` y `aplicacion/`), para que las reglas lo
+vigilen antes de la primera tabla de plata. **Límite declarado**: lo transitivo no se vigila (la
+excepción `parametros` arrastra la lectura de archivos; `cuenta_corriente → acceso.aplicacion.<algo que
+encola>` pasaría la regla (d)).
+
+El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_corriente`: lo usan el
+4b, el 6 y el 7, y ponerlo en `cuenta_corriente` crearía `gastos → cuenta_corriente` por una función.
 
 ## La web (`pantallas-del-edificio`, 3b)
 
@@ -99,8 +118,10 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
     interna a la red de Compose.
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
-  tres roles con `roles.py antes`/`despues`, y es el único dueño de `auditoria`); `proptech_migrador`
-  (`POSTGRES_MIGRADOR_USER`/`POSTGRES_MIGRADOR_PASSWORD`, dueño de las tablas de dominio, corre Alembic;
+  tres roles con `roles.py antes`/`despues`, y es el dueño de **toda tabla de sólo agregar**: `auditoria`
+  y, desde el 4a, `configuracion_versionada`, más las del libro cuando el 4b las declare; D-115);
+  `proptech_migrador`
+  (`POSTGRES_MIGRADOR_USER`/`POSTGRES_MIGRADOR_PASSWORD`, dueño de las demás tablas de dominio, corre Alembic;
   sin `BYPASSRLS`, E1: sembrar datos exige fijar el tenant a propósito, igual que la app);
   `proptech_app` (`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`, la usan la API y el worker; sin
   superusuario ni `BYPASSRLS`); `proptech_respaldo` (`POSTGRES_RESPALDO_USER`/
@@ -114,7 +135,16 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
 - **Auditoría de acciones sensibles** (D-016, D9, cambio 2a): tabla `auditoria`, de sólo agregar (dos
   triggers bloquean `UPDATE`, `DELETE` y `TRUNCATE` para cualquier rol, incluido su dueño), dueña el rol
   de arranque; vocabulario cerrado en `accion_de_auditoria` (sumar una acción exige una migración). Ver
-  `04_modelo_de_datos.md` para el detalle de columnas.
+  `04_modelo_de_datos.md` para el detalle de columnas. Desde el 4a se auditan también los siete
+  cambios del padrón que deciden el reparto, en la misma transacción (D-114.2, D-114.3).
+- **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`.
+  `roles despues` las transfiere al rol de arranque y verifica la protección por el efecto (`UPDATE` y
+  `DELETE` con `WHERE false` contra el trigger por sentencia, y `TRUNCATE`, cada uno en su `SAVEPOINT`),
+  salvo `auditoria`, que conserva su sonda con fila. **Chequeo de arranque**: la API, el worker,
+  `alta_inicial` y `ejemplo` no arrancan si una tabla de la lista falta o su dueño no es superusuario
+  (`TablasDeSoloAgregarDesprotegidas`, log `arranque_fallido` en la API y el worker); ninguna variable
+  lo saltea. Un `ALTER` sobre una tabla protegida falla con `must be owner` hasta que exista el préstamo
+  de propiedad, escrito en D-115 y sin construir.
 - **Redes** (D10, cambio 2a: `interna` se parte en dos; `infra/compose.yaml`): `datos` (`internal:
   true`) es la única red que alcanza `db` y `redis`; la **web nunca está en ella** — sólo la API y el
   worker. `aplicacion` (`internal: true`) conecta la API, la web y Caddy, con la IP fija de Caddy para
