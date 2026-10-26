@@ -95,9 +95,11 @@ mercado de arranque es **Mendoza**.
   pytest, `humo.sh` sin forma de aislarse de un stack real levantado, el CVE de Next.js 16.4.0 resuelto
   con la actualización a 16.4.3) quedan en D-110 y en la ficha 3b-bis de
   `knowledge-base/12_fichas_de_changes.md`.
-- **Próximo**: **cambio 4, `motor-de-cuenta-corriente`** (CRITICAL, explore propio): el libro de
-  movimientos de sólo agregar, obligaciones/pagos/imputaciones, intereses simples, reparto por mayor
-  resto. Cierra el camino crítico a M1 junto con los cambios 5 a 7.
+- **Próximo**: **cambio 4, `motor-de-cuenta-corriente`**, partido en 4a `cimientos-del-libro` (HIGH,
+  propose en revisión), 4b `libro-de-movimientos`, 4c `intereses-saldo-inicial-y-moroso` y 4d
+  `cambio-de-titular` (los tres CRITICAL). En paralelo al 4a, fuera del camino crítico, el 3c
+  `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la ubicación del edificio
+  con listas encadenadas y la cantidad de pisos.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -108,7 +110,9 @@ mercado de arranque es **Mendoza**.
   plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
   administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
   (P47), doble factor para el personal (P49) y borrar el usuario de Clerk al quitar la última
-  asignación (P50). P48 resuelta en D-099 (selector). P18 conserva D-096, acotado por D-108 a "única
+  asignación (P50); las del 4 partido (P51 a P56 para Juani, P57 a P60 para Alberto) y las del 3c
+  (P61 a P69: ubicación, pisos, `/personal` jerárquica, cuentas de Mailinator, alcance de acceso y
+  grupos). P48 resuelta en D-099 (selector). P18 conserva D-096, acotado por D-108 a "única
   por administración"; la matriz de P23 fue reemplazada por D-106. P12 quedó cerrada para
   autenticación en D-107; sigue abierta para la base de negocio.
 
@@ -197,19 +201,23 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md), con el detalle de cada cambio
 en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.md). Resumen:
 
-- **Total**: 24 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, el 3 en 3a y 3b y
-  el 2.2a de roles agregado por Juani el 20/10/2026), repartidos en M1 Liquida, M2 Cobra y M3 Piloto.
+- **Total**: 28 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, el 3 en 3a y 3b, el
+  2.2a de roles agregado por Juani el 20/10/2026, el 4 partido en 4a a 4d por su exploración del
+  22/10/2026 y el 3c de pulido agregado por Juani el 26/10/2026), repartidos en M1 Liquida, M2 Cobra
+  y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
-  `1a → 1b → 1c → 1d → 2a → 3a → 4 → 5 → 6 → 7` (2b, 2c y 3b en paralelo).
+  `1a → 1b → 1c → 1d → 2a → 3a → 4a → 4b → 4c → 5 → 7` (6 en paralelo desde el 4a si no escribe en
+  el libro; 2b, 2c, 3b y 3c fuera; el 4d después del 7, sin bloquear M1).
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
-  (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026; el acceso de desarrollo quedó afuera,
-  movido a `acceso-de-desarrollo`); 2.2a `roles-de-la-empresa` (20/10/2026, D-106).
-- **Próximo**: 2b, login con Clerk y gestión de usuarios (D-107), después del 2.2a. P48 resuelta en
-  D-099; requiere propuesta CRITICAL firmada. `acceso-de-desarrollo` sigue sin firma y con el login se
-  reduce a la carga del ejemplo. La partición de pantallas y acceso deriva de D-094; el 2.2a tiene
-  numeración propia, entre 2a y 2b, sin renumerar los demás changes.
+  (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026), 2.2a `roles-de-la-empresa`
+  (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108) y `acceso-de-desarrollo`
+  (24/10/2026, D-110, D-111).
+- **En curso, en paralelo**: el 4a `cimientos-del-libro` (HIGH, propose en revisión en la rama
+  `change/cimientos-del-libro`, D-113) y el 3c `pulido-de-la-configuracion` (HIGH, por proponer, lo
+  propone Emiliano desde su exploración del 26/10/2026). Las migraciones del 3c van después de las del
+  4a (`0021`, `0022`). La numeración 3c y 4a a 4d no renumera los demás changes (precedente D-097).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.
@@ -295,178 +303,11 @@ proyecto** (D-035), así que el informe aplica directo: ~150 barrios y ~20 admin
 Cámara de Mendoza, 75.124 departamentos ocupados en el Gran Mendoza (Censo 2022), líderes
 nacionales a ARS 2.950 por unidad, **AccessIN** como competidor mendocino en barrios.
 
-## Hallazgos de QA manual (23/10/2026, previos a `acceso-de-desarrollo`)
+## Hallazgos de QA manual (23/10/2026)
 
-Barrido exploratorio con Playwright sobre el stack local (archivados hasta ese día: 1a a 1d, 2a, 2c,
-2.2a, 2b, 3a y 3b; 4 en adelante todavía no existen), clickeando
-pantallas reales y probando valores límite en cada formulario. Objetivo: juntar todo lo que hay que
-arreglar o documentar antes/durante `acceso-de-desarrollo`. **Nunca se guardan credenciales acá** (el
-repo es público): las cuentas de prueba se recrean a mano siguiendo esta misma guía cuando hagan
-falta.
-
-### Bugs reales a resolver
-
-- **Validación de "Día de vencimiento" (Intereses y vencimiento)**: el campo acepta valores fuera de
-  1–31 (probado con 35) sin avisar en el momento; el guardado falla recién contra el backend con un
-  mensaje genérico ("No pudimos guardar los datos. Probá de nuevo."), sin señalar qué campo está mal.
-- **Error mal atribuido en el mismo formulario**: al combinar un "Rige desde" duplicado con un "Día
-  de vencimiento" inválido, el mensaje de error se le atribuye al campo "Tasa mensual" (que estaba
-  bien cargado), no al campo realmente responsable. Lleva a buscar el problema en el lugar
-  equivocado.
-- **Invitación aceptada con sesión de otra cuenta activa**: si alguien entra al link de invitación
-  mientras tiene la sesión de OTRA cuenta abierta en el navegador, el frontend
-  (`web/src/app/invitacion/[sobre]/page.tsx:20`) sólo chequea si HAY sesión, no si es la sesión del
-  email invitado; termina en "Este enlace ya no sirve." sin explicar el motivo real (el backend
-  rechaza por `identidad_ajena`, `backend/.../acceso/aplicacion/invitaciones.py`, por diseño
-  anti-enumeración). Fix mínimo propuesto (no implementado): un endpoint de sólo lectura que devuelva
-  el email destinatario de la invitación dado el token (sin romper la protección
-  anti-enumeración), y que el frontend muestre "Esta invitación es para X, estás logueado como Y,
-  cerrá sesión primero" cuando no coincidan. Toca el dominio de acceso (gobernanza CRÍTICA): requiere
-  aprobación de Juani, Alberto o Emiliano antes de codear (D-094, D-111).
-
-### Gaps de UX / validación a documentar o mejorar
-
-- **Identificador de unidad**: acepta prácticamente texto libre, sin indicar en la UI qué formato se
-  espera. Rechaza vacío, duplicados (mensaje claro) y muy largo (~200 caracteres, mensaje genérico
-  "Es muy largo." sin indicar el máximo real).
-- **Coeficiente de unidad**: espera una fracción decimal (0–1, ej. `0.5` = 50%), no un porcentaje
-  entero (`50` se rechaza). No está indicado en ningún lado de la UI.
-- **Campo "Clave" de Grupos y Categorías**: sólo acepta minúsculas y dígitos (patrón `^[a-z0-9]+$`).
-  Mayúsculas, guiones y guion bajo se rechazan con el mismo mensaje genérico "Este valor no es
-  válido.", sin explicar el patrón esperado.
-- **Botón "Quitar" en Personal**: saca a una persona de la administración sin ningún diálogo de
-  confirmación, a diferencia de "Saldos previos" (que sí tiene advertencia explícita por ser
-  irreversible). Revisar si conviene agregar confirmación.
-- **`/privacidad` expone una nota interna**: el texto dice literalmente "Borrador pendiente de
-  aprobación de Juani", visible a cualquier usuario real. Las secciones de retención de datos y
-  responsable/contacto están explícitamente marcadas como pendientes de completar (ya documentado
-  como deuda intencional del cierre de 2b, pero la nota interna filtrada hacia el usuario final
-  conviene limpiarla antes de cualquier demo o piloto).
-- **No hay acción de "borrar grupo"** en `/edificios/[id]/grupos`, sólo "Editar" — si un grupo queda
-  vacío por error, la única salida es agregarle unidades, no se puede eliminar.
-
-### Gotcha de entorno (no es bug del código) — CONFIRMADO
-
-- **Clerk rechaza/no entrega invitaciones a emails cuya parte local contiene la palabra "admin"**,
-  confirmado con dos rondas de prueba: primero 4 direcciones `*admin*@mailinator.com` rechazadas
-  (HTTP 422/400 en los logs del worker) contra 3 sin "admin" entregadas sin problema; después,
-  confirmación definitiva con `proptechqa-director@mailinator.com` y
-  `proptechqa-gerente@mailinator.com` (ninguna de las dos con "admin" en el texto): **las dos
-  llegaron en segundos**. No tiene relación con el ROL que se le asigna en PropTech — el código de
-  invitación (`backend/.../acceso/aplicacion/usuarios.py`) no tiene ninguna rama distinta según el
-  rol. Es casi seguro una protección anti-phishing del lado de Clerk sobre el *texto del email*, no
-  un bug nuestro. **Al armar emails de prueba de ahora en más, evitar la palabra "admin" en la parte
-  local** para no perder tiempo de nuevo pensando que es un bug de rol.
-
-### Confirmado que NO son bugs (verificado activamente)
-
-- Editar una unidad ya creada (click en el identificador) funciona: abre el modal con los datos
-  precargados y el coeficiente se puede corregir sin problema.
-- Una unidad puede pertenecer a varios grupos de reparto a la vez — es el diseño esperado (R01): el
-  grupo define "quién paga" cada gasto, no es exclusivo (ej. "Generales" trae todas las unidades,
-  "Pileta" un subconjunto de esas mismas unidades).
-- El paso "Armar los grupos de reparto" del Resumen/puesta a punto se marca "falta" si existe
-  cualquier grupo (no "Generales") sin unidades miembro — es intencional, evita grupos fantasma
-  (`backend/.../complejos/aplicacion/lectura.py:204-221`).
-- Scoping por rol/edificio funciona correctamente del lado del backend: Contador (alcance empresa),
-  Auxiliar/Consejo (alcance un edificio) y **Administrador (los dos alcances, confirmado con sesión
-  real)** fueron bloqueados con mensajes claros al intentar acciones fuera de su permiso (crear
-  edificio, ver `/personal`), aunque el link/botón siga siendo visible en la UI para ellos (el backend
-  es la autoridad real, consistente con la arquitectura RLS del proyecto).
-
-### Hallazgo #3 — CERRADO: un Administrador NO puede ver `/personal`, en ningún alcance
-
-Confirmado con sesión real logueada, los dos alcances:
-
-- **`/personal`**: bloqueado para Administrador·Toda la empresa Y Administrador·Un edificio. Mensaje
-  exacto del backend: *"No podés ver el personal de la administración. Esto lo puede hacer el super
-  admin de la empresa."*
-- **`/edificios`**: Administrador·Toda la empresa ve los 6 edificios completos (igual que super
-  admin); Administrador·Un edificio ve sólo el suyo — el alcance se respeta correctamente.
-- **Crear edificio**: bloqueado para los dos alcances, mismo tipo de mensaje del backend.
-- **Gap de UI generalizado, confirmado a mano en los 5 roles no-super_admin (23/10/2026)**: el
-  frontend NUNCA oculta ni deshabilita un botón o link de acción según el permiso real del rol —
-  siempre se ve igual que para super_admin, y recién al enviar la acción el backend la frena. Probado
-  explícitamente, logueado uno por uno, con evidencia concreta:
-  - **Administrador (los dos alcances)**: ve "Personal" y "Nuevo edificio" en el menú; ambos
-    bloqueados al usarlos (mismo mensaje: "Esto lo puede hacer el super admin de la empresa").
-  - **Contador**: mismo menú completo visible ("Personal", "Nuevo edificio"), y dentro de un
-    edificio ve el sidebar entero (Resumen, Unidades, Grupos, Categorías, Intereses y vencimiento) y
-    el botón "Agregar unidad" — pese a que la matriz de permisos (`permisos.py`) no le da
-    `configurar_padron` ni ninguna acción de escritura hoy, sólo `ver_configuracion_del_edificio`.
-  - **Auxiliar y Consejo**: mismo patrón — "Personal" y "Nuevo edificio" visibles, alcance de
-    edificios correctamente escopeado (ven sólo el suyo) pero sin ocultar nada por permiso de acción.
-  No es un agujero de seguridad (el backend es la autoridad real en todos los casos probados), pero
-  es un problema de UX sistémico, no puntual de un rol: cualquier pantalla con un botón de acción
-  probablemente tenga el mismo gap. Antes de construir pantallas nuevas (las de los
-  changes que vienen después de `acceso-de-desarrollo`, archivado el 24/10/2026), conviene que el frontend lea la matriz de permisos (ya expuesta por el backend de algún
-  modo, a confirmar cómo) y oculte/deshabilite en vez de dejar que el usuario choque con el mensaje de
-  error recién al final.
-
-### Matriz completa de permisos (D-096/D-106), relevada el 23/10/2026
-
-Reconstruida directo de `backend/src/proptech_core/acceso/dominio/permisos.py` (`_MATRIZ`), cruzada
-contra `knowledge-base/09_decisiones_y_supuestos.md` (D-106) para confirmar que el código implementa
-la decisión al pie de la letra:
-
-| Acción | super_admin | Admin·Empresa | Admin·Edificio | Contador | Auxiliar | Consejo | Vecino |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Crear edificio | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Ver personal / invitar | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Configurar padrón (unidades/grupos/categorías) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Crear versión de config. (intereses/vencimiento) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Confirmar "sin saldos previos" | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Ver configuración del edificio (solo lectura) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Cargar gastos / preparar liquidación *(no construido)* | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Emitir y distribuir liquidación *(no construido)* | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Anular liquidación *(no construido)* | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Confirmar pago informado *(no construido)* | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Revertir/reimputar pago *(no construido)* | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Condonar intereses *(no construido)* | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Dar de baja deuda *(no construido)* | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Aceptar alertas no bloqueantes *(no construido)* | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Aceptar alertas bloqueantes *(no construido)* | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Informar pago *(no construido, portal vecino)* | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-
-Verificado en vivo (login real, 23/10/2026) para las filas construidas: crear edificio y ver personal,
-en los 5 roles no-super_admin. El resto sale directo del código; las filas marcadas *(no construido)*
-pertenecen a los changes 4 a 7, que todavía no existen.
-
-**Dos asimetrías que parecían raras al principio, investigadas y CONFIRMADAS como diseño intencional
-(no son hallazgos, no hace falta tocarlas)**:
-
-1. **Administrador·Un edificio NO puede confirmar "sin saldos previos"** de su propio edificio — sólo
-   super_admin o Administrador·Toda la empresa. Está escrito así a propósito en D-106
-   (`09_decisiones_y_supuestos.md:1762-1767`): "...confirmar 'sin saldos previos' queda reservado al
-   super admin y al administrador principal", junto con anular liquidaciones, revertir/reimputar
-   pagos, condonar intereses, dar de baja deuda y aceptar alertas bloqueantes — todo lo irreversible o
-   con peso legal queda en el nivel más alto (principio heredado de P23).
-2. **Contador no puede cargar gastos ni preparar liquidaciones** — es un rol de **sólo lectura** por
-   diseño, confirmado en `knowledge-base/01_vision_y_objetivos.md:42` ("Leer lo contable de su
-   alcance... Consultar gastos, liquidaciones y comprobantes") y en D-106 ("Contador: Sólo lectura de
-   lo contable"). No es un Contador operativo que carga asientos, es un rol de auditoría/consulta.
-
-**Sugerencia de Emiliano (23/10/2026, a decidir)**: hoy `/personal` es binaria
-(super_admin ve todo, cualquier otro rol no ve nada). La sugerencia es hacerla **jerárquica**: un
-Administrador·Toda la empresa debería poder ver el personal que está **por debajo** suyo en la
-jerarquía (Contador, Auxiliar, Consejo, otros Administradores de un edificio) para poder gestionar su
-equipo, pero **nunca** ver ni gestionar al super_admin (no hay visibilidad "hacia arriba"). Esto es
-una decisión de negocio/alcance de permisos (dominio acceso, gobernanza CRÍTICA) — no implementar sin
-que lo valide Juani, Alberto o Emiliano (D-094, D-111); queda anotado acá para cuando se defina el alcance de
-`acceso-de-desarrollo` o un change dedicado a esto.
-
-### Hallazgo nuevo — invitar el mismo email dos veces con roles distintos no actualiza el nombre
-
-Al re-invitar un email que ya tenía una fila en `persona` (aunque su invitación anterior estuviera
-"Revocada"), el alta nueva se **agrega como otra asignación sobre la MISMA persona** en vez de
-pedir datos limpios, y el **nombre no se actualiza** al que se tipeó en la invitación nueva — queda
-el nombre de la primera vez. Puede confundir en /personal (alguien con dos roles/alcances distintos
-bajo un nombre que ya no es el correcto). A revisar si conviene que el alta actualice el nombre, o
-al menos avisar en la UI que esa persona ya existía.
-
-### Pendiente de verificar
-
-- **No se probó el rol Propietario/Inquilino** — no es testeable todavía porque el portal del vecino
-  (change `portal-del-vecino`, C-16) no está construido.
-- **Liquidación y cuenta corriente**: no se pudieron probar porque todavía no existen en el código
-  (llegan en los changes 4 a 7 del roadmap, posteriores a `acceso-de-desarrollo`).
+El barrido de QA manual del 23/10/2026 sobre las pantallas del edificio (3 bugs, 6 gaps de UX y
+validación, el menú que no se adapta a los cinco roles, reinvitar el mismo email y la sugerencia de
+`/personal` jerárquica) es backlog del change **3c `pulido-de-la-configuracion`**: cada ítem, con su
+lugar en el código y cómo reproducirlo, está en `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`
+y la ficha §3c de `knowledge-base/12_fichas_de_changes.md`. La matriz de permisos vive en D-106 y en
+`knowledge-base/03_actores_y_roles.md`; el gotcha de Clerk con emails que dicen "admin", en L-040.
