@@ -2433,9 +2433,43 @@ corrí.
 **No pusheé la rama** (instrucción explícita) **ni leí CI de GitHub Actions** (no hay push). El resto
 de la 7.1 tal como está escrita en la tarea (push + CI verde) queda sin cumplir a propósito.
 
+**EVIDENCIA · 26/10/2026 · constructor — segunda corrida completa, log íntegro (sin `tail`), para
+distinguir los 22 failed de los 336 errors**
+```text
+command: bash infra/ci/test-backend.sh (log completo, sin truncar)
+time inicio: 12:05:28  time fin: 12:17:27 (719.52s, 0:11:59)
+= 22 failed, 2481 passed, 1 xfailed, 18 warnings, 336 errors in 719.52s (0:11:59) =
+```
+Mismos números exacto que la primera corrida (11:45:27–11:57): determinístico, no flaky.
+
+Los 336 `ERROR` son **todos** el mismo `TablasDeSoloAgregarDesprotegidas` de arriba, repartidos en
+`test_alcance_api.py`, `test_altas_sin_id_del_cliente.py`, `test_asignar_edificio_api.py`,
+`test_cableado_real_del_arranque.py` (lado worker: `proptech_worker/ajustes.py:214` llama al mismo
+`verificar_tablas_de_solo_agregar`), `test_identidad_api.py`, `test_migracion_roles_de_la_empresa.py` y
+`test_rutas_protegidas.py` — cualquier test que arma la app o el worker reales.
+
+Los 22 `FAILED` son **dos causas más, también anteriores a la 6.1 y también sin tocar nada de mi
+diff**:
+
+1. `tests/infra/test_ensayo_login.py::test_ensayo_verifica_la_cabeza_real_dos_veces`:
+   `AssertionError: assert ['0020', '0020'] == ['0022', '0022']` — `infra/ci/ensayo-roles.sh` tiene
+   hardcodeada la revisión `0020` dos veces, pero la cabeza real de Alembic ya es `0022` (migraciones
+   nuevas de grupos posteriores de este mismo change). Script de mantenimiento desactualizado, no un
+   bug de producción.
+2. `tests/integracion/test_catalogo_rls.py::test_el_esquema_real_no_tiene_ningun_problema` y
+   `::test_rojo_tabla_sin_force`: `psycopg.errors.NotNullViolation: null value in column "persona_id"
+   of relation "auditoria"` — el helper de este test (`_trigger_rechaza_update_como_app`) inserta en
+   `auditoria` sólo con `administracion_id`; el esquema actual de `auditoria` (de un grupo posterior de
+   este mismo change, el de padrón/auditoría) exige `persona_id NOT NULL`. Fixture de test desactualizado
+   respecto al esquema real, no un bug de `dinero.py`/`parametros.py`.
+
+Ninguna de las tres causas (tablas desprotegidas, script de ensayo, fixture de `auditoria`) tiene
+relación con la 6.1: confirmado por `git diff --stat 1672614 HEAD` más arriba, que sólo lista
+`dinero.py`, `parametros.py`, el test nuevo y este `tasks.md`.
+
 Dejo el casillero sin marcar: la corrida de cierre existe y está documentada, pero no es verde — el
-backend tiene 22 failed / 336 errors por una causa ajena a este constructor. No marco [x] una corrida
-roja.
+backend tiene 22 failed / 336 errors por tres causas ajenas a este constructor, las tres de grupos
+anteriores de este mismo change. No marco [x] una corrida roja.
 
 ## Workflow follow-up
 
