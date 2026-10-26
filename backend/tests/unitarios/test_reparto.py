@@ -47,6 +47,8 @@ def test_redondeo_invalido(entrada: object) -> None:
         (["10", "2", "1"], ["1", "2", "10"]),
         (["10A", "2B"], ["2B", "10A"]),
         (["a2", "A2"], ["A2", "a2"]),
+        # RB-2: sin casefold, "B1" (mayúscula) quedaría antes que "a1".
+        (["B1", "a1"], ["a1", "B1"]),
         (["\u0661\u0660", "10"], ["10", "\u0661\u0660"]),
     ],
 )

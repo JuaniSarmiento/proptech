@@ -30,7 +30,12 @@ def test_suma_y_resta(a: str, b: str, suma: str, resta: str) -> None:
     [("12.50", "-12.50"), ("0.00", "0.00"), ("-999999999999.99", "999999999999.99")],
 )
 def test_negacion(texto: str, esperado: str) -> None:
-    assert (-Dinero(texto)).a_texto() == esperado
+    x = Dinero(texto)
+    # RB-3: aislada del contexto de quien llama, como la suma y la resta.
+    with localcontext() as ctx:
+        ctx.prec = 10
+        ctx.rounding = ROUND_DOWN
+        assert (-x).a_texto() == esperado
 
 
 def test_sumar_iterable() -> None:
