@@ -2540,6 +2540,88 @@ El backend queda verde. El casillero sigue sin marcar porque la 7.1 pide además
 corre: `down -v` sobre `proptech`), push de la rama y CI de GitHub Actions en verde: nada de eso pasó.
 La suite web se corrió en `d562ac1`; desde ahí no cambió nada bajo `web/`.
 
+**EVIDENCIA · 26/10/2026 · vuelta 2: RB-1, el ensayo de roles corrido aislado**
+
+Base: `25bbaa7` con el árbol de trabajo de la vuelta 2 sin commitear (los scripts no cambiaron
+después del verde de las 13:14). Proyecto compose `proptech-ensayo-4a`, autorizado por Juani; antes de
+correrlo, `docker compose -p proptech-ensayo-4a config` mostró `name: proptech-ensayo-4a` y todos los
+volúmenes y redes con ese prefijo. No había ningún contenedor, volumen ni red del proyecto `proptech`
+(`docker ps -a`, `docker volume ls`, `docker network ls` a las 13:11:45). Las etiquetas
+`proptech-backend:local` y `proptech-web:local`, que el `--build` del ensayo pisa, se respaldaron antes
+y se restauraron después (IDs `1713e7a92fb1` y `0286a3a6e95f`).
+
+Parametrización previa (no es el arreglo, es lo que permite correrlo aislado): `ensayo-roles.sh` y
+`restaurar.sh` usan `PROPTECH_COMPOSE_PROYECTO`, con `proptech` por defecto; el ensayo la exporta para
+que `restaurar.sh` restaure en el mismo proyecto.
+```text
+RED   13:11:29  bash infra/ci/test-backend.sh tests/infra/test_restaurar.py tests/infra/test_ensayo_login.py -q
+      FAILED test_restaurar.py::...::test_proyecto_compose_aislado_por_variable
+      FAILED test_ensayo_login.py::test_ensayo_usa_un_proyecto_compose_parametrizable
+      2 failed, 20 passed in 0.35s
+GREEN 13:11:38  (mismo comando) 22 passed in 0.37s
+```
+
+RED 1, sin el arreglo:
+```text
+$ PROPTECH_COMPOSE_PROYECTO=proptech-ensayo-4a bash infra/ci/ensayo-roles.sh
+13:11:51 → 13:13:07, exit=1
+INFO  [alembic.runtime.migration] Running downgrade 0022 -> 0021, Vocabulario del padrón.
+INFO  [alembic.runtime.migration] Running downgrade 0021 -> 0020, Umbral de R30 y bloqueo por sentencia.
+psycopg.errors.InsufficientPrivilege: must be owner of relation configuracion_versionada
+Volume proptech-ensayo-4a_datos_postgres  Removed   (y el resto, sólo de proptech-ensayo-4a)
+```
+RED del test del paso 1 del rollback, 13:13:19: `FAILED
+test_ensayo_login.py::test_ensayo_devuelve_la_tabla_protegida_antes_de_migrar`, 1 failed, 2 passed.
+
+Arreglo de la primera falla: `devolver_al_migrador`, el paso 1 del rollback del Migration Plan
+(`ALTER TABLE configuracion_versionada` y `ALTER FUNCTION fn_configuracion_versionada_bloqueada()`
+`OWNER TO` el migrador, como rol de arranque), antes del `downgrade 0016` del origen.
+
+RED 2, con sólo la primera falla arreglada (confirma la segunda falla de RB-1):
+```text
+13:13:30 → 13:14:05, exit=1
+ALTER TABLE / ALTER FUNCTION
+Running downgrade 0022 -> ... -> 0016   (el origen baja entero)
+CONTEOS origen / CONTEOS antes  (iguales)
+Running upgrade 0020 -> 0021, Umbral de R30 y bloqueo por sentencia.
+psycopg.errors.InsufficientPrivilege: must be owner of table configuracion_versionada
+[SQL: ALTER TABLE configuracion_versionada ADD COLUMN umbral_saldo_chico NUMERIC(14,2) NOT NULL DEFAULT 500.00]
+```
+Arreglo de la segunda: `devolver_al_migrador proptech_restauracion` después de `roles antes`.
+
+GREEN:
+```text
+13:14:13  bash infra/ci/test-backend.sh tests/infra/test_ensayo_login.py tests/infra/test_restaurar.py -q
+          23 passed in 0.29s
+$ PROPTECH_COMPOSE_PROYECTO=proptech-ensayo-4a bash infra/ci/ensayo-roles.sh
+13:14:14 → 13:14:54, exit=0
+REVISION RESTAURADA: 0022
+REVISION RESTAURADA: 0016
+REVISION RESTAURADA: 0022
+ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0018/0016/0018 y origen intacto
+Informe del ensayo: .git/informes-login-bloque-a/3.3-lwxkT3
+```
+Después, 13:15:02: `docker ps -a`, `docker volume ls`, `docker network ls` y `docker images` iguales,
+línea por línea, a los de las 13:11:45; ningún contenedor ni volumen con nombre `proptech*`.
+
+**EVIDENCIA · vuelta 2: RB-2 y RB-3 (mutantes que ahora mueren)**
+```text
+13:15:22  test_reparto.py + test_dinero_aritmetica.py con los casos nuevos, código original: 54 passed
+13:15:23  mutante `__neg__` sin localcontext: FAILED test_negacion[-999999999999.99-999999999999.99]
+13:15:28  mutante `(1, t)` sin casefold:      FAILED test_orden_natural[entrada5-esperado5]  (["B1","a1"])
+          los dos revertidos con git checkout; git diff --stat backend/src vacío
+13:15:32  test_reparto, test_dinero_aritmetica, test_dinero, test_reparto_propiedades,
+          test_ensayo_login, test_restaurar: 122 passed in 1.03s
+13:16:12  uv run ruff check . && ruff format --check . && mypy: All checks passed! /
+          298 files already formatted / Success: no issues found in 272 source files
+```
+RB-8: la spec de aislamiento dice ahora que el log `arranque_fallido` es de la API y el worker;
+`alta_inicial` y el ejemplo terminan con `TablasDeSoloAgregarDesprotegidas` sin ese log. RB-9: el
+docstring de `despues()` describe lo que hace hoy. RB-4 a RB-7, RB-10 y RB-11 quedan en "Deuda
+aceptada" del design.
+
+La 7.1 sigue sin marcar: falta `humo.sh` y el CI en verde sobre el SHA final.
+
 ## Workflow follow-up
 
 - Romper y auditar (ciclo completo, `14_forma_de_trabajo.md`); rompedor y auditor de una familia de

@@ -131,14 +131,17 @@ fallar nombrándolo, sin confirmar nada.
 
 La API, el worker y los comandos que ya verifican su rol SHALL verificar al arrancar que cada tabla del
 conjunto existe en el esquema `public` y es de un rol superusuario; si no, MUST NOT arrancar, con un
-error propio registrado como `arranque_fallido` que nombra cada tabla sin ningún valor. MUST NOT
+error propio que nombra cada tabla sin ningún valor (la API y el worker lo registran como
+`arranque_fallido`). MUST NOT
 existir forma de saltear el chequeo por configuración.
 
 #### Scenario: Una tabla quedó del migrador
 
 - **WHEN** `configuracion_versionada` es de `proptech_migrador` y arranca la API, el worker,
   `alta_inicial` o la carga del ejemplo
-- **THEN** ninguno arranca y el log `arranque_fallido` nombra `configuracion_versionada` y el motivo
+- **THEN** ninguno arranca; la API y el worker registran el log `arranque_fallido`, que nombra
+  `configuracion_versionada` y el motivo, y `alta_inicial` y la carga del ejemplo terminan con el error
+  propio, que nombra la tabla, sin ese log
 
 #### Scenario: Una tabla homónima en otro esquema
 

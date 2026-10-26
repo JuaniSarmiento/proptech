@@ -366,6 +366,19 @@ texto con `\d{1,4}` y `quantize` (acepta `"1.0000"`).
   `configuracion_versionada`: van a la 5.2 si entran en el medio día, si no quedan como deuda del 4b); el
   test de que el CI usa el perfil `ci` va en la 2.5. Lo que no entre se anota en el informe del
   constructor como deuda con dueño 4b.
+- **Rompedor del apply** (`11-rompedor.md`; RB-1, RB-2, RB-3, RB-8 y RB-9 se corrigieron en la vuelta 2):
+  - RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar`
+    sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro.
+  - RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive;
+    tampoco se registra qué unidades entran o salen de un grupo `renormalizado`.
+  - RB-6: `redondear_al_centavo` con |valor| ≥ ~1e30 levanta `decimal.InvalidOperation`, no
+    `MontoInvalido` como dice D7. Hoy no tiene consumidor.
+  - RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto de baja precisión levanta
+    `InvalidOperation`; la aritmética sí está aislada, el constructor no.
+  - RB-10: al archivar, agregar a D-114.4 de la KB 09 la excepción de `auditoria` (E1).
+  - RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes.
+  - El ensayo de roles sólo se prueba corriéndolo: `test_ensayo_login.py` fija el número de revisión y
+    el orden del paso 1 del rollback en el texto del script, no que el script funcione. No corre en CI.
 
 ## Migration Plan
 

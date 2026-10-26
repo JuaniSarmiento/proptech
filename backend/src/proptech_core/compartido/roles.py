@@ -693,26 +693,30 @@ def _verificar_tabla_protegida(
 
 
 def despues(configuracion: ConfiguracionDeArranque) -> None:
-    """El paso `despues` de D2 (D9): transfiere `auditoria` de vuelta al rol
-    de arranque (la crea el migrador en la migración `0004`, de paso) y ajusta
-    los permisos de la app sobre ella.
+    """El paso `despues` de D2 (D9, D0 del 4a), en una sola transacción.
 
-    El migrador nunca queda como dueño de `auditoria`: así no puede
-    `DISABLE TRIGGER` ni `NO FORCE ROW LEVEL SECURITY` (requieren ser dueño),
-    aunque el trigger de todos modos bloquea `UPDATE`/`DELETE`/`TRUNCATE`
-    para cualquier rol, dueño incluido.
+    Para cada tabla de `TABLAS_DE_SOLO_AGREGAR` que exista (hoy `auditoria` y
+    `configuracion_versionada`): la transfiere al rol de arranque junto con las
+    funciones de sus triggers (con `search_path` vacío), le saca a la app
+    `UPDATE`/`DELETE`/`TRUNCATE` y le deja sólo `SELECT, INSERT`. Una tabla
+    declarada que no existe se saltea con un aviso, sin error.
 
-    El `REVOKE` explícito es necesario, no decorativo: `ALTER DEFAULT
-    PRIVILEGES` (que fija `antes()`) le da a `proptech_app`
-    `SELECT, INSERT, UPDATE, DELETE` sobre *cualquier* tabla nueva del
-    migrador — incluida `auditoria` — sin importar qué `GRANT` explícito
-    haga la migración (`ayudas_rls.aislar_por_administracion` ahí sólo pide
-    `SELECT, INSERT`). D9 exige que la app NO tenga `UPDATE`/`DELETE`/`TRUNCATE`
-    sobre `auditoria`; sin este `REVOKE`, los tiene igual, de regalo.
+    El `REVOKE` es necesario, no decorativo: los `ALTER DEFAULT PRIVILEGES` de
+    `antes()` le dan a la app los cuatro permisos sobre cualquier tabla nueva
+    del migrador, haga lo que haga el `GRANT` de la migración.
 
-    Antes de la tarea 6.1 (migración `0004_auditoria` todavía no corrida),
-    `auditoria` no existe: no hay nada que hacer, y se vuelve sin error (así
-    `infra/compose.yaml`, cableado desde la tarea 2.3, no tiene que cambiar).
+    Después verifica, y si algo falta levanta `AuditoriaNoProtegida` (el nombre
+    es histórico: la lanza para cualquier tabla protegida) y revierte todo:
+    - las tablas sin `verificacion_con_fila` (`configuracion_versionada`), con
+      `_verificar_tabla_protegida`: RLS forzada, cada trigger declarado
+      habilitado y con función del arranque (en una base en `0020`, sin el
+      trigger por sentencia de `0021`, falla cerrado), y la sonda que intenta
+      `UPDATE`/`DELETE`/`TRUNCATE`;
+    - `auditoria`, con su sonda propia (`_verificar_auditoria_protegida`).
+
+    También deja `alembic_version` en sólo `SELECT` para la app y
+    `accion_de_auditoria` en sólo `SELECT`. Está pensado para la cabeza de
+    Alembic: no se corre sobre revisiones intermedias.
     """
     app = ConfiguracionDeAppSoloPostgres()
 
