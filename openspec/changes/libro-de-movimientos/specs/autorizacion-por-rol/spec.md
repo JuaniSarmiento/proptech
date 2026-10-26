@@ -10,10 +10,10 @@ alcance 404, dentro y sin permiso 403 con el permiso faltante.
 
 #### Scenario: La fila de la matriz
 
-- **WHEN** se evalúa `corregir_movimiento` en un edificio para cada perfil y alcance
+- **WHEN** el ensayo del consumidor invoca la operación y se evalúa `corregir_movimiento` en un edificio para cada perfil y alcance
 - **THEN** sólo SA y AP pueden; AE, CP, CE, AX, CO, VP y VI no
 
 #### Scenario: La ruta nueva está en el barrido
 
-- **WHEN** corre el barrido de rutas protegidas
+- **WHEN** el ensayo del consumidor invoca la operación y corre el barrido de rutas protegidas
 - **THEN** la ruta de corrección está en la lista y responde 401 sin identidad, sin tocar la base

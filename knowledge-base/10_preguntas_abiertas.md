@@ -152,13 +152,23 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   4d, no el 4a a 4c.
 - [ ] **P52 · La deuda que queda a nombre del vendedor** (P-2, H-02): si queda a su nombre, ¿sigue
   sumando intereses? ¿Puede aparecer como moroso? ¿Cómo paga, si ya no tiene la unidad en el sistema?
-  Bloquea el 4d.
+  Bloquea el 4d. El propose 4b (E1, AR-6) prevé cuenta personal única por
+  administración **y edificio**, distinto del explore; modificar ese único después de roles requiere
+  préstamo D-115.3. La elección sigue sin firma y no contesta si esa deuda genera interés.
 - [ ] **P53 · De qué mes es el interés** (P-4, H-05): el interés por la mora de agosto que aparece en la
   expensa de septiembre, ¿cuenta como deuda de agosto o de septiembre? Decide si septiembre cuenta como
-  "vencida" para el moroso crítico. Bloquea el 4c.
+  "vencida" para el moroso crítico. Bloquea el 4c. El propose 4b conserva el interés en el
+  período de la obligación que lo generó para R04; responder "septiembre" aquí afecta al moroso crítico,
+  no cambia esa imputación. E10 anticipa único `(administracion_id, obligacion_id, corte)`:
+  contra-asentar un interés no habilita registrarlo de nuevo en ese mismo corte (DB-7). Decidir antes
+  del 4c si necesita otro contrato o varios intereses del mismo corte; cambiar el único tras roles
+  requiere préstamo D-115.3, no alcanza INSERT en el vocabulario (AR-7).
 - [ ] **P54 · El umbral de $500** (P-5, H-06, H-14): ¿se compara contra todo lo que debe la unidad o
   contra cada expensa? Por debajo de $500, ¿sigue corriendo interés? Y "vencida", para el moroso
   crítico, ¿es al día siguiente del vencimiento o después de los días de gracia? Bloquea el 4c.
+  Revisar junto a P53 el único de interés por obligación/corte del propose 4b (E10, DB-7): no permite
+  reemplazar en ese corte un interés ya contra-asentado; si el 4c necesita otra clave, debe obtener el
+  préstamo D-115.3 antes de alterarla.
 - [ ] **P55 · Pantalla de corrección en el 4** (P-6, H-15): la corrección de un error (HU-A9), ¿trae
   pantalla o alcanza con la API y la pantalla llega con la del pago (8)? Antes del 4b.
 - [ ] **P56 · El libro sin puerto de repositorio** (P-8, §4.9 de la exploración del 4): contradice el
@@ -174,7 +184,13 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   con recargo que ya acepta la configuración, ¿se usa en el edificio piloto, y cómo convive con el
   interés diario? Antes del piloto.
 - [ ] **P60 · El fondo de reserva cuando un pago no alcanza** (A-4, H-11): ¿se cobra antes o después de
-  la ordinaria? Antes del piloto.
+  la ordinaria? Antes del piloto. El propose 4b propone interés, ordinaria, fondo,
+  extraordinaria (E5), sin respuesta definitiva de Alberto. Se amplía **A-4, a validar (P42)** con las
+  elecciones aún sin firma: **E6** permitir contra-asiento de un crédito de corrección equivocado una
+  sola vez; **E7** restituir exceso desde la imputación más reciente (secuencia), no desde el crédito
+  más reciente; **E16** rechazar con 422 `destino` un crédito fijo que no se absorbe y conservar atada
+  una bonificación de emisión anulada hasta su reversión por el 8. Se validan como precisiones de
+  R05/R08, sin inventar R42 ni marcar aprobadas reglas nuevas de plata (D-087/D-089, AN-11).
 - [ ] **P61 · Ubicación del edificio: ¿sólo Argentina?** (exploración del 3c,
   `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md` §3): propuesta: sí, sin campo
   país. Antes del 3c.
