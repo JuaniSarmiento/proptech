@@ -45,6 +45,7 @@ from proptech_core.compartido.base_de_datos import (
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
     verificar_rol_de_aplicacion_seguro,
+    verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.parametros import Parametros, leer_parametros
@@ -389,6 +390,7 @@ def _main(argv: list[str]) -> int:
     engine = crear_engine(configuracion)
     try:
         verificar_rol_de_aplicacion_seguro(engine)
+        verificar_tablas_de_solo_agregar(engine)
         fabrica = crear_fabrica_de_sesiones(engine)
         registrar_tenant_por_administracion(fabrica)
         registrar_reset_del_tenant_al_devolver(engine)

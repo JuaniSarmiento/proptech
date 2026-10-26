@@ -246,6 +246,7 @@ def test_downgrade_a_0005_borra_grupos_y_upgrade_los_recrea(
         unidad = insertar_unidad(app, admin, complejo)
         grupo = insertar_grupo(app, admin, complejo)
         insertar_miembro(app, admin, complejo, grupo, unidad)
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0005")
     try:
         with base_del_edificio.conectar_app() as app:

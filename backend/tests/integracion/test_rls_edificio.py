@@ -151,6 +151,7 @@ def test_localidad_es_obligatoria_sin_default_temporal(
 def test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a(
     base_del_edificio: BaseDeEdificio,
 ) -> None:
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0004")
     admin, complejo, unidad = uuid4(), uuid4(), uuid4()
     try:
@@ -171,6 +172,7 @@ def test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a(
                 "FROM unidad WHERE id = %s",
                 (unidad,),
             ).fetchone() == ("Anterior", "departamento", "", Decimal("1"), Decimal("1"), None)
+        base_del_edificio.devolver_tablas_protegidas()
         base_del_edificio.migrar("downgrade", "0004")
         with base_del_edificio.conectar_app() as app, app.transaction():
             fijar_tenant(app, admin)

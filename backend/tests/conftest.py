@@ -206,6 +206,25 @@ def esquema_migrado(postgres_contenedor: PostgresContainer, roles_reales: None) 
         text=True,
     )
 
+    # D3 del 4a: una base usada por el worker tiene que completar el deploy.
+    entorno_roles = {
+        **entorno,
+        "POSTGRES_USER": postgres_contenedor.username,
+        "POSTGRES_PASSWORD": postgres_contenedor.password,
+        "POSTGRES_APP_USER": APP_USER_DE_SESION,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
+        "POSTGRES_RESPALDO_USER": RESPALDO_USER_DE_SESION,
+        "POSTGRES_RESPALDO_PASSWORD": RESPALDO_PASSWORD_DE_SESION,
+    }
+    subprocess.run(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+        cwd=RAIZ / "backend",
+        env=entorno_roles,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
 
 @pytest.fixture(scope="session")
 def redis_contenedor() -> Iterator[DockerContainer]:

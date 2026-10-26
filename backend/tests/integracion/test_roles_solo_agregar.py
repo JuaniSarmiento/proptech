@@ -1,7 +1,8 @@
 """D16: dos arranques no restituyen UPDATE/DELETE a una tabla de sólo agregar.
 
 La tabla de prueba reemplaza a la futura configuración en un contenedor propio;
-se migra hasta 0008 para que siga siendo una copia al agregar 0009 (L-013).
+se migra hasta 0008 y se declara la forma exigida por D2 (triggers y RLS),
+para seguir probando la capa independiente de GRANT con los triggers apagados.
 """
 
 import sys
@@ -46,11 +47,26 @@ def test_dos_up_con_trigger_desactivado_conservan_la_capa_de_permisos(operacion:
             migrador.execute("INSERT INTO configuracion_versionada VALUES (%s, 1)", (admin,))
             migrador.execute(
                 "CREATE FUNCTION fn_copia() RETURNS trigger LANGUAGE plpgsql "
-                "AS $$ BEGIN RAISE EXCEPTION 'copia no admite cambios'; END $$"
+                "AS $$ BEGIN RAISE EXCEPTION 'configuracion_versionada no admite cambios'; END $$"
             )
             migrador.execute(
-                "CREATE TRIGGER bloqueo BEFORE UPDATE OR DELETE ON configuracion_versionada "
+                "CREATE TRIGGER trg_configuracion_sin_update_delete "
+                "BEFORE UPDATE OR DELETE ON configuracion_versionada "
                 "FOR EACH ROW EXECUTE FUNCTION fn_copia()"
+            )
+            migrador.execute(
+                "CREATE TRIGGER trg_configuracion_sin_truncate BEFORE TRUNCATE "
+                "ON configuracion_versionada FOR EACH STATEMENT EXECUTE FUNCTION fn_copia()"
+            )
+            migrador.execute(
+                "CREATE TRIGGER trg_configuracion_sin_update_delete_por_sentencia "
+                "BEFORE UPDATE OR DELETE ON configuracion_versionada "
+                "FOR EACH STATEMENT EXECUTE FUNCTION fn_copia()"
+            )
+            migrador.execute("ALTER TABLE configuracion_versionada ENABLE ROW LEVEL SECURITY")
+            migrador.execute("ALTER TABLE configuracion_versionada FORCE ROW LEVEL SECURITY")
+            migrador.execute(
+                "CREATE POLICY sonda ON configuracion_versionada USING (true) WITH CHECK (true)"
             )
             migrador.execute(
                 "REVOKE UPDATE, DELETE, TRUNCATE ON configuracion_versionada FROM proptech_app"
@@ -59,8 +75,15 @@ def test_dos_up_con_trigger_desactivado_conservan_la_capa_de_permisos(operacion:
         _correr([*roles, "antes"], entorno)
         _correr(["uv", "run", "alembic", "upgrade", "0008"], _alembic_env(contenedor))
         _correr([*roles, "despues"], entorno)
-        with _conectar_como_migrador(contenedor) as migrador:
-            migrador.execute("ALTER TABLE configuracion_versionada DISABLE TRIGGER bloqueo")
+        with psycopg.connect(
+            host=contenedor.get_container_host_ip(),
+            port=contenedor.get_exposed_port(5432),
+            dbname=contenedor.dbname,
+            user=ARRANQUE_USER,
+            password=ARRANQUE_PASSWORD,
+            autocommit=True,
+        ) as arranque:
+            arranque.execute("ALTER TABLE configuracion_versionada DISABLE TRIGGER USER")
         with psycopg.connect(
             host=contenedor.get_container_host_ip(),
             port=contenedor.get_exposed_port(5432),

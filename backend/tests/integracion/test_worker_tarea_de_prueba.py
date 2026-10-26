@@ -182,6 +182,7 @@ async def test_on_startup_usa_crear_engine_con_la_configuracion_del_pool(
         # R8 (vuelta 2): mismo motivo, para la fila de 3 columnas que esta
         # verificación espera desempaquetar.
         patch.object(ajustes_mod, "verificar_rol_de_aplicacion_seguro"),
+        patch.object(ajustes_mod, "verificar_tablas_de_solo_agregar"),
     ):
         creado.return_value = MagicMock()
         fabrica_creada.return_value = MagicMock()

@@ -84,6 +84,7 @@ def test_categoria_existente_de_otra_administracion_no_se_ve(
 
 
 def test_downgrade_upgrade_de_categorias(base_del_edificio: BaseDeEdificio) -> None:
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0007")
     try:
         with base_del_edificio.conectar_app() as app:

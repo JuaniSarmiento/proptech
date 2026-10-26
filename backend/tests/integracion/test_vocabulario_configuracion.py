@@ -86,6 +86,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
 
 def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdificio) -> None:
     assert _NUEVAS <= {a.value for a in Accion}
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0004")
     try:
         with base_del_edificio.conectar_app() as app:

@@ -19,8 +19,12 @@ def test_catalogo_completo_en_cada_revision_y_segundo_upgrade(
 ) -> None:
     base = base_del_edificio
     cabeza = catalogo(base)
+    base.devolver_tablas_protegidas()
+    base.migrar("downgrade", "0020")
+    cierre_del_2b = catalogo(base)
     assert cabeza["invitacion"] is not None
     assert cabeza["invitacion.columna.vence"][1] is True  # attnotnull, no sólo tipo.
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0018")
     anterior = catalogo(base)
     assert anterior["invitacion"] is None
@@ -30,13 +34,16 @@ def test_catalogo_completo_en_cada_revision_y_segundo_upgrade(
     assert intermedia["invitacion"] is None
     assert "persona.columna.clerk_usuario_id" in intermedia
     base.migrar("upgrade", "0020")
-    comparar(cabeza, catalogo(base))
+    comparar(cierre_del_2b, catalogo(base))
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0019")
     comparar(intermedia, catalogo(base))
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0018")
     comparar(anterior, catalogo(base))
     base.migrar("upgrade", "head")
     comparar(cabeza, catalogo(base))
+    base.roles("despues")
 
 
 def test_downgrade_con_evento_nuevo_falla_sin_tocar_nada(base_del_edificio: BaseDeEdificio) -> None:
@@ -52,6 +59,7 @@ def test_downgrade_con_evento_nuevo_falla_sin_tocar_nada(base_del_edificio: Base
             (datos.administraciones[0], datos.personas[0], datos.personas[0], uuid4()),
         ).fetchone()
         assert auditoria is not None
+    base.devolver_tablas_protegidas()
     antes = catalogo(base)
     resultado = subprocess.run(
         ["uv", "run", "alembic", "downgrade", "0019"],
@@ -65,7 +73,7 @@ def test_downgrade_con_evento_nuevo_falla_sin_tocar_nada(base_del_edificio: Base
     assert "fk_auditoria_accion" in resultado.stderr
     comparar(antes, catalogo(base))
     with base.conectar_app() as c, c.transaction():
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0020",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0022",)
         fijar_tenant(c, datos.administraciones[0])
         assert c.execute("SELECT id FROM invitacion").fetchall() == [(invitacion,)]
         assert c.execute("SELECT id,accion FROM auditoria").fetchall() == [

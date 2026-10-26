@@ -111,6 +111,13 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
     )
     try:
         with conexion.cursor() as cur:
+            config = cur.execute("SELECT to_regclass('public.configuracion_versionada')").fetchone()
+            if config is not None and config[0] is not None:
+                cur.execute(f"ALTER TABLE configuracion_versionada OWNER TO {MIGRADOR_USER}")
+                cur.execute(
+                    f"ALTER FUNCTION fn_configuracion_versionada_bloqueada() "
+                    f"OWNER TO {MIGRADOR_USER}"
+                )
             cur.execute("SELECT to_regclass('public.auditoria') IS NOT NULL")
             fila = cur.fetchone()
             if fila is not None and fila[0]:

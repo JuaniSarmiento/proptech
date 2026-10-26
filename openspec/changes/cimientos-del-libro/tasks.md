@@ -1597,7 +1597,7 @@ Success: no issues found in 267 source files
 DESVÍO operativo: se corrigió sólo la indentación de dos tests de parámetros del grupo 3 que `ruff format --check` encontró sin formato al retomar. Sin cambio de comportamiento. La orden inicial de suite ampliada con test_ejemplo.py inexistente no ejecutó tests; se corrigió a test_ejemplo_casos_de_uso.py, verde 73 tests arriba.
 
 
-- [ ] 5.1 **Una sola fuente y el rol de arranque como dueño de `configuracion_versionada`.** Crear
+- [x] 5.1 **Una sola fuente y el rol de arranque como dueño de `configuracion_versionada`.** Crear
   `compartido/tablas_protegidas.py` (D0) y hacer que `roles.py` y el test de dueño lo lean. Borrar el
   `xfail(strict=True)` de `test_dueno_de_tablas_solo_agregar.py`: RED, el caso `configuracion_versionada`
   da rojo en su aserción. Excluir el conjunto de la reasignación y transferir en `despues()` la tabla y
@@ -1610,7 +1610,130 @@ DESVÍO operativo: se corrigió sólo la indentación de dos tests de parámetro
   `despues()`. Escenarios: `aislamiento-por-administracion` › El migrador no es dueño de una tabla de
   sólo agregar; › Volumen del 3a, donde el migrador era dueño; › Una migración futura sobre una tabla
   protegida; › Bajar la migración que agrega el umbral; › Arranque repetido. Lecciones: L-036, L-035.
-- [ ] 5.2 **`despues()` verifica la protección por el efecto, sin armar filas (D-114.4).**
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_dueno_de_tablas_solo_agregar.py
+time: 11:13:56
+>       assert not puede_quitar_force, (
+            f"proptech_migrador puede NO FORCE ROW LEVEL SECURITY sobre {tabla}: es su dueño (DBA-1)"
+        )
+E       AssertionError: proptech_migrador puede NO FORCE ROW LEVEL SECURITY sobre configuracion_versionada: es su dueño (DBA-1)
+E       assert not True
+
+tests/integracion/test_dueno_de_tablas_solo_agregar.py:160: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integracion/test_dueno_de_tablas_solo_agregar.py::test_el_migrador_no_es_dueno_de_las_tablas_de_solo_agregar[configuracion_versionada]
+========================= 1 failed, 1 passed in 3.59s ==========================
+=========================== short test summary info ============================
+FAILED tests/integracion/test_dueno_de_tablas_solo_agregar.py::test_el_migrador_no_es_dueno_de_las_tablas_de_solo_agregar[configuracion_versionada]
+========================= 1 failed, 1 passed in 3.59s ==========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-dueno
+command: bash infra/ci/test-backend.sh tests/integracion/test_dueno_de_tablas_solo_agregar.py
+time: 11:14:46
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 2 items
+
+tests/integracion/test_dueno_de_tablas_solo_agregar.py ..                [100%]
+
+============================== 2 passed in 3.50s ===============================
+tests/integracion/test_dueno_de_tablas_solo_agregar.py ..                [100%]
+
+============================== 2 passed in 3.50s ===============================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-deploy-rollback
+command: bash infra/ci/test-backend.sh tests/integracion/test_propiedad_protegida.py
+time: 11:15:29
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 2 items
+
+tests/integracion/test_propiedad_protegida.py ..                         [100%]
+
+============================== 2 passed in 8.19s ===============================
+tests/integracion/test_propiedad_protegida.py ..                         [100%]
+
+============================== 2 passed in 8.19s ===============================
+```
+
+
+DESVÍO de tests históricos: después de transferir la tabla al arranque, el migrador tampoco puede SELECT en ella: los tres casos de escritura del test antiguo fallaban en esa preparación, antes del ataque. Se lee la fila antes/después como app con tenant y se exige 42501 al escribir como migrador; el bloqueo como dueño sigue probado por la migración/sonda. La comparación del vocabulario de test_auditoria_tabla también suma el enum del padrón (otro consumidor de 4.1).
+
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-consumidores-bajada
+command: bash infra/ci/test-backend.sh tests/integracion/test_categorias_db.py tests/integracion/test_generales_alcance_sql.py tests/integracion/test_migracion_normaliza_textos.py tests/integracion/test_modo_de_coeficientes.py tests/integracion/test_reversion_login.py tests/integracion/test_rls_edificio.py tests/integracion/test_rls_grupos.py tests/integracion/test_unidad_edificio_inmutable.py
+time: 11:34:29
+>       comparar(cabeza, catalogo(base))
+
+tests/integracion/test_reversion_login.py:34:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+esperado = {'persona': ('proptech_migrador', 'r', 'p', True, True, 'd', ...), 'persona.orden_columnas': ('id', 'administracion_id...'', None, 'gen_random_uuid()', ...), 'persona.columna.administracion_id': ('uuid', True, '', '', None, None, ...), ...}
+obtenido = {'persona': ('proptech_migrador', 'r', 'p', True, True, 'd', ...), 'persona.orden_columnas': ('id', 'administracion_id...'', None, 'gen_random_uuid()', ...), 'persona.columna.administracion_id': ('uuid', True, '', '', None, None, ...), ...}
+
+    def comparar(esperado: dict[str, Any], obtenido: dict[str, Any]) -> None:
+        diferencias = sorted(
+            clave
+            for clave in esperado.keys() | obtenido.keys()
+            if clave not in esperado or clave not in obtenido or esperado[clave] != obtenido[clave]
+        )
+>       assert diferencias == [], "Catálogo distinto: " + ", ".join(diferencias)
+               ^^^^^^^^^^^^^^^^^
+E       AssertionError: Catálogo distinto: vocabulario
+
+=========================== short test summary info ============================
+FAILED tests/integracion/test_reversion_login.py::test_catalogo_completo_en_cada_revision_y_segundo_upgrade
+=================== 1 failed, 92 passed, 1 warning in 53.32s ===================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-reversion-login
+command: bash infra/ci/test-backend.sh tests/integracion/test_reversion_login.py
+time: 11:36:18
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 2 items
+
+tests/integracion/test_reversion_login.py ..                             [100%]
+
+============================== 2 passed in 10.92s ==============================
+tests/integracion/test_reversion_login.py ..                             [100%]
+
+============================== 2 passed in 10.92s ==============================
+```
+
+
+EVIDENCIA · 26/10/2026 · 11:36:40
+Checks compartidos del grupo 5, después de restaurar y adaptar consumidores:
+```text
+command: cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+297 files already formatted
+Success: no issues found in 271 source files
+```
+GREEN del grupo: 5.3 / GREEN-grupo5-final 11:32:28, 102 passed; consumidores restantes 5.1 / GREEN-consumidores-bajada 11:34:29 (92 passed y un fallo histórico), corregido y reejecutado en GREEN-reversion-login 11:36:18 (2 passed). No hay fallos pendientes de esos conjuntos.
+
+
+- [x] 5.2 **`despues()` verifica la protección por el efecto, sin armar filas (D-114.4).**
   `_verificar_tabla_protegida` para cada tabla del conjunto salvo `auditoria` (D2): RLS y `FORCE`,
   triggers declarados en D0 y sus funciones del rol de arranque, `UPDATE ... WHERE false`,
   `DELETE ... WHERE false` y `TRUNCATE` (con `CASCADE` si tiene FK entrante) en savepoints revertidos,
@@ -1624,7 +1747,153 @@ DESVÍO operativo: se corrigió sólo la indentación de dos tests de parámetro
   `aislamiento-por-administracion` › Trigger deshabilitado; › Función de bloqueo reemplazada por una que
   no hace nada; › RLS deshabilitada con FORCE intacto; › Otro error frena el intento; › TRUNCATE con una
   FK entrante; › Una tabla del conjunto no existe. Lecciones: L-018, L-022, L-034.
-- [ ] 5.3 **Los procesos no arrancan si una tabla protegida tiene otro dueño.**
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_sonda_tablas_protegidas.py::test_despues_rechaza_roturas_sin_confirmar[trigger]
+time: 11:16:36
+>               with pytest.raises(AssertionError, match="configuracion_versionada"):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               Failed: DID NOT RAISE AssertionError
+
+tests/integracion/test_sonda_tablas_protegidas.py:29: Failed
+=========================== short test summary info ============================
+FAILED tests/integracion/test_sonda_tablas_protegidas.py::test_despues_rechaza_roturas_sin_confirmar[trigger]
+============================== 1 failed in 3.64s ===============================
+=========================== short test summary info ============================
+FAILED tests/integracion/test_sonda_tablas_protegidas.py::test_despues_rechaza_roturas_sin_confirmar[trigger]
+============================== 1 failed in 3.64s ===============================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN
+command: bash infra/ci/test-backend.sh tests/integracion/test_sonda_tablas_protegidas.py
+time: 11:17:09
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 6 items
+
+tests/integracion/test_sonda_tablas_protegidas.py ......                 [100%]
+
+============================== 6 passed in 8.25s ===============================
+tests/integracion/test_sonda_tablas_protegidas.py ......                 [100%]
+
+============================== 6 passed in 8.25s ===============================
+```
+
+
+Mutante de sonda omitida; respaldo previo .git/4a-logs/roles-pre-mutante.py, se restaura byte a byte. Cada rotura de base se aplica dentro del test antes de despues; el test espera rechazo y comprobación de dueño.
+```diff
+--- helper original (cuerpo)
++++ mutante
+@@ -1,39 +1 @@
+-    faltantes: list[str] = []
+-    cur.execute("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid=to_regclass(%s)", (f"public.{tabla}",))
+-    rls = cur.fetchone()
+-    if rls is None or not all(rls):
+-        faltantes.append("ROW LEVEL SECURITY habilitada y FORCE")
+-    cur.execute("SELECT t.tgname, t.tgenabled, pg_get_userbyid(p.proowner) FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid=to_regclass(%s) AND NOT t.tgisinternal", (f"public.{tabla}",))
+-    triggers = {f[0]: (f[1], f[2]) for f in cur.fetchall()}
+-    for nombre in sorted(declaracion.triggers):
+-        if nombre not in triggers:
+-            faltantes.append(f"trigger {nombre} no existe")
+-        elif triggers[nombre] != ("O", arranque):
+-            faltantes.append(f"trigger {nombre} deshabilitado o función con otro dueño")
+-    cur.execute("SELECT attname FROM pg_attribute WHERE attrelid=to_regclass(%s) AND attnum>0 AND NOT attisdropped ORDER BY attnum LIMIT 1", (f"public.{tabla}",))
+-    primera = cur.fetchone()
+-    if primera is None:
+-        faltantes.append("sin columna para probar UPDATE")
+-    else:
+-        cur.execute("SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE contype='f' AND confrelid=to_regclass(%s))", (f"public.{tabla}",))
+-        fk = cur.fetchone()
+-        cascada = sql.SQL(" CASCADE") if fk and fk[0] else sql.SQL("")
+-        intentos = [
+-            ("UPDATE", sql.SQL("UPDATE {} SET {}={} WHERE false").format(sql.Identifier("public", tabla), sql.Identifier(primera[0]), sql.Identifier(primera[0]))),
+-            ("DELETE", sql.SQL("DELETE FROM {} WHERE false").format(sql.Identifier("public", tabla))),
+-            ("TRUNCATE", sql.SQL("TRUNCATE {}{}").format(sql.Identifier("public", tabla), cascada)),
+-        ]
+-        for nombre, sentencia in intentos:
+-            cur.execute("SAVEPOINT sonda_tabla_protegida")
+-            try:
+-                cur.execute(sentencia)
+-            except psycopg.Error as error:
+-                if error.sqlstate != "P0001" or declaracion.mensaje not in str(error):
+-                    faltantes.append(f"no se pudo confirmar bloqueo de {nombre}: error distinto (SQLSTATE {error.sqlstate})")
+-            else:
+-                faltantes.append(f"admite {nombre}")
+-            finally:
+-                cur.execute("ROLLBACK TO SAVEPOINT sonda_tabla_protegida")
+-                cur.execute("RELEASE SAVEPOINT sonda_tabla_protegida")
+-    if faltantes:
+-        raise AuditoriaNoProtegida(f"la protección de {tabla} no se pudo confirmar: " + "; ".join(faltantes))
++    pass
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED-mutantes-sonda-omitida
+command: bash infra/ci/test-backend.sh tests/integracion/test_sonda_tablas_protegidas.py
+time: 11:22:16
+>               with pytest.raises(AssertionError, match="configuracion_versionada"):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               Failed: DID NOT RAISE AssertionError
+
+tests/integracion/test_sonda_tablas_protegidas.py:31: Failed
+_____________ test_despues_rechaza_roturas_sin_confirmar[funcion] ______________
+
+base_para_migraciones = BaseDeEdificio(contenedor=<testcontainers.community.postgres.PostgresContainer object at 0x76ac717e5010>, nombre='prop...ece', 'POSTGRES_MIGRADOR_USER': 'proptech_migrador', 'POSTGRES_MIGRADOR_PASSWORD': 'clave-migrador-de-sesion-no-real'})
+rotura = 'funcion'
+
+    @pytest.mark.parametrize("rotura", ["trigger", "funcion", "rls", "otro_error", "texto_ajeno"])
+    def test_despues_rechaza_roturas_sin_confirmar(base_para_migraciones: BaseDeEdificio, rotura: str) -> None:
+        base = base_para_migraciones
+        base.migrar("upgrade", "head")
+        devolver_configuracion(base)
+        with arranque(base) as c:
+            definicion = c.execute("SELECT pg_get_functiondef('fn_configuracion_versionada_bloqueada()'::regprocedure)").fetchone()[0]
+            try:
+FAILED tests/integracion/test_sonda_tablas_protegidas.py::test_despues_rechaza_roturas_sin_confirmar[texto_ajeno]
+FAILED tests/integracion/test_sonda_tablas_protegidas.py::test_tabla_vacia_pasa_y_fk_entrante_no_pierde_filas
+========================= 6 failed, 1 passed in 9.31s ==========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-restaurado
+command: bash infra/ci/test-backend.sh tests/integracion/test_sonda_tablas_protegidas.py tests/integracion/test_propiedad_protegida.py tests/integracion/test_dueno_de_tablas_solo_agregar.py tests/integracion/test_roles_solo_agregar.py
+time: 11:22:26
+collected 13 items
+
+tests/integracion/test_sonda_tablas_protegidas.py .......                [ 53%]
+tests/integracion/test_propiedad_protegida.py ..                         [ 69%]
+tests/integracion/test_dueno_de_tablas_solo_agregar.py ..                [ 84%]
+tests/integracion/test_roles_solo_agregar.py ..                          [100%]
+
+============================= 13 passed in 27.58s ==============================
+tests/integracion/test_roles_solo_agregar.py ..                          [100%]
+
+============================= 13 passed in 27.58s ==============================
+```
+
+
+EVIDENCIA · 26/10/2026 · 11:36:40
+Checks compartidos del grupo 5, después de restaurar y adaptar consumidores:
+```text
+command: cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+297 files already formatted
+Success: no issues found in 271 source files
+```
+GREEN del grupo: 5.3 / GREEN-grupo5-final 11:32:28, 102 passed; consumidores restantes 5.1 / GREEN-consumidores-bajada 11:34:29 (92 passed y un fallo histórico), corregido y reejecutado en GREEN-reversion-login 11:36:18 (2 passed). No hay fallos pendientes de esos conjuntos.
+
+
+- [x] 5.3 **Los procesos no arrancan si una tabla protegida tiene otro dueño.**
   `verificar_tablas_de_solo_agregar(engine)` y `TablasDeSoloAgregarDesprotegidas` en `base_de_datos.py`,
   con `schemaname = 'public'`, llamada en la API, el worker, `alta_inicial` y `ejemplo`; la API y el worker
   la atrapan y registran `arranque_fallido`. Sin variable para saltearlo: los tests que levantan la app
@@ -1638,6 +1907,253 @@ DESVÍO operativo: se corrigió sólo la indentación de dos tests de parámetro
   › El conjunto coincide con el catálogo; › Todo en orden. Lecciones: L-016, L-018, L-022, L-007.
 
 ## 6. Deuda D-053 (design D5, D10)
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_arranque_tablas_protegidas.py::test_cada_proceso_frena[api]
+time: 11:18:09
+>           with pytest.raises(TablasDeSoloAgregarDesprotegidas, match="configuracion_versionada"):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE TablasDeSoloAgregarDesprotegidas
+
+tests/integracion/test_arranque_tablas_protegidas.py:39: Failed
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:18:14.771Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_cada_proceso_frena[api]
+========================= 1 failed, 1 warning in 5.84s =========================
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_cada_proceso_frena[api]
+========================= 1 failed, 1 warning in 5.84s =========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN
+command: bash infra/ci/test-backend.sh tests/integracion/test_arranque_tablas_protegidas.py
+time: 11:18:38
+>               arranque.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(nombre)))
+
+tests/integracion/conftest.py:84:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <psycopg.Connection [BAD] at 0x7a5d64fcf8c0>
+query = Composed([SQL('DROP DATABASE '), Identifier('proptech_edificio_68b00df6944c4a3180ec74403cf98c17')])
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+=========================== short test summary info ============================
+ERROR tests/integracion/test_arranque_tablas_protegidas.py::test_esquema_exacto_y_tabla_ausente
+==================== 5 passed, 1 warning, 1 error in 12.68s ====================
+```
+
+
+DESVÍO operativo reproducido: primera corrida 11:18:38: 5 passed y error de teardown ObjectInUse (1 sesión). El rechazo del worker dejaba su engine abierto; se libera en la rama de arranque fallido antes de propagar la excepción. No cambia permisos ni regla firmada.
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-recurso-liberado
+command: bash infra/ci/test-backend.sh tests/integracion/test_arranque_tablas_protegidas.py
+time: 11:19:31
+>           assert candidatas == set(TABLAS_DE_SOLO_AGREGAR), f"tablas protegidas fuera del conjunto: {sorted(candidatas ^ set(TABLAS_DE_SOLO_AGREGAR))}"
+E           AssertionError: tablas protegidas fuera del conjunto: ['grupo_de_reparto', 'grupo_unidad', 'unidad']
+E           assert {'auditoria',...ad', 'unidad'} == {'auditoria',...n_versionada'}
+E
+E             Extra items in the left set:
+E             'unidad'
+E             'grupo_unidad'
+E             'grupo_de_reparto'
+E             Use -v to get more diff
+
+tests/integracion/test_arranque_tablas_protegidas.py:97: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+==================== 1 failed, 5 passed, 1 warning in 8.19s ====================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED-tabla-olvidada
+command: bash infra/ci/test-backend.sh tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+time: 11:20:29
+>           assert candidatas == set(TABLAS_DE_SOLO_AGREGAR), f"tablas protegidas fuera del conjunto: {sorted(candidatas ^ set(TABLAS_DE_SOLO_AGREGAR))}"
+E           AssertionError: tablas protegidas fuera del conjunto: ['grupo_de_reparto', 'grupo_unidad', 'protegida_olvidada', 'unidad']
+E           assert {'auditoria',...da', 'unidad'} == {'auditoria',...n_versionada'}
+E
+E             Extra items in the left set:
+E             'unidad'
+E             'grupo_unidad'
+E             'grupo_de_reparto'
+E             'protegida_olvidada'
+E             Use -v to get more diff
+
+tests/integracion/test_arranque_tablas_protegidas.py:97: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+========================= 1 failed, 1 warning in 5.83s =========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED-tabla-olvidada-discriminante
+command: bash infra/ci/test-backend.sh tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+time: 11:21:09
+>           assert candidatas == set(TABLAS_DE_SOLO_AGREGAR), f"tablas protegidas fuera del conjunto: {sorted(candidatas ^ set(TABLAS_DE_SOLO_AGREGAR))}"
+E           AssertionError: tablas protegidas fuera del conjunto: ['protegida_olvidada']
+E           assert {'auditoria',...ida_olvidada'} == {'auditoria',...n_versionada'}
+E
+E             Extra items in the left set:
+E             'protegida_olvidada'
+E             Use -v to get more diff
+
+tests/integracion/test_arranque_tablas_protegidas.py:97: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+========================= 1 failed, 1 warning in 5.78s =========================
+=========================== short test summary info ============================
+FAILED tests/integracion/test_arranque_tablas_protegidas.py::test_conjunto_coincide_con_catalogo
+========================= 1 failed, 1 warning in 5.78s =========================
+```
+
+
+DESVÍO operativo · 11:24–11:28: una automatización de formato de literales rompió paréntesis de llamadas y fue detectada por parser antes de commit. Se respaldó el árbol en .git/recuperacion-formato-5, se repuso backend versionado desde HEAD 9e62bc6 y se reaplicó sólo el grupo 5 (roles desde roles-pre-mutante.py). Parser, ruff y mypy recuperados; no se conservan cambios ajenos al alcance. No se cuenta ninguna salida de parser como RED de comportamiento.
+JUICIO (constructor, confianza alta): el catálogo reconoce bloqueo incondicional por BEGIN seguido de RAISE EXCEPTION, para distinguirlo de validaciones condicionales de unidad/grupos. Comparado con 0004/0009 y mutante de tabla olvidada. Límite: una función de bloqueo escrita de otra forma exige ampliar ese discriminante.
+
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-grupo5-restaurado
+command: bash infra/ci/test-backend.sh tests/integracion/test_propiedad_protegida.py tests/integracion/test_sonda_tablas_protegidas.py tests/integracion/test_arranque_tablas_protegidas.py tests/integracion/test_dueno_de_tablas_solo_agregar.py tests/integracion/test_roles_solo_agregar.py tests/integracion/test_auditoria_tabla.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_vocabulario_configuracion.py tests/unitarios/test_motor_unico.py tests/integracion/test_worker_tarea_de_prueba.py
+time: 11:27:13
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:290:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv/lib/python3.14/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:723: in _connect
+    reader, writer = await asyncio.open_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+ERROR tests/integracion/test_worker_tarea_de_prueba.py::test_dos_fallas_tres_intentos_y_una_sola_fila[asyncio]
+ERROR tests/integracion/test_worker_tarea_de_prueba.py::test_request_id_invalido_se_reemplaza_y_se_loguea[asyncio]
+======== 4 failed, 95 passed, 1 warning, 3 errors in 101.79s (0:01:41) =========
+```
+
+
+DESVÍO de aislamiento de tests: recargar el módulo worker en las pruebas nuevas dejó su configuración de Redis de ejemplo cacheada para el fixture de sesión posterior (3 errores de conexión a redis:6379). Las pruebas nuevas guardan/restauran el módulo o lo sacan de sys.modules si no existía antes; no se cambia configuración de producción ni el fixture de sesión.
+
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-grupo5-completo
+command: bash infra/ci/test-backend.sh tests/integracion/test_propiedad_protegida.py tests/integracion/test_sonda_tablas_protegidas.py tests/integracion/test_arranque_tablas_protegidas.py tests/integracion/test_dueno_de_tablas_solo_agregar.py tests/integracion/test_roles_solo_agregar.py tests/integracion/test_auditoria_tabla.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_vocabulario_configuracion.py tests/unitarios/test_motor_unico.py tests/integracion/test_worker_tarea_de_prueba.py
+time: 11:30:10
+>       await _correr_worker_burst(ajustes_del_worker, nombre_cola)
+
+tests/integracion/test_worker_tarea_de_prueba.py:103:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/integracion/test_worker_tarea_de_prueba.py:73: in _correr_worker_burst
+    await worker.async_run()
+.venv/lib/python3.14/site-packages/arq/worker.py:325: in async_run
+    await self.main_task
+.venv/lib/python3.14/site-packages/arq/worker.py:363: in main
+    await self.on_startup(self.ctx)
+tests/integracion/test_worker_tarea_de_prueba.py:55: in _on_startup_de_test
+    await ajustes_del_worker.on_startup(ctx)
+src/proptech_worker/ajustes.py:214: in on_startup
+    verificar_tablas_de_solo_agregar(engine)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+engine = Engine(postgresql+psycopg://proptech_app:***@localhost:33002/test)
+
+FAILED tests/integracion/test_worker_tarea_de_prueba.py::test_dos_fallas_tres_intentos_y_una_sola_fila[asyncio]
+FAILED tests/integracion/test_worker_tarea_de_prueba.py::test_request_id_invalido_se_reemplaza_y_se_loguea[asyncio]
+============= 3 failed, 99 passed, 4 warnings in 89.20s (0:01:29) ==============
+```
+
+
+DESVÍO de fixture real: esquema_migrado sólo ejecutaba Alembic, dejando protegidas del migrador; ahora completa roles despues, como deploy real. Reproducción 11:30:10: 99 passed y tres fallos del arranque worker nombrando ambas tablas. No se saltea el chequeo en este fixture.
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-grupo5-final
+command: bash infra/ci/test-backend.sh tests/integracion/test_propiedad_protegida.py tests/integracion/test_sonda_tablas_protegidas.py tests/integracion/test_arranque_tablas_protegidas.py tests/integracion/test_dueno_de_tablas_solo_agregar.py tests/integracion/test_roles_solo_agregar.py tests/integracion/test_auditoria_tabla.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_vocabulario_configuracion.py tests/unitarios/test_motor_unico.py tests/integracion/test_worker_tarea_de_prueba.py
+time: 11:32:28
+tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento[asyncio]
+tests/integracion/test_worker_tarea_de_prueba.py::test_dos_fallas_tres_intentos_y_una_sola_fila[asyncio]
+tests/integracion/test_worker_tarea_de_prueba.py::test_request_id_invalido_se_reemplaza_y_se_loguea[asyncio]
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/arq/worker.py:877: DeprecationWarning: Call to deprecated close. (Use aclose() instead) -- Deprecated since version 5.0.1.
+    await self.pool.close(close_connection_pool=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 102 passed, 4 warnings in 89.69s (0:01:29) ==================
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 102 passed, 4 warnings in 89.69s (0:01:29) ==================
+```
+
+
+EVIDENCIA · 26/10/2026 · 11:36:40
+Checks compartidos del grupo 5, después de restaurar y adaptar consumidores:
+```text
+command: cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+297 files already formatted
+Success: no issues found in 271 source files
+```
+GREEN del grupo: 5.3 / GREEN-grupo5-final 11:32:28, 102 passed; consumidores restantes 5.1 / GREEN-consumidores-bajada 11:34:29 (92 passed y un fallo histórico), corregido y reejecutado en GREEN-reversion-login 11:36:18 (2 passed). No hay fallos pendientes de esos conjuntos.
+
 
 - [ ] 6.1 **`except TypeError` muerto y los ceros de más de `Dinero` (D-114.6).** Tests: en
   `leer_parametros`, raíz que no es un mapa y claves que no son texto fallan con `ParametrosInvalidos`

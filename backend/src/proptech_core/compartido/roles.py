@@ -1,33 +1,10 @@
-"""Paso de roles de PostgreSQL (D1, D2, D9, cambio 2a).
+"""Roles de deploy: antes prepara permisos; después protege las tablas de sólo agregar.
 
-Hoy la base tiene un solo rol (el de arranque, superusuario de la imagen
-oficial de PostgreSQL). Este módulo crea y repara los otros tres con un
-trabajo cada uno, siempre con el rol de arranque:
-
-- `proptech_migrador`: dueño de las tablas de dominio, corre Alembic.
-- `proptech_app`: la usan la API y el worker; sin ser dueño de nada.
-- `proptech_respaldo`: sólo lee, para `pg_dump` (`BYPASSRLS` + `pg_read_all_data`).
-
-`antes()` corre ANTES de Alembic (D2): crea los roles si no existen, fija sus
-atributos y contraseña en cada corrida (así una corrida repara un rol tocado
-a mano), le da `CREATE` sobre `public` al migrador, le transfiere lo que el
-rol de arranque haya creado hasta ahora (salvo `auditoria`, que es del rol de
-arranque a propósito, D9) y otorga a la app los permisos de D1 sobre lo que
-ya existe — los `DEFAULT PRIVILEGES` (que también fija) sólo cubren lo que se
-cree de ahora en más, nunca lo que ya estaba ahí.
-
-`despues()` corre DESPUÉS de Alembic (D2, D9, tarea 6.1): transfiere
-`auditoria` (creada por el migrador en la migración `0004`) de vuelta al rol
-de arranque, y le revoca a la app el `UPDATE`/`DELETE`/`TRUNCATE` que
-`ALTER DEFAULT PRIVILEGES` le regaló por ser una tabla nueva del migrador,
-dejándole sólo `SELECT, INSERT` (D9). Antes de la 6.1 (la tabla todavía no
-existe), no hace nada. También le revoca todo a la app sobre
-`alembic_version` (creada por Alembic mismo) y le deja sólo `SELECT`
-(revisión final, 19/10/2026, arreglo 8): la exclusión de esa tabla en
-`_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` sólo evita el `GRANT` explícito de
-`antes()`, nunca el regalo de los DEFAULT PRIVILEGES.
-
-CLI: `python -m proptech_core.compartido.roles antes|despues`.
+El arranque es dueño de las tablas declaradas en tablas_protegidas y de sus
+funciones de bloqueo. El migrador conserva las demás tablas de dominio.
+La app sólo recibe SELECT/INSERT sobre las protegidas. Cada transferencia y
+verificación del paso posterior corre en una transacción que revierte ante error.
+CLI: python -m proptech_core.compartido.roles antes|despues.
 """
 
 from __future__ import annotations
@@ -45,9 +22,10 @@ from proptech_core.compartido.configuracion import (
     ConfiguracionInvalida,
     _ConfiguracionPostgresBase,
 )
+from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR, TablaProtegida
 
-#: Nunca se reasigna aunque exista (D9): es del rol de arranque a propósito.
-_TABLA_EXCLUIDA_DE_LA_REASIGNACION = "auditoria"
+#: D0/D1: el paso anterior nunca devuelve tablas protegidas al migrador.
+_TABLAS_EXCLUIDAS_DE_LA_REASIGNACION = frozenset(TABLAS_DE_SOLO_AGREGAR)
 #: El migrador nunca necesita tocarla (es bookkeeping de Alembic mismo).
 #: `accion_de_auditoria` (vuelta 2, R3): el vocabulario de D1 es sólo
 #: `SELECT` para la app, nunca los cuatro permisos del grant amplio.
@@ -55,8 +33,8 @@ _TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP = frozenset(
     {"alembic_version", "auditoria", "accion_de_auditoria"}
 )
 
-# D16: la auditoría conserva su tratamiento y dueño propios (D9).
-_TABLAS_DE_SOLO_AGREGAR = frozenset({"configuracion_versionada"})
+# D0: conjunto derivado de la declaración única; auditoria conserva su sonda propia.
+_TABLAS_DE_SOLO_AGREGAR = frozenset(TABLAS_DE_SOLO_AGREGAR)
 
 #: Revisión final (19/10/2026), arreglo 8: mismo defecto que D9/D16 resolvieron
 #: para `auditoria`/`configuracion_versionada`, para una tabla que Alembic
@@ -183,11 +161,11 @@ def _secuencias_de_public_del_rol(cur: psycopg.Cursor, rol: str) -> list[str]:
 
 def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrador: str) -> None:
     """Le transfiere al migrador cada tabla y secuencia de `public` que hoy es
-    del rol de arranque, salvo `auditoria` (D9): nunca `REASSIGN OWNED`, que
+    del rol de arranque, salvo las tablas protegidas (D0/D1): nunca `REASSIGN OWNED`, que
     se llevaría objetos fuera del proyecto si el rol de arranque tuviera algo
     más (L-006). La lista sale del catálogo, nunca a mano."""
     for tabla in _tablas_de_public_del_rol(cur, arranque):
-        if tabla == _TABLA_EXCLUIDA_DE_LA_REASIGNACION:
+        if tabla in _TABLAS_EXCLUIDAS_DE_LA_REASIGNACION:
             continue
         cur.execute(
             sql.SQL("ALTER TABLE {tabla} OWNER TO {migrador};").format(
@@ -640,6 +618,80 @@ def _funciones_de_los_triggers_de(cur: psycopg.Cursor, tabla: str) -> list[str]:
     return [fila[0] for fila in cur.fetchall()]
 
 
+def _verificar_tabla_protegida(
+    cur: psycopg.Cursor, tabla: str, declaracion: TablaProtegida, arranque: str
+) -> None:
+    faltantes: list[str] = []
+    cur.execute(
+        "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid=to_regclass(%s)",
+        (f"public.{tabla}",),
+    )
+    rls = cur.fetchone()
+    if rls is None or not all(rls):
+        faltantes.append("ROW LEVEL SECURITY habilitada y FORCE")
+    cur.execute(
+        "SELECT t.tgname, t.tgenabled, pg_get_userbyid(p.proowner) FROM pg_trigger t JOIN "
+        "pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid=to_regclass(%s) AND NOT t.tgisinternal",
+        (f"public.{tabla}",),
+    )
+    triggers = {f[0]: (f[1], f[2]) for f in cur.fetchall()}
+    for nombre in sorted(declaracion.triggers):
+        if nombre not in triggers:
+            faltantes.append(f"trigger {nombre} no existe")
+        elif triggers[nombre] != ("O", arranque):
+            faltantes.append(f"trigger {nombre} deshabilitado o función con otro dueño")
+    cur.execute(
+        "SELECT attname FROM pg_attribute WHERE attrelid=to_regclass(%s) AND attnum>0 AND "
+        "NOT attisdropped ORDER BY attnum LIMIT 1",
+        (f"public.{tabla}",),
+    )
+    primera = cur.fetchone()
+    if primera is None:
+        faltantes.append("sin columna para probar UPDATE")
+    else:
+        cur.execute(
+            "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE contype='f' AND "
+            "confrelid=to_regclass(%s))",
+            (f"public.{tabla}",),
+        )
+        fk = cur.fetchone()
+        cascada = sql.SQL(" CASCADE") if fk and fk[0] else sql.SQL("")
+        intentos = [
+            (
+                "UPDATE",
+                sql.SQL("UPDATE {} SET {}={} WHERE false").format(
+                    sql.Identifier("public", tabla),
+                    sql.Identifier(primera[0]),
+                    sql.Identifier(primera[0]),
+                ),
+            ),
+            (
+                "DELETE",
+                sql.SQL("DELETE FROM {} WHERE false").format(sql.Identifier("public", tabla)),
+            ),
+            ("TRUNCATE", sql.SQL("TRUNCATE {}{}").format(sql.Identifier("public", tabla), cascada)),
+        ]
+        for nombre, sentencia in intentos:
+            cur.execute("SAVEPOINT sonda_tabla_protegida")
+            try:
+                cur.execute(sentencia)
+            except psycopg.Error as error:
+                if error.sqlstate != "P0001" or declaracion.mensaje not in str(error):
+                    faltantes.append(
+                        f"no se pudo confirmar bloqueo de {nombre}: "
+                        f"error distinto (SQLSTATE {error.sqlstate})"
+                    )
+            else:
+                faltantes.append(f"admite {nombre}")
+            finally:
+                cur.execute("ROLLBACK TO SAVEPOINT sonda_tabla_protegida")
+                cur.execute("RELEASE SAVEPOINT sonda_tabla_protegida")
+    if faltantes:
+        raise AuditoriaNoProtegida(
+            f"la protección de {tabla} no se pudo confirmar: " + "; ".join(faltantes)
+        )
+
+
 def despues(configuracion: ConfiguracionDeArranque) -> None:
     """El paso `despues` de D2 (D9): transfiere `auditoria` de vuelta al rol
     de arranque (la crea el migrador en la migración `0004`, de paso) y ajusta
@@ -670,6 +722,24 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
             for tabla in sorted(_TABLAS_DE_SOLO_AGREGAR):
                 if _existe_tabla(cur, tabla):
                     cur.execute(
+                        sql.SQL("ALTER TABLE {} OWNER TO {}").format(
+                            sql.Identifier("public", tabla),
+                            sql.Identifier(configuracion.postgres_user),
+                        )
+                    )
+                    for funcion in _funciones_de_los_triggers_de(cur, tabla):
+                        cur.execute(
+                            sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
+                                sql.Identifier("public", funcion),
+                                sql.Identifier(configuracion.postgres_user),
+                            )
+                        )
+                        cur.execute(
+                            sql.SQL("ALTER FUNCTION {}() SET search_path = ''").format(
+                                sql.Identifier("public", funcion)
+                            )
+                        )
+                    cur.execute(
                         sql.SQL("REVOKE UPDATE, DELETE, TRUNCATE ON {} FROM {}").format(
                             sql.Identifier(tabla), sql.Identifier(app.postgres_user)
                         )
@@ -679,6 +749,12 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                             sql.Identifier(tabla), sql.Identifier(app.postgres_user)
                         )
                     )
+                    if not TABLAS_DE_SOLO_AGREGAR[tabla].verificacion_con_fila:
+                        _verificar_tabla_protegida(
+                            cur, tabla, TABLAS_DE_SOLO_AGREGAR[tabla], configuracion.postgres_user
+                        )
+                else:
+                    print(f"tabla protegida {tabla}: no existe, se saltea")
             # Revisión final (19/10/2026), arreglo 8: `REVOKE ALL` primero
             # (deshace lo que los DEFAULT PRIVILEGES regalaron, cualquiera
             # sea el permiso) y recién después el `GRANT SELECT` angosto —

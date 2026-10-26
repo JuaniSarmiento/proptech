@@ -68,6 +68,7 @@ def test_migracion_normaliza_todas_las_administraciones_y_campos(
     base_del_edificio: BaseDeEdificio,
 ) -> None:
     base = base_del_edificio
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0012")
     datos = _legados(base)
     base.migrar("upgrade", "head")
@@ -97,6 +98,7 @@ def test_migracion_con_choque_falla_claro_y_no_toca_datos_ni_rls(
     base_del_edificio: BaseDeEdificio, tabla: str
 ) -> None:
     base = base_del_edificio
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0012")
     datos = _legados(base)
     admin, edificio = datos[1]  # El choque está en el segundo tenant, nunca sólo en el primero.
