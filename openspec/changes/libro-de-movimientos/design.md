@@ -74,7 +74,7 @@ genera la aplicación. Cada tabla de sólo agregar lleva su función `fn_<tabla>
 EXCEPTION '<tabla> no admite %', TG_OP` y tres triggers con esa función: `trg_<tabla>_sin_update_delete`
 (por fila), `trg_<tabla>_sin_truncate` (`BEFORE TRUNCATE`) y `trg_<tabla>_sin_update_delete_por_sentencia`
 (`BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT`), y se declara en `TABLAS_DE_SOLO_AGREGAR` con ese
-texto y esos tres nombres. `roles.py:despues()` cambia para otorgar `REFERENCES` al migrador sobre las seis tablas del libro y `candado_de_cuenta` (E15), sin devolver su propiedad ni ampliar permisos de escritura de la app.
+texto y esos tres nombres. `roles.py:despues()` cambia para otorgar `REFERENCES` al migrador sobre las seis tablas protegidas del libro (E15); no sobre `candado_de_cuenta`, que ya pertenece al migrador, sin devolver su propiedad ni ampliar permisos de escritura de la app.
 
 | tabla | columnas | claves y restricciones |
 |---|---|---|
@@ -88,7 +88,10 @@ texto y esos tres nombres. `roles.py:despues()` cambia para otorgar `REFERENCES`
 
 **Vocabulario (E14, AR-2, AN-04)**: `tipo_de_movimiento(tipo TEXT NOT NULL, sentido TEXT NOT NULL)`
 con PK `(tipo, sentido)`, `CHECK sentido IN ('debito', 'credito')` y tipo no vacío. El migrador lo amplía
-con `INSERT`; la app sólo tiene `SELECT`. No es una tabla del libro protegida ni lleva RLS porque no
+con `INSERT`; la app sólo tiene `SELECT`. `tipo_de_movimiento` entra en
+`_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP`; `despues()` revoca explícitamente
+`INSERT, UPDATE, DELETE` y deja `SELECT`, como `accion_de_auditoria`. La exclusión evita el GRANT
+amplio de `antes()` y el REVOKE corrige los default privileges, también en despliegues repetidos (RC-01). No es una tabla del libro protegida ni lleva RLS porque no
 contiene datos de administraciones. Semilla: `interes/debito`, `pago/credito`,
 `correccion/debito`, `correccion/credito`, `condonacion/credito`, `ajuste_de_interes/credito`,
 `bonificacion/credito`, `reimputacion/debito`, `reimputacion/credito`, `baja_de_deuda/credito`,
@@ -110,6 +113,10 @@ contiene datos de administraciones. Semilla: `interes/debito`, `pago/credito`,
   `operacion_id NOT NULL`. `correccion` exige motivo normalizado de 1 a 500 caracteres, con CHECK
   explícito `tipo <> 'correccion' OR (motivo IS NOT NULL AND length(motivo) BETWEEN 1 AND 500 AND
   btrim(motivo) <> '')`; no se deja que NULL pase el CHECK.
+- `CHECK (tipo <> 'correccion' OR sentido <> 'debito' OR corrige_a IS NOT NULL)`:
+  un débito de corrección exige `corrige_a`, aunque tenga obligación y componente válidos (RC-02).
+  `CHECK (tipo <> 'correccion' OR corrige_a IS NOT NULL OR obligacion_id IS NOT NULL)`:
+  un crédito de corrección libre referencia una obligación.
 - `corrige_a` sólo aparece en `correccion`. `CHECK (num_nulls(corrige_a, tipo_corregido) IN (0,2))`:
   ambos nulos o ambos completos. Se elige este CHECK en vez de MATCH FULL porque tenant y cuenta son
   obligatorios, y la FK opcional quedaría parcialmente nula aun sin referencia. Las otras FK opcionales
@@ -122,6 +129,22 @@ contiene datos de administraciones. Semilla: `interes/debito`, `pago/credito`,
   del error o crédito particular R14; se imputa con R04, no exclusivamente a esa obligación.
 - `enlazado_a` puede unir cuentas y edificios distintos **de la misma administración** mediante
   `(administracion_id, enlazado_a)`, para reversión, reimputación o traslado. No habilita cruces de tenant.
+
+**Conservación de las reglas por tipo del D1 de `4823515` (RC-02)**:
+
+| regla anterior | dónde queda ahora |
+|---|---|
+| Lista de tipos y sentidos válidos; interés sólo débito y los demás créditos salvo corrección | FK `(tipo,sentido)` al vocabulario. Se amplían explícitamente reversión, reimputación y traslado (E14); no se pierde la validación de pares |
+| Componentes admitidos e importe positivo | CHECK genéricos anteriores y NOT NULL |
+| Interés exige obligación, componente interés y corte; único obligación/corte | CHECK acotado `tipo='interes'` y `uq_mov_interes` |
+| Débito sin `corrige_a` exige obligación y componente | CHECK genérico por sentido |
+| Condonación/ajuste sólo interés; bonificación sólo ordinaria, con obligación | CHECK acotados de destino con NOT NULL explícitos |
+| Tipo distinto de interés exige operación y operación única | CHECK acotado y `uq_mov_operacion` |
+| Corrección sin `corrige_a` es crédito con obligación; débito sólo contra-asiento | Los dos CHECK acotados de corrección anteriores; test dirigido en 1.2 |
+| Motivo no vacío de corrección | CHECK normalizado de 1 a 500 caracteres |
+| `corrige_a` sólo en corrección, misma cuenta/importe/tipo de origen, una por movimiento | CHECK de tipo y par nulo, FK compuesta y `uq_mov_corrige_a` |
+| Una corrección no puede ser blanco (`tipo_corregido <> 'correccion'`) | Cambio explícito E6: se retira ese CHECK; aplicación bajo candado distingue crédito corregible de débito no corregible y exige sentido opuesto. La base no distingue esos blancos |
+| `enlazado_a` sólo dentro de la cuenta | Cambio explícito E14: FK administración/id permite otras cuentas del mismo tenant |
 
 **Lista exhaustiva de claves y FK de `0023` (DB-1, DB-9)**. Todas las tablas tienen PK `id`, salvo
 `candado_de_cuenta` (PK `cuenta_id`) y el vocabulario (PK compuesta anterior). Todos los identificadores
@@ -150,13 +173,18 @@ referenciadas existen como PK o único no parcial, incluidos los destinos de las
 
 **Índices**, cada uno con su consulta: `obligacion(administracion_id,cuenta_id,periodo)` para
 leer obligaciones de una cuenta ordenadas por período; `imputacion(administracion_id,cuenta_id)` para
-leer sus imputaciones; `cuenta(administracion_id,complejo_id,id)` (único de FK) para enumerar cuentas del
+leer sus imputaciones; `movimiento(administracion_id,cuenta_id)` para `estado_de_cuenta(cuenta_id)`,
+que no recibe edificio y no puede aprovechar la columna intermedia `complejo_id` de los otros únicos; `cuenta(administracion_id,complejo_id,id)` (único de FK) para enumerar cuentas del
 edificio; `uq_mov_sentido` y `uq_mov_correccion` sirven las FK y la lectura de movimientos por
 administración/edificio/cuenta; `uq_emision_intento` sirve D4. Los demás únicos existen para las FK o la
 idempotencia nombradas en el cuadro. Se eliminan `imputacion(administracion_id,obligacion_id)` (D8
-calcula exceso en memoria), el único con `corrida_id` (no sostiene idempotencia) y el índice simple de
-movimiento redundante. D12 usa los índices compuestos con edificio y cuenta, y exige su EXPLAIN. Sin
+calcula exceso en memoria), el único con `corrida_id` (no sostiene idempotencia) pero se conserva el índice de movimiento por administración/cuenta para esa lectura sin edificio (RC-15). D12 usa los índices compuestos con edificio y cuenta, y exige su EXPLAIN. Sin
 particionar (~3 M filas/año con 1000 edificios, estimación del explore, no medición).
+
+**Alcance y reversión de E15 (RC-14)**: `candado_de_cuenta` ya es del migrador y no necesita GRANT
+REFERENCES. `REVOKE REFERENCES` en las seis tablas protegidas sólo impide crear referencias nuevas:
+no elimina FK ya creadas. Para deshacer éstas se requiere una migración explícita sobre las tablas
+referenciantes de sus dueños, comprobando sus datos; no se borra ni altera el libro.
 
 **Columnas anticipadas (E10)**: `corte`, `enlazado_a`, `movimiento.emision_id`,
 `obligacion.operacion_id` y todos los pares del vocabulario anterior nacen en `0023`, con un INSERT
@@ -213,9 +241,12 @@ para todos, sin interbloqueo. Si alguien borra un candado, el `INSERT ... ON CON
 transacciones que lo recrean a la vez se serializan en el índice único: no hay hueco.
 La cuenta y su candado nacen en la misma transacción. Para varias unidades se crean cuentas en una
 sola sentencia `INSERT ... SELECT ... ORDER BY unidad_id` con su árbitro de D5; los candados también
-se insertan en una sentencia ordenada por cuenta_id. `bloquear_cuentas` se llama **una sola vez por
-transacción**, con todas las cuentas necesarias: obligación explícita del llamador, no un bucle de
-llamadas unitarias. El INSERT de una fila nueva también puede esperar por un único, por eso el orden
+se insertan en una sentencia ordenada por cuenta_id. `bloquear_cuentas` es API pública e **idempotente dentro de la transacción**: re-bloquear una cuenta ya
+bloqueada por esa misma transacción no falla. Si el llamador va a tocar varias cuentas, debe primero
+llamar a `bloquear_cuentas` con **todas** ellas en una sola llamada ordenada antes de escribir;
+no puede adquirir subconjuntos nuevos incrementalmente en órdenes distintos. Las operaciones de una
+sola cuenta conservan su bloqueo interno. Traslado y reimputación con `enlazado_a` hacia otra cuenta
+bloquean origen y destino juntos antes de escribir (RC-05). El INSERT de una fila nueva también puede esperar por un único, por eso el orden
 empieza en la creación, antes del SELECT.
 Antes de bloquear exige `current_setting('transaction_isolation') = 'read committed'`; otro nivel
 lanza `AislamientoNoAdmitido` antes de imputar. REPEATABLE READ puede conservar una foto anterior al
@@ -247,6 +278,7 @@ impide duplicados, no autoriza un replay exitoso. Los ids de emisión, cuenta u 
 o ajenos dan `NoEncontrado` en `anular_emision`, `registrar_credito` y corrección de crédito.
 
 ```
+bloquear_cuentas(sesion, cuenta_ids: Sequence[UUID]) -> None                    # pública, idempotente en transacción
 cuenta_de_unidad(sesion, *, complejo_id, unidad_id) -> UUID                      # crea si falta
 registrar_emision(sesion, identidad, *, emision_id, complejo_id, periodo,
                   obligaciones: Sequence[ObligacionAEmitir], request_id) -> EmisionRegistrada
@@ -258,6 +290,13 @@ estado_de_cuenta(sesion, *, cuenta_id) -> EstadoDeCuenta
 deuda_del_edificio(sesion, *, complejo_id) -> list[DeudaDeCuenta]
 saldo_anterior(sesion, *, emision_id, cuenta_id) -> Dinero                         # R06, para el 7
 ```
+
+El contrato público de `bloquear_cuentas(ids)` incluye la Session del llamador como en las demás
+firmas. El llamador que compone varias cuentas reúne sus ids y prebloquea el conjunto completo antes
+de la primera escritura. Las llamadas internas de las operaciones unitarias pueden re-bloquear las
+cuentas ya adquiridas, sin error ni liberación anticipada. El test 3.1 compone dos llamadas públicas
+en dos transacciones con órdenes de operación opuestos, prebloqueando el mismo conjunto ordenado;
+el mutante que omite el prebloqueo y toma cuentas incrementalmente se reproduce con barreras.
 
 `ObligacionAEmitir(unidad_id, vencimiento, ordinaria, fondo_de_reserva, extraordinaria)`. `registrar_credito`
 acepta los tipos de crédito salvo `correccion` (que entra por `corregir`) y `saldo_inicial` (4c), y exige
@@ -363,7 +402,12 @@ y 500 caracteres) y `operacion_id`:
    exclusión para rechazar un crédito de contra-asiento: justamente ese crédito está en el par que se
    quiere deshacer. El par deja de contar (D8). Un **crédito de corrección sí admite contra-asiento, una sola vez**;
    si era un contra-asiento de interés, deshacerlo vuelve a hacer contar el interés original. No se
-   habilita un débito de corrección libre.
+   habilita un débito de corrección libre. Deshacer es **definitivo** respecto del original:
+   `uq_mov_corrige_a` sigue ocupado por C1, aunque C1 deje de contar, y no puede contra-asentarse
+   otra vez I. Si corresponde bajar lo que resta, se registra un crédito de corrección con R04.
+   La base conserva integridad referencial, importe y unicidad, pero **no distingue el blanco** ni
+   su sentido opuesto; aplicación lo valida bajo candado. 3.5 prueba blancos de sentido igual,
+   débito de corrección y reintento sobre el original restaurado (RC-12).
 2. **Crédito de corrección** por un importe positivo, que referencia la obligación del error
    (`obligacion_id`) y se imputa con R04, como un pago (D-086). La obligación tiene que existir en el
    edificio y contar.
@@ -399,20 +443,36 @@ trazabilidad. Knowledge Base Impact entrega ambos casos a sus fichas; no se impl
    pago ya había cubierto), las imputaciones cuentan en orden `orden` ascendente (secuencia monótona de `imputacion`, nunca `now()` ni UUID) hasta cubrir lo que se
    debe, y **el exceso vuelve a su crédito, de la imputación más reciente a la más antigua**.
 4. **Residual** = lo que se debe menos lo imputado que cuenta; nunca negativo.
-5. **Crédito a favor** = por cada crédito que cuenta, su importe menos lo que imputó y cuenta.
+5. **Crédito a favor total** = por cada crédito que cuenta, su importe menos lo que imputó y cuenta.
+   Se desglosa en `credito_a_favor_aplicable` y `credito_a_favor_retenido`: el segundo incluye la
+   bonificación con destino anulado que no puede aplicarse. Ambos son `Dinero` no negativos;
+   `credito_a_favor` es su suma. El cálculo no convierte el retenido en deuda pagada.
 
-**Caso AN-02 que distingue el orden**: la obligación de octubre tiene dos intereses, I1 $4.000 e I2
-$6.000 de cortes distintos. Pago A registrado 1/9 conserva $4.000 a favor; B del 15/10 imputa $6.000
-al componente de interés de octubre; A se imputa a ese mismo componente el 1/11 por $4.000. Contra-asentar
-I1 deja $6.000 de interés: vuelven $4.000 a A, B conserva $6.000 imputados. Ordenar por fecha de crédito
-restituiría $4.000 a B y dejaría a A aplicado: el saldo total igual no basta como aserción.
+**Caso realizable de E7, crédito con fecha valor retroactiva (RC-04, AN-12)**:
+una obligación de octubre contiene capital $40.000 e intereses I1 $4.000 e I2 $6.000, de cortes distintos
+(la fixture anticipa las filas de interés del 4c; no inserta imputaciones a mano).
+
+1. El 15/10 el 8 registra B por $6.000, fecha valor 15/10. D8 no encuentra créditos pendientes;
+   B imputa $6.000 al interés, con orden 1; quedan $4.000 de interés y $40.000 de capital.
+2. El 16/10 el 8 registra A por $4.000, fecha valor retroactiva 1/9. Antes de imputar A,
+   `imputar_pendientes` no encuentra sobrante de B. A imputa los $4.000 restantes con orden 2.
+3. El 17/10 el AP contra-asienta I1 por $4.000. Antes no había sobrantes pendientes. El paso 1
+   excluye I1/C1 y el paso 2 deja $6.000 de interés. El paso 3 conserva B $6.000 (orden 1) y
+   devuelve A $4.000 (orden 2). A queda a favor hasta la escritura siguiente, sin reimputación
+   posterior al contra-asiento en esta llamada. La deuda queda en $40.000 de capital.
+
+Ordenar por crédito más reciente **según fecha valor** devolvería B $4.000 y mantendría A aplicado;
+el test exige B imputado $6.000 y A $0, además de A a favor $4.000 y B $0. La fecha retroactiva
+no reescribe la imputación histórica de B. Este caso usa `registrar_credito` y `corregir` reales del
+4b; los changes 7/8 lo repiten con sus flujos reales. El empate de fecha de registro de dos
+imputaciones tiene un test separado de secuencia (3.5).
 
 **Propiedades** con hypothesis, además de la identidad contable: residual >= 0 por componente;
 imputado que cuenta <= debido por componente; crédito a favor >= 0 por crédito; con imputaciones
 positivas que cuentan sobre capital vigente y sin débitos adicionales, deuda < suma del capital. Se
 prueban los mutantes "sin tope del paso 3" e "ignora imputaciones"; quitar un max redundante no prueba
 nada. El oráculo implementa su propia exclusión, no importa el predicado de producción. Datos acotados:
-a lo sumo 20 obligaciones y 20 créditos de 1 a 1.000.000,00 cada uno y suma absoluta <= 40.000.000,00,
+a lo sumo 20 obligaciones y 20 créditos de 0,01 a 1.000.000,00 cada uno y suma absoluta <= 40.000.000,00,
 dentro de NUMERIC(14,2), más casos de borde explícitos hasta 999999999999.99 y rechazo de overflow.
 **Invariante adicional**, no prueba suficiente del reparto: Σ débitos que cuentan (capital incluido) − Σ créditos que cuentan = deuda total − crédito a
 favor.
@@ -423,6 +483,11 @@ anula, se saltea esa bonificación hasta su reversión por el 8 (R37, E16), aunq
 Lo
 corren la emisión, todo crédito y toda corrección antes de imputar lo suyo. Entre una anulación y la
 escritura siguiente, una cuenta puede mostrar deuda y crédito a favor a la vez; el estado informa los dos.
+`EstadoDeCuenta` y cada `DeudaDeCuenta` devuelven `credito_a_favor` total,
+`credito_a_favor_aplicable` y `credito_a_favor_retenido`. El vecino debe poder ver "crédito a favor
+retenido" separado del aplicable: bonificación $2.000 de noviembre anulado y diciembre $40.000
+producen deuda $40.000, total a favor $2.000, aplicable $0 y retenido $2.000. El 4b prueba los
+campos de la lectura; mostrar esos rótulos en pantalla lo prueba el 11, y revertir lo prueba el 8 (RC-13).
 
 - **Descartadas**: el exceso devuelto a la imputación más antigua (la última es la que quedó de más);
   saldo neto sin residuales por componente (R13 y R04 necesitan el desglose); recalcular imputaciones al
@@ -466,8 +531,11 @@ montado como los demás (barrido de rutas, R6 del 2a). Cuerpo con `extra="forbid
 `importe` como texto con `Dinero` (D-046), positivo en el modelo del cuerpo (negativo/cero → 422,
 antes de SQL). UUID del cuerpo con `Annotated[UUID, Field(strict=False)]`, como `cuerpos.py`. Respuesta 201 `{"movimiento_id": UUID}`; la repetición
 idempotente también 201 con el mismo id. Orden: 401 (`RutaConIdentidad`, antes de leer el cuerpo); 422
-del cuerpo; 404 del edificio; 403 del permiso; 404 del movimiento u obligación inexistente, de otro edificio
-incluida la misma administración, o de otra administración; 409/422 del dominio. El control del permiso
+del cuerpo; 404 del edificio; 403 del permiso; **replay por `operacion_id`**; para una operación nueva,
+404 del movimiento u obligación inexistente, de otro edificio incluida la misma administración, o de
+otra administración; después 409/422 del dominio. Si la operación ya existe y cambian los datos del
+pedido, devuelve 409 `operacion_id` **aunque el nuevo recurso no exista** (RC-07); un replay idéntico
+retorna 201 sin volver a validar recursos ni imputar. El control del permiso
 precede a buscar el recurso: un AE no puede usar errores para descubrir movimientos.
 
 `proptech_api/errores.py` declara **una vez** los modelos de las formas que la API ya usa (401 `{"detail":
@@ -540,7 +608,11 @@ REPEATABLE READ para escribir (D2 lo prohíbe), bloquear para cada lectura (seri
 La lectura del edificio primero enumera `cuenta` por `(administracion_id,complejo_id)` y usa JOIN o
 `= ANY(ids)` para obligaciones, movimientos e imputaciones; no filtra sólo por complejo en esas tablas.
 La 3.7 exige `EXPLAIN (ANALYZE, BUFFERS)` con datos de varios edificios y rechaza todo `Seq Scan`,
-incluido paralelo, sobre `obligacion`, `movimiento` e `imputacion`.
+incluido paralelo, sobre `obligacion`, `movimiento` e `imputacion`. Lo mismo se exige para
+`estado_de_cuenta(cuenta_id)` sin filtro de edificio, usando el índice administración/cuenta de D1.
+Volumen y preparación fijados en 3.7: 3 administraciones, 100 edificios por administración,
+20 cuentas por edificio, 12 obligaciones y 12 movimientos por cuenta y 24 imputaciones por cuenta
+(72.000/72.000/144.000 filas), con `ANALYZE` antes de ambos planes; no se cambia `enable_seqscan` (RC-08/15).
 
 `saldo_anterior(emision_id,cuenta_id)` es **deuda residual no negativa** sin obligaciones de esa emisión,
 calculada desde el estado actual, no saldo neto; el crédito a favor se informa separado. Si sólo hay
@@ -587,8 +659,9 @@ De la tabla "4a · deuda del cierre" de `12_fichas_de_changes.md`:
   Los dos changes pueden tocar `unidades.py` y `grupos.py` por auditoría, `_edificios.py`, tipos y
   fixtures web: resolver por contenido y correr suites, no sólo renumerar.
 - [INSERT de cuentas o candados nuevos también espera en un índice único] → ordenar cuentas por
-  unidad_id en una sentencia, candados por cuenta_id y bloquear una sola vez por transacción; 3.6
-  cruza emisiones de unidades nuevas (no sólo cuentas ya existentes).
+  unidad_id en una sentencia, candados por cuenta_id y prebloquear todas las cuentas juntas antes de
+  escribir si se componen varias; el rebloqueo interno es idempotente. 3.6 cruza emisiones de períodos
+  distintos con unidades nuevas (no sólo cuentas ya existentes).
 - [El exceso devuelto (D8) es una regla nueva que ninguna decisión escribe] → E7 la firma; R05 la escribe
   al archivar.
 - [El fondo de reserva en tercer lugar es una lectura] → E5 provisorio, A-4 (P60) antes del piloto.

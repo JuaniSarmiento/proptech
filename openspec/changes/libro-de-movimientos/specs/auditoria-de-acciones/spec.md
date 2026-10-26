@@ -21,14 +21,5 @@ nunca el motivo ni el importe. Si la auditoría falla, la corrección MUST no qu
 
 #### Scenario: El vocabulario nuevo
 
-- **WHEN** el ensayo del consumidor invoca la operación y se lista `accion_de_auditoria` después de `0024`
+- **WHEN** el migrador aplica `0024` y el test de catálogo lista `accion_de_auditoria`
 - **THEN** contiene `corregir_movimiento`, y bajar `0024` con una corrección auditada falla con `23503`
-
-### Requirement: Emitir y anular se auditan en el llamador
-
-El libro SHALL ser la autoridad del estado anulada para el saldo. El llamador del 7 MUST derivar la anulación del libro y auditar emisión y anulación en la misma transacción con sus acciones existentes; el libro no duplica esas auditorías. El estado distribuida pertenece al 7.
-
-#### Scenario: Anulación y auditoría del llamador
-
-- **WHEN** el llamador del 7 anula una liquidación mediante `anular_emision`
-- **THEN** registra en la misma transacción el evento del libro y la auditoría `ANULAR_LIQUIDACION`; la lectura del estado anulada del 7 coincide con el libro

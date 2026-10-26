@@ -45,6 +45,8 @@ avisarle a Juani antes.
   también se rechaza; › Vaciar una tabla con hijas; › Upsert sobre el libro; › Otra administración no ve la
   cuenta; › Cuenta sin dueño; › Cuenta con los dos dueños; › Período que no es un mes. Lecciones: L-018,
   L-023, L-034, L-036.
+  Escenarios adicionales (RC-09): `libro-de-movimientos` › Los triggers frenan aun con permiso de escritura.
+
 - [ ] 1.2 **Migración `0023`, parte B: `tipo_de_movimiento`, `obligacion`, `movimiento`, `imputacion`.** Tests como en 1.1, más:
   importe negativo y obligación en cero rechazados; `num_nonnulls(emision_id, operacion_id)`; los únicos
   de D5 (obligación por emisión y cuenta, `operacion_id`, interés por obligación y corte, `corrige_a` una
@@ -69,15 +71,26 @@ avisarle a Juani antes.
   `condonacion`, `ajuste_de_interes` enlazado, `bonificacion`, `baja_de_deuda`, `saldo_inicial` con
   `operacion_id`; `reversion_de_pago` débito, `reimputacion` y `traslado` en débito y crédito. Enlace
   `(administracion_id, enlazado_a)` entre cuentas distintas de la misma administración válido; entre
-  administraciones, inválido. CHECK acotados para destinos conocidos, sin cerrar futuros tipos.
+  administraciones, inválido. CHECK acotados para destinos conocidos, sin cerrar futuros tipos. Caso RC-02: INSERT
+  `correccion/debito` con obligación, componente, operación y motivo válidos pero `corrige_a` y
+  `tipo_corregido` nulos da `23514`; quitar sólo el CHECK que exige `corrige_a` da rojo en la
+  aserción de rechazo. Probar también el CHECK de crédito de corrección libre con obligación.
+  Comparar cada regla por tipo de la tabla de conservación de D1 contra `4823515`, sin omisiones.
   `imputacion` lleva secuencia monótona de orden; ni `now()` ni UUID deciden E7. Cada índice restante
   nombra su consulta SQL y se elimina el que no sirve a ninguna (DB-6). Escenarios adicionales:
   `libro-de-movimientos` › Tipos anticipados válidos; › Enlace entre cuentas de la administración;
   › Los casos de NULL y cuenta ajena se rechazan; › Edificio y período coherentes;
   `imputacion-de-creditos` › Dos imputaciones con la misma fecha de registro (E7).
+  Escenarios adicionales (RC-09): `libro-de-movimientos` › Débito de corrección sin referencia.
+
 - [ ] 1.3 **Las seis tablas en la lista única; `roles despues` y el chequeo de arranque las cubren.**
   Sumar las seis a `compartido/tablas_protegidas.py` con su texto y sus tres triggers (D1 del 4a); cambiar `despues()` de `roles.py` para dar al migrador
-  `GRANT REFERENCES` sobre las seis tablas del libro y `candado_de_cuenta` (E15, AR-1). Tests: `despues()` transfiere tablas y funciones y verifica por el efecto; la API y el
+  `GRANT REFERENCES` sobre las seis tablas protegidas del libro (E15, AR-1); no sobre
+  `candado_de_cuenta`, que ya pertenece al migrador. Agregar `tipo_de_movimiento` a
+  `_TABLAS_EXCLUIDAS_DEL_GRANT_A_LA_APP` y en `despues()` hacer `REVOKE INSERT, UPDATE, DELETE`,
+  dejando SELECT, como con `accion_de_auditoria` (RC-01). Test tras el ciclo real antes/migrar/despues:
+  app intenta INSERT en el vocabulario -> `42501`, SELECT válido; repetir el ciclo y exigir lo mismo.
+  RED: mutante que omite exclusión y REVOKE permite INSERT y falla la aserción de permiso. Tests: `despues()` transfiere tablas y funciones y verifica por el efecto; la API y el
   worker no arrancan con `imputacion` del migrador; el test de catálogo da rojo si `movimiento` sale de la
   lista; `candado_de_cuenta` no está en la lista. **RB-4**: tabla homónima en otro esquema creada antes y
   después que la de `public`, y el mutante que saca `schemaname = 'public'` rojo en los dos órdenes.
@@ -85,11 +98,16 @@ avisarle a Juani antes.
   RED: sin las seis en la lista, el test de catálogo nombra cada una. Como migrador después del `roles despues` real, crear una tabla de prueba con FK a
   `movimiento`: RED sin el grant da `42501`, GREEN permite crearla; comprobar también REFERENCES en
   cada tabla del alcance. El grant no debe conferir ALTER, CREATE INDEX, DROP INDEX ni escritura del
-  libro al migrador. Reversión del permiso: REVOKE. **Verde = la suite completa** de
+  libro al migrador. Reversión del permiso: REVOKE impide FK nuevas pero no elimina las existentes
+  (RC-14). Test: crear FK como migrador, revocar REFERENCES como dueño, comprobar la FK en catálogo
+  y su rechazo de referencia inválida; crear otra FK falla `42501`. Reponer permiso y limpiar sólo
+  la tabla de prueba como su dueño, sin modificar el libro. **Verde = la suite completa** de
   backend (L-041), con el número de tests antes y después. Escenarios: `aislamiento-por-administracion` ›
   El paso de roles verifica las seis por el efecto; › Una tabla del libro sin declarar; › La API no
   arranca con una tabla del libro del migrador; › Una tabla homónima en otro esquema no hace pasar el
   chequeo; › El candado no es de sólo agregar; › Tabla futura con FK al libro. Lecciones: L-016, L-018, L-022, L-036, L-041.
+  Escenarios adicionales (RC-09): `aislamiento-por-administracion` › La app no amplía el vocabulario.
+
 - [ ] 1.4 **Ensayo de roles y rollback, corridos.** `infra/ci/ensayo-roles.sh`: antes de bajar de `0023`,
   comprobar como rol de arranque que las seis tablas están vacías y devolver tablas y funciones al
   migrador (Migration Plan, paso 1); corregir el mensaje `ciclo 0018/0016/0018`; ajustar
@@ -127,14 +145,14 @@ avisarle a Juani antes.
 - [ ] 2.2 **Estado de una cuenta: residual, crédito a favor y saldo anterior.** `dominio/estado.py` con
   `calcular_estado`. Tests, sin base: capital desglosado en tres componentes; residual nunca negativo;
   crédito a favor por crédito; deuda total sin duplicar la obligación vieja (R06); saldo anterior sin la
-  emisión pedida, con y sin crédito a favor (semántica exacta de D12); el 7 debe guardar al emitir el
-  valor calculado en esa transacción, que no se reconstruye con una lectura actual posterior. **Propiedad con `hypothesis`** (perfil `ci`): la invariante de D8 con un oráculo que suma
+  emisión pedida, con y sin crédito a favor (semántica exacta de D12). Guardar el snapshot publicado
+  es prueba del 7, fuera de la cobertura del 4b; acá se verifica el valor puro y el retorno de 3.2. **Propiedad con `hypothesis`** (perfil `ci`): la invariante de D8 con un oráculo que suma
   débitos y créditos sin pasar por los componentes ni por `imputar`, y sin importar el
   predicado de exclusión de producción. Además de la identidad, exigir por componente residual ≥ 0 e
   imputado que cuenta ≤ debido, por crédito favor ≥ 0; con capital positivo, sin débitos adicionales y
   con una imputación positiva que cuenta, deuda < suma del capital (QA-2). Acotar generadores: hasta
-  20 obligaciones y 20 créditos de hasta $1.000.000 cada uno, suma absoluta menor al máximo
-  `999999999999.99`; probar aparte el límite y el desborde, que da `MontoInvalido` (QA-10). RED contra `calcular_estado` vacío.
+  20 obligaciones y 20 créditos de $0,01 a $1.000.000,00 cada uno, suma absoluta de todos los importes
+  generados <= $40.000.000,00, igual que D8 y dentro de NUMERIC(14,2); probar aparte el límite y el desborde, que da `MontoInvalido` (QA-10). RED contra `calcular_estado` vacío.
   Mutantes separados: sin el tope del paso 3 de D8 (residual negativo después de corregir
   interés ya cubierto) e ignora imputaciones (no baja la deuda); registrar la aserción exacta que cae,
   no aceptar sólo la identidad como oráculo. Escenarios: `libro-de-movimientos` ›
@@ -147,9 +165,10 @@ avisarle a Juani antes.
   las imputaciones de otros créditos no se tocan; corregir un interés ya cubierto devuelve el exceso al
   crédito de la imputación más reciente a la más antigua (secuencia, E7). La propiedad de 2.2 extendida con anulaciones y correcciones aleatorias. RED contra
   la versión de 2.2 (sin exclusiones). Mutantes: exceso devuelto según fecha del crédito en vez de orden de la imputación (rojo en el
-  escenario pago A / pago B de AN-02); ajuste enlazado que sigue contando (rojo en D-085). Incluir bonificación de $2.000 de
+  escenario Crédito retroactivo con imputación posterior de RC-04); ajuste enlazado que sigue contando (rojo en D-085). Incluir bonificación de $2.000 de
   noviembre, emisión anulada y diciembre $40.000: sigue atada al destino anulado y diciembre debe
-  $40.000 hasta reversión por el 8 (E16); mutante que la reimputa por R04 da rojo. Pago con fecha valor
+  $40.000 hasta reversión por el 8 (E16); devolver total a favor $2.000, aplicable $0 y retenido
+  $2.000, con campos separados; mutante que la reimputa por R04 da rojo. Pago con fecha valor
   anterior a una corrección posterior: pendientes se ordenan por `fecha_valor`, sin reescribir hechos
   anteriores (AN-12). Cadena de E6: interés I débito, C1 contra-asiento crédito y C2 contra-asiento
   débito de C1; el cálculo parte del extremo más reciente, excluye C2/C1 y restaura I. Mutante que
@@ -168,7 +187,16 @@ avisarle a Juani antes.
   que la cuenta; rollback no deja ninguno de los dos. Todos los casos de uso fuera de transacción dan
   `RegistroFueraDeTransaccion`; `administracion_id` sale de `current_setting('app.administracion_id')`
   y, en las funciones que reciben identidad, se exige coincidencia antes del INSERT (BE-5.2-5). El llamador autoriza la acción y
-  reúne todas las cuentas para llamar a `bloquear_cuentas` una sola vez por transacción. Chequear
+  si va a tocar más de una cuenta reúne **todas** y llama a la API pública `bloquear_cuentas(ids)`
+  en una llamada ordenada antes de escribir; el rebloqueo en la misma transacción es idempotente.
+  Probar dos llamadas idénticas y dos operaciones unitarias con bloqueo interno tras prebloquear
+  A/B. Dos transacciones componen operaciones A/B y B/A prebloqueando ambas cuentas; con barreras y
+  timeout del servidor, ambas terminan sin `40P01`. Mutante: omitir el prebloqueo y adquirir A/B y B/A
+  incrementalmente; la aserción de éxito de ambas cae por deadlock (RC-05).
+  Coincidencia de tenant (RC-09): identidad de A en sesión con tenant B, cuenta y recursos visibles de
+  B; exigir rechazo **antes del INSERT** y cero sentencias de escritura. Mutante que quita sólo la
+  comparación debe llegar al INSERT (aunque RLS lo rechace después con 42501) y caer en la aserción
+  de cero INSERT, no en un rechazo genérico que RLS también produciría. Chequear
   `current_setting('transaction_isolation') = 'read committed'`; en REPEATABLE READ, antes de escribir,
   `AislamientoNoAdmitido` (DB-4). Dos conexiones con snapshot vieja, barrera y pagos $60.000/$60.000
   sobre $100.000: sin chequeo la foto vieja permite imputar $120.000; el test registra ese
@@ -177,6 +205,8 @@ avisarle a Juani antes.
   insertan sin `ON CONFLICT` (la segunda llamada falla con `23505` en vez de devolver el id). Escenarios:
   `libro-de-movimientos` › Pedir dos veces la cuenta de una unidad; `imputacion-de-creditos` ›
   REPEATABLE READ no usa una foto vieja; `aislamiento-por-administracion` › La app no borra candados. Lecciones: L-034.
+  Escenarios adicionales (RC-09): `imputacion-de-creditos` › Varias cuentas prebloqueadas y rebloqueo interno.
+
 - [ ] 3.2 **`registrar_emision`.** Tests contra PostgreSQL: registra emisión y obligaciones; la misma dos
   veces no duplica; el mismo id con otro importe da `Conflicto("emision_id")`; segunda del período sin
   anular da `Conflicto("periodo")`; después de anular, intento 2; período inválido, sin obligaciones o con
@@ -192,11 +222,14 @@ avisarle a Juani antes.
   tocar otra fila (conteo de filas por tabla antes y después); motivo en blanco rechazado con el campo;
   la segunda anulación se rechaza siempre con `Conflicto("emision_id")`, mismo o distinto
   motivo, y sigue habiendo un solo evento (R17); `emision_id` inexistente y de otra administración dan `NoEncontrado` sin insertar (QA-3);
-  el libro es autoridad de anulada para el saldo; el 7 debe derivar su estado o registrar su evento y
-  auditoría en la misma transacción (AR-5). El estado de la cuenta vuelve al de antes de emitir, y re-emitir el período imputa el pago devuelto. RED contra la función vacía.
+  el libro es autoridad de anulada para el saldo; comprobar que `anular_emision` no agrega una
+  auditoría duplicada. La composición con auditoría y estado de liquidación lo prueba el 7, fuera
+  del 4b (AR-5). El estado de la cuenta vuelve al de antes de emitir, y re-emitir el período imputa el pago devuelto. RED contra la función vacía.
   Escenarios: `libro-de-movimientos` › Anular deja la deuda como antes de emitir; › Anular sin motivo; ›
   Anular dos veces; `imputacion-de-creditos` › Un pago imputado a una emisión que se anula vuelve como
   crédito (contra la base). Lecciones: L-034.
+  Escenarios adicionales (RC-09): `libro-de-movimientos` › Anular una emisión inexistente; › `libro-de-movimientos` › Anular una emisión de otra administración.
+
 - [ ] 3.4 **`registrar_credito`.** Tests contra PostgreSQL: bloquea la cuenta, corre `imputar_pendientes`
   e imputa con R04 o con su destino fijo; el mismo `operacion_id` dos veces, un movimiento y un juego de
   imputaciones; con otro importe, `Conflicto("operacion_id")`; `correccion` y `saldo_inicial` rechazados
@@ -233,22 +266,35 @@ avisarle a Juani antes.
   dos veces el mismo movimiento; › Corregir una corrección; › Un cargo cobrado de más; › Importe que no es
   positivo; › Corrección sin motivo; › Responsable y fecha observables; › Replay antes de validar si ya está
   corregido; › Único de corrección aunque falte el chequeo previo. Lecciones: L-007, L-034.
-  Empate de E7 contra PostgreSQL: dos créditos a favor se imputan dentro de la misma emisión y
-  comparten `registrada_en`; corregir el interés ya cubierto devuelve el exceso según la secuencia de
-  `imputacion`, no UUID ni fecha del crédito. Repetir 20 veces con ids distintos y resultado estable;
-  mutante que usa `now()`/UUID da rojo. Caso AN-02 con importes: pago A del 1/9 conserva $4.000 a
-  favor, B del 15/10 cubre $6.000 del interés de octubre y el 1/11 se imputan los $4.000 de A al mismo
-  interés de octubre de $10.000 (dos movimientos de cortes distintos: I1 $4.000 e I2 $6.000); al
-  contra-asentar sólo I1 quedan $6.000 debidos, B conserva $6.000 imputados y A recupera $4.000.
-  Verificar la atribución por crédito, no sólo el total
-  devuelto (AN-02, QA-4).
+  Empate de E7 contra PostgreSQL: dos créditos pendientes se imputan en la misma transacción
+  mediante `imputar_pendientes`, con intereses anticipados de cortes distintos I1 $4.000 e I2
+  $6.000 en la fixture y `registrada_en` iguales; corregir I1 devuelve el exceso según la secuencia.
+  No insertar imputaciones manualmente. Repetir 20 veces con ids distintos y atribución estable;
+  mutante que desempata con `now()`/UUID da rojo.
+  RC-04: ejecutar el caso **Crédito retroactivo con imputación posterior**, paso a paso como D8:
+  obligación octubre $40.000 e I1/I2 $4.000/$6.000; registrar B $6.000 el 15/10 con fecha valor 15/10,
+  A $4.000 el 16/10 con fecha valor 1/9, contra-asentar I1 el 17/10. Antes de cada crédito no hay
+  sobrante pendiente; B tiene orden 1 y A orden 2. Después, B conserva $6.000 imputados y $0 a favor,
+  A queda con $0 imputados y $4.000 a favor, capital $40.000; mutante que ordena por fecha valor de
+  crédito deja A aplicado y devuelve $4.000 de B: rojo en la atribución por crédito, no sólo el total.
+  El flujo usa `registrar_credito` y `corregir`, con la fecha de registro controlada; sólo las filas
+  anticipadas de interés vienen de fixture del 4c. No confundir fecha valor con fecha de registro.
+  RC-12: probar sentido igual al blanco y débito de corrección rechazados por aplicación bajo candado,
+  aunque el esquema admita tales blancos; después de I/C1/C2, un nuevo contra-asiento de I con otra
+  operación da `Conflicto("movimiento_id")`. Mutantes que quitan cada validación deben fallar en su
+  aserción, conservando FK/únicos; para sentido igual el test exige rechazo antes del INSERT.
+  Escenarios adicionales (RC-09): `correccion-de-movimientos` › Contra-asiento de un interés cubierto; › `correccion-de-movimientos` › Corregir el crédito que contra-asentó un interés; › `correccion-de-movimientos` › Contra-asiento de un débito de corrección; › `correccion-de-movimientos` › Contra-asiento sobre emisión anulada; › `correccion-de-movimientos` › Crédito sobre obligación que no cuenta; › `correccion-de-movimientos` › Obligación inexistente; › `correccion-de-movimientos` › Obligación de otra administración; › `correccion-de-movimientos` › Replay con otros datos de negocio; › `correccion-de-movimientos` › Error de base con transacción recuperable; › `correccion-de-movimientos` › El original restaurado no se contra-asienta otra vez; › `correccion-de-movimientos` › Corrección con el mismo sentido que su blanco.
+
 - [ ] 3.6 **Concurrencia contra PostgreSQL real.** Con dos conexiones y barreras en los puntos de decisión: dos pagos de $60.000
   a la vez sobre $100.000 de deuda (deuda cero, $20.000 a favor, imputaciones suman $100.000); dos
   emisiones del mismo período (una pasa, la otra `Conflicto("periodo")` por el único de `intento`); una
   emisión de diez cuentas de $40.000 cada una y un pago de $40.000 de una de ellas desde deuda cero,
   en ambos órdenes, dejan esa cuenta con deuda/favor cero e imputaciones de $40.000; dos emisiones con
-  unidades NUEVAS cruzadas crean cuentas ordenadas por `unidad_id` en una sentencia y candados en la
-  misma transacción, sin `40P01` (DB-3, QA-7);
+  unidades NUEVAS A/B en orden cruzado, en el mismo edificio pero en **períodos distintos**
+  (octubre y noviembre), crean cuentas ordenadas por `unidad_id` en una sentencia y candados en la
+  misma transacción; ambas emisiones tienen éxito sin `40P01`. Mutante: crear las cuentas en orden
+  cruzado A/B y B/A con barreras tras la primera inserción; debe caer en el éxito de ambas por
+  deadlock, sin que el único de emisión del mismo período tape el defecto (RC-03);
   pagos en dos cuentas distintas con una demorada antes de confirmar: la otra confirma sin esperarla;
   candado borrado antes de dos pagos simultáneos. Pagos: barrera entre leer el estado e
   imputar (no antes de empezar); con candado real, la instrumentación no exige que ambas conexiones
@@ -267,18 +313,29 @@ avisarle a Juani antes.
   PostgreSQL: lecturas con una sola sentencia SQL (CTEs) y por tanto una sola snapshot en READ
   COMMITTED; una escritura concurrente no produce mezcla de movimientos e imputaciones (BE-6).
   Para edificio, partir de `cuenta` con JOIN o `= ANY(ids)`; nunca filtrar sólo por `complejo_id`
-  sobre las tablas grandes. Cargar varios edificios y administraciones, correr ANALYZE y fijar
+  sobre las tablas grandes. Cargar exactamente 3 administraciones, 100 edificios por administración,
+  20 cuentas por edificio, 12 obligaciones y 12 movimientos por cuenta y 24 imputaciones por cuenta:
+  6.000 cuentas, 72.000 obligaciones, 72.000 movimientos y 144.000 imputaciones. Distribuir por cuenta
+  y edificio; ejecutar `ANALYZE cuenta, obligacion, movimiento, imputacion` antes de capturar los planes.
+  Este volumen selectivo evita planes de tabla chica, sin forzar opciones del planificador. Fijar
   `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` como app con tenant: el test rechaza `Seq Scan` y
   `Parallel Seq Scan` sobre `obligacion`, `movimiento` e `imputacion` (DB-2), sin desactivar seqscan
-  para fabricar el verde. Mutante de consulta que abandona el acceso por cuenta debe caer en el plan.
+  para fabricar el verde. Capturar también EXPLAIN de `estado_de_cuenta(cuenta_id)` sin edificio,
+  sobre ese mismo volumen y después de ANALYZE, exigiendo acceso por administración/cuenta y sin
+  barrido completo de las tres tablas; conservar `movimiento(administracion_id,cuenta_id)` y nombrar
+  esa consulta (RC-15). Verificar campos `credito_a_favor`, `credito_a_favor_aplicable` y
+  `credito_a_favor_retenido` en ambas lecturas para la bonificación retenida de $2.000 y deuda
+  diciembre $40.000 (RC-13), sin construir pantalla. Mutante de consulta que abandona el acceso por cuenta debe caer en el plan.
   La deuda del edificio coincide, cuenta por cuenta, con `estado_de_cuenta`; saldo anterior de
   abril con marzo impago y de mayo con marzo pagado; saldo anterior con deuda cero y crédito a favor, excluyendo la emisión pedida según D12;
-  distinguir el snapshot guardado al emitir por el 7 de la lectura actual después de pagar (AN-06);
+  distinguir el snapshot devuelto en `EmisionRegistrada` de la lectura actual después de pagar
+  (AN-06); guardarlo en el documento publicado lo prueba el 7, no el 4b;
   ninguna lectura escribe (conteos); B no ve el edificio
   de A (cero filas, nunca un error). RED contra funciones vacías. Escenarios: `libro-de-movimientos` ›
   Deuda de un edificio; › Saldo anterior sin débito nuevo (contra la base); › Pagar marzo lo saca del saldo
   anterior (contra la base); › Saldo anterior con crédito a favor; › Lectura durante una confirmación;
   › Plan del edificio con datos de varios edificios. Lecciones: L-016, L-034.
+  Escenarios adicionales (RC-09): `libro-de-movimientos` › Plan de una cuenta sin filtro de edificio.
 
 ## 4. Fronteras, permiso y ruta de corrección (design D9 a D11)
 
@@ -315,7 +372,10 @@ avisarle a Juani antes.
   repetición idempotente del contra-asiento 201 con el mismo id; motivo de 1 y 500 caracteres
   válido, vacío/501 inválido; UUID real de texto aceptado mediante `Field(strict=False)` y negativos
   rechazados por el modelo del cuerpo; `forma="debito"` rechazada con 422. Fijar el orden de errores
-  401 / 422 cuerpo / 404 edificio / 403 permiso / 404 recurso / 409-422 dominio (BE-7, BE-8); el OpenAPI declara 201, 401, 403, 404, 409, 422, 500 y 503 con sus
+  401 / 422 cuerpo / 404 edificio / 403 permiso / replay / 404 recurso nuevo / 409-422 dominio.
+  RC-07: operación ya usada con otro `movimiento_id` u `obligacion_id` inexistente da **409
+  operacion_id**, no 404, sin nueva auditoría/imputación; con operación nueva sí da 404. Mutante que
+  busca recurso antes del replay cae en esa aserción. El mismo orden rige con recurso ajeno (BE-7, BE-8); el OpenAPI declara 201, 401, 403, 404, 409, 422, 500 y 503 con sus
   esquemas; la ruta está en el barrido. Casos de SQLSTATE en SAVEPOINT: 23505 por nombre de constraint
   a 409 con su campo; 23503 a 404; 23514 y 42501 a 500 `{"error":"interno","request_id":...}`;
   40P01/40001 a 503 declarado, sin retry automático. No filtrar DETAIL ni valores a respuesta o logs;
@@ -325,6 +385,7 @@ avisarle a Juani antes.
   corrige; › El OpenAPI declara todas las respuestas; › Sin identidad; › Cuerpo con un campo de más; ›
   Importe con decimales de más; › La misma corrección dos veces; › El mismo `operacion_id` con otro motivo;
   `autorizacion-por-rol` › La ruta nueva está en el barrido. Lecciones: L-007, L-017, L-027, L-034.
+  Escenarios adicionales (RC-09): `correccion-de-movimientos` › El OpenAPI declara las respuestas de error; › `correccion-de-movimientos` › Movimiento de otra administración; › `correccion-de-movimientos` › Obligación de otro edificio de la misma administración; › `correccion-de-movimientos` › Motivo de longitud inválida; › `correccion-de-movimientos` › Errores internos y transitorios declarados; › `correccion-de-movimientos` › Un usuario sin permiso no averigua si existe el recurso; › `correccion-de-movimientos` › UUID de texto y montos no positivos; › `correccion-de-movimientos` › Traducción de clave foránea y único desconocido; › `correccion-de-movimientos` › Replay cambiado con recurso inexistente.
 
 ## 5. Deuda del 4a (design D13)
 
@@ -360,6 +421,15 @@ avisarle a Juani antes.
 
 - Revisión del propose por los roles que convoque el orquestador (arquitecto, backend, DBA, QA y el piso
   de plata), en directorios separados (L-045), y firma de la sección "Aprobación".
+- **Compromisos fuera del 4b (RC-09): lo prueba el 7**, con sus funciones reales: escenario
+  "Anulación y auditoría del llamador", evento del libro y `ANULAR_LIQUIDACION` en la misma
+  transacción, estado anulada derivado del libro y sin duplicación. También guarda el snapshot de
+  `saldo_anterior` devuelto por el 4b y verifica que el documento publicado no cambia tras un pago.
+  Se retiraron estos MUST y el escenario de auditoría de las specs del 4b; D9/D12 y el Knowledge
+  Base Impact mantienen el contrato para sus fichas. **Lo prueba el 8**: acciones reales de pago,
+  reversión y reimputación, incluida reversión de bonificación retenida. **Lo prueba el 11**: mostrar
+  al vecino los créditos aplicable y retenido separados. El 4b verifica sólo su API de aplicación,
+  tipos anticipados y campos de lectura; no acredita esos flujos futuros.
 - Romper y auditar (ciclo completo, `14_forma_de_trabajo.md`); rompedor y auditor de una familia de
   modelo distinta del constructor (L-025). Para el rompedor, la lista de la ficha 4 ("Que intente romper").
 - Archivar con el OK del auditor y actualizar `knowledge-base/` según "Knowledge Base Impact" de
@@ -402,3 +472,45 @@ Trazabilidad de decisiones y notas incorporadas:
 
 No hay notas descartadas. Los comportamientos nuevos quedan propuestos y sin firma; E6/E7/E16
 siguen a validar con Alberto (A-4/P42), sin inventar una regla R42 ni una decisión humana D-121.
+
+## Registro de la segunda corrección documental (26/10/2026)
+
+**EVIDENCIA (orquestador, informado al constructor)**: `openspec list --json` encontró sólo
+`libro-de-movimientos`, 0/19 tareas; `openspec status --change libro-de-movimientos --json` devolvió
+proposal/specs/design/tasks `done`; `git status --short` vacío y `git rev-parse HEAD` devolvió
+`4d94532b188aac96fa3f7d9144c22b31d225a368`. Baseline comunicado con hora
+2026-10-26T17:47:19-03:00: `openspec validate libro-de-movimientos --strict` ->
+`Change 'libro-de-movimientos' is valid`. No son pruebas ejecutadas de las tareas de construcción.
+
+**EVIDENCIA (orquestador, antes del despacho)**: `active-stack roles --json` devolvió `files=[]`;
+DBA `no-schema`, backend `no-endpoint`, frontend `no-ui-tree`, DevOps `no-deploy`, QA
+`nothing-to-review`, arquitecto y analista `not-decided-by-diff`. El registro de la conversación
+conserva el orden del comando antes del despacho; la hora exacta de ese comando no se recuperó.
+
+**JUICIO (orquestador, confianza alta, alcance comparado contra el brief v2)**: se despachó un único
+constructor para `proposal.md`, `design.md`, `tasks.md` y los siete `specs/*/spec.md`, con RC-01 a
+RC-15 y fuentes 01 a 07 de `.git/informes-libro-de-movimientos/`. No hubo trabajos paralelos. Los
+roles de capa, arquitecto, analista, rompedor, senior y auditor no se volvieron a convocar: este
+encargo corrige documentos a partir de sus informes existentes, sin pedir firma, aprobación o
+cierre. La ausencia de una revisión nueva no acredita estos textos como aprobados. La lista del
+comando refleja el árbol limpio inicial, no una evaluación del alcance financiero propuesto.
+
+**SUPUESTO (identidad de modelo no acreditada por despacho)**: constructor en Codex/OpenAI de la
+misma familia disponible en la sesión; no se dispuso de los modelos Opus/Sonnet nombrados por las
+instrucciones. No se afirma equivalencia ni independencia entre proveedores. Fuentes leídas:
+ambos briefs, informes 01 a 07, skill `openspec-propose`, contexto/config de OpenSpec, CHANGES,
+ficha 4, lecciones completas en `knowledge-base/15_lecciones.md`, D1 de `4823515`, artefactos
+actuales y las zonas de permisos de `roles.py`. El brief dictó las correcciones; no es una revisión
+independiente ni un ciclo TDD. No se construyó código ni se completaron tareas o firmas.
+
+
+**EVIDENCIA (constructor documental, 2026-10-26T17:55:39-03:00)**:
+`python3 /tmp/verificar_4b_v2.py` -> `125 escenarios; 0 sin tarea dentro de las 19 tareas;
+19/19 pendientes; 16/16 elecciones sin firmar; firmante vacío`; `0 frases genéricas; 0 em dashes;
+10 artefactos modificados; 0 archivos ajenos o nuevos`. El script coteja títulos normalizando
+saltos de línea sólo dentro de las tareas, excluyendo Workflow follow-up y los registros históricos.
+`openspec validate libro-de-movimientos --strict` -> `Change 'libro-de-movimientos' is valid`;
+`git diff --check` -> sin salida, exit 0 (2026-10-26T17:55:40-03:00).
+`git rev-parse HEAD` -> `4d94532b188aac96fa3f7d9144c22b31d225a368`; cambios sólo en el árbol,
+sin commit ni push. Estas verificaciones documentales no prueban el comportamiento propuesto de la
+futura implementación ni sustituyen la revisión de especialistas y la firma humana.

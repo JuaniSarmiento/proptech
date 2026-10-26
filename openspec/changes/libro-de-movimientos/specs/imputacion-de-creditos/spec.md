@@ -17,26 +17,23 @@ Alberto (P60).
 
 #### Scenario: El ejemplo de R04
 
-- **WHEN** el ensayo del consumidor invoca la operación y una cuenta debe agosto ($80.000 de ordinaria y $4.000 de interés) y septiembre ($85.000 de
-  ordinaria) y registra un pago de $100.000
+- **WHEN** el 8 registra un pago de $100.000 en una cuenta que debe agosto ($80.000 de ordinaria y $4.000 de interés) y septiembre ($85.000 de ordinaria)
 - **THEN** se imputan $4.000 al interés de agosto, $80.000 a la ordinaria de agosto y $16.000 a la
   ordinaria de septiembre, que queda con $69.000
 
 #### Scenario: Un pago parcial cubre la ordinaria antes que la extraordinaria
 
-- **WHEN** el ensayo del consumidor invoca la operación y una obligación tiene $40.000 de ordinaria y $10.000 de extraordinaria y entra un pago de
-  $45.000
+- **WHEN** el 8 registra un pago de $45.000 sobre una obligación de $40.000 de ordinaria y $10.000 de extraordinaria
 - **THEN** la ordinaria queda en cero y la extraordinaria con $5.000
 
 #### Scenario: El fondo de reserva, entre la ordinaria y la extraordinaria
 
-- **WHEN** el ensayo del consumidor invoca la operación y una obligación tiene $40.000 de ordinaria, $2.000 de fondo y $10.000 de extraordinaria y
-  entra un pago de $41.000
+- **WHEN** el 8 registra un pago de $41.000 sobre una obligación de $40.000 de ordinaria, $2.000 de fondo y $10.000 de extraordinaria
 - **THEN** la ordinaria queda en cero, el fondo con $1.000 y la extraordinaria con $10.000
 
 #### Scenario: Un pago que cubre exacto un período
 
-- **WHEN** el ensayo del consumidor invoca la operación y agosto debe $84.000 en total y entra un pago de $84.000
+- **WHEN** el 8 registra un pago de $84.000 sobre una cuenta que debe $84.000 en agosto y tiene además deuda de septiembre
 - **THEN** agosto queda en cero, septiembre no cambia y no queda crédito a favor
 
 ### Requirement: Lo que sobra queda como crédito a favor
@@ -47,17 +44,17 @@ obligación nueva (R05).
 
 #### Scenario: Pago mayor que la deuda
 
-- **WHEN** el ensayo del consumidor invoca la operación y una cuenta debe $50.000 y entra un pago de $60.000
+- **WHEN** el 8 registra un pago de $60.000 en una cuenta que debe $50.000
 - **THEN** la deuda queda en cero y la cuenta tiene $10.000 de crédito a favor
 
 #### Scenario: El crédito a favor se imputa en la emisión siguiente
 
-- **WHEN** el ensayo del consumidor invoca la operación y la cuenta con $10.000 a favor recibe la emisión de diciembre por $40.000
+- **WHEN** el 7 registra la emisión de diciembre por $40.000 para una cuenta con $10.000 a favor
 - **THEN** la obligación de diciembre queda con $30.000 y el crédito a favor en cero
 
 #### Scenario: Un pago imputado a una emisión que se anula vuelve como crédito
 
-- **WHEN** el ensayo del consumidor invoca la operación y un pago de $40.000 se imputó a la emisión de noviembre y esa emisión se anula
+- **WHEN** el 7 anula la emisión de noviembre a la que se había imputado un pago de $40.000 registrado por el 8
 - **THEN** la cuenta tiene $40.000 de crédito a favor, y al registrar la nueva emisión de noviembre se
   imputa a ella
 
@@ -67,23 +64,22 @@ Condonación y ajuste de interés SHALL ir sólo al interés referenciado; bonif
 
 #### Scenario: Una condonación baja sólo el interés condonado
 
-- **WHEN** el ensayo del consumidor invoca la operación y agosto debe $4.000 de interés y $80.000 de ordinaria y se registra una condonación de $4.000
-  sobre el interés de agosto
+- **WHEN** el 10b registra una condonación de $4.000 sobre el interés de agosto, que tiene $4.000 de interés y $80.000 de ordinaria
 - **THEN** el interés de agosto queda en cero y la ordinaria sigue en $80.000
 
 #### Scenario: Un ajuste de interés baja sólo el interés que compensa
 
-- **WHEN** el ensayo del consumidor invoca la operación y se registra un ajuste de $500 sobre el interés de septiembre, con deuda también en agosto
+- **WHEN** el 8 registra un ajuste de $500 sobre el interés de septiembre, con deuda también en agosto
 - **THEN** sólo el interés de septiembre baja $500
 
 #### Scenario: Una bonificación va a la ordinaria de su período
 
-- **WHEN** el ensayo del consumidor invoca la operación y se registra una bonificación de $2.000 sobre la ordinaria de octubre, con agosto impago
+- **WHEN** el 8 registra una bonificación de $2.000 sobre la ordinaria de octubre, con agosto impago
 - **THEN** sólo la ordinaria de octubre baja $2.000
 
 #### Scenario: Destino fijo sin un componente que absorba
 
-- **WHEN** el ensayo del consumidor invoca la operación y se registra una condonación de $4.000 sobre una obligación sin interés
+- **WHEN** el 10b intenta registrar una condonación de $4.000 sobre una obligación sin interés
 - **THEN** el pedido se rechaza con 422 nombrando `destino`; no queda crédito a favor y una emisión posterior de diciembre por $40.000 queda en $40.000
 
 ### Requirement: Ninguna obligación queda con residual negativo
@@ -93,7 +89,7 @@ cero.
 
 #### Scenario: Dos créditos que juntos superan la deuda
 
-- **WHEN** el ensayo del consumidor invoca la operación y una obligación debe $10.000 y entran dos pagos de $8.000, uno después del otro
+- **WHEN** el 8 registra dos pagos de $8.000, uno después del otro, sobre una obligación que debe $10.000
 - **THEN** la obligación queda en cero y la cuenta tiene $6.000 de crédito a favor
 
 ### Requirement: Dos créditos de la misma cuenta nunca usan la misma foto
@@ -104,8 +100,7 @@ a la vez.
 
 #### Scenario: Dos pagos simultáneos
 
-- **WHEN** el ensayo del consumidor invoca la operación y una cuenta debe $100.000 y dos transacciones registran a la vez un pago de $60.000 cada una,
-  contra PostgreSQL real
+- **WHEN** dos confirmaciones de pago del 8 registran a la vez $60.000 cada una sobre una cuenta que debe $100.000, contra PostgreSQL real
 - **THEN** la deuda queda en cero, la cuenta tiene $20.000 de crédito a favor y la suma de las
   imputaciones es $100.000
 
@@ -116,23 +111,22 @@ a la vez.
 
 #### Scenario: Cuentas distintas no se esperan
 
-- **WHEN** el ensayo del consumidor invoca la operación y dos transacciones registran a la vez un pago en dos cuentas distintas y una de ellas se
-  demora antes de confirmar
+- **WHEN** el 8 registra pagos simultáneos en dos cuentas distintas, y una transacción demora antes de confirmar
 - **THEN** la otra confirma sin esperarla
 
 #### Scenario: Bonificación de una emisión anulada
 
 - **WHEN** el llamador del 8 bonifica $2.000 de la ordinaria de noviembre, el 7 anula esa emisión y emite diciembre por $40.000
-- **THEN** diciembre queda en $40.000; la bonificación sigue atada a noviembre y no se imputa a diciembre, pendiente de reversión por el 8
+- **THEN** diciembre queda en $40.000; la bonificación sigue atada a noviembre y no se imputa a diciembre, pendiente de reversión por el 8. La lectura devuelve `credito_a_favor="2000.00"`, `credito_a_favor_aplicable="0.00"` y `credito_a_favor_retenido="2000.00"` (valores Dinero, representados acá como texto); el vecino ve crédito a favor retenido separado del aplicable en su futura pantalla del 11
 
 ### Requirement: El exceso vuelve desde la imputación más reciente
 
 Si un componente pierde deuda por corrección, sus imputaciones SHALL contar hasta el tope de lo debido. El exceso MUST volver a los créditos de la imputación más reciente a la más antigua, usando una secuencia monótona `orden` de `imputacion`, sin desempatar por `now()` ni UUID. E7 queda a validar (P42, A-4).
 
-#### Scenario: Pago A antiguo con imputación nueva y pago B nuevo con imputación antigua
+#### Scenario: Crédito retroactivo con imputación posterior
 
-- **WHEN** el llamador registra en la obligación de octubre dos intereses de cortes distintos, I1 de $4.000 e I2 de $6.000; registra A de $4.000 el 1/9 como crédito pendiente, B de $6.000 el 15/10 imputado al componente interés de octubre, e imputa A al mismo componente el 1/11; después el AP contra-asienta sólo I1 por $4.000
-- **THEN** quedan $6.000 de interés y B conserva $6.000 imputados, mientras A recupera $4.000 a favor; ordenar por fecha del crédito devolvería $4.000 a B y falla aunque el crédito total sea igual
+- **WHEN** sobre una obligación de octubre de $40.000 de capital e intereses I1 $4.000 e I2 $6.000 de cortes distintos, el 8 registra B $6.000 el 15/10 con fecha valor 15/10, luego A $4.000 el 16/10 con fecha valor 1/9, y el AP contra-asienta I1 el 17/10
+- **THEN** B se imputa antes que A por el flujo real de D8; tras corregir, B conserva $6.000 imputados y A $0, con A a favor $4.000 y B $0, y deuda de capital $40.000; el mutante que ordena créditos por fecha valor devuelve B $4.000 y falla en la atribución aunque el total sea igual
 
 #### Scenario: Dos imputaciones con la misma fecha de registro
 
@@ -160,7 +154,7 @@ El cálculo SHALL devolver residual no negativo por componente, imputado que cue
 
 ### Requirement: El candado exige READ COMMITTED
 
-`bloquear_cuentas` SHALL exigir `current_setting('transaction_isolation') = 'read committed'` y rechazar otro nivel con `AislamientoNoAdmitido`, antes de imputar. El llamador MUST reunir las cuentas y bloquearlas una sola vez por transacción; las cuentas nuevas MUST crearse ordenadas por `unidad_id` en una sola sentencia, con su candado en la misma transacción.
+`bloquear_cuentas` SHALL ser pública e idempotente dentro de la transacción y exigir READ COMMITTED; otro nivel da `AislamientoNoAdmitido` antes de imputar. Si el llamador toca varias cuentas, MUST prebloquearlas todas juntas en una llamada ordenada antes de escribir; las operaciones unitarias bloquean por dentro. Las cuentas nuevas MUST crearse ordenadas por `unidad_id`, con su candado en la misma transacción.
 
 #### Scenario: REPEATABLE READ no usa una foto vieja
 
@@ -169,10 +163,15 @@ El cálculo SHALL devolver residual no negativo por componente, imputado que cue
 
 #### Scenario: Emisiones con unidades nuevas cruzadas
 
-- **WHEN** el ensayo del consumidor invoca la operación y dos llamadores intentan emisiones simultáneas del mismo período por $40.000 por unidad con las unidades nuevas A y B recibidas en orden cruzado
-- **THEN** las cuentas se crean en el mismo orden por `unidad_id`, cada una con su candado; una emisión pasa y la otra da `Conflicto("periodo")`, sin interbloqueo
+- **WHEN** dos ejecuciones del 7 registran en el mismo edificio emisiones de períodos distintos, octubre y noviembre, por $40.000 por unidad, con las unidades nuevas A y B recibidas en orden cruzado
+- **THEN** ambas emisiones se registran sin interbloqueo y comparten una sola cuenta por unidad con su candado; las cuentas se crean en orden de `unidad_id`; el mutante que las crea en órdenes cruzados provoca 40P01 y falla el éxito de ambas
 
 #### Scenario: Importe no positivo
 
 - **WHEN** el llamador del 8 pide registrar un crédito de cero o negativo, o el ensayo llama a `imputar` con esos importes
 - **THEN** recibe `EntradaInvalida("importe")` sin escribir ni imputar
+
+#### Scenario: Varias cuentas prebloqueadas y rebloqueo interno
+
+- **WHEN** dos composiciones del 8 prebloquean públicamente las cuentas A y B juntas y luego registran operaciones unitarias en órdenes A/B y B/A dentro de sus respectivas transacciones
+- **THEN** ambas terminan sin 40P01, las operaciones internas pueden re-bloquear sin error y cada escritura conserva su efecto una sola vez; el mutante sin prebloqueo que adquiere incrementalmente A/B y B/A falla con las barreras del test
