@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.parametros import CategoriaDeGasto
 from proptech_core.complejos.aplicacion.errores import (
@@ -89,12 +91,21 @@ def crear_categoria(
     return categoria_id
 
 
-def editar_categoria(sesion: Session, *, categoria_id: UUID, cambios: dict[str, Any]) -> None:
+@accion_sensible(EventoDelPadron.EDITAR_CATEGORIA)
+def editar_categoria(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    categoria_id: UUID,
+    cambios: dict[str, Any],
+    request_id: UUID,
+) -> None:
     with transaccion(sesion, _CONFLICTOS):
         fila = (
             sesion.execute(
                 text(
-                    "SELECT clave, nombre, activa FROM categoria_de_gasto WHERE id=:id FOR UPDATE"
+                    "SELECT complejo_id, clave, nombre, activa FROM categoria_de_gasto "
+                    "WHERE id=:id FOR UPDATE"
                 ),
                 {"id": categoria_id},
             )
@@ -110,23 +121,44 @@ def editar_categoria(sesion: Session, *, categoria_id: UUID, cambios: dict[str, 
             CategoriaDeGasto(clave=fila["clave"], nombre=entrada.nombre)
         except ValidationError as error:
             raise error_de_validacion(error) from None
+        campos = sorted(k for k, v in entrada.model_dump().items() if v != fila[k])
+        if not campos:
+            return
         sesion.execute(
             text("UPDATE categoria_de_gasto SET nombre=:nombre, activa=:activa WHERE id=:id"),
             {**entrada.model_dump(), "id": categoria_id},
         )
 
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.EDITAR_CATEGORIA,
+            entidad="categoria_de_gasto",
+            entidad_id=categoria_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(fila["complejo_id"]), "campos": campos},
+        )
 
-def reordenar_categorias(sesion: Session, *, complejo_id: UUID, orden: list[UUID]) -> None:
+
+@accion_sensible(EventoDelPadron.REORDENAR_CATEGORIAS)
+def reordenar_categorias(
+    sesion: Session, identidad: Identidad, *, complejo_id: UUID, orden: list[UUID], request_id: UUID
+) -> None:
     with transaccion(sesion, {}):
         _bloquear_edificio(sesion, complejo_id)
-        existentes = set(
+        anteriores = list(
             sesion.execute(
-                text("SELECT id FROM categoria_de_gasto WHERE complejo_id=:id FOR UPDATE"),
+                text(
+                    "SELECT id FROM categoria_de_gasto "
+                    "WHERE complejo_id=:id ORDER BY orden FOR UPDATE"
+                ),
                 {"id": complejo_id},
             ).scalars()
         )
-        if len(orden) != len(set(orden)) or set(orden) != existentes:
+        if len(orden) != len(set(orden)) or set(orden) != set(anteriores):
             raise EntradaInvalida("orden")
+        if orden == anteriores:
+            return
         for posicion, categoria in enumerate(orden):
             sesion.execute(
                 text(
@@ -135,3 +167,13 @@ def reordenar_categorias(sesion: Session, *, complejo_id: UUID, orden: list[UUID
                 ),
                 {"orden": posicion, "id": categoria, "complejo": complejo_id},
             )
+
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.REORDENAR_CATEGORIAS,
+            entidad="complejo",
+            entidad_id=complejo_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(complejo_id), "campos": ["orden"]},
+        )

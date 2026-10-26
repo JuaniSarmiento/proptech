@@ -347,7 +347,11 @@ def alta_unidad(
 ) -> dict[str, str]:
     _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
     id_ = unidades.crear_unidad(
-        sesion, identidad, complejo_id=complejo_id, datos=cuerpo.model_dump()
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        datos=cuerpo.model_dump(),
+        request_id=UUID(request_id_actual.get() or ""),
     )
     respuesta = ver_unidad(id_, identidad, sesion)
     sesion.commit()
@@ -367,7 +371,11 @@ def modificar_unidad(
         raise _no_encontrado()
     _edificio_autorizado(sesion, identidad, unidad.complejo_id, Accion.CONFIGURAR_PADRON)
     unidades.editar_unidad(
-        sesion, unidad_id=unidad_id, cambios=cuerpo.model_dump(exclude_unset=True)
+        sesion,
+        identidad,
+        unidad_id=unidad_id,
+        cambios=cuerpo.model_dump(exclude_unset=True),
+        request_id=UUID(request_id_actual.get() or ""),
     )
     respuesta = ver_unidad(unidad_id, identidad, sesion)
     sesion.commit()
@@ -406,6 +414,7 @@ def alta_grupo(
         datos=cuerpo.model_dump(include={"clave", "nombre", "metodo"}),
         miembros=[m.model_dump() for m in cuerpo.unidades],
         modo=cuerpo.modo_de_coeficientes,
+        request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
     return {"id": str(id_)}
@@ -419,7 +428,13 @@ def modificar_grupo(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, str]:
     _autorizar_grupo(sesion, identidad, grupo_id)
-    grupos.editar_grupo(sesion, grupo_id=grupo_id, cambios=cuerpo.model_dump(exclude_unset=True))
+    grupos.editar_grupo(
+        sesion,
+        identidad,
+        grupo_id=grupo_id,
+        cambios=cuerpo.model_dump(exclude_unset=True),
+        request_id=UUID(request_id_actual.get() or ""),
+    )
     sesion.commit()
     return {"id": str(grupo_id)}
 
@@ -434,9 +449,11 @@ def reemplazar_miembros(
     _autorizar_grupo(sesion, identidad, grupo_id)
     grupos.fijar_unidades(
         sesion,
+        identidad,
         grupo_id=grupo_id,
         modo=cuerpo.modo_de_coeficientes,
         miembros=[m.model_dump() for m in cuerpo.unidades],
+        request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
     return {"id": str(grupo_id)}
@@ -480,7 +497,11 @@ def modificar_categoria(
         raise _no_encontrado()
     _edificio_autorizado(sesion, identidad, categoria["complejo_id"], Accion.CONFIGURAR_PADRON)
     categorias.editar_categoria(
-        sesion, categoria_id=categoria_id, cambios=cuerpo.model_dump(exclude_unset=True)
+        sesion,
+        identidad,
+        categoria_id=categoria_id,
+        cambios=cuerpo.model_dump(exclude_unset=True),
+        request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
     return {"id": str(categoria_id)}
@@ -494,7 +515,13 @@ def ordenar_categorias(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, str]:
     _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
-    categorias.reordenar_categorias(sesion, complejo_id=complejo_id, orden=cuerpo.orden)
+    categorias.reordenar_categorias(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        orden=cuerpo.orden,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
     sesion.commit()
     return {"id": str(complejo_id)}
 

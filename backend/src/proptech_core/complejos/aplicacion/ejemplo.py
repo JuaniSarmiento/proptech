@@ -157,6 +157,7 @@ def _crear_desde_cero(
         unidad_ids[unidad.identificador] = crear_unidad(
             sesion,
             identidad,
+            request_id=request_id,
             complejo_id=complejo_id,
             datos={
                 "identificador": unidad.identificador,
@@ -189,6 +190,7 @@ def _crear_desde_cero(
             datos={"clave": clave, "nombre": nombre, "metodo": metodo},
             miembros=miembros,
             modo=grupo.modo,
+            request_id=request_id,
         )
 
     if semilla.edificio.estado_migracion == "sin_saldos_previos":

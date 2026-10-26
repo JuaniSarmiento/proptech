@@ -28,7 +28,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso
+from proptech_core.acceso.dominio.eventos import EventoDeAcceso, EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 
@@ -78,9 +78,56 @@ class _DetalleIngresoFallido(_DetalleBase):
     motivo: Literal["sin_asignacion"]
 
 
+class _CambioCoeficiente(_DetalleBase):
+    anterior: str | None
+    nuevo: str | None
+
+
+class _CambioCoeficienteMiembro(_CambioCoeficiente):
+    unidad_id: UUID
+
+
+class _DetalleCrearUnidad(_DetalleAsignarEdificio):
+    campos: list[Literal["identificador", "tipo", "piso", "coeficiente", "superficie_m2"]]
+    coeficiente: _CambioCoeficiente | None = None
+
+
+class _DetalleEditarUnidad(_DetalleCrearUnidad):
+    pass
+
+
+class _DetalleCrearGrupo(_DetalleAsignarEdificio):
+    campos: list[Literal["clave", "nombre", "metodo", "modo_de_coeficientes", "unidades"]]
+    coeficientes: list[_CambioCoeficienteMiembro] | None = None
+
+
+class _DetalleEditarGrupo(_DetalleAsignarEdificio):
+    campos: list[Literal["clave", "nombre", "metodo"]]
+
+
+class _DetalleFijarUnidades(_DetalleAsignarEdificio):
+    campos: list[Literal["modo_de_coeficientes", "unidades"]]
+    coeficientes: list[_CambioCoeficienteMiembro] | None = None
+
+
+class _DetalleEditarCategoria(_DetalleAsignarEdificio):
+    campos: list[Literal["nombre", "activa"]]
+
+
+class _DetalleReordenarCategorias(_DetalleAsignarEdificio):
+    campos: list[Literal["orden"]]
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
-_MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso, type[_DetalleBase]] = {
+_MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_DetalleBase]] = {
+    EventoDelPadron.CREAR_UNIDAD: _DetalleCrearUnidad,
+    EventoDelPadron.EDITAR_UNIDAD: _DetalleEditarUnidad,
+    EventoDelPadron.CREAR_GRUPO: _DetalleCrearGrupo,
+    EventoDelPadron.EDITAR_GRUPO: _DetalleEditarGrupo,
+    EventoDelPadron.FIJAR_UNIDADES: _DetalleFijarUnidades,
+    EventoDelPadron.EDITAR_CATEGORIA: _DetalleEditarCategoria,
+    EventoDelPadron.REORDENAR_CATEGORIAS: _DetalleReordenarCategorias,
     EventoDeAcceso.DAR_DE_ALTA_VECINO: _DetallePersonaAsignacion,
     EventoDeAcceso.INVITAR_PERSONAL: _DetalleInvitarPersonal,
     EventoDeAcceso.INGRESO_FALLIDO: _DetalleIngresoFallido,
@@ -91,7 +138,9 @@ _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso, type[_DetalleBase]] = {
 }
 
 
-def _detalle_validado(accion: Accion | EventoDeAcceso, detalle: dict[str, Any]) -> dict[str, Any]:
+def _detalle_validado(
+    accion: Accion | EventoDeAcceso | EventoDelPadron, detalle: dict[str, Any]
+) -> dict[str, Any]:
     modelo = _MODELOS_DE_DETALLE.get(accion, _DetalleBase)
     try:
         validado = modelo.model_validate(detalle)
@@ -101,13 +150,13 @@ def _detalle_validado(accion: Accion | EventoDeAcceso, detalle: dict[str, Any]) 
         claves = sorted({str(e["loc"][0]) for e in error.errors() if e["loc"]})
         detalle_claves = ", ".join(claves) if claves else "(sin nombre de campo)"
         raise DetalleInvalido(f"detalle inválido para {accion.value}: {detalle_claves}") from None
-    return validado.model_dump(mode="json")
+    return validado.model_dump(mode="json", exclude_unset=True)
 
 
 def registrar(
     sesion: Session,
     identidad: Identidad,
-    accion: Accion | EventoDeAcceso,
+    accion: Accion | EventoDeAcceso | EventoDelPadron,
     *,
     entidad: str,
     entidad_id: UUID,
@@ -147,11 +196,11 @@ _R = TypeVar("_R")
 #: Caso de uso marcado -> Accion que audita (D9). Nunca se edita a mano
 #: fuera del decorador: lo llena `accion_sensible` cuando el módulo del
 #: caso de uso se importa.
-_CASOS_SENSIBLES: dict[Accion | EventoDeAcceso, Callable[..., Any]] = {}
+_CASOS_SENSIBLES: dict[Accion | EventoDeAcceso | EventoDelPadron, Callable[..., Any]] = {}
 
 
 def accion_sensible(
-    accion: Accion | EventoDeAcceso,
+    accion: Accion | EventoDeAcceso | EventoDelPadron,
 ) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """Marca `funcion` como el caso de uso que audita `accion` (D9): no
     cambia su comportamiento, sólo la suma al registro que recorre el test
@@ -174,7 +223,9 @@ def accion_sensible(
     return decorador
 
 
-def casos_sensibles_registrados() -> dict[Accion | EventoDeAcceso, Callable[..., Any]]:
+def casos_sensibles_registrados() -> dict[
+    Accion | EventoDeAcceso | EventoDelPadron, Callable[..., Any]
+]:
     """Copia del registro (nunca el dict real): quien lo use no puede
     mutarlo por accidente."""
     return dict(_CASOS_SENSIBLES)

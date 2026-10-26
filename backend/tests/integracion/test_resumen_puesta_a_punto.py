@@ -25,7 +25,7 @@ _HOY = reloj().date()  # 2026-11-01, Mendoza (UTC-3) no cruza medianoche acá.
 
 def alta_unidad(sesion: Session, identidad: Identidad, edificio: UUID, **cambios: str) -> UUID:
     return unidades.crear_unidad(
-        sesion, identidad, complejo_id=edificio, datos={**DATOS, **cambios}
+        sesion, identidad, complejo_id=edificio, datos={**DATOS, **cambios}, request_id=uuid4()
     )
 
 
@@ -79,6 +79,7 @@ def test_grupo_parcial_vacio(sesion_edificio: Session, identidad_edificio: Ident
         complejo_id=edificio,
         datos={"clave": "ascensor", "nombre": "Ascensor", "metodo": "coeficiente"},
         miembros=[],
+        request_id=uuid4(),
     )
     resumen = lectura.resumen_edificio(sesion_edificio, edificio, _HOY)
     assert resumen["pasos"]["grupos"] == "falta"
@@ -96,6 +97,7 @@ def test_grupo_propios_fuera_de_tolerancia(
         datos={"clave": "ascensor", "nombre": "Ascensor", "metodo": "coeficiente"},
         miembros=[{"unidad_id": unidad, "coeficiente": "0.500000"}],
         modo="propios",
+        request_id=uuid4(),
     )
     resumen = lectura.resumen_edificio(sesion_edificio, edificio, _HOY)
     assert resumen["pasos"]["grupos"] == "falta"

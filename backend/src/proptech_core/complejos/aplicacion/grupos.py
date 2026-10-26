@@ -8,6 +8,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.coeficientes import Coeficiente, informar_coeficientes
 from proptech_core.compartido.texto import recortado_sin_control
@@ -172,6 +174,7 @@ def _reemplazar(
         )
 
 
+@accion_sensible(EventoDelPadron.CREAR_GRUPO)
 def crear_grupo(
     sesion: Session,
     identidad: Identidad,
@@ -180,6 +183,7 @@ def crear_grupo(
     datos: dict[str, Any],
     miembros: list[dict[str, Any]],
     modo: str = "renormalizado",
+    request_id: UUID,
 ) -> UUID:
     try:
         entrada = DatosGrupo.model_validate(datos)
@@ -205,10 +209,34 @@ def crear_grupo(
             )
         )
         _reemplazar(sesion, _grupo(sesion, grupo_id), modo, miembros)
+        detalle: dict[str, Any] = {
+            "complejo_id": str(complejo_id),
+            "campos": sorted([*DatosGrupo.model_fields, "modo_de_coeficientes", "unidades"]),
+        }
+        coeficientes = _cambios_de_coeficientes({}, _miembros_actuales(sesion, grupo_id))
+        if coeficientes:
+            detalle["coeficientes"] = coeficientes
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.CREAR_GRUPO,
+            entidad="grupo_de_reparto",
+            entidad_id=grupo_id,
+            request_id=request_id,
+            detalle=detalle,
+        )
     return grupo_id
 
 
-def editar_grupo(sesion: Session, *, grupo_id: UUID, cambios: dict[str, Any]) -> None:
+@accion_sensible(EventoDelPadron.EDITAR_GRUPO)
+def editar_grupo(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    grupo_id: UUID,
+    cambios: dict[str, Any],
+    request_id: UUID,
+) -> None:
     with transaccion(sesion, _CONFLICTOS):
         grupo = _grupo(sesion, grupo_id)
         if grupo["es_generales"]:
@@ -224,6 +252,9 @@ def editar_grupo(sesion: Session, *, grupo_id: UUID, cambios: dict[str, Any]) ->
             raise error_de_validacion(error) from None
         if grupo["modo_de_coeficientes"] == "propios" and entrada.metodo != "coeficiente":
             raise EntradaInvalida("metodo")
+        campos = sorted(k for k, v in entrada.model_dump().items() if v != grupo[k])
+        if not campos:
+            return
         sesion.execute(
             text(
                 "UPDATE grupo_de_reparto SET clave=:clave, "
@@ -232,9 +263,69 @@ def editar_grupo(sesion: Session, *, grupo_id: UUID, cambios: dict[str, Any]) ->
             {**entrada.model_dump(), "id": grupo_id},
         )
 
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.EDITAR_GRUPO,
+            entidad="grupo_de_reparto",
+            entidad_id=grupo_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(grupo["complejo_id"]), "campos": campos},
+        )
 
+
+def _miembros_actuales(sesion: Session, grupo_id: UUID) -> dict[str, str | None]:
+    return {
+        str(f[0]): f[1]
+        for f in sesion.execute(
+            text("SELECT unidad_id, coeficiente::text FROM grupo_unidad WHERE grupo_id=:id"),
+            {"id": grupo_id},
+        )
+    }
+
+
+def _cambios_de_coeficientes(
+    antes: dict[str, str | None], despues: dict[str, str | None]
+) -> list[dict[str, str | None]]:
+    return [
+        {"unidad_id": uid, "anterior": antes.get(uid), "nuevo": despues.get(uid)}
+        for uid in sorted(antes.keys() | despues.keys())
+        if antes.get(uid) != despues.get(uid)
+    ]
+
+
+@accion_sensible(EventoDelPadron.FIJAR_UNIDADES)
 def fijar_unidades(
-    sesion: Session, *, grupo_id: UUID, modo: str, miembros: list[dict[str, Any]]
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    grupo_id: UUID,
+    modo: str,
+    miembros: list[dict[str, Any]],
+    request_id: UUID,
 ) -> None:
     with transaccion(sesion, _CONFLICTOS):
-        _reemplazar(sesion, _grupo(sesion, grupo_id), modo, miembros)
+        grupo = _grupo(sesion, grupo_id)
+        antes = _miembros_actuales(sesion, grupo_id)
+        _reemplazar(sesion, grupo, modo, miembros)
+        despues = _miembros_actuales(sesion, grupo_id)
+        campos = []
+        if grupo["modo_de_coeficientes"] != modo:
+            campos.append("modo_de_coeficientes")
+        if antes != despues:
+            campos.append("unidades")
+        if not campos:
+            return
+        detalle: dict[str, Any] = {"complejo_id": str(grupo["complejo_id"]), "campos": campos}
+        coeficientes = _cambios_de_coeficientes(antes, despues)
+        if coeficientes:
+            detalle["coeficientes"] = coeficientes
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.FIJAR_UNIDADES,
+            entidad="grupo_de_reparto",
+            entidad_id=grupo_id,
+            request_id=request_id,
+            detalle=detalle,
+        )

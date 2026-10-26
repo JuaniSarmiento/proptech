@@ -1,8 +1,7 @@
 """`registrar()` en la misma transacción que el efecto (D9, cambio 2a, tarea
 6.2), contra PostgreSQL real. Contenedor propio (L-006).
 
-El caso de uso real que se prueba es `complejos.aplicacion.escritura.
-asignar_complejo_a_persona`, el único marcado con `@accion_sensible` hoy.
+Se ejercitan los casos marcados de configuración y padrón, cada uno con su evento.
 
 Escenarios de `auditoria-de-acciones`: Acción confirmada; Acción revertida;
 Registro que no se puede escribir; Toda acción sensible registrada.
@@ -33,10 +32,11 @@ from proptech_core.acceso.aplicacion.auditoria import (
     casos_sensibles_registrados,
     registrar,
 )
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.parametros import leer_parametros
-from proptech_core.complejos.aplicacion import escritura
+from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
@@ -374,15 +374,85 @@ def test_una_asignacion_rechazada_por_el_check_no_deja_nada(
 def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
     contenedor: PostgresContainer, esquema: None
 ) -> None:
-    """Recorre `casos_sensibles_registrados()`. Hoy sólo hay uno
-    (`asignar_complejo_a_persona`); se invoca con fixtures mínimas y se
-    exige una fila por Accion."""
+    """Recorre el registro completo: cada caso tiene invocador y deja una fila por evento."""
     datos = _sembrar_administracion_complejo_y_personas(contenedor)
     identidad = Identidad(
         administracion_id=datos["administracion_id"], persona_id=datos["super_admin_id"]
     )
 
-    _INVOCADORES: dict[Accion, Callable[[Session], UUID]] = {
+    def invocar_padron(sesion: Session, evento: EventoDelPadron) -> UUID:
+        from .test_unidades_casos_de_uso import DATOS
+
+        edificio = escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Padrón ficticio",
+            localidad="Mendoza",
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        uid = unidades.crear_unidad(
+            sesion, identidad, complejo_id=edificio, datos=DATOS, request_id=uuid.uuid4()
+        )
+        if evento == EventoDelPadron.CREAR_UNIDAD:
+            return uid
+        if evento == EventoDelPadron.EDITAR_UNIDAD:
+            unidades.editar_unidad(
+                sesion, identidad, unidad_id=uid, cambios={"piso": "Otro"}, request_id=uuid.uuid4()
+            )
+            return uid
+        if evento in (
+            EventoDelPadron.CREAR_GRUPO,
+            EventoDelPadron.EDITAR_GRUPO,
+            EventoDelPadron.FIJAR_UNIDADES,
+        ):
+            gid = grupos.crear_grupo(
+                sesion,
+                identidad,
+                complejo_id=edificio,
+                datos={"clave": "auditado", "nombre": "Ficticio", "metodo": "coeficiente"},
+                miembros=[],
+                request_id=uuid.uuid4(),
+            )
+            if evento == EventoDelPadron.EDITAR_GRUPO:
+                grupos.editar_grupo(
+                    sesion,
+                    identidad,
+                    grupo_id=gid,
+                    cambios={"nombre": "Otro"},
+                    request_id=uuid.uuid4(),
+                )
+            elif evento == EventoDelPadron.FIJAR_UNIDADES:
+                grupos.fijar_unidades(
+                    sesion,
+                    identidad,
+                    grupo_id=gid,
+                    modo="renormalizado",
+                    miembros=[{"unidad_id": uid}],
+                    request_id=uuid.uuid4(),
+                )
+            return gid
+        lista = categorias.listar_categorias(sesion, edificio)
+        if evento == EventoDelPadron.EDITAR_CATEGORIA:
+            categorias.editar_categoria(
+                sesion,
+                identidad,
+                categoria_id=lista[0]["id"],
+                cambios={"activa": False},
+                request_id=uuid.uuid4(),
+            )
+            return UUID(str(lista[0]["id"]))
+        categorias.reordenar_categorias(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            orden=[c["id"] for c in reversed(lista)],
+            request_id=uuid.uuid4(),
+        )
+        return edificio
+
+    _INVOCADORES: dict[Accion | EventoDelPadron, Callable[[Session], UUID]] = {
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
                 sesion,
@@ -421,6 +491,12 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             request_id=uuid.uuid4(),
         ),
     }
+
+    def invocador(evento: EventoDelPadron) -> Callable[[Session], UUID]:
+        return lambda sesion: invocar_padron(sesion, evento)
+
+    for evento in EventoDelPadron:
+        _INVOCADORES[evento] = invocador(evento)
 
     registrados = casos_sensibles_registrados()
     assert set(registrados) == set(_INVOCADORES), (

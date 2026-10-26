@@ -77,7 +77,7 @@ __________________ test_dominio_no_depende_de_infraestructura __________________
     def test_dominio_no_depende_de_infraestructura() -> None:
 >       assert _dominio_sin_infraestructura(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...: sqlalchemy'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: sqlalchemy'
 E         Use -v to get more diff
 
@@ -96,7 +96,7 @@ __________________ test_dominio_no_depende_de_infraestructura __________________
     def test_dominio_no_depende_de_infraestructura() -> None:
 >       assert _dominio_sin_infraestructura(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...on.escritura'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.complejos.aplicacion.escritura'
 E         Use -v to get more diff
 
@@ -131,7 +131,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...s.Parametros'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/dominio/configuracion.py: proptech_core.compartido.parametros'
 E         Use -v to get more diff
 
@@ -151,7 +151,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...ase_de_datos'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
 E         Use -v to get more diff
 
@@ -170,7 +170,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...ase_de_datos'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
 E         Use -v to get more diff
 
@@ -189,7 +189,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...e_datos.algo'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/dominio/mutante.py: proptech_core.compartido.base_de_datos'
 E         Use -v to get more diff
 
@@ -208,7 +208,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...artido.nuevo'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
 E         Use -v to get more diff
 
@@ -227,7 +227,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...artido.nuevo'] == []
-E         
+E
 E         Left contains one more item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
 E         Use -v to get more diff
 
@@ -246,7 +246,7 @@ ____________________ test_dominio_solo_usa_compartido_puro _____________________
     def test_dominio_solo_usa_compartido_puro() -> None:
 >       assert _dominio_compartido(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/d...o.nuevo.algo'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/dominio/mutante.py: proptech_core.compartido.nuevo'
 E         Use -v to get more diff
 
@@ -265,7 +265,7 @@ __________________ test_cuenta_corriente_no_encola_ni_liquida __________________
     def test_cuenta_corriente_no_encola_ni_liquida() -> None:
 >       assert _cuenta_corriente(RAIZ_SRC) == []
 E       AssertionError: assert ['cuenta_corr...partido.cola'] == []
-E         
+E
 E         Left contains one more item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
 E         Use -v to get more diff
 
@@ -284,7 +284,7 @@ __________________ test_cuenta_corriente_no_encola_ni_liquida __________________
     def test_cuenta_corriente_no_encola_ni_liquida() -> None:
 >       assert _cuenta_corriente(RAIZ_SRC) == []
 E       AssertionError: assert ['cuenta_corr...partido.cola'] == []
-E         
+E
 E         Left contains one more item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
 E         Use -v to get more diff
 
@@ -303,7 +303,7 @@ __________________ test_cuenta_corriente_no_encola_ni_liquida __________________
     def test_cuenta_corriente_no_encola_ni_liquida() -> None:
 >       assert _cuenta_corriente(RAIZ_SRC) == []
 E       AssertionError: assert ['cuenta_corr...do.cola.algo'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'cuenta_corriente/aplicacion/mutante.py: proptech_core.compartido.cola'
 E         Use -v to get more diff
 
@@ -338,7 +338,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a...entoDeAcceso'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/aplicacion/ejemplo.py: proptech_core.acceso.dominio.eventos'
 E         Use -v to get more diff
 
@@ -358,7 +358,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a...ominio.token'] == []
-E         
+E
 E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio.token'
 E         Use -v to get more diff
 
@@ -377,7 +377,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a...ominio.token'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio'
 E         Use -v to get more diff
 
@@ -396,7 +396,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a...ceso.dominio'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso'
 E         Use -v to get more diff
 
@@ -415,7 +415,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a....adaptadores'] == []
-E         
+E
 E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.adaptadores'
 E         Use -v to get more diff
 
@@ -434,7 +434,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a....identidad_x'] == []
-E         
+E
 E         Left contains one more item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio.identidad_x'
 E         Use -v to get more diff
 
@@ -453,7 +453,7 @@ ______________________ test_entre_modulos_solo_aplicacion ______________________
     def test_entre_modulos_solo_aplicacion() -> None:
 >       assert _entre_modulos(RAIZ_SRC) == []
 E       AssertionError: assert ['complejos/a...ominio.token'] == []
-E         
+E
 E         Left contains 2 more items, first extra item: 'complejos/aplicacion/mutante.py: proptech_core.acceso.dominio'
 E         Use -v to get more diff
 
@@ -525,7 +525,7 @@ time: 10:34:59
         print("Módulos recorridos:", modulos)
 >       assert _ciclos(RAIZ_SRC) == []
 E       AssertionError: assert ['acceso → co...jos → acceso'] == []
-E         
+E
 E         Left contains one more item: 'acceso → complejos → acceso'
 E         Use -v to get more diff
 
@@ -544,7 +544,7 @@ time: 10:34:59
         print("Módulos recorridos:", modulos)
 >       assert _ciclos(RAIZ_SRC) == []
 E       AssertionError: assert ['acceso → cu...jos → acceso'] == []
-E         
+E
 E         Left contains one more item: 'acceso → cuenta_corriente → complejos → acceso'
 E         Use -v to get more diff
 
@@ -681,7 +681,7 @@ time: 10:40:43
         monto = Dinero(f"{signo}{abs(total)//100}.{abs(total)%100:02d}")
 >       assert repartir(monto,partes) == repartir(monto,list(reversed(partes)))
 E       assert {'0': Dinero(...inero("0.00")} == {'1': Dinero(...inero("0.00")}
-E         
+E
 E         Differing items:
 E         {'0': Dinero("0.01")} != {'0': Dinero("0.00")}
 E         {'1': Dinero("0.00")} != {'1': Dinero("0.01")}
@@ -751,7 +751,7 @@ Mutante distancia. Respaldo previo `.git/4a-logs/reparto-previo.py`, aplicado al
 ```text
 command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto_propiedades.py::test_propiedad_distancia
 time: 10:40:45
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 caso = (200, [1000000, 1000000])
 
@@ -836,7 +836,7 @@ time: 10:38:28
         from proptech_core.compartido.reparto import clave_de_orden_natural
 >       assert sorted(entrada, key=lambda x: clave_de_orden_natural(x, UUID(int=1))) == esperado
 E       AssertionError: assert ['10A', '1A',... 'C1', 'L-PB'] == ['1A', '10A',... 'C1', 'L-PB']
-E         
+E
 E         At index 0 diff: '10A' != '1A'
 E         Use -v to get more diff
 
@@ -912,7 +912,7 @@ time: 10:37:30
             ctx.rounding = ROUND_DOWN
 >           assert (x + y).a_texto() == suma
 E           AssertionError: assert '0.00' == '0.30'
-E             
+E
 E             - 0.30
 E             ?   -
 E             + 0.00
@@ -990,7 +990,7 @@ time: 10:48:45
             nueva=next(v for v in versiones if v["vigente_desde"]==fecha)
 >           assert nueva["umbral_saldo_chico"]==esperado
 E           AssertionError: assert '500.00' == '700.00'
-E             
+E
 E             - 700.00
 E             ? ^
 E             + 500.00
@@ -1077,7 +1077,7 @@ time: 10:45:32
             assert [f[0] for f in despues] == [f[0] for f in filas]
 >           assert [f[1] for f in despues] == [Decimal("500.00")]*2
 E           AssertionError: assert [None, None] == [Decimal('500...mal('500.00')]
-E             
+E
 E             At index 0 diff: None != Decimal('500.00')
 E             Use -v to get more diff
 
@@ -1155,7 +1155,7 @@ time: 10:54:50 (después de partir literales SQL por formato)
 
 ## 4. Auditoría de los cambios del padrón (design D9)
 
-- [ ] 4.1 **Vocabulario y detalle: migración `0022`, `EventoDelPadron` y sus modelos.** Los siete
+- [x] 4.1 **Vocabulario y detalle: migración `0022`, `EventoDelPadron` y sus modelos.** Los siete
   eventos al vocabulario y al enum; un modelo de detalle por evento (D9) con `extra="forbid"`. Tests: la
   base acepta cada evento y rechaza uno inventado; se rechazan antes de escribir, sin repetir el valor,
   `editar_grupo` con `campos: ["coeficiente"]` y `editar_unidad` con un valor del piso; bajar `0022`
@@ -1165,7 +1165,91 @@ time: 10:54:50 (después de partir literales SQL por formato)
   (`extra="allow"`). RED de la aceptación: con el enum y `0022` vacía, la base rechaza `editar_unidad`.
   Escenarios: `auditoria-de-acciones` › Acción fuera de la lista; › Clave no permitida en el detalle;
   › Un campo que no es de ese evento. Lecciones: L-007, L-034, L-035.
-- [ ] 4.2 **Unidades: `crear_unidad` y `editar_unidad` auditan en su transacción.** Reciben `identidad` y
+
+JUICIO (constructor, confianza alta): la corrida cortada no dejó RED/GREEN pegados bajo esta tarea. Se preservó su código; se recuperó la vigilancia ejecutando mutantes respaldados, sin atribuirles horas previas. SUPUESTO no necesario para el verde: se volvió a ejecutar.
+
+Fijación recuperada, mutante vocabulario; respaldo reanudacion-vocabulario-previo.py restaurado byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -20,8 +20,7 @@
+
+
+ def upgrade() -> None:
+-    op.bulk_insert(sa.table("accion_de_auditoria", sa.column("nombre", sa.Text())),
+-                   [{"nombre": evento} for evento in _EVENTOS])
++    pass
+
+
+ def downgrade() -> None:
+```
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_eventos_padron_migracion.py
+time: 11:06:19
+>           assert {e.value for e in EventoDelPadron} <= vocabulario
+E           AssertionError: assert {'crear_grupo...nidades', ...} <= {'aceptar_ale...idacion', ...}
+E
+E             Extra items in the left set:
+E             'crear_unidad'
+E             'fijar_unidades'
+E             'editar_unidad'
+E             'reordenar_categorias'
+E             'editar_grupo'
+E             'editar_categoria'
+E             'crear_grupo'
+
+tests/integracion/test_eventos_padron_migracion.py:21: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integracion/test_eventos_padron_migracion.py::test_vocabulario_y_bajada
+============================== 1 failed in 3.75s ===============================
+```
+
+Fijación recuperada, mutante permisivo; respaldo reanudacion-permisivo-previo.py restaurado byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -139,7 +139,9 @@
+
+
+ def _detalle_validado(accion: Accion | EventoDeAcceso | EventoDelPadron, detalle: dict[str, Any]) -> dict[str, Any]:
+-    modelo = _MODELOS_DE_DETALLE.get(accion, _DetalleBase)
++    class _Permisivo(BaseModel):
++        model_config = ConfigDict(extra="allow")
++    modelo = _Permisivo
+     try:
+         validado = modelo.model_validate(detalle)
+     except ValidationError as error:
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py::test_rechazo_antes_de_escribir
+time: 11:06:24
+>       with pytest.raises(DetalleInvalido) as error:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE DetalleInvalido
+
+tests/unitarios/test_detalle_padron.py:18: Failed
+_____________ test_rechazo_antes_de_escribir[editar_unidad-extra1] _____________
+
+evento = <EventoDelPadron.EDITAR_UNIDAD: 'editar_unidad'>
+extra = {'piso_anterior': 'VALOR_PRIVADO'}
+
+    @pytest.mark.parametrize("evento,extra",[(EventoDelPadron.EDITAR_GRUPO,{"campos":["coeficiente"]}),(EventoDelPadron.EDITAR_UNIDAD,{"piso_anterior":"VALOR_PRIVADO"})])
+    def test_rechazo_antes_de_escribir(evento: EventoDelPadron,extra: dict[str,object]) -> None:
+        detalle={"complejo_id":str(uuid4()),"campos":["piso"],**extra}
+>       with pytest.raises(DetalleInvalido) as error:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+============================== 2 failed in 0.14s ===============================
+```
+**EVIDENCIA · 26/10/2026 · reanudación**
+GREEN (mutantes revertidos)
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py tests/integracion/test_eventos_padron_migracion.py tests/integracion/test_auditoria_unidades_padron.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_unidades_casos_de_uso.py
+time: 11:06:45
+26 passed, 1 warning in 16.44s
+```
+
+
+- [x] 4.2 **Unidades: `crear_unidad` y `editar_unidad` auditan en su transacción.** Reciben `identidad` y
   `request_id`, la API se los pasa, registran sólo si algo cambió comparando valores normalizados. Tests
   contra PostgreSQL real: el coeficiente de "0.050000" a "0.060000" y el piso dejan `editar_unidad` con
   `campos` `coeficiente` y `piso`, el anterior y el nuevo del coeficiente, y sin valores del piso; alta
@@ -1177,7 +1261,213 @@ time: 10:54:50 (después de partir literales SQL por formato)
   coeficiente de una unidad; › Alta de una unidad y de un grupo (unidad); › Guardar sin cambios; › El
   cambio que falla no deja auditoría; › Si la auditoría falla, el cambio no queda. Lecciones: L-019,
   L-034.
-- [ ] 4.3 **Grupos y categorías: `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria` y
+
+EVIDENCIA: al retomar quedó aplicado el mutante de sesión externa. El baseline 11:05:11 dio 1 failed, 13 passed en test_conflicto_no_deja_auditoria; se restauró unidades-previas.py y se ejecutaron los tres mutantes.
+
+Mutante siempre, respaldo previo unidades-previas.py y restauración byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -142,8 +142,6 @@
+         anterior = _datos({k: v for k, v in fila.items() if k != "complejo_id"})
+         entrada = _datos({**anterior.model_dump(), **cambios})
+         campos = sorted(k for k in type(entrada).model_fields if getattr(entrada, k) != getattr(anterior, k))
+-        if not campos:
+-            return
+         detalle: dict[str, Any] = {"complejo_id": str(fila["complejo_id"]), "campos": campos}
+         if "coeficiente" in campos:
+             detalle["coeficiente"] = {"anterior": anterior.coeficiente.a_texto(), "nuevo": entrada.coeficiente.a_texto()}
+```
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_unidades_padron.py::test_edicion_normalizada_solo_guarda_cambios
+time: 11:03:01
+>       assert filas(api,uid,"editar_unidad")==[]
+E       AssertionError: assert [(UUID('71aa7...ff7d543139'})] == []
+E
+E         Left contains one more item: (UUID('71aa742d-0cad-4e59-9c8c-c281c1765cf7'), UUID('03357fa3-b775-491d-b208-8f8bce296557'), {'campos': [], 'complejo_id': 'cff4a259-ebdb-448d-9739-68ff7d543139'})
+E         Use -v to get more diff
+
+tests/integracion/test_auditoria_unidades_padron.py:39: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:03:06.775Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:03:06.872Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "b5f42e6c-999a-4d8b-bb7b-2cbd58098dc9", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 22}
+{"ts": "2026-10-26T14:03:06.873Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:03:06.881Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "03357fa3-b775-491d-b208-8f8bce296557", "metodo": "PATCH", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 7}
+{"ts": "2026-10-26T14:03:06.881Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+========================= 1 failed, 1 warning in 5.53s =========================
+```
+
+Mutante sesión externa encontrado al retomar; respaldo previo de la corrida anterior unidades-previas.py. RED reproducido 11:05:11.
+```diff
+--- respaldo
++++ mutante
+@@ -147,6 +147,9 @@
+         detalle: dict[str, Any] = {"complejo_id": str(fila["complejo_id"]), "campos": campos}
+         if "coeficiente" in campos:
+             detalle["coeficiente"] = {"anterior": anterior.coeficiente.a_texto(), "nuevo": entrada.coeficiente.a_texto()}
++        with Session(sesion.get_bind()) as externa, externa.begin():
++            externa.execute(text("SELECT set_config('app.administracion_id', :id, true)"), {"id": str(identidad.administracion_id)})
++            registrar(externa, identidad, EventoDelPadron.EDITAR_UNIDAD, entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle)
+         sesion.execute(
+             text(
+                 "UPDATE unidad SET identificador=:identificador, tipo=:tipo, piso=:piso, "
+@@ -154,7 +157,4 @@
+             ),
+             {**entrada.model_dump(mode="json"), "id": unidad_id},
+         )
+-        registrar(
+-            sesion, identidad, EventoDelPadron.EDITAR_UNIDAD,
+-            entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle,
+-        )
++
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py tests/integracion/test_eventos_padron_migracion.py tests/integracion/test_auditoria_unidades_padron.py
+time: 11:05:11
+>       assert filas(api,uid,"editar_unidad")==[]
+E       AssertionError: assert [(UUID('0ecd0...b53b6815a3'})] == []
+E
+E         Left contains one more item: (UUID('0ecd0903-68eb-4286-803d-6bc83003803c'), UUID('a89a1e31-c8d1-4b26-91ce-04e40055ad52'), {'campos': ['identificador'], 'complejo_id': '8d73687b-6bf1-432d-94b2-6ab53b6815a3'})
+E         Use -v to get more diff
+
+tests/integracion/test_auditoria_unidades_padron.py:57: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:05:20.137Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:05:20.205Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "4aa75221-d98d-4924-84f0-4c7a90c7cc31", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 21}
+{"ts": "2026-10-26T14:05:20.206Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:05:20.209Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "ad8722f1-1854-4ef4-ad61-904cd85ad6e2", "metodo": "GET", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 3}
+=================== 1 failed, 13 passed, 1 warning in 9.11s ====================
+```
+
+Mutante siempre, respaldo previo unidades-previas.py y restauración byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -142,8 +142,6 @@
+         anterior = _datos({k: v for k, v in fila.items() if k != "complejo_id"})
+         entrada = _datos({**anterior.model_dump(), **cambios})
+         campos = sorted(k for k in type(entrada).model_fields if getattr(entrada, k) != getattr(anterior, k))
+-        if not campos:
+-            return
+         detalle: dict[str, Any] = {"complejo_id": str(fila["complejo_id"]), "campos": campos}
+         if "coeficiente" in campos:
+             detalle["coeficiente"] = {"anterior": anterior.coeficiente.a_texto(), "nuevo": entrada.coeficiente.a_texto()}
+```
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_unidades_padron.py::test_edicion_normalizada_solo_guarda_cambios
+time: 11:05:46
+>       assert filas(api,uid,"editar_unidad")==[]
+E       AssertionError: assert [(UUID('e31ec...c4981b59e4'})] == []
+E
+E         Left contains one more item: (UUID('e31ec7f5-de48-4254-a9c1-3c8a76cc5ccc'), UUID('97f63062-f27d-46f3-9ca0-313c42062a4f'), {'campos': [], 'complejo_id': '0eca19fc-ae83-4c36-ad72-70c4981b59e4'})
+E         Use -v to get more diff
+
+tests/integracion/test_auditoria_unidades_padron.py:39: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:05:51.645Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:05:51.742Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "f19be535-964e-4954-b06a-534e184a6903", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 22}
+{"ts": "2026-10-26T14:05:51.743Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:05:51.751Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "97f63062-f27d-46f3-9ca0-313c42062a4f", "metodo": "PATCH", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 7}
+{"ts": "2026-10-26T14:05:51.751Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+========================= 1 failed, 1 warning in 5.52s =========================
+```
+
+Mutante sesion-externa, respaldo previo unidades-previas.py y restauración byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -147,6 +147,9 @@
+         detalle: dict[str, Any] = {"complejo_id": str(fila["complejo_id"]), "campos": campos}
+         if "coeficiente" in campos:
+             detalle["coeficiente"] = {"anterior": anterior.coeficiente.a_texto(), "nuevo": entrada.coeficiente.a_texto()}
++        with Session(sesion.get_bind()) as externa, externa.begin():
++            externa.execute(text("SELECT set_config('app.administracion_id', :id, true)"), {"id": str(identidad.administracion_id)})
++            registrar(externa, identidad, EventoDelPadron.EDITAR_UNIDAD, entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle)
+         sesion.execute(
+             text(
+                 "UPDATE unidad SET identificador=:identificador, tipo=:tipo, piso=:piso, "
+@@ -154,7 +157,4 @@
+             ),
+             {**entrada.model_dump(mode="json"), "id": unidad_id},
+         )
+-        registrar(
+-            sesion, identidad, EventoDelPadron.EDITAR_UNIDAD,
+-            entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle,
+-        )
++
+```
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_unidades_padron.py::test_conflicto_no_deja_auditoria
+time: 11:05:52
+>       assert filas(api,uid,"editar_unidad")==[]
+E       AssertionError: assert [(UUID('a17a0...5a16d93862'})] == []
+E
+E         Left contains one more item: (UUID('a17a0892-37b5-4468-88cd-290fd4997f9d'), UUID('449f5568-0cdf-4cfa-a07e-f0f219f726c2'), {'campos': ['identificador'], 'complejo_id': 'dcce2523-815e-47ee-b982-075a16d93862'})
+E         Use -v to get more diff
+
+tests/integracion/test_auditoria_unidades_padron.py:57: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:05:58.403Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:05:58.499Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "8767a2f2-e3e9-4c03-9b3e-7cecc5e62745", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 22}
+{"ts": "2026-10-26T14:05:58.499Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:05:58.503Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "90b6f974-d32e-4777-961e-3196aab38e42", "metodo": "GET", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 3}
+{"ts": "2026-10-26T14:05:58.503Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+========================= 1 failed, 1 warning in 5.58s =========================
+```
+
+Mutante tragar-error, respaldo previo unidades-previas.py y restauración byte a byte.
+```diff
+--- respaldo
++++ mutante
+@@ -154,7 +154,10 @@
+             ),
+             {**entrada.model_dump(mode="json"), "id": unidad_id},
+         )
+-        registrar(
+-            sesion, identidad, EventoDelPadron.EDITAR_UNIDAD,
+-            entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle,
+-        )
++        try:
++            registrar(
++                sesion, identidad, EventoDelPadron.EDITAR_UNIDAD,
++                entidad="unidad", entidad_id=unidad_id, request_id=request_id, detalle=detalle,
++            )
++        except Exception:
++            pass
+```
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_unidades_padron.py::test_falla_auditoria_revierte_y_no_filtra
+time: 11:05:59
+>       assert r.status_code==500
+E       assert 200 == 500
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/integracion/test_auditoria_unidades_padron.py:75: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:06:05.154Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:06:05.251Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "b67efd79-c0e8-4c00-850c-303e7b069482", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 22}
+{"ts": "2026-10-26T14:06:05.251Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:06:05.255Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "3778d02a-8305-41b9-af5b-36ed3c1fb064", "metodo": "GET", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 4}
+{"ts": "2026-10-26T14:06:05.256Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:06:05.264Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "54607616-f16d-4b30-bb15-8c4d854f514c", "metodo": "PATCH", "ruta": "/api/unidades/{unidad_id}", "estado": 200, "duracion_ms": 7}
+{"ts": "2026-10-26T14:06:05.264Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+========================= 1 failed, 1 warning in 5.60s =========================
+```
+**EVIDENCIA · 26/10/2026 · reanudación**
+GREEN (mutantes revertidos)
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py tests/integracion/test_eventos_padron_migracion.py tests/integracion/test_auditoria_unidades_padron.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_unidades_casos_de_uso.py
+time: 11:06:45
+26 passed, 1 warning in 16.44s
+```
+
+
+- [x] 4.3 **Grupos y categorías: `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria` y
   `reordenar_categorias`.** Mismo patrón que 4.2. Tests: en un grupo con coeficientes propios, cambiar
   uno, agregar otro y quitar un tercero deja `fijar_unidades` con las tres unidades, anterior y nuevo
   (vacío el anterior de la agregada y el nuevo de la quitada); fijar los mismos miembros con los mismos
@@ -1190,6 +1480,122 @@ time: 10:54:50 (después de partir literales SQL por formato)
   L-019, L-034.
 
 ## 5. Dueño de las tablas de sólo agregar (design D0 a D3), después del grupo 3
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_grupos_categorias.py
+time: 11:08:47
+>       assert len(creados) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+tests/integracion/test_auditoria_grupos_categorias.py:27: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T14:08:53.146Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+{"ts": "2026-10-26T14:08:53.242Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "910dca21-f7b5-4575-b5e4-cff8a4aa9856", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 21}
+{"ts": "2026-10-26T14:08:53.242Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:08:53.249Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "217e5d61-755f-4b72-a904-f50d7735f46a", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 6}
+{"ts": "2026-10-26T14:08:53.249Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:08:53.255Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "3eda3df1-38c4-4266-93f2-0abcbd301c7f", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/unidades", "estado": 201, "duracion_ms": 6}
+{"ts": "2026-10-26T14:08:53.255Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+{"ts": "2026-10-26T14:08:53.265Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.seguimiento", "evento": "pedido_atendido", "request_id": "9b9e3b7f-ba45-4850-b238-dae1fc04aec2", "metodo": "POST", "ruta": "/api/complejos/{complejo_id}/grupos", "estado": 201, "duracion_ms": 9}
+{"ts": "2026-10-26T14:08:53.265Z", "nivel": "info", "servicio": "api", "logger": "httpx", "evento": "HTTP Request: %s %s \"%s %d %s\""}
+------------------------------ Captured log call -------------------------------
+INFO     proptech_api.seguimiento:seguimiento.py:114 pedido_atendido
+FAILED tests/integracion/test_auditoria_grupos_categorias.py::test_grupo_coeficientes_y_no_op
+FAILED tests/integracion/test_auditoria_grupos_categorias.py::test_siete_eventos_y_solo_nombres
+========================= 2 failed, 1 warning in 5.67s =========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_grupos_categorias.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_categorias_casos_de_uso.py
+time: 11:09:51
+
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 22 passed, 1 warning in 12.40s ========================
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 22 passed, 1 warning in 12.40s ========================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-registro
+command: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_transaccion.py
+time: 11:10:49
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 7 items
+
+tests/integracion/test_auditoria_transaccion.py .......                  [100%]
+
+============================== 7 passed in 4.23s ===============================
+tests/integracion/test_auditoria_transaccion.py .......                  [100%]
+
+============================== 7 passed in 4.23s ===============================
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-final-grupo
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py tests/integracion/test_eventos_padron_migracion.py tests/integracion/test_auditoria_unidades_padron.py tests/integracion/test_auditoria_grupos_categorias.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_resumen_puesta_a_punto.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_ejemplo.py
+time: 11:12:31
+rootdir: /home/juanisarmiento/Proyectos/PropTech/backend
+configfile: pyproject.toml
+plugins: hypothesis-6.170.11, anyio-4.15.1
+collected 0 items
+
+============================ no tests ran in 0.00s =============================
+ERROR: file or directory not found: tests/integracion/test_ejemplo.py
+
+============================ no tests ran in 0.00s =============================
+ERROR: file or directory not found: tests/integracion/test_ejemplo.py
+
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+```text
+GREEN-final-grupo-corregido
+command: bash infra/ci/test-backend.sh tests/unitarios/test_detalle_padron.py tests/integracion/test_eventos_padron_migracion.py tests/integracion/test_auditoria_unidades_padron.py tests/integracion/test_auditoria_grupos_categorias.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_categorias_casos_de_uso.py tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_resumen_puesta_a_punto.py tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_ejemplo_casos_de_uso.py
+time: 11:12:45
+
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 73 passed, 1 warning in 51.03s ========================
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 73 passed, 1 warning in 51.03s ========================
+```
+
+
+EVIDENCIA · 26/10/2026 · checks del grupo 4, 11:12:10
+```text
+command: cd backend && uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src tests
+All checks passed!
+267 files already formatted
+Success: no issues found in 267 source files
+```
+DESVÍO operativo: se corrigió sólo la indentación de dos tests de parámetros del grupo 3 que `ruff format --check` encontró sin formato al retomar. Sin cambio de comportamiento. La orden inicial de suite ampliada con test_ejemplo.py inexistente no ejecutó tests; se corrigió a test_ejemplo_casos_de_uso.py, verde 73 tests arriba.
+
 
 - [ ] 5.1 **Una sola fuente y el rol de arranque como dueño de `configuracion_versionada`.** Crear
   `compartido/tablas_protegidas.py` (D0) y hacer que `roles.py` y el test de dueño lo lean. Borrar el

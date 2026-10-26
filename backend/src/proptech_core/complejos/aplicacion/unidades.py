@@ -7,6 +7,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.coeficientes import (
     Coeficiente,
@@ -85,8 +87,14 @@ def listar_unidades(sesion: Session, complejo_id: UUID) -> Padron:
     }
 
 
+@accion_sensible(EventoDelPadron.CREAR_UNIDAD)
 def crear_unidad(
-    sesion: Session, identidad: Identidad, *, complejo_id: UUID, datos: dict[str, Any]
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    complejo_id: UUID,
+    datos: dict[str, Any],
+    request_id: UUID,
 ) -> UUID:
     entrada = _datos(datos)
     with transaccion(sesion, {"uq_unidad_identificador": "identificador"}):
@@ -110,15 +118,37 @@ def crear_unidad(
                 ).scalar_one()
             )
         )
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.CREAR_UNIDAD,
+            entidad="unidad",
+            entidad_id=unidad_id,
+            request_id=request_id,
+            detalle={
+                "complejo_id": str(complejo_id),
+                "campos": sorted(type(entrada).model_fields),
+                "coeficiente": {"anterior": None, "nuevo": entrada.coeficiente.a_texto()},
+            },
+        )
     return unidad_id
 
 
-def editar_unidad(sesion: Session, *, unidad_id: UUID, cambios: dict[str, Any]) -> None:
+@accion_sensible(EventoDelPadron.EDITAR_UNIDAD)
+def editar_unidad(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    unidad_id: UUID,
+    cambios: dict[str, Any],
+    request_id: UUID,
+) -> None:
     with transaccion(sesion, {"uq_unidad_identificador": "identificador"}):
         fila = (
             sesion.execute(
                 text(
-                    "SELECT identificador, tipo, piso, coeficiente::text, superficie_m2::text "
+                    "SELECT complejo_id, identificador, tipo, piso, "
+                    "coeficiente::text, superficie_m2::text "
                     "FROM unidad WHERE id=:id FOR UPDATE"
                 ),
                 {"id": unidad_id},
@@ -128,11 +158,32 @@ def editar_unidad(sesion: Session, *, unidad_id: UUID, cambios: dict[str, Any]) 
         )
         if fila is None:
             raise NoEncontrado()
-        entrada = _datos({**fila, **cambios})
+        anterior = _datos({k: v for k, v in fila.items() if k != "complejo_id"})
+        entrada = _datos({**anterior.model_dump(), **cambios})
+        campos = sorted(
+            k for k in type(entrada).model_fields if getattr(entrada, k) != getattr(anterior, k)
+        )
+        if not campos:
+            return
+        detalle: dict[str, Any] = {"complejo_id": str(fila["complejo_id"]), "campos": campos}
+        if "coeficiente" in campos:
+            detalle["coeficiente"] = {
+                "anterior": anterior.coeficiente.a_texto(),
+                "nuevo": entrada.coeficiente.a_texto(),
+            }
         sesion.execute(
             text(
                 "UPDATE unidad SET identificador=:identificador, tipo=:tipo, piso=:piso, "
                 "coeficiente=:coeficiente, superficie_m2=:superficie_m2 WHERE id=:id"
             ),
             {**entrada.model_dump(mode="json"), "id": unidad_id},
+        )
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.EDITAR_UNIDAD,
+            entidad="unidad",
+            entidad_id=unidad_id,
+            request_id=request_id,
+            detalle=detalle,
         )
