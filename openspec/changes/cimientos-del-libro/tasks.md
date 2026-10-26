@@ -2471,6 +2471,75 @@ Dejo el casillero sin marcar: la corrida de cierre existe y está documentada, p
 backend tiene 22 failed / 336 errors por tres causas ajenas a este constructor, las tres de grupos
 anteriores de este mismo change. No marco [x] una corrida roja.
 
+**DESVÍO de la 5.3 · 26/10/2026 · constructor del arreglo — causa raíz, rojo y verde**
+
+Causa raíz del grupo de 336 errores: el chequeo de D3 está bien; los fixtures no armaban la base como
+el deploy. Dato que discrimina: el dueño de `auditoria`/`configuracion_versionada` en la base del
+fixture contra la secuencia de `infra/compose.yaml:83-85` (`roles antes && alembic upgrade head &&
+roles despues`, con `POSTGRES_USER` del servicio `db`, el superusuario de la imagen).
+```text
+EVIDENCIA — dato discriminante (script descartable, contenedor propio, roles reales)
+command: cd backend && uv run python <scratchpad>/dato.py
+time: 12:39:38
+FIXTURE (antes + upgrade): [('auditoria', 'proptech_migrador', False), ('configuracion_versionada', 'proptech_migrador', False)] arranque rolsuper: (True,)
+COMPOSE (antes + upgrade + despues): [('auditoria', 'arranque_dato', True), ('configuracion_versionada', 'arranque_dato', True)] arranque rolsuper: (True,)
+```
+Siete fixtures con contenedor propio (`test_alcance_api`, `test_altas_sin_id_del_cliente`,
+`test_asignar_edificio_api`, `test_cableado_real_del_arranque` —API y worker—, `test_identidad_api`,
+`test_rutas_protegidas`, `test_catalogo_rls`) corrían `antes` y Alembic sin `despues`. Arreglo: el
+fixture completa `roles despues` y, al cerrar, devuelve las tablas con el procedimiento de rollback
+(`devolver_tablas_protegidas`, ahora función de `_edificios.py` que el método reusa) antes del
+`downgrade base`. El chequeo no se tocó y no se agregó ningún `monkeypatch` ni variable.
+
+Correcciones al diagnóstico anterior, con el log de la corrida:
+- `test_migracion_roles_de_la_empresa.py` (16) no era `TablasDeSoloAgregarDesprotegidas`: era
+  `roles despues` corriendo en 0016 y fallando cerrado (`trigger
+  trg_configuracion_sin_update_delete_por_sentencia no existe; admite UPDATE; admite DELETE`; el
+  trigger nace en 0021). El deploy sólo corre `despues` tras `upgrade head`; el fixture deja de
+  correrlo en 0016, como ya hace `base_para_migraciones`. De 0017 a 0022 ninguna migración toca
+  `auditoria` (sólo `accion_de_auditoria`).
+- `test_catalogo_rls.py` eran 20 tests, no 2. `persona_id NOT NULL` existe desde 0004: lo que cambió
+  en `1672614` es que `roles._TABLAS_DE_SOLO_AGREGAR` pasó de `{"configuracion_versionada"}` a todo
+  el conjunto de D0, `auditoria` incluida, y la sonda le insertaba una fila genérica. Arreglo: la
+  sonda arma una fila real de `auditoria` (todas sus columnas NOT NULL); el esquema no se toca.
+- `test_ensayo_login.py`: `ensayo-roles.sh` verifica ahora `0022`. Queda literal a propósito: el
+  test es el que compara contra la cabeza real de Alembic y avisa cuando se desfasa; volverlo
+  dinámico exigiría correr el ensayo (hace `down -v` sobre `proptech`) para probarlo.
+
+```text
+RED — los nueve archivos, antes del arreglo (HEAD 131aceb)
+command: bash infra/ci/test-backend.sh <los 9 archivos de arriba + tests/infra/test_ensayo_login.py> -q
+time: 12:36:30 → 12:39:28
+22 failed, 48 passed, 1 warning, 336 errors in 176.07s
+  321 TablasDeSoloAgregarDesprotegidas: auditoria: dueño no superusuario; configuracion_versionada: dueño no superusuario
+   20 NotNullViolation: null value in column "persona_id" of relation "auditoria"
+   16 error en el paso de roles: la protección de configuracion_versionada no se pudo confirmar
+    1 assert ['0020', '0020'] == ['0022', '0022']
+
+GREEN — por causa
+command: bash infra/ci/test-backend.sh <7 fixtures con despues> -q
+time: 12:40:18  → 20 failed, 369 passed (los 20 = catálogo, causa aparte; cero errores de arranque)
+command: bash infra/ci/test-backend.sh tests/integracion/test_catalogo_rls.py -q
+time: 12:41:26  → 25 passed in 5.62s
+command: bash infra/ci/test-backend.sh tests/integracion/test_migracion_roles_de_la_empresa.py tests/infra/test_ensayo_login.py -q
+time: 12:41:48  → 17 passed in 46.65s
+```
+
+**EVIDENCIA · 26/10/2026 · corrida completa de cierre sobre `e57ccd0`**
+```text
+command: cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+time: 12:42:41
+All checks passed! / 298 files already formatted / Success: no issues found in 272 source files
+
+command: bash infra/ci/test-backend.sh   (SHA e57ccd0)
+time: 12:42:54 → 12:54:36, exit=0
+=========== 2839 passed, 1 xfailed, 18 warnings in 694.94s (0:11:34) ===========
+(2839 + 1 = 2840, igual al collect-only de arriba)
+```
+El backend queda verde. El casillero sigue sin marcar porque la 7.1 pide además `humo.sh` (no se
+corre: `down -v` sobre `proptech`), push de la rama y CI de GitHub Actions en verde: nada de eso pasó.
+La suite web se corrió en `d562ac1`; desde ahí no cambió nada bajo `web/`.
+
 ## Workflow follow-up
 
 - Romper y auditar (ciclo completo, `14_forma_de_trabajo.md`); rompedor y auditor de una familia de
