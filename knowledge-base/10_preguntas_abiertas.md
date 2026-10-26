@@ -146,13 +146,75 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P50 · Borrar el usuario de Clerk cuando se le quita la última asignación**: hoy sólo se corta el
   acceso (la próxima vez que pida algo da 401); el usuario sigue existiendo en el panel de Clerk. Surge
   del design del 2b. Antes del 15 o de una decisión de Juani.
+- [ ] **P51 · El cambio de titular, entero o después** (P-1 de la exploración del 4, H-01): ¿se
+  construye entero (registro, las dos opciones y el aviso) en un sub-change propio después de la
+  liquidación (4d), o sólo queda lista la cuenta de persona y el cambio de titular espera? Bloquea el
+  4d, no el 4a a 4c.
+- [ ] **P52 · La deuda que queda a nombre del vendedor** (P-2, H-02): si queda a su nombre, ¿sigue
+  sumando intereses? ¿Puede aparecer como moroso? ¿Cómo paga, si ya no tiene la unidad en el sistema?
+  Bloquea el 4d.
+- [ ] **P53 · De qué mes es el interés** (P-4, H-05): el interés por la mora de agosto que aparece en la
+  expensa de septiembre, ¿cuenta como deuda de agosto o de septiembre? Decide si septiembre cuenta como
+  "vencida" para el moroso crítico. Bloquea el 4c.
+- [ ] **P54 · El umbral de $500** (P-5, H-06, H-14): ¿se compara contra todo lo que debe la unidad o
+  contra cada expensa? Por debajo de $500, ¿sigue corriendo interés? Y "vencida", para el moroso
+  crítico, ¿es al día siguiente del vencimiento o después de los días de gracia? Bloquea el 4c.
+- [ ] **P55 · Pantalla de corrección en el 4** (P-6, H-15): la corrección de un error (HU-A9), ¿trae
+  pantalla o alcanza con la API y la pantalla llega con la del pago (8)? Antes del 4b.
+- [ ] **P56 · El libro sin puerto de repositorio** (P-8, §4.9 de la exploración del 4): contradice el
+  texto de D-040 y necesita la firma de Juani. Bloquea el 4b.
+- [ ] **P57 · El centavo del reparto en el Excel de Alberto** (A-1; formaliza la sub-pregunta de P10):
+  cuando un gasto no cierra al centavo, ¿qué hace con el que sobra o falta, y a qué unidad va si hay
+  empate? Antes del piloto, no bloquea construir.
+- [ ] **P58 · El corte del interés en el Excel de Alberto** (A-2; formaliza la sub-pregunta de P34): ¿su
+  Excel corta el interés al cierre del período? Antes del piloto.
+- [ ] **P59 · Doble vencimiento e interés diario en el piloto** (A-3, H-10, R26): el doble vencimiento
+  con recargo que ya acepta la configuración, ¿se usa en el edificio piloto, y cómo convive con el
+  interés diario? Antes del piloto.
+- [ ] **P60 · El fondo de reserva cuando un pago no alcanza** (A-4, H-11): ¿se cobra antes o después de
+  la ordinaria? Antes del piloto.
+- [ ] **P61 · Ubicación del edificio: ¿sólo Argentina?** (exploración del 3c,
+  `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md` §3): propuesta: sí, sin campo
+  país. Antes del 3c.
+- [ ] **P62 · Ubicación: calle y número** (§3 del 3c): ¿se agregan como texto libre, o el nombre del
+  edificio sigue haciendo de dirección? Antes del 3c.
+- [ ] **P63 · Ubicación de los edificios ya cargados** (§3 del 3c): hoy tienen `localidad` en texto
+  libre; ¿quedan sin ubicación hasta que se completen, se intenta mapear el texto a Georef, o la
+  ubicación es obligatoria desde ya? ¿La columna `localidad` se borra o queda? Antes del 3c.
+- [ ] **P64 · Qué pisos tiene un edificio** (§4 del 3c): planta baja, subsuelos (cuántos y cómo se
+  nombran), entrepiso o terraza, en qué piso van cocheras, bauleras y locales (la semilla usa "PB" y
+  "SS"), y el máximo de pisos. Antes del 3c.
+- [ ] **P65 · El piso de las unidades ya cargadas** (§4 del 3c): hoy es texto libre; ¿se mapea lo
+  conocido y se marca el resto para corregir, o el texto convive con la lista hasta que se corrija?
+  Antes del 3c.
+- [ ] **P66 · `/personal` jerárquica** (sugerencia de Emiliano del 23/10/2026, §2.5 del 3c): que el
+  Administrador de toda la empresa vea y gestione al personal por debajo suyo, nunca al super admin.
+  Cambia D-106 (acceso, CRITICAL); si es que sí, va como decisión nueva y en un change de acceso
+  propio. Sin fecha.
+- [ ] **P67 · Las dos cuentas de Mailinator del Clerk de desarrollo** (BE-7, deuda del cierre de
+  `acceso-de-desarrollo`): quedaron nombradas en el repositorio público y las bandejas de Mailinator
+  son públicas; ¿se borran del Clerk de desarrollo? Desde el 26/10/2026 ya no están en `CLAUDE.md`,
+  pero siguen en el historial. No bloquea ningún cambio.
+- [ ] **P68 · Los ítems de acceso del QA, ¿dentro o fuera del 3c?** (§5 del 3c): la invitación abierta
+  con la sesión de otra cuenta, el menú que se adapta al rol y reinvitar el mismo email son dominio de
+  acceso. Si entran al pulido, el cambio pasa de HIGH a CRITICAL; la propuesta es un change de acceso
+  aparte. Antes del propose del 3c.
+- [ ] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): ¿un grupo se desactiva en vez de borrarse,
+  como las categorías (R16)? ¿La clave de grupos y categorías se genera sola desde el nombre? Antes
+  del 3c.
 
 ## Resumen por el cambio al que bloquean
 
 - **P1 · Piloto**: sin sus datos, M1 queda pendiente del test de aceptación.
 - **P8 · Precio**: no afecta ningún cambio.
 - **P18 y P23**: resueltas (D-096 para P18, D-106 para la matriz de P23); ya no bloquean el cambio 2 (2a y 2b, D-097).
-- **P10 y P11**: el modo de redondeo y el cambio de titular, antes del cambio 4.
+- **P10 y P11**: resueltas en D-109 (22/10/2026); ya no bloquean el 4. Sus sub-preguntas para
+  Alberto pasan a P57 y P58.
+- **El 4 partido en 4a a 4d** (exploración del 4, §8): P56 bloquea el 4b y P55 lo decide; P53 y P54
+  bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de Alberto y se validan antes del piloto. P-3 y P-7
+  de la exploración se resolvieron en D-113.
+- **Pulido de la configuración (3c)**: P61 a P65 (ubicación y pisos), P68 (alcance) y P69 (grupos),
+  antes de su propose. P66 (`/personal` jerárquica) y P67 (cuentas de Mailinator) no lo bloquean.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la
@@ -160,7 +222,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P19**: resuelta en D-100 (vencimiento único o doble, por edificio); ya no bloquea el cambio 3.
 - **P21**: los umbrales de R23 y R30, antes de los cambios 4 y 14.
 - **P22**: quién usa el editor de reglas, antes del 6b.
-- **P42**: validar los valores de plata con un administrador o contador, antes del cambio 4, junto con
+- **P42**: validar los valores de plata con un administrador o contador, antes del piloto (D-109), junto con
   P10 y P17 en la misma sesión. P19, P24 y P33 ya no bloquean el cambio 3 (D-100); los rangos y
   defaults de vencimiento que fija el 3a entran en esta validación.
 - **P12, P14 y P16**: la inscripción ante la AAIP (antes del 8), el plazo del libre deuda (antes del 10b)
@@ -284,6 +346,18 @@ alguna no la sabés, ponelo así: también es una respuesta.
   presentes a los administradores.
 - **Cuándo**: antes del hito M2.
 
+#### P57 a P60 · Cuatro preguntas de tu Excel para la cuenta corriente
+
+- **Contexto**: el cambio 4 (la cuenta corriente) se puede construir sin estas respuestas, pero antes
+  del piloto tenemos que saber si hacemos lo mismo que tu planilla.
+- **Las preguntas**: P57, cuando repartís un gasto y no cierra al centavo, ¿qué hacés con el centavo
+  que sobra o falta, y a qué unidad va si hay empate? P58, ¿tu Excel corta el interés al cierre del
+  período? P59, el doble vencimiento con recargo, ¿se usa en el edificio piloto, y cómo convive con el
+  interés diario? P60, cuando un pago no alcanza, ¿el fondo de reserva se cobra antes o después de la
+  ordinaria?
+- **Lo que proponemos**: que nos contestes con lo que hacés hoy; si no lo sabés, también sirve.
+- **Cuándo**: antes del piloto.
+
 ### Sobre el repositorio
 
 #### P43 · El material de ProTecc en el repositorio público
@@ -326,6 +400,10 @@ alguna no la sabés, ponelo así: también es una respuesta.
 | P16 · Unidades del consorcio | ☐ Se reparte ☐ Gasto | |
 | P20 · Aprobación adicional de condonación | ☐ Sin aprobación adicional ☐ Consejo por umbral | |
 | P45 · Entrevistas de precio | ☐ Te presento a ☐ No | |
+| P57 · Centavo del reparto | | |
+| P58 · Corte del interés en tu Excel | ☐ Al cierre ☐ Otro | |
+| P59 · Doble vencimiento e interés diario | ☐ No se usa ☐ Se usa | |
+| P60 · Fondo de reserva con pago parcial | ☐ Antes ☐ Después | |
 | P43 · ProTecc público | ☐ Sí ☐ Sacarlo | |
 | P44 · Licencia | ☐ Reservar ☐ Licenciar | |
 | P46 · Nombres propios | ☐ Quedan ☐ Sacarlos | |

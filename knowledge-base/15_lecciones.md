@@ -567,3 +567,23 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Costo**: la tarea 1.1 quedó sin poder reproducirse; el vínculo queda como deuda a cargo de
   Emiliano ("Deuda del cierre de `acceso-de-desarrollo`", `12_fichas_de_changes.md`).
 - **Aplica a**: constructor (al cerrar una tarea con verificación manual), rompedor, auditor.
+
+## L-040 · Un email de prueba que no llega puede ser el proveedor, no el rol: cambiar una variable por vez
+
+- **Origen**: QA manual del 23/10/2026 sobre el 2b, previo a `acceso-de-desarrollo` (antes en la
+  sección de hallazgos de `CLAUDE.md`; pasó acá el 26/10/2026 con la exploración del 3c).
+- **Qué pasó**: las invitaciones a direcciones de prueba cuya parte local contenía la palabra "admin"
+  no llegaban: cuatro rechazadas por Clerk de desarrollo (HTTP 422 y 400 en los logs del worker),
+  mientras tres sin "admin" llegaban. Como esas direcciones eran justo las de los roles de
+  administrador, la primera lectura fue un bug de rol. Una segunda ronda con dos direcciones nuevas
+  sin "admin" llegó en segundos; según el QA, el resultado no dependía del rol asignado. El código de invitación
+  (`backend/src/proptech_core/acceso/aplicacion/usuarios.py`) no tiene ninguna rama distinta según el
+  rol. Lo más probable es un filtro anti-phishing de Clerk sobre el texto del email; **no está
+  confirmado con Clerk**.
+- **Regla**: las direcciones de prueba no llevan "admin" (ni otras palabras de cuenta privilegiada) en
+  la parte local. Y cuando una prueba de punta a punta con un proveedor externo falla, antes de buscar
+  el bug en el dominio se cambia **una sola variable por vez** (el texto del email con el mismo rol, y
+  el rol con el mismo texto) y se lee la respuesta del proveedor en los logs. Las direcciones usadas no
+  se escriben en el repo: es público y las bandejas de Mailinator también (BE-7, P67).
+- **Costo**: dos rondas de prueba y un hallazgo de "bug de rol" que no era del código.
+- **Aplica a**: QA, rompedor y quien verifique a mano algo que manda emails (2b, 13, 15).

@@ -455,7 +455,56 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a, 3b, 2.2a y 2b (D10, D11, E11, E12). **Habilita**: recorrido con datos de ejemplo,
   nunca datos personales reales.
 
-### 4 · `motor-de-cuenta-corriente` · crítico · explore propio
+### 3c · `pulido-de-la-configuracion` · HIGH · por proponer
+
+- **Objetivo**: que un administrador configure su edificio sin tropezar: cada error en el campo que
+  corresponde y diciendo qué se espera, la ubicación elegida de listas oficiales y el piso de cada
+  unidad elegido de los pisos que tiene el edificio.
+- **Origen**: el QA manual del 23/10/2026 (antes en `CLAUDE.md`) y dos pedidos de Juani del
+  26/10/2026 (ubicación con listas encadenadas y cantidad de pisos). Exploración completa, con cada
+  ítem ubicado en el código: `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`.
+- **Historias**: HU-A1 (configurar el edificio); toca HU-A2 por la columna "piso" del Excel.
+- **Entra**: los errores de intereses y vencimiento (B-1: el conflicto de "Rige desde" termina en el
+  mensaje genérico; B-2: error atribuido a "Tasa mensual"); ayudas y mensajes de identificador,
+  coeficiente y clave de grupos y categorías (G-1 a G-3); confirmación de "Quitar" en Personal (G-4);
+  la nota interna de `/privacidad` (G-5, sin tocar los datos legales); sacar un grupo de uso (G-6);
+  la **ubicación** del edificio con provincia, departamento y localidad encadenados desde un archivo de
+  Georef guardado en el repo (CC BY 4.0), validada en el backend; **editar el edificio** (hoy no
+  existe); la **cantidad de pisos** del edificio y `unidad.piso` elegido de esa lista; la migración de
+  los edificios y unidades ya cargados.
+- **No entra** (salvo que Juani lo decida en P68, y entonces el change pasa a CRITICAL): la invitación
+  abierta con la sesión de otra cuenta (B-3), el menú que se adapta al rol, reinvitar el mismo email y
+  `/personal` jerárquica (P66). Todo eso es dominio de acceso. Tampoco entra nada de plata ni
+  `configuracion_versionada` (desde el 4a es del rol de arranque).
+- **Gobernanza propuesta**: HIGH, porque toca el esquema de `complejo` y `unidad` y migra datos.
+  Firma un firmante de D-111 (Juani, Alberto o Emiliano) en la sección "Aprobación".
+- **Bloqueado por**: P61 a P65 (ubicación y pisos) y P68 (alcance); P69 para los grupos.
+- **Choques con el 4a**: el 4a usa las migraciones `0021` y `0022` y toca `unidades.py` (auditoría de
+  `editar_unidad`) y el vocabulario de auditoría; las migraciones del 3c se numeran después y se rebasa
+  sobre el 4a si se mergea antes.
+- **Que intente romper el rompedor**: una localidad de otro departamento o de otra provincia mandada
+  por API; un id de Georef que no existe; un piso fuera de la lista; bajar la cantidad de pisos con
+  unidades cargadas arriba; un edificio viejo con `localidad` en texto que no matchea nada; la
+  migración bajada y vuelta a subir con datos; dos versiones de configuración con el mismo "Rige
+  desde"; la clave `Pileta`, `pileta-1` y `1pileta`; "Quitar" con teclado sin confirmar.
+- **Terminado cuando**: cada hallazgo que entra tiene un test que falla sin el arreglo; cada error de
+  formulario aparece en su campo, asociado por programa, con lo que se espera; la ubicación y el piso
+  se eligen de listas y el backend rechaza lo que no está en ellas; las migraciones tienen bajada
+  probada sobre una copia con datos; cada pantalla tocada se recorre entera con teclado y a 320 px sin
+  scroll horizontal, con capturas y el paso de vinculación de la cuenta de Clerk escrito (L-039), lo
+  que salda también la deuda del PR #1 de `acceso-de-desarrollo`.
+- **Revisores**: QA siempre; DBA y frontend seguro; backend por los endpoints nuevos.
+- **Depende de**: 3a, 3b y 2b (archivados). En paralelo al 4a. **Habilita**: la columna "piso" del
+  importador (5) y un alta de edificio presentable para el piloto (15).
+
+### 4 · `motor-de-cuenta-corriente` · crítico · explore propio · partido en 4a, 4b, 4c y 4d
+
+> **Partido** (exploración del 4, `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`
+> §8): **4a** `cimientos-del-libro` (HIGH, propose en revisión), **4b** `libro-de-movimientos`, **4c**
+> `intereses-saldo-inicial-y-moroso` y **4d** `cambio-de-titular` (los tres CRITICAL; el 4d puede ir
+> después del 7 y no bloquea M1). Dependencias en `CHANGES.md` [C-07a] a [C-07d]: el 6 puede arrancar
+> tras el 4a si no escribe en el libro, el 5 necesita el 4c y el 7 el 4b y el 4c. Esta ficha queda
+> como entrada común; el detalle por sub-change lo escribe cada propose.
 
 - **Objetivo**: el corazón de la plata: que cada peso de deuda viva en un solo lugar y nunca se pierda un centavo.
 - **Historias**: HU-A9 (correcciones). **Reglas**: R03, R04, R05 (con los créditos que no son pagos,
@@ -1073,7 +1122,7 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 |---|---|---|
 | **Cómo se vinculó una cuenta de Clerk a la persona `super_admin` del ejemplo (`…e1`) no está escrito** (BE-1, DB-6, AR-7, QA-4). `ejemplo.py` la crea sin `clerk_usuario_id` ni invitación, y el único camino del código que lo completa es aceptar una invitación (`invitaciones.py:119`); por eso el recorrido de la tarea 1.1 no lo puede repetir otra persona, y tampoco trae capturas | Decisión de Juani (25/10/2026): el vínculo **no se rediseña** (nada de invitaciones para el ejemplo) y queda como deuda registrada. Si el paso fue un `UPDATE` a mano, se aparta de "nunca un punto de entrada que reemplace la identidad" del spec, y eso se ve recién cuando esté escrito | Dueño: **Emiliano**, que tiene que dejar escrito el paso exacto (comando o pantalla, con qué rol y contra qué base) para que otra persona pueda repetir la 1.1 |
 | D-110 afirma que las siete pantallas se verificaron "a 1280 px, a 320 px y con teclado", pero ningún revisor de frontend lo miró y no hay capturas ni pasos que se puedan repetir (auditoría final del PR #1) | El cambio no toca la web (`git diff 116a97d..294cda6 -- web` sólo cambia la versión de Next.js); las pantallas son las del 3b, que ya pasaron su propio recorrido | Dueño: **Emiliano**, junto con el paso de vinculación a Clerk de la fila de arriba: capturas a 1280 y 320 px y el recorrido con teclado |
-| Dos cuentas de Mailinator (`proptechqa-director@…` y `proptechqa-gerente@…`) quedaron nombradas en `CLAUDE.md`/`AGENTS.md`, en un repo público; las bandejas de Mailinator son públicas (BE-7) | Son cuentas del Clerk **de desarrollo**, no de producción; nadie verificó si siguen activas | **Pendiente de Juani**: decidir si se borran del Clerk de desarrollo |
+| Dos cuentas de Mailinator (`proptechqa-director@…` y `proptechqa-gerente@…`) quedaron nombradas en `CLAUDE.md`/`AGENTS.md`, en un repo público; las bandejas de Mailinator son públicas (BE-7) | Son cuentas del Clerk **de desarrollo**, no de producción; nadie verificó si siguen activas | **Pendiente de Juani**: decidir si se borran del Clerk de desarrollo (P67). Desde el 26/10/2026 ya no figuran en `CLAUDE.md`/`AGENTS.md`, pero siguen en el historial de git |
 | Contrato de errores del comando: los errores de configuración, de rol y de base salen como traceback crudo, y todo sale con el mismo código 1, incluida la guarda de entorno (BE-3, QA-3) | Es un comando de desarrollo, nunca expuesto a un usuario; el mensaje útil está en la última línea | polish futuro. Dueño propuesto, no confirmado por Juani |
 | El comando exige `REDIS_HOST` y `REDIS_PASSWORD` aunque no usa Redis (QA-3) | Con valores cualesquiera corre; sólo es fricción | polish futuro. Dueño propuesto, no confirmado por Juani |
 | La comparación de idempotencia sólo se prueba en una de sus ramas: los mutantes M5 a M8 (modo de los grupos, `estado_migracion`, tipo y piso de la unidad, conjunto de grupos) sobreviven; con cualquiera de ellos un ejemplo cambiado se informa como "ya estaba" (QA-2) | Afecta sólo a datos de ejemplo en desarrollo; M3 (la comparación entera) sí muere por la aserción | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
