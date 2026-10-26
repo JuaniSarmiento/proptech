@@ -39,3 +39,7 @@ estados_de_unidad:
     - { clave: en_obra,    nombre: "En obra",    factor: "100.00", cargo_fijo: "0.00" }
     - { clave: habitado,   nombre: "Habitado",   factor: "100.00", cargo_fijo: "0.00" }
     - { clave: desocupado, nombre: "Desocupado", factor: "100.00", cargo_fijo: "0.00" }
+
+# R30: valor inicial; cada versión del edificio conserva su propio umbral.
+cuenta_corriente:
+  umbral_saldo_chico: "500.00"

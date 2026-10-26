@@ -50,6 +50,7 @@ def test_trigger_de_0011_sobrevive_downgrade_y_upgrade(base_del_edificio: BaseDe
     """Fila 3 del auditor: el verde de R3A-3 decía incluir el ciclo
     downgrade/upgrade de 0011 sin correrlo. Acá: bajar a 0010, volver a head
     y comprobar que el trigger sigue frenando el DELETE de Generales."""
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0010")
     base_del_edificio.migrar("upgrade", "head")
     base_del_edificio.roles("despues")
@@ -146,6 +147,7 @@ def test_migracion_detecta_miembros_viejos_de_generales_y_revierte_el_candado(
     from uuid import uuid4
 
     base = base_del_edificio
+    base.devolver_tablas_protegidas()
     base.migrar("downgrade", "0011")
     admin, edificio = uuid4(), uuid4()
     with base.conectar_app() as conexion, conexion.transaction():

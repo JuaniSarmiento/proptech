@@ -2017,6 +2017,80 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   para eso no hay guarda de aplicación que alcance.
 - **Quién**: Juani, 25/10/2026, en conversación con el orquestador (revisión del PR #1, BE-2).
 
+## D-113 · Redondeo en dos pasos y cierre del período el último día del mes (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Contexto**: preguntas P-7 y P-3 de la exploración del motor de cuenta corriente
+  (`openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`, sección 9). P-7 bloqueaba el 4a
+  `cimientos-del-libro`; P-3 bloqueaba el 4c y, si el cierre era un día por edificio, también el 4a.
+- **Decisión**:
+  1. **P-7 · Redondeo en dos pasos** (precisa D-109.1 y R07): "medio hacia arriba" (D-109.1) se usa
+     para el interés y los montos sueltos, una sola vez, al registrarse. El **reparto de un gasto entre
+     unidades** usa el **mayor resto**: cada parte se trunca al centavo y los centavos que faltan van,
+     de a uno, a las partes con mayor fracción descartada, con un desempate determinista que fija el
+     design del 4a. Así la suma de las partes cierra exacta con el total.
+  2. **P-3 · Cierre del período** (precisa D-109.5 y R03): el cierre del período es el **último día
+     del mes**. Por eso el 4a **no** agrega una columna de día de cierre por edificio.
+- **Descartado**:
+  - Para P-7: redondear cada parte del reparto medio hacia arriba; la suma de las partes no cierra con
+    el total (por ejemplo, $2,00 entre tres da tres partes de $0,67, que suman $2,01).
+  - Para P-3: el día del vencimiento, y un día de cierre que fije cada edificio. Este último exigía una
+    columna nueva en el 4a sin un pedido real; se agrega después si Alberto lo pide (A-2: si su Excel
+    corta el interés al cierre del período).
+- **Por qué**: P-7 es la única lectura en la que R07 (la suma siempre exacta) y D-109.1 (medio hacia
+  arriba, como `REDONDEAR` de Excel) no se contradicen. P-3 fija la fecha de corte del interés de
+  D-109.5 con la regla más simple, igual para todos los edificios, sin una columna que nadie pidió.
+- **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
+
+## D-114 · Elecciones del 4a `cimientos-del-libro` después de la revisión del propose (26/10/2026)
+
+- **Fecha**: 26/10/2026
+- **Contexto**: cinco revisores de rol (arquitecto, analista, DBA, backend, QA) y el auditor revisaron
+  el propose de `cimientos-del-libro` (informes en `.git/informes-cimientos-del-libro/`, fuera de git).
+  El auditor consolidó siete decisiones para Juani (sección 5(b) de `06-auditor.md`); Juani eligió en
+  todas la recomendada.
+- **Decisión**:
+  1. **Herencia del umbral de R30**: una versión nueva de configuración que no trae umbral (ausente o
+     `null`) toma el de la versión **inmediatamente anterior por `vigente_desde`**, también si esa
+     versión es futura; si no hay ninguna anterior, el de `parametros.yaml`. *Descartado*: la versión
+     vigente hoy (con una versión programada a futuro, la versión siguiente heredaría un valor que ya
+     no rige en su fecha).
+  2. **Valores en la auditoría del padrón**: el detalle guarda el coeficiente **anterior y el nuevo**,
+     de la unidad y de cada miembro con coeficiente propio de un grupo; de los demás campos, sólo el
+     nombre. *Descartado*: no guardar valores, porque `unidad` y los miembros de un grupo se
+     sobrescriben y el coeficiente anterior se perdería para siempre (la analogía con la configuración
+     no vale: ahí el valor queda en la versión); dejarlo para una foto por emisión del 7 (no cubre lo
+     que cambia entre emisiones).
+  3. **También se auditan `crear_unidad` y `crear_grupo`**: fijan el coeficiente inicial. *Descartado*:
+     auditar sólo las ediciones (se sabría quién cambió un coeficiente, nunca quién lo cargó).
+  4. **Sonda de las tablas de sólo agregar con trigger por sentencia**: toda tabla de sólo agregar
+     lleva, además de sus triggers por fila, un trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT`
+     con la misma función de bloqueo; para `configuracion_versionada` se suma en la migración `0021`,
+     antes de que la tabla pase al rol de arranque, y las tablas del 4b nacen con él. El paso de roles
+     prueba el bloqueo con `UPDATE t SET c = c WHERE false` y `DELETE FROM t WHERE false`, sin armar
+     filas. El trigger por sentencia bloquea también `INSERT ... ON CONFLICT DO UPDATE` (no `DO
+     NOTHING`). *Descartado*: armar filas padre dentro de un `SAVEPOINT` (deja a `compartido` conociendo
+     el esquema de otros módulos y se rompe con cada `NOT NULL` nuevo en una tabla padre).
+  5. **Rollback del 4a**: se escribe el procedimiento real (bajar las migraciones con el código nuevo,
+     devolver a mano la tabla y su función al migrador con el rol de arranque, recién después desplegar
+     el código viejo) y su punto de no retorno: el primer evento del padrón registrado, después del cual
+     bajar `0022` choca con la FK de `auditoria` (`23503`) y la única vuelta atrás es restaurar el
+     respaldo. Se acepta así porque todavía no hay producción. *Descartado*: dos deploys separados
+     (`0021` primero, `0022` después), que agregan una ventana sin valor mientras no haya producción; y
+     dejarlo sin escribir.
+  6. **`Dinero.desde_decimal` acepta ceros de más cuando el valor es el mismo** (`Decimal("1.0000")` da
+     `1.00`): es lo que llega de la base, incluido un `SUM()` o una columna sin escala. Sigue rechazando
+     todo valor que cambiaría al llevarlo a dos decimales. **Corrige la nota de D-053**: la deuda real
+     no era un rechazo faltante en el texto (`Dinero("1.0000")` ya se rechazaba) sino que el
+     comportamiento de `desde_decimal` no estaba escrito ni probado. *Descartado*: que rechace (rompería
+     la lectura de sumas de la base); dejarlo como deuda abierta con un test que nace verde.
+  7. **Regla (e) de fronteras, ya**: un archivo de `dominio/` no importa la `aplicacion`, los
+     `adaptadores` ni los `puertos` de su propio módulo, ni `sqlalchemy` ni `psycopg`. *Descartado*:
+     sumarla después, con firma propia (L-029), cuando hoy pasa sin tocar nada.
+- **Por qué**: cierran las contradicciones y los huecos que los revisores encontraron antes de la firma
+  HIGH del 4a, y cada una deja la opción más barata de sostener para el 4b, el 4c y el 7.
+- **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive

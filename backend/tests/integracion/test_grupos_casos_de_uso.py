@@ -19,7 +19,11 @@ def alta_unidad(
     sesion: Session, identidad: Identidad, edificio: UUID, identificador: str = "1A"
 ) -> UUID:
     return unidades.crear_unidad(
-        sesion, identidad, complejo_id=edificio, datos={**DATOS, "identificador": identificador}
+        sesion,
+        identidad,
+        complejo_id=edificio,
+        datos={**DATOS, "identificador": identificador},
+        request_id=uuid4(),
     )
 
 
@@ -50,6 +54,7 @@ def test_renormalizado_y_propios_con_informe_y_cambio_de_modo(
         complejo_id=edificio,
         datos={"clave": "ascensor", "nombre": "Ascensor", "metodo": "coeficiente"},
         miembros=[{"unidad_id": una}, {"unidad_id": otra}],
+        request_id=uuid4(),
     )
     leido = next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)
     assert leido["modo_de_coeficientes"] == "renormalizado"
@@ -57,12 +62,14 @@ def test_renormalizado_y_propios_con_informe_y_cambio_de_modo(
     assert all(u["coeficiente"] is None for u in leido["unidades"])
     grupos.fijar_unidades(
         sesion_edificio,
+        identidad_edificio,
         grupo_id=grupo,
         modo="propios",
         miembros=[
             {"unidad_id": una, "coeficiente": "0.4"},
             {"unidad_id": otra, "coeficiente": "0.4"},
         ],
+        request_id=uuid4(),
     )
     leido = next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)
     assert leido["informe"] == {
@@ -72,21 +79,34 @@ def test_renormalizado_y_propios_con_informe_y_cambio_de_modo(
     }
     assert leido["modo_de_coeficientes"] == "propios"
     assert [u["coeficiente"] for u in leido["unidades"]] == ["0.400000", "0.400000"]
-    grupos.editar_grupo(sesion_edificio, grupo_id=grupo, cambios={"nombre": "Cocheras"})
+    grupos.editar_grupo(
+        sesion_edificio,
+        identidad_edificio,
+        grupo_id=grupo,
+        cambios={"nombre": "Cocheras"},
+        request_id=uuid4(),
+    )
     grupos.fijar_unidades(
         sesion_edificio,
+        identidad_edificio,
         grupo_id=grupo,
         modo="propios",
         miembros=[
             {"unidad_id": una, "coeficiente": "0.5"},
             {"unidad_id": otra, "coeficiente": "0.5"},
         ],
+        request_id=uuid4(),
     )
     leido = next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)
     assert leido["nombre"] == "Cocheras"
     assert leido["informe"]["estado"] == "ok"
     grupos.fijar_unidades(
-        sesion_edificio, grupo_id=grupo, modo="renormalizado", miembros=[{"unidad_id": una}]
+        sesion_edificio,
+        identidad_edificio,
+        grupo_id=grupo,
+        modo="renormalizado",
+        miembros=[{"unidad_id": una}],
+        request_id=uuid4(),
     )
     leido = next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)
     assert leido["modo_de_coeficientes"] == "renormalizado"
@@ -129,6 +149,7 @@ def test_unidades_ajenas_mismo_error_y_sin_escrituras(
         complejo_id=a,
         datos={"clave": "valido", "nombre": "Válido", "metodo": "coeficiente"},
         miembros=[{"unidad_id": propia}],
+        request_id=uuid4(),
     )
     antes = grupos.listar_grupos(sesion_edificio, a)
     errores = []
@@ -140,14 +161,17 @@ def test_unidades_ajenas_mismo_error_y_sin_escrituras(
                 complejo_id=a,
                 datos={"clave": "ajeno", "nombre": "Ajeno", "metodo": "coeficiente"},
                 miembros=[{"unidad_id": ajeno}],
+                request_id=uuid4(),
             )
         errores.append((error.value.campo, str(error.value)))
         with pytest.raises(EntradaInvalida):
             grupos.fijar_unidades(
                 sesion_edificio,
+                identidad_edificio,
                 grupo_id=grupo,
                 modo="propios",
                 miembros=[{"unidad_id": ajeno, "coeficiente": "1"}],
+                request_id=uuid4(),
             )
         assert grupos.listar_grupos(sesion_edificio, a) == antes
     assert errores == [("unidades", "unidades: valor inválido")] * 2
@@ -165,9 +189,18 @@ def test_generales_inmutable(
     edificio = crear(sesion_edificio, identidad_edificio)
     grupo = grupos.listar_grupos(sesion_edificio, edificio)[0]["id"]
     with pytest.raises(EntradaInvalida):
-        grupos.editar_grupo(sesion_edificio, grupo_id=grupo, cambios=cambio)
+        grupos.editar_grupo(
+            sesion_edificio, identidad_edificio, grupo_id=grupo, cambios=cambio, request_id=uuid4()
+        )
     with pytest.raises(EntradaInvalida):
-        grupos.fijar_unidades(sesion_edificio, grupo_id=grupo, modo="propios", miembros=[])
+        grupos.fijar_unidades(
+            sesion_edificio,
+            identidad_edificio,
+            grupo_id=grupo,
+            modo="propios",
+            miembros=[],
+            request_id=uuid4(),
+        )
     assert grupos.listar_grupos(sesion_edificio, edificio)[0]["metodo"] == "coeficiente"
 
 
@@ -200,6 +233,7 @@ def test_modo_incoherente_no_se_guarda(
             datos={"clave": "incoherente", "nombre": "Incoherente", "metodo": metodo},
             modo=modo,
             miembros=[{"unidad_id": unidad, "coeficiente": coeficiente}],
+            request_id=uuid4(),
         )
     assert len(grupos.listar_grupos(sesion_edificio, edificio)) == 1
 
@@ -217,17 +251,25 @@ def test_miembro_y_clave_repetidos(sesion_edificio: Session, identidad_edificio:
         complejo_id=edificio,
         datos=datos,
         miembros=[{"unidad_id": unidad}],
+        request_id=uuid4(),
     )
     with pytest.raises(Conflicto):
         grupos.fijar_unidades(
             sesion_edificio,
+            identidad_edificio,
             grupo_id=grupo,
             modo="renormalizado",
             miembros=[{"unidad_id": unidad}, {"unidad_id": unidad}],
+            request_id=uuid4(),
         )
     with pytest.raises(Conflicto) as error:
         grupos.crear_grupo(
-            sesion_edificio, identidad_edificio, complejo_id=edificio, datos=datos, miembros=[]
+            sesion_edificio,
+            identidad_edificio,
+            complejo_id=edificio,
+            datos=datos,
+            miembros=[],
+            request_id=uuid4(),
         )
     assert error.value.campo == "clave"
     assert next(g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["id"] == grupo)[
@@ -251,6 +293,7 @@ def test_grupo_sin_miembros_se_crea_vacio(
         datos={"clave": "vacio", "nombre": "Vacío", "metodo": "coeficiente"},
         modo=modo,
         miembros=[],
+        request_id=uuid4(),
     )
     vacio = [g for g in grupos.listar_grupos(sesion_edificio, edificio) if g["clave"] == "vacio"]
     assert len(vacio) == 1

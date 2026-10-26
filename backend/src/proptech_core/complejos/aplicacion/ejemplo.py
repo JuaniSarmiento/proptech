@@ -45,6 +45,7 @@ from proptech_core.compartido.base_de_datos import (
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
     verificar_rol_de_aplicacion_seguro,
+    verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.parametros import Parametros, leer_parametros
@@ -157,6 +158,7 @@ def _crear_desde_cero(
         unidad_ids[unidad.identificador] = crear_unidad(
             sesion,
             identidad,
+            request_id=request_id,
             complejo_id=complejo_id,
             datos={
                 "identificador": unidad.identificador,
@@ -189,6 +191,7 @@ def _crear_desde_cero(
             datos={"clave": clave, "nombre": nombre, "metodo": metodo},
             miembros=miembros,
             modo=grupo.modo,
+            request_id=request_id,
         )
 
     if semilla.edificio.estado_migracion == "sin_saldos_previos":
@@ -387,6 +390,7 @@ def _main(argv: list[str]) -> int:
     engine = crear_engine(configuracion)
     try:
         verificar_rol_de_aplicacion_seguro(engine)
+        verificar_tablas_de_solo_agregar(engine)
         fabrica = crear_fabrica_de_sesiones(engine)
         registrar_tenant_por_administracion(fabrica)
         registrar_reset_del_tenant_al_devolver(engine)

@@ -19,12 +19,14 @@ import arq
 from proptech_core.acceso.adaptadores.clerk_http import AdaptadorClerkHttp
 from proptech_core.compartido.base_de_datos import (
     RolDeAplicacionInseguro,
+    TablasDeSoloAgregarDesprotegidas,
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
     verificar_rol_de_aplicacion_seguro,
+    verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.cola import deserializar_job, serializar_job
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
@@ -209,7 +211,9 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     # V2-5 (tarea 6.1): la causa queda en el log, gemela de la de la API.
     try:
         verificar_rol_de_aplicacion_seguro(engine)
-    except RolDeAplicacionInseguro as error:
+        verificar_tablas_de_solo_agregar(engine)
+    except (RolDeAplicacionInseguro, TablasDeSoloAgregarDesprotegidas) as error:
+        engine.dispose()
         _logger.error("arranque_fallido", extra={"causa": str(error)})
         raise
     ctx["engine"] = engine

@@ -95,6 +95,7 @@ export type Categoria = {
 };
 
 export type VersionDeConfiguracion = {
+  umbral_saldo_chico: string;
   id: string;
   complejo_id: string;
   vigente_desde: string;

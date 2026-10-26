@@ -38,6 +38,7 @@ def test_el_lifespan_crea_un_solo_engine_y_lo_descarta_al_cerrar() -> None:
         # R8 (vuelta 2): `verificar_rol_de_aplicacion_seguro` desempaqueta
         # una fila real de 3 columnas; un `MagicMock()` no la da.
         patch.object(app_mod, "verificar_rol_de_aplicacion_seguro"),
+        patch.object(app_mod, "verificar_tablas_de_solo_agregar"),
     ):
         app = app_mod.crear_app()
         with TestClient(app) as cliente:
@@ -59,6 +60,7 @@ def test_diez_pedidos_a_salud_no_crean_engines_nuevos() -> None:
         patch.object(app_mod, "crear_engine", return_value=motor_falso) as espia,
         patch.object(app_mod, "registrar_reset_del_tenant_al_devolver"),
         patch.object(app_mod, "verificar_rol_de_aplicacion_seguro"),
+        patch.object(app_mod, "verificar_tablas_de_solo_agregar"),
     ):
         app = app_mod.crear_app()
         app.dependency_overrides[salud_mod.obtener_verificador_de_base] = lambda: lambda: True

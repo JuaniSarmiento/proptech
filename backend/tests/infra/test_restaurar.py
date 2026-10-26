@@ -277,6 +277,29 @@ class TestInvocacionConDestinoValido:
         for comando in (comando_dropdb, comando_createdb, comando_pg_restore):
             assert "sh -c" not in comando, f"no debía pasar por sh -c: {comando!r}"
 
+    def test_proyecto_compose_aislado_por_variable(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        # Vuelta 2 del 4a: el ensayo aislado restaura en SU proyecto, nunca en `proptech`.
+        escribir_herramienta_falsa("docker", FAKE_DOCKER_EXITOSO)
+
+        resultado, registro = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            destino="proptech_restauracion",
+            overrides={"PROPTECH_COMPOSE_PROYECTO": "proptech-ensayo-x"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        invocaciones = [cmd for _, cmd in _invocaciones(registro)]
+        assert invocaciones
+        assert all(c.startswith("compose -p proptech-ensayo-x ") for c in invocaciones), (
+            invocaciones
+        )
+
     def test_falla_de_createdb_nombra_el_paso_y_no_sigue_a_pg_restore(
         self,
         tmp_path: Path,

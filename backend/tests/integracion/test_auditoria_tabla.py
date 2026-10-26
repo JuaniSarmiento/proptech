@@ -31,6 +31,7 @@ import psycopg
 import pytest
 from testcontainers.community.postgres import PostgresContainer
 
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.permisos import Accion
 
 pytestmark = pytest.mark.integracion
@@ -130,6 +131,13 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
     conexion = _conectar(contenedor, ARRANQUE_USER, ARRANQUE_PASSWORD)
     try:
         with conexion.cursor() as cur:
+            config = cur.execute("SELECT to_regclass('public.configuracion_versionada')").fetchone()
+            if config is not None and config[0] is not None:
+                cur.execute(f"ALTER TABLE configuracion_versionada OWNER TO {MIGRADOR_USER}")
+                cur.execute(
+                    f"ALTER FUNCTION fn_configuracion_versionada_bloqueada() "
+                    f"OWNER TO {MIGRADOR_USER}"
+                )
             cur.execute("SELECT to_regclass('public.auditoria') IS NOT NULL")
             fila = cur.fetchone()
             if fila is not None and fila[0]:
@@ -540,7 +548,11 @@ def test_accion_de_auditoria_coincide_con_accion(
             en_la_tabla = {fila[0] for fila in cur.fetchall()}
     finally:
         conexion.close()
-    assert en_la_tabla == {accion.value for accion in Accion} | _EVENTOS_DEL_2B
+    assert en_la_tabla == (
+        {accion.value for accion in Accion}
+        | _EVENTOS_DEL_2B
+        | {evento.value for evento in EventoDelPadron}
+    )
 
 
 # --- Auditoría de otra administración: RLS de D5 también aplica acá ---

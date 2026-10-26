@@ -112,11 +112,11 @@ def insertar_configuracion(
                     "(administracion_id, complejo_id, vigente_desde, "
                     "autor_id, tasa_mensual, dias_de_gracia, forma_de_calculo, porcentaje_fondo, "
                     "dia_de_vencimiento, modalidad_de_vencimiento, dia_segundo_vencimiento, "
-                    "recargo_segundo_vencimiento) VALUES (:admin, "
+                    "recargo_segundo_vencimiento, umbral_saldo_chico) VALUES (:admin, "
                     ":complejo, :fecha, :autor, :tasa_mensual, "
                     ":dias_de_gracia, :forma_de_calculo, :porcentaje_fondo, :dia_de_vencimiento, "
                     ":modalidad_de_vencimiento, "
-                    ":dia_segundo_vencimiento, :recargo_segundo_vencimiento) "
+                    ":dia_segundo_vencimiento, :recargo_segundo_vencimiento, :umbral_saldo_chico) "
                     "RETURNING id"
                 ),
                 {
@@ -145,6 +145,10 @@ def crear_edificio(
 ) -> UUID:
     configuracion = configuracion_inicial or ConfiguracionEdificio.desde_parametros(parametros)
     configuracion.validar_rango_recargo(parametros)
+    if configuracion.umbral_saldo_chico is None:
+        configuracion = configuracion.model_copy(
+            update={"umbral_saldo_chico": parametros.cuenta_corriente.umbral_saldo_chico}
+        )
     hoy = hoy_en_mendoza(reloj)
     # R3A-2 (L-018): `leer_parametros` ya rechaza nombres de categoría
     # repetidos sin distinguir mayúsculas al arranque; este `transaccion`
@@ -228,6 +232,27 @@ def crear_version_de_configuracion(
     with transaccion(sesion, {"uq_configuracion_vigencia": "vigente_desde"}):
         if cargar_complejo(sesion, complejo_id) is None:
             raise NoEncontrado()
+        if configuracion.umbral_saldo_chico is None:
+            anterior = sesion.execute(
+                text(
+                    "SELECT umbral_saldo_chico FROM configuracion_versionada "
+                    "WHERE administracion_id=:admin AND complejo_id=:complejo "
+                    "AND vigente_desde<:fecha ORDER BY vigente_desde DESC LIMIT 1"
+                ),
+                {
+                    "admin": identidad.administracion_id,
+                    "complejo": complejo_id,
+                    "fecha": vigente_desde,
+                },
+            ).scalar_one_or_none()
+            from proptech_core.compartido.dinero import Dinero
+
+            umbral = (
+                parametros.cuenta_corriente.umbral_saldo_chico
+                if anterior is None
+                else Dinero.desde_decimal(anterior)
+            )
+            configuracion = configuracion.model_copy(update={"umbral_saldo_chico": umbral})
         version_id = insertar_configuracion(
             sesion, identidad, complejo_id, vigente_desde, configuracion
         )

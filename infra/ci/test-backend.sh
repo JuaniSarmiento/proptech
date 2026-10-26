@@ -10,4 +10,5 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../backend"
 
+export HYPOTHESIS_PROFILE="${HYPOTHESIS_PROFILE:-ci}"
 uv run pytest "$@"

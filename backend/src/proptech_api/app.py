@@ -13,12 +13,14 @@ from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso
 from proptech_core.compartido.base_de_datos import (
     RolDeAplicacionInseguro,
+    TablasDeSoloAgregarDesprotegidas,
     crear_engine,
     crear_fabrica_de_sesiones,
     registrar_application_name,
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
     verificar_rol_de_aplicacion_seguro,
+    verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.cola import AdaptadorColaArq
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
@@ -87,7 +89,8 @@ def crear_app() -> FastAPI:
             # BYPASSRLS, dueña de tablas), nunca ningún valor (L-007).
             try:
                 verificar_rol_de_aplicacion_seguro(engine)
-            except RolDeAplicacionInseguro as error:
+                verificar_tablas_de_solo_agregar(engine)
+            except (RolDeAplicacionInseguro, TablasDeSoloAgregarDesprotegidas) as error:
                 _logger.error("arranque_fallido", extra={"causa": str(error)})
                 raise
             yield

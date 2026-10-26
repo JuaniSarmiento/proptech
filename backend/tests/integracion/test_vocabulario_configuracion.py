@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.permisos import Accion
 
 from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
@@ -42,7 +43,7 @@ def test_base_vacia_con_upgrade_head_y_arranque_real(
     assert _NUEVAS <= {a.value for a in Accion}
     with base_del_edificio.conectar_app() as app:
         assert {f[0] for f in app.execute("SELECT nombre FROM accion_de_auditoria").fetchall()} == (
-            {a.value for a in Accion} | _EVENTOS_DEL_2B
+            {a.value for a in Accion} | _EVENTOS_DEL_2B | {e.value for e in EventoDelPadron}
         )
         assert (
             app.execute(
@@ -73,6 +74,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0004_auditoria.py",
         "0010_acciones_de_configuracion.py",
         "0020_invitaciones.py",
+        "0022_eventos_del_padron.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -84,6 +86,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
 
 def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdificio) -> None:
     assert _NUEVAS <= {a.value for a in Accion}
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0004")
     try:
         with base_del_edificio.conectar_app() as app:
@@ -94,5 +97,5 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
         base_del_edificio.migrar("upgrade", "head")
     with base_del_edificio.conectar_app() as app:
         assert {f[0] for f in app.execute("SELECT nombre FROM accion_de_auditoria").fetchall()} == (
-            {a.value for a in Accion} | _EVENTOS_DEL_2B
+            {a.value for a in Accion} | _EVENTOS_DEL_2B | {e.value for e in EventoDelPadron}
         )

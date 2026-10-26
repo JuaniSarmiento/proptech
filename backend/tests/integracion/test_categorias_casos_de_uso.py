@@ -1,6 +1,6 @@
 """Categorías propias del edificio y orden completo atómico (5.4)."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -32,7 +32,11 @@ def test_crear_renombrar_desactivar_y_reactivar_sin_tocar_otro_edificio(
     assert lista_a[-1]["activa"] is True
     limpieza = next(c for c in lista_a if c["nombre"] == "Limpieza")
     categorias.editar_categoria(
-        sesion_edificio, categoria_id=limpieza["id"], cambios={"nombre": "Limpieza y residuos"}
+        sesion_edificio,
+        identidad_edificio,
+        categoria_id=limpieza["id"],
+        cambios={"nombre": "Limpieza y residuos"},
+        request_id=uuid4(),
     )
     assert (
         next(
@@ -40,14 +44,26 @@ def test_crear_renombrar_desactivar_y_reactivar_sin_tocar_otro_edificio(
         )["nombre"]
         == "Limpieza y residuos"
     )
-    categorias.editar_categoria(sesion_edificio, categoria_id=nueva, cambios={"activa": False})
+    categorias.editar_categoria(
+        sesion_edificio,
+        identidad_edificio,
+        categoria_id=nueva,
+        cambios={"activa": False},
+        request_id=uuid4(),
+    )
     inactiva = next(c for c in categorias.listar_categorias(sesion_edificio, a) if c["id"] == nueva)
     assert inactiva["activa"] is False
     assert inactiva["nombre"] == "Seguridad nocturna"
     assert nueva not in [
         c["id"] for c in categorias.listar_categorias(sesion_edificio, a, solo_activas=True)
     ]
-    categorias.editar_categoria(sesion_edificio, categoria_id=nueva, cambios={"activa": True})
+    categorias.editar_categoria(
+        sesion_edificio,
+        identidad_edificio,
+        categoria_id=nueva,
+        cambios={"activa": True},
+        request_id=uuid4(),
+    )
     assert nueva in [
         c["id"] for c in categorias.listar_categorias(sesion_edificio, a, solo_activas=True)
     ]
@@ -73,7 +89,11 @@ def test_clave_y_nombre_repetidos_no_cambian_nada(
         assert error.value.campo == campo
     with pytest.raises(Conflicto) as error:
         categorias.editar_categoria(
-            sesion_edificio, categoria_id=antes[-1]["id"], cambios={"nombre": "LIMPIEZA"}
+            sesion_edificio,
+            identidad_edificio,
+            categoria_id=antes[-1]["id"],
+            cambios={"nombre": "LIMPIEZA"},
+            request_id=uuid4(),
         )
     assert error.value.campo == "nombre"
     assert categorias.listar_categorias(sesion_edificio, edificio) == antes
@@ -87,10 +107,16 @@ def test_reordenar_incluye_tambien_inactivas(
     edificio = crear(sesion_edificio, identidad_edificio)
     antes = categorias.listar_categorias(sesion_edificio, edificio)
     categorias.editar_categoria(
-        sesion_edificio, categoria_id=antes[0]["id"], cambios={"activa": False}
+        sesion_edificio,
+        identidad_edificio,
+        categoria_id=antes[0]["id"],
+        cambios={"activa": False},
+        request_id=uuid4(),
     )
     orden = [c["id"] for c in reversed(antes)]
-    categorias.reordenar_categorias(sesion_edificio, complejo_id=edificio, orden=orden)
+    categorias.reordenar_categorias(
+        sesion_edificio, identidad_edificio, complejo_id=edificio, orden=orden, request_id=uuid4()
+    )
     despues = categorias.listar_categorias(sesion_edificio, edificio)
     assert [c["id"] for c in despues] == orden
     assert [c["orden"] for c in despues] == list(range(len(orden)))
@@ -139,6 +165,8 @@ def test_orden_invalido_no_modifica_nada(
     else:
         orden[-1] = ajena
     with pytest.raises(EntradaInvalida) as error:
-        categorias.reordenar_categorias(sesion_edificio, complejo_id=a, orden=orden)
+        categorias.reordenar_categorias(
+            sesion_edificio, identidad_edificio, complejo_id=a, orden=orden, request_id=uuid4()
+        )
     assert error.value.campo == "orden"
     assert categorias.listar_categorias(sesion_edificio, a) == antes

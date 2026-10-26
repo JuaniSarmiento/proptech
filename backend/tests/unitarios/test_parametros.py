@@ -8,6 +8,7 @@ import yaml
 
 BASE: dict[str, Any] = {
     "version": 1,
+    "cuenta_corriente": {"umbral_saldo_chico": "500.00"},
     "invitaciones": {"vencimiento_dias": 7},
     "intereses": {
         "tasa_mensual": "3.00",

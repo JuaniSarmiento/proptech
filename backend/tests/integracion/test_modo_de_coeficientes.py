@@ -238,6 +238,7 @@ def test_cambiar_modo_reemplazando_miembros_en_una_transaccion_es_valido(
 def test_downgrade_a_0006_y_upgrade_rellena_modo_de_grupos_y_miembros_existentes(
     base_del_edificio: BaseDeEdificio,
 ) -> None:
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0006")
     admin, complejo = uuid4(), uuid4()
     try:
@@ -264,6 +265,7 @@ def test_downgrade_a_0006_y_upgrade_rellena_modo_de_grupos_y_miembros_existentes
                 "FROM grupo_de_reparto g JOIN grupo_unidad m ON m.grupo_id = g.id WHERE g.id = %s",
                 (grupo,),
             ).fetchone() == ("renormalizado", "renormalizado", None, unidad)
+        base_del_edificio.devolver_tablas_protegidas()
         base_del_edificio.migrar("downgrade", "0006")
         with base_del_edificio.conectar_app() as app, app.transaction():
             fijar_tenant(app, admin)

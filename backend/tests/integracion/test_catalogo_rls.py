@@ -25,6 +25,8 @@ from testcontainers.community.postgres import PostgresContainer
 
 from proptech_core.compartido.roles import _TABLAS_DE_SOLO_AGREGAR
 
+from ._edificios import devolver_tablas_protegidas
+
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
@@ -188,9 +190,19 @@ def _trigger_rechaza_update_como_app(cur: psycopg.Cursor, tabla: str) -> bool:
                 "INSERT INTO configuracion_versionada "
                 "(administracion_id, complejo_id, autor_id, vigente_desde, tasa_mensual, "
                 "dias_de_gracia, forma_de_calculo, porcentaje_fondo, dia_de_vencimiento, "
-                "modalidad_de_vencimiento) VALUES (%s, %s, %s, CURRENT_DATE, '3.00', 0, "
-                "'proporcional_por_dia', '0.00', 10, 'unico')",
+                "modalidad_de_vencimiento, umbral_saldo_chico) "
+                "VALUES (%s, %s, %s, CURRENT_DATE, '3.00', 0, "
+                "'proporcional_por_dia', '0.00', 10, 'unico', '500.00')",
                 (admin, complejo, persona),
+            )
+        elif tabla == "auditoria":
+            # Desde el 4a `auditoria` está en el conjunto de D0: la fila de la
+            # sonda lleva sus columnas NOT NULL reales, el esquema no se afloja.
+            cur.execute(
+                "INSERT INTO auditoria "
+                "(administracion_id, persona_id, accion, entidad, entidad_id, request_id) "
+                "VALUES (%s, %s, 'ingreso_exitoso', 'persona', %s, %s)",
+                (admin, persona, persona, uuid4()),
             )
         else:
             cur.execute(
@@ -317,9 +329,16 @@ def esquema(contenedor: PostgresContainer) -> Iterator[None]:
         _entorno_de_roles(contenedor),
     )
     _correr(["uv", "run", "alembic", "upgrade", "head"], _alembic_env(contenedor))
+    # D3 del 4a: la base queda como la deja el deploy real (`infra/compose.yaml`),
+    # con `roles despues`; sin ese paso la API y el worker no arrancan, a propósito.
+    _correr(
+        [sys.executable, "-m", "proptech_core.compartido.roles", "despues"],
+        _entorno_de_roles(contenedor),
+    )
     try:
         yield
     finally:
+        devolver_tablas_protegidas(contenedor, contenedor.dbname, MIGRADOR_USER)
         _correr(["uv", "run", "alembic", "downgrade", "base"], _alembic_env(contenedor))
 
 

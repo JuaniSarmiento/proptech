@@ -1,14 +1,15 @@
 """Tipo Dinero (D5): representación de montos sobre Decimal, nunca float.
 
 Se construye sólo desde texto (`^-?\\d{1,12}(\\.\\d{1,2})?$`, 12 enteros = NUMERIC(14,2)),
-se serializa siempre como texto con dos decimales y no tiene aritmética: el reparto
-y las sumas son del cambio 4 (R07, D-046).
+se serializa siempre como texto con dos decimales. Sólo permite suma, resta y negación
+entre montos; el reparto y el redondeo viven en reparto.py (R07, D-046).
 """
 
 from __future__ import annotations
 
 import re
-from decimal import Decimal, InvalidOperation
+from collections.abc import Iterable
+from decimal import Decimal, InvalidOperation, localcontext
 from functools import total_ordering
 from typing import Any
 
@@ -54,8 +55,8 @@ class Dinero:
     @classmethod
     def desde_decimal(cls, valor: Decimal) -> Dinero:
         """Para adaptadores (SQLAlchemy, etc.): valida que sea finito, que
-        tenga **a lo sumo dos decimales exactos** (rechaza, no redondea, si
-        cuantizar a dos decimales cambiaría el valor) y que esté dentro del
+        no cambie al cuantizar a dos decimales (acepta ceros sobrantes como
+        1.0000 y 0.3000, pero rechaza 1.005 y 1.0001) y que esté dentro del
         rango de NUMERIC(14,2).
 
         Antes (cambio 1b, vuelta 4) `quantize` redondeaba en silencio
@@ -118,6 +119,25 @@ class Dinero:
             return NotImplemented
         return self._decimal < other._decimal
 
+    def __add__(self, other: object) -> Dinero:
+        if not isinstance(other, Dinero):
+            return NotImplemented
+        with localcontext() as contexto:
+            contexto.prec = 32
+            return Dinero.desde_decimal(self._decimal + other._decimal)
+
+    def __sub__(self, other: object) -> Dinero:
+        if not isinstance(other, Dinero):
+            return NotImplemented
+        with localcontext() as contexto:
+            contexto.prec = 32
+            return Dinero.desde_decimal(self._decimal - other._decimal)
+
+    def __neg__(self) -> Dinero:
+        with localcontext() as contexto:
+            contexto.prec = 32
+            return Dinero.desde_decimal(-self._decimal)
+
     def __repr__(self) -> str:
         return f'Dinero("{self.a_texto()}")'
 
@@ -144,3 +164,11 @@ class Dinero:
             ),
             json_schema_input_schema=core_schema.str_schema(pattern=_TEXTO_PATRON),
         )
+
+
+def sumar(montos: Iterable[Dinero]) -> Dinero:
+    """Suma montos sin aceptar números de otro tipo, incluso en el primer lugar."""
+    total = Dinero("0.00")
+    for monto in montos:
+        total = total + monto
+    return total

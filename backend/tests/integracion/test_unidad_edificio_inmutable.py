@@ -88,6 +88,7 @@ def test_downgrade_quita_la_barrera_y_upgrade_la_reinstala_sin_perder_datos(
             with app.transaction():
                 app.execute("UPDATE unidad SET complejo_id = %s WHERE id = %s", (destino, unidad))
     try:
+        base.devolver_tablas_protegidas()
         base.migrar("downgrade", "0013")
         with base.conectar_app() as app, app.transaction():
             fijar_tenant(app, admin)

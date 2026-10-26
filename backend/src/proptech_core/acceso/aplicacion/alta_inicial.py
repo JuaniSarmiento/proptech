@@ -20,6 +20,7 @@ from proptech_core.compartido.base_de_datos import (
     registrar_reset_del_tenant_al_devolver,
     registrar_tenant_por_administracion,
     verificar_rol_de_aplicacion_seguro,
+    verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.cola import AdaptadorColaArq
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
@@ -92,6 +93,7 @@ def main() -> None:
     registrar_reset_del_tenant_al_devolver(engine)
     try:
         verificar_rol_de_aplicacion_seguro(engine)
+        verificar_tablas_de_solo_agregar(engine)
         try:
             admin = asyncio.run(
                 crear(

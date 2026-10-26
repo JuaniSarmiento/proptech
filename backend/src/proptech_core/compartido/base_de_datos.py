@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, SessionTransaction, session
 
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
 
 # D13 (deuda del 1b con dueño 3, tarea 2.3): nombres deterministas para toda
 # constraint que se declare sin nombre explícito desde un modelo de
@@ -275,3 +276,30 @@ def obtener_sesion(fabrica: sessionmaker[Session]) -> Iterator[Session]:
         yield sesion
     finally:
         sesion.close()
+
+
+class TablasDeSoloAgregarDesprotegidas(Exception):
+    """Una tabla protegida no existe en public o tiene dueño no superusuario."""
+
+
+def verificar_tablas_de_solo_agregar(engine: Engine) -> None:
+    """Falla cerrado sobre el conjunto entero y el esquema public (D3)."""
+    with engine.connect() as conexion:
+        filas = conexion.execute(
+            text(
+                "SELECT t.tablename, r.rolsuper FROM pg_tables t "
+                "JOIN pg_roles r ON r.rolname=t.tableowner WHERE t.schemaname='public'"
+            )
+        )
+        catalogo = {f[0]: f[1] for f in filas}
+    faltantes = [
+        f"{tabla}: no existe en public"
+        if tabla not in catalogo
+        else f"{tabla}: dueño no superusuario"
+        for tabla in sorted(TABLAS_DE_SOLO_AGREGAR)
+        if not catalogo.get(tabla, False)
+    ]
+    if faltantes:
+        raise TablasDeSoloAgregarDesprotegidas(
+            "tablas de sólo agregar desprotegidas: " + "; ".join(faltantes)
+        )

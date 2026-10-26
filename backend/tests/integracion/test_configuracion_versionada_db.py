@@ -25,6 +25,7 @@ def insertar_version(
         "autor_id": autor,
         "vigente_desde": date(2026, 11, 1),
         "tasa_mensual": "3.00",
+        "umbral_saldo_chico": "500.00",
         "dias_de_gracia": 0,
         "forma_de_calculo": "proporcional_por_dia",
         "porcentaje_fondo": "0.00",
@@ -73,25 +74,24 @@ def test_escritura_real_se_rechaza_y_la_fila_queda_igual_tras_dos_up(
     conectar = (
         base_del_edificio.conectar_app if rol == "app" else base_del_edificio.conectar_migrador
     )
-    with conectar() as conexion, conexion.transaction():
-        fijar_tenant(conexion, edificios.administracion_a)
-        fila = conexion.execute(
+    with app_edificio.transaction():
+        fijar_tenant(app_edificio, edificios.administracion_a)
+        fila = app_edificio.execute(
             "SELECT * FROM configuracion_versionada WHERE id = %s", (vid,)
         ).fetchone()
         assert fila is not None
-        sentencia = {
-            "UPDATE": "UPDATE configuracion_versionada SET tasa_mensual = '4.00' WHERE id = %s",
-            "DELETE": "DELETE FROM configuracion_versionada WHERE id = %s",
-            "TRUNCATE": "TRUNCATE configuracion_versionada",
-        }[operacion]
-        error = (
-            psycopg.errors.InsufficientPrivilege if rol == "app" else psycopg.errors.RaiseException
-        )
-        mensaje = "permission denied" if rol == "app" else "configuracion_versionada no admite"
-        with pytest.raises(error, match=mensaje), conexion.transaction():
-            conexion.execute(sentencia, (vid,) if operacion != "TRUNCATE" else None)
+        with conectar() as conexion, conexion.transaction():
+            fijar_tenant(conexion, edificios.administracion_a)
+            sentencia = {
+                "UPDATE": "UPDATE configuracion_versionada SET tasa_mensual = '4.00' WHERE id = %s",
+                "DELETE": "DELETE FROM configuracion_versionada WHERE id = %s",
+                "TRUNCATE": "TRUNCATE configuracion_versionada",
+            }[operacion]
+            # D1 del 4a: ni la app ni el migrador tienen permisos de escritura.
+            with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+                conexion.execute(sentencia, (vid,) if operacion != "TRUNCATE" else None)
         assert (
-            conexion.execute(
+            app_edificio.execute(
                 "SELECT * FROM configuracion_versionada WHERE id = %s", (vid,)
             ).fetchone()
             == fila
@@ -211,6 +211,7 @@ def test_dos_inserciones_concurrentes_dejan_exactamente_una_version(
 
 
 def test_downgrade_upgrade_de_la_configuracion(base_del_edificio: BaseDeEdificio) -> None:
+    base_del_edificio.devolver_tablas_protegidas()
     base_del_edificio.migrar("downgrade", "0008")
     try:
         with base_del_edificio.conectar_app() as app:

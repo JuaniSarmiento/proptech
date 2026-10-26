@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
+from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.parametros import Parametros
 from proptech_core.compartido.porcentaje import Porcentaje, PorcentajeInvalido
 
@@ -15,6 +16,7 @@ from proptech_core.compartido.porcentaje import Porcentaje, PorcentajeInvalido
 class ConfiguracionEdificio(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
+    umbral_saldo_chico: Dinero | None = None
     tasa_mensual: Porcentaje
     dias_de_gracia: int = Field(ge=0, le=31)
     forma_de_calculo: Literal["proporcional_por_dia", "mes_entero"]
@@ -23,6 +25,13 @@ class ConfiguracionEdificio(BaseModel):
     modalidad_de_vencimiento: Literal["unico", "doble"]
     dia_segundo_vencimiento: int | None = Field(default=None, ge=1, le=28, validate_default=True)
     recargo_segundo_vencimiento: Porcentaje | None = Field(default=None, validate_default=True)
+
+    @field_validator("umbral_saldo_chico")
+    @classmethod
+    def umbral_no_negativo(cls, valor: Dinero | None) -> Dinero | None:
+        if valor is not None and valor.decimal < 0:
+            raise ValueError("el umbral no puede ser negativo")
+        return valor
 
     @field_validator("tasa_mensual", mode="before")
     @classmethod
@@ -87,6 +96,7 @@ class ConfiguracionEdificio(BaseModel):
         return cls.model_validate(
             {
                 "tasa_mensual": format(i.tasa_mensual, ".2f"),
+                "umbral_saldo_chico": parametros.cuenta_corriente.umbral_saldo_chico,
                 "dias_de_gracia": i.dias_de_gracia,
                 "forma_de_calculo": i.forma_de_calculo,
                 "porcentaje_fondo": format(parametros.fondo_de_reserva.porcentaje, ".2f"),

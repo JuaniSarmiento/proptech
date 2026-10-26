@@ -151,11 +151,14 @@ def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
 #: solo); sin medición real de CI todavía, 15 deja margen sobre lo que se
 #: vio en esta máquina (unos 90s de punta a punta). `backend` subió de 20 a
 #: 30 el 22/10/2026: la suite pasó a 9-11 min y `canario.sh` la repite entera,
-#: así que 20 cortó una corrida verde (run 39783653827).
+#: así que 20 cortó una corrida verde (run 39783653827). `web` subió de 15 a 25
+#: el 26/10/2026: `playwright install --with-deps chromium` tardó 10 min en el
+#: runner y el job llegó a 15:40, cortando el canario con los tests ya en verde
+#: (run 40357665108, intentos 1 y 2).
 _TIMEOUT_MINUTES_ESPERADO = {
     "backend": 30,
     "humo": 15,
-    "web": 15,
+    "web": 25,
     "shellcheck": 5,
     "secretos": 5,
 }
