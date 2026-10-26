@@ -531,13 +531,16 @@ presenta.
 
 Dos archivos ya validados (cambio 1b, D-053), con sus lectores propios
 (`backend/src/proptech_core/compartido/parametros.py` y `semilla.py`), alineados con R01 y el modo de
-coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a. El comando que carga el
-edificio de ejemplo **en la base** pasó del 3a al 3b (E6/E10 de la propuesta del 3a) y, al archivarse
-el 3b sin el acceso de desarrollo, quedó en el change `acceso-de-desarrollo` junto con ese acceso: las
-dos cosas esperan la misma firma HIGH/CRITICAL de Juani (D-094) y, la carga, además, un
-`GRANT INSERT ON auditoria TO proptech_migrador` que tampoco decide un agente solo. Hoy la semilla
-sigue validándose en memoria, no insertada; las siete pantallas del 3b no necesitaron esta carga, se
-probaron con una API falsa y con fixtures generados por la API real.
+coeficientes desde el 3a. Las tablas que los reciben existen desde el 3a. El edificio de ejemplo se
+carga **en la base** con
+`docker compose exec -e PROPTECH_ENTORNO=desarrollo api python -m proptech_core.complejos.aplicacion.ejemplo cargar`
+(`acceso-de-desarrollo`, archivado el 24/10/2026, D-110): corre como `proptech_app`, nunca como
+`proptech_migrador`, y no pide ningún `GRANT` nuevo (`proptech_app` ya tiene `SELECT, INSERT` sobre
+`auditoria`). Usa una administración con id fijo (`00000000-0000-4000-8000-0000000000e0`) y crea en la
+misma transacción su `persona` `super_admin` (`…e1`, email ficticio, sin `clerk_usuario_id`) y el
+edificio por los mismos casos de uso que la API; es idempotente (la segunda corrida dice "ya estaba" y,
+si el ejemplo cambió en la base, falla sin escribir). Sólo corre con `PROPTECH_ENTORNO=desarrollo` (D-112): sin esa variable sale con 1 sin
+conectarse ni escribir.
 
 ### `config/parametros.yaml` · los valores con que arranca cada edificio nuevo (D-042)
 
@@ -573,6 +576,5 @@ Validado por `Semilla` (`semilla.py`) contra los parámetros de arriba: `version
   "alinear el validador de la semilla con R01 (tolerancia de ±0,0001) y con la respuesta a P24": la
   pregunta que lo cubre es **P24** (coeficientes de grupos parciales), ya abierta en
   `10_preguntas_abiertas.md`. No se inventa acá una solución.
-- **Estado de migración**: la columna `complejo.estado_migracion` existe desde el 3a (`0005`, D-083),
-  con el ejemplo pensado como `'sin_saldos_previos'`; el campo todavía no se agregó a este archivo de
-  semilla (pendiente de `acceso-de-desarrollo`, que es quien lo carga en la base, sin firmar todavía).
+- **Estado de migración**: `estado_migracion: sin_saldos_previos` (columna `complejo.estado_migracion`,
+  desde el 3a, `0005`, D-083); la carga lo confirma con el caso de uso `confirmar_sin_saldos_previos`.

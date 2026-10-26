@@ -1418,7 +1418,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
 - **Quién**: Juani, 14/10/2026 (preparación del repositorio para que Alberto empiece a usar Active
   Stack v1).
 
-## D-094 · Gobernanza compartida entre los dos socios para CRITICAL y HIGH
+## D-094 · Gobernanza compartida entre los dos socios para CRITICAL y HIGH · *corregida en parte por D-111*
 
 - **Fecha**: 14/10/2026
 - **Decisión**: los cambios de nivel **CRITICAL** y **HIGH** los puede aprobar **cualquiera de los
@@ -1919,6 +1919,103 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
   dejaría parado el change crítico más grande del roadmap por una validación que, según D-089, corrige
   después sin tocar código (son parámetros, no estructura).
 - **Quién**: Juani, 22/10/2026, en conversación con el orquestador.
+
+## D-110 · Cierre de `acceso-de-desarrollo`: firma HIGH y resultado (24/10/2026)
+
+- **Fecha**: 24/10/2026
+- **Decisión**: Emiliano Caceres aprobó la sección "Aprobación" de `proposal.md` el 24/10/2026, con el
+  alcance exacto de D1/D2 del design del change (carga del edificio de ejemplo como `proptech_app` por
+  el camino de D10 de `login-y-usuarios`, sin `GRANT` nuevo ni punto de entrada sin login; recorrido de
+  las siete pantallas del 3b entrando con Clerk de desarrollo). El change quedó **OK**, archivado el
+  24/10/2026 (`openspec/changes/archive/2026-10-24-acceso-de-desarrollo/`).
+- **Quién firmó**: la habilitación de Emiliano como firmante es D-111, posterior; esta firma queda
+  ratificada por ella.
+- **Lo que construyó**: `backend/src/proptech_core/complejos/aplicacion/ejemplo.py` (comando de carga
+  idempotente, corre como `proptech_app`) y su test de integración contra PostgreSQL real
+  (`backend/tests/integracion/test_ejemplo_casos_de_uso.py`), cubriendo los 6 escenarios del
+  requisito "Carga del edificio de ejemplo en la base" de `datos-semilla` (el séptimo, "Fuera de
+  desarrollo no corre", llegó el 25/10 con D-112). Verificado a mano contra la API real: login con
+  Clerk de desarrollo, selector de administración, las siete pantallas del 3b con el edificio de
+  ejemplo cargado (13 unidades, coeficientes al 100%, puesta a punto 6/6), en 1280 px, 320 px y con
+  teclado. Cómo se vinculó la cuenta de Clerk a la persona `super_admin` del ejemplo no quedó
+  escrito, así que esa verificación todavía no la puede repetir otra persona: queda como deuda a cargo
+  de Emiliano ("Deuda del cierre de `acceso-de-desarrollo`", `12_fichas_de_changes.md`) y es el
+  origen de L-039.
+- **Hallazgo durante la verificación, corregido**: la ruta por defecto de la semilla
+  (`_RUTA_SEMILLA_POR_DEFECTO`) calculaba su ubicación contando carpetas desde el archivo
+  (`parents[5]`), un valor correcto sólo para la corrida local bajo `backend/` pero no para la imagen
+  de Docker (`/app/src/...`, una carpeta menos de profundidad hasta la raíz). Se corrigió para
+  derivarla de `Configuracion().proptech_parametros` (D-042), igual que ya hace el resto del proyecto
+  con `parametros.yaml`.
+- **Deuda y límites descubiertos, sin resolver en este change**:
+  - La suite de backend tiene fallas reales de portabilidad Windows (señales POSIX que `arq` usa y no
+    existen en Windows; permisos NTFS vs. POSIX en los tests de `respaldos`/`restaurar`; el plugin
+    `docker compose` no se descubre en un shell con `PATH` mínimo en Windows) que sólo se resuelven
+    corriendo en el entorno real del proyecto (Linux, CI o contenedores) — no son bugs de la app.
+  - `infra/ci/humo.sh` tiene el nombre de proyecto de Compose (`-p proptech`) fijo en el script, sin
+    override por variable de entorno: no se puede correr aislado de un stack real ya levantado sin
+    editar el script. Al correrlo contra el stack real (aprobado por Emiliano), `proptech-respaldos-1`
+    no llegó a sano por el mismo problema de finales de línea CRLF que ya tienen `respaldar.sh` y
+    `restaurar.sh` en un checkout de Windows (`env: 'bash\r': No such file or directory`) — mismo
+    origen que la deuda ya anotada del cierre del 1d.
+  - Next.js estaba fijado en 16.4.0, con una vulnerabilidad de seguridad conocida que bloqueaba
+    `next build` (`SecurityFatalError`). Se actualizó a 16.4.3 (parche menor, sin breaking changes;
+    sólo tocó `web/package.json` y el lockfile) para poder correr `test-web-navegador.sh`.
+  - La tabla del padrón de unidades, en 320 px, es horizontalmente scrolleable pero sin ninguna pista
+    visual de que haya columnas fuera de vista — mejora de UX menor, no bloqueante.
+- **Descartado**: mantener el punto de entrada sin login y el `GRANT INSERT ON auditoria` a
+  `proptech_migrador` (el alcance original de este change), ya descartados por D11 del design de
+  `login-y-usuarios` (E12); es la alternativa que registra la tabla "Aprobación" del `proposal.md`.
+- **Quién**: Emiliano Caceres, 24/10/2026, verificación con Playwright contra el stack real.
+
+## D-111 · Emiliano Caceres firma changes HIGH y CRITICAL · corrige en parte a D-094
+
+- **Fecha**: 25/10/2026
+- **Decisión**: Emiliano Caceres, desarrollador del equipo, puede aprobar changes **HIGH** y
+  **CRITICAL** igual que Juani y Alberto: los firmantes válidos pasan a ser **Juani, Alberto o
+  Emiliano**, por escrito y con fecha en la sección "Aprobación" del `proposal.md`, con las mismas
+  reglas de D-094 (alcanza con uno; nunca la completa un agente, D-087). La firma de Emiliano sobre
+  `acceso-de-desarrollo` (D-110, 24/10/2026) queda **ratificada** por esta decisión.
+  - **Excepción a L-038, autorizada por Juani el 25/10/2026**: esta ampliación y la ratificación
+    entran en el mismo PR que la firma que usan, porque cuando se detectó el problema el change ya
+    estaba construido y firmado. Es la única vez: de acá en adelante rige L-038 (la ampliación se
+    decide y se mergea antes, en otro PR).
+  - Se alinean `openspec/config.yaml`, `14_forma_de_trabajo.md`, `CLAUDE.md`, `AGENTS.md` y
+    `CHANGES.md` donde dicen quién aprueba.
+  - D-094 queda **corregida en parte**: cambia quién firma; el resto de su esquema sigue igual.
+- **Descartado**:
+  - **B, "no firma por ahora"** (Emiliano programa, pero firman Juani o Alberto): obliga a firmar
+    después del hecho el change ya construido, contra L-029, y deja a un desarrollador del equipo sin
+    poder aprobar lo que evalúa con el mismo criterio que los otros dos.
+  - **C, "sólo HIGH"** (CRITICAL, acceso y plata, sigue en Juani o Alberto): suma una regla de alcance
+    más en `config.yaml` y una segunda categoría de firmante, cuando Juani decide confiarle a Emiliano
+    el mismo criterio en los dos niveles.
+- **Por qué**: Emiliano ya trabaja changes propios sobre el repositorio; la razón de D-094 (no frenar
+  un cambio CRITICAL o HIGH porque el único que puede firmar no está) aplica igual. La ampliación de
+  firmantes la decide Juani, dueño del proyecto (`14_forma_de_trabajo.md`), en una decisión propia, y
+  no la escribe el mismo que firma (L-038).
+- **Quién**: Juani, 25/10/2026, en conversación con el orquestador.
+
+## D-112 · Guarda de entorno en el comando del edificio de ejemplo (25/10/2026)
+
+- **Fecha**: 25/10/2026
+- **Decisión**: `python -m proptech_core.complejos.aplicacion.ejemplo cargar` **no corre** salvo que
+  `PROPTECH_ENTORNO` valga exactamente `desarrollo` (sin mayúsculas ni espacios). Sin eso sale con
+  código 1, lo dice en stderr y no escribe nada; la guarda va antes de conectarse a la base (lo vigila
+  `test_la_guarda_corre_antes_de_conectar_a_la_base`); hoy además corre antes de leer la configuración,
+  pero eso no tiene test propio (RV-1, deuda menor). La variable se documenta comentada en `infra/.env.example`, sólo para
+  desarrollo; Compose no la pasa a ningún servicio, se da al correr el comando
+  (`docker compose exec -e PROPTECH_ENTORNO=desarrollo api python -m ...`).
+- **Descartado**:
+  - **Dejar el comando sin candado** y registrarlo como riesgo aceptado: el módulo viaja en la imagen
+    de producción (`COPY src`) y, con las credenciales reales de la API, crearía ahí una
+    administración con id público y un `super_admin` sin invitación.
+  - **Moverlo a `backend/desarrollo/`**, fuera de la imagen: el spec `acceso-de-desarrollo` prohíbe
+    justamente esa carpeta (escenario "El repositorio no tiene un punto de entrada propio").
+- **Por qué**: protege contra correrlo por accidente en producción con un costo mínimo (una variable y
+  un `if`). No protege contra quien ya opera el contenedor de producción y pone la variable a mano;
+  para eso no hay guarda de aplicación que alcance.
+- **Quién**: Juani, 25/10/2026, en conversación con el orquestador (revisión del PR #1, BE-2).
 
 ## Supuestos
 

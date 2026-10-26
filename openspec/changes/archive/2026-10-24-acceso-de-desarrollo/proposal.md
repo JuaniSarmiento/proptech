@@ -125,12 +125,12 @@ Archivos de `knowledge-base/` (listado del directorio, 21/10/2026): `01` a `16` 
 
 ## Aprobación
 
-Gobernanza HIGH (ver Gobernanza). La completa, a mano, Juani o Alberto. Ningún agente la escribe.
+Gobernanza HIGH (ver Gobernanza). La completa, a mano, Juani o Alberto (desde D-111, también Emiliano, que ratifica la firma de abajo). Ningún agente la escribe.
 
 | Elección | Propuesta | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| Cargar el edificio de ejemplo por el camino de D10 (E11), sin punto de entrada sin login ni `GRANT INSERT ON auditoria` a `proptech_migrador` (D11 del design de `login-y-usuarios`, E12) | Sí: reescribir la carga del ejemplo para correr como `proptech_app` (D10), crear la fila `super_admin` de la administración de ejemplo en la misma transacción y cargar el edificio por los casos de uso reales; recorrer las pantallas del 3b entrando con Clerk de desarrollo (E13 del 2b). Alternativa descartada: mantener el punto de entrada sin login y el `GRANT` a `proptech_migrador` (alcance original de este change, ya descartado por D11) | |
+| Cargar el edificio de ejemplo por el camino de D10 (E11), sin punto de entrada sin login ni `GRANT INSERT ON auditoria` a `proptech_migrador` (D11 del design de `login-y-usuarios`, E12) | Sí: reescribir la carga del ejemplo para correr como `proptech_app` (D10), crear la fila `super_admin` de la administración de ejemplo en la misma transacción y cargar el edificio por los casos de uso reales; recorrer las pantallas del 3b entrando con Clerk de desarrollo (E13 del 2b). Alternativa descartada: mantener el punto de entrada sin login y el `GRANT` a `proptech_migrador` (alcance original de este change, ya descartado por D11) | Sí |
 
-| Socio (Juani o Alberto) | Fecha | Alcance aprobado |
+| Firmante (Juani, Alberto o Emiliano; D-111 ratifica esta firma) | Fecha | Alcance aprobado |
 |---|---|---|
-| | | |
+| Emiliano Caceres | 24/10/2026 | Cargar el edificio de ejemplo por el camino de D10 (como proptech_app, sin GRANT nuevo ni punto de entrada sin login) y recorrer las 7 pantallas del 3b con ese ejemplo, entrando por Clerk de desarrollo |

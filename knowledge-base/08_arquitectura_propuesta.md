@@ -59,9 +59,11 @@ regresión que el guardián de fronteras del cambio 3 en adelante tiene que impe
   se los pasa a un componente de cliente; las altas y ediciones son **server actions** que llaman a la
   misma API y devuelven un resultado tipado que el formulario muestra con `useActionState`. La web
   llama a la API **desde el servidor de Next** (`PROPTECH_URL_API_INTERNA`), nunca desde el navegador,
-  igual en desarrollo que en producción (D11 del 3a); el acceso sin login de ese mismo D11 (E2) quedó
-  escrito pero sin construir, en el change `acceso-de-desarrollo`, a la espera de la firma HIGH de
-  Juani (D-094).
+  igual en desarrollo que en producción (D11 del 3a). El acceso sin login de ese mismo D11 (E2) **no
+  existe**: lo descartó D11 del 2b, y en desarrollo se entra por el login real con Clerk de desarrollo.
+  Para recorrer las pantallas con datos, `acceso-de-desarrollo` (D-110) carga el edificio de ejemplo
+  con un comando que corre como `proptech_app` (el camino de "alta inicial", D10 del 2b), sin `GRANT`
+  nuevo y sólo con `PROPTECH_ENTORNO=desarrollo`; no hay `backend/desarrollo/` ni compose propio.
 - **Un cliente y un mapa de errores** (D2): `web/src/lib/api/` traduce cada respuesta de la API a una
   unión discriminada (`ok`, `sin_sesion`, `sin_permiso`, `no_existe`, `conflicto`, `invalido`,
   `fallo`); ningún texto que viene de la API llega tal cual a la pantalla (L-007), y los valores de

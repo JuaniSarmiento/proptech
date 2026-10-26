@@ -4,7 +4,7 @@ tsc --noEmit` y `bash infra/ci/test-web.sh`; en el backend, `bash infra/ci/test-
 archivos tocados (L-005). Cada tarea nombra los escenarios que cubre.
 
 **NO CONSTRUIR**: todo el change es **HIGH**. Precondición: la sección "Aprobación" de `proposal.md`
-firmada por Juani o Alberto, con nombre, fecha y la respuesta. Este `tasks.md` reemplaza por completo
+firmada por Juani o Alberto (desde D-111, también Emiliano), con nombre, fecha y la respuesta. Este `tasks.md` reemplaza por completo
 la versión anterior (el punto de entrada sin login, sus guardas, y la carga del ejemplo como
 `proptech_migrador` con `GRANT`): los tres quedan descartados por D11 del design de `login-y-usuarios`
 (E12, firmada 21/10/2026). L-029 aplica: esa firma no cubre estas tareas reescritas, que necesitan la
@@ -12,7 +12,7 @@ suya propia.
 
 ## 1. Carga del ejemplo por el camino de D10 (HIGH): NO CONSTRUIR, espera la firma de Juani o Alberto (D-094)
 
-- [ ] 1.0 **Carga del edificio de ejemplo en la base, como `proptech_app`**: comando que reescribe
+- [x] 1.0 **Carga del edificio de ejemplo en la base, como `proptech_app`**: comando que reescribe
   `alta_inicial.py` (D10) para este caso — abre sesión con las credenciales de `proptech_app` (nunca
   `proptech_migrador`), fija el tenant de la administración de ejemplo con id fijo (no generado, para
   que el comando sea idempotente), crea su `persona` titular y su `asignacion_rol` de `super_admin` si
@@ -43,7 +43,7 @@ suya propia.
   - **Ninguno de los grupos 1 a 6 del 3b la importa ni la necesita**: las pantallas y la base de test
     de la web no leen nada de la administración de ejemplo; sólo el recorrido de la tarea 1.1 depende
     de que esté cargada.
-- [ ] 1.1 **Recorrido contra la API real, entrando por el login**: con el ejemplo cargado (1.0), las
+- [x] 1.1 **Recorrido contra la API real, entrando por el login**: con el ejemplo cargado (1.0), las
   siete pantallas del 3b en el navegador a 320 px y a 1280 px, con capturas y el recorrido de teclado,
   entrando con una cuenta de Clerk de desarrollo vinculada a la persona titular de la administración de
   ejemplo (su `super_admin`) — nunca con un punto de entrada que reemplace la identidad — y la corrida

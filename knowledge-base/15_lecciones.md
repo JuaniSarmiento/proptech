@@ -530,3 +530,40 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   esperado la confirmación del primero.
 - **Aplica a**: quien toca `.github/workflows/`, orquestador (antes de reportar un arreglo de CI como
   cerrado).
+
+## L-038 · Quien firma no puede agregarse a la lista de firmantes en su propio PR
+
+- **Origen**: revisión del PR #1 de `acceso-de-desarrollo`, 25/10/2026 (`04-arquitecto.md`, AR-1 a
+  AR-3; `05-auditor.md`). Corregido con D-111.
+- **Qué pasó**: el PR que cerraba el change reescribió D-094 para sumar a Emiliano como firmante
+  (en un archivo que "sólo se agrega"), le atribuyó a Juani, con fecha 14/10, una ampliación que el
+  repo no registraba, y en ese mismo PR Emiliano firmó el change con esa habilitación. Además dejó a
+  `CLAUDE.md` diciendo tres nombres y a `config.yaml` y a otras líneas del propio `CLAUDE.md`
+  diciendo dos: quién firmaba el próximo change CRITICAL pasaba a depender de qué archivo leía primero
+  cada agente.
+- **Regla**: ampliar quién firma es una decisión nueva (D-NNN) con Juani como Quién, que corrige en
+  parte a la anterior sin reescribirla, y que se mergea **antes** y en otro PR que el de la primera
+  firma que la usa. En ese mismo cambio se alinean todas las fuentes que nombran firmantes
+  (`config.yaml`, `14`, `CLAUDE.md`, `AGENTS.md`).
+  La propia D-111 entró en el mismo PR que la firma que ratifica: fue una excepción autorizada por
+  Juani el 25/10/2026, porque el change ya estaba construido y firmado; no es precedente.
+- **Costo**: la firma del change, su "archivado OK" y las tareas marcadas quedaron en duda hasta que
+  Juani ratificó con D-111; un PR de cierre volvió a revisión.
+- **Aplica a**: quien firma, orquestador (al aceptar una firma), auditor.
+
+## L-039 · "Verificado a mano" a través del login necesita escrito el paso de vinculación de identidad
+
+- **Origen**: revisión del PR #1 de `acceso-de-desarrollo`, 25/10/2026 (BE-1, DB-6, AR-7 y QA-4;
+  `05-auditor.md`).
+- **Qué pasó**: el cierre decía que las siete pantallas se recorrieron entrando con Clerk de
+  desarrollo como el `super_admin` del ejemplo, pero esa persona se crea sin `clerk_usuario_id` y el
+  código no tiene otro camino para vincularla que aceptar una invitación, que el ejemplo no crea.
+  Cuatro revisores llegaron a "debió ser un `UPDATE` a mano" y ninguno lo pudo verificar: la
+  coincidencia de los cuatro no la volvió evidencia.
+- **Regla**: una verificación manual que pasa por el login no está hecha hasta que quede escrito,
+  paso por paso, cómo la cuenta usada quedó vinculada a la persona (comando, rol, base), con las
+  capturas o la salida. Sin ese paso no se puede repetir, y lo que no se puede repetir no cuenta como
+  evidencia, por más revisores que lo deduzcan igual.
+- **Costo**: la tarea 1.1 quedó sin poder reproducirse; el vínculo queda como deuda a cargo de
+  Emiliano ("Deuda del cierre de `acceso-de-desarrollo`", `12_fichas_de_changes.md`).
+- **Aplica a**: constructor (al cerrar una tarea con verificación manual), rompedor, auditor.

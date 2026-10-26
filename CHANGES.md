@@ -93,7 +93,7 @@ GATE 5: C-05a ✓                                          ← roles antes del l
   → C-05c endurecimiento-de-infraestructura [Agente C] (MEDIUM)
 
 GATE 6: C-06a ✓
-  → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un socio)
+  → C-07 motor-de-cuenta-corriente (CRITICAL: aprobación de un firmante de D-111)
   → C-06b pantallas-del-edificio (en paralelo; su propose espera los siete shape con Juani)
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
@@ -105,10 +105,10 @@ GATE 7: C-07 ✓                                           ← PRIMER FORK real 
   → C-09 gastos-y-cargos            [Agente B]
 
 GATE 8: C-08 + C-09 ✓
-  → C-10 liquidacion-y-emision (solo, CRITICAL: aprobación de un socio; el más grande del MVP)
+  → C-10 liquidacion-y-emision (solo, CRITICAL: aprobación de un firmante de D-111; el más grande del MVP)
 
 GATE 9: C-10 ✓                                           ← SEGUNDO FORK (2 paralelos)
-  → C-11 pagos-informados           [Agente A] (CRITICAL: aprobación de un socio)
+  → C-11 pagos-informados           [Agente A] (CRITICAL: aprobación de un firmante de D-111)
   → C-19 lectura-de-facturas        [Agente C] (necesita también C-09)
 
 GATE 10: C-11 ✓                                          ← TERCER FORK (3 paralelos)
@@ -117,11 +117,11 @@ GATE 10: C-11 ✓                                          ← TERCER FORK (3 pa
   → C-14 morosidad                  [Agente C]
 
 GATE 11: C-14 ✓                                          ← CUARTO FORK (2 paralelos)
-  → C-15 condonacion-judicial-y-libre-deuda [Agente B] (CRITICAL: aprobación de un socio)
+  → C-15 condonacion-judicial-y-libre-deuda [Agente B] (CRITICAL: aprobación de un firmante de D-111)
   → C-16 portal-del-vecino                  [Agente C] (necesita también C-05b)
 
 GATE 12: C-16 ✓
-  → C-17 vista-del-consejo (HIGH: revisión de un socio)   [Agente C]
+  → C-17 vista-del-consejo (HIGH: revisión de un firmante de D-111)   [Agente C]
 
 GATE 13: C-11 + C-15 ✓
   → C-18 avisos-por-email   [Agente B]
@@ -144,7 +144,7 @@ M2 y M3.
 
 ### Plan óptimo con 3 agentes
 
-> **Hoy programa una sola persona por change** (Juani o Alberto, `knowledge-base/14_forma_de_trabajo.md`):
+> **Hoy programa una sola persona por change** (Juani, Alberto o Emiliano, `knowledge-base/14_forma_de_trabajo.md`):
 > esta tabla muestra el paralelismo que el árbol de dependencias permitiría si hubiera tres agentes
 > trabajando a la vez, no el reparto real.
 
@@ -332,9 +332,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[x]` archivado (20/10/2026), OK (D-105).
 - **Scope**: siete pantallas de configuración del administrador, todo el ancho, menú lateral, barra
   superior y ayuda acoplada; teclado, errores por campo, carga, vacío, 320 px y WCAG 2.2 AA.
-  Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), sin firma;
-  con el 2b ese change se reduce a la carga del ejemplo, con fila `super_admin` y `GRANT INSERT ON
-  auditoria` al migrador pendientes de firma CRITICAL. Ver ficha 3b-bis.
+  Acceso sin login y carga del ejemplo quedaron en `acceso-de-desarrollo` (3b-bis), archivado OK el
+  24/10/2026 (D-110; firma de Emiliano ratificada por D-111): el acceso sin login se descartó por D11 del 2b, y la carga del ejemplo corre como
+  `proptech_app` (D10 del 2b), sin `GRANT` nuevo. Ver ficha 3b-bis.
 - **Dependencias**: C-06a y los briefs de `shape`.
 - **Governance**: ALTO
 - **Leer antes**:

@@ -5,9 +5,10 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
 
 ## Quiénes
 
-- **Juani**: dueño del proyecto y desarrollador. Desde el 14/10/2026 Alberto también programa; cada cambio lo programa uno solo (D-022, D-093). Decide el alcance y recibe el veredicto
-  final de sus propios cambios. Las propuestas CRITICAL y HIGH las puede aprobar él o Alberto, por
-  escrito y con fecha (D-094).
+- **Juani**: dueño del proyecto y desarrollador. Desde el 14/10/2026 Alberto también programa, y
+  Emiliano Caceres es desarrollador del equipo; cada cambio lo programa uno solo (D-022, D-093).
+  Decide el alcance y recibe el veredicto final de sus propios cambios. Las propuestas CRITICAL y HIGH
+  las puede aprobar él, Alberto o Emiliano, por escrito y con fecha (D-094, D-111).
 - **Claude, el orquestador**: la sesión que habla con Juani. No escribe código: arma cada pedido,
   lanza los agentes de a uno, lee lo que devuelven, decide el paso siguiente y le cuenta a Juani.
 - **Los agentes**, cada uno con un solo trabajo y sin ver las conclusiones de los otros salvo lo que
@@ -33,8 +34,8 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
 1. **Proponer.** El proponente escribe `proposal.md`, `design.md` y `tasks.md`, con las historias,
    reglas y decisiones que cubre y la sección "Knowledge Base Impact". En los cambios marcados con ⓔ
    en `01_vision_y_objetivos.md`, antes corre un explore. **La propuesta de los cambios críticos la
-   aprueba Juani o Alberto, por escrito y con fecha** (acceso, cuenta corriente, importación desde
-   Excel, liquidación, pagos y 10b, D-077, D-094); en los demás sigue el orquestador.
+   aprueba Juani, Alberto o Emiliano, por escrito y con fecha** (acceso, cuenta corriente, importación
+   desde Excel, liquidación, pagos y 10b, D-077, D-094, D-111); en los demás sigue el orquestador.
 2. **Construir.** El constructor implementa las tareas en orden, con TDD, y devuelve qué hizo, qué
    comandos corrió y su salida.
 3. **Romper.** El rompedor recibe el cambio terminado y trata de romperlo. Si encuentra fallas, vuelve
@@ -73,9 +74,9 @@ informe.
 
 | Tipo de cambio | Ciclo |
 |---|---|
-| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de uno de los dos socios antes de codear, D-077, D-094) | Completo: constructor, rompedor y auditor por separado |
+| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de Juani, Alberto o Emiliano antes de codear, D-077, D-094, D-111) | Completo: constructor, rompedor y auditor por separado |
 | **Chico o de sólo lectura** (10a, 12, 13; el 12 con revisión previa por ser HIGH) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
-| **Infraestructura y el resto** (1a, 1b, 1c, 1d, 3, 6b, 11, 14, 15; el 1d, el 3 y el 12 son HIGH: se propone y se espera la revisión de uno de los dos socios, D-087, D-094) | Completo |
+| **Infraestructura y el resto** (1a, 1b, 1c, 1d, 3, 6b, 11, 14, 15; el 1d, el 3 y el 12 son HIGH: se propone y se espera la revisión de Juani, Alberto o Emiliano, D-087, D-094, D-111) | Completo |
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
 
