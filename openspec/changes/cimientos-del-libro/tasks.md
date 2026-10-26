@@ -570,7 +570,7 @@ mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1
 
 ## 2. Montos y reparto (design D5 a D7)
 
-- [ ] 2.1 **`hypothesis` y aritmética de `Dinero`.** Sumar `hypothesis` con versión exacta al grupo
+- [x] 2.1 **`hypothesis` y aritmética de `Dinero`.** Sumar `hypothesis` con versión exacta al grupo
   `dev` y a `uv.lock`, con los perfiles `ci` (`derandomize=True`, `deadline=None`) y local, elegidos por
   variable de entorno en `infra/ci/test-backend.sh`, más un test de infra que fije que el CI usa `ci`.
   Tests: suma y resta exactas, negación (incluido `"0.00"`), `sumar([])` da `"0.00"`, operandos `int`,
@@ -580,13 +580,13 @@ mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1
   el docstring de `dinero.py`. Escenarios: `representacion-de-montos` › Suma y resta exactas;
   › Negación; › Sumar un número que no es monto; › Desborde; › Sumar una lista vacía; › Sin
   multiplicación. Lecciones: L-034.
-- [ ] 2.2 **Redondeo medio hacia arriba para montos sueltos.** `redondear_al_centavo` en
+- [x] 2.2 **Redondeo medio hacia arriba para montos sueltos.** `redondear_al_centavo` en
   `compartido/reparto.py`. Tests: 0.125 → 0.13, 0.124999 → 0.12, -0.125 → -0.13, `float` rechazado,
   `NaN` e infinito rechazados, 999999999999.995 da `MontoInvalido`, mismo resultado bajo otro
   `localcontext`. RED: con la versión vacía usando `ROUND_HALF_EVEN` (mutante deliberado, anotado),
   0.125 da 0.12. Escenarios: `reparto-de-montos` › El medio sube; › Float rechazado. Lecciones: L-034,
   L-008.
-- [ ] 2.3 **Orden natural para el desempate, con tramos etiquetados.** `clave_de_orden_natural
+- [x] 2.3 **Orden natural para el desempate, con tramos etiquetados.** `clave_de_orden_natural
   (identificador, id)`, cada tramo `(0, int)` o `(1, texto)`. Tests con el orden esperado escrito:
   "L-PB", "1A", "C1", "B1", "10A" dan "1A", "10A", "B1", "C1", "L-PB"; "PB", "1", "1A", "A1" dan "1",
   "1A", "A1", "PB", sin `TypeError`; "1" < "2" < "10"; "2B" < "10A"; "a2" y "A2" desempatan por el texto
@@ -594,7 +594,7 @@ mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1
   como texto, después de "10". RED: con la clave devolviendo el texto plano, "10" queda antes que "2" y
   "L-PB" antes que "1A". Escenarios: `reparto-de-montos` › Orden natural, no de texto; › Identificadores
   que empiezan con letra y con número. Lecciones: L-008.
-- [ ] 2.4 **`repartir` por mayor resto, con ejemplos.** Tests: un millón entre 150 (100 de 6.666,67 y 50
+- [x] 2.4 **`repartir` por mayor resto, con ejemplos.** Tests: un millón entre 150 (100 de 6.666,67 y 50
   de 6.666,66); una sola parte; pesos 0.4999 y 0.5 dan **49,99 y 50,01**; total cero; $2,00 entre tres
   (y la comparación explícita con medio hacia arriba que daría 2,01); 0.333333/0.333333/0.333334;
   **$0,05 entre 0.6/0.25/0.15 da 0,03/0,01/0,01**; total negativo; "1", "2", "10" con el centavo por
@@ -606,7 +606,7 @@ mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1
   cero, falla la suma. Escenarios: `reparto-de-montos` › los de "El reparto suma exacto el total", "Cada
   parte se trunca...", "El empate se resuelve siempre igual" y "El reparto rechaza entradas...".
   Lecciones: L-034.
-- [ ] 2.5 **Propiedades del reparto con `hypothesis`, oráculo propio y un mutante por propiedad.** Test en
+- [x] 2.5 **Propiedades del reparto con `hypothesis`, oráculo propio y un mutante por propiedad.** Test en
   `tests/unitarios/test_reparto_propiedades.py`: totales y pesos generados (borde de 12 dígitos, pesos de
   6 decimales), estrategia que **fuerza empates** (pesos de `sampled_from` de un conjunto chico, pesos
   iguales) y mezcla identificadores con letra y con número; oráculo con `fractions.Fraction` que no
@@ -615,6 +615,330 @@ mypy tests/unitarios/test_fronteras_de_modulos.py: Success: no issues found in 1
   centavo al mayor peso (restos); sin normalizar por la suma de pesos (distancia). Escenarios:
   `reparto-de-montos` › Un error de fórmula compartido no pasa; › Cada propiedad tiene su mutante.
   Lecciones: L-013, L-019, L-035.
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+
+Mutante suma. Respaldo previo `.git/4a-logs/reparto-previo.py`, aplicado al árbol y revertido.
+```diff
+--- respaldo previo
++++ mutante
+@@ -62,7 +62,7 @@
+     numerador, denominador = total.decimal.as_integer_ratio()
+     centavos = abs(numerador) * 100 // denominador
+     cocientes, restos = zip(*(divmod(centavos * peso, suma_pesos) for peso in pesos), strict=True)
+-    asignados = list(cocientes)
++    asignados = [(2 * centavos * peso + suma_pesos) // (2 * suma_pesos) for peso in pesos]
+     faltan = centavos - sum(asignados)
+     prioridad = sorted(range(len(partes)), key=lambda i: (-restos[i], partes[i].orden))
+     for i in prioridad[:faltan]:
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto_propiedades.py::test_propiedad_suma
+time: 10:40:42
+
+    @example((200, [1000000, 1000000, 1000000]))
+    @given(casos())
+    def test_propiedad_suma(caso: tuple[int, list[int]]) -> None:
+        total, pesos = caso
+        actual, _ = calcular(total, pesos)
+>       assert sum(actual) == Fraction(abs(total), 100)
+E       assert Fraction(203, 100) == Fraction(2, 1)
+E        +  where Fraction(203, 100) = sum([Fraction(17, 25), Fraction(67, 100), Fraction(17, 25)])
+E        +  and   Fraction(2, 1) = Fraction(200, 100)
+E        +    where 200 = abs(200)
+E       Failing explicit example: test_propiedad_suma(
+E           caso=(200, [1000000, 1000000, 1000000]),
+E       )
+
+tests/unitarios/test_reparto_propiedades.py:39: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_reparto_propiedades.py::test_propiedad_suma - ass...
+============================== 1 failed in 0.16s ===============================
+```
+
+Mutante orden. Respaldo previo `.git/4a-logs/reparto-previo.py`, aplicado al árbol y revertido.
+```diff
+--- respaldo previo
++++ mutante
+@@ -64,7 +64,7 @@
+     cocientes, restos = zip(*(divmod(centavos * peso, suma_pesos) for peso in pesos), strict=True)
+     asignados = list(cocientes)
+     faltan = centavos - sum(asignados)
+-    prioridad = sorted(range(len(partes)), key=lambda i: (-restos[i], partes[i].orden))
++    prioridad = sorted(range(len(partes)), key=lambda i: (-restos[i], i))
+     for i in prioridad[:faltan]:
+         asignados[i] += 1
+     signo = "-" if numerador < 0 else ""
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto_propiedades.py::test_propiedad_orden
+time: 10:40:43
+        total,pesos=caso
+        partes = [ParteARepartir(str(i),Decimal(p)/Decimal(1000000),(i,)) for i,p in enumerate(pesos)]
+        signo = "-" if total < 0 else ""
+        monto = Dinero(f"{signo}{abs(total)//100}.{abs(total)%100:02d}")
+>       assert repartir(monto,partes) == repartir(monto,list(reversed(partes)))
+E       assert {'0': Dinero(...inero("0.00")} == {'1': Dinero(...inero("0.00")}
+E         
+E         Differing items:
+E         {'0': Dinero("0.01")} != {'0': Dinero("0.00")}
+E         {'1': Dinero("0.00")} != {'1': Dinero("0.01")}
+E         Use -v to get more diff
+E       Failing explicit example: test_propiedad_orden(
+E           caso=(1, [1000000, 1000000]),
+E       )
+
+tests/unitarios/test_reparto_propiedades.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_reparto_propiedades.py::test_propiedad_orden - as...
+============================== 1 failed in 0.14s ===============================
+```
+
+Mutante restos. Respaldo previo `.git/4a-logs/reparto-previo.py`, aplicado al árbol y revertido.
+```diff
+--- respaldo previo
++++ mutante
+@@ -64,7 +64,7 @@
+     cocientes, restos = zip(*(divmod(centavos * peso, suma_pesos) for peso in pesos), strict=True)
+     asignados = list(cocientes)
+     faltan = centavos - sum(asignados)
+-    prioridad = sorted(range(len(partes)), key=lambda i: (-restos[i], partes[i].orden))
++    prioridad = sorted(range(len(partes)), key=lambda i: (-pesos[i], partes[i].orden))
+     for i in prioridad[:faltan]:
+         asignados[i] += 1
+     signo = "-" if numerador < 0 else ""
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto_propiedades.py::test_propiedad_restos
+time: 10:40:44
+    @example((5, [600000, 250000, 150000]))
+    @given(casos())
+    def test_propiedad_restos(caso: tuple[int, list[int]]) -> None:
+        actual, exacto = calcular(*caso)
+        # floor racional del oráculo, independiente de divmod entero de producción.
+        truncados = [Fraction(e // Fraction(1,100),100) for e in exacto]
+        con_extra = [i for i,a in enumerate(actual) if a > truncados[i]]
+        sin_extra = [i for i,a in enumerate(actual) if a == truncados[i]]
+>       assert all(exacto[i]-truncados[i] >= exacto[j]-truncados[j] for i in con_extra for j in sin_extra)
+E       assert False
+E        +  where False = all(<generator object test_propiedad_restos.<locals>.<genexpr> at 0x766d5f429580>)
+E       Failing explicit example: test_propiedad_restos(
+E           caso=(5, [600000, 250000, 150000]),
+E       )
+
+tests/unitarios/test_reparto_propiedades.py:57: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_reparto_propiedades.py::test_propiedad_restos - a...
+============================== 1 failed in 0.16s ===============================
+```
+
+Mutante distancia. Respaldo previo `.git/4a-logs/reparto-previo.py`, aplicado al árbol y revertido.
+```diff
+--- respaldo previo
++++ mutante
+@@ -61,7 +61,7 @@
+         raise RepartoInvalido("la suma de pesos debe ser positiva")
+     numerador, denominador = total.decimal.as_integer_ratio()
+     centavos = abs(numerador) * 100 // denominador
+-    cocientes, restos = zip(*(divmod(centavos * peso, suma_pesos) for peso in pesos), strict=True)
++    cocientes, restos = zip(*(divmod(centavos * peso, 1_000_000) for peso in pesos), strict=True)
+     asignados = list(cocientes)
+     faltan = centavos - sum(asignados)
+     prioridad = sorted(range(len(partes)), key=lambda i: (-restos[i], partes[i].orden))
+```
+```text
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto_propiedades.py::test_propiedad_distancia
+time: 10:40:45
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+caso = (200, [1000000, 1000000])
+
+    @example((200, [1000000, 1000000]))
+    @given(casos())
+    def test_propiedad_distancia(caso: tuple[int, list[int]]) -> None:
+        actual, exacto = calcular(*caso)
+>       assert all(abs(a-e) < Fraction(1,100) for a,e in zip(actual, exacto, strict=True))
+E       assert False
+E        +  where False = all(<generator object test_propiedad_distancia.<locals>.<genexpr> at 0x7079be9da110>)
+E       Failing explicit example: test_propiedad_distancia(
+E           caso=(200, [1000000, 1000000]),
+E       )
+
+tests/unitarios/test_reparto_propiedades.py:46: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_reparto_propiedades.py::test_propiedad_distancia
+============================== 1 failed in 0.14s ===============================
+```
+
+```text
+GREEN, después de revertir todos los mutantes y refactorizar
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py tests/infra/test_perfil_hypothesis.py
+time: 10:42:08
+============================== 99 passed in 0.74s ==============================
+command: uv run --project backend ruff check <8 archivos del grupo>
+All checks passed!
+command: uv run --project backend ruff format --check <8 archivos del grupo>
+8 files already formatted
+command: uv run --project backend mypy <7 archivos nuevos/modificados del grupo>
+time: 10:41:58
+Success: no issues found in 7 source files
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto.py
+time: 10:39:30
+    def test_ejemplos_reparto(total: str, pesos: list[str], esperado: list[str]) -> None:
+        resultado = repartir(Dinero(total), partes_de(pesos))
+>       assert sumar(resultado.values()) == Dinero(total)
+E       assert Dinero("0.00") == Dinero("1000000.00")
+E        +  where Dinero("0.00") = sumar(dict_values([Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0....00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00")]))
+E        +    where dict_values([Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0....00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00"), Dinero("0.00")]) = <built-in method values of dict object at 0x70d059b1fec0>()
+E        +      where <built-in method values of dict object at 0x70d059b1fec0> = {'0': Dinero("0.00"), '1': Dinero("0.00"), '2': Dinero("0.00"), '3': Dinero("0.00"), ...}.values
+E        +  and   Dinero("1000000.00") = Dinero('1000000')
+
+tests/unitarios/test_reparto.py:68: AssertionError
+_______________ test_ejemplos_reparto[1234.56-pesos1-esperado1] ________________
+
+total = '1234.56', pesos = ['1'], esperado = ['1234.56']
+======================== 23 failed, 17 passed in 0.16s =========================
+```
+
+Fijación: el total cero ya pasaba contra el stub que devuelve todas las partes en cero. Los otros ejemplos mostraron el rojo de la suma.
+
+```text
+GREEN, después de revertir todos los mutantes y refactorizar
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py tests/infra/test_perfil_hypothesis.py
+time: 10:42:08
+============================== 99 passed in 0.74s ==============================
+command: uv run --project backend ruff check <8 archivos del grupo>
+All checks passed!
+command: uv run --project backend ruff format --check <8 archivos del grupo>
+8 files already formatted
+command: uv run --project backend mypy <7 archivos nuevos/modificados del grupo>
+time: 10:41:58
+Success: no issues found in 7 source files
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto.py
+time: 10:38:28
+        from uuid import UUID
+        from proptech_core.compartido.reparto import clave_de_orden_natural
+>       assert sorted(entrada, key=lambda x: clave_de_orden_natural(x, UUID(int=1))) == esperado
+E       AssertionError: assert ['10A', '1A',... 'C1', 'L-PB'] == ['1A', '10A',... 'C1', 'L-PB']
+E         
+E         At index 0 diff: '10A' != '1A'
+E         Use -v to get more diff
+
+tests/unitarios/test_reparto.py:36: AssertionError
+____________________ test_orden_natural[entrada2-esperado2] ____________________
+
+entrada = ['10', '2', '1'], esperado = ['1', '2', '10']
+
+========================= 3 failed, 13 passed in 0.07s =========================
+```
+
+```text
+GREEN, después de revertir todos los mutantes y refactorizar
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py tests/infra/test_perfil_hypothesis.py
+time: 10:42:08
+============================== 99 passed in 0.74s ==============================
+command: uv run --project backend ruff check <8 archivos del grupo>
+All checks passed!
+command: uv run --project backend ruff format --check <8 archivos del grupo>
+8 files already formatted
+command: uv run --project backend mypy <7 archivos nuevos/modificados del grupo>
+time: 10:41:58
+Success: no issues found in 7 source files
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_reparto.py
+time: 10:38:11
+            contexto.prec = 10
+            contexto.rounding = ROUND_DOWN
+>           assert redondear_al_centavo(Decimal(entrada)) == esperado
+E           assert Dinero("0.12") == Dinero("0.13")
+E            +  where Dinero("0.12") = redondear_al_centavo(Decimal('0.125'))
+E            +    where Decimal('0.125') = Decimal('0.125')
+
+tests/unitarios/test_reparto.py:16: AssertionError
+_________________________ test_redondeo[-0.125--0.13] __________________________
+
+entrada = '-0.125', salida = '-0.13'
+
+    @pytest.mark.parametrize("entrada,salida", [("0.125", "0.13"), ("0.124999", "0.12"), ("-0.125", "-0.13"), ("999999999999.994", "999999999999.99")])
+========================= 2 failed, 7 passed in 0.06s ==========================
+```
+
+Mutante deliberado inicial ROUND_HALF_EVEN; sustituido por ROUND_HALF_UP después del rojo.
+
+```text
+GREEN, después de revertir todos los mutantes y refactorizar
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py tests/infra/test_perfil_hypothesis.py
+time: 10:42:08
+============================== 99 passed in 0.74s ==============================
+command: uv run --project backend ruff check <8 archivos del grupo>
+All checks passed!
+command: uv run --project backend ruff format --check <8 archivos del grupo>
+8 files already formatted
+command: uv run --project backend mypy <7 archivos nuevos/modificados del grupo>
+time: 10:41:58
+Success: no issues found in 7 source files
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero_aritmetica.py tests/infra/test_perfil_hypothesis.py
+time: 10:37:30
+            ctx.prec = 10
+            ctx.rounding = ROUND_DOWN
+>           assert (x + y).a_texto() == suma
+E           AssertionError: assert '0.00' == '0.30'
+E             
+E             - 0.30
+E             ?   -
+E             + 0.00
+E             ?    +
+
+tests/unitarios/test_dinero_aritmetica.py:16: AssertionError
+___ test_suma_y_resta[999999999999.98-0.01-999999999999.99-999999999999.97] ____
+
+========================= 13 failed, 1 passed in 0.15s =========================
+```
+
+Baseline 10:36:17: `bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py`: 41 passed. Stub inicial de tres métodos y sumar devolviendo cero. Perfil CI antes ausente.
+
+```text
+GREEN, después de revertir todos los mutantes y refactorizar
+command: bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py tests/infra/test_perfil_hypothesis.py
+time: 10:42:08
+============================== 99 passed in 0.74s ==============================
+command: uv run --project backend ruff check <8 archivos del grupo>
+All checks passed!
+command: uv run --project backend ruff format --check <8 archivos del grupo>
+8 files already formatted
+command: uv run --project backend mypy <7 archivos nuevos/modificados del grupo>
+time: 10:41:58
+Success: no issues found in 7 source files
+```
 
 ## 3. Umbral de saldos chicos (R30, design D8), antes del grupo 5
 

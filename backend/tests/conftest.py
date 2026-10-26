@@ -223,3 +223,11 @@ def redis_contenedor() -> Iterator[DockerContainer]:
     )
     with contenedor:
         yield contenedor
+
+
+# El runner selecciona ci; una invocación directa de pytest puede usar local.
+from hypothesis import settings  # noqa: E402
+
+settings.register_profile("ci", derandomize=True, deadline=None)
+settings.register_profile("local", deadline=None)
+settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "local"))

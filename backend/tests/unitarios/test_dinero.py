@@ -110,15 +110,15 @@ def test_typeerror_al_ordenar_contra_otro_tipo() -> None:
         assert Dinero("1.00") < 1
 
 
-def test_no_existe_suma_ni_resta() -> None:
+def test_sin_multiplicacion_ni_division() -> None:
     from proptech_core.compartido.dinero import Dinero
 
     a = Dinero("1.00")
-    b = Dinero("2.00")
-    with pytest.raises(TypeError):
-        a + b  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        a - b  # type: ignore[operator]
+    for b in (Dinero("2.00"), 2):
+        with pytest.raises(TypeError):
+            a * b  # type: ignore[operator]
+        with pytest.raises(TypeError):
+            a / b  # type: ignore[operator]
 
 
 def test_repr_y_str() -> None:
