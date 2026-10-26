@@ -108,7 +108,7 @@ avisarle a Juani antes.
   chequeo; › El candado no es de sólo agregar; › Tabla futura con FK al libro. Lecciones: L-016, L-018, L-022, L-036, L-041.
   Escenarios adicionales (RC-09): `aislamiento-por-administracion` › La app no amplía el vocabulario.
 
-- [ ] 1.4 **Ensayo de roles y rollback, corridos.** `infra/ci/ensayo-roles.sh`: antes de bajar de `0023`,
+- [x] 1.4 **Ensayo de roles y rollback, corridos.** `infra/ci/ensayo-roles.sh`: antes de bajar de `0023`,
   comprobar como rol de arranque que las seis tablas están vacías y devolver tablas y funciones al
   migrador (Migration Plan, paso 1); corregir el mensaje `ciclo 0018/0016/0018`; ajustar
   `test_ensayo_login.py` a las revisiones nuevas. El test estático deriva la lista de
@@ -526,8 +526,13 @@ auditoría `.git/informes-libro-de-movimientos/10-dba-fase1-parcial.md` y se com
 verdes y mutantes, con comando y salida, en `.git/4b-fase1-logs/` (los de Codex) y
 `.git/4b-fase1-logs/claude/` (los de esta construcción).
 
-- 1.4 queda abierta: el ensayo con un compose aislado se corre al cierre de esta construcción y su
-  salida se pega acá; lo que depende de `0024` pasó a la 4.2 (F1-04).
+- 1.4: `PROPTECH_COMPOSE_PROYECTO=proptech-ensayo-4b bash infra/ci/ensayo-roles.sh` (26/10/2026
+  20:32 -03) terminó en `ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo
+  0023/0016/0023 y origen intacto` y `ESQUEMA RESTAURADO: diff vacío entre esquema_antes.sql y
+  esquema_downgrade.sql` (dumps conservados en `.git/informes-login-bloque-a/3.3-M07Rc9/`). El
+  rojo del script viejo (`must be owner of table cuenta`) es el de Codex,
+  `.git/4b-fase1-logs/ensayo-red.log`. El diff de forma en `0022` lo hace `test_libro_rollback.py`; el
+  ensayo lo hace en `0016`, que es su punto de bajada. Lo que depende de `0024` pasó a la 4.2 (F1-04).
 - Desvíos con su porqué:
   - `0023` suma FK directas a `complejo` en `evento_de_emision`, `obligacion`, `movimiento` e
     `imputacion`: la regla de catálogo de D5 (`test_catalogo_rls`) las exige y no se pueden agregar
