@@ -188,8 +188,9 @@ def _trigger_rechaza_update_como_app(cur: psycopg.Cursor, tabla: str) -> bool:
                 "INSERT INTO configuracion_versionada "
                 "(administracion_id, complejo_id, autor_id, vigente_desde, tasa_mensual, "
                 "dias_de_gracia, forma_de_calculo, porcentaje_fondo, dia_de_vencimiento, "
-                "modalidad_de_vencimiento) VALUES (%s, %s, %s, CURRENT_DATE, '3.00', 0, "
-                "'proporcional_por_dia', '0.00', 10, 'unico')",
+                "modalidad_de_vencimiento, umbral_saldo_chico) "
+                "VALUES (%s, %s, %s, CURRENT_DATE, '3.00', 0, "
+                "'proporcional_por_dia', '0.00', 10, 'unico', '500.00')",
                 (admin, complejo, persona),
             )
         else:

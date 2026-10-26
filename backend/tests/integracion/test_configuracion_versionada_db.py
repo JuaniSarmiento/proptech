@@ -25,6 +25,7 @@ def insertar_version(
         "autor_id": autor,
         "vigente_desde": date(2026, 11, 1),
         "tasa_mensual": "3.00",
+        "umbral_saldo_chico": "500.00",
         "dias_de_gracia": 0,
         "forma_de_calculo": "proporcional_por_dia",
         "porcentaje_fondo": "0.00",

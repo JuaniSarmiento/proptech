@@ -1,34 +1,36 @@
 [
   {
-    "autor_id": "0ce8cd10-37d7-4b36-aa78-6403700ee91b",
+    "autor_id": "c8be731b-c8fd-4e7d-8901-81e131a3bd8e",
     "autor_nombre": "Persona ficticia",
-    "complejo_id": "38e4d3be-595e-4a0d-80c4-c7d7b339ccb0",
-    "creada_en": "2026-10-19T22:06:28.787933Z",
+    "complejo_id": "1e911573-dc9a-47a3-be22-cbe9a25e6720",
+    "creada_en": "2026-10-26T13:49:51.235278Z",
     "dia_de_vencimiento": 10,
     "dia_segundo_vencimiento": null,
     "dias_de_gracia": 0,
     "forma_de_calculo": "proporcional_por_dia",
-    "id": "a9d11235-d97b-4428-90d9-73f9470e8683",
+    "id": "e27c7680-ecf2-41fa-947a-90b4041b5b16",
     "modalidad_de_vencimiento": "unico",
     "porcentaje_fondo": "0.00",
     "recargo_segundo_vencimiento": null,
     "tasa_mensual": "3.00",
-    "vigente_desde": "2026-10-19"
+    "umbral_saldo_chico": "500.00",
+    "vigente_desde": "2026-10-26"
   },
   {
-    "autor_id": "0ce8cd10-37d7-4b36-aa78-6403700ee91b",
+    "autor_id": "c8be731b-c8fd-4e7d-8901-81e131a3bd8e",
     "autor_nombre": "Persona ficticia",
-    "complejo_id": "38e4d3be-595e-4a0d-80c4-c7d7b339ccb0",
-    "creada_en": "2026-10-19T22:06:28.861241Z",
+    "complejo_id": "1e911573-dc9a-47a3-be22-cbe9a25e6720",
+    "creada_en": "2026-10-26T13:49:51.303692Z",
     "dia_de_vencimiento": 10,
     "dia_segundo_vencimiento": null,
     "dias_de_gracia": 5,
     "forma_de_calculo": "proporcional_por_dia",
-    "id": "61b0c00d-965c-4238-81ff-36c2d3ced2f3",
+    "id": "f44e5287-5590-43e2-97c9-35ef98262938",
     "modalidad_de_vencimiento": "unico",
     "porcentaje_fondo": "2.00",
     "recargo_segundo_vencimiento": null,
     "tasa_mensual": "4.00",
-    "vigente_desde": "2026-10-20"
+    "umbral_saldo_chico": "500.00",
+    "vigente_desde": "2026-10-27"
   }
 ]

@@ -14,6 +14,7 @@ const _BASE: VersionDelHistorial = {
   modalidad_de_vencimiento: "unico",
   dia_segundo_vencimiento: null,
   recargo_segundo_vencimiento: null,
+  umbral_saldo_chico: "500.00",
   autor_id: "a1",
   autor_nombre: "Alberto",
   creada_en: "2026-10-19T00:00:00Z",

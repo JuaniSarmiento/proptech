@@ -22,6 +22,7 @@ const V1: VersionDelHistorial = {
   modalidad_de_vencimiento: "unico",
   dia_segundo_vencimiento: null,
   recargo_segundo_vencimiento: null,
+  umbral_saldo_chico: "500.00",
   autor_id: "a1",
   autor_nombre: "Alberto",
   creada_en: "2026-10-19T22:06:28Z",
@@ -159,6 +160,7 @@ describe("PantallaConfiguracion", () => {
           modalidad_de_vencimiento: "doble",
           dia_segundo_vencimiento: 20,
           recargo_segundo_vencimiento: "1.50",
+          umbral_saldo_chico: "500.00",
         }}
         historial={[V1]}
         accionCrear={accionCrear}

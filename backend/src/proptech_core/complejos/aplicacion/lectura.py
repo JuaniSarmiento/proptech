@@ -119,7 +119,8 @@ def cargar_categoria(sesion: Session, categoria_id: UUID) -> dict[str, Any] | No
 _COLUMNAS_CONFIGURACION = (
     "SELECT id, complejo_id, vigente_desde, tasa_mensual::text, dias_de_gracia, "
     "forma_de_calculo, porcentaje_fondo::text, dia_de_vencimiento, modalidad_de_vencimiento, "
-    "dia_segundo_vencimiento, recargo_segundo_vencimiento::text, autor_id, creada_en "
+    "dia_segundo_vencimiento, recargo_segundo_vencimiento::text, "
+    "umbral_saldo_chico::text, autor_id, creada_en "
     "FROM configuracion_versionada WHERE complejo_id=:id "
 )
 
@@ -139,7 +140,7 @@ def listar_versiones(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]
                 "cv.dias_de_gracia, cv.forma_de_calculo, cv.porcentaje_fondo::text, "
                 "cv.dia_de_vencimiento, cv.modalidad_de_vencimiento, "
                 "cv.dia_segundo_vencimiento, cv.recargo_segundo_vencimiento::text, "
-                "cv.autor_id, cv.creada_en, p.nombre AS autor_nombre "
+                "cv.umbral_saldo_chico::text, cv.autor_id, cv.creada_en, p.nombre AS autor_nombre "
                 "FROM configuracion_versionada cv "
                 "JOIN persona p ON p.id = cv.autor_id "
                 "AND p.administracion_id = cv.administracion_id "

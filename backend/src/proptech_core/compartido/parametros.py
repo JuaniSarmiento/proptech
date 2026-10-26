@@ -211,7 +211,12 @@ class Invitaciones(_Base):
     vencimiento_dias: int = Field(ge=1)
 
 
+class CuentaCorriente(_Base):
+    umbral_saldo_chico: _CargoFijo
+
+
 class Parametros(_Base):
+    cuenta_corriente: CuentaCorriente
     version: Literal[1]
     invitaciones: Invitaciones
     intereses: Intereses

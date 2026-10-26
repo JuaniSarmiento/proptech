@@ -942,14 +942,14 @@ Success: no issues found in 7 source files
 
 ## 3. Umbral de saldos chicos (R30, design D8), antes del grupo 5
 
-- [ ] 3.1 **El umbral en `parametros.yaml`.** Sección `cuenta_corriente.umbral_saldo_chico: "500.00"`
+- [x] 3.1 **El umbral en `parametros.yaml`.** Sección `cuenta_corriente.umbral_saldo_chico: "500.00"`
   y su validación. Tests: el archivo del repositorio devuelve 500.00; el umbral faltante, vacío, en
   blanco, `"-0.01"`, con tres decimales, como número YAML, con espacio al principio o salto de línea al
   final falla nombrando `cuenta_corriente.umbral_saldo_chico` sin repetir el valor; `"0.00"` se acepta.
   RED: con el campo declarado y opcional, el archivo sin umbral pasa. Escenarios:
   `parametros-del-sistema` › El archivo del repositorio es válido y tiene los defaults; › Umbral de
   saldos chicos inválido; › Umbral en cero. Lecciones: L-002, L-007, L-008.
-- [ ] 3.2 **Migración `0021`: la columna, el trigger por sentencia, las versiones viejas y su bajada.**
+- [x] 3.2 **Migración `0021`: la columna, el trigger por sentencia, las versiones viejas y su bajada.**
   Tests de integración contra PostgreSQL real, leyendo **como rol de arranque** (como migrador sin tenant
   se comparan dos conjuntos vacíos, DB-3): subir sobre `0020` con versiones cargadas deja cada una en
   "500.00" y ninguna otra columna cambia (fila por fila); el trigger de `UPDATE` no se dispara al subir,
@@ -964,7 +964,7 @@ Success: no issues found in 7 source files
   RED: con `0021` vacía, falla la aserción de la columna. Escenarios: `configuracion-versionada`
   › Versiones anteriores a este cambio; › El umbral no se edita por SQL; `aislamiento-por-administracion`
   › Sentencia sin filas; › Insertar con actualización ante conflicto. Lecciones: L-023, L-018.
-- [ ] 3.3 **El umbral en el dominio, las versiones, el alta del edificio y la API (D-114.1).**
+- [x] 3.3 **El umbral en el dominio, las versiones, el alta del edificio y la API (D-114.1).**
   `ConfiguracionEdificio` con el campo opcional y no negativo; `desde_parametros` lo toma del archivo;
   `crear_version_de_configuracion` hereda el de la versión inmediatamente anterior por `vigente_desde`
   (aunque sea futura) o, si no hay, el de parámetros; `crear_edificio` sin umbral toma el de parámetros;
@@ -978,6 +978,180 @@ Success: no issues found in 7 source files
   `configuracion-versionada` › Versión nueva sin umbral; › Hereda de la anterior por fecha, aunque sea
   futura; › Null explícito; › Primera versión de un edificio nuevo; › Umbral explícito; › Umbral
   inválido. Lecciones: L-027, L-009.
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_api.py
+time: 10:48:45
+            versiones=api.cliente.get(api.ruta("/configuracion/versiones")).json()
+            nueva=next(v for v in versiones if v["vigente_desde"]==fecha)
+>           assert nueva["umbral_saldo_chico"]==esperado
+E           AssertionError: assert '500.00' == '700.00'
+E             
+E             - 700.00
+E             ? ^
+E             + 500.00
+E             ? ^
+
+tests/integracion/test_umbral_api.py:22: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+{"ts": "2026-10-26T13:48:51.390Z", "nivel": "info", "servicio": "api", "logger": "proptech_api.app", "evento": "login_sin_configurar"}
+----------------------------- Captured stdout call -----------------------------
+=================== 1 failed, 11 passed, 1 warning in 6.42s ====================
+```
+
+DESVÍO operativo: `PROPTECH_ACTUALIZAR_FIXTURES=1 bash infra/ci/test-backend.sh tests/integracion/test_contrato_web.py` (10:49:44, 8 passed) genera ocho fixtures en ocho APIs distintas. La suite web detectó IDs de grupos ajenos al padrón (10:50:12, fixtures.test.ts:21, 1 failed / 394 passed). Se conservaron únicamente vigente.json y versiones.json, los dos contratos modificados, generados por la API real; los otros seis se restauraron de HEAD sin retocarlos a mano. No cambia diseño, generador ni pantallas.
+
+```text
+GREEN web
+command: bash infra/ci/test-web.sh
+time: 10:53:41
+Test Files 60 passed (60)
+Tests 395 passed (395)
+command: pnpm biome ci (en web/)
+time: 10:54:35
+Checked 190 files. No fixes applied. Found 7 warnings. exit 0
+command: pnpm tsc --noEmit (en web/)
+time: 10:54:35
+sin salida, exit 0
+```
+
+```text
+GREEN backend
+command: bash infra/ci/test-backend.sh tests/unitarios/test_umbral_parametros.py tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_configuracion_api.py tests/integracion/test_crear_edificio.py tests/integracion/test_catalogo_rls.py tests/integracion/test_contrato_web.py
+time: 10:52:33
+183 passed, 1 warning in 31.81s
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py
+time: 10:54:50 (después de partir literales SQL por formato)
+13 passed, 1 warning
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py
+time: 10:44:39
+            assert len(filas) == 2
+            base.migrar("upgrade","0021")
+>           assert any(col[0] == "umbral_saldo_chico" for col in esquema(c))
+E           assert False
+E            +  where False = any(<generator object test_0021_preserva_filas_y_restauracion.<locals>.<genexpr> at 0x717de3b87030>)
+
+tests/integracion/test_umbral_migracion.py:47: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integracion/test_umbral_migracion.py::test_0021_preserva_filas_y_restauracion
+============================== 1 failed in 3.92s ===============================
+============================== 1 failed in 3.92s ===============================
+```
+
+Baseline 10:43:49: `bash infra/ci/test-backend.sh tests/integracion/test_configuracion_versionada_db.py`, 30 passed. Lectura y comparación explícitas como arranque con dos filas, y sondas también con tabla vacía.
+
+Mutante aplicado con respaldo previo `.git/4a-logs/0021-previa.py`, restaurado byte a byte:
+```diff
+--- respaldo
++++ mutante
+@@ -15,7 +15,8 @@
+ def upgrade() -> None:
+     # Default constante histórico: no UPDATE, ni reescritura de las versiones existentes.
+     op.execute("ALTER TABLE configuracion_versionada ADD COLUMN "
+-               "umbral_saldo_chico NUMERIC(14,2) NOT NULL DEFAULT 500.00")
++               "umbral_saldo_chico NUMERIC(14,2) NULL")
++    op.execute("UPDATE configuracion_versionada SET umbral_saldo_chico = 500.00")
+     op.execute("ALTER TABLE configuracion_versionada ADD CONSTRAINT "
+                "ck_configuracion_umbral CHECK (umbral_saldo_chico >= 0)")
+     op.execute("ALTER TABLE configuracion_versionada ALTER COLUMN umbral_saldo_chico DROP DEFAULT")
+```
+
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py
+time: 10:45:32
+            assert len(filas) == 2
+            base.migrar("upgrade","0021")
+            assert any(col[0] == "umbral_saldo_chico" for col in esquema(c))
+            despues=c.execute("SELECT to_jsonb(v) - 'umbral_saldo_chico', umbral_saldo_chico FROM configuracion_versionada v ORDER BY id").fetchall()
+            assert [f[0] for f in despues] == [f[0] for f in filas]
+>           assert [f[1] for f in despues] == [Decimal("500.00")]*2
+E           AssertionError: assert [None, None] == [Decimal('500...mal('500.00')]
+E             
+E             At index 0 diff: None != Decimal('500.00')
+E             Use -v to get more diff
+
+tests/integracion/test_umbral_migracion.py:50: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integracion/test_umbral_migracion.py::test_0021_preserva_filas_y_restauracion
+============================== 1 failed in 3.91s ===============================
+```
+
+```text
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py
+time: 10:47:31
+E           ^
+E         File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 1192, in do_execute
+E           cursor.execute(statement, parameters)
+E           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+E         File "/home/juanisarmiento/Proyectos/PropTech/backend/.venv/lib/python3.14/site-packages/psycopg/cursor.py", line 117, in execute
+E           raise ex.with_traceback(None)
+E       sqlalchemy.exc.ProgrammingError: (psycopg.errors.RaiseException) configuracion_versionada no admite UPDATE (sólo agregar)
+E       CONTEXT:  PL/pgSQL function public.fn_configuracion_versionada_bloqueada() line 3 at RAISE
+E       [SQL: UPDATE configuracion_versionada SET umbral_saldo_chico = 500.00]
+E       (Background on this error at: https://sqlalche.me/e/21/f405)
+
+tests/integracion/_edificios.py:65: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integracion/test_umbral_migracion.py::test_0021_preserva_filas_y_restauracion
+============================== 1 failed in 3.85s ===============================
+```
+
+El primer mutante como migrador dejó NULL por RLS y cayó en la aserción del contenido. El segundo cambió sólo el entorno de upgrade a arranque (respaldo previo del test `.git/4a-logs/test-0021-previo.py`, restaurado), y reprodujo el RAISE del trigger.
+
+`rg -n "INSERT INTO configuracion_versionada" .` recorrió todo el repo: producción en escritura.py (ajustado 3.3), helper de test_configuracion_versionada_db.py y sonda de test_catalogo_rls.py (ajustados), tabla sintética de dos columnas en test_roles_solo_agregar.py (no afectada), y el nuevo ensayo de migración que omite el umbral a propósito antes de 0021.
+
+```text
+GREEN backend
+command: bash infra/ci/test-backend.sh tests/unitarios/test_umbral_parametros.py tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_configuracion_api.py tests/integracion/test_crear_edificio.py tests/integracion/test_catalogo_rls.py tests/integracion/test_contrato_web.py
+time: 10:52:33
+183 passed, 1 warning in 31.81s
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py
+time: 10:54:50 (después de partir literales SQL por formato)
+13 passed, 1 warning
+```
+
+
+**EVIDENCIA · 26/10/2026 · constructor**
+
+```text
+RED
+command: bash infra/ci/test-backend.sh tests/unitarios/test_umbral_parametros.py
+time: 10:42:58
+        archivo = tmp_path / "parametros.yaml"
+        archivo.write_text(yaml.safe_dump(datos))
+>       with pytest.raises(ParametrosInvalidos) as error:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ParametrosInvalidos
+
+tests/unitarios/test_umbral_parametros.py:22: Failed
+=========================== short test summary info ============================
+FAILED tests/unitarios/test_umbral_parametros.py::test_umbral_invalido[None]
+========================= 1 failed, 9 passed in 0.24s ==========================
+========================= 1 failed, 9 passed in 0.24s ==========================
+```
+
+Baseline 10:42:46: `bash infra/ci/test-backend.sh tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py`, 63 passed. GREEN 10:43:16: mismos archivos más test_umbral_parametros.py, 73 passed.
+
+```text
+GREEN backend
+command: bash infra/ci/test-backend.sh tests/unitarios/test_umbral_parametros.py tests/unitarios/test_parametros.py tests/unitarios/test_parametros_archivo_del_repo.py tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py tests/integracion/test_configuracion_versionada_db.py tests/integracion/test_configuracion_api.py tests/integracion/test_crear_edificio.py tests/integracion/test_catalogo_rls.py tests/integracion/test_contrato_web.py
+time: 10:52:33
+183 passed, 1 warning in 31.81s
+command: bash infra/ci/test-backend.sh tests/integracion/test_umbral_migracion.py tests/integracion/test_umbral_api.py
+time: 10:54:50 (después de partir literales SQL por formato)
+13 passed, 1 warning
+```
 
 ## 4. Auditoría de los cambios del padrón (design D9)
 
