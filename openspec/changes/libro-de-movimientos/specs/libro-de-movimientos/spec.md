@@ -72,13 +72,13 @@ edificio.
 
 #### Scenario: Cuenta sin dueño
 
-- **WHEN** el migrador intenta insertar una cuenta sin unidad ni persona
-- **THEN** la base la rechaza
+- **WHEN** la app con tenant intenta insertar una cuenta sin unidad ni persona
+- **THEN** la base la rechaza con SQLSTATE `23514` por el CHECK
 
 #### Scenario: Cuenta con los dos dueños
 
-- **WHEN** el migrador intenta insertar una cuenta con unidad y con persona
-- **THEN** la base la rechaza
+- **WHEN** la app con tenant intenta insertar una cuenta con unidad y con persona
+- **THEN** la base la rechaza con SQLSTATE `23514` por el CHECK
 
 #### Scenario: Pedir dos veces la cuenta de una unidad
 
@@ -142,8 +142,8 @@ particulares), el fondo de reserva y la extraordinaria de una cuenta en un perí
 
 #### Scenario: Obligación con importe negativo
 
-- **WHEN** el migrador intenta insertar una obligación con ordinaria de -$1,00
-- **THEN** la base la rechaza
+- **WHEN** la app con tenant intenta insertar una obligación con ordinaria de -$1,00
+- **THEN** la base la rechaza con SQLSTATE `23514` por el CHECK
 
 #### Scenario: Capital desglosado
 
