@@ -20,6 +20,49 @@
 
 ---
 
+## El mapa en simple
+
+Por etapas. ✅ terminado · 👉 en marcha · ⏳ pendiente. El detalle, las dependencias exactas y los
+gates están en el árbol de abajo.
+
+```
+1. BASE TÉCNICA ✅
+   1a infraestructura · 1b arranque · 1c cola y logs · 1d respaldos
+
+2. ACCESO ✅
+   2a aislamiento por administración (cada empresa ve sólo lo suyo)
+   2b login con Clerk · 2.2a roles de la empresa · 2c endurecimiento
+
+3. CONFIGURACIÓN DEL EDIFICIO
+   ✅ 3a datos del edificio      ✅ 3b pantallas
+   ✅ acceso de desarrollo (PR #1)
+   👉 3c pulido: bugs + ubicación + pisos  ← en paralelo al 4a
+
+4. LA PLATA (cuenta corriente)
+   👉 4a cimientos: reparto al centavo, umbral de $500
+   ⏳ 4b libro de movimientos (deudas y pagos)
+   ⏳ 4c intereses y moroso
+   ⏳ 4d cambio de titular (va después del 7)
+
+5. CARGAR Y LIQUIDAR
+   ⏳ 5 importar desde Excel       ⏳ 6 gastos y cargos
+   ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
+
+6. COBRAR Y SEGUIR
+   ⏳ 8 pagos informados · 9 extracto bancario · 6b motor de reglas
+   ⏳ 10a morosidad · 10b condonación y libre deuda
+   ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
+   ⏳ 14 lectura de facturas
+
+7. PILOTO
+   ⏳ 15 un edificio real en paralelo  ← el final
+```
+
+- **Orden obligado (camino crítico):** 4a → 4b → 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15.
+- **En paralelo, no frenan a nadie:** 3c, 6, 4d, 6b, 9, 11, 12 y 14.
+- **Numeración:** el número corto (4a, 7, 10b) es el de las fichas de abajo; el código C-xx es el
+  mismo change con otro nombre (4a = C-07a, 7 = C-10).
+
 ## Árbol de dependencias
 
 ```
