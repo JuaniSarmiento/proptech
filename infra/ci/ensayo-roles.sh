@@ -13,7 +13,12 @@ PROPTECH_UID="$(id -u)"
 PROPTECH_GID="$(id -g)"
 export PROPTECH_UID PROPTECH_GID
 
-compose() { docker compose -p proptech "$@"; }
+# El ensayo hace `down -v`: corrido a mano junto a un stack levantado, se le da
+# un proyecto propio (PROPTECH_COMPOSE_PROYECTO=proptech-ensayo ...). Se exporta
+# para que restaurar.sh restaure en el MISMO proyecto, nunca en otro.
+PROYECTO_COMPOSE="${PROPTECH_COMPOSE_PROYECTO:-proptech}"
+export PROPTECH_COMPOSE_PROYECTO="$PROYECTO_COMPOSE"
+compose() { docker compose -p "$PROYECTO_COMPOSE" "$@"; }
 limpiar() {
   local estado=$?
   trap - EXIT
@@ -29,6 +34,18 @@ trap limpiar EXIT
 compose up --build -d --wait
 USUARIO_DB="$(compose exec -T db printenv POSTGRES_USER)"
 BASE_ORIGEN="$(compose exec -T db printenv POSTGRES_DB)"
+MIGRADOR="$(compose run --rm --no-deps -T migraciones printenv POSTGRES_MIGRADOR_USER)"
+# Paso 1 del rollback del Migration Plan (design, D-114.5), como rol de arranque:
+# tras `roles despues` la tabla protegida y su función no son del migrador, y
+# cruzar 0021 en cualquier sentido falla con `must be owner` (RB-1 del 4a).
+devolver_al_migrador() {
+  compose exec -T db psql -U "$USUARIO_DB" -d "$1" -v ON_ERROR_STOP=1 \
+    -v migrador="$MIGRADOR" <<'SQL'
+ALTER TABLE configuracion_versionada OWNER TO :"migrador";
+ALTER FUNCTION fn_configuracion_versionada_bloqueada() OWNER TO :"migrador";
+SQL
+}
+devolver_al_migrador "$BASE_ORIGEN"
 compose run --rm --no-deps migraciones alembic downgrade 0016
 
 # Las dos administraciones y sus dos complejos, como en humo.sh; cinco formas
@@ -151,6 +168,9 @@ bash respaldos/restaurar.sh "$ARCHIVO_DUMP" proptech_restauracion
 # para devolver al migrador la propiedad de las tablas de la base restaurada.
 compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones \
   python -m proptech_core.compartido.roles antes
+# `antes` ya no reasigna las tablas protegidas (D0): la restaurada, que quedó
+# del rol de arranque por --no-owner, se devuelve igual que el origen.
+devolver_al_migrador proptech_restauracion
 conteos proptech_restauracion "$CARPETA_ENSAYO/antes.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/antes.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"

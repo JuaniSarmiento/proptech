@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restaura un backup de PostgreSQL en una base aparte, nunca sobre la base en
-# uso (D9). Corre siempre `docker compose -p proptech` (L-006) y encuentra
+# uso (D9). Corre `docker compose -p proptech` (L-006; ver PROPTECH_COMPOSE_PROYECTO) y encuentra
 # `infra/` por su propia ubicación, sea cual sea la carpeta desde la que se
 # lo llame (M21). Uso: restaurar.sh <archivo> [base_destino]
 set -euo pipefail
@@ -40,8 +40,10 @@ SCRIPT_DIR="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$INFRA_DIR"
 
+# PROPTECH_COMPOSE_PROYECTO: sólo para el ensayo aislado (ensayo-roles.sh), que
+# la exporta; sin ella, siempre `proptech` (L-006).
 compose() {
-  docker compose -p proptech "$@"
+  docker compose -p "${PROPTECH_COMPOSE_PROYECTO:-proptech}" "$@"
 }
 
 # (3) Recién acá se invoca docker: primero la base en uso (un solo
