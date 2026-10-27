@@ -137,15 +137,20 @@ def test_datos_obligatorios_no_conservan_defaults_temporales(
     assert error.value.diag.column_name == campo
 
 
-def test_localidad_es_obligatoria_sin_default_temporal(
+def test_localidad_es_nullable_desde_0023(
     app_edificio: psycopg.Connection, edificios: Edificios
 ) -> None:
-    with pytest.raises(psycopg.errors.NotNullViolation) as error:
-        app_edificio.execute(
-            "INSERT INTO complejo (administracion_id, nombre) VALUES (%s, 'Sin localidad')",
-            (edificios.administracion_a,),
-        )
-    assert error.value.diag.column_name == "localidad"
+    """`complejo.localidad` pasó a nullable y derivada en `0023` (3c, D2):
+    la API deja de aceptarla como entrada y la escribe desde el nombre de
+    Georef al guardar la ubicación (tarea 2.6), pero la base ya no exige
+    que venga en el `INSERT` — antes de 3c esto levantaba
+    `NotNullViolation` (ver el nombre anterior de este test)."""
+    fila = app_edificio.execute(
+        "INSERT INTO complejo (administracion_id, nombre) VALUES (%s, 'Sin localidad') "
+        "RETURNING localidad",
+        (edificios.administracion_a,),
+    ).fetchone()
+    assert fila == (None,)
 
 
 def test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a(

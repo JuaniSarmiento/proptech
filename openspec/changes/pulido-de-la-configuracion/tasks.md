@@ -102,9 +102,54 @@
   `test_ningun_mensaje_repite_el_id_recibido` (las tres que dependen de la comparación de padres, no
   sólo de existencia). Revertido inmediatamente después; `uv run ruff check` + `uv run mypy` → sin
   hallazgos.
-- [ ] 2.4 Migración `0023`: las cuatro columnas de ubicación, el `CHECK` "los tres o ninguno" y
+- [x] 2.4 Migración `0023`: las cuatro columnas de ubicación, el `CHECK` "los tres o ninguno" y
   `complejo.localidad` a nullable; verificar la subida y la bajada sobre una copia con el edificio de
   ejemplo cargado (Migration Plan, paso 1).
+
+  **Migración** en `backend/migraciones/versions/0023_ubicacion_del_edificio.py`. Subida: cuatro
+  columnas nullable + `CHECK ck_complejo_ubicacion_completa_o_vacia` + `localidad` a nullable (sin
+  `UPDATE`, D3/D9: no hace falta tocar filas existentes para agregar columnas nullable). Bajada: con
+  el candado de D9 (`LOCK TABLE complejo ACCESS EXCLUSIVE` → `NO FORCE` → `UPDATE ... localidad=''`
+  → `FORCE`) antes de devolver `localidad` a `NOT NULL` y borrar las cuatro columnas.
+
+  **Hallazgo real (no previsto)**: la suite existente tenía
+  `test_rls_edificio.py::test_localidad_es_obligatoria_sin_default_temporal`, que afirmaba el
+  comportamiento VIEJO (`NotNullViolation` al omitir `localidad`). D2 cambia esto a propósito
+  (`localidad` nullable y derivada): el test se **reescribió** (no se borró) como
+  `test_localidad_es_nullable_desde_0023`, documentando el cambio de contrato en su docstring. Sin
+  este ajuste la suite daba un falso rojo que no era de este change.
+
+  **Tests nuevos**: `backend/tests/integracion/test_ubicacion_db.py` (6 casos: ubicación completa,
+  vacía, las tres combinaciones a medias por `CHECK`, calle sin límite de largo en la base — H-8) y
+  `backend/tests/integracion/test_ubicacion_migracion_multitenant.py` (bajada de `0023` sobre una
+  base sembrada con **dos administraciones distintas**, confirmando que el candado de D9 rellena
+  `localidad=''` en las dos — no sólo en el tenant de turno — y que las columnas se borran).
+
+  **Verde (26/10/2026)**:
+  `bash infra/ci/test-backend.sh tests/integracion/test_ubicacion_db.py
+  tests/integracion/test_ubicacion_migracion_multitenant.py tests/integracion/test_rls_edificio.py`
+  → `32 passed in 36.46s`. Incluye
+  `test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a` (gemelo L-023).
+
+  **Mutante dirigido #1 (`CHECK`, L-035)**: se sacó temporalmente `create_check_constraint` de la
+  subida (y el `drop_constraint` correspondiente de la bajada) — copia temporal, sin commit.
+  Resultado: `3 failed, 3 passed in 11.04s`, cayendo exactamente en los tres casos "a medias" de
+  `test_ubicacion_a_medias_falla_por_check`. Revertido.
+
+  **Mutante dirigido #2 (candado de D9, DBA-1, requisito explícito de esta corrida)**: se sacó
+  temporalmente el `LOCK`/`NO FORCE`/`FORCE` de la bajada, dejando el `UPDATE` corriendo bajo RLS
+  normal — copia temporal, sin commit. Resultado: **la migración misma falla**, no silenciosamente:
+  `sqlalchemy.exc.IntegrityError: NotNullViolation: column "localidad" of relation "complejo"
+  contains null values` en el propio `ALTER TABLE complejo ALTER COLUMN localidad SET NOT NULL` —
+  porque el `UPDATE` sin el candado vio cero filas bajo RLS (exactamente el defecto DB-3/DBA-1 que
+  D9 existe para evitar) y los `NULL` quedaron sin rellenar. Los 2 tests de
+  `test_ubicacion_migracion_multitenant.py` fallan. Revertido; `32 passed` de nuevo tras restaurar.
+
+  `rg "INSERT INTO complejo"` y `rg "INSERT INTO unidad"` en todo el repo (28 y 17 archivos
+  respectivamente, ninguno fuera de `backend/tests/` y `backend/src/.../escritura.py`/`unidades.py`):
+  ningún `INSERT` literal se ve afectado por `0023` porque las cuatro columnas nuevas son nullable y
+  `localidad` sólo se AFLOJA (NOT NULL → nullable), nunca se endurece — un `INSERT` que ya mandaba
+  `localidad` sigue funcionando igual.
 - [ ] 2.5 Tres rutas de lectura de provincias, departamentos de una provincia y localidades de un
   departamento, con sesión, 404 para un padre inexistente y 401 sin sesión; verificado con el test de
   los escenarios "Departamentos de una provincia", "Localidades de un departamento", "Provincia
