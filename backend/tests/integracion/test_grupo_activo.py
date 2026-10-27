@@ -61,9 +61,10 @@ def test_desactivar_generales_da_422(api_edificio: ApiEdificio) -> None:
     generales = next(g for g in api.cliente.get(api.ruta("/grupos")).json() if g["es_generales"])
     r = api.cliente.patch(f"/api/grupos/{generales['id']}", json={"activo": False})
     assert r.status_code == 422
-    assert next(
-        g for g in api.cliente.get(api.ruta("/grupos")).json() if g["es_generales"]
-    )["activo"] is True
+    assert (
+        next(g for g in api.cliente.get(api.ruta("/grupos")).json() if g["es_generales"])["activo"]
+        is True
+    )
 
 
 def test_grupo_desactivado_sin_unidades_no_bloquea_la_puesta_a_punto(

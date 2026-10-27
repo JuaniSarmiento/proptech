@@ -37,9 +37,7 @@ def test_localidad_de_otro_departamento() -> None:
     georef = _georef()
     # Provincia y departamento coherentes (Mendoza/Capital), pero la
     # localidad es de Godoy Cruz, otro departamento de la misma provincia.
-    assert (
-        georef.campo_incoherente(_MENDOZA, _CAPITAL, _LOCALIDAD_GODOY_CRUZ) == "localidad_id"
-    )
+    assert georef.campo_incoherente(_MENDOZA, _CAPITAL, _LOCALIDAD_GODOY_CRUZ) == "localidad_id"
 
 
 def test_departamento_de_otra_provincia() -> None:

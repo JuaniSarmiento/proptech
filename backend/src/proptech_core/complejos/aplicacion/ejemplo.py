@@ -72,6 +72,7 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 #: que el entorno diga explícitamente que es una máquina de desarrollo.
 ENTORNO_DE_DESARROLLO = "desarrollo"
 
+
 def _ruta_georef_por_defecto() -> Path:
     base = Path(Configuracion().proptech_parametros).resolve().parent
     return base / "georef"
@@ -396,9 +397,7 @@ def _main(argv: list[str]) -> int:
     parametros = leer_parametros(configuracion.proptech_parametros)
     try:
         georef = leer_georef(str(_ruta_georef_por_defecto()))
-        semilla = leer_semilla(
-            args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef
-        )
+        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef)
     except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
         print(str(error), file=sys.stderr)
         return 1

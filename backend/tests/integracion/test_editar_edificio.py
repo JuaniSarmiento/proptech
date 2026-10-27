@@ -15,9 +15,7 @@ def test_corregir_la_localidad(api_edificio: ApiEdificio) -> None:
     api_edificio.como("super_admin")
     anterior = api_edificio.cliente.get(api_edificio.ruta()).json()
     assert anterior["localidad"] == "Mendoza"
-    respuesta = api_edificio.cliente.patch(
-        api_edificio.ruta(), json={"localidad_id": "5000701001"}
-    )
+    respuesta = api_edificio.cliente.patch(api_edificio.ruta(), json={"localidad_id": "5000701001"})
     assert respuesta.status_code == 200, respuesta.text
     edificio = api_edificio.cliente.get(api_edificio.ruta()).json()
     assert edificio["nombre"] == anterior["nombre"]
@@ -116,9 +114,7 @@ def test_bajar_pisos_con_unidades_arriba_da_422_con_identificadores(
     assert respuesta.status_code == 422
     assert respuesta.json()["detail"][0]["loc"] == ["body", "pisos"]
     assert "4A-bajar" in str(respuesta.json())
-    assert (
-        api_edificio.cliente.get(api_edificio.ruta()).json()["pisos"] == 4
-    )
+    assert api_edificio.cliente.get(api_edificio.ruta()).json()["pisos"] == 4
 
 
 def test_bajar_subsuelos_con_cocheras_abajo_da_422_con_identificadores(
@@ -194,9 +190,7 @@ def test_edicion_sin_cambios_no_deja_auditoria(api_edificio: ApiEdificio) -> Non
     """Escenario "Edición sin cambios"."""
     api_edificio.como("super_admin")
     actual = api_edificio.cliente.get(api_edificio.ruta()).json()
-    respuesta = api_edificio.cliente.patch(
-        api_edificio.ruta(), json={"nombre": actual["nombre"]}
-    )
+    respuesta = api_edificio.cliente.patch(api_edificio.ruta(), json={"nombre": actual["nombre"]})
     assert respuesta.status_code == 200
     filas = api_edificio.filas(
         "SELECT accion FROM auditoria WHERE entidad_id=%s AND accion='editar_edificio'",
@@ -209,8 +203,7 @@ def test_explain_de_la_consulta_de_unidades_fuera_de_rango(api_edificio: ApiEdif
     """Evidencia de la tarea 3.5: el `EXPLAIN` de la consulta que busca
     unidades fuera de rango entra por `uq_unidad_identificador`."""
     filas = api_edificio.filas(
-        "EXPLAIN SELECT identificador, piso FROM unidad "
-        "WHERE complejo_id=%s AND piso IS NOT NULL",
+        "EXPLAIN SELECT identificador, piso FROM unidad WHERE complejo_id=%s AND piso IS NOT NULL",
         (str(api_edificio.edificio),),
     )
     plan = "\n".join(f[0] for f in filas)

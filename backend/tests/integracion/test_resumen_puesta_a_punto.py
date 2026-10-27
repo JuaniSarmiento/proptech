@@ -182,9 +182,7 @@ def test_unidad_migrada_con_el_piso_sin_completar(
     completa pero una unidad con el piso sin completar."""
     edificio = crear(sesion_edificio, identidad_edificio)
     unidad_id = alta_unidad(sesion_edificio, identidad_edificio, edificio)
-    sesion_edificio.execute(
-        text("UPDATE unidad SET piso=NULL WHERE id=:id"), {"id": unidad_id}
-    )
+    sesion_edificio.execute(text("UPDATE unidad SET piso=NULL WHERE id=:id"), {"id": unidad_id})
     resumen = lectura.resumen_edificio(sesion_edificio, edificio, _HOY)
     assert resumen["pasos"]["ubicacion"] == "falta"
     assert resumen["unidades_sin_piso_completo"] == 1

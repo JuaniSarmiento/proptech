@@ -110,7 +110,7 @@ def _leer_lista_json(ruta: Path) -> list[dict[str, object]]:
         raise GeorefInvalido(f"archivo vacío: {ruta.name}")
     try:
         datos = json.loads(contenido.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except json.JSONDecodeError, UnicodeDecodeError:
         raise GeorefInvalido(f"archivo mal formado o truncado: {ruta.name}") from None
     if not isinstance(datos, list):
         raise GeorefInvalido(f"el archivo debe ser una lista de registros: {ruta.name}")

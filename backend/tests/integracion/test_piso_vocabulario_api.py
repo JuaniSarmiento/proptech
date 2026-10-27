@@ -3,8 +3,6 @@ EDIFICIO (`PB`, `SS1..SS<subsuelos>`, `1..<pisos>`), no sólo contra la forma
 que el `CHECK` de la base puede expresar. El edificio del fixture
 `api_edificio` tiene 4 pisos y 1 subsuelo (`conftest.py`)."""
 
-from sqlalchemy import text
-
 from ._api_edificios import ApiEdificio
 
 UNIDAD = {
@@ -33,7 +31,8 @@ def test_piso_que_el_edificio_no_tiene_da_422_sin_el_valor(api_edificio: ApiEdif
 def test_piso_como_texto_libre_da_422(api_edificio: ApiEdificio) -> None:
     """Escenario "Piso como texto libre"."""
     api_edificio.como("editar")
-    for piso in ("Entrepiso", "pb", " 1", "1°", "SS", "١"):
+    # U+0661 es un dígito arábigo-índico a propósito: `isdigit()` lo acepta y el vocabulario no.
+    for piso in ("Entrepiso", "pb", " 1", "1°", "SS", "\u0661"):
         respuesta = api_edificio.cliente.post(
             api_edificio.ruta("/unidades"), json={**UNIDAD, "piso": piso}
         )
@@ -57,7 +56,8 @@ def test_piso_dentro_del_vocabulario_se_acepta(api_edificio: ApiEdificio) -> Non
     api_edificio.como("editar")
     for piso in ("PB", "SS1", "1", "4"):
         respuesta = api_edificio.cliente.post(
-            api_edificio.ruta("/unidades"), json={**UNIDAD, "identificador": f"libre-{piso}", "piso": piso}
+            api_edificio.ruta("/unidades"),
+            json={**UNIDAD, "identificador": f"libre-{piso}", "piso": piso},
         )
         assert respuesta.status_code == 201, respuesta.json()
         assert respuesta.json()["piso"] == piso
@@ -66,9 +66,7 @@ def test_piso_dentro_del_vocabulario_se_acepta(api_edificio: ApiEdificio) -> Non
 def test_editar_piso_fuera_del_vocabulario_da_422(api_edificio: ApiEdificio) -> None:
     api_edificio.como("editar")
     unidad_id = api_edificio.unidad
-    respuesta = api_edificio.cliente.patch(
-        f"/api/unidades/{unidad_id}", json={"piso": "Entrepiso"}
-    )
+    respuesta = api_edificio.cliente.patch(f"/api/unidades/{unidad_id}", json={"piso": "Entrepiso"})
     assert respuesta.status_code == 422
     assert respuesta.json()["detail"][0]["loc"] == ["body", "piso"]
 
@@ -85,7 +83,7 @@ def test_el_piso_no_se_sale_del_vocabulario_por_sql(api_edificio: ApiEdificio) -
             conexion.execute(
                 "UPDATE unidad SET piso = 'Entrepiso' WHERE id = %s", (str(api_edificio.unidad),)
             )
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:
             assert "ck_unidad" in str(error).lower() or "check" in str(error).lower()
         else:
             raise AssertionError("la base aceptó un piso fuera del vocabulario por SQL")

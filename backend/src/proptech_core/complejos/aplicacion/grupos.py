@@ -199,10 +199,14 @@ def crear_grupo(
     except ValidationError as error:
         raise error_de_validacion(error) from None
     if entrada.clave is None:
-        existentes = sesion.execute(
-            text("SELECT clave FROM grupo_de_reparto WHERE complejo_id=:id"),
-            {"id": complejo_id},
-        ).scalars().all()
+        existentes = (
+            sesion.execute(
+                text("SELECT clave FROM grupo_de_reparto WHERE complejo_id=:id"),
+                {"id": complejo_id},
+            )
+            .scalars()
+            .all()
+        )
         clave_derivada = derivar_clave(entrada.nombre, existentes)
         if clave_derivada is None:
             raise EntradaInvalida("nombre", "no se puede derivar una clave")
