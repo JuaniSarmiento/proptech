@@ -43,7 +43,9 @@ contador, auxiliar y consejo sólo leen dentro del suyo.
 ### HU-A1 · Configurar el edificio
 
 Como administrador, quiero configurar las reglas de mi edificio (intereses, grupos de reparto,
-categorías de gasto, fondo de reserva) para que el sistema liquide como dice su reglamento.
+categorías de gasto, fondo de reserva) **y sus datos** (ubicación, calle, cantidad de pisos y
+subsuelos) para que el sistema liquide como dice su reglamento y para que cada unidad elija su piso de
+una lista real, no de texto libre.
 
 **Criterios de aceptación**:
 - Dado un edificio nuevo, cuando lo creo como super admin, entonces arranca con los valores del archivo de
@@ -57,13 +59,34 @@ categorías de gasto, fondo de reserva) para que el sistema liquide como dice su
   ya emitida no cambie se prueba en el cambio 7, que es el que emite.*
 - Dado un edificio, cuando configuro el interés, entonces queda un único vencimiento con interés
   simple (R03).
+- **Ubicación del edificio (3c, D1, D2, D-121)**: dado el alta o la edición del edificio, cuando elijo
+  provincia, entonces la lista de departamentos se filtra a esa provincia, y al elegir departamento, la
+  de localidades se filtra a ese departamento (listas encadenadas); cambiar una lista de arriba vacía
+  las de abajo, nunca deja un trío incoherente en pantalla. La calle y el número son texto libre, sin
+  validar contra ningún dataset (P62). El servidor es la autoridad: un trío que no exista en el archivo
+  de Georef se rechaza aunque el pedido venga armado a mano, aunque la web lo deje pasar.
+- **Pisos y subsuelos (3c, D3, D-121)**: dado el alta o la edición del edificio, cuando fijo la
+  cantidad de pisos (1 a 60) y de subsuelos (0 a 5), entonces el vocabulario de piso de cada unidad
+  pasa a ser exactamente `SS1`…`SS<subsuelos>`, `PB` y `1`…`<pisos>`; si intento bajar la cantidad con
+  unidades cargadas por encima del nuevo máximo, el pedido se rechaza nombrando cuáles.
+- **Editar el edificio (3c, D5, D-121)**: dado un edificio ya creado, cuando el administrador (o el
+  super admin) corrige su ubicación, calle, pisos o subsuelos, entonces el cambio se guarda, queda
+  auditado con los **nombres** de los campos cambiados (nunca otros valores) y un pedido que no cambia
+  nada no deja registro. Antes del 3c esta edición **no existía** (sólo había alta).
+- **Edificios ya cargados (3c, E3, D-121)**: dado un edificio creado antes del 3c, cuando entro a su
+  puesta a punto, entonces veo "ubicación" como paso pendiente (antes de los seis que ya tenía el 3b) y
+  completarla no inventa ningún valor: arranca en blanco.
 - *Pendiente, no es criterio todavía*: el esquema de primer y segundo vencimiento con recargo
   escalonado (R26) entra acá si Alberto confirma que el piloto lo usa (ProTecc G4, Q9).
 
-**Construido** (3b, `pantallas-del-edificio`): desde el navegador, sin `curl`, "Mis edificios"
-(crear el edificio, sólo super admin), "Resumen" (el checklist de puesta a punto y "listo para
-liquidar", calculados por la API), "Padrón de unidades", "Grupos de reparto", "Categorías de gasto" e
-"Intereses y vencimiento" (cambiar la tasa o el fondo de reserva, con la versión anterior conservada).
+**Construido** (3b `pantallas-del-edificio`, ampliado por 3c `pulido-de-la-configuracion`): desde el
+navegador, sin `curl`, "Mis edificios" (crear el edificio con su ubicación, calle y pisos, sólo super
+admin), "Resumen" (el checklist de puesta a punto con siete pasos y "listo para liquidar", calculados
+por la API, con el botón "Editar" que abre el formulario completo), "Padrón de unidades" (el piso de
+cada unidad elegido de la lista del edificio, con "Sin completar" explícito para una unidad migrada sin
+piso elegido), "Grupos de reparto" (desactivar/reactivar, sin clave a mano), "Categorías de gasto"
+(sin clave a mano) e "Intereses y vencimiento" (cambiar la tasa o el fondo de reserva, con la versión
+anterior conservada).
 
 **Reglas relacionadas**: R01, R02, R03, R15, R16 (R26, propuesta, a confirmar).
 
@@ -85,6 +108,13 @@ por período con su vencimiento) para no tipearlo a mano.
   cada unidad que no coincide con su diferencia, aunque el total dé igual (R09).
 - Dadas diferencias, cuando las acepto igual, entonces la aceptación queda registrada y recién ahí
   puedo confirmar los saldos.
+- **Qué acepta la columna "piso" (3c, borde fijado para el importador del cambio 5, D3, D-121)**: el
+  3c **no construye** el importador, pero fija el contrato que su columna "piso" va a tener que
+  respetar: exactamente el vocabulario del edificio destino (`SS1`…`SS<subsuelos>`, `PB`,
+  `1`…`<pisos>`), coincidencia completa, sin recortar espacios ni traducir variantes ("Entrepiso",
+  "planta alta", "1°") — eso es **BREAKING** respecto de lo que `unidad.piso` aceptaba como texto libre
+  antes del 3c. Una fila con un piso fuera de ese vocabulario, o con una celda vacía, se trata igual que
+  cualquier otro error de fila de esta historia: no se carga nada y se informa cuál.
 
 **Reglas relacionadas**: R09.
 

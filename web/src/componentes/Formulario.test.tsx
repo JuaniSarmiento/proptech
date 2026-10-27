@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { useActionState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
-import { Campo, Formulario } from "./Formulario";
+import { Campo, CampoDeLista, Formulario } from "./Formulario";
 
 afterEach(cleanup);
 
@@ -66,6 +66,29 @@ describe("Formulario", () => {
     const enlace = screen.getByRole("link", {
       name: "Ya existe una unidad con este identificador",
     });
+    await usuario.click(enlace);
+    expect(document.activeElement).toBe(campo);
+  });
+
+  it("D7 (6.0): CampoDeLista marca aria-invalid/aria-describedby igual que Campo, y el resumen la enlaza", async () => {
+    const usuario = userEvent.setup();
+    render(
+      <Formulario erroresPorCampo={{ provincia_id: "Elegí una provincia." }}>
+        <CampoDeLista nombre="provincia_id" etiqueta="Provincia" name="provincia_id">
+          <option value="">Elegí una provincia</option>
+          <option value="50">Mendoza</option>
+        </CampoDeLista>
+      </Formulario>,
+    );
+    const campo = screen.getByLabelText("Provincia");
+    expect(campo.tagName).toBe("SELECT");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    const idDescriptor = campo.getAttribute("aria-describedby");
+    expect(idDescriptor).toBeTruthy();
+    expect(document.getElementById(idDescriptor as string)?.textContent).toBe(
+      "Elegí una provincia.",
+    );
+    const enlace = screen.getByRole("link", { name: "Elegí una provincia." });
     await usuario.click(enlace);
     expect(document.activeElement).toBe(campo);
   });

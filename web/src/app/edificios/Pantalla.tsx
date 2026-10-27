@@ -24,6 +24,7 @@ import { Campo, Formulario } from "../../componentes/Formulario";
 import { MenuDelEdificio } from "../../componentes/MenuDelEdificio";
 import { Panel } from "../../componentes/Panel";
 import { PanelLateral } from "../../componentes/PanelLateral";
+import { SelectorDeUbicacion } from "../../componentes/SelectorDeUbicacion";
 import { textoEstadoDeMigracion } from "../../lib/textoDeEstados";
 import { seccionesDeLaAdministracion } from "../personal/secciones";
 import { AYUDA_MIS_EDIFICIOS } from "./ayuda";
@@ -31,7 +32,7 @@ import { AYUDA_MIS_EDIFICIOS } from "./ayuda";
 export type EdificioConEstado = {
   id: string;
   nombre: string;
-  localidad: string;
+  localidad: string | null;
   cantidadUnidades: number | null;
   estadoCoeficientes: string | null;
   diferencia: string | null;
@@ -120,7 +121,9 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
                   <a href={`/edificios/${edificio.id}`} className="lista-de-edificios__nombre">
                     {edificio.nombre}
                   </a>
-                  <span className="lista-de-edificios__localidad">{edificio.localidad}</span>
+                  <span className="lista-de-edificios__localidad">
+                    {edificio.localidad ?? "Sin completar"}
+                  </span>
                 </div>
                 <div className="lista-de-edificios__dato lista-de-edificios__unidades">
                   <span className="lista-de-edificios__rotulo">Unidades</span>
@@ -150,7 +153,7 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
                   {edificio.listoParaLiquidar ? (
                     <p>Listo para liquidar</p>
                   ) : typeof edificio.pasosHechos === "number" ? (
-                    <BarraDeProgreso hechos={edificio.pasosHechos} total={6} />
+                    <BarraDeProgreso hechos={edificio.pasosHechos} total={7} />
                   ) : (
                     <p>Sin datos</p>
                   )}
@@ -174,7 +177,26 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
           action={enviar}
         >
           <Campo nombre="nombre" etiqueta="Nombre" name="nombre" required />
-          <Campo nombre="localidad" etiqueta="Localidad" name="localidad" required />
+          <SelectorDeUbicacion />
+          <Campo nombre="calle_y_numero" etiqueta="Calle y número" name="calle_y_numero" />
+          <Campo
+            nombre="pisos"
+            etiqueta="Pisos"
+            name="pisos"
+            type="number"
+            min={1}
+            max={60}
+            required
+          />
+          <Campo
+            nombre="subsuelos"
+            etiqueta="Subsuelos"
+            name="subsuelos"
+            type="number"
+            min={0}
+            max={5}
+            required
+          />
           <button type="submit" className="boton-principal">
             Crear edificio
           </button>

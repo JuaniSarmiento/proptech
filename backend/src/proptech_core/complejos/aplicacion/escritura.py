@@ -447,6 +447,8 @@ def editar_edificio(
                 raise EntradaInvalida(
                     campo,
                     "quedarían unidades fuera de rango: " + ", ".join(fuera_de_rango),
+                    tipo="fuera_de_rango",
+                    identificadores=fuera_de_rango,
                 )
         sesion.execute(
             text(

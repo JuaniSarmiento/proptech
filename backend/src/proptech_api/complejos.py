@@ -76,18 +76,14 @@ async def manejar_error_de_complejos(_request: Request, error: Exception) -> JSO
     if isinstance(error, Conflicto):
         return JSONResponse(status_code=409, content={"detail": "conflicto", "campo": error.campo})
     if isinstance(error, EntradaInvalida):
-        return JSONResponse(
-            status_code=422,
-            content={
-                "detail": [
-                    {
-                        "loc": ["body", *error.campo.split(".")],
-                        "msg": error.motivo,
-                        "type": "value_error",
-                    }
-                ]
-            },
-        )
+        item: dict[str, object] = {
+            "loc": ["body", *error.campo.split(".")],
+            "msg": error.motivo,
+            "type": error.tipo,
+        }
+        if error.identificadores is not None:
+            item["identificadores"] = error.identificadores
+        return JSONResponse(status_code=422, content={"detail": [item]})
     raise TypeError("error de complejos inesperado")
 
 

@@ -75,7 +75,7 @@ def _parametros() -> Parametros:
 
 
 def _semilla() -> Semilla:
-    return leer_semilla(str(_SEMILLA), _parametros())
+    return leer_semilla(str(_SEMILLA), _parametros(), _georef())
 
 
 def _georef() -> Georef:
@@ -248,7 +248,7 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
         tercera = ejemplo.cargar(
             fabrica,
             parametros=parametros_nuevos,
-            semilla=leer_semilla(str(_SEMILLA), parametros_nuevos),
+            semilla=leer_semilla(str(_SEMILLA), parametros_nuevos, _georef()),
             georef=_georef(),
             request_id=uuid4(),
         )

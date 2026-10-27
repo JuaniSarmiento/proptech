@@ -102,11 +102,24 @@ mercado de arranque es **Mendoza**.
   el umbral de R30 por versión de configuración (`0021`); siete eventos del padrón auditados (`0022`);
   deuda D-053 cerrada. Firmó Juani E1 a E8. **OK**; deuda en la ficha 4 de
   `knowledge-base/12_fichas_de_changes.md` ("4a · deuda del cierre").
+- **Cambio 3c `pulido-de-la-configuracion` construido y firmado** (27/10/2026, HIGH, D-121): los
+  hallazgos del QA del 23/10/2026 (errores de formulario en su campo, ayudas de identificador,
+  coeficiente y clave, confirmar "Quitar" en Personal, la nota de `/privacidad`); la **ubicación** del
+  edificio con listas encadenadas provincia/departamento/localidad desde un archivo de Georef en el
+  repo (CC BY 4.0) y `PATCH /complejos/{id}` para editarla; la **cantidad de pisos y subsuelos** del
+  edificio y `unidad.piso` acotado a ese vocabulario; grupos de reparto desactivables (nunca
+  borrables, como las categorías) y clave autogenerada desde el nombre. Tres migraciones nuevas
+  (`0023` a `0025`). Firmado por Emiliano Caceres el 26/10/2026. **Falta sólo la tarea 7.1**
+  (recorrido manual de cada pantalla, a 1280 px y 320 px, con teclado y capturas) antes de archivar,
+  a cargo del humano. Deuda del cierre en la ficha 3c de `knowledge-base/12_fichas_de_changes.md`.
+  **Quedó fuera del 3c, para un change de acceso propio y futuro (CRITICAL, P68)**: la invitación
+  abierta con la sesión de otra cuenta (B-3), el menú que no se adapta al rol (2.3), reinvitar el
+  mismo email (2.4), `/personal` jerárquica (2.5/P66, D-120) y el **loop infinito en
+  `/elegir-administracion?regreso=...`** encontrado en el recorrido 7.1 del 27/10/2026. Los cinco
+  comparten el mismo motivo: tocarlos sube el change entero a CRITICAL.
 - **Próximo**: **4b `libro-de-movimientos`** (CRITICAL; P56 lo bloquea), después 4c
-  `intereses-saldo-inicial-y-moroso` y 4d `cambio-de-titular` (los dos CRITICAL). En paralelo, fuera
-  del camino crítico, el 3c `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la
-  ubicación del edificio con listas encadenadas y la cantidad de pisos; y el 6 si no escribe en el
-  libro.
+  `intereses-saldo-inicial-y-moroso` y 4d `cambio-de-titular` (los dos CRITICAL); y el 6 si no escribe
+  en el libro.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -117,11 +130,12 @@ mercado de arranque es **Mendoza**.
   plata (P42), el contenido derivado de ProTecc (P43), la licencia (P44), las entrevistas a
   administradores (P45) y los nombres propios en el repo (P46), ramas o turnos con dos desarrolladores
   (P47), doble factor para el personal (P49) y borrar el usuario de Clerk al quitar la última
-  asignación (P50); las del 4 partido (P51 a P56 para Juani, P57 a P60 para Alberto) y las del 3c
-  (P61 a P69: ubicación, pisos, `/personal` jerárquica, cuentas de Mailinator, alcance de acceso y
-  grupos). P48 resuelta en D-099 (selector). P18 conserva D-096, acotado por D-108 a "única
-  por administración"; la matriz de P23 fue reemplazada por D-106. P12 quedó cerrada para
-  autenticación en D-107; sigue abierta para la base de negocio.
+  asignación (P50); las del 4 partido (P51 a P56 para Juani, P57 a P60 para Alberto) y P70 (mapa
+  interactivo de ubicación, sin fecha). P48 resuelta en D-099 (selector); P61 a P69 (ubicación, pisos,
+  `/personal` jerárquica, cuentas de Mailinator, alcance de acceso y grupos) resueltas en D-121 y
+  D-120 al cerrar el 3c. P18 conserva D-096, acotado por D-108 a "única por administración"; la matriz
+  de P23 fue reemplazada por D-106. P12 quedó cerrada para autenticación en D-107; sigue abierta para
+  la base de negocio.
 
 ## Stack Tecnológico
 
@@ -221,10 +235,11 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026), 2.2a `roles-de-la-empresa`
   (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
   (24/10/2026, D-110, D-111) y 4a `cimientos-del-libro` (26/10/2026, D-119).
-- **Siguen, en paralelo**: el 4b `libro-de-movimientos` (CRITICAL, por proponer) y el 3c
-  `pulido-de-la-configuracion` (HIGH, por proponer, lo propone Emiliano desde su exploración del
-  26/10/2026). Las migraciones del 3c van después de las del 4a (`0021`, `0022`). La numeración 3c y 4a
-  a 4d no renumera los demás changes (precedente D-097).
+- **Construido y firmado, falta sólo archivar**: 3c `pulido-de-la-configuracion` (27/10/2026, HIGH,
+  D-121; firmado por Emiliano Caceres el 26/10/2026) — pendiente únicamente la tarea 7.1 (recorrido
+  manual a cargo del humano). Sus migraciones (`0023` a `0025`) van después de las del 4a (`0021`,
+  `0022`); la numeración 3c y 4a a 4d no renumera los demás changes (precedente D-097).
+- **Sigue**: el 4b `libro-de-movimientos` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.
@@ -309,12 +324,3 @@ El informe "Discovery Kooris Mendoza" (octubre de 2026, fuera del repo). **Koori
 proyecto** (D-035), así que el informe aplica directo: ~150 barrios y ~20 administradores en la
 Cámara de Mendoza, 75.124 departamentos ocupados en el Gran Mendoza (Censo 2022), líderes
 nacionales a ARS 2.950 por unidad, **AccessIN** como competidor mendocino en barrios.
-
-## Hallazgos de QA manual (23/10/2026)
-
-El barrido de QA manual del 23/10/2026 sobre las pantallas del edificio (3 bugs, 6 gaps de UX y
-validación, el menú que no se adapta a los cinco roles, reinvitar el mismo email y la sugerencia de
-`/personal` jerárquica) es backlog del change **3c `pulido-de-la-configuracion`**: cada ítem, con su
-lugar en el código y cómo reproducirlo, está en `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`
-y la ficha §3c de `knowledge-base/12_fichas_de_changes.md`. La matriz de permisos vive en D-106 y en
-`knowledge-base/03_actores_y_roles.md`; el gotcha de Clerk con emails que dicen "admin", en L-040.

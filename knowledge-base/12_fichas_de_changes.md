@@ -455,47 +455,77 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a, 3b, 2.2a y 2b (D10, D11, E11, E12). **Habilita**: recorrido con datos de ejemplo,
   nunca datos personales reales.
 
-### 3c · `pulido-de-la-configuracion` · HIGH · por proponer
+### 3c · `pulido-de-la-configuracion` · HIGH · firmado y construido (27/10/2026, D-121)
 
 - **Objetivo**: que un administrador configure su edificio sin tropezar: cada error en el campo que
   corresponde y diciendo qué se espera, la ubicación elegida de listas oficiales y el piso de cada
   unidad elegido de los pisos que tiene el edificio.
-- **Origen**: el QA manual del 23/10/2026 (antes en `CLAUDE.md`) y dos pedidos de Juani del
-  26/10/2026 (ubicación con listas encadenadas y cantidad de pisos). Exploración completa, con cada
-  ítem ubicado en el código: `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`.
-- **Historias**: HU-A1 (configurar el edificio); toca HU-A2 por la columna "piso" del Excel.
-- **Entra**: los errores de intereses y vencimiento (B-1: el conflicto de "Rige desde" termina en el
-  mensaje genérico; B-2: error atribuido a "Tasa mensual"); ayudas y mensajes de identificador,
-  coeficiente y clave de grupos y categorías (G-1 a G-3); confirmación de "Quitar" en Personal (G-4);
-  la nota interna de `/privacidad` (G-5, sin tocar los datos legales); sacar un grupo de uso (G-6);
-  la **ubicación** del edificio con provincia, departamento y localidad encadenados desde un archivo de
-  Georef guardado en el repo (CC BY 4.0), validada en el backend; **editar el edificio** (hoy no
-  existe); la **cantidad de pisos** del edificio y `unidad.piso` elegido de esa lista; la migración de
-  los edificios y unidades ya cargados.
-- **No entra** (salvo que Juani lo decida en P68, y entonces el change pasa a CRITICAL): la invitación
-  abierta con la sesión de otra cuenta (B-3), el menú que se adapta al rol, reinvitar el mismo email y
-  `/personal` jerárquica (P66). Todo eso es dominio de acceso. Tampoco entra nada de plata ni
-  `configuracion_versionada` (desde el 4a es del rol de arranque).
-- **Gobernanza propuesta**: HIGH, porque toca el esquema de `complejo` y `unidad` y migra datos.
-  Firma un firmante de D-111 (Juani, Alberto o Emiliano) en la sección "Aprobación".
-- **Bloqueado por**: P61 a P65 (ubicación y pisos) y P68 (alcance); P69 para los grupos.
-- **Choques con el 4a**: el 4a usa las migraciones `0021` y `0022` y toca `unidades.py` (auditoría de
-  `editar_unidad`) y el vocabulario de auditoría; las migraciones del 3c se numeran después y se rebasa
-  sobre el 4a si se mergea antes.
-- **Que intente romper el rompedor**: una localidad de otro departamento o de otra provincia mandada
-  por API; un id de Georef que no existe; un piso fuera de la lista; bajar la cantidad de pisos con
-  unidades cargadas arriba; un edificio viejo con `localidad` en texto que no matchea nada; la
-  migración bajada y vuelta a subir con datos; dos versiones de configuración con el mismo "Rige
-  desde"; la clave `Pileta`, `pileta-1` y `1pileta`; "Quitar" con teclado sin confirmar.
-- **Terminado cuando**: cada hallazgo que entra tiene un test que falla sin el arreglo; cada error de
-  formulario aparece en su campo, asociado por programa, con lo que se espera; la ubicación y el piso
-  se eligen de listas y el backend rechaza lo que no está en ellas; las migraciones tienen bajada
-  probada sobre una copia con datos; cada pantalla tocada se recorre entera con teclado y a 320 px sin
-  scroll horizontal, con capturas y el paso de vinculación de la cuenta de Clerk escrito (L-039), lo
-  que salda también la deuda del PR #1 de `acceso-de-desarrollo`.
-- **Revisores**: QA siempre; DBA y frontend seguro; backend por los endpoints nuevos.
-- **Depende de**: 3a, 3b y 2b (archivados). En paralelo al 4a. **Habilita**: la columna "piso" del
-  importador (5) y un alta de edificio presentable para el piloto (15).
+- **Origen**: el QA manual del 23/10/2026 (antes en `CLAUDE.md`/`AGENTS.md`, migrado a esta ficha y a
+  `10_preguntas_abiertas.md` al cerrar) y dos pedidos de Juani del 26/10/2026 (ubicación con listas
+  encadenadas y cantidad de pisos). Exploración completa, con cada ítem ubicado en el código:
+  `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`.
+- **Historias**: HU-A1 (configurar el edificio); HU-A2 por el borde de la columna "piso" del Excel
+  (el importador en sí no se construye acá, cambio 5).
+- **Construido**: los errores de intereses y vencimiento (B-1: el conflicto de "Rige desde" deja de
+  caer en el mensaje genérico; B-2: reproducido primero con un test en rojo antes de tocar código, D6);
+  ayudas y mensajes de identificador, coeficiente y clave de grupos y categorías (G-1 a G-3);
+  confirmación de "Quitar" en Personal con el diálogo de `PanelLateral` (G-4, D10); la nota interna de
+  `/privacidad` reemplazada por un texto para el usuario (G-5, los datos legales siguen pendientes de
+  Juani, D-108); un grupo se desactiva en vez de borrarse y la clave de grupos y categorías se
+  autogenera desde el nombre (G-6, E6); la **ubicación** del edificio (provincia, departamento y
+  localidad encadenados desde el archivo de Georef en el repo, CC BY 4.0, D1); `PATCH /complejos/{id}`
+  para **editar el edificio**, que no existía (D5); la **cantidad de pisos y subsuelos** del edificio y
+  `unidad.piso` acotado a ese vocabulario (D3); la migración de los edificios y unidades ya cargados,
+  sin inventar ningún valor (E3, E5); el edificio de ejemplo con ubicación real de Georef y pisos (6.5).
+  Tres migraciones nuevas: `0023` (ubicación), `0024` (pisos/subsuelos y `unidad.piso`), `0025` (grupo
+  desactivable y el evento de auditoría `editar_edificio`).
+- **Quedó fuera** (P68, D-121), para un change de acceso propio y futuro, CRITICAL: la invitación
+  abierta con la sesión de otra cuenta (B-3), el menú que se adapta al rol (2.3), reinvitar el mismo
+  email (2.4), `/personal` jerárquica (2.5/P66, aprobada en principio por D-120) y, sumado en el
+  recorrido 7.1 del 27/10/2026, el **loop infinito en `/elegir-administracion?regreso=...`**
+  (`web/src/app/ingresar/Pantalla.tsx`/`web/src/lib/sesion.ts`: el header `x-proptech-ruta` repite la
+  ruta actual en cada paso y, si esa ruta ya es `/elegir-administracion?regreso=...`, el `regreso` se
+  anida y se re-codifica en cada vuelta sin límite). Los cinco comparten el mismo motivo: tocar
+  `acceso` subiría el change entero a CRITICAL. También quedaron fuera, sin change propio: los datos
+  legales del aviso de privacidad (a cargo de Juani, D-108); aceptar coeficientes en porcentaje; calles
+  normalizadas contra Georef; selector de país; cualquier escritura en `configuracion_versionada` o en
+  plata (4b a 4d); el piso en el importador de Excel (5); borrar las cuentas de Mailinator (P67, acción
+  operativa de Emiliano, sin código).
+- **Gobernanza**: HIGH (D-094, D-111). Firmado por **Emiliano Caceres el 26/10/2026** (E1 a E6 y E8 a
+  E10 completas; E7 no era una elección de este change).
+- **Resuelto**: P61 a P65 (ubicación y pisos), P67 (Mailinator), P68 (alcance) y P69 (grupos),
+  escritas como **D-121** al cerrar. P66 cerrada por D-120 (change de acceso futuro).
+- **Choques con el 4a**: el 4a ya estaba mergeado en `main` (migraciones `0021`/`0022`) antes de la
+  primera tarea de este change; las migraciones del 3c nacen desde `0023` y la rama se rebasó sobre
+  `main` antes de empezar, sin conflicto real en `unidades.py` más allá de lo previsto en el design.
+- **Construido con TDD estricto**, por bloques, con mutantes dirigidos en cada garantía nueva
+  (coherencia del trío de ubicación, piso dentro del vocabulario, "Generales" no se desactiva); detalle
+  bloque por bloque en `tasks.md` del change.
+- **Cierre (7.2)**: suite completa de backend y de web corridas después de la última vuelta (comando,
+  resultado y hora pegados en `tasks.md`, tarea 7.2); subida y bajada de las tres migraciones ejercitada
+  por los tests de integración dedicados (`test_ubicacion_db.py`, `test_ubicacion_migracion_multitenant.py`,
+  `test_pisos_db.py`, `test_pisos_migracion_multitenant.py`, `test_grupo_activo_migracion.py`,
+  `test_eventos_padron_migracion.py`, `test_rls_edificio.py`), con `testcontainers` levantando su
+  PostgreSQL propio por módulo — no se usó una "copia con datos" aparte porque esos tests ya ejercitan
+  el flujo con una base sembrada; **esta rama no tiene PR abierto, así que no corrió CI**: no hay SHA
+  que anotar (L-010, L-031, L-037, L-042).
+- **Deuda del cierre**: la tarea **7.1** (recorrido manual de cada pantalla tocada a 1280 px y 320 px,
+  con teclado y capturas, más cómo la cuenta de Clerk usada quedó vinculada a su persona) queda **sin
+  marcar, a cargo del humano** — nunca de un agente (L-039, salda también la deuda del PR #1 del
+  3b-bis). `complejo.localidad` sigue sin borrarse (D2): queda anotada para el primer change que toque
+  el módulo después de este. El tope de 5 subsuelos y 60 pisos (D3) es un `CHECK` de una línea si un
+  edificio real no entra. Si el `<select>` de 135 departamentos resulta incómodo en el recorrido de
+  7.1, el combobox accesible queda como deuda, no como alcance.
+  **Hallazgo del recorrido 7.1 (27/10/2026) que sigue abierto** (los otros tres, ya arreglados en la
+  misma sesión, quedaron como lección en `15_lecciones.md`, L-049; el loop de `/elegir-administracion`
+  encontrado el mismo día no es deuda de 3c — queda arriba, junto a B-3/2.3/2.4, porque toca `acceso`):
+  en "Puesta a punto", el paso de ubicación sigue rotulado "Completar la ubicación" aunque ya esté
+  marcado "Hecho" — **decisión pendiente** del usuario (cambiar el label a "Editar la ubicación" cuando
+  está hecho, o sacar el botón).
+- **Revisores**: QA siempre; DBA por las tres migraciones; frontend por las pantallas tocadas; backend
+  por los endpoints nuevos (`PATCH /complejos/{id}`, las tres rutas de lectura de Georef).
+- **Depende de**: 3a, 3b y 2b (archivados). Construido en paralelo al 4a. **Habilita**: la columna
+  "piso" del importador (5) y un alta de edificio presentable para el piloto (15).
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio · partido en 4a, 4b, 4c y 4d
 

@@ -18,7 +18,7 @@ import {
 } from "../../../../lib/api/grupos";
 import { erroresDeFormulario, MENSAJE_SIN_SESION } from "../../../../lib/api/mensajes";
 import { decimalParaApi } from "../../../../lib/formato";
-import type { EstadoFormularioGrupo } from "./Pantalla";
+import type { EstadoAccionDeLista, EstadoFormularioGrupo } from "./Pantalla";
 
 const _CAMPOS_DATOS = ["clave", "nombre", "metodo"];
 
@@ -88,7 +88,8 @@ export async function crearGrupoAction(
 ): Promise<EstadoFormularioGrupo> {
   const modo = _modo(formData);
   const resultado = await crearGrupo(complejoId, {
-    clave: String(formData.get("clave") ?? ""),
+    // D7 (tarea 4.4): sin campo "clave" en el formulario (6.3) — se
+    // autogenera en el backend a partir del nombre.
     nombre: String(formData.get("nombre") ?? ""),
     metodo: String(formData.get("metodo") ?? ""),
     modo_de_coeficientes: modo,
@@ -134,4 +135,37 @@ export async function editarGrupoAction(
   }
   revalidatePath(`/edificios/${complejoId}/grupos`);
   return { erroresPorCampo: {}, erroresDesconocidos: [], ok: true };
+}
+
+/**
+ * 6.3: desactivar/reactivar un grupo parcial (nunca "Generales" — esta
+ * pantalla ni siquiera muestra el botón para él, y la base lo rechaza por
+ * SQL si algo se equivoca más abajo). Mismo patrón que
+ * `cambiarEstadoCategoriaAction` de `categorias/acciones.ts`.
+ */
+export async function cambiarEstadoGrupoAction(
+  complejoId: string,
+  _estadoPrevio: EstadoAccionDeLista,
+  formData: FormData,
+): Promise<EstadoAccionDeLista> {
+  const grupoId = String(formData.get("grupo_id") ?? "");
+  const activo = formData.get("activo") === "true";
+  const resultado = await editarGrupo(grupoId, { activo });
+  if (resultado.estado === "ok") {
+    revalidatePath(`/edificios/${complejoId}/grupos`);
+    return { erroresDesconocidos: [], ok: true };
+  }
+  if (resultado.estado === "sin_permiso") {
+    return { erroresDesconocidos: ["No podés activar ni desactivar grupos."] };
+  }
+  if (resultado.estado === "sin_sesion") {
+    return { erroresDesconocidos: [MENSAJE_SIN_SESION] };
+  }
+  if (resultado.estado === "invalido") {
+    return {
+      erroresDesconocidos: erroresDeFormulario(resultado.errores as ErrorDeCampo[], [])
+        .erroresDesconocidos,
+    };
+  }
+  return { erroresDesconocidos: ["No pudimos guardar el cambio. Probá de nuevo."] };
 }

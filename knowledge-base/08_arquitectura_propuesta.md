@@ -92,10 +92,19 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   web contra `web/src/lib/api/fixtures/*.json`; esos mismos fixtures alimentan los tests de la web y
   la API falsa de Playwright (`web/e2e/api-falsa.ts`, D7, sólo Chromium). Si la API renombra un campo,
   falla primero el test del backend.
-- La web **no calcula**: la suma de coeficientes, su estado según R01, los seis pasos de puesta a
-  punto y "listo para liquidar" vienen de `GET /api/complejos/{id}/resumen` (D5 del design del 3b,
-  requisito nuevo de `edificios-y-unidades`); el historial de configuración trae el nombre del autor
-  de cada versión con un `JOIN` a `persona` (mismo requisito nuevo de `configuracion-versionada`).
+- La web **no calcula**: la suma de coeficientes, su estado según R01, los siete pasos de puesta a
+  punto (D3 del 3c suma "ubicación" a los seis del 3b) y "listo para liquidar" vienen de
+  `GET /api/complejos/{id}/resumen` (D5 del design del 3b, requisito nuevo de `edificios-y-unidades`);
+  el historial de configuración trae el nombre del autor de cada versión con un `JOIN` a `persona`
+  (mismo requisito nuevo de `configuracion-versionada`).
+- **Un límite o un patrón es una sola constante, nunca sólo texto** (D7 del 3c, L-047): todo campo con
+  un máximo, un mínimo o una forma que la API también exige (`web/src/lib/limites.ts`) usa esa MISMA
+  constante en la ayuda del campo, en el mensaje de error y en una validación previa al envío que
+  marca el campo con el mismo mecanismo de `Campo`/`Formulario` (`aria-invalid`/`aria-describedby`) —
+  nunca sólo `maxLength`/`pattern` nativos del input (dan una burbuja del navegador sin
+  `aria-describedby`, pueden quedar como ayuda adicional, nunca como único mecanismo) ni sólo el
+  mensaje genérico de la pantalla. Un test compara el número de la web contra el contrato real de la
+  API (`lib/limites.test.ts`). Convención para todo campo nuevo, en cualquier pantalla.
 
 ## Seguridad
 

@@ -2,7 +2,10 @@ import { Armazon } from "../../componentes/Armazon";
 import { Ayuda } from "../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../componentes/EncabezadoDePantalla";
 
-/** Borrador de 7.2: Juani debe confirmar responsable, contacto y conservación. */
+/** D7 (tarea 5.5): el borrador de 7.2 queda pendiente de los datos legales
+ * del responsable; el texto de esta página es para quien la lee, nunca una
+ * nota de trabajo interno (requisito "El aviso de privacidad no muestra
+ * notas internas"). */
 export default function Privacidad() {
   return (
     <Armazon publico>
@@ -21,7 +24,10 @@ export default function Privacidad() {
             />
           }
         />
-        <p className="texto-secundario">Borrador pendiente de aprobación de Juani.</p>
+        <p className="texto-secundario">
+          Este aviso todavía está en revisión: faltan completar el responsable, el contacto y el
+          plazo de conservación antes de la versión definitiva.
+        </p>
         <section aria-labelledby="datos">
           <h2 id="datos">Qué datos usamos</h2>
           <p>

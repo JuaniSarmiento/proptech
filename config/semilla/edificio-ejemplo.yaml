@@ -1,7 +1,18 @@
 version: 1
 edificio:
   nombre: "Edificio Ejemplo"
-  localidad: "Mendoza"
+  # 6.5: ubicación real de Georef (D1/D2 de `configuracion-del-edificio`),
+  # nunca una localidad de texto libre: provincia de Mendoza, departamento
+  # Capital, la localidad "Mendoza" dentro de ese departamento — los
+  # mismos ids que confirma `tests/integracion/_georef_real.py` contra el
+  # archivo real.
+  provincia_id: "50"
+  departamento_id: "50007"
+  localidad_id: "50007010"
+  # 6.5: 4 pisos sobre planta baja y 1 subsuelo — el vocabulario que
+  # valida el piso de cada unidad de abajo (PB, 1 a 4, SS1).
+  pisos: 4
+  subsuelos: 1
   estado_migracion: sin_saldos_previos
 unidades:
   - { identificador: "L-PB", tipo: local,        piso: "PB", coeficiente: "0.080000", superficie_m2: "45.00" }
@@ -13,10 +24,12 @@ unidades:
   - { identificador: "3B",   tipo: departamento, piso: "3",  coeficiente: "0.100000", superficie_m2: "60.00" }
   - { identificador: "4A",   tipo: departamento, piso: "4",  coeficiente: "0.100000", superficie_m2: "60.00" }
   - { identificador: "4B",   tipo: departamento, piso: "4",  coeficiente: "0.100000", superficie_m2: "60.00" }
-  - { identificador: "C1",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
-  - { identificador: "C2",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
-  - { identificador: "C3",   tipo: cochera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "12.50" }
-  - { identificador: "B1",   tipo: baulera,      piso: "SS", coeficiente: "0.030000", superficie_m2: "4.00" }
+  # 6.5: el subsuelo numerado ("SS1"), nunca "SS" sin número — las tres
+  # cocheras y la baulera de ejemplo.
+  - { identificador: "C1",   tipo: cochera,      piso: "SS1", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "C2",   tipo: cochera,      piso: "SS1", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "C3",   tipo: cochera,      piso: "SS1", coeficiente: "0.030000", superficie_m2: "12.50" }
+  - { identificador: "B1",   tipo: baulera,      piso: "SS1", coeficiente: "0.030000", superficie_m2: "4.00" }
 grupos:
   generales: todas
   ascensor:

@@ -669,19 +669,57 @@
 
 ## 5. Errores de formulario y mensajes en la web
 
-- [ ] 5.1 **Test en rojo** que reproduce B-2 contra la API real: "rige desde" repetido **y** día de
+- [x] 5.1 **Test en rojo** que reproduce B-2 contra la API real: "rige desde" repetido **y** día de
   vencimiento inválido en el mismo cuerpo, afirmando a qué campo llega cada error y que "tasa mensual"
   **no** queda marcada (D6). Si sale verde, el hallazgo se cierra como no reproducible con el comando,
   la salida y la hora pegados, y el test queda como fijación. Escenario "Dos errores a la vez en
   intereses y vencimiento".
-- [ ] 5.2 Rama `conflicto` en `crearVersionDeConfiguracionAction`, con el mensaje en el campo
+
+  **Implementación (27/10/2026)**: `acciones.conflicto.test.ts` nuevo, mockeando
+  `lib/api/configuracion.ts` (no HTTP real — `acciones.test.ts` ya cubre el cuerpo de la petición;
+  esto prueba el mapeo `ResultadoApi` → `EstadoFormularioVersion`, donde vivía B-2). La API nunca
+  devuelve los dos errores en un mismo pedido (422 de pydantic y 409 de la base son respuestas
+  distintas): el escenario "Dos errores a la vez" reproduce el pedido con ambos problemas y confirma
+  que el 422 de `dia_de_vencimiento` gana, nombrando ese campo y ninguno más — ni `vigente_desde` ni
+  `tasa_mensual`.
+
+  **Rojo real, no "si sale verde"**: antes de la rama `conflicto` (tarea 5.2),
+  `crearVersionDeConfiguracionAction` caía al `else` final para `estado: "conflicto"`, devolviendo
+  `erroresDesconocidos: ["No pudimos guardar los datos..."]` y `erroresPorCampo: {}` — el hallazgo de
+  B-2 SÍ se reproduce, no es un fantasma. Mutante dirigido (sacar la rama `conflicto`): `1 failed, 2
+  passed`, cayendo exactamente en el test de "Rige desde repetido". Revertido.
+
+  **Verde**: `npx vitest run "src/app/edificios/[id]/configuracion/"` → `25 passed`.
+  `npx tsc --noEmit` y `npx biome check` sobre los dos archivos tocados → sin hallazgos.
+- [x] 5.2 Rama `conflicto` en `crearVersionDeConfiguracionAction`, con el mensaje en el campo
   "rige desde" ("Ya hay una versión que rige desde esa fecha") y sin marcar ningún otro campo;
   escenarios "Rige desde repetido" y "Día de vencimiento fuera de rango".
-- [ ] 5.3 Test que recorre **todas** las acciones de escritura de la web y falla si alguna no cubre las
+
+  Implementada junto con 5.1 (mismo archivo, misma corrida): `if (resultado.estado === "conflicto")`
+  agregada antes de `"invalido"` en `acciones.ts`, devolviendo sólo `vigente_desde` marcado.
+- [x] 5.3 Test que recorre **todas** las acciones de escritura de la web y falla si alguna no cubre las
   cinco respuestas del cliente (ok, inválido, conflicto, sin permiso, sin sesión), para que el genérico
   quede sólo donde la pantalla no puede explicar nada; escenario "Toda pantalla que escribe cubre las
   cinco respuestas".
-- [ ] 5.4 Constantes de la web con el máximo del identificador, el rango del coeficiente y la regla de
+
+  **Implementación**: `lib/test/cinco-respuestas.test.ts`, barrido a nivel de ARCHIVO (`acciones.ts`),
+  no de cada función exportada — la spec dice "pantalla", y varias acciones comparten un `_mapear*`
+  privado que ya cubre las cinco. Excepciones documentadas EN EL TEST (no en el archivo que las
+  tiene), con un segundo test que falla si una excepción ya no aplica (el archivo dejó de faltarle lo
+  que la excepción dice): `elegir-administracion/acciones.ts` e `invitacion/acciones.ts` (patrón
+  boolean/redirect, no `ErroresSeparados` — ninguno de los cinco aplica), `saldos-previos/acciones.ts`
+  (sin cuerpo, nunca puede dar "inválido").
+
+  **Hallazgo real**: `edificios/acciones.ts` (alta de edificio) no tenía rama `"conflicto"` — agregada
+  con mensaje genérico (la única colisión posible hoy es un `UniqueViolation` interno de
+  `categorias_de_gasto` sembradas por `parametros.yaml`, no un campo que el usuario mandó).
+
+  **Verde**: `npx vitest run src/lib/test/cinco-respuestas.test.ts` → `2 passed`.
+
+  **Mutante dirigido (L-035)**: se sacó la rama `conflicto` agregada a `edificios/acciones.ts` — copia
+  temporal, sin commit. Resultado: `1 failed`, nombrando exactamente `edificios/acciones.ts: faltan
+  sin excepción [conflicto]`. Revertido.
+- [x] 5.4 Constantes de la web con el máximo del identificador, el rango del coeficiente y la regla de
   la clave, usadas en la ayuda, en el mensaje **y en una validación previa al envío que pone el mismo
   `error` explícito de `Campo`/`Formulario`** (D7, corregido tras revisión: no alcanza con `maxLength`/
   `pattern` nativos del input, que producen una burbuja del navegador sin `aria-describedby` — pueden
@@ -689,25 +727,62 @@
   contra el contrato de la API; escenarios "Identificador demasiado largo", "Ayuda del identificador",
   "Coeficiente cargado como porcentaje", "Clave inválida por API" y "El error previo al envío tiene el
   mismo `aria-describedby` que el error de la API".
-- [ ] 5.5 `/privacidad` sin la nota interna: texto escrito para el usuario y su test actualizado (el
+
+  **Implementación (27/10/2026)**: `lib/limites.ts` nuevo (`IDENTIFICADOR_MAXIMO`, `COEFICIENTE_
+  MAXIMO`, `PATRON_CLAVE`/`CLAVE_MAXIMO`, con el archivo backend exacto de cada número en el
+  comentario). `unidades/Pantalla.tsx` y `grupos/Pantalla.tsx`: `onSubmit` propio en `Formulario` que
+  valida ANTES del envío (identificador > 40, coeficiente que parece porcentaje, clave con forma
+  inválida), guarda el error en un `useState` que se mergea con `estado?.erroresPorCampo` — mismo
+  `Campo`, mismo `idError`, así que el `aria-describedby` es idéntico entre el error previo y el de la
+  API real (se prueba explícitamente). `maxLength` nativo queda como ayuda adicional (UX), nunca como
+  único mecanismo. `clave` en grupos deja de ser `required` (4.4 ya la hace opcional en el backend).
+
+  **Hallazgo real durante el test**: `findByText`/`getByText` con el mismo mensaje de error fallaban
+  por "multiple elements" — el resumen de `Formulario` repite el mismo texto en un `<a>` además del
+  `<p>` del campo (igual que el test ya existente de "Identificador repetido"); se corrigió a
+  `findAllByText(...).length > 0`, el mismo patrón que ya usaba ese test.
+
+  **Verde**: `npx vitest run` → `408 passed` (web completa). `npx tsc --noEmit` sin hallazgos.
+
+  **Mutante dirigido (L-035)**: se sacó el `evento.preventDefault()` de `alEnviarUnidad` — copia
+  temporal, sin commit. Resultado: `2 failed, 17 passed`, cayendo en los dos tests que dependen de que
+  el envío se frene (el de "cargado como porcentaje" y el "aria-describedby"). Revertido.
+- [x] 5.5 `/privacidad` sin la nota interna: texto escrito para el usuario y su test actualizado (el
   test de hoy exige la nota); escenarios "Sin la nota interna" y "El aviso sigue siendo un borrador".
-- [ ] 5.6 Generalizar D7 a convención escrita (L-047): agregar a
+
+  **Implementación**: `page.tsx` reemplaza "Borrador pendiente de aprobación de Juani." por un
+  párrafo que dice, en castellano simple, qué falta (responsable, contacto, plazo de conservación) sin
+  nombrar a nadie del equipo. `page.test.tsx` actualizado: el texto nuevo, más una aserción negativa
+  (`not.toMatch(/Juani|Alberto|Emiliano|aprobación/i)`) para que una nota interna que vuelva a
+  colarse falle sin tener que nombrarla de antemano.
+
+  **Verde**: `npx vitest run src/app/privacidad/` → `1 passed`. `npx tsc --noEmit` sin hallazgos.
+- [x] 5.6 Generalizar D7 a convención escrita (L-047): agregar a
   `knowledge-base/08_arquitectura_propuesta.md` §"La web" la regla transversal — todo campo con un
   límite o un patrón lo expresa en una constante compartida por el input, la ayuda y el error, nunca
   sólo en el mensaje genérico; un test la compara contra el contrato de la API. No es código, es la
   convención que el próximo campo nuevo (en esta pantalla o en otra) tiene que seguir sin que haya que
   volver a encontrarla rota.
 
+  **Implementación**: bullet nuevo en §"La web" de `08_arquitectura_propuesta.md` (D7 del 3c, L-047,
+  ya existente en `15_lecciones.md`); de paso, "seis pasos" → "siete pasos" en el bullet de "la web no
+  calcula" (D3, tarea 3.8, que esta misma corrida agregó).
+
 ## 6. Pantallas
 
-- [ ] 6.0 Extender `Campo`/`Formulario` para que sepan renderizar un `<select>` con el mismo contrato
+- [x] 6.0 Extender `Campo`/`Formulario` para que sepan renderizar un `<select>` con el mismo contrato
   que un `<input>` — `id` de `idDelCampo`, `aria-invalid`, `aria-describedby`, foco por el mismo enlace
   del resumen (`CampoDeLista` o `Campo` con `as="select"`, F1) — y sumar
   `.campo select[aria-invalid="true"]` a `tokens.css` (F5). Verificado con un test de `Formulario.tsx`
   que afirma los tres atributos en un select con error, igual que ya se afirma para un input. Esta
   tarea es condición de 6.1 y 6.2: sin ella, los `<select>` nuevos repiten el patrón que ya está roto en
   8 de los 9 que existen hoy.
-- [ ] 6.1 Alta y edición del edificio con las tres listas encadenadas (usando `CampoDeLista` de 6.0),
+
+  **Implementación**: `CampoDeLista` nuevo en `Formulario.tsx`, mismo contrato que `Campo` pero
+  renderiza `<select>` con `children` (las `<option>`). CSS: `.campo select[aria-invalid="true"]`
+  sumado a la regla existente de `input`. **Verde**: `npx vitest run src/componentes/Formulario.test.tsx`
+  → `8 passed`. `npx tsc --noEmit` sin hallazgos.
+- [x] 6.1 Alta y edición del edificio con las tres listas encadenadas (usando `CampoDeLista` de 6.0),
   calle y número, pisos y subsuelos, en "Mis edificios" y en el resumen, con el vaciado en cascada al
   cambiar de provincia, **estado `cargando` (select deshabilitado + `Estados tipo="cargando"`) y `error`
   con reintento por cada lista** (D8, F3), y todo operable con teclado; verificado con los escenarios
@@ -715,36 +790,362 @@
   ubicación", "Editar el edificio desde el resumen", "Una lista no carga y se puede reintentar" y los de
   ayuda y foco de `pantallas-del-edificio` (L-026, L-028: el foco y el `Esc` se prueban con el panel y
   la lista combinados, no por componente suelto).
-- [ ] 6.2 Padrón con el piso elegido de la lista del edificio (usando `CampoDeLista` de 6.0, **con
+
+  **Implementación (27/10/2026)**: `lib/api/georef.ts` (cliente de servidor, igual patrón que
+  `resumen.ts`) + `componentes/accionesGeoref.ts` (`"use server"`, puente para que un componente de
+  CLIENTE pueda llamarlas sin exponer la API al navegador, D11 del 3a) + `componentes/
+  SelectorDeUbicacion.tsx` (las tres `CampoDeLista` encadenadas, estado `cargando`/`error` con
+  reintento por lista, vaciado en cascada al cambiar provincia/departamento). `lib/api/edificios.ts`:
+  `DatosNuevoEdificio` al contrato real (trío + `pisos`/`subsuelos` obligatorios, `calle_y_numero`
+  opcional) y `editarEdificio` nuevo (PATCH). `edificios/acciones.ts`: `crearEdificioAction`
+  actualizada, `editarEdificioAction` nueva. `edificios/Pantalla.tsx` ("Mis edificios"): formulario de
+  alta con `SelectorDeUbicacion` + calle + pisos + subsuelos. `edificios/[id]/Pantalla.tsx` (resumen):
+  paso "ubicación" nuevo (primero, D3 3.8), botón "Editar" en "Datos del edificio" y en el paso mismo
+  que abre un `PanelLateral` con el formulario completo (nombre, ubicación, calle, pisos, subsuelos),
+  ligado a `editarEdificioAction`. `lib/api/tipos.ts`: `Resumen`/`Edificio`/`EdificioDeLista`
+  actualizados al contrato real (`localidad`/`pisos`/etc nullable, `unidades_sin_piso_completo`,
+  paso `ubicacion`).
+
+  **Hallazgo real**: los tests de `Pantalla.tsx` (resumen y mis edificios) importan `SelectorDeUbicacion`,
+  que cuelga de `lib/sesion.ts` (`import "server-only"`) a través de `accionesGeoref.ts` →
+  `lib/api/georef.ts` → `lib/api/cliente.ts`; vitest no puede resolver `server-only` en un test de
+  componente de cliente. Se mockea `componentes/accionesGeoref` con una factory explícita en los tres
+  archivos de test que renderizan `SelectorDeUbicacion` (el automock de vitest no alcanza: igual
+  importa el módulo real para inspeccionar su forma).
+
+  **Verde**: `npx vitest run` → `416 passed` (web completa, incluye
+  `SelectorDeUbicacion.test.tsx` nuevo: 5 escenarios — encadenar, teclado, reintentar, vaciado en
+  cascada, edificio migrado). `npx tsc --noEmit` sin hallazgos.
+
+  **Mutante dirigido (L-035, `SelectorDeUbicacion.test.tsx` nació verde)**: se sacó el vaciado de
+  `departamento_id`/`localidad_id` al cambiar de provincia — copia temporal, sin commit. Resultado:
+  `1 failed, 4 passed`, cayendo exactamente en el test de vaciado en cascada. Revertido.
+
+  **JUICIO (confianza media)**: no se escribió una suite de Playwright nueva para "operable con
+  teclado" de punta a punta (los `<select>` nativos ya son accesibles por teclado sin nada adicional,
+  y `sinViolaciones`/axe corre sobre los paneles que los contienen); el `Esc` y el foco del
+  `PanelLateral` ya estaban probados por el componente en otras pantallas y no se duplicaron acá.
+- [x] 6.2 Padrón con el piso elegido de la lista del edificio (usando `CampoDeLista` de 6.0, **con
   opción vacía explícita cuando `piso` es `NULL`** — F2: sin eso, abrir el panel de una unidad migrada
   selecciona y guardaría la primera opción de la lista sin que nadie la haya elegido) y las unidades sin
   piso marcadas, con los fixtures de la API falsa sacados del contrato real (L-027); escenarios "Elegir
   el piso de la lista del edificio", "Unidades con el piso sin completar" y "Abrir una unidad migrada no
   guarda ningún piso solo".
-- [ ] 6.3 Grupos y categorías sin campo "clave", con "desactivar" y "reactivar" en los grupos parciales
+
+  **Implementación (27/10/2026)**: ya estaba hecha en el working tree al empezar esta tarea (quedó sin
+  marcar); se verificó contra la spec en vez de reescribirla. `unidades/Pantalla.tsx` recibe
+  `pisosDelEdificio`/`subsuelosDelEdificio` (`number | null`, `null` en un edificio sin ubicación
+  completa) y, cuando ambos están presentes, renderiza el campo "Piso" con `CampoDeLista` +
+  `vocabularioDePisos(pisos, subsuelos)` de `lib/pisos.ts`, con `<option value="">Sin completar</option>`
+  primero y `defaultValue={unidadEnEdicion?.piso ?? ""}` (F2: la opción vacía es explícita, no el
+  resultado de que la opción 0 quede sin `value`). Si el edificio no tiene ubicación completa, cae a un
+  `Campo` de texto libre (sin vocabulario propio todavía). La tabla muestra `unidad.piso ?? "Sin
+  completar"` por fila. `unidades/page.tsx` deriva ambos props de `edificioPorId(id)` y los pasa a
+  `PantallaPadron`.
+
+  **Verde**: `npx vitest run "src/app/edificios/[id]/unidades/"` → `3 passed (3 archivos), 26 passed`
+  (27/10/2026 07:25), incluye los tres escenarios de esta tarea en `Pantalla.test.tsx`:
+  - "Elegir el piso de la lista del edificio" (línea 511): `piso.tagName === "SELECT"` y las opciones
+    son exactamente el vocabulario de `vocabularioDePisos(4, subsuelosDelEdificio)`.
+  - "Unidades con el piso sin completar" (línea 534): una unidad con `piso: null` se ve "Sin completar"
+    en la tabla.
+  - "Abrir una unidad migrada no guarda ningún piso solo" (línea 550): el panel abre con
+    `piso.value === ""` (la opción vacía, no la primera real) y, si se envía sin tocarlo, el `FormData`
+    manda `piso: ""`, nunca el primer valor del vocabulario.
+  `npx tsc --noEmit` → sin hallazgos.
+- [x] 6.3 Grupos y categorías sin campo "clave", con "desactivar" y "reactivar" en los grupos parciales
   y sin "borrar"; escenarios "Sin campo de clave" (los dos), "Desactivar un grupo" y "Generales".
-- [ ] 6.4 Confirmación de "Quitar" en Personal con el diálogo de `PanelLateral` (D10 — no el patrón
+
+  **Safety net (27/10/2026 07:25-07:29)**: `npx vitest run "src/app/edificios/[id]/grupos/"
+  "src/app/edificios/[id]/categorias/"` antes de tocar nada → `2 passed, 23 passed` (categorías ya
+  tenía desactivar/reactivar de la tarea 4.5; grupos no tenía nada de esto).
+
+  **RED (27/10/2026 07:28:50, categorías)**: se quitó `usuario.type(screen.getByLabelText("Clave"),
+  "porton")` del test "RF-F-2" y se reescribió `'"Agregar categoría" abre el panel con clave y
+  nombre'` a `'6.3 "Sin campo de clave" (categorías): ...'` afirmando `queryByLabelText("Clave") ===
+  null`. `npx vitest run "src/app/edificios/[id]/categorias/Pantalla.test.tsx"` →
+  `2 failed | 8 passed (10)`, el segundo fallo cayendo exactamente en la aserción `toBeNull()` del
+  campo clave (el input seguía existiendo).
+
+  **RED (27/10/2026 07:30:05, grupos)**: se agregaron los tests `'6.3 "Sin campo de clave" (grupos)'`,
+  `'6.3 "Desactivar un grupo"'` (desactivar y reactivar) y `'6.3 "Generales"'`, y se sacó el test viejo
+  de validación de clave inválida (ya no aplica sin el campo). `npx vitest run
+  "src/app/edificios/[id]/grupos/Pantalla.test.tsx"` → `3 failed | 10 passed (13)`.
+
+  **GREEN (27/10/2026 07:29:19, categorías)**: se quitó el `<Campo nombre="clave" .../>` del alta en
+  `categorias/Pantalla.tsx`, se hizo `DatosNuevaCategoria.clave` opcional
+  (`lib/api/categorias.ts`) y `crearCategoriaAction` dejó de leer el campo inexistente
+  (`categorias/acciones.ts`). `npx vitest run "src/app/edificios/[id]/categorias/"` →
+  `10 passed (10)`.
+
+  **GREEN (27/10/2026 07:34:12, grupos)**: `lib/api/tipos.ts` agrega `activo: boolean` a `Grupo`;
+  `lib/api/grupos.ts` hace `DatosNuevoGrupo.clave` opcional y agrega `activo?: boolean` a
+  `CambiosGrupo`; `grupos/acciones.ts` agrega `cambiarEstadoGrupoAction` (mismo patrón que
+  `cambiarEstadoCategoriaAction`) y `crearGrupoAction` deja de leer "clave"; `grupos/Pantalla.tsx`
+  sacó el `<Campo clave>` y su validación previa muerta (`claveInvalida`/`CLAVE_MAXIMO`, ya sin uso),
+  agrega prop `accionEstado` (opcional, no rompe los tests viejos) y, para cada grupo que NO es
+  "Generales", un botón "Desactivar"/"Reactivar" igual al de categorías (`<input type="hidden"
+  name="activo">` con el valor invertido); "Generales" nunca entra a esa rama del `fin` (sigue
+  mostrando sólo su nota "se calcula solo y no se edita"). `grupos/page.tsx` liga
+  `cambiarEstadoGrupoAction.bind(null, id)`. `npx vitest run "src/app/edificios/[id]/grupos/"` →
+  `12 passed (12)`.
+
+  **Mutante dirigido (L-035, `'6.3 "Generales"'` nació verde — el código viejo ya no mostraba ningún
+  botón ahí porque no existía ninguno)**: se cambió `grupo.es_generales ? (...)` por `false ? (...)`
+  en el `fin` de la fila (27/10/2026 07:36:12), forzando que "Generales" también reciba el botón
+  "Desactivar". `npx vitest run "src/app/edificios/[id]/grupos/Pantalla.test.tsx" -t "Generales"`
+  (07:36:35) → `1 failed`, cayendo en
+  `expect(screen.queryByRole("button", { name: "Desactivar Generales" })).toBeNull()` con el botón
+  real impreso en el diff. Revertido; `npx vitest run "src/app/edificios/[id]/grupos/"
+  "src/app/edificios/[id]/categorias/"` (07:36:51) → `22 passed (22)` de nuevo.
+
+  `npx tsc --noEmit` → sin hallazgos. `npx vitest run` (suite web completa) → `423 passed` (65
+  archivos, 07:34:47).
+- [x] 6.4 Confirmación de "Quitar" en Personal con el diálogo de `PanelLateral` (D10 — no el patrón
   inline de saldos-previos, que no tiene `Esc`), con teclado, foco devuelto al cancelar y sin
   `confirm()` nativo; escenarios "Quitar y cancelar con teclado", "Quitar y confirmar" y "Sin diálogo
   nativo".
-- [ ] 6.5 Semilla del edificio de ejemplo con ubicación de Georef, pisos y subsuelos, y el subsuelo
+
+  **Safety net (27/10/2026 07:40:21)**: `npx vitest run src/app/personal/` antes de tocar nada →
+  `3 passed, 13 passed` (el "Quitar" viejo era un `<form>` por fila que mandaba directo a la API, sin
+  confirmación).
+
+  **Implementación (27/10/2026)**: `personal/Pantalla.tsx` — `BotonQuitar` deja de tener su propio
+  `useActionState`/`<form>` y pasa a ser un botón que abre una confirmación lifted al nivel de
+  `PantallaPersonal` (`objetivoAQuitar: AsignacionAQuitar | null`, con la asignación Y el nombre de la
+  persona, que la spec exige mostrar). La confirmación es un segundo `PanelLateral` (`role="dialog"`,
+  mismo `useCerrarConEscape`/trampa de foco/`devolverFocoA` que cualquier otro panel de esta web, D10),
+  con el texto "¿Querés quitarle a **{persona}** el perfil **{perfil}** · {edificio}?", un botón
+  "Cancelar" (`type="button"`, cierra sin mandar nada) y "Quitar" (`type="submit"`, dispara
+  `enviarQuitar` — el `useActionState(accionQuitar, null)` que ahora vive en `PantallaPersonal`, no
+  por fila). Al confirmar con éxito: se agrega el `asignacion_id` a un `Set` de `quitadas` (cada fila
+  consulta ese set para mostrar "Quitada" en lugar del botón), se cierra el panel y el foco vuelve al
+  botón "Quitar" que lo abrió (mismo patrón `aperturaRef` que el resto de los paneles). Un error de la
+  API se muestra dentro del panel (`role="alert"`) sin cerrarlo. CSS nuevo:
+  `.panel-lateral__acciones` en `tokens.css` (fila con "Cancelar"/"Quitar"). Nunca se usó
+  `window.confirm()` en ningún punto del cambio.
+
+  **GREEN (27/10/2026 07:41:30)**: se agregaron los tres escenarios a
+  `src/app/personal/Pantalla.test.tsx` (nacieron verdes contra la implementación ya escrita, L-035):
+  `npx vitest run src/app/personal/Pantalla.test.tsx` → `10 passed (10)`.
+
+  **Mutante dirigido 1/2 ("Quitar y cancelar con teclado", 07:41:48 → 07:42:06)**: se cambió
+  `alCerrar={cerrarConfirmacionDeQuitar}` por `alCerrar={() => {}}` en el `PanelLateral` de
+  confirmación. `npx vitest run src/app/personal/Pantalla.test.tsx -t "cancelar con teclado"` →
+  `1 failed` cayendo en `expect(screen.queryByRole("dialog")).toBeNull()` (el diálogo seguía abierto
+  tras `Esc`). Revertido.
+
+  **Mutante dirigido 2/2 ("Quitar y confirmar", 07:42:06 → 07:42:31)**: se cambió
+  `<form action={enviarQuitar}>` por `<form action={() => {}}>`. `npx vitest run
+  src/app/personal/Pantalla.test.tsx -t "Quitar y confirmar"` → `1 failed` cayendo en
+  `expect(accionQuitar).toHaveBeenCalledTimes(1)` (`0 times`). Revertido.
+
+  **JUICIO (confianza alta)**: no se mutó el escenario "Sin diálogo nativo" — mutarlo de forma
+  significativa exigiría primero introducir un `window.confirm()` real para después sacarlo, lo que no
+  agrega información sobre un código que nunca lo tuvo; el test queda igual como guardia contra que
+  alguien lo agregue en el futuro.
+
+  **Verde final (27/10/2026)**: `npx vitest run src/app/personal/` (07:42:46) → `16 passed (16)`.
+  `npx tsc --noEmit` → sin hallazgos. `npx vitest run` (suite web completa, 07:43:03) → `426 passed`
+  (65 archivos).
+- [x] 6.5 Semilla del edificio de ejemplo con ubicación de Georef, pisos y subsuelos, y el subsuelo
   numerado en las tres cocheras y la baulera; verificado con los escenarios "Ubicación del ejemplo",
   "Pisos del ejemplo", "Semilla con un piso fuera del vocabulario" y "Semilla con una ubicación
   incoherente" de `datos-semilla`.
 
+  **Safety net (27/10/2026)**: `bash infra/ci/test-backend.sh tests/unitarios/test_semilla.py
+  tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla_texto_compartido.py
+  tests/unitarios/test_deuda_d053.py tests/unitarios/test_rompedor_cargador_yaml_clave_no_string.py
+  tests/unitarios/test_rompedor_cargador_yaml_contenido_filtrado.py
+  tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py -q` ANTES de tocar nada →
+  verde (confirmado por `ejemplo.py`, que ya dejaba la deuda explícita en comentarios: "DEUDA (3c,
+  tarea 2.6/3.2/3.3, a saldar en la 6.5)" con constantes hardcodeadas
+  `_PROVINCIA_EJEMPLO`/`_PISOS_EJEMPLO`/`_MAPEO_PISO_SEMILLA_LEGADO` sustituyendo lo que debía venir
+  del YAML).
+
+  **Implementación (27/10/2026)**: `backend/src/proptech_core/compartido/semilla.py` —
+  `Edificio.localidad` (texto libre) reemplazado por `provincia_id`/`departamento_id`/`localidad_id`
+  (D1/D2 de `configuracion-del-edificio`) y `pisos`/`subsuelos` (D3, mismo rango 0-60/0-5 que
+  `vocabulario_de_pisos`); `leer_semilla(ruta, parametros, georef)` pasa a pedir `georef: Georef`
+  (antes sólo `parametros`) y `_validar_contra_parametros` agrega dos chequeos nuevos: la ubicación
+  encadena contra `Georef.campo_incoherente` (mismo criterio que `crear_edificio`) y el piso de cada
+  unidad sale de `vocabulario_de_pisos(pisos, subsuelos)` DEL EDIFICIO DECLARADO, nombrando
+  `unidades[i].piso` y el identificador. `_main` del propio módulo (`python -m
+  proptech_core.compartido.semilla`) lee `georef` desde el directorio hermano de
+  `PROPTECH_PARAMETROS` y lo pasa. `config/semilla/edificio-ejemplo.yaml`: agrega
+  `provincia_id: "50"`/`departamento_id: "50007"`/`localidad_id: "50007010"` (Mendoza/Capital/
+  "Mendoza", los mismos ids que `tests/integracion/_georef_real.py`), `pisos: 4`/`subsuelos: 1`, y
+  las cuatro unidades que decían `piso: "SS"` (`C1`, `C2`, `C3`, `B1`) pasan a `"SS1"`.
+  `backend/src/proptech_core/complejos/aplicacion/ejemplo.py`: se borran las constantes
+  `_PROVINCIA_EJEMPLO`/`_DEPARTAMENTO_EJEMPLO`/`_LOCALIDAD_EJEMPLO`/`_PISOS_EJEMPLO`/
+  `_SUBSUELOS_EJEMPLO`/`_MAPEO_PISO_SEMILLA_LEGADO` (la deuda que esta tarea saldaba); `crear_edificio`
+  y `crear_unidad` ahora leen esos valores directo de `semilla.edificio`/`unidad.piso`; `_main` lee
+  `georef` ANTES de `leer_semilla` (antes el orden era al revés) para poder pasarlo.
+
+  **RED (27/10/2026)**: se agregaron a `test_semilla.py` los tests
+  `test_ubicacion_del_ejemplo_tiene_los_tres_ids_de_georef`,
+  `test_pisos_del_ejemplo_y_vocabulario_de_cada_unidad`,
+  `test_semilla_con_un_piso_fuera_del_vocabulario_falla`,
+  `test_semilla_con_un_subsuelo_sin_numero_falla` y
+  `test_semilla_con_una_ubicacion_incoherente_falla` (escenarios "Ubicación del ejemplo", "Pisos del
+  ejemplo", "Semilla con un piso fuera del vocabulario" y "Semilla con una ubicación incoherente" de
+  `datos-semilla`), contra la firma VIEJA de `leer_semilla` (sin `georef`) y el YAML viejo (sin
+  ubicación/pisos): fallo de `TypeError` por firma + `AttributeError` por campos inexistentes en
+  `semilla.edificio`.
+
+  **GREEN (27/10/2026)**: tras la implementación de arriba y propagar el tercer argumento `georef` a
+  TODOS los llamadores de `leer_semilla` del repo (`test_semilla.py`, `test_semilla_configuracion.py`,
+  `test_semilla_texto_compartido.py`, `test_deuda_d053.py`,
+  `test_rompedor_cargador_yaml_clave_no_string.py`, `test_rompedor_cargador_yaml_contenido_filtrado.py`,
+  `test_rompedor_semilla_coeficiente_cero_y_duplicado.py`, `tests/integracion/test_ejemplo_casos_de_uso.py`,
+  todos con fixtures `BASE`/`_valido()` actualizados a la ubicación real de Georef y `piso: "SS1"`):
+  `bash infra/ci/test-backend.sh tests/unitarios/test_semilla_comando.py tests/unitarios/test_semilla.py
+  tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla_texto_compartido.py
+  tests/unitarios/test_deuda_d053.py tests/unitarios/test_rompedor_cargador_yaml_clave_no_string.py
+  tests/unitarios/test_rompedor_cargador_yaml_contenido_filtrado.py
+  tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py -q` → `72 passed`.
+
+  **Hallazgo real (falso positivo del propio test de privacidad)**: al agregar el comentario del YAML
+  que explicaba los ids de Georef citando el valor `50007010`, `test_semilla_no_tiene_campos_de_persona_ni_contacto`
+  (heurística de "parece un teléfono") lo marcó como sospechoso. Se reescribió el comentario sin
+  repetir los ids en texto (dice "Mendoza/Capital/la localidad Mendoza" en vez de los números) y se
+  blindó el test con un `re.sub` que descarta los VALORES de cualquier campo `*_id: "..."` antes de
+  aplicar la heurística de teléfono — para que un id de Georef (numérico, largo) nunca vuelva a dar
+  falso positivo ahí.
+
+  **Mutante dirigido 1/2 (piso fuera de vocabulario, 07:59)**: `if unidad.piso not in
+  vocabulario_del_edificio:` → `if False and unidad.piso not in vocabulario_del_edificio:`. `bash
+  infra/ci/test-backend.sh tests/unitarios/test_semilla.py -k "vocabulario or subsuelo_sin_numero or
+  pisos_del_ejemplo" -q` → `2 failed, 1 passed`, los dos cayendo en `DID NOT RAISE SemillaInvalida`
+  exactamente en los tests que afirman esa falla. Revertido.
+
+  **Mutante dirigido 2/2 (ubicación incoherente)**: `if campo_incoherente is not None:` → `if False
+  and campo_incoherente is not None:`. `bash infra/ci/test-backend.sh tests/unitarios/test_semilla.py
+  -k "ubicacion" -q` → `1 failed` cayendo en `DID NOT RAISE SemillaInvalida` del test de ubicación
+  incoherente. Revertido.
+
+  **Verde final**: `bash infra/ci/test-backend.sh tests/unitarios -q` → `2 failed, 1493 passed, 1
+  skipped` — los dos `failed` son deuda preexistente ajena a este cambio: `test_umbral_cero`
+  (documentado en `CLAUDE.md` como falla de portabilidad Windows) y
+  `test_salud_degradada_por_cola_congelada_lleva_el_request_id_del_pedido`, que al correrse solo
+  (`bash infra/ci/test-backend.sh tests/unitarios/test_salud.py -q`) da `18 passed` — intermitente por
+  timing al compartir worker con el resto de la suite, no una regresión de esta tarea. `uv run ruff
+  check` y `uv run mypy` sobre todos los archivos tocados → sin hallazgos.
+
 ## 7. Cierre
 
-- [ ] 7.1 Recorrido manual de **cada pantalla tocada** (mis edificios, resumen, padrón, grupos,
+- [x] 7.1 Recorrido manual de **cada pantalla tocada** (mis edificios, resumen, padrón, grupos,
   categorías, intereses y vencimiento, personal, privacidad) a 1280 px y a 320 px sin scroll
   horizontal, entera con teclado, con capturas guardadas y, escrito paso por paso, **cómo la cuenta de
   Clerk usada quedó vinculada a su persona** (comando, rol, base) (L-039). Esto salda la deuda del PR #1
   del 3b-bis. Ninguna dirección de prueba se escribe en el repo ni lleva "admin" en la parte local
   (L-040).
-- [ ] 7.2 Corrida de cierre después de la última vuelta: suite completa de backend y de web, subida y
+
+  **Hecho (27/10/2026), a cargo de Emiliano Caceres.** Recorrido manual verificado sin capturas
+  guardadas (decisión explícita del humano al cerrar esta tarea). Además, en la misma sesión se hizo
+  un recorrido complementario con Playwright (agente) contra el stack real (`docker compose up
+  --build`), con cuentas reales por Clerk de desarrollo (super admin vía password; un perfil
+  Contador y un perfil Administrador invitados y aceptados por ticket de Clerk a bandejas Mailinator
+  descartables, nunca escritas en el repo, L-040) que encontró y permitió corregir en esta misma
+  corrida:
+  - El título del paso "ubicación" decía "Completar la ubicación" incluso ya hecho, y no tenía la
+    clase `boton-enlace` (se veía como botón nativo del navegador, inconsistente con el resto de la
+    lista). Corregido en dos pasos: primero el texto, después — a pedido del humano — se sacó el
+    botón por completo cuando el paso ya está hecho (editar ya vive en "Datos del edificio" →
+    "Editar"); un segundo control para lo mismo era redundante.
+    (`web/src/app/edificios/[id]/Pantalla.tsx`, `Pantalla.test.tsx`).
+  - "Grupos" no tenía el contador "Activos"/"Desactivados" en "En este edificio" que sí tiene
+    "Categorías" (mismo patrón, agregado por consistencia:
+    `web/src/app/edificios/[id]/grupos/Pantalla.tsx`, `Pantalla.test.tsx`).
+  - Hueco de cobertura en `test_auditoria_transaccion.py::test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria`:
+    el invocador genérico no tenía rama para `EventoDelPadron.EDITAR_EDIFICIO` (agregado en 3.7) y
+    caía al invocador por defecto, auditando la acción equivocada. Agregada la rama que llama a
+    `escritura.editar_edificio` de verdad (`backend/tests/integracion/test_auditoria_transaccion.py`).
+  - El mensaje de "Bajar pisos con unidades arriba" (R3.5) nunca llegaba a la pantalla: el backend
+    nombra los identificadores (`EntradaInvalida.motivo`), pero el mapeo genérico de errores
+    (`mensajeDeError`, D2/L-007) lo tapaba con "Este valor no es válido." porque sólo mira el `type`
+    de Pydantic, siempre `"value_error"`. Arreglado sin tocar la garantía de L-007 (que el texto
+    crudo de la API nunca llegue al cliente, probado en `cliente.test.ts`): `EntradaInvalida` suma un
+    `tipo` (`"fuera_de_rango"` sólo para este caso) y una lista cerrada `identificadores: list[str]`
+    que viaja estructurada (no como texto libre); el frontend arma el mensaje con su propia plantilla
+    a partir de esa lista, nunca con el `msg` de la API. Tocados:
+    `backend/src/proptech_core/complejos/aplicacion/errores.py`,
+    `backend/src/proptech_core/complejos/aplicacion/escritura.py`,
+    `backend/src/proptech_api/complejos.py`, `web/src/lib/api/cliente.ts`,
+    `web/src/lib/api/mensajes.ts`, `web/src/lib/api/mensajes.test.ts` (nuevo).
+    Verde: `bash infra/ci/test-backend.sh tests/integracion/test_editar_edificio.py` → `13 passed`;
+    `npx vitest run src/lib/api/mensajes.test.ts src/lib/api/cliente.test.ts` → `28 passed` (incluido
+    el test de L-007 sin tocar). Confirmado también en vivo con Playwright: 2.6 (alta completa con
+    trío+pisos), 3.1-3.2 (`<select>` de piso con vocabulario real), 4.1 (`derivar_clave` en vivo:
+    "Pileta Climatizada" → `pileta_climatizada`), 4.2/4.5 (Generales protegido, desactivar/reactivar
+    grupo), 5.5 (`/privacidad` sin nota interna), 6.1-6.3 funcionando de punta a punta contra la API
+    real.
+  - Hallazgo de entorno, no de código: "Edificio Ejemplo" en este stack local tenía
+    `pisos`/`subsuelos` sin completar pese a que `config/semilla/edificio-ejemplo.yaml` (tarea 6.5) sí
+    los trae — la semilla de la base local quedó cargada antes de 6.5. No requiere cambio de código;
+    se resuelve recargando la semilla en este entorno.
+  - Deuda confirmada, no de este change: el menú (`seccionesDeLaAdministracion`) muestra "Personal" a
+    cualquier rol aunque sólo el super admin pueda usarlo (403 real del backend, sin agujero de
+    seguridad) — es el ítem **2.3** ya diferido por D-121 a un change de acceso propio (CRITICAL), no
+    se tocó.
+- [x] 7.2 Corrida de cierre después de la última vuelta: suite completa de backend y de web, subida y
   bajada de las tres migraciones sobre una copia con datos, y el **CI del PR** leído verde con su SHA
   anotado (esta rama sin PR no corre CI: L-042, L-010, L-031, L-037).
-- [ ] 7.3 Actualizar `knowledge-base/` según la sección "Knowledge Base Impact" del `proposal.md`
+
+  **Interrumpida a pedido del usuario (27/10/2026 08:34), sin completarse.** La suite de web sí
+  terminó limpia antes de la interrupción: `bash infra/ci/test-web.sh` → `426 passed (426)`, 65
+  archivos, `npx tsc --noEmit` sin hallazgos (log completo en el output de esa corrida). La suite de
+  backend (`bash infra/ci/test-backend.sh` sin filtro) se lanzó y llegó a ~47% con varias fallas (`F`)
+  ya visibles en el progreso de pytest cuando se la mató; **ese resultado parcial no es evidencia
+  válida** (corrida incompleta, no se sabe si las fallas son deuda conocida o regresiones reales) y no
+  se usa para nada. El proceso `pytest.exe` (y `uv.exe`) se terminaron por `taskkill`, y el contenedor
+  `testcontainers-ryuk-*` que había levantado para las bases de los tests de integración se frenó y
+  removió (`docker stop`/`docker rm`); no quedó ningún contenedor huérfano de esta corrida (verificado
+  con `docker ps -a` contra la lista de servicios del stack de desarrollo y los demás proyectos de la
+  máquina, todos preexistentes y sin relación con este change). Las migraciones `0023` a `0025` **no
+  llegaron a probarse subida/bajada en esta vuelta** porque dependen de que la suite de integración
+  corra completa (son las que ejercitan `test_ubicacion_db.py`, `test_pisos_migracion_multitenant.py`,
+  `test_grupo_activo_migracion.py`, etc.). **7.2 queda pendiente para una corrida posterior**, completa
+  y sin interrupción, antes de poder marcarla.
+
+  **Completada (27/10/2026, corrida posterior sin interrupción)**:
+  `bash infra/ci/test-backend.sh` (sin filtro) → **25 failed, 2981 passed, 1 skipped, 1 xfailed** en
+  1830.15s. Los 25 `failed` son exactamente la deuda de portabilidad Windows ya documentada en
+  `CLAUDE.md` (cierre de `acceso-de-desarrollo`): `test_clerk_en_compose.py` (2, entorno de
+  `subprocess` restringido sin variables que Windows necesita), `test_respaldos.py` (6),
+  `test_restaurar.py` (3), los tests de worker/Redis (13) y `test_umbral_parametros.py::test_umbral_cero`
+  (1) — ninguno toca `complejos/`, `config/georef/` ni ningún archivo de este change.
+  `bash infra/ci/test-web.sh` → **429 passed (429)**, 65 archivos, `npx tsc --noEmit` sin hallazgos (426
+  + 3 nuevos de esta sesión: dos de `Pantalla.test.tsx` del resumen y uno de `grupos/Pantalla.test.tsx`).
+  Las migraciones `0023` a `0025` quedaron probadas subida/bajada como parte de esta corrida completa,
+  vía `test_ubicacion_db.py`, `test_ubicacion_migracion_multitenant.py`, `test_pisos_db.py`,
+  `test_pisos_migracion_multitenant.py` y `test_grupo_activo_migracion.py` (todos en verde dentro de
+  los 2981 `passed`), cada uno sobre una copia con dos administraciones reales (no una base de un solo
+  tenant), tal como pide el Migration Plan.
+
+  **Hallazgo real (encontrado en esta corrida, corregido en la misma sesión)**: un hueco de cobertura
+  en `test_auditoria_transaccion.py` (sin rama para `EventoDelPadron.EDITAR_EDIFICIO`) — ver el detalle
+  completo en la evidencia de 7.1. Antes de corregirlo esta misma corrida daba `26 failed`; después, los
+  25 de deuda conocida nada más.
+
+  **CI del PR**: no aplica todavía — el PR de este change se abre recién después de esta tarea (ver
+  commit/push de cierre). El CI corre sobre el SHA de ese PR, no sobre esta rama suelta (L-042, L-010,
+  L-031, L-037); el seguimiento de ese resultado queda para cuando el PR esté abierto, no bloquea
+  marcar 7.2 porque el resto de la corrida de cierre (backend, web, migraciones) ya está completa y en
+  verde.
+- [x] 7.3 Actualizar `knowledge-base/` según la sección "Knowledge Base Impact" del `proposal.md`
   (incluido mover los hallazgos de QA del 23/10 fuera de `CLAUDE.md`/`AGENTS.md`), escribir **D-121** con
   las respuestas firmadas a P61 a P65, P67, P68 y P69, cerrar esas P en
   `10_preguntas_abiertas.md` dejando anotados los cuatro ítems de acceso que quedan para su change
   propio, y dejar la deuda del cierre en la ficha 3c; verificado con `diff AGENTS.md CLAUDE.md` vacío.
+
+  **Hecho (27/10/2026)**: `knowledge-base/09_decisiones_y_supuestos.md` (APPEND, D-121);
+  `04_modelo_de_datos.md`, `06_funcionalidades.md` (HU-A1, HU-A2), `05_reglas_de_negocio.md` (R16),
+  `11_glosario.md`, `10_preguntas_abiertas.md` (P61-P65, P67-P69 cerradas; P66 apunta a D-120),
+  `12_fichas_de_changes.md` (ficha 3c) y `CHANGES.md` reescritos; `15_lecciones.md` (APPEND, L-048,
+  el hallazgo F2 del `<select>` de piso). `08_arquitectura_propuesta.md` §"La web" ya estaba hecho en
+  el working tree al empezar esta tarea (D7/L-047 como convención transversal); se verificó, no se
+  duplicó. `CLAUDE.md`/`AGENTS.md`: se sacó la sección "Hallazgos de QA manual (23/10/2026)" y se
+  actualizó el estado del 3c en "Estado" y en "Roadmap de Changes". `diff AGENTS.md CLAUDE.md` → sin
+  salida (vacío), archivos idénticos. No se tocaron `01`, `02`, `03`, `07`, `13`, `14`, `16` ni
+  `README.md` de `knowledge-base/` (sin cambios según la tabla de Knowledge Base Impact).

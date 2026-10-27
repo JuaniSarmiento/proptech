@@ -35,10 +35,20 @@ export type EstadoFormularioGrupo = {
   ok?: boolean;
 } | null;
 
+export type EstadoAccionDeLista = {
+  erroresDesconocidos: string[];
+  ok?: boolean;
+} | null;
+
 type AccionGrupo = (
   estadoPrevio: EstadoFormularioGrupo,
   formData: FormData,
 ) => Promise<EstadoFormularioGrupo>;
+
+type AccionDeLista = (
+  estadoPrevio: EstadoAccionDeLista,
+  formData: FormData,
+) => Promise<EstadoAccionDeLista>;
 
 type ModoDeCoeficientes = "renormalizado" | "propios";
 
@@ -49,7 +59,15 @@ type Props = {
   unidadesDisponibles: Unidad[];
   accionCrear: AccionGrupo;
   accionEditar: AccionGrupo;
+  /** 6.3: desactivar/reactivar un grupo parcial; "Generales" nunca la
+   * recibe (no se renderiza el botón para él). Opcional por los tests
+   * existentes que no ejercitan esta acción. */
+  accionEstado?: AccionDeLista;
 };
+
+function _accionDeListaNula(): Promise<EstadoAccionDeLista> {
+  return Promise.resolve(null);
+}
 
 const _METODOS: Array<{ valor: string; etiqueta: string }> = [
   { valor: "coeficiente", etiqueta: "Coeficiente" },
@@ -73,6 +91,7 @@ export function PantallaGrupos({
   unidadesDisponibles,
   accionCrear,
   accionEditar,
+  accionEstado = _accionDeListaNula,
 }: Props) {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [grupoEnEdicion, setGrupoEnEdicion] = useState<Grupo | null>(null);
@@ -82,6 +101,7 @@ export function PantallaGrupos({
 
   const accionActiva = grupoEnEdicion ? accionEditar : accionCrear;
   const [estado, enviar] = useActionState(accionActiva, null);
+  const [estadoEstado, enviarEstado] = useActionState(accionEstado, null);
 
   useEffect(() => {
     if (estado?.ok) {
@@ -126,6 +146,16 @@ export function PantallaGrupos({
         accionPrincipal={botonAgregar}
       />
 
+      {estadoEstado?.erroresDesconocidos && estadoEstado.erroresDesconocidos.length > 0 ? (
+        <div role="alert" className="formulario__resumen">
+          <ul>
+            {estadoEstado.erroresDesconocidos.map((mensaje) => (
+              <li key={mensaje}>{mensaje}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="disposicion">
         <Panel
           titulo="Grupos del edificio"
@@ -155,7 +185,7 @@ export function PantallaGrupos({
                 >
                   <FilaConIcono
                     icono={grupo.es_generales ? Lock : Layers}
-                    tono={grupo.es_generales ? "listo" : "neutro"}
+                    tono={grupo.es_generales || !grupo.activo ? "listo" : "neutro"}
                     titulo={
                       grupo.es_generales ? (
                         <span className="grupos-de-reparto__datos">
@@ -186,15 +216,45 @@ export function PantallaGrupos({
                           Agrupa todo lo que no entra en un grupo propio: se calcula solo y no se
                           edita.
                         </p>
-                      ) : undefined
+                      ) : (
+                        <span className="grupos-de-reparto__estado">
+                          {grupo.activo ? "Activo" : "Desactivado"}
+                        </span>
+                      )
                     }
                     fin={
-                      grupo.modo_de_coeficientes === "propios" && grupo.informe ? (
-                        <EstadoDeCoeficientes
-                          estado={grupo.informe.estado}
-                          diferencia={grupo.informe.diferencia}
-                        />
-                      ) : undefined
+                      grupo.es_generales ? (
+                        grupo.modo_de_coeficientes === "propios" && grupo.informe ? (
+                          <EstadoDeCoeficientes
+                            estado={grupo.informe.estado}
+                            diferencia={grupo.informe.diferencia}
+                          />
+                        ) : undefined
+                      ) : (
+                        <span className="grupos-de-reparto__accion">
+                          {grupo.modo_de_coeficientes === "propios" && grupo.informe ? (
+                            <EstadoDeCoeficientes
+                              estado={grupo.informe.estado}
+                              diferencia={grupo.informe.diferencia}
+                            />
+                          ) : null}
+                          {/* 6.3: un grupo parcial se desactiva, nunca se
+                           * borra (R16 de grupos-de-reparto); "Generales"
+                           * nunca llega a esta rama. */}
+                          <form action={enviarEstado}>
+                            <input type="hidden" name="grupo_id" value={grupo.id} />
+                            <input
+                              type="hidden"
+                              name="activo"
+                              value={grupo.activo ? "false" : "true"}
+                            />
+                            <button type="submit" className="boton-secundario">
+                              {grupo.activo ? "Desactivar" : "Reactivar"}{" "}
+                              <span className="sr-only">{grupo.nombre}</span>
+                            </button>
+                          </form>
+                        </span>
+                      )
                     }
                   />
                 </li>
@@ -251,6 +311,14 @@ export function PantallaGrupos({
                 <dd className="numero-tabular">{grupos.length}</dd>
               </div>
               <div className="renglones__fila">
+                <dt>Activos</dt>
+                <dd className="numero-tabular">{grupos.filter((g) => g.activo).length}</dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Desactivados</dt>
+                <dd className="numero-tabular">{grupos.filter((g) => !g.activo).length}</dd>
+              </div>
+              <div className="renglones__fila">
                 <dt>Con coeficientes propios</dt>
                 <dd className="numero-tabular">
                   {grupos.filter((g) => g.modo_de_coeficientes === "propios").length}
@@ -282,9 +350,7 @@ export function PantallaGrupos({
         >
           {grupoEnEdicion ? (
             <input type="hidden" name="grupo_id" value={grupoEnEdicion.id} />
-          ) : (
-            <Campo nombre="clave" etiqueta="Clave" name="clave" required />
-          )}
+          ) : null}
           <Campo
             nombre="nombre"
             etiqueta="Nombre"

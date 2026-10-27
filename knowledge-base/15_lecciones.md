@@ -695,3 +695,57 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   de que el próximo campo repitiera el bug.
 - **Aplica a**: quien proponga un change con formularios nuevos; frontend al revisar; `impeccable` como
   dueña de la convención transversal.
+
+## L-048 · Un `<select>` no controlado necesita una opción vacía explícita, o selecciona la primera sin que nadie la haya elegido
+
+- **Origen**: 3c `pulido-de-la-configuracion`, tarea 6.2 (`unidades/Pantalla.tsx`), hallazgo F2 del
+  design (corrección sobre el propose del 26/10/2026) y confirmado al construir el 27/10/2026.
+- **Qué pasó**: el campo "Piso" del padrón se renderiza con `CampoDeLista` +
+  `vocabularioDePisos(pisos, subsuelos)`. Una unidad migrada sin piso elegido tiene `piso: null` en la
+  API. Si el `<select>` arranca sin ninguna opción con `value=""`, el navegador selecciona la primera
+  opción real de la lista al abrir el panel — y si el formulario se envía sin que nadie haya tocado el
+  campo, el `FormData` manda esa primera opción como si el administrador la hubiera elegido: un piso
+  inventado, exactamente lo que E5 del 3c prohíbe (migrar sin inventar ningún valor). El mismo riesgo
+  aplica a cualquier `<select>` no controlado cuyo valor pueda ser `null`/"sin completar": las listas de
+  ubicación (provincia/departamento/localidad) de la misma tarea 6.1 tienen el mismo problema y la misma
+  solución.
+- **Regla**: todo `<select>` que representa un campo que puede estar "sin completar" lleva una primera
+  `<option value="">` explícita (deshabilitada si el navegador lo permite) y el `defaultValue`/`value`
+  del campo usa `??  ""`, nunca deja que el `<select>` cayera en su comportamiento por default. Un test
+  que abre el panel con el dato en `null` y verifica `piso.value === ""` (la opción vacía, no la
+  primera real) antes de tocar nada, y que el `FormData` de un envío sin cambios manda `""`, nunca el
+  primer valor del vocabulario.
+- **Costo**: ninguno — se detectó en la corrección del propose (F2), antes de construir, y el test que
+  lo prueba (`"Abrir una unidad migrada no guarda ningún piso solo"`) nació escribiéndose contra la
+  implementación ya completa.
+- **Aplica a**: cualquier `<select>` nuevo sobre un dato nullable, en cualquier pantalla; frontend al
+  revisar un combobox nuevo.
+
+## L-049 · Un overlay de "toda la fila clickeable" tapa cualquier botón propio que se agregue a esa fila después
+
+- **Origen**: 3c `pulido-de-la-configuracion`, recorrido manual 7.1 (27/10/2026), pantalla de grupos.
+- **Qué pasó**: `.lista-de-filas--tocable` (`tokens.css`) le agrega al link/botón del título un
+  `::after` con `position: absolute; inset: 0`, que se estira contra el `<li>` entero (`position:
+  relative`) para que toda la fila sea clickeable como el título — pensado para listas donde la fila
+  entera navega a un solo destino (como "mis edificios"). La tarea 6.3 reusó esa misma clase de lista
+  para grupos y categorías, pero les agregó un botón propio (Desactivar/Reactivar) en el costado
+  (`fila-con-icono__fin`). Un elemento posicionado siempre pinta arriba de uno estático sin importar
+  el orden del DOM, así que ese overlay invisible terminó tapando el botón del costado: clickear
+  "Desactivar" en realidad activaba el link de "editar". No lo agarró ningún test porque
+  `@testing-library/react` dispara el evento directo sobre el botón de JSX, sin simular el layout real
+  del navegador (`getBoundingClientRect`/stacking context) — sólo apareció al click real en pantalla.
+- **Regla**: antes de reusar una clase de lista "toda la fila clickeable" en una pantalla que además
+  tiene botones propios en el costado de la fila, darle a esa zona (`fila-con-icono__fin` u
+  equivalente) su propio `position: relative; z-index` por encima del overlay. Un test automatizado
+  de click no alcanza para esto — hace falta probarlo con el mouse en el navegador real (o un test de
+  Playwright que sí dispara el evento por coordenadas de pantalla), no sólo con `userEvent.click` sobre
+  el nodo de React.
+- **Costo**: cero funcionalidad perdida — el botón estaba bien cableado (acción, formulario, lógica de
+  backend), el bug era puramente visual/de stacking. Mismo recorrido manual encontró, con la misma
+  causa raíz ("se construyó la pantalla pero no se la miró clickeada en el navegador"), dos gaps más de
+  cobertura visual que un test de React tampoco agarra: el estado activo/desactivado de un grupo sin
+  ningún indicador en la fila, y la ayuda del identificador de unidad sin ejemplos (G-1 de la tarea 5.4,
+  quedó a mitad).
+- **Aplica a**: cualquier pantalla que combine una lista "tocable" con acciones propias por fila;
+  frontend y QA al revisar una pantalla nueva — un recorrido manual real en el navegador sigue siendo
+  necesario incluso con la suite de tests en verde.

@@ -20,6 +20,8 @@ from pydantic import (
 
 from proptech_core.compartido import coeficientes
 from proptech_core.compartido.cargador_yaml import ErrorDeCarga, cargar_yaml, leer_archivo
+from proptech_core.compartido.georef import Georef
+from proptech_core.compartido.pisos import vocabulario_de_pisos
 from proptech_core.compartido.superficie import Superficie
 from proptech_core.compartido.texto import recortado_sin_control, sin_caracteres_de_control
 
@@ -47,7 +49,19 @@ class _Base(BaseModel):
 
 class Edificio(_Base):
     nombre: _Texto
-    localidad: _Texto
+    #: 6.5: la ubicación sale del repositorio de Georef (D1/D2 de
+    #: `configuracion-del-edificio`), nunca de un texto libre — mismo
+    #: contrato que `crear_edificio` (`provincia_id`/`departamento_id`/
+    #: `localidad_id`, coherencia validada contra `Georef.campo_incoherente`).
+    provincia_id: _Texto
+    departamento_id: _Texto
+    localidad_id: _Texto
+    #: 6.5: pisos sobre planta baja y subsuelos del edificio (D3), el mismo
+    #: rango que `vocabulario_de_pisos` acepta (0 a 60 / 0 a 5). El piso de
+    #: cada unidad se valida contra este vocabulario, no sólo contra la
+    #: forma de `PATRON_PISO`.
+    pisos: Annotated[int, Field(ge=0, le=60)]
+    subsuelos: Annotated[int, Field(ge=0, le=5)]
     estado_migracion: Literal["pendiente", "confirmada", "sin_saldos_previos"]
 
 
@@ -128,15 +142,40 @@ def _informar_suma(
 
 
 def _validar_contra_parametros(
-    semilla: Semilla, parametros: Parametros
+    semilla: Semilla, parametros: Parametros, georef: Georef
 ) -> tuple[list[str], list[str]]:
     problemas: list[str] = []
     advertencias: list[str] = []
+
+    # 6.5: la ubicación del ejemplo tiene que encadenar de verdad contra el
+    # repositorio de Georef (escenario "Semilla con una ubicación
+    # incoherente"), nombrando el primer campo que no encadena — mismo
+    # criterio que `crear_edificio` (`Georef.campo_incoherente`), pero acá
+    # como falla del LECTOR, antes de llegar a ningún caso de uso.
+    campo_incoherente = georef.campo_incoherente(
+        semilla.edificio.provincia_id,
+        semilla.edificio.departamento_id,
+        semilla.edificio.localidad_id,
+    )
+    if campo_incoherente is not None:
+        problemas.append(f"edificio.{campo_incoherente}: no encadena con Georef")
+
+    vocabulario_del_edificio = vocabulario_de_pisos(
+        pisos=semilla.edificio.pisos, subsuelos=semilla.edificio.subsuelos
+    )
 
     tipos_validos = {t.clave for t in parametros.tipos_de_unidad}
     for i, unidad in enumerate(semilla.unidades):
         if unidad.tipo not in tipos_validos:
             problemas.append(f"unidades[{i}].tipo: tipo de unidad desconocido")
+        # 6.5: el piso de cada unidad tiene que salir del vocabulario DE ESTE
+        # edificio (escenario "Semilla con un piso fuera del vocabulario"),
+        # nombrando el campo piso y la unidad, sin repetir el valor (L-007).
+        if unidad.piso not in vocabulario_del_edificio:
+            problemas.append(
+                f"unidades[{i}].piso: fuera del vocabulario del edificio "
+                f"(identificador {unidad.identificador!r})"
+            )
 
     identificadores = [u.identificador for u in semilla.unidades]
     if len(identificadores) != len(set(identificadores)):
@@ -194,9 +233,10 @@ def _validar_contra_parametros(
     return problemas, advertencias
 
 
-def leer_semilla(ruta: str, parametros: Parametros) -> Semilla:
+def leer_semilla(ruta: str, parametros: Parametros, georef: Georef) -> Semilla:
     """Lee y valida `config/semilla/edificio-ejemplo.yaml` (D10), contra los
-    `parametros` ya leídos. No abre conexión a la base."""
+    `parametros` ya leídos y el repositorio de `georef` (6.5: ubicación y
+    vocabulario de pisos del edificio). No abre conexión a la base."""
     try:
         contenido = leer_archivo(ruta)
         datos = cargar_yaml(contenido)
@@ -210,7 +250,7 @@ def leer_semilla(ruta: str, parametros: Parametros) -> Semilla:
             "semilla inválida:\n" + "\n".join(_formatear_errores_pydantic(error))
         ) from None
 
-    problemas, advertencias = _validar_contra_parametros(semilla, parametros)
+    problemas, advertencias = _validar_contra_parametros(semilla, parametros, georef)
     if problemas:
         raise SemillaInvalida("semilla inválida:\n" + "\n".join(problemas))
     for advertencia in advertencias:
@@ -224,6 +264,9 @@ def _main(argv: list[str]) -> int:
 
     Lee los parámetros desde `PROPTECH_PARAMETROS` (D10). No abre conexión a
     la base: sin variables de PostgreSQL definidas, igual funciona."""
+    from pathlib import Path
+
+    from proptech_core.compartido.georef import GeorefInvalido, leer_georef
     from proptech_core.compartido.parametros import ParametrosInvalidos, leer_parametros
 
     if len(argv) != 2:
@@ -235,10 +278,15 @@ def _main(argv: list[str]) -> int:
         print("falta la variable de entorno PROPTECH_PARAMETROS", file=sys.stderr)
         return 1
 
+    # 6.5: el directorio de Georef es un hermano de `parametros.yaml`
+    # (mismo criterio que `ejemplo.py:_ruta_georef_por_defecto`).
+    georef_ruta = Path(parametros_ruta).resolve().parent / "georef"
+
     try:
         parametros = leer_parametros(parametros_ruta)
-        leer_semilla(argv[1], parametros)
-    except (ParametrosInvalidos, SemillaInvalida) as error:
+        georef = leer_georef(str(georef_ruta))
+        leer_semilla(argv[1], parametros, georef)
+    except (ParametrosInvalidos, SemillaInvalida, GeorefInvalido) as error:
         print(str(error), file=sys.stderr)
         return 1
     print("semilla válida")

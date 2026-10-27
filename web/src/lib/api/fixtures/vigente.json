@@ -1,16 +1,16 @@
 {
-  "autor_id": "b118c553-425a-47a5-9543-ff409600add0",
-  "complejo_id": "3de0932f-3e4b-4fc1-905f-ac58da599505",
-  "creada_en": "2026-10-26T13:49:51.333733Z",
+  "autor_id": "d23bec74-d15a-4034-9e73-dc18c37d601e",
+  "complejo_id": "69911f68-4ab1-4c9a-8553-695ac9a3ebc5",
+  "creada_en": "2026-10-27T07:10:56.949656Z",
   "dia_de_vencimiento": 10,
   "dia_segundo_vencimiento": null,
   "dias_de_gracia": 0,
   "forma_de_calculo": "proporcional_por_dia",
-  "id": "ab395751-0d97-4688-8973-667cafcc6967",
+  "id": "a38f562b-1c5e-4839-a1f8-04c31110653f",
   "modalidad_de_vencimiento": "unico",
   "porcentaje_fondo": "0.00",
   "recargo_segundo_vencimiento": null,
   "tasa_mensual": "3.00",
   "umbral_saldo_chico": "500.00",
-  "vigente_desde": "2026-10-26"
+  "vigente_desde": "2026-10-27"
 }

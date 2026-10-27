@@ -6,8 +6,14 @@ from pathlib import Path
 import pytest
 
 from proptech_core.compartido.dinero import Dinero, MontoInvalido
+from proptech_core.compartido.georef import Georef
 from proptech_core.compartido.parametros import ParametrosInvalidos, leer_parametros
 from proptech_core.compartido.semilla import SemillaInvalida, leer_semilla
+
+# 6.5: `leer_semilla` ahora pide `georef` — estos casos fallan antes de
+# llegar a usarlo (el YAML ya es inválido), así que un repositorio vacío
+# alcanza.
+_GEOREF_VACIO = Georef(provincias=(), departamentos=(), localidades=())
 
 
 @pytest.mark.parametrize("lector", ["parametros", "semilla"])
@@ -23,7 +29,7 @@ def test_yaml_corta_raiz_y_claves_sin_valores(tmp_path: Path, lector: str, conte
         else:
             ruta_parametros = Path(__file__).resolve().parents[3] / "config/parametros.yaml"
             parametros = leer_parametros(str(ruta_parametros))
-            leer_semilla(str(ruta), parametros)
+            leer_semilla(str(ruta), parametros, _GEOREF_VACIO)
     except Exception as obtenido:
         capturado = obtenido
     mensaje = f"se esperaba {error.__name__}, se obtuvo {type(capturado).__name__}"

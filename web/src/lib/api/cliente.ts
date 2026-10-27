@@ -10,7 +10,7 @@
 import { cabecerasHaciaLaApi } from "../seguimiento";
 import { irAlIngreso, sesionActual } from "../sesion";
 
-export type ErrorDeCampo = { campo: string; motivo: string };
+export type ErrorDeCampo = { campo: string; motivo: string; identificadores?: string[] };
 
 export type ResultadoApi<T> =
   | { estado: "ok"; datos: T }
@@ -154,7 +154,17 @@ export async function pedirApi<T>(
           .slice(1)
           .map((segmento) => String(segmento))
           .join(".") || "desconocido";
-      return { campo, motivo: textoSeguro(registro.type, "desconocido") };
+      // `identificadores`: lista cerrada de datos propios del edificio (L-007
+      // no la prohíbe, sólo prohíbe `msg`/texto libre); cada elemento se
+      // valida como texto antes de confiar en el array.
+      const identificadores = Array.isArray(registro.identificadores)
+        ? registro.identificadores.filter((x): x is string => typeof x === "string")
+        : undefined;
+      return {
+        campo,
+        motivo: textoSeguro(registro.type, "desconocido"),
+        ...(identificadores ? { identificadores } : {}),
+      };
     });
     return { estado: "invalido", errores };
   }

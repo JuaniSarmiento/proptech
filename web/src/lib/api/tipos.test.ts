@@ -43,7 +43,7 @@ describe("los tipos de web/src/lib/api/tipos.ts coinciden con los fixtures del c
     expect(_edificio.administracion_id).toBeTypeOf("string");
   });
 
-  it("resumen: pasos tiene las seis claves fijas", () => {
+  it("resumen: pasos tiene las siete claves fijas (D3, tarea 3.8: + ubicacion)", () => {
     expect(Object.keys(_resumen.pasos).sort()).toEqual(
       [
         "categorias",
@@ -51,6 +51,7 @@ describe("los tipos de web/src/lib/api/tipos.ts coinciden con los fixtures del c
         "grupos",
         "intereses_y_vencimiento",
         "saldos_previos",
+        "ubicacion",
         "unidades",
       ].sort(),
     );

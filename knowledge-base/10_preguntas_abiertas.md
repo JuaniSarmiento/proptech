@@ -175,35 +175,41 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   interés diario? Antes del piloto.
 - [ ] **P60 · El fondo de reserva cuando un pago no alcanza** (A-4, H-11): ¿se cobra antes o después de
   la ordinaria? Antes del piloto.
-- [ ] **P61 · Ubicación del edificio: ¿sólo Argentina?** (exploración del 3c,
-  `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md` §3): propuesta: sí, sin campo
-  país. Antes del 3c.
-- [ ] **P62 · Ubicación: calle y número** (§3 del 3c): ¿se agregan como texto libre, o el nombre del
-  edificio sigue haciendo de dirección? Antes del 3c.
-- [ ] **P63 · Ubicación de los edificios ya cargados** (§3 del 3c): hoy tienen `localidad` en texto
-  libre; ¿quedan sin ubicación hasta que se completen, se intenta mapear el texto a Georef, o la
-  ubicación es obligatoria desde ya? ¿La columna `localidad` se borra o queda? Antes del 3c.
-- [ ] **P64 · Qué pisos tiene un edificio** (§4 del 3c): planta baja, subsuelos (cuántos y cómo se
-  nombran), entrepiso o terraza, en qué piso van cocheras, bauleras y locales (la semilla usa "PB" y
-  "SS"), y el máximo de pisos. Antes del 3c.
-- [ ] **P65 · El piso de las unidades ya cargadas** (§4 del 3c): hoy es texto libre; ¿se mapea lo
-  conocido y se marca el resto para corregir, o el texto convive con la lista hasta que se corrija?
-  Antes del 3c.
-- [ ] **P66 · `/personal` jerárquica** (sugerencia de Emiliano del 23/10/2026, §2.5 del 3c): que el
-  Administrador de toda la empresa vea y gestione al personal por debajo suyo, nunca al super admin.
-  Cambia D-106 (acceso, CRITICAL); si es que sí, va como decisión nueva y en un change de acceso
-  propio. Sin fecha.
-- [ ] **P67 · Las dos cuentas de Mailinator del Clerk de desarrollo** (BE-7, deuda del cierre de
-  `acceso-de-desarrollo`): quedaron nombradas en el repositorio público y las bandejas de Mailinator
-  son públicas; ¿se borran del Clerk de desarrollo? Desde el 26/10/2026 ya no están en `CLAUDE.md`,
-  pero siguen en el historial. No bloquea ningún cambio.
-- [ ] **P68 · Los ítems de acceso del QA, ¿dentro o fuera del 3c?** (§5 del 3c): la invitación abierta
-  con la sesión de otra cuenta, el menú que se adapta al rol y reinvitar el mismo email son dominio de
-  acceso. Si entran al pulido, el cambio pasa de HIGH a CRITICAL; la propuesta es un change de acceso
-  aparte. Antes del propose del 3c.
-- [ ] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): ¿un grupo se desactiva en vez de borrarse,
-  como las categorías (R16)? ¿La clave de grupos y categorías se genera sola desde el nombre? Antes
-  del 3c.
+- [x] **P61 · Ubicación del edificio: ¿sólo Argentina?** (exploración del 3c,
+  `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md` §3): **cerrada por D-121**. Sí,
+  sin campo ni selector de país (E1 del 3c).
+- [x] **P62 · Ubicación: calle y número** (§3 del 3c): **cerrada por D-121**. Se agregan como campo
+  nuevo, texto libre, sin validar contra el dataset de calles de Georef (E2 del 3c).
+- [x] **P63 · Ubicación de los edificios ya cargados** (§3 del 3c): **cerrada por D-121**. Arrancan
+  con la ubicación en nulo; la puesta a punto la pide como paso nuevo y la pantalla de edición la
+  completa. `complejo.localidad` **se queda**, pero pasa a nullable y derivada del nombre de Georef
+  (E3 del 3c).
+- [x] **P64 · Qué pisos tiene un edificio** (§4 del 3c): **cerrada por D-121**. `PB` siempre,
+  subsuelos `SS1` a `SS5` (hasta 5) y pisos `1` a `60` sobre PB; los cuatro tipos de unidad (D-029)
+  eligen de la misma lista, sin restricción por tipo (E4 del 3c, con los números fijados en
+  `design.md` del 3c).
+- [x] **P65 · El piso de las unidades ya cargadas** (§4 del 3c): **cerrada por D-121**. Se mapean los
+  valores conocidos (`PB`, `SS`→`SS1`, enteros de 1 a 60) y el resto queda marcado `NULL` ("sin
+  completar") para que el administrador lo corrija a mano, sin inventar ningún valor (E5 del 3c).
+- [x] **P66 · `/personal` jerárquica** (sugerencia de Emiliano del 23/10/2026, §2.5 del 3c): **cerrada
+  por D-120** (26/10/2026). Aprobada en principio — el Administrador de toda la empresa podrá ver (y,
+  según decida su change, gestionar) al personal por debajo suyo, nunca al super admin — pero **no se
+  construye en el 3c**: cambia D-106 (acceso, CRITICAL) y queda para un change de acceso propio y
+  futuro, junto con los demás ítems de P68.
+- [x] **P67 · Las dos cuentas de Mailinator del Clerk de desarrollo** (BE-7, deuda del cierre de
+  `acceso-de-desarrollo`): **cerrada por D-121**. Se borran: acción operativa de Emiliano en el panel
+  de Clerk, sin código ni dato del repo. Las direcciones literales ya habían salido de la deuda viva
+  en `bbd02fb` porque el repo es público (L-040).
+- [x] **P68 · Los ítems de acceso del QA, ¿dentro o fuera del 3c?** (§5 del 3c): **cerrada por
+  D-121**. **Fuera**: la invitación abierta con la sesión de otra cuenta (B-3), el menú que se adapta
+  al rol (2.3), reinvitar el mismo email (2.4) y `/personal` jerárquica (2.5/P66) quedan para un
+  change de acceso propio y futuro — entrarlos subiría el 3c de HIGH a CRITICAL. El backend sigue
+  siendo la autoridad y frena cada acción con 403 mientras tanto; no es un agujero de seguridad, es
+  alcance diferido.
+- [x] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): **cerrada por D-121**. Un grupo de reparto se
+  desactiva, nunca se borra, igual que las categorías (R16 ampliada); "Generales" protegido también
+  en la base. La clave de grupos y categorías se autogenera desde el nombre; el administrador deja de
+  escribirla (E6 del 3c).
 - [ ] **P70 · Mapa interactivo para elegir la ubicación exacta** (sugerencia de Emiliano, 26/10/2026,
   al firmar E1/E2 del 3c): un mapa (Google Maps, Mapbox o Leaflet/OpenStreetMap) para marcar el punto
   exacto del edificio, en vez de (o además de) la cadena provincia/departamento/localidad y la calle
@@ -226,9 +232,11 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **El 4 partido en 4a a 4d** (exploración del 4, §8): P56 bloquea el 4b y P55 lo decide; P53 y P54
   bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de Alberto y se validan antes del piloto. P-3 y P-7
   de la exploración se resolvieron en D-113.
-- **Pulido de la configuración (3c)**: P61 a P65 (ubicación y pisos), P68 (alcance) y P69 (grupos),
-  antes de su propose. P66 (`/personal` jerárquica), P67 (cuentas de Mailinator) y P70 (mapa
-  interactivo) no lo bloquean.
+- **Pulido de la configuración (3c)**: **cerrado**. P61 a P65 (ubicación y pisos), P67 (Mailinator),
+  P68 (alcance) y P69 (grupos) quedaron resueltas con la firma de Emiliano del 26/10/2026 y escritas
+  como D-121 al cerrar el change. P66 (`/personal` jerárquica) quedó cerrada por D-120, apuntando a un
+  change de acceso futuro junto con los demás ítems de P68. P70 (mapa interactivo) no lo bloqueó y
+  sigue abierta para un change futuro de ubicación más precisa.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la

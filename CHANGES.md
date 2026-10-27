@@ -36,7 +36,7 @@ gates están en el árbol de abajo.
 3. CONFIGURACIÓN DEL EDIFICIO
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
-   👉 3c pulido: bugs + ubicación + pisos  ← en paralelo, fuera del camino crítico
+   ✅ 3c pulido: bugs + ubicación + pisos (27/10/2026, falta sólo 7.1 a mano)
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
@@ -79,7 +79,7 @@ C-01 infraestructura-base (1a)
                           └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (E1)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
-                                │     └── C-06c pulido-de-la-configuracion (3c) ← en paralelo al 4a, fuera del camino crítico
+                                │     └── C-06c pulido-de-la-configuracion (3c) ← construido 27/10/2026, falta 7.1 a mano
                                 │
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
@@ -143,8 +143,9 @@ GATE 5: C-05a ✓                                          ← roles antes del l
 GATE 6: C-06a ✓
   → C-06b pantallas-del-edificio (archivado; su propose esperó los siete shape con Juani)
   → C-07a cimientos-del-libro [Agente A] (4a, HIGH; archivado 26/10/2026, firma de Juani, D-119)
-  → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: aprobación de un firmante de D-111;
-    en paralelo al 4a, fuera del camino crítico; necesita también C-06b y C-05b, archivados)
+  → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: firmado por Emiliano el 26/10/2026, D-121;
+    construido en paralelo al 4a, fuera del camino crítico; necesitó también C-06b y C-05b, archivados;
+    falta sólo la tarea 7.1, recorrido manual a cargo del humano, antes de archivar)
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
@@ -207,7 +208,8 @@ trabajo: cada sub-change es una parte del mismo 4, y el 6 deja de esperar el lib
 > **Hoy programa una sola persona por change** (Juani, Alberto o Emiliano, `knowledge-base/14_forma_de_trabajo.md`):
 > esta tabla muestra el paralelismo que el árbol de dependencias permitiría si hubiera tres agentes
 > trabajando a la vez, no el reparto real. El reparto real del paso 7 fue en paralelo: el 4a quedó
-> archivado el 26/10/2026 y el 3c lo propone Emiliano (pedido de Juani, 26/10/2026).
+> archivado el 26/10/2026 y el 3c quedó construido y firmado por Emiliano el 27/10/2026 (D-121; pedido
+> de Juani, 26/10/2026), a la espera sólo del recorrido manual (7.1) para archivarse.
 
 ```
 Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ Agente C (Frontend/IA)
@@ -408,24 +410,26 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-06c] `pulido-de-la-configuracion` · 3c
-- **Estado**: `[ ]` por proponer (lo propone Emiliano con el stack; exploración del 26/10/2026)
+- **Estado**: construido y firmado (27/10/2026, D-121); falta sólo la tarea 7.1 (recorrido manual, a
+  cargo del humano) antes de archivar
 - **Scope**: los bugs y gaps del QA manual del 23/10/2026 sobre las pantallas del edificio (errores de
   intereses y vencimiento mal atribuidos o genéricos, ayudas y mensajes de identificador, coeficiente y
   clave, confirmar "Quitar", la nota interna de `/privacidad`, grupos que no se pueden sacar); la
   **ubicación** del edificio con listas encadenadas provincia, departamento y localidad desde Georef
   guardado en el repo, y editar el edificio; la **cantidad de pisos** del edificio y el piso de cada
   unidad elegido de esa lista, con la migración de lo ya cargado. Los ítems de acceso (invitación con
-  otra cuenta, menú por rol, reinvitar, `/personal` jerárquica) quedan afuera salvo que Juani los meta
-  (P68), y entonces el cambio sube a CRITICAL
-- **Dependencias**: C-06a, C-06b, C-05b (archivados). En paralelo al C-07a, fuera del camino crítico;
-  sus migraciones se numeran después de las del 4a (`0021`, `0022`) para no dejar dos cabezas en Alembic
-- **Governance**: ALTO (toca esquema de `complejo` y `unidad` y migra datos); firma Juani, Alberto o
-  Emiliano (D-094, D-111)
+  otra cuenta, menú por rol, reinvitar, `/personal` jerárquica) quedaron **afuera** (D-121, P68): un
+  change de acceso propio y futuro, CRITICAL
+- **Dependencias**: C-06a, C-06b, C-05b (archivados). Construido en paralelo al C-07a, fuera del camino
+  crítico; sus migraciones (`0023` a `0025`) se numeran después de las del 4a (`0021`, `0022`)
+- **Governance**: ALTO (toca esquema de `complejo`, `unidad` y `grupo_de_reparto`, y migra datos);
+  firmado por **Emiliano Caceres el 26/10/2026** (D-094, D-111)
 - **Leer antes**:
   - `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`
   - `knowledge-base/12_fichas_de_changes.md` §3c, §3b y §3b-bis (deuda del PR #1)
-  - `knowledge-base/04_modelo_de_datos.md` (`complejo`, `unidad`)
-  - `knowledge-base/10_preguntas_abiertas.md` (P61 a P69)
+  - `knowledge-base/04_modelo_de_datos.md` (`complejo`, `unidad`, `grupo_de_reparto`)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-121)
+  - `knowledge-base/10_preguntas_abiertas.md` (P61 a P69, todas cerradas)
   - `knowledge-base/15_lecciones.md` (L-029, L-034, L-038 a L-040)
   - `openspec/changes/archive/2026-10-20-pantallas-del-edificio/`
 

@@ -2232,6 +2232,68 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
 - **Quién**: Emiliano Caceres, 26/10/2026 (D-110/D-111 extienden la firma CRITICAL a Juani, Alberto o
   Emiliano).
 
+## D-121 · Cierre del 3c `pulido-de-la-configuracion`: ubicación, pisos, grupos desactivables y Georef (27/10/2026)
+
+- **Fecha**: 27/10/2026
+- **Decisión**: Emiliano Caceres firmó la sección "Aprobación" de `proposal.md` el 26/10/2026 (E1 a
+  E6 y E8 a E10 completas; E7 no es una elección del change). Quedan escritas como decisión las
+  respuestas a P61 a P65, P67, P68 y P69 (resueltas el 26/10/2026, ratificadas por la firma):
+  - **P61 · Sólo Argentina.** Sin campo ni selector de país (E1).
+  - **P62 · Calle y número como texto libre**, campo nuevo de `complejo`, sin validar contra el
+    dataset de calles de Georef (E2): ese dataset es mucho más grande que provincias, departamentos
+    y localidades.
+  - **P63 · Los edificios ya cargados arrancan con la ubicación en nulo** (`complejo.provincia_id` /
+    `departamento_id` / `localidad_id` nullable, migración `0023`); la puesta a punto del edificio la
+    pide como paso nuevo, antes de los seis que ya tenía el 3b (E3).
+  - **P64 · El vocabulario de pisos**: `PB` (siempre), `SS1` a `SS5` (hasta 5 subsuelos) y `1` a `60`
+    pisos sobre PB. El máximo lo fija este propose: 5 y 60 son holgados para propiedad horizontal en
+    Mendoza y chicos como para que un `<select>` siga siendo usable; son un `CHECK` de una línea si
+    hiciera falta moverlos (E4). Los cuatro tipos de unidad (D-029) eligen de la misma lista.
+  - **P65 · La migración de `unidad.piso` (`0024`) mapea los valores conocidos** (`PB`, `SS` → `SS1`,
+    un entero de 1 a 60) y **marca el resto como `NULL`** ("sin completar") para que el administrador
+    lo corrija a mano, sin inventar ningún valor (E5).
+  - **P67 · Las cuentas de Mailinator del Clerk de desarrollo se borran**: acción operativa de
+    Emiliano en el panel de Clerk, sin código ni dato del repo; las direcciones literales ya habían
+    salido de la deuda viva en `bbd02fb` porque el repo es público (L-040).
+  - **P68 · Los cuatro ítems de `acceso`** (B-3 la invitación abierta con sesión de otra cuenta, 2.3
+    el menú por rol, 2.4 reinvitar el mismo email, 2.5/P66 `/personal` jerárquica) **quedan afuera**,
+    para un change de acceso propio y futuro: entrar acá subiría este change a CRITICAL. El 3c se
+    queda en HIGH (E8).
+  - **P69 · Un grupo de reparto se desactiva, nunca se borra** (`grupo_de_reparto.activo`, migración
+    `0025`, mismo trato que ya tenían las categorías por R16; "Generales" protegido también en la
+    base, ampliando el trigger de `0011`), **y la clave de grupos y categorías se autogenera desde el
+    nombre** (función pura en `compartido/`, usada en los dos) en vez de que el administrador la
+    escriba; la API sigue aceptando `clave` explícita para la semilla y el futuro importador (E6).
+  - **P66 queda cerrada por D-120**: `/personal` jerárquica aprobada en principio, apuntada al mismo
+    change de acceso futuro que P68.
+- **Georef**: el dato de ubicación (provincias, departamentos y localidades de Argentina) sale del
+  Servicio de Normalización de Datos Geográficos (datos.gob.ar), **licencia CC BY 4.0** (atribución a
+  Georef / datos.gob.ar). El archivo se guarda **reducido dentro del repo** (`config/georef/`), con
+  su `LEEME.md` (fuente, fecha de descarga, licencia, comando `curl` exacto que lo regenera), y la
+  app **nunca lo consulta en vivo**: no abre un origen nuevo en la CSP estricta del 2b, no depende de
+  un servicio externo para crear un edificio y los tests quedan deterministas. Un lector en
+  `compartido/` lo carga una vez al arrancar y expone provincias, departamentos de una provincia,
+  localidades de un departamento y `existe_el_trio(...)`, que valida la coherencia (una localidad de
+  otro departamento, o un id inexistente, se rechazan aunque el pedido venga armado a mano). Si un id
+  guardado desaparece de una versión futura del archivo, la lectura muestra el id sin nombre en vez
+  de fallar: la validación estricta corre al escribir, nunca al leer.
+- **Migración de lo ya cargado**: tres migraciones nuevas, `0023` (ubicación, `complejo.localidad`
+  pasa a nullable y derivada de Georef), `0024` (pisos/subsuelos del edificio y `unidad.piso`
+  acotado al vocabulario) y `0025` (grupo desactivable y el evento de auditoría `editar_edificio`).
+  Ninguna migración inventa un valor: lo que no se reconoce queda `NULL`, marcado para que el
+  administrador lo corrija a mano. El `UPDATE` real de `0024` (el único que transforma filas
+  existentes) corre con el candado de RLS forzada ya usado en `0012`/`0013`/`0017`/`0018` (`LOCK
+  TABLE` → `NO FORCE ROW LEVEL SECURITY` → `UPDATE` → `FORCE ROW LEVEL SECURITY`), porque
+  `proptech_migrador` no tiene `BYPASSRLS` y un `UPDATE` sin ese candado afectaría cero filas sin
+  avisar (mismo defecto que el 4a documentó como DB-3).
+- **Editar el edificio** (`PATCH /complejos/{id}`, que no existía) reusa el permiso
+  `CONFIGURAR_PADRON`: no se toca la matriz de D-106, por eso el change se queda en HIGH y no sube a
+  CRITICAL (D5 del design).
+- **Deuda y alcance**: ver la ficha 3c de `12_fichas_de_changes.md` para el detalle completo del
+  cierre, incluida la tarea 7.1 (recorrido manual) que queda a cargo del humano.
+- **Quién**: Emiliano Caceres, 26/10/2026 (firma de "Aprobación" en `proposal.md`, gobernanza HIGH
+  D-094/D-111).
+
 ## Supuestos
 
 *(Sección nueva de Active Stack v1. Lo que se daba por cierto sin verificar antes de SU-01 vive

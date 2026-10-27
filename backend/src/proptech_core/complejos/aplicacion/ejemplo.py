@@ -72,30 +72,6 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 #: que el entorno diga explícitamente que es una máquina de desarrollo.
 ENTORNO_DE_DESARROLLO = "desarrollo"
 
-#: DEUDA (3c, tarea 2.6, a saldar en la 6.5): la semilla
-#: (`config/semilla/edificio-ejemplo.yaml`) todavía no tiene columnas de
-#: ubicación — las agrega la tarea 6.5, junto con pisos y subsuelos. Hasta
-#: entonces, el ejemplo nace con una ubicación real de Georef (Mendoza,
-#: Capital, la localidad "Mendoza"), fija acá, nunca inventada: son los
-#: mismos ids que confirma `tests/integracion/_georef_real.py`.
-_PROVINCIA_EJEMPLO = "50"
-_DEPARTAMENTO_EJEMPLO = "50007"
-_LOCALIDAD_EJEMPLO = "50007010"
-
-#: DEUDA (3c, tarea 3.2, a saldar en la 6.5): la semilla todavía no tiene
-#: columnas `pisos`/`subsuelos` para el edificio — fijas acá con los
-#: valores reales que la propia semilla usa hoy (pisos hasta "4",
-#: subsuelo "SS"): 4 pisos, 1 subsuelo. La 6.5 las mueve al YAML.
-_PISOS_EJEMPLO = 4
-_SUBSUELOS_EJEMPLO = 1
-#: DEUDA (3c, tarea 3.3, a saldar en la 6.5): la semilla todavía escribe
-#: el subsuelo como `"SS"` sin número (D3 exige `SS1..SS<subsuelos>`); la
-#: 6.5 lo numera en el propio YAML ("el subsuelo numerado en las tres
-#: cocheras y la baulera"). Hasta entonces, este mapeo adapta el dato de
-#: la semilla al vocabulario nuevo sólo en memoria, sin tocar el archivo.
-_MAPEO_PISO_SEMILLA_LEGADO = {"SS": "SS1"}
-
-
 def _ruta_georef_por_defecto() -> Path:
     base = Path(Configuracion().proptech_parametros).resolve().parent
     return base / "georef"
@@ -177,12 +153,12 @@ def _crear_desde_cero(
         sesion,
         identidad,
         nombre=semilla.edificio.nombre,
-        provincia_id=_PROVINCIA_EJEMPLO,
-        departamento_id=_DEPARTAMENTO_EJEMPLO,
-        localidad_id=_LOCALIDAD_EJEMPLO,
+        provincia_id=semilla.edificio.provincia_id,
+        departamento_id=semilla.edificio.departamento_id,
+        localidad_id=semilla.edificio.localidad_id,
         georef=georef,
-        pisos=_PISOS_EJEMPLO,
-        subsuelos=_SUBSUELOS_EJEMPLO,
+        pisos=semilla.edificio.pisos,
+        subsuelos=semilla.edificio.subsuelos,
         parametros=parametros,
         reloj=reloj,
         request_id=request_id,
@@ -198,7 +174,7 @@ def _crear_desde_cero(
             datos={
                 "identificador": unidad.identificador,
                 "tipo": unidad.tipo,
-                "piso": _MAPEO_PISO_SEMILLA_LEGADO.get(unidad.piso, unidad.piso),
+                "piso": unidad.piso,
                 "coeficiente": str(unidad.coeficiente),
                 "superficie_m2": unidad.superficie_m2,
             },
@@ -275,10 +251,9 @@ def _comparar_o_fallar(sesion: Session, complejo_id: UUID, semilla: Semilla) -> 
     else:
         for identificador, unidad in esperadas.items():
             fila = existentes[identificador]
-            piso_esperado = _MAPEO_PISO_SEMILLA_LEGADO.get(unidad.piso, unidad.piso)
             if (
                 fila["tipo"] != unidad.tipo
-                or fila["piso"] != piso_esperado
+                or fila["piso"] != unidad.piso
                 or Decimal(fila["coeficiente"]) != unidad.coeficiente
                 or Decimal(fila["superficie_m2"]) != unidad.superficie_m2.decimal
             ):
@@ -420,8 +395,10 @@ def _main(argv: list[str]) -> int:
     configuracion = Configuracion()
     parametros = leer_parametros(configuracion.proptech_parametros)
     try:
-        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros)
         georef = leer_georef(str(_ruta_georef_por_defecto()))
+        semilla = leer_semilla(
+            args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef
+        )
     except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
         print(str(error), file=sys.stderr)
         return 1

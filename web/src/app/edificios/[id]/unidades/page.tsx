@@ -52,11 +52,15 @@ export default async function PaginaPadron({ params }: Props) {
   }
 
   const nombreEdificio = edificio.estado === "ok" ? edificio.datos.nombre : "Edificio";
+  const pisosDelEdificio = edificio.estado === "ok" ? edificio.datos.pisos : null;
+  const subsuelosDelEdificio = edificio.estado === "ok" ? edificio.datos.subsuelos : null;
 
   return (
     <PantallaPadron
       id={id}
       nombreEdificio={nombreEdificio}
+      pisosDelEdificio={pisosDelEdificio}
+      subsuelosDelEdificio={subsuelosDelEdificio}
       unidades={padron.datos.unidades}
       informe={padron.datos.informe}
       accionCrear={crearUnidadAction.bind(null, id)}

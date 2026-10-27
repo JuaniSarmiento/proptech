@@ -10,7 +10,7 @@ import { Estados } from "../../../../componentes/Estados";
 import { edificioPorId } from "../../../../lib/api/edificios";
 import { gruposDelEdificio } from "../../../../lib/api/grupos";
 import { padronDelEdificio } from "../../../../lib/api/unidades";
-import { crearGrupoAction, editarGrupoAction } from "./acciones";
+import { cambiarEstadoGrupoAction, crearGrupoAction, editarGrupoAction } from "./acciones";
 import { PantallaGrupos } from "./Pantalla";
 
 type Props = {
@@ -56,6 +56,7 @@ export default async function PaginaGrupos({ params }: Props) {
       unidadesDisponibles={unidadesDisponibles}
       accionCrear={crearGrupoAction.bind(null, id, idsDisponibles)}
       accionEditar={editarGrupoAction.bind(null, id, idsDisponibles)}
+      accionEstado={cambiarEstadoGrupoAction.bind(null, id)}
     />
   );
 }

@@ -447,6 +447,16 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
                     request_id=uuid.uuid4(),
                 )
             return gid
+        if evento == EventoDelPadron.EDITAR_EDIFICIO:
+            escritura.editar_edificio(
+                sesion,
+                identidad,
+                complejo_id=edificio,
+                cambios={"nombre": "Padrón ficticio editado"},
+                georef=_GEOREF,
+                request_id=uuid.uuid4(),
+            )
+            return edificio
         lista = categorias.listar_categorias(sesion, edificio)
         if evento == EventoDelPadron.EDITAR_CATEGORIA:
             categorias.editar_categoria(

@@ -18,7 +18,10 @@ export async function gruposDelEdificio(id: string): Promise<ResultadoApi<Grupo[
 export type MiembroAEnviar = { unidad_id: string; coeficiente: string | null };
 
 export type DatosNuevoGrupo = {
-  clave: string;
+  /** D7 (tarea 4.4, 6.3): opcional — sin campo "clave" en el formulario, se
+   * deriva del nombre en el backend. La API sigue aceptando una clave
+   * explícita (semilla, importador), nunca enviada desde esta pantalla. */
+  clave?: string;
   nombre: string;
   metodo: string;
   modo_de_coeficientes: "renormalizado" | "propios";
@@ -40,7 +43,7 @@ export async function crearGrupo(
   });
 }
 
-export type CambiosGrupo = { nombre?: string; metodo?: string };
+export type CambiosGrupo = { nombre?: string; metodo?: string; activo?: boolean };
 
 /** Edición, primer pedido (D9): sólo nombre/método. `grupoId` viene de un
  * campo oculto (`grupos/acciones.ts`, R3C-2). */

@@ -25,23 +25,39 @@ export type InformeDeCoeficientes = {
 export type EdificioDeLista = {
   id: string;
   nombre: string;
-  localidad: string;
+  localidad: string | null;
 };
 
 export type Edificio = {
   id: string;
   administracion_id: string;
   nombre: string;
-  localidad: string;
+  localidad: string | null;
+  provincia_id: string | null;
+  departamento_id: string | null;
+  localidad_id: string | null;
+  calle_y_numero: string | null;
+  pisos: number | null;
+  subsuelos: number | null;
 };
 
 export type Resumen = {
   nombre: string;
-  localidad: string;
+  localidad: string | null;
+  /** D3 (tarea 6.1): `null` es "sin completar" (edificio migrado), nunca
+   * un dato inventado — ni acá ni en `Edificio`. */
+  provincia_id: string | null;
+  departamento_id: string | null;
+  localidad_id: string | null;
+  calle_y_numero: string | null;
+  pisos: number | null;
+  subsuelos: number | null;
   cantidad_unidades: number;
+  unidades_sin_piso_completo: number;
   estado_migracion: string;
   informe: InformeDeCoeficientes;
   pasos: {
+    ubicacion: PasoDePuestaAPunto;
     unidades: PasoDePuestaAPunto;
     coeficientes: PasoDePuestaAPunto;
     grupos: PasoDePuestaAPunto;
@@ -57,7 +73,9 @@ export type Unidad = {
   complejo_id: string;
   identificador: string;
   tipo: string;
-  piso: string;
+  /** D3 (tarea 3.3, 6.2): `null` es "sin completar" (unidad migrada),
+   * nunca un valor inventado. */
+  piso: string | null;
   coeficiente: string;
   superficie_m2: string;
 };
@@ -80,6 +98,9 @@ export type Grupo = {
   nombre: string;
   metodo: string;
   es_generales: boolean;
+  /** 6.3: un grupo parcial se desactiva, nunca se borra (R16 de grupos);
+   * "Generales" es siempre `true` (la base lo rechaza por SQL). */
+  activo: boolean;
   modo_de_coeficientes: string;
   informe: InformeDeCoeficientes | null;
   unidades: MiembroDeGrupo[];
