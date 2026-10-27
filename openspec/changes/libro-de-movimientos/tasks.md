@@ -532,6 +532,12 @@ avisarle a Juani antes.
   ese mismo SHA**, con los cinco jobs. Si el código cambia después, la corrida queda vencida y se repite
   entera (L-010, L-031, L-037). Lecciones: L-003, L-010, L-031, L-037, L-041, L-042, L-043.
 
+
+  **EVIDENCIA de conciliación 4.2/4.3 durante 6.1 · 27/10/2026:**
+  - Primera suite completa: `bash ../infra/ci/test-backend.sh` desde `backend/` del clon limpio de `4164aa2`, 09:27:03–09:45:58, `3 failed, 3348 passed, 1 xfailed, 19 warnings` (`47-cierre-backend.log`). Rojo en `test_altas_sin_id_del_cliente.py:326` (POST sin cuerpo), `test_regresiones_de_aislamiento_y_grupos_vacios.py:127` (422 de un cuerpo de asignación enviado a correcciones frente al 404 esperado) y `test_vocabulario_configuracion.py:93` (0004 comparada con Accion vivo, que ya contiene el literal de 0024).
+  - Se añaden cuerpos válidos a ambos barridos y se excluye el literal posterior al comparar 0004; 0024 entra también al test de migraciones sin import del enum vivo. No se modifica código productivo ni reglas firmadas.
+  - GREEN: `bash infra/ci/test-backend.sh tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py tests/integracion/test_vocabulario_configuracion.py -q --tb=short`, 09:46:46–09:47:11, `16 passed` (`55-verde-barridos-y-vocabulario.log`). Lint, formato y mypy verdes; suite completa a repetir tras el commit.
+
 ## Workflow follow-up
 
 - Revisión del propose por los roles que convoque el orquestador (arquitecto, backend, DBA, QA y el piso
