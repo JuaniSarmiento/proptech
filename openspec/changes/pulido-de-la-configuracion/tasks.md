@@ -150,10 +150,34 @@
   ningún `INSERT` literal se ve afectado por `0023` porque las cuatro columnas nuevas son nullable y
   `localidad` sólo se AFLOJA (NOT NULL → nullable), nunca se endurece — un `INSERT` que ya mandaba
   `localidad` sigue funcionando igual.
-- [ ] 2.5 Tres rutas de lectura de provincias, departamentos de una provincia y localidades de un
+- [x] 2.5 Tres rutas de lectura de provincias, departamentos de una provincia y localidades de un
   departamento, con sesión, 404 para un padre inexistente y 401 sin sesión; verificado con el test de
   los escenarios "Departamentos de una provincia", "Localidades de un departamento", "Provincia
   inexistente" y "Sin sesión".
+
+  **Wiring**: `backend/src/proptech_api/georef.py` (router `/api/georef/{provincias,
+  provincias/{id}/departamentos, departamentos/{id}/localidades}`, `route_class=RutaConIdentidad`,
+  sólo `Depends(identidad_actual)` — nunca `sesion_con_tenant`: son datos del país, no del tenant).
+  `app.py` carga `Georef` una vez al arrancar desde `Path(configuracion.proptech_parametros).parent /
+  "georef"` — sin variable de entorno nueva, porque `config/` entero ya se monta de sólo lectura en
+  `infra/compose.yaml:207,255`.
+
+  **Rojo real, no planeado (26/10/2026)**: al cablear `app.py` reutilicé el nombre `georef` para el
+  módulo importado (`from proptech_api import ..., georef, ...`) Y para la variable local con los
+  datos cargados (`georef = leer_georef(...)`) — la segunda tapaba la primera dentro de la función,
+  así que `app.include_router(georef.router)` fallaba con
+  `AttributeError: 'Georef' object has no attribute 'router'`. Lo agarraron los 6 tests nuevos:
+  `bash infra/ci/test-backend.sh tests/integracion/test_georef_api.py` → `6 errors in 12.97s`, los 6
+  en ese `AttributeError` (nunca un 401/404 falso: la ruta ni llegaba a registrarse). Arreglo: la
+  variable local pasa a llamarse `datos_georef`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_georef_api.py` →
+  `6 passed in 13.57s` (con sesión los tres listados, 404 de provincia y de departamento inexistentes,
+  401 real sacando el override de `identidad_actual` — patrón de
+  `test_edificios_api.py::test_401_sin_sql_incluso_con_cuerpo_invalido`). `uv run ruff check` +
+  `uv run mypy` sobre los tres archivos → sin hallazgos. `test_fronteras_de_modulos.py` (27 casos) y
+  `test_barrido_de_rutas.py` (12 casos) siguen en verde: el router nuevo no cruza ninguna frontera ni
+  queda fuera del barrido.
 - [ ] 2.6 El alta del edificio exige el trío y acepta calle y número opcional (≤ 200, sin caracteres de
   control); `localidad` deja de ser entrada y se escribe derivada del nombre de Georef. Verificado con
   los escenarios "Alta con ubicación y pisos", "Alta sin ubicación", "Alta sin calle", "Calle con
