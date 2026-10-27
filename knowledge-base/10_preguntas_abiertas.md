@@ -204,6 +204,17 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): ¿un grupo se desactiva en vez de borrarse,
   como las categorías (R16)? ¿La clave de grupos y categorías se genera sola desde el nombre? Antes
   del 3c.
+- [ ] **P70 · Mapa interactivo para elegir la ubicación exacta** (sugerencia de Emiliano, 26/10/2026,
+  al firmar E1/E2 del 3c): un mapa (Google Maps, Mapbox o Leaflet/OpenStreetMap) para marcar el punto
+  exacto del edificio, en vez de (o además de) la cadena provincia/departamento/localidad y la calle
+  en texto libre del 3c. Choca con reglas ya firmes del proyecto: la app no depende de un servicio
+  externo para crear un edificio (D1 del 3c), la CSP estricta de 2b/2c no abre otro origen sin pasar
+  por su propia aprobación HIGH, y D-043 prioriza lo que no cobra licencia ni uso (Google Maps cobra
+  por volumen; Leaflet/OSM es gratis pero necesita tiles de un servidor ajeno o alojar los propios). Un
+  mapa con arrastrar-y-soltar un pin tampoco suele ser operable por teclado, piso obligatorio de
+  revisión frontend. Alternativa más barata ya anotada: guardar latitud/longitud como números y un
+  link "Ver en el mapa" que abra Google Maps en una pestaña nueva, sin embeber nada. No bloquea el 3c;
+  queda para un change futuro de ubicación más precisa, con su propio análisis de costo/CSP/accesibilidad.
 
 ## Resumen por el cambio al que bloquean
 
@@ -216,7 +227,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de Alberto y se validan antes del piloto. P-3 y P-7
   de la exploración se resolvieron en D-113.
 - **Pulido de la configuración (3c)**: P61 a P65 (ubicación y pisos), P68 (alcance) y P69 (grupos),
-  antes de su propose. P66 (`/personal` jerárquica) y P67 (cuentas de Mailinator) no lo bloquean.
+  antes de su propose. P66 (`/personal` jerárquica), P67 (cuentas de Mailinator) y P70 (mapa
+  interactivo) no lo bloquean.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la

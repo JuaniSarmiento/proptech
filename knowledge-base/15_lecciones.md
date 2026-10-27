@@ -674,3 +674,24 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   tramos etiquetados `(0, int)` y `(1, texto)` para que no haya lectura posible que compare tipos
   distintos.
 - **Aplica a**: revisores de rol (QA, analista), auditor.
+
+## L-047 · Arreglar el campo que encontró el QA no deja una regla para el campo que todavía no existe
+
+- **Origen**: QA manual del 23/10/2026 (identificador de unidad, coeficiente, clave de grupos y
+  categorías); propose del 3c `pulido-de-la-configuracion`, 26/10/2026 (observación de Emiliano sobre
+  el design).
+- **Qué pasó**: los tres hallazgos (G-1, G-2, G-3) se arreglaron con tres constantes nuevas, una por
+  campo (D7 del 3c): el máximo del identificador, el rango del coeficiente y el patrón de la clave,
+  usados en el input, la ayuda y el mensaje de error. Cada arreglo es correcto para su campo, pero
+  ninguno queda escrito como regla que un campo nuevo, en otra pantalla, en otro change, tenga que
+  seguir. El próximo campo que alguien agregue puede repetir exactamente el mismo problema (un mensaje
+  genérico que no dice el formato esperado) sin que nada del código ni de la revisión lo atrape.
+- **Regla**: cuando un hallazgo de QA es "este campo no dice su formato antes de fallar", el arreglo
+  tiene dos partes: la constante puntual del campo (como D7) **y** una línea en `impeccable` o en la
+  convención de formularios del proyecto que diga, en general, "todo campo con un límite o un patrón
+  lo muestra en la ayuda y en el error, desde una constante compartida con el backend" — para que el
+  próximo campo nazca cumpliéndola, en vez de que alguien tenga que encontrarla rota de nuevo.
+- **Costo**: ninguno todavía — se detectó antes de construir, al revisar el propose del 3c, no después
+  de que el próximo campo repitiera el bug.
+- **Aplica a**: quien proponga un change con formularios nuevos; frontend al revisar; `impeccable` como
+  dueña de la convención transversal.
