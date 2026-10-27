@@ -79,3 +79,43 @@ def test_grupo_desactivado_sin_unidades_no_bloquea_la_puesta_a_punto(
     api.cliente.patch(f"/api/grupos/{grupo_id}", json={"activo": False})
     resumen_despues = api.cliente.get(api.ruta("/resumen")).json()
     assert resumen_despues["pasos"]["grupos"] == "hecho"
+
+
+def _plan(api: ApiEdificio, consulta: str, parametros: tuple[object, ...]) -> str:
+    filas = api.filas("EXPLAIN " + consulta, parametros)
+    plan = "\n".join(f[0] for f in filas)
+    print(plan)
+    return plan
+
+
+def test_explain_de_los_grupos_activos_entra_por_indice(api_edificio: ApiEdificio) -> None:
+    """DB-1 (revisión del PR #2): las dos consultas de la tarea 4.5 que
+    filtran por `activo` — la de la puesta a punto (`lectura.py`) y la de
+    `listar_grupos(solo_activos=True)` (`grupos.py`) — entran por un índice
+    único con prefijo `(administracion_id, complejo_id)` (hoy el planner
+    elige `uq_grupo_modo`; `uq_grupo_clave` y `uq_grupo_complejo_id` de
+    `0006` tienen el mismo prefijo), con la igualdad de RLS como condición
+    del índice, y nunca recorren `grupo_de_reparto` entero. Mismo patrón que
+    `test_explain_de_la_consulta_de_unidades_fuera_de_rango`."""
+    api = api_edificio
+    api.como("super_admin")
+    _grupo_parcial(api)
+    edificio = str(api.edificio)
+    consultas: list[tuple[str, tuple[object, ...]]] = [
+        (
+            "SELECT id, modo_de_coeficientes FROM grupo_de_reparto "
+            "WHERE complejo_id=%s AND NOT es_generales AND activo",
+            (edificio,),
+        ),
+        (
+            "SELECT * FROM grupo_de_reparto WHERE complejo_id=%s "
+            "AND (NOT %s OR activo) ORDER BY es_generales DESC, clave",
+            (edificio, True),
+        ),
+    ]
+    for consulta, parametros in consultas:
+        plan = _plan(api, consulta, parametros)
+        assert "Seq Scan on grupo_de_reparto" not in plan, plan
+        assert "Index Scan using uq_grupo_" in plan, plan
+        condicion = next(linea for linea in plan.splitlines() if "Index Cond" in linea)
+        assert "administracion_id" in condicion and "complejo_id" in condicion, plan
