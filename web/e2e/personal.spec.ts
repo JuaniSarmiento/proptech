@@ -68,6 +68,11 @@ test("7.3 revocar y quitar actualizan la fila sin recargar a mano", async ({ pag
 
   const filaCaro = page.getByRole("row", { name: /Caro Auxiliar/ });
   await filaCaro.getByRole("button", { name: "Quitar" }).click();
+  // 3c (D10, tarea 6.4): "Quitar" pide confirmación antes de llamar a la API.
+  await page
+    .getByRole("dialog", { name: "Quitar este perfil" })
+    .getByRole("button", { name: "Quitar", exact: true })
+    .click();
   await expect(filaCaro.getByText("Quitada")).toBeVisible();
 });
 

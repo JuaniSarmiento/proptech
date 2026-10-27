@@ -143,12 +143,12 @@ test.describe("rediseño a todo el ancho", () => {
     ).toBe(false);
   });
 
-  test('el resumen muestra la barra "N de 6 pasos" y el formulario de configuración usa todo el ancho', async ({
+  test('el resumen muestra la barra "N de 7 pasos" (la ubicación del 3c es el paso nuevo) y el formulario de configuración usa todo el ancho', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/edificios/${_ID_NORMAL}`);
-    await expect(page.getByRole("progressbar", { name: /de 6 pasos/ })).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: /de 7 pasos/ })).toBeVisible();
 
     await page.goto(`/edificios/${_ID_NORMAL}/configuracion`);
     await page.waitForLoadState("networkidle");
