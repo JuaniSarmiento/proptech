@@ -11,13 +11,20 @@ from sqlalchemy.orm import Session
 
 from proptech_core.acceso.aplicacion.auditoria import registrar
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import CategoriaDeGasto, leer_parametros
 from proptech_core.compartido.porcentaje import Porcentaje
 from proptech_core.complejos.aplicacion import escritura
-from proptech_core.complejos.aplicacion.errores import Conflicto
+from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida
 
 pytestmark = pytest.mark.integracion
 PARAMETROS = Path(__file__).resolve().parents[3] / "config/parametros.yaml"
+GEOREF = leer_georef(str(Path(__file__).resolve().parents[3] / "config/georef"))
+#: Mendoza / Capital / "Mendoza" — ids reales, confirmados contra
+#: `config/georef/` el 26/10/2026 (ver `_georef_real.py`).
+PROVINCIA_ID = "50"
+DEPARTAMENTO_ID = "50007"
+LOCALIDAD_ID = "50007010"
 
 
 def reloj() -> datetime:
@@ -33,7 +40,10 @@ def test_alta_copia_todos_los_valores(
         sesion_edificio,
         identidad_edificio,
         nombre="Edificio ficticio",
-        localidad="Mendoza",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
         parametros=parametros,
         reloj=reloj,
         request_id=request,
@@ -125,7 +135,10 @@ def test_categorias_con_nombre_repetido_sin_mayusculas_da_conflicto_no_500(
             sesion_edificio,
             identidad_edificio,
             nombre="Edificio",
-            localidad="Mendoza",
+            provincia_id=PROVINCIA_ID,
+            departamento_id=DEPARTAMENTO_ID,
+            localidad_id=LOCALIDAD_ID,
+            georef=GEOREF,
             parametros=parametros,
             reloj=reloj,
             request_id=uuid4(),
@@ -153,7 +166,10 @@ def test_configuracion_inicial_y_parametros_nuevos_no_alteran_el_primero(
         sesion_edificio,
         identidad_edificio,
         nombre="Primero",
-        localidad="Mendoza",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
         parametros=parametros,
         configuracion_inicial=inicial,
         reloj=reloj,
@@ -168,7 +184,10 @@ def test_configuracion_inicial_y_parametros_nuevos_no_alteran_el_primero(
         sesion_edificio,
         identidad_edificio,
         nombre="Segundo",
-        localidad="Mendoza",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
         parametros=otros,
         reloj=reloj,
         request_id=uuid4(),
@@ -197,7 +216,10 @@ def test_falla_despues_de_auditar_revierte_todo(
             sesion_edificio,
             identidad_edificio,
             nombre="Fallido",
-            localidad="Mendoza",
+            provincia_id=PROVINCIA_ID,
+            departamento_id=DEPARTAMENTO_ID,
+            localidad_id=LOCALIDAD_ID,
+            georef=GEOREF,
             parametros=leer_parametros(str(PARAMETROS)),
             reloj=reloj,
             request_id=uuid4(),
@@ -211,3 +233,96 @@ def test_falla_despues_de_auditar_revierte_todo(
     ):
         consulta = f"SELECT count(*) FROM {tabla}"  # noqa: S608 - tablas literales del test
         assert sesion_edificio.execute(text(consulta)).scalar_one() == 0
+
+
+@pytest.mark.parametrize(
+    ("provincia_id", "departamento_id", "localidad_id", "campo_esperado"),
+    [
+        # Localidad de otro departamento (Godoy Cruz) con provincia y
+        # departamento coherentes (Mendoza / Capital).
+        (PROVINCIA_ID, DEPARTAMENTO_ID, "5002101001", "localidad_id"),
+        # Departamento de otra provincia (San Juan) con la provincia Mendoza.
+        (PROVINCIA_ID, "70126", "70126010", "departamento_id"),
+        # Id de provincia que no existe.
+        ("99", DEPARTAMENTO_ID, LOCALIDAD_ID, "provincia_id"),
+    ],
+)
+def test_trio_incoherente_rechaza_sin_crear_nada(
+    sesion_edificio: Session,
+    identidad_edificio: Identidad,
+    provincia_id: str,
+    departamento_id: str,
+    localidad_id: str,
+    campo_esperado: str,
+) -> None:
+    """D2 (tarea 2.6): la aplicación es la autoridad sobre la coherencia del
+    trío, nunca la base ni el cliente. Escenarios "Localidad de otro
+    departamento", "Departamento de otra provincia" e "Id que no existe"."""
+    with pytest.raises(EntradaInvalida) as exc_info:
+        escritura.crear_edificio(
+            sesion_edificio,
+            identidad_edificio,
+            nombre="Incoherente",
+            provincia_id=provincia_id,
+            departamento_id=departamento_id,
+            localidad_id=localidad_id,
+            georef=GEOREF,
+            parametros=leer_parametros(str(PARAMETROS)),
+            reloj=reloj,
+            request_id=uuid4(),
+        )
+    assert exc_info.value.campo == campo_esperado
+    assert sesion_edificio.execute(text("SELECT count(*) FROM complejo")).scalar_one() == 0
+
+
+def test_localidad_se_escribe_derivada_del_nombre_de_georef(
+    sesion_edificio: Session, identidad_edificio: Identidad
+) -> None:
+    """D2: la ubicación y `localidad` quedan guardadas con los tres ids y el
+    nombre real de Georef — nunca un valor que el cliente pudiera mandar
+    (la API ya no acepta `localidad` como entrada, tarea 2.6). Escenario
+    "Trío coherente"."""
+    edificio = escritura.crear_edificio(
+        sesion_edificio,
+        identidad_edificio,
+        nombre="Con ubicación",
+        provincia_id=PROVINCIA_ID,
+        departamento_id="50021",
+        localidad_id="5002101001",
+        georef=GEOREF,
+        calle_y_numero="Alsina 123",
+        parametros=leer_parametros(str(PARAMETROS)),
+        reloj=reloj,
+        request_id=uuid4(),
+    )
+    assert sesion_edificio.execute(
+        text(
+            "SELECT provincia_id, departamento_id, localidad_id, calle_y_numero, localidad "
+            "FROM complejo WHERE id=:id"
+        ),
+        {"id": edificio},
+    ).one() == (PROVINCIA_ID, "50021", "5002101001", "Alsina 123", "Ciudad de Godoy Cruz")
+
+
+def test_alta_sin_calle_queda_vacia(
+    sesion_edificio: Session, identidad_edificio: Identidad
+) -> None:
+    """Escenario "Alta sin calle": el alta es exitosa y la calle queda nula."""
+    edificio = escritura.crear_edificio(
+        sesion_edificio,
+        identidad_edificio,
+        nombre="Sin calle",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
+        parametros=leer_parametros(str(PARAMETROS)),
+        reloj=reloj,
+        request_id=uuid4(),
+    )
+    assert (
+        sesion_edificio.execute(
+            text("SELECT calle_y_numero FROM complejo WHERE id=:id"), {"id": edificio}
+        ).scalar_one()
+        is None
+    )

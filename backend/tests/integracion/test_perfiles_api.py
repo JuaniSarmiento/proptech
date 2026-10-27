@@ -106,7 +106,13 @@ def test_administrador_principal_confirma_sin_asignacion_y_no_crea_edificio(
     assert api.filas("SELECT count(*) FROM auditoria") == antes
     edificios = api.filas("SELECT id FROM complejo ORDER BY id")
     rechazo = api.cliente.post(
-        "/api/complejos", json={"nombre": "Impedido", "localidad": "Mendoza"}
+        "/api/complejos",
+        json={
+            "nombre": "Impedido",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+        },
     )
     assert rechazo.status_code == 403
     assert rechazo.json()["detail"]["permiso_faltante"] == "crear_edificio"
@@ -156,7 +162,15 @@ def test_perfiles_lectores_ven_padron_y_no_escriben(perfiles: ApiEdificio, rol: 
 def test_contador_principal_lista_tres_y_lee_cualquier_padron(perfiles: ApiEdificio) -> None:
     api = perfiles
     api.como("super_admin")
-    alta = api.cliente.post("/api/complejos", json={"nombre": "Tercero", "localidad": "Mendoza"})
+    alta = api.cliente.post(
+        "/api/complejos",
+        json={
+            "nombre": "Tercero",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+        },
+    )
     assert alta.status_code == 201
     tercero = alta.json()["id"]
     api.como("contador_principal")
@@ -194,7 +208,15 @@ def test_administrador_en_a_auxiliar_en_b_no_extiende_permiso_ni_alcanza_c(
 ) -> None:
     api = perfiles
     api.como("super_admin")
-    alta = api.cliente.post("/api/complejos", json={"nombre": "C", "localidad": "Mendoza"})
+    alta = api.cliente.post(
+        "/api/complejos",
+        json={
+            "nombre": "C",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+        },
+    )
     assert alta.status_code == 201
     c = alta.json()["id"]
     _asignacion(api, "mixto", "administrador", api.edificio)
@@ -298,7 +320,15 @@ def test_lectores_no_escriben_nada_por_ninguna_ruta(api_edificio: ApiEdificio, p
     for metodo, ruta, cuerpo in _escrituras(api, api.edificio, api.unidad):
         r = getattr(api.cliente, metodo)(ruta, json=cuerpo) if cuerpo else api.cliente.post(ruta)
         assert r.status_code == 403, (perfil, ruta, r.status_code, r.text)
-    r = api.cliente.post("/api/complejos", json={"nombre": "X", "localidad": "Mendoza"})
+    r = api.cliente.post(
+        "/api/complejos",
+        json={
+            "nombre": "X",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+        },
+    )
     assert r.status_code == 403
     assert _huella(api) == antes
 

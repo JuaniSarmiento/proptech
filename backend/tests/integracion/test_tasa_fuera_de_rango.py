@@ -27,7 +27,13 @@ def test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango(
         cuerpo.pop("vigente_desde")
         respuesta = api.cliente.post(
             "/api/complejos",
-            json={"nombre": "Nuevo", "localidad": "Mendoza", "configuracion_inicial": cuerpo},
+            json={
+                "nombre": "Nuevo",
+                "provincia_id": "50",
+                "departamento_id": "50007",
+                "localidad_id": "50007010",
+                "configuracion_inicial": cuerpo,
+            },
         )
     else:
         respuesta = api.cliente.post(api.ruta("/configuracion/versiones"), json=cuerpo)

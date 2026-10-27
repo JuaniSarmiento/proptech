@@ -35,6 +35,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
 from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
@@ -43,6 +44,7 @@ from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
+_GEOREF = leer_georef(str(RAIZ_BACKEND.parent / "config/georef"))
 
 ARRANQUE_USER = "arranque_auditoria_tx"
 ARRANQUE_PASSWORD = "clave-arranque-no-real"
@@ -394,7 +396,10 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion,
             identidad,
             nombre="Padrón ficticio",
-            localidad="Mendoza",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),
@@ -484,7 +489,10 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion,
             identidad,
             nombre="Ficticio",
-            localidad="Mendoza",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),

@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.georef import Georef
 from proptech_core.compartido.parametros import Parametros
 from proptech_core.complejos.aplicacion.errores import (
     Conflicto,
@@ -137,12 +138,31 @@ def crear_edificio(
     identidad: Identidad,
     *,
     nombre: str,
-    localidad: str,
+    provincia_id: str,
+    departamento_id: str,
+    localidad_id: str,
+    georef: Georef,
+    calle_y_numero: str | None = None,
     parametros: Parametros,
     reloj: Callable[[], datetime],
     request_id: UUID,
     configuracion_inicial: ConfiguracionEdificio | None = None,
 ) -> UUID:
+    """D2/D1 (tarea 2.6): `localidad` deja de ser un parámetro — la
+    aplicación es la única autoridad sobre la ubicación, contra el archivo
+    de Georef, nunca contra lo que mande el cliente. `campo_incoherente`
+    nombra el primer campo que no encadena (provincia → departamento →
+    localidad); `localidad` se escribe siempre derivada del nombre real de
+    Georef, nunca de un valor del pedido."""
+    campo_invalido = georef.campo_incoherente(provincia_id, departamento_id, localidad_id)
+    if campo_invalido is not None:
+        raise EntradaInvalida(campo_invalido)
+    localidad = georef.nombre_de_localidad(localidad_id)
+    if localidad is None:
+        # No alcanzable en los hechos: `campo_incoherente` ya confirmó que
+        # `localidad_id` existe. Nunca `assert` en código de producción
+        # (S101): se cae a un error explícito en vez de silenciarlo con -O.
+        raise RuntimeError("localidad inexistente pese a pasar la validación de coherencia")
     configuracion = configuracion_inicial or ConfiguracionEdificio.desde_parametros(parametros)
     configuracion.validar_rango_recargo(parametros)
     if configuracion.umbral_saldo_chico is None:
@@ -160,14 +180,21 @@ def crear_edificio(
             str(
                 sesion.execute(
                     text(
-                        "INSERT INTO complejo (administracion_id, "
-                        "nombre, localidad, estado_migracion) "
-                        "VALUES (:admin, :nombre, :localidad, 'pendiente') RETURNING id"
+                        "INSERT INTO complejo (administracion_id, nombre, localidad, "
+                        "provincia_id, departamento_id, localidad_id, calle_y_numero, "
+                        "estado_migracion) "
+                        "VALUES (:admin, :nombre, :localidad, :provincia_id, "
+                        ":departamento_id, :localidad_id, :calle_y_numero, 'pendiente') "
+                        "RETURNING id"
                     ),
                     {
                         "admin": identidad.administracion_id,
                         "nombre": nombre,
                         "localidad": localidad,
+                        "provincia_id": provincia_id,
+                        "departamento_id": departamento_id,
+                        "localidad_id": localidad_id,
+                        "calle_y_numero": calle_y_numero,
                     },
                 ).scalar_one()
             )

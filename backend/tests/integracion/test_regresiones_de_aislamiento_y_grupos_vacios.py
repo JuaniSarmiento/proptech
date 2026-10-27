@@ -10,7 +10,7 @@ from proptech_api.acceso import identidad_actual
 from proptech_core.acceso.dominio.identidad import Identidad
 
 from ._api_edificios import ApiEdificio
-from .test_rutas_protegidas import _RUTAS_CUBIERTAS
+from .test_rutas_protegidas import _RUTAS_CUBIERTAS, _RUTAS_SIN_ALCANCE
 
 pytestmark = pytest.mark.integracion
 
@@ -83,6 +83,10 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
     for ruta, metodo in sorted(_RUTAS_CUBIERTAS):
         if ruta == "/api/complejos":
             continue
+        if (ruta, metodo) in _RUTAS_SIN_ALCANCE:
+            # D1: datos del país, no del edificio — cualquier identidad
+            # autenticada los lee igual, sin que importe la administración.
+            continue
         if ruta in _RUTAS_CON_TOKEN_SIN_PERSONA:
             continue
         if (ruta, metodo) in {("/api/personal", "GET"), ("/api/sesion/ingreso", "POST")}:
@@ -96,6 +100,8 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             categoria_id=categoria_a,
             invitacion_id=uuid4(),
             asignacion_id=uuid4(),
+            provincia_id="50",
+            departamento_id="50007",
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
         if ruta == "/api/personal/invitaciones":

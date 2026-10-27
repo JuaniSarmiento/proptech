@@ -178,11 +178,86 @@
   `uv run mypy` sobre los tres archivos → sin hallazgos. `test_fronteras_de_modulos.py` (27 casos) y
   `test_barrido_de_rutas.py` (12 casos) siguen en verde: el router nuevo no cruza ninguna frontera ni
   queda fuera del barrido.
-- [ ] 2.6 El alta del edificio exige el trío y acepta calle y número opcional (≤ 200, sin caracteres de
+- [x] 2.6 El alta del edificio exige el trío y acepta calle y número opcional (≤ 200, sin caracteres de
   control); `localidad` deja de ser entrada y se escribe derivada del nombre de Georef. Verificado con
   los escenarios "Alta con ubicación y pisos", "Alta sin ubicación", "Alta sin calle", "Calle con
   carácter de control o demasiado larga" y el test de que `localidad` coincide con el nombre de Georef
   después de escribir (D2).
+
+  **Cambio de contrato**: `crear_edificio` (`escritura.py`) deja de aceptar `localidad: str`; ahora
+  exige `provincia_id`, `departamento_id`, `localidad_id`, `georef: Georef` (y opcionalmente
+  `calle_y_numero`). Valida con `Georef.campo_incoherente` y escribe `localidad` derivada de
+  `nombre_de_localidad`. `CuerpoEdificio` (API) espeja el cambio: sin `localidad`, con el trío
+  obligatorio y `calle_y_numero` opcional (`Field(max_length=200)` + `recortado_sin_control`, H-8: sin
+  `CHECK` de largo en la base, igual que `localidad` hoy).
+
+  **BLOQUEANTE real, relevado y resuelto en esta corrida** (anunciado al coordinador antes de seguir):
+  7 llamadores directos de `crear_edificio(...)` (`src/proptech_api/complejos.py`,
+  `src/proptech_core/complejos/aplicacion/ejemplo.py`, `tests/integracion/conftest.py` y 4 archivos de
+  test con 9 invocaciones) y 11 archivos de test con `POST /api/complejos` de cuerpo viejo. Los 7
+  llamadores se actualizaron al nuevo contrato (ids reales de Georef: Mendoza `50` / Capital `50007` /
+  localidad `50007010`, confirmados contra `config/georef/`). De los 11 archivos de `POST
+  /api/complejos`: 8 necesitaron el cuerpo nuevo (mecánico), 3 no necesitaban cambios (no mandan cuerpo
+  de ubicación: `test_contrato_web.py` sólo lee, `test_identidad_antes_del_cuerpo.py` manda bytes
+  crudos, `test_regresiones_de_aislamiento_y_grupos_vacios.py` ya saltea `/api/complejos`). Tres de los
+  8 (`test_texto_recortado_en_el_borde.py`, `test_texto_sin_caracteres_de_control.py`,
+  `test_texto_unicode_seguro.py`) probaban el recorte/control/unicode-inseguro sobre `localidad`
+  específicamente; como esa capacidad se mudó a `calle_y_numero` (el otro texto libre del alta), los
+  casos se reescribieron sobre ese campo en vez de borrarse — la cobertura de esa familia (R3A-1/R3A-6)
+  no se perdió.
+
+  **JUICIO (confianza alta)**: `ejemplo.py` (carga del edificio de ejemplo) necesita el trío para cada
+  alta nueva, pero `config/semilla/edificio-ejemplo.yaml` todavía no tiene columnas de ubicación — eso
+  es la tarea 6.5, fuera de esta corrida. Se usó un trío real y fijo (Mendoza/Capital/"Mendoza",
+  constantes `_PROVINCIA_EJEMPLO`/`_DEPARTAMENTO_EJEMPLO`/`_LOCALIDAD_EJEMPLO` en `ejemplo.py`,
+  documentadas como deuda hacia 6.5) en vez de inventar un valor sin sentido o bloquear todo el change:
+  son ids reales de Georef, no datos fabricados, y quedan anotados para que 6.5 los reemplace por los
+  de la semilla real.
+
+  **Segundo bloqueante real, encontrado corriendo la suite** (no estaba en el relevamiento inicial):
+  `crear_app()` carga `Georef` desde el directorio hermano de `proptech_parametros` (D1), pero **7
+  fixtures de test** aíslan `parametros.yaml` en un `tmp_path` sin copiar su `georef/` al lado
+  (`test_alcance_api.py`, `test_altas_sin_id_del_cliente.py`, `test_asignar_edificio_api.py`,
+  `test_cableado_real_del_arranque.py`, `test_identidad_api.py`, `test_rutas_protegidas.py`,
+  `test_causa_de_arranque_rechazado.py`) — las 7 rompían con `GeorefInvalido: no se puede leer el
+  archivo: provincias.json`. Se evaluaron dos arreglos: (a) una variable de entorno `PROPTECH_GEOREF`
+  separada (toca `Configuracion`, `infra/compose.yaml` y cada fixture igual) vs. (b) copiar
+  `config/georef/` al lado del `parametros.yaml` aislado, mismo patrón que esos fixtures ya usan
+  (`shutil.copytree`). Se eligió (b): una línea por fixture, sin tocar `Configuracion` ni la
+  infraestructura de despliegue (que ya monta `config/` entero, D1).
+
+  **Tercer bloqueante, estructural**: `test_rutas_protegidas.py` exige que el conjunto de rutas
+  cubiertas coincida exactamente con las rutas reales de la app (`_RUTAS_CUBIERTAS`); las 3 rutas de
+  Georef (2.5) no estaban. Como son datos del país (D1: "no depende del edificio ni del rol"), no
+  encajan en el supuesto de esa suite de que toda ruta cubierta necesita una `asignacion_rol` — se
+  agregó `_RUTAS_SIN_ALCANCE` (importado también por `test_identidad_antes_del_cuerpo.py` y
+  `test_regresiones_de_aislamiento_y_grupos_vacios.py`, que referencian `_RUTAS_CUBIERTAS`) con su
+  propia rama: 200 esperado con cualquier identidad autenticada, incluida una sin ninguna fila en
+  `asignacion_rol` o de otra administración, en vez de la rama genérica (403/404 esperados).
+
+  **Rojo real #1 (26-27/10/2026)**: al cablear `georef.router` en `app.py` reutilicé `georef` como
+  nombre del módulo importado y de la variable local con los datos cargados — ver evidencia de la
+  tarea 2.5, mismo informe.
+
+  **Rojo real #2**: `bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py` →
+  `1 failed, 367 passed` (las otras 6 fixtures de `tmp_path` corrigiéndose en el mismo lote), cayendo
+  en `test_las_rutas_del_candado_son_exactamente_las_cubiertas_acá` nombrando las 3 rutas de Georef
+  como "no cubiertas" — nunca en un `ImportError` ni en un 401 genérico.
+
+  **Verde, corrida completa de los 26 archivos tocados** (crear_edificio: 7 llamadores; POST
+  /api/complejos: 11 archivos; más los 7 de fixtures de Georef aislado, con solapamiento):
+  `358 passed` (`test_rutas_protegidas.py` solo) + `122 passed` (edificios/perfiles/tasa/umbral/texto×3)
+  + `46 passed` (identidad-antes-del-cuerpo/regresiones/ejemplo/contrato-web) + `34 passed`
+  (edificios_api + crear_edificio, con los tests nuevos de 2.6) + `27 passed` (crear_edificio,
+  unidades, versiones, auditoría) + `55 passed` (barrido de rutas, fronteras, paquetes, arranque) —
+  ninguna falla fuera de las ya explicadas y corregidas. `uv run ruff check .` y `uv run mypy` sobre
+  todos los archivos fuente tocados → sin hallazgos.
+
+  **Hallazgo de higiene, no de lógica**: un `Edit` sobre `test_edificios_api.py` escribió un byte NUL
+  crudo (`\x00`) dentro de un string de Python en vez del escape ` ` que se quería probar —
+  `grep`/`Read` empezaron a ver el archivo como binario. Detectado por `wc -l` y `file` dando
+  resultados inconsistentes entre sí; corregido reescribiendo el byte como el escape de texto
+  correcto con un script de una línea, confirmado con `ast.parse` antes de seguir.
 
 ## 3. Pisos del edificio y de la unidad
 

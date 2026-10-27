@@ -115,9 +115,16 @@ class CuerpoEdificio(CuerpoDeAlta):
     nombre: Annotated[
         str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
     ]
-    localidad: Annotated[
-        str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
-    ]
+    #: D2 (tarea 2.6): el trío es obligatorio en toda alta nueva; `localidad`
+    #: deja de ser una entrada — se escribe derivada del nombre de Georef.
+    provincia_id: str
+    departamento_id: str
+    localidad_id: str
+    #: H-8/D2: sin `CHECK` de largo en la base (igual que `localidad` hoy);
+    #: el máximo de 200 y el recorte de control viven sólo acá.
+    calle_y_numero: (
+        Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
+    ) = None
     configuracion_inicial: ConfiguracionEdificio | None = None
 
 
@@ -250,7 +257,11 @@ def alta_edificio(
         sesion,
         identidad,
         nombre=cuerpo.nombre,
-        localidad=cuerpo.localidad,
+        provincia_id=cuerpo.provincia_id,
+        departamento_id=cuerpo.departamento_id,
+        localidad_id=cuerpo.localidad_id,
+        calle_y_numero=cuerpo.calle_y_numero,
+        georef=request.app.state.georef,
         parametros=request.app.state.parametros,
         reloj=lambda: datetime.now(UTC),
         request_id=UUID(request_id_actual.get() or ""),

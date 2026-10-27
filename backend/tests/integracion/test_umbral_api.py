@@ -16,7 +16,9 @@ def test_herencia_inmediatamente_anterior(api_edificio: ApiEdificio) -> None:
         "/api/complejos",
         json={
             "nombre": "Herencia ficticia",
-            "localidad": "Mendoza",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
             "configuracion_inicial": {**CONFIGURACION, "umbral_saldo_chico": "300.00"},
         },
     )
@@ -46,7 +48,13 @@ def test_umbral_invalido_no_escribe(api_edificio: ApiEdificio, umbral: Any, alta
     api = api_edificio
     config = {**CONFIGURACION, "umbral_saldo_chico": umbral}
     cuerpo = (
-        {"nombre": "Ficticio", "localidad": "Mendoza", "configuracion_inicial": config}
+        {
+            "nombre": "Ficticio",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+            "configuracion_inicial": config,
+        }
         if alta
         else {**config, "vigente_desde": "2027-01-01"}
     )
@@ -69,7 +77,13 @@ def test_alta_con_configuracion_inicial(
     api = api_edificio
     r = api.cliente.post(
         "/api/complejos",
-        json={"nombre": "Nuevo ficticio", "localidad": "Mendoza", "configuracion_inicial": config},
+        json={
+            "nombre": "Nuevo ficticio",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+            "configuracion_inicial": config,
+        },
     )
     assert r.status_code == 201, r.text
     vid = r.json()["id"]

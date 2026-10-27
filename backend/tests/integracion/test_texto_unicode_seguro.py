@@ -63,16 +63,24 @@ def test_surrogate_suelto_da_422_y_no_500(
 
 @pytest.mark.parametrize("caracter", ["\ud800", "\u200b", "\u202e", "\u034f", "\u3164"])
 @pytest.mark.parametrize(
-    "campo", ["nombre", "localidad", "piso", "identificador", "grupo", "categoria"]
+    "campo", ["nombre", "calle_y_numero", "piso", "identificador", "grupo", "categoria"]
 )
 def test_familia_de_textos_rechaza_unicode_inseguro_sin_eco(
     api_edificio: ApiEdificio, caracter: str, campo: str
 ) -> None:
     api = api_edificio
     valor = "MARCADOR" + caracter
-    if campo in ("nombre", "localidad"):
+    # D2 (tarea 2.6): `localidad` dej\u00f3 de ser una entrada; `calle_y_numero`
+    # es el texto libre opcional que ocupa su lugar en esta familia.
+    if campo in ("nombre", "calle_y_numero"):
         ruta = "/api/complejos"
-        cuerpo = {"nombre": "Edificio", "localidad": "Mendoza", campo: valor}
+        cuerpo = {
+            "nombre": "Edificio",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+            campo: valor,
+        }
         metodo = "POST"
     elif campo in ("piso", "identificador"):
         ruta = f"/api/unidades/{api.unidad}"

@@ -29,10 +29,24 @@ UNIDAD = {
 }
 
 
+_UBICACION_VALIDA = {
+    "provincia_id": "50",
+    "departamento_id": "50007",
+    "localidad_id": "50007010",
+}
+
+
 def _casos(api: ApiEdificio) -> list[tuple[str, str, dict[str, Any]]]:
     return [
-        ("post", "/api/complejos", {"nombre": NUL, "localidad": "Mendoza"}),
-        ("post", "/api/complejos", {"nombre": "Nuevo", "localidad": NUL}),
+        ("post", "/api/complejos", {"nombre": NUL, **_UBICACION_VALIDA}),
+        # D2 (tarea 2.6): `localidad` dejó de ser una entrada; el carácter
+        # de control se prueba ahora sobre `calle_y_numero`, el otro texto
+        # libre opcional del alta.
+        (
+            "post",
+            "/api/complejos",
+            {"nombre": "Nuevo", **_UBICACION_VALIDA, "calle_y_numero": NUL},
+        ),
         ("post", api.ruta("/unidades"), {**UNIDAD, "identificador": NUL}),
         ("post", api.ruta("/unidades"), {**UNIDAD, "piso": NUL}),
         ("patch", f"/api/unidades/{api.unidad}", {"piso": NUL}),
