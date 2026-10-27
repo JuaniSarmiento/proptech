@@ -486,7 +486,7 @@ avisarle a Juani antes.
 
 ## 5. Deuda del 4a (design D13)
 
-- [ ] 5.1 **RB-7 y QA-6, QA-7, QA-9, QA-12, QA-14.** RB-7: `Dinero("1.00")` bajo un `localcontext` con
+- [x] 5.1 **RB-7 y QA-6, QA-7, QA-9, QA-12, QA-14.** RB-7: `Dinero("1.00")` bajo un `localcontext` con
   `prec=2` no levanta `InvalidOperation` (RED con el constructor de hoy). Para cada QA: buscar el test del
   4a que lo cubre y anotarlo con su ruta y nombre; exista o se escriba ahora, verlo fallar con
   su mutante específico, pegar comando, salida, hora y aserción fallida; encontrarlo no cierra el ítem
@@ -495,6 +495,24 @@ avisarle a Juani antes.
   padrón rechaza un campo de más; QA-14: migración de prueba que hace algo antes de un `ALTER` sobre una
   tabla protegida falla con `must be owner` sin dejar nada a medias). Lo que no entre en medio día se
   anota como deuda con dueño propuesto, nunca se marca hecho. Lecciones: L-012, L-019, L-035.
+
+  **EVIDENCIA constructor · 27/10/2026:** logs `.git/4b-fase1-logs/codex-f456/`.
+  - Baseline: `bash infra/ci/test-backend.sh tests/unitarios/test_dinero.py tests/unitarios/test_dinero_aritmetica.py tests/unitarios/test_reparto.py tests/unitarios/test_detalle_padron.py tests/integracion/test_propiedad_protegida.py tests/integracion/test_umbral_migracion.py -q --tb=short`, 09:20:33–09:20:54: `107 passed` (`29-base-deuda.log`).
+  - RB-7 RED: `bash infra/ci/test-backend.sh tests/unitarios/test_deuda_4a.py -k rb7 -q --tb=short`, 09:21:43–09:21:44: `3 failed`, línea 22 `assert (error, resultado) == (None, texto)`, observado `InvalidOperation`. Mínimo cambio: contexto propio de precisión 32 en `Dinero(texto)`.
+  - GREEN: `bash infra/ci/test-backend.sh tests/unitarios/test_deuda_4a.py tests/integracion/test_deuda_4a_umbral.py tests/unitarios/test_detalle_padron.py tests/integracion/test_propiedad_protegida.py -q --tb=short`, 09:21:51–09:22:10: `21 passed` (`31-verde-deuda.log`).
+
+  | Ítem | Test del 4a / refuerzo del 4b | Mutante ejecutado y aserción roja |
+  |---|---|---|
+  | QA-6 | `tests/unitarios/test_reparto.py::test_ejemplos_reparto` (`1E+2`); refuerzo `test_deuda_4a.py::test_qa6_exponente_positivo_sin_float` | `32-mutante-qa6`, 09:22:42–09:22:43: `10 ** -exponente` introduce float; `assert (error, resultado)` muestra TypeError, `1 failed` |
+  | QA-7 | `test_dinero_aritmetica.py::test_suma_y_resta` y `test_negacion`; refuerzo `test_deuda_4a.py::test_qa7_aritmetica_bajo_contexto_ajeno` | `33a/b/c-mutante-qa7`, 09:22:43–09:22:47: suma, resta y negación sin precisión propia; cada uno `1 failed, 2 passed`, aserción resultado exacto / MontoInvalido |
+  | QA-9 UPDATE | `tests/integracion/test_umbral_migracion.py::test_0021_preserva_filas_y_restauracion`; refuerzo `test_deuda_4a_umbral.py::test_qa9_sqlstate_de_update_del_umbral` | `34-mutante-qa9-update`, 09:22:47–09:22:55: GRANT UPDATE a app; `assert estado == "42501"` recibe `P0001`, `1 failed` |
+  | QA-9 cero | Mismo test del 4a; refuerzo `test_deuda_4a_umbral.py::test_qa9_borde_inclusivo_del_check` | `35-mutante-qa9-cero`, 09:22:55–09:23:04: CHECK `> 0`; aserción fila `0.00` recibe `23514, []`, `1 failed, 1 passed` |
+  | QA-12 | `tests/unitarios/test_detalle_padron.py::test_rechazo_antes_de_escribir[editar_unidad-extra1]` | `36-mutante-qa12`, 09:23:04–09:23:05: extra ignore; `DID NOT RAISE DetalleInvalido`, `1 failed, 1 passed` |
+  | QA-14 dueño | `tests/integracion/test_propiedad_protegida.py::test_migracion_futura_revierte_todo` | `37-mutante-qa14-dueno`, 09:23:05–09:23:14: estado mutado devuelve dueño al migrador; aserción `returncode != 0 and "must be owner"` recibe 0, `1 failed` |
+  | QA-14 atomicidad | Mismo test: CREATE antes del ALTER protegido | `38-mutante-qa14-atomicidad`, 09:23:14–09:23:22: CREATE en autocommit; aserción `to_regclass(...) == (None,)` recibe `sonda_atomica`, `1 failed` |
+
+  Cada nombre corresponde a `.log`, `.diff` y `.backup`, con comando completo y hora; todos restaurados en finally. Los refuerzos capturan el resultado/error para que el rojo se observe en su propia aserción, sin aprobar una excepción anterior de helper o fixture.
+  - GREEN restaurado: `39-verde-deuda-restaurada.log`, comando completo del conjunto de ocho archivos, 09:23:22–09:23:49: `117 passed`. Formato/lint/mypy verdes después (305 archivos). No quedó ningún QA de esta tarea diferido.
 
 ## 6. Cierre
 
