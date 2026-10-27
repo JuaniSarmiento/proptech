@@ -53,6 +53,11 @@ def bloquear_cuentas(sesion: Session, cuenta_ids: Sequence[UUID]) -> None:
     Quien va a tocar varias cuentas las bloquea todas en una sola llamada antes de escribir y antes
     de leer lo que decide la escritura (RC2-03). Volver a pedir una cuenta ya tomada no falla; sumar
     una cuenta menor que la mayor ya tomada sí (RC2-01): ése es el orden cruzado que interbloquea.
+
+    El SELECT ... FOR UPDATE se ejecuta SIEMPRE, también para las cuentas que el caché cree tomadas
+    (RB4B-02): un ROLLBACK TO SAVEPOINT del llamador suelta el candado en PostgreSQL y el caché no
+    se entera. En PostgreSQL volver a pedir un candado propio es idempotente; el caché sólo sirve
+    para el chequeo de orden.
     """
     exigir_transaccion(sesion)
     _exigir_read_committed(sesion)
@@ -63,9 +68,7 @@ def bloquear_cuentas(sesion: Session, cuenta_ids: Sequence[UUID]) -> None:
     previo = sesion.info.get(_TOMADAS)
     tomadas: set[UUID] = previo[1] if previo is not None and previo[0] is raiz else set()
     nuevas = [i for i in ids if i not in tomadas]
-    if not nuevas:
-        return
-    if tomadas and min(nuevas) < max(tomadas):
+    if tomadas and nuevas and min(nuevas) < max(tomadas):
         raise BloqueoFueraDeOrden("una cuenta nueva menor que la mayor ya bloqueada")
     administracion = tenant(sesion)
     sesion.execute(
@@ -75,7 +78,7 @@ def bloquear_cuentas(sesion: Session, cuenta_ids: Sequence[UUID]) -> None:
             "WHERE EXISTS (SELECT 1 FROM cuenta c WHERE c.id = x) "
             "ORDER BY x ON CONFLICT (cuenta_id) DO NOTHING"
         ).bindparams(_IDS),
-        {"ids": nuevas, "administracion": administracion},
+        {"ids": ids, "administracion": administracion},
     )
     filas = (
         sesion.execute(
@@ -83,20 +86,20 @@ def bloquear_cuentas(sesion: Session, cuenta_ids: Sequence[UUID]) -> None:
                 "SELECT cuenta_id FROM candado_de_cuenta WHERE cuenta_id = ANY(:ids) "
                 "ORDER BY cuenta_id FOR UPDATE"
             ).bindparams(_IDS),
-            {"ids": nuevas},
+            {"ids": ids},
         )
         .scalars()
         .all()
     )
-    if len(filas) != len(nuevas):
+    if len(filas) != len(ids):
         existentes = sesion.execute(
             text("SELECT count(*) FROM cuenta WHERE id = ANY(:ids)").bindparams(_IDS),
-            {"ids": nuevas},
+            {"ids": ids},
         ).scalar_one()
-        if existentes != len(nuevas):
+        if existentes != len(ids):
             raise NoEncontrado
         raise CandadoIncompleto("faltan filas de candado para las cuentas pedidas")
-    sesion.info[_TOMADAS] = (raiz, tomadas | set(nuevas))
+    sesion.info[_TOMADAS] = (raiz, tomadas | set(ids))
 
 
 def crear_cuentas_de_unidades(

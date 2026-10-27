@@ -231,3 +231,37 @@ def test_prebloqueo_compone_ordenes_opuestos_sin_interbloqueo(
     h1.join(40)
     h2.join(40)
     assert (r1.get("valor"), r2.get("valor")) == ("ok", "ok"), (r1.get("error"), r2.get("error"))
+
+
+def test_rollback_to_savepoint_no_deja_creyendo_que_tiene_el_candado(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-02: PostgreSQL suelta el FOR UPDATE al deshacer el savepoint; el caché de cuentas
+    tomadas no puede hacer que la llamada siguiente se saltee el SELECT ... FOR UPDATE."""
+    from sqlalchemy.exc import OperationalError
+
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuenta = cuentas.cuenta_de_unidad(
+            s, complejo_id=mundo.complejo, unidad_id=mundo.unidades[9]
+        )
+        s.commit()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        s.execute(text("SELECT 1"))
+        try:
+            with s.begin_nested():
+                cuentas.bloquear_cuentas(s, [cuenta])
+                raise RuntimeError("el llamador se recupera de un error dentro del savepoint")
+        except RuntimeError:
+            pass
+        cuentas.bloquear_cuentas(s, [cuenta])  # tiene que volver a tomarlo de verdad
+        with sesion_app(base_del_edificio, mundo.admin) as otra:
+            otra.execute(text("SELECT 1"))
+            with pytest.raises(OperationalError) as error:
+                otra.execute(
+                    text(
+                        "SELECT cuenta_id FROM candado_de_cuenta WHERE cuenta_id = :c "
+                        "FOR UPDATE NOWAIT"
+                    ),
+                    {"c": cuenta},
+                )
+            assert type(error.value.orig).__name__ == "LockNotAvailable"
