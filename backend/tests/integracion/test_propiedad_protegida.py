@@ -51,6 +51,11 @@ def test_deploy_3a_y_rollback(base_para_migraciones: BaseDeEdificio) -> None:
         )
         insertar(c, admin, complejo, persona, date(2026, 11, 1), "300.00")
     base.roles("despues")
+    with arranque(base) as c:
+        assert c.execute(
+            "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE "
+            "oid='fn_configuracion_versionada_bloqueada()'::regprocedure"
+        ).fetchone() == (base.contenedor.username,)
     base.roles("antes")
     with arranque(base) as c:
         assert c.execute(
@@ -60,7 +65,7 @@ def test_deploy_3a_y_rollback(base_para_migraciones: BaseDeEdificio) -> None:
         assert c.execute(
             "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE "
             "oid='fn_configuracion_versionada_bloqueada()'::regprocedure"
-        ).fetchone() == (base.contenedor.username,)
+        ).fetchone() == (base.entorno["POSTGRES_MIGRADOR_USER"],)
     with pytest.raises(AssertionError, match="must be owner"):
         base.migrar("downgrade", "0020")
     base.devolver_tablas_protegidas()
