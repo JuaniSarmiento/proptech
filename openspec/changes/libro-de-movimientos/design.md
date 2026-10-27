@@ -313,7 +313,8 @@ La exploración dejó abierto (R-4) cómo sostener "una por período salvo anula
 tabla. `registrar_emision`:
 
 1. Busca primero por `emision_id`: compara edificio, período y el conjunto de obligaciones; iguales,
-   devuelve sin escribir ni imputar; distintos, `Conflicto("emision_id")`.
+   devuelve sin escribir ni imputar, con el saldo anterior por cuenta recalculado (RB4B-05: el libro
+   no persiste la foto, la guarda el 7 de la primera llamada); distintos, `Conflicto("emision_id")`.
 2. Lee los intentos y eventos del período. Si alguno no está anulado, `Conflicto("periodo")`; si no,
    calcula `intento = max + 1` (o 1). Todavía no insertó: intento es NOT NULL.
 3. Inserta con `ON CONFLICT (id) DO NOTHING`; si perdió contra el mismo id, lee y compara como en 1.
@@ -324,6 +325,9 @@ tabla. `registrar_emision`:
 4. Crea todas las cuentas ordenadas por unidad_id en una sola sentencia y sus candados en la misma
    transacción, bloquea el conjunto una sola vez (D2), inserta obligaciones y corre `imputar_pendientes`
    por cuenta en orden de id (E12). Después de imputar pendientes, calcula y devuelve la foto de saldo anterior (D12).
+   Los pasos 3 y 4 corren en un SAVEPOINT (RB4B-03). Dos emisiones con cuentas distintas en la misma
+   transacción pueden dar `BloqueoFueraDeOrden` (RC2-01): el 7 emite una por transacción, o prebloquea
+   el conjunto entero antes de la primera.
 
 Validaciones (`EntradaInvalida` con el campo): período primer día de mes; al menos una obligación; una
 por unidad; importes no negativos con suma positiva. Una unidad de otro edificio la rechaza la FK
@@ -440,7 +444,10 @@ trazabilidad. Knowledge Base Impact entrega ambos casos a sus fichas; no se impl
 1. **No cuentan**: las obligaciones de una emisión anulada; los movimientos con `emision_id` anulada; los pares de contra-asiento activos, resueltos desde el extremo de cada cadena (sin corrección entrante) hacia el original
    (el orden es topológico por corrige_a, no fecha ni UUID; se omite una corrección ya excluida por otra posterior: I débito, C1 crédito que corrige I y C2
    débito que corrige C1 excluyen C2/C1 y restauran I); un `ajuste_de_interes` enlazado a un interés
-   que no cuenta (D-085); las imputaciones cuyo crédito u obligación no cuentan.
+   que no cuenta (D-085), o a un movimiento que no está en la foto de su cuenta (RB6: compensa un
+   interés de su propia obligación; sin ese interés a la vista no cuenta, así nunca baja la deuda por
+   un interés que no se ve; el 4c enlaza dentro de la cuenta y los enlaces entre cuentas de E14 son
+   para traslado y reimputación); las imputaciones cuyo crédito u obligación no cuentan.
 2. **Lo que se debe** por obligación y componente: el capital de su columna (para el interés, cero) más
    los débitos que cuentan con ese `(obligacion_id, componente)`.
 3. **Lo imputado** por componente: si supera lo que se debe (por ejemplo, se corrigió un interés que un
