@@ -49,6 +49,7 @@ class Accion(StrEnum):
     ANULAR_LIQUIDACION = "anular_liquidacion"
     CONFIRMAR_PAGO_INFORMADO = "confirmar_pago_informado"
     REVERTIR_O_REIMPUTAR_PAGO = "revertir_o_reimputar_pago"
+    CORREGIR_MOVIMIENTO = "corregir_movimiento"
     CONDONAR_INTERESES = "condonar_intereses"
     DAR_DE_BAJA_DEUDA = "dar_de_baja_deuda"
     ACEPTAR_ALERTAS_NO_BLOQUEANTES = "aceptar_alertas_no_bloqueantes"
@@ -124,6 +125,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.ANULAR_LIQUIDACION: frozenset({_SA, _AP}),
     Accion.CONFIRMAR_PAGO_INFORMADO: frozenset({_SA, _AP, _AE}),
     Accion.REVERTIR_O_REIMPUTAR_PAGO: frozenset({_SA, _AP}),
+    Accion.CORREGIR_MOVIMIENTO: frozenset({_SA, _AP}),
     Accion.CONDONAR_INTERESES: frozenset({_SA, _AP}),
     Accion.DAR_DE_BAJA_DEUDA: frozenset({_SA, _AP}),
     Accion.ACEPTAR_ALERTAS_NO_BLOQUEANTES: frozenset({_SA, _AP, _AE}),

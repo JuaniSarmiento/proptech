@@ -58,6 +58,11 @@ class _DetalleAsignacion(_DetalleAsignarEdificio):
     asignacion_id: UUID
 
 
+class _DetalleCorreccion(_DetalleAsignarEdificio):
+    forma: Literal["contra_asiento", "credito"]
+    corrige: UUID
+
+
 class _DetalleConfiguracion(_DetalleAsignarEdificio):
     vigente_desde: date
 
@@ -133,6 +138,7 @@ _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_Detal
     EventoDeAcceso.INGRESO_FALLIDO: _DetalleIngresoFallido,
     Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS: _DetalleAsignacion,
     Accion.CREAR_EDIFICIO: _DetalleAsignarEdificio,
+    Accion.CORREGIR_MOVIMIENTO: _DetalleCorreccion,
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
 }

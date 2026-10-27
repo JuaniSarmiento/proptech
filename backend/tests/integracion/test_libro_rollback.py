@@ -39,7 +39,7 @@ def dump(base: BaseDeEdificio, destino: Path) -> str:
     return texto
 
 
-def test_ciclo_0022_0023_0022_conserva_esquema(
+def test_ciclo_0022_0024_0022_conserva_esquema(
     base_para_migraciones: BaseDeEdificio, tmp_path: Path
 ) -> None:
     base = base_para_migraciones
@@ -57,7 +57,7 @@ def test_ciclo_0022_0023_0022_conserva_esquema(
     base.migrar("upgrade", "head")
     base.roles("despues")
     with base.conectar_app() as c:
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0023",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0024",)
         for tabla in LIBRO:
             assert c.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
@@ -83,6 +83,66 @@ def test_downgrade_con_fila_conserva_el_libro(base_para_migraciones: BaseDeEdifi
             "el downgrade borró el libro con filas, invisible al dueño por FORCE sin tenant"
         )
         assert c.execute("SELECT count(*) FROM cuenta WHERE id=%s", (cuenta,)).fetchone() == (1,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0023",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0024",)
     assert rechazo is not None and "tiene filas" in rechazo
     base.roles("despues")
+
+
+def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio) -> None:
+    from uuid import uuid4
+
+    from proptech_core.acceso.dominio.identidad import Identidad
+    from proptech_core.cuenta_corriente.aplicacion.correcciones import PedidoDeCorreccion, corregir
+
+    from ._cuenta_corriente import sesion_app
+
+    base = base_del_edificio
+    with base.conectar_app() as c, c.transaction():
+        datos = sembrar_libro(c)
+    with sesion_app(base, datos.admin) as s:
+        movimiento = corregir(
+            s,
+            Identidad(datos.admin, datos.persona),
+            complejo_id=datos.edificios.complejo_a,
+            pedido=PedidoDeCorreccion(
+                "contra_asiento",
+                uuid4(),
+                "Prueba del punto de no retorno",
+                movimiento_id=datos.pago,
+            ),
+            request_id=uuid4(),
+        )
+        s.commit()
+    rechazo = None
+    try:
+        base.migrar("downgrade", "0023")
+    except AssertionError as error:
+        rechazo = str(error)
+    assert rechazo is not None and "ForeignKeyViolation" in rechazo, rechazo
+    # SQLSTATE del mismo DELETE de 0024, sin aceptar otro fallo del CLI como prueba.
+    import psycopg
+
+    with base.conectar_migrador() as c:
+        with pytest.raises(psycopg.errors.ForeignKeyViolation) as error_fk:
+            c.execute("DELETE FROM accion_de_auditoria WHERE nombre='corregir_movimiento'")
+        assert error_fk.value.sqlstate == "23503"
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0024",)
+    with sesion_app(base, datos.admin) as s:
+        from sqlalchemy import text
+
+        assert (
+            s.execute(
+                text(
+                    "SELECT count(*) FROM auditoria WHERE accion='corregir_movimiento' "
+                    "AND entidad_id=:m"
+                ),
+                {"m": movimiento},
+            ).scalar_one()
+            == 1
+        )
+        assert (
+            s.execute(
+                text("SELECT count(*) FROM movimiento WHERE id=:m"), {"m": movimiento}
+            ).scalar_one()
+            == 1
+        )

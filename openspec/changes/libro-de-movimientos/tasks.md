@@ -429,7 +429,7 @@ avisarle a Juani antes.
   - GREEN restaurado: archivo completo, 09:06:07–09:06:10: `47 passed` (`10-verde-sql-restaurado.log`).
   **JUICIO constructor, confianza alta:** se excluye prosa de docstrings del SQL ejecutable; no se agrega ninguna excepción a E11. Límite: identificadores dinámicos no se inspeccionan.
 
-- [ ] 4.2 **Permiso `corregir_movimiento`, migración `0024` y auditoría de la corrección.**
+- [x] 4.2 **Permiso `corregir_movimiento`, migración `0024` y auditoría de la corrección.**
   **Recibe de la 1.4 (F1-04)**: el ciclo `pg_dump` hasta `0024` y vuelta, que bajar `0024` con una
   corrección auditada dé `23503` y volver a subir a `0024` con revisión y conteos. `Accion` y
   `_MATRIZ` (`{_SA, _AP}`); `0024` con el literal; modelo de detalle `extra="forbid"` sin motivo ni
@@ -441,7 +441,17 @@ avisarle a Juani antes.
   `False`; sin `0024`, `registrar` choca con la FK (rojo en la aserción de la fila de auditoría, no en el
   arranque). Escenarios: `autorizacion-por-rol` › La fila de la matriz; `auditoria-de-acciones` ›
   Corrección auditada; › Falla la auditoría; › El vocabulario nuevo. Lecciones: L-007, L-034.
-- [ ] 4.3 **Ruta `POST /api/complejos/{complejo_id}/correcciones` y su contrato.** Router
+  **EVIDENCIA constructor · 27/10/2026:** logs en `.git/4b-fase1-logs/codex-f456/`.
+  - Baseline: `bash infra/ci/test-backend.sh tests/integracion/test_cc_correcciones.py tests/unitarios/acceso/test_permisos.py tests/unitarios/test_auditoria_detalle.py -q --tb=short`, 09:06:33–09:06:47: `460 passed` (`11-base-auditoria.log`).
+  - RED: `bash infra/ci/test-backend.sh tests/unitarios/acceso/test_permiso_correcciones.py tests/integracion/test_cc_auditoria_api.py -q --tb=short`, 09:08:46–09:08:55: `6 failed, 7 passed`; SA/AP `assert False is True`; auditoría `assert [] == [(correccion, detalle)]`; API `assert 404 == 500` (`14-rojo-auditoria-limpio.log`). La corrida 13 tuvo errores de test y no se cuenta como rojo limpio.
+  - RED sin 0024: `bash infra/ci/test-backend.sh tests/integracion/test_cc_auditoria_api.py::test_correccion_auditada_y_replay -q --tb=short`, 09:09:21–09:09:29: `2 failed` en la aserción de la fila, `SQLSTATE=23503` (`15-rojo-sin-0024.log`). GREEN mismo conjunto inicial: 09:09:42–09:09:51, `13 passed` (`16-verde-auditoria.log`).
+  - QA-11 usa API real; el registrar inyectado observa la corrección insertada y falla; otra conexión comprueba conteos sin cambios. No se fabrica el resultado con rollback del test.
+  - Ciclo completo de `pg_dump --schema-only`: `bash infra/ci/test-backend.sh tests/integracion/test_libro_rollback.py tests/infra/test_ensayo_login.py -q --tb=short`, 09:10:53–09:11:08: `10 passed` (`18-verde-rollback-0024.log`). `0022 → 0024 → 0022`, diff vacío; vuelta a `0024` con revisión y seis conteos cero; con corrección auditada downgrade rechazado y DELETE del vocabulario con `23503`.
+  - Ensayo: RED `bash infra/ci/test-backend.sh tests/infra/test_ensayo_login.py -q --tb=short`, 09:10:08: `2 failed, 5 passed` por cabeza 0023/0024 (`17-rojo-ensayo-0024.log`), después actualizado a 0024. La ejecución Compose se repite en 6.1.
+  - Mutante detalle `extra="ignore"`: `19-mutante-detalle.log`, 09:12:00–09:12:01, `2 failed`, `DID NOT RAISE DetalleInvalido` en la aserción. Mutante downgrade omitido: `20-mutante-downgrade.log`, 09:12:08–09:12:16, `1 failed`, `assert rechazo is not None`. Backup y diff antes de cada mutante, restauración en finally.
+  - GREEN ampliado con matriz, detalle y rollback: `21-verde-42.log`, 09:12:16–09:12:44, `483 passed`; comando completo dentro del log.
+
+- [x] 4.3 **Ruta `POST /api/complejos/{complejo_id}/correcciones` y su contrato.** Router
   `proptech_api/cuenta_corriente.py`, `proptech_api/errores.py` con las formas declaradas (incluidos 500 y 503) y
   `RESPUESTAS_DE_ERROR`, manejador de los errores del libro. Tests contra la app real: 401 sin identidad
   sin tocar la base; 404 para un movimiento de otra administración igual que para uno inexistente (misma
@@ -465,6 +475,14 @@ avisarle a Juani antes.
   Importe con decimales de más; › La misma corrección dos veces; › El mismo `operacion_id` con otro motivo;
   `autorizacion-por-rol` › La ruta nueva está en el barrido. Lecciones: L-007, L-017, L-027, L-034.
   Escenarios adicionales (RC-09): `correccion-de-movimientos` › El OpenAPI declara las respuestas de error; › `correccion-de-movimientos` › Movimiento de otra administración; › `correccion-de-movimientos` › Obligación de otro edificio de la misma administración; › `correccion-de-movimientos` › Motivo de longitud inválida; › `correccion-de-movimientos` › Errores internos y transitorios declarados; › `correccion-de-movimientos` › Un usuario sin permiso no averigua si existe el recurso; › `correccion-de-movimientos` › UUID de texto y montos no positivos; › `correccion-de-movimientos` › Traducción de clave foránea y único desconocido; › `correccion-de-movimientos` › Replay cambiado con recurso inexistente.
+
+  **EVIDENCIA constructor · 27/10/2026:**
+  - RED: `bash infra/ci/test-backend.sh tests/integracion/test_cc_auditoria_api.py -q --tb=short`, 09:13:40–09:14:08, `40 failed, 18 passed` (`22-rojo-contrato-api.log`): aserción de respuestas OpenAPI, validación 422, replay 409 y SQLSTATE. GREEN mismo comando 09:15:02–09:15:32: `58 passed` (`23-verde-contrato-api.log`).
+  - SQLSTATE provocados en PostgreSQL con RAISE dentro de SAVEPOINT: únicos conocidos/desconocido, FK, CHECK, privilegio, deadlock, serialización y límites de espera. Otra sentencia `SELECT 1` confirma transacción exterior recuperada, un solo intento, sin DETAIL ni valores en respuestas o logs.
+  - Barrido RED: `bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py -k test_las_rutas_del_candado -q --tb=short`, 09:16:16–09:16:24: aserción de ruta no cubierta (`24-rojo-barrido.log`); se agrega la ruta y su cuerpo válido al barrido.
+  - Mutantes: sin responses (`25-mutante-openapi.log`, 09:16:43–09:16:54, `1 failed`); sin sólo permiso, conservando alcance/transacción (`26b-mutante-solo-permiso.log`, 09:17:58–09:18:10, `2 failed`: 404/201 frente a 403); recurso antes del replay (`27-mutante-replay.log`, 09:17:06–09:17:20, `6 failed, 2 passed`: 404 frente a 409). Se restauran todos. La prueba inicial 26 daba 500 por quitar también el inicio de transacción y NO se acredita como mutante de permiso.
+  - GREEN ampliado: comando completo en `28-verde-42-43.log`, API/correcciones/replay/barrido/permisos/fronteras/rollback/ensayo, 09:18:10–09:19:36: `952 passed`. `uv run --directory backend ruff check .` → All checks passed; `uv run --directory backend mypy` → 303 archivos sin errores (09:19).
+  **JUICIO constructor, confianza alta:** cobertura contra D9/D10 y specs; construcción propia, no revisión independiente. La ruta mínima de QA-11 se completó en 4.3. Firma y enmienda intactas.
 
 ## 5. Deuda del 4a (design D13)
 

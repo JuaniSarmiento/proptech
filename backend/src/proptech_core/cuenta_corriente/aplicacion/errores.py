@@ -3,8 +3,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from psycopg.errors import ForeignKeyViolation, UniqueViolation
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from proptech_core.acceso.aplicacion.auditoria import RegistroFueraDeTransaccion
@@ -19,6 +18,7 @@ __all__ = [
     "IdentidadDeOtraAdministracion",
     "NoEncontrado",
     "RegistroFueraDeTransaccion",
+    "TemporalmenteNoDisponible",
     "exigir_transaccion",
     "traducir",
 ]
@@ -27,6 +27,10 @@ __all__ = [
 class NoEncontrado(LookupError):
     def __init__(self) -> None:
         super().__init__("no encontrado")
+
+
+class TemporalmenteNoDisponible(Exception):
+    """La transacción completa puede reintentarse por el llamador, con la misma clave."""
 
 
 class Conflicto(Exception):
@@ -56,6 +60,19 @@ def exigir_transaccion(sesion: Session) -> None:
         raise RegistroFueraDeTransaccion("el libro exige una sesión ya en transacción (D3)")
 
 
+_CONFLICTOS = {
+    "uq_mov_operacion": "operacion_id",
+    "uq_obligacion_operacion": "operacion_id",
+    "uq_mov_corrige_a": "movimiento_id",
+    "uq_emision_intento": "periodo",
+    "emision_pkey": "emision_id",
+    "uq_obligacion_emision": "emision_id",
+    "uq_evento_emision_tipo": "emision_id",
+    "uq_cuenta_unidad": "unidad_id",
+    "uq_cuenta_persona": "persona_id",
+}
+
+
 @contextmanager
 def traducir(
     sesion: Session, conflictos: dict[str, str], no_encontrados: frozenset[str] = frozenset()
@@ -64,10 +81,14 @@ def traducir(
     try:
         with sesion.begin_nested():
             yield
-    except IntegrityError as error:
+    except DBAPIError as error:
         restriccion = getattr(getattr(error.orig, "diag", None), "constraint_name", None) or ""
-        if isinstance(error.orig, UniqueViolation) and restriccion in conflictos:
-            raise Conflicto(conflictos[restriccion]) from None
-        if isinstance(error.orig, ForeignKeyViolation) and restriccion in no_encontrados:
+        estado = getattr(error.orig, "sqlstate", None)
+        campos = {**_CONFLICTOS, **conflictos}
+        if estado == "23505" and restriccion in campos:
+            raise Conflicto(campos[restriccion]) from None
+        if estado == "23503":
             raise NoEncontrado from None
+        if estado in {"40P01", "40001", "55P03", "57014"}:
+            raise TemporalmenteNoDisponible from None
         raise

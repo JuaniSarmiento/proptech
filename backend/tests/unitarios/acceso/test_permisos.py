@@ -46,6 +46,7 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "anular_liquidacion": (True, True, False, False, False, False, False, False, False),
     "confirmar_pago_informado": (True, True, True, False, False, False, False, False, False),
     "revertir_o_reimputar_pago": (True, True, False, False, False, False, False, False, False),
+    "corregir_movimiento": (True, True, False, False, False, False, False, False, False),
     "condonar_intereses": (True, True, False, False, False, False, False, False, False),
     "dar_de_baja_deuda": (True, True, False, False, False, False, False, False, False),
     "aceptar_alertas_no_bloqueantes": (True, True, True, False, False, False, False, False, False),

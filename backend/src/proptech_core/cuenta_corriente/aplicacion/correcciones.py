@@ -1,7 +1,7 @@
 """Corrección (D7, E6, R08, HU-A9): contra-asiento o crédito de corrección.
 
-La auditoría y el permiso `corregir_movimiento` llegan con la tarea 4.2 (D9); esta función es la
-parte del libro.
+La corrección y su auditoría comparten la transacción del llamador (D9).
+Los replays retornan antes de volver a registrar auditoría.
 """
 
 from dataclasses import dataclass
@@ -12,7 +12,9 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.aplicacion.auditoria import registrar
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.cuenta_corriente.aplicacion.creditos import (
     Reloj,
@@ -216,6 +218,7 @@ def _contra_asiento(
         if repetido is None:
             raise RuntimeError("el movimiento que ganó la carrera no se pudo leer")
         return repetido
+    _auditar(sesion, identidad, complejo_id, pedido, nuevo, request_id)
     return nuevo
 
 
@@ -273,4 +276,30 @@ def _credito(
             raise RuntimeError("el movimiento que ganó la carrera no se pudo leer")
         return repetido
     insertar_imputaciones(sesion, actual, nuevo, imputaciones, corrida, instante)
+    _auditar(sesion, identidad, complejo_id, pedido, nuevo, request_id)
     return nuevo
+
+
+def _auditar(
+    sesion: Session,
+    identidad: Identidad,
+    complejo_id: UUID,
+    pedido: PedidoDeCorreccion,
+    movimiento_id: UUID,
+    request_id: UUID,
+) -> None:
+    registrar(
+        sesion,
+        identidad,
+        Accion.CORREGIR_MOVIMIENTO,
+        entidad="movimiento",
+        entidad_id=movimiento_id,
+        request_id=request_id,
+        detalle={
+            "complejo_id": complejo_id,
+            "forma": pedido.forma,
+            "corrige": pedido.movimiento_id
+            if pedido.forma == "contra_asiento"
+            else pedido.obligacion_id,
+        },
+    )
