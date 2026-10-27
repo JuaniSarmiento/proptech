@@ -30,7 +30,7 @@ from proptech_core.cuenta_corriente.aplicacion.errores import (
     exigir_transaccion,
     traducir,
 )
-from proptech_core.cuenta_corriente.aplicacion.lecturas import foto
+from proptech_core.cuenta_corriente.aplicacion.lecturas import foto, fotos
 
 _CERO = Dinero("0.00")
 _IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
@@ -111,10 +111,12 @@ def _replay(
         raise Conflicto("emision_id")
     cuentas = {UUID(str(g.unidad_id)): UUID(str(g.cuenta_id)) for g in guardadas}
     # RB4B-05: el libro no persiste la foto del saldo anterior (la guarda el 7); el replay la vuelve
-    # a calcular igual que la primera vez, sin escribir.
+    # a calcular sin imputar. CX-02, E12: todas las cuentas bloqueadas antes de una sola foto SQL;
+    # también una anulación (que no toma candados) debe verse entera, no entre lecturas de cuentas.
+    bloquear_cuentas(sesion, list(cuentas.values()))
+    actuales = fotos(sesion, sorted(cuentas.values()))
     saldo = {
-        cuenta: foto(sesion, cuenta).estado.deuda_sin_emision(emision_id)
-        for cuenta in sorted(cuentas.values())
+        cuenta: actual.estado.deuda_sin_emision(emision_id) for cuenta, actual in actuales.items()
     }
     return EmisionRegistrada(emision_id, fila.intento, cuentas, saldo)
 
@@ -146,6 +148,11 @@ def registrar_emision(
         ),
         {"c": complejo_id, "p": periodo},
     ).all()
+    # CX-01, E4: una emisión idéntica pudo confirmarse entre el primer replay y esta lectura.
+    # Su replay toma los candados antes de calcular el saldo; precede al rechazo por período.
+    previo = _replay(sesion, emision_id, complejo_id, periodo, obligaciones)
+    if previo is not None:
+        return previo
     if any(not f.anulada for f in intentos):
         raise Conflicto("periodo")
     intento = max((f.intento for f in intentos), default=0) + 1

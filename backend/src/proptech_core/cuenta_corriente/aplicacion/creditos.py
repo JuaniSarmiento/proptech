@@ -193,10 +193,14 @@ def registrar_credito(
         raise EntradaInvalida("importe")
     if (tipo in TIPOS_DE_DESTINO_FIJO) != (destino is not None):
         raise EntradaInvalida("destino")
-    instante = reloj()
     bloquear_cuentas(sesion, [cuenta_id])  # NoEncontrado si la cuenta no existe o es ajena
+    # CX-01, E4: otra transacción pudo registrar la operación mientras esperábamos el candado.
+    previo = _replay(sesion, operacion_id, pedido, None)
+    if previo is not None:
+        return previo
     if destino is not None:
         _exigir_obligacion_de_la_cuenta(sesion, cuenta_id, destino.obligacion_id)
+    instante = reloj()
     corrida = uuid4()
     actual = imputar_pendientes(sesion, cuenta_id, corrida, instante)
     imputaciones, _ = imputar(actual.estado.deudas(), importe, destino)  # E16: antes del INSERT

@@ -218,6 +218,23 @@ avisarle a Juani antes.
   período; › Emitir de nuevo después de anular; › La misma emisión dos veces; › El mismo id con otras
   obligaciones; `imputacion-de-creditos` › El crédito a favor se imputa en la emisión siguiente.
   Lecciones: L-017, L-034.
+  **Corrección 3.2 · CX-01 / E4 (27/10/2026, constructor):**
+
+  ```text
+  RED: bash infra/ci/test-backend.sh tests/integracion/test_cc_replay_carrera.py -q -p no:cacheprovider --tb=short
+  hora: 08:38:04–08:38:13 -03, base 401bcd5; 10 failed, 1 passed in 7.41s.
+  E   AssertionError: Conflicto('conflicto'); isinstance(..., EmisionRegistrada) == False
+  GREEN: mismo comando; 27/10/2026 08:38:41–08:38:50 -03; 11 passed in 7.52s.
+  MUTANTE: 03-mutante-replay.log: 9 failed, 2 passed; sin el replay anterior al conflicto por período.
+  Mutante replay: 08:39:33–08:39:46 -03; foto: 08:40:14–08:40:24 -03.
+  Restauración: copia previa en .git/4b-fase1-logs/codex-cx/backup-*.py, restaurada en finally.
+  GREEN tras restaurar ambos: mismo comando; 08:40:29–08:40:42 -03; 11 passed in 11.18s.
+  ```
+
+  Salidas íntegras, comandos, línea E, hora y diffs: `.git/4b-fase1-logs/codex-cx/`.
+  El cierre sobre el commit de entrega se registra en `09-cierre-backend.log` y `10-cierre-*.log`
+  del mismo directorio; no acredita la tarea 6.1 completa ni las fases 4 y 5.
+
 - [x] 3.3 **`anular_emision`.** Tests contra PostgreSQL: agrega el evento con motivo y responsable sin
   tocar otra fila (conteo de filas por tabla antes y después); motivo en blanco rechazado con el campo;
   la segunda anulación se rechaza siempre con `Conflicto("emision_id")`, mismo o distinto
@@ -244,6 +261,23 @@ avisarle a Juani antes.
   `imputacion-de-creditos` › El ejemplo de R04 (contra la base); › Pago mayor que la deuda;
   `libro-de-movimientos` › El mismo crédito dos veces; › Registrar crédito en cuenta inexistente;
   › Registrar crédito en cuenta de otra administración. Lecciones: L-017, L-034.
+  **Corrección 3.4 · CX-01 / E4 (27/10/2026, constructor):**
+
+  ```text
+  RED: bash infra/ci/test-backend.sh tests/integracion/test_cc_replay_carrera.py -q -p no:cacheprovider --tb=short
+  hora: 08:38:04–08:38:13 -03, base 401bcd5; 10 failed, 1 passed in 7.41s.
+  E   AssertionError: {'imputacion': 2} != {'imputacion': 1}; destinos fijos rechazados
+  GREEN: mismo comando; 27/10/2026 08:38:41–08:38:50 -03; 11 passed in 7.52s.
+  MUTANTE: 03-mutante-replay.log: 9 failed, 2 passed; sin el segundo replay bajo candado.
+  Mutante replay: 08:39:33–08:39:46 -03; foto: 08:40:14–08:40:24 -03.
+  Restauración: copia previa en .git/4b-fase1-logs/codex-cx/backup-*.py, restaurada en finally.
+  GREEN tras restaurar ambos: mismo comando; 08:40:29–08:40:42 -03; 11 passed in 11.18s.
+  ```
+
+  Salidas íntegras, comandos, línea E, hora y diffs: `.git/4b-fase1-logs/codex-cx/`.
+  El cierre sobre el commit de entrega se registra en `09-cierre-backend.log` y `10-cierre-*.log`
+  del mismo directorio; no acredita la tarea 6.1 completa ni las fases 4 y 5.
+
 - [x] 3.5 **`corregir`.** Tests contra PostgreSQL: contra-asiento de un pago (la cuenta vuelve a deber, los
   dos quedan, la corrección referencia); de un interés ya cubierto (el exceso vuelve como crédito);
   segunda corrección del mismo movimiento y de un movimiento de una emisión
@@ -284,6 +318,23 @@ avisarle a Juani antes.
   operación da `Conflicto("movimiento_id")`. Mutantes que quitan cada validación deben fallar en su
   aserción, conservando FK/únicos; para sentido igual el test exige rechazo antes del INSERT.
   Escenarios adicionales (RC-09): `correccion-de-movimientos` › Contra-asiento de un interés cubierto; › `correccion-de-movimientos` › Corregir el crédito que contra-asentó un interés; › `correccion-de-movimientos` › Contra-asiento de un débito de corrección; › `correccion-de-movimientos` › Contra-asiento sobre emisión anulada; › `correccion-de-movimientos` › Crédito sobre obligación que no cuenta; › `correccion-de-movimientos` › Obligación inexistente; › `correccion-de-movimientos` › Obligación de otra administración; › `correccion-de-movimientos` › Replay con otros datos de negocio; › `correccion-de-movimientos` › Error de base con transacción recuperable; › `correccion-de-movimientos` › El original restaurado no se contra-asienta otra vez; › `correccion-de-movimientos` › Corrección con el mismo sentido que su blanco.
+
+  **Corrección 3.5 · CX-01 / E4 (27/10/2026, constructor):**
+
+  ```text
+  RED: bash infra/ci/test-backend.sh tests/integracion/test_cc_replay_carrera.py -q -p no:cacheprovider --tb=short
+  hora: 08:38:04–08:38:13 -03, base 401bcd5; 10 failed, 1 passed in 7.41s.
+  E   AssertionError: Conflicto('conflicto') en contra-asiento y crédito de corrección
+  GREEN: mismo comando; 27/10/2026 08:38:41–08:38:50 -03; 11 passed in 7.52s.
+  MUTANTE: 03-mutante-replay.log: 9 failed, 2 passed; sin replay bajo candado en ambas formas.
+  Mutante replay: 08:39:33–08:39:46 -03; foto: 08:40:14–08:40:24 -03.
+  Restauración: copia previa en .git/4b-fase1-logs/codex-cx/backup-*.py, restaurada en finally.
+  GREEN tras restaurar ambos: mismo comando; 08:40:29–08:40:42 -03; 11 passed in 11.18s.
+  ```
+
+  Salidas íntegras, comandos, línea E, hora y diffs: `.git/4b-fase1-logs/codex-cx/`.
+  El cierre sobre el commit de entrega se registra en `09-cierre-backend.log` y `10-cierre-*.log`
+  del mismo directorio; no acredita la tarea 6.1 completa ni las fases 4 y 5.
 
 - [x] 3.6 **Concurrencia contra PostgreSQL real.** Con dos conexiones y barreras en los puntos de decisión: dos pagos de $60.000
   a la vez sobre $100.000 de deuda (deuda cero, $20.000 a favor, imputaciones suman $100.000); dos
@@ -336,6 +387,23 @@ avisarle a Juani antes.
   anterior (contra la base); › Saldo anterior con crédito a favor; › Lectura durante una confirmación;
   › Plan del edificio con datos de varios edificios. Lecciones: L-016, L-034.
   Escenarios adicionales (RC-09): `libro-de-movimientos` › Plan de una cuenta sin filtro de edificio.
+
+  **Corrección 3.7 · CX-02 / E12 (27/10/2026, constructor):**
+
+  ```text
+  RED: bash infra/ci/test-backend.sh tests/integracion/test_cc_replay_carrera.py -q -p no:cacheprovider --tb=short
+  hora: 08:38:04–08:38:13 -03, base 401bcd5; 10 failed, 1 passed in 7.41s.
+  E   AssertionError: {A: Dinero("0.00"), B: Dinero("0.00")} no es ninguna foto válida
+  GREEN: mismo comando; 27/10/2026 08:38:41–08:38:50 -03; 11 passed in 7.52s.
+  MUTANTE: 03-mutante-foto.log: 1 failed; E   assert [False] == [True] (sin bloqueo antes de la foto).
+  Mutante replay: 08:39:33–08:39:46 -03; foto: 08:40:14–08:40:24 -03.
+  Restauración: copia previa en .git/4b-fase1-logs/codex-cx/backup-*.py, restaurada en finally.
+  GREEN tras restaurar ambos: mismo comando; 08:40:29–08:40:42 -03; 11 passed in 11.18s.
+  ```
+
+  Salidas íntegras, comandos, línea E, hora y diffs: `.git/4b-fase1-logs/codex-cx/`.
+  El cierre sobre el commit de entrega se registra en `09-cierre-backend.log` y `10-cierre-*.log`
+  del mismo directorio; no acredita la tarea 6.1 completa ni las fases 4 y 5.
 
 ## 4. Fronteras, permiso y ruta de corrección (design D9 a D11)
 

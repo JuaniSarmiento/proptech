@@ -176,6 +176,10 @@ def _contra_asiento(
     if blanco is None or blanco.complejo_id != complejo_id:
         raise NoEncontrado
     bloquear_cuentas(sesion, [blanco.cuenta_id])
+    # CX-01, E4: resolver la operación que pudo aparecer durante la espera, antes de validar.
+    previo = _replay(sesion, pedido, motivo, complejo_id)
+    if previo is not None:
+        return previo
     # Bajo el candado (RC-12): la base no distingue el blanco; la aplicación sí.
     if blanco.tipo == "correccion" and blanco.sentido == "debito":
         raise Conflicto("movimiento_id")
@@ -233,6 +237,9 @@ def _credito(
     if obligacion is None or obligacion.complejo_id != complejo_id:
         raise NoEncontrado
     bloquear_cuentas(sesion, [obligacion.cuenta_id])
+    previo = _replay(sesion, pedido, motivo, complejo_id)
+    if previo is not None:
+        return previo
     if _anulada(sesion, obligacion.emision_id):
         raise Conflicto("obligacion_id")
     corrida = uuid4()
