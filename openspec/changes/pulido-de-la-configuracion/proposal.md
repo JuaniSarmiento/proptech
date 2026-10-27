@@ -219,3 +219,18 @@ revertir en `design.md`.
 | Firmante (Juani, Alberto o Emiliano) | Fecha | Alcance aprobado |
 |---|---|---|
 | Emiliano Caceres | 26/10/2026 | E1 a E6 y E8 a E10 completas, tal como quedaron en esta tabla (E7 no es una elección de este change: la decisión de borrar las cuentas de Mailinator ya está tomada y es acción operativa de Emiliano en Clerk, fuera de alcance de código) |
+
+### E11 · Dueño de las funciones al restaurar (elección nueva, posterior a la firma de Emiliano, L-029)
+
+Problema (ensayo de roles en la integración con el 4b): restaurar un respaldo (`pg_restore --no-owner`)
+deja las funciones a nombre del rol de arranque, y la 0027 hace `CREATE OR REPLACE` de
+`fn_grupo_generales_protegido`: falla con `must be owner of function`. Decisión: `roles antes`
+reasigna también las funciones del esquema `public` al migrador, como ya hace con tablas y
+secuencias; `roles despues` devuelve al rol de arranque las funciones de las tablas protegidas
+(4a/4b) y el chequeo verifica ese dueño por el efecto. Descartado: (b) que la 0027 cree una función
+nueva (arreglo local, el problema vuelve en la próxima migración) y (c) dejarlo como deuda.
+Revertir: quitar la reasignación de funciones en `antes` (la de `despues` se conserva).
+
+| Firmante | Fecha | Alcance aprobado |
+|---|---|---|
+| Juani | 27/10/2026 | E11 tal como está escrita arriba |
