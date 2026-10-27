@@ -261,9 +261,21 @@
 
 ## 3. Pisos del edificio y de la unidad
 
-- [ ] 3.1 **Test en rojo** del vocabulario de pisos como función pura: `PB` siempre, `SS1..SS<subsuelos>`,
+- [x] 3.1 **Test en rojo** del vocabulario de pisos como función pura: `PB` siempre, `SS1..SS<subsuelos>`,
   `1..<pisos>`, con 0 subsuelos y 0 pisos, y los límites 5 y 60; coincidencia completa y sólo ASCII
   (L-008). Escenario "Piso de planta baja y de subsuelo" de `edificios-y-unidades`.
+
+  **Rojo (27/10/2026)**, `bash infra/ci/test-backend.sh tests/unitarios/test_pisos.py` contra un stub
+  con `vocabulario_de_pisos` lanzando `NotImplementedError` (L-034): `9 failed, 2 passed in 0.36s` (los
+  2 verdes son los tests que sólo ejercitan `PATRON_PISO`, ya escrito en el stub; los 9 rojos caen en
+  `NotImplementedError`, nunca en un `ImportError`).
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/unitarios/test_pisos.py` → `11 passed in 0.09s`.
+  `uv run ruff check` + `uv run mypy` → sin hallazgos. Implementación en
+  `backend/src/proptech_core/compartido/pisos.py` (`PATRON_PISO`, `vocabulario_de_pisos`,
+  `piso_valido`), con el límite 60 (no 99, confirmado leyendo el patrón del `design.md` corregido:
+  `^(SS[1-5]|PB|[1-9]|[1-5][0-9]|60)$`) y 5 subsuelos verificados en
+  `test_limite_maximo_5_subsuelos_y_60_pisos`.
 - [ ] 3.2 `complejo.pisos` (nullable, 1..60) y `complejo.subsuelos` (nullable, 0..5) en el alta y en la
   lectura, sin calcularlos de nada — nulo es "sin completar", igual que la ubicación — y rechazo de
   texto por número; verificado con los escenarios "Cantidades fuera de rango", "Cantidades como texto"
