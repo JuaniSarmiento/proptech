@@ -388,7 +388,8 @@ def editar_edificio(
             sesion.execute(
                 text(
                     "SELECT nombre, provincia_id, departamento_id, localidad_id, "
-                    "calle_y_numero, pisos, subsuelos FROM complejo WHERE id=:id FOR UPDATE"
+                    "calle_y_numero, pisos, subsuelos, localidad "
+                    "FROM complejo WHERE id=:id FOR UPDATE"
                 ),
                 {"id": complejo_id},
             )
@@ -397,9 +398,11 @@ def editar_edificio(
         )
         if fila is None:
             raise NoEncontrado()
+        guardada = dict(fila)
+        localidad: str | None = guardada.pop("localidad")
         try:
-            anterior = _EdicionEdificio.model_validate(dict(fila))
-            entrada = _EdicionEdificio.model_validate({**fila, **cambios})
+            anterior = _EdicionEdificio.model_validate(guardada)
+            entrada = _EdicionEdificio.model_validate({**guardada, **cambios})
         except ValidationError as error:
             raise error_de_validacion(error) from None
         campos = sorted(
@@ -412,18 +415,25 @@ def editar_edificio(
             entrada.departamento_id,
             entrada.localidad_id,
         )
-        localidad: str | None = None
-        if provincia_id is not None or departamento_id is not None or localidad_id is not None:
-            if provincia_id is None:
-                raise EntradaInvalida("provincia_id", "la ubicación exige el trío completo")
-            if departamento_id is None:
-                raise EntradaInvalida("departamento_id", "la ubicación exige el trío completo")
-            if localidad_id is None:
-                raise EntradaInvalida("localidad_id", "la ubicación exige el trío completo")
-            campo_invalido = georef.campo_incoherente(provincia_id, departamento_id, localidad_id)
-            if campo_invalido is not None:
-                raise EntradaInvalida(campo_invalido)
-            localidad = georef.nombre_de_localidad(localidad_id)
+        # BE-001: como `pisos`/`subsuelos`, el trío se valida contra Georef
+        # sólo si el pedido lo cambia; una ubicación ya guardada que quedó
+        # incoherente con un Georef más nuevo no frena editar otro campo, y
+        # su `localidad` derivada se conserva tal como estaba.
+        if {"provincia_id", "departamento_id", "localidad_id"} & set(campos):
+            localidad = None
+            if provincia_id is not None or departamento_id is not None or localidad_id is not None:
+                if provincia_id is None:
+                    raise EntradaInvalida("provincia_id", "la ubicación exige el trío completo")
+                if departamento_id is None:
+                    raise EntradaInvalida("departamento_id", "la ubicación exige el trío completo")
+                if localidad_id is None:
+                    raise EntradaInvalida("localidad_id", "la ubicación exige el trío completo")
+                campo_invalido = georef.campo_incoherente(
+                    provincia_id, departamento_id, localidad_id
+                )
+                if campo_invalido is not None:
+                    raise EntradaInvalida(campo_invalido)
+                localidad = georef.nombre_de_localidad(localidad_id)
         if (
             entrada.pisos is not None
             and entrada.subsuelos is not None

@@ -55,6 +55,40 @@ def test_completar_ubicacion_de_edificio_viejo(api_edificio: ApiEdificio) -> Non
     assert edificio["provincia_id"] == "50"
 
 
+def test_editar_solo_el_nombre_no_revalida_la_ubicacion_guardada(
+    api_edificio: ApiEdificio,
+) -> None:
+    """BE-001 (revisión del PR #2): una ubicación guardada que dejó de ser
+    coherente con el Georef vigente (un archivo nuevo, un dato legado) no
+    puede frenar una edición que no la toca. Igual que `pisos`/`subsuelos`,
+    el trío se valida sólo si está entre los campos cambiados, y la
+    `localidad` derivada que ya estaba no se pisa."""
+    api_edificio.como("super_admin")
+    with api_edificio.base.conectar_app() as conexion, conexion.transaction():
+        conexion.execute(
+            "SELECT set_config('app.administracion_id', %s, true)", (str(api_edificio.admin),)
+        )
+        conexion.execute(
+            "UPDATE complejo SET provincia_id='99' WHERE id=%s", (str(api_edificio.edificio),)
+        )
+    respuesta = api_edificio.cliente.patch(api_edificio.ruta(), json={"nombre": "Torre Nueva"})
+    assert respuesta.status_code == 200, respuesta.text
+    edificio = api_edificio.cliente.get(api_edificio.ruta()).json()
+    assert edificio["nombre"] == "Torre Nueva"
+    assert edificio["provincia_id"] == "99"
+    assert edificio["localidad"] == "Mendoza"
+
+
+def test_tocar_la_ubicacion_sigue_validando_el_trio_contra_georef(
+    api_edificio: ApiEdificio,
+) -> None:
+    """La otra mitad de BE-001: si el pedido toca el trío, se valida."""
+    api_edificio.como("super_admin")
+    respuesta = api_edificio.cliente.patch(api_edificio.ruta(), json={"provincia_id": "99"})
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["loc"] == ["body", "provincia_id"]
+
+
 def test_anular_nombre_o_pisos_da_422_sin_cambios(api_edificio: ApiEdificio) -> None:
     """Escenario "Anular un campo obligatorio"."""
     api_edificio.como("super_admin")
