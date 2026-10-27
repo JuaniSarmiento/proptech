@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Unidad } from "../../../../lib/api/tipos";
@@ -35,6 +35,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={conDatos ? [UNIDAD_1A] : []}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionCrear}
@@ -62,6 +64,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "0.999800", diferencia: "-0.000200", estado: "fuera_de_tolerancia" }}
         accionCrear={accionNula}
@@ -76,6 +80,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[]}
         informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
         accionCrear={accionNula}
@@ -90,6 +96,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionNula}
@@ -106,6 +114,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[]}
         informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
         accionCrear={accionNula}
@@ -124,6 +134,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionNula}
@@ -146,6 +158,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[]}
         informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
         accionCrear={accionCrear}
@@ -169,6 +183,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionNula}
@@ -188,6 +204,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={unidades}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionNula}
@@ -202,6 +220,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionNula}
@@ -224,6 +244,8 @@ describe("PantallaPadron", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A, UNIDAD_2B]}
         informe={{ suma: "0.800000", diferencia: "-0.200000", estado: "fuera_de_tolerancia" }}
         accionCrear={accionNula}
@@ -271,6 +293,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionSimpleNula}
@@ -289,6 +313,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionSimpleNula}
@@ -322,6 +348,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionSimpleNula}
@@ -351,6 +379,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
       <PantallaPadron
         id="1"
         nombreEdificio="Edificio"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
         unidades={[UNIDAD_1A]}
         informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
         accionCrear={accionSimpleNula}
@@ -363,5 +393,180 @@ describe("PantallaPadron, vecinos (7.4)", () => {
     );
     await usuario.click(screen.getByRole("button", { name: "1A" }));
     await sinViolaciones(container);
+  });
+
+  it('D7 (5.4) "Identificador demasiado largo": marca el campo antes de llamar a la acción', async () => {
+    const usuario = userEvent.setup();
+    const accionCrear = vi.fn();
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[]}
+        informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionCrear}
+        accionEditar={accionNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Agregar unidad" })[0] as HTMLElement,
+    );
+    fireEvent.change(screen.getByLabelText("Identificador"), { target: { value: "a".repeat(41) } });
+    await usuario.type(screen.getByLabelText("Superficie (m²)"), "60.00");
+    await usuario.type(screen.getByLabelText("Coeficiente"), "0.5");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(
+      (await screen.findAllByText(/no puede tener más de 40 caracteres/i)).length,
+    ).toBeGreaterThan(0);
+    expect(accionCrear).not.toHaveBeenCalled();
+  });
+
+  it('D7 (5.4) "Ayuda del identificador": muestra el máximo', async () => {
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[]}
+        informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Agregar unidad" })[0] as HTMLElement,
+    );
+    expect(screen.getByText(/hasta 40 caracteres/i)).toBeTruthy();
+  });
+
+  it('D7 (5.4) "Coeficiente cargado como porcentaje": marca el campo antes de llamar a la acción', async () => {
+    const usuario = userEvent.setup();
+    const accionCrear = vi.fn();
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[]}
+        informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionCrear}
+        accionEditar={accionNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Agregar unidad" })[0] as HTMLElement,
+    );
+    await usuario.type(screen.getByLabelText("Identificador"), "1A");
+    await usuario.type(screen.getByLabelText("Superficie (m²)"), "60.00");
+    await usuario.type(screen.getByLabelText("Coeficiente"), "50");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    expect((await screen.findAllByText(/cargalo como proporción/i)).length).toBeGreaterThan(0);
+    expect(accionCrear).not.toHaveBeenCalled();
+  });
+
+  it('D7 (5.4) "El error previo al envío tiene el mismo aria-describedby que el error de la API"', async () => {
+    const usuario = userEvent.setup();
+    const accionCrear = vi.fn().mockResolvedValue({
+      erroresPorCampo: { identificador: "Ya existe una unidad con este identificador." },
+      erroresDesconocidos: [],
+    });
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[]}
+        informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionCrear}
+        accionEditar={accionNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Agregar unidad" })[0] as HTMLElement,
+    );
+    fireEvent.change(screen.getByLabelText("Identificador"), { target: { value: "a".repeat(41) } });
+    await usuario.type(screen.getByLabelText("Superficie (m²)"), "60.00");
+    await usuario.type(screen.getByLabelText("Coeficiente"), "0.5");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    const idPrevio = screen.getByLabelText("Identificador").getAttribute("aria-describedby");
+    // Se corrige y manda un identificador válido que la API rechaza por otro motivo (409).
+    await usuario.clear(screen.getByLabelText("Identificador"));
+    await usuario.type(screen.getByLabelText("Identificador"), "1A");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Ya existe una unidad con este identificador.").length,
+      ).toBeGreaterThan(0),
+    );
+    const idDespues = screen.getByLabelText("Identificador").getAttribute("aria-describedby");
+    expect(idPrevio).toBe(idDespues);
+  });
+
+  it('D3 (6.2) "Elegir el piso de la lista del edificio": la lista trae el vocabulario del edificio', async () => {
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[]}
+        informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "fuera_de_tolerancia" }}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Agregar unidad" })[0] as HTMLElement,
+    );
+    const piso = screen.getByLabelText("Piso") as HTMLSelectElement;
+    expect(piso.tagName).toBe("SELECT");
+    const opciones = Array.from(piso.options).map((o) => o.value);
+    expect(opciones).toEqual(["", "PB", "1", "2", "3", "4", "SS1"]);
+  });
+
+  it('D3 (6.2) "Unidades con el piso sin completar": se muestran marcadas en la tabla', () => {
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[{ ...UNIDAD_1A, piso: null }]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+      />,
+    );
+    expect(screen.getByText("Sin completar")).toBeTruthy();
+  });
+
+  it('D3 (6.2) "Abrir una unidad migrada no guarda ningún piso solo": el panel abre con la opción vacía, sin seleccionar la primera real', async () => {
+    const usuario = userEvent.setup();
+    const accionEditar = vi.fn().mockResolvedValue(null);
+    render(
+      <PantallaPadron
+        id="1"
+        nombreEdificio="Edificio API"
+        pisosDelEdificio={4}
+        subsuelosDelEdificio={1}
+        unidades={[{ ...UNIDAD_1A, piso: null }]}
+        informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+        accionCrear={accionNula}
+        accionEditar={accionEditar}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "1A" }));
+    const piso = screen.getByLabelText("Piso") as HTMLSelectElement;
+    expect(piso.value).toBe("");
+    await usuario.click(screen.getByRole("button", { name: "Guardar" }));
+    const cuerpo = accionEditar.mock.calls[0]?.[1] as FormData;
+    expect(cuerpo.get("piso")).toBe("");
   });
 });

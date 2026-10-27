@@ -218,4 +218,70 @@ describe("PantallaPersonal", () => {
     );
     await sinViolaciones(container);
   });
+
+  it('6.4 (D10) "Quitar y cancelar con teclado": Tab hasta "Quitar", Enter, Esc — no se llamó a la acción, el foco vuelve a "Quitar"', async () => {
+    const accionQuitar = vi.fn();
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPersonal
+        personas={PERSONAS}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionQuitar}
+      />,
+    );
+    const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+    const botonQuitar = within(filaBeto).getByRole("button", { name: "Quitar" });
+    botonQuitar.focus();
+    await usuario.keyboard("{Enter}");
+    const dialogo = screen.getByRole("dialog", { name: "Quitar este perfil" });
+    expect(within(dialogo).getByText(/Beto Gómez/)).toBeTruthy();
+    await usuario.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(accionQuitar).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(botonQuitar);
+  });
+
+  it('6.4 (D10) "Quitar y confirmar": confirmar manda la asignación a la acción y la fila pasa a "Quitada"', async () => {
+    const accionQuitar = vi.fn().mockResolvedValue({ ok: true });
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPersonal
+        personas={PERSONAS}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionQuitar}
+      />,
+    );
+    const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+    await usuario.click(within(filaBeto).getByRole("button", { name: "Quitar" }));
+    const dialogo = screen.getByRole("dialog", { name: "Quitar este perfil" });
+    await usuario.click(within(dialogo).getByRole("button", { name: "Quitar" }));
+    expect(accionQuitar).toHaveBeenCalledTimes(1);
+    const formData = accionQuitar.mock.calls[0]?.[1] as FormData;
+    expect(formData.get("asignacion_id")).toBe("a2");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(within(filaBeto).getByText("Quitada")).toBeTruthy();
+  });
+
+  it('6.4 (D10) "Sin diálogo nativo": no hay ningún `window.confirm()` en la pantalla de personal', async () => {
+    const confirmNativo = vi.spyOn(window, "confirm");
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPersonal
+        personas={PERSONAS}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionSimpleNula}
+      />,
+    );
+    const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+    await usuario.click(within(filaBeto).getByRole("button", { name: "Quitar" }));
+    await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(confirmNativo).not.toHaveBeenCalled();
+    confirmNativo.mockRestore();
+  });
 });

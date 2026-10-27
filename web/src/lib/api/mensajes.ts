@@ -20,6 +20,14 @@ const _MENSAJES: Record<string, string> = {
 
 const _GENERICO = "Revisá este dato.";
 
+/** `fuera_de_rango` (D3, tarea 3.5): la API manda `identificadores`, una
+ * lista cerrada de datos propios del edificio (nunca texto libre ni el
+ * valor del pedido, L-007) — la plantilla es nuestra, nunca el `msg` crudo
+ * de la API, que `cliente.ts` ni siquiera expone. */
+function _mensajeFueraDeRango(identificadores: string[]): string {
+  return `Quedarían unidades fuera de rango: ${identificadores.join(", ")}.`;
+}
+
 /** R3C-8 (rompedor 3b): el mismo texto que ya usaba `crearEdificioAction`
  * para un 401 — hasta el 2b la API de producción siempre da 401, así que
  * cada escritura sin este mapeo invitaba a reintentar algo que nunca iba
@@ -50,7 +58,10 @@ export function erroresDeFormulario(
   const erroresPorCampo: Record<string, string> = {};
   const erroresDesconocidos: string[] = [];
   for (const error of errores) {
-    const mensaje = mensajeDeError(error.motivo);
+    const mensaje =
+      error.motivo === "fuera_de_rango" && error.identificadores
+        ? _mensajeFueraDeRango(error.identificadores)
+        : mensajeDeError(error.motivo);
     if (camposConocidos.includes(error.campo)) {
       erroresPorCampo[error.campo] = mensaje;
     } else {

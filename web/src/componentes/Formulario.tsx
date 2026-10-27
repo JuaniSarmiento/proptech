@@ -167,3 +167,45 @@ export function Campo({ nombre, etiqueta, error: errorExplicito, ...resto }: Pro
     </div>
   );
 }
+
+type PropsDeLista = {
+  nombre: string;
+  etiqueta: string;
+  error?: string;
+} & Omit<ComponentPropsWithoutRef<"select">, "id" | "aria-invalid" | "aria-describedby">;
+
+/** D7 (tarea 6.0): mismo contrato que `Campo` (`id` de `idDelCampo`,
+ * `aria-invalid` siempre presente, `aria-describedby` sólo con mensaje,
+ * foco desde el mismo enlace del resumen) pero para un `<select>` — F1:
+ * sin esto, cada lista encadenada nueva repite el patrón ya roto en 8 de
+ * los 9 `<select>` que existían antes de esta tarea. */
+export function CampoDeLista({
+  nombre,
+  etiqueta,
+  error: errorExplicito,
+  children,
+  ...resto
+}: PropsDeLista) {
+  const erroresDelFormulario = useContext(_ContextoDeErrores);
+  const error = errorExplicito ?? erroresDelFormulario[nombre];
+  const idCampo = idDelCampo(nombre);
+  const idError = `${idCampo}-error`;
+  return (
+    <div className="campo">
+      <label htmlFor={idCampo}>{etiqueta}</label>
+      <select
+        id={idCampo}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? idError : undefined}
+        {...resto}
+      >
+        {children}
+      </select>
+      {error ? (
+        <p id={idError} className="campo__error">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

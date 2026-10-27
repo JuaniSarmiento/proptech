@@ -78,15 +78,17 @@ def test_leer_parametros_no_filtra_contenido_del_archivo_roto(tmp_path: Path) ->
 
 
 def test_leer_semilla_no_filtra_contenido_del_archivo_roto(tmp_path: Path) -> None:
+    from proptech_core.compartido.georef import Georef
     from proptech_core.compartido.parametros import Parametros
     from proptech_core.compartido.semilla import SemillaInvalida, leer_semilla
 
     parametros = Parametros(**_PARAMETROS_VALIDOS)
+    georef = Georef(provincias=(), departamentos=(), localidades=())
 
     ruta = tmp_path / "semilla.yaml"
     ruta.write_text(f'edificio:\n  nombre: "{_SECRETO}\n')
 
     with pytest.raises(SemillaInvalida) as exc_info:
-        leer_semilla(str(ruta), parametros)
+        leer_semilla(str(ruta), parametros, georef)
 
     assert _SECRETO not in str(exc_info.value)

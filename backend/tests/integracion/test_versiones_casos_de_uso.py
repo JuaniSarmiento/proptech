@@ -16,7 +16,14 @@ from proptech_core.complejos.aplicacion import escritura, lectura
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 
-from .test_crear_edificio import PARAMETROS, reloj
+from .test_crear_edificio import (
+    DEPARTAMENTO_ID,
+    GEOREF,
+    LOCALIDAD_ID,
+    PARAMETROS,
+    PROVINCIA_ID,
+    reloj,
+)
 from .test_unidades_casos_de_uso import crear
 
 pytestmark = pytest.mark.integracion
@@ -114,7 +121,12 @@ def test_hoy_es_mendoza_alrededor_de_medianoche(
         sesion_edificio,
         identidad_edificio,
         nombre="Reloj",
-        localidad="Mendoza",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
+        pisos=4,
+        subsuelos=1,
         parametros=parametros,
         reloj=lambda: datetime(2026, 10, 30, 12, tzinfo=UTC),
         request_id=uuid4(),

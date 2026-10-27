@@ -55,16 +55,31 @@ def test_identificador_sin_espacios_al_borde_se_guarda_recortado(api_edificio: A
     assert alta.json()["identificador"] == "9Z"
 
 
-def test_nombre_y_localidad_de_edificio_sin_espacios_al_borde(api_edificio: ApiEdificio) -> None:
+def test_nombre_y_calle_de_edificio_sin_espacios_al_borde(api_edificio: ApiEdificio) -> None:
+    """D2 (tarea 2.6): `localidad` dejó de ser una entrada — ahora se
+    escribe derivada del nombre de Georef, nunca de un valor del pedido, así
+    que el recorte en el borde se verifica sobre `nombre` y `calle_y_numero`
+    (el otro texto libre del alta), no sobre `localidad`."""
     api = api_edificio
     api.como("super_admin")
     alta = api.cliente.post(
-        "/api/complejos", json={"nombre": "  Edificio Nuevo  ", "localidad": "  Mendoza  "}
+        "/api/complejos",
+        json={
+            "nombre": "  Edificio Nuevo  ",
+            "provincia_id": "50",
+            "departamento_id": "50007",
+            "localidad_id": "50007010",
+            "calle_y_numero": "  Alsina 123  ",
+            "pisos": 4,
+            "subsuelos": 1,
+        },
     )
     assert alta.status_code == 201, alta.text
-    edificio = api.cliente.get(f"/api/complejos/{alta.json()['id']}").json()
+    id_ = UUID(alta.json()["id"])
+    edificio = api.cliente.get(f"/api/complejos/{id_}").json()
     assert edificio["nombre"] == "Edificio Nuevo"
     assert edificio["localidad"] == "Mendoza"
+    assert api.filas("SELECT calle_y_numero FROM complejo WHERE id=%s", (id_,)) == [("Alsina 123",)]
 
 
 def test_nombre_de_categoria_mismo_tope_al_crear_que_al_editar(api_edificio: ApiEdificio) -> None:

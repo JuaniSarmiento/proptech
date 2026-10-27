@@ -79,7 +79,7 @@ def test_grupo_coeficientes_y_no_op(api_edificio: ApiEdificio) -> None:
 def test_siete_eventos_y_solo_nombres(api_edificio: ApiEdificio) -> None:
     api = api_edificio
     uid = alta(api)
-    assert api.cliente.patch(f"/api/unidades/{uid}", json={"piso": "Privado"}).status_code == 200
+    assert api.cliente.patch(f"/api/unidades/{uid}", json={"piso": "2"}).status_code == 200
     g = grupo(api, [], modo="renormalizado")
     assert api.cliente.patch(f"/api/grupos/{g}", json={"nombre": "Otro privado"}).status_code == 200
     assert (

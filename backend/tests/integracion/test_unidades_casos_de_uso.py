@@ -10,7 +10,14 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import escritura
 
-from .test_crear_edificio import PARAMETROS, reloj
+from .test_crear_edificio import (
+    DEPARTAMENTO_ID,
+    GEOREF,
+    LOCALIDAD_ID,
+    PARAMETROS,
+    PROVINCIA_ID,
+    reloj,
+)
 
 pytestmark = pytest.mark.integracion
 DATOS = {
@@ -27,7 +34,12 @@ def crear(sesion: Session, identidad: Identidad) -> UUID:
         sesion,
         identidad,
         nombre="Ficticio",
-        localidad="Mendoza",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
+        pisos=4,
+        subsuelos=1,
         parametros=leer_parametros(str(PARAMETROS)),
         reloj=reloj,
         request_id=uuid4(),

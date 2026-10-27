@@ -60,7 +60,6 @@ describe("PantallaCategorias", () => {
     const botones = screen.getAllByRole("button", { name: "Agregar categoría" });
     const encabezado = botones[0];
     await usuario.click(botones[1] as HTMLElement);
-    await usuario.type(screen.getByLabelText("Clave"), "porton");
     await usuario.type(screen.getByLabelText("Nombre"), "Portón");
     await usuario.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -165,7 +164,7 @@ describe("PantallaCategorias", () => {
     expect(boton.querySelector(".sr-only")?.textContent).toBe("Portón");
   });
 
-  it('"Agregar categoría" abre el panel con clave y nombre', async () => {
+  it('6.3 "Sin campo de clave" (categorías): "Agregar categoría" abre el panel sin campo "Clave", sólo "Nombre" — la clave se autogenera en el backend (4.1-4.4)', async () => {
     const usuario = userEvent.setup();
     render(
       <PantallaCategorias
@@ -179,7 +178,7 @@ describe("PantallaCategorias", () => {
       />,
     );
     await usuario.click(screen.getByRole("button", { name: "Agregar categoría" }));
-    expect(screen.getByLabelText("Clave")).toBeTruthy();
+    expect(screen.queryByLabelText("Clave")).toBeNull();
     expect(screen.getByLabelText("Nombre")).toBeTruthy();
   });
 

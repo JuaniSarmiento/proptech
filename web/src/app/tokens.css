@@ -1024,7 +1024,8 @@ h2 {
   font-weight: 400;
 }
 
-.campo input[aria-invalid="true"] {
+.campo input[aria-invalid="true"],
+.campo select[aria-invalid="true"] {
   border-color: var(--color-terracota);
   box-shadow: 0 0 0 1px var(--color-terracota);
 }
@@ -1333,6 +1334,18 @@ h2 {
   position: absolute;
   inset: 0;
   border-radius: var(--radio-control);
+}
+
+/* El overlay de arriba estira el link/botón del título a toda la fila
+   (`inset: 0` contra el `li` con `position: relative`), así que por default
+   tapa cualquier control propio que viva en `fin` (Desactivar/Reactivar de
+   grupos y categorías, R16): un posicionado siempre pinta arriba de uno
+   estático, sin importar el orden del DOM. `fin` necesita su propio
+   contexto de apilamiento por encima de ese overlay para que sus botones
+   sigan siendo clickeables. */
+.lista-de-filas--tocable .fila-con-icono__fin {
+  position: relative;
+  z-index: 1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1843,6 +1856,14 @@ h2 {
 }
 .panel-lateral__seccion h3 {
   font-size: var(--tipo-cuerpo);
+}
+
+/* Confirmación de "Quitar" en Personal (D10, tarea 6.4): Cancelar y Quitar
+ * en la misma fila, dentro del PanelLateral de confirmación. */
+.panel-lateral__acciones {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 /* Personal (7.3): una línea de texto por asignación, nunca un ícono por

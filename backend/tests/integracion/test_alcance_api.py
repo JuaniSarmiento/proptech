@@ -10,6 +10,7 @@ Super admin. Lecciones: L-017 (el id de otra administración es un UUID válido 
 existente, nunca un texto que FastAPI ya rechaza con 422).
 """
 
+import shutil
 import subprocess
 import sys
 import uuid
@@ -345,6 +346,11 @@ def app_real(
     ruta_parametros = tmp_path / "parametros.yaml"
     raiz = RAIZ_BACKEND.parent
     ruta_parametros.write_text((raiz / "config" / "parametros.yaml").read_text())
+    # D1 (tarea 2.6): `crear_app()` carga Georef desde el directorio
+    # hermano de `parametros.yaml` (el mismo montaje de `config/` que la
+    # producción usa) — se copia acá para que este `parametros.yaml`
+    # aislado tenga su `georef/` al lado, igual que el real.
+    shutil.copytree(raiz / "config" / "georef", tmp_path / "georef")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta_parametros))
 
     from proptech_api.app import crear_app

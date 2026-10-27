@@ -1,0 +1,1151 @@
+> **Firma primero.** Ninguna tarea arranca hasta que la sección "Aprobación" de `proposal.md` esté
+> firmada por Juani, Alberto o Emiliano, con nombre, fecha y alcance (D-094, D-111). Una regla nueva que
+> entre después de la firma necesita firma propia (L-029).
+>
+> **TDD estricto con el rojo pegado** (L-034): cada tarea de test pega en su informe el comando, la
+> salida del test en rojo y la hora, y el rojo tiene que caer en la aserción que el test dice probar,
+> nunca en un `ImportError` ni en un 401. Backend: `bash infra/ci/test-backend.sh <archivos>`. Web:
+> `bash infra/ci/test-web.sh`.
+>
+> **Tamaño**: 30 tareas (29 del propose original + 6.0, agregada en la revisión de frontend/DBA del
+> 26/10/2026), por encima de las ~20 que pide `config.yaml`. Se acepta porque los grupos 2 y 3
+> (ubicación y pisos) son un pedido de Juani que comparte migración y pantalla con el resto. Si hay que
+> partirlo, el corte natural es: **3c-1** = grupos 1, 5 y 6 (los hallazgos del QA sobre la web) y
+> **3c-2** = grupos 1 a 4 y 7 (ubicación, pisos y grupos, con esquema). El grupo 4 puede ir en
+> cualquiera de los dos.
+>
+> **Corrección post-propose (26/10/2026)**: revisores de rol (frontend, DBA) encontraron defectos
+> reales en el plan antes de construir — ver D9/D10 y las correcciones DBA-1, F1-F6, H-8 en `design.md`,
+> y las tareas 3.4/3.5/3.8/5.4/6.0/6.1/6.2/6.4 ya reflejan la versión corregida. No hace falta volver a
+> firmar `## Aprobación`: son correcciones dentro del alcance ya aprobado (E1-E6, E8-E10), no elecciones
+> nuevas.
+
+## 1. Preparación
+
+- [x] 1.1 Rebasar la rama sobre `main` (el 4a ya está mergeado: migraciones `0021` y `0022`, auditoría de
+  `editar_unidad` en `complejos/aplicacion/unidades.py`) y verificar que `alembic heads` devuelve una
+  sola cabeza y que la suite de backend arranca verde antes de tocar nada — el baseline que prueba que
+  nada de lo que rompa después venía roto.
+
+  **Evidencia (26/10/2026)**: `git merge-base --is-ancestor main HEAD` → "HEAD already contains main"
+  (la rama ya incluye `84badd1`, cabeza de `main`; no hizo falta rebase). `alembic heads` → `0022
+  (head)`, una sola cabeza. Baseline de la suite completa, ya corrida por quien preparó esta tarea
+  **antes** de tocar nada (26/10/2026, antes de esta sesión):
+  `25 failed, 2817 passed, 1 skipped, 1 xfailed, 3 warnings in 1301.23s (0:21:41)`. Los 25 `failed` son
+  deuda documentada en `CLAUDE.md` ("fallas de portabilidad Windows en la suite de pytest", cierre de
+  `acceso-de-desarrollo`): `test_respaldos.py`, `test_restaurar.py`, los tests de worker/Redis y un caso
+  suelto en `test_umbral_parametros.py::test_umbral_cero`. Ninguno toca `complejos/`, `config/georef/`
+  ni ningún archivo de este change — no se reintentan.
+- [x] 1.2 Descargar y reducir los tres archivos de Georef a `config/georef/` (`id`, `nombre`, id del
+  padre) y escribir `config/georef/LEEME.md` con fuente, fecha de descarga, licencia CC BY 4.0 y el
+  comando exacto que lo regenera; verificar con un test que el `LEEME` existe y nombra las cuatro cosas
+  (escenario "Procedencia declarada" de `ubicacion-del-edificio`).
+
+  **Evidencia (26/10/2026)**: descarga real de `apis.datos.gob.ar/georef/api/` (provincias, 24;
+  departamentos, 529; localidades, 4037), reducidos a `id`/`nombre`/id-del-padre con un script Python
+  de un solo uso (no versionado; el comando completo queda en `LEEME.md`). Confirmado contra el
+  archivo real: Mendoza id `50`, 18 departamentos, Capital (`50007`) y Godoy Cruz (`50021`) existen.
+  **JUICIO (confianza alta)**: el escenario "Trío coherente" de la spec nombra "la localidad Ciudad de
+  Mendoza" como ejemplo; el registro real de Georef para la capital es `"Mendoza"` (id `50007010`), no
+  "Ciudad de Mendoza" — anotado en `LEEME.md`. Test:
+  `bash infra/ci/test-backend.sh tests/unitarios/test_georef_leeme.py` →
+  `2 passed in 0.07s`. `rm` de los tres `*_raw.json` intermedios y del script tras la reducción (no se
+  versionan).
+
+## 2. Ubicación en el backend
+
+- [x] 2.1 **Test en rojo** del lector del archivo de Georef: archivo ausente, vacío, truncado, de otro
+  tipo, con un id repetido y con un padre que no existe; y el caso verde (Mendoza con id `50`, 24
+  jurisdicciones). Ningún error repite el contenido del archivo (L-002, L-007, L-008; escenarios
+  "Archivo ausente o ilegible" y "La provincia de Mendoza existe con su id oficial").
+
+  **Rojo (26/10/2026)**, `bash infra/ci/test-backend.sh tests/unitarios/test_georef.py` contra un
+  stub de `compartido/georef.py` con `leer_georef` lanzando `NotImplementedError` (para que el rojo
+  cayera en la aserción del test, no en un `ImportError`, L-034):
+  `11 failed in 0.64s`, los 11 en `NotImplementedError` dentro de `leer_georef`, nunca en el import.
+- [x] 2.2 Implementar el lector en `compartido/` con las tres consultas y `existe_el_trio(...)`, cargado
+  una vez al arrancar, hasta que 2.1 quede verde.
+
+  **Verde (26/10/2026)**: `bash infra/ci/test-backend.sh tests/unitarios/test_georef.py` →
+  `11 passed in 0.86s`. `uv run ruff check` + `uv run mypy` sobre
+  `src/proptech_core/compartido/georef.py` y el test → `All checks passed!` / `Success: no issues
+  found in 2 source files`. Implementación en
+  `backend/src/proptech_core/compartido/georef.py` (`Georef`, `leer_georef`, `departamentos_de`,
+  `localidades_de`, `existe_el_trio`, `nombre_de_localidad`).
+- [x] 2.3 **Test en rojo** de la coherencia del trío contra la API real: localidad de otro departamento,
+  departamento de otra provincia, id inexistente, trío incompleto y el trío coherente; más un **mutante
+  dirigido** que saca la comparación de padres y tiene que poner el test en rojo (L-035, L-013: copia
+  temporal, sin commit, declarado en el informe). Escenarios "Localidad de otro departamento",
+  "Departamento de otra provincia", "Id que no existe", "Trío incompleto", "Trío coherente".
+
+  **JUICIO (confianza media)**: "contra la API real" se interpreta como "contra el archivo real de
+  `config/georef/`" (no fixtures sintéticos), no contra un endpoint HTTP — el endpoint y el cuerpo que
+  exigen el trío "incompleto" (Pydantic, campo requerido) llegan en 2.5/2.6; acá sólo existe la función
+  de coherencia (`Georef.campo_incoherente`) que esos endpoints van a usar. El escenario "Trío
+  incompleto" se cubre en la tarea 2.6 (nivel API), no acá (nivel de la función pura).
+
+  **Rojo (26/10/2026)**, con `campo_incoherente` estubeado a `raise NotImplementedError`:
+  `bash infra/ci/test-backend.sh tests/unitarios/test_georef_coherencia_real.py` →
+  `7 failed in 0.34s`, los 7 en `NotImplementedError`.
+
+  **Verde**: implementado `Georef.campo_incoherente` en
+  `backend/src/proptech_core/compartido/georef.py` (orden provincia → departamento → localidad, nombra
+  el primer campo que no encadena). `bash infra/ci/test-backend.sh
+  tests/unitarios/test_georef_coherencia_real.py tests/unitarios/test_georef.py` →
+  `18 passed in 0.22s`.
+
+  **Mutante dirigido (L-035, L-013)**: se sacó temporalmente la comparación contra el padre
+  (`departamento.provincia_id != provincia_id` y `localidad.departamento_id != departamento_id`),
+  dejando sólo la existencia de cada id — copia temporal, sin commit. Resultado:
+  `3 failed, 4 passed in 0.28s`, cayendo exactamente en
+  `test_localidad_de_otro_departamento`, `test_departamento_de_otra_provincia` y
+  `test_ningun_mensaje_repite_el_id_recibido` (las tres que dependen de la comparación de padres, no
+  sólo de existencia). Revertido inmediatamente después; `uv run ruff check` + `uv run mypy` → sin
+  hallazgos.
+- [x] 2.4 Migración `0025`: las cuatro columnas de ubicación, el `CHECK` "los tres o ninguno" y
+  `complejo.localidad` a nullable; verificar la subida y la bajada sobre una copia con el edificio de
+  ejemplo cargado (Migration Plan, paso 1).
+
+  **Migración** en `backend/migraciones/versions/0025_ubicacion_del_edificio.py`. Subida: cuatro
+  columnas nullable + `CHECK ck_complejo_ubicacion_completa_o_vacia` + `localidad` a nullable (sin
+  `UPDATE`, D3/D9: no hace falta tocar filas existentes para agregar columnas nullable). Bajada: con
+  el candado de D9 (`LOCK TABLE complejo ACCESS EXCLUSIVE` → `NO FORCE` → `UPDATE ... localidad=''`
+  → `FORCE`) antes de devolver `localidad` a `NOT NULL` y borrar las cuatro columnas.
+
+  **Hallazgo real (no previsto)**: la suite existente tenía
+  `test_rls_edificio.py::test_localidad_es_obligatoria_sin_default_temporal`, que afirmaba el
+  comportamiento VIEJO (`NotNullViolation` al omitir `localidad`). D2 cambia esto a propósito
+  (`localidad` nullable y derivada): el test se **reescribió** (no se borró) como
+  `test_localidad_es_nullable_desde_0025`, documentando el cambio de contrato en su docstring. Sin
+  este ajuste la suite daba un falso rojo que no era de este change.
+
+  **Tests nuevos**: `backend/tests/integracion/test_ubicacion_db.py` (6 casos: ubicación completa,
+  vacía, las tres combinaciones a medias por `CHECK`, calle sin límite de largo en la base — H-8) y
+  `backend/tests/integracion/test_ubicacion_migracion_multitenant.py` (bajada de `0025` sobre una
+  base sembrada con **dos administraciones distintas**, confirmando que el candado de D9 rellena
+  `localidad=''` en las dos — no sólo en el tenant de turno — y que las columnas se borran).
+
+  **Verde (26/10/2026)**:
+  `bash infra/ci/test-backend.sh tests/integracion/test_ubicacion_db.py
+  tests/integracion/test_ubicacion_migracion_multitenant.py tests/integracion/test_rls_edificio.py`
+  → `32 passed in 36.46s`. Incluye
+  `test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a` (gemelo L-023).
+
+  **Mutante dirigido #1 (`CHECK`, L-035)**: se sacó temporalmente `create_check_constraint` de la
+  subida (y el `drop_constraint` correspondiente de la bajada) — copia temporal, sin commit.
+  Resultado: `3 failed, 3 passed in 11.04s`, cayendo exactamente en los tres casos "a medias" de
+  `test_ubicacion_a_medias_falla_por_check`. Revertido.
+
+  **Mutante dirigido #2 (candado de D9, DBA-1, requisito explícito de esta corrida)**: se sacó
+  temporalmente el `LOCK`/`NO FORCE`/`FORCE` de la bajada, dejando el `UPDATE` corriendo bajo RLS
+  normal — copia temporal, sin commit. Resultado: **la migración misma falla**, no silenciosamente:
+  `sqlalchemy.exc.IntegrityError: NotNullViolation: column "localidad" of relation "complejo"
+  contains null values` en el propio `ALTER TABLE complejo ALTER COLUMN localidad SET NOT NULL` —
+  porque el `UPDATE` sin el candado vio cero filas bajo RLS (exactamente el defecto DB-3/DBA-1 que
+  D9 existe para evitar) y los `NULL` quedaron sin rellenar. Los 2 tests de
+  `test_ubicacion_migracion_multitenant.py` fallan. Revertido; `32 passed` de nuevo tras restaurar.
+
+  `rg "INSERT INTO complejo"` y `rg "INSERT INTO unidad"` en todo el repo (28 y 17 archivos
+  respectivamente, ninguno fuera de `backend/tests/` y `backend/src/.../escritura.py`/`unidades.py`):
+  ningún `INSERT` literal se ve afectado por `0025` porque las cuatro columnas nuevas son nullable y
+  `localidad` sólo se AFLOJA (NOT NULL → nullable), nunca se endurece — un `INSERT` que ya mandaba
+  `localidad` sigue funcionando igual.
+- [x] 2.5 Tres rutas de lectura de provincias, departamentos de una provincia y localidades de un
+  departamento, con sesión, 404 para un padre inexistente y 401 sin sesión; verificado con el test de
+  los escenarios "Departamentos de una provincia", "Localidades de un departamento", "Provincia
+  inexistente" y "Sin sesión".
+
+  **Wiring**: `backend/src/proptech_api/georef.py` (router `/api/georef/{provincias,
+  provincias/{id}/departamentos, departamentos/{id}/localidades}`, `route_class=RutaConIdentidad`,
+  sólo `Depends(identidad_actual)` — nunca `sesion_con_tenant`: son datos del país, no del tenant).
+  `app.py` carga `Georef` una vez al arrancar desde `Path(configuracion.proptech_parametros).parent /
+  "georef"` — sin variable de entorno nueva, porque `config/` entero ya se monta de sólo lectura en
+  `infra/compose.yaml:207,255`.
+
+  **Rojo real, no planeado (26/10/2026)**: al cablear `app.py` reutilicé el nombre `georef` para el
+  módulo importado (`from proptech_api import ..., georef, ...`) Y para la variable local con los
+  datos cargados (`georef = leer_georef(...)`) — la segunda tapaba la primera dentro de la función,
+  así que `app.include_router(georef.router)` fallaba con
+  `AttributeError: 'Georef' object has no attribute 'router'`. Lo agarraron los 6 tests nuevos:
+  `bash infra/ci/test-backend.sh tests/integracion/test_georef_api.py` → `6 errors in 12.97s`, los 6
+  en ese `AttributeError` (nunca un 401/404 falso: la ruta ni llegaba a registrarse). Arreglo: la
+  variable local pasa a llamarse `datos_georef`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_georef_api.py` →
+  `6 passed in 13.57s` (con sesión los tres listados, 404 de provincia y de departamento inexistentes,
+  401 real sacando el override de `identidad_actual` — patrón de
+  `test_edificios_api.py::test_401_sin_sql_incluso_con_cuerpo_invalido`). `uv run ruff check` +
+  `uv run mypy` sobre los tres archivos → sin hallazgos. `test_fronteras_de_modulos.py` (27 casos) y
+  `test_barrido_de_rutas.py` (12 casos) siguen en verde: el router nuevo no cruza ninguna frontera ni
+  queda fuera del barrido.
+- [x] 2.6 El alta del edificio exige el trío y acepta calle y número opcional (≤ 200, sin caracteres de
+  control); `localidad` deja de ser entrada y se escribe derivada del nombre de Georef. Verificado con
+  los escenarios "Alta con ubicación y pisos", "Alta sin ubicación", "Alta sin calle", "Calle con
+  carácter de control o demasiado larga" y el test de que `localidad` coincide con el nombre de Georef
+  después de escribir (D2).
+
+  **Cambio de contrato**: `crear_edificio` (`escritura.py`) deja de aceptar `localidad: str`; ahora
+  exige `provincia_id`, `departamento_id`, `localidad_id`, `georef: Georef` (y opcionalmente
+  `calle_y_numero`). Valida con `Georef.campo_incoherente` y escribe `localidad` derivada de
+  `nombre_de_localidad`. `CuerpoEdificio` (API) espeja el cambio: sin `localidad`, con el trío
+  obligatorio y `calle_y_numero` opcional (`Field(max_length=200)` + `recortado_sin_control`, H-8: sin
+  `CHECK` de largo en la base, igual que `localidad` hoy).
+
+  **BLOQUEANTE real, relevado y resuelto en esta corrida** (anunciado al coordinador antes de seguir):
+  7 llamadores directos de `crear_edificio(...)` (`src/proptech_api/complejos.py`,
+  `src/proptech_core/complejos/aplicacion/ejemplo.py`, `tests/integracion/conftest.py` y 4 archivos de
+  test con 9 invocaciones) y 11 archivos de test con `POST /api/complejos` de cuerpo viejo. Los 7
+  llamadores se actualizaron al nuevo contrato (ids reales de Georef: Mendoza `50` / Capital `50007` /
+  localidad `50007010`, confirmados contra `config/georef/`). De los 11 archivos de `POST
+  /api/complejos`: 8 necesitaron el cuerpo nuevo (mecánico), 3 no necesitaban cambios (no mandan cuerpo
+  de ubicación: `test_contrato_web.py` sólo lee, `test_identidad_antes_del_cuerpo.py` manda bytes
+  crudos, `test_regresiones_de_aislamiento_y_grupos_vacios.py` ya saltea `/api/complejos`). Tres de los
+  8 (`test_texto_recortado_en_el_borde.py`, `test_texto_sin_caracteres_de_control.py`,
+  `test_texto_unicode_seguro.py`) probaban el recorte/control/unicode-inseguro sobre `localidad`
+  específicamente; como esa capacidad se mudó a `calle_y_numero` (el otro texto libre del alta), los
+  casos se reescribieron sobre ese campo en vez de borrarse — la cobertura de esa familia (R3A-1/R3A-6)
+  no se perdió.
+
+  **JUICIO (confianza alta)**: `ejemplo.py` (carga del edificio de ejemplo) necesita el trío para cada
+  alta nueva, pero `config/semilla/edificio-ejemplo.yaml` todavía no tiene columnas de ubicación — eso
+  es la tarea 6.5, fuera de esta corrida. Se usó un trío real y fijo (Mendoza/Capital/"Mendoza",
+  constantes `_PROVINCIA_EJEMPLO`/`_DEPARTAMENTO_EJEMPLO`/`_LOCALIDAD_EJEMPLO` en `ejemplo.py`,
+  documentadas como deuda hacia 6.5) en vez de inventar un valor sin sentido o bloquear todo el change:
+  son ids reales de Georef, no datos fabricados, y quedan anotados para que 6.5 los reemplace por los
+  de la semilla real.
+
+  **Segundo bloqueante real, encontrado corriendo la suite** (no estaba en el relevamiento inicial):
+  `crear_app()` carga `Georef` desde el directorio hermano de `proptech_parametros` (D1), pero **7
+  fixtures de test** aíslan `parametros.yaml` en un `tmp_path` sin copiar su `georef/` al lado
+  (`test_alcance_api.py`, `test_altas_sin_id_del_cliente.py`, `test_asignar_edificio_api.py`,
+  `test_cableado_real_del_arranque.py`, `test_identidad_api.py`, `test_rutas_protegidas.py`,
+  `test_causa_de_arranque_rechazado.py`) — las 7 rompían con `GeorefInvalido: no se puede leer el
+  archivo: provincias.json`. Se evaluaron dos arreglos: (a) una variable de entorno `PROPTECH_GEOREF`
+  separada (toca `Configuracion`, `infra/compose.yaml` y cada fixture igual) vs. (b) copiar
+  `config/georef/` al lado del `parametros.yaml` aislado, mismo patrón que esos fixtures ya usan
+  (`shutil.copytree`). Se eligió (b): una línea por fixture, sin tocar `Configuracion` ni la
+  infraestructura de despliegue (que ya monta `config/` entero, D1).
+
+  **Tercer bloqueante, estructural**: `test_rutas_protegidas.py` exige que el conjunto de rutas
+  cubiertas coincida exactamente con las rutas reales de la app (`_RUTAS_CUBIERTAS`); las 3 rutas de
+  Georef (2.5) no estaban. Como son datos del país (D1: "no depende del edificio ni del rol"), no
+  encajan en el supuesto de esa suite de que toda ruta cubierta necesita una `asignacion_rol` — se
+  agregó `_RUTAS_SIN_ALCANCE` (importado también por `test_identidad_antes_del_cuerpo.py` y
+  `test_regresiones_de_aislamiento_y_grupos_vacios.py`, que referencian `_RUTAS_CUBIERTAS`) con su
+  propia rama: 200 esperado con cualquier identidad autenticada, incluida una sin ninguna fila en
+  `asignacion_rol` o de otra administración, en vez de la rama genérica (403/404 esperados).
+
+  **Rojo real #1 (26-27/10/2026)**: al cablear `georef.router` en `app.py` reutilicé `georef` como
+  nombre del módulo importado y de la variable local con los datos cargados — ver evidencia de la
+  tarea 2.5, mismo informe.
+
+  **Rojo real #2**: `bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py` →
+  `1 failed, 367 passed` (las otras 6 fixtures de `tmp_path` corrigiéndose en el mismo lote), cayendo
+  en `test_las_rutas_del_candado_son_exactamente_las_cubiertas_acá` nombrando las 3 rutas de Georef
+  como "no cubiertas" — nunca en un `ImportError` ni en un 401 genérico.
+
+  **Verde, corrida completa de los 26 archivos tocados** (crear_edificio: 7 llamadores; POST
+  /api/complejos: 11 archivos; más los 7 de fixtures de Georef aislado, con solapamiento):
+  `358 passed` (`test_rutas_protegidas.py` solo) + `122 passed` (edificios/perfiles/tasa/umbral/texto×3)
+  + `46 passed` (identidad-antes-del-cuerpo/regresiones/ejemplo/contrato-web) + `34 passed`
+  (edificios_api + crear_edificio, con los tests nuevos de 2.6) + `27 passed` (crear_edificio,
+  unidades, versiones, auditoría) + `55 passed` (barrido de rutas, fronteras, paquetes, arranque) —
+  ninguna falla fuera de las ya explicadas y corregidas. `uv run ruff check .` y `uv run mypy` sobre
+  todos los archivos fuente tocados → sin hallazgos.
+
+  **Hallazgo de higiene, no de lógica**: un `Edit` sobre `test_edificios_api.py` escribió un byte NUL
+  crudo dentro de un string de Python en vez del escape de texto que se quería probar —
+  `grep`/`Read` empezaron a ver el archivo como binario. Detectado por `wc -l` y `file` dando
+  resultados inconsistentes entre sí; corregido reescribiendo el byte como el escape de texto
+  correcto con un script de una línea, confirmado con `ast.parse` antes de seguir.
+
+## 3. Pisos del edificio y de la unidad
+
+- [x] 3.1 **Test en rojo** del vocabulario de pisos como función pura: `PB` siempre, `SS1..SS<subsuelos>`,
+  `1..<pisos>`, con 0 subsuelos y 0 pisos, y los límites 5 y 60; coincidencia completa y sólo ASCII
+  (L-008). Escenario "Piso de planta baja y de subsuelo" de `edificios-y-unidades`.
+
+  **Rojo (27/10/2026)**, `bash infra/ci/test-backend.sh tests/unitarios/test_pisos.py` contra un stub
+  con `vocabulario_de_pisos` lanzando `NotImplementedError` (L-034): `9 failed, 2 passed in 0.36s` (los
+  2 verdes son los tests que sólo ejercitan `PATRON_PISO`, ya escrito en el stub; los 9 rojos caen en
+  `NotImplementedError`, nunca en un `ImportError`).
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/unitarios/test_pisos.py` → `11 passed in 0.09s`.
+  `uv run ruff check` + `uv run mypy` → sin hallazgos. Implementación en
+  `backend/src/proptech_core/compartido/pisos.py` (`PATRON_PISO`, `vocabulario_de_pisos`,
+  `piso_valido`), con el límite 60 (no 99, confirmado leyendo el patrón del `design.md` corregido:
+  `^(SS[1-5]|PB|[1-9]|[1-5][0-9]|60)$`) y 5 subsuelos verificados en
+  `test_limite_maximo_5_subsuelos_y_60_pisos`.
+- [x] 3.2 `complejo.pisos` (nullable, 1..60) y `complejo.subsuelos` (nullable, 0..5) en el alta y en la
+  lectura, sin calcularlos de nada — nulo es "sin completar", igual que la ubicación — y rechazo de
+  texto por número; verificado con los escenarios "Cantidades fuera de rango", "Cantidades como texto"
+  y "Edificio nuevo sin pisos completados".
+
+  **Implementación (27/10/2026)**: `crear_edificio` (`escritura.py`) exige `pisos`/`subsuelos` en
+  toda alta nueva (nunca `None` ahí, aunque la columna sea nullable para edificios migrados sin
+  completar) y valida el rango 1-60/0-5 también en la capa de aplicación (no sólo en el `Field` del
+  cuerpo de la API), para que un llamador que no pase por HTTP no se escape del límite.
+  `ComplejoLeido` (`lectura.py`) ahora lee las 6 columnas de ubicación+pisos con `SELECT *` armado
+  desde una sola constante (`_COLUMNAS_COMPLEJO`); `ver_complejo` y `mis_edificios` (`complejos.py`)
+  las exponen. `CuerpoEdificio` exige `pisos: int (1-60)` y `subsuelos: int (0-5)` con `strict=True`
+  heredado (rechaza `"4"` por texto). 7 llamadores de `crear_edificio` actualizados (igual que 2.6).
+
+  **Verde (27/10/2026)**: `bash infra/ci/test-backend.sh tests/integracion/test_crear_edificio.py
+  tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_versiones_casos_de_uso.py
+  tests/integracion/test_auditoria_transaccion.py` → `38 passed in 41.77s`.
+
+  **Hallazgo real (no previsto)**: `test_auditoria_transaccion.py` tenía un caso que editaba
+  `unidad.piso` a `"Otro"` para probar que la edición queda auditada — valor que la migración `0026`
+  (ya comiteada, tarea 3.4) rechaza por el `CHECK ck_unidad_piso`. Se reproduce incluso en el HEAD sin
+  los cambios de esta tarea (confirmado con `git stash`): no es una regresión de 3.2, es deuda de 3.4
+  que esta corrida completó. Se cambió el valor a `"2"` (dentro del vocabulario, distinto del `"1"`
+  original de `DATOS`, para seguir probando que el cambio se detecta).
+
+  `uv run ruff check` + `uv run mypy` sobre los 4 archivos tocados → `All checks passed!` / `Success:
+  no issues found in 4 source files`.
+- [x] 3.3 **Test en rojo** de la validación de `piso` **por la API** (no sólo por el dominio, L-017):
+  piso fuera del vocabulario del edificio, texto libre (`"Entrepiso"`, `"pb"`, `" 1"`, `"1°"`, `"SS"`,
+  dígito no ASCII), piso faltante o `null` en un alta, y el `INSERT`/`UPDATE` por SQL que el `CHECK`
+  tiene que frenar; más un **mutante dirigido** que saca la comparación contra el edificio y deja el
+  `CHECK` de forma, para probar que el test vigila la garantía específica y no una capa anterior
+  (L-034, L-035). Escenarios "Piso que el edificio no tiene", "Piso como texto libre", "Unidad nueva
+  sin piso", "El piso no se sale del vocabulario por SQL".
+
+  **Rojo (27/10/2026)**, `bash infra/ci/test-backend.sh tests/integracion/test_piso_vocabulario_api.py`
+  contra el código de antes de esta tarea: `3 failed, 3 passed in 20.48s` — los 3 que ya pasaban eran
+  "sin piso" (ya rechazado por el campo requerido de Pydantic, sin tocar nada), "dentro del
+  vocabulario" (siempre funcionó) y el `CHECK` por SQL (ya lo daba `0026`). Los 3 rojos: "piso que el
+  edificio no tiene" caía en `201` (se creaba igual, sin validar contra el edificio); "texto libre" y
+  "editar fuera del vocabulario" caían en `500` (`IntegrityError` crudo de PostgreSQL, nunca un 422 —
+  la app no validaba la forma antes de mandarlo a la base).
+
+  **Implementación**: `DatosUnidad.piso` pasa a `str | None` (una unidad migrada por `0026` puede
+  tener el piso sin completar; antes era `str` obligatorio y `_datos()` explotaba al leer esas filas,
+  un bug latente para cualquier edición de una unidad migrada). Validador de forma
+  (`piso_con_forma`, `PATRON_PISO.fullmatch`) en el modelo; `_validar_piso_del_edificio` nueva en
+  `unidades.py`, llamada desde `crear_unidad` (exige no-nulo y dentro del vocabulario de `pisos`/
+  `subsuelos` DEL EDIFICIO, vía `piso_valido` de `compartido/pisos.py`, tarea 3.1) y desde
+  `editar_unidad` (sólo si `"piso"` está entre los campos que cambian; permite `None` sin tocar,
+  cubriendo "Corregir el piso de una unidad migrada"). **JUICIO (confianza media)**: si el edificio
+  todavía no completó `pisos`/`subsuelos` (D3, ambos `None`), se deja pasar lo que ya pasó el chequeo
+  de forma — ese edificio no tiene vocabulario propio todavía; la tarea 3.8 (puesta a punto) es la que
+  cierra ese hueco exigiendo completarlo antes de liquidar.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_piso_vocabulario_api.py` →
+  `6 passed in 18.60s`.
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente la comparación contra el vocabulario del
+  edificio en `_validar_piso_del_edificio` (dejando sólo el chequeo de forma ya existente) — copia
+  temporal, sin commit. Resultado: `1 failed, 5 passed`, cayendo exactamente en
+  `test_piso_que_el_edificio_no_tiene_da_422_sin_el_valor` (el único que depende de la comparación
+  contra el edificio, no sólo de la forma). Revertido; `6 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `unidades.py` → sin hallazgos.
+- [x] 3.4 Migración `0026` (corregida tras revisión DBA): `complejo.pisos`/`subsuelos` nacen
+  **nullable, sin calcular nada** de las unidades existentes (D3) — sin `UPDATE` de backfill, sin
+  tocar RLS. Después, con el candado de D9 (`LOCK TABLE unidad IN ACCESS EXCLUSIVE MODE` → `ALTER
+  TABLE unidad NO FORCE ROW LEVEL SECURITY` → el `UPDATE` que mapea los valores conocidos → `ALTER
+  TABLE unidad FORCE ROW LEVEL SECURITY`, en la misma transacción), pasa `unidad.piso` a nullable y
+  mapea `PB`/`SS`/enteros 1-60, y recién entonces agrega el `CHECK` `^(SS[1-5]|PB|[1-9]|[1-5][0-9]|60)$`.
+  Verificado con un test que la corre sobre una tabla sembrada con `PB`, `SS`, `""`, `"4"`,
+  `"Entrepiso"`, `"1°"` y `" 2 "` y afirma el resultado de cada uno, más la bajada (que rellena los
+  nulos con `''`, el `server_default` original de `0005` — nunca `PB` ni ningún valor con significado)
+  y la subida otra vez (Migration Plan, paso 2), **sobre una copia con datos reales**, no una base
+  vacía de un solo tenant — el candado de RLS sólo se prueba de verdad con más de una administración
+  en la copia. **Antes de cerrarla**: `rg` en el repo entero de `INSERT INTO complejo` y
+  `INSERT INTO unidad`, incluidos `infra/ci/humo.sh`, la semilla, los comandos y los fixtures de la web
+  (L-023), **y** `test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a`
+  corrido sobre esta migración — el `rg` solo ya falló una vez por esto mismo en `0016`.
+
+  **Migración** en `backend/migraciones/versions/0026_pisos_del_edificio_y_la_unidad.py`. Subida:
+  `complejo.pisos` (1-60) y `complejo.subsuelos` (0-5) nullable sin backfill; `unidad.piso` pasa a
+  nullable y, bajo el candado de D9, se mapea (coincidencia exacta, sin recortar espacios, sin
+  distinguir mayúsculas): "PB" a "PB", "SS" a "SS1", un entero de texto entre 1 y 60 a sí mismo,
+  cualquier otra cosa a nulo; el `CHECK ck_unidad_piso` se agrega recién después del mapeo (si se
+  agregara antes, el `UPDATE` que todavía no corrió podría dejar valores fuera de ese patrón a mitad
+  de camino). Bajada: mismo candado, rellena con comillas vacías (el `server_default` original de
+  `0005`), nunca "PB" ni ningún valor con significado.
+
+  **Tests nuevos**: `test_pisos_db.py` (8 casos: columnas nulas sin backfill, rango de pisos y
+  subsuelos por `CHECK`, el piso nulo se acepta por SQL) y
+  `test_pisos_migracion_multitenant.py` (el mapeo completo sobre **dos administraciones distintas**,
+  sembrado con los diez casos del Migration Plan — "PB", "SS", cadena vacía, "4", "Entrepiso", un
+  grado con el símbolo de grados, un valor con espacios al borde, minúscula, "SS2" sin contexto y
+  "61" fuera de rango — más la bajada que rellena las comillas vacías en las dos administraciones, y
+  el `CHECK` de forma rechazando por SQL).
+
+  **Hallazgo real (no previsto)**: `test_rls_edificio.py` tenía dos tests que afirmaban el contrato
+  VIEJO de `unidad.piso` (`NOT NULL`): `test_datos_obligatorios_no_conservan_defaults_temporales` lo
+  incluía en su parametrización (ya no aplica: `piso` es nullable desde esta migración, se sacó del
+  parametrize y se agregó `test_piso_es_nullable_desde_0026` documentando el cambio), y
+  `test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a` esperaba que una unidad vieja sin
+  `piso` quedara con comillas vacías después de subir a `head` — ahora el mapeo de `0026` convierte
+  esas comillas vacías en nulo (no es un valor conocido del mapeo), así que la aserción se actualizó a
+  nulo, con un comentario explicando por qué.
+
+  **Verde (27/10/2026)**:
+  `bash infra/ci/test-backend.sh tests/integracion/test_pisos_db.py
+  tests/integracion/test_pisos_migracion_multitenant.py tests/integracion/test_rls_edificio.py
+  tests/integracion/test_ubicacion_db.py tests/integracion/test_ubicacion_migracion_multitenant.py`
+  → `43 passed in 58.17s`.
+
+  **Mutante dirigido #1 (candado de D9, requisito explícito de esta corrida)**: se sacó temporalmente
+  el `LOCK`/`NO FORCE`/`FORCE` de la subida, dejando el `UPDATE` de mapeo correr bajo RLS normal —
+  copia temporal, sin commit. Resultado: la migración misma explota, no silenciosamente —
+  `psycopg.errors.CheckViolation: check constraint "ck_unidad_ck_unidad_piso" of relation "unidad" is
+  violated by some row` en el propio `ALTER TABLE ... ADD CONSTRAINT`, porque el `UPDATE` sin candado
+  vio cero filas bajo RLS normal (ninguna administración se mapeó) y las filas viejas con texto libre
+  (que no matchea el patrón nuevo) quedaron sin tocar. Los 3 tests de
+  `test_pisos_migracion_multitenant.py` fallan. Revertido; confirmado otra vez contra **dos
+  administraciones reales**, no una base de un solo tenant.
+
+  **JUICIO (confianza alta)**: el nombre real de la restricción en la base queda duplicado
+  (`ck_unidad_ck_unidad_piso`, por la convención de nombres de `base_de_datos.py`,
+  `ck_%(table_name)s_%(constraint_name)s`, aplicada sobre un nombre que ya traía el prefijo
+  `ck_unidad_`); es el mismo patrón que ya existe en `0005`/`0021`/`0025` para otras columnas
+  (`ck_unidad_tipo`, `ck_complejo_estado_migracion`, etc.) — ninguno de esos tests afirma el nombre
+  literal de la restricción, así que es cosmético, no funcional, y consistente con el resto del
+  repositorio; no se tocó.
+
+  **Mutante dirigido #2 (`CHECK` de forma, L-035)**: se sacó temporalmente `create_check_constraint`
+  de la subida (y el `drop_constraint` correspondiente de la bajada) — copia temporal, sin commit.
+  Resultado: `1 failed, 10 passed`, cayendo exactamente en
+  `test_check_de_forma_del_piso_rechaza_por_sql`. Revertido; `43 passed` de nuevo tras restaurar.
+
+  `rg "INSERT INTO complejo"` y `rg "INSERT INTO unidad"` en todo el repo (incluidos
+  `infra/ci/ensayo-roles.sh`, `infra/ci/humo.sh` — sin resultado ahí —, la semilla y los fixtures de
+  test): todos los valores de `piso` usados son `"1"`, dentro del rango nuevo; ningún `INSERT` literal
+  se ve afectado por `0026`.
+- [x] 3.5 Bajar `pisos` o `subsuelos` con unidades afuera se rechaza con 422 **nombrando los
+  identificadores**; verificado con los escenarios "Bajar pisos con unidades arriba", "Bajar subsuelos
+  con cocheras abajo" y "Bajar pisos sin unidades arriba", con el `EXPLAIN` de la consulta que busca las
+  unidades afuera pegado en el informe — confirmando que entra por `uq_unidad_identificador` y no hace
+  falta índice nuevo (sin esto, "no hace falta índice" es un juicio sin evidencia, no un hecho del
+  propose).
+
+  **Implementación (27/10/2026)**, junto con 3.6/3.7 (acopladas: la validación vive dentro de
+  `editar_edificio`, que no existía antes de esta corrida): `_validar_piso_del_edificio` no se toca;
+  en `escritura.editar_edificio`, si `pisos`/`subsuelos` cambian y ambos están completos, se calcula
+  `vocabulario_de_pisos(pisos=nuevo, subsuelos=nuevo)` (tarea 3.1) y se trae
+  `SELECT identificador, piso FROM unidad WHERE complejo_id=:id AND piso IS NOT NULL` — en Python, no
+  SQL dinámico — comparando cada `piso` contra el vocabulario nuevo; cualquier identificador fuera
+  levanta `EntradaInvalida("pisos"|"subsuelos", "quedarían unidades fuera de rango: <ids>")` (los ids
+  son datos propios del edificio que el mismo administrador ya puede ver, no "el valor del pedido" que
+  L-007 prohíbe repetir).
+
+  **EXPLAIN pegado** (test fijo, `test_explain_de_la_consulta_de_unidades_fuera_de_rango`):
+  ```
+  Index Scan using uq_unidad_identificador on unidad  (cost=0.16..8.18 rows=1 width=64)
+    Index Cond: ((administracion_id = (NULLIF(current_setting('app.administracion_id'::text, true), ''::text))::uuid) AND (complejo_id = '...'::uuid))
+    Filter: (piso IS NOT NULL)
+  ```
+  Entra por `uq_unidad_identificador` (`administracion_id, complejo_id, identificador`): RLS agrega el
+  predicado de `administracion_id`, la consulta agrega `complejo_id` — los dos primeros componentes
+  del índice compuesto. No hace falta índice nuevo, confirmado, no supuesto.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_editar_edificio.py` →
+  `13 passed in 20.54s` (incluye el `EXPLAIN` como test permanente, no sólo evidencia de una vez).
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente el `if` que dispara el chequeo (`if False: ...`)
+  — copia temporal, sin commit. Resultado: `2 failed, 11 passed`, cayendo exactamente en
+  `test_bajar_pisos_con_unidades_arriba_da_422_con_identificadores` y
+  `test_bajar_subsuelos_con_cocheras_abajo_da_422_con_identificadores`. Revertido; `13 passed` de
+  nuevo.
+- [x] 3.6 `PATCH /complejos/{id}`: nombre, ubicación, calle y número, pisos y subsuelos, con
+  `Accion.CONFIGURAR_PADRON` (404 fuera de alcance, 403 sin permiso, en ese orden) y `CuerpoDeEdicion`
+  (un campo puede faltar, ninguno puede ser `null`); verificado con los escenarios "Corregir la
+  localidad", "Completar la ubicación de un edificio viejo", "Anular un campo obligatorio", "Editar un
+  edificio fuera del alcance", "Editar sin permiso de configurar el padrón" y "Cambiar la administración
+  por la edición".
+
+  **Implementación**: `CuerpoEdicionEdificio(CuerpoDeEdicion)` en `complejos.py` (todos los campos
+  opcionales, `CuerpoDeEdicion.no_nulo` prohíbe `null` explícito, `extra="forbid"` heredado rechaza
+  `administracion_id`/`estado_migracion` con 422 automático). Ruta `modificar_edificio` reusa
+  `_edificio_autorizado(..., Accion.CONFIGURAR_PADRON)` (mismo orden 404→403 que el resto de
+  `complejos.py`, D7). `escritura.editar_edificio` hace el trabajo real: `_EdicionEdificio` (modelo
+  interno, no confía en que el llamador HTTP ya validó) valida forma; el trío de ubicación exige las
+  tres o ninguna (mismo `CHECK` que `0025`) contra `Georef`, nunca contra el pedido.
+
+  **Verde**: incluido en los `13 passed` de 3.5 (mismo archivo de test).
+
+  `uv run ruff check` + `uv run mypy` sobre `escritura.py`, `complejos.py`, `auditoria.py`,
+  `eventos.py` → `All checks passed!` / `Success: no issues found in 3 source files` /
+  `Success: no issues found in 1 source file`.
+- [x] 3.7 Auditoría de `editar_edificio`: evento nuevo en `EventoDelPadron`, fila nueva del vocabulario
+  en la migración `0027`, detalle con el edificio y los nombres de los campos cambiados y nada más
+  (D-016); verificado con los escenarios "Editar la ubicación", "La edición falla", "Edición sin
+  cambios" y "El evento de editar el edificio existe en la base".
+
+  **Implementación**: `EventoDelPadron.EDITAR_EDIFICIO` nuevo; migración `0027` (`0027_editar_edificio
+  .py`, sólo el vocabulario — `grupo_de_reparto.activo` y el trigger de 4.3 se agregan en esa tarea,
+  no acá) inserta `"editar_edificio"` en `accion_de_auditoria`. `_DetalleEditarEdificio` nuevo en
+  `auditoria.py` (`complejo_id` + `campos` de los 7 nombres editables, `extra="forbid"`: nunca un
+  valor). `editar_edificio` calcula `campos` comparando `entrada` contra `anterior` (mismo patrón que
+  `editar_unidad`/`editar_categoria`) y sólo llama `registrar(...)` — dentro de la misma `transaccion`
+  — si `campos` no está vacío; una excepción antes de esa línea (trío incoherente, fuera de rango)
+  revierte la transacción entera sin dejar fila.
+
+  **Hallazgo real (no previsto)**: `test_eventos_padron_migracion.py::test_vocabulario_y_bajada`
+  afirmaba `{e.value for e in EventoDelPadron} <= vocabulario` justo después de migrar a `0022` — con
+  `EDITAR_EDIFICIO` agregado al enum pero sembrado recién en `0027`, esa aserción ya no es cierta en
+  ese punto de la migración. Se dividió en dos aserciones (vocabulario de `0022` sin
+  `EDITAR_EDIFICIO`, vocabulario de `0027` completo), preservando el resto del test (incluida la FK
+  23503 de "punto de no retorno").
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_eventos_padron_migracion.py
+  tests/integracion/test_editar_edificio.py` → `14 passed in ~37s` (12+1 de `test_editar_edificio.py`
+  más `test_vocabulario_y_bajada`; el 13° de `test_editar_edificio.py`, el `EXPLAIN`, va en 3.5).
+- [x] 3.8 El séptimo paso de la puesta a punto (ubicación completa, `pisos`/`subsuelos` completos y
+  ningún piso de unidad sin completar), con el conteo de unidades por corregir y el `EXPLAIN` de esa
+  consulta pegado (filtra por `(administracion_id, complejo_id)`, mismo prefijo de índice que 3.5);
+  verificado con los escenarios "Edificio recién creado", "Edificio migrado sin ubicación", "Edificio
+  migrado sin pisos completados", "Unidad migrada con el piso sin completar" y "Edificio listo para
+  liquidar" de `edificios-y-unidades`.
+
+  **Implementación (27/10/2026)**: paso `"ubicacion"` nuevo en `lectura.resumen_edificio`, primero en
+  el diccionario `pasos` (los 7 pasos ahora, no 6). `hecho` exige el trío completo, `pisos`/
+  `subsuelos` completos y `unidades_sin_piso_completo == 0` (cuenta por `SELECT count(*) FROM unidad
+  WHERE complejo_id=:id AND piso IS NULL`). El resumen ahora expone también `provincia_id`,
+  `departamento_id`, `localidad_id`, `calle_y_numero`, `pisos`, `subsuelos` y
+  `unidades_sin_piso_completo` (no sólo `nombre`/`localidad` como antes de 3.8).
+
+  **EXPLAIN pegado** (test fijo `test_explain_de_unidades_sin_piso_completo`): mismo plan que 3.5,
+  `Index Scan using uq_unidad_identificador`, mismo prefijo `(administracion_id, complejo_id)`.
+
+  **Hallazgo real (no previsto)**: dos tests pre-existentes (`test_edificio_recien_creado`,
+  `test_edificio_listo_para_liquidar`) afirmaban el diccionario `pasos` completo con 6 claves; se
+  actualizaron agregando `"ubicacion": "hecho"` (ambos escenarios nacen con ubicación y pisos
+  completos, sin unidades con el piso sin completar). El fixture de contrato `resumen.json` se
+  regeneró con `PROPTECH_ACTUALIZAR_FIXTURES=1` (cambio de forma deliberado, igual que 3.2 con
+  `edificio.json`).
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_resumen_puesta_a_punto.py
+  tests/integracion/test_contrato_web.py` → `20 passed in 41.64s`.
+
+  **Mutante dirigido (L-035)**: paso `"ubicacion"` fijado a `"hecho"` siempre — copia temporal, sin
+  commit. Resultado: `3 failed, 9 passed`, cayendo exactamente en los tres tests que dependen del
+  paso nuevo (`test_edificio_migrado_sin_ubicacion`, `test_edificio_migrado_sin_pisos_completados`,
+  `test_unidad_migrada_con_el_piso_sin_completar`). Revertido; `12 passed` de nuevo (11 + el `EXPLAIN`).
+
+  `uv run ruff check` + `uv run mypy` sobre `lectura.py` → `All checks passed!` / `Success: no issues
+  found in 1 source file`.
+
+## 4. Grupos desactivables y claves autogeneradas
+
+- [x] 4.1 **Test en rojo** de la función pura que deriva la clave del nombre: tildes, signos, guiones
+  bajos repetidos y de borde, prefijo por letra, recorte a 40, desempate `_2`, y un nombre del que no
+  sale ninguna clave (`"123"`, `"— —"`). Escenarios "Clave derivada del nombre", "Nombre con tildes y
+  signos", "Clave derivada repetida" y "Nombre del que no sale ninguna clave".
+
+  **Implementación (27/10/2026)**: `compartido/claves.py`, `derivar_clave(nombre, existentes) -> str
+  | None`. Transliteración vía `unicodedata.normalize("NFKD", ...)` + descarte de marcas combinantes
+  (acentos); todo lo que no sea `[a-z0-9]` colapsa a `_` único; recorte de bordes; si el resultado es
+  sólo dígitos/guiones bajos (o vacío) → `None` ("123", "— —"); si empieza con dígito, prefijo `g_`;
+  recorte a 40 sin guión bajo colgando; desempate con sufijo `_N` que recorta la base para que el
+  sufijo entre en 40.
+
+  **Verde (nació verde, TDD con test y código juntos)**: `uv run pytest tests/unitarios/test_claves.py`
+  → `7 passed in 0.16s`.
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente el prefijo por letra (`if False: ...`) — copia
+  temporal, sin commit. Resultado: `1 failed, 6 passed`, cayendo exactamente en
+  `test_prefijo_por_letra_cuando_empieza_con_digito`. Revertido; `7 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `claves.py` → `All checks passed!` / `Success: no issues
+  found in 1 source file`.
+- [x] 4.2 **Test en rojo** de que "Generales" no se desactiva, ni por la API (422) ni por SQL, con un
+  **mutante dirigido** al trigger ampliado (L-035); escenarios "Desactivar Generales" y "Desactivar
+  Generales por SQL".
+
+  **Implementación (27/10/2026)**: la mitad SQL va en la migración `0027` (tarea 4.3, el trigger
+  `fn_grupo_generales_protegido` ampliado); la mitad API ya existía — `editar_grupo` corta en
+  `if grupo["es_generales"]: raise EntradaInvalida(...)` ANTES de mirar ningún campo de `cambios`,
+  así que bloquea desactivar Generales por la misma razón que bloquea cualquier otro cambio.
+
+  **Hallazgo real (no previsto)**: al escribir `_FUNCION_AMPLIADA` de `0027` copié la función de
+  `0011` (sólo `es_generales`/`metodo`/`modo_de_coeficientes`), pisando la ampliación real de `0015`
+  (RF-D-1, 19/10/2026) que ya sumaba `complejo_id`/`administracion_id`. Lo agarró
+  `test_generales_no_admite_mudarse_de_edificio_por_sql` (pre-existente): `1 failed` tras aplicar
+  `0027`. Corregido partiendo de la función real de `0015`, no de la de `0011`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_generales_alcance_sql.py
+  tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_rls_grupos.py` →
+  `44 passed in 62.59s`.
+
+  **Mutante dirigido**: ver la evidencia de 4.3 (mismo trigger, un solo mutante cubre las dos tareas).
+- [x] 4.3 Migración `0027`: `grupo_de_reparto.activo` (`NOT NULL DEFAULT true`), el trigger de `0011`
+  ampliado y `editar_edificio` en el vocabulario de auditoría; subida y bajada probadas sobre una copia
+  con datos (Migration Plan, paso 3) y `rg` de `INSERT INTO grupo_de_reparto` en el repo entero (L-023).
+
+  **Implementación**: migración `0027` (compartida con 3.7) agrega `activo` nullable=false con
+  `server_default=true` (sin backfill) y reemplaza `fn_grupo_generales_protegido` sumando `NEW.activo
+  IS DISTINCT FROM OLD.activo` a la comparación (sobre la versión real de `0015`, ver hallazgo de
+  4.2). `rg "INSERT INTO grupo_de_reparto"`: 7 archivos, todos con lista de columnas explícita — ningún
+  `INSERT` se ve afectado por la columna nueva (default a nivel de base).
+
+  **Test nuevo**: `test_grupo_activo_migracion.py`, sobre **dos administraciones reales**: downgrade a
+  `0026`, insertar grupos (Generales + parcial) en cada una, upgrade a `0027`, confirmar `activo=true`
+  en las dos sin tocar sus filas; downgrade a `0026` (columna desaparece) y upgrade otra vez.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_grupo_activo_migracion.py
+  tests/integracion/test_generales_alcance_sql.py` → `10 passed in 50.80s`.
+
+  **Mutante dirigido #1 (`server_default`, L-035)**: se sacó temporalmente `server_default=sa.true()`
+  de `add_column` — copia temporal, sin commit. Resultado: la migración misma explota —
+  `NotNullViolation: column "activo" ... contains null values` en el propio `ALTER TABLE ... ADD
+  COLUMN`, porque ya había filas de la administración sembrada antes del upgrade. Revertido.
+
+  `rg` confirmado arriba; sin segundo mutante sobre el trigger acá — el mutante de ese archivo
+  (sacar `OR NEW.activo IS DISTINCT FROM OLD.activo`) se corrió al escribir el test SQL de 4.2
+  (`test_desactivar_generales_por_sql_se_rechaza`): sin esa cláusula, `UPDATE ... SET activo=false
+  WHERE id=<Generales>` pasaba sin error — se confirmó manualmente contra la versión sin esa cláusula
+  antes de restaurarla, no quedó como test aparte porque ya lo cubre el hallazgo real de 4.2.
+- [x] 4.4 Aplicar la autogeneración de clave en **sus dos llamadores**, grupos y categorías, con sus
+  tests en los dos (L-009), manteniendo la clave explícita aceptada por API y la clave inmutable al
+  renombrar; escenarios "Renombrar no cambia la clave", "Clave explícita inválida" y "Agregar una
+  categoría" / "Renombrar una categoría" de `categorias-de-gasto`.
+
+  **Implementación**: `grupos.DatosGrupo.clave` pasa a `str | None = None`; `crear_grupo` deriva con
+  `derivar_clave` (tarea 4.1) contra las claves que el edificio ya tiene cuando llega `None`.
+  `categorias.crear_categoria` deriva de la misma forma sobre el `dict` crudo, ANTES de validar con
+  `CategoriaDeGasto` (que sigue exigiendo `clave` siempre — la usa también el YAML de parámetros,
+  D-042, así que ese modelo no se tocó). `CuerpoGrupo` (API) hereda el campo opcional sin cambios;
+  `CuerpoCategoria.clave` se angosta a `str | None` con `# type: ignore[assignment]` (Pydantic valida
+  el campo declarado, no el heredado; mypy no lo sabe). "Renombrar no cambia la clave" ya funcionaba
+  sin tocar nada: `editar_grupo`/`editar_categoria` sólo escriben `clave` si viene en `cambios`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_clave_autogenerada.py` →
+  `7 passed in 17.55s` (cubre "Clave derivada del nombre", clave explícita respetada, desempate,
+  "Nombre del que no sale ninguna clave", "Renombrar no cambia la clave" × 2 — grupo y categoría,
+  "Agregar una categoría").
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente la rama `if entrada.clave is None: ...` de
+  `crear_grupo` — copia temporal, sin commit. Resultado: `4 failed, 3 passed`, cayendo en los 4 tests
+  que dependen de la derivación (`NotNullViolation` en la base, nunca silencioso). Revertido;
+  `7 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `grupos.py`, `categorias.py`, `complejos.py` → sin
+  hallazgos.
+- [x] 4.5 `PATCH /grupos/{id}` acepta `activo`, sin ninguna ruta de borrado, y los grupos desactivados
+  salen del filtro de disponibles y de la puesta a punto; verificado con los escenarios "Desactivar un
+  grupo parcial", "Reactivar", "Borrar", "Un grupo desactivado no reclama unidades" y "Grupo parcial
+  vacío pero desactivado".
+
+  **Implementación**: `CuerpoEdicionGrupo.activo: bool | None = None`; `editar_grupo` saca `activo` de
+  `cambios` antes de validar con `DatosGrupo` (no es forma de clave/nombre/método, es estado
+  operativo) y lo escribe aparte, agregándolo a `campos` de auditoría si cambió.
+  `grupos.listar_grupos` suma `solo_activos: bool = False` (mismo patrón que
+  `categorias.listar_categorias`), cableado como query param en `GET /complejos/{id}/grupos`.
+  `lectura.resumen_edificio`: el paso "grupos" sólo mira `grupo_de_reparto` con `activo` (un grupo
+  parcial desactivado no exige miembros). Sin ruta `DELETE` (nunca existió): confirmado con `405`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_grupo_activo.py
+  tests/integracion/test_resumen_puesta_a_punto.py` → `17 passed in 31.86s`. Regresión amplia (grupos,
+  categorías, contrato, RLS, 422, padrón): `125 passed in 143.37s`.
+
+  **Mutante dirigido #1 (filtro `solo_activos`, L-035)**: se sacó el `AND (NOT :solo OR activo)` de
+  `listar_grupos` — copia temporal, sin commit. Resultado: `1 failed, 4 passed`, cayendo exactamente en
+  `test_desactivar_un_grupo_parcial` (el único que pide `solo_activos=true`). Revertido.
+
+  **Mutante dirigido #2 (paso "grupos" de la puesta a punto)**: se sacó el `AND activo` de la consulta
+  de `grupos_parciales` en `resumen_edificio` — copia temporal, sin commit. Resultado: `1 failed, 4
+  passed`, cayendo exactamente en
+  `test_grupo_desactivado_sin_unidades_no_bloquea_la_puesta_a_punto`. Revertido; `5 passed` de nuevo.
+
+  **Hallazgos reales, no previstos (encontrados al correr la suite completa tras cerrar el grupo 4)**:
+  (1) `test_auditoria_grupos_categorias.py::test_siete_eventos_y_solo_nombres` y
+  `test_rutas_protegidas.py` (arreglado en el grupo 3) usaban un `piso` arbitrario ("Privado") que la
+  tarea 3.3 ya no acepta — mismo patrón que "Otro"/"PRIVADO_PISO" de las tareas 3.2/3.3, corregido a
+  `"2"`. (2) `test_contrato_web.py::test_forma_de_cada_ruta_que_usa_la_web[grupos]`: fixture
+  regenerado con `PROPTECH_ACTUALIZAR_FIXTURES=1` (suma `"activo": true`, cambio de forma deliberado).
+  (3) `test_regresiones_de_aislamiento_y_grupos_vacios.py`: el `PATCH /api/complejos/{id}` nuevo
+  (tarea 3.6) no tenía cuerpo en `_CUERPOS`, caía al `{"persona_id":..., "rol":...}` por defecto → 422
+  en vez de 404; agregado `"/api/complejos/{complejo_id}": {"nombre": "X"}`. (4)
+  `infra/ci/ensayo-roles.sh` tenía `verificar_revision 0022` hardcodeado dos veces (`test_ensayo_login.
+  py`, pre-existente): actualizado a `0027`, la cabeza real tras este change. (5)
+  `test_vocabulario_vigente.py` (pre-existente, L-022): el docstring de un test nuevo de la tarea 3.6
+  (`test_editar_edificio.py`) decía "colaborador", vocabulario de roles anterior a D-106; reescrito a
+  "una identidad con alcance".
+
+## 5. Errores de formulario y mensajes en la web
+
+- [x] 5.1 **Test en rojo** que reproduce B-2 contra la API real: "rige desde" repetido **y** día de
+  vencimiento inválido en el mismo cuerpo, afirmando a qué campo llega cada error y que "tasa mensual"
+  **no** queda marcada (D6). Si sale verde, el hallazgo se cierra como no reproducible con el comando,
+  la salida y la hora pegados, y el test queda como fijación. Escenario "Dos errores a la vez en
+  intereses y vencimiento".
+
+  **Implementación (27/10/2026)**: `acciones.conflicto.test.ts` nuevo, mockeando
+  `lib/api/configuracion.ts` (no HTTP real — `acciones.test.ts` ya cubre el cuerpo de la petición;
+  esto prueba el mapeo `ResultadoApi` → `EstadoFormularioVersion`, donde vivía B-2). La API nunca
+  devuelve los dos errores en un mismo pedido (422 de pydantic y 409 de la base son respuestas
+  distintas): el escenario "Dos errores a la vez" reproduce el pedido con ambos problemas y confirma
+  que el 422 de `dia_de_vencimiento` gana, nombrando ese campo y ninguno más — ni `vigente_desde` ni
+  `tasa_mensual`.
+
+  **Rojo real, no "si sale verde"**: antes de la rama `conflicto` (tarea 5.2),
+  `crearVersionDeConfiguracionAction` caía al `else` final para `estado: "conflicto"`, devolviendo
+  `erroresDesconocidos: ["No pudimos guardar los datos..."]` y `erroresPorCampo: {}` — el hallazgo de
+  B-2 SÍ se reproduce, no es un fantasma. Mutante dirigido (sacar la rama `conflicto`): `1 failed, 2
+  passed`, cayendo exactamente en el test de "Rige desde repetido". Revertido.
+
+  **Verde**: `npx vitest run "src/app/edificios/[id]/configuracion/"` → `25 passed`.
+  `npx tsc --noEmit` y `npx biome check` sobre los dos archivos tocados → sin hallazgos.
+- [x] 5.2 Rama `conflicto` en `crearVersionDeConfiguracionAction`, con el mensaje en el campo
+  "rige desde" ("Ya hay una versión que rige desde esa fecha") y sin marcar ningún otro campo;
+  escenarios "Rige desde repetido" y "Día de vencimiento fuera de rango".
+
+  Implementada junto con 5.1 (mismo archivo, misma corrida): `if (resultado.estado === "conflicto")`
+  agregada antes de `"invalido"` en `acciones.ts`, devolviendo sólo `vigente_desde` marcado.
+- [x] 5.3 Test que recorre **todas** las acciones de escritura de la web y falla si alguna no cubre las
+  cinco respuestas del cliente (ok, inválido, conflicto, sin permiso, sin sesión), para que el genérico
+  quede sólo donde la pantalla no puede explicar nada; escenario "Toda pantalla que escribe cubre las
+  cinco respuestas".
+
+  **Implementación**: `lib/test/cinco-respuestas.test.ts`, barrido a nivel de ARCHIVO (`acciones.ts`),
+  no de cada función exportada — la spec dice "pantalla", y varias acciones comparten un `_mapear*`
+  privado que ya cubre las cinco. Excepciones documentadas EN EL TEST (no en el archivo que las
+  tiene), con un segundo test que falla si una excepción ya no aplica (el archivo dejó de faltarle lo
+  que la excepción dice): `elegir-administracion/acciones.ts` e `invitacion/acciones.ts` (patrón
+  boolean/redirect, no `ErroresSeparados` — ninguno de los cinco aplica), `saldos-previos/acciones.ts`
+  (sin cuerpo, nunca puede dar "inválido").
+
+  **Hallazgo real**: `edificios/acciones.ts` (alta de edificio) no tenía rama `"conflicto"` — agregada
+  con mensaje genérico (la única colisión posible hoy es un `UniqueViolation` interno de
+  `categorias_de_gasto` sembradas por `parametros.yaml`, no un campo que el usuario mandó).
+
+  **Verde**: `npx vitest run src/lib/test/cinco-respuestas.test.ts` → `2 passed`.
+
+  **Mutante dirigido (L-035)**: se sacó la rama `conflicto` agregada a `edificios/acciones.ts` — copia
+  temporal, sin commit. Resultado: `1 failed`, nombrando exactamente `edificios/acciones.ts: faltan
+  sin excepción [conflicto]`. Revertido.
+- [x] 5.4 Constantes de la web con el máximo del identificador, el rango del coeficiente y la regla de
+  la clave, usadas en la ayuda, en el mensaje **y en una validación previa al envío que pone el mismo
+  `error` explícito de `Campo`/`Formulario`** (D7, corregido tras revisión: no alcanza con `maxLength`/
+  `pattern` nativos del input, que producen una burbuja del navegador sin `aria-describedby` — pueden
+  quedar como ayuda adicional, nunca como único mecanismo), más un test que compara el máximo de la web
+  contra el contrato de la API; escenarios "Identificador demasiado largo", "Ayuda del identificador",
+  "Coeficiente cargado como porcentaje", "Clave inválida por API" y "El error previo al envío tiene el
+  mismo `aria-describedby` que el error de la API".
+
+  **Implementación (27/10/2026)**: `lib/limites.ts` nuevo (`IDENTIFICADOR_MAXIMO`, `COEFICIENTE_
+  MAXIMO`, `PATRON_CLAVE`/`CLAVE_MAXIMO`, con el archivo backend exacto de cada número en el
+  comentario). `unidades/Pantalla.tsx` y `grupos/Pantalla.tsx`: `onSubmit` propio en `Formulario` que
+  valida ANTES del envío (identificador > 40, coeficiente que parece porcentaje, clave con forma
+  inválida), guarda el error en un `useState` que se mergea con `estado?.erroresPorCampo` — mismo
+  `Campo`, mismo `idError`, así que el `aria-describedby` es idéntico entre el error previo y el de la
+  API real (se prueba explícitamente). `maxLength` nativo queda como ayuda adicional (UX), nunca como
+  único mecanismo. `clave` en grupos deja de ser `required` (4.4 ya la hace opcional en el backend).
+
+  **Hallazgo real durante el test**: `findByText`/`getByText` con el mismo mensaje de error fallaban
+  por "multiple elements" — el resumen de `Formulario` repite el mismo texto en un `<a>` además del
+  `<p>` del campo (igual que el test ya existente de "Identificador repetido"); se corrigió a
+  `findAllByText(...).length > 0`, el mismo patrón que ya usaba ese test.
+
+  **Verde**: `npx vitest run` → `408 passed` (web completa). `npx tsc --noEmit` sin hallazgos.
+
+  **Mutante dirigido (L-035)**: se sacó el `evento.preventDefault()` de `alEnviarUnidad` — copia
+  temporal, sin commit. Resultado: `2 failed, 17 passed`, cayendo en los dos tests que dependen de que
+  el envío se frene (el de "cargado como porcentaje" y el "aria-describedby"). Revertido.
+- [x] 5.5 `/privacidad` sin la nota interna: texto escrito para el usuario y su test actualizado (el
+  test de hoy exige la nota); escenarios "Sin la nota interna" y "El aviso sigue siendo un borrador".
+
+  **Implementación**: `page.tsx` reemplaza "Borrador pendiente de aprobación de Juani." por un
+  párrafo que dice, en castellano simple, qué falta (responsable, contacto, plazo de conservación) sin
+  nombrar a nadie del equipo. `page.test.tsx` actualizado: el texto nuevo, más una aserción negativa
+  (`not.toMatch(/Juani|Alberto|Emiliano|aprobación/i)`) para que una nota interna que vuelva a
+  colarse falle sin tener que nombrarla de antemano.
+
+  **Verde**: `npx vitest run src/app/privacidad/` → `1 passed`. `npx tsc --noEmit` sin hallazgos.
+- [x] 5.6 Generalizar D7 a convención escrita (L-051): agregar a
+  `knowledge-base/08_arquitectura_propuesta.md` §"La web" la regla transversal — todo campo con un
+  límite o un patrón lo expresa en una constante compartida por el input, la ayuda y el error, nunca
+  sólo en el mensaje genérico; un test la compara contra el contrato de la API. No es código, es la
+  convención que el próximo campo nuevo (en esta pantalla o en otra) tiene que seguir sin que haya que
+  volver a encontrarla rota.
+
+  **Implementación**: bullet nuevo en §"La web" de `08_arquitectura_propuesta.md` (D7 del 3c, L-051,
+  ya existente en `15_lecciones.md`); de paso, "seis pasos" → "siete pasos" en el bullet de "la web no
+  calcula" (D3, tarea 3.8, que esta misma corrida agregó).
+
+## 6. Pantallas
+
+- [x] 6.0 Extender `Campo`/`Formulario` para que sepan renderizar un `<select>` con el mismo contrato
+  que un `<input>` — `id` de `idDelCampo`, `aria-invalid`, `aria-describedby`, foco por el mismo enlace
+  del resumen (`CampoDeLista` o `Campo` con `as="select"`, F1) — y sumar
+  `.campo select[aria-invalid="true"]` a `tokens.css` (F5). Verificado con un test de `Formulario.tsx`
+  que afirma los tres atributos en un select con error, igual que ya se afirma para un input. Esta
+  tarea es condición de 6.1 y 6.2: sin ella, los `<select>` nuevos repiten el patrón que ya está roto en
+  8 de los 9 que existen hoy.
+
+  **Implementación**: `CampoDeLista` nuevo en `Formulario.tsx`, mismo contrato que `Campo` pero
+  renderiza `<select>` con `children` (las `<option>`). CSS: `.campo select[aria-invalid="true"]`
+  sumado a la regla existente de `input`. **Verde**: `npx vitest run src/componentes/Formulario.test.tsx`
+  → `8 passed`. `npx tsc --noEmit` sin hallazgos.
+- [x] 6.1 Alta y edición del edificio con las tres listas encadenadas (usando `CampoDeLista` de 6.0),
+  calle y número, pisos y subsuelos, en "Mis edificios" y en el resumen, con el vaciado en cascada al
+  cambiar de provincia, **estado `cargando` (select deshabilitado + `Estados tipo="cargando"`) y `error`
+  con reintento por cada lista** (D8, F3), y todo operable con teclado; verificado con los escenarios
+  "Crear un edificio", "Encadenar las listas", "Elegir la ubicación con teclado", "Edificio migrado sin
+  ubicación", "Editar el edificio desde el resumen", "Una lista no carga y se puede reintentar" y los de
+  ayuda y foco de `pantallas-del-edificio` (L-026, L-028: el foco y el `Esc` se prueban con el panel y
+  la lista combinados, no por componente suelto).
+
+  **Implementación (27/10/2026)**: `lib/api/georef.ts` (cliente de servidor, igual patrón que
+  `resumen.ts`) + `componentes/accionesGeoref.ts` (`"use server"`, puente para que un componente de
+  CLIENTE pueda llamarlas sin exponer la API al navegador, D11 del 3a) + `componentes/
+  SelectorDeUbicacion.tsx` (las tres `CampoDeLista` encadenadas, estado `cargando`/`error` con
+  reintento por lista, vaciado en cascada al cambiar provincia/departamento). `lib/api/edificios.ts`:
+  `DatosNuevoEdificio` al contrato real (trío + `pisos`/`subsuelos` obligatorios, `calle_y_numero`
+  opcional) y `editarEdificio` nuevo (PATCH). `edificios/acciones.ts`: `crearEdificioAction`
+  actualizada, `editarEdificioAction` nueva. `edificios/Pantalla.tsx` ("Mis edificios"): formulario de
+  alta con `SelectorDeUbicacion` + calle + pisos + subsuelos. `edificios/[id]/Pantalla.tsx` (resumen):
+  paso "ubicación" nuevo (primero, D3 3.8), botón "Editar" en "Datos del edificio" y en el paso mismo
+  que abre un `PanelLateral` con el formulario completo (nombre, ubicación, calle, pisos, subsuelos),
+  ligado a `editarEdificioAction`. `lib/api/tipos.ts`: `Resumen`/`Edificio`/`EdificioDeLista`
+  actualizados al contrato real (`localidad`/`pisos`/etc nullable, `unidades_sin_piso_completo`,
+  paso `ubicacion`).
+
+  **Hallazgo real**: los tests de `Pantalla.tsx` (resumen y mis edificios) importan `SelectorDeUbicacion`,
+  que cuelga de `lib/sesion.ts` (`import "server-only"`) a través de `accionesGeoref.ts` →
+  `lib/api/georef.ts` → `lib/api/cliente.ts`; vitest no puede resolver `server-only` en un test de
+  componente de cliente. Se mockea `componentes/accionesGeoref` con una factory explícita en los tres
+  archivos de test que renderizan `SelectorDeUbicacion` (el automock de vitest no alcanza: igual
+  importa el módulo real para inspeccionar su forma).
+
+  **Verde**: `npx vitest run` → `416 passed` (web completa, incluye
+  `SelectorDeUbicacion.test.tsx` nuevo: 5 escenarios — encadenar, teclado, reintentar, vaciado en
+  cascada, edificio migrado). `npx tsc --noEmit` sin hallazgos.
+
+  **Mutante dirigido (L-035, `SelectorDeUbicacion.test.tsx` nació verde)**: se sacó el vaciado de
+  `departamento_id`/`localidad_id` al cambiar de provincia — copia temporal, sin commit. Resultado:
+  `1 failed, 4 passed`, cayendo exactamente en el test de vaciado en cascada. Revertido.
+
+  **JUICIO (confianza media)**: no se escribió una suite de Playwright nueva para "operable con
+  teclado" de punta a punta (los `<select>` nativos ya son accesibles por teclado sin nada adicional,
+  y `sinViolaciones`/axe corre sobre los paneles que los contienen); el `Esc` y el foco del
+  `PanelLateral` ya estaban probados por el componente en otras pantallas y no se duplicaron acá.
+- [x] 6.2 Padrón con el piso elegido de la lista del edificio (usando `CampoDeLista` de 6.0, **con
+  opción vacía explícita cuando `piso` es `NULL`** — F2: sin eso, abrir el panel de una unidad migrada
+  selecciona y guardaría la primera opción de la lista sin que nadie la haya elegido) y las unidades sin
+  piso marcadas, con los fixtures de la API falsa sacados del contrato real (L-027); escenarios "Elegir
+  el piso de la lista del edificio", "Unidades con el piso sin completar" y "Abrir una unidad migrada no
+  guarda ningún piso solo".
+
+  **Implementación (27/10/2026)**: ya estaba hecha en el working tree al empezar esta tarea (quedó sin
+  marcar); se verificó contra la spec en vez de reescribirla. `unidades/Pantalla.tsx` recibe
+  `pisosDelEdificio`/`subsuelosDelEdificio` (`number | null`, `null` en un edificio sin ubicación
+  completa) y, cuando ambos están presentes, renderiza el campo "Piso" con `CampoDeLista` +
+  `vocabularioDePisos(pisos, subsuelos)` de `lib/pisos.ts`, con `<option value="">Sin completar</option>`
+  primero y `defaultValue={unidadEnEdicion?.piso ?? ""}` (F2: la opción vacía es explícita, no el
+  resultado de que la opción 0 quede sin `value`). Si el edificio no tiene ubicación completa, cae a un
+  `Campo` de texto libre (sin vocabulario propio todavía). La tabla muestra `unidad.piso ?? "Sin
+  completar"` por fila. `unidades/page.tsx` deriva ambos props de `edificioPorId(id)` y los pasa a
+  `PantallaPadron`.
+
+  **Verde**: `npx vitest run "src/app/edificios/[id]/unidades/"` → `3 passed (3 archivos), 26 passed`
+  (27/10/2026 07:25), incluye los tres escenarios de esta tarea en `Pantalla.test.tsx`:
+  - "Elegir el piso de la lista del edificio" (línea 511): `piso.tagName === "SELECT"` y las opciones
+    son exactamente el vocabulario de `vocabularioDePisos(4, subsuelosDelEdificio)`.
+  - "Unidades con el piso sin completar" (línea 534): una unidad con `piso: null` se ve "Sin completar"
+    en la tabla.
+  - "Abrir una unidad migrada no guarda ningún piso solo" (línea 550): el panel abre con
+    `piso.value === ""` (la opción vacía, no la primera real) y, si se envía sin tocarlo, el `FormData`
+    manda `piso: ""`, nunca el primer valor del vocabulario.
+  `npx tsc --noEmit` → sin hallazgos.
+- [x] 6.3 Grupos y categorías sin campo "clave", con "desactivar" y "reactivar" en los grupos parciales
+  y sin "borrar"; escenarios "Sin campo de clave" (los dos), "Desactivar un grupo" y "Generales".
+
+  **Safety net (27/10/2026 07:25-07:29)**: `npx vitest run "src/app/edificios/[id]/grupos/"
+  "src/app/edificios/[id]/categorias/"` antes de tocar nada → `2 passed, 23 passed` (categorías ya
+  tenía desactivar/reactivar de la tarea 4.5; grupos no tenía nada de esto).
+
+  **RED (27/10/2026 07:28:50, categorías)**: se quitó `usuario.type(screen.getByLabelText("Clave"),
+  "porton")` del test "RF-F-2" y se reescribió `'"Agregar categoría" abre el panel con clave y
+  nombre'` a `'6.3 "Sin campo de clave" (categorías): ...'` afirmando `queryByLabelText("Clave") ===
+  null`. `npx vitest run "src/app/edificios/[id]/categorias/Pantalla.test.tsx"` →
+  `2 failed | 8 passed (10)`, el segundo fallo cayendo exactamente en la aserción `toBeNull()` del
+  campo clave (el input seguía existiendo).
+
+  **RED (27/10/2026 07:30:05, grupos)**: se agregaron los tests `'6.3 "Sin campo de clave" (grupos)'`,
+  `'6.3 "Desactivar un grupo"'` (desactivar y reactivar) y `'6.3 "Generales"'`, y se sacó el test viejo
+  de validación de clave inválida (ya no aplica sin el campo). `npx vitest run
+  "src/app/edificios/[id]/grupos/Pantalla.test.tsx"` → `3 failed | 10 passed (13)`.
+
+  **GREEN (27/10/2026 07:29:19, categorías)**: se quitó el `<Campo nombre="clave" .../>` del alta en
+  `categorias/Pantalla.tsx`, se hizo `DatosNuevaCategoria.clave` opcional
+  (`lib/api/categorias.ts`) y `crearCategoriaAction` dejó de leer el campo inexistente
+  (`categorias/acciones.ts`). `npx vitest run "src/app/edificios/[id]/categorias/"` →
+  `10 passed (10)`.
+
+  **GREEN (27/10/2026 07:34:12, grupos)**: `lib/api/tipos.ts` agrega `activo: boolean` a `Grupo`;
+  `lib/api/grupos.ts` hace `DatosNuevoGrupo.clave` opcional y agrega `activo?: boolean` a
+  `CambiosGrupo`; `grupos/acciones.ts` agrega `cambiarEstadoGrupoAction` (mismo patrón que
+  `cambiarEstadoCategoriaAction`) y `crearGrupoAction` deja de leer "clave"; `grupos/Pantalla.tsx`
+  sacó el `<Campo clave>` y su validación previa muerta (`claveInvalida`/`CLAVE_MAXIMO`, ya sin uso),
+  agrega prop `accionEstado` (opcional, no rompe los tests viejos) y, para cada grupo que NO es
+  "Generales", un botón "Desactivar"/"Reactivar" igual al de categorías (`<input type="hidden"
+  name="activo">` con el valor invertido); "Generales" nunca entra a esa rama del `fin` (sigue
+  mostrando sólo su nota "se calcula solo y no se edita"). `grupos/page.tsx` liga
+  `cambiarEstadoGrupoAction.bind(null, id)`. `npx vitest run "src/app/edificios/[id]/grupos/"` →
+  `12 passed (12)`.
+
+  **Mutante dirigido (L-035, `'6.3 "Generales"'` nació verde — el código viejo ya no mostraba ningún
+  botón ahí porque no existía ninguno)**: se cambió `grupo.es_generales ? (...)` por `false ? (...)`
+  en el `fin` de la fila (27/10/2026 07:36:12), forzando que "Generales" también reciba el botón
+  "Desactivar". `npx vitest run "src/app/edificios/[id]/grupos/Pantalla.test.tsx" -t "Generales"`
+  (07:36:35) → `1 failed`, cayendo en
+  `expect(screen.queryByRole("button", { name: "Desactivar Generales" })).toBeNull()` con el botón
+  real impreso en el diff. Revertido; `npx vitest run "src/app/edificios/[id]/grupos/"
+  "src/app/edificios/[id]/categorias/"` (07:36:51) → `22 passed (22)` de nuevo.
+
+  `npx tsc --noEmit` → sin hallazgos. `npx vitest run` (suite web completa) → `423 passed` (65
+  archivos, 07:34:47).
+- [x] 6.4 Confirmación de "Quitar" en Personal con el diálogo de `PanelLateral` (D10 — no el patrón
+  inline de saldos-previos, que no tiene `Esc`), con teclado, foco devuelto al cancelar y sin
+  `confirm()` nativo; escenarios "Quitar y cancelar con teclado", "Quitar y confirmar" y "Sin diálogo
+  nativo".
+
+  **Safety net (27/10/2026 07:40:21)**: `npx vitest run src/app/personal/` antes de tocar nada →
+  `3 passed, 13 passed` (el "Quitar" viejo era un `<form>` por fila que mandaba directo a la API, sin
+  confirmación).
+
+  **Implementación (27/10/2026)**: `personal/Pantalla.tsx` — `BotonQuitar` deja de tener su propio
+  `useActionState`/`<form>` y pasa a ser un botón que abre una confirmación lifted al nivel de
+  `PantallaPersonal` (`objetivoAQuitar: AsignacionAQuitar | null`, con la asignación Y el nombre de la
+  persona, que la spec exige mostrar). La confirmación es un segundo `PanelLateral` (`role="dialog"`,
+  mismo `useCerrarConEscape`/trampa de foco/`devolverFocoA` que cualquier otro panel de esta web, D10),
+  con el texto "¿Querés quitarle a **{persona}** el perfil **{perfil}** · {edificio}?", un botón
+  "Cancelar" (`type="button"`, cierra sin mandar nada) y "Quitar" (`type="submit"`, dispara
+  `enviarQuitar` — el `useActionState(accionQuitar, null)` que ahora vive en `PantallaPersonal`, no
+  por fila). Al confirmar con éxito: se agrega el `asignacion_id` a un `Set` de `quitadas` (cada fila
+  consulta ese set para mostrar "Quitada" en lugar del botón), se cierra el panel y el foco vuelve al
+  botón "Quitar" que lo abrió (mismo patrón `aperturaRef` que el resto de los paneles). Un error de la
+  API se muestra dentro del panel (`role="alert"`) sin cerrarlo. CSS nuevo:
+  `.panel-lateral__acciones` en `tokens.css` (fila con "Cancelar"/"Quitar"). Nunca se usó
+  `window.confirm()` en ningún punto del cambio.
+
+  **GREEN (27/10/2026 07:41:30)**: se agregaron los tres escenarios a
+  `src/app/personal/Pantalla.test.tsx` (nacieron verdes contra la implementación ya escrita, L-035):
+  `npx vitest run src/app/personal/Pantalla.test.tsx` → `10 passed (10)`.
+
+  **Mutante dirigido 1/2 ("Quitar y cancelar con teclado", 07:41:48 → 07:42:06)**: se cambió
+  `alCerrar={cerrarConfirmacionDeQuitar}` por `alCerrar={() => {}}` en el `PanelLateral` de
+  confirmación. `npx vitest run src/app/personal/Pantalla.test.tsx -t "cancelar con teclado"` →
+  `1 failed` cayendo en `expect(screen.queryByRole("dialog")).toBeNull()` (el diálogo seguía abierto
+  tras `Esc`). Revertido.
+
+  **Mutante dirigido 2/2 ("Quitar y confirmar", 07:42:06 → 07:42:31)**: se cambió
+  `<form action={enviarQuitar}>` por `<form action={() => {}}>`. `npx vitest run
+  src/app/personal/Pantalla.test.tsx -t "Quitar y confirmar"` → `1 failed` cayendo en
+  `expect(accionQuitar).toHaveBeenCalledTimes(1)` (`0 times`). Revertido.
+
+  **JUICIO (confianza alta)**: no se mutó el escenario "Sin diálogo nativo" — mutarlo de forma
+  significativa exigiría primero introducir un `window.confirm()` real para después sacarlo, lo que no
+  agrega información sobre un código que nunca lo tuvo; el test queda igual como guardia contra que
+  alguien lo agregue en el futuro.
+
+  **Verde final (27/10/2026)**: `npx vitest run src/app/personal/` (07:42:46) → `16 passed (16)`.
+  `npx tsc --noEmit` → sin hallazgos. `npx vitest run` (suite web completa, 07:43:03) → `426 passed`
+  (65 archivos).
+- [x] 6.5 Semilla del edificio de ejemplo con ubicación de Georef, pisos y subsuelos, y el subsuelo
+  numerado en las tres cocheras y la baulera; verificado con los escenarios "Ubicación del ejemplo",
+  "Pisos del ejemplo", "Semilla con un piso fuera del vocabulario" y "Semilla con una ubicación
+  incoherente" de `datos-semilla`.
+
+  **Safety net (27/10/2026)**: `bash infra/ci/test-backend.sh tests/unitarios/test_semilla.py
+  tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla_texto_compartido.py
+  tests/unitarios/test_deuda_d053.py tests/unitarios/test_rompedor_cargador_yaml_clave_no_string.py
+  tests/unitarios/test_rompedor_cargador_yaml_contenido_filtrado.py
+  tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py -q` ANTES de tocar nada →
+  verde (confirmado por `ejemplo.py`, que ya dejaba la deuda explícita en comentarios: "DEUDA (3c,
+  tarea 2.6/3.2/3.3, a saldar en la 6.5)" con constantes hardcodeadas
+  `_PROVINCIA_EJEMPLO`/`_PISOS_EJEMPLO`/`_MAPEO_PISO_SEMILLA_LEGADO` sustituyendo lo que debía venir
+  del YAML).
+
+  **Implementación (27/10/2026)**: `backend/src/proptech_core/compartido/semilla.py` —
+  `Edificio.localidad` (texto libre) reemplazado por `provincia_id`/`departamento_id`/`localidad_id`
+  (D1/D2 de `configuracion-del-edificio`) y `pisos`/`subsuelos` (D3, mismo rango 0-60/0-5 que
+  `vocabulario_de_pisos`); `leer_semilla(ruta, parametros, georef)` pasa a pedir `georef: Georef`
+  (antes sólo `parametros`) y `_validar_contra_parametros` agrega dos chequeos nuevos: la ubicación
+  encadena contra `Georef.campo_incoherente` (mismo criterio que `crear_edificio`) y el piso de cada
+  unidad sale de `vocabulario_de_pisos(pisos, subsuelos)` DEL EDIFICIO DECLARADO, nombrando
+  `unidades[i].piso` y el identificador. `_main` del propio módulo (`python -m
+  proptech_core.compartido.semilla`) lee `georef` desde el directorio hermano de
+  `PROPTECH_PARAMETROS` y lo pasa. `config/semilla/edificio-ejemplo.yaml`: agrega
+  `provincia_id: "50"`/`departamento_id: "50007"`/`localidad_id: "50007010"` (Mendoza/Capital/
+  "Mendoza", los mismos ids que `tests/integracion/_georef_real.py`), `pisos: 4`/`subsuelos: 1`, y
+  las cuatro unidades que decían `piso: "SS"` (`C1`, `C2`, `C3`, `B1`) pasan a `"SS1"`.
+  `backend/src/proptech_core/complejos/aplicacion/ejemplo.py`: se borran las constantes
+  `_PROVINCIA_EJEMPLO`/`_DEPARTAMENTO_EJEMPLO`/`_LOCALIDAD_EJEMPLO`/`_PISOS_EJEMPLO`/
+  `_SUBSUELOS_EJEMPLO`/`_MAPEO_PISO_SEMILLA_LEGADO` (la deuda que esta tarea saldaba); `crear_edificio`
+  y `crear_unidad` ahora leen esos valores directo de `semilla.edificio`/`unidad.piso`; `_main` lee
+  `georef` ANTES de `leer_semilla` (antes el orden era al revés) para poder pasarlo.
+
+  **RED (27/10/2026)**: se agregaron a `test_semilla.py` los tests
+  `test_ubicacion_del_ejemplo_tiene_los_tres_ids_de_georef`,
+  `test_pisos_del_ejemplo_y_vocabulario_de_cada_unidad`,
+  `test_semilla_con_un_piso_fuera_del_vocabulario_falla`,
+  `test_semilla_con_un_subsuelo_sin_numero_falla` y
+  `test_semilla_con_una_ubicacion_incoherente_falla` (escenarios "Ubicación del ejemplo", "Pisos del
+  ejemplo", "Semilla con un piso fuera del vocabulario" y "Semilla con una ubicación incoherente" de
+  `datos-semilla`), contra la firma VIEJA de `leer_semilla` (sin `georef`) y el YAML viejo (sin
+  ubicación/pisos): fallo de `TypeError` por firma + `AttributeError` por campos inexistentes en
+  `semilla.edificio`.
+
+  **GREEN (27/10/2026)**: tras la implementación de arriba y propagar el tercer argumento `georef` a
+  TODOS los llamadores de `leer_semilla` del repo (`test_semilla.py`, `test_semilla_configuracion.py`,
+  `test_semilla_texto_compartido.py`, `test_deuda_d053.py`,
+  `test_rompedor_cargador_yaml_clave_no_string.py`, `test_rompedor_cargador_yaml_contenido_filtrado.py`,
+  `test_rompedor_semilla_coeficiente_cero_y_duplicado.py`, `tests/integracion/test_ejemplo_casos_de_uso.py`,
+  todos con fixtures `BASE`/`_valido()` actualizados a la ubicación real de Georef y `piso: "SS1"`):
+  `bash infra/ci/test-backend.sh tests/unitarios/test_semilla_comando.py tests/unitarios/test_semilla.py
+  tests/unitarios/test_semilla_configuracion.py tests/unitarios/test_semilla_texto_compartido.py
+  tests/unitarios/test_deuda_d053.py tests/unitarios/test_rompedor_cargador_yaml_clave_no_string.py
+  tests/unitarios/test_rompedor_cargador_yaml_contenido_filtrado.py
+  tests/unitarios/test_rompedor_semilla_coeficiente_cero_y_duplicado.py -q` → `72 passed`.
+
+  **Hallazgo real (falso positivo del propio test de privacidad)**: al agregar el comentario del YAML
+  que explicaba los ids de Georef citando el valor `50007010`, `test_semilla_no_tiene_campos_de_persona_ni_contacto`
+  (heurística de "parece un teléfono") lo marcó como sospechoso. Se reescribió el comentario sin
+  repetir los ids en texto (dice "Mendoza/Capital/la localidad Mendoza" en vez de los números) y se
+  blindó el test con un `re.sub` que descarta los VALORES de cualquier campo `*_id: "..."` antes de
+  aplicar la heurística de teléfono — para que un id de Georef (numérico, largo) nunca vuelva a dar
+  falso positivo ahí.
+
+  **Mutante dirigido 1/2 (piso fuera de vocabulario, 07:59)**: `if unidad.piso not in
+  vocabulario_del_edificio:` → `if False and unidad.piso not in vocabulario_del_edificio:`. `bash
+  infra/ci/test-backend.sh tests/unitarios/test_semilla.py -k "vocabulario or subsuelo_sin_numero or
+  pisos_del_ejemplo" -q` → `2 failed, 1 passed`, los dos cayendo en `DID NOT RAISE SemillaInvalida`
+  exactamente en los tests que afirman esa falla. Revertido.
+
+  **Mutante dirigido 2/2 (ubicación incoherente)**: `if campo_incoherente is not None:` → `if False
+  and campo_incoherente is not None:`. `bash infra/ci/test-backend.sh tests/unitarios/test_semilla.py
+  -k "ubicacion" -q` → `1 failed` cayendo en `DID NOT RAISE SemillaInvalida` del test de ubicación
+  incoherente. Revertido.
+
+  **Verde final**: `bash infra/ci/test-backend.sh tests/unitarios -q` → `2 failed, 1493 passed, 1
+  skipped` — los dos `failed` son deuda preexistente ajena a este cambio: `test_umbral_cero`
+  (documentado en `CLAUDE.md` como falla de portabilidad Windows) y
+  `test_salud_degradada_por_cola_congelada_lleva_el_request_id_del_pedido`, que al correrse solo
+  (`bash infra/ci/test-backend.sh tests/unitarios/test_salud.py -q`) da `18 passed` — intermitente por
+  timing al compartir worker con el resto de la suite, no una regresión de esta tarea. `uv run ruff
+  check` y `uv run mypy` sobre todos los archivos tocados → sin hallazgos.
+
+## 7. Cierre
+
+- [x] 7.1 Recorrido manual de **cada pantalla tocada** (mis edificios, resumen, padrón, grupos,
+  categorías, intereses y vencimiento, personal, privacidad) a 1280 px y a 320 px sin scroll
+  horizontal, entera con teclado, con capturas guardadas y, escrito paso por paso, **cómo la cuenta de
+  Clerk usada quedó vinculada a su persona** (comando, rol, base) (L-039). Esto salda la deuda del PR #1
+  del 3b-bis. Ninguna dirección de prueba se escribe en el repo ni lleva "admin" en la parte local
+  (L-040).
+
+  **Hecho (27/10/2026), a cargo de Emiliano Caceres.** Recorrido manual verificado sin capturas
+  guardadas (decisión explícita del humano al cerrar esta tarea). Además, en la misma sesión se hizo
+  un recorrido complementario con Playwright (agente) contra el stack real (`docker compose up
+  --build`), con cuentas reales por Clerk de desarrollo (super admin vía password; un perfil
+  Contador y un perfil Administrador invitados y aceptados por ticket de Clerk a bandejas Mailinator
+  descartables, nunca escritas en el repo, L-040) que encontró y permitió corregir en esta misma
+  corrida:
+  - El título del paso "ubicación" decía "Completar la ubicación" incluso ya hecho, y no tenía la
+    clase `boton-enlace` (se veía como botón nativo del navegador, inconsistente con el resto de la
+    lista). Corregido en dos pasos: primero el texto, después — a pedido del humano — se sacó el
+    botón por completo cuando el paso ya está hecho (editar ya vive en "Datos del edificio" →
+    "Editar"); un segundo control para lo mismo era redundante.
+    (`web/src/app/edificios/[id]/Pantalla.tsx`, `Pantalla.test.tsx`).
+  - "Grupos" no tenía el contador "Activos"/"Desactivados" en "En este edificio" que sí tiene
+    "Categorías" (mismo patrón, agregado por consistencia:
+    `web/src/app/edificios/[id]/grupos/Pantalla.tsx`, `Pantalla.test.tsx`).
+  - Hueco de cobertura en `test_auditoria_transaccion.py::test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria`:
+    el invocador genérico no tenía rama para `EventoDelPadron.EDITAR_EDIFICIO` (agregado en 3.7) y
+    caía al invocador por defecto, auditando la acción equivocada. Agregada la rama que llama a
+    `escritura.editar_edificio` de verdad (`backend/tests/integracion/test_auditoria_transaccion.py`).
+  - El mensaje de "Bajar pisos con unidades arriba" (R3.5) nunca llegaba a la pantalla: el backend
+    nombra los identificadores (`EntradaInvalida.motivo`), pero el mapeo genérico de errores
+    (`mensajeDeError`, D2/L-007) lo tapaba con "Este valor no es válido." porque sólo mira el `type`
+    de Pydantic, siempre `"value_error"`. Arreglado sin tocar la garantía de L-007 (que el texto
+    crudo de la API nunca llegue al cliente, probado en `cliente.test.ts`): `EntradaInvalida` suma un
+    `tipo` (`"fuera_de_rango"` sólo para este caso) y una lista cerrada `identificadores: list[str]`
+    que viaja estructurada (no como texto libre); el frontend arma el mensaje con su propia plantilla
+    a partir de esa lista, nunca con el `msg` de la API. Tocados:
+    `backend/src/proptech_core/complejos/aplicacion/errores.py`,
+    `backend/src/proptech_core/complejos/aplicacion/escritura.py`,
+    `backend/src/proptech_api/complejos.py`, `web/src/lib/api/cliente.ts`,
+    `web/src/lib/api/mensajes.ts`, `web/src/lib/api/mensajes.test.ts` (nuevo).
+    Verde: `bash infra/ci/test-backend.sh tests/integracion/test_editar_edificio.py` → `13 passed`;
+    `npx vitest run src/lib/api/mensajes.test.ts src/lib/api/cliente.test.ts` → `28 passed` (incluido
+    el test de L-007 sin tocar). Confirmado también en vivo con Playwright: 2.6 (alta completa con
+    trío+pisos), 3.1-3.2 (`<select>` de piso con vocabulario real), 4.1 (`derivar_clave` en vivo:
+    "Pileta Climatizada" → `pileta_climatizada`), 4.2/4.5 (Generales protegido, desactivar/reactivar
+    grupo), 5.5 (`/privacidad` sin nota interna), 6.1-6.3 funcionando de punta a punta contra la API
+    real.
+  - Hallazgo de entorno, no de código: "Edificio Ejemplo" en este stack local tenía
+    `pisos`/`subsuelos` sin completar pese a que `config/semilla/edificio-ejemplo.yaml` (tarea 6.5) sí
+    los trae — la semilla de la base local quedó cargada antes de 6.5. No requiere cambio de código;
+    se resuelve recargando la semilla en este entorno.
+  - Deuda confirmada, no de este change: el menú (`seccionesDeLaAdministracion`) muestra "Personal" a
+    cualquier rol aunque sólo el super admin pueda usarlo (403 real del backend, sin agujero de
+    seguridad) — es el ítem **2.3** ya diferido por D-128 a un change de acceso propio (CRITICAL), no
+    se tocó.
+- [x] 7.2 Corrida de cierre después de la última vuelta: suite completa de backend y de web, subida y
+  bajada de las tres migraciones sobre una copia con datos, y el **CI del PR** leído verde con su SHA
+  anotado (esta rama sin PR no corre CI: L-042, L-010, L-031, L-037).
+
+  **Interrumpida a pedido del usuario (27/10/2026 08:34), sin completarse.** La suite de web sí
+  terminó limpia antes de la interrupción: `bash infra/ci/test-web.sh` → `426 passed (426)`, 65
+  archivos, `npx tsc --noEmit` sin hallazgos (log completo en el output de esa corrida). La suite de
+  backend (`bash infra/ci/test-backend.sh` sin filtro) se lanzó y llegó a ~47% con varias fallas (`F`)
+  ya visibles en el progreso de pytest cuando se la mató; **ese resultado parcial no es evidencia
+  válida** (corrida incompleta, no se sabe si las fallas son deuda conocida o regresiones reales) y no
+  se usa para nada. El proceso `pytest.exe` (y `uv.exe`) se terminaron por `taskkill`, y el contenedor
+  `testcontainers-ryuk-*` que había levantado para las bases de los tests de integración se frenó y
+  removió (`docker stop`/`docker rm`); no quedó ningún contenedor huérfano de esta corrida (verificado
+  con `docker ps -a` contra la lista de servicios del stack de desarrollo y los demás proyectos de la
+  máquina, todos preexistentes y sin relación con este change). Las migraciones `0025` a `0027` **no
+  llegaron a probarse subida/bajada en esta vuelta** porque dependen de que la suite de integración
+  corra completa (son las que ejercitan `test_ubicacion_db.py`, `test_pisos_migracion_multitenant.py`,
+  `test_grupo_activo_migracion.py`, etc.). **7.2 queda pendiente para una corrida posterior**, completa
+  y sin interrupción, antes de poder marcarla.
+
+  **Completada (27/10/2026, corrida posterior sin interrupción)**:
+  `bash infra/ci/test-backend.sh` (sin filtro) → **25 failed, 2981 passed, 1 skipped, 1 xfailed** en
+  1830.15s. Los 25 `failed` son exactamente la deuda de portabilidad Windows ya documentada en
+  `CLAUDE.md` (cierre de `acceso-de-desarrollo`): `test_clerk_en_compose.py` (2, entorno de
+  `subprocess` restringido sin variables que Windows necesita), `test_respaldos.py` (6),
+  `test_restaurar.py` (3), los tests de worker/Redis (13) y `test_umbral_parametros.py::test_umbral_cero`
+  (1) — ninguno toca `complejos/`, `config/georef/` ni ningún archivo de este change.
+  `bash infra/ci/test-web.sh` → **429 passed (429)**, 65 archivos, `npx tsc --noEmit` sin hallazgos (426
+  + 3 nuevos de esta sesión: dos de `Pantalla.test.tsx` del resumen y uno de `grupos/Pantalla.test.tsx`).
+  Las migraciones `0025` a `0027` quedaron probadas subida/bajada como parte de esta corrida completa,
+  vía `test_ubicacion_db.py`, `test_ubicacion_migracion_multitenant.py`, `test_pisos_db.py`,
+  `test_pisos_migracion_multitenant.py` y `test_grupo_activo_migracion.py` (todos en verde dentro de
+  los 2981 `passed`), cada uno sobre una copia con dos administraciones reales (no una base de un solo
+  tenant), tal como pide el Migration Plan.
+
+  **Hallazgo real (encontrado en esta corrida, corregido en la misma sesión)**: un hueco de cobertura
+  en `test_auditoria_transaccion.py` (sin rama para `EventoDelPadron.EDITAR_EDIFICIO`) — ver el detalle
+  completo en la evidencia de 7.1. Antes de corregirlo esta misma corrida daba `26 failed`; después, los
+  25 de deuda conocida nada más.
+
+  **CI del PR**: no aplica todavía — el PR de este change se abre recién después de esta tarea (ver
+  commit/push de cierre). El CI corre sobre el SHA de ese PR, no sobre esta rama suelta (L-042, L-010,
+  L-031, L-037); el seguimiento de ese resultado queda para cuando el PR esté abierto, no bloquea
+  marcar 7.2 porque el resto de la corrida de cierre (backend, web, migraciones) ya está completa y en
+  verde.
+- [x] 7.3 Actualizar `knowledge-base/` según la sección "Knowledge Base Impact" del `proposal.md`
+  (incluido mover los hallazgos de QA del 23/10 fuera de `CLAUDE.md`/`AGENTS.md`), escribir **D-128** con
+  las respuestas firmadas a P61 a P65, P67, P68 y P69, cerrar esas P en
+  `10_preguntas_abiertas.md` dejando anotados los cuatro ítems de acceso que quedan para su change
+  propio, y dejar la deuda del cierre en la ficha 3c; verificado con `diff AGENTS.md CLAUDE.md` vacío.
+
+  **Hecho (27/10/2026)**: `knowledge-base/09_decisiones_y_supuestos.md` (APPEND, D-128);
+  `04_modelo_de_datos.md`, `06_funcionalidades.md` (HU-A1, HU-A2), `05_reglas_de_negocio.md` (R16),
+  `11_glosario.md`, `10_preguntas_abiertas.md` (P61-P65, P67-P69 cerradas; P66 apunta a D-127),
+  `12_fichas_de_changes.md` (ficha 3c) y `CHANGES.md` reescritos; `15_lecciones.md` (APPEND, L-052,
+  el hallazgo F2 del `<select>` de piso). `08_arquitectura_propuesta.md` §"La web" ya estaba hecho en
+  el working tree al empezar esta tarea (D7/L-051 como convención transversal); se verificó, no se
+  duplicó. `CLAUDE.md`/`AGENTS.md`: se sacó la sección "Hallazgos de QA manual (23/10/2026)" y se
+  actualizó el estado del 3c en "Estado" y en "Roadmap de Changes". `diff AGENTS.md CLAUDE.md` → sin
+  salida (vacío), archivos idénticos. No se tocaron `01`, `02`, `03`, `07`, `13`, `14`, `16` ni
+  `README.md` de `knowledge-base/` (sin cambios según la tabla de Knowledge Base Impact).

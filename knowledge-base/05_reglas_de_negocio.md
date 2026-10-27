@@ -109,13 +109,28 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas; el fondo de
   reserva se imputa después de la ordinaria y antes de la extraordinaria (4b).
 
-## R16 · Categorías de gasto · Vigente (D-041)
+## R16 · Categorías de gasto y grupos de reparto: se desactivan, nunca se borran · Vigente (D-041, D4
+del 3c, D-128)
 
 - **Qué es**: la clasificación de un gasto según en qué se gasta (encargado y cargas sociales,
   seguridad, limpieza, ascensor, mantenimiento, servicios, seguros, administración, varios).
 - **Parametrizable**: cada edificio arranca con las categorías del archivo de parámetros (D-042) y el
-  administrador puede crear, renombrar, ordenar y desactivar las suyas. Una categoría con gastos no
-  se borra: se desactiva.
+  administrador puede crear, renombrar, ordenar y desactivar las suyas. **Una categoría o un grupo de
+  reparto con gastos no se borra: se desactiva** (ampliado por el 3c, D4, D-128: antes del 3c los
+  grupos no tenían estado — ahora `grupo_de_reparto.activo` sigue el mismo patrón que
+  `categoria_de_gasto.activa`). Ningún administrador borra de verdad un grupo ni una categoría: no
+  existe esa ruta, ni en la API ni en la web. "Generales" nunca se desactiva, tampoco por SQL (protegido
+  por el mismo trigger que protege el resto de sus columnas).
+- **Por qué también los grupos desde el 3c**: cuando exista el módulo de gastos (cambio 6), un grupo
+  borrado de verdad dejaría gastos huérfanos — el mismo problema que ya motivaba desactivar antes que
+  borrar las categorías. No hay hoy un segundo mecanismo de borrado real para ninguno de los dos
+  ("nunca tuvo gastos" no distingue nada todavía, porque el módulo de gastos no existe; se revisa de
+  nuevo cuando exista, E6 del design del 3c).
+- **La clave de un grupo o una categoría se autogenera desde el nombre** (3c, D4, D-128): el
+  administrador deja de escribirla en el formulario; una función pura la calcula (minúsculas, sin
+  tildes, lo que no sea `[a-z0-9]` colapsa a `_`, prefijo garantizado por letra, recorte a 40,
+  desempate `_2`/`_3`). La API sigue aceptando `clave` explícita porque la semilla y el futuro
+  importador la necesitan.
 - **Cada gasto tiene una categoría obligatoria**, además de su grupo de reparto (R01) y su tipo
   ordinario o extraordinario (R13). La IA sugiere la categoría al leer la factura (R12) y el
   administrador la confirma.
@@ -126,7 +141,8 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   no cambia expensas ya emitidas.
 - **Tests mínimos**: los subtotales por categoría suman el total del bloque; un mismo concepto puede
   ser ordinario o extraordinario y cae en su bloque; renombrar no altera una liquidación emitida;
-  un gasto sin categoría no se puede aprobar.
+  un gasto sin categoría no se puede aprobar; desactivar un grupo parcial lo saca de las listas de alta
+  sin borrar sus filas de `grupo_unidad`; desactivar "Generales" se rechaza, también directo en SQL.
 
 ## R36 · Tasa propia para la expensa extraordinaria · Propuesta (D-071)
 

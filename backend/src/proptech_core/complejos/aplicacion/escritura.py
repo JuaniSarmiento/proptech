@@ -15,20 +15,27 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, datetime
+from typing import Annotated, Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
+from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.georef import Georef
 from proptech_core.compartido.parametros import Parametros
+from proptech_core.compartido.pisos import vocabulario_de_pisos
+from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.complejos.aplicacion.errores import (
     Conflicto,
     EntradaInvalida,
     NoEncontrado,
+    error_de_validacion,
     transaccion,
 )
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
@@ -137,12 +144,44 @@ def crear_edificio(
     identidad: Identidad,
     *,
     nombre: str,
-    localidad: str,
+    provincia_id: str,
+    departamento_id: str,
+    localidad_id: str,
+    georef: Georef,
+    pisos: int,
+    subsuelos: int,
+    calle_y_numero: str | None = None,
     parametros: Parametros,
     reloj: Callable[[], datetime],
     request_id: UUID,
     configuracion_inicial: ConfiguracionEdificio | None = None,
 ) -> UUID:
+    """D2/D1 (tarea 2.6): `localidad` deja de ser un parámetro — la
+    aplicación es la única autoridad sobre la ubicación, contra el archivo
+    de Georef, nunca contra lo que mande el cliente. `campo_incoherente`
+    nombra el primer campo que no encadena (provincia → departamento →
+    localidad); `localidad` se escribe siempre derivada del nombre real de
+    Georef, nunca de un valor del pedido.
+
+    D3 (tarea 3.2): un edificio nuevo trae `pisos` (1 a 60) y `subsuelos`
+    (0 a 5) siempre — nunca `None` acá, aunque la columna sea nullable para
+    los edificios migrados sin completar (D3). El rango se valida acá
+    también (no sólo en el `Field` del cuerpo de la API) para que un
+    llamador que no pase por HTTP (`ejemplo.py`, los tests) no pueda
+    escaparse del límite."""
+    campo_invalido = georef.campo_incoherente(provincia_id, departamento_id, localidad_id)
+    if campo_invalido is not None:
+        raise EntradaInvalida(campo_invalido)
+    localidad = georef.nombre_de_localidad(localidad_id)
+    if localidad is None:
+        # No alcanzable en los hechos: `campo_incoherente` ya confirmó que
+        # `localidad_id` existe. Nunca `assert` en código de producción
+        # (S101): se cae a un error explícito en vez de silenciarlo con -O.
+        raise RuntimeError("localidad inexistente pese a pasar la validación de coherencia")
+    if not (1 <= pisos <= 60):
+        raise EntradaInvalida("pisos", "debe estar entre 1 y 60")
+    if not (0 <= subsuelos <= 5):
+        raise EntradaInvalida("subsuelos", "debe estar entre 0 y 5")
     configuracion = configuracion_inicial or ConfiguracionEdificio.desde_parametros(parametros)
     configuracion.validar_rango_recargo(parametros)
     if configuracion.umbral_saldo_chico is None:
@@ -160,14 +199,24 @@ def crear_edificio(
             str(
                 sesion.execute(
                     text(
-                        "INSERT INTO complejo (administracion_id, "
-                        "nombre, localidad, estado_migracion) "
-                        "VALUES (:admin, :nombre, :localidad, 'pendiente') RETURNING id"
+                        "INSERT INTO complejo (administracion_id, nombre, localidad, "
+                        "provincia_id, departamento_id, localidad_id, calle_y_numero, "
+                        "pisos, subsuelos, estado_migracion) "
+                        "VALUES (:admin, :nombre, :localidad, :provincia_id, "
+                        ":departamento_id, :localidad_id, :calle_y_numero, :pisos, "
+                        ":subsuelos, 'pendiente') "
+                        "RETURNING id"
                     ),
                     {
                         "admin": identidad.administracion_id,
                         "nombre": nombre,
                         "localidad": localidad,
+                        "provincia_id": provincia_id,
+                        "departamento_id": departamento_id,
+                        "localidad_id": localidad_id,
+                        "calle_y_numero": calle_y_numero,
+                        "pisos": pisos,
+                        "subsuelos": subsuelos,
                     },
                 ).scalar_one()
             )
@@ -295,3 +344,127 @@ def confirmar_sin_saldos_previos(
             detalle={"complejo_id": str(complejo_id)},
         )
     return complejo_id
+
+
+class _EdicionEdificio(BaseModel):
+    """D3/D2 (tareas 3.5-3.7): los mismos campos editables de `complejo`,
+    todos nullable (`None` es "sin completar", igual que en el alta) — el
+    `CuerpoDeEdicion` de la API ya prohíbe mandar `null` explícito; este
+    modelo sólo valida FORMA, nunca el trío de ubicación entre sí (eso lo
+    hace `editar_edificio` con `Georef`, que esta clase no conoce)."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+    nombre: Annotated[
+        str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
+    ]
+    provincia_id: str | None
+    departamento_id: str | None
+    localidad_id: str | None
+    calle_y_numero: (
+        Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
+    )
+    pisos: Annotated[int, Field(ge=1, le=60)] | None
+    subsuelos: Annotated[int, Field(ge=0, le=5)] | None
+
+
+@accion_sensible(EventoDelPadron.EDITAR_EDIFICIO)
+def editar_edificio(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    complejo_id: UUID,
+    cambios: dict[str, Any],
+    georef: Georef,
+    request_id: UUID,
+) -> None:
+    """D3 (tareas 3.5-3.7): nombre, ubicación, calle y número, pisos y
+    subsuelos. El trío de ubicación se valida completo o ninguno (mismo
+    `CHECK` que `0025`); bajar `pisos`/`subsuelos` se rechaza si deja
+    alguna unidad en un piso que el edificio ya no tiene (D3, tarea 3.5),
+    nombrando sus identificadores — no son un valor del PEDIDO (L-007), son
+    datos propios del edificio que el mismo administrador ya puede ver."""
+    with transaccion(sesion, {}):
+        fila = (
+            sesion.execute(
+                text(
+                    "SELECT nombre, provincia_id, departamento_id, localidad_id, "
+                    "calle_y_numero, pisos, subsuelos FROM complejo WHERE id=:id FOR UPDATE"
+                ),
+                {"id": complejo_id},
+            )
+            .mappings()
+            .first()
+        )
+        if fila is None:
+            raise NoEncontrado()
+        try:
+            anterior = _EdicionEdificio.model_validate(dict(fila))
+            entrada = _EdicionEdificio.model_validate({**fila, **cambios})
+        except ValidationError as error:
+            raise error_de_validacion(error) from None
+        campos = sorted(
+            k for k in type(entrada).model_fields if getattr(entrada, k) != getattr(anterior, k)
+        )
+        if not campos:
+            return
+        provincia_id, departamento_id, localidad_id = (
+            entrada.provincia_id,
+            entrada.departamento_id,
+            entrada.localidad_id,
+        )
+        localidad: str | None = None
+        if provincia_id is not None or departamento_id is not None or localidad_id is not None:
+            if provincia_id is None:
+                raise EntradaInvalida("provincia_id", "la ubicación exige el trío completo")
+            if departamento_id is None:
+                raise EntradaInvalida("departamento_id", "la ubicación exige el trío completo")
+            if localidad_id is None:
+                raise EntradaInvalida("localidad_id", "la ubicación exige el trío completo")
+            campo_invalido = georef.campo_incoherente(provincia_id, departamento_id, localidad_id)
+            if campo_invalido is not None:
+                raise EntradaInvalida(campo_invalido)
+            localidad = georef.nombre_de_localidad(localidad_id)
+        if (
+            entrada.pisos is not None
+            and entrada.subsuelos is not None
+            and ("pisos" in campos or "subsuelos" in campos)
+        ):
+            vocabulario = vocabulario_de_pisos(pisos=entrada.pisos, subsuelos=entrada.subsuelos)
+            unidades_del_edificio = sesion.execute(
+                text(
+                    "SELECT identificador, piso FROM unidad "
+                    "WHERE complejo_id=:id AND piso IS NOT NULL"
+                ),
+                {"id": complejo_id},
+            ).all()
+            fuera_de_rango = sorted(
+                identificador
+                for identificador, piso in unidades_del_edificio
+                if piso not in vocabulario
+            )
+            if fuera_de_rango:
+                campo = "pisos" if "pisos" in campos else "subsuelos"
+                raise EntradaInvalida(
+                    campo,
+                    "quedarían unidades fuera de rango: " + ", ".join(fuera_de_rango),
+                    tipo="fuera_de_rango",
+                    identificadores=fuera_de_rango,
+                )
+        sesion.execute(
+            text(
+                "UPDATE complejo SET nombre=:nombre, provincia_id=:provincia_id, "
+                "departamento_id=:departamento_id, localidad_id=:localidad_id, "
+                "localidad=:localidad, calle_y_numero=:calle_y_numero, "
+                "pisos=:pisos, subsuelos=:subsuelos WHERE id=:id"
+            ),
+            {**entrada.model_dump(), "localidad": localidad, "id": complejo_id},
+        )
+        registrar(
+            sesion,
+            identidad,
+            EventoDelPadron.EDITAR_EDIFICIO,
+            entidad="complejo",
+            entidad_id=complejo_id,
+            request_id=request_id,
+            detalle={"complejo_id": str(complejo_id), "campos": campos},
+        )

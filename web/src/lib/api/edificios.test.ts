@@ -53,16 +53,27 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
-  it("crearEdificio manda POST con nombre y localidad", async () => {
+  it("crearEdificio manda POST con el trío de ubicación, pisos y subsuelos (D3)", async () => {
     const fetchFalso = mockFetch({ status: 201, cuerpo: { id: "nuevo" } });
     vi.stubGlobal("fetch", fetchFalso);
-    const resultado = await crearEdificio({ nombre: "Edificio X", localidad: "Mendoza" });
+    const resultado = await crearEdificio({
+      nombre: "Edificio X",
+      provincia_id: "50",
+      departamento_id: "50007",
+      localidad_id: "50007010",
+      pisos: 4,
+      subsuelos: 1,
+    });
     const llamada = fetchFalso.mock.calls[0];
     expect(llamada?.[0]).toBe("http://api-interna:8000/api/complejos");
     expect(llamada?.[1]?.method).toBe("POST");
     expect(JSON.parse(llamada?.[1]?.body as string)).toEqual({
       nombre: "Edificio X",
-      localidad: "Mendoza",
+      provincia_id: "50",
+      departamento_id: "50007",
+      localidad_id: "50007010",
+      pisos: 4,
+      subsuelos: 1,
     });
     expect(resultado).toEqual({ estado: "ok", datos: { id: "nuevo" } });
   });
@@ -75,7 +86,16 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
         cuerpo: { detail: { permiso_faltante: "crear_edificio" } },
       }),
     );
-    expect(await crearEdificio({ nombre: "X", localidad: "Y" })).toEqual({
+    expect(
+      await crearEdificio({
+        nombre: "X",
+        provincia_id: "50",
+        departamento_id: "50007",
+        localidad_id: "50007010",
+        pisos: 4,
+        subsuelos: 1,
+      }),
+    ).toEqual({
       estado: "sin_permiso",
       permiso: "crear_edificio",
     });

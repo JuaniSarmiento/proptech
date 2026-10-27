@@ -14,7 +14,7 @@ export async function categoriasDelEdificio(id: string): Promise<ResultadoApi<Ca
   return pedirApi<Categoria[]>(`/api/complejos/${encodeURIComponent(id)}/categorias`);
 }
 
-export type DatosNuevaCategoria = { clave: string; nombre: string };
+export type DatosNuevaCategoria = { clave?: string; nombre: string };
 
 export async function crearCategoria(
   complejoId: string,

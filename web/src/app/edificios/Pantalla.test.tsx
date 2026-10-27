@@ -7,6 +7,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { sinViolaciones } from "../../lib/test/accesibilidad";
 import { PantallaMisEdificios } from "./Pantalla";
 
+// `SelectorDeUbicacion` llama a estas server actions; mockeadas para que
+// el árbol de imports nunca llegue a `server-only` (D3, tarea 6.1).
+vi.mock("../../componentes/accionesGeoref", () => ({
+  provinciasAction: vi.fn().mockResolvedValue({ estado: "ok", datos: [] }),
+  departamentosDeAction: vi.fn().mockResolvedValue({ estado: "ok", datos: [] }),
+  localidadesDeAction: vi.fn().mockResolvedValue({ estado: "ok", datos: [] }),
+}));
+
 afterEach(cleanup);
 
 describe("PantallaMisEdificios", () => {
@@ -81,14 +89,16 @@ describe("PantallaMisEdificios", () => {
     expect(enlace.getAttribute("href")).toBe("/edificios/7");
   });
 
-  it('"Nuevo edificio" abre el panel con el formulario (nombre y localidad)', async () => {
+  it('"Nuevo edificio" abre el panel con el formulario (nombre, ubicación, pisos y subsuelos)', async () => {
     const usuario = userEvent.setup();
     render(<PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />);
     await usuario.click(
       screen.getAllByRole("button", { name: "Nuevo edificio" })[0] as HTMLElement,
     );
     expect(screen.getByLabelText("Nombre")).toBeTruthy();
-    expect(screen.getByLabelText("Localidad")).toBeTruthy();
+    expect(screen.getByLabelText("Provincia")).toBeTruthy();
+    expect(screen.getByLabelText("Pisos")).toBeTruthy();
+    expect(screen.getByLabelText("Subsuelos")).toBeTruthy();
   });
 
   it("403 al crear (administrador sin permiso) muestra el resumen de error sin marcar un campo", async () => {
@@ -102,7 +112,8 @@ describe("PantallaMisEdificios", () => {
       screen.getAllByRole("button", { name: "Nuevo edificio" })[0] as HTMLElement,
     );
     await usuario.type(screen.getByLabelText("Nombre"), "X");
-    await usuario.type(screen.getByLabelText("Localidad"), "Y");
+    await usuario.type(screen.getByLabelText("Pisos"), "4");
+    await usuario.type(screen.getByLabelText("Subsuelos"), "1");
     await usuario.click(screen.getByRole("button", { name: "Crear edificio" }));
     expect(await screen.findByText("No podés crear un edificio nuevo.")).toBeTruthy();
   });

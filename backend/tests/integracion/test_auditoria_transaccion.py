@@ -35,6 +35,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
 from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
@@ -43,6 +44,7 @@ from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
+_GEOREF = leer_georef(str(RAIZ_BACKEND.parent / "config/georef"))
 
 ARRANQUE_USER = "arranque_auditoria_tx"
 ARRANQUE_PASSWORD = "clave-arranque-no-real"
@@ -404,7 +406,12 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion,
             identidad,
             nombre="Padrón ficticio",
-            localidad="Mendoza",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),
@@ -416,7 +423,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             return uid
         if evento == EventoDelPadron.EDITAR_UNIDAD:
             unidades.editar_unidad(
-                sesion, identidad, unidad_id=uid, cambios={"piso": "Otro"}, request_id=uuid.uuid4()
+                sesion, identidad, unidad_id=uid, cambios={"piso": "2"}, request_id=uuid.uuid4()
             )
             return uid
         if evento in (
@@ -450,6 +457,16 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
                     request_id=uuid.uuid4(),
                 )
             return gid
+        if evento == EventoDelPadron.EDITAR_EDIFICIO:
+            escritura.editar_edificio(
+                sesion,
+                identidad,
+                complejo_id=edificio,
+                cambios={"nombre": "Padrón ficticio editado"},
+                georef=_GEOREF,
+                request_id=uuid.uuid4(),
+            )
+            return edificio
         lista = categorias.listar_categorias(sesion, edificio)
         if evento == EventoDelPadron.EDITAR_CATEGORIA:
             categorias.editar_categoria(
@@ -494,7 +511,12 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             sesion,
             identidad,
             nombre="Ficticio",
-            localidad="Mendoza",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),

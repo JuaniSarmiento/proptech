@@ -81,6 +81,12 @@ export async function crearVersionDeConfiguracionAction(
     revalidatePath(`/edificios/${complejoId}/configuracion`);
     return { erroresPorCampo: {}, erroresDesconocidos: [], ok: true };
   }
+  if (resultado.estado === "conflicto") {
+    return {
+      erroresPorCampo: { vigente_desde: "Ya hay una versión que rige desde esa fecha." },
+      erroresDesconocidos: [],
+    };
+  }
   if (resultado.estado === "invalido") {
     return erroresDeFormulario(resultado.errores as ErrorDeCampo[], _CAMPOS_CONOCIDOS);
   }

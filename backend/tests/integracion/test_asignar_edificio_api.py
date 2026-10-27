@@ -8,6 +8,7 @@ permiso y fuera de alcance; Super admin asigna un edificio; Asignar a una
 persona de otra administración. Lecciones: L-017.
 """
 
+import shutil
 import subprocess
 import sys
 import uuid
@@ -242,6 +243,7 @@ def app_real(
     ruta_parametros = tmp_path / "parametros.yaml"
     raiz = RAIZ_BACKEND.parent
     ruta_parametros.write_text((raiz / "config" / "parametros.yaml").read_text())
+    shutil.copytree(raiz / "config" / "georef", tmp_path / "georef")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta_parametros))
 
     from proptech_api.app import crear_app

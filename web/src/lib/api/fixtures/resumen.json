@@ -1,5 +1,7 @@
 {
+  "calle_y_numero": null,
   "cantidad_unidades": 3,
+  "departamento_id": "50007",
   "estado_migracion": "pendiente",
   "informe": {
     "diferencia": "0.100000",
@@ -8,6 +10,7 @@
   },
   "listo_para_liquidar": false,
   "localidad": "Mendoza",
+  "localidad_id": "50007010",
   "nombre": "Edificio API",
   "pasos": {
     "categorias": "hecho",
@@ -15,6 +18,11 @@
     "grupos": "hecho",
     "intereses_y_vencimiento": "hecho",
     "saldos_previos": "falta",
+    "ubicacion": "hecho",
     "unidades": "hecho"
-  }
+  },
+  "pisos": 4,
+  "provincia_id": "50",
+  "subsuelos": 1,
+  "unidades_sin_piso_completo": 0
 }
