@@ -50,7 +50,9 @@ class Dinero:
                 "formato de monto inválido: se espera un entero de hasta 12 dígitos, "
                 "opcionalmente negativo, con hasta 2 decimales"
             )
-        object.__setattr__(self, "_decimal", Decimal(texto).quantize(_CERO))
+        with localcontext() as contexto:
+            contexto.prec = 32
+            object.__setattr__(self, "_decimal", Decimal(texto).quantize(_CERO))
 
     @classmethod
     def desde_decimal(cls, valor: Decimal) -> Dinero:

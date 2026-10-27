@@ -15,6 +15,12 @@ from .test_rutas_protegidas import _RUTAS_CUBIERTAS
 pytestmark = pytest.mark.integracion
 
 _CUERPOS = {
+    "/api/complejos/{complejo_id}/correcciones": {
+        "forma": "contra_asiento",
+        "operacion_id": str(uuid4()),
+        "movimiento_id": str(uuid4()),
+        "motivo": "Prueba ficticia de aislamiento",
+    },
     "/api/complejos/{complejo_id}/unidades": {
         "identificador": "Z9",
         "tipo": "departamento",

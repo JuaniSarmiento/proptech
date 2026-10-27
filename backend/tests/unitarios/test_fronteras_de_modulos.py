@@ -5,6 +5,7 @@ Recorre los imports con `ast`, nunca ejecutando el código de `proptech_core`.
 
 import ast
 import os
+import re
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -456,3 +457,179 @@ def test_mutantes_infraestructura(copia_core: Path, destino: str) -> None:
     archivo = copia_core / "complejos" / "dominio" / "mutante.py"
     archivo.write_text(f"import {destino}")
     assert any("mutante.py" in o and destino in o for o in _dominio_sin_infraestructura(copia_core))
+
+
+# E11: SQL literal. Los identificadores construidos en ejecución quedan fuera del alcance.
+_DUENO_DE_TABLA = {
+    **dict.fromkeys(
+        (
+            "administracion",
+            "persona",
+            "asignacion_rol",
+            "accion_de_auditoria",
+            "auditoria",
+            "invitacion",
+        ),
+        "acceso",
+    ),
+    **dict.fromkeys(
+        (
+            "complejo",
+            "unidad",
+            "grupo_de_reparto",
+            "grupo_unidad",
+            "categoria_de_gasto",
+            "configuracion_versionada",
+        ),
+        "complejos",
+    ),
+    **dict.fromkeys(
+        (
+            "cuenta",
+            "candado_de_cuenta",
+            "emision",
+            "evento_de_emision",
+            "obligacion",
+            "movimiento",
+            "imputacion",
+            "tipo_de_movimiento",
+        ),
+        "cuenta_corriente",
+    ),
+}
+_EXCEPCIONES_SQL = {
+    (
+        "complejos/aplicacion/escritura.py",
+        "asignacion_rol",
+    ): "Asignación inicial del edificio (2.2a, ARQ-3)",
+    ("complejos/aplicacion/lectura.py", "persona"): "Autor de versión con FK compuesta y RLS (E11)",
+    **{
+        (
+            "complejos/aplicacion/ejemplo.py",
+            t,
+        ): "Carga inicial del ejemplo, pendiente mover a composición (E11)"
+        for t in ("administracion", "persona", "asignacion_rol")
+    },
+}
+_IDENTIFICADOR = r'"?[a-z_][a-z_0-9]*"?'
+_TABLA_SQL = re.compile(
+    r"\b(from|join|into|update|table)\s+("
+    + _IDENTIFICADOR
+    + r"(?:\."
+    + _IDENTIFICADOR
+    + r")?)(?![a-z_0-9])",
+    re.I,
+)
+_CTE_SQL = re.compile(r"(?:\bwith|,)\s*(" + _IDENTIFICADOR + r")\s+as\s*\(", re.I)
+
+
+def _tablas_sql(texto: str) -> set[str]:
+    ctes = {m.group(1).strip('"').lower() for m in _CTE_SQL.finditer(texto)}
+    resultado = set()
+    for m in _TABLA_SQL.finditer(texto):
+        nombre = m.group(2).split(".")[-1].strip('"').lower()
+        if nombre == "of" or (
+            texto[m.end() :].lstrip().startswith("(") and m.group(1).lower() in {"from", "join"}
+        ):
+            continue
+        if nombre not in ctes:
+            resultado.add(nombre)
+    return resultado
+
+
+def _literales_sql(archivo: Path) -> Iterator[str]:
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+    # Los docstrings son prosa ("FOR UPDATE se serializa"), no SQL ejecutable.
+    docs = set()
+    for nodo in ast.walk(arbol):
+        if (
+            isinstance(nodo, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and nodo.body
+        ):
+            primero = nodo.body[0]
+            if isinstance(primero, ast.Expr) and isinstance(primero.value, ast.Constant):
+                docs.add(primero.value)
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str) and nodo not in docs:
+            yield nodo.value
+
+
+def _sql_ajeno(raiz: Path, excepciones: dict[tuple[str, str], str]) -> list[str]:
+    ofensores = set()
+    for archivo in sorted(raiz.rglob("*.py")):
+        relativo = archivo.relative_to(raiz).as_posix()
+        modulo = relativo.split("/")[0]
+        if modulo == "compartido":
+            continue
+        for literal in _literales_sql(archivo):
+            for tabla in _tablas_sql(literal):
+                if _DUENO_DE_TABLA.get(tabla) != modulo and (relativo, tabla) not in excepciones:
+                    ofensores.add(f"{relativo}: {tabla}")
+    return sorted(ofensores)
+
+
+def _sql_libro_en_composicion(raiz: Path) -> list[str]:
+    protegidas = {
+        t
+        for t, m in _DUENO_DE_TABLA.items()
+        if m == "cuenta_corriente" and t != "tipo_de_movimiento"
+    }
+    ofensores = set()
+    for paquete in ("proptech_api", "proptech_worker"):
+        for archivo in sorted((raiz / paquete).rglob("*.py")):
+            for literal in _literales_sql(archivo):
+                for tabla in _tablas_sql(literal) & protegidas:
+                    ofensores.add(f"{archivo.relative_to(raiz)}: {tabla}")
+    return sorted(ofensores)
+
+
+def test_sql_solo_nombra_tablas_del_modulo() -> None:
+    assert (ofensores := _sql_ajeno(RAIZ_SRC, _EXCEPCIONES_SQL)) == [], ofensores
+
+
+def test_composicion_no_escribe_sql_del_libro() -> None:
+    assert _sql_libro_en_composicion(RAIZ_SRC.parent) == []
+
+
+@pytest.mark.parametrize(
+    "sql,esperadas",
+    [
+        ("SELECT * FROM movimiento m FOR UPDATE OF m", {"movimiento"}),
+        ("SELECT * FROM unnest(:ids) u JOIN cuenta c ON true", {"cuenta"}),
+        ("SELECT * FROM generate_series(1, 3) x JOIN obligacion o ON true", {"obligacion"}),
+        ("WITH datos AS (SELECT * FROM movimiento) SELECT * FROM datos", {"movimiento"}),
+        ('select * from public."movimiento"', {"movimiento"}),
+    ],
+)
+def test_of_funciones_y_ctes_conservan_tablas_reales(sql: str, esperadas: set[str]) -> None:
+    assert _tablas_sql(sql) == esperadas
+
+
+@pytest.mark.parametrize(
+    "ruta,sql,tabla",
+    [
+        ("liquidacion/aplicacion/mutante.py", "SELECT * FROM movimiento", "movimiento"),
+        ("cuenta_corriente/aplicacion/mutante.py", "SELECT 1 JOIN unidad ON true", "unidad"),
+        ("cuenta_corriente/aplicacion/mutante.py", "SELECT * FROM desconocida", "desconocida"),
+    ],
+)
+def test_regla_sql_detecta_mutantes(copia_core: Path, ruta: str, sql: str, tabla: str) -> None:
+    archivo = copia_core / ruta
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text(f"SQL = {sql!r}")
+    assert f"{ruta}: {tabla}" in _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+
+
+@pytest.mark.parametrize("paquete", ["proptech_api", "proptech_worker"])
+def test_regla_sql_vigila_composicion(tmp_path: Path, paquete: str) -> None:
+    archivo = tmp_path / paquete / "mutante.py"
+    archivo.parent.mkdir()
+    archivo.write_text('SQL = "select * from movimiento"')
+    assert _sql_libro_en_composicion(tmp_path) == [f"{paquete}/mutante.py: movimiento"]
+
+
+def test_excepcion_sql_es_por_archivo_y_tabla() -> None:
+    sin_lectura = {
+        k: v for k, v in _EXCEPCIONES_SQL.items() if k[0] != "complejos/aplicacion/lectura.py"
+    }
+    assert _sql_ajeno(RAIZ_SRC, sin_lectura) == ["complejos/aplicacion/lectura.py: persona"]

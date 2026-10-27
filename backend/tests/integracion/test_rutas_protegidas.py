@@ -72,6 +72,7 @@ _RUTAS_DOCUMENTACION = {
 _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST")}
 
 _RUTAS_CUBIERTAS = {
+    ("/api/complejos/{complejo_id}/correcciones", "POST"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/personal", "GET"),
@@ -341,6 +342,16 @@ def test_cada_ruta_del_candado_depende_de_identidad_actual(
 
 def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) -> Any:
     ruta_resuelta = ruta.format(**mundo)
+    if ruta.endswith("/correcciones"):
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "forma": "contra_asiento",
+                "operacion_id": str(uuid.uuid4()),
+                "movimiento_id": str(uuid.uuid4()),
+                "motivo": "Prueba ficticia del candado",
+            },
+        )
     if metodo == "GET":
         return cliente.get(ruta_resuelta)
     if metodo == "DELETE":

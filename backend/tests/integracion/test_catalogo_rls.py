@@ -42,7 +42,24 @@ RESPALDO_PASSWORD = "clave-respaldo-no-real"
 
 #: D5: nunca se reasigna/exige administracion_id (son técnicas, o se aíslan
 #: distinto, como `administracion`).
-_TABLAS_TECNICAS = {"alembic_version", "trabajos_hechos", "accion_de_auditoria"}
+_TABLAS_TECNICAS = {
+    "alembic_version",
+    "trabajos_hechos",
+    "accion_de_auditoria",
+    "tipo_de_movimiento",  # 4b (E14): vocabulario global, como accion_de_auditoria
+}
+#: 4b (E2, DB-11): el candado se bloquea y se crea, nunca se borra desde la app.
+_PERMISOS_ANGOSTOS = {"candado_de_cuenta": {"SELECT", "INSERT", "UPDATE"}}
+#: 4b: el libro tiene trigger por sentencia; la sonda no necesita una fila (y sus NOT NULL
+#: harían falsa la inserción mínima).
+_SONDA_SIN_FILA = {
+    "cuenta",
+    "emision",
+    "evento_de_emision",
+    "obligacion",
+    "movimiento",
+    "imputacion",
+}
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}
 
@@ -128,6 +145,14 @@ def _politicas_invalidas(cur: psycopg.Cursor, tabla: str) -> list[str]:
     return invalidas
 
 
+def _app_tiene_permisos_exactos(cur: psycopg.Cursor, tabla: str, esperados: set[str]) -> bool:
+    return all(
+        cur.execute("SELECT has_table_privilege(%s, %s, %s)", (APP_USER, tabla, p)).fetchone()
+        == (p in esperados,)
+        for p in ("SELECT", "INSERT", "UPDATE", "DELETE")
+    )
+
+
 def _app_tiene_los_cuatro_permisos(cur: psycopg.Cursor, tabla: str) -> bool:
     cur.execute(
         "SELECT has_table_privilege(%s, %s, 'SELECT'), has_table_privilege(%s, %s, 'INSERT'), "
@@ -204,6 +229,8 @@ def _trigger_rechaza_update_como_app(cur: psycopg.Cursor, tabla: str) -> bool:
                 "VALUES (%s, %s, 'ingreso_exitoso', 'persona', %s, %s)",
                 (admin, persona, persona, uuid4()),
             )
+        elif tabla in _SONDA_SIN_FILA:
+            pass
         else:
             cur.execute(
                 sql.SQL("INSERT INTO {} (administracion_id) VALUES (%s)").format(
@@ -257,6 +284,9 @@ def revisar_catalogo(cur: psycopg.Cursor) -> list[str]:
                     problemas.append(f"{tabla}: proptech_app debe tener exactamente SELECT/INSERT")
                 if not _trigger_rechaza_update_como_app(cur, tabla):
                     problemas.append(f"{tabla}: el trigger no rechaza UPDATE como proptech_app")
+            elif tabla in _PERMISOS_ANGOSTOS:
+                if not _app_tiene_permisos_exactos(cur, tabla, _PERMISOS_ANGOSTOS[tabla]):
+                    problemas.append(f"{tabla}: proptech_app no tiene exactamente sus permisos")
             elif not _app_tiene_los_cuatro_permisos(cur, tabla):
                 problemas.append(
                     f"{tabla}: proptech_app no tiene los permisos SELECT/INSERT/UPDATE/DELETE"

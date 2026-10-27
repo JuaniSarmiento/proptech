@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
-from proptech_api import complejos, invitaciones, personal, salud, sesion
+from proptech_api import complejos, cuenta_corriente, invitaciones, personal, salud, sesion
 from proptech_api.cuerpos import manejador_422
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso
@@ -28,6 +28,7 @@ from proptech_core.compartido.configuracion import Configuracion, ConfiguracionI
 from proptech_core.compartido.logs import configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
+from proptech_core.cuenta_corriente.aplicacion import errores as errores_del_libro
 
 _logger = logging.getLogger("proptech_api.app")
 
@@ -115,6 +116,7 @@ def crear_app() -> FastAPI:
     # parámetro en el log (`seguimiento._ruta_de`).
     app.include_router(salud.router)
     app.include_router(complejos.router)
+    app.include_router(cuenta_corriente.router)
     app.include_router(sesion.router)
     app.include_router(sesion.router_de_token)
     app.include_router(invitaciones.router_de_token)
@@ -125,4 +127,11 @@ def crear_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, manejador_422)
     for tipo_de_error in (NoEncontrado, Conflicto, EntradaInvalida):
         app.add_exception_handler(tipo_de_error, complejos.manejar_error_de_complejos)
+    for tipo in (
+        errores_del_libro.NoEncontrado,
+        errores_del_libro.Conflicto,
+        errores_del_libro.EntradaInvalida,
+        errores_del_libro.TemporalmenteNoDisponible,
+    ):
+        app.add_exception_handler(tipo, cuenta_corriente.manejar_error_del_libro)
     return app

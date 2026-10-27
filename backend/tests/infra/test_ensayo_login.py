@@ -38,3 +38,33 @@ def test_ensayo_devuelve_la_tabla_protegida_antes_de_migrar() -> None:
     restaurada = script.index("devolver_al_migrador proptech_restauracion")
     assert script.index("roles antes") < restaurada
     assert restaurada < script.index("migrar_restaurada upgrade head")
+
+
+def test_ensayo_devuelve_todas_las_tablas_de_la_lista() -> None:
+    from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
+
+    script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
+    faltantes = [
+        tabla for tabla in TABLAS_DE_SOLO_AGREGAR if f"ALTER TABLE {tabla} OWNER TO" not in script
+    ]
+    assert faltantes == [], f"sin devolución de propiedad: {faltantes}"
+
+
+def test_ensayo_comprueba_libro_vacio_antes_de_devolverlo() -> None:
+    script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
+    assert "SELECT EXISTS (SELECT 1 FROM public.%I)" in script
+    assert script.index("el libro tiene filas") < script.index("ALTER TABLE cuenta OWNER TO")
+
+
+def test_ensayo_no_miente_sobre_la_revision_del_ciclo() -> None:
+    script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
+    cabeza = ScriptDirectory(str(RAIZ / "backend/migraciones")).get_current_head()
+    assert f"ciclo {cabeza}/0016/{cabeza}" in script
+
+
+def test_ensayo_compara_la_forma_del_esquema_tras_bajar() -> None:
+    script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
+    antes = script.index('esquema "$CARPETA_ENSAYO/esquema_antes.sql"')
+    bajada = script.index("migrar_restaurada downgrade 0016")
+    despues = script.index('esquema "$CARPETA_ENSAYO/esquema_downgrade.sql"')
+    assert antes < bajada < despues < script.index("diff -u")

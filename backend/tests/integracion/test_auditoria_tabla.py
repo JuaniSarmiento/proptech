@@ -138,6 +138,16 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
                     f"ALTER FUNCTION fn_configuracion_versionada_bloqueada() "
                     f"OWNER TO {MIGRADOR_USER}"
                 )
+            # 4b: las seis tablas del libro también son del arranque tras `despues`.
+            from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
+
+            for tabla in TABLAS_DE_SOLO_AGREGAR:
+                if tabla in {"auditoria", "configuracion_versionada"}:
+                    continue
+                existe = cur.execute("SELECT to_regclass(%s)", (f"public.{tabla}",)).fetchone()
+                if existe is not None and existe[0] is not None:
+                    cur.execute(f"ALTER TABLE {tabla} OWNER TO {MIGRADOR_USER}")
+                    cur.execute(f"ALTER FUNCTION fn_{tabla}_bloqueada() OWNER TO {MIGRADOR_USER}")
             cur.execute("SELECT to_regclass('public.auditoria') IS NOT NULL")
             fila = cur.fetchone()
             if fila is not None and fila[0]:

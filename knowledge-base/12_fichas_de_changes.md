@@ -712,6 +712,7 @@ dice.
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
 - **Depende de**: 5, 6. **Habilita**: 6b, 8, 10a, 11, 12, 13, 14 y el test de M1.
 - **Bloqueado por**: P26, P27, P28, P38 y P39, y la normativa de la expensa en Mendoza (D-060).
+- **Bloqueado también por la deuda firmada D8 del 4b** (27/10/2026): qué pasa con un crédito de corrección cuya obligación queda en una emisión anulada (retenido como E16 o a favor). Ver la sección "Deuda firmada D8" del proposal del 4b. Además: `anular_emision` toma los candados de las cuentas de su emisión; si el 7 anula y re-emite en la misma transacción, respeta el orden de E2.
 - **Deuda del 1c, con dueño este cambio (D-091, L-011, L-012)**: **F2c es bloqueante antes de
   registrar la primera tarea real del worker** (el encolado del PDF de la expensa, que es la primera
   vez que el worker tiene un efecto real): hoy `asyncio.wait_for` sólo corta la espera, no el hilo que

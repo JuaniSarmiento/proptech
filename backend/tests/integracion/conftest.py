@@ -62,7 +62,7 @@ def base_para_migraciones(
     ) as arranque:
         arranque.execute(
             sql.SQL("CREATE DATABASE {} OWNER {}").format(
-                sql.Identifier(nombre), sql.Identifier(MIGRADOR_USER_DE_SESION)
+                sql.Identifier(nombre), sql.Identifier(postgres_contenedor.username)
             )
         )
         base = BaseDeEdificio(

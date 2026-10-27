@@ -50,12 +50,18 @@ def entorno(base: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("consumidor", ["api", "worker", "alta_inicial", "ejemplo"])
+@pytest.mark.parametrize("tabla", ["configuracion_versionada", "imputacion"])
 def test_cada_proceso_frena(
-    base_del_edificio: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, consumidor: str
+    base_del_edificio: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, consumidor: str, tabla: str
 ) -> None:
+    from psycopg import sql
+
     base = base_del_edificio
     entorno(base, monkeypatch)
-    devolver_configuracion(base)
+    with arranque(base) as c:
+        c.execute(
+            sql.SQL("ALTER TABLE {} OWNER TO proptech_migrador").format(sql.Identifier(tabla))
+        )
     registros: list[dict[str, Any]] = []
     logger = None
     if consumidor == "api":
@@ -74,7 +80,7 @@ def test_cada_proceso_frena(
 
         monkeypatch.setattr(logger, "error", registrar_error)
     try:
-        with pytest.raises(TablasDeSoloAgregarDesprotegidas, match="configuracion_versionada"):
+        with pytest.raises(TablasDeSoloAgregarDesprotegidas, match=tabla):
             if consumidor == "api":
                 with TestClient(crear_app()):
                     pass
@@ -82,7 +88,12 @@ def test_cada_proceso_frena(
                 import proptech_worker.ajustes as worker
 
                 worker = importlib.reload(worker)
-                asyncio.run(worker.on_startup({}))
+                ctx: dict[str, Any] = {}
+                try:
+                    asyncio.run(worker.on_startup(ctx))
+                finally:
+                    if "engine" in ctx:
+                        asyncio.run(worker.on_shutdown(ctx))
             elif consumidor == "alta_inicial":
                 from proptech_core.acceso.aplicacion import alta_inicial
 
@@ -116,7 +127,7 @@ def test_cada_proceso_frena(
         if consumidor in {"api", "worker"}:
             assert len(registros) == 1
             assert registros[0]["evento"] == "arranque_fallido"
-            assert "configuracion_versionada" in registros[0]["causa"]
+            assert tabla in registros[0]["causa"]
             assert "clave" not in registros[0]["causa"]
     finally:
         base.roles("despues")

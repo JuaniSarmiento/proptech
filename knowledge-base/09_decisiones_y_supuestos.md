@@ -425,7 +425,7 @@ Formato: fecha · decisión · alternativa descartada · por qué · quién deci
   IA que sólo propone, extractos subidos a mano, Docker en un VPS.
 - **Quién**: Juani.
 
-## D-040 · Estructura del repositorio con un paquete de dominio compartido
+## D-040 · Estructura del repositorio con un paquete de dominio compartido · *corregida en parte por D-120*
 
 - **Fecha**: 09/10/2026
 - **Decisión**: un solo repositorio con `conocimiento/`, `openspec/`, `web/` (Next.js, con áreas
@@ -2209,6 +2209,33 @@ Reemplazada por D-107 (el método de login; la partición del cambio 2 se conser
     bajarla choca con la FK de `auditoria` (`23503`) y la única vuelta atrás es restaurar el respaldo.
 - **Deuda**: la tabla del 4a en `12_fichas_de_changes.md` (§4, "4a · deuda del cierre").
 - **Quién**: Juani, 26/10/2026 (firma, merge y archivo).
+
+## D-120 · El libro sin puerto de repositorio, y la corrección del 4b sólo como API (26/10/2026) · corrige en parte a D-040
+
+- **Fecha**: 26/10/2026
+- **Contexto**: preguntas P-8 y P-6 de la exploración del motor de cuenta corriente
+  (`openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`, §4.7, §4.9 y §9), que en
+  `10_preguntas_abiertas.md` son P56 (bloqueaba el 4b) y P55 (lo decidía).
+- **Decisión**:
+  1. **P-8 · Sin puerto de repositorio para el libro**: las reglas del libro son funciones puras en
+     `cuenta_corriente/dominio/`, probadas sin base; la persistencia es SQL sobre la `Session` del que
+     llama, en `cuenta_corriente/aplicacion/`, igual que `complejos`. `puertos.py` y `adaptadores/` se
+     usan sólo para un sistema externo o reemplazable (Clerk, la cola, el motor de reglas), nunca para la
+     propia base. **Acota D-040**, que decía que cada módulo tiene `puertos.py` y `adaptadores/`; de paso
+     regulariza a `complejos`, que ya no los tenía.
+  2. **P-6 · La corrección de un error (HU-A9) entra en el 4b sólo como API**: ruta, permiso y contrato
+     de error. La pantalla llega con la de pagos (8), que es la primera pantalla con plata. Por eso el
+     4b no lleva shape de impeccable, y `pesos()`, los errores de campo y la API falsa del formulario
+     (explore 4.7 y 4.11) viajan con el 8.
+- **Descartado**:
+  - Para P-8: lo literal de D-040, un `Protocol` de repositorio con un adaptador SQL y un doble en
+    memoria. La garantía del libro vive en PostgreSQL (triggers, RLS, bloqueo por fila, claves únicas): un
+    doble en memoria daría verdes que la base real rechaza (L-027).
+  - Para P-6: la pantalla de corrección en el 4b, que obligaba a traer `pesos()`, el parser de montos y
+    la API falsa antes de la primera pantalla de pagos, en un change CRITICAL que ya es el más grande del 4.
+- **Costo de revertir**: P-8, un refactor mecánico sin migración; P-6, sumar la pantalla en el 8 como
+  estaba previsto.
+- **Quién**: Juani, 26/10/2026, en conversación con el orquestador.
 
 ## Supuestos
 

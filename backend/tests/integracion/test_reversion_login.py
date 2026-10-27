@@ -61,6 +61,8 @@ def test_downgrade_con_evento_nuevo_falla_sin_tocar_nada(base_del_edificio: Base
         assert auditoria is not None
     base.devolver_tablas_protegidas()
     antes = catalogo(base)
+    with base.conectar_app() as c:
+        revision_antes = c.execute("SELECT version_num FROM alembic_version").fetchone()
     resultado = subprocess.run(
         ["uv", "run", "alembic", "downgrade", "0019"],
         cwd=Path(__file__).resolve().parents[2],
@@ -73,7 +75,7 @@ def test_downgrade_con_evento_nuevo_falla_sin_tocar_nada(base_del_edificio: Base
     assert "fk_auditoria_accion" in resultado.stderr
     comparar(antes, catalogo(base))
     with base.conectar_app() as c, c.transaction():
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0022",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == revision_antes
         fijar_tenant(c, datos.administraciones[0])
         assert c.execute("SELECT id FROM invitacion").fetchall() == [(invitacion,)]
         assert c.execute("SELECT id,accion FROM auditoria").fetchall() == [

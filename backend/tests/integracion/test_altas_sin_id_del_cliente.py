@@ -9,9 +9,8 @@ campo), ninguna fila nueva en la base y el marcador ausente de TODA la
 respuesta (nunca el valor rechazado, L-007).
 
 Una ruta `POST` sin cuerpo de prueba en `_CUERPOS_DE_PRUEBA` hace fallar la
-suite nombrándola: nunca se saltea en silencio (L-019). Hoy sólo existe una
-ruta `POST` bajo `/api` (la asignación del 2a); si una tarea futura agrega
-otra sin pasar por este archivo, este test la detecta y falla.
+suite nombrándola: nunca se saltea en silencio (L-019). Si una tarea futura
+agrega una ruta sin pasar por este archivo, este test la detecta y falla.
 
 Exclusiones, con el motivo (D7, nota N8):
 
@@ -75,6 +74,12 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
 #: que no agregue su entrada acá hace fallar `test_toda_ruta_post_tiene_cuerpo_de_prueba`.
 _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
+    ("/api/complejos/{complejo_id}/correcciones", "POST"): lambda mundo: {
+        "forma": "contra_asiento",
+        "operacion_id": str(uuid.uuid4()),
+        "movimiento_id": str(uuid.uuid4()),
+        "motivo": "Prueba ficticia del barrido de altas",
+    },
     ("/api/complejos/{complejo_id}/categorias", "POST"): lambda mundo: {
         "clave": "nueva",
         "nombre": "Nueva",
