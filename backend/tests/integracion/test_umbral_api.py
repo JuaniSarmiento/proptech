@@ -19,6 +19,8 @@ def test_herencia_inmediatamente_anterior(api_edificio: ApiEdificio) -> None:
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
             "configuracion_inicial": {**CONFIGURACION, "umbral_saldo_chico": "300.00"},
         },
     )
@@ -53,6 +55,8 @@ def test_umbral_invalido_no_escribe(api_edificio: ApiEdificio, umbral: Any, alta
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
             "configuracion_inicial": config,
         }
         if alta
@@ -82,6 +86,8 @@ def test_alta_con_configuracion_inicial(
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
             "configuracion_inicial": config,
         },
     )

@@ -110,6 +110,7 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/resumen", "GET"),
     ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
     ("/api/complejos/{complejo_id}", "GET"),
+    ("/api/complejos/{complejo_id}", "PATCH"),
     ("/api/unidades/{unidad_id}", "GET"),
     ("/api/complejos/{complejo_id}/asignaciones", "POST"),
 }
@@ -379,8 +380,12 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
                 "provincia_id": "50",
                 "departamento_id": "50007",
                 "localidad_id": "50007010",
+                "pisos": 4,
+                "subsuelos": 1,
             },
         )
+    if ruta == "/api/complejos/{complejo_id}" and metodo == "PATCH":
+        return cliente.patch(ruta_resuelta, json={"nombre": "Edificio editado"})
     if ruta.endswith("/sin-saldos-previos"):
         return cliente.post(ruta_resuelta)
     if ruta.endswith("/unidades") or ruta == "/api/unidades/{unidad_id}":

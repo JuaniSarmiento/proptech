@@ -400,6 +400,8 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             departamento_id="50007",
             localidad_id="50007010",
             georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),
@@ -411,7 +413,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             return uid
         if evento == EventoDelPadron.EDITAR_UNIDAD:
             unidades.editar_unidad(
-                sesion, identidad, unidad_id=uid, cambios={"piso": "Otro"}, request_id=uuid.uuid4()
+                sesion, identidad, unidad_id=uid, cambios={"piso": "2"}, request_id=uuid.uuid4()
             )
             return uid
         if evento in (
@@ -493,6 +495,8 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             departamento_id="50007",
             localidad_id="50007010",
             georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
             parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),

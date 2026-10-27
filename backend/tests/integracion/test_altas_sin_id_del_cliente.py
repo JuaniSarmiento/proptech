@@ -118,6 +118,8 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "provincia_id": "50",
         "departamento_id": "50007",
         "localidad_id": "50007010",
+        "pisos": 4,
+        "subsuelos": 1,
     },
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),

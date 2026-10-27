@@ -38,6 +38,8 @@ def crear(sesion: Session, identidad: Identidad) -> UUID:
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=4,
+        subsuelos=1,
         parametros=leer_parametros(str(PARAMETROS)),
         reloj=reloj,
         request_id=uuid4(),

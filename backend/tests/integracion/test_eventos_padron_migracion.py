@@ -19,6 +19,14 @@ def test_vocabulario_y_bajada(base_para_migraciones: BaseDeEdificio) -> None:
     with arranque(base) as c:
         anterior = c.execute("SELECT nombre FROM accion_de_auditoria ORDER BY nombre").fetchall()
         base.migrar("upgrade", "0022")
+        #: `editar_edificio` (D3, tarea 3.7) llega recién en `0025` — acá sólo
+        #: se prueba el vocabulario que `0022` sembró, no el de `EventoDelPadron`
+        #: entero (que ya incluye eventos de migraciones posteriores).
+        vocabulario = {f[0] for f in c.execute("SELECT nombre FROM accion_de_auditoria")}
+        assert {e.value for e in EventoDelPadron if e is not EventoDelPadron.EDITAR_EDIFICIO} <= (
+            vocabulario
+        )
+        base.migrar("upgrade", "0025")
         vocabulario = {f[0] for f in c.execute("SELECT nombre FROM accion_de_auditoria")}
         assert {e.value for e in EventoDelPadron} <= vocabulario
 

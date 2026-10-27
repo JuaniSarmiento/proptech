@@ -79,6 +79,8 @@ def test_familia_de_textos_rechaza_unicode_inseguro_sin_eco(
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
             campo: valor,
         }
         metodo = "POST"

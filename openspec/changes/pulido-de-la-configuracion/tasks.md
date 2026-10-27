@@ -276,17 +276,71 @@
   `piso_valido`), con el límite 60 (no 99, confirmado leyendo el patrón del `design.md` corregido:
   `^(SS[1-5]|PB|[1-9]|[1-5][0-9]|60)$`) y 5 subsuelos verificados en
   `test_limite_maximo_5_subsuelos_y_60_pisos`.
-- [ ] 3.2 `complejo.pisos` (nullable, 1..60) y `complejo.subsuelos` (nullable, 0..5) en el alta y en la
+- [x] 3.2 `complejo.pisos` (nullable, 1..60) y `complejo.subsuelos` (nullable, 0..5) en el alta y en la
   lectura, sin calcularlos de nada — nulo es "sin completar", igual que la ubicación — y rechazo de
   texto por número; verificado con los escenarios "Cantidades fuera de rango", "Cantidades como texto"
   y "Edificio nuevo sin pisos completados".
-- [ ] 3.3 **Test en rojo** de la validación de `piso` **por la API** (no sólo por el dominio, L-017):
+
+  **Implementación (27/10/2026)**: `crear_edificio` (`escritura.py`) exige `pisos`/`subsuelos` en
+  toda alta nueva (nunca `None` ahí, aunque la columna sea nullable para edificios migrados sin
+  completar) y valida el rango 1-60/0-5 también en la capa de aplicación (no sólo en el `Field` del
+  cuerpo de la API), para que un llamador que no pase por HTTP no se escape del límite.
+  `ComplejoLeido` (`lectura.py`) ahora lee las 6 columnas de ubicación+pisos con `SELECT *` armado
+  desde una sola constante (`_COLUMNAS_COMPLEJO`); `ver_complejo` y `mis_edificios` (`complejos.py`)
+  las exponen. `CuerpoEdificio` exige `pisos: int (1-60)` y `subsuelos: int (0-5)` con `strict=True`
+  heredado (rechaza `"4"` por texto). 7 llamadores de `crear_edificio` actualizados (igual que 2.6).
+
+  **Verde (27/10/2026)**: `bash infra/ci/test-backend.sh tests/integracion/test_crear_edificio.py
+  tests/integracion/test_unidades_casos_de_uso.py tests/integracion/test_versiones_casos_de_uso.py
+  tests/integracion/test_auditoria_transaccion.py` → `38 passed in 41.77s`.
+
+  **Hallazgo real (no previsto)**: `test_auditoria_transaccion.py` tenía un caso que editaba
+  `unidad.piso` a `"Otro"` para probar que la edición queda auditada — valor que la migración `0024`
+  (ya comiteada, tarea 3.4) rechaza por el `CHECK ck_unidad_piso`. Se reproduce incluso en el HEAD sin
+  los cambios de esta tarea (confirmado con `git stash`): no es una regresión de 3.2, es deuda de 3.4
+  que esta corrida completó. Se cambió el valor a `"2"` (dentro del vocabulario, distinto del `"1"`
+  original de `DATOS`, para seguir probando que el cambio se detecta).
+
+  `uv run ruff check` + `uv run mypy` sobre los 4 archivos tocados → `All checks passed!` / `Success:
+  no issues found in 4 source files`.
+- [x] 3.3 **Test en rojo** de la validación de `piso` **por la API** (no sólo por el dominio, L-017):
   piso fuera del vocabulario del edificio, texto libre (`"Entrepiso"`, `"pb"`, `" 1"`, `"1°"`, `"SS"`,
   dígito no ASCII), piso faltante o `null` en un alta, y el `INSERT`/`UPDATE` por SQL que el `CHECK`
   tiene que frenar; más un **mutante dirigido** que saca la comparación contra el edificio y deja el
   `CHECK` de forma, para probar que el test vigila la garantía específica y no una capa anterior
   (L-034, L-035). Escenarios "Piso que el edificio no tiene", "Piso como texto libre", "Unidad nueva
   sin piso", "El piso no se sale del vocabulario por SQL".
+
+  **Rojo (27/10/2026)**, `bash infra/ci/test-backend.sh tests/integracion/test_piso_vocabulario_api.py`
+  contra el código de antes de esta tarea: `3 failed, 3 passed in 20.48s` — los 3 que ya pasaban eran
+  "sin piso" (ya rechazado por el campo requerido de Pydantic, sin tocar nada), "dentro del
+  vocabulario" (siempre funcionó) y el `CHECK` por SQL (ya lo daba `0024`). Los 3 rojos: "piso que el
+  edificio no tiene" caía en `201` (se creaba igual, sin validar contra el edificio); "texto libre" y
+  "editar fuera del vocabulario" caían en `500` (`IntegrityError` crudo de PostgreSQL, nunca un 422 —
+  la app no validaba la forma antes de mandarlo a la base).
+
+  **Implementación**: `DatosUnidad.piso` pasa a `str | None` (una unidad migrada por `0024` puede
+  tener el piso sin completar; antes era `str` obligatorio y `_datos()` explotaba al leer esas filas,
+  un bug latente para cualquier edición de una unidad migrada). Validador de forma
+  (`piso_con_forma`, `PATRON_PISO.fullmatch`) en el modelo; `_validar_piso_del_edificio` nueva en
+  `unidades.py`, llamada desde `crear_unidad` (exige no-nulo y dentro del vocabulario de `pisos`/
+  `subsuelos` DEL EDIFICIO, vía `piso_valido` de `compartido/pisos.py`, tarea 3.1) y desde
+  `editar_unidad` (sólo si `"piso"` está entre los campos que cambian; permite `None` sin tocar,
+  cubriendo "Corregir el piso de una unidad migrada"). **JUICIO (confianza media)**: si el edificio
+  todavía no completó `pisos`/`subsuelos` (D3, ambos `None`), se deja pasar lo que ya pasó el chequeo
+  de forma — ese edificio no tiene vocabulario propio todavía; la tarea 3.8 (puesta a punto) es la que
+  cierra ese hueco exigiendo completarlo antes de liquidar.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_piso_vocabulario_api.py` →
+  `6 passed in 18.60s`.
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente la comparación contra el vocabulario del
+  edificio en `_validar_piso_del_edificio` (dejando sólo el chequeo de forma ya existente) — copia
+  temporal, sin commit. Resultado: `1 failed, 5 passed`, cayendo exactamente en
+  `test_piso_que_el_edificio_no_tiene_da_422_sin_el_valor` (el único que depende de la comparación
+  contra el edificio, no sólo de la forma). Revertido; `6 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `unidades.py` → sin hallazgos.
 - [x] 3.4 Migración `0024` (corregida tras revisión DBA): `complejo.pisos`/`subsuelos` nacen
   **nullable, sin calcular nada** de las unidades existentes (D3) — sin `UPDATE` de backfill, sin
   tocar RLS. Después, con el candado de D9 (`LOCK TABLE unidad IN ACCESS EXCLUSIVE MODE` → `ALTER
@@ -362,28 +416,119 @@
   `infra/ci/ensayo-roles.sh`, `infra/ci/humo.sh` — sin resultado ahí —, la semilla y los fixtures de
   test): todos los valores de `piso` usados son `"1"`, dentro del rango nuevo; ningún `INSERT` literal
   se ve afectado por `0024`.
-- [ ] 3.5 Bajar `pisos` o `subsuelos` con unidades afuera se rechaza con 422 **nombrando los
+- [x] 3.5 Bajar `pisos` o `subsuelos` con unidades afuera se rechaza con 422 **nombrando los
   identificadores**; verificado con los escenarios "Bajar pisos con unidades arriba", "Bajar subsuelos
   con cocheras abajo" y "Bajar pisos sin unidades arriba", con el `EXPLAIN` de la consulta que busca las
   unidades afuera pegado en el informe — confirmando que entra por `uq_unidad_identificador` y no hace
   falta índice nuevo (sin esto, "no hace falta índice" es un juicio sin evidencia, no un hecho del
   propose).
-- [ ] 3.6 `PATCH /complejos/{id}`: nombre, ubicación, calle y número, pisos y subsuelos, con
+
+  **Implementación (27/10/2026)**, junto con 3.6/3.7 (acopladas: la validación vive dentro de
+  `editar_edificio`, que no existía antes de esta corrida): `_validar_piso_del_edificio` no se toca;
+  en `escritura.editar_edificio`, si `pisos`/`subsuelos` cambian y ambos están completos, se calcula
+  `vocabulario_de_pisos(pisos=nuevo, subsuelos=nuevo)` (tarea 3.1) y se trae
+  `SELECT identificador, piso FROM unidad WHERE complejo_id=:id AND piso IS NOT NULL` — en Python, no
+  SQL dinámico — comparando cada `piso` contra el vocabulario nuevo; cualquier identificador fuera
+  levanta `EntradaInvalida("pisos"|"subsuelos", "quedarían unidades fuera de rango: <ids>")` (los ids
+  son datos propios del edificio que el mismo administrador ya puede ver, no "el valor del pedido" que
+  L-007 prohíbe repetir).
+
+  **EXPLAIN pegado** (test fijo, `test_explain_de_la_consulta_de_unidades_fuera_de_rango`):
+  ```
+  Index Scan using uq_unidad_identificador on unidad  (cost=0.16..8.18 rows=1 width=64)
+    Index Cond: ((administracion_id = (NULLIF(current_setting('app.administracion_id'::text, true), ''::text))::uuid) AND (complejo_id = '...'::uuid))
+    Filter: (piso IS NOT NULL)
+  ```
+  Entra por `uq_unidad_identificador` (`administracion_id, complejo_id, identificador`): RLS agrega el
+  predicado de `administracion_id`, la consulta agrega `complejo_id` — los dos primeros componentes
+  del índice compuesto. No hace falta índice nuevo, confirmado, no supuesto.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_editar_edificio.py` →
+  `13 passed in 20.54s` (incluye el `EXPLAIN` como test permanente, no sólo evidencia de una vez).
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente el `if` que dispara el chequeo (`if False: ...`)
+  — copia temporal, sin commit. Resultado: `2 failed, 11 passed`, cayendo exactamente en
+  `test_bajar_pisos_con_unidades_arriba_da_422_con_identificadores` y
+  `test_bajar_subsuelos_con_cocheras_abajo_da_422_con_identificadores`. Revertido; `13 passed` de
+  nuevo.
+- [x] 3.6 `PATCH /complejos/{id}`: nombre, ubicación, calle y número, pisos y subsuelos, con
   `Accion.CONFIGURAR_PADRON` (404 fuera de alcance, 403 sin permiso, en ese orden) y `CuerpoDeEdicion`
   (un campo puede faltar, ninguno puede ser `null`); verificado con los escenarios "Corregir la
   localidad", "Completar la ubicación de un edificio viejo", "Anular un campo obligatorio", "Editar un
   edificio fuera del alcance", "Editar sin permiso de configurar el padrón" y "Cambiar la administración
   por la edición".
-- [ ] 3.7 Auditoría de `editar_edificio`: evento nuevo en `EventoDelPadron`, fila nueva del vocabulario
+
+  **Implementación**: `CuerpoEdicionEdificio(CuerpoDeEdicion)` en `complejos.py` (todos los campos
+  opcionales, `CuerpoDeEdicion.no_nulo` prohíbe `null` explícito, `extra="forbid"` heredado rechaza
+  `administracion_id`/`estado_migracion` con 422 automático). Ruta `modificar_edificio` reusa
+  `_edificio_autorizado(..., Accion.CONFIGURAR_PADRON)` (mismo orden 404→403 que el resto de
+  `complejos.py`, D7). `escritura.editar_edificio` hace el trabajo real: `_EdicionEdificio` (modelo
+  interno, no confía en que el llamador HTTP ya validó) valida forma; el trío de ubicación exige las
+  tres o ninguna (mismo `CHECK` que `0023`) contra `Georef`, nunca contra el pedido.
+
+  **Verde**: incluido en los `13 passed` de 3.5 (mismo archivo de test).
+
+  `uv run ruff check` + `uv run mypy` sobre `escritura.py`, `complejos.py`, `auditoria.py`,
+  `eventos.py` → `All checks passed!` / `Success: no issues found in 3 source files` /
+  `Success: no issues found in 1 source file`.
+- [x] 3.7 Auditoría de `editar_edificio`: evento nuevo en `EventoDelPadron`, fila nueva del vocabulario
   en la migración `0025`, detalle con el edificio y los nombres de los campos cambiados y nada más
   (D-016); verificado con los escenarios "Editar la ubicación", "La edición falla", "Edición sin
   cambios" y "El evento de editar el edificio existe en la base".
-- [ ] 3.8 El séptimo paso de la puesta a punto (ubicación completa, `pisos`/`subsuelos` completos y
+
+  **Implementación**: `EventoDelPadron.EDITAR_EDIFICIO` nuevo; migración `0025` (`0025_editar_edificio
+  .py`, sólo el vocabulario — `grupo_de_reparto.activo` y el trigger de 4.3 se agregan en esa tarea,
+  no acá) inserta `"editar_edificio"` en `accion_de_auditoria`. `_DetalleEditarEdificio` nuevo en
+  `auditoria.py` (`complejo_id` + `campos` de los 7 nombres editables, `extra="forbid"`: nunca un
+  valor). `editar_edificio` calcula `campos` comparando `entrada` contra `anterior` (mismo patrón que
+  `editar_unidad`/`editar_categoria`) y sólo llama `registrar(...)` — dentro de la misma `transaccion`
+  — si `campos` no está vacío; una excepción antes de esa línea (trío incoherente, fuera de rango)
+  revierte la transacción entera sin dejar fila.
+
+  **Hallazgo real (no previsto)**: `test_eventos_padron_migracion.py::test_vocabulario_y_bajada`
+  afirmaba `{e.value for e in EventoDelPadron} <= vocabulario` justo después de migrar a `0022` — con
+  `EDITAR_EDIFICIO` agregado al enum pero sembrado recién en `0025`, esa aserción ya no es cierta en
+  ese punto de la migración. Se dividió en dos aserciones (vocabulario de `0022` sin
+  `EDITAR_EDIFICIO`, vocabulario de `0025` completo), preservando el resto del test (incluida la FK
+  23503 de "punto de no retorno").
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_eventos_padron_migracion.py
+  tests/integracion/test_editar_edificio.py` → `14 passed in ~37s` (12+1 de `test_editar_edificio.py`
+  más `test_vocabulario_y_bajada`; el 13° de `test_editar_edificio.py`, el `EXPLAIN`, va en 3.5).
+- [x] 3.8 El séptimo paso de la puesta a punto (ubicación completa, `pisos`/`subsuelos` completos y
   ningún piso de unidad sin completar), con el conteo de unidades por corregir y el `EXPLAIN` de esa
   consulta pegado (filtra por `(administracion_id, complejo_id)`, mismo prefijo de índice que 3.5);
   verificado con los escenarios "Edificio recién creado", "Edificio migrado sin ubicación", "Edificio
   migrado sin pisos completados", "Unidad migrada con el piso sin completar" y "Edificio listo para
   liquidar" de `edificios-y-unidades`.
+
+  **Implementación (27/10/2026)**: paso `"ubicacion"` nuevo en `lectura.resumen_edificio`, primero en
+  el diccionario `pasos` (los 7 pasos ahora, no 6). `hecho` exige el trío completo, `pisos`/
+  `subsuelos` completos y `unidades_sin_piso_completo == 0` (cuenta por `SELECT count(*) FROM unidad
+  WHERE complejo_id=:id AND piso IS NULL`). El resumen ahora expone también `provincia_id`,
+  `departamento_id`, `localidad_id`, `calle_y_numero`, `pisos`, `subsuelos` y
+  `unidades_sin_piso_completo` (no sólo `nombre`/`localidad` como antes de 3.8).
+
+  **EXPLAIN pegado** (test fijo `test_explain_de_unidades_sin_piso_completo`): mismo plan que 3.5,
+  `Index Scan using uq_unidad_identificador`, mismo prefijo `(administracion_id, complejo_id)`.
+
+  **Hallazgo real (no previsto)**: dos tests pre-existentes (`test_edificio_recien_creado`,
+  `test_edificio_listo_para_liquidar`) afirmaban el diccionario `pasos` completo con 6 claves; se
+  actualizaron agregando `"ubicacion": "hecho"` (ambos escenarios nacen con ubicación y pisos
+  completos, sin unidades con el piso sin completar). El fixture de contrato `resumen.json` se
+  regeneró con `PROPTECH_ACTUALIZAR_FIXTURES=1` (cambio de forma deliberado, igual que 3.2 con
+  `edificio.json`).
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_resumen_puesta_a_punto.py
+  tests/integracion/test_contrato_web.py` → `20 passed in 41.64s`.
+
+  **Mutante dirigido (L-035)**: paso `"ubicacion"` fijado a `"hecho"` siempre — copia temporal, sin
+  commit. Resultado: `3 failed, 9 passed`, cayendo exactamente en los tres tests que dependen del
+  paso nuevo (`test_edificio_migrado_sin_ubicacion`, `test_edificio_migrado_sin_pisos_completados`,
+  `test_unidad_migrada_con_el_piso_sin_completar`). Revertido; `12 passed` de nuevo (11 + el `EXPLAIN`).
+
+  `uv run ruff check` + `uv run mypy` sobre `lectura.py` → `All checks passed!` / `Success: no issues
+  found in 1 source file`.
 
 ## 4. Grupos desactivables y claves autogeneradas
 

@@ -40,10 +40,18 @@ def test_ver_edificio_y_resumen_con_estado_e_informe(api_edificio: ApiEdificio) 
     assert resumen.json() == {
         "nombre": "Edificio API",
         "localidad": "Mendoza",
+        "provincia_id": "50",
+        "departamento_id": "50007",
+        "localidad_id": "50007010",
+        "calle_y_numero": None,
+        "pisos": 4,
+        "subsuelos": 1,
         "cantidad_unidades": 2,
+        "unidades_sin_piso_completo": 0,
         "estado_migracion": "pendiente",
         "informe": {"suma": "1.000000", "diferencia": "0.000000", "estado": "ok"},
         "pasos": {
+            "ubicacion": "hecho",
             "unidades": "hecho",
             "coeficientes": "hecho",
             "grupos": "hecho",
@@ -67,6 +75,8 @@ def test_alta_copia_parametros_del_arranque_sin_releer_el_archivo(
             "provincia_id": "50",
             "departamento_id": "50021",
             "localidad_id": "5002101001",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert respuesta.status_code == 201
@@ -106,6 +116,8 @@ def test_alta_con_configuracion_inicial_y_id_propio_rechazado(api_edificio: ApiE
         "provincia_id": "50",
         "departamento_id": "50007",
         "localidad_id": "50007010",
+        "pisos": 4,
+        "subsuelos": 1,
         "configuracion_inicial": configuracion,
     }
     antes = api.filas("SELECT id FROM complejo ORDER BY id")
@@ -138,6 +150,8 @@ def test_perfiles_por_edificio_no_crean_ni_confirman_con_permiso_faltante(
                 "provincia_id": "50",
                 "departamento_id": "50007",
                 "localidad_id": "50007010",
+                "pisos": 4,
+                "subsuelos": 1,
             },
             "crear_edificio",
         ),
@@ -160,7 +174,10 @@ def test_confirmar_una_vez_audita_y_dos_veces_da_409_sin_volver_atras(
     assert segunda.status_code == 409
     assert segunda.json() == {"detail": "conflicto", "campo": "estado_migracion"}
     for estado in ("pendiente", "confirmada"):
-        assert api.cliente.patch(api.ruta(), json={"estado_migracion": estado}).status_code == 405
+        # D3 (tarea 3.6): `PATCH /complejos/{id}` existe ahora, pero
+        # `estado_migracion` no es un campo declarado — `extra="forbid"` lo
+        # rechaza con 422 (antes de 3.6 era 405, sin ruta alguna).
+        assert api.cliente.patch(api.ruta(), json={"estado_migracion": estado}).status_code == 422
         assert api.cliente.post(api.ruta(f"/estado-de-migracion/{estado}")).status_code == 404
     assert api.filas(
         "SELECT accion FROM auditoria WHERE entidad_id=%s ORDER BY id", (api.edificio,)
@@ -244,6 +261,8 @@ def test_calle_invalida_da_422_sin_el_valor(api_edificio: ApiEdificio, calle_y_n
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
             "calle_y_numero": calle_y_numero,
         },
     )

@@ -112,6 +112,8 @@ def test_administrador_principal_confirma_sin_asignacion_y_no_crea_edificio(
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert rechazo.status_code == 403
@@ -169,6 +171,8 @@ def test_contador_principal_lista_tres_y_lee_cualquier_padron(perfiles: ApiEdifi
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert alta.status_code == 201
@@ -215,6 +219,8 @@ def test_administrador_en_a_auxiliar_en_b_no_extiende_permiso_ni_alcanza_c(
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert alta.status_code == 201
@@ -327,6 +333,8 @@ def test_lectores_no_escriben_nada_por_ninguna_ruta(api_edificio: ApiEdificio, p
             "provincia_id": "50",
             "departamento_id": "50007",
             "localidad_id": "50007010",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert r.status_code == 403

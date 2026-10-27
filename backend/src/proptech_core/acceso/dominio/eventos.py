@@ -22,3 +22,4 @@ class EventoDelPadron(StrEnum):
     FIJAR_UNIDADES = "fijar_unidades"
     EDITAR_CATEGORIA = "editar_categoria"
     REORDENAR_CATEGORIAS = "reordenar_categorias"
+    EDITAR_EDIFICIO = "editar_edificio"

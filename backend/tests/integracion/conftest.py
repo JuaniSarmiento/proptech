@@ -232,6 +232,8 @@ def api_edificio(
                     departamento_id="50007",
                     localidad_id="50007010",
                     georef=georef,
+                    pisos=4,
+                    subsuelos=1,
                     parametros=parametros,
                     reloj=lambda: datetime.now(UTC),
                     request_id=uuid4(),

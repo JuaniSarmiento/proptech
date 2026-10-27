@@ -70,6 +70,8 @@ def test_nombre_y_calle_de_edificio_sin_espacios_al_borde(api_edificio: ApiEdifi
             "departamento_id": "50007",
             "localidad_id": "50007010",
             "calle_y_numero": "  Alsina 123  ",
+            "pisos": 4,
+            "subsuelos": 1,
         },
     )
     assert alta.status_code == 201, alta.text

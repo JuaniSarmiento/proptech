@@ -81,9 +81,9 @@ def test_migracion_futura_revierte_todo(
     raiz = Path(__file__).resolve().parents[2]
     copia = tmp_path / "migraciones"
     shutil.copytree(raiz / "migraciones", copia)
-    (copia / "versions" / "0023_sonda.py").write_text("""from alembic import op
-revision = '0023'
-down_revision = '0022'
+    (copia / "versions" / "0026_sonda.py").write_text("""from alembic import op
+revision = '0026'
+down_revision = '0025'
 def upgrade():
     op.execute('CREATE TABLE sonda_atomica (id int)')
     op.execute('ALTER TABLE configuracion_versionada ADD COLUMN no_debe_quedar int')
@@ -106,4 +106,4 @@ def downgrade():
     assert r.returncode != 0 and "must be owner" in r.stderr
     with arranque(base) as c:
         assert c.execute("SELECT to_regclass('public.sonda_atomica')").fetchone() == (None,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0022",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0025",)

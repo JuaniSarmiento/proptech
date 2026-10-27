@@ -32,6 +32,8 @@ def test_tasa_fuera_de_rango_nombra_la_tasa_y_el_rango(
                 "provincia_id": "50",
                 "departamento_id": "50007",
                 "localidad_id": "50007010",
+                "pisos": 4,
+                "subsuelos": 1,
                 "configuracion_inicial": cuerpo,
             },
         )

@@ -36,6 +36,7 @@ from proptech_core.complejos.aplicacion.escritura import (
     confirmar_sin_saldos_previos,
     crear_edificio,
     crear_version_de_configuracion,
+    editar_edificio,
     hoy_en_mendoza,
 )
 from proptech_core.complejos.aplicacion.lectura import (
@@ -125,6 +126,10 @@ class CuerpoEdificio(CuerpoDeAlta):
     calle_y_numero: (
         Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
     ) = None
+    #: D3 (tarea 3.2): un edificio nuevo trae las dos cantidades siempre;
+    #: `strict=True` (heredado de `CuerpoDeAlta`) ya rechaza `"4"` por texto.
+    pisos: Annotated[int, Field(ge=1, le=60)]
+    subsuelos: Annotated[int, Field(ge=0, le=5)]
     configuracion_inicial: ConfiguracionEdificio | None = None
 
 
@@ -141,6 +146,25 @@ class CuerpoDeEdicion(CuerpoDeAlta):
         if valor is None:
             raise ValueError("el campo no admite null")
         return valor
+
+
+class CuerpoEdicionEdificio(CuerpoDeEdicion):
+    """D3 (tarea 3.6): sin `administracion_id` ni `estado_migracion` — ni
+    siquiera declarados, `extra="forbid"` (heredado) los rechaza con 422
+    (escenario "Cambiar la administración por la edición")."""
+
+    nombre: (
+        Annotated[str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)]
+        | None
+    ) = None
+    provincia_id: str | None = None
+    departamento_id: str | None = None
+    localidad_id: str | None = None
+    calle_y_numero: (
+        Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
+    ) = None
+    pisos: Annotated[int, Field(ge=1, le=60)] | None = None
+    subsuelos: Annotated[int, Field(ge=0, le=5)] | None = None
 
 
 class CuerpoEdicionUnidad(CuerpoDeEdicion):
@@ -229,7 +253,7 @@ class CuerpoVersion(ConfiguracionEdificio, CuerpoDeAlta):
 def mis_edificios(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | None]]:
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
     if not asignaciones:
         raise HTTPException(status_code=403, detail="sin_permiso")
@@ -261,6 +285,8 @@ def alta_edificio(
         departamento_id=cuerpo.departamento_id,
         localidad_id=cuerpo.localidad_id,
         calle_y_numero=cuerpo.calle_y_numero,
+        pisos=cuerpo.pisos,
+        subsuelos=cuerpo.subsuelos,
         georef=request.app.state.georef,
         parametros=request.app.state.parametros,
         reloj=lambda: datetime.now(UTC),
@@ -295,12 +321,33 @@ def confirmar_edificio(
     return {"id": str(complejo_id), "estado_migracion": "sin_saldos_previos"}
 
 
+@router.patch("/complejos/{complejo_id}")
+def modificar_edificio(
+    complejo_id: UUID,
+    cuerpo: CuerpoEdicionEdificio,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    editar_edificio(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        cambios=cuerpo.model_dump(exclude_unset=True),
+        georef=request.app.state.georef,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"id": str(complejo_id)}
+
+
 @router.get("/complejos/{complejo_id}")
 def ver_complejo(
     complejo_id: UUID,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     complejo = cargar_complejo(sesion, complejo_id)
     if complejo is None:
         raise _no_encontrado()
@@ -312,6 +359,12 @@ def ver_complejo(
         "administracion_id": str(complejo.administracion_id),
         "nombre": complejo.nombre,
         "localidad": complejo.localidad,
+        "provincia_id": complejo.provincia_id,
+        "departamento_id": complejo.departamento_id,
+        "localidad_id": complejo.localidad_id,
+        "calle_y_numero": complejo.calle_y_numero,
+        "pisos": complejo.pisos,
+        "subsuelos": complejo.subsuelos,
     }
 
 

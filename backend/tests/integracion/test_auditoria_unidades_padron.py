@@ -53,7 +53,7 @@ def test_edicion_normalizada_solo_guarda_cambios(api_edificio: ApiEdificio) -> N
     r = api.cliente.patch(ruta, json={"coeficiente": "0.05", "piso": "1"})
     assert r.status_code == 200
     assert filas(api, uid, "editar_unidad") == []
-    r = api.cliente.patch(ruta, json={"coeficiente": "0.060000", "piso": "PRIVADO_PISO"})
+    r = api.cliente.patch(ruta, json={"coeficiente": "0.060000", "piso": "SS1"})
     assert r.status_code == 200
     registros = filas(api, uid, "editar_unidad")
     assert len(registros) == 1
@@ -63,7 +63,7 @@ def test_edicion_normalizada_solo_guarda_cambios(api_edificio: ApiEdificio) -> N
         "campos": ["coeficiente", "piso"],
         "coeficiente": {"anterior": "0.050000", "nuevo": "0.060000"},
     }
-    assert "PRIVADO_PISO" not in str(detalle)
+    assert "SS1" not in str(detalle)
 
 
 def test_conflicto_no_deja_auditoria(api_edificio: ApiEdificio) -> None:
@@ -92,7 +92,7 @@ def test_falla_auditoria_revierte_y_no_filtra(
     monkeypatch.setattr(unidades, "registrar", fallar)
     cliente = TestClient(api.app, raise_server_exceptions=False)
     try:
-        r = cliente.patch(f"/api/unidades/{uid}", json={"piso": "PRIVADO_PISO"})
+        r = cliente.patch(f"/api/unidades/{uid}", json={"piso": "SS1"})
     finally:
         cliente.close()
     assert invocado == [True]

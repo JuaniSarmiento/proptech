@@ -82,6 +82,19 @@ _PROVINCIA_EJEMPLO = "50"
 _DEPARTAMENTO_EJEMPLO = "50007"
 _LOCALIDAD_EJEMPLO = "50007010"
 
+#: DEUDA (3c, tarea 3.2, a saldar en la 6.5): la semilla todavía no tiene
+#: columnas `pisos`/`subsuelos` para el edificio — fijas acá con los
+#: valores reales que la propia semilla usa hoy (pisos hasta "4",
+#: subsuelo "SS"): 4 pisos, 1 subsuelo. La 6.5 las mueve al YAML.
+_PISOS_EJEMPLO = 4
+_SUBSUELOS_EJEMPLO = 1
+#: DEUDA (3c, tarea 3.3, a saldar en la 6.5): la semilla todavía escribe
+#: el subsuelo como `"SS"` sin número (D3 exige `SS1..SS<subsuelos>`); la
+#: 6.5 lo numera en el propio YAML ("el subsuelo numerado en las tres
+#: cocheras y la baulera"). Hasta entonces, este mapeo adapta el dato de
+#: la semilla al vocabulario nuevo sólo en memoria, sin tocar el archivo.
+_MAPEO_PISO_SEMILLA_LEGADO = {"SS": "SS1"}
+
 
 def _ruta_georef_por_defecto() -> Path:
     base = Path(Configuracion().proptech_parametros).resolve().parent
@@ -168,6 +181,8 @@ def _crear_desde_cero(
         departamento_id=_DEPARTAMENTO_EJEMPLO,
         localidad_id=_LOCALIDAD_EJEMPLO,
         georef=georef,
+        pisos=_PISOS_EJEMPLO,
+        subsuelos=_SUBSUELOS_EJEMPLO,
         parametros=parametros,
         reloj=reloj,
         request_id=request_id,
@@ -183,7 +198,7 @@ def _crear_desde_cero(
             datos={
                 "identificador": unidad.identificador,
                 "tipo": unidad.tipo,
-                "piso": unidad.piso,
+                "piso": _MAPEO_PISO_SEMILLA_LEGADO.get(unidad.piso, unidad.piso),
                 "coeficiente": str(unidad.coeficiente),
                 "superficie_m2": unidad.superficie_m2,
             },
@@ -260,9 +275,10 @@ def _comparar_o_fallar(sesion: Session, complejo_id: UUID, semilla: Semilla) -> 
     else:
         for identificador, unidad in esperadas.items():
             fila = existentes[identificador]
+            piso_esperado = _MAPEO_PISO_SEMILLA_LEGADO.get(unidad.piso, unidad.piso)
             if (
                 fila["tipo"] != unidad.tipo
-                or fila["piso"] != unidad.piso
+                or fila["piso"] != piso_esperado
                 or Decimal(fila["coeficiente"]) != unidad.coeficiente
                 or Decimal(fila["superficie_m2"]) != unidad.superficie_m2.decimal
             ):

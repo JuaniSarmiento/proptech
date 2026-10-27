@@ -33,6 +33,8 @@ _UBICACION_VALIDA = {
     "provincia_id": "50",
     "departamento_id": "50007",
     "localidad_id": "50007010",
+    "pisos": 4,
+    "subsuelos": 1,
 }
 
 

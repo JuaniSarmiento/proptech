@@ -118,6 +118,20 @@ class _DetalleReordenarCategorias(_DetalleAsignarEdificio):
     campos: list[Literal["orden"]]
 
 
+class _DetalleEditarEdificio(_DetalleAsignarEdificio):
+    campos: list[
+        Literal[
+            "nombre",
+            "provincia_id",
+            "departamento_id",
+            "localidad_id",
+            "calle_y_numero",
+            "pisos",
+            "subsuelos",
+        ]
+    ]
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_DetalleBase]] = {
@@ -128,6 +142,7 @@ _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_Detal
     EventoDelPadron.FIJAR_UNIDADES: _DetalleFijarUnidades,
     EventoDelPadron.EDITAR_CATEGORIA: _DetalleEditarCategoria,
     EventoDelPadron.REORDENAR_CATEGORIAS: _DetalleReordenarCategorias,
+    EventoDelPadron.EDITAR_EDIFICIO: _DetalleEditarEdificio,
     EventoDeAcceso.DAR_DE_ALTA_VECINO: _DetallePersonaAsignacion,
     EventoDeAcceso.INVITAR_PERSONAL: _DetalleInvitarPersonal,
     EventoDeAcceso.INGRESO_FALLIDO: _DetalleIngresoFallido,

@@ -125,6 +125,8 @@ def test_hoy_es_mendoza_alrededor_de_medianoche(
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=4,
+        subsuelos=1,
         parametros=parametros,
         reloj=lambda: datetime(2026, 10, 30, 12, tzinfo=UTC),
         request_id=uuid4(),

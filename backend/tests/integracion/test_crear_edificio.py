@@ -25,6 +25,9 @@ GEOREF = leer_georef(str(Path(__file__).resolve().parents[3] / "config/georef"))
 PROVINCIA_ID = "50"
 DEPARTAMENTO_ID = "50007"
 LOCALIDAD_ID = "50007010"
+#: D3 (tarea 3.2): un alta nueva siempre trae las dos cantidades.
+PISOS = 4
+SUBSUELOS = 1
 
 
 def reloj() -> datetime:
@@ -44,6 +47,8 @@ def test_alta_copia_todos_los_valores(
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=PISOS,
+        subsuelos=SUBSUELOS,
         parametros=parametros,
         reloj=reloj,
         request_id=request,
@@ -139,6 +144,8 @@ def test_categorias_con_nombre_repetido_sin_mayusculas_da_conflicto_no_500(
             departamento_id=DEPARTAMENTO_ID,
             localidad_id=LOCALIDAD_ID,
             georef=GEOREF,
+            pisos=PISOS,
+            subsuelos=SUBSUELOS,
             parametros=parametros,
             reloj=reloj,
             request_id=uuid4(),
@@ -170,6 +177,8 @@ def test_configuracion_inicial_y_parametros_nuevos_no_alteran_el_primero(
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=PISOS,
+        subsuelos=SUBSUELOS,
         parametros=parametros,
         configuracion_inicial=inicial,
         reloj=reloj,
@@ -188,6 +197,8 @@ def test_configuracion_inicial_y_parametros_nuevos_no_alteran_el_primero(
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=PISOS,
+        subsuelos=SUBSUELOS,
         parametros=otros,
         reloj=reloj,
         request_id=uuid4(),
@@ -220,6 +231,8 @@ def test_falla_despues_de_auditar_revierte_todo(
             departamento_id=DEPARTAMENTO_ID,
             localidad_id=LOCALIDAD_ID,
             georef=GEOREF,
+            pisos=PISOS,
+            subsuelos=SUBSUELOS,
             parametros=leer_parametros(str(PARAMETROS)),
             reloj=reloj,
             request_id=uuid4(),
@@ -267,6 +280,8 @@ def test_trio_incoherente_rechaza_sin_crear_nada(
             departamento_id=departamento_id,
             localidad_id=localidad_id,
             georef=GEOREF,
+            pisos=PISOS,
+            subsuelos=SUBSUELOS,
             parametros=leer_parametros(str(PARAMETROS)),
             reloj=reloj,
             request_id=uuid4(),
@@ -290,6 +305,8 @@ def test_localidad_se_escribe_derivada_del_nombre_de_georef(
         departamento_id="50021",
         localidad_id="5002101001",
         georef=GEOREF,
+        pisos=PISOS,
+        subsuelos=SUBSUELOS,
         calle_y_numero="Alsina 123",
         parametros=leer_parametros(str(PARAMETROS)),
         reloj=reloj,
@@ -316,6 +333,8 @@ def test_alta_sin_calle_queda_vacia(
         departamento_id=DEPARTAMENTO_ID,
         localidad_id=LOCALIDAD_ID,
         georef=GEOREF,
+        pisos=PISOS,
+        subsuelos=SUBSUELOS,
         parametros=leer_parametros(str(PARAMETROS)),
         reloj=reloj,
         request_id=uuid4(),
@@ -326,3 +345,65 @@ def test_alta_sin_calle_queda_vacia(
         ).scalar_one()
         is None
     )
+
+
+@pytest.mark.parametrize(
+    ("pisos", "subsuelos", "campo_esperado"),
+    [
+        (61, SUBSUELOS, "pisos"),
+        (0, SUBSUELOS, "pisos"),
+        (-1, SUBSUELOS, "pisos"),
+        (PISOS, -1, "subsuelos"),
+        (PISOS, 6, "subsuelos"),
+    ],
+)
+def test_pisos_o_subsuelos_fuera_de_rango_rechaza_sin_crear_nada(
+    sesion_edificio: Session,
+    identidad_edificio: Identidad,
+    pisos: int,
+    subsuelos: int,
+    campo_esperado: str,
+) -> None:
+    """Escenario "Cantidades fuera de rango" de `edificios-y-unidades`."""
+    with pytest.raises(EntradaInvalida) as exc_info:
+        escritura.crear_edificio(
+            sesion_edificio,
+            identidad_edificio,
+            nombre="Fuera de rango",
+            provincia_id=PROVINCIA_ID,
+            departamento_id=DEPARTAMENTO_ID,
+            localidad_id=LOCALIDAD_ID,
+            georef=GEOREF,
+            pisos=pisos,
+            subsuelos=subsuelos,
+            parametros=leer_parametros(str(PARAMETROS)),
+            reloj=reloj,
+            request_id=uuid4(),
+        )
+    assert exc_info.value.campo == campo_esperado
+    assert sesion_edificio.execute(text("SELECT count(*) FROM complejo")).scalar_one() == 0
+
+
+def test_pisos_y_subsuelos_se_guardan_completos(
+    sesion_edificio: Session, identidad_edificio: Identidad
+) -> None:
+    """Escenario "Edificio nuevo sin pisos completados" (contraparte: acá se
+    confirma que, cuando SÍ se mandan, quedan completos — nunca `NULL` para
+    un alta nueva)."""
+    edificio = escritura.crear_edificio(
+        sesion_edificio,
+        identidad_edificio,
+        nombre="Con pisos",
+        provincia_id=PROVINCIA_ID,
+        departamento_id=DEPARTAMENTO_ID,
+        localidad_id=LOCALIDAD_ID,
+        georef=GEOREF,
+        pisos=12,
+        subsuelos=2,
+        parametros=leer_parametros(str(PARAMETROS)),
+        reloj=reloj,
+        request_id=uuid4(),
+    )
+    assert sesion_edificio.execute(
+        text("SELECT pisos, subsuelos FROM complejo WHERE id=:id"), {"id": edificio}
+    ).one() == (12, 2)
