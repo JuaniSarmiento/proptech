@@ -72,11 +72,36 @@
   found in 2 source files`. Implementación en
   `backend/src/proptech_core/compartido/georef.py` (`Georef`, `leer_georef`, `departamentos_de`,
   `localidades_de`, `existe_el_trio`, `nombre_de_localidad`).
-- [ ] 2.3 **Test en rojo** de la coherencia del trío contra la API real: localidad de otro departamento,
+- [x] 2.3 **Test en rojo** de la coherencia del trío contra la API real: localidad de otro departamento,
   departamento de otra provincia, id inexistente, trío incompleto y el trío coherente; más un **mutante
   dirigido** que saca la comparación de padres y tiene que poner el test en rojo (L-035, L-013: copia
   temporal, sin commit, declarado en el informe). Escenarios "Localidad de otro departamento",
   "Departamento de otra provincia", "Id que no existe", "Trío incompleto", "Trío coherente".
+
+  **JUICIO (confianza media)**: "contra la API real" se interpreta como "contra el archivo real de
+  `config/georef/`" (no fixtures sintéticos), no contra un endpoint HTTP — el endpoint y el cuerpo que
+  exigen el trío "incompleto" (Pydantic, campo requerido) llegan en 2.5/2.6; acá sólo existe la función
+  de coherencia (`Georef.campo_incoherente`) que esos endpoints van a usar. El escenario "Trío
+  incompleto" se cubre en la tarea 2.6 (nivel API), no acá (nivel de la función pura).
+
+  **Rojo (26/10/2026)**, con `campo_incoherente` estubeado a `raise NotImplementedError`:
+  `bash infra/ci/test-backend.sh tests/unitarios/test_georef_coherencia_real.py` →
+  `7 failed in 0.34s`, los 7 en `NotImplementedError`.
+
+  **Verde**: implementado `Georef.campo_incoherente` en
+  `backend/src/proptech_core/compartido/georef.py` (orden provincia → departamento → localidad, nombra
+  el primer campo que no encadena). `bash infra/ci/test-backend.sh
+  tests/unitarios/test_georef_coherencia_real.py tests/unitarios/test_georef.py` →
+  `18 passed in 0.22s`.
+
+  **Mutante dirigido (L-035, L-013)**: se sacó temporalmente la comparación contra el padre
+  (`departamento.provincia_id != provincia_id` y `localidad.departamento_id != departamento_id`),
+  dejando sólo la existencia de cada id — copia temporal, sin commit. Resultado:
+  `3 failed, 4 passed in 0.28s`, cayendo exactamente en
+  `test_localidad_de_otro_departamento`, `test_departamento_de_otra_provincia` y
+  `test_ningun_mensaje_repite_el_id_recibido` (las tres que dependen de la comparación de padres, no
+  sólo de existencia). Revertido inmediatamente después; `uv run ruff check` + `uv run mypy` → sin
+  hallazgos.
 - [ ] 2.4 Migración `0023`: las cuatro columnas de ubicación, el `CHECK` "los tres o ninguno" y
   `complejo.localidad` a nullable; verificar la subida y la bajada sobre una copia con el edificio de
   ejemplo cargado (Migration Plan, paso 1).

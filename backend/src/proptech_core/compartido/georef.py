@@ -82,6 +82,24 @@ class Georef:
         localidad = self._localidad(localidad_id)
         return None if localidad is None else localidad.nombre
 
+    def campo_incoherente(
+        self, provincia_id: str, departamento_id: str, localidad_id: str
+    ) -> str | None:
+        """`None` si el trío es coherente; si no, el nombre del primer campo
+        que no encadena, en el orden provincia → departamento → localidad
+        (D2, tarea 2.3): "provincia_id", "departamento_id" o "localidad_id".
+        La comparación de padres (no sólo la existencia de cada id) es la
+        garantía específica que este método agrega sobre `existe_el_trio`."""
+        if not self._provincia_existe(provincia_id):
+            return "provincia_id"
+        departamento = self._departamento(departamento_id)
+        if departamento is None or departamento.provincia_id != provincia_id:
+            return "departamento_id"
+        localidad = self._localidad(localidad_id)
+        if localidad is None or localidad.departamento_id != departamento_id:
+            return "localidad_id"
+        return None
+
 
 def _leer_lista_json(ruta: Path) -> list[dict[str, object]]:
     try:
