@@ -234,3 +234,19 @@ Revertir: quitar la reasignación de funciones en `antes` (la de `despues` se co
 | Firmante | Fecha | Alcance aprobado |
 |---|---|---|
 | Juani | 27/10/2026 | E11 tal como está escrita arriba |
+
+### Enmienda E11 · Las funciones protegidas nunca pasan al migrador (RE11-01, RE11-02)
+
+El rompedor mostró que reasignar al migrador TODAS las funciones de `public` en `roles antes` abre una
+ventana: mientras dura la migración, el migrador puede reemplazar la función que bloquea una tabla
+protegida por una que llama a una auxiliar suya, y después de `roles despues` desactivar el bloqueo
+cambiando sólo la auxiliar, con el chequeo de arranque en verde. Corrección: `roles antes` reasigna
+al migrador sólo las funciones que NO pertenecen a triggers de las tablas protegidas
+(`TABLAS_DE_SOLO_AGREGAR`); las de las tablas protegidas quedan siempre del rol de arranque. Además, el
+chequeo verifica que ninguna función de un trigger protegido sea del migrador, en ningún momento.
+Reemplaza a "reasigna también las funciones del esquema public" de E11. Descartado: dejar E11 tal como
+estaba (rompe la garantía de sólo agregar del 4a/4b).
+
+| Firmante | Fecha | Alcance aprobado |
+|---|---|---|
+| Juani | 27/10/2026 | Enmienda E11 tal como está escrita arriba |
