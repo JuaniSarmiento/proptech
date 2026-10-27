@@ -195,11 +195,14 @@ def resumen_edificio(sesion: Session, complejo_id: UUID, hoy: date) -> dict[str,
     cantidad_unidades = len(coeficientes_unidades)
     informe = informar_coeficientes(Coeficiente(c) for c in coeficientes_unidades)
 
+    #: D7 (tarea 4.5): un grupo parcial DESACTIVADO no exige miembros — el
+    #: paso "grupos" sólo mira los activos (escenario "Un grupo desactivado
+    #: no reclama unidades").
     grupos_parciales = (
         sesion.execute(
             text(
                 "SELECT id, modo_de_coeficientes FROM grupo_de_reparto "
-                "WHERE complejo_id=:id AND NOT es_generales"
+                "WHERE complejo_id=:id AND NOT es_generales AND activo"
             ),
             {"id": complejo_id},
         )

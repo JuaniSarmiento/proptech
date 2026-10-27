@@ -102,7 +102,7 @@ class _DetalleCrearGrupo(_DetalleAsignarEdificio):
 
 
 class _DetalleEditarGrupo(_DetalleAsignarEdificio):
-    campos: list[Literal["clave", "nombre", "metodo"]]
+    campos: list[Literal["clave", "nombre", "metodo", "activo"]]
 
 
 class _DetalleFijarUnidades(_DetalleAsignarEdificio):

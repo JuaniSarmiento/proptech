@@ -212,6 +212,10 @@ class CuerpoEdicionGrupo(CuerpoDeEdicion):
         | None
     ) = None
     metodo: Literal["coeficiente", "superficie", "partes_iguales"] | None = None
+    #: D7 (tarea 4.5): desactivar/reactivar un grupo parcial; "Generales"
+    #: lo rechaza antes de llegar acá (`editar_grupo` corta en
+    #: `es_generales`, nunca llega a mirar este campo).
+    activo: bool | None = None
 
     @field_validator("clave")
     @classmethod
@@ -230,6 +234,12 @@ class CuerpoCategoria(CategoriaDeGasto, CuerpoDeAlta):
     nombre: Annotated[
         str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)
     ]
+    #: D7 (tarea 4.4): sin clave, se deriva de `nombre` en `crear_categoria`
+    #: (que vuelve a validar la forma con `CategoriaDeGasto`, nunca confía
+    #: en que una clave explícita ya pasó por acá sin control). Angosta el
+    #: tipo heredado (`str` → `str | None`): válido en runtime (Pydantic
+    #: valida el campo declarado acá, no el de la base), mypy no lo sabe.
+    clave: str | None = None  # type: ignore[assignment]
 
 
 class CuerpoEdicionCategoria(CuerpoDeEdicion):
@@ -456,11 +466,12 @@ def _autorizar_grupo(sesion: Session, identidad: Identidad, grupo_id: UUID) -> N
 @router.get("/complejos/{complejo_id}/grupos")
 def grupos_del_edificio(
     complejo_id: UUID,
+    solo_activos: bool = False,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
     _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
-    return grupos.listar_grupos(sesion, complejo_id)
+    return grupos.listar_grupos(sesion, complejo_id, solo_activos=solo_activos)
 
 
 @router.post("/complejos/{complejo_id}/grupos", status_code=201)

@@ -532,24 +532,140 @@
 
 ## 4. Grupos desactivables y claves autogeneradas
 
-- [ ] 4.1 **Test en rojo** de la función pura que deriva la clave del nombre: tildes, signos, guiones
+- [x] 4.1 **Test en rojo** de la función pura que deriva la clave del nombre: tildes, signos, guiones
   bajos repetidos y de borde, prefijo por letra, recorte a 40, desempate `_2`, y un nombre del que no
   sale ninguna clave (`"123"`, `"— —"`). Escenarios "Clave derivada del nombre", "Nombre con tildes y
   signos", "Clave derivada repetida" y "Nombre del que no sale ninguna clave".
-- [ ] 4.2 **Test en rojo** de que "Generales" no se desactiva, ni por la API (422) ni por SQL, con un
+
+  **Implementación (27/10/2026)**: `compartido/claves.py`, `derivar_clave(nombre, existentes) -> str
+  | None`. Transliteración vía `unicodedata.normalize("NFKD", ...)` + descarte de marcas combinantes
+  (acentos); todo lo que no sea `[a-z0-9]` colapsa a `_` único; recorte de bordes; si el resultado es
+  sólo dígitos/guiones bajos (o vacío) → `None` ("123", "— —"); si empieza con dígito, prefijo `g_`;
+  recorte a 40 sin guión bajo colgando; desempate con sufijo `_N` que recorta la base para que el
+  sufijo entre en 40.
+
+  **Verde (nació verde, TDD con test y código juntos)**: `uv run pytest tests/unitarios/test_claves.py`
+  → `7 passed in 0.16s`.
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente el prefijo por letra (`if False: ...`) — copia
+  temporal, sin commit. Resultado: `1 failed, 6 passed`, cayendo exactamente en
+  `test_prefijo_por_letra_cuando_empieza_con_digito`. Revertido; `7 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `claves.py` → `All checks passed!` / `Success: no issues
+  found in 1 source file`.
+- [x] 4.2 **Test en rojo** de que "Generales" no se desactiva, ni por la API (422) ni por SQL, con un
   **mutante dirigido** al trigger ampliado (L-035); escenarios "Desactivar Generales" y "Desactivar
   Generales por SQL".
-- [ ] 4.3 Migración `0025`: `grupo_de_reparto.activo` (`NOT NULL DEFAULT true`), el trigger de `0011`
+
+  **Implementación (27/10/2026)**: la mitad SQL va en la migración `0025` (tarea 4.3, el trigger
+  `fn_grupo_generales_protegido` ampliado); la mitad API ya existía — `editar_grupo` corta en
+  `if grupo["es_generales"]: raise EntradaInvalida(...)` ANTES de mirar ningún campo de `cambios`,
+  así que bloquea desactivar Generales por la misma razón que bloquea cualquier otro cambio.
+
+  **Hallazgo real (no previsto)**: al escribir `_FUNCION_AMPLIADA` de `0025` copié la función de
+  `0011` (sólo `es_generales`/`metodo`/`modo_de_coeficientes`), pisando la ampliación real de `0015`
+  (RF-D-1, 19/10/2026) que ya sumaba `complejo_id`/`administracion_id`. Lo agarró
+  `test_generales_no_admite_mudarse_de_edificio_por_sql` (pre-existente): `1 failed` tras aplicar
+  `0025`. Corregido partiendo de la función real de `0015`, no de la de `0011`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_generales_alcance_sql.py
+  tests/integracion/test_grupos_casos_de_uso.py tests/integracion/test_rls_grupos.py` →
+  `44 passed in 62.59s`.
+
+  **Mutante dirigido**: ver la evidencia de 4.3 (mismo trigger, un solo mutante cubre las dos tareas).
+- [x] 4.3 Migración `0025`: `grupo_de_reparto.activo` (`NOT NULL DEFAULT true`), el trigger de `0011`
   ampliado y `editar_edificio` en el vocabulario de auditoría; subida y bajada probadas sobre una copia
   con datos (Migration Plan, paso 3) y `rg` de `INSERT INTO grupo_de_reparto` en el repo entero (L-023).
-- [ ] 4.4 Aplicar la autogeneración de clave en **sus dos llamadores**, grupos y categorías, con sus
+
+  **Implementación**: migración `0025` (compartida con 3.7) agrega `activo` nullable=false con
+  `server_default=true` (sin backfill) y reemplaza `fn_grupo_generales_protegido` sumando `NEW.activo
+  IS DISTINCT FROM OLD.activo` a la comparación (sobre la versión real de `0015`, ver hallazgo de
+  4.2). `rg "INSERT INTO grupo_de_reparto"`: 7 archivos, todos con lista de columnas explícita — ningún
+  `INSERT` se ve afectado por la columna nueva (default a nivel de base).
+
+  **Test nuevo**: `test_grupo_activo_migracion.py`, sobre **dos administraciones reales**: downgrade a
+  `0024`, insertar grupos (Generales + parcial) en cada una, upgrade a `0025`, confirmar `activo=true`
+  en las dos sin tocar sus filas; downgrade a `0024` (columna desaparece) y upgrade otra vez.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_grupo_activo_migracion.py
+  tests/integracion/test_generales_alcance_sql.py` → `10 passed in 50.80s`.
+
+  **Mutante dirigido #1 (`server_default`, L-035)**: se sacó temporalmente `server_default=sa.true()`
+  de `add_column` — copia temporal, sin commit. Resultado: la migración misma explota —
+  `NotNullViolation: column "activo" ... contains null values` en el propio `ALTER TABLE ... ADD
+  COLUMN`, porque ya había filas de la administración sembrada antes del upgrade. Revertido.
+
+  `rg` confirmado arriba; sin segundo mutante sobre el trigger acá — el mutante de ese archivo
+  (sacar `OR NEW.activo IS DISTINCT FROM OLD.activo`) se corrió al escribir el test SQL de 4.2
+  (`test_desactivar_generales_por_sql_se_rechaza`): sin esa cláusula, `UPDATE ... SET activo=false
+  WHERE id=<Generales>` pasaba sin error — se confirmó manualmente contra la versión sin esa cláusula
+  antes de restaurarla, no quedó como test aparte porque ya lo cubre el hallazgo real de 4.2.
+- [x] 4.4 Aplicar la autogeneración de clave en **sus dos llamadores**, grupos y categorías, con sus
   tests en los dos (L-009), manteniendo la clave explícita aceptada por API y la clave inmutable al
   renombrar; escenarios "Renombrar no cambia la clave", "Clave explícita inválida" y "Agregar una
   categoría" / "Renombrar una categoría" de `categorias-de-gasto`.
-- [ ] 4.5 `PATCH /grupos/{id}` acepta `activo`, sin ninguna ruta de borrado, y los grupos desactivados
+
+  **Implementación**: `grupos.DatosGrupo.clave` pasa a `str | None = None`; `crear_grupo` deriva con
+  `derivar_clave` (tarea 4.1) contra las claves que el edificio ya tiene cuando llega `None`.
+  `categorias.crear_categoria` deriva de la misma forma sobre el `dict` crudo, ANTES de validar con
+  `CategoriaDeGasto` (que sigue exigiendo `clave` siempre — la usa también el YAML de parámetros,
+  D-042, así que ese modelo no se tocó). `CuerpoGrupo` (API) hereda el campo opcional sin cambios;
+  `CuerpoCategoria.clave` se angosta a `str | None` con `# type: ignore[assignment]` (Pydantic valida
+  el campo declarado, no el heredado; mypy no lo sabe). "Renombrar no cambia la clave" ya funcionaba
+  sin tocar nada: `editar_grupo`/`editar_categoria` sólo escriben `clave` si viene en `cambios`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_clave_autogenerada.py` →
+  `7 passed in 17.55s` (cubre "Clave derivada del nombre", clave explícita respetada, desempate,
+  "Nombre del que no sale ninguna clave", "Renombrar no cambia la clave" × 2 — grupo y categoría,
+  "Agregar una categoría").
+
+  **Mutante dirigido (L-035)**: se sacó temporalmente la rama `if entrada.clave is None: ...` de
+  `crear_grupo` — copia temporal, sin commit. Resultado: `4 failed, 3 passed`, cayendo en los 4 tests
+  que dependen de la derivación (`NotNullViolation` en la base, nunca silencioso). Revertido;
+  `7 passed` de nuevo.
+
+  `uv run ruff check` + `uv run mypy` sobre `grupos.py`, `categorias.py`, `complejos.py` → sin
+  hallazgos.
+- [x] 4.5 `PATCH /grupos/{id}` acepta `activo`, sin ninguna ruta de borrado, y los grupos desactivados
   salen del filtro de disponibles y de la puesta a punto; verificado con los escenarios "Desactivar un
   grupo parcial", "Reactivar", "Borrar", "Un grupo desactivado no reclama unidades" y "Grupo parcial
   vacío pero desactivado".
+
+  **Implementación**: `CuerpoEdicionGrupo.activo: bool | None = None`; `editar_grupo` saca `activo` de
+  `cambios` antes de validar con `DatosGrupo` (no es forma de clave/nombre/método, es estado
+  operativo) y lo escribe aparte, agregándolo a `campos` de auditoría si cambió.
+  `grupos.listar_grupos` suma `solo_activos: bool = False` (mismo patrón que
+  `categorias.listar_categorias`), cableado como query param en `GET /complejos/{id}/grupos`.
+  `lectura.resumen_edificio`: el paso "grupos" sólo mira `grupo_de_reparto` con `activo` (un grupo
+  parcial desactivado no exige miembros). Sin ruta `DELETE` (nunca existió): confirmado con `405`.
+
+  **Verde**: `bash infra/ci/test-backend.sh tests/integracion/test_grupo_activo.py
+  tests/integracion/test_resumen_puesta_a_punto.py` → `17 passed in 31.86s`. Regresión amplia (grupos,
+  categorías, contrato, RLS, 422, padrón): `125 passed in 143.37s`.
+
+  **Mutante dirigido #1 (filtro `solo_activos`, L-035)**: se sacó el `AND (NOT :solo OR activo)` de
+  `listar_grupos` — copia temporal, sin commit. Resultado: `1 failed, 4 passed`, cayendo exactamente en
+  `test_desactivar_un_grupo_parcial` (el único que pide `solo_activos=true`). Revertido.
+
+  **Mutante dirigido #2 (paso "grupos" de la puesta a punto)**: se sacó el `AND activo` de la consulta
+  de `grupos_parciales` en `resumen_edificio` — copia temporal, sin commit. Resultado: `1 failed, 4
+  passed`, cayendo exactamente en
+  `test_grupo_desactivado_sin_unidades_no_bloquea_la_puesta_a_punto`. Revertido; `5 passed` de nuevo.
+
+  **Hallazgos reales, no previstos (encontrados al correr la suite completa tras cerrar el grupo 4)**:
+  (1) `test_auditoria_grupos_categorias.py::test_siete_eventos_y_solo_nombres` y
+  `test_rutas_protegidas.py` (arreglado en el grupo 3) usaban un `piso` arbitrario ("Privado") que la
+  tarea 3.3 ya no acepta — mismo patrón que "Otro"/"PRIVADO_PISO" de las tareas 3.2/3.3, corregido a
+  `"2"`. (2) `test_contrato_web.py::test_forma_de_cada_ruta_que_usa_la_web[grupos]`: fixture
+  regenerado con `PROPTECH_ACTUALIZAR_FIXTURES=1` (suma `"activo": true`, cambio de forma deliberado).
+  (3) `test_regresiones_de_aislamiento_y_grupos_vacios.py`: el `PATCH /api/complejos/{id}` nuevo
+  (tarea 3.6) no tenía cuerpo en `_CUERPOS`, caía al `{"persona_id":..., "rol":...}` por defecto → 422
+  en vez de 404; agregado `"/api/complejos/{complejo_id}": {"nombre": "X"}`. (4)
+  `infra/ci/ensayo-roles.sh` tenía `verificar_revision 0022` hardcodeado dos veces (`test_ensayo_login.
+  py`, pre-existente): actualizado a `0025`, la cabeza real tras este change. (5)
+  `test_vocabulario_vigente.py` (pre-existente, L-022): el docstring de un test nuevo de la tarea 3.6
+  (`test_editar_edificio.py`) decía "colaborador", vocabulario de roles anterior a D-106; reescrito a
+  "una identidad con alcance".
 
 ## 5. Errores de formulario y mensajes en la web
 

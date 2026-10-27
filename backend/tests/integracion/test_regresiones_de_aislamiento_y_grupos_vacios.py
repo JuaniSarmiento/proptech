@@ -23,6 +23,7 @@ _CUERPOS = {
         "superficie_m2": "60.00",
     },
     "/api/unidades/{unidad_id}": {"piso": "9"},
+    "/api/complejos/{complejo_id}": {"nombre": "X"},
     "/api/complejos/{complejo_id}/grupos": {"clave": "x", "nombre": "X", "metodo": "coeficiente"},
     "/api/grupos/{grupo_id}": {"nombre": "X"},
     "/api/grupos/{grupo_id}/unidades": {"modo_de_coeficientes": "renormalizado", "unidades": []},

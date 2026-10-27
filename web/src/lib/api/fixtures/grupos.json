@@ -1,10 +1,11 @@
 [
   {
-    "administracion_id": "5246886a-9b39-4f59-9367-81654a795c1b",
+    "activo": true,
+    "administracion_id": "0f5a12d1-0e82-4f8f-b76c-8b68f784d90a",
     "clave": "generales",
-    "complejo_id": "2d717ebe-f354-4fdf-95ca-3f0485fe84fb",
+    "complejo_id": "d31f2bef-571b-49ca-bc46-b1d7f09581f9",
     "es_generales": true,
-    "id": "db7a0826-f7f3-4319-b03f-96c48b8426af",
+    "id": "ff2ab1d7-ff2a-4201-b8de-4a5502ed3157",
     "informe": {
       "diferencia": "0.100000",
       "estado": "fuera_de_tolerancia",
@@ -15,25 +16,26 @@
     "nombre": "Generales",
     "unidades": [
       {
+        "coeficiente": "0.500000",
+        "unidad_id": "67c77af4-7ffc-41b2-b4e8-c5ca261d6dbf"
+      },
+      {
+        "coeficiente": "0.500000",
+        "unidad_id": "ab3e9076-47aa-4d64-8ba6-129e226107c4"
+      },
+      {
         "coeficiente": "0.100000",
-        "unidad_id": "5544ade5-177f-4ae3-a2e4-aa289374f0dd"
-      },
-      {
-        "coeficiente": "0.500000",
-        "unidad_id": "153ca513-698c-4f13-8186-f1f28f10ea40"
-      },
-      {
-        "coeficiente": "0.500000",
-        "unidad_id": "ce1a0338-bef2-4a64-81a8-5d15c39d9125"
+        "unidad_id": "e93cc3d4-3312-4329-9825-a2827b52648b"
       }
     ]
   },
   {
-    "administracion_id": "5246886a-9b39-4f59-9367-81654a795c1b",
+    "activo": true,
+    "administracion_id": "0f5a12d1-0e82-4f8f-b76c-8b68f784d90a",
     "clave": "ascensor",
-    "complejo_id": "2d717ebe-f354-4fdf-95ca-3f0485fe84fb",
+    "complejo_id": "d31f2bef-571b-49ca-bc46-b1d7f09581f9",
     "es_generales": false,
-    "id": "4accc4b0-8e04-447a-ad28-ad11c236c6dd",
+    "id": "7732ea4d-df43-4695-8fbc-b94b6500a8bf",
     "informe": null,
     "metodo": "coeficiente",
     "modo_de_coeficientes": "renormalizado",
@@ -41,11 +43,11 @@
     "unidades": [
       {
         "coeficiente": null,
-        "unidad_id": "5544ade5-177f-4ae3-a2e4-aa289374f0dd"
+        "unidad_id": "67c77af4-7ffc-41b2-b4e8-c5ca261d6dbf"
       },
       {
         "coeficiente": null,
-        "unidad_id": "153ca513-698c-4f13-8186-f1f28f10ea40"
+        "unidad_id": "e93cc3d4-3312-4329-9825-a2827b52648b"
       }
     ]
   }

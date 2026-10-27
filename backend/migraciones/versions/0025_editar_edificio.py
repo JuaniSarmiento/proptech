@@ -22,7 +22,10 @@ depends_on: Sequence[str] | None = None
 
 _EVENTOS = ("editar_edificio",)
 
-_FUNCION_ORIGINAL = """
+#: Versión real tras `0015` (RF-D-1, 19/10/2026) — nunca la de `0011` sola:
+#: ya suma `complejo_id`/`administracion_id` a la comparación. El downgrade
+#: de ESTA migración restaura exactamente esto, no la versión de `0011`.
+_FUNCION_SIN_ACTIVO = """
     CREATE OR REPLACE FUNCTION fn_grupo_generales_protegido() RETURNS trigger
     LANGUAGE plpgsql SET search_path = '' AS $$
     BEGIN
@@ -36,9 +39,12 @@ _FUNCION_ORIGINAL = """
             NEW.es_generales IS DISTINCT FROM OLD.es_generales
             OR NEW.metodo IS DISTINCT FROM OLD.metodo
             OR NEW.modo_de_coeficientes IS DISTINCT FROM OLD.modo_de_coeficientes
+            OR NEW.complejo_id IS DISTINCT FROM OLD.complejo_id
+            OR NEW.administracion_id IS DISTINCT FROM OLD.administracion_id
         ) THEN
             RAISE EXCEPTION
-                'Generales no admite cambiar es_generales, metodo ni modo_de_coeficientes';
+                'Generales no admite cambiar es_generales, metodo, '
+                'modo_de_coeficientes, complejo_id ni administracion_id';
         END IF;
         RETURN NEW;
     END;
@@ -59,11 +65,13 @@ _FUNCION_AMPLIADA = """
             NEW.es_generales IS DISTINCT FROM OLD.es_generales
             OR NEW.metodo IS DISTINCT FROM OLD.metodo
             OR NEW.modo_de_coeficientes IS DISTINCT FROM OLD.modo_de_coeficientes
+            OR NEW.complejo_id IS DISTINCT FROM OLD.complejo_id
+            OR NEW.administracion_id IS DISTINCT FROM OLD.administracion_id
             OR NEW.activo IS DISTINCT FROM OLD.activo
         ) THEN
             RAISE EXCEPTION
                 'Generales no admite cambiar es_generales, metodo, '
-                'modo_de_coeficientes ni activo';
+                'modo_de_coeficientes, complejo_id, administracion_id ni activo';
         END IF;
         RETURN NEW;
     END;
@@ -84,7 +92,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(_FUNCION_ORIGINAL)
+    op.execute(_FUNCION_SIN_ACTIVO)
     op.drop_column("grupo_de_reparto", "activo")
     # La FK 23503 preserva todo evento utilizado: punto de no retorno firmado.
     tabla = sa.table("accion_de_auditoria", sa.column("nombre", sa.Text()))

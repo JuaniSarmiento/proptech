@@ -66,8 +66,8 @@ def test_anular_nombre_o_pisos_da_422_sin_cambios(api_edificio: ApiEdificio) -> 
 
 
 def test_editar_fuera_del_alcance_da_404(api_edificio: ApiEdificio) -> None:
-    """Escenario "Editar un edificio fuera del alcance": un colaborador de
-    `edificio` (no de `otro`) edita `otro`."""
+    """Escenario "Editar un edificio fuera del alcance": una identidad con
+    alcance a `edificio` (no a `otro`) edita `otro`."""
     api_edificio.como("editar")
     respuesta = api_edificio.cliente.patch(
         f"/api/complejos/{api_edificio.otro}", json={"nombre": "Otro nombre"}
