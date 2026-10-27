@@ -22,23 +22,56 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Rebasar la rama sobre `main` (el 4a ya está mergeado: migraciones `0021` y `0022`, auditoría de
+- [x] 1.1 Rebasar la rama sobre `main` (el 4a ya está mergeado: migraciones `0021` y `0022`, auditoría de
   `editar_unidad` en `complejos/aplicacion/unidades.py`) y verificar que `alembic heads` devuelve una
   sola cabeza y que la suite de backend arranca verde antes de tocar nada — el baseline que prueba que
   nada de lo que rompa después venía roto.
-- [ ] 1.2 Descargar y reducir los tres archivos de Georef a `config/georef/` (`id`, `nombre`, id del
+
+  **Evidencia (26/10/2026)**: `git merge-base --is-ancestor main HEAD` → "HEAD already contains main"
+  (la rama ya incluye `84badd1`, cabeza de `main`; no hizo falta rebase). `alembic heads` → `0022
+  (head)`, una sola cabeza. Baseline de la suite completa, ya corrida por quien preparó esta tarea
+  **antes** de tocar nada (26/10/2026, antes de esta sesión):
+  `25 failed, 2817 passed, 1 skipped, 1 xfailed, 3 warnings in 1301.23s (0:21:41)`. Los 25 `failed` son
+  deuda documentada en `CLAUDE.md` ("fallas de portabilidad Windows en la suite de pytest", cierre de
+  `acceso-de-desarrollo`): `test_respaldos.py`, `test_restaurar.py`, los tests de worker/Redis y un caso
+  suelto en `test_umbral_parametros.py::test_umbral_cero`. Ninguno toca `complejos/`, `config/georef/`
+  ni ningún archivo de este change — no se reintentan.
+- [x] 1.2 Descargar y reducir los tres archivos de Georef a `config/georef/` (`id`, `nombre`, id del
   padre) y escribir `config/georef/LEEME.md` con fuente, fecha de descarga, licencia CC BY 4.0 y el
   comando exacto que lo regenera; verificar con un test que el `LEEME` existe y nombra las cuatro cosas
   (escenario "Procedencia declarada" de `ubicacion-del-edificio`).
 
+  **Evidencia (26/10/2026)**: descarga real de `apis.datos.gob.ar/georef/api/` (provincias, 24;
+  departamentos, 529; localidades, 4037), reducidos a `id`/`nombre`/id-del-padre con un script Python
+  de un solo uso (no versionado; el comando completo queda en `LEEME.md`). Confirmado contra el
+  archivo real: Mendoza id `50`, 18 departamentos, Capital (`50007`) y Godoy Cruz (`50021`) existen.
+  **JUICIO (confianza alta)**: el escenario "Trío coherente" de la spec nombra "la localidad Ciudad de
+  Mendoza" como ejemplo; el registro real de Georef para la capital es `"Mendoza"` (id `50007010`), no
+  "Ciudad de Mendoza" — anotado en `LEEME.md`. Test:
+  `bash infra/ci/test-backend.sh tests/unitarios/test_georef_leeme.py` →
+  `2 passed in 0.07s`. `rm` de los tres `*_raw.json` intermedios y del script tras la reducción (no se
+  versionan).
+
 ## 2. Ubicación en el backend
 
-- [ ] 2.1 **Test en rojo** del lector del archivo de Georef: archivo ausente, vacío, truncado, de otro
+- [x] 2.1 **Test en rojo** del lector del archivo de Georef: archivo ausente, vacío, truncado, de otro
   tipo, con un id repetido y con un padre que no existe; y el caso verde (Mendoza con id `50`, 24
   jurisdicciones). Ningún error repite el contenido del archivo (L-002, L-007, L-008; escenarios
   "Archivo ausente o ilegible" y "La provincia de Mendoza existe con su id oficial").
-- [ ] 2.2 Implementar el lector en `compartido/` con las tres consultas y `existe_el_trio(...)`, cargado
+
+  **Rojo (26/10/2026)**, `bash infra/ci/test-backend.sh tests/unitarios/test_georef.py` contra un
+  stub de `compartido/georef.py` con `leer_georef` lanzando `NotImplementedError` (para que el rojo
+  cayera en la aserción del test, no en un `ImportError`, L-034):
+  `11 failed in 0.64s`, los 11 en `NotImplementedError` dentro de `leer_georef`, nunca en el import.
+- [x] 2.2 Implementar el lector en `compartido/` con las tres consultas y `existe_el_trio(...)`, cargado
   una vez al arrancar, hasta que 2.1 quede verde.
+
+  **Verde (26/10/2026)**: `bash infra/ci/test-backend.sh tests/unitarios/test_georef.py` →
+  `11 passed in 0.86s`. `uv run ruff check` + `uv run mypy` sobre
+  `src/proptech_core/compartido/georef.py` y el test → `All checks passed!` / `Success: no issues
+  found in 2 source files`. Implementación en
+  `backend/src/proptech_core/compartido/georef.py` (`Georef`, `leer_georef`, `departamentos_de`,
+  `localidades_de`, `existe_el_trio`, `nombre_de_localidad`).
 - [ ] 2.3 **Test en rojo** de la coherencia del trío contra la API real: localidad de otro departamento,
   departamento de otra provincia, id inexistente, trío incompleto y el trío coherente; más un **mutante
   dirigido** que saca la comparación de padres y tiene que poner el test en rojo (L-035, L-013: copia
