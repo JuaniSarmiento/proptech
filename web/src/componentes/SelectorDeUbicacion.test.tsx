@@ -73,6 +73,30 @@ describe("SelectorDeUbicacion", () => {
     await waitFor(() => expect(screen.getByRole("option", { name: "Mendoza" })).toBeTruthy());
   });
 
+  it("FE-1: el error de Georef queda asociado a su <select> por programa, no sólo por posición", async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(accionesGeoref.provinciasAction).mockResolvedValue({
+      estado: "ok",
+      datos: PROVINCIAS,
+    });
+    vi.mocked(accionesGeoref.departamentosDeAction).mockResolvedValue({ estado: "fallo" });
+    render(<SelectorDeUbicacion />);
+    await waitFor(() => expect(_deshabilitado("Provincia")).toBe(false));
+    const provincia = screen.getByLabelText("Provincia");
+    expect(provincia.getAttribute("aria-invalid")).toBe("false");
+    expect(provincia.getAttribute("aria-describedby")).toBeNull();
+
+    await usuario.selectOptions(provincia, "50");
+    const departamento = screen.getByLabelText("Departamento");
+    await waitFor(() => expect(departamento.getAttribute("aria-invalid")).toBe("true"));
+    const idDelError = departamento.getAttribute("aria-describedby");
+    expect(idDelError).toBeTruthy();
+    expect(document.getElementById(idDelError ?? "")?.textContent).toMatch(
+      /no pudimos cargar los departamentos/i,
+    );
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+  });
+
   it("vaciar la provincia vacía departamento y localidad (vaciado en cascada)", async () => {
     const usuario = userEvent.setup();
     vi.mocked(accionesGeoref.provinciasAction).mockResolvedValue({
