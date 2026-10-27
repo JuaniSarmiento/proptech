@@ -112,7 +112,7 @@ def test_estados_de_migracion_validos(
     ).fetchone() == (estado,)
 
 
-@pytest.mark.parametrize("campo", ["tipo", "piso", "coeficiente", "superficie_m2"])
+@pytest.mark.parametrize("campo", ["tipo", "coeficiente", "superficie_m2"])
 def test_datos_obligatorios_no_conservan_defaults_temporales(
     app_edificio: psycopg.Connection, edificios: Edificios, campo: str
 ) -> None:
@@ -135,6 +135,30 @@ def test_datos_obligatorios_no_conservan_defaults_temporales(
             list(valores.values()),
         )
     assert error.value.diag.column_name == campo
+
+
+def test_piso_es_nullable_desde_0024(
+    app_edificio: psycopg.Connection, edificios: Edificios
+) -> None:
+    """`unidad.piso` pasó a nullable en `0024` (3c, D3): una unidad migrada
+    sin completar queda con `piso IS NULL` — antes de 3c esto levantaba
+    `NotNullViolation` (ver el nombre anterior de este test, arriba)."""
+    valores = {
+        "administracion_id": edificios.administracion_a,
+        "complejo_id": edificios.complejo_a,
+        "identificador": "2A",
+        "tipo": "departamento",
+        "coeficiente": "0.1",
+        "superficie_m2": "60.00",
+    }
+    fila = app_edificio.execute(
+        psycopg.sql.SQL("INSERT INTO unidad ({}) VALUES ({}) RETURNING piso").format(
+            psycopg.sql.SQL(", ").join(map(psycopg.sql.Identifier, valores)),
+            psycopg.sql.SQL(", ").join(psycopg.sql.Placeholder() for _ in valores),
+        ),
+        list(valores.values()),
+    ).fetchone()
+    assert fila == (None,)
 
 
 def test_localidad_es_nullable_desde_0023(
@@ -172,11 +196,14 @@ def test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a(
         base_del_edificio.migrar("upgrade", "head")
         with base_del_edificio.conectar_app() as app, app.transaction():
             fijar_tenant(app, admin)
+            # `piso` nace `''` (server_default de `0005`) y el mapeo de
+            # `0024` (D3) lo pasa a `NULL`: `''` no es un valor conocido
+            # del mapeo (PB/SS/entero 1-60), así que queda "sin completar".
             assert app.execute(
                 "SELECT identificador, tipo, piso, coeficiente, superficie_m2, estado "
                 "FROM unidad WHERE id = %s",
                 (unidad,),
-            ).fetchone() == ("Anterior", "departamento", "", Decimal("1"), Decimal("1"), None)
+            ).fetchone() == ("Anterior", "departamento", None, Decimal("1"), Decimal("1"), None)
         base_del_edificio.devolver_tablas_protegidas()
         base_del_edificio.migrar("downgrade", "0004")
         with base_del_edificio.conectar_app() as app, app.transaction():

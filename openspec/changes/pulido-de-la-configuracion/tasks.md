@@ -254,7 +254,7 @@
   todos los archivos fuente tocados → sin hallazgos.
 
   **Hallazgo de higiene, no de lógica**: un `Edit` sobre `test_edificios_api.py` escribió un byte NUL
-  crudo (`\x00`) dentro de un string de Python en vez del escape ` ` que se quería probar —
+  crudo dentro de un string de Python en vez del escape de texto que se quería probar —
   `grep`/`Read` empezaron a ver el archivo como binario. Detectado por `wc -l` y `file` dando
   resultados inconsistentes entre sí; corregido reescribiendo el byte como el escape de texto
   correcto con un script de una línea, confirmado con `ast.parse` antes de seguir.
@@ -287,7 +287,7 @@
   `CHECK` de forma, para probar que el test vigila la garantía específica y no una capa anterior
   (L-034, L-035). Escenarios "Piso que el edificio no tiene", "Piso como texto libre", "Unidad nueva
   sin piso", "El piso no se sale del vocabulario por SQL".
-- [ ] 3.4 Migración `0024` (corregida tras revisión DBA): `complejo.pisos`/`subsuelos` nacen
+- [x] 3.4 Migración `0024` (corregida tras revisión DBA): `complejo.pisos`/`subsuelos` nacen
   **nullable, sin calcular nada** de las unidades existentes (D3) — sin `UPDATE` de backfill, sin
   tocar RLS. Después, con el candado de D9 (`LOCK TABLE unidad IN ACCESS EXCLUSIVE MODE` → `ALTER
   TABLE unidad NO FORCE ROW LEVEL SECURITY` → el `UPDATE` que mapea los valores conocidos → `ALTER
@@ -302,6 +302,66 @@
   `INSERT INTO unidad`, incluidos `infra/ci/humo.sh`, la semilla, los comandos y los fixtures de la web
   (L-023), **y** `test_rls_edificio.py::test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a`
   corrido sobre esta migración — el `rg` solo ya falló una vez por esto mismo en `0016`.
+
+  **Migración** en `backend/migraciones/versions/0024_pisos_del_edificio_y_la_unidad.py`. Subida:
+  `complejo.pisos` (1-60) y `complejo.subsuelos` (0-5) nullable sin backfill; `unidad.piso` pasa a
+  nullable y, bajo el candado de D9, se mapea (coincidencia exacta, sin recortar espacios, sin
+  distinguir mayúsculas): "PB" a "PB", "SS" a "SS1", un entero de texto entre 1 y 60 a sí mismo,
+  cualquier otra cosa a nulo; el `CHECK ck_unidad_piso` se agrega recién después del mapeo (si se
+  agregara antes, el `UPDATE` que todavía no corrió podría dejar valores fuera de ese patrón a mitad
+  de camino). Bajada: mismo candado, rellena con comillas vacías (el `server_default` original de
+  `0005`), nunca "PB" ni ningún valor con significado.
+
+  **Tests nuevos**: `test_pisos_db.py` (8 casos: columnas nulas sin backfill, rango de pisos y
+  subsuelos por `CHECK`, el piso nulo se acepta por SQL) y
+  `test_pisos_migracion_multitenant.py` (el mapeo completo sobre **dos administraciones distintas**,
+  sembrado con los diez casos del Migration Plan — "PB", "SS", cadena vacía, "4", "Entrepiso", un
+  grado con el símbolo de grados, un valor con espacios al borde, minúscula, "SS2" sin contexto y
+  "61" fuera de rango — más la bajada que rellena las comillas vacías en las dos administraciones, y
+  el `CHECK` de forma rechazando por SQL).
+
+  **Hallazgo real (no previsto)**: `test_rls_edificio.py` tenía dos tests que afirmaban el contrato
+  VIEJO de `unidad.piso` (`NOT NULL`): `test_datos_obligatorios_no_conservan_defaults_temporales` lo
+  incluía en su parametrización (ya no aplica: `piso` es nullable desde esta migración, se sacó del
+  parametrize y se agregó `test_piso_es_nullable_desde_0024` documentando el cambio), y
+  `test_downgrade_a_0004_y_upgrade_conservan_la_unidad_del_2a` esperaba que una unidad vieja sin
+  `piso` quedara con comillas vacías después de subir a `head` — ahora el mapeo de `0024` convierte
+  esas comillas vacías en nulo (no es un valor conocido del mapeo), así que la aserción se actualizó a
+  nulo, con un comentario explicando por qué.
+
+  **Verde (27/10/2026)**:
+  `bash infra/ci/test-backend.sh tests/integracion/test_pisos_db.py
+  tests/integracion/test_pisos_migracion_multitenant.py tests/integracion/test_rls_edificio.py
+  tests/integracion/test_ubicacion_db.py tests/integracion/test_ubicacion_migracion_multitenant.py`
+  → `43 passed in 58.17s`.
+
+  **Mutante dirigido #1 (candado de D9, requisito explícito de esta corrida)**: se sacó temporalmente
+  el `LOCK`/`NO FORCE`/`FORCE` de la subida, dejando el `UPDATE` de mapeo correr bajo RLS normal —
+  copia temporal, sin commit. Resultado: la migración misma explota, no silenciosamente —
+  `psycopg.errors.CheckViolation: check constraint "ck_unidad_ck_unidad_piso" of relation "unidad" is
+  violated by some row` en el propio `ALTER TABLE ... ADD CONSTRAINT`, porque el `UPDATE` sin candado
+  vio cero filas bajo RLS normal (ninguna administración se mapeó) y las filas viejas con texto libre
+  (que no matchea el patrón nuevo) quedaron sin tocar. Los 3 tests de
+  `test_pisos_migracion_multitenant.py` fallan. Revertido; confirmado otra vez contra **dos
+  administraciones reales**, no una base de un solo tenant.
+
+  **JUICIO (confianza alta)**: el nombre real de la restricción en la base queda duplicado
+  (`ck_unidad_ck_unidad_piso`, por la convención de nombres de `base_de_datos.py`,
+  `ck_%(table_name)s_%(constraint_name)s`, aplicada sobre un nombre que ya traía el prefijo
+  `ck_unidad_`); es el mismo patrón que ya existe en `0005`/`0021`/`0023` para otras columnas
+  (`ck_unidad_tipo`, `ck_complejo_estado_migracion`, etc.) — ninguno de esos tests afirma el nombre
+  literal de la restricción, así que es cosmético, no funcional, y consistente con el resto del
+  repositorio; no se tocó.
+
+  **Mutante dirigido #2 (`CHECK` de forma, L-035)**: se sacó temporalmente `create_check_constraint`
+  de la subida (y el `drop_constraint` correspondiente de la bajada) — copia temporal, sin commit.
+  Resultado: `1 failed, 10 passed`, cayendo exactamente en
+  `test_check_de_forma_del_piso_rechaza_por_sql`. Revertido; `43 passed` de nuevo tras restaurar.
+
+  `rg "INSERT INTO complejo"` y `rg "INSERT INTO unidad"` en todo el repo (incluidos
+  `infra/ci/ensayo-roles.sh`, `infra/ci/humo.sh` — sin resultado ahí —, la semilla y los fixtures de
+  test): todos los valores de `piso` usados son `"1"`, dentro del rango nuevo; ningún `INSERT` literal
+  se ve afectado por `0024`.
 - [ ] 3.5 Bajar `pisos` o `subsuelos` con unidades afuera se rechaza con 422 **nombrando los
   identificadores**; verificado con los escenarios "Bajar pisos con unidades arriba", "Bajar subsuelos
   con cocheras abajo" y "Bajar pisos sin unidades arriba", con el `EXPLAIN` de la consulta que busca las
