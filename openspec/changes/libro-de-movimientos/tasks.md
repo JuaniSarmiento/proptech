@@ -557,3 +557,55 @@ verdes y mutantes, con comando y salida, en `.git/4b-fase1-logs/` (los de Codex)
     mutante que la quita no se corrió por función.
   - F1-09 y F1-10 de la auditoría quedan como notas (listas paralelas en `roles.py` y en el ensayo;
     `test_unicos` sin `constraint_name`).
+
+## Registro de los arreglos tras rompedor y auditor (26/10/2026)
+
+Informes: `.git/informes-libro-de-movimientos/11-rompedor-fases-1-3.md` (RB4B-) y
+`12-auditor-fases-1-3.md`. Constructor: Claude (Opus), en la sesión de Juani; la enmienda E7 la firmó
+Juani (`a4e0ded`). Cada rojo y cada mutante guarda la línea de comando, la hora y la línea `E` que
+falló en `.git/4b-fase1-logs/claude-arreglos/` (`correr.sh` para los rojos, `mutantes.py` para los
+mutantes; resumen en `mutantes-resumen.log`). Los mutantes restauran el archivo desde memoria.
+
+- **El orden TDD se rompió en la construcción de las fases 2 y 3**: `estado.py` y la capa de
+  aplicación de la sección 3 se escribieron antes que sus tests y el rojo se vio después, contra
+  stubs. El auditor encontró que eso invalidó rojos: los 15 de `test_cc_correcciones` caían en el
+  helper `emitir` (`NoResultFound`) porque el stub de emisión no escribía, y en 2.2/2.3 había tres
+  `KeyError` y dos tests que nunca se vieron en rojo. Se rehízo así:
+  - 3.5: stub sólo de `corregir` (emisión y créditos reales), `mut-stub_corregir_vacio.log`: los 21
+    tests caen en su aserción o en `DID NOT RAISE` (dos lecturas pasaron a `one_or_none` para que el
+    rojo no sea `NoResultFound`).
+  - 2.2/2.3: stub de cálculo ingenuo (capital sin débitos, sin imputaciones, todo cuenta),
+    `mut-stub_calcular_estado_ingenuo.log`: 17 caen en su aserción, ningún `KeyError`. Los 6 que el
+    ingenuo deja pasar prueban el camino del capital solo; cada uno se vio en rojo con su mutante:
+    `capital_sin_fondo`, `deuda_duplica_la_obligacion_vieja`, `saldo_anterior_sin_filtro`,
+    `suma_sin_desborde`, `sin_tope_del_paso_3` (también tumba la propiedad sin exclusiones).
+- **RB4B-01** (enmienda E7): tope por crédito en el paso 3 de D8 (`6be1b2f`). Rojo:
+  `01-rb4b01-rojo.log` (unitarios, propiedades con el generador nuevo y los dos caminos contra
+  PostgreSQL). Mutante `rb4b01_tope_solo_por_componente`.
+- **RB4B-02**: `bloquear_cuentas` ejecuta siempre el `FOR UPDATE` (`2ec8572`). Rojo
+  `02-rb4b02-rojo.log`; mutante `rb4b02_saltea_for_update_si_cache`.
+- **RB4B-03**: pasos 3 y 4 de `registrar_emision` en un SAVEPOINT, y D3 dice qué obliga a deshacer
+  (`9971c9a`). Rojo `03-rb4b03-rojo.log`; mutante `rb4b03_sin_savepoint`. Consecuencia escrita en D4:
+  dos emisiones con cuentas cruzadas en la misma transacción dan `BloqueoFueraDeOrden` (RC2-01).
+- **RB4B-05**: destino inexistente, ajeno o de otra cuenta es `NoEncontrado` antes de escribir; el
+  replay de emisión devuelve el saldo anterior recalculado (`a8ed466`). Rojo `05-rb4b05-rojo.log`.
+- **RB4B-04**, sobrevivientes del rompedor, cada uno con su test y su mutante en rojo: las tres
+  funciones sin `exigir_identidad` (mueren con el 42501 de la RLS, que es justamente el defecto),
+  replay sin destino, pago con destino, crédito de corrección y cuenta de otro edificio, contra-asiento
+  sin pendientes, fecha en UTC, movimiento de emisión anulada, y RB6 (ajuste enlazado fuera de la
+  cuenta: no cuenta, decidido en D8 paso 1). `pendientes_sin_tope_destino` era código muerto y se
+  sacó: un crédito de destino fijo sólo tiene crédito a favor si una fila suya topó contra lo que se
+  debe en su destino, y entonces el residual es cero y queda retenido.
+- **Auditor**: las 4 FK directas a `complejo` caen en `test_el_esquema_real_no_tiene_ningun_problema`
+  cuando se sacan (`mut-sin_fk_*.log`); son redundantes con las FK compuestas a `cuenta` y `emision`,
+  por eso ningún test de `test_fk` las nombra. `lecturas.py` tiene seis mutantes, todos en rojo (el
+  de "movimientos de todas las cuentas" sobrevivía y llevó a sumar el crédito a favor por cuenta al
+  test de la deuda del edificio, y "edificio sin filtro" a un test nuevo). El mutante combinado de la
+  3.5: `corr_sin_chequeo_previo` y `corr_sin_traduccion_de_corrige_a` sobreviven por separado porque
+  se cubren entre sí (el chequeo previo y el único `uq_mov_corrige_a` traducido a
+  `Conflicto("movimiento_id")`); juntos, el 23505 llega sin traducir.
+- Notas F1 de la auditoría del DBA: F1-07 aceptada (la consulta que usa los tres índices los nombra
+  en `lecturas.py` y el EXPLAIN de 3.7 lo verifica); F1-08 aceptada (nadie borra `persona`, `unidad`
+  ni `complejo`; un change que los borre necesita el préstamo de D-115.3); F1-11 ya atendida
+  (`DROP INDEX IF EXISTS` en el `finally`); F1-13 aceptada (la base de prueba tiene el dueño del
+  compose); F1-15: `mypy` con comando y salida en `cierre-mypy.log`.

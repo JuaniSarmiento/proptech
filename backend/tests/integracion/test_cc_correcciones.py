@@ -168,7 +168,8 @@ def test_contra_asiento_de_un_pago(base_del_edificio: BaseDeEdificio, mundo: Mun
                 "WHERE id = :c"
             ),
             {"c": c},
-        ).one()
+        ).one_or_none()
+        assert fila is not None, "la corrección no quedó en el libro"
         assert fila.corrige_a == pago and fila.registrado_por == mundo.persona  # AN-08
         assert fila.fecha_valor == date(2026, 10, 20)
         assert lecturas.estado_de_cuenta(s, cuenta_id=cuenta).deuda == d("1000.00")
@@ -519,5 +520,5 @@ def test_fecha_de_la_correccion_es_hoy_en_mendoza(
         )
         fecha = s.execute(
             text("SELECT fecha_valor FROM movimiento WHERE id = :c"), {"c": c}
-        ).scalar_one()
+        ).scalar_one_or_none()
         assert fecha == date(2026, 10, 20)
