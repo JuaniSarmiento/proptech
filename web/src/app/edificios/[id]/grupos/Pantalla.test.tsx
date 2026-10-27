@@ -261,7 +261,13 @@ describe("PantallaGrupos", () => {
   });
 
   it('6.3 "Desactivar un grupo" (reactivar): un grupo inactivo muestra "Reactivar" y manda "activo=true"', async () => {
-    const PILETA_INACTIVA: Grupo = { ...ASCENSOR, id: "g2", clave: "pileta", nombre: "Pileta", activo: false };
+    const PILETA_INACTIVA: Grupo = {
+      ...ASCENSOR,
+      id: "g2",
+      clave: "pileta",
+      nombre: "Pileta",
+      activo: false,
+    };
     const usuario = userEvent.setup();
     const accionEstado = vi.fn().mockResolvedValue({ erroresDesconocidos: [], ok: true });
     render(

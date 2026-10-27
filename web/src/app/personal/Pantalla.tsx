@@ -499,7 +499,11 @@ export function PantallaPersonal({
                 value={objetivoAQuitar.asignacion.asignacion_id}
               />
               <div className="panel-lateral__acciones">
-                <button type="button" className="boton-secundario" onClick={cerrarConfirmacionDeQuitar}>
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={cerrarConfirmacionDeQuitar}
+                >
                   Cancelar
                 </button>
                 <button type="submit" className="boton-principal">

@@ -340,8 +340,8 @@ export function PantallaPadron({
             required
           />
           <p className="campo__ayuda">
-            Hasta {IDENTIFICADOR_MAXIMO} caracteres, letras y números como quieras (por ejemplo "1A",
-            "PB 2" o "Local 3"): no hay un formato fijo.
+            Hasta {IDENTIFICADOR_MAXIMO} caracteres, letras y números como quieras (por ejemplo
+            "1A", "PB 2" o "Local 3"): no hay un formato fijo.
           </p>
           <label className="campo">
             Tipo
