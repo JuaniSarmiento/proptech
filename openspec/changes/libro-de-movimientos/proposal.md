@@ -217,3 +217,16 @@ escribe. Cada elección tiene su alternativa descartada y el costo de revertir e
 | Firmante (Juani, Alberto o Emiliano) | Fecha | Alcance aprobado |
 |---|---|---|
 | Juani | 26/10/2026 | E1 a E16 tal como están en esta sección; ratifica la aprobación verbal de `aprobacion-verbal.md` |
+
+### Enmienda E7 · Tope por crédito (RB4B-01)
+
+Ningún crédito cuenta más que su importe. Cuando las imputaciones de un mismo crédito suman más que su
+importe, cuentan en orden de imputación (`orden` de `imputacion`, la más vieja primero) hasta agotar
+el importe; la parte que excede se recorta y no cuenta, y lo no recortado de la imputación más nueva
+sigue el destino de E7. El orden de devolución del exceso de E7 no cambia. Descartado: que gane la
+reimputación más nueva (reescribe lo que ya se informó) o topear sólo por componente (crea plata).
+Revertir: función de cálculo (D8 paso 3), sin cambio de estructura.
+
+| Firmante | Fecha | Alcance aprobado |
+|---|---|---|
+| Juani | 26/10/2026 | Enmienda E7 · Tope por crédito, tal como está escrita arriba |
