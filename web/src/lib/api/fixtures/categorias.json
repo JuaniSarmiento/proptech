@@ -2,72 +2,72 @@
   {
     "activa": true,
     "clave": "encargado",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "5c1bc6f2-6109-4176-bc6d-2e4d657aa9fd",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "bf92c968-8f08-4d47-889c-b6240a3b8df1",
     "nombre": "Encargado y cargas sociales",
     "orden": 0
   },
   {
     "activa": true,
     "clave": "seguridad",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "60e3cdcf-c3bf-4c56-8f97-8a8c0adacb27",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "10167b71-09a9-4af8-983e-b3cec164d700",
     "nombre": "Seguridad",
     "orden": 1
   },
   {
     "activa": true,
     "clave": "limpieza",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "02324b29-66a1-4376-9f49-b0209ff1b6c4",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "412d0431-00b8-4fd1-aaf7-21df87bef773",
     "nombre": "Limpieza",
     "orden": 2
   },
   {
     "activa": true,
     "clave": "ascensor",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "739f7e5b-2fbc-4ed2-80e2-d1625e2d4938",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "dc8b9bbf-811a-41ed-a9c7-8823e8890713",
     "nombre": "Ascensor",
     "orden": 3
   },
   {
     "activa": true,
     "clave": "mantenimiento",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "b04432a5-721e-4174-816b-2a5e92f18042",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "f6ae65bc-c07c-400b-838b-adcc42533e82",
     "nombre": "Mantenimiento",
     "orden": 4
   },
   {
     "activa": true,
     "clave": "servicios",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "1bc492ea-532f-4244-8c0a-d23ca81442b0",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "0736dd43-2e30-48a3-8fed-d5ed52d34c1e",
     "nombre": "Servicios",
     "orden": 5
   },
   {
     "activa": true,
     "clave": "seguros",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "e63b5b1e-66f2-4479-afd0-66ae4d22d833",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "29f25901-48f2-4ba3-bfde-785b459ae074",
     "nombre": "Seguros",
     "orden": 6
   },
   {
     "activa": true,
     "clave": "administracion",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "d7166b6a-1e3f-4815-9151-e691a7fac249",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "2ff94018-2a26-4d38-969c-814db028e1e6",
     "nombre": "Administración",
     "orden": 7
   },
   {
     "activa": true,
     "clave": "varios",
-    "complejo_id": "6d799bfc-735a-4bcc-907d-ae7eefe71c70",
-    "id": "2397eda9-4ea8-4a90-8079-321c756bff35",
+    "complejo_id": "e9d90ea0-3477-4c8a-9530-be30ae5f9b77",
+    "id": "d598263b-ee1c-44b6-a520-a0aa78dfe200",
     "nombre": "Varios",
     "orden": 8
   }
