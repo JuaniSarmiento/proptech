@@ -230,3 +230,16 @@ Revertir: función de cálculo (D8 paso 3), sin cambio de estructura.
 | Firmante | Fecha | Alcance aprobado |
 |---|---|---|
 | Juani | 26/10/2026 | Enmienda E7 · Tope por crédito, tal como está escrita arriba |
+
+### Deuda firmada D8 · Crédito de corrección sobre una emisión anulada
+
+Caso: un crédito de corrección se imputa a una obligación y después se anula la emisión de esa
+obligación. Hoy (D8 paso 1) el crédito sigue contando y queda como saldo a favor. Opciones vistas:
+(a) retenido como la bonificación de E16; (b) a favor como un pago. Se decide más adelante: hoy no
+puede ocurrir en producción porque nadie llama a `anular_emision` hasta el change 7.
+**Bloquea el change 7**: no se construye la anulación sin decidir esto.
+Origen: rompedor final RF-02 y auditor final (`.git/informes-libro-de-movimientos/15` y `16`).
+
+| Firmante | Fecha | Alcance aprobado |
+|---|---|---|
+| Juani | 27/10/2026 | Deuda D8 tal como está escrita arriba (opción c) |
