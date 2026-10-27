@@ -30,7 +30,7 @@ from proptech_core.cuenta_corriente.aplicacion.errores import (
     exigir_transaccion,
     traducir,
 )
-from proptech_core.cuenta_corriente.aplicacion.lecturas import foto, fotos
+from proptech_core.cuenta_corriente.aplicacion.lecturas import fotos
 
 _CERO = Dinero("0.00")
 _IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
@@ -112,7 +112,7 @@ def _replay(
     cuentas = {UUID(str(g.unidad_id)): UUID(str(g.cuenta_id)) for g in guardadas}
     # RB4B-05: el libro no persiste la foto del saldo anterior (la guarda el 7); el replay la vuelve
     # a calcular sin imputar. CX-02, E12: todas las cuentas bloqueadas antes de una sola foto SQL;
-    # también una anulación (que no toma candados) debe verse entera, no entre lecturas de cuentas.
+    # la anulación toma los mismos candados (RF-01), así que se ve entera o no se ve.
     bloquear_cuentas(sesion, list(cuentas.values()))
     actuales = fotos(sesion, sorted(cuentas.values()))
     saldo = {
@@ -162,9 +162,7 @@ def registrar_emision(
         # Paso 3: insertar con su árbitro; otro id en el mismo intento es 23505 traducido.
         instante = reloj()
         # E11: sin nombrar `complejo` en el SQL del libro; la FK lo rechaza (NoEncontrado).
-        with traducir(
-            sesion, {"uq_emision_intento": "periodo"}, frozenset({"fk_emision_complejo"})
-        ):
+        with traducir(sesion, {"uq_emision_intento": "periodo"}):
             nueva = sesion.execute(
                 text(
                     "INSERT INTO emision (id, administracion_id, complejo_id, periodo, intento, "
@@ -219,10 +217,15 @@ def registrar_emision(
                 },
             )
         corrida = uuid4()
-        saldo: dict[UUID, Dinero] = {}
         for cuenta in sorted(cuentas.values()):
             imputar_pendientes(sesion, cuenta, corrida, instante)
-            saldo[cuenta] = foto(sesion, cuenta).estado.deuda_sin_emision(emision_id)
+        # RF-01, E12: una sola foto SQL de todas las cuentas, bajo sus candados, después de
+        # imputar; la anulación también los toma, así que no se mete entre lecturas.
+        actuales = fotos(sesion, sorted(cuentas.values()))
+        saldo = {
+            cuenta: actual.estado.deuda_sin_emision(emision_id)
+            for cuenta, actual in actuales.items()
+        }
         return EmisionRegistrada(emision_id, intento, cuentas, saldo)
 
 
@@ -235,8 +238,14 @@ def anular_emision(
     request_id: UUID,
     reloj: Reloj = ahora_utc,
 ) -> None:
-    """Agrega el evento y nada más: el efecto se calcula (D8). No bloquea ni audita: el 7 audita
-    en la misma transacción (D9). Una segunda anulación es `Conflicto` siempre (R17)."""
+    """Agrega el evento y nada más: el efecto se calcula (D8). No audita: el 7 audita en la misma
+    transacción (D9). Una segunda anulación es `Conflicto` siempre (R17).
+
+    Bloquea las cuentas de la emisión antes de escribir (RF-01, RF-02): sin el candado, la
+    anulación podía confirmarse entre las lecturas del saldo anterior de otra emisión (foto
+    mezclada, E12) o después del chequeo `_anulada` de una corrección y antes de su escritura
+    (E6, R08). Quien anule junto con otras cuentas en la misma transacción respeta el orden de
+    `bloquear_cuentas` (E2)."""
     exigir_transaccion(sesion)
     administracion = exigir_identidad(sesion, identidad)
     limpio = normalizar_motivo(motivo)
@@ -245,6 +254,15 @@ def anular_emision(
     ).one_or_none()
     if fila is None:
         raise NoEncontrado
+    cuentas = (
+        sesion.execute(
+            text("SELECT DISTINCT cuenta_id FROM obligacion WHERE emision_id = :id"),
+            {"id": emision_id},
+        )
+        .scalars()
+        .all()
+    )
+    bloquear_cuentas(sesion, [UUID(str(c)) for c in cuentas])
     nuevo = sesion.execute(
         text(
             "INSERT INTO evento_de_emision (id, administracion_id, complejo_id, emision_id, tipo, "

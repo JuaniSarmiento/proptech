@@ -254,8 +254,12 @@ candado; el test de 3.6 lo demuestra al quitar el chequeo. Si el SELECT devuelve
 pedidos se lanza `CandadoIncompleto`, sin continuar ni imputar. La app no tiene DELETE sobre el candado
 (`REVOKE DELETE` en 0023 y refuerzo idempotente en `despues()`); el borrado intercalado por rol de
 arranque se prueba con barrera y exige ese error.
-`anular_emision` no bloquea: sólo agrega un evento, y su efecto se calcula (D8); una imputación que corre
-a la vez contra una obligación que se anula queda excluida al leer, y su crédito vuelve a favor.
+`anular_emision` bloquea las cuentas de la emisión (una llamada ordenada a `bloquear_cuentas`) antes de
+agregar el evento; su efecto se sigue calculando (D8). Corregido por RF-01 y RF-02 del rompedor final: sin
+el candado, la anulación se confirmaba entre las lecturas del saldo anterior de otra emisión (foto mezclada,
+E12) o entre el chequeo `_anulada` de una corrección y su escritura (E6, R08). Con el candado, la anulación
+y cualquier escritura de esas cuentas quedan en orden serial: la que llega segunda ve a la primera entera.
+Descartado: dejarla sin candado y tomar sólo la foto única (cierra RF-01 pero no RF-02).
 
 - **Descartadas**: `FOR UPDATE` sobre `cuenta` (falla, arriba); darle `UPDATE` de una columna a la app
   sobre `cuenta` (funciona, pero `roles despues` lo revoca, así que hay que cambiar la lógica de
