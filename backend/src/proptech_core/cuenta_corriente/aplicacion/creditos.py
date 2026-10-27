@@ -108,8 +108,10 @@ def imputar_pendientes(
         if m.tipo in TIPOS_DE_DESTINO_FIJO:
             if m.obligacion_id is None or m.componente is None:
                 continue
+            # Sin tope por el residual del destino: no es alcanzable (RB4B-04). Un crédito de
+            # destino fijo sólo tiene crédito a favor si una fila suya topó contra lo que se debe
+            # en su destino, y entonces ese residual es cero y queda retenido (paso 5 de D8).
             destino = Destino(m.obligacion_id, m.componente)
-            favor = min(favor, actual.estado.residual[(m.obligacion_id, m.componente)])
         if not actual.estado.deudas() or not favor > _CERO:
             continue
         imputaciones, _ = imputar(actual.estado.deudas(), favor, destino)
@@ -193,6 +195,8 @@ def registrar_credito(
         raise EntradaInvalida("destino")
     instante = reloj()
     bloquear_cuentas(sesion, [cuenta_id])  # NoEncontrado si la cuenta no existe o es ajena
+    if destino is not None:
+        _exigir_obligacion_de_la_cuenta(sesion, cuenta_id, destino.obligacion_id)
     corrida = uuid4()
     actual = imputar_pendientes(sesion, cuenta_id, corrida, instante)
     imputaciones, _ = imputar(actual.estado.deudas(), importe, destino)  # E16: antes del INSERT
@@ -230,6 +234,17 @@ def registrar_credito(
     movimiento_id = UUID(str(nuevo))
     insertar_imputaciones(sesion, actual, movimiento_id, imputaciones, corrida, instante)
     return movimiento_id
+
+
+def _exigir_obligacion_de_la_cuenta(sesion: Session, cuenta_id: UUID, obligacion_id: UUID) -> None:
+    """D3, RB4B-05: la obligación de destino inexistente, ajena o de otra cuenta es `NoEncontrado`,
+    antes de escribir; la que existe y no puede absorber el crédito es `destino` (E16)."""
+    existe = sesion.execute(
+        text("SELECT 1 FROM obligacion WHERE id = :o AND cuenta_id = :c"),
+        {"o": obligacion_id, "c": cuenta_id},
+    ).one_or_none()
+    if existe is None:
+        raise NoEncontrado
 
 
 def exigir_cuenta(sesion: Session, cuenta_id: UUID) -> None:

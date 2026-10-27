@@ -423,3 +423,101 @@ def test_rb4b01_interes_nuevo_no_revive_la_imputacion_vieja_de_mas(
         e = lecturas.estado_de_cuenta(s, cuenta_id=cuenta)
         assert (e.a_favor_por_credito[b], e.a_favor_por_credito[p]) == (d("0.00"), d("0.00"))
         assert e.deuda == d("39999.99")
+
+
+def test_identidad_de_otra_administracion_antes_de_escribir(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (corr_sin_identidad): error nombrado, no un 42501 de la RLS."""
+    from proptech_core.cuenta_corriente.aplicacion.errores import IdentidadDeOtraAdministracion
+
+    from ._cuenta_corriente import contar_escrituras
+
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, obl = emitir(s, mundo, 0, "100.00")
+        pago = pagar(s, mundo, cuenta, "10.00", date(2026, 10, 5), 5)
+        escrituras = contar_escrituras(s)
+        for pedido in (
+            PedidoDeCorreccion("contra_asiento", uuid4(), "Error", movimiento_id=pago),
+            PedidoDeCorreccion("credito", uuid4(), "Error", obligacion_id=obl, importe=d("1.00")),
+        ):
+            with pytest.raises(IdentidadDeOtraAdministracion):
+                correcciones.corregir(
+                    s,
+                    mundo.identidad_b,
+                    complejo_id=mundo.complejo,
+                    pedido=pedido,
+                    request_id=uuid4(),
+                )
+        assert escrituras == []
+
+
+def test_credito_de_correccion_sobre_obligacion_de_otro_edificio(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (credcorr_sin_complejo): mismo tenant, otro edificio: 404 antes de escribir."""
+    from ._cuenta_corriente import contar_escrituras
+
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        r = emisiones.registrar_emision(
+            s,
+            mundo.identidad,
+            emision_id=uuid4(),
+            complejo_id=mundo.otro_complejo,
+            periodo=date(2026, 10, 1),
+            obligaciones=[
+                ObligacionAEmitir(
+                    mundo.unidad_otro_complejo,
+                    date(2026, 10, 10),
+                    d("100.00"),
+                    d("0.00"),
+                    d("0.00"),
+                )
+            ],
+            request_id=uuid4(),
+        )
+        cuenta_otra = r.cuentas[mundo.unidad_otro_complejo]
+        pagar(s, mundo, cuenta_otra, "150.00", date(2026, 10, 5), 5)  # deja crédito pendiente
+        obl = s.execute(
+            text("SELECT id FROM obligacion WHERE cuenta_id = :c"), {"c": cuenta_otra}
+        ).scalar_one()
+        escrituras = contar_escrituras(s)
+        with pytest.raises(NoEncontrado):
+            credito_corr(s, mundo, obl, "1.00")  # la ruta dice mundo.complejo
+        assert escrituras == []
+
+
+def test_contra_asiento_imputa_pendientes_antes_de_lo_suyo(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (contra_sin_pendientes), D7: P tiene $50 a favor y aparece un interés de $10 que
+    nadie imputó todavía; la corrección corre `imputar_pendientes` antes de insertar."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, obl = emitir(s, mundo, 1, "100.00")
+        p = pagar(s, mundo, cuenta, "150.00", date(2026, 10, 5), 5)
+        q = pagar(s, mundo, cuenta, "5.00", date(2026, 10, 6), 6)
+        interes(s, mundo, cuenta, obl, "10.00", date(2026, 10, 10))
+        contra(s, mundo, q, dia=12)
+        e = lecturas.estado_de_cuenta(s, cuenta_id=cuenta)
+        assert (e.deuda, e.a_favor_por_credito[p]) == (d("0.00"), d("40.00"))
+
+
+def test_fecha_de_la_correccion_es_hoy_en_mendoza(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (contra_fecha_utc): a la 01:00 UTC del 21/10 en Mendoza es todavía el 20/10."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, _ = emitir(s, mundo, 2, "100.00")
+        pago = pagar(s, mundo, cuenta, "10.00", date(2026, 10, 5), 5)
+        c = correcciones.corregir(
+            s,
+            mundo.identidad,
+            complejo_id=mundo.complejo,
+            pedido=PedidoDeCorreccion("contra_asiento", uuid4(), "Error", movimiento_id=pago),
+            request_id=uuid4(),
+            reloj=lambda: datetime(2026, 10, 21, 1, tzinfo=UTC),
+        )
+        fecha = s.execute(
+            text("SELECT fecha_valor FROM movimiento WHERE id = :c"), {"c": c}
+        ).scalar_one()
+        assert fecha == date(2026, 10, 20)

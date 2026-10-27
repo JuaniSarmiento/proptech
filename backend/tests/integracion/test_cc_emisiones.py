@@ -322,3 +322,31 @@ def test_anular_no_audita(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> No
         assert s.execute(text("SELECT count(*) FROM auditoria")).scalar_one() == antes
         eventos = text("SELECT count(*) FROM evento_de_emision WHERE emision_id = :e")
         assert s.execute(eventos, {"e": r.emision_id}).scalar_one() == 1
+
+
+def test_anular_con_identidad_de_otra_administracion(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (anular_sin_identidad): error nombrado, no un 42501 de la RLS."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        r = emitir(s, mundo, OCT, obligaciones(mundo, "1.00"))
+        escrituras = contar_escrituras(s)
+        with pytest.raises(IdentidadDeOtraAdministracion):
+            emisiones.anular_emision(
+                s, mundo.identidad_b, emision_id=r.emision_id, motivo="Error", request_id=uuid4()
+            )
+        assert escrituras == []
+
+
+def test_replay_devuelve_el_saldo_anterior_por_cuenta(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-05: el replay devuelve `saldo_anterior` por cuenta, no un diccionario vacío. El libro no
+    persiste la foto: la recalcula; sin escrituras en el medio da lo mismo que la primera vez."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        emitir(s, mundo, OCT, obligaciones(mundo, "40000.00", "30000.00"))
+        obls = obligaciones(mundo, "1000.00", "2000.00")
+        eid = uuid4()
+        primera = emitir(s, mundo, NOV, obls, eid)
+        assert set(primera.saldo_anterior.values()) == {d("40000.00"), d("30000.00")}
+        assert emitir(s, mundo, NOV, obls, eid).saldo_anterior == primera.saldo_anterior

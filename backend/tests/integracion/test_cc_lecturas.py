@@ -75,6 +75,39 @@ def test_deuda_del_edificio_coincide_cuenta_por_cuenta(
             c: lecturas.estado_de_cuenta(s, cuenta_id=c).deuda for c in r.cuentas.values()
         }
         assert {f.deuda for f in filas} == {d("100.00"), d("0.00"), d("300.00")}
+        # Cada cuenta ve sólo sus movimientos: el pago de $250 deja $50 a favor sólo en la suya.
+        assert {f.cuenta_id: f.credito_a_favor for f in filas} == {
+            r.cuentas[mundo.unidades[0]]: d("0.00"),
+            r.cuentas[mundo.unidades[1]]: d("50.00"),
+            r.cuentas[mundo.unidades[2]]: d("0.00"),
+        }
+
+
+def test_deuda_del_edificio_no_trae_cuentas_de_otro_edificio(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """Mutante de lecturas (auditor): la del edificio filtra por edificio, no sólo por tenant."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        r = emitir(s, mundo, date(2026, 10, 1), "100.00")
+        # Una emisión por transacción: dos emisiones con cuentas cruzadas en la misma transacción
+        # pueden pedir una cuenta menor que la ya bloqueada (BloqueoFueraDeOrden, RC2-01).
+        s.commit()
+        s.execute(text("SELECT 1"))  # abre la transacción siguiente
+        emisiones.registrar_emision(
+            s,
+            mundo.identidad,
+            emision_id=uuid4(),
+            complejo_id=mundo.otro_complejo,
+            periodo=date(2026, 10, 1),
+            obligaciones=[
+                ObligacionAEmitir(
+                    mundo.unidad_otro_complejo, date(2026, 10, 10), d("7.00"), d("0.00"), d("0.00")
+                )
+            ],
+            request_id=uuid4(),
+        )
+        filas = lecturas.deuda_del_edificio(s, complejo_id=mundo.complejo)
+        assert {f.cuenta_id: f.deuda for f in filas} == {r.cuentas[mundo.unidades[0]]: d("100.00")}
 
 
 def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:

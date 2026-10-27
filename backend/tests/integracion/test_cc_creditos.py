@@ -234,3 +234,115 @@ def test_replay_no_vuelve_a_imputar_aunque_se_anule_entre_medio(
         assert n >= 1
         pagar(s, mundo, cuenta, "100.00", operacion_id=op)
         assert s.execute(text("SELECT count(*) FROM imputacion")).scalar_one() == n
+
+
+def _obligacion(s: Session, cuenta: UUID, periodo: date) -> UUID:
+    return UUID(
+        str(
+            s.execute(
+                text("SELECT id FROM obligacion WHERE cuenta_id = :c AND periodo = :p"),
+                {"c": cuenta, "p": periodo},
+            ).scalar_one()
+        )
+    )
+
+
+def test_identidad_de_otra_administracion_antes_de_escribir(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (credito_sin_identidad): error nombrado, no un 42501 de la RLS."""
+    from proptech_core.cuenta_corriente.aplicacion.errores import IdentidadDeOtraAdministracion
+
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuenta = emitir(s, mundo, date(2026, 10, 1), 9, "100.00")
+        escrituras = contar_escrituras(s)
+        with pytest.raises(IdentidadDeOtraAdministracion):
+            creditos.registrar_credito(
+                s,
+                mundo.identidad_b,
+                cuenta_id=cuenta,
+                tipo="pago",
+                importe=d("1.00"),
+                fecha_valor=date(2026, 10, 20),
+                operacion_id=uuid4(),
+                destino=None,
+                request_id=uuid4(),
+            )
+        assert escrituras == []
+
+
+def test_reusar_la_operacion_con_otro_destino(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (credito_replay_sin_destino): E4 compara también la obligación de destino."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuenta = emitir(s, mundo, date(2026, 10, 1), 10, "100.00")
+        emitir(s, mundo, date(2026, 11, 1), 10, "100.00")
+        octubre = _obligacion(s, cuenta, date(2026, 10, 1))
+        noviembre = _obligacion(s, cuenta, date(2026, 11, 1))
+        op = uuid4()
+        pagar(
+            s,
+            mundo,
+            cuenta,
+            "10.00",
+            tipo="bonificacion",
+            operacion_id=op,
+            destino=Destino(octubre, Componente.ORDINARIA),
+        )
+        with pytest.raises(Conflicto) as e:
+            pagar(
+                s,
+                mundo,
+                cuenta,
+                "10.00",
+                tipo="bonificacion",
+                operacion_id=op,
+                destino=Destino(noviembre, Componente.ORDINARIA),
+            )
+        assert e.value.campo == "operacion_id"
+
+
+def test_pago_con_destino_rechazado(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
+    """RB4B-04 (pago_con_destino_admitido): un pago va siempre con R04, nunca a un destino."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuenta = emitir(s, mundo, date(2026, 10, 1), 11, "100.00")
+        octubre = _obligacion(s, cuenta, date(2026, 10, 1))
+        escrituras = contar_escrituras(s)
+        with pytest.raises(EntradaInvalida) as e:
+            pagar(s, mundo, cuenta, "10.00", destino=Destino(octubre, Componente.ORDINARIA))
+        assert e.value.campo == "destino"
+        assert escrituras == []
+
+
+@pytest.mark.parametrize("cual", ["inexistente", "de_otra_cuenta"])
+def test_destino_inexistente_o_de_otra_cuenta(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, cual: str
+) -> None:
+    """RB4B-05: D3 pide `NoEncontrado` (404) para la obligación inexistente o ajena."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        r = emisiones.registrar_emision(
+            s,
+            mundo.identidad,
+            emision_id=uuid4(),
+            complejo_id=mundo.complejo,
+            periodo=date(2026, 10, 1),
+            obligaciones=[
+                ObligacionAEmitir(u, date(2026, 10, 10), d("100.00"), d("0.00"), d("0.00"))
+                for u in mundo.unidades[:2]
+            ],
+            request_id=uuid4(),
+        )
+        cuenta, otra = (r.cuentas[u] for u in mundo.unidades[:2])
+        obligacion = uuid4() if cual == "inexistente" else _obligacion(s, otra, date(2026, 10, 1))
+        escrituras = contar_escrituras(s)
+        with pytest.raises(NoEncontrado):
+            pagar(
+                s,
+                mundo,
+                cuenta,
+                "10.00",
+                tipo="bonificacion",
+                destino=Destino(obligacion, Componente.ORDINARIA),
+            )
+        assert [x for x in escrituras if "movimiento" in x or "imputacion" in x] == []

@@ -331,3 +331,40 @@ def test_pago_con_fecha_valor_anterior_a_una_correccion_no_reescribe_hechos() ->
     lb.imputa(nuevo, o, ORD, "100.00")
     e = lb.estado()
     assert e.a_favor_por_credito == {nuevo.id: CERO, retro.id: d("50.00")}
+
+
+def test_movimiento_con_emision_anulada_no_cuenta() -> None:
+    """RB4B-04 (sin_excluir_movs_de_emision_anulada): columna anticipada `emision_id` (E10)."""
+    lb = Libro()
+    emision = uuid4()
+    o = obligacion(date(2026, 10, 1), "1000.00")
+    bonificacion = credito("100.00", tipo="bonificacion", emision_id=emision)
+    lb.obligaciones, lb.movimientos = [o], [bonificacion]
+    lb.anuladas = {emision}
+    e = lb.estado()
+    assert bonificacion.id not in e.movimientos_que_cuentan
+    assert (e.deuda, e.credito_a_favor) == (d("1000.00"), CERO)
+
+
+def test_ajuste_enlazado_a_un_movimiento_fuera_de_la_cuenta_no_cuenta() -> None:
+    """RB6: un `ajuste_de_interes` compensa un interés de su propia obligación (D-085). Si su
+    enlace no está en la foto de la cuenta, no hay interés que compense y no cuenta: nunca baja la
+    deuda por un interés que no se ve. El 4c enlaza dentro de la misma cuenta."""
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "1.00")
+    i = interes(o, "10.00")
+    ajuste = Movimiento(
+        uuid4(),
+        "ajuste_de_interes",
+        "credito",
+        d("10.00"),
+        date(2026, 10, 1),
+        HOY,
+        o.id,
+        INT,
+        enlazado_a=uuid4(),
+    )
+    lb.obligaciones, lb.movimientos = [o], [i, ajuste]
+    e = lb.estado()
+    assert ajuste.id not in e.movimientos_que_cuentan
+    assert e.deuda == d("11.00")

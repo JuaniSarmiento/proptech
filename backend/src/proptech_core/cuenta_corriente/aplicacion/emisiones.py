@@ -110,7 +110,13 @@ def _replay(
     if (fila.complejo_id, fila.periodo) != (complejo_id, periodo) or firma != _firma(obligaciones):
         raise Conflicto("emision_id")
     cuentas = {UUID(str(g.unidad_id)): UUID(str(g.cuenta_id)) for g in guardadas}
-    return EmisionRegistrada(emision_id, fila.intento, cuentas, {})
+    # RB4B-05: el libro no persiste la foto del saldo anterior (la guarda el 7); el replay la vuelve
+    # a calcular igual que la primera vez, sin escribir.
+    saldo = {
+        cuenta: foto(sesion, cuenta).estado.deuda_sin_emision(emision_id)
+        for cuenta in sorted(cuentas.values())
+    }
+    return EmisionRegistrada(emision_id, fila.intento, cuentas, saldo)
 
 
 def registrar_emision(

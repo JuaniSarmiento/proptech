@@ -265,3 +265,17 @@ def test_rollback_to_savepoint_no_deja_creyendo_que_tiene_el_candado(
                     {"c": cuenta},
                 )
             assert type(error.value.orig).__name__ == "LockNotAvailable"
+
+
+def test_cuenta_existente_de_otro_edificio_no_se_entrega(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-04 (cuentas_sin_chequeo_complejo): la cuenta de la unidad ya existe en su edificio; el
+    `ON CONFLICT` no llega a la FK, así que el chequeo de edificio es el que la frena."""
+    u = mundo.unidad_otro_complejo
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuentas.cuenta_de_unidad(s, complejo_id=mundo.otro_complejo, unidad_id=u)
+        s.commit()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        with pytest.raises(NoEncontrado):
+            cuentas.cuenta_de_unidad(s, complejo_id=mundo.complejo, unidad_id=u)
