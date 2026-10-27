@@ -74,10 +74,10 @@ _CONFLICTOS = {
 
 
 @contextmanager
-def traducir(
-    sesion: Session, conflictos: dict[str, str], no_encontrados: frozenset[str] = frozenset()
-) -> Iterator[None]:
-    """SAVEPOINT (BE-5.1): un 23505 o 23503 traducido deja usable la transacción del llamador."""
+def traducir(sesion: Session, conflictos: dict[str, str]) -> Iterator[None]:
+    """SAVEPOINT (BE-5.1): un 23505 o 23503 traducido deja usable la transacción del llamador.
+
+    Todo 23503 es `NoEncontrado` (D10, RF-05): no hace falta nombrar las FK."""
     try:
         with sesion.begin_nested():
             yield

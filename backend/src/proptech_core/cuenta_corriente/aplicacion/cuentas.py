@@ -113,7 +113,7 @@ def crear_cuentas_de_unidades(
     ahora = datetime.now(UTC)
     # E11: el libro no nombra `unidad` en su SQL; la unidad de otro edificio o de otra
     # administración la rechaza la FK compuesta, traducida a NoEncontrado (D4).
-    with traducir(sesion, {}, frozenset({"fk_cuenta_unidad", "fk_cuenta_complejo"})):
+    with traducir(sesion, {}):  # fk_cuenta_unidad, fk_cuenta_complejo: 23503, NoEncontrado
         sesion.execute(
             text(
                 "INSERT INTO cuenta (id, administracion_id, complejo_id, unidad_id, creada_en) "
