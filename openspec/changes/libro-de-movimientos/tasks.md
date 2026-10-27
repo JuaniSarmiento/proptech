@@ -516,7 +516,7 @@ avisarle a Juani antes.
 
 ## 6. Cierre
 
-- [ ] 6.1 **Corrida de cierre después de la última vuelta.** Sobre el último commit del change, con el SHA
+- [x] 6.1 **Corrida de cierre después de la última vuelta.** Sobre el último commit del change, con el SHA
   anotado (`git rev-parse HEAD`): antes del merge, `git fetch origin` y comparar
   `backend/migraciones/versions/` con `origin/main`; si ya hay `0023` o posteriores ajenas, quien
   mergea segundo renumera `revision` y reencadena `down_revision`, actualiza ensayo y fixtures y repite
@@ -537,6 +537,15 @@ avisarle a Juani antes.
   - Primera suite completa: `bash ../infra/ci/test-backend.sh` desde `backend/` del clon limpio de `4164aa2`, 09:27:03–09:45:58, `3 failed, 3348 passed, 1 xfailed, 19 warnings` (`47-cierre-backend.log`). Rojo en `test_altas_sin_id_del_cliente.py:326` (POST sin cuerpo), `test_regresiones_de_aislamiento_y_grupos_vacios.py:127` (422 de un cuerpo de asignación enviado a correcciones frente al 404 esperado) y `test_vocabulario_configuracion.py:93` (0004 comparada con Accion vivo, que ya contiene el literal de 0024).
   - Se añaden cuerpos válidos a ambos barridos y se excluye el literal posterior al comparar 0004; 0024 entra también al test de migraciones sin import del enum vivo. No se modifica código productivo ni reglas firmadas.
   - GREEN: `bash infra/ci/test-backend.sh tests/integracion/test_altas_sin_id_del_cliente.py tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py tests/integracion/test_vocabulario_configuracion.py -q --tb=short`, 09:46:46–09:47:11, `16 passed` (`55-verde-barridos-y-vocabulario.log`). Lint, formato y mypy verdes; suite completa a repetir tras el commit.
+
+  **EVIDENCIA de la corrida de cierre final (6.1) · 27/10/2026, SHA `c08b6237c2b8679d7e9b8d1f4017a0b378ee87c6`:**
+  - Pasos 1/2: `git status --short` vacío, HEAD igual al SHA anotado. `git fetch origin` y comparación de `backend/migraciones/versions/` contra `origin/main`: llega sólo hasta `0022_eventos_del_padron.py`, sin `0023` ni posteriores ajenas, sin choque de numeración con las `0023`/`0024` del 4b (`.git/4b-fase1-logs/cierre-6.1/01-estado-repo.log`, `02-fetch-migraciones.log`).
+  - Backend completo, corrida de Codex sobre este mismo SHA antes de agotar su cuota: `3352 passed, 1 xfailed`, exit 0, fin 10:09:39 (`.git/4b-fase1-logs/codex-f456/57-cierre-backend-final.log`), contra `2843 passed + 1 xfailed` del 4a publicado en `84badd1`.
+  - Web unitario (`test-web.sh`, misma corrida de Codex): `60 archivos, 395 tests passed`, exit 0 (`.git/4b-fase1-logs/codex-f456/51-cierre-web.log`); no se repitió por haber corrido completo.
+  - Navegador local (`test-web-navegador.sh`) rojo por entorno: `34 failed, 138 passed`, exit 1 (`.git/4b-fase1-logs/cierre-6.1/03-cierre-navegador.log`). Verificado que la rama no toca `web/` (`git diff --name-only origin/main..HEAD -- web/` da 0 archivos, `.git/4b-fase1-logs/cierre-6.1/04-verificacion-decision-navegador.log`) y que las 34 fallas son redirects a `/ingresar` (sesión/Clerk del entorno local), no una regresión del 4b. El juez es el job `web` del CI, abajo.
+  - `humo.sh` local no se corrió aislado: su función `compose()` fija `-p proptech` sin leer `PROPTECH_COMPOSE_PROYECTO` (hallazgo de diseño del script, ajeno al 4b). Una corrida no aislada, sin ningún stack `proptech` real activo antes ni después (verificado con `docker ps -a`), dio rojo en el paso 11 por `db`/`redis` quedando `unhealthy`, exit 1, sin tocar ningún stack real ni `blendpos-*`/`proxy-app-1` (`.git/4b-fase1-logs/cierre-6.1/04-cierre-humo.log`). El juez es el job `humo` del CI, abajo.
+  - Ensayo de roles aislado, auditado antes (sus llamadas destructivas pasan por `-p "$PROPTECH_COMPOSE_PROYECTO"`, sin `proptech` fijo): `PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` dio `ENSAYO ROLES OK`, exit 0, contenedores `proptech-cierre-4b-*` y limpieza completa, sin dejar nada del proyecto aislado (`.git/4b-fase1-logs/cierre-6.1/05-cierre-ensayo-roles.log`).
+  - Push de `change/libro-de-movimientos` (`891ac38..c08b623`). `gh run list --commit c08b6237...` vacío; se disparó `gh workflow run CI --ref change/libro-de-movimientos`: run `40513721663`, headSha `c08b6237c2b8679d7e9b8d1f4017a0b378ee87c6`, conclusion `success`. Los cinco jobs, confirmados por API tras una lectura inicial con caché desfasado en `web`: `shellcheck` success, `humo` success, `web` success (incluye el paso "Tests en el navegador real"), `backend` success, `secretos` success (`.git/4b-fase1-logs/cierre-6.1/06-push.log` a `10-gh-run-view-jobs.log`).
 
 ## Workflow follow-up
 
