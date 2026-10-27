@@ -223,6 +223,26 @@ def test_unidad_de_otro_edificio(base_del_edificio: BaseDeEdificio, mundo: Mundo
             emitir(s, mundo, OCT, obls)
 
 
+def test_noencontrado_no_deja_la_emision_escrita(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RB4B-03: la unidad ajena aparece en el paso 4, después de insertar la emisión. El error no
+    deja una emisión sin obligaciones que tome el período, aunque el llamador siga y confirme."""
+    obls = [
+        *obligaciones(mundo, "1.00"),
+        ObligacionAEmitir(
+            mundo.unidad_otro_complejo, date(2026, 10, 10), d("1.00"), d("0.00"), d("0.00")
+        ),
+    ]
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        antes = conteos(s)
+        with pytest.raises(NoEncontrado):
+            emitir(s, mundo, OCT, obls)
+        assert conteos(s) == antes
+        r = emitir(s, mundo, OCT, obligaciones(mundo, "1.00"))  # el período sigue libre
+        assert r.intento == 1
+
+
 def test_identidad_de_otra_administracion(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
     with sesion_app(base_del_edificio, mundo.admin_b) as s:
         escrituras = contar_escrituras(s)

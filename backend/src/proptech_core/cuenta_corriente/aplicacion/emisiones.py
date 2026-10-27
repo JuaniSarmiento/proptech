@@ -143,68 +143,74 @@ def registrar_emision(
     if any(not f.anulada for f in intentos):
         raise Conflicto("periodo")
     intento = max((f.intento for f in intentos), default=0) + 1
-    # Paso 3: insertar con su árbitro; otro id en el mismo intento es 23505 traducido.
-    instante = reloj()
-    # E11: sin nombrar `complejo` en el SQL del libro; la FK lo rechaza (NoEncontrado).
-    with traducir(sesion, {"uq_emision_intento": "periodo"}, frozenset({"fk_emision_complejo"})):
-        nueva = sesion.execute(
-            text(
-                "INSERT INTO emision (id, administracion_id, complejo_id, periodo, intento, "
-                "registrada_por, request_id, registrada_en) VALUES (:id, :adm, :c, :p, :i, :por, "
-                ":req, :en) ON CONFLICT (id) DO NOTHING RETURNING id"
-            ),
-            {
-                "id": emision_id,
-                "adm": administracion,
-                "c": complejo_id,
-                "p": periodo,
-                "i": intento,
-                "por": identidad.persona_id,
-                "req": request_id,
-                "en": instante,
-            },
-        ).scalar_one_or_none()
-    if nueva is None:
-        repetida = _replay(sesion, emision_id, complejo_id, periodo, obligaciones)
-        if repetida is None:
-            raise RuntimeError("el movimiento que ganó la carrera no se pudo leer")
-        return repetida
-    # Paso 4: cuentas en una sentencia ordenada, candados, un solo bloqueo, obligaciones.
-    cuentas = crear_cuentas_de_unidades(
-        sesion, complejo_id=complejo_id, unidad_ids=[o.unidad_id for o in obligaciones]
-    )
-    bloquear_cuentas(sesion, list(cuentas.values()))
-    for o in sorted(obligaciones, key=lambda x: x.unidad_id):
-        sesion.execute(
-            text(
-                "INSERT INTO obligacion (id, administracion_id, complejo_id, cuenta_id, "
-                "emision_id, "
-                "periodo, vencimiento, ordinaria, fondo_de_reserva, extraordinaria, registrada_en) "
-                "VALUES (:id, :adm, :c, :cuenta, :e, :p, :v, :o, :f, :x, :en) "
-                "ON CONFLICT (administracion_id, emision_id, cuenta_id) "
-                "WHERE emision_id IS NOT NULL "
-                "DO NOTHING"
-            ),
-            {
-                "id": uuid4(),
-                "adm": administracion,
-                "c": complejo_id,
-                "cuenta": cuentas[o.unidad_id],
-                "e": emision_id,
-                "p": periodo,
-                "v": o.vencimiento,
-                "o": o.ordinaria.a_texto(),
-                "f": o.fondo_de_reserva.a_texto(),
-                "x": o.extraordinaria.a_texto(),
-                "en": instante,
-            },
+    # Pasos 3 y 4 en un SAVEPOINT (RB4B-03): un error del paso 4 (la unidad ajena, que rechaza la
+    # FK después de insertar la emisión) no deja una emisión sin obligaciones tomando el período.
+    with sesion.begin_nested():
+        # Paso 3: insertar con su árbitro; otro id en el mismo intento es 23505 traducido.
+        instante = reloj()
+        # E11: sin nombrar `complejo` en el SQL del libro; la FK lo rechaza (NoEncontrado).
+        with traducir(
+            sesion, {"uq_emision_intento": "periodo"}, frozenset({"fk_emision_complejo"})
+        ):
+            nueva = sesion.execute(
+                text(
+                    "INSERT INTO emision (id, administracion_id, complejo_id, periodo, intento, "
+                    "registrada_por, request_id, registrada_en) "
+                    "VALUES (:id, :adm, :c, :p, :i, :por, :req, :en) "
+                    "ON CONFLICT (id) DO NOTHING RETURNING id"
+                ),
+                {
+                    "id": emision_id,
+                    "adm": administracion,
+                    "c": complejo_id,
+                    "p": periodo,
+                    "i": intento,
+                    "por": identidad.persona_id,
+                    "req": request_id,
+                    "en": instante,
+                },
+            ).scalar_one_or_none()
+        if nueva is None:
+            repetida = _replay(sesion, emision_id, complejo_id, periodo, obligaciones)
+            if repetida is None:
+                raise RuntimeError("el movimiento que ganó la carrera no se pudo leer")
+            return repetida
+        # Paso 4: cuentas en una sentencia ordenada, candados, un solo bloqueo, obligaciones.
+        cuentas = crear_cuentas_de_unidades(
+            sesion, complejo_id=complejo_id, unidad_ids=[o.unidad_id for o in obligaciones]
         )
-    corrida = uuid4()
-    saldo: dict[UUID, Dinero] = {}
-    for cuenta in sorted(cuentas.values()):
-        imputar_pendientes(sesion, cuenta, corrida, instante)
-        saldo[cuenta] = foto(sesion, cuenta).estado.deuda_sin_emision(emision_id)
-    return EmisionRegistrada(emision_id, intento, cuentas, saldo)
+        bloquear_cuentas(sesion, list(cuentas.values()))
+        for o in sorted(obligaciones, key=lambda x: x.unidad_id):
+            sesion.execute(
+                text(
+                    "INSERT INTO obligacion (id, administracion_id, complejo_id, cuenta_id, "
+                    "emision_id, periodo, vencimiento, ordinaria, fondo_de_reserva, "
+                    "extraordinaria, registrada_en) "
+                    "VALUES (:id, :adm, :c, :cuenta, :e, :p, :v, :o, :f, :x, :en) "
+                    "ON CONFLICT (administracion_id, emision_id, cuenta_id) "
+                    "WHERE emision_id IS NOT NULL "
+                    "DO NOTHING"
+                ),
+                {
+                    "id": uuid4(),
+                    "adm": administracion,
+                    "c": complejo_id,
+                    "cuenta": cuentas[o.unidad_id],
+                    "e": emision_id,
+                    "p": periodo,
+                    "v": o.vencimiento,
+                    "o": o.ordinaria.a_texto(),
+                    "f": o.fondo_de_reserva.a_texto(),
+                    "x": o.extraordinaria.a_texto(),
+                    "en": instante,
+                },
+            )
+        corrida = uuid4()
+        saldo: dict[UUID, Dinero] = {}
+        for cuenta in sorted(cuentas.values()):
+            imputar_pendientes(sesion, cuenta, corrida, instante)
+            saldo[cuenta] = foto(sesion, cuenta).estado.deuda_sin_emision(emision_id)
+        return EmisionRegistrada(emision_id, intento, cuentas, saldo)
 
 
 def anular_emision(

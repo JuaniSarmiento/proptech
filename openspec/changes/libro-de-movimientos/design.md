@@ -276,6 +276,10 @@ el permiso de corregir. El llamador de `anular_emision` debe auditar en la misma
 Una anulación ya existente da `Conflicto("emision_id")` también si el motivo coincide (R17); el único
 impide duplicados, no autoriza un replay exitoso. Los ids de emisión, cuenta u obligación inexistentes
 o ajenos dan `NoEncontrado` en `anular_emision`, `registrar_credito` y corrección de crédito.
+Un error de cualquiera de estas funciones obliga al llamador a deshacer su transacción, o a seguir sólo
+si la función garantiza no haber escrito: `registrar_emision` corre sus pasos 3 y 4 en un SAVEPOINT
+(RB4B-03), y las traducciones de D10 también, así que un error suyo no deja la emisión escrita sin sus
+obligaciones. La API de la ruta de corrección deshace la transacción entera ante cualquier error.
 
 ```
 bloquear_cuentas(sesion, cuenta_ids: Sequence[UUID]) -> None                    # pública, idempotente en transacción
