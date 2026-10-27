@@ -4,6 +4,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sinViolaciones } from "../lib/test/accesibilidad";
 import * as accionesGeoref from "./accionesGeoref";
 import { SelectorDeUbicacion } from "./SelectorDeUbicacion";
 
@@ -95,6 +96,21 @@ describe("SelectorDeUbicacion", () => {
       /no pudimos cargar los departamentos/i,
     );
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+  });
+
+  it("FE-4: sin violaciones de axe con las tres listas cargadas y con una en error", async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(accionesGeoref.provinciasAction).mockResolvedValue({
+      estado: "ok",
+      datos: PROVINCIAS,
+    });
+    vi.mocked(accionesGeoref.departamentosDeAction).mockResolvedValue({ estado: "fallo" });
+    const { container } = render(<SelectorDeUbicacion />);
+    await waitFor(() => expect(_deshabilitado("Provincia")).toBe(false));
+    await sinViolaciones(container);
+    await usuario.selectOptions(screen.getByLabelText("Provincia"), "50");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy());
+    await sinViolaciones(container);
   });
 
   it("vaciar la provincia vacía departamento y localidad (vaciado en cascada)", async () => {

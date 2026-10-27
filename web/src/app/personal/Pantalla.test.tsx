@@ -219,6 +219,23 @@ describe("PantallaPersonal", () => {
     await sinViolaciones(container);
   });
 
+  it("FE-4: sin violaciones de axe con la confirmación de Quitar abierta", async () => {
+    const usuario = userEvent.setup();
+    const { container } = render(
+      <PantallaPersonal
+        personas={PERSONAS}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionSimpleNula}
+      />,
+    );
+    const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+    await usuario.click(within(filaBeto).getByRole("button", { name: "Quitar" }));
+    expect(screen.getByRole("dialog", { name: "Quitar este perfil" })).toBeTruthy();
+    await sinViolaciones(container);
+  });
+
   it('FE-3: abrir "Quitar" con "Invitar" abierto cierra la invitación y Tab avanza dentro de la confirmación', async () => {
     const usuario = userEvent.setup();
     render(
