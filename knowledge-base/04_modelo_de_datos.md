@@ -13,8 +13,12 @@
 > `invitacion`, más ocho eventos de acceso al vocabulario de `accion_de_auditoria`. El 4a
 > `cimientos-del-libro` (26/10/2026, migraciones `0021` y `0022`) suma a `configuracion_versionada` la
 > columna del umbral de R30 y un trigger de bloqueo por sentencia, la pasa al rol de arranque como
-> `auditoria`, y agrega siete eventos del padrón al vocabulario. El resto (desde el libro de
-> movimientos) sigue siendo planificado, por cambio, y así queda marcado en cada sección.
+> `auditoria`, y agrega siete eventos del padrón al vocabulario. El **4b `libro-de-movimientos`**
+> (27/10/2026, migraciones `0023` y `0024`) construye el libro: ocho tablas nuevas en
+> `cuenta_corriente` (`cuenta`, `emision`, `evento_de_emision`, `obligacion`, `movimiento`,
+> `imputacion`, de sólo agregar; `candado_de_cuenta`, que no lo es; `tipo_de_movimiento`, vocabulario
+> global), y suma `corregir_movimiento` al vocabulario de auditoría. El resto (4c, 4d, 5 a 15) sigue
+> siendo planificado, por cambio, y así queda marcado en cada sección.
 
 ## Dominios
 
@@ -25,9 +29,13 @@ Los mismos módulos de `02_descripcion_general.md` §Arquitectura general (D-021
 - **acceso**: identidades, roles, asignaciones por edificio, auditoría de acciones sensibles.
 - **gastos**: proveedores, gastos (con sus cuatro estados, D-075), cargos particulares, notas de
   crédito, ingresos del consorcio (propuesta, R38).
-- **liquidacion**: liquidaciones (borrador, emitida, distribuida, anulada), obligaciones, controles
-  antes de emitir.
-- **cuenta_corriente**: el libro de movimientos de sólo agregar (R08), imputaciones, saldo inicial.
+- **liquidacion**: liquidaciones (borrador, emitida, distribuida, anulada) y los controles antes de
+  emitir. **Las obligaciones ya no son de este dominio**: viven en `cuenta_corriente` desde el 4b
+  (son parte del libro, de sólo agregar, D-120).
+- **cuenta_corriente**: el libro de movimientos de sólo agregar (R08), construido en el 4b: cuentas,
+  emisiones, obligaciones, movimientos e imputaciones, más el candado por cuenta y el vocabulario
+  global de tipos de movimiento. El 4c agrega el saldo inicial y el moroso crítico como funciones
+  sobre este libro.
 - **pagos**: pagos informados, confirmados, rechazados y revertidos; CBU histórico; reimputaciones.
 - **avisos**: eventos de aviso por email, con su clave de idempotencia.
 - **politicas**: reglas del motor por edificio, versionadas (D-066).
@@ -60,7 +68,22 @@ erDiagram
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (0003)"
     ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0017, opcional para perfiles principales)"
     ASIGNACION_ROL }o--|| UNIDAD : "alcanza (0003, solo rol vecino)"
-    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010)"
+    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010, +1 en 0024)"
+    COMPLEJO ||--o{ CUENTA : "tiene (0023, de unidad o persona)"
+    UNIDAD ||--o| CUENTA : "es dueña de (0023, a lo sumo una)"
+    PERSONA ||--o| CUENTA : "es dueña de (0023, una por edificio)"
+    CUENTA ||--|| CANDADO_DE_CUENTA : "nace con (0023, no es de solo agregar)"
+    COMPLEJO ||--o{ EMISION : "registra intento de (0023, una por periodo salvo anulada)"
+    EMISION ||--o{ EVENTO_DE_EMISION : "tiene (0023, hoy solo 'anulada')"
+    CUENTA ||--o{ OBLIGACION : "debe (0023, capital desglosado)"
+    EMISION ||--o{ OBLIGACION : "genera (0023, o via operacion_id si no es de una emision)"
+    CUENTA ||--o{ MOVIMIENTO : "acumula (0023, de solo agregar)"
+    EMISION ||--o{ MOVIMIENTO : "origina (0023, cuando corresponde)"
+    OBLIGACION ||--o{ MOVIMIENTO : "recibe (0023, debito o credito por componente)"
+    MOVIMIENTO |o--o| MOVIMIENTO : "corrige, enlaza a (0023, corrige_a / enlazado_a)"
+    MOVIMIENTO ||--o{ IMPUTACION : "se imputa en (0023, orden secuencia global)"
+    OBLIGACION ||--o{ IMPUTACION : "recibe (0023, por componente)"
+    TIPO_DE_MOVIMIENTO ||--o{ MOVIMIENTO : "clasifica (0023, vocabulario global, ampliable por INSERT)"
 ```
 
 La única tabla del sistema hasta el 14/10/2026 era `trabajos_hechos`
@@ -71,7 +94,9 @@ del worker (D3 del cambio 1c, D-090), no pertenece a ningún módulo de `proptec
 del 2a (15/10/2026, migraciones `0003_acceso_minimo` y `0004_auditoria`) existen además las siete
 tablas del candado, detalladas en "Entidades" más abajo. Desde el cierre del 3a (19/10/2026,
 migraciones `0005` a `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`,
-`grupo_unidad`, `categoria_de_gasto` y `configuracion_versionada`.
+`grupo_unidad`, `categoria_de_gasto` y `configuracion_versionada`. Desde el cierre del 4b (27/10/2026,
+migraciones `0023_libro_de_movimientos` y `0024_corregir_movimiento`) existen además las ocho tablas
+del libro y su candado, detalladas en "Entidades hoy, dominio `cuenta_corriente`" más abajo.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 
@@ -93,12 +118,12 @@ erDiagram
     GASTO }o--|| GRUPO_DE_REPARTO : "reparte en (c.6, R01)"
     GASTO }o--|| CATEGORIA_DE_GASTO : "clasifica en (c.6, R16)"
     UNIDAD ||--o{ CARGO_PARTICULAR : "recibe (c.6, R14)"
-    COMPLEJO ||--o{ LIQUIDACION : "emite (c.4 contrato minimo / c.7 completa, D-086)"
-    LIQUIDACION ||--o{ OBLIGACION : "genera (c.4/c.7, R13)"
-    UNIDAD ||--o{ OBLIGACION : "debe (c.4/c.7)"
-    UNIDAD ||--o{ MOVIMIENTO : "acumula (c.4, R08, libro de solo agregar)"
-    LIQUIDACION ||--o{ MOVIMIENTO : "origina (c.4/c.7, D-073/D-079)"
-    MOVIMIENTO |o--o| MOVIMIENTO : "corrige o enlaza a (c.4, R08; R11 ajuste; R18 reversion; R25 reimputacion)"
+    COMPLEJO ||--o{ LIQUIDACION : "emite (c.4b contrato minimo / c.7 completa, D-086)"
+    CUENTA ||--o{ OBLIGACION : "debe (existe, 4b)"
+    LIQUIDACION ||--o| OBLIGACION : "via emision, mismo id (existe, 4b; c.7 completa)"
+    CUENTA ||--o{ MOVIMIENTO : "acumula (existe, 4b, R08, libro de solo agregar)"
+    LIQUIDACION ||--o| MOVIMIENTO : "via emision, mismo id (existe, 4b/c.7, D-073/D-079)"
+    MOVIMIENTO |o--o| MOVIMIENTO : "corrige o enlaza a (existe, 4b, R08; R11 ajuste; R18 reversion; R25 reimputacion)"
     UNIDAD ||--o{ PAGO : "informa (c.8, R11)"
     PAGO ||--o| MOVIMIENTO : "imputa como (c.8, R04/R05)"
     UNIDAD ||--o{ CBU_HISTORICO : "guarda (c.8, R19)"
@@ -112,16 +137,16 @@ Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
   por ejemplo, nació mínima en el cambio 2a (D-082: "para probar el acceso, este cambio crea lo mínimo
   de administración, complejo, unidad, persona y asignación por rol") y el 3a (`0005`) ya la completó
   con tipo, coeficiente, superficie y estado.
-- El **modelo de tablas concreto del libro de movimientos** (`MOVIMIENTO`, `OBLIGACION`) queda
-  explícitamente **a decidir en el design del cambio 4** (`motor-de-cuenta-corriente`): su ficha dice
-  "Decidir en el design: el modelo de tablas del libro; cómo se bloquea la cuenta durante una
-  imputación; el desempate determinista del mayor resto". El diagrama de arriba muestra sólo las
-  relaciones que las reglas ya exigen (un movimiento por unidad, de sólo agregar, que referencia la
-  liquidación que lo originó y, cuando corresponde, a otro movimiento que corrige o enlaza), nunca una
-  estructura de columnas que todavía no se diseñó.
+- **El modelo de tablas del libro de movimientos ya no es "a decidir": está construido desde el 4b**
+  (migración `0023`, D1 del design archivado). `UNIDAD` y `LIQUIDACION` **no tienen una FK directa**
+  hacia `MOVIMIENTO` ni `OBLIGACION`: la unidad (o la persona) llega a través de `CUENTA`, y la
+  liquidación a través de `EMISION`, que comparte id con ella (ver "Entidades hoy, dominio
+  `cuenta_corriente`"). El detalle completo de las ocho tablas, sus columnas, FK y únicos vive en esa
+  sección; este diagrama simplificado no reemplaza esa lista.
 - **`LIQUIDACION`** es, hasta el cambio 7, sólo su "contrato mínimo" (identificador, período, edificio y
-  estado, D-086), para que cada movimiento pueda referenciarla desde el cambio 4; el cambio 7 agrega
-  preliquidación, controles (R34) y la máquina de estados de distribución (D-073, D-074).
+  estado, D-086) — y ese identificador **es el mismo id que `emision`** del libro, construido en el 4b;
+  el cambio 7 agrega preliquidación, controles (R34) y la máquina de estados de distribución (D-073,
+  D-074).
 - **`REGLA_VERSIONADA`** (el motor de GoRules ZEN, cambio 6b) queda **fuera del camino crítico a M1**:
   ninguna regla vigente pasa todavía por el motor (D-089); hasta el 6b no hay puerto: intereses, fondo
   de reserva y cargo por estado son menús de configuración (D-080), y R14 y R37, si se validan, van
@@ -317,6 +342,9 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   grupo); nunca otros valores. Se registran en la misma transacción que el cambio. Bajar `0022` choca
   con la FK de `auditoria` (`23503`) en cuanto se registró un evento: es el punto de no retorno del
   4a (D-114.5).
+- **Acción que suma el 4b** (`0024_corregir_movimiento.py`, E8): `corregir_movimiento`, de super admin
+  y administrador principal; se audita en la misma transacción que la corrección; un replay por
+  `operacion_id` no vuelve a auditar.
 
 #### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
 
@@ -497,49 +525,145 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 
 ### Planificado, dominio `liquidacion`
 
-#### `liquidacion` · planificada (cambio 4, contrato mínimo / cambio 7, completa; D-086, R17)
+#### `liquidacion` · planificada (cambio 4b contrato mínimo, construido / cambio 7, completa; D-086, R17)
 
-- **Atributos conocidos del contrato mínimo** (D-086, cambio 4): identificador, período, edificio y
-  **estado**.
-- **Estados** (R17, D-073, D-074): `borrador` → `emitida` → `distribuida`; `anulada` sólo desde
-  `emitida`. Guardados **como una secuencia de eventos de sólo agregar** (emitida, distribuida,
-  anulada), coherente con el libro de la cuenta corriente (R08), no como una columna que se sobrescribe.
-- **Relaciones**: pertenece a un `complejo`; genera muchas `obligacion` y `movimiento` (cada movimiento
-  referencia la emisión que lo generó, D-086).
+- **Atributos conocidos del contrato mínimo** (D-086): **comparte identificador con `emision`** del
+  libro (`cuenta_corriente`, 4b): no hay una tabla `liquidacion` propia todavía, el "contrato mínimo"
+  es la fila de `emision` (período, edificio, intento) más la secuencia de `evento_de_emision`
+  (`anulada`). El cambio 7 la completa con preliquidación, controles (R34) y su propia máquina de
+  estados de distribución.
+- **Estados** (R17, D-073, D-074): hoy sólo existen `registrada` (la fila de `emision`) y `anulada`
+  (un `evento_de_emision` de tipo `anulada`, E13 del 4b); `emitida` → `distribuida` son del cambio 7.
+  Guardados **como una secuencia de eventos de sólo agregar**, coherente con el libro, no como una
+  columna que se sobrescribe.
+- **Relaciones**: pertenece a un `complejo`; vía `emision_id` llegan muchas `obligacion` y
+  `movimiento` (cada movimiento referencia la emisión que lo generó, D-086). **No hay FK directa
+  `unidad → movimiento` ni `liquidacion → obligacion`**: la unidad llega a través de `cuenta`, y la
+  liquidación a través de `emision` (ver "Entidades hoy, dominio `cuenta_corriente`").
 - **Constraints**: no se puede emitir dos veces el mismo período salvo que la anterior esté anulada
-  (R17); los períodos se liquidan en orden (R40, propuesta); anular excluye **todo** lo que generó esa
-  emisión (obligaciones, intereses, ajustes de interés que compensaban ese interés) sin borrar ningún
-  movimiento (D-073, D-079, D-085).
+  (`uq_emision_intento`, R17, E3); los períodos se liquidan en orden (R40, propuesta, del 7); anular
+  excluye **todo** lo que generó esa emisión (obligaciones, intereses, ajustes de interés que
+  compensaban ese interés) sin borrar ningún movimiento (D-073, D-079, D-085, D-123 para el crédito de
+  corrección sobre una emisión anulada).
 
-#### `obligacion` · planificada (cambio 4)
+### Entidades hoy, dominio `cuenta_corriente` (migraciones `0023` y `0024`, cambio 4b, D1 del design archivado)
 
-- **Atributos conocidos**: unidad, período, capital desglosado en ordinario y extraordinario (R13); su
-  residual se calcula siempre desde sus imputaciones, nunca desde una marca de "pagada" (R05).
-- **Relaciones**: pertenece a una `unidad` y a la `liquidacion` que la generó.
+El libro de movimientos: ocho tablas, seis de sólo agregar. Todas con `administracion_id NOT NULL` y
+RLS forzada salvo `tipo_de_movimiento` (vocabulario global, sin tenant, como `accion_de_auditoria`).
+Montos `NUMERIC(14,2)` vía `Dinero.desde_decimal`; ids `UUID` generados por la aplicación; FK `NO
+ACTION`, sin cascadas sobre el libro. Detalle exhaustivo de columnas, FK y únicos en el design
+archivado (`openspec/changes/archive/2026-10-27-libro-de-movimientos/design.md`, D1); acá, el resumen
+que un consumidor de otro módulo necesita.
 
-### Planificado, dominio `cuenta_corriente`
+#### `cuenta` · existe (de una unidad o de una persona)
 
-#### `movimiento` · planificada (cambio 4, R08; modelo de tablas a decidir en el design de ese cambio)
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `unidad_id` nulo, `persona_id` nulo,
+  `creada_en`. `CHECK num_nonnulls(unidad_id, persona_id) = 1`: siempre una de las dos, nunca las dos
+  ni ninguna.
+- **Relaciones**: pertenece a un `complejo`; es de una `unidad` (`uq_cuenta_unidad`, a lo sumo una por
+  unidad) o de una `persona` **por edificio** (`uq_cuenta_persona` sobre
+  `administracion_id, complejo_id, persona_id`; desvío del explore AR-6/P52: la cuenta de persona no
+  es común a todos los edificios de la administración, para aislar la deuda del vendedor en su
+  edificio). Nace con su `candado_de_cuenta` en la misma sentencia, ordenada por `unidad_id`.
 
-- **Qué es**: el libro de **sólo agregar**: ningún movimiento se edita ni se borra; un error se corrige
-  con un movimiento nuevo con motivo y responsable (R08).
-- **Tipos conocidos por las reglas** (no son valores de enum ya decididos, son los que el modelo tiene
-  que poder representar): débito (emisión, interés) y crédito (pago, corrección, condonación R29,
-  ajuste de interés R11, bonificación R37, reimputación R25, baja de deuda R41).
-- **Relaciones**: pertenece a una `unidad`; referencia la `liquidacion` (emisión) que lo generó; algunos
-  tipos referencian a otro movimiento (una corrección a lo que corrige, R08; un ajuste de interés al
-  interés que compensa y a la emisión que lo cobró, D-082/D-085; una reversión al pago que revierte,
-  R18; una reimputación a los dos movimientos enlazados, R25).
-- **Constraints**: `UPDATE`/`DELETE` sobre un movimiento tiene que rebotar **también por SQL directo**
-  (R08, tests mínimos); ninguna obligación queda con residual negativo (R05); el saldo de una unidad
-  excluye todo movimiento de una emisión anulada (D-073, D-079).
-- **Índices**: a decidir en el design del cambio 4, junto con el resto del modelo de tablas del libro.
+#### `candado_de_cuenta` · existe (no es de sólo agregar, E2)
+
+- **Atributos**: `cuenta_id` PK, `administracion_id`.
+- **Qué es**: serializa las escrituras de una cuenta porque la app no tiene `UPDATE` sobre `cuenta`
+  (tabla protegida) y por lo tanto no puede `SELECT ... FOR UPDATE` sobre ella (D2, EVIDENCIA en el
+  design: `permission denied for table cuenta`). La API pública `bloquear_cuentas(ids)` es idempotente
+  dentro de la transacción, exige `READ COMMITTED` (si no, `AislamientoNoAdmitido`) y tantas filas como
+  ids pedidos (si no, `CandadoIncompleto`); varias cuentas se prebloquean juntas, en una llamada
+  ordenada, antes de escribir. La app no tiene `DELETE` sobre esta tabla.
+
+#### `emision` · existe (intento de liquidación)
+
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `periodo` (primer día del mes),
+  `intento` (`>= 1`), `registrada_por`, `request_id`, `registrada_en`.
+- **Constraints**: `uq_emision_intento` — una emisión por `(administracion, complejo, periodo,
+  intento)`; combinado con "el intento activo más alto rechaza un intento nuevo si no está anulado"
+  (E3), da **una emisión vigente por período salvo que la anterior esté anulada**.
+- **Es el mismo id que `liquidacion`** (ver más arriba): el 7 no crea una tabla nueva, completa ésta.
+
+#### `evento_de_emision` · existe
+
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `emision_id`, `tipo` (hoy sólo `anulada`),
+  `motivo` (normalizado, 1 a 500 caracteres), `persona_id`, `request_id`, `registrado_en`.
+- **Qué es**: la secuencia de eventos de sólo agregar de una emisión (R17); hoy sólo registra la
+  anulación. `uq_evento_emision_tipo` impide anular dos veces la misma emisión.
+
+#### `obligacion` · existe (ya no es del dominio `liquidacion`, D-120)
+
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `cuenta_id`, `emision_id` nulo,
+  `operacion_id` nulo, `periodo` (primer día del mes), `vencimiento`, capital desglosado en
+  `ordinaria`, `fondo_de_reserva`, `extraordinaria` (`>= 0` cada una, suma `> 0`), `registrada_en`.
+- **Relaciones**: pertenece a una `cuenta`; viene de una `emision` **o** de un `operacion_id` sin
+  emisión (`CHECK` exactamente uno de los dos: un cargo particular o una corrección pueden crear una
+  obligación sin pasar por una emisión).
+- **Residual**: se calcula siempre desde sus `imputacion`, nunca desde una marca de "pagada" (R05).
+
+#### `movimiento` · existe (el libro en sí, R08)
+
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `cuenta_id`, `tipo`, `sentido`, `importe`
+  (`> 0`), `fecha_valor`, `registrado_por`, `request_id`, `registrado_en`, y opcionales según el tipo:
+  `operacion_id`, `emision_id`, `obligacion_id`, `componente` (`interes`, `ordinaria`,
+  `fondo_de_reserva` o `extraordinaria`), `corte`, `corrige_a`, `tipo_corregido`, `enlazado_a`,
+  `motivo`.
+- **Tipo y sentido vienen del vocabulario** `tipo_de_movimiento` (ver abajo), no de un enum cerrado:
+  hoy sembrado con `interes/debito`, `pago/credito`, `correccion/debito`, `correccion/credito`,
+  `condonacion/credito`, `ajuste_de_interes/credito`, `bonificacion/credito`, `reimputacion/debito`,
+  `reimputacion/credito`, `baja_de_deuda/credito`, `saldo_inicial/credito`,
+  `reversion_de_pago/debito`, `traslado/debito`, `traslado/credito` (E14; restituye `traslado`,
+  omitido en el primer propose, AR-2).
+- **Constraints principales** (CHECK acotados por tipo conocido, no columnas duplicadas del
+  vocabulario, D1): `interes` exige obligación, componente `interes` y `corte`, todos NOT NULL, con
+  único `uq_mov_interes(obligacion_id, corte)`; `condonacion`/`ajuste_de_interes` exigen obligación y
+  componente `interes`; `bonificacion` exige obligación y componente `ordinaria`; todo tipo distinto
+  de `interes` exige `operacion_id NOT NULL` (único `uq_mov_operacion`, idempotencia E4);
+  `correccion` exige motivo normalizado; un débito de corrección exige `corrige_a`; un crédito de
+  corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion`,
+  misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
+  movimiento, E6/D-122). **La base no distingue blanco corregible de no corregible ni sentido
+  opuesto**: eso lo valida la aplicación, bajo candado, con test (E6).
+- **`UPDATE`/`DELETE` rebota también por SQL directo** (tabla protegida); ninguna obligación queda con
+  residual negativo (R05); el saldo de una cuenta excluye todo movimiento de una emisión anulada
+  (D-073, D-079).
+
+#### `imputacion` · existe
+
+- **Atributos**: `id`, `administracion_id`, `complejo_id`, `cuenta_id`, `movimiento_id`,
+  `sentido_del_movimiento` (NOT NULL, CHECK = `'credito'`), `obligacion_id`, `componente`, `importe`
+  (`> 0`), `corrida_id` (trazabilidad, no idempotencia), `orden` (`BIGINT GENERATED ALWAYS AS
+  IDENTITY`, secuencia monótona **global**, nunca fecha valor ni `now()`/UUID), `registrada_en`.
+- **Qué resuelve**: en qué orden y a qué destino bajó un crédito la deuda, y de dónde vuelve el exceso
+  cuando se corrige (E7, enmienda del tope por crédito, D-122).
+- **Sin único de corrida**: imputar dos veces al mismo componente en momentos distintos es válido; el
+  candado y el cálculo evitan duplicar.
+
+#### `tipo_de_movimiento` · existe (vocabulario global, E14)
+
+- **Atributos**: `tipo`, `sentido` (`CHECK IN ('debito', 'credito')`), PK compuesta `(tipo, sentido)`.
+- **Qué es**: ampliable por `INSERT` como `accion_de_auditoria`, sin tenant ni RLS. La app sólo tiene
+  `SELECT`; el migrador amplía con `INSERT` (probado: `INSERT` como app → `42501`). Excluida del GRANT
+  amplio de `roles antes()`; `roles despues()` revoca `INSERT, UPDATE, DELETE` explícitamente.
+
+#### Dueño de las tablas de sólo agregar (actualizado, 4b)
+
+La lista de `compartido/tablas_protegidas.py` (`TABLAS_DE_SOLO_AGREGAR`) suma las seis tablas del
+libro (`cuenta`, `emision`, `evento_de_emision`, `obligacion`, `movimiento`, `imputacion`) a
+`auditoria` y `configuracion_versionada`; nacen con sus tres triggers (D-114.4) y pasan al rol de
+arranque en `roles despues()`, igual que las anteriores. `candado_de_cuenta` **no** entra en esta
+lista (no es de sólo agregar) y ya es del migrador. **Nuevo en el 4b**: `roles despues()` también da
+`GRANT REFERENCES` al migrador sobre las seis tablas protegidas del libro (E15), sin conceder `ALTER`,
+`CREATE INDEX` ni `DROP INDEX`; así una tabla futura (del 4c, el 7 o el 8) puede tener FK hacia el
+libro sin que el migrador sea su dueño. Revertir el GRANT con `REVOKE REFERENCES` impide referencias
+nuevas pero no borra las existentes.
 
 #### Moroso crítico · **no es una entidad**, es una función (D-074)
 
 R20 se calcula siempre desde las imputaciones del libro, nunca desde una marca guardada: "no hay nada
-que reevaluar". Se construye como consulta pura en el cambio 4; el cambio 10a sólo la lista, exporta y
-presenta.
+que reevaluar". El libro que lee ya está construido (4b); la función en sí y su efecto sobre R20 son
+del cambio 4c, y el 10a sólo la lista, exporta y presenta.
 
 ### Planificado, dominio `pagos`
 

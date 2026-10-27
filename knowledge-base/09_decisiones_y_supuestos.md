@@ -2245,6 +2245,137 @@ marcadas "a validar (P42)" en `05_reglas_de_negocio.md` y las preguntas abiertas
 `10_preguntas_abiertas.md`. No se migran retroactivamente para no inventar un origen que no quedó
 registrado como tal en su momento.)*
 
+## D-121 · Elecciones E1 a E16 firmadas del 4b `libro-de-movimientos` (26/10/2026)
+
+- **Contexto**: cierre del change 4b `libro-de-movimientos` (CRITICAL, D-094, D-111). Firmado por
+  Juani en la tabla "Aprobación" de `proposal.md` (`openspec/changes/archive/2026-10-27-libro-de-movimientos/proposal.md`,
+  26/10/2026, ratifica además la aprobación verbal de `aprobacion-verbal.md`).
+- **Decisión**: quedan aprobadas las 16, cada una con su alternativa descartada y su costo de
+  revertir en `design.md`:
+  - **E1 · Modelo del libro**: seis tablas de sólo agregar (`cuenta`, `emision`,
+    `evento_de_emision`, `obligacion`, `movimiento`, `imputacion`) más `candado_de_cuenta` (no de
+    sólo agregar) y `tipo_de_movimiento` (vocabulario global), con FK/únicos/NOT NULL exhaustivos de
+    D1 y el fondo de reserva en su propia columna.
+  - **E2 · Candado por cuenta**: tabla separada que nace con la cuenta; `bloquear_cuentas(ids)`
+    idempotente, ordenado por `cuenta_id`, prebloqueo de varias cuentas antes de escribir; exige
+    `READ COMMITTED` (si no, `AislamientoNoAdmitido`) y filas completas (si no,
+    `CandadoIncompleto`); la app no tiene `DELETE` sobre el candado.
+  - **E3 · Una emisión por período**: intento único por administración/edificio/período, leído y
+    calculado antes del `INSERT`; una emisión anterior activa rechaza la nueva.
+  - **E4 · Idempotencia**: árbitro y predicado explícitos por escritura (D5), replay por
+    `operacion_id` comparando los datos del pedido; anular dos veces se rechaza (R17).
+  - **E5 · Orden de imputación y fondo de reserva**: período más antiguo primero; dentro del
+    período, interés, ordinaria, **fondo de reserva**, extraordinaria; destinos fijos de D-086;
+    **provisorio hasta que Alberto conteste P60 (A-4)**.
+  - **E6 · Corrección**: contra-asiento total o crédito de corrección con R04; un crédito de
+    corrección admite contra-asiento una sola vez, incluso sobre un interés; deshacer es
+    definitivo; sin débito libre ni contra-asiento de un débito de corrección; cargo cobrado de
+    menos queda para el 7, saldo inicial bajo R09 para el 4c. A validar (P42, A-4).
+  - **E7 · Exclusiones calculadas**: el exceso vuelve de la imputación más reciente a la más
+    antigua, por secuencia monótona `orden` de `imputacion` (nunca fecha valor ni `now`/UUID). Esta
+    elección tiene una enmienda firmada el mismo día, ver D-122.
+  - **E8 · Permiso y auditoría**: SA y AP pueden corregir; la corrección se audita en su propia
+    transacción (`0024`), replay sin auditoría nueva; emitir/anular lo audita el llamador (el 7).
+  - **E9 · Contrato de error**: formas actuales 401/403/404/409/422 más 500 y 503 declaradas, tabla
+    SQLSTATE y `SAVEPOINT`; `40P01`/`40001` dan 503 sin reintento interno.
+  - **E10 · Columnas anticipadas**: `corte`, `enlazado_a`, `emision_id` y `operacion_id` ya en
+    `0023`; después de `roles` el migrador no puede `ALTER`, `CREATE INDEX` ni `DROP INDEX` sobre
+    las seis tablas; cambiar columnas/CHECK/únicos exige préstamo (D-115.3).
+  - **E11 · Escaneo de tablas en SQL**: el SQL de cada módulo sólo nombra sus propias tablas;
+    `administracion` es de `acceso`; excepciones nominadas `escritura.py`, `lectura.py` y
+    `ejemplo.py`, firmadas.
+  - **E12 · Lecturas y crédito pendiente**: estado actual en una sola sentencia con foto consistente
+    `READ COMMITTED`; `saldo_anterior` es residual no negativo sin emisión, el crédito va aparte.
+  - **E13 · Deuda del 4a y rollback**: se cierra la deuda del 4a nombrada en D-13 del design,
+    probada también con mutantes de tests existentes; rollback sólo vacío o sin corrección
+    auditada.
+  - **E14 · Vocabulario ampliable**: `tipo_de_movimiento(tipo, sentido)` con PK y FK compuesta,
+    ampliable por `INSERT`; la app sólo tiene `SELECT` (probado con `INSERT` como app -> `42501`).
+  - **E15 · REFERENCES al migrador**: `roles.py:despues()` da `GRANT REFERENCES` al migrador sobre
+    las seis tablas protegidas, sin `ALTER`/`CREATE INDEX`/`DROP INDEX`; probado con una tabla
+    nueva que referencia a `movimiento` después de `roles`.
+  - **E16 · Destino fijo sin sobrante libre**: un destino fijo que no absorbe todo rechaza el
+    pedido (422, campo `destino`), sin registro parcial; una bonificación ya imputada cuya emisión
+    se anula queda retenida hasta su reversión (el 8); la lectura separa crédito a favor
+    **aplicable** y **retenido**.
+- **Quién**: Juani, 26/10/2026, en la tabla "Aprobación" de `proposal.md`.
+
+## D-122 · Enmienda E7 · Tope por crédito (RB4B-01, 26/10/2026)
+
+- **Contexto**: hallazgo del rompedor final sobre E7 (`.git/informes-libro-de-movimientos/11-rompedor-fases-1-3.md`
+  y `15-rompedor-final.md`): sin tope, un crédito puede contar más de una vez por imputaciones
+  distintas y terminar contando más que su propio importe.
+- **Decisión**: ningún crédito cuenta más que su importe. Cuando las imputaciones de un mismo
+  crédito suman más que su importe, cuentan en orden de imputación (`orden` de `imputacion`, la más
+  vieja primero) hasta agotarlo; la parte que excede se recorta y no cuenta; lo no recortado de la
+  imputación más nueva sigue el destino de E7. El orden de devolución del exceso de E7 no cambia.
+- **Descartado**: que gane la reimputación más nueva (reescribe lo que ya se informó) o topear sólo
+  por componente (crea plata).
+- **Costo de revertir**: función de cálculo (D8 paso 3 de esta misma enmienda en el design), sin
+  cambio de estructura.
+- **Quién**: Juani, 26/10/2026, en la tabla "Aprobación" de `proposal.md`.
+
+## D-123 · Deuda firmada D8 · Crédito de corrección sobre una emisión anulada (27/10/2026) · bloquea el 7
+
+- **Contexto**: un crédito de corrección se imputa a una obligación y después se anula la emisión de
+  esa obligación. Origen: rompedor final RF-02 y auditor final
+  (`.git/informes-libro-de-movimientos/15-rompedor-final.md` y `16-auditor-final.md`).
+- **Decisión**: hoy (paso 1) el crédito sigue contando y queda como saldo a favor. Quedan vistas dos
+  opciones para cuando se decida: (a) retenido, como la bonificación de E16; (b) a favor, como un
+  pago. **No se resuelve ahora**: hoy no puede ocurrir en producción porque nadie llama a
+  `anular_emision` hasta el change 7. **Bloquea el change 7**: no se construye la anulación sin
+  decidir esto antes.
+- **Quién**: Juani, 27/10/2026, opción (c) "anotar como deuda que bloquea el 7" de las que dio el
+  auditor final. Referenciada también en `12_fichas_de_changes.md`, ficha 7.
+
+## D-124 · Anular una emisión va a necesitar tomar los candados de cuenta (pendiente para el 7)
+
+- **Fecha**: 27/10/2026.
+- **Contexto**: deuda nombrada por el auditor final del 4b
+  (`.git/informes-libro-de-movimientos/16-auditor-final.md`, "Lo que queda como deuda": "Ficha del 7:
+  anular toma candados"). El 4b no construye `anular_emision` (D-120, P-6; la anulación es del 7);
+  esta nota deja escrito que, cuando el 7 la construya, tiene que tomar el candado de la cuenta antes
+  de escribir, igual que hace `registrar_credito` y el resto de las escrituras del libro (E2).
+- **Decisión**: **no es algo que el 4b resolvió**, es una condición de diseño para el 7, dejada por
+  escrito para que no se pierda entre el cierre del 4b y el propose del 7.
+- **Quién**: anotado por el orquestador a partir del auditor final, 27/10/2026; sin firma de
+  gobernanza porque no cambia nada construido hoy. Referenciada en `12_fichas_de_changes.md`, ficha 7.
+
+## D-125 · Revisión proporcional al riesgo (27/10/2026)
+
+- **Fecha**: 27/10/2026.
+- **Contexto**: el cierre del 4b mostró el costo de un ciclo completo (constructor, rompedor y
+  auditor, con vueltas) aplicado por igual a tareas de distinto riesgo; parte de la deuda de este
+  change (ver `16-auditor-final.md`) viene de pases que no se hicieron o se hicieron una sola vez sin
+  volver a mirar.
+- **Decisión**: el nivel de revisión se fija por la gobernanza de la tarea, no por hábito:
+  - **CRITICAL**: revisores de rol sólo en `propose` (no en `apply`, mientras el diff todavía se
+    mueve); en `verify`, un rompedor por tanda alternando Claude y Codex; un auditor al final.
+  - **HIGH/MEDIUM**: un revisor más un rompedor.
+  - **LOW**: tests y CI alcanzan.
+- **Descartado**: el ciclo completo (constructor, rompedor, auditor, con hasta tres vueltas) para
+  toda tarea sin importar su riesgo, que es el costo que mostró este change.
+- **Costo de revertir**: ninguno estructural; es una regla de proceso, se vuelve a la tabla de
+  `14_forma_de_trabajo.md` anterior si no funciona.
+- **Quién**: Juani, 27/10/2026. Referenciada en `knowledge-base/14_forma_de_trabajo.md`.
+
+## D-126 · Cierre del 4b `libro-de-movimientos`: firma CRITICAL y resultado (27/10/2026)
+
+- **Fecha**: 27/10/2026.
+- **Decisión**: Juani firmó la sección "Aprobación" de `proposal.md` el 26/10/2026 (E1 a E16) y la
+  enmienda E7 y la deuda D8 el 26 y el 27/10/2026 respectivamente (D-122, D-123). El change quedó
+  mergeado en `main` en `409274f` y archivado el 27/10/2026
+  (`openspec/changes/archive/2026-10-27-libro-de-movimientos/`).
+- **Cierre**: constructor en fases (Claude Opus en la sesión de Juani para 1 a 3, Codex para 4 a 6 y
+  para la corrección v2), rompedor final y auditor final
+  (`.git/informes-libro-de-movimientos/15-rompedor-final.md`, `16-auditor-final.md`). El auditor dio
+  el veredicto de mergeable salvo D8, que Juani firmó el 27/10/2026. CI verde en `409274f` (run
+  `40533627016`) y en el commit previo `8d25bd6` (run `40529402406`: `secretos`, `shellcheck`,
+  `backend`, `humo` y `web` en `success`).
+- **Deuda**: ver `12_fichas_de_changes.md`, ficha 4b (lo construido y su deuda) y la lista completa
+  del auditor final en §"Lo que queda como deuda" de `16-auditor-final.md`.
+- **Quién**: Juani, 26 y 27/10/2026 (firma, merge y archivo).
+
 ### SU-01 · Invitar a un email que ya tiene usuario en Clerk (cambio 2b, 22/10/2026)
 
 - **Origen**: `design.md` del 2b, Open Questions. La 8.2 original preveía probar este caso contra

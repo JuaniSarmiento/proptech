@@ -674,3 +674,76 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   tramos etiquetados `(0, int)` y `(1, texto)` para que no haya lectura posible que compare tipos
   distintos.
 - **Aplica a**: revisores de rol (QA, analista), auditor.
+
+## L-047 · `humo.sh` fija su propio proyecto de Compose e ignora la variable que lo parametriza
+
+- **Origen**: 4b `libro-de-movimientos`, constructor Codex de las fases 4 a 6
+  (`.git/informes-libro-de-movimientos/15-constructor-codex-fases-4-6.md`, SUPUESTO/límites).
+- **Qué pasó**: `infra/ci/humo.sh` corre con `-p proptech` fijo en el script, sin leer
+  `PROPTECH_COMPOSE_PROYECTO`. El cierre de este change lo esquivó con un clon limpio y un envoltorio
+  de Docker que exige `PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b` y fuerza `-p` aislado desde
+  afuera del script; si ese envoltorio no se usa, `humo.sh` corre sobre el proyecto `proptech` real
+  sin avisar, con el riesgo de pisar o destruir el stack que ya está corriendo.
+  - 4a ya había dejado una deuda parecida (`RB-7`, variable `PROPTECH_COMPOSE_PROYECTO` exportada que
+    se filtra a `restaurar.sh`, en `knowledge-base/12_fichas_de_changes.md` §"4a · deuda del cierre").
+- **Regla**: ningún script de `infra/ci/` que compone contra una base real asume su propio nombre de
+  proyecto; lee la variable de entorno o falla si no está, y quien lo corre sobre un entorno que no es
+  descartable comprueba primero con qué `-p` va a correr.
+- **Costo**: deuda que sigue abierta (el script no se reescribió en este scope); el riesgo real es
+  correrlo una vez sin el envoltorio contra un `proptech` con datos reales.
+- **Aplica a**: quien toque `infra/ci/humo.sh` o `restaurar.sh` (ya nombrado en la ficha 4, deuda del
+  4a).
+
+## L-048 · El role-implementer no construye CRITICAL por su cuenta: la firma humana no le llega por ningún canal que pueda verificar
+
+- **Origen**: 4b `libro-de-movimientos`. **JUDGMENT** (confianza media, no es una cita literal):
+  `openspec/changes/archive/2026-10-27-libro-de-movimientos/tasks.md:651` registra "Constructor:
+  Claude (Opus), **en la sesión de Juani**, con la tabla de Aprobación firmada por él", y la fase 1 la
+  empezó Codex; la regla general que explica por qué está en `~/.claude/agents/role-implementer.md`
+  ("Ahí la aprobación es humana, y la aprobación humana vive en la conversación entre la persona y el
+  orquestador. No viaja hasta vos por ningún medio que puedas verificar").
+- **Qué pasó**: el apply de las fases CRITICAL de este change no lo hizo un `role-implementer`
+  despachado como sub-agente aparte: lo hizo Claude corriendo directamente en la sesión de Juani (que
+  sí puede ver la firma en la conversación) o Codex.
+- **Regla**: el apply de una tarea CRITICAL no se despacha a un `role-implementer` genérico esperando
+  que encuentre la firma en `tasks.md` o en su propio prompt; ninguno de los dos es un canal
+  verificable. Va a Codex, o a un fork del orquestador que ya tiene la conversación con el OK directo
+  de la persona.
+- **Costo**: ninguno nuevo en este change (el patrón ya se usó), pero sin esta nota el próximo
+  constructor podría intentar despachar un `role-implementer` suelto a una tarea CRITICAL y
+  encontrarse con el mismo freno sin saber por qué.
+- **Aplica a**: orquestador, al decidir quién construye una tarea CRITICAL.
+
+## L-049 · Un "rojo" contra stubs vacíos puede caer en un helper, no en la aserción que el test dice probar
+
+- **Origen**: 4b `libro-de-movimientos`, auditoría de las fases 1 a 3
+  (`.git/informes-libro-de-movimientos/12-auditor-fases-1-3.md`, hallazgo 1).
+- **Qué pasó**: los 15 rojos de `test_cc_correcciones.py` (sección 3.5) morían en el helper `emitir`
+  (`test_cc_correcciones.py:59`, `NoResultFound`) porque el stub de emisión no escribía nada; ningún
+  test llegó a su propia aserción. El registro del constructor no decía esto, y el salto de TDD
+  tampoco figuraba en `tasks.md`.
+- **Regla**: un RED contra stubs vacíos se lee línea por línea del traceback para confirmar que cae
+  en la aserción propia del test, no en un helper compartido; si cae en el helper, ese rojo no vale y
+  hay que repetirlo después de que el helper funcione lo mínimo.
+- **Costo**: 15 rojos de la fase 3 quedaron sin valer como evidencia; los mutantes de esa sección
+  compensaron parte del hueco, pero no todo (ver también las 4 FK a `complejo` sin revisar, mismo
+  informe).
+- **Aplica a**: constructor (quien declara el rojo), auditor (quien lo revisa).
+
+## L-050 · El navegador local puede dar rojo por el entorno de sesión de Clerk sin que la web haya cambiado: el juez es el job `web` del CI
+
+- **Origen**: 4b `libro-de-movimientos`. Local: `.git/4b-fase1-logs/cierre-6.1/03-cierre-navegador.log`
+  (34 failed, 138 passed; fallas en `sesion.spec.ts` y otros specs por el handshake de Clerk). CI:
+  `.git/informes-libro-de-movimientos/16-auditor-final.md` (`$ gh run view 40529402406 --json
+  headSha,conclusion,jobs` -> `headSha 8d25bd68… success`, con `secretos/shellcheck/backend/humo/web =
+  success`).
+- **Qué pasó**: la corrida de navegador local del cierre 6.1 dio 34 tests caídos por el handshake de
+  sesión de Clerk, pero corrió sobre un SHA anterior (`c08b623`/`7ffc2fc`) y en un entorno cuya sesión
+  de Clerk no está armada igual que el runner del CI. El run real del CI sobre el SHA que importaba
+  (`8d25bd6`) tuvo el job `web` en `success`.
+- **Regla**: un rojo del navegador corrido a mano no se lee como "la web se rompió" sin mirar antes
+  sobre qué SHA corrió y si el entorno de sesión de Clerk es comparable al del CI; el juez de la web
+  es el job `web` del workflow, no la corrida local.
+- **Costo**: casi una alarma falsa de "la web se rompió" durante el cierre; se resolvió comparando
+  SHAs antes de escalarlo.
+- **Aplica a**: quien cierra un change y corre el navegador a mano antes del CI.

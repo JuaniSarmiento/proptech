@@ -40,8 +40,8 @@ gates están en el árbol de abajo.
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
-   👉 4b libro de movimientos (deudas y pagos)
-   ⏳ 4c intereses y moroso
+   ✅ 4b libro de movimientos (deudas y pagos) (27/10/2026)
+   👉 4c intereses y moroso
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
@@ -85,9 +85,9 @@ C-01 infraestructura-base (1a)
                                       │
                                       ├── C-09 gastos-y-cargos (6)        ← tras el 4a si no escribe en el libro (S-04); si escribe, tras el 4b
                                       │
-                                      └── C-07b libro-de-movimientos (4b)
+                                      └── C-07b libro-de-movimientos (4b)  ← archivado 27/10/2026
                                             │
-                                            └── C-07c intereses-saldo-inicial-y-moroso (4c)
+                                            └── C-07c intereses-saldo-inicial-y-moroso (4c)  ← próximo del camino crítico
                                                   │
                                                   └── C-08 importacion-desde-excel (5)
                                                         │
@@ -151,12 +151,13 @@ GATE 6 bis: C-05a + C-06a + C-06b ✓
     → C-05b login-y-usuarios (2b, archivado 22/10/2026; Clerk, CRITICAL; P48 resuelta en D-099)
 
 GATE 7: C-07a ✓ (26/10/2026)                             ← PRIMER FORK real (2 paralelos)
-  → C-07b libro-de-movimientos [Agente A] (4b, CRITICAL: aprobación de un firmante de D-111)
+  → C-07b libro-de-movimientos [Agente A] (4b, CRITICAL; archivado 27/10/2026, firma de Juani,
+    D-121 a D-126)
   → C-09 gastos-y-cargos        [Agente B] (sólo si no escribe en el libro, SUPUESTO S-04 sin
     verificar contra R14 y R25; si escribe, pasa al GATE 8)
 
-GATE 8: C-07b ✓
-  → C-07c intereses-saldo-inicial-y-moroso (4c, CRITICAL: aprobación de un firmante de D-111)
+GATE 8: C-07b ✓ (27/10/2026)
+  → C-07c intereses-saldo-inicial-y-moroso (4c, CRITICAL: aprobación de un firmante de D-111; próximo del camino crítico)
 
 GATE 9: C-07c ✓
   → C-08 importacion-desde-excel (CRITICAL)
@@ -458,22 +459,23 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-07b] `libro-de-movimientos` · 4b
-- **Estado**: `[ ]` pendiente, el próximo del camino crítico (CRITICAL; lo bloquea P56)
-- **Scope**: `cuenta` (de unidad o de persona), `emision`, `evento_de_emision`, `obligacion`,
-  `movimiento` e `imputacion` de sólo agregar, con RLS y claves naturales; concurrencia; R04, R05, R06,
-  R08, R13; HU-A9 (ruta, permiso y contrato de error); saldo sin anuladas; la API que el 4 le expone al
-  resto
+- **Estado**: `[x]` archivado (27/10/2026), OK salvo D8 (D-121 a D-126); mergeado en `409274f`, CI
+  verde en ese SHA (run 40533627016) y en el commit previo `8d25bd6` (run 40529402406). Deuda en la
+  ficha 4 ("4b · deuda del cierre")
+- **Scope**: `cuenta` (de unidad o de persona), `candado_de_cuenta`, `emision`, `evento_de_emision`,
+  `obligacion`, `movimiento`, `imputacion` de sólo agregar, con RLS y claves naturales;
+  `tipo_de_movimiento` (vocabulario global); concurrencia; R04, R05, R06, R08, R13; HU-A9 (ruta,
+  permiso y contrato de error); saldo sin anuladas; la API que el 4 le expone al resto
 - **Dependencias**: C-07a
-- **Governance**: CRITICO
+- **Governance**: CRITICO; E1 a E16 firmadas por Juani (26/10/2026); enmienda E7 y deuda D8 firmadas
+  26 y 27/10/2026
 - **Leer antes**:
+  - `openspec/changes/archive/2026-10-27-libro-de-movimientos/`
   - `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md` §3 a §5
-  - `knowledge-base/12_fichas_de_changes.md` §4
-  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Cuenta corriente
-  - `knowledge-base/06_funcionalidades.md` §HU-A9
-  - `knowledge-base/10_preguntas_abiertas.md` (P55, P56)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-114.4, D-115: cómo nacen sus tablas de sólo
-    agregar y por qué la idempotencia va con `ON CONFLICT DO NOTHING`)
-  - `knowledge-base/15_lecciones.md` (L-041 a L-044)
+  - `knowledge-base/12_fichas_de_changes.md` §4 (ficha 4b y su deuda del cierre)
+  - `knowledge-base/05_reglas_de_negocio.md` R04, R05, R06, R08, R15
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-114.4, D-115, D-121 a D-126)
+  - `knowledge-base/15_lecciones.md` (L-041 a L-050)
 
 ---
 

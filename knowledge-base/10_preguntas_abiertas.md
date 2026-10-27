@@ -152,27 +152,30 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   4d, no el 4a a 4c.
 - [ ] **P52 · La deuda que queda a nombre del vendedor** (P-2, H-02): si queda a su nombre, ¿sigue
   sumando intereses? ¿Puede aparecer como moroso? ¿Cómo paga, si ya no tiene la unidad en el sistema?
-  Bloquea el 4d. El propose 4b (E1, AR-6) prevé cuenta personal única por
-  administración **y edificio**, distinto del explore; modificar ese único después de roles requiere
-  préstamo D-115.3. La elección sigue sin firma y no contesta si esa deuda genera interés.
+  Bloquea el 4d. El 4b (E1, AR-6) construyó la cuenta personal única por **administración y edificio**
+  (`uq_cuenta_persona`), distinto del explore; modificar ese único después de roles requiere préstamo
+  D-115.3. La elección sigue sin firma y no contesta si esa deuda genera interés.
 - [ ] **P53 · De qué mes es el interés** (P-4, H-05): el interés por la mora de agosto que aparece en la
   expensa de septiembre, ¿cuenta como deuda de agosto o de septiembre? Decide si septiembre cuenta como
-  "vencida" para el moroso crítico. Bloquea el 4c. El propose 4b conserva el interés en el
+  "vencida" para el moroso crítico. Bloquea el 4c. El 4b conserva el interés en el
   período de la obligación que lo generó para R04; responder "septiembre" aquí afecta al moroso crítico,
-  no cambia esa imputación. E10 anticipa único `(administracion_id, obligacion_id, corte)`:
-  contra-asentar un interés no habilita registrarlo de nuevo en ese mismo corte (DB-7). Decidir antes
-  del 4c si necesita otro contrato o varios intereses del mismo corte; cambiar el único tras roles
-  requiere préstamo D-115.3, no alcanza INSERT en el vocabulario (AR-7).
+  no cambia esa imputación. El 4b construyó el único `uq_mov_interes(obligacion_id, corte)`:
+  contra-asentar un interés no habilita registrarlo de nuevo en ese mismo corte (DB-7, ya en `0023`).
+  Decidir antes del 4c si necesita otro contrato o varios intereses del mismo corte; cambiar el único
+  tras roles requiere préstamo D-115.3, no alcanza INSERT en el vocabulario (AR-7).
 - [ ] **P54 · El umbral de $500** (P-5, H-06, H-14): ¿se compara contra todo lo que debe la unidad o
   contra cada expensa? Por debajo de $500, ¿sigue corriendo interés? Y "vencida", para el moroso
   crítico, ¿es al día siguiente del vencimiento o después de los días de gracia? Bloquea el 4c.
-  Revisar junto a P53 el único de interés por obligación/corte del propose 4b (E10, DB-7): no permite
-  reemplazar en ese corte un interés ya contra-asentado; si el 4c necesita otra clave, debe obtener el
-  préstamo D-115.3 antes de alterarla.
-- [ ] **P55 · Pantalla de corrección en el 4** (P-6, H-15): la corrección de un error (HU-A9), ¿trae
-  pantalla o alcanza con la API y la pantalla llega con la del pago (8)? Antes del 4b.
-- [ ] **P56 · El libro sin puerto de repositorio** (P-8, §4.9 de la exploración del 4): contradice el
-  texto de D-040 y necesita la firma de Juani. Bloquea el 4b.
+  Revisar junto a P53 el único de interés por obligación/corte, ya construido en `0023` (E10, DB-7): no
+  permite reemplazar en ese corte un interés ya contra-asentado; si el 4c necesita otra clave, debe
+  obtener el préstamo D-115.3 antes de alterarla.
+- [x] **P55 · Pantalla de corrección en el 4** (P-6, H-15): respondida por Juani el 26/10/2026 (D-120):
+  **sólo API** en el 4b (ruta, permiso y contrato de error); la pantalla llega con la de pagos (8),
+  primera pantalla con plata.
+- [x] **P56 · El libro sin puerto de repositorio** (P-8, §4.9 de la exploración del 4): respondida por
+  Juani el 26/10/2026 (D-120): **sin puerto de repositorio** para el libro — reglas puras en
+  `cuenta_corriente/dominio/`, SQL directo sobre la `Session` en `cuenta_corriente/aplicacion/`, igual
+  que `complejos`. Acota D-040 (`puertos.py`/`adaptadores/` sólo para un sistema externo).
 - [ ] **P57 · El centavo del reparto en el Excel de Alberto** (A-1; formaliza la sub-pregunta de P10):
   cuando un gasto no cierra al centavo, ¿qué hace con el que sobra o falta, y a qué unidad va si hay
   empate? Mientras tanto el 4a desempata por orden natural del identificador (D-118); si la respuesta es
@@ -184,12 +187,14 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   con recargo que ya acepta la configuración, ¿se usa en el edificio piloto, y cómo convive con el
   interés diario? Antes del piloto.
 - [ ] **P60 · El fondo de reserva cuando un pago no alcanza** (A-4, H-11): ¿se cobra antes o después de
-  la ordinaria? Antes del piloto. El propose 4b propone interés, ordinaria, fondo,
-  extraordinaria (E5), sin respuesta definitiva de Alberto. Se amplía **A-4, a validar (P42)** con las
-  elecciones aún sin firma: **E6** permitir contra-asiento de un crédito de corrección equivocado una
-  sola vez; **E7** restituir exceso desde la imputación más reciente (secuencia), no desde el crédito
-  más reciente; **E16** rechazar con 422 `destino` un crédito fijo que no se absorbe y conservar atada
-  una bonificación de emisión anulada hasta su reversión por el 8. Se validan como precisiones de
+  la ordinaria? Antes del piloto. El 4b construyó interés, ordinaria, fondo de reserva, extraordinaria
+  (E5, D-121), **provisorio** hasta que Alberto conteste: si cambia, es una función pura y sus tests,
+  sin tocar las imputaciones ya registradas. Se amplía **A-4, a validar (P42)** con las elecciones ya
+  firmadas por Juani el 26/10/2026 (E6 a E16, D-121/D-122), que siguen esperando la validación de
+  Alberto o un contador: **E6** contra-asiento de un crédito de corrección equivocado una sola vez;
+  **E7/D-122** restituir exceso desde la imputación más reciente (secuencia), topeado al importe del
+  propio crédito; **E16** rechazar con 422 `destino` un crédito fijo que no se absorbe y conservar
+  atada una bonificación de emisión anulada hasta su reversión por el 8. Siguen como precisiones de
   R05/R08, sin inventar R42 ni marcar aprobadas reglas nuevas de plata (D-087/D-089, AN-11).
 - [ ] **P61 · Ubicación del edificio: ¿sólo Argentina?** (exploración del 3c,
   `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md` §3): propuesta: sí, sin campo
@@ -228,9 +233,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **P18 y P23**: resueltas (D-096 para P18, D-106 para la matriz de P23); ya no bloquean el cambio 2 (2a y 2b, D-097).
 - **P10 y P11**: resueltas en D-109 (22/10/2026); ya no bloquean el 4. Sus sub-preguntas para
   Alberto pasan a P57 y P58.
-- **El 4 partido en 4a a 4d** (exploración del 4, §8): P56 bloquea el 4b y P55 lo decide; P53 y P54
-  bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de Alberto y se validan antes del piloto. P-3 y P-7
-  de la exploración se resolvieron en D-113.
+- **El 4 partido en 4a a 4d** (exploración del 4, §8): P55 y P56 resueltas por D-120 (26/10/2026), ya
+  no bloquean el 4b, que está construido; P53 y P54 bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de
+  Alberto y se validan antes del piloto. P-3 y P-7 de la exploración se resolvieron en D-113.
 - **Pulido de la configuración (3c)**: P61 a P65 (ubicación y pisos), P68 (alcance) y P69 (grupos),
   antes de su propose. P66 (`/personal` jerárquica) y P67 (cuentas de Mailinator) no lo bloquean.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.

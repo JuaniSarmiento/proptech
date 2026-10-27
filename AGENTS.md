@@ -102,11 +102,16 @@ mercado de arranque es **Mendoza**.
   el umbral de R30 por versión de configuración (`0021`); siete eventos del padrón auditados (`0022`);
   deuda D-053 cerrada. Firmó Juani E1 a E8. **OK**; deuda en la ficha 4 de
   `knowledge-base/12_fichas_de_changes.md` ("4a · deuda del cierre").
-- **Próximo**: **4b `libro-de-movimientos`** (CRITICAL; P56 lo bloquea), después 4c
-  `intereses-saldo-inicial-y-moroso` y 4d `cambio-de-titular` (los dos CRITICAL). En paralelo, fuera
-  del camino crítico, el 3c `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la
-  ubicación del edificio con listas encadenadas y la cantidad de pisos; y el 6 si no escribe en el
-  libro.
+- **Cambio 4b `libro-de-movimientos` archivado** (27/10/2026, CRITICAL, D-121 a D-126): el libro
+  construido — ocho tablas (`0023`), candado por cuenta, orden de imputación con fondo de reserva
+  provisorio, corrección por contra-asiento o crédito con su tope (enmienda RB4B-01), permiso y
+  auditoría de `corregir_movimiento` (`0024`), vocabulario ampliable de movimientos. Firmó Juani E1 a
+  E16, la enmienda E7 y la deuda D8 (que bloquea el 7). **OK salvo D8**, que Juani anotó como deuda en
+  vez de resolverla ahora; deuda completa en la ficha 4 ("4b · deuda del cierre").
+- **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL; por proponer), después 4d
+  `cambio-de-titular` (CRITICAL). En paralelo, fuera del camino crítico, el 3c
+  `pulido-de-la-configuracion` (HIGH): los hallazgos del QA del 23/10/2026, la ubicación del edificio
+  con listas encadenadas y la cantidad de pisos; y el 6 si no escribe en el libro.
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -220,11 +225,12 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
   (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026), 2.2a `roles-de-la-empresa`
   (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
-  (24/10/2026, D-110, D-111) y 4a `cimientos-del-libro` (26/10/2026, D-119).
-- **Siguen, en paralelo**: el 4b `libro-de-movimientos` (CRITICAL, por proponer) y el 3c
+  (24/10/2026, D-110, D-111), 4a `cimientos-del-libro` (26/10/2026, D-119) y 4b
+  `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7).
+- **Siguen, en paralelo**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer) y el 3c
   `pulido-de-la-configuracion` (HIGH, por proponer, lo propone Emiliano desde su exploración del
-  26/10/2026). Las migraciones del 3c van después de las del 4a (`0021`, `0022`). La numeración 3c y 4a
-  a 4d no renumera los demás changes (precedente D-097).
+  26/10/2026). Las migraciones del 3c van después de las del 4a (`0021`, `0022`); las del 4b son
+  `0023` y `0024`. La numeración 3c y 4a a 4d no renumera los demás changes (precedente D-097).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

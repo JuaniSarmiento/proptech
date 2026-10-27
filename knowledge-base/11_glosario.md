@@ -67,10 +67,19 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 - **Período**: el mes que se liquida.
 - **Preliquidación**: el cálculo provisorio que el administrador revisa antes de emitir. No genera deuda.
-- **Emisión** (o liquidación emitida): genera la **obligación** de cada unidad para el período y su comprobante.
+- **Emisión** (tabla `emision`, construida en el 4b): el intento de liquidar un período para un
+  edificio; genera la **obligación** de cada cuenta. **No es lo mismo que "liquidación"**: la
+  liquidación es el proceso completo (preliquidar, emitir, distribuir, con sus controles), que
+  construye el cambio 7; la emisión es su registro mínimo en el libro — mismo `id`, período, edificio
+  e intento (D-086, D-120) — del que cada obligación y movimiento cuelga desde el 4b. Hasta una
+  emisión por edificio y período, salvo que la anterior esté anulada (`uq_emision_intento`, E3).
+- **Intento de emisión** (columna `intento` de `emision`, E3): el número de orden del intento de
+  emitir un período; existe porque una emisión rechazada o anulada no consume el "turno" del período,
+  y una nueva emisión del mismo período es un intento distinto, nunca una fila editada.
 - **Distribución** (o liquidación distribuida): el momento en que la liquidación llega a los vecinos, por la acción "distribuir" del administrador, el primer email o la primera vista en el portal. Desde ahí no se puede anular (R17, D-074).
-- **Anulación**: pasar una liquidación emitida y no distribuida a anulada. Es un cambio de estado: no borra movimientos y la deuda queda como antes de emitir (D-073).
-- **Obligación**: lo que una unidad debe por un período, con el capital desglosado en ordinario y extraordinario (R13). Los cargos particulares van dentro de la ordinaria (R14) y los intereses se registran como débitos aparte (R03).
+- **Anulación**: pasar una emisión a anulada (`evento_de_emision` tipo `anulada`, de sólo agregar, construido en el 4b). Es un cambio de estado, no borra movimientos: la deuda queda como antes de emitir (D-073) y todo lo que esa emisión generó —obligaciones, intereses, ajustes que los compensaban— deja de contar. La acción de anular en sí (ventana, motivo en pantalla) la construye el cambio 7.
+- **Obligación** (tabla `obligacion`, construida en el 4b; ya no es del dominio `liquidacion`, es del libro): lo que una **cuenta** debe por un período, con el capital desglosado en tres **componentes**: ordinaria, fondo de reserva y extraordinaria (R13, R15). Viene de una emisión o, si no hay emisión (un cargo particular, una corrección), de su propio `operacion_id`. Los cargos particulares van dentro de la ordinaria (R14) y los intereses se registran como débitos aparte, por su propio componente (R03).
+- **Componente** (columna de `movimiento`, `obligacion` e `imputacion`): a cuál de las tres partes de una obligación (más `interes`, que no desglosa ordinaria/extraordinaria/fondo) afecta un movimiento o una imputación. El orden de imputación (R04) es por componente dentro de cada período.
 - **Liquidación**: el cálculo de todo un período para un edificio. Se preliquida, se emite y se distribuye. **Expensa** (o boleta): lo que le toca a una unidad en una liquidación, con su PDF.
 - **Vencimiento**: la fecha a partir de la cual corre la mora. Si cae en un día inhábil, se corre al primer día hábil siguiente (R35, propuesta).
 - **Ingreso del consorcio**: lo que el consorcio cobra (alquiler de una cochera común, de la terraza, el SUM a terceros). Se resta de los gastos ordinarios de su grupo antes de repartir (R38, propuesta).
@@ -87,8 +96,13 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## Cuenta corriente y pagos
 
-- **Cuenta corriente**: el historial de débitos y créditos de una unidad. El saldo sale de ahí, nunca se guarda suelto.
-- **Débito**: aumenta lo que la unidad debe (emisión, interés, cargo). **Crédito**: lo disminuye (pago, corrección, condonación). La nota de crédito de un proveedor no es un crédito de la unidad: reduce el gasto antes de prorratear (R22).
+- **Cuenta** (tabla `cuenta`, construida en el 4b): el titular del libro. Es **de una unidad o de una
+  persona**, nunca las dos ni ninguna (`CHECK num_nonnulls`); la cuenta de persona existe para la
+  deuda que queda a nombre de alguien que ya no tiene la unidad (cambio de titular, 4d) y es única por
+  administración **y edificio** (P52). Todo lo que antes se pensaba "de la unidad" (movimientos,
+  obligaciones, candado) es, desde el 4b, de su cuenta.
+- **Cuenta corriente**: el historial de débitos y créditos de una cuenta. El saldo sale de ahí, nunca se guarda suelto.
+- **Débito**: aumenta lo que la cuenta debe (emisión, interés, cargo). **Crédito**: lo disminuye (pago, corrección, condonación). La nota de crédito de un proveedor no es un crédito de la unidad: reduce el gasto antes de prorratear (R22).
 - **Pago**: plata que entra para una unidad. Tiene una fecha real y un canal.
 - **Comprobante de pago**: la captura o el PDF de una transferencia que sube el vecino. No es una factura.
 - **Pago informado**: un pago que el vecino declaró subiendo su comprobante. No afecta la deuda (R11).
@@ -106,11 +120,12 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Número de operación**: el identificador de la transferencia en el comprobante. No se repite dentro de un complejo (R11).
 - **Extracto**: el listado de movimientos de la cuenta bancaria del consorcio, que el administrador sube para validar los pagos informados.
 - **Acreditación**: el momento en que la plata llega a la cuenta del complejo.
-- **Imputación**: asignar un pago, total o parcialmente, a una o varias obligaciones. Un pago puede tener varias imputaciones.
+- **Imputación** (tabla `imputacion`, construida en el 4b): asignar un movimiento de crédito, total o parcialmente, a una o varias obligaciones (por componente). Un crédito puede tener varias imputaciones; cada una lleva su `orden`, una secuencia monótona global que decide, cuando hay que corregir, de cuál imputación vuelve el exceso primero (la más reciente, E7, D-122).
 - **Pago parcial**: cubre parte de una obligación; queda un residual pendiente.
-- **Crédito a favor**: lo que sobra de un pago después de imputarlo; se compensa en la próxima liquidación.
+- **Crédito a favor**: lo que sobra de un pago después de imputarlo; se compensa en la próxima liquidación. Desde el 4b se lee separado en **aplicable** (libre para la próxima liquidación) y **retenido** (atado a un destino fijo que no se pudo absorber del todo, hasta que se revierta — por ejemplo, la bonificación de una emisión anulada, E16).
 - **Saldo inicial**: la deuda o el crédito con que una unidad entra al sistema al migrar.
-- **Corrección**: un movimiento nuevo con motivo y responsable. Nunca se edita un movimiento existente.
+- **Corrección**: un movimiento nuevo con motivo y responsable. Nunca se edita un movimiento existente. Dos formas, construidas en el 4b: **contra-asiento** o **crédito de corrección** (ver abajo).
+- **Contra-asiento** (construido en el 4b, E6): un movimiento del mismo importe y sentido contrario que referencia al movimiento que corrige (`corrige_a`); el par deja de contar para el saldo pero los dos quedan visibles en el libro. Un crédito de corrección admite un solo contra-asiento, nunca un débito de corrección; deshacer es definitivo.
 
 ## Facturas de proveedores
 

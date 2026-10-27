@@ -95,12 +95,19 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   (sin fondo de reserva).
 - **En la liquidación**: aparece como línea propia de la expensa de cada unidad, calculada sobre su
   ordinaria prorrateada y redondeada con R07; la suma de las partes da exacto el total del fondo del período.
-- **Imputación**: forma parte de la ordinaria (R04, R13).
+- **Imputación**: forma parte de la ordinaria (R04, R13); dentro de la ordinaria, el orden de
+  imputación lo pone en **tercer lugar** (interés, ordinaria, **fondo de reserva**, extraordinaria),
+  en su propia columna (`obligacion.fondo_de_reserva`), **provisorio hasta que Alberto conteste A-4
+  (P60)** (E5 del 4b, D-121). Si la respuesta cambia el orden, se arregla en la función pura y sus
+  tests; las imputaciones ya registradas quedan como hechos con el orden que regía cuando se hicieron.
 - **Sin tesorería**: el sistema no lleva el saldo acumulado del fondo ni el saldo de caja (D-023).
 - **Historia**: cada liquidación guarda el porcentaje usado.
+- **Dónde vive** (4b): el componente `fondo_de_reserva` de `obligacion` y el orden de imputación de
+  `cuenta_corriente/dominio/imputacion.py` (knowledge-base/04, dominio `cuenta_corriente`).
 - **Tests mínimos**: con 0% no aparece la línea; con 5% cada unidad paga el 5% de su ordinaria
   prorrateada, sin contar sus cargos particulares;
-  la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas.
+  la suma del fondo es exacta; cambiar el porcentaje no altera liquidaciones emitidas; el fondo de
+  reserva se imputa después de la ordinaria y antes de la extraordinaria (4b).
 
 ## R16 · Categorías de gasto · Vigente (D-041)
 
@@ -176,52 +183,87 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo; el
   interés devengado después del cierre del período no se cobra en esa emisión, sino en la siguiente.
 
-## R04 · Orden de imputación · Vigente (D-011)
+## R04 · Orden de imputación · Vigente (D-011, D-121)
 
 - **Regla única, no configurable**:
   1. Primero la obligación con el período más antiguo.
-  2. Dentro de cada período, primero los intereses, después la expensa ordinaria (incluidos los
-     cargos particulares) y por último la extraordinaria.
+  2. Dentro de cada período: primero el interés, después la ordinaria (incluidos los cargos
+     particulares), después el **fondo de reserva** (R15, provisorio hasta A-4) y por último la
+     extraordinaria.
   3. Lo que sobra sigue con el período siguiente; si se cancela todo, el resto queda como crédito a favor (R05).
 - **Ejemplo**: el lote debe agosto ($80.000 + $4.000 de interés) y septiembre ($85.000) y paga
   $100.000. Se imputan $4.000 al interés de agosto, $80.000 al capital de agosto y $16.000 a
   septiembre, que queda con $69.000 pendientes.
 - **Concurrencia**: dos pagos de la misma unidad que llegan a la vez se imputan uno después del
-  otro, nunca sobre la misma foto de la deuda (análisis H05).
+  otro, nunca sobre la misma foto de la deuda (análisis H05; construido en el 4b con
+  `candado_de_cuenta`, foto consistente `READ COMMITTED`, E2/E12).
 - **Por qué ordinaria antes que extraordinaria**: la ordinaria sostiene la operación diaria del
   complejo (seguridad, luz, encargado); con pagos parciales, primero se cubre lo que no puede dejar de pagarse.
-- **Tests mínimos**: el ejemplo de arriba; pago parcial cubre intereses y ordinaria antes que extraordinaria; pago que cubre exacto un período; pago que cancela
-  todo y deja crédito; dos pagos simultáneos de la misma unidad.
+- **Dónde vive** (4b): `cuenta_corriente/dominio/imputacion.py` (orden puro) y
+  `cuenta_corriente/aplicacion/` (SQL sobre la cuenta bloqueada); el estado de cuenta se lee con
+  `cuenta_corriente/dominio/estado.py`.
+- **Tests mínimos**: el ejemplo de arriba; pago parcial cubre interés, ordinaria y fondo de reserva
+  antes que extraordinaria; pago que cubre exacto un período; pago que cancela todo y deja crédito;
+  dos pagos simultáneos de la misma unidad (probado contra PostgreSQL real, no con un doble en
+  memoria, D-120).
 
-## R05 · Pagos parciales y excedentes · Vigente (D-012, D-086) · a validar (P42)
+## R05 · Pagos parciales y excedentes · Vigente (D-012, D-086, D-121, D-122) · a validar (P42, A-4)
 
 - **Qué define**: qué queda después de un pago que no cubre o que supera la deuda.
 - **Regla**: cada imputación se registra; el residual de cada obligación se calcula a partir
   de sus imputaciones, nunca con una marca de "pagada" (análisis H04). El excedente queda como
   crédito a favor y se compensa en la siguiente liquidación (H07).
+- **Destino fijo sin sobrante libre** (E16 del 4b): si el destino fijo de un crédito no absorbe todo
+  el importe, se rechaza el pedido entero (422, campo `destino`), sin registro parcial; no hay
+  "lo que sobra va como crédito libre" para estos créditos (distinto del excedente de un **pago**,
+  que sí queda libre).
 - **Créditos que no son pagos** (D-086, resuelve P35): bajan el residual con una imputación propia,
   igual que un pago, y cada uno va a un destino fijo:
   - **Condonación** (R29): al interés que condona.
   - **Ajuste de interés** (R11): al interés que compensa.
-  - **Bonificación** (R37): a la ordinaria del período bonificado.
+  - **Bonificación** (R37): a la ordinaria del período bonificado. Si la emisión que generó esa
+    ordinaria se anula después de imputar la bonificación, queda **retenida** (atada al destino,
+    pendiente de la reversión del 8) en vez de liberarse como crédito a favor (E16).
   - **Corrección** (R08) y **reimputación** (R25): con el orden de R04, como un pago.
   - **Baja de deuda** (R41): a todas las obligaciones impagas de la unidad, con R04.
   El residual de una obligación es su importe menos todas sus imputaciones, sean de pagos o de
   créditos.
+- **Exceso por secuencia, no por fecha** (E7 del 4b): cuando una corrección libera plata que ya
+  estaba imputada en otro lado, el exceso vuelve de la imputación **más reciente** a la más antigua,
+  por la secuencia monótona `orden` de `imputacion` — nunca por fecha valor del pago ni por
+  `now()`/UUID. **Enmienda tope por crédito (RB4B-01, D-122)**: ningún crédito cuenta más que su
+  propio importe; si sus imputaciones suman más, cuentan en orden de imputación (la más vieja
+  primero) hasta agotarlo y la parte que excede se recorta.
+- **Lectura del crédito a favor** (E12/E16): separa **aplicable** (libre para la próxima liquidación)
+  de **retenido** (atado a un destino fijo hasta su reversión); el 11 (portal del vecino) construye su
+  pantalla sobre esta separación.
+- **Crédito de corrección sobre una emisión anulada**: hoy (D-123) sigue contando como saldo a favor;
+  no se resolvió si queda retenido (como E16) o libre, porque hoy nadie llama a `anular_emision` antes
+  del cambio 7. **Bloquea el 7.**
+- **Dónde vive** (4b): `cuenta_corriente/dominio/estado.py` (tope por crédito, paso 3 de D-122;
+  cálculo de aplicable/retenido) e `imputacion.py` (orden y exceso).
 - **Tests mínimos**: un pago parcial deja el residual exacto de cada obligación; un pago mayor que la
   deuda deja el excedente como crédito a favor; el crédito a favor se imputa con R04 en la liquidación
   siguiente; una condonación baja sólo el residual del interés condonado; un ajuste de interés baja sólo
-  el interés que compensa; ninguna obligación queda con residual negativo.
+  el interés que compensa; ninguna obligación queda con residual negativo; un crédito que se corrige
+  después de imputarse en dos lugares vuelve primero del más reciente, topeado a su propio importe
+  (RB4B-01); un destino fijo que no absorbe todo rechaza el pedido sin registro parcial.
 
 ## R06 · Saldo arrastrado · Vigente (D-012)
 
 - **Qué define**: cómo se muestra la deuda vieja en la expensa nueva sin cobrarla dos veces.
 - **Regla**: la deuda vieja vive en sus obligaciones originales; la expensa nueva la **muestra**
   como saldo anterior pero no genera un débito nuevo por ella (análisis H06).
+- **Saldo anterior es residual, no saldo neto** (E12 del 4b): es la suma de los residuales no
+  negativos de las obligaciones sin emisión asociada a la lectura actual; el crédito a favor se
+  calcula y se muestra aparte, nunca mezclado en una sola cifra.
+- **Dónde vive** (4b): `cuenta_corriente/dominio/estado.py` (`estado_de_cuenta`), una sola sentencia
+  con foto consistente `READ COMMITTED`.
 - **Tests mínimos**: una unidad con deuda de marzo ve en la expensa de abril el saldo anterior y su
   deuda total es la suma de las dos obligaciones, sin duplicar la de marzo; pagar la de marzo la saca
   del saldo anterior en la expensa siguiente; el saldo anterior que muestra la expensa coincide con el
-  calculado desde el libro a la fecha de emisión.
+  calculado desde el libro a la fecha de emisión; el saldo anterior nunca es la resta de deuda menos
+  crédito en una sola columna (4b).
 
 ## R07 · Precisión y redondeo · Vigente (D-015, D-046, D-109, D-113, D-118) · a validar (P42)
 
@@ -252,13 +294,31 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   `hypothesis` (suma exacta, distancia menor a un centavo, orden de los restos, mismo resultado con las
   partes permutadas).
 
-## R08 · Correcciones · Vigente (D-016)
+## R08 · Correcciones · Vigente (D-016, D-120, D-121, D-122) · HU-A9
 
 - **Regla**: ningún movimiento de la cuenta corriente se edita ni se borra. Una corrección es
   un movimiento nuevo con motivo, responsable y referencia al que corrige (análisis H03, H16).
+- **Dos formas, construidas en el 4b** (E6): **contra-asiento total** (un movimiento del mismo
+  importe y sentido contrario que referencia al original; el par deja de contar y sigue visible) o
+  **crédito de corrección** por un importe imputado con R04. Un crédito de corrección equivocado
+  admite contra-asiento una sola vez, incluso si contra-asentaba un interés; deshacer es definitivo
+  (el original restaurado ya no se puede volver a contra-asentar). **Sin débito libre** ni
+  contra-asiento de un débito de corrección.
+- **Quién y cómo**: super admin y administrador principal, por `POST
+  /api/complejos/{complejo_id}/correcciones`; auditada en su propia transacción (E8); idempotente por
+  `operacion_id` (un replay no vuelve a auditar). **Sólo API**: la pantalla llega con el cambio 8,
+  primera pantalla con plata (D-120, P-6); `pesos()`, los errores de campo y la API falsa del
+  formulario viajan con el 8, no con el 4b.
+- **Qué valida la aplicación, no la base**: blanco corregible (un crédito, no un débito de
+  corrección) y sentido opuesto se validan bajo candado y con test; la base no distingue esos casos
+  (E6, a validar P42/A-4).
+- **Cargo cobrado de menos**: queda nombrado para el 7 (cargo complementario con motivo y vínculo al
+  origen), no se resuelve en el 4b.
 - **Tests mínimos**: un UPDATE o un DELETE sobre un movimiento rebota en la base, también por SQL
   directo; una corrección sin motivo se rechaza; una corrección referencia al movimiento que corrige y
-  los dos quedan visibles; el saldo después de una corrección es el correcto.
+  los dos quedan visibles; el saldo después de una corrección es el correcto; un crédito de corrección
+  admite un solo contra-asiento, incluso sobre un interés; corregir una corrección ya corregida se
+  rechaza; un administrador por edificio no corrige el movimiento de otro edificio.
 
 ## R09 · Saldo inicial al migrar · Vigente (D-015, D-068) · a validar (P42)
 
@@ -390,7 +450,8 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   en ninguna otra; apagar la regla lo deja de generar desde el período siguiente.
 - **Créditos particulares** (una bonificación excepcional, una devolución; no la bonificación por pronto
   pago de R37, que tiene su propio destino en R05) no son cargos negativos: se registran
-  como corrección (R08).
+  como corrección (R08), por la misma ruta que cualquier crédito de corrección — construida en el 4b
+  (`POST /api/complejos/{complejo_id}/correcciones`, E6/E8).
 - **Tests mínimos**: un cargo particular sólo afecta a su unidad; no cambia lo que pagan los demás;
   la importación desde Excel rechaza unidades inexistentes; un cargo en borrador no entra.
 

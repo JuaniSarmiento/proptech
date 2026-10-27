@@ -75,6 +75,11 @@ comprueba dentro del alcance de la asignación. Las 16 acciones conservan su nom
 | Confirmar sin saldos previos | Sí | Sí | No | No | No | No | No | No | No |
 | Configurar padrón | Sí | Sí | Sí | No | No | No | No | No | No |
 | Ver configuración del edificio | Sí | Sí | Sí | Sí | Sí | Sí | Sí | No | No |
+| Corregir un movimiento | Sí | Sí | No | No | No | No | No | No | No |
+
+**Corregir un movimiento** (4b, E8/D-121): sólo super admin y administrador principal; auditado en su
+propia transacción (acción `corregir_movimiento`, `04_modelo_de_datos.md`). Administrador por edificio
+no corrige, igual que no anula una liquidación.
 
 Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
 7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó

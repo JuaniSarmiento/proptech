@@ -500,9 +500,10 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio · partido en 4a, 4b, 4c y 4d
 
 > **Partido** (exploración del 4, `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md`
-> §8, D-117): **4a** `cimientos-del-libro` (HIGH, **archivado el 26/10/2026**, D-119; su ficha va abajo),
-> **4b** `libro-de-movimientos`, **4c** `intereses-saldo-inicial-y-moroso` y **4d** `cambio-de-titular`
-> (los tres CRITICAL; el 4d puede ir después del 7 y no bloquea M1). Dependencias en `CHANGES.md`
+> §8, D-117): **4a** `cimientos-del-libro` (HIGH, **archivado el 26/10/2026**, D-119; su ficha va
+> abajo), **4b** `libro-de-movimientos` (CRITICAL, **archivado el 27/10/2026**, D-121 a D-126; su
+> ficha va abajo), **4c** `intereses-saldo-inicial-y-moroso` y **4d** `cambio-de-titular` (los dos
+> CRITICAL que faltan; el 4d puede ir después del 7 y no bloquea M1). Dependencias en `CHANGES.md`
 > [C-07a] a [C-07d]: el 6 puede arrancar tras el 4a si no escribe en el libro, el 5 necesita el 4c y el
 > 7 el 4b y el 4c. Esta ficha queda como entrada común; el detalle por sub-change lo escribe cada
 > propose.
@@ -544,10 +545,21 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   esos caminos, y quedó escrito y probado con mutantes que `Dinero.desde_decimal` **acepta** ceros de
   más cuando el valor no cambia (`Decimal("1.0000")` da `1.00`) y rechaza lo que cambiaría, mientras
   que el texto (`Dinero("1.0000")`) los rechaza (D-114.6, que corrige la nota de D-053).
-- **Decidir en el design del 4b** (y en su explore): el modelo de tablas del libro; cómo se bloquea la
-  cuenta durante una imputación. El desempate del mayor resto ya está decidido (D-118).
-- **Lo que el 4b recibe hecho del 4a**: sus seis tablas se declaran en
-  `compartido/tablas_protegidas.py` y nacen con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
+- **El modelo de tablas del libro y el candado por cuenta ya no son "a decidir": se construyeron en el
+  4b** (D-121, migración `0023`). **Decidir en el design del 4c**: el **ajuste de saldo inicial bajo
+  R09**, con motivo y origen (de dónde sale la fila: el importador, el 5, o una corrección manual); el
+  4b deja la columna `obligacion.operacion_id` para una obligación sin emisión, pero el caso de uso en
+  sí (cómo se carga, qué lo audita) es del 4c.
+- **Lo que el 4c recibe hecho del 4b**: las ocho tablas del libro, el candado por cuenta, el orden de
+  imputación (R04/R15) y el estado de cuenta (`estado_de_cuenta`, E12); el 4c sólo agrega el detalle
+  de interés (días, tasa, base) y el caso de uso de saldo inicial, ninguno de los dos reabre `0023`
+  (E10: columnas y referencias futuras ya anticipadas, cambiar CHECK/únicos exige préstamo D-115.3).
+- **Lo que el 4d recibe hecho del 4b**: la `cuenta` ya nace polimórfica (de unidad o de persona, única
+  por administración y edificio, P52) y el vocabulario `tipo_de_movimiento` ya tiene `traslado` (ambos
+  sentidos) y `enlazado_a` sembrados (E14); el 4d usa ese traslado para mover el historial de deuda de
+  la cuenta de la unidad a la cuenta de la persona vendedora, sin ALTER.
+- **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
+  `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la
   misma función; `roles despues` las transfiere y verifica sin cambiar su lógica. Ese trigger por
   sentencia **bloquea `INSERT ... ON CONFLICT DO UPDATE`** aunque no haya conflicto: la idempotencia
@@ -603,17 +615,66 @@ dice.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar` sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro | El filtro está; falta el test que lo vigile | 4b, que suma tablas a la lista. Dueño propuesto, no confirmado por Juani |
+| RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar` sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro | **Cerrada en el 4b** (tasks.md 1.3): tabla homónima creada antes **y** después que la de `public`, mutante rojo en los dos órdenes | — |
 | RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive; tampoco se registra qué unidades entran o salen de un grupo `renormalizado` | Los coeficientes sí se registran; falta el nombre del campo y la pertenencia en un caso | El próximo cambio que toque `grupos.py` (3c o 6). Dueño propuesto, no confirmado por Juani |
-| RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | Hoy no tiene consumidor | 4c, primer consumidor (interés). Dueño propuesto, no confirmado por Juani |
-| RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Nadie cambia el contexto decimal hoy | 4b. Dueño propuesto, no confirmado por Juani |
+| RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | **Sin consumidor todavía**: el 4b agregó `test_deuda_4a.py`/`test_deuda_4a_umbral.py` (tasks.md 5.1, commit `4164aa2`), pero el auditor final del 4b nota que **ningún revisor independiente los abrió**, sólo los mutantes del propio constructor (`16-auditor-final.md`, Chequeo 3/5) | 4c, primer consumidor real (interés). Tests existen; falta su revisión independiente |
+| RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Igual que RB-6: cubierta por `test_deuda_4a.py` del 4b, sin revisión independiente confirmada | 4b, cerrada con la misma salvedad que RB-6 |
 | RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes | El mutante de vocabulario hace un trabajo equivalente (auditoría del apply) | — (se registra, no se reabre) |
-| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | Se corrió en el cierre del 4a (`ENSAYO ROLES OK`, proyecto aislado) | 4b, que vuelve a tocar la propiedad de tablas. Dueño propuesto, no confirmado por Juani |
+| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | **Corrido en el cierre del 4b** (`PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` → `ENSAYO ROLES OK`, proyecto aislado, tasks.md línea 547) | Sigue sin entrar al CI; dueño: quien lo agregue al workflow |
 | El mensaje del ensayo `ciclo 0018/0016/0018` ya no es verdad (14-auditor-final) | Es texto de salida; el ensayo hace lo correcto | Quien toque `ensayo-roles.sh`. Dueño propuesto, no confirmado por Juani |
-| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | Sólo pasa si alguien la deja exportada después del ensayo | Quien toque `restaurar.sh` o el ensayo. Dueño propuesto, no confirmado por Juani |
+| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | **Reaparece en el 4b** como L-047 (`knowledge-base/15_lecciones.md`): `humo.sh` fija `-p proptech` e ignora la variable; el cierre del 4b lo esquivó con un envoltorio externo, el script sigue sin parametrización nativa | Quien toque `infra/ci/humo.sh` o `restaurar.sh`. Dueño propuesto, no confirmado por Juani |
 | Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
 | Revisión del propose, deuda aceptada del design: AR-5 (mover `ejemplo.py` a una raíz de composición), AR-7 (las reglas de fronteras miran sólo imports directos), AR-9 (dirección de los eventos); DB-2 (comparar el esquema de `0020` con `pg_dump -s` o `information_schema`, no con `pg_attribute` crudo); AN-7 y AN-9 | Escritas en el design (D4, D9) y en las specs | AR-5: quien toque `ejemplo.py`; el resto, sin dueño. Propuesto, no confirmado por Juani |
-| QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | El design los mandó a las tareas 3.2, 4.1, 5.1 y 5.2 "si entraban"; lo que no, al 4b. Al archivar no se verificó cuáles entraron | **4b**, dueño fijado por el design del 4a |
+| QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | **QA-15 cerrada en el 4b** (tasks.md 1.3: función de bloqueo con otro dueño y función con el texto de otra tabla, rojas en `despues()`). **QA-6, QA-7, QA-9, QA-12, QA-14**: cubiertas por `test_deuda_4a.py`/`test_deuda_4a_umbral.py` del 4b (5.1, `4164aa2`), con la misma salvedad que RB-6/RB-7: sin revisor independiente que las haya abierto | 4b, cerrado salvo la revisión independiente pendiente |
+
+**Nota sobre la salvedad "sin revisión independiente" (RB-6, RB-7, QA-6, QA-7, QA-9, QA-12, QA-14)**: el
+auditor final del 4b revisó contra el diff completo (`git diff 84badd1..8d25bd6 --stat`, 77 archivos) y
+listó estos tests entre lo que "nadie miró salvo con los mutantes del constructor". Los tests existen y
+corren verdes; lo que falta es que alguien distinto de quien los escribió los haya leído. No se marcan
+"cerrados sin más" para no repetir el patrón que esta misma tabla señala en L-012.
+
+#### 4b · `libro-de-movimientos` · CRITICAL · archivado 27/10/2026 (D-121 a D-126)
+
+- **Qué dejó**: el libro de movimientos construido: ocho tablas (`cuenta`, `candado_de_cuenta`,
+  `emision`, `evento_de_emision`, `obligacion`, `movimiento`, `imputacion`, `tipo_de_movimiento`,
+  migración `0023`), con RLS, claves naturales y candado por cuenta (E1-E4); orden de imputación con
+  el fondo de reserva provisorio (E5); corrección por contra-asiento o crédito, con su tope por
+  crédito (E6, E7, enmienda RB4B-01/D-122); permiso y auditoría de `corregir_movimiento` (E8,
+  migración `0024`); contrato de error de la ruta `POST
+  /api/complejos/{complejo_id}/correcciones` (E9); columnas anticipadas para el 4c/7/8 (E10); regla de
+  fronteras del SQL por módulo (E11); lecturas con foto consistente y crédito aplicable/retenido
+  separado (E12, E16); deuda del 4a cerrada o reasignada (E13, ver tabla arriba); vocabulario
+  ampliable de tipos de movimiento (E14); `GRANT REFERENCES` al migrador sobre el libro (E15). Detalle
+  completo de las 16 elecciones en `knowledge-base/09_decisiones_y_supuestos.md` D-121.
+- **Firma**: Juani, 26/10/2026, E1 a E16 (D-121); enmienda E7 · tope por crédito, 26/10/2026 (D-122);
+  deuda D8 sobre crédito de corrección y emisión anulada, 27/10/2026 (D-123, bloquea el 7).
+- **Archivo**: `openspec/changes/archive/2026-10-27-libro-de-movimientos/`. **Merge**: `409274f`
+  (CI run `40533627016`).
+- **Rollback**: sólo con el libro vacío o sin ninguna corrección auditada (E13); una vez que hay una
+  fila en cualquier tabla del libro, bajar `0023` es hacia adelante, igual que `0022` para el 4a
+  (D-114.5). Procedimiento en el "Migration Plan" del design archivado.
+- **No construyó** (quedó explícitamente fuera, para los cambios que siguen): la pantalla de
+  corrección, `pesos()` y la API falsa (8, D-120); intereses, saldo inicial y moroso crítico (4c);
+  cambio de titular y cuenta de persona en uso (4d); la acción de anular en sí, con su ventana y
+  motivo en pantalla (7, D-124); confirmar/revertir/reimputar pagos (8); condonación, bonificación y
+  baja de deuda como acciones (10b, 8); outbox y encolado (7, 15); el préstamo de propiedad para un
+  `ALTER` sobre una tabla protegida (el primer cambio que lo necesite).
+
+##### 4b · deuda del cierre
+
+Lista completa del auditor final (`.git/informes-libro-de-movimientos/16-auditor-final.md`, "Lo que
+queda como deuda"), con dueño propuesto por cambio. Dueño por el primer cambio que necesita que esté
+resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
+
+| Deuda | Qué falta | Cambio |
+|---|---|---|
+| Mutante de RF-01 (replay de emisión, "un `foto` por cuenta" en `registrar_emision`) sin matar: el único mutante corrido (`03-mutante-anular-sin-bloquear.log`) da `..F`, RF-01 y RF-04 quedan en verde | Escribir y correr el mutante que vuelve a publicar más de una foto por cuenta | Quien toque `registrar_emision` o audite el 4b después. Dueño propuesto, no confirmado por Juani |
+| Test de RF-02 en la forma contra-asiento: sólo se probó en la forma crédito (`test_cc_anulacion_candado.py`) | Agregar el caso contra-asiento al mismo test | Quien toque anulación/corrección. Dueño propuesto, no confirmado por Juani |
+| El registro de RF (los tres commits 447b8e5, 8496f00, 8d25bd6) no quedó en `tasks.md`, y ninguno de los tres lo revisó un rompedor o revisor distinto del constructor | Completar el registro o, si no se completa, que quien lo use sepa que esos tres commits están sin revisar | Orquestador, al cerrar un ciclo con RF. Sin dueño de cambio: es higiene de proceso |
+| Ficha del 7: `anular_emision` tiene que tomar los candados de las cuentas de su emisión antes de escribir (igual que las demás escrituras del libro, E2) | Construir esa toma de candado en el 7 | **7**, ya anotado arriba en su ficha y en D-124 |
+| D8 (crédito de corrección sobre una emisión anulada): Juani la anotó como deuda que bloquea el 7 en vez de resolverla ahora (opción c) | Decidir retenido (como E16) o a favor (como un pago) antes de construir `anular_emision` | **7**, D-123; no se construye la anulación sin decidir esto |
+| RB4B-01, CX-01 y CX-02 (bloqueantes del rompedor de fases 1-3) arreglados en HEAD pero revisados sólo por el auditor, nunca por un rompedor independiente de ese arreglo puntual | Una pasada de rompedor sobre los tres arreglos, antes de confiar en ellos para el 7 | Quien abra el 7; revisar antes de depender de `imputado_por_credito` y el candado de `registrar_emision` |
+| El auditor final no revisó código: "yo no reviso código, así que ese hueco sigue abierto" sobre el cierre de RF | Una revisión de código real (no documental) de 447b8e5, 8496f00 y 8d25bd6 | Quien abra el 7, como parte de leer qué recibe hecho |
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
@@ -712,7 +773,17 @@ dice.
 - **No entra**: el portal donde el vecino la ve (11); los avisos de vencimiento (13).
 - **Depende de**: 5, 6. **Habilita**: 6b, 8, 10a, 11, 12, 13, 14 y el test de M1.
 - **Bloqueado por**: P26, P27, P28, P38 y P39, y la normativa de la expensa en Mendoza (D-060).
-- **Bloqueado también por la deuda firmada D8 del 4b** (27/10/2026): qué pasa con un crédito de corrección cuya obligación queda en una emisión anulada (retenido como E16 o a favor). Ver la sección "Deuda firmada D8" del proposal del 4b. Además: `anular_emision` toma los candados de las cuentas de su emisión; si el 7 anula y re-emite en la misma transacción, respeta el orden de E2.
+- **Bloqueado también por la deuda firmada D8 del 4b** (27/10/2026, `knowledge-base/09_decisiones_y_supuestos.md` D-123): qué pasa con un crédito de corrección cuya obligación queda en una emisión anulada (retenido como E16 o a favor). Ver la sección "Deuda firmada D8" del proposal archivado del 4b. Además: `anular_emision` toma los candados de las cuentas de su emisión (D-124); si el 7 anula y re-emite en la misma transacción, respeta el orden de E2.
+- **Construye también** (deuda explícita que el 4b dejó para este cambio, "Qué queda fuera" de su proposal):
+  - **Cargo cobrado de menos**: un cargo complementario con motivo y vínculo al origen (la obligación o
+    el movimiento que cobró de menos), por la misma ruta de corrección del 4b (R08), no un ajuste
+    silencioso.
+  - **Snapshot de `saldo_anterior`**: el 4b expone sólo el estado actual (E12); este cambio tiene que
+    guardar la foto de lo pendiente **después de imputar** al emitir, para que la expensa muestre el
+    saldo anterior que regía en ese momento y no el que haya cambiado después.
+  - **Autoridad de "anulada"**: el libro (`evento_de_emision`) y la auditoría de emitir/anular son del
+    llamador — este cambio es quien emite y quien anula, y por eso es quien audita esas dos acciones
+    (E8 del 4b: el libro mismo sólo audita la corrección).
 - **Deuda del 1c, con dueño este cambio (D-091, L-011, L-012)**: **F2c es bloqueante antes de
   registrar la primera tarea real del worker** (el encolado del PDF de la expensa, que es la primera
   vez que el worker tiene un efecto real): hoy `asyncio.wait_for` sólo corta la espera, no el hilo que
@@ -773,6 +844,14 @@ dice.
   (D-070); el control "pagos sin confirmar" en la lista antes de emitir, como advertencia (R34).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
+- **Construye también** (deuda explícita que el 4b dejó para este cambio):
+  - **Reversión de una bonificación retenida (R37, E16 del 4b)**: cuando se anula la emisión de una
+    obligación que ya tenía una bonificación imputada, ese crédito queda **retenido** en vez de
+    liberarse; este cambio construye la acción que lo revierte (lo libera como crédito a favor o lo
+    reimputa, según se valide R37).
+  - **Vocabulario y enlace entre cuentas** (`enlazado_a`, E14 del 4b): el tipo `reversion_de_pago` y el
+    enlace entre cuentas de la misma administración ya están sembrados en `tipo_de_movimiento`; este
+    cambio es el primer consumidor real al revertir un pago hacia otra cuenta.
 - **No entra**: el cruce con el extracto (9).
 - **Depende de**: 7. **Habilita**: 6b, 9, 10a, 13.
 - **Bloqueado por**: P12, P27, P29 y P40, y la elección del proveedor de IA (datos de comprobantes con CBU y CUIT).
@@ -878,7 +957,11 @@ dice.
 - **Entra**: todas las unidades de la persona juntas; deuda y vencimiento según su vínculo; ordinarias
   y extraordinarias para propietarios y sólo ordinarias para inquilinos, por categoría y comparadas
   con el mes anterior; PDFs del vínculo con links firmados y con vencimiento (D-070); app instalable.
-  Pasa por la skill impeccable.
+  **Crédito a favor separado en dos cifras** (E12/E16 del 4b, que ya devuelve la lectura separada):
+  **aplicable** (libre, se descuenta de la próxima expensa) y **retenido** (atado a un destino que
+  todavía no se liberó, por ejemplo una bonificación de una emisión anulada); el vecino con $2.000
+  retenidos y $0 aplicables sigue viendo su deuda de $40.000 completa, no descontada. Pasa por la
+  skill impeccable.
 - **Depende de**: 10a y 2b (el vecino tiene que poder entrar). **Habilita**: 12.
 - **Distribución** (D-074): la primera vez que un vecino abre una liquidación, el portal llama al
   puerto de distribución del cambio 7.

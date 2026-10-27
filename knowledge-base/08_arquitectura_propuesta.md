@@ -4,7 +4,7 @@
 
 | Patrón | Dónde se usa | Por qué |
 |---|---|---|
-| Monolito modular, hexagonal por módulo | `backend/src/proptech_core`, un módulo por dominio (`complejos`, `acceso`, `gastos`, `liquidacion`, `cuenta_corriente`, `pagos`, `avisos`, `politicas`, `compartido`), cada uno con `dominio/`, `aplicacion/`, `puertos.py`, `adaptadores/` | Un equipo chico no necesita el costo de desplegar y depurar microservicios; las dependencias apuntan hacia adentro y los módulos sólo se hablan por su capa `aplicacion` (D-021, D-040) |
+| Monolito modular, hexagonal por módulo | `backend/src/proptech_core`, un módulo por dominio (`complejos`, `acceso`, `gastos`, `liquidacion`, `cuenta_corriente`, `pagos`, `avisos`, `politicas`, `compartido`), cada uno con `dominio/` y `aplicacion/`; `puertos.py`/`adaptadores/` **sólo** cuando el módulo habla con un sistema externo o reemplazable (Clerk, la cola, el motor de reglas) | Un equipo chico no necesita el costo de desplegar y depurar microservicios; las dependencias apuntan hacia adentro y los módulos sólo se hablan por su capa `aplicacion` (D-021, D-040). **Acotado por D-120 (4b)**: la propia base **no** se abstrae tras un puerto — la garantía del libro vive en PostgreSQL (triggers, RLS, bloqueo por fila, claves únicas) y un doble en memoria daría verdes que la base real rechaza (L-027) |
 | Puerto y adaptador (hexagonal) para reglas propias de cada edificio | `politicas/puertos.py` (`MotorDePoliticas`) con un único adaptador real, GoRules ZEN | Si ZEN deja de convenir, se cambia el adaptador y nada más (D-064, D-066) |
 | Multi-tenant con Row-Level Security | Toda tabla de una administración, con `administracion_id` y una política RLS forzada | La administración (el tenant) sale de la identidad autenticada, nunca de un parámetro del cliente; RLS es el segundo candado (R10, D-076) |
 | Libro de sólo agregar (append-only ledger) | `cuenta_corriente`: ningún movimiento se edita ni se borra | Permite reconstruir cualquier reclamo de un vecino y es la base del aislamiento y la auditoría (R08, D-016) |
@@ -62,11 +62,15 @@ spec `fronteras-de-modulos`), sobre imports directos en sus tres formas, con un 
 | (c) | `dominio/` sólo importa de `compartido` `dinero`, `coeficientes`, `porcentaje`, `superficie`, `texto`, `tipos_de_unidad` y `reparto` | `parametros`, para `complejos/dominio/configuracion.py` (`desde_parametros`) |
 | (d) | `cuenta_corriente` no importa `compartido.cola` ni `liquidacion` | — |
 | (e) | un archivo de `dominio/` no importa la `aplicacion`, los `adaptadores` ni los `puertos` de su módulo, ni `sqlalchemy` ni `psycopg` | — |
+| (f) · nueva, 4b (E11) | el SQL de cada módulo sólo nombra sus propias tablas (escaneo insensible a mayúsculas de `FROM`, `JOIN`, `INTO`, `UPDATE`, `TABLE` en `proptech_core/<módulo>/`, `proptech_api` y `proptech_worker`; excluye `FOR UPDATE OF` y funciones `FROM`) | `administracion` es de `acceso`; excepciones nominadas y firmadas: `escritura.py`, `lectura.py` y `ejemplo.py` |
 
-`cuenta_corriente/` existe desde el 4a, vacío (`dominio/` y `aplicacion/`), para que las reglas lo
-vigilen antes de la primera tabla de plata. **Límite declarado**: lo transitivo no se vigila (la
-excepción `parametros` arrastra la lectura de archivos; `cuenta_corriente → acceso.aplicacion.<algo que
-encola>` pasaría la regla (d)).
+`cuenta_corriente/` existió vacío desde el 4a (`dominio/` y `aplicacion/`), para que las reglas lo
+vigilaran antes de la primera tabla de plata; **desde el 4b tiene el libro construido**: las ocho
+tablas de `04_modelo_de_datos.md` (dominio `cuenta_corriente`), con el candado por cuenta
+(`candado_de_cuenta`, en vez de `FOR UPDATE` sobre `cuenta`, D2) y las reglas puras de imputación y
+estado en `dominio/`. **Límite declarado**: lo transitivo no se vigila (la excepción `parametros`
+arrastra la lectura de archivos; `cuenta_corriente → acceso.aplicacion.<algo que encola>` pasaría la
+regla (d)).
 
 El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_corriente`: lo usan el
 4b, el 6 y el 7, y ponerlo en `cuenta_corriente` crearía `gastos → cuenta_corriente` por una función.

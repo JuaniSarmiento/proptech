@@ -80,6 +80,13 @@ informe.
 
 El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
 
+**Revisión proporcional al riesgo** (aprobada por Juani el 27/10/2026, al cerrar el 4b; detalle y
+alternativa descartada en `knowledge-base/09_decisiones_y_supuestos.md` D-125): CRITICAL convoca
+revisores de rol sólo en `propose` (nunca mientras el `apply` sigue escribiendo), un rompedor por
+tanda alternando Claude y Codex, y un auditor al final; HIGH/MEDIUM se quedan con un revisor más un
+rompedor; LOW se resuelve con tests y CI. Esta tabla de arriba (escalado por tipo de cambio) sigue
+rigiendo qué agentes se convocan; D-125 fija cuántas pasadas de cada uno, por gobernanza.
+
 **Verificación real con un servicio externo de identidad** (desde el 2b `login-y-usuarios`,
 22/10/2026): cuando un cambio integra un proveedor externo de autenticación (Clerk y lo que venga
 después), el cierre no se da por completo con tests contra un doble falso, aunque pasen todos. Antes
