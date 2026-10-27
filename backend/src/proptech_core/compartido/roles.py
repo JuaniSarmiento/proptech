@@ -164,7 +164,7 @@ def _secuencias_de_public_del_rol(cur: psycopg.Cursor, rol: str) -> list[str]:
 
 
 def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrador: str) -> None:
-    """Le transfiere al migrador cada tabla y secuencia de `public` que hoy es
+    """Le transfiere al migrador tablas, secuencias y funciones de `public` que son
     del rol de arranque, salvo las tablas protegidas (D0/D1): nunca `REASSIGN OWNED`, que
     se llevaría objetos fuera del proyecto si el rol de arranque tuviera algo
     más (L-006). La lista sale del catálogo, nunca a mano."""
@@ -180,6 +180,19 @@ def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrad
         cur.execute(
             sql.SQL("ALTER SEQUENCE {secuencia} OWNER TO {migrador};").format(
                 secuencia=sql.Identifier(secuencia), migrador=sql.Identifier(migrador)
+            )
+        )
+    cur.execute(
+        "SELECT p.proname, pg_get_function_identity_arguments(p.oid) "
+        "FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+        "WHERE n.nspname = 'public' AND p.prokind = 'f' "
+        "AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = %s)",
+        (arranque,),
+    )
+    for nombre, argumentos in cur.fetchall():
+        cur.execute(
+            sql.SQL("ALTER FUNCTION {}({}) OWNER TO {}").format(
+                sql.Identifier("public", nombre), sql.SQL(argumentos), sql.Identifier(migrador)
             )
         )
 

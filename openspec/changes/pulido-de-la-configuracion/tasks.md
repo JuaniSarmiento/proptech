@@ -1149,3 +1149,11 @@
   actualizó el estado del 3c en "Estado" y en "Roadmap de Changes". `diff AGENTS.md CLAUDE.md` → sin
   salida (vacío), archivos idénticos. No se tocaron `01`, `02`, `03`, `07`, `13`, `14`, `16` ni
   `README.md` de `knowledge-base/` (sin cambios según la tabla de Knowledge Base Impact).
+# Integración E11 · funciones restauradas
+
+- [x] Reasignar funciones de `public` al migrador antes de migrar y comprobar la devolución de las funciones protegidas al rol de arranque.
+  - Línea de base (27/10/2026 16:44): `bash infra/ci/test-backend.sh -q -p no:cacheprovider tests/integracion/test_dueno_de_tablas_solo_agregar.py` → `8 passed in 4.47s`.
+  - RED (16:45:26): `bash infra/ci/test-backend.sh -q -p no:cacheprovider tests/integracion/test_funciones_restauradas.py` → aserción en línea 34, `must be owner of function fn_grupo_generales_protegido`, `1 failed`. Es también el mutante sin reasignación en `antes` (código original).
+  - Mutante de devolución (16:46:21): reemplazar `for funcion in _funciones_de_los_triggers_de(cur, tabla):` por `for funcion in []:`; el mismo comando falla en la aserción de `despues`, línea 36: `configuracion_versionada ... función con otro dueño`, `1 failed`. Copia previa `/tmp/proptech-roles-e11-original.py`; mutante revertido.
+  - GREEN (16:46:38): `bash infra/ci/test-backend.sh -q -p no:cacheprovider tests/integracion/test_funciones_restauradas.py tests/integracion/test_dueno_de_tablas_solo_agregar.py` → `9 passed in 8.25s`.
+
