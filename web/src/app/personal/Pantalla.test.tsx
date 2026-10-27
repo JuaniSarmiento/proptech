@@ -219,6 +219,40 @@ describe("PantallaPersonal", () => {
     await sinViolaciones(container);
   });
 
+  it('FE-3: abrir "Quitar" con "Invitar" abierto cierra la invitación y Tab avanza dentro de la confirmación', async () => {
+    const usuario = userEvent.setup();
+    render(
+      <PantallaPersonal
+        personas={PERSONAS}
+        edificios={EDIFICIOS}
+        accionInvitar={accionInvitarNula}
+        accionRevocar={accionSimpleNula}
+        accionQuitar={accionSimpleNula}
+      />,
+    );
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Invitar a alguien" })[0] as HTMLElement,
+    );
+    expect(screen.getByRole("dialog", { name: "Invitar a alguien" })).toBeTruthy();
+    // El panel nunca es modal: con el mouse se llega a "Quitar" de la tabla de atrás.
+    const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+    await usuario.click(within(filaBeto).getByRole("button", { name: "Quitar" }));
+    const confirmacion = screen.getByRole("dialog", { name: "Quitar este perfil" });
+
+    const antes = document.activeElement;
+    await usuario.tab();
+    expect(document.activeElement).not.toBe(antes);
+    expect(confirmacion.contains(document.activeElement)).toBe(true);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    // Y al revés: "Invitar" con la confirmación abierta la cierra.
+    await usuario.click(
+      screen.getAllByRole("button", { name: "Invitar a alguien" })[0] as HTMLElement,
+    );
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("dialog", { name: "Invitar a alguien" })).toBeTruthy();
+  });
+
   it('6.4 (D10) "Quitar y cancelar con teclado": Tab hasta "Quitar", Enter, Esc — no se llamó a la acción, el foco vuelve a "Quitar"', async () => {
     const accionQuitar = vi.fn();
     const usuario = userEvent.setup();

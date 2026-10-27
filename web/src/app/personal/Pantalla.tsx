@@ -331,7 +331,17 @@ export function PantallaPersonal({
     evento: { currentTarget: HTMLElement },
   ) {
     aperturaQuitarRef.current = evento.currentTarget;
+    setPanelAbierto(false);
     setObjetivoAQuitar(objetivo);
+  }
+
+  // FE-3 (revisión del PR #2): los dos `PanelLateral` de esta pantalla no
+  // son modales y cada uno atrapa `Tab` con su propio listener; abiertos a
+  // la vez, se roban el foco y `Tab` queda clavado en el primer control.
+  // Abrir uno cierra el otro: nunca hay dos.
+  function abrirInvitar() {
+    setObjetivoAQuitar(null);
+    setPanelAbierto(true);
   }
 
   function cerrarConfirmacionDeQuitar() {
@@ -362,12 +372,7 @@ export function PantallaPersonal({
   }
 
   const botonInvitar = (
-    <button
-      ref={botonInvitarRef}
-      type="button"
-      className="boton-principal"
-      onClick={() => setPanelAbierto(true)}
-    >
+    <button ref={botonInvitarRef} type="button" className="boton-principal" onClick={abrirInvitar}>
       Invitar a alguien
     </button>
   );
@@ -398,7 +403,7 @@ export function PantallaPersonal({
               mensaje="Todavía no invitaste a nadie"
               detalle="Empezá invitando a la primera persona de tu equipo."
               accion={
-                <button type="button" onClick={() => setPanelAbierto(true)}>
+                <button type="button" onClick={abrirInvitar}>
                   Invitar a alguien
                 </button>
               }
