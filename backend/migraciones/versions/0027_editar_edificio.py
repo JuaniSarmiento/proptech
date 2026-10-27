@@ -26,30 +26,30 @@ _EVENTOS = ("editar_edificio",)
 #: ya suma `complejo_id`/`administracion_id` a la comparación. El downgrade
 #: de ESTA migración restaura exactamente esto, no la versión de `0011`.
 _FUNCION_SIN_ACTIVO = """
-    CREATE OR REPLACE FUNCTION fn_grupo_generales_protegido() RETURNS trigger
-    LANGUAGE plpgsql SET search_path = '' AS $$
-    BEGIN
-        IF TG_OP = 'DELETE' THEN
-            IF OLD.es_generales THEN
-                RAISE EXCEPTION 'Generales no admite DELETE';
+        CREATE OR REPLACE FUNCTION fn_grupo_generales_protegido() RETURNS trigger
+        LANGUAGE plpgsql SET search_path = '' AS $$
+        BEGIN
+            IF TG_OP = 'DELETE' THEN
+                IF OLD.es_generales THEN
+                    RAISE EXCEPTION 'Generales no admite DELETE';
+                END IF;
+                RETURN OLD;
             END IF;
-            RETURN OLD;
-        END IF;
-        IF OLD.es_generales AND (
-            NEW.es_generales IS DISTINCT FROM OLD.es_generales
-            OR NEW.metodo IS DISTINCT FROM OLD.metodo
-            OR NEW.modo_de_coeficientes IS DISTINCT FROM OLD.modo_de_coeficientes
-            OR NEW.complejo_id IS DISTINCT FROM OLD.complejo_id
-            OR NEW.administracion_id IS DISTINCT FROM OLD.administracion_id
-        ) THEN
-            RAISE EXCEPTION
-                'Generales no admite cambiar es_generales, metodo, '
-                'modo_de_coeficientes, complejo_id ni administracion_id';
-        END IF;
-        RETURN NEW;
-    END;
-    $$
-"""
+            IF OLD.es_generales AND (
+                NEW.es_generales IS DISTINCT FROM OLD.es_generales
+                OR NEW.metodo IS DISTINCT FROM OLD.metodo
+                OR NEW.modo_de_coeficientes IS DISTINCT FROM OLD.modo_de_coeficientes
+                OR NEW.complejo_id IS DISTINCT FROM OLD.complejo_id
+                OR NEW.administracion_id IS DISTINCT FROM OLD.administracion_id
+            ) THEN
+                RAISE EXCEPTION
+                    'Generales no admite cambiar es_generales, metodo, '
+                    'modo_de_coeficientes, complejo_id ni administracion_id';
+            END IF;
+            RETURN NEW;
+        END;
+        $$
+    """
 
 _FUNCION_AMPLIADA = """
     CREATE OR REPLACE FUNCTION fn_grupo_generales_protegido() RETURNS trigger
