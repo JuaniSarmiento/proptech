@@ -407,7 +407,7 @@ avisarle a Juani antes.
 
 ## 4. Fronteras, permiso y ruta de corrección (design D9 a D11)
 
-- [ ] 4.1 **El SQL de cada módulo sólo nombra sus tablas.** Test nuevo en `test_fronteras_de_modulos.py`
+- [x] 4.1 **El SQL de cada módulo sólo nombra sus tablas.** Test nuevo en `test_fronteras_de_modulos.py`
   insensible a mayúsculas con el mapa tabla → módulo (`administracion` de `acceso`) y las tres excepciones de E11, cada una con su
   motivo. También escanear `proptech_api` y `proptech_worker`: no pueden nombrar en SQL las
   seis tablas del libro ni `candado_de_cuenta`, deben llamar aplicación (AR-4). Excluir sintaxis
@@ -420,6 +420,15 @@ avisarle a Juani antes.
   excepciones; › La liquidación nombra una tabla del libro; › La cuenta corriente nombra una tabla de
   complejos; › Sin la excepción de lectura; › Una tabla sin dueño declarado; › SQL del libro fuera del módulo; › OF y funciones no son tablas. Lecciones: L-013, L-022,
   L-029.
+
+  **EVIDENCIA constructor · 27/10/2026 (logs íntegros `.git/4b-fase1-logs/codex-f456/`):**
+  - Baseline: `bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py -q --tb=short`, 09:03:42–09:03:45: `34 passed` (`00-base-fronteras.log`).
+  - RED: mismo archivo, `::test_sql_solo_nombra_tablas_del_modulo -q -vv --tb=short`, 09:05:12–09:05:13: `1 failed`; línea 526, `assert _sql_ajeno(...) == []`, cinco referencias de escritura/lectura/ejemplo (`03-rojo-sql-excepciones.log`).
+  - GREEN: archivo completo, 09:05:24–09:05:27: `47 passed` (`04-verde-sql.log`).
+  - Mutantes en copia de `backend/src`, comando con `FRONTERAS_RAIZ=<copia>/proptech_core`: `05` liquidación/movimiento, `06` cuenta corriente/unidad, `07` tabla sin dueño, `08` API/from minúscula, `09` worker/from minúscula; 09:06:02–09:06:07, cada uno `1 failed` en la aserción del escaneo. Diffs en `05` a `09-mutante-sql.diff`; copia eliminada.
+  - GREEN restaurado: archivo completo, 09:06:07–09:06:10: `47 passed` (`10-verde-sql-restaurado.log`).
+  **JUICIO constructor, confianza alta:** se excluye prosa de docstrings del SQL ejecutable; no se agrega ninguna excepción a E11. Límite: identificadores dinámicos no se inspeccionan.
+
 - [ ] 4.2 **Permiso `corregir_movimiento`, migración `0024` y auditoría de la corrección.**
   **Recibe de la 1.4 (F1-04)**: el ciclo `pg_dump` hasta `0024` y vuelta, que bajar `0024` con una
   corrección auditada dé `23503` y volver a subir a `0024` con revisión y conteos. `Accion` y
