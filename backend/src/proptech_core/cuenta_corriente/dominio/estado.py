@@ -171,15 +171,19 @@ def calcular_estado(
             clave = (m.obligacion_id, m.componente)
             debido[clave] = debido.get(clave, _CERO) + m.importe
 
-    # Paso 3: lo imputado cuenta en orden ascendente hasta el tope; el exceso vuelve a su crédito,
-    # de la imputación más reciente a la más antigua (E7).
+    # Paso 3: lo imputado cuenta en orden ascendente con dos topes: lo que se debe en el componente
+    # y, por la enmienda E7 (RB4B-01), el importe del crédito. El exceso vuelve a su crédito, de la
+    # imputación más reciente a la más antigua (E7); lo que excede el importe se recorta.
     imputado: dict[Clave, Dinero] = {clave: _CERO for clave in debido}
     imputado_por_credito: dict[UUID, Dinero] = {}
     for i in sorted(imputaciones, key=lambda x: x.orden):
         clave = (i.obligacion_id, i.componente)
         if i.movimiento_id not in cuentan or clave not in debido:
             continue
-        cabe = debido[clave] - imputado[clave]
+        cabe = min(
+            debido[clave] - imputado[clave],
+            por_mov[i.movimiento_id].importe - imputado_por_credito.get(i.movimiento_id, _CERO),
+        )
         parte = min(i.importe, cabe) if cabe > _CERO else _CERO
         imputado[clave] = imputado[clave] + parte
         imputado_por_credito[i.movimiento_id] = (

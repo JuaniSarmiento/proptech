@@ -442,6 +442,12 @@ trazabilidad. Knowledge Base Impact entrega ambos casos a sus fichas; no se impl
 3. **Lo imputado** por componente: si supera lo que se debe (por ejemplo, se corrigió un interés que un
    pago ya había cubierto), las imputaciones cuentan en orden `orden` ascendente (secuencia monótona de `imputacion`, nunca `now()` ni UUID) hasta cubrir lo que se
    debe, y **el exceso vuelve a su crédito, de la imputación más reciente a la más antigua**.
+   **Tope por crédito (enmienda E7, RB4B-01)**: ningún crédito cuenta más que su importe. Las
+   imputaciones de un mismo crédito cuentan en el mismo orden ascendente hasta agotar el importe;
+   lo que lo excede se recorta y no cuenta. Pasa cuando una imputación vieja revive (vuelve a contar
+   el interés que cubría, por deshacer su contra-asiento con E6 o por un interés nuevo del 4c sobre
+   el mismo componente) y el crédito ya se había reimputado en otro lado: gana la más vieja. Los
+   hechos no se reescriben: las filas siguen en el libro con su importe.
 4. **Residual** = lo que se debe menos lo imputado que cuenta; nunca negativo.
 5. **Crédito a favor total** = por cada crédito que cuenta, su importe menos lo que imputó y cuenta.
    Se desglosa en `credito_a_favor_aplicable` y `credito_a_favor_retenido`: el segundo incluye la
@@ -468,7 +474,8 @@ no reescribe la imputación histórica de B. Este caso usa `registrar_credito` y
 imputaciones tiene un test separado de secuencia (3.5).
 
 **Propiedades** con hypothesis, además de la identidad contable: residual >= 0 por componente;
-imputado que cuenta <= debido por componente; crédito a favor >= 0 por crédito; con imputaciones
+imputado que cuenta <= debido por componente; crédito a favor >= 0 por crédito (el generador arma
+también filas de un crédito que suman más que su importe, como en producción: RB4B-01); con imputaciones
 positivas que cuentan sobre capital vigente y sin débitos adicionales, deuda < suma del capital. Se
 prueban los mutantes "sin tope del paso 3" e "ignora imputaciones"; quitar un max redundante no prueba
 nada. El oráculo implementa su propia exclusión, no importa el predicado de producción. Datos acotados:

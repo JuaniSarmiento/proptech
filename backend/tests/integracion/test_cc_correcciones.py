@@ -379,3 +379,47 @@ def test_replay_antes_de_validar_y_con_otros_datos(
             with pytest.raises(Conflicto) as e:
                 contra(s, mundo, pago, op=op, **otros)
             assert e.value.campo == "operacion_id"
+
+
+def _imputado_por_filas(s: Session, movimiento: UUID) -> Dinero:
+    return Dinero(
+        s.execute(
+            text("SELECT coalesce(sum(importe), 0)::text FROM imputacion WHERE movimiento_id = :m"),
+            {"m": movimiento},
+        ).scalar_one()
+    )
+
+
+def test_rb4b01_deshacer_c1_no_cuenta_dos_veces_el_pago(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """Enmienda E7: E6 deshace C1 y el interés vuelve a contar; el pago B ya se había reimputado al
+    capital. B tiene filas por $8.000 pero cuenta $4.000, la más vieja primero."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, obl = emitir(s, mundo, 8, "40000.00")
+        i1 = interes(s, mundo, cuenta, obl, "4000.00", date(2026, 10, 10))
+        b = pagar(s, mundo, cuenta, "4000.00", date(2026, 10, 15), 15)
+        c1 = contra(s, mundo, i1, dia=16)
+        p = pagar(s, mundo, cuenta, "0.01", date(2026, 10, 17), 17)  # reimputa B al capital
+        contra(s, mundo, c1, dia=18)  # deshace C1: I1 vuelve a contar
+        assert _imputado_por_filas(s, b) == d("8000.00")  # los hechos no se reescriben
+        e = lecturas.estado_de_cuenta(s, cuenta_id=cuenta)
+        assert (e.a_favor_por_credito[b], e.a_favor_por_credito[p]) == (d("0.00"), d("0.00"))
+        assert e.deuda == d("39999.99")
+
+
+def test_rb4b01_interes_nuevo_no_revive_la_imputacion_vieja_de_mas(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """Sin deshacer nada: el interés de otro corte (el 4c, todos los meses) sobre la misma
+    obligación no hace que B cuente $8.000."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, obl = emitir(s, mundo, 9, "40000.00")
+        i1 = interes(s, mundo, cuenta, obl, "4000.00", date(2026, 10, 10))
+        b = pagar(s, mundo, cuenta, "4000.00", date(2026, 10, 15), 15)
+        contra(s, mundo, i1, dia=16)
+        p = pagar(s, mundo, cuenta, "0.01", date(2026, 10, 17), 17)
+        interes(s, mundo, cuenta, obl, "4000.00", date(2026, 11, 10))
+        e = lecturas.estado_de_cuenta(s, cuenta_id=cuenta)
+        assert (e.a_favor_por_credito[b], e.a_favor_por_credito[p]) == (d("0.00"), d("0.00"))
+        assert e.deuda == d("39999.99")

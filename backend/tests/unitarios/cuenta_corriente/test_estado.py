@@ -226,6 +226,39 @@ def test_el_par_corregido_no_cuenta_y_no_toca_otros_creditos() -> None:
     assert e.a_favor_por_credito == {p2.id: CERO}
 
 
+def test_ningun_credito_cuenta_mas_que_su_importe_rb4b01() -> None:
+    """Enmienda E7 (RB4B-01): el pago B de $4.000 tiene una fila sobre el interés (la vieja, que
+    revive) y otra sobre el capital (la reimputada). Cuentan por `orden` hasta su importe."""
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "40000.00")
+    i1 = interes(o, "4000.00")
+    b = credito("4000.00")
+    lb.obligaciones, lb.movimientos = [o], [i1, b]
+    lb.imputa(b, o, INT, "4000.00")  # orden 1: la vieja, vuelve a contar con I1
+    lb.imputa(b, o, ORD, "4000.00")  # orden 2: la reimputada mientras I1 no contaba
+    e = lb.estado()
+    assert e.a_favor_por_credito[b.id] == CERO
+    assert e.imputado[(o.id, INT)] == d("4000.00")
+    assert e.imputado[(o.id, ORD)] == CERO
+    assert e.deuda == d("40000.00")
+
+
+def test_tope_por_credito_recorta_sin_tocar_otros_creditos() -> None:
+    """La parte recortada de B no se le da a nadie: el capital queda para el pago P."""
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "40000.00")
+    i1 = interes(o, "1000.00")
+    b, p = credito("3000.00"), credito("500.00")
+    lb.obligaciones, lb.movimientos = [o], [i1, b, p]
+    lb.imputa(b, o, INT, "1000.00")
+    lb.imputa(b, o, ORD, "2500.00")  # 1000 + 2500 > 3000: se recortan 500
+    lb.imputa(p, o, ORD, "500.00")
+    e = lb.estado()
+    assert e.a_favor_por_credito == {b.id: CERO, p.id: CERO}
+    assert e.imputado[(o.id, ORD)] == d("2500.00")
+    assert e.deuda == d("41000.00") - d("3500.00")
+
+
 def test_exceso_vuelve_de_la_imputacion_mas_reciente_rc04() -> None:
     """RC-04 en puro: B (fecha valor 15/10) imputó primero, A (fecha valor 1/9) después."""
     lb = Libro()

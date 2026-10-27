@@ -84,11 +84,15 @@ def casos(draw: st.DrawFn, *, exclusiones: bool) -> Caso:
     orden = 0
     for c in creditos:
         resto = int(c.importe.decimal * 100)
+        # RB4B-01: en producción las filas de un crédito pueden sumar más que su importe (una
+        # imputación vieja que revive cuando su componente vuelve a crecer, más la reimputada).
+        de_mas = draw(st.booleans())
         for _ in range(draw(st.integers(0, 3))):
             if resto == 0:
                 break
             parte = draw(st.integers(1, resto))
-            resto -= parte
+            if not de_mas:
+                resto -= parte
             orden += 1
             o = draw(st.sampled_from(obligaciones))
             imputaciones.append(
