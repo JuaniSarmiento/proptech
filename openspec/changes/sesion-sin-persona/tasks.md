@@ -903,7 +903,7 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   no afirma haber comprobado Clerk real. Son aclaraciones, sin cambios de reglas.
 
   **EVIDENCIA · Mutantes dirigidos R1/R2**. Comando ejecutor: `python3
-  /tmp/2d-arreglos-v2-evidencia/mutantes.py` (15:56:51–15:57:16 ART). Cada archivo tenía copia propia
+  /tmp/2d-arreglos-v2-evidencia/mutantes.py` (15:56:50–15:57:07 ART). Cada archivo tenía copia propia
   `.backup` ANTES de mutar, al no haber commit de la implementación (L-013); cada original se restauró
   en `finally`. Los diffs siguientes son contra esa copia, no contra un commit. M1 a M5 murieron en
   aserciones. Los logs completos y ejecutor se preservan en `informes/evidencia-arreglos-v2/`.
@@ -1027,6 +1027,38 @@ AssertionError: expected <button type="submit" …(1)></button> to be null
   command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/edificios/[id]/unidades/permisos.test.tsx' 'src/app/edificios/[id]/unidades/page.test.tsx' 'src/app/edificios/[id]/unidades/Pantalla.test.tsx' 'src/app/edificios/[id]/configuracion/Pantalla.test.tsx' 'src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx' 'src/app/invitacion/Pantalla.test.tsx' 'src/app/invitacion/[sobre]/page.test.tsx'
   Test Files 7 passed; Tests 74 passed.
   ```
+
+
+  **EVIDENCIA · Consumidor e2e de sólo lectura, 28/10/2026**
+
+  ```text
+  command: PROPTECH_PUERTO_API_FALSA=43218 PROPTECH_PUERTO_WEB=43219 bash infra/ci/test-web-navegador.sh acceso-pantallas.spec.ts ticket-de-invitacion.spec.ts escrituras-unidades.spec.ts vecinos-del-padron.spec.ts bloque-c.spec.ts pulido.spec.ts sesion.spec.ts estado-de-carga.spec.ts barrido-completo.spec.ts
+  SHA: cfb99ce499f900731043043e1590ffc14d38d273; hora:16:00:59–16:05:44 ART
+  160 tests, Chromium,1worker;155passed,5failed (4.6m).
+  Cuatro fallos ENOTDIR al mkdir .git/informes-2b/pantallas: acceso-pantallas:26 (2) y vecinos-del-padron:24 (2).
+  Quinto: vecinos-del-padron:67 intentaba click1A con user_sin_permiso; botón ausente por D11; timeout30000ms.
+  ```
+
+  JUICIO (constructor, confianza alta contra D11 y DOM): se adapta ese consumidor e2e anterior para
+  afirmar datos1A visibles y ausencia de editar, Agregar unidad, Guardar, Agregar vecino y panel.
+  No se restaura el control prohibido ni se tocan capturas/.git. El contrato negativo nuevo nació
+  verde; M10 lo acredita contra el mutante del control específico (archivo original comprometido en
+  cfb99ce, guardado y restaurado en finally, sin commitear el mutante):
+
+  ```diff
+  -                          {puedeConfigurar || puedeInvitar ? (
+  +                          {true ? (
+  ```
+  ```text
+  RED/M10:16:06:33–16:06:47 ART
+  command: PROPTECH_PUERTO_API_FALSA=43218 PROPTECH_PUERTO_WEB=43219 bash infra/ci/test-web-navegador.sh vecinos-del-padron.spec.ts -g 'sin permiso para leer personal'
+  1 failed; vecinos-del-padron.spec.ts:69:71, expect(button1A).toHaveCount(0):Expected0 Received1.
+  GREEN tras restaurar:16:07:09–16:07:17 ART, mismo comando
+  1 passed (1.3s),exit0.
+  ```
+
+  Los cuatro ENOTDIR son limitación del worktree reproducida, se conservan y no se arreglan por
+  prohibición del brief. La selección de160 no se presenta como verde. Logs completos en informes.
 
 - [x] 7.7 2.4 en `tests/integracion/test_invitar_personal_api.py`. **Rojo**: invitar
   `x@ejemplo.invalid` como "Ana", revocar, reinvitar como "Ana María" con otro perfil → `/api/personal`

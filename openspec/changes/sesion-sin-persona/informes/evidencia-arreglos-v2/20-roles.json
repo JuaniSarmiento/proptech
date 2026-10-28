@@ -1,0 +1,113 @@
+{
+  "files": [
+    "backend/src/proptech_core/acceso/aplicacion/alta_inicial.py",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/00-baseline.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/01-permisos-red.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/02-permisos-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/03-consumidor-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/04-e10-red.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/05-e10-consumidor-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/06-formato.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/07-formato.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/08-guardas-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/09-mutantes-resumen.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/10-types.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/11-restauracion-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/12-terceros-red.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/13-formato.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/14-terceros-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/15-mutantes-finales.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/16-restauracion-final-green.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/17-mutante-terceros.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/18-biome-precommit.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M1-editar.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M2-guardar.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M3-configuracion.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M4-saldos.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M5-vecinos-consumidor.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M6-cerrar-sesion.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M7-volver-ingreso.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M8-perder-ticket.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/M9-proveedor-anticipado.log",
+    "openspec/changes/sesion-sin-persona/informes/evidencia-arreglos-v2/mutantes.py",
+    "openspec/changes/sesion-sin-persona/tasks.md",
+    "web/e2e/acceso-pantallas.spec.ts",
+    "web/src/app/edificios/[id]/configuracion/Pantalla.test.tsx",
+    "web/src/app/edificios/[id]/configuracion/Pantalla.tsx",
+    "web/src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx",
+    "web/src/app/edificios/[id]/saldos-previos/Pantalla.tsx",
+    "web/src/app/edificios/[id]/unidades/Pantalla.test.tsx",
+    "web/src/app/edificios/[id]/unidades/Pantalla.tsx",
+    "web/src/app/edificios/[id]/unidades/page.test.tsx",
+    "web/src/app/edificios/[id]/unidades/page.tsx",
+    "web/src/app/edificios/[id]/unidades/permisos.test.tsx",
+    "web/src/app/invitacion/Pantalla.test.tsx",
+    "web/src/app/invitacion/Pantalla.tsx",
+    "web/src/app/invitacion/[sobre]/page.test.tsx",
+    "web/src/app/invitacion/[sobre]/page.tsx"
+  ],
+  "floor": {
+    "triggered": false
+  },
+  "roles": [
+    {
+      "role": "role-dba",
+      "convened": false,
+      "reason": "no corresponde: ninguna migración, esquema ni consulta en el diff",
+      "reason_code": "no-schema"
+    },
+    {
+      "role": "role-backend",
+      "convened": false,
+      "reason": "no corresponde: ningún endpoint, handler ni validación en el borde",
+      "reason_code": "no-endpoint"
+    },
+    {
+      "role": "role-frontend",
+      "convened": true,
+      "reason": "archivo bajo el árbol de UI",
+      "reason_code": "ui-tree",
+      "files": [
+        "web/e2e/acceso-pantallas.spec.ts",
+        "web/src/app/edificios/[id]/configuracion/Pantalla.test.tsx",
+        "web/src/app/edificios/[id]/configuracion/Pantalla.tsx",
+        "web/src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx",
+        "web/src/app/edificios/[id]/saldos-previos/Pantalla.tsx",
+        "web/src/app/edificios/[id]/unidades/Pantalla.test.tsx",
+        "web/src/app/edificios/[id]/unidades/Pantalla.tsx",
+        "web/src/app/edificios/[id]/unidades/page.test.tsx",
+        "web/src/app/edificios/[id]/unidades/page.tsx",
+        "web/src/app/edificios/[id]/unidades/permisos.test.tsx",
+        "web/src/app/invitacion/Pantalla.test.tsx",
+        "web/src/app/invitacion/Pantalla.tsx",
+        "web/src/app/invitacion/[sobre]/page.test.tsx",
+        "web/src/app/invitacion/[sobre]/page.tsx"
+      ]
+    },
+    {
+      "role": "role-devops",
+      "convened": false,
+      "reason": "no corresponde: deploy y configuración sin cambios",
+      "reason_code": "no-deploy"
+    },
+    {
+      "role": "role-qa",
+      "convened": true,
+      "reason": "siempre",
+      "reason_code": "always"
+    },
+    {
+      "role": "role-architect",
+      "convened": false,
+      "reason": "no lo decide el diff: una frontera no se lee por ruta. Se convoca por fase (propose siempre) o si el cambio movió una frontera",
+      "reason_code": "not-decided-by-diff"
+    },
+    {
+      "role": "role-analyst",
+      "convened": false,
+      "reason": "no lo decide el diff: el analista funcional se convoca por fase (explore y archive), no por un hecho del diff",
+      "reason_code": "not-decided-by-diff"
+    }
+  ],
+  "unclear": []
+}
