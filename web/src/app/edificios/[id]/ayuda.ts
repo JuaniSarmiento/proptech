@@ -10,7 +10,7 @@ export const AYUDA_RESUMEN = {
     'El panel "Tu próximo paso" te dice cuál conviene hacer ahora.',
   ],
   ejemplo:
-    "Un edificio recién creado arranca en 0 de 6 pasos. Cargás las unidades, revisás que los coeficientes sumen 100%, y la barra avanza a 2 de 6.",
+    "Un edificio recién creado arranca en 0 de 7 pasos. Cargás las unidades, revisás que los coeficientes sumen 100%, y la barra avanza a 2 de 7.",
   yDespues:
     "Cuando los siete pasos están hechos, el edificio queda listo para liquidar: ya podés generar las expensas del mes.",
 };
