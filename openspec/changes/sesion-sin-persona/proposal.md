@@ -245,3 +245,18 @@ de revertir en `design.md` (D1 a D13).
 | Firmante (Juani, Alberto o Emiliano) | Fecha | Alcance aprobado |
 |---|---|---|
 | Juani | 28/10/2026 | E1 a E11 tal como están en esta sección |
+
+### Enmienda E10 · "Usar otra cuenta" vuelve a la invitación, no a /ingresar (verificación 8.2 e)
+
+En la verificación con el Clerk de desarrollo real, una invitación para una persona que todavía no tiene
+cuenta, abierta con otra sesión, llevó por "Usar otra cuenta" a `/ingresar` con el ticket: Clerk
+respondió "This invitation refers to a non-existing identification" y, al intentar con Google, cayó en la
+página hospedada de Clerk, que volvió a `/invitacion/…` **sin** `__clerk_ticket`. Corrección: "Usar otra
+cuenta" cierra la sesión y vuelve a la **misma pantalla de la invitación** con su `__clerk_ticket`, que ya
+ofrece ingresar o crear cuenta. Reemplaza a "cierra la sesión y conserva `__clerk_ticket` hasta el
+ingreso" de E10 y de la tarea 8.2 (e); el resto de E10 queda igual (nunca se muestra el email
+destinatario). Descartado: dejarlo como deuda (un invitado nuevo se traba en un error en inglés).
+
+| Firmante | Fecha | Alcance aprobado |
+|---|---|---|
+| Juani | 28/10/2026 | Enmienda E10 tal como está escrita arriba |
