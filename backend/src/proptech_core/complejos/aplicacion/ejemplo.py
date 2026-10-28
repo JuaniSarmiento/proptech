@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -30,12 +31,24 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from proptech_core.acceso.aplicacion.auditoria import registrar
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    ADMINISTRACION_EJEMPLO_ID as ADMINISTRACION_EJEMPLO_ID,
+)
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    PERSONA_SUPER_ADMIN_EJEMPLO_ID as PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+)
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    VinculacionDeDesarrolloNoDisponible,
+    vincular,
+)
 from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.base_de_datos import (
@@ -61,8 +74,6 @@ from proptech_core.complejos.aplicacion.unidades import crear_unidad
 #: Id fijo de la administración de ejemplo (D9 del 3a, D1 de
 #: `acceso-de-desarrollo`): nunca generado, para que `cargar()` compare contra
 #: la misma fila en cada corrida en vez de crear una nueva administración.
-ADMINISTRACION_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e0")
-PERSONA_SUPER_ADMIN_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e1")
 NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
 NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
@@ -73,17 +84,17 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 ENTORNO_DE_DESARROLLO = "desarrollo"
 
 
-def _ruta_georef_por_defecto() -> Path:
-    base = Path(Configuracion().proptech_parametros).resolve().parent
+def _ruta_georef_por_defecto(configuracion: Configuracion | None = None) -> Path:
+    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
     return base / "georef"
 
 
-def _ruta_semilla_por_defecto() -> Path:
+def _ruta_semilla_por_defecto(configuracion: Configuracion | None = None) -> Path:
     """Relativa a `PROPTECH_PARAMETROS` (D-042), nunca calculada por la
     profundidad del archivo: esa cuenta difiere entre la corrida local (bajo
     `backend/`) y la imagen de Docker (`/app/src/...`), que no tienen el
     mismo número de carpetas hasta la raíz del repo."""
-    base = Path(Configuracion().proptech_parametros).resolve().parent
+    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
     return base / "semilla" / "edificio-ejemplo.yaml"
 
 
@@ -99,6 +110,7 @@ class ResultadoCarga:
     #: False cuando el ejemplo ya estaba igual ("ya estaba"); True cuando esta
     #: corrida lo creó.
     hizo_algo: bool
+    vinculacion: str | None = None
 
 
 def _reloj_por_defecto() -> datetime:
@@ -333,6 +345,7 @@ def cargar(
     georef: Georef,
     reloj: Callable[[], datetime] = _reloj_por_defecto,
     request_id: UUID,
+    clerk_usuario: str | None = None,
     intentos: int = 50,
     espera_s: float = 0.1,
 ) -> ResultadoCarga:
@@ -359,7 +372,19 @@ def cargar(
                     reloj=reloj,
                     request_id=request_id,
                 )
-                return ResultadoCarga(ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=True)
+                vinculacion = (
+                    vincular(
+                        sesion,
+                        ADMINISTRACION_EJEMPLO_ID,
+                        PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                        clerk_usuario,
+                    )
+                    if clerk_usuario is not None
+                    else None
+                )
+                return ResultadoCarga(
+                    ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=True, vinculacion=vinculacion
+                )
 
             complejo = sesion.execute(
                 text("SELECT id FROM complejo WHERE administracion_id=:admin LIMIT 1"),
@@ -367,7 +392,19 @@ def cargar(
             ).first()
             if complejo is not None:
                 _comparar_o_fallar(sesion, complejo.id, semilla)
-                return ResultadoCarga(ADMINISTRACION_EJEMPLO_ID, complejo.id, hizo_algo=False)
+                vinculacion = (
+                    vincular(
+                        sesion,
+                        ADMINISTRACION_EJEMPLO_ID,
+                        PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                        clerk_usuario,
+                    )
+                    if clerk_usuario is not None
+                    else None
+                )
+                return ResultadoCarga(
+                    ADMINISTRACION_EJEMPLO_ID, complejo.id, hizo_algo=False, vinculacion=vinculacion
+                )
             # Otra corrida ganó la carrera de `administracion` pero todavía no
             # terminó de cargar el edificio: esperar a que confirme, con una
             # sesión nueva (la actual ya leyó un estado que puede quedar
@@ -378,11 +415,36 @@ def cargar(
     )
 
 
+def _emisor_de_desarrollo(emisor: str | None) -> str | None:
+    if not emisor:
+        return None
+    try:
+        partes = urlsplit(emisor)
+        if (
+            partes.scheme != "https"
+            or not partes.hostname
+            or not partes.hostname.endswith(".clerk.accounts.dev")
+            or partes.username is not None
+            or partes.password is not None
+            or partes.port not in (None, 443)
+            or partes.query
+            or partes.fragment
+            or "?" in emisor
+            or "#" in emisor
+            or partes.path not in ("", "/")
+        ):
+            return None
+        return f"https://{partes.hostname}"
+    except ValueError:
+        return None
+
+
 def _main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Comando del edificio de ejemplo")
     subparsers = parser.add_subparsers(dest="accion", required=True)
     cargar_parser = subparsers.add_parser("cargar", help="Carga el edificio de ejemplo en la base")
     cargar_parser.add_argument("--semilla", default=None)
+    cargar_parser.add_argument("--clerk-usuario", default=None)
     args = parser.parse_args(argv)
 
     if os.environ.get("PROPTECH_ENTORNO") != ENTORNO_DE_DESARROLLO:
@@ -393,11 +455,29 @@ def _main(argv: list[str]) -> int:
         )
         return 1
 
-    configuracion = Configuracion()
+    emisor_normalizado = None
+    if args.clerk_usuario is not None:
+        if re.fullmatch(r"user_[A-Za-z0-9]{1,64}", args.clerk_usuario, flags=re.ASCII) is None:
+            print(
+                "el id de cuenta no tiene el formato permitido; no se escribió nada",
+                file=sys.stderr,
+            )
+            return 1
+        emisor_normalizado = _emisor_de_desarrollo(os.environ.get("CLERK_EMISOR"))
+        if emisor_normalizado is None:
+            print(
+                "la vinculación exige una instancia de Clerk de desarrollo; no se escribió nada",
+                file=sys.stderr,
+            )
+            return 1
+
+    configuracion = Configuracion(clerk_emisor=emisor_normalizado)
     parametros = leer_parametros(configuracion.proptech_parametros)
     try:
-        georef = leer_georef(str(_ruta_georef_por_defecto()))
-        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef)
+        georef = leer_georef(str(_ruta_georef_por_defecto(configuracion)))
+        semilla = leer_semilla(
+            args.semilla or str(_ruta_semilla_por_defecto(configuracion)), parametros, georef
+        )
     except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
         print(str(error), file=sys.stderr)
         return 1
@@ -416,10 +496,16 @@ def _main(argv: list[str]) -> int:
                 semilla=semilla,
                 georef=georef,
                 request_id=uuid4(),
+                clerk_usuario=args.clerk_usuario,
             )
-        except EjemploDistinto as error:
+        except (EjemploDistinto, VinculacionDeDesarrolloNoDisponible) as error:
             print(str(error), file=sys.stderr)
             return 1
+        except IntegrityError:
+            print("no se pudo completar la carga; no se escribió nada", file=sys.stderr)
+            return 1
+        if resultado.vinculacion is not None:
+            print(resultado.vinculacion)
         if resultado.hizo_algo:
             print(f"ejemplo cargado: {resultado.administracion_id}")
         else:

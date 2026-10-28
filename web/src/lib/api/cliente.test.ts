@@ -280,7 +280,7 @@ describe("2d · discriminador y selector sin rebote", () => {
       "fetch",
       mockFetch({ status: 403, cuerpo: { detail: { codigo, permiso_faltante: "sin_acceso" } } }),
     );
-    expect(await pedirApi("/api/sesion").catch(() => ({estado:"redirigio"}))).toEqual({
+    expect(await pedirApi("/api/sesion").catch(() => ({ estado: "redirigio" }))).toEqual({
       estado: "sin_permiso",
       permiso: "desconocido",
     });
@@ -297,7 +297,7 @@ describe("2d · discriminador y selector sin rebote", () => {
   });
   it("sin cuerpo 403 es permiso desconocido", async () => {
     vi.stubGlobal("fetch", mockFetch({ status: 403, cuerpoCrudo: "" }));
-    expect(await pedirApi("/api/sesion").catch(() => ({estado:"redirigio"}))).toEqual({
+    expect(await pedirApi("/api/sesion").catch(() => ({ estado: "redirigio" }))).toEqual({
       estado: "sin_permiso",
       permiso: "desconocido",
     });

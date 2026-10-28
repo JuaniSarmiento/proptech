@@ -14,8 +14,8 @@ EVIDENCIA (constructor). Cada archivo se copió antes de mutarlo en `.atl/2d-v1/
 -    if not administraciones:
 -        raise SinAcceso
      return {"persona": {"nombre": nombre}, "administraciones": administraciones}
- 
- 
+
+
 ```
 
 ```text
@@ -46,8 +46,8 @@ exit=1
 +        if not personas_vinculadas(request.app.state.fabrica_de_sesiones, token.sub):
 +            error.detail["motivo"] = "sin_persona"
 +        raise error from None
- 
- 
+
+
  @router.post("/sesion/ingreso")
 ```
 
@@ -56,7 +56,7 @@ bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py::test_sesion_
 2026-10-28T11:13:54.385145-03:00
             api_clerk.filas("DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
 E       assert b'{"detail":{...sin_acceso"}}' == b'{"detail":{...in_persona"}}'
-E         
+E
 E         At index 32 diff: b'}' != b','
 E         Use -v to get more diff
 tests/integracion/test_sesion_api.py:140: AssertionError
@@ -80,8 +80,8 @@ exit=1
 +        if not personas_vinculadas(request.app.state.fabrica_de_sesiones, token.sub):
 +            error.headers = {"X-Sin-Persona": "1"}
 +        raise error from None
- 
- 
+
+
  @router.post("/sesion/ingreso")
 ```
 
@@ -90,7 +90,7 @@ bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py::test_sesion_
 2026-10-28T11:14:02.182597-03:00
             api_clerk.filas("DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
 E       AssertionError: assert {'content-len...quest-id': ''} == {'x-sin-perso...quest-id': ''}
-E         
+E
 E         Omitting 3 identical items, use -vv to show
 E         Right contains 1 more item:
 E         {'x-sin-persona': '1'}
@@ -125,8 +125,8 @@ exit=1
      except TokenInvalido:
 -        raise HTTPException(status_code=401) from None
 +        raise HTTPException(status_code=403) from None
- 
- 
+
+
  def identidad_actual(
 @@ -65,7 +65,7 @@
      except SinAcceso:
@@ -134,8 +134,8 @@ exit=1
      except IdentidadNoDisponible:
 -        raise HTTPException(status_code=401) from None
 +        raise HTTPException(status_code=403) from None
- 
- 
+
+
  def sesion_con_tenant(
 ```
 
@@ -200,7 +200,7 @@ exit=1
 -                detalle={"motivo": "sin_asignacion"},
 -            )
              sesion.commit()
- 
+
      # El selector nunca autoriza una lectura: sólo se abren tenants vinculados.
 ```
 
@@ -210,7 +210,7 @@ bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py::test_sin_asi
             "DELETE FROM asignacion_rol WHERE persona_id = %s RETURNING id",
             "WHERE accion = 'ingreso_fallido'"
 E       AssertionError: assert [] == [(UUID('ce9ab...asignacion'})]
-E         
+E
 E         Right contains one more item: (UUID('ce9ab6ac-c41f-403c-b9ac-00afbaf473a0'), UUID('299fce86-50d7-4750-844b-e4274ad3bf73'), UUID('72e577b9-99a4-4801-b59d-943f94f44327'), {'motivo': 'sin_asignacion'})
 E         Use -v to get more diff
 tests/integracion/test_sesion_api.py:118: AssertionError
@@ -227,7 +227,7 @@ exit=1
 @@ -44,6 +44,13 @@
          )
          raise SinAcceso
- 
+
 +    hay_acceso = False
 +    for persona in personas:
 +        with abrir_sesion(fabrica, persona.administracion_id) as sesion:
@@ -246,7 +246,7 @@ bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py::test_sin_asi
             "DELETE FROM asignacion_rol WHERE persona_id = %s RETURNING id",
             "WHERE accion = 'ingreso_fallido'"
 E       AssertionError: assert [] == [(UUID('235a7...asignacion'})]
-E         
+E
 E         Right contains one more item: (UUID('235a74e3-b3ca-4028-ba83-ca9dde5c8385'), UUID('f462b6cf-ded4-41d5-8fe9-03d1521ca522'), UUID('3bfbb12e-34cb-4d4b-9da3-580625df7f78'), {'motivo': 'sin_asignacion'})
 E         Use -v to get more diff
 tests/integracion/test_sesion_api.py:118: AssertionError
@@ -263,7 +263,7 @@ exit=1
 @@ -71,6 +71,7 @@
              )
              sesion.commit()
- 
+
 +    raise IdentidadNoDisponible
      # El selector nunca autoriza una lectura: sólo se abren tenants vinculados.
      for persona in personas:
@@ -292,7 +292,7 @@ exit=1
 @@ -71,6 +71,11 @@
              )
              sesion.commit()
- 
+
 +    if identidad is None:
 +        for persona in personas:
 +            with abrir_sesion(fabrica, persona.administracion_id) as sesion:
@@ -351,8 +351,8 @@ exit=1
 -            403, detail={"codigo": "sin_permiso", "detalle": "sin_permiso", "permiso_faltante": PERMISO.value}
 +            403, detail={"detalle": "sin_permiso", "permiso_faltante": PERMISO.value}
          )
- 
- 
+
+
 ```
 
 ```text
@@ -367,4 +367,76 @@ INFO     httpx:_client.py:1025 HTTP Request: DELETE http://testserver/api/asigna
 FAILED tests/integracion/test_rutas_protegidas.py::test_barrido_403_con_alcance_y_sin_permiso
 ========================= 1 failed, 1 warning in 6.39s =========================
 exit=1
+```
+
+## 2.4 · rama nueva 403 sin código
+
+```diff
+--- backend/src/proptech_api/personal.py
++++ mutante
+@@ -169,6 +169,7 @@
+     identidad: Identidad = Depends(identidad_actual),
+     sesion: Session = Depends(sesion_con_tenant),
+ ) -> list[dict[str, Any]]:
++    raise HTTPException(403, detail={"detalle": "sin_permiso"})
+     autorizar(sesion, identidad)
+     return listar_personal(sesion)
+
+```
+
+```text
+bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py::test_barrido_403_con_alcance_y_sin_permiso
+2026-10-28T11:42:39.231362-03:00
+AssertionError: detail.codigo ausente en GET /api/personal; test_barrido_403_con_alcance_y_sin_permiso; 1 failed/exit1. Copia previa backup-2.4-nueva-rama.py restaurada.
+```
+
+## 2.3 · variante literal, SELECT por email y cuerpo distinto
+
+```diff
+--- backend/src/proptech_core/acceso/aplicacion/identidad.py
++++ mutante
+@@ -34,7 +34,7 @@
+
+
+ def resolver(
+-    fabrica: sessionmaker[Session], sub: str, selector: str | None, *, request_id: UUID
++    fabrica: sessionmaker[Session], sub: str, selector: str | None, *, request_id: UUID, email: str | None = None
+ ) -> Identidad:
+     personas = personas_vinculadas(fabrica, sub)
+     if not personas:
+@@ -42,6 +42,17 @@
+             "ingreso_sin_vinculo",
+             extra={"sub_resumen": hashlib.sha256(sub.encode()).hexdigest()[:12]},
+         )
++        if selector is not None:
++            try:
++                admin_del_cliente = UUID(selector)
++            except ValueError:
++                pass
++            else:
++                with abrir_sesion(fabrica, admin_del_cliente) as sesion:
++                    fila = sesion.execute(text("SELECT id FROM persona WHERE email = :email"), {"email": email}).first()
++                if fila is not None:
++                    from fastapi import HTTPException
++                    raise HTTPException(403, detail={"codigo": "sin_acceso", "motivo": "email_encontrado"})
+         raise SinAcceso
+
+     # Elegir primero: sólo una persona elegida puede dejar ingreso_fallido.
+--- backend/src/proptech_api/acceso.py
++++ mutante
+@@ -61,6 +61,7 @@
+             token.sub,
+             request.headers.get("X-Proptech-Administracion"),
+             request_id=UUID(request_id_actual.get() or ""),
++            email=token.email,
+         )
+     except SinAcceso:
+         raise sin_acceso_http() from None
+```
+
+```text
+bash infra/ci/test-backend.sh tests/integracion/test_deuda_acceso_2b.py::test_el_403_no_depende_del_email_ni_lee_por_email[/api/complejos]
+2026-10-28T11:46:27.669841-03:00
+AssertionError en test_deuda_acceso_2b.py:151: recibió motivo=email_encontrado con selector A y email presente; esperaba cuerpo constante sin motivo.
+1 failed, exit1; no se desactivó RLS. Copias previas de identidad.py y acceso.py restauradas.
 ```

@@ -420,9 +420,13 @@ class Configuracion(_ConfiguracionPostgresBase):
     invitaciones_clave_cifrado: SecretStr | None
     proptech_url_publica: str | None
 
-    def __init__(self) -> None:
+    def __init__(self, *, clerk_emisor: str | None = None) -> None:
         try:
-            base = _LectorDeApp()
+            # El comando de ejemplo puede normalizar su señal de desarrollo;
+            # los consumidores sin override conservan la validación exacta.
+            base = (
+                _LectorDeApp() if clerk_emisor is None else _LectorDeApp(clerk_emisor=clerk_emisor)
+            )
         except ValidationError as error:
             raise ConfiguracionInvalida(
                 f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"

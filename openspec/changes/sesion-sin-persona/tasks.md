@@ -343,7 +343,7 @@ MUTANTE D2 revertida sólo en selector: mismo runner --grep "2d API rechaza", 11
 
 ## 5. El ejemplo vincula una cuenta de desarrollo
 
-- [ ] 5.1 **Rojo** en `tests/integracion/test_ejemplo_casos_de_uso.py` y su parte unitaria de `_main`:
+- [x] 5.1 **Rojo** en `tests/integracion/test_ejemplo_casos_de_uso.py` y su parte unitaria de `_main`:
   "Id con otra forma" (antes de conectarse, con la técnica de
   `test_la_guarda_corre_antes_de_conectar_a_la_base`, y afirmando que **ni stdout ni stderr** repiten
   el valor); "Instancia de producción", "Emisor que sólo contiene el dominio de desarrollo" y "Sin
@@ -373,24 +373,67 @@ MUTANTE D2 revertida sólo en selector: mismo runner --grep "2d API rechaza", 11
   en "sin traceback ni id"; (g2) sacar el `except IntegrityError` → rojo en la carrera entre la
   comprobación y la escritura; (h) la función acepta cualquier persona → rojo; (i) vincular fuera de la
   transacción de la carga → rojo en el escenario de otra cuenta sobre base vacía.
-- [ ] 5.2 **Verde**: `--clerk-usuario` en `_main` (texto plano, sin `type=`), las dos trabas en el
+
+  **Evidencia ejecutada 5.1 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py
+TIME: 2026-10-28T11:30:46.054391-03:00
+27 failed, 62 passed (38.73s), sin fallos de setup; aserciones de no conexión, vínculo, carrera, rollback y HTTP403!=200.
+COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py tests/unitarios/test_configuracion.py tests/unitarios/test_configuracion_clerk.py tests/unitarios/test_configuracion_pool.py tests/unitarios/test_configuracion_secreta.py tests/unitarios/test_logs_configuracion.py tests/unitarios/test_semilla_configuracion.py
+TIME: 2026-10-28T11:43:20.677977-03:00
+332 passed (48.98s), exit0, fin11:44:10 -03:00. Guardas previas: baseline10ejemplo; mayúsculas/:443/sinentorno3passed; configuración239passed antes de modificar constructor.
+MUTANTES: 15/15 muertos con AssertionError; a,b,c,d,d2,e,f,g,g2,h,i,normalización,otra integridad y dos imports prohibidos. Copias sin commit restauradas. Diffs/comando/hora/file:line en informes/evidencia-ejemplo-v1.md.
+Resolución L-030: g se discrimina por SELECT previo (D5 exige el mismo mensaje en prechequeo y UNIQUE). La forma / final, rotulada guarda en tarea, fue rojo real de Configuracion; override explícito sólo CLI, validadorAPI sin cambios.
+  ```
+
+- [x] 5.2 **Verde**: `--clerk-usuario` en `_main` (texto plano, sin `type=`), las dos trabas en el
   orden de D5, `cargar(..., clerk_usuario=...)`, y el módulo nuevo de `acceso.aplicacion` con los ids
   fijos del ejemplo (que `ejemplo.py` pasa a importar) y la función de vinculación: chequeo previo de
   unicidad, `UPDATE` condicional con `rowcount` y `except IntegrityError` sobre
   `uq_persona_clerk_administracion` con el mismo mensaje fijo (D5, D7). La traba del emisor valida la URL
   completa (D5, paso 3).
-- [ ] 5.3 La lista permitida de la vinculación en `tests/unitarios/test_fronteras_de_modulos.py`
+
+  **Evidencia ejecutada 5.2 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py
+TIME: 2026-10-28T11:30:46.054391-03:00
+27 failed, 62 passed (38.73s), sin fallos de setup; aserciones de no conexión, vínculo, carrera, rollback y HTTP403!=200.
+COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py tests/unitarios/test_configuracion.py tests/unitarios/test_configuracion_clerk.py tests/unitarios/test_configuracion_pool.py tests/unitarios/test_configuracion_secreta.py tests/unitarios/test_logs_configuracion.py tests/unitarios/test_semilla_configuracion.py
+TIME: 2026-10-28T11:43:20.677977-03:00
+332 passed (48.98s), exit0, fin11:44:10 -03:00. Guardas previas: baseline10ejemplo; mayúsculas/:443/sinentorno3passed; configuración239passed antes de modificar constructor.
+MUTANTES: 15/15 muertos con AssertionError; a,b,c,d,d2,e,f,g,g2,h,i,normalización,otra integridad y dos imports prohibidos. Copias sin commit restauradas. Diffs/comando/hora/file:line en informes/evidencia-ejemplo-v1.md.
+  ```
+
+- [x] 5.3 La lista permitida de la vinculación en `tests/unitarios/test_fronteras_de_modulos.py`
   (BE-5, AR-4). **Rojo**: el test nuevo falla mientras el módulo de 5.2 no exista con ese nombre, y
   después afirma que `complejos/aplicacion/ejemplo.py` es el único importador. Escenarios "El código de
   hoy pasa", "La API importa la vinculación de desarrollo", "Otro módulo de acceso la importa".
   **Mutantes** (sobre `copia_core`): un `from … import` en `proptech_api/sesion.py` → rojo nombrando
   el archivo; un `import` en `acceso/aplicacion/invitaciones.py` → rojo.
+
+  **Evidencia ejecutada 5.3 (28/10/2026)**
+
+  ```text
+RED bash infra/ci/test-backend.sh tests/unitarios/test_fronteras_de_modulos.py::test_vinculacion_de_desarrollo_solo_desde_ejemplo
+11:28:27: is_file() False, test_fronteras_de_modulos.py:659 AssertionError; 1 failed.
+COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py tests/unitarios/test_configuracion.py tests/unitarios/test_configuracion_clerk.py tests/unitarios/test_configuracion_pool.py tests/unitarios/test_configuracion_secreta.py tests/unitarios/test_logs_configuracion.py tests/unitarios/test_semilla_configuracion.py
+TIME: 2026-10-28T11:43:20.677977-03:00
+332 passed (48.98s), exit0, fin11:44:10 -03:00. Guardas previas: baseline10ejemplo; mayúsculas/:443/sinentorno3passed; configuración239passed antes de modificar constructor.
+MUTANTES: 15/15 muertos con AssertionError; a,b,c,d,d2,e,f,g,g2,h,i,normalización,otra integridad y dos imports prohibidos. Copias sin commit restauradas. Diffs/comando/hora/file:line en informes/evidencia-ejemplo-v1.md.
+  ```
+
 - [ ] 5.4 Escribir en `README.md` (§"Cómo levantarlo") "Entrar con el edificio de ejemplo", paso a
   paso, con `user_XXXXXXXX` como marcador, la condición de usar el Clerk de desarrollo, y sin ningún id,
   email ni emisor real (L-040). **Verificación**: una persona distinta de quien lo escribió (Emiliano o
   Gianfranco) lo sigue tal cual sobre una base limpia con su propia cuenta y llega a "Mis edificios"; el
   informe dice quién, cuándo, con qué SHA, y dónde quedó el id usado (el panel de Clerk), nunca su
   valor. Escenario "Otra persona repite el recorrido". Salda L-039 y la deuda del PR #1.
+
+### Estado de 5.4 en vuelta 1
+
+README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXXXXXX`, guardas y pasos completos. **No se marca 5.4**: falta que Emiliano o Gianfranco lo siga con su cuenta y base limpia. El brief prohíbe iniciar sesión en proveedores; no se inventa persona, fecha, SHA ni recorrido. Fuente de dominio de desarrollo: [Clerk, How Clerk works](https://clerk.com/docs/guides/how-clerk-works/overview), consultada el 28/10/2026, sección The frontend API. Ningún emisor ni id real fue leído o publicado.
 
 ## 6. `ejemplo.py` sin SQL de `acceso` (sólo si E7 se aprueba)
 

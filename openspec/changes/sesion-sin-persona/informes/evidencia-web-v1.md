@@ -73,7 +73,7 @@ exit=1
 +++ web/src/lib/api/cliente.ts
 @@ -127,7 +127,6 @@
    }
- 
+
    if (respuesta.status === 401) {
 -    if (opciones.alNoAutenticar === "devolver") return { estado: "sin_sesion" };
      return irAlIngreso(sesion.regreso);
@@ -99,7 +99,7 @@ exit=1
 --- web/src/lib/api/cliente.ts
 +++ web/src/lib/api/cliente.ts
 @@ -98,7 +98,6 @@
- 
+
    const sesion = await sesionActual();
    if (!sesion) {
 -    if (opciones.alNoAutenticar === "devolver") return { estado: "sin_sesion" };
@@ -195,7 +195,7 @@ exit=1
 -  return salida.length > 512 ? "/edificios" : salida;
 +  return salida;
  }
- 
+
  /**
 ```
 
@@ -236,7 +236,7 @@ exit=1
 -  return salida.length > 512 ? "/edificios" : salida;
 +  return salida.length >= 512 ? "/edificios" : salida;
  }
- 
+
  /**
 ```
 
@@ -259,7 +259,7 @@ exit=1
 +++ web/src/lib/sesion.ts
 @@ -17,31 +17,15 @@
  }
- 
+
  export function regresoSeguro(valor: string | null | undefined): string {
 -  if (
 -    !valor?.startsWith("/") ||
@@ -290,7 +290,7 @@ exit=1
 -  return salida.length > 512 ? "/edificios" : salida;
 +  return `${url.pathname}${url.search}${url.hash}`;
  }
- 
+
  /**
 ```
 
@@ -483,7 +483,7 @@ exit=1
 -  return email ? <p>{email}</p> : null;
 +  return <p>{String(email)}</p>;
  }
- 
+
  export function PantallaSinAcceso() {
 ```
 

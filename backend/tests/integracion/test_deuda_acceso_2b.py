@@ -139,7 +139,9 @@ def test_el_403_no_depende_del_email_ni_lee_por_email(
     try:
         respuestas = [
             api_clerk.cliente.get(
-                ruta, headers=encabezados(clerk_falso, sub="user_NoVinculado", email=email)
+                ruta,
+                headers=encabezados(clerk_falso, sub="user_NoVinculado", email=email)
+                | {"X-Proptech-Administracion": str(api_clerk.admin)},
             )
             for email in ("x@ejemplo.invalid", "otra@ejemplo.invalid")
         ]

@@ -633,3 +633,59 @@ def test_excepcion_sql_es_por_archivo_y_tabla() -> None:
         k: v for k, v in _EXCEPCIONES_SQL.items() if k[0] != "complejos/aplicacion/lectura.py"
     }
     assert _sql_ajeno(RAIZ_SRC, sin_lectura) == ["complejos/aplicacion/lectura.py: persona"]
+
+
+# E5: el bypass de invitación es exclusivamente del comando de desarrollo.
+_VINCULACION_DE_DESARROLLO = ("proptech_core", "acceso", "aplicacion", "vinculacion_de_desarrollo")
+_IMPORTADOR_DEL_EJEMPLO = "proptech_core/complejos/aplicacion/ejemplo.py"
+
+
+def _importadores_de_vinculacion(raices: list[Path]) -> list[str]:
+    importadores = []
+    for raiz in raices:
+        for archivo in sorted(raiz.rglob("*.py")):
+            paquete = (raiz.name, *archivo.relative_to(raiz).parts[:-1])
+            for level, module in _imports_de(archivo):
+                partes = tuple((module or "").split("."))
+                if level:
+                    partes = (*paquete[: len(paquete) - level + 1], *partes)
+                if partes[:4] == _VINCULACION_DE_DESARROLLO:
+                    importadores.append(str(archivo.relative_to(raiz.parent)))
+                    break
+    return importadores
+
+
+def test_vinculacion_de_desarrollo_solo_desde_ejemplo() -> None:
+    assert (RAIZ_SRC / "acceso/aplicacion/vinculacion_de_desarrollo.py").is_file()
+    importadores = _importadores_de_vinculacion(
+        [RAIZ_SRC, RAIZ_API, RAIZ_SRC.parent / "proptech_worker"]
+    )
+    assert importadores == [_IMPORTADOR_DEL_EJEMPLO], importadores
+
+
+@pytest.mark.parametrize(
+    "arbol,archivo,sentencia",
+    [
+        (
+            "api",
+            "sesion.py",
+            "from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import vincular",
+        ),
+        (
+            "core",
+            "acceso/aplicacion/invitaciones.py",
+            "import proptech_core.acceso.aplicacion.vinculacion_de_desarrollo",
+        ),
+    ],
+)
+def test_mutantes_vinculacion_fuera_del_ejemplo(
+    copia_core: Path, copia_de_proptech_api: Path, arbol: str, archivo: str, sentencia: str
+) -> None:
+    raiz = copia_de_proptech_api if arbol == "api" else copia_core
+    mutado = raiz / archivo
+    # Copia sin commit, fixture temporal; el repo nunca recibe el import.
+    mutado.write_text(sentencia + "\n" + mutado.read_text())
+    importadores = _importadores_de_vinculacion([copia_core, copia_de_proptech_api])
+    ofensor = str(mutado.relative_to(raiz.parent))
+    assert ofensor in importadores
+    assert importadores != [_IMPORTADOR_DEL_EJEMPLO]
