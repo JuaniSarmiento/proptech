@@ -846,3 +846,91 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   funciones o procedimientos con dependencias internas — no sólo a este migrador. Quien diseñe un
   chequeo de seguridad "por el efecto" tiene que preguntarse qué otro código corre adentro del camino
   que mide, no sólo el nombre que aparece en el catálogo.
+
+## L-055 · "Suite completa" puede ser una selección; el cierre exige correrla entera sobre el SHA final
+
+- **Origen**: 2d `sesion-sin-persona`, cierre del 28/10/2026 (`tasks.md`, tarea 8.1, nota del
+  orquestador).
+- **Qué pasó**: durante las vueltas de arreglos, el constructor reportó corridas de backend que decía
+  "completas" pero que en los hechos eran una selección de archivos o de módulos (del orden de 1.420
+  tests sobre un total de 4.248 en el repo), no `bash infra/ci/test-backend.sh` sin argumentos. Con esa
+  selección en verde, tres tests del contrato 403 (entre ellos los de `test_el_403_no_depende_del_email`
+  y del barrido de `test_rutas_protegidas.py`) quedaron rotos sin que nadie lo notara, porque no
+  estaban en el subconjunto corrido. Recién la corrida de cierre del orquestador sobre `d77faa5` en un
+  clon limpio (`bash infra/ci/test-backend.sh -q -p no:cacheprovider` → `4252 passed, 1 xfailed`) los
+  sacó a la luz y el auditor (Codex) dio NO OK señalando justamente la suite parcial.
+- **Regla**: "suite completa" no es una frase que el constructor pueda autodeclarar: el cierre de
+  cualquier change exige correr el comando de la suite entera (sin filtros de archivo ni de `-k`),
+  sobre el SHA que de verdad se va a mergear, y pegar el conteo total (`N passed`) en la evidencia. Una
+  corrida parcial en verde no certifica nada sobre los tests que quedaron afuera.
+- **Costo**: tres tests de un contrato CRITICAL (403) rotos durante el desarrollo sin que ninguna
+  corrida los mostrara, hasta la verificación de cierre.
+- **Aplica a**: cualquier cierre de change, sobre todo uno con varias vueltas de arreglos donde el
+  constructor corre subconjuntos para iterar rápido — el hábito de correr rápido durante el desarrollo
+  no puede ser también el criterio de cierre.
+
+## L-056 · Un e2e que escribe en `.git/informes-*` falla con ENOTDIR dentro de un worktree; se juzga en un clon normal
+
+- **Origen**: 2d `sesion-sin-persona`, consumidor e2e de sólo lectura (`tasks.md`, informe
+  `evidencia-arreglos-v2/M5-vecinos-consumidor.log` y el texto de la tarea 7.6-7.7, 28/10/2026).
+- **Qué pasó**: al correr la selección de e2e (`acceso-pantallas.spec.ts` y
+  `vecinos-del-padron.spec.ts`, entre otros) dentro de un `git worktree`, cuatro de 160 tests fallaron
+  con `ENOTDIR` al intentar `mkdir .git/informes-2b/pantallas`: en un worktree, `.git` **no es un
+  directorio**, es un archivo que apunta al git real, así que cualquier escritura que asuma
+  `.git/<algo>/` como carpeta falla con ese error específico, sin relación con el código que se está
+  probando. Corriendo la misma selección en un **clon normal** (no worktree), el navegador completo dio
+  175/175.
+- **Regla**: un fallo `ENOTDIR` al escribir bajo `.git/` es una limitación conocida del entorno
+  (worktree), no un rojo del cambio: se reconoce, se documenta y se repite la corrida en un clon normal
+  antes de juzgar el resultado. Un worktree es una herramienta válida para aislar el trabajo, pero no es
+  intercambiable con un clon a la hora de correr una suite que escribe sus propios informes dentro de
+  `.git/`.
+- **Costo**: ninguno real (los cuatro fallos no eran del código), pero sin la explicación habrían
+  contado como regresión y disparado una investigación sobre código que no tenía nada que ver.
+- **Aplica a**: cualquier e2e o script de CI que escriba logs o informes bajo `.git/`, corrido alguna
+  vez desde un worktree — frontend, QA y DevOps al diagnosticar un rojo que no se explica por el diff.
+
+## L-057 · Un invitado sin cuenta en Clerk pierde el `__clerk_ticket` al pasar por la página hospedada; sólo Clerk real lo muestra
+
+- **Origen**: 2d `sesion-sin-persona`, verificación manual 8.2 e con el Clerk de desarrollo real
+  (28/10/2026, `tasks.md`), corregido por la Enmienda E10 (D-137, commit `335f50d`).
+- **Qué pasó**: la primera redacción de "Usar otra cuenta" cerraba la sesión y confiaba en que
+  `__clerk_ticket` sobreviviera hasta el ingreso. Contra Clerk real, una invitación para una persona
+  **sin cuenta todavía**, abierta con otra sesión activa, llevó por "Usar otra cuenta" a `/ingresar` con
+  el ticket: Clerk respondió "This invitation refers to a non-existing identification" y, al reintentar
+  (incluso con Google), la página hospedada de Clerk volvió a `/invitacion/…` **sin** `__clerk_ticket`.
+  Ningún test con el doble de Clerk (`signOut` simulado) podía mostrar esto: el doble no reproduce el
+  comportamiento real de la página hospedada ante un `sub` sin identificación.
+- **Regla**: un flujo que depende de que Clerk conserve un parámetro propio (`__clerk_ticket`) a través
+  de una redirección a su página hospedada **tiene que verificarse con Clerk real**, al menos una vez,
+  con el caso específico de una cuenta que todavía no existe — el caso feliz (cuenta que ya existe) no
+  alcanza para probarlo. El brief de este change explícitamente prohibía loguearse en el proveedor
+  durante el desarrollo automatizado; por eso esta verificación quedó para una tarea manual aparte
+  (8.2), no para el test suite.
+- **Costo**: una ronda de arreglo (`cfb99ce`, Enmienda E10 firmada el mismo día) después de haber dado
+  por cerrada la primera redacción.
+- **Aplica a**: cualquier pantalla que ofrezca "cerrar sesión y volver" dentro de un flujo de invitación
+  o de autenticación de terceros — el doble de la librería no sustituye una verificación manual contra
+  el proveedor real para el camino de "todavía no tiene cuenta".
+
+## L-058 · Ampliar una lectura (200 a un rol nuevo) puede hacer que un consumidor viejo confunda "pude leer" con "puedo gestionar"
+
+- **Origen**: 2d `sesion-sin-persona`, tarea 7.4/D11 (`tasks.md`, mutante M5,
+  `evidencia-arreglos-v2/M5-vecinos-consumidor.log`, 28/10/2026).
+- **Qué pasó**: al ampliar `GET /api/personal` para que también responda 200 (en sólo lectura) al
+  administrador principal (D-135), el mutante dirigido sobre
+  `web/src/app/edificios/[id]/unidades/Pantalla.tsx` (sacar `&& puedeInvitar` de la condición que
+  muestra "Agregar vecino", dejando sólo `vecinosPorUnidad`) mostró que un consumidor construido para
+  un mundo donde "la API devuelve datos de personal" implicaba "tengo permiso de gestionar" dejaba de
+  ser cierto: con la lectura ampliada, ese supuesto implícito expone el botón de escritura a quien sólo
+  puede leer. El test permanente que lo cubre se llama, a propósito,
+  "GET personal exitoso no habilita Agregar vecino al principal".
+- **Regla**: cuando se amplía a quién responde 200 una lectura que antes sólo veía quien también podía
+  escribir, hay que revisar **cada consumidor** de esa lectura por si infería el permiso de escribir a
+  partir de haber podido leer, en vez de comprobar el permiso de escribir por separado. "Pude leer" y
+  "puedo gestionar" son dos preguntas distintas en cuanto hay un segundo rol que sólo puede la primera.
+- **Costo**: un mutante dirigido lo encontró antes de llegar a producción; el arreglo fue agregar de
+  vuelta la condición de permiso de escritura, con su test permanente.
+- **Aplica a**: cualquier endpoint de lectura que hoy sólo visita un rol que también escribe, el día que
+  se abre a un rol de sólo lectura — frontend y backend al revisar el diff de ese día, no sólo QA al
+  escribir el mutante.

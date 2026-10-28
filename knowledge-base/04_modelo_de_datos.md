@@ -383,6 +383,11 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
   de los campos cambiados en el detalle, nunca otros valores (D-016). Mismo mecanismo de punto de no
   retorno que `0022`: la primera auditoría de este evento hace fallar el `downgrade` de `0027` por la
   FK, a propósito.
+- **Acción que suma el 2d** (`0028_ver_personal.py`, D-135): `ver_personal`, de super admin y
+  administrador principal, evaluada sin complejo; `GET /api/personal` la exige. **No** se auditó la
+  vinculación de una cuenta de Clerk de desarrollo al ejemplo (`--clerk-usuario`, D-133): el control
+  son las dos trabas de entorno/emisor y la función que sólo conoce al ejemplo, y no hay actor ni
+  tenant real que reconstruir con esa fila.
 
 #### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
 

@@ -306,48 +306,46 @@ reemplazó por D-106 en el 2.2a y el método de login por D-107 en el 2b.
   comandos y salida); la corrida de cierre está en verde, en orden y de a uno; y un clon limpio del
   commit final levanta con los comandos del README tal cual, con `/api/salud` 200.
 
-### 2d · `sesion-sin-persona` · CRITICAL · pendiente (D-130, 28/10/2026) · C-21
+### 2d · `sesion-sin-persona` · CRITICAL · archivado 28/10/2026 (D-131 a D-137) · C-21
 
 > **Creada al archivar el 3c** (D-130, 28/10/2026), no por `openspec new`: junta los ítems de acceso
 > que el 3c, el 2b y el PR #1 (`acceso-de-desarrollo`) fueron diriendo "para un change de acceso
 > futuro" con el hallazgo CRITICAL que la regresión del 27/10/2026 terminó de diagnosticar
 > (`.git/informes-regresion/02-acceso.md`, cuatro lecturas independientes de código convergiendo en la
-> misma causa raíz). Se adelanta en el orden del roadmap porque es la única deuda CRITICAL viva y
-> porque bloquea, sin avisar, cualquier recorrido manual que entre con una cuenta autenticada sin
-> persona vinculada — como ya le pasó a esta misma regresión.
+> misma causa raíz).
 
-- **Objetivo**: que una cuenta de Clerk autenticada sin persona vinculada a ninguna administración
-  tenga un estado propio, en vez de rebotar entre `/ingresar` y `/elegir-administracion` hasta un 431.
-- **Entra**:
-  - Un **tercer estado de sesión** en `sesionActual()` (`web/src/lib/sesion.ts:7-17`), además de "hay
-    sesión" y "no hay nada": "autenticado en Clerk, sin persona" — y una pantalla/redirect para ese
-    estado que no vuelva a `/ingresar` (corta el loop `irAlIngreso`/`forceRedirectUrl`/`x-proptech-ruta`
-    descripto en D-130 y en la ficha 3c).
-  - El estado **"0 administraciones"** en el spec de `login-y-usuarios` y en
-    `web/src/app/elegir-administracion/Pantalla.tsx` (hoy código muerto: el componente lo contempla,
-    pero el backend nunca deja llegar hasta ahí porque devuelve 401 antes).
-  - El edificio de ejemplo **vinculado a una cuenta real de Clerk** (`backend/src/proptech_core/
-    complejos/aplicacion/ejemplo.py:124-130`, hoy sin `clerk_usuario_id`; el único camino que lo
-    completa es aceptar una invitación, que `ejemplo.py` nunca crea, L-039) — o, si la decisión es otra,
-    el paso manual de vinculación escrito y repetible.
-  - B-3 (invitación abierta con la sesión de otra cuenta), 2.3 (menú que se adapta al rol), 2.4
-    (reinvitar el mismo email) y 2.5/P66 (`/personal` jerárquica, aprobada en principio por D-127).
-  - El recuadro de Clerk recortado en `/ingresar` a 320px (hipótesis de código en D-130: el ancho
-    disponible dentro de `.panel` da ≈248px contra un mínimo de Clerk de ~350-360px; confirmar en
-    navegador real).
-  - `ejemplo.py` escribiendo SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra
-    D-021 (AR-6/BE-4/DB-7 del PR #1 de `acceso-de-desarrollo`).
-- **No entra**: nada de `configuracion_versionada` ni de plata; ninguna pantalla del 3c.
-- **Depende de**: 2a, 2.2a, 2b y 3c (archivados). **Habilita**: un recorrido manual de cualquier change
-  futuro que no corra el riesgo de pisar el loop.
-- **Gobernanza**: CRITICAL (toca `acceso`, D-094/D-111) — no se construye sin la aprobación de un
-  firmante.
-- **Que intente romper el rompedor**: una cuenta de Clerk válida sin ninguna persona vinculada; una
-  cuenta con persona pero sin ninguna administración; el `regreso` de `x-proptech-ruta` conteniendo ya
-  un `regreso=` propio; dos pestañas abriendo `/ingresar` a la vez con la misma cuenta.
-- **Terminado cuando**: la cuenta sin persona ve una pantalla propia, nunca un 431; "0 administraciones"
-  tiene al menos un test que la fuerza; el edificio de ejemplo (o el paso de vinculación) es repetible
-  por otra persona sin reproducir el loop.
+- **Qué dejó**: el 403 `sin_acceso` con precedencia sobre el selector, y `codigo` como único
+  discriminador de todo 403 (E1/E4, D-131); el selector que no redirige ante un 401 ni una sesión
+  nula, y `regresoSeguro` con el tope sobre la salida (E2/E3, D-132) — cierra el loop `/ingresar` ↔
+  `/elegir-administracion` de la regresión del 27/10/2026; `--clerk-usuario` para vincular el ejemplo a
+  una cuenta de Clerk de desarrollo, sin auditar, con el SQL de `acceso` de `ejemplo.py` extraído a
+  `acceso.aplicacion` (E5/E6/E7, D-133); las acciones permitidas viajando en `/api/sesion` y la web
+  ocultando el menú y los controles que el rol no tiene (2.3, D-134); `ver_personal` para que el
+  administrador principal lea `/personal` jerárquico, migración `0028` (2.5/P66/E11, D-135); reinvitar
+  el mismo email actualiza el nombre, nunca a un super admin ni entre administraciones (2.4, D-136); la
+  invitación dice con qué cuenta se está, sin leer el destinatario, con la Enmienda E10 corrigiendo
+  "Usar otra cuenta" para que vuelva a la misma pantalla de la invitación en vez de perder el ticket
+  (B-3, D-137). Detalle completo de las once elecciones en `09_decisiones_y_supuestos.md` D-131 a
+  D-137 y en el `design.md` archivado (D1 a D13).
+- **Firma**: Juani, 28/10/2026, E1 a E11 (sección "Aprobación" de `proposal.md`); Enmienda E10 el mismo
+  día, tras la verificación manual 8.2 con el Clerk de desarrollo real (commit `335f50d`).
+- **Archivo**: `openspec/changes/archive/2026-10-28-sesion-sin-persona/`.
+- **No construyó** (deuda aceptada por Juani el 28/10/2026, tareas 8.1/8.2 sin marcar por eso, no por
+  fallos):
+  - Repetir con Clerk real "Usar otra cuenta" con una cuenta **nueva** (sin cuenta previa en Clerk)
+    después del arreglo `cfb99ce`, entrando como contador — la verificación 8.2 e sólo cubrió el caso
+    con una cuenta que ya existía en Clerk.
+  - 5.4: el recorrido del `README` ("Entrar con el edificio de ejemplo") por Emiliano o Gianfranco.
+  - El aspecto visual del recuadro de Clerk en `/ingresar` (no desborda, pero se ve como tarjeta
+    dentro de tarjeta, encabezado cortado y placeholder truncado) — **propuesta, no decisión**: parece
+    encajar en un change de pulido web, como el `3d · pulido-2`.
+  - "Gestionar" el personal de abajo desde `/personal` (D-127, D-135): queda abierta, ver
+    `10_preguntas_abiertas.md` P71.
+- **Gobernanza**: CRITICAL (toca `acceso`, D-094/D-111).
+- **Verificación de cierre**: suite de backend completa sobre `d77faa5` en un clon limpio
+  (`bash infra/ci/test-backend.sh -q -p no:cacheprovider`): 4252 passed, 1 xfailed; web 541/541;
+  navegador completo 175/175 en clon normal. Auditor (Codex) dio NO OK por la suite parcial, el CI y el
+  recorrido real de la Enmienda E10, resuelto en el cierre (ver L-055 en `15_lecciones.md`).
 
 ### 3 · `configuracion-del-edificio` · partido en 3a y 3b (propuesto, E1 del 3a)
 
@@ -523,22 +521,23 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   sin inventar ningún valor (E3, E5); el edificio de ejemplo con ubicación real de Georef y pisos (6.5).
   Tres migraciones nuevas: `0025` (ubicación), `0026` (pisos/subsuelos y `unidad.piso`), `0027` (grupo
   desactivable y el evento de auditoría `editar_edificio`).
-- **Quedó fuera** (P68, D-128), para el change de acceso **`2d · sesion-sin-persona`** (CRITICAL, nuevo,
-  D-130): la invitación abierta con la sesión de otra cuenta (B-3), el menú que se adapta al rol (2.3),
-  reinvitar el mismo email (2.4), `/personal` jerárquica (2.5/P66, aprobada en principio por D-127) y,
-  sumado en el recorrido 7.1 del 27/10/2026, el **loop infinito en `/elegir-administracion?regreso=...`**
+- **Quedó fuera** (P68, D-128), para el change de acceso **`2d · sesion-sin-persona`** (CRITICAL,
+  D-130) — **construido y archivado el 28/10/2026** (D-131 a D-137, ficha `2d` arriba): la invitación
+  abierta con la sesión de otra cuenta (B-3), el menú que se adapta al rol (2.3), reinvitar el mismo
+  email (2.4), `/personal` jerárquica (2.5/P66, aprobada en principio por D-127) y, sumado en el
+  recorrido 7.1 del 27/10/2026, el **loop infinito en `/elegir-administracion?regreso=...`**
   (`web/src/app/ingresar/Pantalla.tsx`/`web/src/lib/sesion.ts`: el header `x-proptech-ruta` repite la
   ruta actual en cada paso y, si esa ruta ya es `/elegir-administracion?regreso=...`, el `regreso` se
-  anida y se re-codifica en cada vuelta sin límite). Los cinco comparten el mismo motivo: tocar
-  `acceso` subiría el change entero a CRITICAL. También quedaron fuera, sin change propio: los datos
-  legales del aviso de privacidad (a cargo de Juani y Alberto, D-108, bloqueante del 15); aceptar
-  coeficientes en porcentaje; calles normalizadas contra Georef; selector de país; cualquier escritura
-  en `configuracion_versionada` o en plata (4b a 4d); el piso en el importador de Excel (5); borrar las
-  cuentas de Mailinator (P67, acción operativa de Emiliano, sin código).
+  anida y se re-codifica en cada vuelta sin límite). Los cinco compartían el mismo motivo para no
+  entrar acá: tocar `acceso` subía el change entero a CRITICAL. También quedaron fuera, sin change
+  propio: los datos legales del aviso de privacidad (a cargo de Juani y Alberto, D-108, bloqueante del
+  15); aceptar coeficientes en porcentaje; calles normalizadas contra Georef; selector de país;
+  cualquier escritura en `configuracion_versionada` o en plata (4b a 4d); el piso en el importador de
+  Excel (5); borrar las cuentas de Mailinator (P67, acción operativa de Emiliano, sin código).
 - **Gobernanza**: HIGH (D-094, D-111). Firmado por **Emiliano Caceres el 26/10/2026** (E1 a E6 y E8 a
   E10 completas; E7 no era una elección de este change).
 - **Resuelto**: P61 a P65 (ubicación y pisos), P67 (Mailinator), P68 (alcance) y P69 (grupos),
-  escritas como **D-128** al cerrar. P66 cerrada por D-127 (change de acceso futuro, hoy `2d`).
+  escritas como **D-128** al cerrar. P66 cerrada por D-127 y construida por `2d` (D-135).
 - **Choques con el 4a**: el 4a ya estaba mergeado en `main` (migraciones `0021`/`0022`) antes de la
   primera tarea de este change; las migraciones del 3c nacen desde `0025` y la rama se rebasó sobre
   `main` antes de empezar, sin conflicto real en `unidades.py` más allá de lo previsto en el design.

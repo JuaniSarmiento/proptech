@@ -80,8 +80,8 @@ C-01 infraestructura-base (1a)
                           │
                           ├── C-05a-bis roles-de-la-empresa (2.2a) ← archivado
                           │     └── C-05b login-y-usuarios (2b) ← archivado; Clerk; lo piden C-16 y C-20
-                          │           └── C-21 sesion-sin-persona (2d) ← nuevo, CRITICAL (D-130); necesita
-                          │                 también C-06c (3c); se adelanta lo antes posible
+                          │           └── C-21 sesion-sin-persona (2d) ← archivado 28/10/2026 (D-131
+                          │                 a D-137)
                           ├── C-05c endurecimiento-de-infraestructura (2c)
                           │
                           └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (E1)
@@ -161,8 +161,7 @@ GATE 6: C-06a ✓
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
     → C-05b login-y-usuarios (2b, archivado 22/10/2026; Clerk, CRITICAL; P48 resuelta en D-099)
-      → C-21 sesion-sin-persona (2d, nuevo, CRITICAL, D-130): necesita también C-06c (3c, ya
-        archivado); disponible desde ahora, se adelanta lo antes posible dentro del camino crítico
+      → C-21 sesion-sin-persona (2d, CRITICAL; **archivado 28/10/2026**, firma de Juani, D-131 a D-137)
 
 GATE 7: C-07a ✓ (26/10/2026)                             ← PRIMER FORK real (2 paralelos)
   → C-07b libro-de-movimientos [Agente A] (4b, CRITICAL; archivado 27/10/2026, firma de Juani,
@@ -199,8 +198,9 @@ GATE 14: C-16 ✓
 GATE 15: C-11 + C-15 ✓
   → C-18 avisos-por-email   [Agente B]
 
-GATE 16: C-05b + C-05c + C-06c + C-07d + C-12 + C-13 + C-17 + C-18 + C-19 + C-21 + C-22 ✓ + datos del
-  edificio piloto (P1) + contenido legal de `/privacidad` (Juani y Alberto, D-130)
+GATE 16: C-05b + C-05c + C-06c + C-07d + C-12 + C-13 + C-17 + C-18 + C-19 + C-21 ✓ (archivado
+  28/10/2026) + C-22 + datos del edificio piloto (P1) + contenido legal de `/privacidad` (Juani y
+  Alberto, D-130)
   → C-20 piloto-en-paralelo (solo, cierra el roadmap)
 ```
 
@@ -216,9 +216,9 @@ C-07c → C-08 → C-10`, con C-09 en paralelo desde C-07a. Ese es el que el pro
 (ver `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida). El resto de la cadena hasta `C-20`
 cierra M2 y M3. Partir el 4 (exploración del 4, §8) alarga la cadena en cantidad de changes pero no en
 trabajo: cada sub-change es una parte del mismo 4, y el 6 deja de esperar el libro entero.
-**C-06c, C-07d, C-21 y C-22 quedan fuera del camino crítico** — aunque D-130 (28/10/2026) adelanta
-`C-21` (`2d`) lo antes posible dentro del orden real porque es la única deuda CRITICAL viva, y no
-porque bloquee la cadena de dependencias.
+**C-06c, C-07d, C-21 y C-22 quedan fuera del camino crítico** — aunque D-130 (28/10/2026) adelantó
+`C-21` (`2d`) lo antes posible dentro del orden real porque era la única deuda CRITICAL viva, y no
+porque bloqueara la cadena de dependencias. `C-21` quedó **archivado el 28/10/2026** (D-131 a D-137).
 
 ### Plan óptimo con 3 agentes
 
@@ -456,21 +456,31 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-21] `sesion-sin-persona` · 2d (nuevo, D-130, 28/10/2026)
-- **Estado**: `[ ]` pendiente, no propuesto todavía. CRITICAL — toca `acceso`.
-- **Scope**: un tercer estado de sesión para "autenticado en Clerk, sin persona vinculada", que corta
-  el loop `/ingresar` ↔ `/elegir-administracion?regreso=...` → 431; el estado "0 administraciones" en
-  el spec y en `elegir-administracion/Pantalla.tsx` (hoy código muerto); el edificio de ejemplo
-  vinculado a una cuenta real de Clerk (o el paso manual escrito y repetible); B-3, 2.3, 2.4 y 2.5/P66
-  (`/personal` jerárquica, D-127); el recuadro de Clerk recortado en `/ingresar` a 320px; `ejemplo.py`
-  sin SQL directo en tablas de `acceso` (D-021)
-- **Dependencias**: C-05a, C-05a-bis, C-05b y C-06c (todos archivados) — disponible desde ahora
-- **Governance**: CRITICAL (D-094, D-111) — no se construye sin aprobación de un firmante
+### [C-21] `sesion-sin-persona` · 2d (**archivado 28/10/2026**, D-131 a D-137)
+- **Estado**: `[x]` archivado. CRITICAL — tocó `acceso`. Firma de Juani, 28/10/2026 (E1 a E11, sección
+  "Aprobación" de `proposal.md`); Enmienda E10 el mismo día.
+- **Qué construyó**: el 403 `sin_acceso` con precedencia sobre el selector, y `codigo` como único
+  discriminador de todo 403 (D-131); el selector que no redirige ante un 401 ni una sesión nula, y
+  `regresoSeguro` con el tope sobre la salida — corta el loop `/ingresar` ↔
+  `/elegir-administracion?regreso=...` (D-132); `--clerk-usuario` para vincular el ejemplo a una
+  cuenta de Clerk de desarrollo, sin auditar, con el SQL de `acceso` de `ejemplo.py` extraído a
+  `acceso.aplicacion` (D-133); las acciones permitidas viajando en `/api/sesion`, con el menú y los
+  controles de escritura ocultos por rol (D-134); `ver_personal` (migración `0028`) para que el
+  administrador principal lea `/personal` jerárquico, en sólo lectura (2.5/P66, D-135); reinvitar el
+  mismo email actualiza el nombre, nunca a un super admin ni entre administraciones (2.4, D-136); la
+  invitación dice con qué cuenta se está, sin leer el destinatario, con la Enmienda E10 corrigiendo
+  "Usar otra cuenta" (B-3, D-137).
+- **Deuda aceptada** (Juani, 28/10/2026; detalle en la ficha `12_fichas_de_changes.md` §2d): repetir
+  con Clerk real "Usar otra cuenta" con una cuenta nueva; 5.4 (recorrido del README por Emiliano o
+  Gianfranco); el aspecto visual del recuadro de Clerk — candidato a un change de pulido web como el
+  3d, propuesta sin decidir; "gestionar" el personal de abajo (P71).
+- **Archivo**: `openspec/changes/archive/2026-10-28-sesion-sin-persona/`.
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §2d
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-127, D-128, D-130)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-127, D-130, D-131 a D-137)
+  - `knowledge-base/10_preguntas_abiertas.md` (P66, P68, P71)
   - `.git/informes-regresion/02-acceso.md` (diagnóstico del loop, cuatro lecturas independientes)
-  - `knowledge-base/15_lecciones.md` (L-039)
+  - `knowledge-base/15_lecciones.md` (L-039 y las lecciones del 2d)
 
 ---
 

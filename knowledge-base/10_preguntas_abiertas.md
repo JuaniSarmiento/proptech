@@ -213,20 +213,19 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   valores conocidos (`PB`, `SS`→`SS1`, enteros de 1 a 60) y el resto queda marcado `NULL` ("sin
   completar") para que el administrador lo corrija a mano, sin inventar ningún valor (E5 del 3c).
 - [x] **P66 · `/personal` jerárquica** (sugerencia de Emiliano del 23/10/2026, §2.5 del 3c): **cerrada
-  por D-127** (26/10/2026). Aprobada en principio — el Administrador de toda la empresa podrá ver (y,
-  según decida su change, gestionar) al personal por debajo suyo, nunca al super admin — pero **no se
-  construye en el 3c**: cambia D-106 (acceso, CRITICAL) y queda para el change **`2d ·
-  sesion-sin-persona`** (D-130), junto con los demás ítems de P68.
+  por D-127** (26/10/2026) y **construida por el 2d `sesion-sin-persona`** (archivado 28/10/2026,
+  D-135). El administrador principal ve, en sólo lectura, al personal con al menos una asignación por
+  debajo suyo (administrador por edificio, contador, auxiliar o consejo), nunca al super admin, a
+  otro administrador principal ni a un vecino. "Gestionar" ese personal no se construyó; ver P71.
 - [x] **P67 · Las dos cuentas de Mailinator del Clerk de desarrollo** (BE-7, deuda del cierre de
   `acceso-de-desarrollo`): **cerrada por D-128**. Se borran: acción operativa de Emiliano en el panel
   de Clerk, sin código ni dato del repo. Las direcciones literales ya habían salido de la deuda viva
   en `bbd02fb` porque el repo es público (L-040).
 - [x] **P68 · Los ítems de acceso del QA, ¿dentro o fuera del 3c?** (§5 del 3c): **cerrada por
-  D-128**. **Fuera**: la invitación abierta con la sesión de otra cuenta (B-3), el menú que se adapta
-  al rol (2.3), reinvitar el mismo email (2.4) y `/personal` jerárquica (2.5/P66) quedan para
-  `2d · sesion-sin-persona` (D-130) — entrarlos subiría el 3c de HIGH a CRITICAL. El backend sigue
-  siendo la autoridad y frena cada acción con 403 mientras tanto; no es un agujero de seguridad, es
-  alcance diferido.
+  D-128**. **Fuera del 3c**, los cuatro quedaron para `2d · sesion-sin-persona` (D-130) y los
+  **construyó** (archivado 28/10/2026): la invitación abierta con la sesión de otra cuenta, B-3
+  (D-137), el menú que se adapta al rol, 2.3 (D-134), reinvitar el mismo email, 2.4 (D-136) y
+  `/personal` jerárquica, 2.5/P66 (D-135).
 - [x] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): **cerrada por D-128**. Un grupo de reparto se
   desactiva, nunca se borra, igual que las categorías (R16 ampliada); "Generales" protegido también
   en la base. La clave de grupos y categorías se autogenera desde el nombre; el administrador deja de
@@ -242,6 +241,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   revisión frontend. Alternativa más barata ya anotada: guardar latitud/longitud como números y un
   link "Ver en el mapa" que abra Google Maps en una pestaña nueva, sin embeber nada. No bloquea el 3c;
   queda para un change futuro de ubicación más precisa, con su propio análisis de costo/CSP/accesibilidad.
+- [ ] **P71 · "Gestionar" el personal de abajo, no sólo verlo** (D-127, D-135; recomendado por E11 del
+  `design.md` del 2d): el 2d construyó sólo **ver** — el administrador principal lee, en sólo lectura,
+  al personal por debajo suyo. Falta decidir el alcance exacto de "gestionar" (invitar, revocar, quitar
+  asignaciones de quienes están por debajo) y la regla de quién puede quitarle a quién su última
+  asignación de super admin. Toca `invitaciones.py`, el alta y el filtro de `listar_personal`: dominio
+  `acceso`, CRITICAL, requiere su propio change con propuesta y firma (D-094, D-111).
 
 ## Resumen por el cambio al que bloquean
 
@@ -258,6 +263,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   del 26/10/2026 y escritas como D-128 al cerrar el change. P66 (`/personal` jerárquica) quedó cerrada
   por D-127, apuntando a `2d · sesion-sin-persona` (D-130) junto con los demás ítems de P68. P70 (mapa
   interactivo) no lo bloqueó y sigue abierta para un change futuro de ubicación más precisa.
+- **Sesión sin persona (2d)**: **archivado 28/10/2026** (D-131 a D-137). Construyó P66 y los cuatro
+  ítems de P68 (B-3, 2.3, 2.4, 2.5). P71 ("gestionar" el personal de abajo) queda abierta para un
+  change de acceso futuro.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la

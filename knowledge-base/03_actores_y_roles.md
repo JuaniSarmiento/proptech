@@ -76,6 +76,14 @@ comprueba dentro del alcance de la asignación. Las 16 acciones conservan su nom
 | Configurar padrón | Sí | Sí | Sí | No | No | No | No | No | No |
 | Ver configuración del edificio | Sí | Sí | Sí | Sí | Sí | Sí | Sí | No | No |
 | Corregir un movimiento | Sí | Sí | No | No | No | No | No | No | No |
+| Ver personal (jerárquico) | Sí | Sí | No | No | No | No | No | No | No |
+
+**Ver personal** (2d `sesion-sin-persona`, D-135): sólo super admin y administrador principal, evaluada
+sin complejo. Para el administrador principal, `GET /api/personal` filtra en la API a quienes tienen
+al menos una asignación y todas son de administrador por edificio, contador, auxiliar o consejo —
+nunca el super admin, otro administrador principal ni un vecino. Es sólo lectura: invitar, dar de alta,
+revocar y quitar siguen exigiendo `invitar_usuarios_y_asignar_edificios` (sólo super admin); "gestionar"
+queda abierta (`10_preguntas_abiertas.md`, P71).
 
 **Corregir un movimiento** (4b, E8/D-121): sólo super admin y administrador principal; auditado en su
 propia transacción (acción `corregir_movimiento`, `04_modelo_de_datos.md`). Administrador por edificio
@@ -125,6 +133,11 @@ resuelve la persona real por el token de Clerk** (ya no inyectada salvo en tests
 - **Rutas de la web sin sesión** (`web/src/proxy.ts`): `/ingresar`, `/registrarse`,
   `/elegir-administracion`, `/invitacion/[sobre]` y `/privacidad` (aviso de privacidad, borrador,
   tarea 7.2 pendiente de aprobación). Cualquier otra ruta sin sesión redirige a `/ingresar`.
+- **`/sin-acceso`** (2d `sesion-sin-persona`, D-131): exige sesión de Clerk pero no persona vinculada
+  en ninguna administración. No llama a la API ni figura entre las rutas protegidas del layout; lee el
+  email de la sesión en el navegador y ofrece "Cerrar sesión" y "Volver a intentar". Es la respuesta de
+  la web al 403 `sin_acceso` que la API devuelve a un token válido sin acceso (`codigo` es el único
+  discriminador de todo 403, D-131), y reemplaza al estado vacío que tenía `/elegir-administracion`.
 - **El vínculo con la API nunca pasa por el cliente**: el servidor de Next manda el token de sesión y
   la administración elegida; `X-Proptech-Administracion` se valida después del token y del vínculo,
   nunca antes.

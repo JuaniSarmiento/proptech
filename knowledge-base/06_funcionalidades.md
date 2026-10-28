@@ -319,8 +319,10 @@ Como vecino, quiero entrar desde el celular con mi usuario y contraseña de Cler
 con Google, para ver lo de mis unidades (D-107, D-108).
 
 **Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026): el ingreso, el selector de
-administración y la invitación. Ver "lo de mis unidades" (el portal propiamente dicho) **lo construye
-el cambio 11**: hoy, al entrar, el vecino sólo ve el estado vacío del portal.
+administración y la invitación. El estado de una cuenta de Clerk sin persona vinculada en ninguna
+administración lo construye el **2d `sesion-sin-persona`** (archivado 28/10/2026, D-131). Ver "lo de
+mis unidades" (el portal propiamente dicho) **lo construye el cambio 11**: hoy, al entrar, el vecino
+sólo ve el estado vacío del portal.
 
 **Criterios de aceptación**:
 - Dado un vecino de alta desde el padrón, con vínculo e invitación por mail para una o varias
@@ -332,6 +334,13 @@ el cambio 11**: hoy, al entrar, el vecino sólo ve el estado vacío del portal.
   vinculado a esa persona y entra; con otro Gmail no entra (construido, 2b).
 - Dado un vecino con iPhone, cuando entra por primera vez, entonces el portal le ofrece instalarlo
   en la pantalla de inicio. **Pendiente de 11**.
+- Dado una cuenta de Clerk autenticada sin ninguna persona vinculada (o vinculada sin ninguna
+  asignación en ninguna administración), cuando entra, entonces ve la pantalla propia `/sin-acceso`
+  con su email y las opciones "Cerrar sesión" y "Volver a intentar", nunca un error del navegador ni
+  un bucle de redirecciones entre `/ingresar` y `/elegir-administracion` (construido, 2d, D-131).
+- Dado una invitación abierta con la sesión de otra cuenta, cuando la persona la ve, entonces la
+  pantalla dice con qué cuenta está ingresada y ofrece "Usar otra cuenta", sin mostrar nunca el email
+  destinatario (construido, 2d, D-137).
 
 **Reglas relacionadas**: R10.
 
@@ -340,7 +349,9 @@ el cambio 11**: hoy, al entrar, el vecino sólo ve el estado vacío del portal.
 Como super admin, quiero invitar al personal con su perfil y alcance, y dar de alta vecinos desde el
 padrón, para que cada uno entre con su propia cuenta (RA-6, D-106, D-107).
 
-**Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026).
+**Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026). El menú y los controles de
+escritura adaptados al rol, y la lectura jerárquica del administrador principal, los suma el
+**2d `sesion-sin-persona`** (archivado 28/10/2026, D-134, D-135).
 
 **Criterios de aceptación**:
 - Dado el super admin en `/personal`, cuando invita a alguien con un perfil y alcance válidos,
@@ -352,8 +363,19 @@ padrón, para que cada uno entre con su propia cuenta (RA-6, D-106, D-107).
   marca revocada; el link ya no sirve para aceptar.
 - Dado alguien que no es super admin, cuando abre `/personal`, entonces no ve los controles de
   invitar, revocar ni quitar.
+- Dado el super admin, cuando reinvita el mismo email con otro nombre, entonces el nombre de la
+  persona se actualiza; reinvitar el email de un super admin o de una persona de otra administración
+  nunca le cambia el nombre (construido, 2d, D-136).
+- Dado un administrador principal, cuando abre `/personal`, entonces ve en sólo lectura a quienes
+  tienen al menos una asignación por debajo suyo (administrador por edificio, contador, auxiliar o
+  consejo), nunca al super admin, a otro administrador principal ni a un vecino, y sin los controles
+  de invitar, revocar ni quitar (construido, 2d, acción `ver_personal`, D-135). "Gestionar" ese
+  personal sigue pendiente (`10_preguntas_abiertas.md`, P71).
+- Dado cualquier perfil, cuando entra a una pantalla protegida, entonces el menú y los controles de
+  escritura muestran sólo lo que su rol puede hacer en ese contexto, calculado por `/api/sesion`
+  (construido, 2d, D-134).
 
-**Reglas relacionadas**: R10, D-106.
+**Reglas relacionadas**: R10, D-106, D-135.
 
 ### HU-V2 · Ver cuánto debo
 
