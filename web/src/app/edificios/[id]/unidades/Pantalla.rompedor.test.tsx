@@ -2,12 +2,12 @@
  * @vitest-environment jsdom
  */
 import { cleanup, render as renderOriginal, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, expect, it } from "vitest";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import type { Unidad } from "../../../../lib/api/tipos";
 import { PantallaPadron } from "./Pantalla";
-import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 
 function render(ui: ReactElement) {
   return renderOriginal(

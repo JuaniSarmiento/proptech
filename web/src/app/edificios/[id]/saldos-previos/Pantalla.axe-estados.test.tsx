@@ -4,9 +4,9 @@
 import { cleanup, render as renderOriginal, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaSaldosPrevios } from "./Pantalla";
-import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 
 function render(ui: ReactElement) {
   return renderOriginal(

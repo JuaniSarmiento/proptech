@@ -2,14 +2,14 @@
  * @vitest-environment jsdom
  */
 import { act, cleanup, fireEvent, render as renderOriginal, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import { crearVersionDeConfiguracion } from "../../../../lib/api/configuracion";
 import type { VersionDelHistorial } from "../../../../lib/api/tipos";
 import { crearVersionDeConfiguracionAction } from "./acciones";
 import { PantallaConfiguracion } from "./Pantalla";
-import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 
 function render(ui: ReactElement) {
   return renderOriginal(
