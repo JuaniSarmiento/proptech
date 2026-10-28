@@ -655,6 +655,31 @@ def test_opcion_no_salta_guarda(
     assert "user_Dev123" not in str(capsys.readouterr())
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        # B-2 (rompedor, vuelta 1): typo en el nombre de la opción.
+        ["cargar", "--clerk-usuarios", "user_Dev123"],
+        # el id como posicional extra.
+        ["cargar", "user_Dev123"],
+        # abreviatura de `--clerk-usuario`: `allow_abbrev` por defecto la acepta.
+        ["cargar", "--clerk", "user_Dev123"],
+    ],
+)
+def test_argumentos_no_reconocidos_no_repiten_el_id(
+    capsys: pytest.CaptureFixture[str], argv: list[str]
+) -> None:
+    """B-2 (rompedor, vuelta 1): con un error de tipeo, argparse imprimía el
+    id de Clerk tal cual en `unrecognized arguments`, y con `allow_abbrev`
+    (activo por defecto) aceptaba `--clerk` como si fuera `--clerk-usuario`.
+    El mensaje ahora es fijo y la abreviatura ya no se reconoce."""
+    with pytest.raises(SystemExit) as salida:
+        ejemplo._main(argv)
+    assert salida.value.code == 2
+    capturado = capsys.readouterr()
+    assert "user_Dev123" not in capturado.out + capturado.err
+
+
 def _cargar_con_usuario(
     fabrica: sessionmaker[Session], usuario: str | None = None
 ) -> ejemplo.ResultadoCarga:

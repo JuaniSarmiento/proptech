@@ -71,9 +71,6 @@ from proptech_core.complejos.aplicacion.escritura import (
 from proptech_core.complejos.aplicacion.grupos import crear_grupo
 from proptech_core.complejos.aplicacion.unidades import crear_unidad
 
-#: Id fijo de la administración de ejemplo (D9 del 3a, D1 de
-#: `acceso-de-desarrollo`): nunca generado, para que `cargar()` compare contra
-#: la misma fila en cada corrida en vez de crear una nueva administración.
 NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
 NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
@@ -440,12 +437,23 @@ def _emisor_de_desarrollo(emisor: str | None) -> str | None:
 
 
 def _main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Comando del edificio de ejemplo")
+    # B-2 (rompedor, vuelta 1): `allow_abbrev=False` en los dos parsers para
+    # que `--clerk` no se acepte como abreviatura de `--clerk-usuario`, y
+    # `parse_known_args` en vez de `parse_args` para no dejar que argparse
+    # arme su propio mensaje de `unrecognized arguments`, que repite tal
+    # cual cualquier valor del usuario (el id de Clerk incluido).
+    parser = argparse.ArgumentParser(
+        description="Comando del edificio de ejemplo", allow_abbrev=False
+    )
     subparsers = parser.add_subparsers(dest="accion", required=True)
-    cargar_parser = subparsers.add_parser("cargar", help="Carga el edificio de ejemplo en la base")
+    cargar_parser = subparsers.add_parser(
+        "cargar", help="Carga el edificio de ejemplo en la base", allow_abbrev=False
+    )
     cargar_parser.add_argument("--semilla", default=None)
     cargar_parser.add_argument("--clerk-usuario", default=None)
-    args = parser.parse_args(argv)
+    args, no_reconocidos = parser.parse_known_args(argv)
+    if no_reconocidos:
+        parser.error("argumentos no reconocidos; no se escribió nada")
 
     if os.environ.get("PROPTECH_ENTORNO") != ENTORNO_DE_DESARROLLO:
         print(
