@@ -55,7 +55,9 @@
   `X-Proptech-Administracion` de B → 403; vinculada en A sin asignaciones con selector de B → 403, cero
   filas `ingreso_fallido` y ninguna fila de B leída; sin acceso con `no-es-uuid` → 403, nunca 401 ni
   422; dos vínculos sin asignaciones (A y B) y sin selector → 403 y **cero** filas `ingreso_fallido`
-  (BE-8); `test_personal_api.py:144-170` renombrado a "…da 403 sin acceso en su próximo pedido" y
+  (BE-8). Estos casos de precedencia (selector ajeno, selector que no es UUID, varios vínculos sin
+  elegir) son **rojos automáticos de esta tarea**, por HTTP con tokens firmados, no guardas ni
+  verificación manual (R2D-7). `test_personal_api.py:144-170` renombrado a "…da 403 sin acceso en su próximo pedido" y
   esperando el 403 `sin_acceso`. **Guardas**: administración ajena, varias sin elegir y selector no
   UUID **con una identidad que tiene acceso** → 401 como hoy; quitar la única asignación en A a quien
   tiene asignación en B → 401 con A elegida (caso nuevo en `test_personal_api.py`, pasa hoy); ningún
@@ -181,10 +183,17 @@
   "Id con otra forma" (antes de conectarse, con la técnica de
   `test_la_guarda_corre_antes_de_conectar_a_la_base`, y afirmando que **ni stdout ni stderr** repiten
   el valor); "Instancia de producción", "Emisor que sólo contiene el dominio de desarrollo" y "Sin
-  emisor" (antes de conectarse, sin repetir emisor ni id); "Vincular al cargar por primera vez";
+  emisor" (antes de conectarse, sin repetir emisor ni id); "Emisor de desarrollo con partes de más"
+  (`https://u:p@x.clerk.accounts.dev`, `https://x.clerk.accounts.dev?x=1`, `…#f`, `…/ruta`, un puerto
+  ilegible) y `https://x.clerk.accounts.dev.evil.com` en "Emisor que sólo contiene el dominio de
+  desarrollo", todos antes de conectarse; **guarda**: "Emisor de desarrollo en sus formas válidas"
+  (mayúsculas, `/` final, `:443`); "Vincular al cargar por primera vez";
   "Vincular un ejemplo ya cargado" (conteos iguales); "Vincular dos veces el mismo id"; "Ya vinculado a
   otra cuenta" (vínculo intacto); "El id ya es de otra persona del ejemplo" (código distinto de 0,
-  mensaje propio, **sin traceback ni id**, nada escrito, BE-3); "Dos cargas a la vez con ids
+  mensaje propio, **sin traceback ni id**, nada escrito, BE-3); "Otra persona del ejemplo se vincula
+  entre la comprobación y la escritura" (DB, nota 2: se fuerza la carrera vinculando la otra persona
+  después del chequeo previo, con un gancho de test o dos conexiones con barrera; mismo mensaje fijo,
+  sin traceback, sin id ni `[parameters: …]`, código distinto de 0); "Dos cargas a la vez con ids
   distintos" (dos hilos con una barrera, uno con 0 y otro con error, el vínculo es el del 0, BE-4); "La
   función de vinculación con otra persona"; y **"Entrar con la cuenta vinculada"** (después de vincular,
   `GET /api/sesion` con un token firmado para ese `sub` da 200 con el ejemplo solo; hoy da 401, QA-8).
@@ -194,14 +203,18 @@
   **Mutantes**: (a) `re.match` en vez de `fullmatch` → rojo en el salto de línea; (b) validar con
   `type=` de `argparse` → rojo en "sin repetir el valor" sobre stderr (BE-7); (c) validar después de
   crear el engine → rojo; (d) `"clerk.accounts.dev" in emisor` en vez de `hostname.endswith` → rojo en
-  el emisor que sólo lo contiene; (e) pisar si es distinto → rojo; (f) leer y después escribir sin
+  el emisor que sólo lo contiene; (d2) comparar sólo el host, sin mirar credenciales, query ni
+  fragmento → rojo en "partes de más"; (e) pisar si es distinto → rojo; (f) leer y después escribir sin
   `UPDATE` condicional → rojo en "Dos cargas a la vez"; (g) sacar el chequeo previo de unicidad → rojo
-  en "sin traceback ni id"; (h) la función acepta cualquier persona → rojo; (i) vincular fuera de la
+  en "sin traceback ni id"; (g2) sacar el `except IntegrityError` → rojo en la carrera entre la
+  comprobación y la escritura; (h) la función acepta cualquier persona → rojo; (i) vincular fuera de la
   transacción de la carga → rojo en el escenario de otra cuenta sobre base vacía.
 - [ ] 5.2 **Verde**: `--clerk-usuario` en `_main` (texto plano, sin `type=`), las dos trabas en el
   orden de D5, `cargar(..., clerk_usuario=...)`, y el módulo nuevo de `acceso.aplicacion` con los ids
   fijos del ejemplo (que `ejemplo.py` pasa a importar) y la función de vinculación: chequeo previo de
-  unicidad y `UPDATE` condicional con `rowcount` (D5, D7).
+  unicidad, `UPDATE` condicional con `rowcount` y `except IntegrityError` sobre
+  `uq_persona_clerk_administracion` con el mismo mensaje fijo (D5, D7). La traba del emisor valida la URL
+  completa (D5, paso 3).
 - [ ] 5.3 La lista permitida de la vinculación en `tests/unitarios/test_fronteras_de_modulos.py`
   (BE-5, AR-4). **Rojo**: el test nuevo falla mientras el módulo de 5.2 no exista con ese nombre, y
   después afirma que `complejos/aplicacion/ejemplo.py` es el único importador. Escenarios "El código de
@@ -234,9 +247,15 @@
   `accion_de_auditoria` (mismo patrón que `0027_editar_edificio.py`). **Rojo**:
   `test_auditoria_tabla.py::test_accion_de_auditoria_coincide_con_accion` y
   `test_vocabulario_configuracion.py` con `Accion.VER_PERSONAL` ya declarada (vacía en la matriz) fallan
-  nombrando `ver_personal`. **Verde**: la migración. **Bajada** probada sobre una copia con datos: quita
-  la fila y falla sin modificar nada si alguna fila de `auditoria` la usara; subida y bajada con
-  `alembic heads` de una sola cabeza. DBA convocado (E11, D13).
+  nombrando `ver_personal`; y el test de migración dedicado
+  `tests/integracion/test_migracion_00NN_ver_personal.py` (DB, nota 1), con el patrón de
+  `test_migracion_0024_vocabulario.py`: sube, baja y vuelve a subir, y en cada paso compara el
+  vocabulario de `accion_de_auditoria` (`ver_personal` presente, ausente, presente) y `alembic_version`;
+  y, con una fila de `auditoria` que use `ver_personal`, la bajada falla con SQLSTATE `23503` sin
+  modificar nada (vocabulario, fila y `alembic_version` intactos). **Verde**: la migración. Subida y
+  bajada también sobre una copia con datos, con `alembic heads` de una sola cabeza. **Mutante**: una
+  bajada que borre antes las filas de `auditoria` que la usan → rojo en el `23503`. DBA convocado (E11,
+  D13).
 - [ ] 7.2 La matriz en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: `_MATRIZ_A_MANO` suma
   `ver_personal` con `_SA` y `_AP`; "El administrador principal ve el personal pero no invita";
   `puede(..., VER_PERSONAL, None)` es verdadero para super admin y administrador principal y falso para
@@ -247,7 +266,9 @@
 - [ ] 7.3 `GET /api/personal` jerárquico en `tests/integracion/test_personal_api.py`. **Rojo**: con A
   que tiene super admin, otro administrador principal, contador por edificio, auxiliar y vecino, un
   administrador principal recibe 200 sólo con el contador y el auxiliar, y el **cuerpo crudo** no
-  contiene el id, el nombre ni el email del super admin, del otro principal ni del vecino; un
+  contiene el id, el nombre ni el email del super admin, del otro principal ni del vecino; una persona
+  a la que se le quitó su última asignación (de super admin, y otra de vecino) no aparece ("Una persona
+  sin asignaciones no aparece para el administrador principal", R2D-2); un
   administrador por edificio recibe 403 con `codigo: "sin_permiso"` y `permiso_faltante: "ver_personal"`.
   **Guardas**: el super admin recibe la lista de hoy; el administrador principal recibe 403 con
   `invitar_usuarios_y_asignar_edificios` al invitar, revocar y quitar, sin escribir. Escenarios "El
@@ -256,14 +277,30 @@
   `listar_personal` filtra con las asignaciones de quien pide, en la API (D13). **Mutantes**: (a)
   filtrar por asignación en vez de por persona (mostrar sólo las asignaciones de abajo) → rojo en el
   email del super admin con una asignación extra de consejo; (b) incluir al otro principal → rojo; (c)
-  el `GET` sigue exigiendo `invitar_…` → rojo.
+  el `GET` sigue exigiendo `invitar_…` → rojo; (d) `all(...)` sin exigir al menos una asignación →
+  rojo en la persona sin asignaciones. El filtro es en Python, con la lista de "por debajo" declarada
+  una vez (D13); el `EXISTS` en SQL no se construye ahora.
 - [ ] 7.4 `acciones_permitidas` en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: test de
-  propiedad que, para las nueve columnas, cada acción de `Accion` y un edificio propio y otro ajeno (y
-  sin complejo para las tres de toda la administración), compara `acciones_permitidas` contra `puede`;
-  casos de forma "El super admin" y "Un contador por edificio". Escenario "Las acciones coinciden con
-  los 403". **Verde**: la función pura en `acceso/dominio/permisos.py`, calculada con `_MATRIZ` (D11,
-  L-009). **Mutantes**: (a) una copia a mano de la matriz dentro de la función, con una celda distinta →
-  rojo; (b) las asignaciones por unidad ignoradas → rojo en el vecino.
+  propiedad que recorre **toda la matriz** (rol × acción × contexto): para cada una de las nueve
+  columnas y para combinaciones de dos asignaciones (por ejemplo, administrador por edificio en E1 y
+  contador por edificio en E2; super admin y vecino), cada acción de `Accion` y cada contexto (sin
+  edificio, edificio propio, edificio ajeno), compara la sesión contra `puede` **según el tipo de
+  acción** (D11, R2D-1): acción de administración → "está en `administracion`" ⇔ `puede` en los tres
+  contextos, y nunca en `todos_los_edificios` ni en `por_edificio`; acción de edificio → nunca en
+  `administracion`, `puede(None)` falso, y con edificio "está en `todos_los_edificios` o en
+  `por_edificio[c]`" ⇔ `puede`. El test toma la lista de acciones de administración de la constante
+  `ACCIONES_DE_ADMINISTRACION`, que `puede` también usa (hoy es un literal dentro de `puede`: se extrae
+  en el verde). Además, "Las acciones de administración sólo tienen celdas principales" recorre
+  `_MATRIZ`. Casos de forma "El super admin", "Un contador por edificio" y "Una acción de administración
+  evaluada con un edificio", "Una acción de edificio sin edificio" y "Una acción de edificio en un
+  edificio ajeno". Escenario "Las acciones coinciden con los 403". **Verde**: la función pura
+  en `acceso/dominio/permisos.py`, calculada con `_MATRIZ` y `ACCIONES_DE_ADMINISTRACION` (D11, L-009).
+  **Mutantes**: (a) una copia a mano de la matriz dentro de la función, con una celda distinta → rojo;
+  (b) las asignaciones por unidad ignoradas → rojo en el vecino; (c) poner las acciones de
+  administración también en `todos_los_edificios` → rojo; (d) sumar `_AE` a `crear_edificio` en
+  `_MATRIZ` → rojo en el contexto "edificio propio" del administrador por edificio y en "sólo celdas
+  principales". El mutante (d) es el que discrimina este contrato del anterior: con la comparación
+  sólo sin complejo para las acciones de administración, sobrevivía.
 - [ ] 7.5 `GET /api/sesion` ampliada en `tests/integracion/test_sesion_api.py`. **Rojo**: cada
   administración trae `acciones` con `administracion`, `todos_los_edificios` y `por_edificio`, por HTTP
   con un token firmado, para super admin, administrador por edificio y contador por edificio.
@@ -283,21 +320,31 @@
   contador abre un edificio", "Un administrador por edificio", "El control oculto pedido a mano", "Sin
   acciones en la sesión", "El administrador principal abre Personal". **Verde** (D11). **Mutantes**:
   (a) `permite` devuelve `true` sin sesión → rojo; (b) `permite` ignora `por_edificio` y usa sólo
-  `todos_los_edificios` → rojo en el administrador por edificio; (c) "Personal" atado a `invitar_…` en
+  `todos_los_edificios` → rojo en el administrador por edificio; (b2) `permite` exige `complejoId`
+  también para las acciones de `administracion` → rojo en "Nuevo edificio" del super admin dentro de una
+  pantalla de edificio; (c) "Personal" atado a `invitar_…` en
   vez de `ver_personal` → rojo en el administrador principal.
 - [ ] 7.7 2.4 en `tests/integracion/test_invitar_personal_api.py`. **Rojo**: invitar
   `x@ejemplo.invalid` como "Ana", revocar, reinvitar como "Ana María" con otro perfil → `/api/personal`
   muestra una sola persona "Ana María" con las dos asignaciones; lo mismo con la persona ya vinculada y
-  por el alta de vecinos. **Guardas**: reinvitar con un perfil repetido → 409 `campo=rol` y el nombre
+  por el alta de vecinos. **Rojo** también, con PostgreSQL y RLS reales (como `proptech_app`): el super
+  admin de A invita su propio email y el de otro super admin de A con otro nombre y un perfil que no
+  tienen, y da de alta ese email como vecino → el nombre persistido no cambia ("Reinvitar el email del
+  super admin no lo renombra", R2D-3); A y B con `x@ejemplo.invalid`, reinvitar en A con otro nombre →
+  cambia el de A y no el de B ("Reinvitar en una administración no renombra en otra"; éste puede pasar
+  hoy: si pasa, es **guarda** y se declara así). **Guardas**: reinvitar con un perfil repetido → 409 `campo=rol` y el nombre
   sigue siendo el anterior; "Reinvitar revoca la anterior" sin cambios. Escenarios "Reinvitar el mismo
   email con otro nombre", "El nombre no cambia si la invitación se rechaza". **Verde**: `ON CONFLICT …
   DO UPDATE SET nombre` dentro del `begin_nested()` de `_alta` (D12). **Mutante**: actualizar el nombre
-  en una sentencia aparte, fuera del savepoint → rojo en la guarda del 409.
+  en una sentencia aparte, fuera del savepoint → rojo en la guarda del 409; sacar el `WHERE NOT EXISTS`
+  del super admin → rojo en "no lo renombra"; un `UPDATE persona SET nombre … WHERE email = :email` sin
+  `administracion_id` y fuera de RLS (por ejemplo, con el rol dueño) → rojo en "no renombra en otra".
 - [ ] 7.8 B-3 en `web/src/app/invitacion/[sobre]/page.test.tsx` y `Pantalla.test.tsx`. **Rojo**: con
   sesión y claim de email, la pantalla dice "Estás ingresado como <email>" y ofrece "Usar otra cuenta"
   (el enlace con `cerrar=1`, `regreso` a la invitación y el mismo `__clerk_ticket`); si la acción
   devuelve error con sesión, el mensaje dice que el enlace no sirve con esa cuenta y repite "Usar otra
-  cuenta"; sin claim de email, el texto no nombra ninguno (ni vacío ni "undefined"); un parámetro de
+  cuenta"; sin claim de email, el texto no nombra ninguno (ni vacío ni "undefined"), **antes de aceptar
+  y también cuando la aceptación falla** ("Aceptación fallida sin claim de email", R2D-6); un parámetro de
   query con un email no aparece en la pantalla. **Guardas**: sin sesión, la pantalla es la de hoy;
   `test_aceptar_invitacion_api.py` "Otro email" sigue dando el 404 `{"detail":"no encontrado"}` sin
   cambios. Escenarios "Abrir la invitación con la sesión de otra cuenta", "Usar otra cuenta", "Token sin
@@ -319,7 +366,11 @@
   vinculada con `--clerk-usuario`, elige "Volver a intentar" y entra a "Mis edificios" ("Volver a
   intentar después de que la vinculan"); (c) dos pestañas a la vez con la cuenta sin persona ("Dos
   pestañas a la vez"); (d) `/ingresar` y `/sin-acceso` a 320 px y 1280 px y con teclado; (e) la
-  invitación de A abierta con la cuenta de B; (f) el menú y los controles con un contador, un
+  invitación de A abierta con la cuenta de B, con Clerk real (R2D-6): anotar si el token de sesión trae
+  el claim de email (sin pegarlo), qué cuenta muestra la pantalla, que "Aceptar" falla con el mensaje
+  de la cuenta equivocada, que "Usar otra cuenta" cierra la sesión y conserva `__clerk_ticket` hasta el
+  ingreso, y que A, ingresando después, acepta y entra; si el claim no viaja, que los textos genéricos
+  salen sin email; (f) el menú y los controles con un contador, un
   administrador por edificio y un administrador principal; (g) una cuenta sin acceso acepta su
   invitación ("Una cuenta sin acceso acepta su invitación"). Capturas en el informe, ningún id ni email
   real en el repo.

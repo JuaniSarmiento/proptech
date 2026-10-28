@@ -7,7 +7,9 @@ o contador, principal o por edificio; auxiliar o consejo, por edificio. El email
 se guarda en minúsculas. Si la administración ya tiene una persona con ese email, MUST reusarla, sumarle
 la asignación y dejarle el nombre recibido en esta invitación, en la misma transacción, esté o no
 vinculada a Clerk; si no, MUST crearla. Si la asignación se rechaza (409, 422), el nombre MUST NOT
-cambiar. Una asignación que ya existe para esa persona y ese alcance MUST responder 409 nombrando el
+cambiar. El nombre de una persona que tiene una asignación de super admin MUST NOT cambiar por esta vía
+ni por el alta de vecinos, aunque la asignación nueva prospere, y una invitación en una administración
+MUST NOT cambiar el nombre de una persona de otra administración con el mismo email. Una asignación que ya existe para esa persona y ese alcance MUST responder 409 nombrando el
 campo (RA-5, RR-3). Super admin y vecino MUST NOT poder invitarse por esta vía. Si la persona ya está
 vinculada a Clerk, la asignación vale desde ya y no se manda invitación; si no, queda una invitación
 pendiente de envío.
@@ -36,6 +38,18 @@ pendiente de envío.
   invitar como "Ana María" con otro perfil
 - **THEN** `/personal` muestra una sola persona, "Ana María", con las dos asignaciones
 
+#### Scenario: Reinvitar el email del super admin no lo renombra
+
+- **WHEN** el super admin de A invita su propio email, o el de otro super admin de A, con otro nombre y
+  un perfil que esa persona todavía no tiene, o lo da de alta como vecino de una unidad
+- **THEN** la asignación sigue sus reglas de siempre y el nombre persistido del super admin no cambia
+
+#### Scenario: Reinvitar en una administración no renombra en otra
+
+- **WHEN** A y B tienen cada una una persona con `x@ejemplo.invalid`, y el super admin de A la reinvita
+  con otro nombre
+- **THEN** el nombre de la persona de A cambia y el de la persona de B no
+
 #### Scenario: El nombre no cambia si la invitación se rechaza
 
 - **WHEN** el super admin reinvita a `x@ejemplo.invalid` como "Otra" con un perfil que esa persona ya
@@ -57,8 +71,9 @@ pendiente de envío.
 El super admin SHALL poder listar las personas de su administración con sus asignaciones y el estado de
 su invitación (pendiente, enviada, aceptada, fallida, revocada, vencida), revocar una invitación no
 aceptada y quitar una asignación. El administrador principal SHALL poder listar, sin revocar ni quitar,
-sólo al personal que está por debajo suyo (D-127): las personas cuyas asignaciones son todas de
-administrador por edificio, contador, auxiliar o consejo, con esas asignaciones. Ese filtro MUST
+sólo al personal que está por debajo suyo (D-127): las personas con al menos una asignación y cuyas
+asignaciones son todas de administrador por edificio, contador, auxiliar o consejo, con esas
+asignaciones. Una persona sin ninguna asignación MUST NOT aparecer. Ese filtro MUST
 aplicarse en la API, nunca en la web: la respuesta al administrador principal MUST NOT contener ninguna
 persona que tenga una asignación de super admin, de administrador principal o de vecino, ni su id, ni
 su nombre, ni su email. Quien no tiene `ver_personal` MUST recibir 403 con ese permiso faltante. Quitar
@@ -83,6 +98,12 @@ sesión de Clerk. Un super admin MUST NOT poder quitarse su propia última asign
   administrador principal, un contador por edificio, un auxiliar y un vecino
 - **THEN** la respuesta trae sólo al contador y al auxiliar, y el cuerpo no contiene el id, el nombre ni
   el email del super admin, del otro administrador principal ni del vecino
+
+#### Scenario: Una persona sin asignaciones no aparece para el administrador principal
+
+- **WHEN** A tiene una persona a la que se le quitó su última asignación (que era de super admin o de
+  vecino), y un administrador principal de A pide `GET /api/personal`
+- **THEN** la respuesta no contiene el id, el nombre ni el email de esa persona
 
 #### Scenario: El administrador principal no gestiona
 
@@ -161,11 +182,23 @@ con esa cuenta y repetir "Usar otra cuenta". Sin sesión, la pantalla queda como
 - **THEN** su sesión de Clerk se cierra y ve el formulario de `/ingresar` con `regreso` a la misma
   invitación y el mismo `__clerk_ticket`, el enlace que hoy ya arma la página con `cerrar=1`
 
+### Requirement: Sin claim de email la invitación no nombra ninguno
+
+Si el token de sesión no trae el claim de email, los textos de la invitación con sesión SHALL usar su
+forma genérica, antes de aceptar y cuando la aceptación falla, sin nombrar ningún email (ni vacío ni
+"undefined"), con las mismas acciones.
+
 #### Scenario: Token sin email
 
 - **WHEN** el token de sesión no trae el claim de email
 - **THEN** la pantalla dice que hay una sesión abierta sin nombrar ningún email, sin un texto vacío ni
   "undefined", y ofrece las mismas acciones
+
+#### Scenario: Aceptación fallida sin claim de email
+
+- **WHEN** el token de sesión no trae el claim de email y la aceptación falla
+- **THEN** el mensaje dice, sin nombrar ningún email, que el enlace no sirve con la cuenta con la que
+  ingresó, y ofrece "Usar otra cuenta"
 
 ### Requirement: Decir la cuenta no abre una lectura del destinatario
 

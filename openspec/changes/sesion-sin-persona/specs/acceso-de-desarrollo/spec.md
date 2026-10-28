@@ -46,9 +46,9 @@ sin ejecutar ninguna escritura.
 
 Con `--clerk-usuario`, el comando SHALL negarse, antes de conectarse a la base, si la instancia de Clerk
 configurada no es de desarrollo, aunque `PROPTECH_ENTORNO=desarrollo` esté puesto. La señal MUST ser
-`CLERK_EMISOR`, el emisor contra el que la API verifica los tokens del id que se vincula: `https://` y
-un host que termina en `.clerk.accounts.dev`, sin puerto ni ruta. Sin emisor MUST negarse también. El
-mensaje MUST NOT repetir el emisor ni el id.
+`CLERK_EMISOR`, el emisor contra el que la API verifica los tokens del id que se vincula, con la forma
+del requisito siguiente. Sin emisor MUST negarse también. El mensaje MUST NOT repetir el emisor ni el
+id.
 
 #### Scenario: Instancia de producción
 
@@ -59,7 +59,8 @@ mensaje MUST NOT repetir el emisor ni el id.
 
 #### Scenario: Emisor que sólo contiene el dominio de desarrollo
 
-- **WHEN** el emisor es `https://clerk.accounts.dev.proptech.invalid`, `http://x.clerk.accounts.dev` o
+- **WHEN** el emisor es `https://clerk.accounts.dev.proptech.invalid`,
+  `https://x.clerk.accounts.dev.evil.com`, `http://x.clerk.accounts.dev` o
   `https://x.clerk.accounts.dev:8443`
 - **THEN** el comando se niega igual que con una instancia de producción
 
@@ -72,6 +73,25 @@ mensaje MUST NOT repetir el emisor ni el id.
 
 - **WHEN** con `PROPTECH_ENTORNO=desarrollo` y sin `CLERK_EMISOR` se corre la carga sin `--clerk-usuario`
 - **THEN** el ejemplo se carga como hoy
+
+### Requirement: El emisor de desarrollo se valida como URL completa
+
+`CLERK_EMISOR` SHALL aceptarse sólo si, leído como URL, tiene esquema `https`, un host normalizado a
+minúsculas que termina en `.clerk.accounts.dev`, ni usuario ni contraseña, ni query ni fragmento, ningún
+puerto o el 443, y ruta vacía o `/`. Un emisor que no se puede leer como URL MUST tratarse como rechazo.
+
+#### Scenario: Emisor de desarrollo con partes de más
+
+- **WHEN** el emisor es `https://u:p@x.clerk.accounts.dev`, `https://x.clerk.accounts.dev?x=1`,
+  `https://x.clerk.accounts.dev#f`, `https://x.clerk.accounts.dev/ruta` o tiene un puerto que no se
+  puede leer
+- **THEN** el comando se niega antes de conectarse a la base, sin repetir el emisor ni el id
+
+#### Scenario: Emisor de desarrollo en sus formas válidas
+
+- **WHEN** el emisor es `https://X.CLERK.ACCOUNTS.DEV`, `https://x.clerk.accounts.dev/` o
+  `https://x.clerk.accounts.dev:443`
+- **THEN** la traba del emisor lo acepta
 
 ### Requirement: El id de Clerk se valida antes de conectarse
 
@@ -113,6 +133,21 @@ terminar con código distinto de 0, con un mensaje propio, sin traceback y sin r
   invitación ahí) y se corre con `--clerk-usuario user_Dev123`
 - **THEN** termina con código distinto de 0, dice que esa cuenta ya está vinculada a otra persona del
   ejemplo, no muestra un traceback ni el id, y nada cambió
+
+### Requirement: La carrera con otra vinculación da el mismo mensaje
+
+Si otra persona de la administración de ejemplo queda vinculada al id entre la comprobación previa y la
+escritura, la violación de unicidad de la base SHALL terminar con el mismo mensaje fijo de "esa cuenta
+ya está vinculada a otra persona del ejemplo", sin traceback, sin el id y sin escribir.
+
+#### Scenario: Otra persona del ejemplo se vincula entre la comprobación y la escritura
+
+- **WHEN** la comprobación previa no encontró el id, pero antes del `UPDATE` otra persona de la
+  administración de ejemplo queda vinculada a `user_Dev123`, y la escritura viola
+  `uq_persona_clerk_administracion`
+- **THEN** el comando termina con código distinto de 0 con el mismo mensaje de "esa cuenta ya está
+  vinculada a otra persona del ejemplo", sin traceback, sin el id y sin el `[parameters: …]` del driver,
+  y el vínculo de la persona `super_admin` no cambió
 
 ### Requirement: La vinculación de desarrollo aguanta dos corridas a la vez
 

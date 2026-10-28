@@ -51,7 +51,8 @@ primero. Una acción que no está en la matriz MUST negarse. Contador, auxiliar 
 ninguna acción que escriba. Sin complejo (`complejo_id` nulo) sólo MUST evaluarse `crear_edificio`,
 `invitar_usuarios_y_asignar_edificios` y `ver_personal`, las tres acciones de toda la administración:
 ninguna otra acción de la matriz MUST evaluarse sin complejo, aunque la asignación sea de alcance
-principal.
+principal. Las celdas permitidas de esas tres acciones MUST ser sólo de alcance principal, para que su
+respuesta no dependa de que se evalúen con o sin complejo.
 
 Columnas: SA, super admin; AP, administrador principal; AE, administrador por edificio; CP, contador
 principal; CE, contador por edificio; AX, auxiliar; CO, consejo; VP, vecino propietario; VI, vecino
@@ -64,6 +65,7 @@ inquilino.
 | `anular_liquidacion` | Sí | Sí | No | No | No | No | No | No | No |
 | `confirmar_pago_informado` | Sí | Sí | Sí | No | No | No | No | No | No |
 | `revertir_o_reimputar_pago` | Sí | Sí | No | No | No | No | No | No | No |
+| `corregir_movimiento` | Sí | Sí | No | No | No | No | No | No | No |
 | `condonar_intereses` | Sí | Sí | No | No | No | No | No | No | No |
 | `dar_de_baja_deuda` | Sí | Sí | No | No | No | No | No | No | No |
 | `aceptar_alertas_no_bloqueantes` | Sí | Sí | Sí | No | No | No | No | No | No |
@@ -220,11 +222,11 @@ uno desconocido, la web MUST tratarlo como `sin_permiso` "desconocido", nunca co
 
 ### Requirement: Las acciones permitidas viajan con la sesión
 
-`GET /api/sesion` SHALL devolver, en cada administración de la lista, las acciones que la persona
-vinculada ahí puede hacer, en tres conjuntos: `administracion` (acciones sin complejo),
-`todos_los_edificios` (permitidas en cualquier edificio por una asignación principal) y `por_edificio`
-(para cada edificio con asignación por edificio o por unidad, las permitidas ahí además de las
-anteriores). Ampliar la sesión MUST NOT cambiar el 403 `sin_acceso`, que sigue sin ninguna clave más.
+`GET /api/sesion` SHALL devolver, en cada administración, las acciones que la persona vinculada ahí
+puede hacer, en tres conjuntos: `administracion` (las de administración), `todos_los_edificios` (las de
+edificio que una asignación principal permite en cualquier edificio) y `por_edificio` (por cada edificio
+con asignación por edificio o por unidad, las de edificio que suma ahí). El 403 `sin_acceso` MUST NOT
+cambiar.
 
 #### Scenario: El super admin
 
@@ -247,15 +249,55 @@ anteriores). Ampliar la sesión MUST NOT cambiar el 403 `sin_acceso`, que sigue 
 ### Requirement: Las acciones de la sesión coinciden con los 403
 
 Las acciones de la sesión SHALL calcularse en la API con la misma matriz y las mismas asignaciones que
-`puede` usa para responder 403, nunca guardadas aparte. Para toda acción y todo edificio, "está en
-`administracion`" (sin complejo) o "está en `todos_los_edificios` o en `por_edificio` de ese edificio"
-(con complejo) MUST coincidir con `puede`.
+`puede` usa para responder 403, nunca guardadas aparte, y la comparación con `puede` MUST hacerse por
+tipo de acción, en todo contexto: sin edificio, un edificio propio y uno ajeno. Las acciones de
+administración (`crear_edificio`, `invitar_usuarios_y_asignar_edificios`, `ver_personal`) MUST
+declararse una sola vez en el código, y usarlas `puede` y la sesión.
 
 #### Scenario: Las acciones coinciden con los 403
 
-- **WHEN** se compara, para cada una de las nueve columnas, cada acción y cada edificio (el propio y
-  uno ajeno), lo que dice la sesión contra `puede`
-- **THEN** coinciden en todas las celdas
+- **WHEN** se compara, para cada una de las nueve columnas y para combinaciones de dos asignaciones,
+  cada acción de la matriz en cada contexto (sin edificio, el edificio propio, uno ajeno), lo que dice la
+  sesión según su tipo contra `puede`
+- **THEN** coinciden en todas las comparaciones
+
+### Requirement: Una acción de administración no depende del edificio
+
+Para una acción de administración, "está en `administracion`" SHALL coincidir con `puede` en cualquier
+contexto, con o sin edificio, y la acción MUST NOT aparecer en `todos_los_edificios` ni en
+`por_edificio`. Sus celdas permitidas en la matriz MUST ser sólo de alcance principal.
+
+#### Scenario: Una acción de administración evaluada con un edificio
+
+- **WHEN** se evalúan `crear_edificio` e `invitar_usuarios_y_asignar_edificios` para el super admin con
+  un `complejo_id` válido de su administración, y para un administrador por edificio con el suyo
+- **THEN** `puede` da lo mismo que sin complejo (sí para el super admin, no para el administrador por
+  edificio) y coincide con que la acción esté o no en `administracion`
+
+#### Scenario: Las acciones de administración sólo tienen celdas principales
+
+- **WHEN** se recorren las celdas permitidas de `crear_edificio`, `invitar_usuarios_y_asignar_edificios`
+  y `ver_personal` en la matriz
+- **THEN** todas son de alcance principal, de modo que ninguna asignación por edificio o por unidad
+  cambia su respuesta
+
+### Requirement: Una acción de edificio se compara con el edificio
+
+Para una acción de edificio (toda acción que no es de administración), sin edificio `puede` SHALL ser
+falso y la acción MUST NOT estar en `administracion`; con un edificio, "está en `todos_los_edificios` o
+en `por_edificio` de ese edificio" MUST coincidir con `puede`.
+
+#### Scenario: Una acción de edificio sin edificio
+
+- **WHEN** se evalúa `configurar_padron` sin complejo para el super admin
+- **THEN** `puede` es falso y `configurar_padron` no está en `administracion`, aunque sí esté en
+  `todos_los_edificios`
+
+#### Scenario: Una acción de edificio en un edificio ajeno
+
+- **WHEN** se evalúa `configurar_padron` para un administrador del edificio E1 en el edificio E2
+- **THEN** `puede` es falso y `configurar_padron` no está en `todos_los_edificios` ni en
+  `por_edificio` de E2
 
 ### Requirement: La web oculta lo que la persona no puede usar
 

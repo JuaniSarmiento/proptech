@@ -240,9 +240,25 @@ engine:
 2. El formato: `re.fullmatch(r"user_[A-Za-z0-9]{1,64}", valor, flags=re.ASCII)`, el mismo patrón que
    `acceso/dominio/token.py:12` y el `CHECK ck_persona_clerk_usuario_id` de `0019`.
 3. **La instancia de Clerk es de desarrollo** (BE-6, opción a, decisión de Juani): `CLERK_EMISOR`
-   configurado, con esquema `https`, sin puerto ni ruta, y un host que **termina** en
-   `.clerk.accounts.dev`. Se compara con `urllib.parse.urlsplit(...).hostname.endswith(...)`, nunca con
-   `in` sobre el texto (que aceptaría `clerk.accounts.dev.otro.invalid`). Sin emisor, se niega.
+   configurado y válido **como URL completa**, no sólo por su host (R2D-4). Con
+   `urllib.parse.urlsplit`, todas estas condiciones a la vez:
+   - esquema exactamente `https`;
+   - `hostname` (que ya viene en minúsculas) que **termina** en `.clerk.accounts.dev`, comparado con
+     `endswith`, nunca con `in` sobre el texto (que aceptaría `clerk.accounts.dev.otro.invalid`) ni sobre
+     `netloc` (que incluye credenciales y puerto);
+   - sin usuario ni contraseña (`username` y `password` nulos);
+   - sin puerto, o el estándar `443`; un puerto que `urlsplit` no puede leer (`.port` lanza
+     `ValueError`) es rechazo;
+   - sin query y sin fragmento (`query` y `fragment` vacíos, y sin `?` ni `#` en el texto, para que
+     `https://x.clerk.accounts.dev?` tampoco pase);
+   - ruta vacía o `/`.
+
+   Cualquier excepción al leerla es rechazo. Sin emisor, se niega. Casos fijados en el spec:
+   `https://x.clerk.accounts.dev.evil.com`, `https://u:p@x.clerk.accounts.dev`,
+   `https://x.clerk.accounts.dev?x=1`, `https://x.clerk.accounts.dev#f`,
+   `https://x.clerk.accounts.dev:8443`, `https://x.clerk.accounts.dev/ruta` y `http://…` se niegan;
+   `https://X.CLERK.ACCOUNTS.DEV`, `https://x.clerk.accounts.dev/` y `https://x.clerk.accounts.dev:443`
+   pasan.
 
 Ningún mensaje repite el id ni el emisor. Sin `--clerk-usuario`, los pasos 2 y 3 no corren y la carga es
 la de hoy.
@@ -278,6 +294,15 @@ desarrollo de `acceso.aplicacion`. Esa función:
   = :persona AND (clerk_usuario_id IS NULL OR clerk_usuario_id = :sub)` y mira `rowcount`: 0 filas es
   "ya está vinculado a otra cuenta", sin pisar. Leer y después escribir dejaba que dos corridas a la vez
   leyeran las dos `NULL` y la segunda pisara a la primera.
+- **envuelve además ese `UPDATE` en un `except IntegrityError`** (DB, nota 2) que reconoce la violación
+  de `uq_persona_clerk_administracion` por el nombre de la restricción y termina con el **mismo mensaje
+  fijo** del chequeo previo ("esa cuenta ya está vinculada a otra persona del ejemplo"), sin el id, sin
+  traceback y sin escribir. El chequeo previo y el `UPDATE` no son una sola operación atómica: entre los
+  dos, otra transacción (por ejemplo, aceptar una invitación del ejemplo con ese `sub`,
+  `invitaciones.py:105-120`) puede vincular a otra persona, y el `UPDATE` violaría la unicidad. El
+  chequeo previo da el mensaje en el camino común; el `except` cierra la carrera residual. Cualquier
+  otro `IntegrityError` no se traduce: sale con un mensaje genérico sin parámetros, nunca con el
+  `[parameters: …]` del driver.
 
 La salida dice "vinculado", "ya estaba vinculado", "ya está vinculado a otra cuenta" o "esa cuenta ya
 está vinculada a otra persona del ejemplo", sin ids. El `README` suma "Entrar con el edificio de
@@ -288,8 +313,10 @@ ID), correr el comando y entrar; con `user_XXXXXXXX` como marcador (L-040).
 conexión y el tenant fijo; *pisar el vínculo si es distinto*, porque un id mal copiado dejaría afuera
 sin aviso a quien ya entraba; *crear una invitación y aceptarla*, porque exige el worker y el mail de
 Clerk; *duplicar la guarda de entorno dentro de la función* (BE-5 c, AR-4 b), porque acopla `acceso` a
-`PROPTECH_ENTORNO`; *capturar `IntegrityError` con un mensaje fijo* en vez del chequeo previo, porque
-el chequeo previo da un mensaje que dice qué pasó y no depende del formato de error del driver.
+`PROPTECH_ENTORNO`; *capturar sólo `IntegrityError` con un mensaje fijo*, sin chequeo previo, porque
+el chequeo previo da el mensaje en el camino común sin depender del error del driver (el `except` queda
+como red para la carrera, no como el camino principal); *sólo el chequeo previo*, sin `except`, porque
+deja la carrera residual imprimiendo el id (DB, nota 2).
 
 **Costo de revertir**: bajo, una opción del comando, una regla del test de fronteras y su sección del
 `README`.
@@ -395,8 +422,16 @@ token de sesión (`auth().sessionClaims`, el mismo token que la API acepta en
 sesión la pantalla dice "Estás ingresado como <email>" antes de "Aceptar e ingresar" y ofrece "Usar otra
 cuenta" (el enlace con `cerrar=1` que la página ya arma, `page.tsx:21`). Si la aceptación falla con
 sesión, el mensaje cambia a "Este enlace no sirve con la cuenta <email>. Si la invitación es para otro
-email, usá otra cuenta; si es para ésta, pedile a tu administración que te invite de nuevo." Sin claim de
-email, los textos no nombran ningún email. La API **no cambia**.
+email, usá otra cuenta; si es para ésta, pedile a tu administración que te invite de nuevo." La API
+**no cambia**.
+
+**Sin el claim de email** (R2D-6): si el token de sesión no trae el email, los dos textos pasan a su
+forma genérica, sin nombrar ningún email (ni vacío ni "undefined"): antes de aceptar, "Hay una sesión
+abierta en este navegador"; si la aceptación falla, "Este enlace no sirve con la cuenta con la que
+ingresaste", con "Usar otra cuenta" en los dos. Así E10 funciona igual, sólo que no identifica a la
+cuenta. Si el claim viaja o no en el token de sesión del Clerk de desarrollo es un **SUPUESTO** que se
+comprueba con Clerk real (tarea 8.2 e): cuenta mostrada, "Usar otra cuenta", que el ticket sobreviva al
+cierre de sesión y la aceptación posterior con la cuenta correcta.
 
 **Por qué el servidor y no `useUser()`**: `/invitacion/*` se dibuja sin `ClerkProvider` a propósito
 (`layout.tsx:18,32`); el claim ya está en el servidor sin red ni clave secreta.
@@ -415,14 +450,46 @@ email, los textos no nombran ningún email. La API **no cambia**.
 ### D11 · 2.3: las acciones permitidas viajan con la sesión y la web oculta lo que no se puede
 
 **Qué**: una función pura nueva en `acceso/dominio/permisos.py`, `acciones_permitidas(asignaciones)`,
-devuelve tres conjuntos: `administracion` (acciones evaluadas sin complejo: `crear_edificio`,
-`invitar_usuarios_y_asignar_edificios`, `ver_personal`), `todos_los_edificios` (las que una asignación
-principal permite en cualquier edificio) y `por_edificio` (por cada `complejo_id` de una asignación por
-edificio o por unidad, las que suma ahí). Se calcula **con `_MATRIZ`**, la misma que usa `puede`, y un
-test de propiedad compara, para las nueve columnas, cada acción y un edificio propio y otro ajeno, la
-respuesta de `acciones_permitidas` contra `puede`. `consultar` ya carga las asignaciones de cada
-administración (`sesion.py:25`); suma `acciones` a cada elemento de la lista. El 403 `sin_acceso` no
-cambia.
+devuelve tres conjuntos: `administracion` (las acciones de administración que la persona puede),
+`todos_los_edificios` (las acciones de edificio que una asignación principal permite en cualquier
+edificio) y `por_edificio` (por cada `complejo_id` de una asignación por edificio o por unidad, las
+acciones de edificio que suma ahí). Se calcula **con `_MATRIZ`**, la misma que usa `puede`.
+`consultar` ya carga las asignaciones de cada administración (`sesion.py:25`); suma `acciones` a cada
+elemento de la lista. El 403 `sin_acceso` no cambia.
+
+**El contrato de comparación, por tipo de acción** (R2D-1). `puede` no trata igual a todas las
+acciones, y la sesión tiene que decir exactamente lo que `puede` responde en cada contexto:
+
+- **Acciones de administración** (`crear_edificio`, `invitar_usuarios_y_asignar_edificios`,
+  `ver_personal`): el conjunto se declara **una vez**, como constante `ACCIONES_DE_ADMINISTRACION` de
+  `permisos.py`, y la usan `puede` (hoy es un literal dentro de la función) y `acciones_permitidas`
+  (L-009). `puede` las evalúa sin complejo **y también con cualquier complejo**: con un `complejo_id`
+  válido, una asignación principal sigue contando y una por edificio no suma nada, porque sus celdas de
+  la matriz son todas de alcance principal (`_SA`, `_AP`). Por eso la respuesta de `puede` para estas
+  acciones **no depende del contexto**, y el contrato es: para todo contexto (sin edificio, edificio
+  propio, edificio ajeno), `puede(a, acción, contexto)` ⇔ la acción está en `administracion`. Estas
+  acciones **nunca** aparecen en `todos_los_edificios` ni en `por_edificio`.
+- **Acciones de edificio** (todas las demás): sin edificio, `puede` responde siempre `False`, y la
+  acción nunca está en `administracion`; con un `complejo_id`, `puede(a, acción, c)` ⇔ la acción está
+  en `todos_los_edificios` o en `por_edificio[c]` (con `por_edificio[c]` vacío si `c` no está).
+
+La independencia del contexto en las acciones de administración es una **propiedad de la matriz**, no
+de `puede`: si alguien sumara `_AE` a `crear_edificio`, `puede` daría `True` con el edificio propio y
+`False` sin edificio, y no habría representación de la sesión que coincida. El test de propiedad lo
+detecta (es uno de sus mutantes), y la regla queda escrita en el spec: las celdas de una acción de
+administración son sólo de alcance principal.
+
+Como los dos tipos son disjuntos (una acción de administración nunca está en los conjuntos de edificio
+y una de edificio nunca está en `administracion`), la web aplica el mismo contrato sin conocer la lista
+de acciones de administración: `permite(sesion, accion, complejoId?)` es "está en `administracion`" o,
+si hay `complejoId`, "está en `todos_los_edificios` o en `por_edificio[complejoId]`". Para una acción
+de administración da lo mismo con o sin `complejoId`; para una de edificio, sin `complejoId` da
+`false`.
+
+**El test de propiedad** recorre la matriz completa: para cada una de las nueve columnas (y para
+combinaciones de dos asignaciones, por ejemplo un administrador por edificio en E1 y un contador por
+edificio en E2), cada acción de `Accion` y cada contexto (sin edificio, edificio propio, edificio
+ajeno), compara la sesión contra `puede`. Son 18 × 9 × 3 = 486 comparaciones para las columnas solas.
 
 En la web, `DatosDeSesion` (`componentes/SesionDePantalla.tsx`) suma `acciones` por administración, y
 una función `permite(sesion, accion, complejoId?)` decide; sin sesión en el contexto, `permite` da
@@ -452,6 +519,23 @@ envuelve toda el alta: si la asignación después da 409 o 422, el savepoint se 
 cambia. Vale para la persona vinculada y la no vinculada, y para el alta de vecinos, que usa la misma
 función y cuyo spec ya dice "las reglas de reuso de la persona son las del personal".
 
+**Nunca renombra a un super admin ni a una persona de otra administración** (R2D-3). El formulario no
+deja *invitar* el rol super admin, pero sí invitar el email de un super admin con otro perfil (o darlo de
+alta como vecino), y el conflicto por `(administracion_id, email)` lo encontraría. La cláusula queda:
+
+```sql
+ON CONFLICT (administracion_id, email) DO UPDATE SET nombre = EXCLUDED.nombre
+WHERE NOT EXISTS (SELECT 1 FROM asignacion_rol a
+                  WHERE a.persona_id = persona.id AND a.rol = 'super_admin')
+```
+
+Con el `WHERE` falso PostgreSQL no actualiza pero igual bloquea la fila, y el `SELECT … FOR UPDATE`
+siguiente devuelve el id como hoy: el alta de la asignación sigue sus reglas de siempre (409, 422 o
+alta), sólo que el nombre del super admin no cambia. La otra administración queda fuera por dos
+lados: el objetivo del conflicto incluye `administracion_id = :admin` y la RLS de `persona` sólo deja ver
+y tocar las filas del tenant en uso; el test lo prueba con PostgreSQL (la misma dirección en A y en B, se
+reinvita en A, el nombre de B no cambia).
+
 **Por qué**: sólo el super admin invita, así que el nombre que pisa es el que cargó otro super admin de
 la misma administración, y el último dato cargado es el que la persona que invita tiene a la vista.
 
@@ -467,9 +551,26 @@ justo el tipo de lectura que este change evita.
 `_SA` y `_AP`, evaluada sin complejo. `GET /api/personal` exige `ver_personal`; las rutas que escriben
 (invitar, alta de vecino, revocar, quitar) siguen exigiendo `invitar_usuarios_y_asignar_edificios`, sólo
 super admin. `listar_personal` recibe las asignaciones de quien pide: para el super admin devuelve lo
-de hoy; para el administrador principal, **filtra en la API** a las personas cuyas asignaciones son
-**todas** de administrador por edificio, contador, auxiliar o consejo. Nunca aparece una persona con
-una asignación de super admin, de administrador principal (pares) o de vecino, ni su id, nombre o email.
+de hoy; para el administrador principal, **filtra en la API** a las personas que tienen **al menos
+una** asignación y cuyas asignaciones son **todas** de administrador por edificio, contador, auxiliar o
+consejo. Nunca aparece una persona con una asignación de super admin, de administrador principal (pares)
+o de vecino, ni su id, nombre o email.
+
+**Una persona sin asignaciones no aparece** (R2D-2): "todas sus asignaciones son de abajo" es verdadero
+para la lista vacía, y una persona a la que se le quitó su último rol (que pudo ser super admin o
+vecino) aparecería con nombre y email. La condición exige además una asignación permitida; el test crea
+esa persona y el mutante `all(...)` sin el "al menos una" lo muestra.
+
+**Dónde filtra** (DB, nota 3): `listar_personal` sigue trayendo con las dos consultas de hoy (por índice,
+filtradas por RLS, sin seq scan: plan medido por el DBA con 3000 personas) y filtra **en Python**, con
+la misma lista de perfiles y alcances que define "por debajo" en un solo lugar del código, para no abrir
+una segunda fuente de verdad en SQL. El costo es traer también a los vecinos del tenant en cada pedido
+del administrador principal, que crece con el padrón y no con el tráfico. Si el padrón de una
+administración crece lo bastante para que importe, se acota en SQL con un `EXISTS` sobre
+`asignacion_rol` no vecino (`WHERE EXISTS (SELECT 1 FROM asignacion_rol a WHERE a.persona_id =
+persona.id AND a.rol <> 'vecino')`), que `ix_asignacion_rol_persona` ya soporta; el filtro de Python se
+queda igual como la regla. No se implementa ahora.
+
 La web muestra `/personal` en sólo lectura a quien no tiene `invitar_usuarios_y_asignar_edificios`.
 
 **Por qué una acción nueva y una migración**: `Accion` es a la vez el permiso y el vocabulario de
@@ -515,13 +616,21 @@ matriz, su test a mano, D11 y el menú.
 - [El widget de Clerk no carga en e2e] → El anidamiento se prueba con el test de componente del ciclo
   (tarea 3.3); "dos pestañas" y "entrar por el ingreso" se verifican a mano contra el Clerk de desarrollo
   (L-032) y se declaran como tal.
-- [Tamaño] → 30 tareas en un change (D9).
+- [Tamaño] → El propose tiene ~30 tareas y `openspec/config.yaml` sugiere partir un change de más de
+  unas veinte. Se construye en **dos tandas, cada una con su PR**, dentro del mismo change; no se parte
+  el change: decisión de Juani del 28/10/2026 (E8, D9).
+- [Carrera residual en la vinculación de desarrollo] → El chequeo previo y el `UPDATE` no son atómicos;
+  el `except IntegrityError` sobre `uq_persona_clerk_administracion` da el mismo mensaje fijo (D5).
+- [`listar_personal` filtra en Python] → Trae a los vecinos del tenant en cada pedido del administrador
+  principal; si el padrón crece, `EXISTS` en SQL (D13).
 
 ## Migration Plan
 
 Con la recomendación de E11 **hay una migración**: `00NN` suma `ver_personal` al vocabulario de
 `accion_de_auditoria`, con bajada que la quita (falla sin modificar datos si alguna fila de `auditoria`
-la usara; no debería, porque ver no se audita), probada sobre una copia con datos. El despliegue es el
+la usara; no debería, porque ver no se audita), probada sobre una copia con datos y con un test de
+migración dedicado, `test_migracion_00NN_ver_personal.py`, del patrón de `test_migracion_0024_vocabulario.py`
+(tarea 7.1), que queda como regresión en CI. El despliegue es el
 de siempre (migrar, después imagen nueva de API y web juntas) y el rollback es bajar `00NN` y volver a
 la imagen anterior. API y web tienen que salir juntas: una web vieja con una API nueva lee
 `permiso_faltante` como hoy y trata el 403 `sin_acceso` como `sin_permiso` (pantalla de error, sin
