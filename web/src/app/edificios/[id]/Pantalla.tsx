@@ -1,11 +1,16 @@
+"use client";
+
 /**
- * Resumen del edificio (tarea 4.2, D5, D11; enmienda del 20/10/2026): a la
- * izquierda el checklist de puesta a punto con su barra de progreso ("N de
- * 6 pasos"), cada paso como fila con ícono, explicación y estado; a la
+ * Resumen del edificio (tarea 4.2, D5, D11; enmienda del 20/10/2026; D3,
+ * tarea 6.1: paso "ubicación" nuevo y edición desde acá): a la izquierda
+ * el checklist de puesta a punto con su barra de progreso ("N de 7
+ * pasos"), cada paso como fila con ícono, explicación y estado; a la
  * derecha "Tu próximo paso" (la única acción principal de la pantalla) y
- * los datos del edificio. Ningún paso se decide acá (D5): se muestra tal
- * cual lo da la API, incluso si no cuadra con `cantidad_unidades` ("la web
- * no calcula"). La barra sólo CUENTA los pasos que la API ya marcó.
+ * los datos del edificio, con "Editar" para corregir ubicación, calle,
+ * pisos y subsuelos sin salir de la pantalla. Ningún paso se decide acá
+ * (D5): se muestra tal cual lo da la API, incluso si no cuadra con
+ * `cantidad_unidades` ("la web no calcula"). La barra sólo CUENTA los
+ * pasos que la API ya marcó.
  */
 
 import {
@@ -15,15 +20,20 @@ import {
   FileCheck2,
   Layers,
   type LucideIcon,
+  MapPin,
   Percent,
   Tags,
 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Ayuda } from "../../../componentes/Ayuda";
 import { BarraDeProgreso } from "../../../componentes/BarraDeProgreso";
 import { EncabezadoDePantalla } from "../../../componentes/EncabezadoDePantalla";
 import { EstadoDeCoeficientes } from "../../../componentes/EstadoDeCoeficientes";
 import { FilaConIcono } from "../../../componentes/FilaConIcono";
+import { Campo, Formulario } from "../../../componentes/Formulario";
 import { Panel } from "../../../componentes/Panel";
+import { PanelLateral } from "../../../componentes/PanelLateral";
+import { SelectorDeUbicacion } from "../../../componentes/SelectorDeUbicacion";
 import type { ConfiguracionVigente, Resumen } from "../../../lib/api/tipos";
 import { textoEstadoDeMigracion } from "../../../lib/textoDeEstados";
 import { ArmazonDelEdificio } from "./Armazon";
@@ -43,8 +53,16 @@ type Paso = {
 
 const _PASOS: Paso[] = [
   {
-    clave: "unidades",
+    clave: "ubicacion",
     numero: 1,
+    etiqueta: "Completar la ubicación",
+    explicacion: "Provincia, departamento y localidad, más pisos y subsuelos del edificio.",
+    href: "",
+    icono: MapPin,
+  },
+  {
+    clave: "unidades",
+    numero: 2,
     etiqueta: "Cargar unidades",
     explicacion: "Cada departamento, cochera o local, con su superficie y su coeficiente.",
     href: "/unidades",
@@ -52,7 +70,7 @@ const _PASOS: Paso[] = [
   },
   {
     clave: "coeficientes",
-    numero: 2,
+    numero: 3,
     etiqueta: "Revisar coeficientes (que sumen 100%)",
     explicacion: "Si la suma no da 100%, la expensa no se reparte bien entre los vecinos.",
     href: "/unidades",
@@ -60,7 +78,7 @@ const _PASOS: Paso[] = [
   },
   {
     clave: "grupos",
-    numero: 3,
+    numero: 4,
     etiqueta: "Armar los grupos de reparto",
     explicacion: "Para los gastos que pagan sólo algunas unidades, como el ascensor.",
     href: "/grupos",
@@ -68,7 +86,7 @@ const _PASOS: Paso[] = [
   },
   {
     clave: "categorias",
-    numero: 4,
+    numero: 5,
     etiqueta: "Definir las categorías de gasto",
     explicacion: "Los rubros en los que vas a anotar cada gasto del mes.",
     href: "/categorias",
@@ -76,7 +94,7 @@ const _PASOS: Paso[] = [
   },
   {
     clave: "intereses_y_vencimiento",
-    numero: 5,
+    numero: 6,
     etiqueta: "Configurar intereses y vencimiento",
     explicacion: "La tasa por pagar tarde, el fondo de reserva y el día en que vence.",
     href: "/configuracion",
@@ -84,7 +102,7 @@ const _PASOS: Paso[] = [
   },
   {
     clave: "saldos_previos",
-    numero: 6,
+    numero: 7,
     etiqueta: "Confirmar que el edificio arranca sin saldos previos",
     explicacion: "Un único paso, que no se deshace: el edificio empieza sin deudas de antes.",
     href: "/saldos-previos",
@@ -92,16 +110,42 @@ const _PASOS: Paso[] = [
   },
 ];
 
+export type EstadoEdicionEdificio = {
+  erroresPorCampo: Record<string, string>;
+  erroresDesconocidos: string[];
+  ok?: boolean;
+} | null;
+
+type AccionEditar = (
+  estadoPrevio: EstadoEdicionEdificio,
+  formData: FormData,
+) => Promise<EstadoEdicionEdificio>;
+
 type Props = {
   id: string;
   resumen: Resumen;
   vigente: ConfiguracionVigente;
+  accionEditar: AccionEditar;
 };
 
-export function PantallaResumen({ id, resumen, vigente }: Props) {
+export function PantallaResumen({ id, resumen, vigente, accionEditar }: Props) {
   const estaHecho = (paso: Paso) => resumen.pasos[paso.clave] === "hecho";
   const hechos = _PASOS.filter(estaHecho).length;
   const proximo = _PASOS.find((paso) => !estaHecho(paso));
+
+  const [panelAbierto, setPanelAbierto] = useState(false);
+  const editarRef = useRef<HTMLButtonElement>(null);
+  const [estado, enviar] = useActionState(accionEditar, null);
+
+  useEffect(() => {
+    if (estado?.ok) {
+      setPanelAbierto(false);
+    }
+  }, [estado]);
+
+  function abrirEdicion() {
+    setPanelAbierto(true);
+  }
 
   return (
     <ArmazonDelEdificio id={id} nombreEdificio={resumen.nombre} seccionActual="resumen">
@@ -110,7 +154,7 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
       <div className="disposicion">
         <Panel
           titulo="Puesta a punto"
-          descripcion="Seis pasos para dejar el edificio listo para liquidar las expensas. Tocá uno para ir a completarlo."
+          descripcion="Siete pasos para dejar el edificio listo para liquidar las expensas. Tocá uno para ir a completarlo."
         >
           <BarraDeProgreso hechos={hechos} total={_PASOS.length} />
           <ol
@@ -119,6 +163,19 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
           >
             {_PASOS.map((paso) => {
               const hecho = estaHecho(paso);
+              const titulo =
+                paso.clave === "ubicacion" && !hecho ? (
+                  <button type="button" className="boton-enlace" onClick={abrirEdicion}>
+                    {paso.etiqueta}
+                  </button>
+                ) : paso.clave === "ubicacion" ? (
+                  // Hecho: editar ya vive en "Datos del edificio" → "Editar"
+                  // (abajo). Repetirlo acá sería un segundo botón para la
+                  // misma acción.
+                  <span>{paso.etiqueta}</span>
+                ) : (
+                  <a href={`/edificios/${id}${paso.href}`}>{paso.etiqueta}</a>
+                );
               return (
                 <li
                   key={paso.clave}
@@ -128,7 +185,7 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
                   <FilaConIcono
                     icono={paso.icono}
                     tono={hecho ? "listo" : "atencion"}
-                    titulo={<a href={`/edificios/${id}${paso.href}`}>{paso.etiqueta}</a>}
+                    titulo={titulo}
                     detalle={paso.explicacion}
                     fin={<span className="resumen__estado">{hecho ? "Hecho" : "Falta"}</span>}
                   />
@@ -155,24 +212,55 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
                   <span className="numero-tabular">Paso {proximo.numero}.</span> {proximo.etiqueta}
                 </p>
                 <p className="texto-secundario">{proximo.explicacion}</p>
-                <a className="boton-principal" href={`/edificios/${id}${proximo.href}`}>
-                  Completar este paso
-                  <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />
-                </a>
+                {proximo.clave === "ubicacion" ? (
+                  <button type="button" className="boton-principal" onClick={abrirEdicion}>
+                    Completar este paso
+                    <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <a className="boton-principal" href={`/edificios/${id}${proximo.href}`}>
+                    Completar este paso
+                    <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />
+                  </a>
+                )}
               </div>
             ) : (
               <p className="texto-secundario">
-                Los seis pasos están hechos. Falta que el sistema confirme que el edificio quedó
+                Los siete pasos están hechos. Falta que el sistema confirme que el edificio quedó
                 listo para liquidar.
               </p>
             )}
           </Panel>
 
-          <Panel titulo="Datos del edificio" variante="apoyo">
+          <Panel
+            titulo="Datos del edificio"
+            variante="apoyo"
+            accion={
+              <button ref={editarRef} type="button" onClick={abrirEdicion}>
+                Editar
+              </button>
+            }
+          >
             <dl className="renglones">
               <div className="renglones__fila">
                 <dt>Localidad</dt>
-                <dd>{resumen.localidad}</dd>
+                <dd>{resumen.localidad ?? "Sin completar"}</dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Calle y número</dt>
+                <dd>{resumen.calle_y_numero ?? "Sin completar"}</dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Pisos</dt>
+                <dd>
+                  <span className="numero-tabular">{resumen.pisos ?? "Sin completar"}</span>
+                </dd>
+              </div>
+              <div className="renglones__fila">
+                <dt>Subsuelos</dt>
+                <dd>
+                  <span className="numero-tabular">{resumen.subsuelos ?? "Sin completar"}</span>
+                </dd>
               </div>
               <div className="renglones__fila">
                 <dt>Unidades</dt>
@@ -201,6 +289,59 @@ export function PantallaResumen({ id, resumen, vigente }: Props) {
           </Panel>
         </div>
       </div>
+
+      <PanelLateral
+        abierto={panelAbierto}
+        titulo="Editar edificio"
+        alCerrar={() => setPanelAbierto(false)}
+        devolverFocoA={editarRef}
+      >
+        <Formulario
+          erroresPorCampo={estado?.erroresPorCampo ?? {}}
+          erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+          action={enviar}
+        >
+          <Campo nombre="nombre" etiqueta="Nombre" name="nombre" defaultValue={resumen.nombre} />
+          <SelectorDeUbicacion
+            valorInicial={
+              resumen.provincia_id && resumen.departamento_id && resumen.localidad_id
+                ? {
+                    provinciaId: resumen.provincia_id,
+                    departamentoId: resumen.departamento_id,
+                    localidadId: resumen.localidad_id,
+                  }
+                : null
+            }
+          />
+          <Campo
+            nombre="calle_y_numero"
+            etiqueta="Calle y número"
+            name="calle_y_numero"
+            defaultValue={resumen.calle_y_numero ?? ""}
+          />
+          <Campo
+            nombre="pisos"
+            etiqueta="Pisos"
+            name="pisos"
+            type="number"
+            min={1}
+            max={60}
+            defaultValue={resumen.pisos ?? undefined}
+          />
+          <Campo
+            nombre="subsuelos"
+            etiqueta="Subsuelos"
+            name="subsuelos"
+            type="number"
+            min={0}
+            max={5}
+            defaultValue={resumen.subsuelos ?? undefined}
+          />
+          <button type="submit" className="boton-principal">
+            Guardar
+          </button>
+        </Formulario>
+      </PanelLateral>
     </ArmazonDelEdificio>
   );
 }

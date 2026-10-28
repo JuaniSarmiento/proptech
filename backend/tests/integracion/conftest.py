@@ -191,6 +191,7 @@ def api_edificio(
     from proptech_api.app import crear_app
     from proptech_core.acceso.dominio.identidad import Identidad
     from proptech_core.compartido.base_de_datos import abrir_sesion
+    from proptech_core.compartido.georef import leer_georef
     from proptech_core.compartido.parametros import leer_parametros
     from proptech_core.complejos.aplicacion.escritura import crear_edificio
 
@@ -221,12 +222,18 @@ def api_edificio(
                 )
             identidad = Identidad(admin, personas["super_admin"])
             parametros = leer_parametros(str(_PARAMETROS_DEL_REPO))
+            georef = leer_georef(str(_PARAMETROS_DEL_REPO.parent / "georef"))
             edificios = [
                 crear_edificio(
                     sesion,
                     identidad,
                     nombre=nombre,
-                    localidad="Mendoza",
+                    provincia_id="50",
+                    departamento_id="50007",
+                    localidad_id="50007010",
+                    georef=georef,
+                    pisos=4,
+                    subsuelos=1,
                     parametros=parametros,
                     reloj=lambda: datetime.now(UTC),
                     request_id=uuid4(),

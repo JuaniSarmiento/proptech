@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
 from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.compartido.claves import derivar_clave
 from proptech_core.compartido.parametros import CategoriaDeGasto
 from proptech_core.complejos.aplicacion.errores import (
     EntradaInvalida,
@@ -58,6 +59,24 @@ def listar_categorias(
 def crear_categoria(
     sesion: Session, identidad: Identidad, *, complejo_id: UUID, datos: dict[str, Any]
 ) -> UUID:
+    #: D7 (tarea 4.4): sin `clave` (o `None`), se deriva de `nombre` contra
+    #: las que el edificio ya tiene — `CategoriaDeGasto` sigue exigiendo
+    #: `clave` siempre (la usa también el YAML de parámetros, D-042), así
+    #: que la derivación pasa ANTES de validar con ella, nunca dentro.
+    if not datos.get("clave"):
+        nombre = datos.get("nombre")
+        existentes = (
+            sesion.execute(
+                text("SELECT clave FROM categoria_de_gasto WHERE complejo_id=:id"),
+                {"id": complejo_id},
+            )
+            .scalars()
+            .all()
+        )
+        clave_derivada = derivar_clave(nombre, existentes) if isinstance(nombre, str) else None
+        if clave_derivada is None:
+            raise EntradaInvalida("nombre", "no se puede derivar una clave")
+        datos = {**datos, "clave": clave_derivada}
     try:
         entrada = CategoriaDeGasto.model_validate(datos)
     except ValidationError as error:

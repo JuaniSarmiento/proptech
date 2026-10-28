@@ -21,6 +21,7 @@ de los dos caminos tiene que cortar).
 Contenedor propio (L-006; mismo motivo que 4.1/4.2/5.2/5.3).
 """
 
+import shutil
 import subprocess
 import sys
 import uuid
@@ -71,7 +72,17 @@ _RUTAS_DOCUMENTACION = {
 #: por este archivo.
 _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST")}
 
-_RUTAS_CUBIERTAS = {
+#: D1 (tarea 2.5): datos públicos del país, nunca del edificio ni del rol —
+#: cualquier identidad autenticada, aunque no tenga ninguna fila en
+#: `asignacion_rol`, tiene que poder leerlas (200), a diferencia del resto
+#: de `_RUTAS_CUBIERTAS`.
+_RUTAS_SIN_ALCANCE = {
+    ("/api/georef/provincias", "GET"),
+    ("/api/georef/provincias/{provincia_id}/departamentos", "GET"),
+    ("/api/georef/departamentos/{departamento_id}/localidades", "GET"),
+}
+
+_RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/correcciones", "POST"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
@@ -100,6 +111,7 @@ _RUTAS_CUBIERTAS = {
     ("/api/complejos/{complejo_id}/resumen", "GET"),
     ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
     ("/api/complejos/{complejo_id}", "GET"),
+    ("/api/complejos/{complejo_id}", "PATCH"),
     ("/api/unidades/{unidad_id}", "GET"),
     ("/api/complejos/{complejo_id}/asignaciones", "POST"),
 }
@@ -239,6 +251,9 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         # antes de buscar cualquiera de los dos ids.
         "invitacion_id": uuid.uuid4(),
         "asignacion_id": uuid.uuid4(),
+        # Ids reales de Georef (Mendoza / Capital), para las rutas de 2.5.
+        "provincia_id": "50",
+        "departamento_id": "50007",
     }
 
 
@@ -257,6 +272,7 @@ def app_real(
     ruta_parametros = tmp_path / "parametros.yaml"
     raiz = RAIZ_BACKEND.parent
     ruta_parametros.write_text((raiz / "config" / "parametros.yaml").read_text())
+    shutil.copytree(raiz / "config" / "georef", tmp_path / "georef")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta_parametros))
 
     from proptech_api.app import crear_app
@@ -368,7 +384,19 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
             cuerpo_categoria["clave"] = "nueva"
         return cliente.request(metodo, ruta_resuelta, json=cuerpo_categoria)
     if ruta == "/api/complejos":
-        return cliente.post(ruta_resuelta, json={"nombre": "Edificio", "localidad": "Mendoza"})
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "nombre": "Edificio",
+                "provincia_id": "50",
+                "departamento_id": "50007",
+                "localidad_id": "50007010",
+                "pisos": 4,
+                "subsuelos": 1,
+            },
+        )
+    if ruta == "/api/complejos/{complejo_id}" and metodo == "PATCH":
+        return cliente.patch(ruta_resuelta, json={"nombre": "Edificio editado"})
     if ruta.endswith("/sin-saldos-previos"):
         return cliente.post(ruta_resuelta)
     if ruta.endswith("/unidades") or ruta == "/api/unidades/{unidad_id}":
@@ -432,6 +460,19 @@ def test_cada_ruta_con_identidad_sin_asignacion_nunca_da_200_ni_201(
         # Estas rutas comprueban el vínculo real, sin el override de dominio.
         respuesta = _pedido(cliente, ruta, metodo, mundo)
         assert respuesta.status_code == 401
+        return
+    if (ruta, metodo) in _RUTAS_SIN_ALCANCE:
+        # D1: ninguna fila en asignacion_rol no importa para estas rutas —
+        # son datos del país, no del edificio.
+        app_real.dependency_overrides[identidad_actual] = lambda: Identidad(
+            administracion_id=mundo["administracion_id"],
+            persona_id=mundo["persona_sin_asignacion"],
+        )
+        try:
+            respuesta = _pedido(cliente, ruta, metodo, mundo)
+            assert respuesta.status_code == 200, (ruta, respuesta.status_code)
+        finally:
+            app_real.dependency_overrides.pop(identidad_actual, None)
         return
     app_real.dependency_overrides[identidad_actual] = lambda: Identidad(
         administracion_id=mundo["administracion_id"],

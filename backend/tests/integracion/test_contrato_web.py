@@ -79,9 +79,12 @@ def _diferencias_de_forma(actual: Any, fixture: Any, camino: str = "<raíz>") ->
 def _verificar_o_actualizar(nombre: str, respuesta: Any) -> None:
     ruta = _FIXTURES / f"{nombre}.json"
     if _ACTUALIZAR:
-        ruta.write_text(json.dumps(respuesta, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        ruta.write_text(
+            json.dumps(respuesta, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         return
-    fixture = json.loads(ruta.read_text())
+    fixture = json.loads(ruta.read_text(encoding="utf-8"))
     problemas = _diferencias_de_forma(respuesta, fixture)
     assert problemas == [], "\n".join(problemas)
 

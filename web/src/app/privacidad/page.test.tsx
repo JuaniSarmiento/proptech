@@ -23,7 +23,8 @@ it("explica los datos, transferencia, finalidad, conservación, responsable y de
   expect(container.textContent).toMatch(/Clerk.*email.*nombre/);
   expect(container.textContent).toContain("fuera de la Argentina");
   expect(container.textContent).toMatch(/acceso.*rectificación.*supresión/);
-  expect(screen.getByText(/Borrador pendiente/)).toBeTruthy();
+  expect(screen.getByText(/todavía está en revisión/)).toBeTruthy();
+  expect(container.textContent).not.toMatch(/Juani|Alberto|Emiliano|aprobaci[oó]n/i);
   await userEvent.click(screen.getByRole("button", { name: "Ayuda" }));
   for (const nombre of ["¿Para qué sirve esta pantalla?", "¿Qué hago acá?", "¿Y después?"]) {
     expect(screen.getByRole("heading", { name: nombre })).toBeTruthy();

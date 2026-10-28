@@ -1,6 +1,12 @@
 {
   "administracion_id": "35ade5bb-f2d1-4823-ba34-9d45a3321f5f",
+  "calle_y_numero": null,
+  "departamento_id": "50007",
   "id": "f760ca3b-7331-4927-96e5-54a3fbb1f3ae",
   "localidad": "Mendoza",
-  "nombre": "Edificio API"
+  "localidad_id": "50007010",
+  "nombre": "Edificio API",
+  "pisos": 4,
+  "provincia_id": "50",
+  "subsuelos": 1
 }

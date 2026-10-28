@@ -21,9 +21,23 @@ class Conflicto(Exception):
 
 
 class EntradaInvalida(ValueError):
-    def __init__(self, campo: str, motivo: str = "valor inválido") -> None:
+    """`tipo="value_error"` por default: vocabulario cerrado de Pydantic, el
+    `motivo` nunca llega al cliente (L-007, `cliente.ts` lo descarta siempre).
+    `identificadores`, en cambio, es una lista cerrada de datos propios del
+    edificio (nunca texto libre ni el valor del pedido) que sí viaja al
+    cliente estructurada — ver `fuera_de_rango` en `editar_edificio`."""
+
+    def __init__(
+        self,
+        campo: str,
+        motivo: str = "valor inválido",
+        tipo: str = "value_error",
+        identificadores: list[str] | None = None,
+    ) -> None:
         self.campo = campo
         self.motivo = motivo
+        self.tipo = tipo
+        self.identificadores = identificadores
         super().__init__(f"{campo}: {motivo}")
 
 

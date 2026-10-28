@@ -324,9 +324,7 @@ export function PantallaCategorias({
         >
           {categoriaEnEdicion ? (
             <input type="hidden" name="categoria_id" value={categoriaEnEdicion.id} />
-          ) : (
-            <Campo nombre="clave" etiqueta="Clave" name="clave" required />
-          )}
+          ) : null}
           <Campo
             nombre="nombre"
             etiqueta="Nombre"

@@ -20,6 +20,24 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.
 - **Unidad funcional (UF)**: el objeto sobre el que se liquida la expensa. En un edificio, un departamento (piso y letra), una cochera, una baulera o un local; en un barrio, un **lote** (manzana y número). Su identificador sólo es único dentro de su complejo.
 - **Tipo de unidad**: departamento, cochera, baulera o local en un edificio; lote en un barrio. Cada una tiene su coeficiente y se liquida por separado.
+- **Ubicación del edificio** (3c, D1, D2, D-128): provincia, departamento y localidad, elegidos de
+  listas oficiales encadenadas (provincia filtra departamentos, departamento filtra localidades), más
+  calle y número como texto libre. Los tres ids salen del archivo reducido de **Georef** que vive en el
+  repo (`config/georef/`, licencia CC BY 4.0) y nunca se consultan en vivo. La base guarda "los tres o
+  ninguno": no existe una ubicación a medias. `localidad` (el nombre, no el id) queda **derivada**: la
+  aplicación la escribe sola con el nombre de Georef cuando se guarda la ubicación.
+- **Georef**: el Servicio de Normalización de Datos Geográficos de la República Argentina
+  (datos.gob.ar), fuente de los ids de provincia, departamento y localidad. Licencia **CC BY 4.0**
+  (atribución a Georef / datos.gob.ar). El 3c lo guarda reducido y fijo dentro del repositorio, con
+  fecha de descarga y el comando que lo regenera (`config/georef/LEEME.md`); no es una dependencia de
+  servicio, es un dato versionado.
+- **Piso** (3c, D3, D-128): la posición de una unidad dentro de su edificio, elegida de un vocabulario
+  cerrado que depende de la cantidad de pisos y subsuelos **de ese edificio**: `SS1` a `SS<subsuelos>`,
+  `PB` (siempre existe) y `1` a `<pisos>` sobre PB. Antes del 3c era texto libre; ahora un valor fuera
+  del vocabulario de su edificio se rechaza, y una unidad sin piso elegido queda `NULL` ("sin
+  completar"), nunca un valor inventado.
+- **Subsuelo**: nivel bajo planta baja, numerado `SS1` a `SS5` como máximo (hasta 5 por edificio). Antes
+  del 3c el dato crudo de la semilla usaba `"SS"` sin número; desde el 3c todo subsuelo lleva su número.
 - **Estado de la unidad**: baldío, en obra, habitado o desocupado. Se usa en barrios; en edificios está desactivado.
 - **Propietario**: titular de una unidad; ve todas sus expensas. Puede haber varios propietarios con cuenta propia para la misma unidad. **Inquilino**: ocupa la unidad y ve sólo sus expensas ordinarias. Son valores de `vinculo` en la relación persona-unidad, no atributos de la persona (D-106). **Usuario**: la persona que entra al sistema; puede tener varias unidades y vínculos distintos.
 
@@ -55,7 +73,11 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Gasto común**: se reparte entre varias unidades. **Cargo particular**: se carga a una sola unidad (por ejemplo, la limpieza del quincho que usó, R14).
 - **Expensa ordinaria**: la de la operación habitual. **Expensa extraordinaria**: la de una obra o necesidad puntual.
 - **Coeficiente**: la proporción con la que una unidad participa de un grupo de reparto. La suma de los coeficientes de un grupo es 1 (100%), con una tolerancia de ±0,0001 (R01).
-- **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo complejo tiene al menos el grupo "Generales" (R01).
+- **Grupo de reparto**: conjunto de unidades que comparten un tipo de gasto, con su método de reparto (coeficiente, superficie o partes iguales). Todo complejo tiene al menos el grupo "Generales" (R01). Un grupo parcial se **desactiva**, nunca se borra (R16, D4 del 3c, D-128); "Generales" no se desactiva, tampoco por SQL.
+- **Clave** (de un grupo o una categoría): el identificador técnico corto (`^[a-z][a-z0-9_]{0,39}$`)
+  que usan la API y el importador. Desde el 3c (D4, D-128) **se autogenera desde el nombre** — el
+  administrador ya no la escribe en el formulario —, con una función compartida entre grupos y
+  categorías; la API sigue aceptando una clave explícita para la semilla y el futuro importador.
 - **Factor por estado**: el porcentaje con que una unidad participa del reparto según su estado (por ejemplo, baldío al 50%). La diferencia la absorben las demás unidades del grupo (R02).
 - **Cargo fijo por estado**: un débito mensual propio de la unidad según su estado (por ejemplo, canon de obra) (R02).
 - **Prorrateo**: repartir un gasto entre las unidades según su coeficiente, su superficie o en partes iguales.

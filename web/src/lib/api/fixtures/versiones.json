@@ -3,7 +3,7 @@
     "autor_id": "c8be731b-c8fd-4e7d-8901-81e131a3bd8e",
     "autor_nombre": "Persona ficticia",
     "complejo_id": "1e911573-dc9a-47a3-be22-cbe9a25e6720",
-    "creada_en": "2026-10-26T13:49:51.235278Z",
+    "creada_en": "2026-10-27T07:10:56.670852Z",
     "dia_de_vencimiento": 10,
     "dia_segundo_vencimiento": null,
     "dias_de_gracia": 0,
@@ -14,13 +14,13 @@
     "recargo_segundo_vencimiento": null,
     "tasa_mensual": "3.00",
     "umbral_saldo_chico": "500.00",
-    "vigente_desde": "2026-10-26"
+    "vigente_desde": "2026-10-27"
   },
   {
     "autor_id": "c8be731b-c8fd-4e7d-8901-81e131a3bd8e",
     "autor_nombre": "Persona ficticia",
     "complejo_id": "1e911573-dc9a-47a3-be22-cbe9a25e6720",
-    "creada_en": "2026-10-26T13:49:51.303692Z",
+    "creada_en": "2026-10-27T07:10:56.861822Z",
     "dia_de_vencimiento": 10,
     "dia_segundo_vencimiento": null,
     "dias_de_gracia": 5,
@@ -31,6 +31,6 @@
     "recargo_segundo_vencimiento": null,
     "tasa_mensual": "4.00",
     "umbral_saldo_chico": "500.00",
-    "vigente_desde": "2026-10-27"
+    "vigente_desde": "2026-10-28"
   }
 ]

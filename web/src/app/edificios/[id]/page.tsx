@@ -1,12 +1,13 @@
 /**
- * Resumen del edificio (D1, D5, tarea 4.2): lee el resumen y, en paralelo,
- * la configuración vigente para la línea de datos.
+ * Resumen del edificio (D1, D5, tarea 4.2; D3, tarea 6.1): lee el resumen y,
+ * en paralelo, la configuración vigente para la línea de datos.
  */
 
 import { ErrorDePantalla } from "../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../componentes/Estados";
 import { configuracionVigente } from "../../../lib/api/configuracion";
 import { resumenDelEdificio } from "../../../lib/api/resumen";
+import { editarEdificioAction } from "../acciones";
 import { PantallaResumen } from "./Pantalla";
 
 type Props = {
@@ -37,6 +38,7 @@ export default async function PaginaResumen({ params }: Props) {
       id={id}
       resumen={resumen.datos}
       vigente={vigente.estado === "ok" ? vigente.datos : null}
+      accionEditar={editarEdificioAction.bind(null, id)}
     />
   );
 }

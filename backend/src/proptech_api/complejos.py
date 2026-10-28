@@ -36,6 +36,7 @@ from proptech_core.complejos.aplicacion.escritura import (
     confirmar_sin_saldos_previos,
     crear_edificio,
     crear_version_de_configuracion,
+    editar_edificio,
     hoy_en_mendoza,
 )
 from proptech_core.complejos.aplicacion.lectura import (
@@ -75,18 +76,14 @@ async def manejar_error_de_complejos(_request: Request, error: Exception) -> JSO
     if isinstance(error, Conflicto):
         return JSONResponse(status_code=409, content={"detail": "conflicto", "campo": error.campo})
     if isinstance(error, EntradaInvalida):
-        return JSONResponse(
-            status_code=422,
-            content={
-                "detail": [
-                    {
-                        "loc": ["body", *error.campo.split(".")],
-                        "msg": error.motivo,
-                        "type": "value_error",
-                    }
-                ]
-            },
-        )
+        item: dict[str, object] = {
+            "loc": ["body", *error.campo.split(".")],
+            "msg": error.motivo,
+            "type": error.tipo,
+        }
+        if error.identificadores is not None:
+            item["identificadores"] = error.identificadores
+        return JSONResponse(status_code=422, content={"detail": [item]})
     raise TypeError("error de complejos inesperado")
 
 
@@ -115,9 +112,20 @@ class CuerpoEdificio(CuerpoDeAlta):
     nombre: Annotated[
         str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
     ]
-    localidad: Annotated[
-        str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)
-    ]
+    #: D2 (tarea 2.6): el trío es obligatorio en toda alta nueva; `localidad`
+    #: deja de ser una entrada — se escribe derivada del nombre de Georef.
+    provincia_id: str
+    departamento_id: str
+    localidad_id: str
+    #: H-8/D2: sin `CHECK` de largo en la base (igual que `localidad` hoy);
+    #: el máximo de 200 y el recorte de control viven sólo acá.
+    calle_y_numero: (
+        Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
+    ) = None
+    #: D3 (tarea 3.2): un edificio nuevo trae las dos cantidades siempre;
+    #: `strict=True` (heredado de `CuerpoDeAlta`) ya rechaza `"4"` por texto.
+    pisos: Annotated[int, Field(ge=1, le=60)]
+    subsuelos: Annotated[int, Field(ge=0, le=5)]
     configuracion_inicial: ConfiguracionEdificio | None = None
 
 
@@ -134,6 +142,25 @@ class CuerpoDeEdicion(CuerpoDeAlta):
         if valor is None:
             raise ValueError("el campo no admite null")
         return valor
+
+
+class CuerpoEdicionEdificio(CuerpoDeEdicion):
+    """D3 (tarea 3.6): sin `administracion_id` ni `estado_migracion` — ni
+    siquiera declarados, `extra="forbid"` (heredado) los rechaza con 422
+    (escenario "Cambiar la administración por la edición")."""
+
+    nombre: (
+        Annotated[str, Field(min_length=1, max_length=200), AfterValidator(recortado_sin_control)]
+        | None
+    ) = None
+    provincia_id: str | None = None
+    departamento_id: str | None = None
+    localidad_id: str | None = None
+    calle_y_numero: (
+        Annotated[str, Field(max_length=200), AfterValidator(recortado_sin_control)] | None
+    ) = None
+    pisos: Annotated[int, Field(ge=1, le=60)] | None = None
+    subsuelos: Annotated[int, Field(ge=0, le=5)] | None = None
 
 
 class CuerpoEdicionUnidad(CuerpoDeEdicion):
@@ -181,6 +208,10 @@ class CuerpoEdicionGrupo(CuerpoDeEdicion):
         | None
     ) = None
     metodo: Literal["coeficiente", "superficie", "partes_iguales"] | None = None
+    #: D7 (tarea 4.5): desactivar/reactivar un grupo parcial; "Generales"
+    #: lo rechaza antes de llegar acá (`editar_grupo` corta en
+    #: `es_generales`, nunca llega a mirar este campo).
+    activo: bool | None = None
 
     @field_validator("clave")
     @classmethod
@@ -199,6 +230,12 @@ class CuerpoCategoria(CategoriaDeGasto, CuerpoDeAlta):
     nombre: Annotated[
         str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)
     ]
+    #: D7 (tarea 4.4): sin clave, se deriva de `nombre` en `crear_categoria`
+    #: (que vuelve a validar la forma con `CategoriaDeGasto`, nunca confía
+    #: en que una clave explícita ya pasó por acá sin control). Angosta el
+    #: tipo heredado (`str` → `str | None`): válido en runtime (Pydantic
+    #: valida el campo declarado acá, no el de la base), mypy no lo sabe.
+    clave: str | None = None  # type: ignore[assignment]
 
 
 class CuerpoEdicionCategoria(CuerpoDeEdicion):
@@ -222,7 +259,7 @@ class CuerpoVersion(ConfiguracionEdificio, CuerpoDeAlta):
 def mis_edificios(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | None]]:
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
     if not asignaciones:
         raise HTTPException(status_code=403, detail="sin_permiso")
@@ -250,7 +287,13 @@ def alta_edificio(
         sesion,
         identidad,
         nombre=cuerpo.nombre,
-        localidad=cuerpo.localidad,
+        provincia_id=cuerpo.provincia_id,
+        departamento_id=cuerpo.departamento_id,
+        localidad_id=cuerpo.localidad_id,
+        calle_y_numero=cuerpo.calle_y_numero,
+        pisos=cuerpo.pisos,
+        subsuelos=cuerpo.subsuelos,
+        georef=request.app.state.georef,
         parametros=request.app.state.parametros,
         reloj=lambda: datetime.now(UTC),
         request_id=UUID(request_id_actual.get() or ""),
@@ -284,12 +327,33 @@ def confirmar_edificio(
     return {"id": str(complejo_id), "estado_migracion": "sin_saldos_previos"}
 
 
+@router.patch("/complejos/{complejo_id}")
+def modificar_edificio(
+    complejo_id: UUID,
+    cuerpo: CuerpoEdicionEdificio,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CONFIGURAR_PADRON)
+    editar_edificio(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        cambios=cuerpo.model_dump(exclude_unset=True),
+        georef=request.app.state.georef,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"id": str(complejo_id)}
+
+
 @router.get("/complejos/{complejo_id}")
 def ver_complejo(
     complejo_id: UUID,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     complejo = cargar_complejo(sesion, complejo_id)
     if complejo is None:
         raise _no_encontrado()
@@ -301,6 +365,12 @@ def ver_complejo(
         "administracion_id": str(complejo.administracion_id),
         "nombre": complejo.nombre,
         "localidad": complejo.localidad,
+        "provincia_id": complejo.provincia_id,
+        "departamento_id": complejo.departamento_id,
+        "localidad_id": complejo.localidad_id,
+        "calle_y_numero": complejo.calle_y_numero,
+        "pisos": complejo.pisos,
+        "subsuelos": complejo.subsuelos,
     }
 
 
@@ -392,11 +462,12 @@ def _autorizar_grupo(sesion: Session, identidad: Identidad, grupo_id: UUID) -> N
 @router.get("/complejos/{complejo_id}/grupos")
 def grupos_del_edificio(
     complejo_id: UUID,
+    solo_activos: bool = False,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
     _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_CONFIGURACION_DEL_EDIFICIO)
-    return grupos.listar_grupos(sesion, complejo_id)
+    return grupos.listar_grupos(sesion, complejo_id, solo_activos=solo_activos)
 
 
 @router.post("/complejos/{complejo_id}/grupos", status_code=201)

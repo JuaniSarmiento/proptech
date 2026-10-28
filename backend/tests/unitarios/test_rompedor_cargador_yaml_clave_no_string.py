@@ -108,15 +108,17 @@ def test_leer_parametros_con_clave_no_texto_en_la_raiz_falla_sin_traceback(
 def test_leer_semilla_con_clave_no_texto_en_la_raiz_falla_sin_traceback(tmp_path: Path) -> None:
     """Antes de este arreglo, este caso no estaba atajado en absoluto: un
     `TypeError` de pydantic escapaba sin control de `leer_semilla` (L-009)."""
+    from proptech_core.compartido.georef import Georef
     from proptech_core.compartido.parametros import Parametros
     from proptech_core.compartido.semilla import SemillaInvalida, leer_semilla
 
     parametros = Parametros(**_PARAMETROS_VALIDOS)
+    georef = Georef(provincias=(), departamentos=(), localidades=())
 
     ruta = tmp_path / "semilla.yaml"
     ruta.write_text(f"1: {_SECRETO}\nversion: 1\n")
 
     with pytest.raises(SemillaInvalida) as exc_info:
-        leer_semilla(str(ruta), parametros)
+        leer_semilla(str(ruta), parametros, georef)
 
     assert _SECRETO not in str(exc_info.value)

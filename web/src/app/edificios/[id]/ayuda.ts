@@ -12,5 +12,5 @@ export const AYUDA_RESUMEN = {
   ejemplo:
     "Un edificio recién creado arranca en 0 de 6 pasos. Cargás las unidades, revisás que los coeficientes sumen 100%, y la barra avanza a 2 de 6.",
   yDespues:
-    "Cuando los seis pasos están hechos, el edificio queda listo para liquidar: ya podés generar las expensas del mes.",
+    "Cuando los siete pasos están hechos, el edificio queda listo para liquidar: ya podés generar las expensas del mes.",
 };

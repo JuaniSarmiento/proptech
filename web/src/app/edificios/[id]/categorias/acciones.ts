@@ -92,7 +92,8 @@ export async function crearCategoriaAction(
   formData: FormData,
 ): Promise<EstadoFormularioCategoria> {
   const resultado = await crearCategoria(complejoId, {
-    clave: String(formData.get("clave") ?? ""),
+    // D7 (tarea 4.4): sin campo "clave" en el formulario (6.3) — se
+    // autogenera en el backend a partir del nombre.
     nombre: String(formData.get("nombre") ?? ""),
   });
   return _mapearPanel(resultado, complejoId);

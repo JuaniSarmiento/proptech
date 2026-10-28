@@ -18,6 +18,7 @@ const GENERALES: Grupo = {
   nombre: "Generales",
   metodo: "coeficiente",
   es_generales: true,
+  activo: true,
   modo_de_coeficientes: "renormalizado",
   informe: { suma: "1.000000", diferencia: "0.000000", estado: "ok" },
   unidades: [{ unidad_id: "u1", coeficiente: "0.500000" }],
@@ -31,6 +32,7 @@ const ASCENSOR: Grupo = {
   nombre: "Ascensor",
   metodo: "coeficiente",
   es_generales: false,
+  activo: true,
   modo_de_coeficientes: "propios",
   informe: { suma: "1.000000", diferencia: "0.000000", estado: "ok" },
   unidades: [{ unidad_id: "u1", coeficiente: "0.500000" }],
@@ -72,7 +74,6 @@ describe("PantallaGrupos", () => {
     const botones = screen.getAllByRole("button", { name: "Agregar grupo" });
     const encabezado = botones[0];
     await usuario.click(botones[1] as HTMLElement);
-    await usuario.type(screen.getByLabelText("Clave"), "ascensor");
     await usuario.type(screen.getByLabelText("Nombre"), "Ascensor");
     await usuario.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -112,7 +113,7 @@ describe("PantallaGrupos", () => {
         accionEditar={accionNula}
       />,
     );
-    const boton = screen.getByRole("button", { name: /Ascensor/ });
+    const boton = screen.getByRole("button", { name: /^Ascensor/ });
     expect(boton.textContent).toContain("por coeficiente");
     expect(boton.textContent).not.toMatch(/· coeficiente ·/);
   });
@@ -129,12 +130,12 @@ describe("PantallaGrupos", () => {
         accionEditar={accionNula}
       />,
     );
-    await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
+    await usuario.click(screen.getByRole("button", { name: /^Ascensor/ }));
     expect(screen.getByLabelText("Nombre")).toHaveProperty("value", "Ascensor");
     expect(screen.getByLabelText("Coeficiente de 1A")).toHaveProperty("value", "0,500000");
   });
 
-  it('"Agregar grupo" abre el panel de alta, con clave, nombre, método y modo', async () => {
+  it('"Agregar grupo" abre el panel de alta, con nombre, método y modo (sin clave, 6.3)', async () => {
     const usuario = userEvent.setup();
     render(
       <PantallaGrupos
@@ -147,8 +148,10 @@ describe("PantallaGrupos", () => {
       />,
     );
     await usuario.click(screen.getByRole("button", { name: "Agregar grupo" }));
-    expect(screen.getByLabelText("Clave")).toBeTruthy();
+    expect(screen.queryByLabelText("Clave")).toBeNull();
     expect(screen.getByLabelText("Nombre")).toBeTruthy();
+    expect(screen.getByLabelText("Método")).toBeTruthy();
+    expect(screen.getByLabelText("Modo")).toBeTruthy();
   });
 
   it("cambiar el modo en edición avisa que se reescriben los coeficientes", async () => {
@@ -163,7 +166,7 @@ describe("PantallaGrupos", () => {
         accionEditar={accionNula}
       />,
     );
-    await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
+    await usuario.click(screen.getByRole("button", { name: /^Ascensor/ }));
     await usuario.selectOptions(screen.getByLabelText("Modo"), "renormalizado");
     expect(screen.getByText(/se van a reescribir los coeficientes/i)).toBeTruthy();
   });
@@ -184,7 +187,7 @@ describe("PantallaGrupos", () => {
         accionEditar={accionEditar}
       />,
     );
-    await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
+    await usuario.click(screen.getByRole("button", { name: /^Ascensor/ }));
     await usuario.click(screen.getByRole("button", { name: "Guardar" }));
     expect(
       await screen.findByText("Se guardaron el nombre y el método; las unidades no."),
@@ -219,15 +222,112 @@ describe("PantallaGrupos", () => {
         accionEditar={accionEditar}
       />,
     );
-    await usuario.click(screen.getByRole("button", { name: /Ascensor/ }));
+    await usuario.click(screen.getByRole("button", { name: /^Ascensor/ }));
     const nombre = screen.getByLabelText("Nombre") as HTMLInputElement;
     await usuario.clear(nombre);
     await usuario.type(nombre, "Ascensor renombrado a medias");
-    await usuario.click(screen.getByRole("button", { name: /Bauleras/ }));
-    const oculto = container.querySelector('input[name="grupo_id"]') as HTMLInputElement;
+    await usuario.click(screen.getByRole("button", { name: /^Bauleras/ }));
+    // `querySelector` simple matchearía el hidden de activar/desactivar de
+    // la primera fila (mismo `name`, 6.3): el del panel es el que vive
+    // dentro de `.formulario` (D8), igual que en categorias/Pantalla.test.tsx.
+    const oculto = container.querySelector(
+      '.formulario input[name="grupo_id"]',
+    ) as HTMLInputElement;
     expect({
       id: oculto.value,
       nombre: (screen.getByLabelText("Nombre") as HTMLInputElement).value,
     }).toEqual({ id: "g2", nombre: "Bauleras" });
+  });
+
+  it('6.3 "Desactivar un grupo": el botón manda el grupo y el "activo" invertido a la acción de estado', async () => {
+    const usuario = userEvent.setup();
+    const accionEstado = vi.fn().mockResolvedValue({ erroresDesconocidos: [], ok: true });
+    render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, ASCENSOR]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+        accionEstado={accionEstado}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Desactivar Ascensor" }));
+    expect(accionEstado).toHaveBeenCalledTimes(1);
+    const formData = accionEstado.mock.calls[0]?.[1] as FormData;
+    expect(formData.get("grupo_id")).toBe("g1");
+    expect(formData.get("activo")).toBe("false");
+  });
+
+  it('6.3 "Desactivar un grupo" (reactivar): un grupo inactivo muestra "Reactivar" y manda "activo=true"', async () => {
+    const PILETA_INACTIVA: Grupo = {
+      ...ASCENSOR,
+      id: "g2",
+      clave: "pileta",
+      nombre: "Pileta",
+      activo: false,
+    };
+    const usuario = userEvent.setup();
+    const accionEstado = vi.fn().mockResolvedValue({ erroresDesconocidos: [], ok: true });
+    render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, PILETA_INACTIVA]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+        accionEstado={accionEstado}
+      />,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Reactivar Pileta" }));
+    const formData = accionEstado.mock.calls[0]?.[1] as FormData;
+    expect(formData.get("activo")).toBe("true");
+  });
+
+  it('6.3 "Generales": "Generales" no tiene botón de desactivar ni reactivar, y no se puede borrar (no hay ruta en la pantalla)', () => {
+    render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, ASCENSOR]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+        accionEstado={accionNula}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Desactivar Generales" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reactivar Generales" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /borrar/i })).toBeNull();
+  });
+
+  it('"En este edificio" cuenta activos y desactivados (mismo patrón que categorías)', () => {
+    const PILETA_INACTIVA: Grupo = {
+      ...ASCENSOR,
+      id: "g2",
+      clave: "pileta",
+      nombre: "Pileta",
+      activo: false,
+    };
+    render(
+      <PantallaGrupos
+        id="1"
+        nombreEdificio="Edificio API"
+        grupos={[GENERALES, ASCENSOR, PILETA_INACTIVA]}
+        unidadesDisponibles={UNIDADES}
+        accionCrear={accionNula}
+        accionEditar={accionNula}
+        accionEstado={accionNula}
+      />,
+    );
+    const panel = screen.getByRole("region", { name: "En este edificio" });
+    expect(within(panel).getByText("Activos")).toBeTruthy();
+    expect(within(panel).getByText("Desactivados")).toBeTruthy();
+    const filaActivos = within(panel).getByText("Activos").closest(".renglones__fila");
+    const filaDesactivados = within(panel).getByText("Desactivados").closest(".renglones__fila");
+    expect(filaActivos?.textContent).toMatch(/2$/);
+    expect(filaDesactivados?.textContent).toMatch(/1$/);
   });
 });

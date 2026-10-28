@@ -95,3 +95,45 @@ def test_el_migrador_no_es_dueno_de_las_tablas_de_solo_agregar(
     assert not puede_quitar_force, (
         f"proptech_migrador puede NO FORCE ROW LEVEL SECURITY sobre {tabla}: es su dueño (DBA-1)"
     )
+
+
+def test_funciones_de_triggers_protegidos_no_son_del_migrador(
+    contenedor: PostgresContainer,  # noqa: F811
+    esquema: None,
+) -> None:
+    with psycopg.connect(
+        host=contenedor.get_container_host_ip(),
+        port=contenedor.get_exposed_port(5432),
+        dbname=contenedor.dbname,
+        user=contenedor.username,
+        password=contenedor.password,
+    ) as conexion:
+        funciones = conexion.execute(
+            "SELECT c.relname, p.proname, pg_get_userbyid(p.proowner) "
+            "FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+            "JOIN pg_namespace n ON n.oid=c.relnamespace "
+            "JOIN pg_proc p ON p.oid=t.tgfoid "
+            "WHERE n.nspname='public' AND c.relname = ANY(%s) AND NOT t.tgisinternal",
+            (list(TABLAS_DE_SOLO_AGREGAR),),
+        ).fetchall()
+    assert funciones
+    assert all(dueno != MIGRADOR_USER for _, _, dueno in funciones), funciones
+
+
+def test_migrador_no_puede_reemplazar_funcion_protegida(
+    contenedor: PostgresContainer,  # noqa: F811
+    esquema: None,
+) -> None:
+    with psycopg.connect(
+        host=contenedor.get_container_host_ip(),
+        port=contenedor.get_exposed_port(5432),
+        dbname=contenedor.dbname,
+        user=MIGRADOR_USER,
+        password=MIGRADOR_PASSWORD,
+    ) as conexion:
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="must be owner") as error:
+            conexion.execute(
+                "CREATE OR REPLACE FUNCTION public.fn_cuenta_bloqueada() "
+                "RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END $$"
+            )
+        assert error.value.sqlstate == "42501"

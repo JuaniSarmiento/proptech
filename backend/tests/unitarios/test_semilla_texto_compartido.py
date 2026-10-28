@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.compartido.semilla import SemillaInvalida, leer_semilla
 
@@ -34,8 +35,9 @@ def test_semilla_aplica_la_misma_regla_de_texto_que_la_api(
     ruta = tmp_path / "semilla.yaml"
     ruta.write_text(contenido)
     parametros = leer_parametros(str(RAIZ / "config" / "parametros.yaml"))
+    georef = leer_georef(str(RAIZ / "config" / "georef"))
     with pytest.raises(SemillaInvalida):
-        leer_semilla(str(ruta), parametros)
+        leer_semilla(str(ruta), parametros, georef)
 
 
 @pytest.mark.parametrize("caracter", ["\u200b", "\u034f", "\ue000", "\u2028"])
@@ -48,15 +50,17 @@ def test_semilla_rechaza_unicode_inseguro(tmp_path: Path, caracter: str) -> None
     assert contenido != EJEMPLO
     ruta.write_text(contenido)
     parametros = leer_parametros(str(RAIZ / "config" / "parametros.yaml"))
+    georef = leer_georef(str(RAIZ / "config" / "georef"))
     with pytest.raises(SemillaInvalida):
-        leer_semilla(str(ruta), parametros)
+        leer_semilla(str(ruta), parametros, georef)
 
 
 def test_semilla_recorta_identificadores_y_referencias_de_grupos(tmp_path: Path) -> None:
     ruta = tmp_path / "semilla.yaml"
     ruta.write_text(EJEMPLO.replace('"1A"', '" 1A "'))
     parametros = leer_parametros(str(RAIZ / "config" / "parametros.yaml"))
-    semilla = leer_semilla(str(ruta), parametros)
+    georef = leer_georef(str(RAIZ / "config" / "georef"))
+    semilla = leer_semilla(str(ruta), parametros, georef)
     assert any(u.identificador == "1A" for u in semilla.unidades)
     assert all(u.identificador == u.identificador.strip() for u in semilla.unidades)
     ascensor = semilla.grupos["ascensor"]

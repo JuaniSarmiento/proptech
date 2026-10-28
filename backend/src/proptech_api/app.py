@@ -3,11 +3,12 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
-from proptech_api import complejos, cuenta_corriente, invitaciones, personal, salud, sesion
+from proptech_api import complejos, cuenta_corriente, georef, invitaciones, personal, salud, sesion
 from proptech_api.cuerpos import manejador_422
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso
@@ -25,6 +26,7 @@ from proptech_core.compartido.base_de_datos import (
 from proptech_core.compartido.cola import AdaptadorColaArq
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
 from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
+from proptech_core.compartido.georef import GeorefInvalido, leer_georef
 from proptech_core.compartido.logs import configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
@@ -56,6 +58,14 @@ def crear_app() -> FastAPI:
     # Idem con los parámetros del sistema (D6): un archivo inválido también
     # termina el arranque acá, nombrando cada campo con problemas.
     parametros = leer_parametros(configuracion.proptech_parametros)
+    # El archivo de Georef (D1) vive junto a `parametros.yaml` dentro del
+    # mismo montaje de sólo lectura (`../config:/app/config:ro`,
+    # `infra/compose.yaml`): no hace falta una variable de entorno nueva.
+    try:
+        datos_georef = leer_georef(str(Path(configuracion.proptech_parametros).parent / "georef"))
+    except GeorefInvalido as error:
+        _logger.error("arranque_fallido", extra={"causa": str(error)})
+        raise
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -103,6 +113,7 @@ def crear_app() -> FastAPI:
     if configuracion.clerk_jwt_key is None:
         _logger.info("login_sin_configurar")
     app.state.parametros = parametros
+    app.state.georef = datos_georef
     # La cola queda cableada (D4): el pool de ARQ es perezoso (sólo conecta
     # al primer uso), así que armarla acá no intenta hablar con Redis y la
     # app arranca igual aunque esté inalcanzable (tarea 4.7).
@@ -117,6 +128,7 @@ def crear_app() -> FastAPI:
     app.include_router(salud.router)
     app.include_router(complejos.router)
     app.include_router(cuenta_corriente.router)
+    app.include_router(georef.router)
     app.include_router(sesion.router)
     app.include_router(sesion.router_de_token)
     app.include_router(invitaciones.router_de_token)

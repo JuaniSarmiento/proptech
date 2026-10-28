@@ -17,8 +17,13 @@
 > (27/10/2026, migraciones `0023` y `0024`) construye el libro: ocho tablas nuevas en
 > `cuenta_corriente` (`cuenta`, `emision`, `evento_de_emision`, `obligacion`, `movimiento`,
 > `imputacion`, de sólo agregar; `candado_de_cuenta`, que no lo es; `tipo_de_movimiento`, vocabulario
-> global), y suma `corregir_movimiento` al vocabulario de auditoría. El resto (4c, 4d, 5 a 15) sigue
-> siendo planificado, por cambio, y así queda marcado en cada sección.
+> global), y suma `corregir_movimiento` al vocabulario de auditoría. El 3c `pulido-de-la-configuracion`
+> (27/10/2026, migraciones `0025` a `0027`, después de las del 4b) suma a `complejo` la ubicación (ids
+> de Georef, nullable, "los tres o ninguno") y `calle_y_numero`, pasa `localidad` a nullable y
+> derivada; suma `pisos` y `subsuelos` al edificio y acota `unidad.piso` a un vocabulario cerrado
+> (nullable); suma `grupo_de_reparto.activo` y el evento `editar_edificio` al vocabulario de
+> auditoría. El resto (4c, 4d, 5 a 15) sigue siendo planificado, por cambio, y así queda marcado en
+> cada sección.
 
 ## Dominios
 
@@ -60,15 +65,15 @@ erDiagram
     }
     ADMINISTRACION ||--o{ COMPLEJO : "tiene (0003)"
     ADMINISTRACION ||--o{ PERSONA : "tiene (0003, una cuenta por administracion, D-096)"
-    COMPLEJO ||--o{ UNIDAD : "tiene (0003 minima, 0005 completa)"
-    COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (0006/0007, R01, D-100)"
+    COMPLEJO ||--o{ UNIDAD : "tiene (0003 minima, 0005 completa, piso acotado en 0026)"
+    COMPLEJO ||--o{ GRUPO_DE_REPARTO : "define (0006/0007, R01, D-100; activo en 0027)"
     GRUPO_DE_REPARTO }o--o{ UNIDAD : "agrupa via GRUPO_UNIDAD (0006/0007)"
     COMPLEJO ||--o{ CATEGORIA_DE_GASTO : "define (0008, R16)"
     COMPLEJO ||--o{ CONFIGURACION_VERSIONADA : "versiona (0009, solo agregar)"
     PERSONA ||--o{ ASIGNACION_ROL : "tiene (0003)"
     ASIGNACION_ROL }o--|| COMPLEJO : "alcanza (0017, opcional para perfiles principales)"
     ASIGNACION_ROL }o--|| UNIDAD : "alcanza (0003, solo rol vecino)"
-    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010, +1 en 0024)"
+    ACCION_DE_AUDITORIA ||--o{ AUDITORIA : "clasifica (0004, +5 acciones en 0010, +1 en 0024, +editar_edificio en 0027)"
     COMPLEJO ||--o{ CUENTA : "tiene (0023, de unidad o persona)"
     UNIDAD ||--o| CUENTA : "es dueña de (0023, a lo sumo una)"
     PERSONA ||--o| CUENTA : "es dueña de (0023, una por edificio)"
@@ -85,6 +90,10 @@ erDiagram
     OBLIGACION ||--o{ IMPUTACION : "recibe (0023, por componente)"
     TIPO_DE_MOVIMIENTO ||--o{ MOVIMIENTO : "clasifica (0023, vocabulario global, ampliable por INSERT)"
 ```
+
+`complejo` suma en `0025`-`0026` (3c) la ubicación (`provincia_id`/`departamento_id`/`localidad_id`/
+`calle_y_numero`, nullable) y `pisos`/`subsuelos` (nullable); no se dibujan como entidades aparte
+porque son columnas del mismo `complejo`, no tablas nuevas.
 
 La única tabla del sistema hasta el 14/10/2026 era `trabajos_hechos`
 (`backend/migraciones/versions/0002_trabajos_hechos.py`). La migración `0001_inicial.py` está vacía a
@@ -206,45 +215,69 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
   cliente.
 - **Índices**: sólo el implícito de la clave primaria; el resto queda a decidir en el design del 2b.
 
-#### `complejo` · completo (migración `0003`, cambio 2a; completada en `0005`, cambio 3a, D-040, D-076)
+#### `complejo` · completo (migración `0003`, cambio 2a; completada en `0005`, cambio 3a; ubicación y
+pisos en `0025`/`0026`, cambio 3c, D-040, D-076, D-128)
 
 - **Qué es**: la comunidad que se administra (hoy sólo "edificio"; "barrio" queda preparado en el
   diseño, D-027). Es un **alcance** dentro de la administración (D-076), no el tenant.
-- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py`): `id` · `UUID` PK;
-  `administracion_id` · `UUID NOT NULL`; `nombre` · `TEXT NOT NULL`; `localidad` · `TEXT NOT NULL`
-  (rellenada con `''` al agregarse sobre los edificios del 2a, sin `CHECK` de no vacío por eso mismo,
-  ver "Deuda del cierre del 3a"); `estado_migracion` · `TEXT NOT NULL`, `CHECK IN ('pendiente',
-  'confirmada', 'sin_saldos_previos')`, default `'pendiente'` (R09, D-083).
+- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py` + `0025_ubicacion_del_edificio.py`
+  + `0026_pisos_del_edificio_y_la_unidad.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+  `nombre` · `TEXT NOT NULL`; `localidad` · `TEXT`, **nullable desde `0025`** y **derivada** (D2 del 3c:
+  la aplicación la escribe con el nombre de la localidad de Georef cada vez que guarda la ubicación; la
+  API dejó de aceptarla como entrada); `provincia_id`/`departamento_id`/`localidad_id` · `TEXT`,
+  nullable, los tres ids del archivo de Georef (`config/georef/`, CC BY 4.0, D-128); `calle_y_numero` ·
+  `TEXT`, nullable, texto libre sin validar contra el dataset de calles (P62); `pisos` · `INTEGER`,
+  nullable, 1 a 60; `subsuelos` · `INTEGER`, nullable, 0 a 5 (P64); `estado_migracion` · `TEXT NOT NULL`,
+  `CHECK IN ('pendiente', 'confirmada', 'sin_saldos_previos')`, default `'pendiente'` (R09, D-083).
 - **Relaciones**: pertenece a una `administracion` (FK simple); tiene muchas `unidad`,
   `grupo_de_reparto`, `categoria_de_gasto` y `configuracion_versionada` (todas con FK compuesta hacia
   `complejo`, convención del 2a). Ya tenía `unidad` y `asignacion_rol` colgando desde el 2a.
 - **Constraints**: `administracion_id NOT NULL`, RLS forzada; `UNIQUE (administracion_id, id)` para que
   las tablas que cuelgan de él puedan usarlo como destino de una FK compuesta; `ck_complejo_nombre_no_vacio`
-  (`0016`, `nombre <> ''`). `localidad` queda fuera de ese `CHECK`, decisión de Juani, dueño propuesto 3b.
+  (`0016`, `nombre <> ''`). `localidad` queda fuera de ese `CHECK` desde siempre (decisión de Juani,
+  dueño 3b; no cambia con el 3c). `ck_complejo_ubicacion_completa_o_vacia` (`0025`): los tres ids de
+  Georef son los tres `NULL` o los tres no `NULL` — nunca una ubicación a medias; `calle_y_numero` no
+  lleva `CHECK` de largo en la base, igual que `localidad` (el máximo de 200 vive en la aplicación,
+  H-8). `ck_complejo_pisos` y `ck_complejo_subsuelos` (`0026`): rango o `NULL`. Los edificios ya
+  cargados antes del 3c quedan con las seis columnas nuevas en `NULL` (sin backfill, D3/DBA-1): la
+  puesta a punto los pide como paso nuevo, antes de los seis que ya tenía el 3b.
 - **Índices**: ninguno además de los implícitos de las claves.
+- **Editar el edificio** (`PATCH /complejos/{id}`, D5 del 3c): reusa el permiso `CONFIGURAR_PADRON`
+  (no toca la matriz D-106); audita con el evento `editar_edificio` (sumado a `accion_de_auditoria` en
+  `0027`), guardando sólo los **nombres** de los campos cambiados, nunca otros valores (D-016).
 
-#### `unidad` · completa (migración `0003`, cambio 2a; completada en `0005`, cambio 3a, D-082)
+#### `unidad` · completa (migración `0003`, cambio 2a; completada en `0005`, cambio 3a, D-082; `piso`
+acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 
 - **Qué es**: la unidad funcional sobre la que se liquida (departamento, cochera, baulera, local;
   `11_glosario.md`).
-- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py`): `id` · `UUID` PK;
-  `administracion_id` · `UUID NOT NULL`; `complejo_id` · `UUID NOT NULL` (FK compuesta
-  `(administracion_id, complejo_id)` → `complejo`); `identificador` · `TEXT NOT NULL` (renombrada desde
-  `nombre`, única dentro de su complejo); `tipo` · `TEXT NOT NULL`, `CHECK IN` los valores de
-  `TIPOS_DE_UNIDAD_VALIDOS`, default `'departamento'`; `piso` · `TEXT NOT NULL`; `coeficiente` ·
-  `NUMERIC(7,6) NOT NULL`, `CHECK > 0 AND <= 1`; `superficie_m2` · `NUMERIC(10,2) NOT NULL`,
-  `CHECK > 0`; `estado` · `TEXT`, opcional (desactivado por default en edificios, D-030; se construye
-  con barrios, v1.2, D-089).
+- **Atributos** (`0003_acceso_minimo.py` + `0005_edificio_y_unidad.py` +
+  `0026_pisos_del_edificio_y_la_unidad.py`): `id` · `UUID` PK; `administracion_id` · `UUID NOT NULL`;
+  `complejo_id` · `UUID NOT NULL` (FK compuesta `(administracion_id, complejo_id)` → `complejo`);
+  `identificador` · `TEXT NOT NULL` (renombrada desde `nombre`, única dentro de su complejo); `tipo` ·
+  `TEXT NOT NULL`, `CHECK IN` los valores de `TIPOS_DE_UNIDAD_VALIDOS`, default `'departamento'`;
+  `piso` · `TEXT`, **nullable desde `0026`** (`NULL` = "sin completar", nunca un dato inventado, E5);
+  `coeficiente` · `NUMERIC(7,6) NOT NULL`, `CHECK > 0 AND <= 1`; `superficie_m2` · `NUMERIC(10,2) NOT
+  NULL`, `CHECK > 0`; `estado` · `TEXT`, opcional (desactivado por default en edificios, D-030; se
+  construye con barrios, v1.2, D-089).
+- **Vocabulario de `piso`** (D3 del 3c): `^(SS[1-5]|PB|[1-9]|[1-5][0-9]|60)$`
+  (`ck_unidad_piso`) — `SS1` a `SS<complejo.subsuelos>`, `PB` (siempre) y `1` a `<complejo.pisos>`; el
+  rango 1-60 queda escrito en el propio patrón. La base sólo valida la **forma**; que el piso esté
+  dentro del vocabulario **de su edificio concreto** (que depende de `complejo.pisos`/`subsuelos`, una
+  lectura cruzada) lo valida la aplicación. Los cuatro tipos de unidad (D-029) eligen de la misma
+  lista: no hay restricción de vocabulario por tipo (la semilla ya pone cocheras y baulera en el
+  subsuelo). Migración `0026`: mapea `'PB'`→`'PB'`, `'SS'`→`'SS1'`, un entero de 1 a 60 ya escrito como
+  tal → ese mismo texto; todo lo demás (vacío, `'pb'`, `'1°'`, `'Entrepiso'`, `' 2 '`) → `NULL`.
 - **Relaciones**: pertenece a un `complejo` (FK compuesta); participa de uno o varios `grupo_de_reparto`
   vía `grupo_unidad`; tendrá muchas `obligacion`, `movimiento`, `cargo_particular`, `pago`,
   `cbu_historico` (cambio 4 en adelante). Ya es destino de FK compuesta desde `asignacion_rol` (rol
   vecino).
 - **Constraints**: `UNIQUE (administracion_id, complejo_id, id)` (destino de FK compuesta de tres
   columnas, ver `asignacion_rol` y `grupo_unidad`); `uq_unidad_identificador` (único dentro del
-  complejo); `ck_unidad_identificador_no_vacio` (`0016`); trigger `trg_unidad_edificio_inmutable`
-  (`0014`, RF-D de la propuesta del 3b/R3B-5): ningún `UPDATE` puede cambiar `complejo_id` ni
-  `administracion_id` de una unidad ya creada, tampoco por SQL. La suma de coeficientes de R01 se valida
-  en la aplicación, con la función pura de `compartido`, no en la base.
+  complejo); `ck_unidad_identificador_no_vacio` (`0016`); `ck_unidad_piso` (`0026`, ver arriba); trigger
+  `trg_unidad_edificio_inmutable` (`0014`, RF-D de la propuesta del 3b/R3B-5): ningún `UPDATE` puede
+  cambiar `complejo_id` ni `administracion_id` de una unidad ya creada, tampoco por SQL. La suma de
+  coeficientes de R01 se valida en la aplicación, con la función pura de `compartido`, no en la base.
 - **Índices**: ninguno además de los implícitos de las claves y del único de identificador.
 
 #### `persona` · existe (migración `0003`, cambio 2a, D-076, D-106)
@@ -345,6 +378,11 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 - **Acción que suma el 4b** (`0024_corregir_movimiento.py`, E8): `corregir_movimiento`, de super admin
   y administrador principal; se audita en la misma transacción que la corrección; un replay por
   `operacion_id` no vuelve a auditar.
+- **Evento que suma el 3c** (`0027_editar_edificio.py`, D5, D-128): `editar_edificio` — audita
+  `PATCH /complejos/{id}` (edición de ubicación, calle, pisos y subsuelos), con sólo los **nombres**
+  de los campos cambiados en el detalle, nunca otros valores (D-016). Mismo mecanismo de punto de no
+  retorno que `0022`: la primera auditoría de este evento hace fallar el `downgrade` de `0027` por la
+  FK, a propósito.
 
 #### `auditoria` · existe (migración `0004`, cambio 2a, D-016, D9)
 
@@ -371,27 +409,36 @@ una FK simple a `complejo.id`: así ninguna fila puede apuntar a un complejo de 
 
 ### Existe hoy, dominio `complejos` (migraciones `0006` a `0016`, cambio 3a, R01, D-100)
 
-#### `grupo_de_reparto` · existe (migración `0006`; modo de coeficientes en `0007`; protegido en `0011`/`0012`/`0015`)
+#### `grupo_de_reparto` · existe (migración `0006`; modo de coeficientes en `0007`; protegido en
+`0011`/`0012`/`0015`; desactivable en `0027`, cambio 3c, D4, D-128)
 
 - **Qué es**: el grupo por el que se reparte un gasto (Generales, Ascensor, Cocheras; R01).
-- **Atributos** (`0006_grupos_de_reparto.py` + `0007_modo_de_coeficientes.py`): `id` · `UUID` PK;
-  `administracion_id`/`complejo_id` · `UUID NOT NULL` (FK compuesta a `complejo`); `clave` · `TEXT
-  NOT NULL`; `nombre` · `TEXT NOT NULL`; `metodo` · `TEXT NOT NULL`, `CHECK IN ('coeficiente',
-  'superficie', 'partes_iguales')`; `es_generales` · `BOOLEAN NOT NULL`, default `false`;
-  `modo_de_coeficientes` · `TEXT NOT NULL`, `CHECK IN ('renormalizado', 'propios')`, default
-  `'renormalizado'` (D15, D-100: un grupo parcial renormaliza entre sus unidades o usa un coeficiente
-  propio por miembro).
+- **Atributos** (`0006_grupos_de_reparto.py` + `0007_modo_de_coeficientes.py` +
+  `0027_editar_edificio.py`): `id` · `UUID` PK; `administracion_id`/`complejo_id` · `UUID NOT NULL`
+  (FK compuesta a `complejo`); `clave` · `TEXT NOT NULL` (desde el 3c, **autogenerada** desde el nombre
+  por una función pura de `compartido/` cuando el formulario no la manda — minúsculas, sin tildes, lo
+  que no es `[a-z0-9]` colapsa a `_`, prefijo por letra, recorte a 40, desempate `_2`/`_3`; la API sigue
+  aceptando `clave` explícita para la semilla y el futuro importador); `nombre` · `TEXT NOT NULL`;
+  `metodo` · `TEXT NOT NULL`, `CHECK IN ('coeficiente', 'superficie', 'partes_iguales')`; `es_generales`
+  · `BOOLEAN NOT NULL`, default `false`; `modo_de_coeficientes` · `TEXT NOT NULL`, `CHECK IN
+  ('renormalizado', 'propios')`, default `'renormalizado'` (D15, D-100: un grupo parcial renormaliza
+  entre sus unidades o usa un coeficiente propio por miembro); `activo` · `BOOLEAN NOT NULL`, default
+  `true` (`0027`, D4 del 3c, R16/P69: un grupo parcial se **desactiva**, nunca se borra — mismo trato
+  que `categoria_de_gasto.activa`).
 - **Relaciones**: pertenece a un `complejo`; agrupa muchas `unidad` vía `grupo_unidad`.
 - **Constraints**: `uq_grupo_clave` (única por complejo); `uq_grupo_generales` (índice único parcial,
   un solo `es_generales=true` por complejo); `ck_grupo_generales_coeficiente` (Generales sólo por
   coeficiente); `ck_grupo_generales_renormalizado` (Generales sólo renormalizado);
   `ck_grupo_propios_por_coeficiente` (modo `propios` exige `metodo='coeficiente'`); `uq_grupo_modo`
   (clave de cuatro columnas para la FK de `grupo_unidad`, `ON UPDATE CASCADE`). Dos triggers de `0011`
-  (`fn_grupo_generales_protegido`, ampliado en `0015` con `complejo_id`/`administracion_id`, RF-D-1):
-  "Generales" no admite `DELETE` ni cambiar `es_generales`, `metodo`, `modo_de_coeficientes`,
-  `complejo_id` ni `administracion_id`, también por SQL. Dos triggers de `0012`: "Generales" nunca tiene
-  filas explícitas en `grupo_unidad` (su alcance es implícito, todas las unidades del edificio) y no se
-  puede promover un grupo con miembros a `es_generales`.
+  (`fn_grupo_generales_protegido`, ampliado en `0015` con `complejo_id`/`administracion_id`, RF-D-1, y
+  en `0027` con `activo`): "Generales" no admite `DELETE` ni cambiar `es_generales`, `metodo`,
+  `modo_de_coeficientes`, `complejo_id`, `administracion_id` ni **`activo`**, también por SQL — no se
+  puede desactivar "Generales" ni por la API ni directo en la base. Dos triggers de `0012`: "Generales"
+  nunca tiene filas explícitas en `grupo_unidad` (su alcance es implícito, todas las unidades del
+  edificio) y no se puede promover un grupo con miembros a `es_generales`. `PATCH /grupos/{id}` acepta
+  `activo`; no hay ninguna ruta de borrado real. La desactivación queda auditada con `editar_grupo`
+  (ya existía desde el 4a); la puesta a punto y la lectura de grupos disponibles filtran por `activo`.
 
 #### `grupo_unidad` · existe (migración `0006`; modo de coeficientes en `0007`)
 

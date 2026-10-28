@@ -25,7 +25,8 @@ async function cargarUnidad(page: Page, id: string) {
   const panel = page.getByRole("dialog", { name: "Agregar unidad" });
   await panel.getByLabel("Identificador", { exact: true }).fill(datos.identificador);
   await panel.getByRole("combobox", { name: "Tipo", exact: true }).selectOption(datos.tipo);
-  await panel.getByLabel("Piso", { exact: true }).fill(datos.piso);
+  // 3c (D3): el piso es una lista del vocabulario del edificio, no texto libre.
+  await panel.getByLabel("Piso", { exact: true }).selectOption(datos.piso);
   await panel
     .getByLabel("Superficie (m²)", { exact: true })
     .fill(datos.superficie_m2.replace(".", ","));

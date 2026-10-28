@@ -28,6 +28,9 @@ def _resolver(api: ApiEdificio, ruta: str) -> str:
         # llega a tocar la base (prueba justo lo contrario, D7).
         invitacion_id=uuid.uuid4(),
         asignacion_id=uuid.uuid4(),
+        # Ids reales de Georef (Mendoza / Capital), para las rutas de 2.5.
+        provincia_id="50",
+        departamento_id="50007",
     )
 
 

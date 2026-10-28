@@ -70,14 +70,23 @@ function nombreDeEdificio(edificios: EdificioDeLista[], id: string | null): stri
   return edificios.find((e) => e.id === id)?.nombre ?? "Un edificio";
 }
 
+/** 6.4 (D10): lo que hace falta para armar la confirmación de "Quitar" —
+ * la asignación en sí y el nombre de la persona a la que se le quita, que
+ * la spec exige mostrar en el diálogo. */
+export type AsignacionAQuitar = { asignacion: AsignacionDePersona; personaNombre: string };
+
 function Asignaciones({
+  personaNombre,
   asignaciones,
   edificios,
-  accionQuitar,
+  quitadas,
+  onQuitar,
 }: {
+  personaNombre: string;
   asignaciones: AsignacionDePersona[];
   edificios: EdificioDeLista[];
-  accionQuitar: AccionSimple;
+  quitadas: Set<string>;
+  onQuitar: (objetivo: AsignacionAQuitar, evento: { currentTarget: HTMLElement }) => void;
 }) {
   return (
     <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Perfiles">
@@ -90,36 +99,47 @@ function Asignaciones({
               · {nombreDeEdificio(edificios, asignacion.complejo_id)}
             </span>
           </span>
-          <BotonQuitar asignacion={asignacion} accionQuitar={accionQuitar} />
+          <BotonQuitar
+            asignacion={asignacion}
+            personaNombre={personaNombre}
+            quitada={quitadas.has(asignacion.asignacion_id)}
+            onQuitar={onQuitar}
+          />
         </li>
       ))}
     </ul>
   );
 }
 
+/**
+ * D10 (tarea 6.4): "Quitar" ya no manda nada por sí solo — abre la
+ * confirmación de `PanelLateral` (`role="dialog"`, `Esc`, foco devuelto),
+ * nunca el patrón inline de `saldos-previos/Pantalla.tsx` (sin `Esc`) ni
+ * `window.confirm()` nativo (ninguno de los dos cumple el escenario "Quitar
+ * y cancelar con teclado" de `pantallas-del-edificio`).
+ */
 function BotonQuitar({
   asignacion,
-  accionQuitar,
+  personaNombre,
+  quitada,
+  onQuitar,
 }: {
   asignacion: AsignacionDePersona;
-  accionQuitar: AccionSimple;
+  personaNombre: string;
+  quitada: boolean;
+  onQuitar: (objetivo: AsignacionAQuitar, evento: { currentTarget: HTMLElement }) => void;
 }) {
-  const [estado, enviar] = useActionState(accionQuitar, null);
-  if (estado?.ok) {
+  if (quitada) {
     return <span className="texto-secundario">Quitada</span>;
   }
   return (
-    <form action={enviar} className="fila-de-asignacion__accion">
-      <input type="hidden" name="asignacion_id" value={asignacion.asignacion_id} />
-      <button type="submit" className="boton-enlace">
-        Quitar
-      </button>
-      {estado?.error ? (
-        <p role="alert" className="campo__error">
-          {estado.error}
-        </p>
-      ) : null}
-    </form>
+    <button
+      type="button"
+      className="boton-enlace"
+      onClick={(evento) => onQuitar({ asignacion, personaNombre }, evento)}
+    >
+      Quitar
+    </button>
   );
 }
 
@@ -153,12 +173,14 @@ function FilaDePersona({
   persona,
   edificios,
   accionRevocar,
-  accionQuitar,
+  quitadas,
+  onQuitar,
 }: {
   persona: Persona;
   edificios: EdificioDeLista[];
   accionRevocar: AccionSimple;
-  accionQuitar: AccionSimple;
+  quitadas: Set<string>;
+  onQuitar: (objetivo: AsignacionAQuitar, evento: { currentTarget: HTMLElement }) => void;
 }) {
   const invitacion = persona.invitacion;
   const estadoTexto = invitacion
@@ -175,9 +197,11 @@ function FilaDePersona({
       </td>
       <td>
         <Asignaciones
+          personaNombre={persona.nombre}
           asignaciones={persona.asignaciones}
           edificios={edificios}
-          accionQuitar={accionQuitar}
+          quitadas={quitadas}
+          onQuitar={onQuitar}
         />
       </td>
       <td>{estadoTexto}</td>
@@ -284,6 +308,46 @@ export function PantallaPersonal({
     }
   }, [estado]);
 
+  // D10 (tarea 6.4): "Quitar" abre esta confirmación en vez de mandar nada
+  // directo a la API. `aperturaQuitarRef` es el botón "Quitar" que la abrió
+  // (R3C-4/L-026: el mismo patrón de foco que el resto de los paneles),
+  // para que cancelar (con "Cancelar" o con `Esc`, los dos pasan por
+  // `alCerrar` de `PanelLateral`) le devuelva el foco.
+  const [objetivoAQuitar, setObjetivoAQuitar] = useState<AsignacionAQuitar | null>(null);
+  const aperturaQuitarRef = useRef<HTMLElement | null>(null);
+  const [estadoQuitar, enviarQuitar] = useActionState(accionQuitar, null);
+  const [quitadas, setQuitadas] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (estadoQuitar?.ok && objetivoAQuitar) {
+      setQuitadas((previas) => new Set(previas).add(objetivoAQuitar.asignacion.asignacion_id));
+      setObjetivoAQuitar(null);
+      aperturaQuitarRef.current?.focus();
+    }
+  }, [estadoQuitar, objetivoAQuitar]);
+
+  function abrirConfirmacionDeQuitar(
+    objetivo: AsignacionAQuitar,
+    evento: { currentTarget: HTMLElement },
+  ) {
+    aperturaQuitarRef.current = evento.currentTarget;
+    setPanelAbierto(false);
+    setObjetivoAQuitar(objetivo);
+  }
+
+  // FE-3 (revisión del PR #2): los dos `PanelLateral` de esta pantalla no
+  // son modales y cada uno atrapa `Tab` con su propio listener; abiertos a
+  // la vez, se roban el foco y `Tab` queda clavado en el primer control.
+  // Abrir uno cierra el otro: nunca hay dos.
+  function abrirInvitar() {
+    setObjetivoAQuitar(null);
+    setPanelAbierto(true);
+  }
+
+  function cerrarConfirmacionDeQuitar() {
+    setObjetivoAQuitar(null);
+  }
+
   // Corrección L-026 (mirada de `personal-1440.png`, 21/10/2026): Personal
   // y el padrón de vecinos (7.4) leen la misma fuente (`GET /api/personal`,
   // L-030), así que una fila con `rol: "vecino"` puede llegar acá. Esta
@@ -308,12 +372,7 @@ export function PantallaPersonal({
   }
 
   const botonInvitar = (
-    <button
-      ref={botonInvitarRef}
-      type="button"
-      className="boton-principal"
-      onClick={() => setPanelAbierto(true)}
-    >
+    <button ref={botonInvitarRef} type="button" className="boton-principal" onClick={abrirInvitar}>
       Invitar a alguien
     </button>
   );
@@ -344,7 +403,7 @@ export function PantallaPersonal({
               mensaje="Todavía no invitaste a nadie"
               detalle="Empezá invitando a la primera persona de tu equipo."
               accion={
-                <button type="button" onClick={() => setPanelAbierto(true)}>
+                <button type="button" onClick={abrirInvitar}>
                   Invitar a alguien
                 </button>
               }
@@ -368,7 +427,8 @@ export function PantallaPersonal({
                       persona={persona}
                       edificios={edificios}
                       accionRevocar={accionRevocar}
-                      accionQuitar={accionQuitar}
+                      quitadas={quitadas}
+                      onQuitar={abrirConfirmacionDeQuitar}
                     />
                   ))}
                 </tbody>
@@ -417,6 +477,52 @@ export function PantallaPersonal({
         devolverFocoA={botonInvitarRef}
       >
         <FormularioInvitar edificios={edificios} estado={estado} enviar={enviar} />
+      </PanelLateral>
+
+      {/* D10 (tarea 6.4): la confirmación de "Quitar" vive en un
+       * `PanelLateral` propio (no el patrón inline-con-casilla de
+       * saldos-previos, que no tiene `Esc`), con el nombre de la persona y
+       * el alcance que se le quita, como pide la spec. */}
+      <PanelLateral
+        abierto={objetivoAQuitar !== null}
+        titulo="Quitar este perfil"
+        alCerrar={cerrarConfirmacionDeQuitar}
+        devolverFocoA={aperturaQuitarRef}
+      >
+        {objetivoAQuitar ? (
+          <div className="panel-lateral__seccion">
+            <p>
+              ¿Querés quitarle a <strong>{objetivoAQuitar.personaNombre}</strong> el perfil{" "}
+              <strong>{etiquetaDePerfil(objetivoAQuitar.asignacion.rol)}</strong> ·{" "}
+              {nombreDeEdificio(edificios, objetivoAQuitar.asignacion.complejo_id)}? Deja de tener
+              ese acceso.
+            </p>
+            <form action={enviarQuitar}>
+              <input
+                type="hidden"
+                name="asignacion_id"
+                value={objetivoAQuitar.asignacion.asignacion_id}
+              />
+              <div className="panel-lateral__acciones">
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={cerrarConfirmacionDeQuitar}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="boton-principal">
+                  Quitar
+                </button>
+              </div>
+            </form>
+            {estadoQuitar?.error ? (
+              <p role="alert" className="campo__error">
+                {estadoQuitar.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </PanelLateral>
     </Armazon>
   );

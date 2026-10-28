@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from proptech_core.acceso.aplicacion.auditoria import accion_sensible, registrar
 from proptech_core.acceso.dominio.eventos import EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.compartido.claves import derivar_clave
 from proptech_core.compartido.coeficientes import Coeficiente, informar_coeficientes
 from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.complejos.aplicacion.errores import (
@@ -27,7 +28,11 @@ _CONFLICTOS = {"uq_grupo_clave": "clave", "uq_grupo_unidad": "unidades"}
 
 class DatosGrupo(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
-    clave: str
+    #: D7 (tarea 4.4): `None` en una ALTA se deriva de `nombre` en
+    #: `crear_grupo`, nunca acá (esta clase no conoce las claves que el
+    #: edificio ya tiene); una EDICIÓN sin `clave` conserva la existente
+    #: (el campo no entra en `cambios`, L-009).
+    clave: str | None = None
     #: R3A-1/R3A-6: nunca un carácter de control, recortado en el borde.
     nombre: Annotated[
         str, Field(min_length=1, max_length=80), AfterValidator(recortado_sin_control)
@@ -36,7 +41,9 @@ class DatosGrupo(BaseModel):
 
     @field_validator("clave")
     @classmethod
-    def clave_valida(cls, valor: str) -> str:
+    def clave_valida(cls, valor: str | None) -> str | None:
+        if valor is None:
+            return None
         if re.fullmatch(r"[a-z][a-z0-9_]{0,39}", valor, re.ASCII) is None:
             raise ValueError("clave inválida")
         return valor
@@ -61,16 +68,18 @@ def _grupo(sesion: Session, grupo_id: UUID) -> dict[str, Any]:
     return dict(fila)
 
 
-def listar_grupos(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+def listar_grupos(
+    sesion: Session, complejo_id: UUID, *, solo_activos: bool = False
+) -> list[dict[str, Any]]:
     if cargar_complejo(sesion, complejo_id) is None:
         raise NoEncontrado()
     grupos = (
         sesion.execute(
             text(
                 "SELECT * FROM grupo_de_reparto WHERE complejo_id=:id "
-                "ORDER BY es_generales DESC, clave"
+                "AND (NOT :solo OR activo) ORDER BY es_generales DESC, clave"
             ),
-            {"id": complejo_id},
+            {"id": complejo_id, "solo": solo_activos},
         )
         .mappings()
         .all()
@@ -189,6 +198,19 @@ def crear_grupo(
         entrada = DatosGrupo.model_validate(datos)
     except ValidationError as error:
         raise error_de_validacion(error) from None
+    if entrada.clave is None:
+        existentes = (
+            sesion.execute(
+                text("SELECT clave FROM grupo_de_reparto WHERE complejo_id=:id"),
+                {"id": complejo_id},
+            )
+            .scalars()
+            .all()
+        )
+        clave_derivada = derivar_clave(entrada.nombre, existentes)
+        if clave_derivada is None:
+            raise EntradaInvalida("nombre", "no se puede derivar una clave")
+        entrada = entrada.model_copy(update={"clave": clave_derivada})
     with transaccion(sesion, _CONFLICTOS):
         if cargar_complejo(sesion, complejo_id) is None:
             raise NoEncontrado()
@@ -241,26 +263,36 @@ def editar_grupo(
         grupo = _grupo(sesion, grupo_id)
         if grupo["es_generales"]:
             raise EntradaInvalida("grupo", "Generales es inmutable")
+        #: D7 (tarea 4.5): `activo` no es de `DatosGrupo` (no es forma de
+        #: clave/nombre/método, es estado operativo) — se saca de `cambios`
+        #: antes de validar el resto, para no exigirle a ese modelo un
+        #: campo que no le corresponde.
+        cambios_sin_activo = {k: v for k, v in cambios.items() if k != "activo"}
         try:
             entrada = DatosGrupo.model_validate(
                 {
                     **{k: grupo[k] for k in ("clave", "nombre", "metodo")},
-                    **cambios,
+                    **cambios_sin_activo,
                 }
             )
         except ValidationError as error:
             raise error_de_validacion(error) from None
         if grupo["modo_de_coeficientes"] == "propios" and entrada.metodo != "coeficiente":
             raise EntradaInvalida("metodo")
+        if "activo" in cambios and not isinstance(cambios["activo"], bool):
+            raise EntradaInvalida("activo")
+        activo = cambios.get("activo", grupo["activo"])
         campos = sorted(k for k, v in entrada.model_dump().items() if v != grupo[k])
+        if activo != grupo["activo"]:
+            campos = sorted([*campos, "activo"])
         if not campos:
             return
         sesion.execute(
             text(
                 "UPDATE grupo_de_reparto SET clave=:clave, "
-                "nombre=:nombre, metodo=:metodo WHERE id=:id"
+                "nombre=:nombre, metodo=:metodo, activo=:activo WHERE id=:id"
             ),
-            {**entrada.model_dump(), "id": grupo_id},
+            {**entrada.model_dump(), "activo": activo, "id": grupo_id},
         )
 
         registrar(

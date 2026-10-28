@@ -48,6 +48,7 @@ from proptech_core.compartido.base_de_datos import (
     verificar_tablas_de_solo_agregar,
 )
 from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.georef import Georef, leer_georef
 from proptech_core.compartido.parametros import Parametros, leer_parametros
 from proptech_core.compartido.semilla import Semilla, leer_semilla
 from proptech_core.complejos.aplicacion.escritura import (
@@ -70,6 +71,11 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 #: imagen de producción (`COPY src`), así que el comando se niega a correr salvo
 #: que el entorno diga explícitamente que es una máquina de desarrollo.
 ENTORNO_DE_DESARROLLO = "desarrollo"
+
+
+def _ruta_georef_por_defecto() -> Path:
+    base = Path(Configuracion().proptech_parametros).resolve().parent
+    return base / "georef"
 
 
 def _ruta_semilla_por_defecto() -> Path:
@@ -111,6 +117,7 @@ def _crear_desde_cero(
     *,
     parametros: Parametros,
     semilla: Semilla,
+    georef: Georef,
     reloj: Callable[[], datetime],
     request_id: UUID,
 ) -> UUID:
@@ -147,7 +154,12 @@ def _crear_desde_cero(
         sesion,
         identidad,
         nombre=semilla.edificio.nombre,
-        localidad=semilla.edificio.localidad,
+        provincia_id=semilla.edificio.provincia_id,
+        departamento_id=semilla.edificio.departamento_id,
+        localidad_id=semilla.edificio.localidad_id,
+        georef=georef,
+        pisos=semilla.edificio.pisos,
+        subsuelos=semilla.edificio.subsuelos,
         parametros=parametros,
         reloj=reloj,
         request_id=request_id,
@@ -318,6 +330,7 @@ def cargar(
     *,
     parametros: Parametros,
     semilla: Semilla,
+    georef: Georef,
     reloj: Callable[[], datetime] = _reloj_por_defecto,
     request_id: UUID,
     intentos: int = 50,
@@ -342,6 +355,7 @@ def cargar(
                     sesion,
                     parametros=parametros,
                     semilla=semilla,
+                    georef=georef,
                     reloj=reloj,
                     request_id=request_id,
                 )
@@ -382,8 +396,9 @@ def _main(argv: list[str]) -> int:
     configuracion = Configuracion()
     parametros = leer_parametros(configuracion.proptech_parametros)
     try:
-        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros)
-    except Exception as error:  # SemillaInvalida o ParametrosInvalidos
+        georef = leer_georef(str(_ruta_georef_por_defecto()))
+        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef)
+    except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
         print(str(error), file=sys.stderr)
         return 1
 
@@ -399,6 +414,7 @@ def _main(argv: list[str]) -> int:
                 fabrica,
                 parametros=parametros,
                 semilla=semilla,
+                georef=georef,
                 request_id=uuid4(),
             )
         except EjemploDistinto as error:

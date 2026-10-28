@@ -182,3 +182,15 @@ def test_migracion_detecta_miembros_viejos_de_generales_y_revierte_el_candado(
             conexion.execute("DELETE FROM grupo_unidad WHERE grupo_id = %s", (grupo,))
         base.migrar("upgrade", "head")
         base.roles("despues")
+
+
+def test_desactivar_generales_por_sql_se_rechaza(
+    app_edificio: psycopg.Connection, edificios: Edificios
+) -> None:
+    """Escenario "Desactivar Generales por SQL" (D7, tarea 4.2): el
+    trigger ampliado de `0027` también mira `activo`."""
+    generales = _generales(app_edificio, edificios)
+    with pytest.raises(psycopg.Error, match="Generales"):
+        app_edificio.execute(
+            "UPDATE grupo_de_reparto SET activo = false WHERE id = %s", (generales,)
+        )

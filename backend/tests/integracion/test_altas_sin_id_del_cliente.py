@@ -26,6 +26,7 @@ Contenedor propio (L-006; mismo motivo que 4.1/4.2/5.2/5.3 y
 `test_rutas_protegidas.py`).
 """
 
+import shutil
 import subprocess
 import sys
 import uuid
@@ -117,7 +118,14 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "rol": "contador",
         "alcance": "principal",
     },
-    ("/api/complejos", "POST"): lambda mundo: {"nombre": "Edificio", "localidad": "Mendoza"},
+    ("/api/complejos", "POST"): lambda mundo: {
+        "nombre": "Edificio",
+        "provincia_id": "50",
+        "departamento_id": "50007",
+        "localidad_id": "50007010",
+        "pisos": 4,
+        "subsuelos": 1,
+    },
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),
         "rol": "consejo",
@@ -284,6 +292,7 @@ def app_real(
     ruta_parametros = tmp_path / "parametros.yaml"
     raiz = RAIZ_BACKEND.parent
     ruta_parametros.write_text((raiz / "config" / "parametros.yaml").read_text())
+    shutil.copytree(raiz / "config" / "georef", tmp_path / "georef")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta_parametros))
 
     from proptech_api.app import crear_app

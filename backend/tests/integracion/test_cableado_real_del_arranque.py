@@ -25,6 +25,7 @@ cableado real de R7 y R8 al arrancar.
 
 from __future__ import annotations
 
+import shutil
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -141,6 +142,7 @@ def _fijar_entorno_de_app(
     monkeypatch.setenv("REDIS_PASSWORD", "x")
     ruta_parametros = tmp_path / "parametros.yaml"
     ruta_parametros.write_text((RAIZ_BACKEND.parent / "config" / "parametros.yaml").read_text())
+    shutil.copytree(RAIZ_BACKEND.parent / "config" / "georef", tmp_path / "georef")
     monkeypatch.setenv("PROPTECH_PARAMETROS", str(ruta_parametros))
 
 

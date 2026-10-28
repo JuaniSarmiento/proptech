@@ -19,13 +19,13 @@ import {
   Package,
   Store,
 } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { type FormEvent, useActionState, useEffect, useRef, useState } from "react";
 import { Ayuda } from "../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantalla";
 import { EstadoDeCoeficientes } from "../../../../componentes/EstadoDeCoeficientes";
 import { Estados } from "../../../../componentes/Estados";
 import { FilaConIcono } from "../../../../componentes/FilaConIcono";
-import { Campo, Formulario } from "../../../../componentes/Formulario";
+import { Campo, CampoDeLista, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
 import type { InformeDeCoeficientes, Unidad } from "../../../../lib/api/tipos";
@@ -36,6 +36,12 @@ import {
   sumaComoPorcentaje,
   superficie,
 } from "../../../../lib/formato";
+import {
+  IDENTIFICADOR_MAXIMO,
+  identificadorDemasiadoLargo,
+  pareceCoeficienteComoPorcentaje,
+} from "../../../../lib/limites";
+import { vocabularioDePisos } from "../../../../lib/pisos";
 import { ESTADOS_REVOCABLES, textoDeEstadoDeInvitacion } from "../../../personal/estados";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_PADRON } from "./ayuda";
@@ -67,6 +73,10 @@ type AccionSimple = (
 type Props = {
   id: string;
   nombreEdificio: string;
+  /** D3 (tarea 6.2): `null` si el edificio todavía no completó la
+   * ubicación — sin vocabulario propio, el piso se carga como texto. */
+  pisosDelEdificio: number | null;
+  subsuelosDelEdificio: number | null;
   unidades: Unidad[];
   informe: InformeDeCoeficientes;
   accionCrear: AccionUnidad;
@@ -93,6 +103,8 @@ function etiquetaDeTipo(valor: string): string {
 export function PantallaPadron({
   id,
   nombreEdificio,
+  pisosDelEdificio,
+  subsuelosDelEdificio,
   unidades,
   informe,
   accionCrear,
@@ -109,6 +121,28 @@ export function PantallaPadron({
 
   const accionActiva = unidadEnEdicion ? accionEditar : accionCrear;
   const [estado, enviar] = useActionState(accionActiva, null);
+  // D7 (tarea 5.4): validación previa al envío, con el mismo `error`
+  // explícito de `Campo` — nunca `maxLength`/`pattern` nativos, que dan
+  // una burbuja del navegador sin `aria-describedby`. Se limpia en cada
+  // envío nuevo (éxito o 422/409 reales la reemplazan, nunca conviven).
+  const [erroresPrevios, setErroresPrevios] = useState<Record<string, string>>({});
+
+  function alEnviarUnidad(evento: FormEvent<HTMLFormElement>) {
+    const datos = new FormData(evento.currentTarget);
+    const identificador = String(datos.get("identificador") ?? "");
+    const coeficiente = String(datos.get("coeficiente") ?? "");
+    const errores: Record<string, string> = {};
+    if (identificadorDemasiadoLargo(identificador)) {
+      errores.identificador = `No puede tener más de ${IDENTIFICADOR_MAXIMO} caracteres.`;
+    }
+    if (pareceCoeficienteComoPorcentaje(coeficiente)) {
+      errores.coeficiente = 'Cargalo como proporción (0 a 1), no como porcentaje. Ej.: "0.5".';
+    }
+    setErroresPrevios(errores);
+    if (Object.keys(errores).length > 0) {
+      evento.preventDefault();
+    }
+  }
 
   useEffect(() => {
     if (estado?.ok) {
@@ -191,7 +225,7 @@ export function PantallaPadron({
                           </button>
                         </td>
                         <td>{etiquetaDeTipo(unidad.tipo)}</td>
-                        <td>{unidad.piso}</td>
+                        <td>{unidad.piso ?? "Sin completar"}</td>
                         <td className="numero-tabular">{superficie(unidad.superficie_m2)}</td>
                         <td className="numero-tabular">{coeficiente(unidad.coeficiente)}</td>
                         {vecinosPorUnidad ? (
@@ -289,9 +323,10 @@ export function PantallaPadron({
          * por unidad (o "nueva") fuerza el remonte del formulario entero. */}
         <Formulario
           key={unidadEnEdicion?.id ?? "nueva"}
-          erroresPorCampo={estado?.erroresPorCampo ?? {}}
+          erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
           erroresDesconocidos={estado?.erroresDesconocidos ?? []}
           action={enviar}
+          onSubmit={alEnviarUnidad}
         >
           {unidadEnEdicion ? (
             <input type="hidden" name="unidad_id" value={unidadEnEdicion.id} />
@@ -301,8 +336,13 @@ export function PantallaPadron({
             etiqueta="Identificador"
             name="identificador"
             defaultValue={unidadEnEdicion?.identificador}
+            maxLength={IDENTIFICADOR_MAXIMO}
             required
           />
+          <p className="campo__ayuda">
+            Hasta {IDENTIFICADOR_MAXIMO} caracteres, letras y números como quieras (por ejemplo
+            "1A", "PB 2" o "Local 3"): no hay un formato fijo.
+          </p>
           <label className="campo">
             Tipo
             <select name="tipo" defaultValue={unidadEnEdicion?.tipo ?? "departamento"}>
@@ -313,7 +353,32 @@ export function PantallaPadron({
               ))}
             </select>
           </label>
-          <Campo nombre="piso" etiqueta="Piso" name="piso" defaultValue={unidadEnEdicion?.piso} />
+          {pisosDelEdificio !== null && subsuelosDelEdificio !== null ? (
+            // D3 (tarea 6.2, F2): opción vacía EXPLÍCITA primero — sin
+            // ella, abrir el panel de una unidad migrada con `piso: null`
+            // selecciona (y guardaría) la primera opción real de la lista
+            // sin que nadie la haya elegido.
+            <CampoDeLista
+              nombre="piso"
+              etiqueta="Piso"
+              name="piso"
+              defaultValue={unidadEnEdicion?.piso ?? ""}
+            >
+              <option value="">Sin completar</option>
+              {vocabularioDePisos(pisosDelEdificio, subsuelosDelEdificio).map((piso) => (
+                <option key={piso} value={piso}>
+                  {piso}
+                </option>
+              ))}
+            </CampoDeLista>
+          ) : (
+            <Campo
+              nombre="piso"
+              etiqueta="Piso"
+              name="piso"
+              defaultValue={unidadEnEdicion?.piso ?? ""}
+            />
+          )}
           <Campo
             nombre="superficie_m2"
             etiqueta="Superficie (m²)"

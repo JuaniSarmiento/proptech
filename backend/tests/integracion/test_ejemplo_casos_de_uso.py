@@ -48,6 +48,7 @@ from proptech_core.compartido.base_de_datos import (
     registrar_tenant_por_administracion,
 )
 from proptech_core.compartido.configuracion import Configuracion
+from proptech_core.compartido.georef import Georef, leer_georef
 from proptech_core.compartido.parametros import Parametros, leer_parametros
 from proptech_core.compartido.semilla import Semilla, leer_semilla
 from proptech_core.complejos.aplicacion import ejemplo
@@ -66,6 +67,7 @@ pytestmark = pytest.mark.integracion
 _RAIZ = Path(__file__).resolve().parents[3]
 _PARAMETROS = _RAIZ / "config" / "parametros.yaml"
 _SEMILLA = _RAIZ / "config" / "semilla" / "edificio-ejemplo.yaml"
+_GEOREF = _RAIZ / "config" / "georef"
 
 
 def _parametros() -> Parametros:
@@ -73,7 +75,11 @@ def _parametros() -> Parametros:
 
 
 def _semilla() -> Semilla:
-    return leer_semilla(str(_SEMILLA), _parametros())
+    return leer_semilla(str(_SEMILLA), _parametros(), _georef())
+
+
+def _georef() -> Georef:
+    return leer_georef(str(_GEOREF))
 
 
 def _contar(fabrica: sessionmaker[Session], tabla: str, admin_id: UUID) -> int:
@@ -162,7 +168,11 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
 
     # --- Primera carga ---
     primera = ejemplo.cargar(
-        fabrica, parametros=_parametros(), semilla=_semilla(), request_id=uuid4()
+        fabrica,
+        parametros=_parametros(),
+        semilla=_semilla(),
+        georef=_georef(),
+        request_id=uuid4(),
     )
     assert primera.hizo_algo is True
     assert primera.administracion_id == ejemplo.ADMINISTRACION_EJEMPLO_ID
@@ -212,7 +222,11 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
         for tabla in ("persona", "unidad", "grupo_de_reparto", "asignacion_rol")
     }
     segunda = ejemplo.cargar(
-        fabrica, parametros=_parametros(), semilla=_semilla(), request_id=uuid4()
+        fabrica,
+        parametros=_parametros(),
+        semilla=_semilla(),
+        georef=_georef(),
+        request_id=uuid4(),
     )
     assert segunda.hizo_algo is False
     assert segunda.administracion_id == primera.administracion_id
@@ -234,7 +248,8 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
         tercera = ejemplo.cargar(
             fabrica,
             parametros=parametros_nuevos,
-            semilla=leer_semilla(str(_SEMILLA), parametros_nuevos),
+            semilla=leer_semilla(str(_SEMILLA), parametros_nuevos, _georef()),
+            georef=_georef(),
             request_id=uuid4(),
         )
     assert tercera.hizo_algo is False
@@ -258,7 +273,13 @@ def test_ciclo_completo_de_carga_del_ejemplo(api_edificio: ApiEdificio) -> None:
         sesion.commit()
 
     with pytest.raises(ejemplo.EjemploDistinto, match=r"unidades\[1A\]"):
-        ejemplo.cargar(fabrica, parametros=_parametros(), semilla=_semilla(), request_id=uuid4())
+        ejemplo.cargar(
+            fabrica,
+            parametros=_parametros(),
+            semilla=_semilla(),
+            georef=_georef(),
+            request_id=uuid4(),
+        )
 
     with abrir_sesion(fabrica, primera.administracion_id) as sesion:
         coeficiente = sesion.execute(
@@ -281,7 +302,11 @@ def test_dos_cargas_en_paralelo_dejan_un_solo_ejemplo(base_fresca: BaseDeEdifici
         engine, fabrica = _fabrica_app(base_fresca)
         try:
             resultados[indice] = ejemplo.cargar(
-                fabrica, parametros=parametros, semilla=semilla, request_id=uuid4()
+                fabrica,
+                parametros=parametros,
+                semilla=semilla,
+                georef=_georef(),
+                request_id=uuid4(),
             )
         except Exception as error:
             resultados[indice] = error
@@ -338,6 +363,7 @@ def test_sin_tenant_registrado_no_escribe_nada(base_fresca: BaseDeEdificio) -> N
                 fabrica_sin_tenant,
                 parametros=_parametros(),
                 semilla=_semilla(),
+                georef=_georef(),
                 request_id=uuid4(),
             )
         fabrica_con_tenant = sessionmaker(bind=engine, autoflush=False, autocommit=False)

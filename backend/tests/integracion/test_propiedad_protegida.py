@@ -51,12 +51,23 @@ def test_deploy_3a_y_rollback(base_para_migraciones: BaseDeEdificio) -> None:
         )
         insertar(c, admin, complejo, persona, date(2026, 11, 1), "300.00")
     base.roles("despues")
+    with arranque(base) as c:
+        assert c.execute(
+            "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE "
+            "oid='fn_configuracion_versionada_bloqueada()'::regprocedure"
+        ).fetchone() == (base.contenedor.username,)
     base.roles("antes")
     with arranque(base) as c:
         assert c.execute(
             "SELECT tableowner FROM pg_tables WHERE schemaname='public' AND "
             "tablename='configuracion_versionada'"
         ).fetchone() == (base.contenedor.username,)
+        # Enmienda E11 (RE11-01/02, firmada 27/10/2026): `antes()` NUNCA
+        # devuelve al migrador la función de un trigger de una tabla
+        # protegida (`configuracion_versionada` está en
+        # TABLAS_DE_SOLO_AGREGAR) -- antes de la enmienda, esta aserción
+        # esperaba lo contrario (que SÍ volviera al migrador), que es
+        # exactamente la ventana que RE11-01 explotó.
         assert c.execute(
             "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE "
             "oid='fn_configuracion_versionada_bloqueada()'::regprocedure"
