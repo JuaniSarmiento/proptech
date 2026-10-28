@@ -32,12 +32,16 @@ it("GET /api/sesion funciona sin selector; POST no sustituye GET", async () => {
   const headers = { authorization: `Bearer ${crearToken()}` };
   const respuesta = await fetch(`${base}/api/sesion`, { headers });
   expect(respuesta.status).toBe(200);
-  expect(await respuesta.json()).toEqual({
-    persona: { nombre: "Persona de prueba" },
-    administraciones: [
-      { id: "10000000-0000-0000-0000-000000000001", nombre: "Administración de prueba" },
-    ],
+  const cuerpo = await respuesta.json();
+  expect(cuerpo.persona).toEqual({ nombre: "Persona de prueba" });
+  expect(cuerpo.administraciones).toHaveLength(1);
+  expect(cuerpo.administraciones[0]).toMatchObject({
+    id: "10000000-0000-0000-0000-000000000001",
+    nombre: "Administración de prueba",
   });
+  // 2d/7.6 (D11): `acciones` es obligatoria en el contrato nuevo — no se
+  // repite acá la forma exacta (ya la prueba `SesionDePantalla.test.tsx`).
+  expect(cuerpo.administraciones[0]).toHaveProperty("acciones");
   expect((await fetch(`${base}/api/sesion`, { method: "POST", headers })).status).toBe(405);
 });
 

@@ -14,6 +14,11 @@ from proptech_core.acceso.aplicacion.auditoria import registrar
 from proptech_core.acceso.aplicacion.entrega import EXPIRA_EN_S, crear_invitacion, encolar_envio
 from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
+from proptech_core.acceso.dominio.permisos import (
+    POR_DEBAJO_DEL_ADMINISTRADOR_PRINCIPAL,
+    Asignacion,
+    Rol,
+)
 from proptech_core.acceso.puertos import ColaDeInvitaciones
 from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.parametros import Parametros
@@ -37,10 +42,19 @@ class AltaDeUsuario:
 def _persona_bloqueada(
     sesion: Session, admin: UUID, nombre: str, email: str
 ) -> tuple[UUID, str | None]:
+    # D12 (2d, 7.7): reinvitar el mismo email deja el nombre nuevo, salvo
+    # que esa persona ya tenga una asignación de super admin (R2D-3) — con
+    # el WHERE falso, Postgres no actualiza pero igual bloquea la fila, y el
+    # `SELECT ... FOR UPDATE` de abajo sigue sus reglas de siempre. El
+    # `administracion_id = :admin` del conflicto y la RLS de `persona` (sólo
+    # las filas del tenant en uso) dejan afuera a otra administración.
     sesion.execute(
         text(
             "INSERT INTO persona (administracion_id,nombre,email) VALUES "
-            "(:admin,:nombre,:email) ON CONFLICT (administracion_id,email) DO NOTHING"
+            "(:admin,:nombre,:email) "
+            "ON CONFLICT (administracion_id,email) DO UPDATE SET nombre = EXCLUDED.nombre "
+            "WHERE NOT EXISTS (SELECT 1 FROM asignacion_rol a "
+            "WHERE a.persona_id = persona.id AND a.rol = 'super_admin')"
         ),
         {"admin": admin, "nombre": nombre, "email": email},
     )
@@ -212,16 +226,40 @@ class AsignacionNoEncontrada(Exception):
     """De otra administración (RLS) o directamente inexistente."""
 
 
-def listar_personal(sesion: Session) -> list[dict[str, Any]]:
+def _todas_por_debajo(asignaciones_crudas: list[Any]) -> bool:
+    """D13: "todas sus asignaciones son de abajo", verdadero para la lista
+    vacía (`all([])`) — por eso el llamador exige además "al menos una"
+    (R2D-2): una persona sin asignaciones no cuenta como "de abajo"."""
+    for fila in asignaciones_crudas:
+        asignacion = Asignacion(
+            rol=Rol(fila.rol),
+            complejo_id=fila.complejo_id,
+            unidad_id=fila.unidad_id,
+            vinculo=fila.vinculo,
+        )
+        if (asignacion.perfil, asignacion.alcance) not in POR_DEBAJO_DEL_ADMINISTRADOR_PRINCIPAL:
+            return False
+    return True
+
+
+def listar_personal(sesion: Session, *, solo_por_debajo: bool = False) -> list[dict[str, Any]]:
     """D5: personas, sus asignaciones y la invitación más reciente, sólo de
     la administración (RLS, nunca un `WHERE` propio). `vencida` se calcula
     acá: una invitación abierta (`pendiente`/`enviada`/`fallida`) cuyo
-    `vence` ya pasó, nunca se reescribe sola en la base."""
+    `vence` ya pasó, nunca se reescribe sola en la base.
+
+    `solo_por_debajo` (D13, 2d grupo 7): para el administrador principal,
+    filtra a las personas con al menos una asignación y cuyas asignaciones
+    son todas de administrador por edificio, contador, auxiliar o consejo
+    (`POR_DEBAJO_DEL_ADMINISTRADOR_PRINCIPAL`, la misma lista que la matriz
+    de permisos declara, nunca una copia). El super admin no filtra: trae lo
+    de siempre."""
     ahora = datetime.now(UTC)
     personas = sesion.execute(
         text("SELECT id, nombre, email, clerk_usuario_id FROM persona ORDER BY nombre")
     ).all()
     asignaciones: dict[UUID, list[dict[str, Any]]] = {}
+    asignaciones_crudas: dict[UUID, list[Any]] = {}
     for fila in sesion.execute(
         text("SELECT id, persona_id, rol, complejo_id, unidad_id, vinculo FROM asignacion_rol")
     ):
@@ -234,6 +272,7 @@ def listar_personal(sesion: Session) -> list[dict[str, Any]]:
                 "vinculo": fila.vinculo,
             }
         )
+        asignaciones_crudas.setdefault(fila.persona_id, []).append(fila)
     invitaciones: dict[UUID, dict[str, Any]] = {}
     for fila in sesion.execute(
         text(
@@ -245,17 +284,22 @@ def listar_personal(sesion: Session) -> list[dict[str, Any]]:
         if estado in ("pendiente", "enviada", "fallida") and fila.vence <= ahora:
             estado = "vencida"
         invitaciones[fila.persona_id] = {"invitacion_id": str(fila.id), "estado": estado}
-    return [
-        {
-            "persona_id": str(p.id),
-            "nombre": p.nombre,
-            "email": p.email,
-            "vinculado": p.clerk_usuario_id is not None,
-            "asignaciones": asignaciones.get(p.id, []),
-            "invitacion": invitaciones.get(p.id),
-        }
-        for p in personas
-    ]
+    resultado = []
+    for p in personas:
+        crudas = asignaciones_crudas.get(p.id, [])
+        if solo_por_debajo and (not crudas or not _todas_por_debajo(crudas)):
+            continue
+        resultado.append(
+            {
+                "persona_id": str(p.id),
+                "nombre": p.nombre,
+                "email": p.email,
+                "vinculado": p.clerk_usuario_id is not None,
+                "asignaciones": asignaciones.get(p.id, []),
+                "invitacion": invitaciones.get(p.id),
+            }
+        )
+    return resultado
 
 
 def revocar_invitacion(

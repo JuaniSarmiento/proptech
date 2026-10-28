@@ -524,9 +524,13 @@ def _tablas_sql(texto: str) -> set[str]:
     resultado = set()
     for m in _TABLA_SQL.finditer(texto):
         nombre = m.group(2).split(".")[-1].strip('"').lower()
-        if nombre == "of" or (
+        if nombre in ("of", "set") or (
             texto[m.end() :].lstrip().startswith("(") and m.group(1).lower() in {"from", "join"}
         ):
+            # "set": `ON CONFLICT … DO UPDATE SET col = …` hace que "update"
+            # (del regex) matchee "SET" como si fuera el nombre de una
+            # tabla — nunca lo es, "set" es la palabra reservada del upsert
+            # (2d/7.7, D12, usuarios.py).
             continue
         if nombre not in ctes:
             resultado.add(nombre)
@@ -595,6 +599,11 @@ def test_composicion_no_escribe_sql_del_libro() -> None:
         ("SELECT * FROM generate_series(1, 3) x JOIN obligacion o ON true", {"obligacion"}),
         ("WITH datos AS (SELECT * FROM movimiento) SELECT * FROM datos", {"movimiento"}),
         ('select * from public."movimiento"', {"movimiento"}),
+        (
+            "INSERT INTO persona (nombre) VALUES (:nombre) "
+            "ON CONFLICT (email) DO UPDATE SET nombre = EXCLUDED.nombre",
+            {"persona"},
+        ),
     ],
 )
 def test_of_funciones_y_ctes_conservan_tablas_reales(sql: str, esperadas: set[str]) -> None:

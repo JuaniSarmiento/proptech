@@ -4,11 +4,12 @@
  * Personal de la administración (D5, shape del 21/10/2026, tarea 7.3): una
  * fila por persona con su perfil, su alcance y el estado de su invitación;
  * "Invitar a alguien" abre el panel lateral con nombre, email, perfil y
- * alcance (edificio sólo si el perfil lo permite). Sólo el super admin ve
- * los controles de invitar, revocar y quitar (D5); el resto ve la lista en
- * lectura si su perfil puede verla (acá: nunca, D5/L-030 — el GET exige
- * super admin, así que cualquier otro perfil ya ve "Sin permiso" antes de
- * llegar a esta pantalla).
+ * alcance (edificio sólo si el perfil lo permite).
+ *
+ * 2d/7.6 (D11, D13): el GET ya no exige sólo super admin — un administrador
+ * principal también entra, pero en sólo lectura: sin "Invitar a alguien",
+ * "Revocar" ni "Quitar" (`invitar_usuarios_y_asignar_edificios`), con la
+ * ayuda diciendo que la gestión la hace el super admin.
  *
  * Mismo patrón que `edificios/[id]/unidades/Pantalla.tsx`: panel principal
  * con la tabla, panel lateral de apoyo con el resumen, panel lateral con el
@@ -26,9 +27,10 @@ import { Campo, Formulario } from "../../componentes/Formulario";
 import { MenuDelEdificio } from "../../componentes/MenuDelEdificio";
 import { Panel } from "../../componentes/Panel";
 import { PanelLateral } from "../../componentes/PanelLateral";
+import { permite, useSesionDePantalla } from "../../componentes/SesionDePantalla";
 import type { AsignacionDePersona, Persona } from "../../lib/api/personal";
 import type { EdificioDeLista } from "../../lib/api/tipos";
-import { AYUDA_PERSONAL } from "./ayuda";
+import { AYUDA_PERSONAL, AYUDA_PERSONAL_SOLO_LECTURA } from "./ayuda";
 import { ESTADOS_REVOCABLES, textoDeEstadoDeInvitacion } from "./estados";
 import {
   etiquetaDePerfil,
@@ -81,12 +83,14 @@ function Asignaciones({
   edificios,
   quitadas,
   onQuitar,
+  puedeGestionar,
 }: {
   personaNombre: string;
   asignaciones: AsignacionDePersona[];
   edificios: EdificioDeLista[];
   quitadas: Set<string>;
   onQuitar: (objetivo: AsignacionAQuitar, evento: { currentTarget: HTMLElement }) => void;
+  puedeGestionar: boolean;
 }) {
   return (
     <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Perfiles">
@@ -99,12 +103,15 @@ function Asignaciones({
               · {nombreDeEdificio(edificios, asignacion.complejo_id)}
             </span>
           </span>
-          <BotonQuitar
-            asignacion={asignacion}
-            personaNombre={personaNombre}
-            quitada={quitadas.has(asignacion.asignacion_id)}
-            onQuitar={onQuitar}
-          />
+          {/* D11/7.6: "Quitar" se oculta sin invitar_usuarios_y_asignar_edificios. */}
+          {puedeGestionar ? (
+            <BotonQuitar
+              asignacion={asignacion}
+              personaNombre={personaNombre}
+              quitada={quitadas.has(asignacion.asignacion_id)}
+              onQuitar={onQuitar}
+            />
+          ) : null}
         </li>
       ))}
     </ul>
@@ -175,12 +182,14 @@ function FilaDePersona({
   accionRevocar,
   quitadas,
   onQuitar,
+  puedeGestionar,
 }: {
   persona: Persona;
   edificios: EdificioDeLista[];
   accionRevocar: AccionSimple;
   quitadas: Set<string>;
   onQuitar: (objetivo: AsignacionAQuitar, evento: { currentTarget: HTMLElement }) => void;
+  puedeGestionar: boolean;
 }) {
   const invitacion = persona.invitacion;
   const estadoTexto = invitacion
@@ -188,7 +197,7 @@ function FilaDePersona({
     : persona.vinculado
       ? "Vinculada"
       : "—";
-  const puedeRevocar = invitacion && ESTADOS_REVOCABLES.has(invitacion.estado);
+  const puedeRevocar = puedeGestionar && invitacion && ESTADOS_REVOCABLES.has(invitacion.estado);
   return (
     <tr>
       <td>
@@ -202,6 +211,7 @@ function FilaDePersona({
           edificios={edificios}
           quitadas={quitadas}
           onQuitar={onQuitar}
+          puedeGestionar={puedeGestionar}
         />
       </td>
       <td>{estadoTexto}</td>
@@ -295,6 +305,8 @@ export function PantallaPersonal({
   accionRevocar,
   accionQuitar,
 }: Props) {
+  const sesion = useSesionDePantalla();
+  const puedeGestionar = permite(sesion, "invitar_usuarios_y_asignar_edificios");
   const [panelAbierto, setPanelAbierto] = useState(false);
   const botonInvitarRef = useRef<HTMLButtonElement>(null);
   const [estado, enviar] = useActionState(accionInvitar, null);
@@ -371,41 +383,51 @@ export function PantallaPersonal({
     }
   }
 
-  const botonInvitar = (
+  const botonInvitar = puedeGestionar ? (
     <button ref={botonInvitarRef} type="button" className="boton-principal" onClick={abrirInvitar}>
       Invitar a alguien
     </button>
-  );
+  ) : undefined;
 
   return (
     <Armazon
       menu={
         <MenuDelEdificio
           seccionActual="personal"
-          secciones={seccionesDeLaAdministracion()}
+          secciones={seccionesDeLaAdministracion(sesion)}
           nombreAccesible="Tu administración"
         />
       }
     >
       <EncabezadoDePantalla
         titulo="Personal"
-        ayuda={<Ayuda {...AYUDA_PERSONAL} />}
+        ayuda={<Ayuda {...(puedeGestionar ? AYUDA_PERSONAL : AYUDA_PERSONAL_SOLO_LECTURA)} />}
         accionPrincipal={botonInvitar}
       />
       <div className="disposicion">
         <Panel
           titulo="Quién trabaja con vos"
-          descripcion="Tocá Invitar a alguien para sumar a una persona."
+          descripcion={
+            puedeGestionar
+              ? "Tocá Invitar a alguien para sumar a una persona."
+              : "La gestión (invitar, revocar, quitar) la hace el super admin."
+          }
         >
           {personal.length === 0 ? (
             <Estados
               tipo="vacio"
-              mensaje="Todavía no invitaste a nadie"
-              detalle="Empezá invitando a la primera persona de tu equipo."
+              mensaje={puedeGestionar ? "Todavía no invitaste a nadie" : "Todavía no hay nadie"}
+              detalle={
+                puedeGestionar
+                  ? "Empezá invitando a la primera persona de tu equipo."
+                  : "La gestión la hace el super admin."
+              }
               accion={
-                <button type="button" onClick={abrirInvitar}>
-                  Invitar a alguien
-                </button>
+                puedeGestionar ? (
+                  <button type="button" onClick={abrirInvitar}>
+                    Invitar a alguien
+                  </button>
+                ) : undefined
               }
             />
           ) : (
@@ -429,6 +451,7 @@ export function PantallaPersonal({
                       accionRevocar={accionRevocar}
                       quitadas={quitadas}
                       onQuitar={abrirConfirmacionDeQuitar}
+                      puedeGestionar={puedeGestionar}
                     />
                   ))}
                 </tbody>

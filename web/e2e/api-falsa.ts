@@ -31,6 +31,35 @@ function leerFixture(nombre: string): Json {
   return JSON.parse(readFileSync(join(_DIR_FIXTURES, `${nombre}.json`), "utf-8"));
 }
 
+/**
+ * 2d/7.6 (D11): toda identidad de este doble falso es, hoy, "como el super
+ * admin" para la UI — ninguna de las identidades existentes probaba un rol
+ * restringido antes de D11, y agregar `acciones` sin este valor rompería
+ * (con un `TypeError` real en el navegador, no un 403) toda pantalla que ya
+ * llama a `permite()`. Nunca se copia la matriz del backend: es la forma
+ * "todo permitido" que ya asumían estos tests, puesta en el contrato nuevo.
+ */
+const _ACCIONES_DE_SUPER_ADMIN = {
+  administracion: ["crear_edificio", "invitar_usuarios_y_asignar_edificios", "ver_personal"],
+  todos_los_edificios: [
+    "cargar_gastos_y_preparar_liquidacion",
+    "emitir_y_distribuir_liquidacion",
+    "anular_liquidacion",
+    "confirmar_pago_informado",
+    "revertir_o_reimputar_pago",
+    "corregir_movimiento",
+    "condonar_intereses",
+    "dar_de_baja_deuda",
+    "aceptar_alertas_no_bloqueantes",
+    "aceptar_alertas_bloqueantes",
+    "crear_version_de_configuracion",
+    "confirmar_sin_saldos_previos",
+    "configurar_padron",
+    "ver_configuracion_del_edificio",
+  ],
+  por_edificio: {},
+};
+
 const _RUTAS: Record<string, string> = {
   "": "edificio",
   resumen: "resumen",
@@ -456,12 +485,17 @@ export function crearServidor(
         JSON.stringify({
           persona: { nombre: "Persona de prueba" },
           administraciones: [
-            { id: ADMINISTRACION, nombre: "Administración de prueba" },
+            {
+              id: ADMINISTRACION,
+              nombre: "Administración de prueba",
+              acciones: _ACCIONES_DE_SUPER_ADMIN,
+            },
             ...(identidad === "user_varias"
               ? [
                   {
                     id: "10000000-0000-0000-0000-000000000002",
                     nombre: "Administración del Parque",
+                    acciones: _ACCIONES_DE_SUPER_ADMIN,
                   },
                 ]
               : []),

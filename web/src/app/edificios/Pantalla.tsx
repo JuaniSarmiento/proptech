@@ -25,6 +25,7 @@ import { MenuDelEdificio } from "../../componentes/MenuDelEdificio";
 import { Panel } from "../../componentes/Panel";
 import { PanelLateral } from "../../componentes/PanelLateral";
 import { SelectorDeUbicacion } from "../../componentes/SelectorDeUbicacion";
+import { permite, useSesionDePantalla } from "../../componentes/SesionDePantalla";
 import { textoEstadoDeMigracion } from "../../lib/textoDeEstados";
 import { seccionesDeLaAdministracion } from "../personal/secciones";
 import { AYUDA_MIS_EDIFICIOS } from "./ayuda";
@@ -57,6 +58,8 @@ type Props = {
 };
 
 export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
+  const sesion = useSesionDePantalla();
+  const puedeCrear = permite(sesion, "crear_edificio");
   const [panelAbierto, setPanelAbierto] = useState(false);
   const botonNuevoRef = useRef<HTMLButtonElement>(null);
   const botonNuevoVacioRef = useRef<HTMLButtonElement>(null);
@@ -67,7 +70,7 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
       menu={
         <MenuDelEdificio
           seccionActual=""
-          secciones={seccionesDeLaAdministracion()}
+          secciones={seccionesDeLaAdministracion(sesion)}
           nombreAccesible="Tu administración"
         />
       }
@@ -76,14 +79,16 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
         titulo="Mis edificios"
         ayuda={<Ayuda {...AYUDA_MIS_EDIFICIOS} />}
         accionPrincipal={
-          <button
-            ref={botonNuevoRef}
-            type="button"
-            className="boton-principal"
-            onClick={() => setPanelAbierto(true)}
-          >
-            Nuevo edificio
-          </button>
+          puedeCrear ? (
+            <button
+              ref={botonNuevoRef}
+              type="button"
+              className="boton-principal"
+              onClick={() => setPanelAbierto(true)}
+            >
+              Nuevo edificio
+            </button>
+          ) : undefined
         }
       />
 
@@ -97,14 +102,16 @@ export function PantallaMisEdificios({ edificios, accionCrear }: Props) {
             mensaje="Todavía no tenés edificios"
             detalle="Creá el primero con su nombre y su localidad. Las unidades y lo demás se cargan adentro."
             accion={
-              <button
-                ref={botonNuevoVacioRef}
-                type="button"
-                className="boton-principal"
-                onClick={() => setPanelAbierto(true)}
-              >
-                Nuevo edificio
-              </button>
+              puedeCrear ? (
+                <button
+                  ref={botonNuevoVacioRef}
+                  type="button"
+                  className="boton-principal"
+                  onClick={() => setPanelAbierto(true)}
+                >
+                  Nuevo edificio
+                </button>
+              ) : undefined
             }
           />
         ) : (

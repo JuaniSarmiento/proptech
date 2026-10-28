@@ -4,6 +4,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SesionDePantalla, type SesionVisible } from "../../componentes/SesionDePantalla";
 import { sinViolaciones } from "../../lib/test/accesibilidad";
 import { PantallaMisEdificios } from "./Pantalla";
 
@@ -17,29 +18,78 @@ vi.mock("../../componentes/accionesGeoref", () => ({
 
 afterEach(cleanup);
 
+/** D11/7.6: `crear_edificio` es de administración — con ella, super admin. */
+function sesionConCrearEdificio(): SesionVisible {
+  return {
+    datos: {
+      persona: { nombre: "Alguien" },
+      administraciones: [
+        {
+          id: "a",
+          nombre: "A",
+          acciones: {
+            administracion: ["crear_edificio"],
+            todos_los_edificios: [],
+            por_edificio: {},
+          },
+        },
+      ],
+    },
+    administracionId: "a",
+  };
+}
+
+function sesionSinCrearEdificio(): SesionVisible {
+  return {
+    datos: {
+      persona: { nombre: "Alguien" },
+      administraciones: [
+        {
+          id: "a",
+          nombre: "A",
+          acciones: { administracion: [], todos_los_edificios: [], por_edificio: {} },
+        },
+      ],
+    },
+    administracionId: "a",
+  };
+}
+
+function conSesion(sesion: SesionVisible | null, hijo: React.ReactNode) {
+  return <SesionDePantalla value={sesion}>{hijo}</SesionDePantalla>;
+}
+
 describe("PantallaMisEdificios", () => {
   it('sin edificios muestra "Todavía no tenés edificios" con "Nuevo edificio" (Sin edificios)', () => {
-    render(<PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />);
+    render(
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />,
+      ),
+    );
     expect(screen.getByText("Todavía no tenés edificios")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Nuevo edificio" }).length).toBeGreaterThan(0);
   });
 
   it("con un solo edificio muestra la lista igual, no entra directo (D11)", () => {
     render(
-      <PantallaMisEdificios
-        edificios={[
-          {
-            id: "1",
-            nombre: "Edificio Único",
-            localidad: "Mendoza",
-            cantidadUnidades: 5,
-            estadoCoeficientes: "ok",
-            diferencia: "0.000000",
-            estadoMigracion: "pendiente",
-          },
-        ]}
-        accionCrear={vi.fn()}
-      />,
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios
+          edificios={[
+            {
+              id: "1",
+              nombre: "Edificio Único",
+              localidad: "Mendoza",
+              cantidadUnidades: 5,
+              estadoCoeficientes: "ok",
+              diferencia: "0.000000",
+              estadoMigracion: "pendiente",
+            },
+          ]}
+          accionCrear={vi.fn()}
+        />,
+      ),
     );
     expect(screen.getByRole("link", { name: /Edificio Único/ })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Nuevo edificio" }).length).toBeGreaterThan(0);
@@ -47,20 +97,23 @@ describe("PantallaMisEdificios", () => {
 
   it("cada fila muestra localidad, unidades, estado de coeficientes (con texto) y estado de migración", () => {
     render(
-      <PantallaMisEdificios
-        edificios={[
-          {
-            id: "1",
-            nombre: "Edificio API",
-            localidad: "Mendoza",
-            cantidadUnidades: 13,
-            estadoCoeficientes: "fuera_de_tolerancia",
-            diferencia: "-0.000200",
-            estadoMigracion: "pendiente",
-          },
-        ]}
-        accionCrear={vi.fn()}
-      />,
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios
+          edificios={[
+            {
+              id: "1",
+              nombre: "Edificio API",
+              localidad: "Mendoza",
+              cantidadUnidades: 13,
+              estadoCoeficientes: "fuera_de_tolerancia",
+              diferencia: "-0.000200",
+              estadoMigracion: "pendiente",
+            },
+          ]}
+          accionCrear={vi.fn()}
+        />,
+      ),
     );
     expect(screen.getByText(/Mendoza/)).toBeTruthy();
     expect(screen.getByText(/13/)).toBeTruthy();
@@ -70,20 +123,23 @@ describe("PantallaMisEdificios", () => {
 
   it("el enlace de cada fila se llama como el edificio, no con todos los estados pegados (pulido 3b)", () => {
     render(
-      <PantallaMisEdificios
-        edificios={[
-          {
-            id: "7",
-            nombre: "Edificio API",
-            localidad: "Mendoza",
-            cantidadUnidades: 13,
-            estadoCoeficientes: "ok",
-            diferencia: "0.000000",
-            estadoMigracion: "pendiente",
-          },
-        ]}
-        accionCrear={vi.fn()}
-      />,
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios
+          edificios={[
+            {
+              id: "7",
+              nombre: "Edificio API",
+              localidad: "Mendoza",
+              cantidadUnidades: 13,
+              estadoCoeficientes: "ok",
+              diferencia: "0.000000",
+              estadoMigracion: "pendiente",
+            },
+          ]}
+          accionCrear={vi.fn()}
+        />,
+      ),
     );
     const enlace = screen.getByRole("link", { name: "Edificio API" });
     expect(enlace.getAttribute("href")).toBe("/edificios/7");
@@ -91,7 +147,12 @@ describe("PantallaMisEdificios", () => {
 
   it('"Nuevo edificio" abre el panel con el formulario (nombre, ubicación, pisos y subsuelos)', async () => {
     const usuario = userEvent.setup();
-    render(<PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />);
+    render(
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />,
+      ),
+    );
     await usuario.click(
       screen.getAllByRole("button", { name: "Nuevo edificio" })[0] as HTMLElement,
     );
@@ -106,7 +167,12 @@ describe("PantallaMisEdificios", () => {
       erroresPorCampo: {},
       erroresDesconocidos: ["No podés crear un edificio nuevo."],
     });
-    render(<PantallaMisEdificios edificios={[]} accionCrear={accionCrear} />);
+    render(
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios edificios={[]} accionCrear={accionCrear} />,
+      ),
+    );
     const usuario = userEvent.setup();
     await usuario.click(
       screen.getAllByRole("button", { name: "Nuevo edificio" })[0] as HTMLElement,
@@ -120,25 +186,71 @@ describe("PantallaMisEdificios", () => {
 
   it("sin violaciones de axe, vacío y con edificios", async () => {
     const { container, rerender } = render(
-      <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />,
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />,
+      ),
     );
     await sinViolaciones(container);
     rerender(
-      <PantallaMisEdificios
-        edificios={[
-          {
-            id: "1",
-            nombre: "Edificio API",
-            localidad: "Mendoza",
-            cantidadUnidades: 3,
-            estadoCoeficientes: "ok",
-            diferencia: "0.000000",
-            estadoMigracion: "pendiente",
-          },
-        ]}
-        accionCrear={vi.fn()}
-      />,
+      conSesion(
+        sesionConCrearEdificio(),
+        <PantallaMisEdificios
+          edificios={[
+            {
+              id: "1",
+              nombre: "Edificio API",
+              localidad: "Mendoza",
+              cantidadUnidades: 3,
+              estadoCoeficientes: "ok",
+              diferencia: "0.000000",
+              estadoMigracion: "pendiente",
+            },
+          ]}
+          accionCrear={vi.fn()}
+        />,
+      ),
     );
     await sinViolaciones(container);
+  });
+
+  // --- D11/7.6: "Nuevo edificio" se oculta sin crear_edificio ---
+
+  it('sin crear_edificio no muestra "Nuevo edificio" en ningún lado (El control oculto)', () => {
+    render(
+      conSesion(
+        sesionSinCrearEdificio(),
+        <PantallaMisEdificios
+          edificios={[
+            {
+              id: "1",
+              nombre: "Edificio Único",
+              localidad: "Mendoza",
+              cantidadUnidades: 5,
+              estadoCoeficientes: "ok",
+              diferencia: "0.000000",
+              estadoMigracion: "pendiente",
+            },
+          ]}
+          accionCrear={vi.fn()}
+        />,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Nuevo edificio" })).toBeNull();
+  });
+
+  it("sin edificios y sin crear_edificio tampoco muestra el botón del estado vacío", () => {
+    render(
+      conSesion(
+        sesionSinCrearEdificio(),
+        <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Nuevo edificio" })).toBeNull();
+  });
+
+  it('sin acciones en la sesión (sin sesión en el contexto) tampoco muestra "Nuevo edificio" (Sin acciones en la sesión)', () => {
+    render(conSesion(null, <PantallaMisEdificios edificios={[]} accionCrear={vi.fn()} />));
+    expect(screen.queryByRole("button", { name: "Nuevo edificio" })).toBeNull();
   });
 });

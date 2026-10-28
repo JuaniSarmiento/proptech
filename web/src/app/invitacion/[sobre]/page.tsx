@@ -20,6 +20,7 @@ export default async function Invitacion({
       accion={sesion ? aceptarInvitacionAction.bind(null, sobre) : null}
       ingreso={`/ingresar?${conTicket({ regreso, ...(sesion ? { cerrar: "1" } : {}) })}`}
       registro={`/registrarse?${conTicket({ regreso })}`}
+      claimEmail={sesion?.email ?? null}
     />
   );
 }

@@ -28,6 +28,7 @@ import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, CampoDeLista, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
+import { permite, useSesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import type { InformeDeCoeficientes, Unidad } from "../../../../lib/api/tipos";
 import { etiquetaDeVinculo, type VecinoDeUnidad } from "../../../../lib/api/vecinos";
 import {
@@ -114,6 +115,8 @@ export function PantallaPadron({
   accionRevocarVecino = async () => null,
   accionQuitarVecino = async () => null,
 }: Props) {
+  const sesion = useSesionDePantalla();
+  const puedeConfigurar = permite(sesion, "configurar_padron", id);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
   const agregarRef = useRef<HTMLButtonElement>(null);
@@ -163,11 +166,11 @@ export function PantallaPadron({
     setPanelAbierto(true);
   }
 
-  const botonAgregar = (
+  const botonAgregar = puedeConfigurar ? (
     <button ref={agregarRef} type="button" className="boton-principal" onClick={abrirNueva}>
       Agregar unidad
     </button>
-  );
+  ) : undefined;
 
   return (
     <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="unidades">
@@ -188,9 +191,11 @@ export function PantallaPadron({
               mensaje="Todavía no cargaste unidades"
               detalle="Empezá por la primera: identificador, tipo, superficie y coeficiente. Los datos los podés copiar de tu planilla."
               accion={
-                <button type="button" onClick={abrirNueva}>
-                  Agregar unidad
-                </button>
+                puedeConfigurar ? (
+                  <button type="button" onClick={abrirNueva}>
+                    Agregar unidad
+                  </button>
+                ) : undefined
               }
             />
           ) : (

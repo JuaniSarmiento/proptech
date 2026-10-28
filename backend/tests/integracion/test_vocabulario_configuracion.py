@@ -93,7 +93,7 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
         with base_del_edificio.conectar_app() as app:
             assert {
                 f[0] for f in app.execute("SELECT nombre FROM accion_de_auditoria").fetchall()
-            } == {a.value for a in Accion} - _NUEVAS - {"corregir_movimiento"}
+            } == {a.value for a in Accion} - _NUEVAS - {"corregir_movimiento", "ver_personal"}
     finally:
         base_del_edificio.migrar("upgrade", "head")
     with base_del_edificio.conectar_app() as app:

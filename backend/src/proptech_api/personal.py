@@ -26,7 +26,7 @@ from proptech_core.acceso.aplicacion.usuarios import (
     revocar_invitacion,
 )
 from proptech_core.acceso.dominio.identidad import Identidad
-from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
+from proptech_core.acceso.dominio.permisos import Accion, Asignacion, Rol, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo, cargar_unidad
 
@@ -42,20 +42,27 @@ class CuerpoPersonal(CuerpoDeAlta):
     complejo_id: Annotated[UUID, Field(strict=False)] | None = None
 
 
-def autorizar(sesion: Session, identidad: Identidad, complejo_id: UUID | None = None) -> None:
+def autorizar(
+    sesion: Session,
+    identidad: Identidad,
+    complejo_id: UUID | None = None,
+    *,
+    permiso: Accion = PERMISO,
+) -> list[Asignacion]:
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
     if complejo_id is not None:
         if cargar_complejo(sesion, complejo_id) is None or not alcanza(asignaciones, complejo_id):
             raise HTTPException(404, detail="no encontrado")
-    if not puede(asignaciones, PERMISO, complejo_id):
+    if not puede(asignaciones, permiso, complejo_id):
         raise HTTPException(
             403,
             detail={
                 "codigo": "sin_permiso",
                 "detalle": "sin_permiso",
-                "permiso_faltante": PERMISO.value,
+                "permiso_faltante": permiso.value,
             },
         )
+    return asignaciones
 
 
 def campo_invalido(campo: str) -> None:
@@ -169,8 +176,12 @@ async def listar(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
-    autorizar(sesion, identidad)
-    return listar_personal(sesion)
+    # D13 (2d, grupo 7): ver no es invitar — super admin y administrador
+    # principal; sólo este último filtra "por debajo" (L-009, misma lista
+    # que `permisos.POR_DEBAJO_DEL_ADMINISTRADOR_PRINCIPAL`).
+    asignaciones = autorizar(sesion, identidad, permiso=Accion.VER_PERSONAL)
+    es_super_admin = any(a.rol is Rol.SUPER_ADMIN for a in asignaciones)
+    return listar_personal(sesion, solo_por_debajo=not es_super_admin)
 
 
 @router.post("/invitaciones/{invitacion_id}/revocar")

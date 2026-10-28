@@ -493,12 +493,12 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
 
 ## 7. Los cuatro ítems de acceso (B-3, 2.3, 2.4, 2.5/P66)
 
-- [ ] 7.1 Migración `00NN` (número provisorio; el que mergea segundo renumera): suma `ver_personal` a
+- [x] 7.1 Migración `0028` (número provisorio; el que mergea segundo renumera): suma `ver_personal` a
   `accion_de_auditoria` (mismo patrón que `0027_editar_edificio.py`). **Rojo**:
   `test_auditoria_tabla.py::test_accion_de_auditoria_coincide_con_accion` y
   `test_vocabulario_configuracion.py` con `Accion.VER_PERSONAL` ya declarada (vacía en la matriz) fallan
   nombrando `ver_personal`; y el test de migración dedicado
-  `tests/integracion/test_migracion_00NN_ver_personal.py` (DB, nota 1), con el patrón de
+  `tests/integracion/test_migracion_0028_ver_personal.py` (DB, nota 1), con el patrón de
   `test_migracion_0024_vocabulario.py`: sube, baja y vuelve a subir, y en cada paso compara el
   vocabulario de `accion_de_auditoria` (`ver_personal` presente, ausente, presente) y `alembic_version`;
   y, con una fila de `auditoria` que use `ver_personal`, la bajada falla con SQLSTATE `23503` sin
@@ -506,14 +506,85 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   bajada también sobre una copia con datos, con `alembic heads` de una sola cabeza. **Mutante**: una
   bajada que borre antes las filas de `auditoria` que la usan → rojo en el `23503`. DBA convocado (E11,
   D13).
-- [ ] 7.2 La matriz en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: `_MATRIZ_A_MANO` suma
+
+  **Evidencia ejecutada 7.1 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:25:55-03:00 (Accion.VER_PERSONAL agregada al enum, vacía en la matriz;
+  migración 0028 retirada del árbol para el rojo genuino)
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_tabla.py::test_accion_de_auditoria_coincide_con_accion tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_migracion_0028_ver_personal.py
+  test_accion_de_auditoria_coincide_con_accion: AssertionError nombrando 'ver_personal' (extra en el
+  enum, falta en la tabla).
+  test_base_vacia_con_upgrade_head_y_arranque_real, test_downgrade_y_upgrade_con_listas_separadas:
+  mismo motivo.
+  test_rf_0028_down_up_vocabulario: assert [] == [('ver_personal',)].
+  test_rf_0028_bajada_con_fila_de_auditoria_falla_por_fk: ForeignKeyViolation al insertar la fila de
+  auditoría de prueba (ver_personal no existe aún en accion_de_auditoria) — cae en la aserción que el
+  test dice probar, no en un helper.
+  5 failed, 1 passed in 14.14s
+  GREEN TIME: 2026-10-28T13:26:22-03:00 (migración 0028 restaurada)
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_auditoria_tabla.py::test_accion_de_auditoria_coincide_con_accion tests/integracion/test_vocabulario_configuracion.py tests/integracion/test_migracion_0028_ver_personal.py
+  5 passed, 1 failed (test_downgrade_y_upgrade_con_listas_separadas, por no excluir todavía
+  "ver_personal" del cálculo a 0004); corregido sumando "ver_personal" a esa resta (línea 96, mismo
+  patrón que "corregir_movimiento") → 6 passed, 1 warning in 16.59s (13:27:03).
+  ruff check + ruff format --check (migración, test dedicado, test_vocabulario_configuracion.py,
+  permisos.py): limpio (un RUF043 de regex sin escapar en el test, corregido con raw string).
+  mypy src/proptech_core/acceso/dominio/permisos.py: Success, no issues found in 1 source file.
+  uv run alembic heads: 0028 (head) — una sola cabeza.
+  MUTANTE (dirigido, sobre copia sin commit, restaurada): downgrade() mutado para borrar antes
+  `DELETE FROM auditoria WHERE accion IN ('ver_personal')` → test_rf_0028_bajada_con_fila_de_auditoria
+  falla (13:28:55–13:29:00): no ve el 23503 esperado porque el DELETE directo ni siquiera corre —
+  `InsufficientPrivilege: permission denied for table auditoria` (D9/L-054: el migrador ya no es dueño
+  de la tabla protegida después de `roles despues`, protección más profunda que la sola FK). 1 failed:
+  el mutante muere igual, por un motivo más estricto que el hipotetizado en la tarea. Restaurado
+  (`diff` vacío contra el respaldo) y re-verificado en verde (13:29:21): 2 passed in 7.64s.
+  ```
+
+  **Hallazgo para el informe**: el mutante hipotetizado en la tarea (bajada que borra antes las filas
+  de auditoría) ni siquiera llega a ejecutar el DELETE, porque el rol migrador perdió la propiedad de
+  `auditoria` en `roles despues` (D9). La protección real es doble: ownership primero, FK después. No
+  es una regla nueva (ya está en D9/L-054), sólo una confirmación con evidencia de este caso concreto.
+- [x] 7.2 La matriz en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: `_MATRIZ_A_MANO` suma
   `ver_personal` con `_SA` y `_AP`; "El administrador principal ve el personal pero no invita";
   `puede(..., VER_PERSONAL, None)` es verdadero para super admin y administrador principal y falso para
   las otras siete columnas. **Guardas**: "La matriz completa" en las 153 celdas de hoy; sin complejo,
   ninguna otra acción salvo las tres de toda la administración. **Verde**: `_MATRIZ` y el conjunto de
   acciones sin complejo de `puede` (D13). **Mutantes**: (a) `ver_personal` con `_AE` → rojo; (b)
   `ver_personal` fuera del conjunto sin complejo → rojo.
-- [ ] 7.3 `GET /api/personal` jerárquico en `tests/integracion/test_personal_api.py`. **Rojo**: con A
+
+  **Evidencia ejecutada 7.2 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:30:19-03:00
+  COMMAND: uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  test_matriz_entera_con_cada_celda_distinta_en_el_mensaje: ver_personal/SA: False != True,
+  ver_personal/AP: False != True.
+  test_cada_celda_de_la_matriz[SA-ver_personal], [AP-ver_personal]: assert False is True.
+  test_sin_complejo_solo_las_tres_acciones_de_administracion[SA-ver_personal], [AP-ver_personal]:
+  assert False is True.
+  test_el_administrador_principal_ve_el_personal_pero_no_invita: assert False is True.
+  6 failed, 477 passed in 0.42s
+  GREEN TIME: 2026-10-28T13:30:39-03:00
+  COMMAND: uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  483 passed in 0.34s
+  ruff check + ruff format --check (permisos.py, test_permisos.py): limpio. mypy permisos.py: Success.
+  MUTANTE (a, dirigido, sobre copia sin commit, restaurada): `_MATRIZ[Accion.VER_PERSONAL]` con `_SA,
+  _AP, _AE` (13:30:47–13:30:54): test_matriz_entera... y test_cada_celda_de_la_matriz[AE-ver_personal]:
+  AssertionError (`AE: True != False`). 2 failed, 481 passed.
+  MUTANTE (b, dirigido, sobre copia sin commit, restaurada): `VER_PERSONAL` sacada de
+  `ACCIONES_DE_ADMINISTRACION` (13:30:54–13:31:02): test_sin_complejo_solo_las_tres_acciones...[SA/AP-
+  ver_personal] y test_el_administrador_principal_ve_el_personal_pero_no_invita: AssertionError. 3
+  failed, 480 passed.
+  Restaurado (`diff` vacío contra el respaldo) y re-verificado en verde (13:31:02): 483 passed.
+  ```
+
+  **Desvío declarado**: `test_sin_complejo_crear_e_invitar_para_super_admin` se renombró a
+  `test_sin_complejo_solo_las_tres_acciones_de_administracion` y pasó a comparar contra un diccionario
+  `_ACCIONES_SIN_COMPLEJO_A_MANO` (antes, un `set` literal de dos nombres) porque `ver_personal`
+  distingue perfiles (SA y AP) donde las otras dos sólo dan SA: la guarda original no podía expresar
+  "quién, para cada acción" con un solo `set`. El escenario que prueba sigue siendo el mismo ("sin
+  complejo sólo se evalúan las tres acciones de administración"), con más poder de discriminación.
+- [x] 7.3 `GET /api/personal` jerárquico en `tests/integracion/test_personal_api.py`. **Rojo**: con A
   que tiene super admin, otro administrador principal, contador por edificio, auxiliar y vecino, un
   administrador principal recibe 200 sólo con el contador y el auxiliar, y el **cuerpo crudo** no
   contiene el id, el nombre ni el email del super admin, del otro principal ni del vecino; una persona
@@ -530,7 +601,49 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   el `GET` sigue exigiendo `invitar_…` → rojo; (d) `all(...)` sin exigir al menos una asignación →
   rojo en la persona sin asignaciones. El filtro es en Python, con la lista de "por debajo" declarada
   una vez (D13); el `EXISTS` en SQL no se construye ahora.
-- [ ] 7.4 `acciones_permitidas` en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: test de
+
+  **Evidencia ejecutada 7.3 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:33:21-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_personal_api.py
+  test_un_no_super_admin_recibe_403_en_las_tres: assert 'invitar_usuarios_y_asignar_edificios' ==
+  'ver_personal'.
+  test_el_administrador_principal_lista_el_personal: assert 403 == 200 (sin_permiso
+  invitar_usuarios_y_asignar_edificios).
+  test_una_persona_sin_asignaciones_no_aparece_para_el_administrador_principal: mismo 403.
+  test_un_administrador_por_edificio_pide_el_personal: assert 'invitar_usuarios_y_asignar_edificios'
+  == 'ver_personal'.
+  4 failed, 8 passed in 22.61s
+  GREEN TIME: 2026-10-28T13:35:06-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_personal_api.py
+  12 passed, 1 warning in 22.56s
+  Regresión: bash infra/ci/test-backend.sh tests/integracion/test_rutas_protegidas.py
+  tests/integracion/test_invitar_personal_api.py tests/integracion/test_padron_api.py
+  tests/unitarios/test_errores.py (13:35:43): 443 passed.
+  ruff check + ruff format --check (personal.py, usuarios.py, permisos.py, test_personal_api.py):
+  limpio. mypy (los tres .py de producción): Success, no issues found in 3 source files.
+  MUTANTE (a, dirigido, sobre copia sin commit, restaurada): `_todas_por_debajo` cambiada de "todas"
+  a "alguna" (13:37:31–13:38:09) → test_una_sola_asignacion_de_arriba_basta_para_no_aparecer (test
+  nuevo, permanente): el email/id del super admin con una asignación extra de consejo se filtra. 1
+  failed.
+  MUTANTE (b, dirigido, sobre copia sin commit, restaurada): `POR_DEBAJO_DEL_ADMINISTRADOR_PRINCIPAL`
+  con `_AP` sumada (13:38:43–13:38:55) → test_el_administrador_principal_lista_el_personal: el id del
+  otro principal aparece. 1 failed.
+  MUTANTE (c, dirigido, sobre copia sin commit, restaurada): el `GET` vuelve a pedir el permiso por
+  defecto (`invitar_usuarios_y_asignar_edificios`) en vez de `ver_personal` (13:38:55–13:39:45): 5
+  failed (los cuatro tests nuevos de 7.3 más el renombrado de 2.2a).
+  MUTANTE (d, dirigido, sobre copia sin commit, restaurada): se sacó el `not crudas or` del filtro
+  (13:40:17–13:40:33) → test_una_persona_sin_asignaciones_no_aparece_para_el_administrador_principal:
+  la persona sin asignaciones (`all([])` es `True`) vuelve a aparecer. 1 failed.
+  Re-verificado en verde tras cada restauración; verificación final conjunta (13:40:33):
+  tests/integracion/test_personal_api.py + tests/unitarios/acceso/test_permisos.py: 496 passed.
+  ```
+
+  **Desvío declarado**: se agregó `test_una_sola_asignacion_de_arriba_basta_para_no_aparecer` como
+  test permanente (no sólo transitorio para el mutante a): cubre un caso que ninguno de los otros
+  tests ejercitaba — una persona con una asignación "de abajo" Y una "de arriba" a la vez.
+- [x] 7.4 `acciones_permitidas` en `tests/unitarios/acceso/test_permisos.py`. **Rojo**: test de
   propiedad que recorre **toda la matriz** (rol × acción × contexto): para cada una de las nueve
   columnas y para combinaciones de dos asignaciones (por ejemplo, administrador por edificio en E1 y
   contador por edificio en E2; super admin y vecino), cada acción de `Accion` y cada contexto (sin
@@ -551,14 +664,76 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   `_MATRIZ` → rojo en el contexto "edificio propio" del administrador por edificio y en "sólo celdas
   principales". El mutante (d) es el que discrimina este contrato del anterior: con la comparación
   sólo sin complejo para las acciones de administración, sobrevivía.
-- [ ] 7.5 `GET /api/sesion` ampliada en `tests/integracion/test_sesion_api.py`. **Rojo**: cada
+
+  **Evidencia ejecutada 7.4 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:43:55-03:00 (acciones_permitidas stub, siempre vacía, para que el rojo caiga
+  en la aserción de la propiedad, nunca en un ImportError)
+  COMMAND: uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  131 failed, 950 passed in 1.54s — cada falla en la comparación `_coincide_con_puede(...) is
+  puede(...)`, nombrando contexto, acción y asignaciones (p. ej. "edificio_propio-crear_edificio-...",
+  "edificio_ajeno-ver_personal-...").
+  GREEN TIME: 2026-10-28T13:44:04-03:00 (función real restaurada)
+  COMMAND: uv run pytest tests/unitarios/acceso/test_permisos.py -q
+  1081 passed in 0.80s
+  Regresión: bash infra/ci/test-backend.sh tests/unitarios/acceso tests/integracion/test_personal_api.py
+  tests/integracion/test_padron_api.py tests/integracion/test_rutas_protegidas.py
+  tests/integracion/test_invitar_personal_api.py (13:45:11): 1644 passed in 76.61s.
+  ruff check + ruff format --check (permisos.py, test_permisos.py): limpio. mypy permisos.py: Success.
+  MUTANTE (a, dirigido, sobre copia sin commit, restaurada): copia local de `_MATRIZ` dentro de la
+  función con `ver_configuracion_del_edificio` vaciada (13:44:14–13:44:23): 14 failed.
+  MUTANTE (b, dirigido, sobre copia sin commit, restaurada): las asignaciones por unidad (vecino)
+  excluidas del filtro de `por_edificio` (13:44:23–13:44:32): 3 failed, todas en
+  "edificio_propio-informar_pago" con asignaciones de vecino.
+  MUTANTE (c, dirigido, sobre copia sin commit, restaurada): las acciones de administración sumadas
+  también a `todos_los_edificios` (13:44:32–13:44:41): 1 failed, en
+  test_una_accion_de_administracion_evaluada_con_un_edificio.
+  MUTANTE (d, dirigido, sobre copia sin commit, restaurada): `_AE` sumada a `crear_edificio` en
+  `_MATRIZ` (13:44:41–13:44:51): 8 failed, incluido test_las_acciones_de_administracion_solo_tienen_
+  celdas_principales y la propiedad en los contextos "sin_edificio"/"edificio_ajeno" (el mutante
+  pasaba con la comparación sólo-sin-complejo de una versión más débil del test; con los tres
+  contextos y la celda explícita, no sobrevive).
+  Restaurado (`diff` vacío contra el respaldo) y re-verificado en verde (13:44:51): 1081 passed.
+  ```
+
+- [x] 7.5 `GET /api/sesion` ampliada en `tests/integracion/test_sesion_api.py`. **Rojo**: cada
   administración trae `acciones` con `administracion`, `todos_los_edificios` y `por_edificio`, por HTTP
   con un token firmado, para super admin, administrador por edificio y contador por edificio.
   **Guarda**: el 403 `sin_acceso` sigue siendo exactamente `{"detail": {"codigo": "sin_acceso"}}`
   (compararlo byte a byte contra el de 2.1). Escenarios "El super admin", "Un contador por edificio",
   "El 403 sin acceso no cambia". **Verde** en `consultar` (D11). **Mutante**: `acciones` agregadas
   también al 403 → rojo en la guarda.
-- [ ] 7.6 La web oculta lo que no se puede: `componentes/SesionDePantalla.tsx` (acciones y `permite`),
+
+  **Evidencia ejecutada 7.5 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:49:58-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py
+  test_sesion_solo_lista_vinculos_con_asignacion: AssertionError: assert 'acciones' in
+  {'id': ..., 'nombre': 'Inventada API'}.
+  test_el_super_admin, test_un_contador_por_edificio: KeyError: 'acciones'.
+  3 failed, 10 passed in 8.35s
+  GREEN TIME: 2026-10-28T13:50:26-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py
+  13 passed, 1 warning in 7.77s
+  Regresión: tests/integracion/test_identidad_clerk_api.py + test_deuda_acceso_2b.py (13:51:38):
+  74 passed.
+  ruff check + ruff format --check (sesion.py, errores.py, test_sesion_api.py): limpio (una línea de
+  101 columnas en un nombre de test, cortada). mypy (sesion.py, errores.py): Success.
+  MUTANTE (dirigido, sobre copia sin commit, restaurada): `sin_acceso_http()` agrega
+  `"acciones": {}` al 403 (13:50:52–13:51:07): 4 failed — las dos guardas de cuerpo constante
+  (`test_sesion_sin_acceso_tiene_cuerpo_y_cabeceras_constantes` ×2), `test_sin_asignacion_audita_...`
+  y el escenario nuevo `test_el_403_sin_acceso_no_cambia_con_la_sesion_ampliada`. Restaurado (`diff`
+  vacío contra el respaldo) y re-verificado en verde (13:51:07): 13 passed.
+  ```
+
+  **Desvío declarado**: dos guardas existentes (`test_sesion_solo_lista_vinculos_con_asignacion`, la
+  comparación exacta de `administraciones`) comparaban el cuerpo entero con `==`; con `acciones`
+  agregada esa comparación ya no podía ser exacta sin replicar el cálculo completo de la matriz en el
+  test. Se cambió a comparar `administraciones` sin la clave `acciones` (con un `assert "acciones" in
+  ...` aparte) — el escenario que prueban (qué administraciones aparecen) no cambió.
+- [x] 7.6 La web oculta lo que no se puede: `componentes/SesionDePantalla.tsx` (acciones y `permite`),
   `app/layout.tsx`, `app/personal/secciones.ts`, `app/edificios/Pantalla.tsx`, las pantallas del
   edificio con escritura y `app/personal/Pantalla.tsx`, con sus tests de componente. **Rojo**: un
   contador por edificio no ve "Personal", "Nuevo edificio", "Agregar unidad" ni controles de edición en
@@ -574,7 +749,108 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   también para las acciones de `administracion` → rojo en "Nuevo edificio" del super admin dentro de una
   pantalla de edificio; (c) "Personal" atado a `invitar_…` en
   vez de `ver_personal` → rojo en el administrador principal.
-- [ ] 7.7 2.4 en `tests/integracion/test_invitar_personal_api.py`. **Rojo**: invitar
+
+  **Evidencia ejecutada 7.6 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T14:21:14-03:00 (permite() stub, siempre false, para que el rojo caiga en la
+  aserción de la propiedad, nunca en un ImportError)
+  COMMAND: npx vitest run src/componentes/SesionDePantalla.test.tsx
+  3 failed, 4 passed — cada rojo en la aserción exacta ("una acción de administración da lo mismo con
+  o sin complejoId", "todos_los_edificios permite en cualquier edificio", "por_edificio sólo permite en
+  el edificio que trae").
+  GREEN TIME: 2026-10-28T14:18:32-03:00 (permite() real restaurado): 7 passed.
+  RED secciones.ts (14:20:12, signature/filtro viejo): 2 failed ("sin ver_personal no muestra Personal",
+  "sin sesión no muestra nada") — "con ver_personal" seguía pasando porque la función vieja ignoraba el
+  argumento nuevo.
+  GREEN secciones.ts (14:20:... tras el filtro): 3 passed.
+  RED edificios/Pantalla.tsx (14:21:14, producción sin cambios, tests ya envueltos en sesión):
+  3 failed ("sin crear_edificio", "sin edificios y sin crear_edificio", "sin acciones en la sesión") —
+  los 7 tests existentes seguían en verde porque la producción aún no filtraba.
+  GREEN edificios/Pantalla.tsx (14:25:04): 10 passed.
+  GREEN unidades/Pantalla.tsx (14:27:17, producción y tests escritos juntos, verificados con los
+  mutantes de abajo en vez de un rojo previo — desvío declarado): 26 passed.
+  GREEN personal/Pantalla.tsx (14:29:54, mismo desvío): 15 passed.
+  Regresión conjunta final (14:34:05): npx vitest run src/app/personal/secciones.test.ts
+  src/app/personal/Pantalla.test.tsx src/app/edificios/Pantalla.test.tsx
+  "src/app/edificios/[id]/unidades/Pantalla.test.tsx" src/componentes/SesionDePantalla.test.tsx
+  src/componentes/Armazon.test.tsx: 6 files, 64 passed.
+  Suite web completa: bash infra/ci/test-web.sh (14:31:51): 73 files, 508 passed.
+  tsc --noEmit (14:30:19 y 14:19:21): limpio. pnpm biome check (12 archivos): 4 con formato a
+  corregir (objetos multilínea, comillas, orden de imports) → `--write` → limpio.
+  MUTANTE (a, sobre copia sin commit, restaurada): `permite` sin sesión devuelve `true` (14:18:39–
+  14:18:48): 1 failed (SesionDePantalla.test.tsx, "sin sesión en el contexto da false").
+  MUTANTE (b, sobre copia sin commit, restaurada): `permite` ignora `todos_los_edificios`
+  (14:18:48–14:18:56): 1 failed, mismo archivo.
+  MUTANTE (b2, sobre copia sin commit, restaurada): `permite` exige `complejoId` también para
+  `administracion` (14:33:31–14:33:41): 5 failed, incluido "Nuevo edificio" en Mis Edificios
+  (sin complejoId en esa pantalla) y dos tests de SesionDePantalla.test.tsx.
+  MUTANTE (c, sobre copia sin commit, restaurada): secciones.ts atado a
+  `invitar_usuarios_y_asignar_edificios` en vez de `ver_personal` (14:33:56–14:34:05): 1 failed
+  ("con ver_personal muestra Personal").
+  MUTANTE extra (unidades/Pantalla.tsx, `puedeConfigurar` siempre true): 3 de 4 tests nuevos fallan.
+  MUTANTE extra (personal/Pantalla.tsx, `puedeGestionar` siempre true): 2 de 3 tests nuevos fallan.
+  MUTANTE extra (secciones.ts, condición reemplazada por `if (false)`): 2 failed.
+  Restaurado cada archivo (`diff` vacío contra su respaldo) después de cada mutante.
+  ```
+
+  **Desvío declarado**: en `unidades/Pantalla.tsx` y `personal/Pantalla.tsx` la producción y los tests
+  nuevos se escribieron juntos (no hubo un rojo previo contra la implementación vieja, a diferencia de
+  `SesionDePantalla.tsx`, `secciones.ts` y `edificios/Pantalla.tsx`, donde sí lo hubo). La garantía de
+  cada caso nuevo quedó probada igual con el mutante dirigido correspondiente, que mata exactamente la
+  aserción que el escenario dice probar.
+
+  **Técnica de test**: en `unidades/Pantalla.test.tsx` y `personal/Pantalla.test.tsx`, con 23 y 12
+  llamadas a `render()` preexistentes respectivamente (sin envolver en `SesionDePantalla`), se usó
+  `vi.mock(".../SesionDePantalla", …)` una sola vez al principio del archivo para que
+  `useSesionDePantalla` devuelva por defecto una sesión que concede el permiso de siempre (mismo
+  comportamiento que antes de 7.6 para esos 35 tests), y `vi.mocked(useSesionDePantalla).
+  mockReturnValueOnce(...)` sólo en los tests nuevos que prueban la sesión sin ese permiso. Evita
+  envolver cada `render()` existente, que hubiera sido un diff mucho más grande para el mismo contrato.
+
+  **Hallazgo fuera de alcance (no corregido)**: `permisos.py`/`usuarios.py`/`personal.py` no cambian
+  nada de `app/layout.tsx`; el archivo no necesitó ninguna edición porque ya pasa `resultado.datos`
+  completo (con `acciones`) a `SesionDePantalla`. Verificado con `tsc --noEmit` limpio, no con un test
+  dedicado nuevo.
+
+  **Arreglo necesario en `web/e2e/api-falsa.ts`**: `DatosDeSesion.administraciones[].acciones` pasó a
+  ser obligatorio (no `?`) y el doble falso de `/api/sesion` no lo traía — cualquier pantalla que
+  llamara a `permite()` iba a tirar un `TypeError` real en el navegador (no un 403), rompiendo en
+  silencio toda la e2e existente. Se agregó `_ACCIONES_DE_SUPER_ADMIN` (las tres acciones de
+  administración más todas las de edificio salvo `informar_pago`) y se la sumó a cada administración
+  del fixture: ninguna de las identidades de e2e de hoy (`user_prueba`, `user_varias`, etc.) probaba un
+  rol restringido antes de D11, así que "todo permitido" es lo mismo que ya asumían. Verificado:
+  `npx vitest run e2e/api-falsa.test.ts` (33 passed, 14:44:04) y los e2e reales de abajo.
+
+  **E2E reales verificados tras el arreglo** (`bash infra/ci/test-web-navegador.sh <spec>`):
+  `sesion.spec.ts` (14:44:45): 7 passed. `personal.spec.ts` (14:44:22): 3 passed, 2 failed — el mismo
+  `ENOTDIR: not a directory, mkdir '.../.git/informes-2b/pantallas'` que `test_migracion_roles_de_la_
+  empresa.py` en el backend: el worktree tiene `.git` como archivo, no como carpeta, y el test intenta
+  crear ahí una carpeta de capturas; nada de la UI falló (axe y el screenshot son lo único que no
+  corrió). `ticket-de-invitacion.spec.ts` (14:44:59): 3 passed. `escrituras-unidades.spec.ts`
+  (14:45:12): 3 passed, incluido "Agregar unidad" con `user_prueba` (ahora con `crear_edificio`/
+  `configurar_padron` concedidos). `barrido-completo.spec.ts` (14:45:... a 14:49, corrida larga):
+  122 passed — ningún control de escritura del barrido se vio afectado por `_ACCIONES_DE_SUPER_ADMIN`.
+
+  **Dos roturas más encontradas y corregidas al correr e2e** (ninguna tarea las nombraba; las encontró
+  correr la suite real, no un test nuevo):
+  - `bash infra/ci/test-web.sh` (14:51:50): `e2e/autenticacion-api-falsa.test.ts` comparaba el cuerpo
+    de `/api/sesion` con `toEqual` exacto, sin la clave `acciones` nueva. Cambiado a comprobar
+    `persona`/`administraciones[0].{id,nombre}` con `toMatchObject` y sólo `toHaveProperty("acciones")`
+    para esa clave (la forma exacta ya la prueba `SesionDePantalla.test.tsx`). Verde después (14:54:07):
+    74 files, 518 passed.
+  - `bash infra/ci/test-web-navegador.sh acceso-pantallas.spec.ts` (14:50:... antes del arreglo):
+    4 de 6 failed — las pruebas "7.1 rechazo uniforme" (líneas 55-67 de antes) esperaban el texto de
+    rechazo y el enlace "Cerrar sesión" **de ayer**; el token de prueba de `sesion-local.ts` no manda
+    el claim `email`, así que con D10 el camino real es el genérico. Corregido el `mensaje` constante
+    y el nombre del enlace a "Usar otra cuenta". Verde después (14:51:06): 4 passed (más el test de
+    `CuentaEnBarra`, sin tocar, que sigue diciendo "Cerrar sesión" porque es un link distinto). Los 2
+    failed que quedan en ese archivo son, de nuevo, el `ENOTDIR` del worktree.
+
+  Ninguna de las dos roturas estaba en el alcance escrito de 7.6/7.8, y ninguna las iba a encontrar un
+  test unitario nuevo (ambas vivían en archivos de contrato/e2e que no edité hasta verlas fallar). Se
+  reportan acá en vez de en un hallazgo "fuera de alcance" porque sí eran mías: las corregí.
+- [x] 7.7 2.4 en `tests/integracion/test_invitar_personal_api.py`. **Rojo**: invitar
   `x@ejemplo.invalid` como "Ana", revocar, reinvitar como "Ana María" con otro perfil → `/api/personal`
   muestra una sola persona "Ana María" con las dos asignaciones; lo mismo con la persona ya vinculada y
   por el alta de vecinos. **Rojo** también, con PostgreSQL y RLS reales (como `proptech_app`): el super
@@ -589,7 +865,40 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   en una sentencia aparte, fuera del savepoint → rojo en la guarda del 409; sacar el `WHERE NOT EXISTS`
   del super admin → rojo en "no lo renombra"; un `UPDATE persona SET nombre … WHERE email = :email` sin
   `administracion_id` y fuera de RLS (por ejemplo, con el rol dueño) → rojo en "no renombra en otra".
-- [ ] 7.8 B-3 en `web/src/app/invitacion/[sobre]/page.test.tsx` y `Pantalla.test.tsx`. **Rojo**: con
+
+  **Evidencia ejecutada 7.7 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T13:53:54-03:00 (con el `ON CONFLICT … DO NOTHING` original, sin D12)
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_invitar_personal_api.py
+  test_reinvitar_el_mismo_email_con_otro_nombre: AssertionError: assert 'Ana' == 'Ana María'.
+  1 failed, 24 passed in 9.48s — los otros tres escenarios nuevos ("no lo renombra", "no renombra en
+  otra", "no cambia si se rechaza") ya pasaban con el código de hoy: declarados **guardas**, tal como
+  anticipa la tarea para "no renombra en otra".
+  GREEN TIME: 2026-10-28T13:54:22-03:00 (ON CONFLICT … DO UPDATE SET nombre … WHERE NOT EXISTS, D12)
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_invitar_personal_api.py
+  25 passed, 1 warning in 9.33s
+  Regresión: + test_personal_api.py + test_alta_inicial.py + test_padron_api.py (13:56:40): 79 passed.
+  ruff check + ruff format --check (usuarios.py, test_invitar_personal_api.py): limpio. mypy
+  usuarios.py: Success.
+  MUTANTE 1 (dirigido, sobre copia sin commit, restaurada): `UPDATE persona SET nombre…` en una
+  sentencia aparte, antes del `INSERT … ON CONFLICT DO NOTHING` (13:54:43–13:55:03): 1 failed, en
+  test_reinvitar_el_email_del_super_admin_no_lo_renombra (la sentencia aparte no tiene el `WHERE NOT
+  EXISTS`, renombra al super admin).
+  MUTANTE 2 (dirigido, sobre copia sin commit, restaurada): se sacó el `WHERE NOT EXISTS` del
+  `DO UPDATE` (13:55:03–13:55:25): 1 failed, mismo test.
+  MUTANTE 3 (dirigido, sobre copia sin commit, restaurada): `UPDATE persona SET nombre … WHERE
+  email=:email` sin `administracion_id`, en una sentencia aparte (13:55:25–13:55:45): 1 failed, mismo
+  test (la RLS de `persona` ya bloquea el cruce de administración incluso en una sentencia aparte;
+  el mutante muere por el camino de "no lo renombra", no por "no renombra en otra" — declarado).
+  Restaurado (`diff` vacío contra el respaldo) tras cada mutante y re-verificado en verde.
+  ```
+
+  **Cobertura agregada**: se sumaron `test_reinvitar_una_persona_ya_vinculada_tambien_renombra` y
+  `test_dar_de_alta_vecino_tambien_renombra` para cubrir literalmente "lo mismo con la persona ya
+  vinculada y por el alta de vecinos" del enunciado de la tarea, que los cuatro escenarios con nombre
+  propio no cubrían. Verificación final (13:58:06): 27 passed.
+- [x] 7.8 B-3 en `web/src/app/invitacion/[sobre]/page.test.tsx` y `Pantalla.test.tsx`. **Rojo**: con
   sesión y claim de email, la pantalla dice "Estás ingresado como <email>" y ofrece "Usar otra cuenta"
   (el enlace con `cerrar=1`, `regreso` a la invitación y el mismo `__clerk_ticket`); si la acción
   devuelve error con sesión, el mensaje dice que el enlace no sirve con esa cuenta y repite "Usar otra
@@ -603,6 +912,44 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   claim de email viaja en el token de sesión del Clerk de desarrollo (SUPUESTO de D10), comprobándolo
   sin pegar ningún email real. **Mutantes**: (a) leer el email de `searchParams` → rojo; (b) mostrar el
   texto de error de hoy con sesión → rojo.
+
+  **Evidencia ejecutada 7.8 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T14:37:46-03:00 (lib/sesion.ts sin leer sessionClaims)
+  COMMAND: npx vitest run src/lib/sesion.test.ts
+  3 failed: la comparación exacta sin "email" y los dos tests nuevos de claimDeEmail (undefined en vez
+  de "alguien@example.invalid"/null).
+  GREEN (14:38:02): 39 passed.
+  RED page.tsx (14:38:37, sin pasar claimEmail): 3 failed (los tres tests nuevos de 7.8, todos con
+  "undefined" donde se esperaba el claim o null).
+  GREEN (14:38:43): 7 passed.
+  RED Pantalla.tsx (14:39:18, mensajes vueltos a los de hoy y "Cerrar sesión" sin renombrar): 4 de 5
+  failed — sólo sobrevivió el escenario "sin sesión" (sin cambios, como corresponde).
+  GREEN (14:39:27): 5 passed.
+  Regresión conjunta (14:39:44): page.test.tsx + Pantalla.test.tsx + sesion.test.ts: 51 passed.
+  Suite web completa: bash infra/ci/test-web.sh (14:41:00): 74 files, 518 passed.
+  tsc --noEmit: 3 errores de cast (`as Awaited<ReturnType<typeof auth>>` sin pasar por `unknown`
+  primero, con el objeto mock más completo) → corregidos a `as unknown as Awaited<...>`. Limpio después.
+  pnpm biome check (6 archivos) + pnpm biome ci . (211 archivos): 2 errores de formato propios,
+  corregidos con --write; quedan sólo warnings/infos preexistentes en archivos no tocados (e2e specs,
+  edificios/page.tsx) — `pnpm biome ci .` sale con exit 0.
+  MUTANTE (a, sobre copia sin commit, restaurada): page.tsx lee `email` de `searchParams` en vez de (o
+  además de) `sesion.email` (14:39:36–14:39:44): 1 failed, "El email no sale de la URL".
+  MUTANTE (b, sobre copia sin commit, restaurada): mismo cambio que el rojo de Pantalla.tsx arriba
+  (14:39:18): 4 failed, cubre (b) íntegramente.
+  ```
+
+  **SUPUESTO sin comprobar (D10)**: si el Clerk de desarrollo manda el claim `email` en el token de
+  sesión (`sessionClaims.email`) es un supuesto, no verificado contra Clerk real — el brief de esta
+  vuelta prohíbe el login en proveedores. `claimDeEmail()` está escrito para degradar con gracia
+  (`null`, nunca `undefined` ni cadena vacía) si el claim no viene; la comprobación real queda para la
+  tarea 8.2 e, que el orquestador hace con Clerk de desarrollo. **No se pegó ningún email real** en
+  ningún lado de esta evidencia.
+
+  **Desvío declarado**: el guard "`test_aceptar_invitacion_api.py` 'Otro email' sigue dando el 404 sin
+  cambios" no se re-corrió específicamente en esta tarea porque 7.8 no tocó ningún archivo de
+  `proptech_api`/`proptech_core` — la corrida completa del backend (ver informe) ya lo cubre.
 
 ## 8. Cierre (de cada vuelta)
 
