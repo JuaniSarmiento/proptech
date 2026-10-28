@@ -1,11 +1,39 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderOriginal, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it } from "vitest";
 import type { Unidad } from "../../../../lib/api/tipos";
 import { PantallaPadron } from "./Pantalla";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
+
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["configurar_padron"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 afterEach(cleanup);
 

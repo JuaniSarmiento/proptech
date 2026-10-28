@@ -1,12 +1,40 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderOriginal, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { VersionDelHistorial } from "../../../../lib/api/tipos";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaConfiguracion } from "./Pantalla";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
+
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["crear_version_de_configuracion"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 // pulido-2 (3d), escenario "axe cubre más de un estado": sin configuración vigente,
 // panel abierto y panel con un error de campo (el test de la pantalla sólo mide el feliz).

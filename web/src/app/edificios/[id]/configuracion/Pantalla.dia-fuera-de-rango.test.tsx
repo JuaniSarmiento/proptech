@@ -1,13 +1,41 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderOriginal, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { crearVersionDeConfiguracion } from "../../../../lib/api/configuracion";
 import type { VersionDelHistorial } from "../../../../lib/api/tipos";
 import { crearVersionDeConfiguracionAction } from "./acciones";
 import { PantallaConfiguracion } from "./Pantalla";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
+
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["crear_version_de_configuracion"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 // pulido-2 (3d), escenario "Día 31": hoy lo frena el `<input type="number" max=28>`
 // del navegador, no la aplicación. Acá se manda el formulario SIN esa validación

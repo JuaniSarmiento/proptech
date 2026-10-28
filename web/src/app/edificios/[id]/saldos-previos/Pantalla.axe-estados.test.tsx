@@ -1,10 +1,38 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderOriginal, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaSaldosPrevios } from "./Pantalla";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
+
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["confirmar_sin_saldos_previos"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 // pulido-2 (3d), escenario "axe cubre más de un estado": ya confirmado y formulario con
 // el error de la casilla sin tildar (el test de la pantalla sólo mide "pendiente").
