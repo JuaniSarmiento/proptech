@@ -986,6 +986,23 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   invitación ("Una cuenta sin acceso acepta su invitación"). Capturas en el informe, ningún id ni email
   real en el repo.
 
+  **Evidencia 8.2 (28/10/2026, ~15:15 a 15:40)**: Juani, en su Chrome, contra el stack `proptech-3c`
+  con el Clerk de desarrollo real y el código de `e823a3b` (migración `0028` aplicada sobre los datos del 3c);
+  el orquestador guió y verificó en la base. Ningún id ni email real en el repo.
+  (a) cuenta desvinculada → `/sin-acceso` con su email, "Cerrar sesión" y "Volver a intentar", sin bucle
+  ni URL anidada: **pasa**. (c) segunda pestaña a `/edificios` → `/sin-acceso`: **pasa**. (b) `ejemplo cargar
+  --clerk-usuario user_…` respondió "vinculado"; "Volver a intentar" entró a "Mis edificios": **pasa**.
+  (d) 320/1280 medidos en 4.1; teclado cubierto por los e2e. (e) invitación de B abierta con A: "Estás
+  ingresado como <A>", sin el email de B; "Aceptar e ingresar" falla con "Este enlace no sirve con la
+  cuenta <A>…": **pasa**. "Usar otra cuenta" con B **sin cuenta en Clerk**: Clerk responde "This invitation
+  refers to a non-existing identification" y la página hospedada vuelve a `/invitacion/…` sin
+  `__clerk_ticket` → **falla**; se corrige por la enmienda E10 firmada (335f50d). Reabriendo el enlace del
+  mail sin sesión y eligiendo crear cuenta, B se registra y acepta. (g) B quedó vinculada con su asignación
+  (verificado en la base): **pasa**. (f) B (administrador por edificio) ve sólo su edificio, sin "Nuevo
+  edificio" ni Personal: **pasa**. Contador no se probó por separado (B quedó como administrador por edificio).
+  Aparte, no de este change: el recuadro de Clerk no desborda pero se ve mal (tarjeta dentro de tarjeta,
+  encabezado cortado, placeholder truncado); queda como deuda visual para un change de pulido.
+
 ## Workflow follow-up
 
 - Revisores de `verify`: piso obligatorio por autenticación y datos de usuario, **backend**, **QA**,
