@@ -259,7 +259,13 @@ def test_ae_sin_permiso_no_averigua_recurso(
     respuesta = api.cliente.post(api.ruta("/correcciones"), json=datos)
     assert (respuesta.status_code, respuesta.json()) == (
         403,
-        {"detail": {"detalle": "sin_permiso", "permiso_faltante": "corregir_movimiento"}},
+        {
+            "detail": {
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": "corregir_movimiento",
+            }
+        },
     )
 
 

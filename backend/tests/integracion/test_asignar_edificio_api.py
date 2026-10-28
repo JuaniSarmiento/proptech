@@ -303,6 +303,7 @@ def test_administrador_en_complejo_asignado_403_con_permiso_faltante(
         )
         assert respuesta.status_code == 403
         assert respuesta.json()["detail"] == {
+            "codigo": "sin_permiso",
             "detalle": "sin_permiso",
             "permiso_faltante": "invitar_usuarios_y_asignar_edificios",
         }
