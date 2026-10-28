@@ -14,7 +14,7 @@ COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidad
              erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
 
 
- RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+ RUN  v5.0.3 <worktree>/web
 
  ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 636ms
    × R2D-R1: aun con permiso de invitar no monta editar ni guardar sin configurar padrón 55ms

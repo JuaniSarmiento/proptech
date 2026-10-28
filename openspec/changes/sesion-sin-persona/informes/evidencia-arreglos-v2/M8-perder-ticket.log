@@ -14,7 +14,7 @@ COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/[sobre]/pa
  }
 
 
- RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+ RUN  v5.0.3 <worktree>/web
 
  ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 1 failed) 28ms
    × E10: la URL de cierre vuelve a la misma invitación con ticket seguro (abc.123-xyz_9) 5ms

@@ -88,7 +88,7 @@ Running 1 test using 1 worker
       70 |   await expect(page.getByRole("button", { name: "Agregar unidad" })).toHaveCount(0);
       71 |   await expect(page.getByRole("button", { name: "Guardar" })).toHaveCount(0);
       72 |   await expect(page.getByRole("button", { name: "Agregar vecino" })).toHaveCount(0);
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/vecinos-del-padron.spec.ts:69:71
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:69:71
 
     Error Context: test-results/vecinos-del-padron-7-4-sin-159a0--columna-ni-sección-Vecinos-chromium/error-context.md
 

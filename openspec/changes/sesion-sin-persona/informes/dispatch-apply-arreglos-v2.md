@@ -10,7 +10,7 @@ Scope recibido: R2D-R1/R2/R3 del informe `07-rompedor-vuelta2-codex.md`; `unidad
 consumidor, `unidades/Pantalla.tsx`, `configuracion/Pantalla.tsx`, `saldos-previos/Pantalla.tsx`, tres
 comentarios, `invitacion/Pantalla.tsx` y `[sobre]/page.tsx` para la enmienda E10 firmada; evidencias en
 7.6/7.8 y ajuste de 8.2(e). Un agente, sin trabajo paralelo ni otros agentes. Sin push ni archive.
-Brief original: `/home/juanisarmiento/.claude/jobs/f3e370f0/tmp/brief-2d-arreglos-v2.md`.
+Brief original: `<local>`.
 
 JUICIO (constructor, confianza alta contra brief y tabla de fases): es apply acotado, no verify.
 No se convocan revisores sobre el diff en movimiento. Los controles y la corrección del cierre de

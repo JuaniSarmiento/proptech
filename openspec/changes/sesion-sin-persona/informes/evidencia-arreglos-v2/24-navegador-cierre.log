@@ -211,7 +211,7 @@ Running 160 tests using 1 worker
 
   1) [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 1440 
 
-    Error: ENOTDIR: not a directory, mkdir '/tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/.git/informes-2b/pantallas'
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
 
       24 |     });
       25 |     const dir = resolve("../.git/informes-2b/pantallas");
@@ -220,7 +220,7 @@ Running 160 tests using 1 worker
       27 |     await sinViolacionesEnElNavegador(page);
       28 |     await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
       29 |     // R2B-4: una sola lectura del reloj para iat y __client_uat.
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/acceso-pantallas.spec.ts:26:5
+        at <worktree>/web/e2e/acceso-pantallas.spec.ts:26:5
 
     Error Context: test-results/acceso-pantallas-7-1-ingre-3b7b5-r-invitación-y-barra-a-1440-chromium/error-context.md
 
@@ -234,7 +234,7 @@ Running 160 tests using 1 worker
 
   2) [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 320 
 
-    Error: ENOTDIR: not a directory, mkdir '/tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/.git/informes-2b/pantallas'
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
 
       24 |     });
       25 |     const dir = resolve("../.git/informes-2b/pantallas");
@@ -243,7 +243,7 @@ Running 160 tests using 1 worker
       27 |     await sinViolacionesEnElNavegador(page);
       28 |     await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
       29 |     // R2B-4: una sola lectura del reloj para iat y __client_uat.
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/acceso-pantallas.spec.ts:26:5
+        at <worktree>/web/e2e/acceso-pantallas.spec.ts:26:5
 
     Error Context: test-results/acceso-pantallas-7-1-ingre-a8a16-or-invitación-y-barra-a-320-chromium/error-context.md
 
@@ -257,7 +257,7 @@ Running 160 tests using 1 worker
 
   3) [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 1440 
 
-    Error: ENOTDIR: not a directory, mkdir '/tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/.git/informes-2b/pantallas'
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
 
       22 |     await expect(panel.getByText(/Propietario.*Pendiente/)).toBeVisible();
       23 |
@@ -266,7 +266,7 @@ Running 160 tests using 1 worker
       25 |     await sinViolacionesEnElNavegador(page);
       26 |     await page.screenshot({ path: `${DIR}/vecinos-${ancho}.png`, fullPage: true });
       27 |
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/vecinos-del-padron.spec.ts:24:5
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:24:5
 
     Error Context: test-results/vecinos-del-padron-7-4-vec-8c0b4-columna-panel-y-alta-a-1440-chromium/error-context.md
 
@@ -280,7 +280,7 @@ Running 160 tests using 1 worker
 
   4) [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 320 
 
-    Error: ENOTDIR: not a directory, mkdir '/tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/.git/informes-2b/pantallas'
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
 
       22 |     await expect(panel.getByText(/Propietario.*Pendiente/)).toBeVisible();
       23 |
@@ -289,7 +289,7 @@ Running 160 tests using 1 worker
       25 |     await sinViolacionesEnElNavegador(page);
       26 |     await page.screenshot({ path: `${DIR}/vecinos-${ancho}.png`, fullPage: true });
       27 |
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/vecinos-del-padron.spec.ts:24:5
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:24:5
 
     Error Context: test-results/vecinos-del-padron-7-4-vec-1fabd--columna-panel-y-alta-a-320-chromium/error-context.md
 
@@ -317,7 +317,7 @@ Running 160 tests using 1 worker
       68 |   await expect(page.getByRole("dialog").getByRole("heading", { name: "Vecinos" })).toHaveCount(0);
       69 | });
       70 |
-        at /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/e2e/vecinos-del-padron.spec.ts:67:63
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:67:63
 
     Error Context: test-results/vecinos-del-padron-7-4-sin-159a0--columna-ni-sección-Vecinos-chromium/error-context.md
 

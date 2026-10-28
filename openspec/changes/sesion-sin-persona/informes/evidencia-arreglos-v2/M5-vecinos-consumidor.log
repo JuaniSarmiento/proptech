@@ -14,7 +14,7 @@ COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidad
              vecinos={vecinosPorUnidad.get(unidadEnEdicion.id) ?? []}
 
 
- RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+ RUN  v5.0.3 <worktree>/web
 
  ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 661ms
    × R2D-R2: GET personal exitoso no habilita Agregar vecino al principal 57ms

@@ -8,7 +8,7 @@ postcommit viven en `../informe-2d-arreglos-v2.md` respecto de la raíz del work
 ## Fuentes, identidad y límites de independencia
 
 JUICIO (constructor, confianza alta sobre fuentes que abrió): brief completo e informe rompedor
-`/home/juanisarmiento/Proyectos/PropTech/.git/informes-2d/07-rompedor-vuelta2-codex.md` completo;
+`<local>` completo;
 proposal con enmienda E10, design D10/D11 y contratos del change, tasks7.6/7.8/8.2 y sus deltas de
 usuarios/autorización; `knowledge-base/15_lecciones.md` (incluidas L013/L019/L029/L030/L031/L032/L034);
 componentes y consumidores de unidades, configuración, saldos, invitación; sesión y layout, API web

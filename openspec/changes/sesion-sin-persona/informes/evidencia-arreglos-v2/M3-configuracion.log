@@ -14,7 +14,7 @@ COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidad
      </button>
 
 
- RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+ RUN  v5.0.3 <worktree>/web
 
  ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 649ms
    × R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración (null) 22ms
