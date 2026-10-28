@@ -18,14 +18,23 @@ con una cuenta sin vincular, incluido el del edificio de ejemplo, que hoy no vin
 del roadmap, antes del 5.
 
 Ficha: `knowledge-base/12_fichas_de_changes.md` §2d (C-21 en `CHANGES.md`). Cubre **HU-V1** (entrar al
-portal) y **HU-SA1** (el super admin y sus usuarios) en su borde de ingreso. **Decisiones**: **D-021**
+portal) y **HU-SA1** (el super admin y sus usuarios) en su borde de ingreso, y por los cuatro ítems de
+acceso que D-130 le asignó, el menú por rol, reinvitar, la invitación con otra cuenta y `/personal`
+jerárquica. **Decisiones**: **D-021**
 (monolito modular: cada módulo escribe sólo sus tablas), **D-094** y **D-111** (quién firma),
 **D-096** (una cuenta por administración), **D-112** (guarda de entorno del comando del ejemplo),
-**D-127** y **D-128** (lo que el 3c dejó para un change de acceso), **D-130** (este change). Decisiones
+**D-106** (la matriz, que suma `ver_personal`), **D-127** (`/personal` jerárquica aprobada en
+principio: es la decisión vigente, D-120 hoy es otra) y **D-128** (lo que el 3c dejó para un change de
+acceso), **D-130** (este change y sus cuatro ítems de acceso). Decisiones
 nuevas a escribir con la firma, con **número provisorio** porque el 3d (Gianfranco) y el 6 (Emiliano)
 corren en paralelo y el número real se asigna al mergear: **D-nueva-1** (contrato del 403
-`sin_acceso`), **D-nueva-2** (el `regreso` nunca apunta a una pantalla de acceso y el selector no
-rebota al ingreso), **D-nueva-3** (vinculación de una cuenta de desarrollo al ejemplo).
+`sin_acceso`, su precedencia sobre la elección y `codigo` como discriminador de todo 403),
+**D-nueva-2** (el `regreso` nunca apunta a una pantalla de acceso y el selector no rebota al ingreso),
+**D-nueva-3** (vinculación de una cuenta de desarrollo al ejemplo, con las trabas de entorno y de
+instancia de Clerk), **D-nueva-4** (las acciones permitidas viajan con la sesión y la web oculta lo
+que no se puede, 2.3), **D-nueva-5** (`ver_personal`: `/personal` jerárquica en sólo lectura, amplía
+D-106 según D-127), **D-nueva-6** (reinvitar el mismo email deja el nombre nuevo, 2.4), **D-nueva-7**
+(la invitación dice con qué cuenta se está, B-3).
 
 ### Corrección al diagnóstico de la regresión
 
@@ -41,30 +50,29 @@ lleva a la misma pantalla.
 
 | qué | dónde va | por qué |
 |---|---|---|
-| **B-3** · la invitación abierta con la sesión de otra cuenta (`web/src/app/invitacion/[sobre]/page.tsx:20`) | Change de acceso propio, nuevo (E8) | La ficha 2d lo lista, pero el alcance acordado con Juani para este propose son los cinco ítems del bucle; B-3 necesita una lectura nueva del email destinatario sin romper la anti-enumeración y duplicaría el tamaño de un change CRITICAL |
-| **2.3** · el menú y los botones que no se adaptan al rol | Change de acceso propio, nuevo (E8) | Exige que la sesión exponga las acciones permitidas de la persona: amplía el contrato de `/api/sesion` en otra dirección. No es un agujero: el backend frena cada acción con 403 |
-| **2.4** · reinvitar el mismo email no actualiza el nombre (`acceso/aplicacion/usuarios.py:42-43`) | Change de acceso propio, nuevo (E8) | Independiente del bucle |
-| **2.5 / P66** · `/personal` jerárquica (D-127) | Change de acceso propio, nuevo (E8) | Cambia la matriz de D-106 |
+| **Gestionar** el personal desde el administrador principal (invitar, revocar y quitar a quienes están por debajo) | Una decisión aparte, sin change asignado | D-127 aprobó "ver" y dejó "gestionar" para que lo decida el change que lo construya; con la recomendación de E11 este change construye sólo "ver" (D13) |
 | El rechazo de un Gmail no invitado que cae en la página de Clerk en inglés | Change de acceso propio, nuevo | Es el flujo de Google (E17 del 2b), no el de una cuenta autenticada sin persona |
 | La CSP/nonce sin test, SU-01 y el resto de la deuda media del 2b | Sus dueños actuales (D-130) | No tocan el bucle |
 | Contar o limitar redirecciones en el proxy | Ninguno | El bucle se corta por construcción (E2, E3); un contador en cookie sería estado nuevo que hay que invalidar y probar aparte |
 | Cualquier cambio a la matriz de permisos, a `configuracion_versionada`, a la plata o a las pantallas del 3c | Ninguno | Nada de eso participa del bucle |
 | Matar los mutantes M5 a M8 de la comparación de idempotencia del ejemplo (QA-2 del PR #1) | Su dueño actual | Este change toca `ejemplo.py` pero no la comparación; si E7 se aprueba, las tareas del grupo 6 los corren como baseline y no tienen que empeorar |
+| La revisión independiente de la matriz de permisos (D-130, 153 celdas, ahora 162) | **Este change, en verify** | D-130 se la dio al rompedor del primer change que toque esa zona, y éste suma `ver_personal` a la matriz |
 
 ## Gobernanza
 
 **CRITICAL** (D-094, D-111): toca autenticación, el contrato de `/api/sesion` y de la guarda de
-identidad de todas las rutas de dominio, y el único camino que escribe `persona.clerk_usuario_id`
-fuera de aceptar una invitación. **No se escribe código** hasta que la sección "Aprobación" quede
+identidad de todas las rutas de dominio, la matriz de permisos (D-106), quién ve `/personal`, la
+pantalla de la invitación, y el único camino que escribe `persona.clerk_usuario_id` fuera de aceptar
+una invitación. **No se escribe código** hasta que la sección "Aprobación" quede
 firmada por Juani, Alberto o Emiliano, con nombre, fecha y la respuesta a cada elección. Una regla
 nueva que entre después de la firma necesita firma propia (L-029). El apply no se despacha a un
 `role-implementer` suelto (L-048): va a Codex o a un fork del orquestador con el OK en la conversación.
 
-**Piso de revisores obligatorio** (autenticación): **backend**, **QA** y **arquitecto**. **DBA**
-sólo si se aprueba E6 tal como está la alternativa (evento de auditoría nuevo con migración): con la
-recomendación de E6 el change no agrega migraciones, ni columnas, ni hace reposar datos nuevos (escribe
-una columna que ya existe, `persona.clerk_usuario_id`, y sólo en desarrollo). **Frontend** se convoca
-por capa: hay una pantalla nueva y un cambio de layout en `/ingresar`.
+**Piso de revisores obligatorio** (autenticación y datos de usuario): **backend**, **QA**,
+**arquitecto** y **DBA**. El DBA entra por el piso (datos de usuario: el vínculo con Clerk y el nombre
+de la persona reposan en `persona`) y, con la recomendación de E11, por la migración `00NN` del
+vocabulario de auditoría (`ver_personal`). **Frontend** se convoca por capa: una pantalla nueva, el
+layout de `/ingresar`, la invitación, el menú y los controles que se ocultan por rol.
 
 ## What Changes
 
@@ -100,6 +108,19 @@ por capa: hay una pantalla nueva y un cambio de layout en `/ingresar`.
   deuda). La creación de la administración de ejemplo, de su persona y de su asignación, y la
   vinculación nueva, pasan por funciones de `acceso.aplicacion`, y las tres excepciones de
   `complejos/aplicacion/ejemplo.py` salen del test de fronteras.
+- **Todo 403 lleva `codigo`** (E1, AR-6): `sin_acceso` o `sin_permiso`, de una lista cerrada; la web
+  lee sólo `codigo`.
+- **La sesión dice qué puede hacer la persona y la web oculta lo demás** (2.3, D11): `/api/sesion`
+  suma, por administración, las acciones permitidas calculadas con la misma matriz que los 403; la web
+  esconde "Personal", "Nuevo edificio", "Agregar unidad" y los controles de escritura que la persona
+  no puede usar. La API sigue frenando cada acción.
+- **Reinvitar el mismo email deja el nombre nuevo** (2.4, D12), sin cambiar el nombre si la invitación
+  se rechaza.
+- **El administrador principal ve `/personal` en sólo lectura** (2.5/P66, E11, D13): una acción nueva
+  `ver_personal` (super admin y administrador principal) con su migración del vocabulario de auditoría
+  `00NN`; la API le devuelve sólo al personal por debajo suyo y nunca al super admin.
+- **La invitación abierta con otra cuenta lo dice** (B-3, E10, D10): con sesión, la pantalla dice con
+  qué cuenta se está y ofrece "Usar otra cuenta"; la API de aceptación no cambia.
 
 ## Capabilities
 
@@ -111,51 +132,73 @@ Ninguna: la pantalla nueva y el contrato del 403 son parte del ingreso, que ya v
 ### Modified Capabilities
 
 - `autenticacion-con-clerk`: el 403 `sin_acceso` reemplaza al 401 para el token válido sin acceso
-  (**BREAKING**); el selector deja de tener un estado vacío; los ingresos auditados responden 403 en
-  los dos casos sin acceso; requisitos nuevos para la pantalla `/sin-acceso`, para el selector que no
-  rebota al ingreso y para el `regreso` que nunca apunta a una pantalla de acceso.
-- `acceso-de-desarrollo`: requisito nuevo, la cuenta de Clerk de desarrollo se vincula al ejemplo con
-  el comando, de forma repetible; el recorrido con el login real pasa a nombrar ese paso.
-- `fronteras-de-modulos`: el escenario "El código de hoy pasa con sus excepciones" pierde las tres
-  excepciones de `complejos/aplicacion/ejemplo.py`. **Sólo si se aprueba E7**: si se rechaza, este
-  delta se borra antes de construir.
+  (**BREAKING**) y **prevalece** sobre los rechazos de elección; el selector deja de tener un estado
+  vacío y su lista trae las acciones; los ingresos auditados dejan `ingreso_fallido` sólo para la
+  persona elegida; requisitos nuevos para `/sin-acceso` (y que no pida la sesión), para el selector
+  que no rebota ni con 401 ni con sesión nula, y para el `regreso` (pantallas de acceso y tope de 512
+  sobre la salida).
+- `autorizacion-por-rol`: "Token válido sin vínculo" pasa de 401 a 403 (**BREAKING**); la matriz suma
+  `ver_personal`; el 403 de permiso lleva `codigo`; requisitos nuevos para `codigo` en todo 403, para
+  las acciones en la sesión y su coincidencia con `puede`, y para la web que oculta lo que no se puede.
+- `gestion-de-usuarios`: "Quitar la única asignación" pasa de 401 al 403 `sin_acceso`
+  (**BREAKING**); reinvitar deja el nombre nuevo; el administrador principal lista el personal por
+  debajo en sólo lectura; requisitos nuevos para la invitación abierta con otra cuenta.
+- `aislamiento-por-administracion`: el selector ajeno de una identidad sin acceso responde el 403
+  `sin_acceso` en vez del 401.
+- `acceso-de-desarrollo`: requisitos nuevos, la cuenta de Clerk de desarrollo se vincula al ejemplo con
+  el comando, sólo con una instancia de desarrollo de Clerk, con una función que sólo conoce al ejemplo,
+  sin pisar ni romper con la unicidad, y aguantando dos corridas a la vez; el recorrido con el login
+  real pasa a nombrar ese paso.
+- `fronteras-de-modulos`: requisito nuevo, la vinculación de desarrollo sólo se importa desde
+  `ejemplo.py` (va **siempre**); y el escenario "El código de hoy pasa con sus excepciones" pierde las
+  tres excepciones de `complejos/aplicacion/ejemplo.py` (**sólo si se aprueba E7**: si se rechaza, ese
+  requisito MODIFIED se borra del delta antes de construir).
 
 ## Impact
 
 - **Backend**: `proptech_api/acceso.py` (`identidad_actual`), `proptech_api/sesion.py`,
-  `acceso/aplicacion/identidad.py` y `acceso/aplicacion/sesion.py` (una excepción nueva, separada de
-  `IdentidadNoDisponible`), `complejos/aplicacion/ejemplo.py` (opción `--clerk-usuario`) y, con E7,
-  una función nueva en `acceso/aplicacion/` compartida con `alta_inicial.py` (L-009). **Sin
-  migraciones** con la recomendación de E6; si E6 se aprueba con la alternativa, una migración del
-  vocabulario de auditoría con número provisorio `00NN` (hoy la cabeza es `0027`): **el que mergea
-  segundo, entre este change, el 3d y el 6, renumera** y verifica `alembic heads`.
-- **Web**: `lib/api/cliente.ts` (estado nuevo `sin_acceso` y una opción para que el selector reciba
-  el 401 en vez de redirigir), `lib/sesion.ts` (`regresoSeguro`), `app/elegir-administracion/`
-  (`page.tsx`, `Pantalla.tsx` sin el estado vacío, y su primer archivo de test), `app/sin-acceso/`
-  (nueva), `app/tokens.css` (`.pagina-acceso`, `.clerk-proptech`), `lib/test/cinco-respuestas.test.ts`
-  (documenta el estado nuevo).
-- **E2E**: `web/e2e/api-falsa.ts` suma dos identidades (`user_sin_persona`, `user_api_rechaza`).
-  **Choque esperable con el 3d**, que toca el mismo archivo y sube primero su parte (D-130): este
-  change rebasa sobre esa parte antes de la tarea 3.6.
+  `proptech_api/errores.py` (`Error403` con `codigo`), `proptech_api/complejos.py` y
+  `proptech_api/personal.py` (los 403 suman `codigo`; `GET /api/personal` exige `ver_personal`),
+  `acceso/aplicacion/identidad.py` y `acceso/aplicacion/sesion.py` (`SinAcceso`, precedencia, acciones
+  en la sesión), `acceso/dominio/permisos.py` (`ver_personal`, `acciones_permitidas`),
+  `acceso/aplicacion/usuarios.py` (nombre al reinvitar, filtro jerárquico de `listar_personal`),
+  `complejos/aplicacion/ejemplo.py` (opción `--clerk-usuario`, trabas), un módulo nuevo de
+  `acceso/aplicacion/` para la vinculación de desarrollo y los ids fijos del ejemplo, y, con E7, una
+  función nueva compartida con `alta_inicial.py` (L-009). **Una migración** con la recomendación de
+  E11: `00NN` suma `ver_personal` al vocabulario de auditoría (hoy la cabeza es `0027`); si E6 se
+  aprueba con la alternativa, el evento de vinculación entra en la misma. **El que mergea segundo,
+  entre este change, el 3d y el 6, renumera** y verifica `alembic heads`.
+- **Web**: `lib/api/cliente.ts` (lee `codigo`; `sin_acceso`; `alNoAutenticar: "devolver"` también
+  para la sesión nula), `lib/sesion.ts` (`regresoSeguro`), `app/layout.tsx` (lista de rutas
+  protegidas, acciones en `SesionDePantalla`), `componentes/SesionDePantalla.tsx` (acciones y
+  `permite`), `app/elegir-administracion/` (`page.tsx`, `Pantalla.tsx` sin el estado vacío, y su primer
+  archivo de test), `app/ingresar/` (test del ciclo), `app/sin-acceso/` (nueva), `app/invitacion/`
+  (B-3), `app/personal/` (sólo lectura, `secciones.ts`), `app/edificios/` (controles por acción),
+  `app/tokens.css` (`.pagina-acceso`, `.clerk-proptech`), `lib/test/cinco-respuestas.test.ts`.
+- **E2E**: `web/e2e/api-falsa.ts` suma dos identidades (`user_sin_persona`, `user_api_rechaza`) **en
+  un bloque propio**, sin tocar las secciones de PATCH/Georef del 3d: resuelve el conflicto el que
+  mergee segundo, la misma regla de la migración (AR-7). No se espera al 3d.
 - **Documentación**: `README.md` (§"Cómo levantarlo", entrar con el edificio de ejemplo).
-- **Sin cambios**: la verificación del token (`acceso/dominio/token.py`), la matriz de permisos, el
-  esquema, la CSP, Caddy, el worker.
+- **Sin cambios**: la verificación del token (`acceso/dominio/token.py`), la API de aceptación de
+  invitaciones (`invitaciones.py`, sigue con el 404 uniforme), las columnas y tablas del esquema (la
+  única migración suma una fila de vocabulario), la CSP, Caddy, el worker.
 
 ## Lecciones que aplican (15_lecciones.md)
 
 | lección | cómo la cubre | tarea |
 |---|---|---|
-| L-034, L-049 | El rojo de cada test cae en la aserción que dice probar (el código de estado o el cuerpo), nunca en un 401 de la guarda ni en un helper; con la excepción nueva existiendo antes del primer rojo | 2.1, 2.2, 2.3, 3.1 a 3.5, 5.1 |
-| L-035, L-013, L-019 | Cada garantía nueva (cuerpo idéntico en los dos casos sin acceso, `regreso` sin pantallas de acceso, selector sin rebote, vínculo que no pisa) tiene un caso verde real y un mutante dirigido, corrido sobre una copia sin commit y declarado | 2.1 a 2.3, 3.1 a 3.6, 5.1 |
-| L-017 | La entrada de cada chequeo es la del escenario: el 403 se prueba por HTTP contra la API con un token firmado de verdad, no llamando al caso de uso | 2.1, 2.2 |
-| L-007, L-008 | El formato de `--clerk-usuario` se valida con coincidencia completa y sólo ASCII, y ningún mensaje repite el valor rechazado | 5.1 |
+| L-034, L-049 | El rojo de cada test cae en la aserción que dice probar (el código de estado o el cuerpo), nunca en un 401 de la guarda ni en un helper; con la excepción nueva existiendo antes del primer rojo. Cada tarea separa los **rojos** (fallan hoy) de las **guardas** (pasan hoy y tienen que seguir pasando), y una guarda nunca se pega como rojo (QA-7) | todas las de código |
+| L-035, L-013, L-019 | Cada garantía nueva (cuerpo idéntico en los dos casos sin acceso, precedencia del 403, `codigo` en todo 403, `regreso` sin pantallas de acceso, selector sin rebote, vínculo que no pisa, acciones que coinciden con `puede`, filtro jerárquico, nombre que no cambia si se rechaza) tiene un caso verde real y un mutante dirigido, corrido sobre una copia sin commit y declarado | 2.1 a 2.4, 3.1 a 3.7, 5.1 a 5.3, 7.1 a 7.8 |
+| L-017 | La entrada de cada chequeo es la del escenario: el 403, la sesión ampliada y `/api/personal` se prueban por HTTP contra la API con un token firmado de verdad, no llamando al caso de uso | 2.1, 2.2, 7.3, 7.5 |
+| L-007, L-008 | El formato de `--clerk-usuario` se valida con coincidencia completa y sólo ASCII, sin `type=` de `argparse`, y ningún mensaje repite el valor rechazado ni el emisor | 5.1 |
 | L-009 | La creación de administración, persona y asignación se extrae una vez y la usan sus dos gemelos (`alta_inicial.py` y `ejemplo.py`) | 6.2 |
-| L-027 | La API falsa de e2e no inventa respuestas: el 403 `sin_acceso` y el 401 que sale de la API real se copian del contrato de la tarea 2 | 3.6 |
-| L-032, L-050 | El doble falso de Clerk de e2e no carga el widget: el recorte del recuadro y la cuenta real sin persona se verifican contra el Clerk de desarrollo real y se declaran como tal; un rojo local del navegador se juzga contra el job `web` del CI | 4.1, 7.2 |
-| L-026, L-028 | Ningún verde cuenta como "la pantalla se ve bien": `/sin-acceso`, el selector con error y `/ingresar` se recorren a mano a 320 px, en escritorio y con teclado | 4.1, 7.2 |
-| L-039 | La verificación manual escribe, paso por paso, cómo quedó vinculada la cuenta usada, y la repite otra persona siguiendo sólo el `README` | 5.3, 7.2 |
-| L-040 | Ninguna dirección ni id de Clerk real entra al repo: el `README` usa `user_XXXXXXXX` y la evidencia nombra dónde está el id, no su valor | 5.3, 7.2 |
-| L-010, L-031, L-037, L-042 | La corrida de cierre va después de la última vuelta, con el SHA anotado, y se espera el CI del PR | 7.1 |
+| L-027 | La API falsa de e2e no inventa respuestas: el 403 `sin_acceso` y el 401 que sale de la API real se copian del contrato de la tarea 2 | 3.7 |
+| L-032, L-050 | El doble falso de Clerk de e2e no carga el widget: el anidamiento se prueba con un test de componente del ciclo, y el recorte, la cuenta real sin persona y "dos pestañas" se verifican contra el Clerk de desarrollo real y se declaran como tal; un rojo local del navegador se juzga contra el job `web` del CI | 3.3, 4.1, 8.2 |
+| L-026, L-028 | Ningún verde cuenta como "la pantalla se ve bien": `/sin-acceso`, el selector con error, `/ingresar`, la invitación con otra cuenta y `/personal` en sólo lectura se recorren a mano a 320 px, en escritorio y con teclado | 4.1, 8.2 |
+| L-039 | La verificación manual escribe, paso por paso, cómo quedó vinculada la cuenta usada, y la repite otra persona siguiendo sólo el `README` | 5.4, 8.2 |
+| L-040 | Ninguna dirección ni id de Clerk real entra al repo: el `README` usa `user_XXXXXXXX`, la evidencia nombra dónde está el id y el emisor, no su valor | 5.1, 5.4, 8.2 |
+| L-009 | El cálculo de las acciones de la sesión usa la misma `_MATRIZ` que `puede`, nunca una copia, y un test de propiedad compara las dos en todas las celdas | 7.4 |
+| L-010, L-031, L-037, L-042 | La corrida de cierre va después de la última vuelta, con el SHA anotado, y se espera el CI del PR | 8.1 |
 | L-029, L-048 | Una regla nueva después de la firma necesita firma propia; el apply no va a un `role-implementer` suelto | toda vuelta |
 
 ## Knowledge Base Impact
@@ -164,37 +207,39 @@ Archivos de `knowledge-base/` (listado del directorio, 28/10/2026): `01` a `16` 
 
 | documento | operación | qué |
 |---|---|---|
-| `09_decisiones_y_supuestos.md` | **APPEND** (al firmar) | **D-nueva-1** a **D-nueva-3** con su número real al mergear: el 403 `sin_acceso` y su cuerpo fijo; el `regreso` sin pantallas de acceso y el selector que no rebota; la vinculación de desarrollo y su guarda. Y las respuestas a E6 a E8 |
-| `09_decisiones_y_supuestos.md` | **APPEND** (al archivar) | Lo que la construcción agregue o corrija |
-| `03_actores_y_roles.md` | **REWRITE** (§"Rutas públicas") | Suma `/sin-acceso` a las rutas de la web que no exigen persona; dice qué devuelve la API con token válido sin acceso |
-| `07_flujos_principales.md` | **REWRITE** (flujo de ingreso, paso 4 y casos de error) | "Persona vinculada sin asignación recibe 401" pasa a 403 `sin_acceso` y a la pantalla nueva; suma el caso "cuenta sin persona" y "la API rechaza un token que Clerk da por bueno" |
-| `08_arquitectura_propuesta.md` | **REWRITE** (§seguridad, contrato de errores de la API) | 401 = sin sesión válida; 403 con `permiso_faltante` = sesión sin ese permiso; 403 con `codigo: sin_acceso` = sesión válida sin ninguna administración |
-| `06_funcionalidades.md` | **REWRITE** (HU-V1) | Criterio de aceptación nuevo: una cuenta sin acceso ve una pantalla propia, nunca un error del navegador |
-| `11_glosario.md` | **REWRITE** | "cuenta sin acceso" |
-| `10_preguntas_abiertas.md` | **REWRITE** | B-3, 2.3, 2.4 y 2.5/P66 apuntan al change de acceso nuevo que decida E8, ya no a "2d" |
-| `12_fichas_de_changes.md` | **REWRITE** | Ficha 2d con el alcance firmado; ficha nueva para lo que E8 deje afuera; la deuda del PR #1 (vínculo del ejemplo, L-039) se marca saldada cuando la tarea 5.3 la salde; la ficha 3c deja de nombrar el bucle como abierto |
-| `15_lecciones.md` | **APPEND** | Lo que enseñe la construcción; candidata: "un diagnóstico con cuatro lecturas convergentes también puede estar mal en un detalle" (el estado vacío no era código muerto) |
+| `09_decisiones_y_supuestos.md` | **APPEND** (al firmar) | **D-nueva-1** a **D-nueva-7** con su número real al mergear (403 `sin_acceso`, precedencia y `codigo`; `regreso` y selector; vinculación de desarrollo y sus trabas; acciones en la sesión; `ver_personal`; nombre al reinvitar; invitación con otra cuenta), y las respuestas a E1 a E11 |
+| `09_decisiones_y_supuestos.md` | **APPEND** (al archivar) | Lo que la construcción agregue o corrija; una línea en D-127 que diga qué se construyó ("ver") y qué sigue pendiente ("gestionar"), sin reescribir la decisión fechada |
+| `03_actores_y_roles.md` | **REWRITE** (§"RBAC · Matriz de permisos" y §"Rutas públicas") | La matriz suma `ver_personal` (super admin y administrador principal); el administrador principal ve `/personal` en sólo lectura, nunca al super admin; `/sin-acceso` entra en las rutas de la web que no exigen persona, con lo que devuelve la API a un token válido sin acceso |
+| `04_modelo_de_datos.md` | **REWRITE** (vocabulario de `accion_de_auditoria`) | Suma `ver_personal` (migración `00NN`), y el evento de vinculación si E6 se aprueba con la alternativa |
+| `06_funcionalidades.md` | **REWRITE** (HU-V1 y la de gestión de usuarios) | Una cuenta sin acceso ve una pantalla propia, nunca un error del navegador; el menú y los botones se adaptan al rol; el administrador principal ve su personal |
+| `07_flujos_principales.md` | **REWRITE** (flujo de ingreso, invitación y alta de personal) | "Persona vinculada sin asignación recibe 401" pasa a 403 `sin_acceso` y a la pantalla nueva, con la precedencia; la invitación abierta con otra cuenta lo dice; reinvitar deja el nombre nuevo |
+| `08_arquitectura_propuesta.md` | **REWRITE** (§seguridad, contrato de errores de la API) | 401 = sin sesión válida o rechazo de elección con acceso en otra; 403 con `codigo` como único discriminador: `sin_acceso` (constante) o `sin_permiso` (con `permiso_faltante`); `/api/sesion` trae las acciones calculadas con la matriz |
+| `10_preguntas_abiertas.md` | **REWRITE** | P66 y P68 dejan de apuntar a "2d" como pendiente y dicen qué resolvió el 2d; "gestionar" de D-127 queda como pregunta abierta nueva si E11 se aprueba como se recomienda |
+| `11_glosario.md` | **REWRITE** | "cuenta sin acceso", "acciones de la sesión" |
+| `12_fichas_de_changes.md` | **REWRITE** | Ficha 2d con el alcance firmado (los cinco ítems del bucle y los cuatro de acceso, D-130); la deuda del PR #1 (vínculo del ejemplo, L-039) se marca saldada cuando la tarea 5.4 la salde; la ficha 3c deja de nombrar el bucle y B-3, 2.3, 2.4 y 2.5 como abiertos; la nota de D-130 sobre la revisión independiente de la matriz se marca absorbida por el verify del 2d |
+| `15_lecciones.md` | **APPEND** | Lo que enseñe la construcción; candidatas: "un diagnóstico con cuatro lecturas convergentes también puede estar mal en un detalle" (el estado vacío no era código muerto) y "una acción nueva de la matriz es una migración, porque `Accion` es también el vocabulario de auditoría" |
 | `CHANGES.md` | **REWRITE** | Estado de C-21 |
-| `04_modelo_de_datos.md` | none (con la recomendación de E6) | No hay migración ni columna nueva. Si E6 se aprueba con la alternativa: **REWRITE** del vocabulario de `accion_de_auditoria` |
 | `01`, `02`, `05`, `13`, `14`, `16`, `README.md` | none | El change no toca la visión, el stack, las reglas de negocio, el motor de reglas, la forma de trabajo ni las fases posteriores |
 
 ## Aprobación
 
 Gobernanza **CRITICAL** (D-094, D-111). La completa, **a mano**, Juani, Alberto o Emiliano, con nombre,
 fecha y alcance. **Ningún agente la escribe.** Cada elección tiene su alternativa descartada y el costo
-de revertir en `design.md`.
+de revertir en `design.md` (D1 a D13).
 
 | Elección | Propuesta del design | Aprobada (sí / no, con motivo) |
 |---|---|---|
-| E1 · Contrato del token válido sin acceso | **403** con cuerpo fijo `{"detail": {"codigo": "sin_acceso"}}`, idéntico byte a byte para "sin persona" y "persona sin ninguna asignación en ninguna administración", en `/api/sesion` y en toda ruta de dominio; sin consulta por email ni nombres de administración. Los problemas de elección siguen en 401 (D1) | |
-| E2 · El selector no rebota al ingreso | `/elegir-administracion` ante un 401 con sesión de Clerk activa muestra "No pudimos validar tu sesión" con "Cerrar sesión", sin redirigir; las pantallas de dominio siguen yendo a `/ingresar` ante un 401 (D2) | |
-| E3 · `regreso` normalizado | `regresoSeguro` nunca devuelve `/ingresar`, `/registrarse`, `/elegir-administracion` ni `/sin-acceso` (con o sin query) ni un valor de más de 512 caracteres: cae a `/edificios`. Normalización **y** tope, no uno solo (D3) | |
-| E4 · Pantalla sin acceso | Ruta propia `/sin-acceso`, sin `regreso`, con el email de Clerk leído en el navegador, "Cerrar sesión" y "Volver a intentar"; reemplaza al estado vacío del selector (D4) | |
-| E5 · Vincular una cuenta al ejemplo | `ejemplo cargar --clerk-usuario user_…`, sólo con `PROPTECH_ENTORNO=desarrollo`; formato validado antes de conectarse; mismo id = no hace nada; otro id ya vinculado = se niega sin escribir; documentado en el `README` y repetido por otra persona (D5) | |
-| E6 · ¿Auditar la vinculación de desarrollo? | **No**: sin evento nuevo ni migración; la guarda de D-112 es el control y el comando lo dice por salida estándar. Alternativa: evento `vincular_identidad_de_desarrollo` con migración provisoria `00NN` y DBA convocado (D6) | |
-| E7 · `ejemplo.py` sin SQL en tablas de `acceso` (D-021) | **Incluirlo**: la vinculación nueva tiene que escribir `persona` igual, y hacerlo desde `complejos` agrandaría la violación justo en el código CRITICAL que se toca; se extrae una función de `acceso.aplicacion` compartida con `alta_inicial.py` y salen las tres excepciones del test de fronteras. Alternativa: dejarlo como deuda y escribir sólo la vinculación en `acceso` (D7) | |
-| E8 · Lo que la ficha 2d lista y no entra | B-3, 2.3, 2.4 y 2.5/P66 van a un change de acceso nuevo con su propia ficha; el 2d se queda en los cinco ítems del bucle | |
-| E9 · Recuadro de Clerk | Reproducir primero en navegador real a 320 px y 1280 px, con capturas y la medida del ancho disponible; arreglar sólo lo que se reproduzca; si no se reproduce, se cierra con esa evidencia (D8) | |
+| E1 · Contrato del token válido sin acceso | **403** con cuerpo fijo `{"detail": {"codigo": "sin_acceso"}}`, idéntico en código, cuerpo y cabeceras (salvo `X-Request-ID`) para "sin persona" y "persona sin ninguna asignación en ninguna administración", en `/api/sesion` y en toda ruta de dominio; sin consulta por email. **Prevalece** sobre los rechazos de elección (selector ajeno, no UUID, varias sin elegir), que siguen en 401 sólo para quien tiene acceso en otra; `ingreso_fallido` sólo para la persona elegida. **Todo 403 lleva `codigo`** (`sin_acceso` o `sin_permiso`) y la web lee sólo `codigo` (D1) | |
+| E2 · El selector no rebota al ingreso | `/elegir-administracion` ante un 401 **o una sesión de Clerk nula en el servidor** muestra "No pudimos validar tu sesión" con "Cerrar sesión", sin redirigir; las pantallas de dominio y su layout siguen yendo a `/ingresar` ante un 401 (D2) | |
+| E3 · `regreso` normalizado | `regresoSeguro` nunca devuelve `/ingresar`, `/registrarse`, `/elegir-administracion` ni `/sin-acceso` (con o sin query, también con `%XX`) ni un valor de entrada **o de salida** de más de 512 caracteres: cae a `/edificios`. Normalización **y** tope, no uno solo (D3) | |
+| E4 · Pantalla sin acceso | Ruta propia `/sin-acceso`, sin `regreso`, con el email de Clerk leído en el navegador, "Cerrar sesión" y "Volver a intentar", **sin pedir nada a la API** ni figurar entre las rutas protegidas del layout; reemplaza al estado vacío del selector (D4) | |
+| E5 · Vincular una cuenta al ejemplo | `ejemplo cargar --clerk-usuario user_…`, sólo con `PROPTECH_ENTORNO=desarrollo` **y** un `CLERK_EMISOR` de instancia de desarrollo (`https://*.clerk.accounts.dev`); formato validado antes de conectarse, sin `argparse` que repita el valor; función de vinculación que sólo conoce al ejemplo y sólo se importa desde `ejemplo.py`; chequeo previo de unicidad; `UPDATE` condicional; mismo id = no hace nada; otro id = se niega sin escribir; documentado en el `README` y repetido por otra persona (D5) | |
+| E6 · ¿Auditar la vinculación de desarrollo? | **No**: las dos trabas de D5 y la función que sólo conoce al ejemplo son el control, y no hay actor ni tenant real que reconstruir. Alternativa: evento `vincular_identidad_de_desarrollo` en la misma migración `00NN` de E11 (D6) | |
+| E7 · `ejemplo.py` sin SQL en tablas de `acceso` (D-021) | **Incluirlo**: se extrae una función de `acceso.aplicacion` compartida con `alta_inicial.py` y salen las tres excepciones del test de fronteras. Alternativas descartadas: dejarlo como deuda; mover `ejemplo.py` a una raíz de composición (AR-5/D-116), que escondía el SQL del escaneo en vez de sacarlo (D7) | |
+| E8 · Alcance de acceso pendiente: dentro del 2d | B-3, 2.3, 2.4 y 2.5/P66 se construyen **en este change**, como dice D-130 (decisión de Juani del 28/10/2026), con sus requisitos, specs y el grupo 7 de tareas; el change queda en 30 tareas, por encima de las ~20 de `config.yaml`, y se construye en dos vueltas con PR propio dentro del mismo change. Alternativa descartada: sacarlos a otro change, con el costo de un segundo ciclo CRITICAL sobre los mismos archivos (D9) | |
+| E9 · Recuadro de Clerk | Reproducir primero en navegador real a 320 px y 1280 px, con capturas y la medida del ancho disponible; el rojo automático inyecta un bloque del ancho mínimo medido en el panel, a 320 y a 1280; arreglar sólo lo que se reproduzca; si no se reproduce, se cierra con esa evidencia (D8) | |
+| E10 · B-3: cómo se dice que la invitación se abrió con otra cuenta | **(a)** Con sesión, la pantalla dice "Estás ingresado como <email del claim del token>" y ofrece "Usar otra cuenta"; si la aceptación falla, el mensaje dice que el enlace no sirve con esa cuenta. La API no cambia y nunca se muestra el email destinatario. Alternativas: (b) avisar que hay una sesión sin decir de quién; (c) una lectura nueva del destinatario por el sobre (D10) | |
+| E11 · `/personal` jerárquica (D-127): qué se construye | **Sólo ver**: el administrador principal ve, en sólo lectura, a las personas cuyas asignaciones son **todas** de administrador por edificio, contador, auxiliar o consejo; nunca al super admin, a otro administrador principal ni a un vecino, con el filtro en la API. Acción nueva `ver_personal` (super admin y administrador principal) con migración `00NN` del vocabulario de auditoría y DBA convocado. "Gestionar" (invitar, revocar, quitar a los de abajo) queda para una decisión aparte. Alternativas: también gestionar; incluir a pares o mostrar sólo las asignaciones de abajo; un permiso fuera de la matriz sin migración (D13) | |
 
 | Firmante (Juani, Alberto o Emiliano) | Fecha | Alcance aprobado |
 |---|---|---|
