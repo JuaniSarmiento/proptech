@@ -40,9 +40,9 @@ el `request_id` del pedido y la marca de tiempo de la base.
 La acción SHALL ser una de una lista cerrada, formada por los permisos de la matriz de D-106, los
 eventos de acceso que no son permisos (`ingreso_exitoso`, `ingreso_fallido`, `alta_inicial`,
 `invitar_personal`, `dar_de_alta_vecino`, `aceptar_invitacion`, `revocar_invitacion`,
-`quitar_asignacion`) y los eventos del padrón (`crear_unidad`, `editar_unidad`, `crear_grupo`,
-`editar_grupo`, `fijar_unidades`, `editar_categoria`, `reordenar_categorias`), controlada también por la base: sumar una acción o un
-evento exige una migración.
+`quitar_asignacion`) y los eventos del padrón (`editar_edificio`, `crear_unidad`, `editar_unidad`,
+`crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria`, `reordenar_categorias`),
+controlada también por la base: sumar una acción o un evento exige una migración.
 El detalle MUST aceptar sólo las claves permitidas para esa acción y MUST NOT contener contraseñas,
 tokens, emails, ids de Clerk en claro ni el texto de un error de terceros. Un mismo caso de uso sensible
 MUST registrarse con una sola acción y una acción MUST NOT quedar registrada por dos casos de uso que se
@@ -67,6 +67,11 @@ pisen sin que la suite lo note.
 
 - **WHEN** dos casos de uso distintos se marcan como sensibles con la misma acción
 - **THEN** la suite falla nombrando la acción y los dos casos de uso
+
+#### Scenario: El evento de editar el edificio existe en la base
+
+- **WHEN** se registra `editar_edificio` contra una base migrada
+- **THEN** la base lo acepta; y contra una base sin la migración de este cambio, lo rechaza
 
 ### Requirement: La auditoría sólo se agrega
 
@@ -195,7 +200,6 @@ grupo, MUST guardar además el valor anterior y el nuevo como texto, con la unid
   `editar_unidad` con un valor anterior del piso
 - **THEN** el registro se rechaza antes de escribir, sin repetir el valor
 
-
 ### Requirement: La corrección de un movimiento queda auditada
 
 Toda corrección SHALL registrar en la auditoría la acción `corregir_movimiento` en la misma transacción
@@ -217,3 +221,27 @@ nunca el motivo ni el importe. Si la auditoría falla, la corrección MUST no qu
 
 - **WHEN** el migrador aplica `0024` y el test de catálogo lista `accion_de_auditoria`
 - **THEN** contiene `corregir_movimiento`, y bajar `0024` con una corrección auditada falla con `23503`
+
+### Requirement: Editar el edificio queda auditado
+
+Modificar el nombre, la ubicación, la calle y el número, la cantidad de pisos o la cantidad de
+subsuelos de un edificio SHALL quedar registrado con la acción `editar_edificio`, en la misma
+transacción que el cambio (D-016). El detalle MUST guardar el edificio y los nombres de los campos que
+cambiaron, y MUST NOT guardar ningún otro valor. Un pedido de edición que no cambia nada MUST NOT dejar
+registro.
+
+#### Scenario: Editar la ubicación
+
+- **WHEN** el titular cambia la localidad y la calle de un edificio
+- **THEN** queda un registro `editar_edificio` con el edificio y los nombres de los dos campos, y sin
+  los valores
+
+#### Scenario: La edición falla
+
+- **WHEN** la edición se rechaza por un trío de ubicación incoherente
+- **THEN** no queda ningún registro y nada cambió
+
+#### Scenario: Edición sin cambios
+
+- **WHEN** el pedido de edición trae los mismos valores que ya tenía el edificio
+- **THEN** no queda ningún registro
