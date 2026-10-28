@@ -822,3 +822,27 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Aplica a**: cualquier pantalla que combine una lista "tocable" con acciones propias por fila;
   frontend y QA al revisar una pantalla nueva — un recorrido manual real en el navegador sigue siendo
   necesario incluso con la suite de tests en verde.
+
+## L-054 · Verificar un chequeo "por el efecto" sólo en la función de trigger, sin su cierre de dependencias, deja una puerta trasera
+
+- **Origen**: 3c `pulido-de-la-configuracion`, integración `integrar/3c-sobre-4b`, rompedor de PR #2
+  (RE11-02, `.git/informes-pr2/05-rompedor-e11.md`), corregido por la Enmienda E11 (D-129).
+- **Qué pasó**: `roles.py` verifica que una tabla de sólo agregar está protegida **por el efecto**
+  (`UPDATE`/`DELETE`/`TRUNCATE` rechazados), no leyendo el código de la función de su trigger — una
+  buena práctica, ya documentada (D-115). El error de la primera versión de E11 fue transferirle al
+  migrador, durante la ventana de una migración, **todas** las funciones de `public` salvo la del
+  trigger en sí: dejó afuera del chequeo cualquier función **auxiliar** que esa función de trigger
+  llamara. El migrador reemplazó la auxiliar (no la protegida) por una que cambiaba de `true` a
+  `false` después de que `roles despues` ya había verificado todo en verde, y esa sola auxiliar
+  bastó para desactivar el bloqueo de una tabla "protegida" sin que ningún chequeo lo notara.
+- **Regla**: cuando se protege una función por transferencia de propiedad, el conjunto protegido no es
+  "la función", es **el cierre de todo lo que esa función llama, transitivamente**. Calcular ese cierre
+  una sola vez (`_cierre_de_dependencias`) y aplicar la misma transferencia (dueño + `search_path`
+  vacío) a cada elemento, no sólo al nombre de primer nivel.
+- **Costo**: una ronda de rompedor dedicada (PR #2) encontró el hueco antes de llegar a producción;
+  cero incidentes reales. El costo real fue escribir la Enmienda E11 y su test después de haber dado
+  por cerrada la primera versión de E11 ese mismo día.
+- **Aplica a**: cualquier mecanismo de "transferir propiedad temporalmente, verificar, devolver" sobre
+  funciones o procedimientos con dependencias internas — no sólo a este migrador. Quien diseñe un
+  chequeo de seguridad "por el efecto" tiene que preguntarse qué otro código corre adentro del camino
+  que mide, no sólo el nombre que aparece en el catálogo.

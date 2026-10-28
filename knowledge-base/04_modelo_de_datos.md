@@ -516,8 +516,21 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
   (`verificar_tablas_de_solo_agregar`, excepción `TablasDeSoloAgregarDesprotegidas`); no hay variable
   que lo saltee.
 - **Toda tabla nueva del conjunto** nace con trigger por fila de `UPDATE` y `DELETE`, `BEFORE TRUNCATE`
-  y el trigger por sentencia, los tres con la misma función. Un `ALTER` posterior falla con `must be
-  owner` hasta que exista el préstamo de propiedad, escrito en D-115 y sin construir.
+  y el trigger por sentencia, los tres con la misma función. Un `ALTER` posterior sobre la **tabla**
+  sigue fallando con `must be owner` hasta que exista el préstamo de propiedad para tablas, escrito en
+  D-115 y sin construir.
+- **Dueño de las funciones durante una migración (3c, E11 y su Enmienda, D-129)**: restaurar un
+  respaldo deja toda función de `public` a nombre del rol de arranque, y una migración a veces
+  necesita reemplazar una función de trigger (`CREATE OR REPLACE FUNCTION`). `roles antes` le
+  reasigna al migrador **sólo** las funciones de `public` que NO pertenecen a un trigger de
+  `TABLAS_DE_SOLO_AGREGAR`; las de esos triggers, **y el cierre completo de lo que llaman
+  internamente**, quedan siempre del rol de arranque y nunca pasan por el migrador ni un instante
+  (`compartido/roles.py: _funciones_protegidas_por_nombre`, `_cierre_de_dependencias`). La primera
+  versión de E11 (reasignar todas, devolver después) dejaba una ventana real: el rompedor mostró que
+  una función auxiliar, no protegida por nombre pero sí alcanzable desde la función de trigger, podía
+  cambiarse después de que el chequeo ya diera verde (RE11-02, L-054). Al devolver una función
+  protegida, `roles despues` además fija `search_path = ''`. Esto resuelve el `must be owner` **de
+  funciones**; el de **tablas** (agregar una columna, por ejemplo) sigue abierto, sin construir.
 
 #### `regla_versionada` · planificada (cambio 6b, D-066; fuera del camino a M1)
 

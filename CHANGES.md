@@ -33,19 +33,23 @@ gates están en el árbol de abajo.
    2a aislamiento por administración (cada empresa ve sólo lo suyo)
    2b login con Clerk · 2.2a roles de la empresa · 2c endurecimiento
 
+2 bis. SESIÓN SIN PERSONA (nuevo, D-130, 28/10/2026)
+   👉 2d sesion-sin-persona · CRITICAL · lo antes posible (loop /ingresar↔/elegir-administracion → 431)
+
 3. CONFIGURACIÓN DEL EDIFICIO
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
-   ✅ 3c pulido: bugs + ubicación + pisos (27/10/2026, falta sólo 7.1 a mano)
+   ✅ 3c pulido: bugs + ubicación + pisos (archivado 28/10/2026, D-128/D-129)
+   ⏳ 3d pulido-2 (nuevo, D-130) · Emiliano, en paralelo antes del 6
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
    ✅ 4b libro de movimientos (deudas y pagos) (27/10/2026)
-   👉 4c intereses y moroso
+   👉 4c intereses y moroso (recibe RF-01/RF-02 del 4b, D-130)
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
-   ⏳ 5 importar desde Excel       ⏳ 6 gastos y cargos
+   ⏳ 5 importar desde Excel       ⏳ 6 gastos y cargos (Emiliano, recibe RB-5 del 4a, D-130)
    ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
 
 6. COBRAR Y SEGUIR
@@ -55,11 +59,13 @@ gates están en el árbol de abajo.
    ⏳ 14 lectura de facturas
 
 7. PILOTO
-   ⏳ 15 un edificio real en paralelo  ← el final
+   ⏳ 15 un edificio real en paralelo  ← el final; bloqueado también por el contenido legal de
+      `/privacidad` (Juani y Alberto, D-130) y por la deuda heredada de 1d/2a/2c
 ```
 
-- **Orden obligado (camino crítico):** 4a → 4b → 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15.
-- **En paralelo, no frenan a nadie:** 3c, 6, 4d, 6b, 9, 11, 12 y 14.
+- **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
+  **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
+- **En paralelo, no frenan a nadie:** 3d → 6 (Emiliano), 4d, 6b, 9, 11, 12 y 14.
 - **Numeración:** el número corto (4a, 7, 10b) es el de las fichas de abajo; el código C-xx es el
   mismo change con otro nombre (4a = C-07a, 7 = C-10).
 
@@ -74,12 +80,15 @@ C-01 infraestructura-base (1a)
                           │
                           ├── C-05a-bis roles-de-la-empresa (2.2a) ← archivado
                           │     └── C-05b login-y-usuarios (2b) ← archivado; Clerk; lo piden C-16 y C-20
+                          │           └── C-21 sesion-sin-persona (2d) ← nuevo, CRITICAL (D-130); necesita
+                          │                 también C-06c (3c); se adelanta lo antes posible
                           ├── C-05c endurecimiento-de-infraestructura (2c)
                           │
                           └── C-06a configuracion-del-edificio (3a)   ← partido en 3a y 3b (E1)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
-                                │     └── C-06c pulido-de-la-configuracion (3c) ← construido 27/10/2026, falta 7.1 a mano
+                                │     └── C-06c pulido-de-la-configuracion (3c) ← archivado 28/10/2026 (D-128/D-129)
+                                │           └── C-22 pulido-2 (3d) ← nuevo (D-130); Emiliano, en paralelo antes del 6
                                 │
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
@@ -113,7 +122,8 @@ C-01 infraestructura-base (1a)
                                                 ▼
                                     C-18 avisos-por-email (13)
                                                 │
-                  (C-07d + C-12 + C-13 + C-17 + C-18 + C-19 + todos los anteriores + datos del piloto)
+                  (C-07d + C-12 + C-13 + C-17 + C-18 + C-19 + C-21 + C-22 + todos los anteriores +
+                   datos del piloto + contenido legal de /privacidad)
                                                 ▼
                                     C-20 piloto-en-paralelo (15)
 ```
@@ -145,11 +155,14 @@ GATE 6: C-06a ✓
   → C-07a cimientos-del-libro [Agente A] (4a, HIGH; archivado 26/10/2026, firma de Juani, D-119)
   → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: firmado por Emiliano el 26/10/2026, D-128;
     construido en paralelo al 4a, fuera del camino crítico; necesitó también C-06b y C-05b, archivados;
-    falta sólo la tarea 7.1, recorrido manual a cargo del humano, antes de archivar)
+    **archivado 28/10/2026** tras el PR #2 y la Enmienda E11, D-129)
+    → C-22 pulido-2 (3d, nuevo, MEDIUM, D-130): Emiliano, en paralelo antes de C-09 (6)
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
     → C-05b login-y-usuarios (2b, archivado 22/10/2026; Clerk, CRITICAL; P48 resuelta en D-099)
+      → C-21 sesion-sin-persona (2d, nuevo, CRITICAL, D-130): necesita también C-06c (3c, ya
+        archivado); disponible desde ahora, se adelanta lo antes posible dentro del camino crítico
 
 GATE 7: C-07a ✓ (26/10/2026)                             ← PRIMER FORK real (2 paralelos)
   → C-07b libro-de-movimientos [Agente A] (4b, CRITICAL; archivado 27/10/2026, firma de Juani,
@@ -186,7 +199,8 @@ GATE 14: C-16 ✓
 GATE 15: C-11 + C-15 ✓
   → C-18 avisos-por-email   [Agente B]
 
-GATE 16: C-05b + C-05c + C-06c + C-07d + C-12 + C-13 + C-17 + C-18 + C-19 ✓ + datos del edificio piloto (P1)
+GATE 16: C-05b + C-05c + C-06c + C-07d + C-12 + C-13 + C-17 + C-18 + C-19 + C-21 + C-22 ✓ + datos del
+  edificio piloto (P1) + contenido legal de `/privacidad` (Juani y Alberto, D-130)
   → C-20 piloto-en-paralelo (solo, cierra el roadmap)
 ```
 
@@ -202,7 +216,9 @@ C-07c → C-08 → C-10`, con C-09 en paralelo desde C-07a. Ese es el que el pro
 (ver `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida). El resto de la cadena hasta `C-20`
 cierra M2 y M3. Partir el 4 (exploración del 4, §8) alarga la cadena en cantidad de changes pero no en
 trabajo: cada sub-change es una parte del mismo 4, y el 6 deja de esperar el libro entero.
-**C-06c y C-07d quedan fuera del camino crítico.**
+**C-06c, C-07d, C-21 y C-22 quedan fuera del camino crítico** — aunque D-130 (28/10/2026) adelanta
+`C-21` (`2d`) lo antes posible dentro del orden real porque es la única deuda CRITICAL viva, y no
+porque bloquee la cadena de dependencias.
 
 ### Plan óptimo con 3 agentes
 
@@ -411,29 +427,66 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-06c] `pulido-de-la-configuracion` · 3c
-- **Estado**: construido y firmado (27/10/2026, D-128); falta sólo la tarea 7.1 (recorrido manual, a
-  cargo del humano) antes de archivar
+- **Estado**: `[x]` archivado (28/10/2026, D-128, D-129), tras la ronda de PR #2 (DBA, backend,
+  frontend, integración y rompedor dedicado a E11) y la Enmienda E11 firmada por Juani.
 - **Scope**: los bugs y gaps del QA manual del 23/10/2026 sobre las pantallas del edificio (errores de
   intereses y vencimiento mal atribuidos o genéricos, ayudas y mensajes de identificador, coeficiente y
   clave, confirmar "Quitar", la nota interna de `/privacidad`, grupos que no se pueden sacar); la
   **ubicación** del edificio con listas encadenadas provincia, departamento y localidad desde Georef
   guardado en el repo, y editar el edificio; la **cantidad de pisos** del edificio y el piso de cada
-  unidad elegido de esa lista, con la migración de lo ya cargado. Los ítems de acceso (invitación con
-  otra cuenta, menú por rol, reinvitar, `/personal` jerárquica) quedaron **afuera** (D-128, P68): un
-  change de acceso propio y futuro, CRITICAL
+  unidad elegido de esa lista, con la migración de lo ya cargado; el dueño de las funciones durante una
+  migración (E11 y su Enmienda, D-129). Los ítems de acceso (invitación con otra cuenta, menú por rol,
+  reinvitar, `/personal` jerárquica, el loop `/elegir-administracion`) quedaron **afuera** (D-128, P68):
+  pasan al change **`2d` `sesion-sin-persona`** (CRITICAL, D-130)
 - **Dependencias**: C-06a, C-06b, C-05b (archivados). Construido en paralelo al C-07a, fuera del camino
   crítico; sus migraciones (`0025` a `0027`) se numeran después de las del 4a (`0021`, `0022`) y de
   las del 4b (`0023`, `0024`), renumeradas al integrarlo sobre `main`
 - **Governance**: ALTO (toca esquema de `complejo`, `unidad` y `grupo_de_reparto`, y migra datos);
-  firmado por **Emiliano Caceres el 26/10/2026** (D-094, D-111)
+  firmado por **Emiliano Caceres el 26/10/2026** (D-094, D-111); E11 y su Enmienda por **Juani el
+  27/10/2026**
 - **Leer antes**:
   - `openspec/exploraciones/2026-10-26-pulido-de-la-configuracion.md`
   - `knowledge-base/12_fichas_de_changes.md` §3c, §3b y §3b-bis (deuda del PR #1)
-  - `knowledge-base/04_modelo_de_datos.md` (`complejo`, `unidad`, `grupo_de_reparto`)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-128)
+  - `knowledge-base/04_modelo_de_datos.md` (`complejo`, `unidad`, `grupo_de_reparto`, §Dueño de las
+    tablas de sólo agregar)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-128, D-129, D-130)
   - `knowledge-base/10_preguntas_abiertas.md` (P61 a P69, todas cerradas)
-  - `knowledge-base/15_lecciones.md` (L-029, L-034, L-038 a L-040)
-  - `openspec/changes/archive/2026-10-20-pantallas-del-edificio/`
+  - `knowledge-base/15_lecciones.md` (L-029, L-034, L-038 a L-040, L-054)
+  - `openspec/changes/archive/2026-10-28-pulido-de-la-configuracion/`
+
+---
+
+### [C-21] `sesion-sin-persona` · 2d (nuevo, D-130, 28/10/2026)
+- **Estado**: `[ ]` pendiente, no propuesto todavía. CRITICAL — toca `acceso`.
+- **Scope**: un tercer estado de sesión para "autenticado en Clerk, sin persona vinculada", que corta
+  el loop `/ingresar` ↔ `/elegir-administracion?regreso=...` → 431; el estado "0 administraciones" en
+  el spec y en `elegir-administracion/Pantalla.tsx` (hoy código muerto); el edificio de ejemplo
+  vinculado a una cuenta real de Clerk (o el paso manual escrito y repetible); B-3, 2.3, 2.4 y 2.5/P66
+  (`/personal` jerárquica, D-127); el recuadro de Clerk recortado en `/ingresar` a 320px; `ejemplo.py`
+  sin SQL directo en tablas de `acceso` (D-021)
+- **Dependencias**: C-05a, C-05a-bis, C-05b y C-06c (todos archivados) — disponible desde ahora
+- **Governance**: CRITICAL (D-094, D-111) — no se construye sin aprobación de un firmante
+- **Leer antes**:
+  - `knowledge-base/12_fichas_de_changes.md` §2d
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-127, D-128, D-130)
+  - `.git/informes-regresion/02-acceso.md` (diagnóstico del loop, cuatro lecturas independientes)
+  - `knowledge-base/15_lecciones.md` (L-039)
+
+---
+
+### [C-22] `pulido-2` · 3d (nuevo, D-130, 28/10/2026)
+- **Estado**: `[ ]` pendiente, no propuesto todavía. MEDIUM.
+- **Scope**: `web/e2e/api-falsa.ts` con `PATCH` para edificio/grupos y Georef; `ayuda.ts` corregido a
+  "de 7 pasos"; el orden de `vocabularioDePisos` (`SS1` arriba de `PB`) con el test del propio
+  escenario arreglado; la raíz `/` deja de ser el placeholder de 1a; `axe` en más de un estado en las
+  cuatro pantallas del 3b que faltan; "clave explícita inválida" con test de punta a punta vía API;
+  CSP/nonce con test; el día 31 de vencimiento con su propio 422
+- **Dependencias**: C-06b, C-06c (archivados) — disponible desde ahora
+- **Governance**: MEDIUM — no toca `acceso`, pagos ni datos de usuario
+- **Leer antes**:
+  - `knowledge-base/12_fichas_de_changes.md` §3d
+  - `.git/informes-regresion/03-edificio.md` (deuda confirmada de 3b/3c)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
 
 ---
 
@@ -487,13 +540,17 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ### [C-07c] `intereses-saldo-inicial-y-moroso` · 4c
 - **Estado**: `[ ]` pendiente (CRITICAL)
 - **Scope**: R03 con corte al cierre del período (D-113); R09, el caso de uso de saldo inicial que
-  llama el 5; R20 con "deuda de intereses" y R30
+  llama el 5; R20 con "deuda de intereses" y R30. **Recibe del 4b, confirmado por D-130**: el mutante
+  de RF-01 sin matar (`emisiones.py:224`, un `foto` por cuenta) y el test de RF-02 sin su forma
+  contra-asiento (`test_cc_anulacion_candado.py:184`) — cerrarlos antes de confiar en
+  `registrar_emision`/anulación con intereses reales
 - **Dependencias**: C-07b
 - **Governance**: CRITICO
 - **Leer antes**:
   - `openspec/exploraciones/2026-10-22-motor-de-cuenta-corriente.md` §4.5 y §9
-  - `knowledge-base/12_fichas_de_changes.md` §4
+  - `knowledge-base/12_fichas_de_changes.md` §4 (ficha 4b, deuda del cierre)
   - `knowledge-base/05_reglas_de_negocio.md` (R03, R09, R20, R30)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
   - `knowledge-base/10_preguntas_abiertas.md` (P53, P54; P57 a P60 para Alberto)
 
 ---
@@ -528,16 +585,19 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-09] `gastos-y-cargos` · 6
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[ ]` pendiente. Emiliano, en paralelo con `3d` antes del camino crítico
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
-  particulares sueltos o por Excel, nota de crédito asociada a la factura
+  particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
+  por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a
+  `campos` de `fijar_unidades`) — el 3c no lo tocó
 - **Dependencias**: C-06a, C-07a (el reparto); C-07b si escribe en el libro (SUPUESTO S-04 del
   arquitecto del 4, sin verificar contra R14 y R25)
 - **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
-  - `knowledge-base/12_fichas_de_changes.md` §6
+  - `knowledge-base/12_fichas_de_changes.md` §6 y §4a (ficha 4a, deuda del cierre, RB-5)
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Gastos y cargos
   - `knowledge-base/06_funcionalidades.md` §HU-A3, HU-A3b
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
   - `knowledge-base/10_preguntas_abiertas.md` (P15, P17, P25, P36, P37)
 
 ---
@@ -546,7 +606,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[ ]` pendiente (CRITICAL, explore propio; el change más grande del MVP)
 - **Scope**: preliquidación sin efectos, emisión con efectos en una sola transacción, estados de la
   liquidación (borrador, emitida, distribuida, anulada), controles antes de emitir con alertas
-  aceptadas, links de descarga firmados, plantilla del PDF (skill impeccable)
+  aceptadas, links de descarga firmados, plantilla del PDF (skill impeccable). **D8** (crédito de
+  corrección sobre una emisión anulada, D-123) sigue anotada como deuda que bloquea este change;
+  reconfirmada por la regresión del 27/10/2026 sin caller en producción hoy
 - **Dependencias**: C-07b, C-07c, C-08, C-09
 - **Governance**: CRITICO
 - **Leer antes**:
@@ -694,8 +756,11 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ### [C-20] `piloto-en-paralelo` · 15
 - **Estado**: `[ ]` pendiente
 - **Scope**: carga de los datos reales del piloto, un mes completo en paralelo, comparación al
-  centavo, prueba de restauración de un backup, evidencia de aislamiento
-- **Dependencias**: C-05b, C-05c, C-06c, C-07d, C-12, C-13, C-17, C-18, C-19 (y todos los anteriores) + datos del edificio piloto (P1)
+  centavo, prueba de restauración de un backup, evidencia de aislamiento. **Bloqueado también por el
+  contenido legal del aviso de `/privacidad`** (Juani y Alberto, D-130) y por la deuda de baja
+  severidad heredada de 1d/2a/2c con dueño este cambio (ver `knowledge-base/12_fichas_de_changes.md`)
+- **Dependencias**: C-05b, C-05c, C-06c, C-07d, C-12, C-13, C-17, C-18, C-19, C-21, C-22 (y todos los
+  anteriores) + datos del edificio piloto (P1) + contenido legal de `/privacidad`
 - **Governance**: se declara en el propose (`openspec/config.yaml`)
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §15

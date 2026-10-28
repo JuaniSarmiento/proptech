@@ -2496,6 +2496,119 @@ registrado como tal en su momento.)*
   `CONFIGURAR_PADRON`: no se toca la matriz de D-106, por eso el change se queda en HIGH y no sube a
   CRITICAL (D5 del design).
 - **Deuda y alcance**: ver la ficha 3c de `12_fichas_de_changes.md` para el detalle completo del
-  cierre, incluida la tarea 7.1 (recorrido manual) que queda a cargo del humano.
+  cierre, incluida la tarea 7.1 (recorrido manual, hecha el 27/10/2026).
 - **Quién**: Emiliano Caceres, 26/10/2026 (firma de "Aprobación" en `proposal.md`, gobernanza HIGH
   D-094/D-111).
+
+## D-129 · E11 y su enmienda: el dueño de las funciones durante una migración, para el `must be owner` que D-115 dejó sin construir (27/10/2026)
+
+- **Fecha**: 27/10/2026 (E11, firmada por Juani); enmienda el mismo día, también firmada por Juani.
+- **Problema, encontrado en la integración de `integrar/3c-sobre-4b`**: restaurar un respaldo
+  (`pg_restore --no-owner`) deja toda función del esquema `public` a nombre del rol de arranque; la
+  migración `0027` necesita `CREATE OR REPLACE FUNCTION fn_grupo_generales_protegido`, y falla con
+  `must be owner of function` porque `roles antes` nunca le daba al migrador ninguna función (sólo
+  tablas y secuencias, L-029). Es exactamente el hueco que `08_arquitectura_propuesta.md` (§"Tablas de
+  sólo agregar") y `04_modelo_de_datos.md` (§"Dueño de las tablas de sólo agregar") venían señalando
+  desde el 4a como "el préstamo de propiedad, escrito en D-115 y sin construir" — sólo que D-115 hablaba
+  de tablas y el caso real que apareció fue sobre funciones.
+- **E11 (primera decisión, descartada en el mismo día)**: `roles antes` iba a reasignarle al migrador
+  **todas** las funciones de `public`, igual que ya hace con tablas y secuencias; `roles despues` las
+  devolvía. El rompedor de PR #2 (`05-rompedor-e11.md`, RE11-01/RE11-02) mostró que eso abre una
+  ventana real: mientras dura la migración, el migrador puede reemplazar `fn_cuenta_bloqueada()` (el
+  trigger de una tabla de sólo agregar) por una versión que llama a una función auxiliar propia; el
+  chequeo de `roles despues` pasa porque la función de trigger ya volvió al rol de arranque, pero la
+  auxiliar sigue siendo del migrador — y cambiándole sólo la auxiliar, después de que `despues` terminó
+  en verde, el migrador desactiva el bloqueo de una tabla protegida sin que ningún chequeo lo note
+  (RE11-02, confianza alta, reproducido con test).
+- **Enmienda E11 (la que queda vigente)**: `roles antes` reasigna al migrador **únicamente** las
+  funciones que NO pertenecen a los triggers de `TABLAS_DE_SOLO_AGREGAR` (`compartido/roles.py:
+  _funciones_protegidas_por_nombre`); las funciones de esos triggers, **y el cierre de todo lo que
+  llaman internamente** (`_cierre_de_dependencias`/`_dependencias_calificadas_de`, para que una
+  auxiliar como la de RE11-02 no quede afuera del cálculo), quedan siempre del rol de arranque, nunca
+  pasan por el migrador ni un instante. Al transferirlas de vuelta, `roles despues` además fija
+  `search_path = ''` en cada una (blindaje contra secuestro de `search_path`, no sólo contra el dueño).
+  El chequeo de arranque pasa a verificar, además de la propiedad de la tabla, que ninguna función del
+  cierre de un trigger protegido sea del migrador en ningún momento.
+- **Descartado**: (b) que `0027` creara una función nueva en vez de reemplazar la existente — soluciona
+  este caso puntual, pero el mismo problema vuelve con la próxima migración que necesite tocar una
+  función de un trigger protegido; (c) dejarlo como deuda — el rompedor ya lo encontró explotable, no
+  es un riesgo teórico.
+- **Revertir**: quitar la reasignación de funciones en `antes` (la transferencia de vuelta en
+  `despues`, que ya corre para las tablas, se conserva igual).
+- **Alcance de D-115 que sigue sin construir**: el préstamo de propiedad para un `ALTER` sobre la
+  **tabla** protegida en sí (agregar una columna, por ejemplo) sigue sin resolver — D-129 cierra el caso
+  de las funciones de trigger, no el de la tabla. Pendiente para el primer cambio que necesite un
+  `ALTER` real sobre una tabla de `TABLAS_DE_SOLO_AGREGAR`.
+- **Dónde queda escrito**: `knowledge-base/04_modelo_de_datos.md` §"Dueño de las tablas de sólo
+  agregar" y `knowledge-base/08_arquitectura_propuesta.md` §"Tablas de sólo agregar", reescritos al
+  cerrar el 3c.
+- **Quién**: Juani, 27/10/2026 (E11 y su enmienda, `proposal.md` del 3c).
+
+## D-130 · Reparto de la deuda de la regresión del 27/10/2026 entre los changes siguientes
+
+- **Fecha**: 28/10/2026, al archivar el 3c.
+- **Qué**: la pasada de regresión del 27/10/2026 (cinco informes en `.git/informes-regresion/`:
+  `01-infraestructura.md`, `02-acceso.md`, `03-edificio.md`, `04-plata.md`,
+  `05-pasada3-codex.md`) relevó el estado real de todo lo archivado contra HEAD `de47f7c`. Decisión de
+  Juani sobre quién se queda con cada hallazgo:
+  - **4c** (`intereses-saldo-inicial-y-moroso`) recibe confirmado, ya no "propuesto": el mutante de
+    RF-01 que sobrevive (`backend/src/proptech_core/.../emisiones.py:224`, publica un `foto` por
+    cuenta en vez de uno solo) y el test de RF-02 sin su forma contra-asiento
+    (`test_cc_anulacion_candado.py:184`) — ambos son tests débiles que el 4b dejó y que el 4c, primer
+    consumidor real de `registrar_emision`/anulación con intereses, tiene que cerrar antes de confiar en
+    ese camino.
+  - **6** (`gastos-y-cargos`, Emiliano) recibe confirmado: el mutante de RB-5 que sigue vivo
+    (`backend/src/proptech_core/complejos/aplicacion/grupos.py:345-346`, `modo_de_coeficientes` nunca
+    entra a `campos` de `fijar_unidades`) — el 3c no lo mató porque no tocó `grupos.py` en ese punto.
+  - **7** (`liquidacion-y-emision`): D8 (crédito de corrección sobre una emisión anulada, D-123) sigue
+    anotada como deuda que bloquea el 7; la regresión confirmó que hoy no explota en producción porque
+    `anular_emision` no tiene ningún caller fuera de los tests.
+  - **Change nuevo `2d · sesion-sin-persona`** (CRITICAL, autenticación, antes del 5): junta los cinco
+    ítems que venían quedando "para un change de acceso futuro" desde D-127/D-128 (B-3, 2.3, 2.4,
+    2.5/P66) con el hallazgo CRITICAL de la regresión: el loop `/ingresar` ↔
+    `/elegir-administracion?regreso=...` → 431 cuando una cuenta de Clerk está autenticada sin persona
+    vinculada (diagnosticado con cuatro lecturas independientes de código, todas a la misma causa
+    raíz: no existe un tercer estado de sesión para "autenticado, sin persona"), el edificio de
+    ejemplo que no vincula ninguna cuenta (`ejemplo.py:124-130`, L-039), el estado "0 administraciones"
+    que ni el spec de 2b ni `elegir-administracion/Pantalla.tsx` contemplan, el recuadro de Clerk
+    recortado en `/ingresar` a 320px, y `ejemplo.py` escribiendo SQL directo en tablas de `acceso`
+    (D-021, AR-6/BE-4/DB-7 del PR #1). Se adelanta en el orden porque es CRITICAL y porque bloquea
+    cualquier recorrido manual futuro que entre con la cuenta de ejemplo.
+  - **Change nuevo `3d · pulido-2`** (web, bajo riesgo, Emiliano, en paralelo antes del 6): la API falsa
+    de e2e sin PATCH ni Georef (`web/e2e/api-falsa.ts:257-301,831`), la ayuda que sigue diciendo "0 de 6
+    pasos" con el flujo ya en 7 (`web/src/app/edificios/[id]/ayuda.ts:13`), el orden de
+    `vocabularioDePisos` que pone SS1 después del último piso en vez de arriba de PB —con un test que
+    fija ese orden como correcto— (`web/src/lib/pisos.ts:9-17`), la raíz `/` todavía placeholder, `axe`
+    cubriendo un solo estado feliz en cuatro de las siete pantallas del 3b, la clave inválida por API
+    sin ningún test de punta a punta (`parametros.py:97-99`), la CSP/nonce sin test que la verifique, y
+    el día 31 de vencimiento frenado hoy por la validación nativa del navegador en vez de la
+    aplicación.
+  - **5** (`importacion-desde-excel`): el ensayo de roles sigue sin correr en CI
+    (`rg "ensayo-roles" .github/workflows/ci.yml` sin resultado) y el mutante que omite restaurar
+    `FORCE ROW LEVEL SECURITY` en la **bajada** de `0025` sobrevive contra el catálogo en `head`
+    (P3-NOTA-05, `05-pasada3-codex.md`) sin que nada automático lo detecte hoy.
+  - **Privacidad** (`/privacidad` en borrador, deuda del cierre del 2b, tarea 7.2): sigue pendiente de
+    contenido legal de Juani y Alberto (identidad del responsable, domicilio, contacto, conservación);
+    queda anotada como **bloqueante del 15** (piloto) — no se opera con un edificio real sin ese texto
+    aprobado.
+  - **Revisiones independientes pendientes** (la matriz de permisos del 2.2a, ahora 153 celdas y no
+    144; los diez archivos de test de la "vuelta 2" del 3a; los tres commits de RF del 4b sin que
+    nadie salvo su autor los haya leído): ninguna pasa a un change con fecha fija. **Las absorbe el
+    rompedor del primer change que toque esa zona de código**, cuando la toque — 2.2a y 3a ya
+    atravesaron un change entero (2b y 3b/3c) sin que nadie las retomara, así que un dueño fijo que
+    nadie confirma es peor que decir la regla una vez: queda anotado en cada ficha.
+  - **Deuda de severidad baja** (el resto, unos 25 ítems entre los cuatro informes): se queda con su
+    dueño de hoy (7 o 15); la regresión no encontró ninguna que mereciera moverse, y suma a las fichas
+    las que todavía no estaban escritas: `test_salud_cola_real.py` da rojo si se corre aislado sin un
+    test previo que dispare el fixture `esquema_migrado` (dueño 7, igual que el resto de la deuda viva
+    de 1c); Georef sin `timeout`/`AbortController` en `pedirApi` (dueño 15, preexistente al 3c); "Volcado
+    con el rol equivocado" sin test de caja negra sobre `respaldos-de-la-base` (dueño 15, hallazgo
+    nuevo de 2a); `infra/ci/humo.sh:40` sigue hardcodeando `-p proptech` e ignorando
+    `PROPTECH_COMPOSE_PROYECTO` aunque `restaurar.sh` ya la respeta (dueño confirmado 15, no más
+    "propuesto"); el encabezado de la tabla de unidades sin `sticky` (dueño confirmado 15).
+- **Por qué este orden**: `4c → 5 → 7` sigue el camino crítico ya escrito en `CHANGES.md`; `2d` se
+  adelanta dentro de ese camino porque es la única deuda CRITICAL viva y porque cualquier recorrido
+  manual de los changes siguientes puede pisarla sin querer (como ya le pasó a la regresión del 2b);
+  `3d` y `6` quedan en paralelo, a cargo de Emiliano, porque ninguno de los dos toca el camino crítico
+  ni una zona CRITICAL.
+- **Quién**: Juani, 28/10/2026.

@@ -108,24 +108,35 @@ mercado de arranque es **Mendoza**.
   auditoría de `corregir_movimiento` (`0024`), vocabulario ampliable de movimientos. Firmó Juani E1 a
   E16, la enmienda E7 y la deuda D8 (que bloquea el 7). **OK salvo D8**, que Juani anotó como deuda en
   vez de resolverla ahora; deuda completa en la ficha 4 ("4b · deuda del cierre").
-- **Cambio 3c `pulido-de-la-configuracion` construido y firmado** (27/10/2026, HIGH, D-128): los
+- **Cambio 3c `pulido-de-la-configuracion` archivado** (28/10/2026, HIGH, D-128, D-129): los
   hallazgos del QA del 23/10/2026 (errores de formulario en su campo, ayudas de identificador,
   coeficiente y clave, confirmar "Quitar" en Personal, la nota de `/privacidad`); la **ubicación** del
   edificio con listas encadenadas provincia/departamento/localidad desde un archivo de Georef en el
   repo (CC BY 4.0) y `PATCH /complejos/{id}` para editarla; la **cantidad de pisos y subsuelos** del
   edificio y `unidad.piso` acotado a ese vocabulario; grupos de reparto desactivables (nunca
-  borrables, como las categorías) y clave autogenerada desde el nombre. Tres migraciones nuevas
-  (`0025` a `0027`, renumeradas detrás de las `0023`/`0024` del 4b al integrarlo sobre `main`).
-  Firmado por Emiliano Caceres el 26/10/2026. **Falta sólo la tarea 7.1**
-  (recorrido manual de cada pantalla, a 1280 px y 320 px, con teclado y capturas) antes de archivar,
-  a cargo del humano. Deuda del cierre en la ficha 3c de `knowledge-base/12_fichas_de_changes.md`.
-  **Quedó fuera del 3c, para un change de acceso propio y futuro (CRITICAL, P68)**: la invitación
-  abierta con la sesión de otra cuenta (B-3), el menú que no se adapta al rol (2.3), reinvitar el
-  mismo email (2.4), `/personal` jerárquica (2.5/P66, D-127) y el **loop infinito en
-  `/elegir-administracion?regreso=...`** encontrado en el recorrido 7.1 del 27/10/2026. Los cinco
-  comparten el mismo motivo: tocarlos sube el change entero a CRITICAL.
-- **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL; por proponer), después 4d
-  `cambio-de-titular` (CRITICAL); y el 6 si no escribe en el libro.
+  borrables, como las categorías) y clave autogenerada desde el nombre; el dueño de las funciones
+  durante una migración (E11 y su Enmienda, D-129). Tres migraciones nuevas (`0025` a `0027`,
+  renumeradas detrás de las `0023`/`0024` del 4b al integrarlo sobre `main`). Firmado por Emiliano
+  Caceres el 26/10/2026; E11 y su Enmienda por Juani el 27/10/2026. La tarea 7.1 (recorrido manual) se
+  hizo el 27/10/2026; el PR #2 (DBA, backend, frontend, integración y rompedor dedicado a E11) cerró
+  antes de mergear a `main` (`de47f7c`). Deuda del cierre en la ficha 3c de
+  `knowledge-base/12_fichas_de_changes.md`.
+  **Quedó fuera del 3c**, para el change nuevo **`2d · sesion-sin-persona`** (CRITICAL, D-130): la
+  invitación abierta con la sesión de otra cuenta (B-3), el menú que no se adapta al rol (2.3),
+  reinvitar el mismo email (2.4), `/personal` jerárquica (2.5/P66, D-127) y el **loop infinito en
+  `/elegir-administracion?regreso=...`** (diagnosticado con cuatro lecturas independientes por la
+  regresión del 27/10/2026, `.git/informes-regresion/02-acceso.md`). Los cinco comparten el mismo
+  motivo: tocarlos sube el change entero a CRITICAL.
+- **Regresión del 27/10/2026** (`.git/informes-regresion/01` a `05`) y reparto de su deuda (D-130,
+  28/10/2026): **4c** recibe el mutante de RF-01 y el test de RF-02 sin forma contra-asiento, del 4b;
+  **6** recibe el mutante de RB-5, del 4a; **7** conserva D8; el change nuevo **`3d · pulido-2`**
+  (MEDIUM) junta la deuda chica de 3b/3c sin e2e ni test (api-falsa sin PATCH/Georef, ayuda "0 de 6",
+  orden de `vocabularioDePisos`, clave inválida sin test, CSP/nonce sin test, día 31 de vencimiento);
+  el aviso de `/privacidad` queda **bloqueante del 15** (Juani y Alberto). Detalle completo en D-130.
+- **Próximo**: **`2d · sesion-sin-persona`** (CRITICAL; se adelanta lo antes posible, D-130) y **4c
+  `intereses-saldo-inicial-y-moroso`** (CRITICAL; por proponer) en el camino crítico; **`3d · pulido-2`**
+  (MEDIUM) y **6** `gastos-y-cargos` en paralelo, a cargo de Emiliano; después 4d `cambio-de-titular`
+  (CRITICAL).
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -228,25 +239,28 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md), con el detalle de cada cambio
 en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.md). Resumen:
 
-- **Total**: 28 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, el 3 en 3a y 3b, el
+- **Total**: 30 cambios (D-088, más el 2 partido en 2a, 2b y 2c por D-097, el 3 en 3a y 3b, el
   2.2a de roles agregado por Juani el 20/10/2026, el 4 partido en 4a a 4d por su exploración del
-  22/10/2026 y el 3c de pulido agregado por Juani el 26/10/2026), repartidos en M1 Liquida, M2 Cobra
+  22/10/2026, el 3c de pulido agregado por Juani el 26/10/2026, y `2d` `sesion-sin-persona` y `3d`
+  `pulido-2`, agregados por Juani al archivar el 3c, D-130), repartidos en M1 Liquida, M2 Cobra
   y M3 Piloto.
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
   `1a → 1b → 1c → 1d → 2a → 3a → 4a → 4b → 4c → 5 → 7` (6 en paralelo desde el 4a si no escribe en
-  el libro; 2b, 2c, 3b y 3c fuera; el 4d después del 7, sin bloquear M1).
+  el libro; 2b, 2c, 3b, 3c, 3d y 2d fuera de la cadena de dependencias, aunque `2d` se adelanta lo
+  antes posible por D-130; el 4d después del 7, sin bloquear M1).
 - **Archivados**: 1a `infraestructura-base`, 1b `arranque-del-sistema`, 1c `cola-logs-y-respaldos`, 1d
   `respaldos-y-restauracion`, 2a `aislamiento-por-administracion` (OK con deuda anotada, D-098), 2c
   `endurecimiento-de-infraestructura` (OK con deuda anotada, D-101), 3a `configuracion-del-edificio`
   (OK, D-103, D-104), 3b `pantallas-del-edificio` (OK, 20/10/2026), 2.2a `roles-de-la-empresa`
   (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
-  (24/10/2026, D-110, D-111), 4a `cimientos-del-libro` (26/10/2026, D-119) y 4b
-  `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7).
-- **Construido y firmado, falta sólo archivar**: 3c `pulido-de-la-configuracion` (27/10/2026, HIGH,
-  D-128; firmado por Emiliano Caceres el 26/10/2026) — pendiente únicamente la tarea 7.1 (recorrido
-  manual a cargo del humano). Sus migraciones son `0025` a `0027`: van después de las del 4a
-  (`0021`, `0022`) y de las del 4b (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La
-  numeración 3c y 4a a 4d no renumera los demás changes (precedente D-097).
+  (24/10/2026, D-110, D-111), 4a `cimientos-del-libro` (26/10/2026, D-119), 4b
+  `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7) y 3c
+  `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11).
+  Sus migraciones son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
+  (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
+  demás changes (precedente D-097).
+- **Nuevos, pendientes de proponer** (D-130, 28/10/2026): `2d · sesion-sin-persona` (CRITICAL, se
+  adelanta lo antes posible) y `3d · pulido-2` (MEDIUM, Emiliano, en paralelo antes del 6).
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los

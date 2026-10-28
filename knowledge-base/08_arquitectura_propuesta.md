@@ -156,8 +156,18 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   salvo `auditoria`, que conserva su sonda con fila. **Chequeo de arranque**: la API, el worker,
   `alta_inicial` y `ejemplo` no arrancan si una tabla de la lista falta o su dueño no es superusuario
   (`TablasDeSoloAgregarDesprotegidas`, log `arranque_fallido` en la API y el worker); ninguna variable
-  lo saltea. Un `ALTER` sobre una tabla protegida falla con `must be owner` hasta que exista el préstamo
-  de propiedad, escrito en D-115 y sin construir.
+  lo saltea. Un `ALTER` sobre una tabla protegida sigue fallando con `must be owner` hasta que exista
+  el préstamo de propiedad **para tablas**, escrito en D-115 y sin construir.
+  - **El mismo problema, resuelto para funciones (3c, E11 y su Enmienda, D-129)**: una migración a
+    veces necesita reemplazar la función de un trigger protegido (`CREATE OR REPLACE FUNCTION`), y
+    `pg_restore --no-owner` deja toda función de `public` a nombre del rol de arranque. `roles antes`
+    le presta al migrador únicamente las funciones que NO son de un trigger protegido; las que sí lo
+    son — y todo lo que llaman por dentro, calculado por cierre de dependencias, no sólo por nombre —
+    quedan siempre del rol de arranque. La primera redacción de E11 (prestarlas todas, sin excepción)
+    abría una ventana real: el rompedor de PR #2 mostró que una función auxiliar alcanzable desde una
+    protegida podía cambiarse mientras el migrador todavía la tenía, y el chequeo por el efecto pasaba
+    igual (RE11-01/RE11-02, L-054). `roles despues` fija además `search_path = ''` en cada función
+    protegida al devolverla.
 - **Redes** (D10, cambio 2a: `interna` se parte en dos; `infra/compose.yaml`): `datos` (`internal:
   true`) es la única red que alcanza `db` y `redis`; la **web nunca está en ella** — sólo la API y el
   worker. `aplicacion` (`internal: true`) conecta la API, la web y Caddy, con la IP fija de Caddy para
