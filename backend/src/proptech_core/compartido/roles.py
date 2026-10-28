@@ -9,6 +9,7 @@ CLI: python -m proptech_core.compartido.roles antes|despues.
 
 from __future__ import annotations
 
+import re
 import sys
 
 import psycopg
@@ -163,6 +164,29 @@ def _secuencias_de_public_del_rol(cur: psycopg.Cursor, rol: str) -> list[str]:
     return [fila[0] for fila in cur.fetchall()]
 
 
+def _funciones_protegidas_por_nombre(cur: psycopg.Cursor) -> set[str]:
+    """Enmienda E11 (RE11-01/RE11-02): todo nombre de función que un trigger
+    de una tabla de `TABLAS_DE_SOLO_AGREGAR` alcanza hoy, directo o por su
+    clausura de dependencias calificadas (`_cierre_de_dependencias`).
+    `_reasignar_duenio_de_lo_existente` nunca puede devolver ninguna de
+    éstas al migrador — ni la primera vez (RE11-01) ni en una corrida
+    posterior de `antes()` (si no, una auxiliar que `despues()` ya le
+    devolvió al arranque volvería al migrador en el próximo deploy y
+    reabriría la ventana de RE11-02)."""
+    protegidas: set[str] = set()
+    for tabla in TABLAS_DE_SOLO_AGREGAR:
+        # Primer `antes()` de una base nueva, antes de la primera migración
+        # (D2): ninguna tabla protegida existe todavía. `_funciones_de_los_
+        # triggers_de` castea `tabla::regclass`, que levanta
+        # `UndefinedTable` sobre una que no existe — nunca "sin triggers".
+        if not _existe_tabla(cur, f"public.{tabla}"):
+            continue
+        for funcion in _funciones_de_los_triggers_de(cur, tabla):
+            protegidas.add(funcion)
+            protegidas |= _cierre_de_dependencias(cur, funcion)
+    return protegidas
+
+
 def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrador: str) -> None:
     """Le transfiere al migrador tablas, secuencias y funciones de `public` que son
     del rol de arranque, salvo las tablas protegidas (D0/D1): nunca `REASSIGN OWNED`, que
@@ -182,6 +206,7 @@ def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrad
                 secuencia=sql.Identifier(secuencia), migrador=sql.Identifier(migrador)
             )
         )
+    funciones_protegidas = _funciones_protegidas_por_nombre(cur)
     cur.execute(
         "SELECT p.proname, pg_get_function_identity_arguments(p.oid) "
         "FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
@@ -190,6 +215,8 @@ def _reasignar_duenio_de_lo_existente(cur: psycopg.Cursor, arranque: str, migrad
         (arranque,),
     )
     for nombre, argumentos in cur.fetchall():
+        if nombre in funciones_protegidas:
+            continue
         cur.execute(
             sql.SQL("ALTER FUNCTION {}({}) OWNER TO {}").format(
                 sql.Identifier("public", nombre), sql.SQL(argumentos), sql.Identifier(migrador)
@@ -614,6 +641,7 @@ def _verificar_auditoria_protegida(cur: psycopg.Cursor, arranque: str) -> None:
             dueno_real = fila_dueno[0] if fila_dueno is not None else "(no existe)"
             faltantes.append(f"el dueño de la función {funcion} (es {dueno_real})")
 
+    faltantes.extend(_dependencias_ajenas_al_arranque(cur, "auditoria", arranque))
     faltantes.extend(_verificar_politica_de_auditoria(cur))
     faltantes.extend(_verificar_bloqueo_de_escritura_de_verdad(cur))
 
@@ -634,6 +662,127 @@ def _funciones_de_los_triggers_de(cur: psycopg.Cursor, tabla: str) -> list[str]:
         (tabla,),
     )
     return [fila[0] for fila in cur.fetchall()]
+
+
+#: RE11-02 (enmienda E11): llamada calificada a otra función de `public`
+#: dentro del CUERPO de una función. Toda función de un trigger protegido
+#: (y las que `despues()` les fija) queda con `SET search_path = ''`
+#: (D9/R2), así que CUALQUIER llamada a otra función de `public` tiene que
+#: estar calificada así para resolver en tiempo de ejecución — una llamada
+#: sin calificar fallaría sola. Por eso este rastreo de texto no tiene
+#: falso negativo por esa vía: si el cuerpo invoca algo de public que no
+#: aparece acá, es porque no está calificado, y entonces ya no ejecuta.
+#: SÍ puede dar un falso POSITIVO (un comentario o un mensaje de
+#: `RAISE EXCEPTION` que por casualidad contenga el texto "public.algo(");
+#: eso es inocuo acá: `_firmas_de_la_funcion` de más abajo no encuentra
+#: ninguna función con ese nombre y el nombre fantasma se descarta solo.
+_PATRON_LLAMADA_CALIFICADA = re.compile(r"\bpublic\.([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+
+def _dependencias_calificadas_de(cur: psycopg.Cursor, funcion: str) -> set[str]:
+    """Nombres que el cuerpo de TODA sobrecarga de `funcion` en `public`
+    llama como `public.algo(...)`, sin `funcion` misma (RE11-02)."""
+    cur.execute(
+        "SELECT prosrc FROM pg_proc WHERE proname = %s AND pronamespace = 'public'::regnamespace",
+        (funcion,),
+    )
+    nombres: set[str] = set()
+    for (cuerpo,) in cur.fetchall():
+        if cuerpo:
+            nombres.update(_PATRON_LLAMADA_CALIFICADA.findall(cuerpo))
+    nombres.discard(funcion)
+    return nombres
+
+
+def _cierre_de_dependencias(cur: psycopg.Cursor, raiz: str) -> set[str]:
+    """Clausura transitiva de `_dependencias_calificadas_de` a partir de
+    `raiz` (RE11-02: una auxiliar puede llamar a otra), sin `raiz` misma y
+    sin repetir aunque haya un ciclo."""
+    vistas: set[str] = {raiz}
+    pendientes = [raiz]
+    while pendientes:
+        actual = pendientes.pop()
+        for dependencia in _dependencias_calificadas_de(cur, actual):
+            if dependencia not in vistas:
+                vistas.add(dependencia)
+                pendientes.append(dependencia)
+    vistas.discard(raiz)
+    return vistas
+
+
+def _firmas_de_la_funcion(cur: psycopg.Cursor, nombre: str) -> list[str]:
+    """Los argumentos (por sobrecarga) de toda función `nombre` en `public`.
+    Vacío si no existe ninguna: así un nombre fantasma de
+    `_dependencias_calificadas_de` (un comentario, un mensaje de error) no
+    produce ningún `ALTER FUNCTION` ni ningún faltante — simplemente no hay
+    con qué iterar."""
+    cur.execute(
+        "SELECT pg_get_function_identity_arguments(oid) FROM pg_proc "
+        "WHERE proname = %s AND pronamespace = 'public'::regnamespace",
+        (nombre,),
+    )
+    return [fila[0] for fila in cur.fetchall()]
+
+
+def _asegurar_duenio_de_funcion_y_dependencias(
+    cur: psycopg.Cursor, funcion: str, arranque: str
+) -> None:
+    """Transfiere `funcion` (una función de trigger, siempre 0 argumentos) Y
+    la clausura RE11-02 de lo que llama calificado al rol de arranque, con
+    `search_path = ''` en cada una: ninguna auxiliar que el migrador
+    controle queda alcanzable desde un trigger protegido, ni ahora ni
+    después de que alguien agregue una vuelta más de indirección."""
+    cur.execute(
+        sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
+            sql.Identifier("public", funcion), sql.Identifier(arranque)
+        )
+    )
+    cur.execute(
+        sql.SQL("ALTER FUNCTION {}() SET search_path = ''").format(
+            sql.Identifier("public", funcion)
+        )
+    )
+    for dependencia in sorted(_cierre_de_dependencias(cur, funcion)):
+        for argumentos in _firmas_de_la_funcion(cur, dependencia):
+            cur.execute(
+                sql.SQL("ALTER FUNCTION {}({}) OWNER TO {}").format(
+                    sql.Identifier("public", dependencia),
+                    sql.SQL(argumentos),
+                    sql.Identifier(arranque),
+                )
+            )
+            cur.execute(
+                sql.SQL("ALTER FUNCTION {}({}) SET search_path = ''").format(
+                    sql.Identifier("public", dependencia), sql.SQL(argumentos)
+                )
+            )
+
+
+def _dependencias_ajenas_al_arranque(cur: psycopg.Cursor, tabla: str, arranque: str) -> list[str]:
+    """RE11-02: verifica, para cada función de un trigger de `tabla`, que
+    TODA su clausura de dependencias calificadas (`_cierre_de_dependencias`)
+    sea también del arranque. Una auxiliar que siguiera siendo del migrador
+    podría cambiar de comportamiento DESPUÉS de que `despues()` terminara
+    bien, sin tocar la función protegida para nada — esto cierra esa
+    puerta en la verificación, no sólo en la transferencia."""
+    faltantes: list[str] = []
+    for funcion in _funciones_de_los_triggers_de(cur, tabla):
+        for dependencia in sorted(_cierre_de_dependencias(cur, funcion)):
+            for argumentos in _firmas_de_la_funcion(cur, dependencia):
+                cur.execute(
+                    "SELECT pg_get_userbyid(proowner) FROM pg_proc "
+                    "WHERE proname = %s AND pronamespace = 'public'::regnamespace "
+                    "AND pg_get_function_identity_arguments(oid) = %s",
+                    (dependencia, argumentos),
+                )
+                fila = cur.fetchone()
+                dueno = fila[0] if fila is not None else None
+                if dueno != arranque:
+                    faltantes.append(
+                        f"la función {dependencia}({argumentos}), de la que depende la función "
+                        f"de un trigger de {tabla}, no es del arranque (es {dueno!r}, RE11-02)"
+                    )
+    return faltantes
 
 
 def _verificar_tabla_protegida(
@@ -658,6 +807,7 @@ def _verificar_tabla_protegida(
             faltantes.append(f"trigger {nombre} no existe")
         elif triggers[nombre] != ("O", arranque):
             faltantes.append(f"trigger {nombre} deshabilitado o función con otro dueño")
+    faltantes.extend(_dependencias_ajenas_al_arranque(cur, tabla, arranque))
     cur.execute(
         "SELECT attname FROM pg_attribute WHERE attrelid=to_regclass(%s) AND attnum>0 AND "
         "NOT attisdropped ORDER BY attnum LIMIT 1",
@@ -754,16 +904,8 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                         )
                     )
                     for funcion in _funciones_de_los_triggers_de(cur, tabla):
-                        cur.execute(
-                            sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
-                                sql.Identifier("public", funcion),
-                                sql.Identifier(configuracion.postgres_user),
-                            )
-                        )
-                        cur.execute(
-                            sql.SQL("ALTER FUNCTION {}() SET search_path = ''").format(
-                                sql.Identifier("public", funcion)
-                            )
+                        _asegurar_duenio_de_funcion_y_dependencias(
+                            cur, funcion, configuracion.postgres_user
                         )
                     cur.execute(
                         sql.SQL("REVOKE UPDATE, DELETE, TRUNCATE ON {} FROM {}").format(
@@ -835,17 +977,13 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
             # paso: la función no usa ningún objeto sin calificar, así que
             # esto no le cambia el comportamiento y cierra la puerta a que
             # alguien la haga resolver algo de un esquema ajeno.
+            # RE11-02 (enmienda E11): también la clausura de lo que esa
+            # función llame calificado, no sólo ella — si no, una
+            # auxiliar que el migrador siga controlando podría desactivar
+            # el bloqueo sin tocar la función protegida para nada.
             for funcion in _funciones_de_los_triggers_de(cur, "auditoria"):
-                cur.execute(
-                    sql.SQL("ALTER FUNCTION {funcion}() OWNER TO {arranque};").format(
-                        funcion=sql.Identifier(funcion),
-                        arranque=sql.Identifier(configuracion.postgres_user),
-                    )
-                )
-                cur.execute(
-                    sql.SQL("ALTER FUNCTION {funcion}() SET search_path = '';").format(
-                        funcion=sql.Identifier(funcion)
-                    )
+                _asegurar_duenio_de_funcion_y_dependencias(
+                    cur, funcion, configuracion.postgres_user
                 )
             # Orden a propósito: primero el REVOKE amplio (deshace lo que
             # ALTER DEFAULT PRIVILEGES regaló), después el GRANT angosto de
