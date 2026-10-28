@@ -1332,6 +1332,16 @@ AssertionError: expected "vi.fn()" to not be called at all, but actually been ca
   Aparte, no de este change: el recuadro de Clerk no desborda pero se ve mal (tarjeta dentro de tarjeta,
   encabezado cortado, placeholder truncado); queda como deuda visual para un change de pulido.
 
+  **Cierre (28/10/2026, orquestador)**: suite completa de backend sobre `d77faa5` en un clon limpio:
+  `bash infra/ci/test-backend.sh -q -p no:cacheprovider` → `4252 passed, 1 xfailed` (16:24 a 16:39). Web
+  541/541 y navegador completo 175/175 en clon normal (auditor, 16:14 a 16:19). Auditor (Codex) dio NO OK
+  por tres puntos: la suite completa (resuelta arriba), el CI (corre con el push) y el recorrido real de la
+  enmienda E10. **Deuda aceptada por Juani el 28/10/2026**: (1) repetir con Clerk real "Usar otra cuenta"
+  con una cuenta nueva después del arreglo `cfb99ce` y entrar como contador; (2) 5.4, el recorrido del
+  README por Emiliano o Gianfranco; (3) el aspecto visual del recuadro de Clerk (no desborda, pero se ve
+  como tarjeta dentro de tarjeta, encabezado cortado y placeholder truncado). 8.1 y 8.2 quedan sin marcar
+  por esas deudas, no por fallos.
+
 ## Workflow follow-up
 
 - Revisores de `verify`: piso obligatorio por autenticación y datos de usuario, **backend**, **QA**,
