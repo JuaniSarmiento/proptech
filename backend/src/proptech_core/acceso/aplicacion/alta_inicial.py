@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -28,6 +29,88 @@ from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.parametros import Parametros, leer_parametros
 
 
+@dataclass(frozen=True)
+class AltaInicialDeAdministracion:
+    administracion_id: UUID
+    persona_id: UUID
+    asignacion_id: UUID
+
+
+def crear_administracion_y_super_admin(
+    sesion: Session,
+    *,
+    nombre_administracion: str,
+    nombre_persona: str,
+    email: str,
+    request_id: UUID,
+    administracion_id: UUID | None = None,
+    persona_id: UUID | None = None,
+) -> AltaInicialDeAdministracion | None:
+    """L-009 (D7, 2d grupo 6): el tramo administración + persona
+    `super_admin` + asignación + `alta_inicial`, compartido por
+    `alta_inicial.crear` (sin ids fijos, genera los suyos) y
+    `complejos.aplicacion.ejemplo.cargar` (con los ids fijos del ejemplo).
+    La sesión ya tiene el tenant puesto (`abrir_sesion`); esta función no lo
+    decide.
+
+    Con `administracion_id` dado, usa `ON CONFLICT (id) DO NOTHING` para la
+    idempotencia de la carrera de `cargar()` (D7, el riesgo que `ejemplo.py`
+    ya resolvía): si otra corrida ganó, devuelve `None` sin escribir
+    `persona` ni `asignacion_rol`. Sin `administracion_id`, genera uno nuevo:
+    nadie más lo conoce, así que no hay carrera que perder.
+    """
+    if administracion_id is not None:
+        fila = sesion.execute(
+            text(
+                "INSERT INTO administracion(id, nombre) VALUES (:id, :nombre) "
+                "ON CONFLICT (id) DO NOTHING RETURNING id"
+            ),
+            {"id": administracion_id, "nombre": nombre_administracion},
+        ).first()
+        if fila is None:
+            return None
+        admin = administracion_id
+    else:
+        admin = sesion.execute(
+            text("INSERT INTO administracion(nombre) VALUES (:nombre) RETURNING id"),
+            {"nombre": nombre_administracion},
+        ).scalar_one()
+    if persona_id is not None:
+        sesion.execute(
+            text(
+                "INSERT INTO persona(id, administracion_id, nombre, email) "
+                "VALUES (:id, :admin, :nombre, :email)"
+            ),
+            {"id": persona_id, "admin": admin, "nombre": nombre_persona, "email": email},
+        )
+        persona = persona_id
+    else:
+        persona = sesion.execute(
+            text(
+                "INSERT INTO persona(administracion_id, nombre, email) "
+                "VALUES (:admin, :nombre, :email) RETURNING id"
+            ),
+            {"admin": admin, "nombre": nombre_persona, "email": email},
+        ).scalar_one()
+    asignacion = sesion.execute(
+        text(
+            "INSERT INTO asignacion_rol(administracion_id, persona_id, rol) "
+            "VALUES (:admin, :persona, 'super_admin') RETURNING id"
+        ),
+        {"admin": admin, "persona": persona},
+    ).scalar_one()
+    identidad = Identidad(admin, persona)
+    registrar(
+        sesion,
+        identidad,
+        EventoDeAcceso.ALTA_INICIAL,
+        entidad="persona",
+        entidad_id=persona,
+        request_id=request_id,
+    )
+    return AltaInicialDeAdministracion(admin, persona, asignacion)
+
+
 async def crear(
     fabrica: sessionmaker[Session],
     *,
@@ -49,34 +132,20 @@ async def crear(
             text("SELECT 1 FROM asignacion_rol WHERE rol = 'super_admin' LIMIT 1")
         ).first():
             raise ValueError("administracion: ya tiene super admin")
-        sesion.execute(
-            text("INSERT INTO administracion(id,nombre) VALUES (:id,:nombre)"),
-            {"id": admin, "nombre": administracion},
-        )
-        persona = sesion.execute(
-            text(
-                "INSERT INTO persona(administracion_id,nombre,email) "
-                "VALUES (:admin,:nombre,:email) RETURNING id"
-            ),
-            {"admin": admin, "nombre": nombre, "email": email},
-        ).scalar_one()
-        sesion.execute(
-            text(
-                "INSERT INTO asignacion_rol(administracion_id,persona_id,rol) "
-                "VALUES (:admin,:persona,'super_admin')"
-            ),
-            {"admin": admin, "persona": persona},
-        )
-        identidad = Identidad(admin, persona)
-        invitacion, sobre = crear_invitacion(sesion, identidad, persona, parametros, clave)
-        registrar(
+        alta = crear_administracion_y_super_admin(
             sesion,
-            identidad,
-            EventoDeAcceso.ALTA_INICIAL,
-            entidad="persona",
-            entidad_id=persona,
+            administracion_id=admin,
+            nombre_administracion=administracion,
+            nombre_persona=nombre,
+            email=email,
             request_id=request_id,
         )
+        if alta is None:
+            # `admin` es un uuid4 recién generado que nadie más conoce: no
+            # puede perder la carrera de `ON CONFLICT` (L-009, D7).
+            raise RuntimeError("administracion: id recién generado en conflicto")
+        identidad = Identidad(admin, alta.persona_id)
+        invitacion, sobre = crear_invitacion(sesion, identidad, alta.persona_id, parametros, clave)
     await encolar_envio(cola, admin, invitacion, sobre, request_id)
     return admin
 

@@ -503,13 +503,9 @@ _EXCEPCIONES_SQL = {
         "asignacion_rol",
     ): "Asignación inicial del edificio (2.2a, ARQ-3)",
     ("complejos/aplicacion/lectura.py", "persona"): "Autor de versión con FK compuesta y RLS (E11)",
-    **{
-        (
-            "complejos/aplicacion/ejemplo.py",
-            t,
-        ): "Carga inicial del ejemplo, pendiente mover a composición (E11)"
-        for t in ("administracion", "persona", "asignacion_rol")
-    },
+    #: 2d, grupo 6 (E7/D7): la administración, la persona y la asignación del
+    #: ejemplo se escriben por `acceso.aplicacion.alta_inicial`, no por SQL
+    #: directo de `ejemplo.py`: sin excepción.
 }
 _IDENTIFICADOR = r'"?[a-z_][a-z_0-9]*"?'
 _TABLA_SQL = re.compile(
@@ -633,6 +629,16 @@ def test_excepcion_sql_es_por_archivo_y_tabla() -> None:
         k: v for k, v in _EXCEPCIONES_SQL.items() if k[0] != "complejos/aplicacion/lectura.py"
     }
     assert _sql_ajeno(RAIZ_SRC, sin_lectura) == ["complejos/aplicacion/lectura.py: persona"]
+
+
+@pytest.mark.parametrize("tabla", ["administracion", "persona", "asignacion_rol"])
+def test_el_ejemplo_vuelve_a_escribir_una_tabla_de_acceso(copia_core: Path, tabla: str) -> None:
+    """2d, grupo 6 (E7): sin la excepción que `6.2` sacó, un `INSERT` nuevo
+    de `ejemplo.py` en una tabla de `acceso` vuelve a quedar atrapado."""
+    archivo = copia_core / "complejos/aplicacion/ejemplo.py"
+    sql = f"INSERT INTO {tabla} (id) VALUES (1)"  # noqa: S608 (texto de prueba, no SQL ejecutado)
+    archivo.write_text(f"SQL = {sql!r}")
+    assert f"complejos/aplicacion/ejemplo.py: {tabla}" in _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
 
 
 # E5: el bypass de invitación es exclusivamente del comando de desarrollo.

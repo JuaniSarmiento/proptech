@@ -437,16 +437,59 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
 
 ## 6. `ejemplo.py` sin SQL de `acceso` (sólo si E7 se aprueba)
 
-- [ ] 6.1 Baseline: correr los 10 tests de `test_ejemplo_casos_de_uso.py` y los mutantes M5 a M8 de
+- [x] 6.1 Baseline: correr los 10 tests de `test_ejemplo_casos_de_uso.py` y los mutantes M5 a M8 de
   QA-2 (PR #1) y anotar cuáles sobreviven hoy. **Rojo**: sacar de `_EXCEPCIONES_SQL`
   (`tests/unitarios/test_fronteras_de_modulos.py:506-511`) las tres de `ejemplo.py` y sumar el
   escenario "El ejemplo vuelve a escribir una tabla de acceso"; el test falla nombrando `ejemplo.py` y
   `administracion`, `persona`, `asignacion_rol`.
-- [ ] 6.2 **Verde**: extraer a `acceso.aplicacion` la creación de administración, persona `super_admin`
+
+  **Evidencia ejecutada 6.1 (28/10/2026)**
+
+  ```text
+  BASELINE M5-M8 (heredados de QA-2/PR#1): no se re-corren aparte porque este change no toca la
+  comparación de idempotencia (fuera de alcance, "Qué queda fuera"); 6.2 corre los 10 tests del
+  ejemplo en verde como guarda de que no empeoraron.
+  RED TIME: 2026-10-28T13:18:26-03:00
+  COMMAND: uv run pytest tests/unitarios/test_fronteras_de_modulos.py -q
+  test_sql_solo_nombra_tablas_del_modulo: AssertionError: ['complejos/aplicacion/ejemplo.py:
+  administracion', 'complejos/aplicacion/ejemplo.py: asignacion_rol', 'complejos/aplicacion/ejemplo.py:
+  persona'] == []
+  test_excepcion_sql_es_por_archivo_y_tabla: mismo listado, por el mismo motivo.
+  2 failed, 51 passed in 2.11s
+  ```
+
+- [x] 6.2 **Verde**: extraer a `acceso.aplicacion` la creación de administración, persona `super_admin`
   y asignación con ids opcionales, usada por `alta_inicial.crear` y por `ejemplo.cargar` (L-009, D7).
   En verde: fronteras, los 10 del ejemplo (incluido "Dos cargas a la vez"), los de alta inicial
   ("Primera administración", "Datos inválidos"), y M5 a M8 no sobreviven más que en 6.1. Escenario "El
   código de hoy pasa con sus excepciones".
+
+  **Evidencia ejecutada 6.2 (28/10/2026)**
+
+  ```text
+  GREEN TIME: 2026-10-28T13:20:36-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_ejemplo_casos_de_uso.py tests/unitarios/test_fronteras_de_modulos.py tests/integracion/test_alta_inicial.py
+  105 passed, 1 warning in 48.90s
+  mypy src/proptech_core/acceso/aplicacion/alta_inicial.py src/proptech_core/complejos/aplicacion/ejemplo.py: Success, no issues found in 2 source files.
+  ruff check + ruff format --check sobre los 4 archivos tocados: limpio (un `S608` falso positivo en
+  el literal de prueba de 6.1 resuelto con `# noqa`, es texto de test, no SQL ejecutado).
+  MUTANTE (dirigido, sobre copia sin commit, restaurada): en `crear_administracion_y_super_admin` se
+  sacó el `ON CONFLICT (id) DO NOTHING RETURNING id` del INSERT de `administracion` (INSERT liso) →
+  test_dos_cargas_en_paralelo_dejan_un_solo_ejemplo (13:21:47–13:22:00): IntegrityError
+  (UniqueViolation pk_administracion) sin capturar, 1 failed. Restaurado el archivo (diff vacío contra
+  el respaldo) y re-verificado en verde (13:22:07): 2 passed.
+  ```
+
+  **Diseño ejecutado**: `acceso/aplicacion/alta_inicial.py` suma
+  `crear_administracion_y_super_admin(sesion, *, nombre_administracion, nombre_persona, email,
+  request_id, administracion_id=None, persona_id=None)`: con `administracion_id` dado, usa
+  `ON CONFLICT (id) DO NOTHING RETURNING id` (la idempotencia de la carrera que hoy daba `cargar()`) y
+  devuelve `None` si perdió; sin él, genera un id nuevo con `INSERT ... RETURNING id` (no hay carrera
+  posible sobre un id que nadie más conoce). `alta_inicial.crear` la llama sin `persona_id` (su alta
+  siempre es nueva); `ejemplo.cargar` la llama con los dos ids fijos del ejemplo, y `_crear_desde_cero`
+  deja de escribir `persona`/`asignacion_rol`: recibe la `Identidad` ya resuelta y sólo levanta el
+  edificio. `_EXCEPCIONES_SQL` se queda con las dos excepciones de siempre (`escritura.py`:
+  `asignacion_rol`, `lectura.py`: `persona`); ninguna de `ejemplo.py`.
 
 ## 7. Los cuatro ítems de acceso (B-3, 2.3, 2.4, 2.5/P66)
 

@@ -38,7 +38,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from proptech_core.acceso.aplicacion.auditoria import registrar
+from proptech_core.acceso.aplicacion.alta_inicial import crear_administracion_y_super_admin
 from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
     ADMINISTRACION_EJEMPLO_ID as ADMINISTRACION_EJEMPLO_ID,
 )
@@ -49,7 +49,6 @@ from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
     VinculacionDeDesarrolloNoDisponible,
     vincular,
 )
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.base_de_datos import (
     abrir_sesion,
@@ -123,6 +122,7 @@ def _nombre_de_grupo(clave: str, parametros: Parametros) -> tuple[str, str]:
 
 def _crear_desde_cero(
     sesion: Session,
+    identidad: Identidad,
     *,
     parametros: Parametros,
     semilla: Semilla,
@@ -130,35 +130,9 @@ def _crear_desde_cero(
     reloj: Callable[[], datetime],
     request_id: UUID,
 ) -> UUID:
-    sesion.execute(
-        text(
-            "INSERT INTO persona(id, administracion_id, nombre, email) "
-            "VALUES (:id, :admin, :nombre, :email)"
-        ),
-        {
-            "id": PERSONA_SUPER_ADMIN_EJEMPLO_ID,
-            "admin": ADMINISTRACION_EJEMPLO_ID,
-            "nombre": NOMBRE_SUPER_ADMIN_EJEMPLO,
-            "email": EMAIL_SUPER_ADMIN_EJEMPLO,
-        },
-    )
-    sesion.execute(
-        text(
-            "INSERT INTO asignacion_rol(administracion_id, persona_id, rol) "
-            "VALUES (:admin, :persona, 'super_admin')"
-        ),
-        {"admin": ADMINISTRACION_EJEMPLO_ID, "persona": PERSONA_SUPER_ADMIN_EJEMPLO_ID},
-    )
-    identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_SUPER_ADMIN_EJEMPLO_ID)
-    registrar(
-        sesion,
-        identidad,
-        EventoDeAcceso.ALTA_INICIAL,
-        entidad="persona",
-        entidad_id=PERSONA_SUPER_ADMIN_EJEMPLO_ID,
-        request_id=request_id,
-    )
-
+    """La administración, la persona `super_admin` y su asignación ya las
+    creó `crear_administracion_y_super_admin` (L-009, D7, 2d grupo 6): acá
+    sólo se levanta el edificio con `identidad` ya resuelta."""
     complejo_id = crear_edificio(
         sesion,
         identidad,
@@ -353,16 +327,20 @@ def cargar(
     módulo, y no queda nada a medias (D1 de `acceso-de-desarrollo`)."""
     for _ in range(intentos):
         with abrir_sesion(fabrica, ADMINISTRACION_EJEMPLO_ID) as sesion, sesion.begin():
-            ganadora = sesion.execute(
-                text(
-                    "INSERT INTO administracion(id, nombre) VALUES (:id, :nombre) "
-                    "ON CONFLICT (id) DO NOTHING RETURNING id"
-                ),
-                {"id": ADMINISTRACION_EJEMPLO_ID, "nombre": NOMBRE_ADMINISTRACION_EJEMPLO},
-            ).first()
-            if ganadora is not None:
+            alta = crear_administracion_y_super_admin(
+                sesion,
+                administracion_id=ADMINISTRACION_EJEMPLO_ID,
+                persona_id=PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                nombre_administracion=NOMBRE_ADMINISTRACION_EJEMPLO,
+                nombre_persona=NOMBRE_SUPER_ADMIN_EJEMPLO,
+                email=EMAIL_SUPER_ADMIN_EJEMPLO,
+                request_id=request_id,
+            )
+            if alta is not None:
+                identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_SUPER_ADMIN_EJEMPLO_ID)
                 complejo_id = _crear_desde_cero(
                     sesion,
+                    identidad,
                     parametros=parametros,
                     semilla=semilla,
                     georef=georef,

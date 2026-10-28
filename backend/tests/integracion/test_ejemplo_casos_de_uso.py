@@ -866,8 +866,8 @@ def test_conflicto_al_crear_revierte_toda_la_carga(
 
     original = ejemplo._crear_desde_cero
 
-    def con_vinculo(sesion: Session, **kwargs: Any) -> UUID:
-        complejo = original(sesion, **kwargs)
+    def con_vinculo(sesion: Session, identidad: Any, **kwargs: Any) -> UUID:
+        complejo = original(sesion, identidad, **kwargs)
         sesion.execute(
             text("UPDATE persona SET clerk_usuario_id='user_Otra' WHERE id=:id"),
             {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
