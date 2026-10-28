@@ -750,17 +750,15 @@ export function crearServidor(
             .end("Traceback (most recent call last): algo técnico que no es para el usuario");
           return true;
         case "sin_permiso_403":
-          respuesta
-            .writeHead(403, { "content-type": "application/json" })
-            .end(
-              JSON.stringify({
-                detail: {
-                  codigo: "sin_permiso",
-                  detalle: "sin_permiso",
-                  permiso_faltante: "cambiar_configuracion",
-                },
-              }),
-            );
+          respuesta.writeHead(403, { "content-type": "application/json" }).end(
+            JSON.stringify({
+              detail: {
+                codigo: "sin_permiso",
+                detalle: "sin_permiso",
+                permiso_faltante: "cambiar_configuracion",
+              },
+            }),
+          );
           return true;
         case "no_existe_404":
           respuesta.writeHead(404).end();
@@ -900,17 +898,15 @@ export function crearServidor(
       }
       if (metodo === "POST" && resto === "unidades") {
         if (id === ESCRITURAS_UNIDADES.rechazo403) {
-          respuesta
-            .writeHead(403, { "content-type": "application/json" })
-            .end(
-              JSON.stringify({
-                detail: {
-                  codigo: "sin_permiso",
-                  detalle: "sin_permiso",
-                  permiso_faltante: "modificar_unidades",
-                },
-              }),
-            );
+          respuesta.writeHead(403, { "content-type": "application/json" }).end(
+            JSON.stringify({
+              detail: {
+                codigo: "sin_permiso",
+                detalle: "sin_permiso",
+                permiso_faltante: "modificar_unidades",
+              },
+            }),
+          );
           return;
         }
         if (id === ESCRITURAS_UNIDADES.rechazo422) {
