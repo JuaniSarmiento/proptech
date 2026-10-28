@@ -1,6 +1,7 @@
 """Lectura de `config/georef/` (D1, tarea 2.5): tres rutas públicas del país,
-sin tenant ni rol — sólo exigen sesión válida (`identidad_actual`, 401 sin
-ella). Nunca dependen de un complejo ni de un permiso."""
+sin tenant ni rol — sólo exigen sesión válida (`identidad_actual`: 401 sin
+token válido, 403 `sin_acceso` con un token válido pero sin persona
+vinculada). Nunca dependen de un complejo ni de un permiso."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
