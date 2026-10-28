@@ -66,7 +66,7 @@ for (const sobre of ["sobre-vencido", "sobre-usado", "sobre-revocado", "email-di
     expect(res?.headers()["cache-control"]).toContain("no-store");
     await page.getByRole("button", { name: "Aceptar e ingresar" }).click();
     await expect(page.getByRole("alert").filter({ hasText: mensaje })).toHaveText(mensaje);
-    await expect(page.getByRole("link", { name: "Usar otra cuenta" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Usar otra cuenta" })).toBeVisible();
     expect(terceros).toEqual([]);
   });
 }

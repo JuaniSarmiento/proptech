@@ -1,0 +1,45 @@
+TIME 2026-10-28T15:57:05.978986-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M8-perder-ticket.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/[sobre]/page.test.tsx
+--- web/src/app/invitacion/[sobre]/page.tsx
++++ web/src/app/invitacion/[sobre]/page.tsx (mutante)
+@@ -21,7 +21,7 @@
+       ingreso={`/ingresar?${conTicket({ regreso })}`}
+       registro={`/registrarse?${conTicket({ regreso })}`}
+       claimEmail={sesion?.email ?? null}
+-      volverAInvitacion={`${regreso}${ticket ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
++      volverAInvitacion={`${regreso}${false ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
+     />
+   );
+ }
+
+
+ RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 1 failed) 28ms
+   × E10: la URL de cierre vuelve a la misma invitación con ticket seguro (abc.123-xyz_9) 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/invitacion/[sobre]/page.test.tsx > E10: la URL de cierre vuelve a la misma invitación con ticket seguro (abc.123-xyz_9)
+AssertionError: expected '/invitacion/sobre%20con%20%2F' to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+
+Expected: "/invitacion/sobre%20con%20%2F?__clerk_ticket=abc.123-xyz_9"
+Received: "/invitacion/sobre%20con%20%2F"
+
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+     98|       "/invitacion/sobre%20con%20%2F" +
+     99|       (ticket === "abc.123-xyz_9" ? "?__clerk_ticket=abc.123-xyz_9" : …
+    100|     expect(pantalla.props.volverAInvitacion).toBe(esperado);
+       |                                              ^
+    101|   },
+    102| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  15:57:06
+   Duration  660ms (import 57%, transform 36%, tests 5%, setup 2%, worker 1%)
+

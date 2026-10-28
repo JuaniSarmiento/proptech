@@ -29,7 +29,8 @@ export default async function PaginaPadron({ params }: Props) {
     listarPersonal(),
   ]);
   // 7.4: sin ruta de lectura por unidad (D5), se deriva de `/api/personal`
-  // (sólo super admin, L-030); `null` = esta pantalla no muestra vecinos.
+  // (super admin o principal, E11); una lectura exitosa no habilita
+  // gestión: PantallaPadron exige el permiso de invitar (D11).
   const vecinos = personal.estado === "ok" ? vecinosPorUnidad(personal.datos) : null;
 
   if (padron.estado === "sin_sesion") {

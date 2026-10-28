@@ -1,5 +1,7 @@
 "use client";
-import { useActionState } from "react";
+import { esES } from "@clerk/localizations";
+import { ClerkLoaded, ClerkProvider, useClerk } from "@clerk/nextjs";
+import { useActionState, useEffect, useState } from "react";
 import { Armazon } from "../../componentes/Armazon";
 import { Ayuda } from "../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../componentes/EncabezadoDePantalla";
@@ -8,9 +10,10 @@ import { Panel } from "../../componentes/Panel";
 /**
  * B-3 (2d, 7.8, D10): con sesión, decir con qué cuenta se está entrando —
  * nunca el email del sobre (`destinatario`), que la API no expone (D-dev).
- * Sin el claim de email en el token de sesión (SUPUESTO, comprobado con
- * Clerk real en 8.2 e), las dos formas quedan genéricas, sin nombrar ningún
- * email (ni vacío ni "undefined").
+ * Sin el claim de email en el token de sesión, las dos formas quedan
+ * genéricas, sin nombrar ningún email (ni vacío ni "undefined"). Los tests
+ * de componente no verifican Clerk real; su recorrido y pendientes se
+ * registran en la tarea 8.2 e.
  */
 function mensajeDeCuenta(claimEmail: string | null): string {
   return claimEmail
@@ -31,16 +34,19 @@ export function PantallaInvitacion({
   ingreso,
   registro,
   claimEmail = null,
+  volverAInvitacion,
 }: {
   accion:
     | ((previo: { error: boolean } | null, form: FormData) => Promise<{ error: boolean }>)
     | null;
   ingreso: string;
   registro: string;
+  volverAInvitacion: string;
   /** B-3 (D10): el email del claim firmado del token de sesión, leído en el
    * servidor — `null` sin sesión o sin ese claim. */
   claimEmail?: string | null;
 }) {
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
   const [estado, enviar, pendiente] = useActionState(accion ?? (async () => null), null);
   return (
     <Armazon publico>
@@ -81,13 +87,40 @@ export function PantallaInvitacion({
               </p>
             </>
           )}
-          {/* B-3: "Usar otra cuenta" cierra la sesión y vuelve con `regreso`
-           * a esta misma invitación y el mismo `__clerk_ticket` — el enlace
-           * que `page.tsx` ya arma con `cerrar=1` (antes, "Cerrar sesión"). */}
-          {accion ? <a href={ingreso}>Usar otra cuenta</a> : null}
+          {/* Enmienda E10: cerrar y volver directamente a la invitación
+           * con el ticket. El proveedor local se carga al pedir salir;
+           * los enlaces de ingreso y registro siguen siendo independientes. */}
+          {accion ? (
+            cerrandoSesion ? (
+              <>
+                <p role="status">Cerrando sesión…</p>
+                <ClerkProvider dynamic localization={esES}>
+                  <ClerkLoaded>
+                    <CerrarSesionDeInvitacion destino={volverAInvitacion} />
+                  </ClerkLoaded>
+                </ClerkProvider>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="boton-enlace"
+                onClick={() => setCerrandoSesion(true)}
+              >
+                Usar otra cuenta
+              </button>
+            )
+          ) : null}
         </Panel>
         <a href="/privacidad">Aviso de privacidad</a>
       </div>
     </Armazon>
   );
+}
+
+function CerrarSesionDeInvitacion({ destino }: { destino: string }) {
+  const clerk = useClerk();
+  useEffect(() => {
+    void clerk.signOut({ redirectUrl: destino });
+  }, [clerk, destino]);
+  return null;
 }

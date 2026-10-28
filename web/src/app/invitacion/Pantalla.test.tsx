@@ -7,12 +7,27 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PantallaInvitacion } from "./Pantalla";
 
-afterEach(cleanup);
+const proveedor = vi.hoisted(() => vi.fn());
+const signOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("@clerk/nextjs", () => ({
+  ClerkProvider: ({ children }: { children: ReactNode }) => {
+    proveedor();
+    return children;
+  },
+  ClerkLoaded: ({ children }: { children: ReactNode }) => children,
+  useClerk: () => ({ signOut }),
+}));
+afterEach(() => {
+  cleanup();
+  signOut.mockClear();
+  proveedor.mockClear();
+});
 
-const INGRESO = "/ingresar?regreso=%2Finvitacion%2Fsobre-1&cerrar=1";
+const INGRESO = "/ingresar?regreso=%2Finvitacion%2Fsobre-1";
 const REGISTRO = "/registrarse?regreso=%2Finvitacion%2Fsobre-1";
 
 function accionQueFalla() {
@@ -22,14 +37,21 @@ function accionQueFalla() {
 describe("PantallaInvitacion", () => {
   describe("sin sesión (como hoy)", () => {
     it("ofrece Aceptar e ingresar (enlace) y crear la cuenta, sin mensaje de cuenta", () => {
-      render(<PantallaInvitacion accion={null} ingreso={INGRESO} registro={REGISTRO} />);
+      render(
+        <PantallaInvitacion
+          accion={null}
+          ingreso={INGRESO}
+          registro={REGISTRO}
+          volverAInvitacion="/invitacion/sobre-1"
+        />,
+      );
       const enlace = screen.getByRole("link", { name: "Aceptar e ingresar" });
       expect(enlace.getAttribute("href")).toBe(INGRESO);
       expect(screen.getByRole("link", { name: /creá tu cuenta/ }).getAttribute("href")).toBe(
         REGISTRO,
       );
       expect(screen.queryByText(/Estás ingresado/)).toBeNull();
-      expect(screen.queryByRole("link", { name: "Usar otra cuenta" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Usar otra cuenta" })).toBeNull();
     });
   });
 
@@ -40,13 +62,14 @@ describe("PantallaInvitacion", () => {
           accion={vi.fn()}
           ingreso={INGRESO}
           registro={REGISTRO}
+          volverAInvitacion="/invitacion/sobre-1"
           claimEmail="beto@example.invalid"
         />,
       );
       expect(screen.getByText("Estás ingresado como beto@example.invalid.")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Aceptar e ingresar" })).toBeTruthy();
-      const usarOtra = screen.getByRole("link", { name: "Usar otra cuenta" });
-      expect(usarOtra.getAttribute("href")).toBe(INGRESO);
+      const usarOtra = screen.getByRole("button", { name: "Usar otra cuenta" });
+      expect(usarOtra).toHaveProperty("type", "button");
     });
 
     it("si la aceptación falla, el mensaje nombra la cuenta y repite Usar otra cuenta (Aceptar con la cuenta equivocada)", async () => {
@@ -56,6 +79,7 @@ describe("PantallaInvitacion", () => {
           accion={accionQueFalla}
           ingreso={INGRESO}
           registro={REGISTRO}
+          volverAInvitacion="/invitacion/sobre-1"
           claimEmail="beto@example.invalid"
         />,
       );
@@ -63,7 +87,7 @@ describe("PantallaInvitacion", () => {
       expect(
         await screen.findByText(/Este enlace no sirve con la cuenta beto@example\.invalid\./),
       ).toBeTruthy();
-      expect(screen.getByRole("link", { name: "Usar otra cuenta" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Usar otra cuenta" })).toBeTruthy();
     });
   });
 
@@ -74,6 +98,7 @@ describe("PantallaInvitacion", () => {
           accion={vi.fn()}
           ingreso={INGRESO}
           registro={REGISTRO}
+          volverAInvitacion="/invitacion/sobre-1"
           claimEmail={null}
         />,
       );
@@ -91,6 +116,7 @@ describe("PantallaInvitacion", () => {
             accion={accionQueFalla}
             ingreso={INGRESO}
             registro={REGISTRO}
+            volverAInvitacion="/invitacion/sobre-1"
             claimEmail={null}
           />,
         );
@@ -98,8 +124,39 @@ describe("PantallaInvitacion", () => {
         const mensaje = await screen.findByRole("alert");
         expect(mensaje.textContent).toMatch(/con la cuenta con la que ingresaste/);
         expect(mensaje.textContent).not.toMatch(/undefined|@/);
-        expect(screen.getByRole("link", { name: "Usar otra cuenta" })).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Usar otra cuenta" })).toBeTruthy();
       },
     );
   });
+});
+
+it.each(["/invitacion/sobre-1?__clerk_ticket=abc.123-xyz_9", "/invitacion/otro-sobre"])(
+  "E10: Usar otra cuenta cierra y vuelve a la invitación (%s)",
+  async (volverAInvitacion) => {
+    render(
+      <PantallaInvitacion
+        accion={accionQueFalla}
+        ingreso={INGRESO}
+        registro={REGISTRO}
+        volverAInvitacion={volverAInvitacion}
+      />,
+    );
+    await userEvent.setup().click(screen.getByText("Usar otra cuenta"));
+    expect(signOut).toHaveBeenCalledWith({ redirectUrl: volverAInvitacion });
+  },
+);
+
+it("E10: abrir o rechazar una invitación no carga proveedor de terceros antes de pedir salir", async () => {
+  render(
+    <PantallaInvitacion
+      accion={accionQueFalla}
+      ingreso={INGRESO}
+      registro={REGISTRO}
+      volverAInvitacion="/invitacion/sobre-1"
+    />,
+  );
+  expect(proveedor).not.toHaveBeenCalled();
+  await userEvent.setup().click(screen.getByRole("button", { name: "Aceptar e ingresar" }));
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(proveedor).not.toHaveBeenCalled();
 });

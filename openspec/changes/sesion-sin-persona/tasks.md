@@ -864,6 +864,170 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   Ninguna de las dos roturas estaba en el alcance escrito de 7.6/7.8, y ninguna las iba a encontrar un
   test unitario nuevo (ambas vivían en archivos de contrato/e2e que no edité hasta verlas fallar). Se
   reportan acá en vez de en un hallazgo "fuera de alcance" porque sí eran mías: las corregí.
+
+  **EVIDENCIA · Corrección R2D-R1/R2/R3, 28/10/2026 (constructor Codex)**
+
+  Baseline antes de cambiar producción: `corepack pnpm@12.10.1 --dir web vitest run
+  'src/app/edificios/[id]/unidades/Pantalla.test.tsx'
+  'src/app/edificios/[id]/configuracion/Pantalla.test.tsx'
+  'src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx'
+  'src/app/invitacion/Pantalla.test.tsx' 'src/app/invitacion/[sobre]/page.test.tsx'`:
+  51 passed, 5 files (15:51:09–15:51:17 ART), HEAD `f7e69d9`.
+
+  ```text
+  RED (15:51:43–15:51:45 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/edificios/[id]/unidades/permisos.test.tsx'
+  Tests 10 failed | 4 passed (14)
+  AssertionError: expected <button ...> to be null
+  permisos.test.tsx:25:56 (editar), :38:74 (configuración), :48:62 (saldos), :61:67 (vecinos).
+  GREEN (15:52:11–15:52:19 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/edificios/[id]/unidades/permisos.test.tsx' 'src/app/edificios/[id]/unidades/Pantalla.test.tsx' 'src/app/edificios/[id]/configuracion/Pantalla.test.tsx' 'src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx'
+  Test Files 4 passed; Tests 53 passed.
+  GREEN del consumidor real página → PantallaPadron (15:53:33–15:53:36 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/invitacion/Pantalla.test.tsx' 'src/app/invitacion/[sobre]/page.test.tsx' 'src/app/edificios/[id]/unidades/page.test.tsx'
+  Test Files 3 passed; Tests 19 passed.
+  ```
+
+  JUICIO (constructor, confianza alta): se conservan lectura, escritura con permiso y acciones de
+  vecinos sólo con `invitar_usuarios_y_asignar_edificios`. Configuración y saldos leen `permite` con el
+  edificio. Los fixtures anteriores ahora declaran los permisos que ejercitan; no se cambia la matriz.
+  El consumidor `unidades/page.test.tsx` renderiza la página real, con respuestas API dobles y el
+  contexto real: GET personal 200 con Map vacío, principal sin invitar y super admin con invitar.
+  Nació verde después del gate de componente; M5 lo vuelve rojo en DOM, no se presenta como rojo previo.
+  La guarda adicional de no montar Guardar sin configurar (aunque haya permiso de invitar) nació verde:
+  M2 la acredita. El primer intento del consumidor falló por resolución `server-only`, corregido en el
+  doble para importar `vecinos` puro; no se cuenta ese fallo como RED.
+
+  Comentarios corregidos: lectura de personal no equivale a super admin (página y Pantalla),
+  `alta_inicial.crear` sí entrega el UUID de administración que genera, y el componente de invitación
+  no afirma haber comprobado Clerk real. Son aclaraciones, sin cambios de reglas.
+
+  **EVIDENCIA · Mutantes dirigidos R1/R2**. Comando ejecutor: `python3
+  /tmp/2d-arreglos-v2-evidencia/mutantes.py` (15:56:51–15:57:16 ART). Cada archivo tenía copia propia
+  `.backup` ANTES de mutar, al no haber commit de la implementación (L-013); cada original se restauró
+  en `finally`. Los diffs siguientes son contra esa copia, no contra un commit. M1 a M5 murieron en
+  aserciones. Los logs completos y ejecutor se preservan en `informes/evidencia-arreglos-v2/`.
+
+```text
+TIME 2026-10-28T15:56:50.168953-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M1-editar.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -226,7 +226,7 @@
+                     return (
+                       <tr key={unidad.id}>
+                         <td>
+-                          {puedeConfigurar || puedeInvitar ? (
++                          {true ? (
+                             <button
+                               type="button"
+                               className="boton-enlace"
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 629ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="button" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:60:58
+      Tests  3 failed | 12 passed (15)
+```
+
+```text
+TIME 2026-10-28T15:56:52.170346-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M2-guardar.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -341,7 +341,7 @@
+          * campo ya tocado conservaba lo tipeado para la unidad anterior y
+          * el oculto `unidad_id` lo mandaba sobre la unidad nueva. La `key`
+          * por unidad (o "nueva") fuerza el remonte del formulario entero. */}
+-        {puedeConfigurar ? (
++        {true ? (
+           <Formulario
+             key={unidadEnEdicion?.id ?? "nueva"}
+             erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 636ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:161:61
+      Tests  1 failed | 14 passed (15)
+```
+
+```text
+TIME 2026-10-28T15:56:54.267161-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M3-configuracion.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/configuracion/Pantalla.tsx
++++ web/src/app/edificios/[id]/configuracion/Pantalla.tsx (mutante)
+@@ -87,7 +87,7 @@
+     setPanelAbierto(true);
+   }
+
+-  const botonCambiar = puedeCrearVersion ? (
++  const botonCambiar = true ? (
+     <button type="button" className="boton-principal" onClick={abrirPanel}>
+       Cambiar configuración
+     </button>
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 649ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="button" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:87:75
+      Tests  3 failed | 12 passed (15)
+```
+
+```text
+TIME 2026-10-28T15:56:56.346880-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M4-saldos.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/saldos-previos/Pantalla.tsx
++++ web/src/app/edificios/[id]/saldos-previos/Pantalla.tsx (mutante)
+@@ -111,7 +111,7 @@
+               <strong>Esta acción no se puede deshacer.</strong>
+             </p>
+
+-            {puedeConfirmar ? (
++            {true ? (
+               <Formulario
+                 erroresPorCampo={erroresPorCampo}
+                 erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 643ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(2)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:119:63
+      Tests  3 failed | 12 passed (15)
+```
+
+```text
+TIME 2026-10-28T15:56:58.361205-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M5-vecinos-consumidor.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx src/app/edificios/[id]/unidades/page.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -425,7 +425,7 @@
+         {/* 7.4/D11: una lectura exitosa de personal no concede gestión.
+          * Sólo se ofrecen los controles con el permiso de invitar.
+          * Formulario hermano del de unidad, nunca anidado. */}
+-        {unidadEnEdicion && vecinosPorUnidad && puedeInvitar ? (
++        {unidadEnEdicion && vecinosPorUnidad ? (
+           <SeccionVecinos
+             unidadId={unidadEnEdicion.id}
+             vecinos={vecinosPorUnidad.get(unidadEnEdicion.id) ?? []}
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 661ms
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx (2 tests | 1 failed) 277ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx:78:75
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:140:68
+      Tests  2 failed | 15 passed (17)
+```
+
+
+  ```text
+  GREEN tras restaurar todos los mutantes (15:57:30–15:57:41 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/edificios/[id]/unidades/permisos.test.tsx' 'src/app/edificios/[id]/unidades/page.test.tsx' 'src/app/edificios/[id]/unidades/Pantalla.test.tsx' 'src/app/edificios/[id]/configuracion/Pantalla.test.tsx' 'src/app/edificios/[id]/saldos-previos/Pantalla.test.tsx' 'src/app/invitacion/Pantalla.test.tsx' 'src/app/invitacion/[sobre]/page.test.tsx'
+  Test Files 7 passed; Tests 74 passed.
+  ```
+
 - [x] 7.7 2.4 en `tests/integracion/test_invitar_personal_api.py`. **Rojo**: invitar
   `x@ejemplo.invalid` como "Ana", revocar, reinvitar como "Ana María" con otro perfil → `/api/personal`
   muestra una sola persona "Ana María" con las dos asignaciones; lo mismo con la persona ya vinculada y
@@ -914,7 +1078,8 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   propio no cubrían. Verificación final (13:58:06): 27 passed.
 - [x] 7.8 B-3 en `web/src/app/invitacion/[sobre]/page.test.tsx` y `Pantalla.test.tsx`. **Rojo**: con
   sesión y claim de email, la pantalla dice "Estás ingresado como <email>" y ofrece "Usar otra cuenta"
-  (el enlace con `cerrar=1`, `regreso` a la invitación y el mismo `__clerk_ticket`); si la acción
+  (cierra la sesión y vuelve directamente a la misma invitación con el mismo `__clerk_ticket`,
+  enmienda E10 firmada por Juani el 28/10/2026); si la acción
   devuelve error con sesión, el mensaje dice que el enlace no sirve con esa cuenta y repite "Usar otra
   cuenta"; sin claim de email, el texto no nombra ninguno (ni vacío ni "undefined"), **antes de aceptar
   y también cuando la aceptación falla** ("Aceptación fallida sin claim de email", R2D-6); un parámetro de
@@ -965,6 +1130,138 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   cambios" no se re-corrió específicamente en esta tarea porque 7.8 no tocó ningún archivo de
   `proptech_api`/`proptech_core` — la corrida completa del backend (ver informe) ya lo cubre.
 
+
+  **EVIDENCIA · Enmienda E10 firmada, 28/10/2026 (constructor Codex)**
+
+  ```text
+  RED (15:53:00–15:53:02 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run 'src/app/invitacion/Pantalla.test.tsx' 'src/app/invitacion/[sobre]/page.test.tsx'
+  Tests 5 failed | 12 passed (17)
+  Pantalla.test.tsx:117:18: AssertionError: expected signOut to be called with redirectUrl; calls 0.
+  page.test.tsx:89:43: expected undefined to be '/invitacion/sobre%20con%20%2F[?__clerk_ticket=...]'.
+  GREEN (15:53:33–15:53:36 ART), mismo comando más consumidor unidades/page.test.tsx:
+  Tests 19 passed, 3 files.
+  RED preservación de lectura sin terceros (15:56:10–15:56:12 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run src/app/invitacion/Pantalla.test.tsx
+  Tests 1 failed | 7 passed (8)
+  Pantalla.test.tsx:148:24: expected proveedor not to be called; called 1 time.
+  GREEN (15:56:33–15:56:35 ART)
+  command: corepack pnpm@12.10.1 --dir web vitest run src/app/invitacion/Pantalla.test.tsx 'src/app/invitacion/[sobre]/page.test.tsx'
+  Tests 18 passed, 2 files.
+  ```
+
+  JUICIO (constructor, confianza alta sobre código local): se separa `volverAInvitacion` de los enlaces
+  de ingreso/registro. La página lo arma con sobre escapado y ticket validado; sin ticket o ticket
+  inválido no agrega query. "Usar otra cuenta" ahora es botón: al tocarlo monta el proveedor local,
+  espera `ClerkLoaded` y llama `signOut({ redirectUrl: volverAInvitacion })`. Leer o rechazar la
+  invitación no monta el proveedor, preservando el contrato e2e sin terceros. El consumidor e2e
+  `acceso-pantallas.spec.ts` busca botón en vez del enlace anterior. Sin CSS nuevo.
+
+  JUICIO (constructor, confianza alta): ante el texto previo de D10/spec "va a /ingresar", prevalece
+  la enmienda E10 posterior, firmada por Juani. Se actualizan 7.8 y 8.2(e); no se inventa una decisión
+  nueva ni se modifica la firma. La evidencia manual previa de 8.2 se conserva como historia, no como
+  validación de esta corrección.
+
+  **EVIDENCIA · Mutantes E10**. M6–M8: mismo ejecutor y copias previas sin commit, 15:57 ART.
+  M9: `python3 /tmp/2d-arreglos-v2-evidencia/mutantes.py M9-proveedor-anticipado`, filtro al caso de
+  lectura/rechazo sin proveedor; 1 failed y 7 skipped intencionales. No se cuentan los skipped como
+  verdes. Cada original se restauró. Diffs, comandos, hora y aserciones:
+
+```text
+TIME 2026-10-28T15:57:03.244203-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M6-cerrar-sesion.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/Pantalla.test.tsx
+--- web/src/app/invitacion/Pantalla.tsx
++++ web/src/app/invitacion/Pantalla.tsx (mutante)
+@@ -119,7 +119,7 @@
+ function CerrarSesionDeInvitacion({ destino }: { destino: string }) {
+   const clerk = useClerk();
+   useEffect(() => {
+-    void clerk.signOut({ redirectUrl: destino });
++    void destino;
+   }, [clerk, destino]);
+   return null;
+ }
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 2 failed) 294ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+ ❯ src/app/invitacion/Pantalla.test.tsx:145:21
+      Tests  2 failed | 6 passed (8)
+```
+
+```text
+TIME 2026-10-28T15:57:04.930226-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M7-volver-ingreso.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/[sobre]/page.test.tsx
+--- web/src/app/invitacion/[sobre]/page.tsx
++++ web/src/app/invitacion/[sobre]/page.tsx (mutante)
+@@ -21,7 +21,7 @@
+       ingreso={`/ingresar?${conTicket({ regreso })}`}
+       registro={`/registrarse?${conTicket({ regreso })}`}
+       claimEmail={sesion?.email ?? null}
+-      volverAInvitacion={`${regreso}${ticket ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
++      volverAInvitacion={`${"/ingresar"}${ticket ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
+     />
+   );
+ }
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 3 failed) 30ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected '/ingresar' to be '/invitacion/sobre%20con%20%2F' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+AssertionError: expected '/ingresar?__clerk_ticket=abc.123-xyz_9' to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+      Tests  3 failed | 7 passed (10)
+```
+
+```text
+TIME 2026-10-28T15:57:05.978986-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M8-perder-ticket.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/[sobre]/page.test.tsx
+--- web/src/app/invitacion/[sobre]/page.tsx
++++ web/src/app/invitacion/[sobre]/page.tsx (mutante)
+@@ -21,7 +21,7 @@
+       ingreso={`/ingresar?${conTicket({ regreso })}`}
+       registro={`/registrarse?${conTicket({ regreso })}`}
+       claimEmail={sesion?.email ?? null}
+-      volverAInvitacion={`${regreso}${ticket ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
++      volverAInvitacion={`${regreso}${false ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
+     />
+   );
+ }
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 1 failed) 28ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected '/invitacion/sobre%20con%20%2F' to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+      Tests  1 failed | 9 passed (10)
+```
+
+```text
+TIME 2026-10-28T15:57:44.388175-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M9-proveedor-anticipado.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/Pantalla.test.tsx -t abrir o rechazar
+--- web/src/app/invitacion/Pantalla.tsx
++++ web/src/app/invitacion/Pantalla.tsx (mutante)
+@@ -90,7 +90,7 @@
+            * con el ticket. El proveedor local se carga al pedir salir;
+            * los enlaces de ingreso y registro siguen siendo independientes. */}
+           {accion ? (
+-            cerrandoSesion ? (
++            true ? (
+               <>
+                 <p role="status">Cerrando sesión…</p>
+                 <ClerkProvider dynamic localization={esES}>
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 1 failed | 7 skipped) 33ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+ ❯ src/app/invitacion/Pantalla.test.tsx:158:25
+      Tests  1 failed | 7 skipped (8)
+```
+
+
+  SUPUESTO / LÍMITE: los tests de E10 usan un doble en la frontera de Clerk (`signOut`) y no cierran
+  ninguna sesión real. El recorrido con Clerk de desarrollo real después de esta corrección sigue
+  pendiente de Juani (8.2 e); el brief prohíbe login en el proveedor. No se marca 8.2 completa.
+
 ## 8. Cierre (de cada vuelta)
 
 - [ ] 8.1 Corrida de cierre después de la última vuelta, con el SHA anotado: suite de backend completa,
@@ -979,8 +1276,8 @@ README escrito en «Entrar con el edificio de ejemplo», con marcador `user_XXXX
   pestañas a la vez"); (d) `/ingresar` y `/sin-acceso` a 320 px y 1280 px y con teclado; (e) la
   invitación de A abierta con la cuenta de B, con Clerk real (R2D-6): anotar si el token de sesión trae
   el claim de email (sin pegarlo), qué cuenta muestra la pantalla, que "Aceptar" falla con el mensaje
-  de la cuenta equivocada, que "Usar otra cuenta" cierra la sesión y conserva `__clerk_ticket` hasta el
-  ingreso, y que A, ingresando después, acepta y entra; si el claim no viaja, que los textos genéricos
+  de la cuenta equivocada, que "Usar otra cuenta" cierra la sesión y vuelve a la misma pantalla de la invitación con
+  `__clerk_ticket` (enmienda E10), que allí se puede ingresar o crear cuenta y que A acepta y entra; si el claim no viaja, que los textos genéricos
   salen sin email; (f) el menú y los controles con un contador, un
   administrador por edificio y un administrador principal; (g) una cuenta sin acceso acepta su
   invitación ("Una cuenta sin acceso acepta su invitación"). Capturas en el informe, ningún id ni email

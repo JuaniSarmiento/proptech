@@ -23,6 +23,7 @@ import { EncabezadoDePantalla } from "../../../../componentes/EncabezadoDePantal
 import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
+import { permite, useSesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import { textoEstadoDeMigracion } from "../../../../lib/textoDeEstados";
 import { ArmazonDelEdificio } from "../Armazon";
 import { AYUDA_SALDOS_PREVIOS } from "./ayuda";
@@ -51,6 +52,7 @@ export function PantallaSaldosPrevios({
   estadoMigracion,
   accionConfirmar,
 }: Props) {
+  const puedeConfirmar = permite(useSesionDePantalla(), "confirmar_sin_saldos_previos", id);
   const [aceptado, setAceptado] = useState(false);
   const [errorCasilla, setErrorCasilla] = useState<string | null>(null);
 
@@ -109,25 +111,27 @@ export function PantallaSaldosPrevios({
               <strong>Esta acción no se puede deshacer.</strong>
             </p>
 
-            <Formulario
-              erroresPorCampo={erroresPorCampo}
-              erroresDesconocidos={estado?.erroresDesconocidos ?? []}
-              action={enviar}
-              onSubmit={alEnviar}
-              aria-label="Confirmar sin saldos previos"
-            >
-              <Campo
-                nombre="acepto"
-                etiqueta="Entiendo que el edificio arranca sin deudas anteriores"
-                name="acepto"
-                type="checkbox"
-                checked={aceptado}
-                onChange={(e) => setAceptado(e.target.checked)}
-              />
-              <button type="submit" className="boton-principal" disabled={!aceptado}>
-                Confirmar
-              </button>
-            </Formulario>
+            {puedeConfirmar ? (
+              <Formulario
+                erroresPorCampo={erroresPorCampo}
+                erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+                action={enviar}
+                onSubmit={alEnviar}
+                aria-label="Confirmar sin saldos previos"
+              >
+                <Campo
+                  nombre="acepto"
+                  etiqueta="Entiendo que el edificio arranca sin deudas anteriores"
+                  name="acepto"
+                  type="checkbox"
+                  checked={aceptado}
+                  onChange={(e) => setAceptado(e.target.checked)}
+                />
+                <button type="submit" className="boton-principal" disabled={!aceptado}>
+                  Confirmar
+                </button>
+              </Formulario>
+            ) : null}
           </Panel>
         )}
 

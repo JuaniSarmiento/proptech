@@ -1,0 +1,36 @@
+
+ RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 1 failed) 281ms
+   × E10: abrir o rechazar una invitación no carga proveedor de terceros antes de pedir salir 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: abrir o rechazar una invitación no carga proveedor de terceros antes de pedir salir
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array []
+
+
+Number of calls: 1
+
+ ❯ src/app/invitacion/Pantalla.test.tsx:148:24
+    146| it("E10: abrir o rechazar una invitación no carga proveedor de tercero…
+    147|  render(<PantallaInvitacion accion={accionQueFalla} ingreso={INGRESO} …
+    148|  expect(proveedor).not.toHaveBeenCalled();
+       |                        ^
+    149|  await userEvent.setup().click(screen.getByRole("button", { name: "Ace…
+    150|  expect(await screen.findByRole("alert")).toBeTruthy();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  15:56:10
+   Duration  1.32s (environment 42%, import 24%, tests 23%, transform 10%, setup 1%)
+

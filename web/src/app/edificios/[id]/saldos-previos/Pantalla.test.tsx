@@ -1,13 +1,40 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderOriginal, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaSaldosPrevios } from "./Pantalla";
 
 afterEach(cleanup);
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["confirmar_sin_saldos_previos"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 function accionNula() {
   return Promise.resolve(null);

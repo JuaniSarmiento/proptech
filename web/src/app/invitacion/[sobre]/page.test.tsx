@@ -81,3 +81,22 @@ it("un email en la query de la URL nunca llega como claimEmail (El email no sale
   })) as ReactElement<{ claimEmail: string | null }>;
   expect(elemento.props.claimEmail).toBeNull();
 });
+
+it.each([undefined, "abc.123-xyz_9", "con espacio"])(
+  "E10: la URL de cierre vuelve a la misma invitación con ticket seguro (%s)",
+  async (ticket) => {
+    vi.mocked(auth).mockResolvedValueOnce({
+      userId: "user_prueba",
+      sessionClaims: {},
+      getToken: async () => "token-local",
+    } as unknown as Awaited<ReturnType<typeof auth>>);
+    const pantalla = (await Invitacion({
+      params: Promise.resolve({ sobre: "sobre con /" }),
+      searchParams: Promise.resolve({ __clerk_ticket: ticket }),
+    })) as ReactElement<{ volverAInvitacion: string }>;
+    const esperado =
+      "/invitacion/sobre%20con%20%2F" +
+      (ticket === "abc.123-xyz_9" ? "?__clerk_ticket=abc.123-xyz_9" : "");
+    expect(pantalla.props.volverAInvitacion).toBe(esperado);
+  },
+);

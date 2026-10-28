@@ -31,7 +31,7 @@ vi.mock("../../../../componentes/SesionDePantalla", async (importOriginal) => {
             id: "a",
             nombre: "A",
             acciones: {
-              administracion: [],
+              administracion: ["invitar_usuarios_y_asignar_edificios"],
               todos_los_edificios: ["configurar_padron"],
               por_edificio: {},
             },

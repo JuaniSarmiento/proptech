@@ -48,7 +48,8 @@ def crear_administracion_y_super_admin(
 ) -> AltaInicialDeAdministracion | None:
     """L-009 (D7, 2d grupo 6): el tramo administración + persona
     `super_admin` + asignación + `alta_inicial`, compartido por
-    `alta_inicial.crear` (sin ids fijos, genera los suyos) y
+    `alta_inicial.crear` (pasa el UUID de administración recién generado;
+    esta función genera los demás ids) y
     `complejos.aplicacion.ejemplo.cargar` (con los ids fijos del ejemplo).
     La sesión ya tiene el tenant puesto (`abrir_sesion`); esta función no lo
     decide.

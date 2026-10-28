@@ -1,0 +1,126 @@
+
+ RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (14 tests | 10 failed) 610ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar (null) 157ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}}) 40ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["configurar_padron"]}}}]}}) 36ms
+   × R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración (null) 19ms
+   × R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}}) 20ms
+   × R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["crear_version_de_configuracion"]}}}]}}) 17ms
+   × R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla (null) 21ms
+   × R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}}) 18ms
+   × R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["confirmar_sin_saldos_previos"]}}}]}}) 17ms
+   × R2D-R2: GET personal exitoso no habilita Agregar vecino al principal 55ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar (null)
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}})
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["configurar_padron"]}}}]}})
+AssertionError: expected <button type="button" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-enlace"
+  type="button"
+>
+  1A
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:25:56
+     23|   render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>);
+     24|   expect(screen.getByText("1A")).toBeTruthy();
+     25|   expect(screen.queryByRole("button", { name: "1A" })).toBeNull();
+       |                                                        ^
+     26|   expect(screen.queryByRole("button", { name: "Guardar" })).toBeNull();
+     27|   expect(screen.queryByLabelText("Identificador")).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración (null)
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}})
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: sin permiso de versión conserva lectura sin Cambiar configuración ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["crear_version_de_configuracion"]}}}]}})
+AssertionError: expected <button type="button" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  type="button"
+>
+  Cambiar configuración
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:38:74
+     36|  render(<SesionDePantalla value={valor}><PantallaConfiguracion id="1" …
+     37|  expect(screen.getByRole("region", { name: "Configuración vigente" }))…
+     38|  expect(screen.queryByRole("button", { name: "Cambiar configuración" }…
+       |                                                                          ^
+     39|  });
+     40| it("R2D-R1: permiso de versión permite cambiar y guardar", async () =>…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla (null)
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}})
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["confirmar_sin_saldos_previos"]}}}]}})
+AssertionError: expected <button type="submit" …(2)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  disabled=""
+  type="submit"
+>
+  Confirmar
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:48:62
+     46|  "R2D-R1: pendiente sin permiso no ofrece confirmar ni casilla (%j)", …
+     47|  render(<SesionDePantalla value={valor}><PantallaSaldosPrevios id="1" …
+     48|  expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull(…
+       |                                                              ^
+     49|  expect(screen.queryByRole("checkbox")).toBeNull();
+     50|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R2: GET personal exitoso no habilita Agregar vecino al principal
+AssertionError: expected <button type="submit" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  type="submit"
+>
+  Agregar vecino
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:61:67
+     59|  render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>);
+     60|  await userEvent.setup().click(screen.getByRole("button", { name: "1A"…
+     61|  expect(screen.queryByRole("button", { name: "Agregar vecino" })).toBe…
+       |                                                                   ^
+     62|  expect(screen.queryByRole("form", { name: "Agregar vecino" })).toBeNu…
+     63| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  10 failed | 4 passed (14)
+   Start at  15:51:43
+   Duration  1.66s (tests 39%, environment 34%, transform 14%, import 13%, setup 1%)
+

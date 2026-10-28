@@ -1,0 +1,40 @@
+
+ RUN  v5.0.3 /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web
+
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/edificios/[id]/unidades/page.test.tsx [ src/app/edificios/[id]/unidades/page.test.tsx ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no top level variables inside, since this call is hoisted to top of the file. Read more: https://vitest.dev/api/vi.html#vi-mock
+ ❯ src/app/edificios/[id]/unidades/page.tsx:9:1
+      7| import { Estados } from "../../../../componentes/Estados";
+      8| import { edificioPorId } from "../../../../lib/api/edificios";
+      9| import { listarPersonal, vecinosPorUnidad } from "../../../../lib/api/…
+       | ^
+     10| import { padronDelEdificio } from "../../../../lib/api/unidades";
+     11| import {
+
+Caused by: Error: Failed to resolve import "server-only" from "src/lib/sesion.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /tmp/claude-1000/-home-juanisarmiento-Proyectos-Cerebro-Digital/f3e370f0-301a-469c-9fed-95221c1a9306/scratchpad/wt-2d-v1/web/src/lib/sesion.ts:1:7
+  1  |  import "server-only";
+     |          ^
+  2  |  import { auth } from "@clerk/nextjs/server";
+  3  |  import { cookies, headers } from "next/headers";
+ ❯ TransformPluginContext._formatLog node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:29250:43
+ ❯ TransformPluginContext.error node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:29247:14
+ ❯ normalizeUrl node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:27370:18
+ ❯ node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:27428:32
+ ❯ TransformPluginContext.transform node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:27396:4
+ ❯ EnvironmentPluginContainer.transform node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:29048:14
+ ❯ loadAndTransform node_modules/.pnpm/vite@7.3.7_@types+node@24.9.2_lightningcss@1.33.0_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:22914:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  15:52:38
+   Duration  832ms (environment 94%, transform 4%, setup 2%, worker 1%)
+
