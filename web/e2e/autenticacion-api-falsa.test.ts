@@ -85,7 +85,7 @@ it("GET /api/personal: super admin ve la lista; sin permiso da 403; sólo GET", 
   });
   expect(sinPermiso.status).toBe(403);
   expect(await sinPermiso.json()).toEqual({
-    detail: { permiso_faltante: "invitar_usuarios_y_asignar_edificios" },
+    detail: { codigo: "sin_permiso", detalle: "sin_permiso", permiso_faltante: "invitar_usuarios_y_asignar_edificios" },
   });
 
   expect(

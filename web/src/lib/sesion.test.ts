@@ -90,3 +90,37 @@ it("rechaza la administración ajena sin escribir la cookie", async () => {
   );
   expect(set).not.toHaveBeenCalled();
 });
+
+it.each([
+  "/elegir-administracion?regreso=%2Fedificios",
+  "/ingresar?regreso=/edificios",
+  "/sin-acceso",
+  "/registrarse",
+  "/ingresar/",
+  "/./elegir-administracion",
+  "/edificios/../ingresar",
+  "/%69ngresar",
+  "/ingresar/paso",
+  "/%ZZ",
+])("2d rechaza acceso normalizado %s", (ruta) => expect(regresoSeguro(ruta)).toBe("/edificios"));
+it("2d conserva invitaciones", () =>
+  expect(regresoSeguro("/invitacion/abc")).toBe("/invitacion/abc"));
+it("2d tope exacto de entrada y salida", () => {
+  const limite = "/edificios/" + "a".repeat(501);
+  expect(limite.length).toBe(512);
+  expect(regresoSeguro(limite)).toBe(limite);
+  expect(regresoSeguro(limite + "a")).toBe("/edificios");
+  expect(regresoSeguro("/edificios/" + "ñ".repeat(100))).toBe("/edificios");
+});
+it.each([
+  undefined,
+  null,
+  "",
+  "/invitacion/abc",
+  "/edificios?x={",
+  "/edificios/ñ",
+  "/ingresar",
+  ...[500, 501, 502].flatMap((n) => ["/edificios/" + "a".repeat(n), "/edificios/" + "{".repeat(n)]),
+])("2d normalizar es idempotente %s", (ruta) =>
+  expect(regresoSeguro(regresoSeguro(ruta))).toBe(regresoSeguro(ruta)),
+);

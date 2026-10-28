@@ -17,15 +17,31 @@ export async function sesionActual() {
 }
 
 export function regresoSeguro(valor: string | null | undefined): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: rechazar controles evita URLs normalizadas a otro origen.
-  if (!valor?.startsWith("/") || valor.startsWith("//") || /[\\\u0000-\u0020]/.test(valor)) {
+  if (
+    !valor?.startsWith("/") ||
+    valor.length > 512 ||
+    valor.startsWith("//") ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rechazar controles evita URLs normalizadas a otro origen.
+    /[\\\u0000-\u0020]/.test(valor)
+  ) {
     return "/edificios";
   }
   const url = new URL(valor, "https://proptech.invalid");
   if (url.origin !== "https://proptech.invalid" || url.pathname.startsWith("//")) {
     return "/edificios";
   }
-  return `${url.pathname}${url.search}${url.hash}`;
+  let camino: string;
+  try {
+    camino = decodeURIComponent(url.pathname).replace(/\/+$/, "");
+  } catch {
+    return "/edificios";
+  }
+  const pantallasDeAcceso = ["/ingresar", "/registrarse", "/elegir-administracion", "/sin-acceso"];
+  if (pantallasDeAcceso.some((ruta) => camino === ruta || camino.startsWith(`${ruta}/`))) {
+    return "/edificios";
+  }
+  const salida = `${url.pathname}${url.search}${url.hash}`;
+  return salida.length > 512 ? "/edificios" : salida;
 }
 
 /**

@@ -4,7 +4,6 @@ import { useActionState, useEffect, useRef } from "react";
 import { Armazon } from "../../componentes/Armazon";
 import { Ayuda } from "../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../componentes/EncabezadoDePantalla";
-import { Estados } from "../../componentes/Estados";
 import { FilaConIcono } from "../../componentes/FilaConIcono";
 import { Panel } from "../../componentes/Panel";
 import type { DatosDeSesion } from "../../componentes/SesionDePantalla";
@@ -37,40 +36,58 @@ export function PantallaSelector({
       {aceptada ? <p role="status">Invitación aceptada.</p> : null}
       <Panel titulo={datos.persona.nombre} descripcion="Tus administraciones">
         {error ? <p role="alert">{error}</p> : null}
-        {datos.administraciones.length === 0 ? (
-          <Estados
-            tipo="vacio"
-            mensaje="Todavía no tenés una administración"
-            detalle="Pedile a tu administración que te invite."
-          />
-        ) : (
-          <form ref={form} action={enviar}>
-            <ul className="lista-de-filas" aria-label="Administraciones">
-              {datos.administraciones.map((a) => (
-                <li key={a.id}>
-                  <FilaConIcono
-                    icono={Building2}
-                    titulo={
-                      <button
-                        type="submit"
-                        className="boton-enlace"
-                        name="administracion_id"
-                        value={a.id}
-                        disabled={pendiente}
-                      >
-                        {a.nombre}
-                      </button>
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-            {datos.administraciones.length === 1 ? (
-              <input type="hidden" name="administracion_id" value={datos.administraciones[0]?.id} />
-            ) : null}
-          </form>
-        )}
+        <form ref={form} action={enviar}>
+          <ul className="lista-de-filas" aria-label="Administraciones">
+            {datos.administraciones.map((a) => (
+              <li key={a.id}>
+                <FilaConIcono
+                  icono={Building2}
+                  titulo={
+                    <button
+                      type="submit"
+                      className="boton-enlace"
+                      name="administracion_id"
+                      value={a.id}
+                      disabled={pendiente}
+                    >
+                      {a.nombre}
+                    </button>
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+          {datos.administraciones.length === 1 ? (
+            <input type="hidden" name="administracion_id" value={datos.administraciones[0]?.id} />
+          ) : null}
+        </form>
       </Panel>
+    </Armazon>
+  );
+}
+
+export function SesionNoUtilizable() {
+  return (
+    <Armazon publico>
+      <div className="pagina-acceso">
+        <EncabezadoDePantalla
+          titulo="No pudimos validar tu sesión"
+          ayuda={
+            <Ayuda
+              paraQueSirve="Podés revisar con qué cuenta ingresaste y volver a entrar."
+              pasos={[
+                "Si usaste otra cuenta, cerrá la sesión.",
+                "Pedile a tu administración que revise tu acceso.",
+              ]}
+              yDespues="Volvé a intentar cuando tu administración te dé acceso."
+            />
+          }
+        />
+        <Panel titulo="Volvé a ingresar">
+          <p>Cerrá la sesión para volver a ingresar con tu cuenta.</p>
+          <a href="/ingresar?cerrar=1">Cerrar sesión</a>
+        </Panel>
+      </div>
     </Armazon>
   );
 }

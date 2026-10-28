@@ -407,6 +407,9 @@ export function crearServidor(
           claims.iss === EMISOR &&
           claims.azp === configuracion.origen &&
           [
+            // 2d: contratos copiados de la API real, sin proveedor externo.
+            "user_sin_persona",
+            "user_api_rechaza",
             "user_prueba",
             "user_varias",
             "user_sin_permiso",
@@ -421,6 +424,18 @@ export function crearServidor(
     const esSesion = url.pathname === "/api/sesion";
     const selector = pedido.headers["x-proptech-administracion"];
     const esAceptar = url.pathname === "/api/invitaciones/aceptar";
+    // 2d: sin acceso prevalece sobre cualquier selector; aceptar invitación
+    // sigue dependiendo sólo del token, como en la API real.
+    if (valido && identidad === "user_api_rechaza") {
+      respuesta.writeHead(401).end();
+      return;
+    }
+    if (valido && identidad === "user_sin_persona" && !esAceptar) {
+      respuesta
+        .writeHead(403, { "content-type": "application/json" })
+        .end(JSON.stringify({ detail: { codigo: "sin_acceso" } }));
+      return;
+    }
     if (
       !valido ||
       (!esSesion &&
@@ -513,7 +528,11 @@ export function crearServidor(
       if (identidad === "user_sin_permiso") {
         respuesta.writeHead(403, { "content-type": "application/json" }).end(
           JSON.stringify({
-            detail: { permiso_faltante: "invitar_usuarios_y_asignar_edificios" },
+            detail: {
+              codigo: "sin_permiso",
+              detalle: "sin_permiso",
+              permiso_faltante: "invitar_usuarios_y_asignar_edificios",
+            },
           }),
         );
         return;
@@ -733,7 +752,15 @@ export function crearServidor(
         case "sin_permiso_403":
           respuesta
             .writeHead(403, { "content-type": "application/json" })
-            .end(JSON.stringify({ detail: { permiso_faltante: "cambiar_configuracion" } }));
+            .end(
+              JSON.stringify({
+                detail: {
+                  codigo: "sin_permiso",
+                  detalle: "sin_permiso",
+                  permiso_faltante: "cambiar_configuracion",
+                },
+              }),
+            );
           return true;
         case "no_existe_404":
           respuesta.writeHead(404).end();
@@ -875,7 +902,15 @@ export function crearServidor(
         if (id === ESCRITURAS_UNIDADES.rechazo403) {
           respuesta
             .writeHead(403, { "content-type": "application/json" })
-            .end(JSON.stringify({ detail: { permiso_faltante: "modificar_unidades" } }));
+            .end(
+              JSON.stringify({
+                detail: {
+                  codigo: "sin_permiso",
+                  detalle: "sin_permiso",
+                  permiso_faltante: "modificar_unidades",
+                },
+              }),
+            );
           return;
         }
         if (id === ESCRITURAS_UNIDADES.rechazo422) {

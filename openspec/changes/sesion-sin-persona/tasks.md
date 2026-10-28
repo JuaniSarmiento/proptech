@@ -164,7 +164,7 @@
 
 ## 3. Web: cliente, `regreso`, ciclo, selector y pantalla nueva
 
-- [ ] 3.1 `web/src/lib/api/cliente.test.ts`. **Rojo**: 403 con `codigo: "sin_acceso"` →
+- [x] 3.1 `web/src/lib/api/cliente.test.ts`. **Rojo**: 403 con `codigo: "sin_acceso"` →
   `redirect("/sin-acceso")` sin `regreso`; 403 con `codigo: "sin_permiso"` y `permiso_faltante` →
   `sin_permiso` con ese permiso; con `alNoAutenticar: "devolver"`, un 401 **y** una sesión de Clerk
   nula dan `{ estado: "sin_sesion" }` sin `redirect` (QA-2). **Guardas**: 403 sin cuerpo y 403 con un
@@ -174,7 +174,20 @@
   **Mutantes**: (a) todo 403 se trata como `sin_acceso` → rojo; (b) se lee `permiso_faltante` en vez de
   `codigo` para decidir → rojo en el desconocido; (c) `"devolver"` ignorado para el 401 → rojo; (d)
   `"devolver"` ignorado para la sesión nula → rojo.
-- [ ] 3.2 `web/src/lib/sesion.test.ts`. **Rojo**: los escenarios de "El regreso nunca apunta a una
+
+  **Evidencia ejecutada 3.1 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.1: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+  ```
+
+- [x] 3.2 `web/src/lib/sesion.test.ts`. **Rojo**: los escenarios de "El regreso nunca apunta a una
   pantalla de acceso" y "El regreso tiene un tope de 512 caracteres": anidado; ingreso;
   `/ingresar/`, `/./elegir-administracion`, `/edificios/../ingresar` y `/%69ngresar`; 512 se conserva
   y 513 da `/edificios`; `/edificios/` + 100 `ñ` da `/edificios`; idempotencia sobre una lista con las
@@ -183,7 +196,20 @@
   `/elegir-administracion` de la lista → rojo; (b) comparar el texto crudo en vez del `pathname`
   normalizado y decodificado → rojo en los disfrazados; (c) tope sólo sobre la entrada → rojo en la
   `ñ` y en la idempotencia; (d) `>=` en vez de `>` → rojo en 512.
-- [ ] 3.3 Test de componente del ciclo (QA-1), `web/src/app/ingresar/ciclo.test.tsx` (nombre
+
+  **Evidencia ejecutada 3.2 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.2: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+  ```
+
+- [x] 3.3 Test de componente del ciclo (QA-1), `web/src/app/ingresar/ciclo.test.tsx` (nombre
   provisorio). Reusa el mock de `SignIn` que captura las props (`ingresar/Pantalla.test.tsx:6-15`), el
   `redirect` mockeado y `headers()` con `x-proptech-ruta`, y encadena 50 vueltas partiendo de
   `/edificios`: (i) **modo "selector que redirige"** (como si D2 faltara): `irAlIngreso` con la ruta del
@@ -194,7 +220,21 @@
   anida el regreso". **Verde**: D2 y D3 ya hechos en 3.1 y 3.2. **Mutantes por capa** (L-034):
   revertir sólo D3 → rojo en (i) y (ii) sigue verde; revertir sólo D2 → rojo en (ii) y (i) sigue
   verde.
-- [ ] 3.4 Crear `web/src/app/elegir-administracion/page.test.tsx` y `Pantalla.test.tsx` (hoy no existe
+
+  **Evidencia ejecutada 3.3 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.3: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+D3 solo: ciclo1 falla y ciclo2 pasa; D2 solo: ciclo2 falla y ciclo1 pasa; ambos 1 failed/1 passed.
+  ```
+
+- [x] 3.4 Crear `web/src/app/elegir-administracion/page.test.tsx` y `Pantalla.test.tsx` (hoy no existe
   ninguno). **Rojo**: con `/api/sesion` en 401 la página muestra "No pudimos validar tu sesión" con
   "Cerrar sesión" (`/ingresar?cerrar=1`) y no llama a `redirect` a `/ingresar`; **con la sesión de
   Clerk nula**, lo mismo (QA-2); con 403 `sin_acceso` redirige a `/sin-acceso`; con lista vacía
@@ -203,7 +243,20 @@
   administraciones, como hoy. Escenarios "La API rechaza un token que Clerk da por bueno", "El selector
   sin sesión utilizable", "Cero administraciones". **Verde** (D2, D4). **Mutantes**: (a) volver a
   `pedirApi` sin `"devolver"` en la página → rojo; (b) lo mismo en la acción → rojo.
-- [ ] 3.5 `web/src/app/sin-acceso/Pantalla.test.tsx`, `page.test.tsx` y `web/src/app/layout.test.tsx`.
+
+  **Evidencia ejecutada 3.4 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.4: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+  ```
+
+- [x] 3.5 `web/src/app/sin-acceso/Pantalla.test.tsx`, `page.test.tsx` y `web/src/app/layout.test.tsx`.
   **Rojo**: título "Tu cuenta no tiene acceso todavía", email principal de `useUser()` visible, sin
   email cuando Clerk no lo informa (ni vacío ni "undefined"), "Cerrar sesión" a `/ingresar?cerrar=1`,
   "Volver a intentar" a `/elegir-administracion`, las dos acciones fuera de `<ClerkLoaded>`, ningún
@@ -216,11 +269,39 @@
   sesión". **Verde**: la ruta nueva (D4). **Mutantes**: (a) pasar el email como prop del servidor →
   rojo; (b) agregar un `pedirApi("/api/sesion")` "para comprobar" → rojo; (c) sumar `/sin-acceso` a la
   lista de rutas protegidas del layout → rojo.
-- [ ] 3.6 Teclado en el test de componente de `/sin-acceso` y del selector con error. **Rojo**: Tab
+
+  **Evidencia ejecutada 3.5 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.5: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+Guardas nacidas verdes se acreditan con mutantes: axe (botón sin nombre), cero API/email de servidor/layout y foco del segundo enlace (tabIndex=-1); no se presenta un fallo por elemento ausente como prueba de foco.
+  ```
+
+- [x] 3.6 Teclado en el test de componente de `/sin-acceso` y del selector con error. **Rojo**: Tab
   llega a "Cerrar sesión" y a "Volver a intentar" en ese orden y Enter las activa. El **foco visible**
   no se prueba en jsdom (no dibuja `:focus-visible`): va a la tarea 3.7 (QA-8). Escenario "Recorrer la
   pantalla con teclado". **Mutante**: `tabIndex={-1}` en "Volver a intentar" → rojo.
-- [ ] 3.7 `web/e2e/api-falsa.ts`: sumar `user_sin_persona` (403 `sin_acceso` en `/api/sesion` y en
+
+  **Evidencia ejecutada 3.6 (28/10/2026)**
+
+  ```text
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:17:27.833877-03:00
+31 failed, 454 passed (46.94s); rojos en aserciones de contrato/URL/markup, arnés corregido a entorno node para páginas servidor.
+COMMAND: bash infra/ci/test-web.sh
+TIME: 2026-10-28T11:25:45.287955-03:00
+71 files, 488 passed (51.55s), exit0, fin11:26:37 -03:00.
+Mutantes 3.6: exit1 y AssertionError, copia previa sin commit y restauración; ver informes/evidencia-web-v1.md.
+Guardas nacidas verdes se acreditan con mutantes: axe (botón sin nombre), cero API/email de servidor/layout y foco del segundo enlace (tabIndex=-1); no se presenta un fallo por elemento ausente como prueba de foco.
+  ```
+
+- [x] 3.7 `web/e2e/api-falsa.ts`: sumar `user_sin_persona` (403 `sin_acceso` en `/api/sesion` y en
   dominio) y `user_api_rechaza` (401 en todo con token válido) **en un bloque propio**, copiando el
   contrato de las tareas 2.1, 2.2 y 2.4 (L-027), sin tocar las secciones de PATCH/Georef del 3d; si el
   3d o el 6 mergearon antes, resolver el conflicto acá (AR-7). **Rojo** en `web/e2e/sesion.spec.ts`:
@@ -234,6 +315,18 @@
   Clerk da por bueno", "Pantalla angosta", "Recorrer la pantalla con teclado". **Mutante**: revertir
   sólo D2 → rojo en `user_api_rechaza`. "Dos pestañas a la vez" y "Cuenta de Clerk sin persona entra
   por el ingreso" **no** se prueban en e2e (`prueba.ts:26` aborta Clerk): van a 8.2.
+
+
+  **Evidencia ejecutada 3.7 (28/10/2026)**
+
+  ```text
+RED bash infra/ci/test-web-navegador.sh sesion.spec.ts --grep "2d sin persona"
+11:21 (puertos4182/3182 propios): 2 failed; sesion.spec.ts:73, expect URL /sin-acceso, recibió /ingresar?regreso=%2Fedificios.
+RED API falsa: bash infra/ci/test-web.sh, 11:20:07: 2 failed/486 passed; api-falsa.test.ts:354, 401!=403.
+GREEN bash infra/ci/test-web-navegador.sh sesion.spec.ts
+11:27:09–11:27:20: 7 passed (3.5s), build/typecheck incluidos; 320/1280, axe y outline real.
+MUTANTE D2 revertida sólo en selector: mismo runner --grep "2d API rechaza", 11:25:08–11:25:22: 1 failed, sesion.spec.ts:118, encabezado no visible; copia restaurada y verde posterior7/7.
+  ```
 
 ## 4. Recuadro de Clerk en `/ingresar`
 

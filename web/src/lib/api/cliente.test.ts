@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { esIdValido, esTextoDecimalAscii, pedirApi } from "./cliente";
 
@@ -98,7 +99,11 @@ describe("pedirApi", () => {
       mockFetch({
         status: 403,
         cuerpo: {
-          detail: { detalle: MARCADOR, permiso_faltante: "ver_configuracion_del_edificio" },
+          detail: {
+            codigo: "sin_permiso",
+            detalle: MARCADOR,
+            permiso_faltante: "ver_configuracion_del_edificio",
+          },
         },
       }),
     );
@@ -195,7 +200,13 @@ describe("pedirApi", () => {
       "403",
       {
         status: 403,
-        cuerpo: { detail: { detalle: MARCADOR, permiso_faltante: "configurar_padron" } },
+        cuerpo: {
+          detail: {
+            codigo: "sin_permiso",
+            detalle: MARCADOR,
+            permiso_faltante: "configurar_padron",
+          },
+        },
       },
     ],
     ["404", { status: 404, cuerpo: { detail: MARCADOR } }],
@@ -243,5 +254,58 @@ describe("R3C-2 · esIdValido", () => {
 
   it("rechaza un id corto que no es UUID", () => {
     expect(esIdValido("1")).toBe(false);
+  });
+});
+
+describe("2d · discriminador y selector sin rebote", () => {
+  beforeEach(() => {
+    process.env.PROPTECH_URL_API_INTERNA = "http://api-interna:8000";
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    delete process.env.PROPTECH_URL_API_INTERNA;
+  });
+  it("sin_acceso redirige sin regreso", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 403, cuerpo: { detail: { codigo: "sin_acceso" } } }),
+    );
+    await expect(pedirApi("/api/sesion")).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/sin-acceso;307;",
+    });
+  });
+  it.each([undefined, "otro"])("código desconocido %s ignora permiso_faltante", async (codigo) => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 403, cuerpo: { detail: { codigo, permiso_faltante: "sin_acceso" } } }),
+    );
+    expect(await pedirApi("/api/sesion").catch(() => ({estado:"redirigio"}))).toEqual({
+      estado: "sin_permiso",
+      permiso: "desconocido",
+    });
+  });
+  it.each([401, "sin_sesion"])("devolver no redirige con %s", async (caso) => {
+    vi.stubGlobal("fetch", mockFetch({ status: 401 }));
+    if (caso === "sin_sesion")
+      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as Awaited<ReturnType<typeof auth>>);
+    expect(
+      await pedirApi("/api/sesion", { alNoAutenticar: "devolver" }).catch(() => ({
+        estado: "redirigio",
+      })),
+    ).toEqual({ estado: "sin_sesion" });
+  });
+  it("sin cuerpo 403 es permiso desconocido", async () => {
+    vi.stubGlobal("fetch", mockFetch({ status: 403, cuerpoCrudo: "" }));
+    expect(await pedirApi("/api/sesion").catch(() => ({estado:"redirigio"}))).toEqual({
+      estado: "sin_permiso",
+      permiso: "desconocido",
+    });
+  });
+  it("sin opción, Clerk nulo redirige al ingreso", async () => {
+    vi.mocked(auth).mockResolvedValueOnce({ userId: null } as Awaited<ReturnType<typeof auth>>);
+    await expect(pedirApi("/api/sesion")).rejects.toMatchObject({
+      digest: "NEXT_REDIRECT;replace;/ingresar?regreso=%2Fedificios;307;",
+    });
   });
 });

@@ -1,4 +1,6 @@
+import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import { expect, test } from "./prueba";
+import { cookiesDeContextoDePrueba } from "./sesion-local";
 
 test("6.1: sesión local abre Mis edificios y el token no está en HTML ni RSC", async ({
   page,
@@ -45,4 +47,79 @@ test("R2B-4: el fixture de sesión nunca dispara el handshake de Clerk", async (
   const respuesta = await page.goto("/edificios/00000000-0000-0000-0000-000000000001/unidades");
   expect(respuesta?.status(), JSON.stringify(motivos)).toBe(200);
   expect(motivos).toEqual([]);
+});
+
+for (const ancho of [320, 1280]) {
+  test(`2d sin persona termina sin-acceso y teclado a ${ancho}`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const { session, clientUat } = cookiesDeContextoDePrueba({ sub: "user_sin_persona" });
+    await context.addCookies([
+      { name: "__session", value: session, url: baseURL ?? "http://127.0.0.1:3100" },
+      { name: "__client_uat", value: clientUat, url: baseURL ?? "http://127.0.0.1:3100" },
+    ]);
+    await page.setViewportSize({ width: ancho, height: 900 });
+    const navegaciones: string[] = [];
+    const respuestas: number[] = [];
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) navegaciones.push(frame.url());
+    });
+    page.on("response", (r) => {
+      if (r.request().isNavigationRequest()) respuestas.push(r.status());
+    });
+    await page.goto("/edificios");
+    await expect(page).toHaveURL(/\/sin-acceso$/);
+    await expect(
+      page.getByRole("heading", { name: "Tu cuenta no tiene acceso todavía" }),
+    ).toBeVisible();
+    expect(navegaciones.length).toBeLessThanOrEqual(3);
+    // Guarda: el widget real no carga; el anidamiento se prueba en ciclo.test.tsx.
+    expect(respuestas).not.toContain(431);
+    for (const ruta of navegaciones) {
+      const regreso = new URL(ruta).searchParams.get("regreso");
+      expect(regreso ?? "").not.toContain("regreso=");
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      ancho,
+    );
+    await sinViolacionesEnElNavegador(page);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    for (const nombre of ["Cerrar sesión", "Volver a intentar"]) {
+      const accion = page.getByRole("link", { name: nombre });
+      await expect(accion).toBeFocused();
+      expect(
+        await accion.evaluate((n) => parseFloat(getComputedStyle(n).outlineWidth)),
+      ).toBeGreaterThan(0);
+      expect(await accion.evaluate((n) => getComputedStyle(n).outlineStyle)).not.toBe("none");
+      await page.keyboard.press("Tab");
+    }
+  });
+}
+test("2d API rechaza: selector se queda y no redirige al ingreso", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const { session, clientUat } = cookiesDeContextoDePrueba({ sub: "user_api_rechaza" });
+  await context.addCookies([
+    { name: "__session", value: session, url: baseURL ?? "http://127.0.0.1:3100" },
+    { name: "__client_uat", value: clientUat, url: baseURL ?? "http://127.0.0.1:3100" },
+  ]);
+  const ingresos: string[] = [];
+  page.on("request", (r) => {
+    if (r.isNavigationRequest() && new URL(r.url()).pathname === "/ingresar")
+      ingresos.push(r.url());
+  });
+  await page.goto("/elegir-administracion");
+  await expect(page.getByRole("heading", { name: "No pudimos validar tu sesión" })).toBeVisible();
+  await expect(page).toHaveURL(/\/elegir-administracion$/);
+  expect(ingresos).toEqual([]);
+  await expect(page.getByRole("link", { name: "Cerrar sesión" })).toHaveAttribute(
+    "href",
+    "/ingresar?cerrar=1",
+  );
 });
