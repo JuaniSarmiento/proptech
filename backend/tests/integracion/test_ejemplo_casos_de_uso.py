@@ -927,6 +927,43 @@ def test_la_funcion_de_vinculacion_rechaza_otra_persona_sin_escribir(
         engine.dispose()
 
 
+def test_vincular_el_mismo_id_otra_vez_no_escribe_la_fila(base_fresca: BaseDeEdificio) -> None:
+    """B-1 (rompedor, vuelta 1): la spec de `acceso-de-desarrollo` pide que
+    vincular dos veces el mismo id "no hace nada / sin escribir". Contar
+    filas no alcanza -- el `UPDATE` condicional coincidía igual cuando el id
+    ya era el mismo y Postgres escribía una versión nueva de la fila (el
+    rompedor lo midió con `xmin`: 764 antes, 782 después). Esta vez se
+    compara `xmin`, que sólo cambia si hubo una escritura real."""
+    from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import vincular
+
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        _cargar_con_usuario(fabrica, "user_Dev123")
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s:
+            xmin_antes = s.execute(
+                text("SELECT xmin::text FROM persona WHERE id=:id"),
+                {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+            ).scalar_one()
+
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s, s.begin():
+            resultado = vincular(
+                s,
+                ejemplo.ADMINISTRACION_EJEMPLO_ID,
+                ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                "user_Dev123",
+            )
+        assert resultado == "ya estaba vinculado"
+
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s:
+            xmin_despues = s.execute(
+                text("SELECT xmin::text FROM persona WHERE id=:id"),
+                {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+            ).scalar_one()
+        assert xmin_despues == xmin_antes
+    finally:
+        engine.dispose()
+
+
 def test_mensajes_de_vinculacion_no_imprimen_el_id(
     base_fresca: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

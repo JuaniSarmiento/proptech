@@ -9,6 +9,9 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+#: Ids fijos de la administración y de la persona de ejemplo (D9 del 3a, D1
+#: de `acceso-de-desarrollo`): nunca generados, para que `cargar()` compare
+#: contra la misma fila en cada corrida en vez de crear una fila nueva.
 ADMINISTRACION_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e0")
 PERSONA_SUPER_ADMIN_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e1")
 _MENSAJE_CUENTA_AJENA = "esa cuenta ya está vinculada a otra persona del ejemplo"
@@ -35,6 +38,13 @@ def vincular(sesion: Session, administracion_id: UUID, persona_id: UUID, sub: st
         text("SELECT clerk_usuario_id FROM persona WHERE id = :persona"),
         {"persona": persona_id},
     ).scalar_one()
+    if anterior == sub:
+        # B-1 (rompedor, vuelta 1): el id ya es el mismo -- la spec pide
+        # "no hace nada / sin escribir". El UPDATE condicional de abajo
+        # coincide igual cuando el id no cambia y Postgres escribe una
+        # versión nueva de la fila (visible en `xmin`) aunque el valor
+        # final sea idéntico. Devolver antes evita esa escritura.
+        return "ya estaba vinculado"
     try:
         resultado = cast(
             CursorResult[Any],
