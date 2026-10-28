@@ -215,16 +215,16 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [x] **P66 · `/personal` jerárquica** (sugerencia de Emiliano del 23/10/2026, §2.5 del 3c): **cerrada
   por D-127** (26/10/2026). Aprobada en principio — el Administrador de toda la empresa podrá ver (y,
   según decida su change, gestionar) al personal por debajo suyo, nunca al super admin — pero **no se
-  construye en el 3c**: cambia D-106 (acceso, CRITICAL) y queda para un change de acceso propio y
-  futuro, junto con los demás ítems de P68.
+  construye en el 3c**: cambia D-106 (acceso, CRITICAL) y queda para el change **`2d ·
+  sesion-sin-persona`** (D-130), junto con los demás ítems de P68.
 - [x] **P67 · Las dos cuentas de Mailinator del Clerk de desarrollo** (BE-7, deuda del cierre de
   `acceso-de-desarrollo`): **cerrada por D-128**. Se borran: acción operativa de Emiliano en el panel
   de Clerk, sin código ni dato del repo. Las direcciones literales ya habían salido de la deuda viva
   en `bbd02fb` porque el repo es público (L-040).
 - [x] **P68 · Los ítems de acceso del QA, ¿dentro o fuera del 3c?** (§5 del 3c): **cerrada por
   D-128**. **Fuera**: la invitación abierta con la sesión de otra cuenta (B-3), el menú que se adapta
-  al rol (2.3), reinvitar el mismo email (2.4) y `/personal` jerárquica (2.5/P66) quedan para un
-  change de acceso propio y futuro — entrarlos subiría el 3c de HIGH a CRITICAL. El backend sigue
+  al rol (2.3), reinvitar el mismo email (2.4) y `/personal` jerárquica (2.5/P66) quedan para
+  `2d · sesion-sin-persona` (D-130) — entrarlos subiría el 3c de HIGH a CRITICAL. El backend sigue
   siendo la autoridad y frena cada acción con 403 mientras tanto; no es un agujero de seguridad, es
   alcance diferido.
 - [x] **P69 · Grupos y claves** (§2.2 del 3c, G-3 y G-6): **cerrada por D-128**. Un grupo de reparto se
@@ -253,11 +253,11 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - **El 4 partido en 4a a 4d** (exploración del 4, §8): P55 y P56 resueltas por D-120 (26/10/2026), ya
   no bloquean el 4b, que está construido; P53 y P54 bloquean el 4c; P51 y P52 el 4d. P57 a P60 son de
   Alberto y se validan antes del piloto. P-3 y P-7 de la exploración se resolvieron en D-113.
-- **Pulido de la configuración (3c)**: **cerrado**. P61 a P65 (ubicación y pisos), P67 (Mailinator),
-  P68 (alcance) y P69 (grupos) quedaron resueltas con la firma de Emiliano del 26/10/2026 y escritas
-  como D-128 al cerrar el change. P66 (`/personal` jerárquica) quedó cerrada por D-127, apuntando a un
-  change de acceso futuro junto con los demás ítems de P68. P70 (mapa interactivo) no lo bloqueó y
-  sigue abierta para un change futuro de ubicación más precisa.
+- **Pulido de la configuración (3c)**: **archivado 28/10/2026** (D-128, D-129). P61 a P65 (ubicación y
+  pisos), P67 (Mailinator), P68 (alcance) y P69 (grupos) quedaron resueltas con la firma de Emiliano
+  del 26/10/2026 y escritas como D-128 al cerrar el change. P66 (`/personal` jerárquica) quedó cerrada
+  por D-127, apuntando a `2d · sesion-sin-persona` (D-130) junto con los demás ítems de P68. P70 (mapa
+  interactivo) no lo bloqueó y sigue abierta para un change futuro de ubicación más precisa.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
 - **P25 a P32, P34 y P36 a P41** (P24 y P33 están resueltas, D-100; P35, D-086): casos de borde de la
