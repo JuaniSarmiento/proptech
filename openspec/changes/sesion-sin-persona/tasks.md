@@ -27,12 +27,23 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Rebasar sobre `main` y fijar el baseline antes de tocar nada: `alembic heads` con una sola
+- [x] 1.1 Rebasar sobre `main` y fijar el baseline antes de tocar nada: `alembic heads` con una sola
   cabeza (`0027` o la que haya mergeado el 3d o el 6), y en verde
   `bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_ejemplo_casos_de_uso.py tests/integracion/test_auditoria_tabla.py tests/unitarios/test_fronteras_de_modulos.py tests/unitarios/acceso`
   y `bash infra/ci/test-web.sh`. Pegar conteos y SHA. Listar con `rg` los tests que hoy afirman 401
   para "token válido sin vínculo", "vinculada sin asignación" y "quitar la única asignación"
   (incluido `test_personal_api.py:144-170`): son los rojos de la tarea 2.
+
+
+### Evidencia 1.1 · 28/10/2026
+
+- `git rebase main` (11:04:23): `Current branch apply/sesion-sin-persona-v1 is up to date.`
+- `git rev-parse HEAD`: `7a49effea1293cc02b3bcc2f7d9e462e9d25e7b1`.
+- `cd backend && uv run alembic heads` (11:05): `0027 (head)`.
+- Baseline backend, comando de 1.1 completo (11:04:23–11:06:34): `743 passed, 1 warning in 131.11s`.
+- `bash infra/ci/test-web.sh` (11:07:04–11:07:47): Tests  432 passed (432).
+- `rg -n '401|sin_vinculo|sin_asignacion|unica_asignacion' backend/tests/integracion/test_{sesion,identidad_clerk,personal}_api.py`: escenarios previos identificados en sesión sin asignación, identidad sin vínculo y quitar última asignación. Guardas distintas: selector con acceso sigue 401.
+- Logs íntegros locales `.atl/2d-v1/`, baseline backend `/tmp/2d-v1-baseline-backend.log`. Se escribieron tests nuevos durante el baseline web; no se modificó producción hasta concluir ambos baselines.
 
 ## 2. API: el 403 `sin_acceso`
 
