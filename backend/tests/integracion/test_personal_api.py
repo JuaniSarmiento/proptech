@@ -27,6 +27,7 @@ from proptech_core.acceso.dominio.sobres import generar
 from proptech_core.compartido.base_de_datos import abrir_sesion
 
 from ._api_edificios import ApiEdificio
+from ._clerk import api_clerk as api_clerk
 from ._clerk import clerk_falso as clerk_falso
 from ._clerk import encabezados, sub_de
 from ._usuarios import preparar
@@ -141,7 +142,7 @@ def test_revocar_marca_revocada_encola_clerk_y_el_token_ya_no_se_acepta(
         )
 
 
-def test_quitar_la_unica_asignacion_de_un_auxiliar_da_401_en_su_proximo_pedido(
+def test_quitar_la_unica_asignacion_de_un_auxiliar_da_403_sin_acceso_en_su_proximo_pedido(
     clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio
 ) -> None:
     sub = sub_de(clerk_falso)
@@ -167,7 +168,8 @@ def test_quitar_la_unica_asignacion_de_un_auxiliar_da_401_en_su_proximo_pedido(
     siguiente = api_edificio.cliente.post(
         "/api/sesion/ingreso", headers=encabezados(clerk_falso, sub=sub)
     )
-    assert siguiente.status_code == 401, siguiente.text
+    assert siguiente.status_code == 403, siguiente.text
+    assert siguiente.json() == {"detail": {"codigo": "sin_acceso"}}
 
 
 def test_el_unico_super_admin_no_puede_quitarse_su_asignacion(api_edificio: ApiEdificio) -> None:
@@ -344,3 +346,37 @@ def test_explain_el_listado_usa_los_indices_por_administracion_y_de_invitacion(
     )
     assert "ix_asignacion_rol_persona" in planes[1]
     assert "ix_invitacion_persona" in planes[2]
+
+
+def test_quitar_en_a_con_acceso_en_b_sigue_401(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey
+) -> None:
+    with api_clerk.base.conectar_app() as c, c.transaction():
+        c.execute(
+            "SELECT set_config('app.administracion_id',%s,true)", (str(api_clerk.admin_ajena),)
+        )
+        persona = uuid.uuid4()
+        c.execute(
+            "INSERT INTO "
+            "persona(id,administracion_id,nombre,clerk_usuario_id) VALUES (%s,%s,'En B',%s)",
+            (persona, api_clerk.admin_ajena, sub_de(clerk_falso)),
+        )
+        c.execute(
+            "INSERT INTO asignacion_rol(administracion_id,persona_id,rol) "
+            "VALUES (%s,%s,'super_admin')",
+            (api_clerk.admin_ajena, persona),
+        )
+    (asignacion,) = api_clerk.filas(
+        "SELECT id FROM asignacion_rol WHERE persona_id=%s", (api_clerk.personas["editar"],)
+    )[0]
+    api_clerk.como("super_admin")
+    assert api_clerk.cliente.delete(f"/api/asignaciones/{asignacion}").status_code == 200
+    from proptech_api.acceso import identidad_actual
+
+    api_clerk.app.dependency_overrides.pop(identidad_actual, None)
+    r = api_clerk.cliente.get(
+        "/api/complejos",
+        headers=encabezados(clerk_falso) | {"X-Proptech-Administracion": str(api_clerk.admin)},
+    )
+    assert r.status_code == 401
+    assert r.json() == {"detail": "Unauthorized"}

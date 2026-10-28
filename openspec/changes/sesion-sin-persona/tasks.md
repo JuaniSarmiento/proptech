@@ -47,7 +47,7 @@
 
 ## 2. API: el 403 `sin_acceso`
 
-- [ ] 2.1 `GET /api/sesion` en `tests/integracion/test_sesion_api.py`, por HTTP con tokens firmados de
+- [x] 2.1 `GET /api/sesion` en `tests/integracion/test_sesion_api.py`, por HTTP con tokens firmados de
   verdad (L-017). **Rojo**: token válido sin persona → 403 con cuerpo exacto
   `{"detail": {"codigo": "sin_acceso"}}`; persona vinculada sin asignaciones → mismo cuerpo byte a byte
   **y mismas cabeceras** salvo `X-Request-ID` (QA-2d, E1). **Guardas**: vinculada sin asignación en A
@@ -59,7 +59,22 @@
   otra vez → rojo; (b) el traductor agrega `"motivo": "sin_persona"` sólo en un caso → rojo en la
   comparación byte a byte; (c) una cabecera propia distinta en un caso → rojo en la comparación de
   cabeceras; (d) `token_de_sesion_actual` responde 403 → rojo en "Token inválido sigue siendo 401".
-- [ ] 2.2 La precedencia en una ruta de dominio (`GET /api/complejos`), en
+
+  **Evidencia ejecutada 2.1 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T11:08:06.307792-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  test_sesion_api.py:112: AssertionError; assert 401 == 403 (y persona sin asignaciones: 200).
+  22 failed, 441 passed, 1 warning in 76.05s
+  GREEN TIME: 2026-10-28T11:15:30.269661-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  486 passed, 1 warning in 86.00s; exit 0; fin 11:16:58 -03:00.
+  MUTANTES: 2.1 a–d: exit 1, AssertionError; copia previa sin commit, restaurada.
+  Diffs, comando, hora y file:line de cada mutante: informes/evidencia-api-v1.md.
+  ```
+
+- [x] 2.2 La precedencia en una ruta de dominio (`GET /api/complejos`), en
   `tests/integracion/test_identidad_clerk_api.py`. **Rojo**: sin persona → 403, línea
   `ingreso_sin_vinculo` sin email ni sub en claro y ninguna fila de auditoría; persona sin asignación y
   sin otra administración → 403 y **exactamente una** fila `ingreso_fallido`; sin persona con
@@ -83,7 +98,22 @@
   conteo de filas; (d) el selector manda (401 antes de preguntar por el acceso) → rojo en "Sin acceso
   con un selector ajeno"; (e) `ingreso_fallido` para cada persona sin asignación en vez de la elegida
   → rojo en "Dos vínculos".
-- [ ] 2.3 Anti-enumeración en `tests/integracion/test_deuda_acceso_2b.py` (o un archivo nuevo de la
+
+  **Evidencia ejecutada 2.2 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T11:08:06.307792-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  test_identidad_clerk_api.py:171,274,292: AssertionError; assert 401 == 403.
+  22 failed, 441 passed, 1 warning in 76.05s
+  GREEN TIME: 2026-10-28T11:15:30.269661-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  486 passed, 1 warning in 86.00s; exit 0; fin 11:16:58 -03:00.
+  MUTANTES: 2.2 a–e: exit 1, AssertionError; copia previa sin commit, restaurada.
+  Diffs, comando, hora y file:line de cada mutante: informes/evidencia-api-v1.md.
+  ```
+
+- [x] 2.3 Anti-enumeración en `tests/integracion/test_deuda_acceso_2b.py` (o un archivo nuevo de la
   misma carpeta). **Rojo** (cae en el 403 que hoy es 401): A tiene una persona sin vincular con
   `x@ejemplo.invalid` y una invitación enviada a ese email; un token válido sin vínculo con ese email y
   otro con un email distinto reciben **403** con respuestas idénticas (código, cuerpo, cabeceras salvo
@@ -92,7 +122,22 @@
   (instrumentador de los tests de cero SQL). Escenario "El 403 no depende del email". **Mutante**: un
   `SELECT … WHERE email = :email` en `resolver` que cambia el cuerpo si encuentra una fila → rojo; es
   el mutante, no el rojo, quien prueba la garantía.
-- [ ] 2.4 `codigo` en todo 403 (AR-6), en `tests/integracion/test_rutas_protegidas.py` y
+
+  **Evidencia ejecutada 2.3 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T11:08:06.307792-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  test_deuda_acceso_2b.py:139: AssertionError; assert 401 == 403.
+  22 failed, 441 passed, 1 warning in 76.05s
+  GREEN TIME: 2026-10-28T11:15:30.269661-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  486 passed, 1 warning in 86.00s; exit 0; fin 11:16:58 -03:00.
+  MUTANTES: 2.3: exit 1, AssertionError; copia previa sin commit, restaurada.
+  Diffs, comando, hora y file:line de cada mutante: informes/evidencia-api-v1.md.
+  ```
+
+- [x] 2.4 `codigo` en todo 403 (AR-6), en `tests/integracion/test_rutas_protegidas.py` y
   `tests/unitarios/test_errores.py` (o el archivo de errores que exista). **Rojo**: un barrido que, por
   cada ruta que puede dar 403, la pide con la identidad que lo dispara y afirma `detail.codigo` en la
   lista cerrada; el 403 de permiso trae `codigo: "sin_permiso"` junto a `detalle` y
@@ -101,6 +146,21 @@
   403 de permiso lleva su código". **Verde**: la lista cerrada declarada una vez, `Error403` en
   `errores.py`, los tres `HTTPException(403, …)` de `complejos.py` y `personal.py`. **Mutante**: un
   `HTTPException(403, detail={"detalle": "sin_permiso"})` nuevo en una ruta → rojo en el barrido.
+
+
+  **Evidencia ejecutada 2.4 (28/10/2026)**
+
+  ```text
+  RED TIME: 2026-10-28T11:08:06.307792-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  test_rutas_protegidas.py:489: AssertionError; assert None in (sin_acceso, sin_permiso).
+  22 failed, 441 passed, 1 warning in 76.05s
+  GREEN TIME: 2026-10-28T11:15:30.269661-03:00
+  COMMAND: bash infra/ci/test-backend.sh tests/integracion/test_sesion_api.py tests/integracion/test_identidad_clerk_api.py tests/integracion/test_deuda_acceso_2b.py tests/integracion/test_personal_api.py tests/integracion/test_invitar_personal_api.py tests/integracion/test_rutas_protegidas.py tests/unitarios/test_errores.py
+  486 passed, 1 warning in 86.00s; exit 0; fin 11:16:58 -03:00.
+  MUTANTES: 2.4: exit 1, AssertionError; copia previa sin commit, restaurada.
+  Diffs, comando, hora y file:line de cada mutante: informes/evidencia-api-v1.md.
+  ```
 
 ## 3. Web: cliente, `regreso`, ciclo, selector y pantalla nueva
 

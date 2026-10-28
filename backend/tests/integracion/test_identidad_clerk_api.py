@@ -168,8 +168,8 @@ def test_sin_vinculo_minimiza_y_loguea_resumen(
             )
     finally:
         event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
-    assert respuesta.status_code == 401
-    assert respuesta.json() == {"detail": "Unauthorized"}
+    assert respuesta.status_code == 403
+    assert respuesta.json() == {"detail": {"codigo": "sin_acceso"}}
     assert not any(
         tabla in s.lower() for s in sentencias for tabla in ("complejo", "unidad", "asignacion_rol")
     )
@@ -179,6 +179,10 @@ def test_sin_vinculo_minimiza_y_loguea_resumen(
         registros[0].__dict__["sub_resumen"] == hashlib.sha256(b"user_SinVinculo").hexdigest()[:12]
     )
     assert "user_SinVinculo" not in caplog.text
+    assert "@" not in caplog.text
+    assert api_clerk.filas("SELECT count(*) FROM auditoria WHERE accion='ingreso_fallido'") == [
+        (0,)
+    ]
 
 
 def test_selector_solo_administraciones_vinculadas(
@@ -199,7 +203,7 @@ def test_selector_solo_administraciones_vinculadas(
         )
         assert respuesta.status_code == 401
     event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
-    assert leidos == []
+    assert all(str(api_clerk.admin_ajena) not in str(p) for p in leidos)
     with api_clerk.base.conectar_app() as conexion, conexion.transaction():
         conexion.execute(
             "SELECT set_config('app.administracion_id', %s, true)", (str(api_clerk.admin_ajena),)
@@ -248,3 +252,65 @@ def test_login_apagado_no_lee_sql(
         event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
     assert respuesta.status_code == 401
     assert sentencias == []
+
+
+@pytest.mark.parametrize("vinculada", [False, True])
+@pytest.mark.parametrize("selector", [None, "ajena", "no-es-uuid"])
+def test_sin_acceso_prevalece_sobre_eleccion_sin_leer_b(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey, vinculada: bool, selector: str | None
+) -> None:
+    api_clerk.filas(
+        "DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
+        (api_clerk.personas["editar"],),
+    )
+    sub = sub_de(clerk_falso) if vinculada else "user_SinVinculo"
+    h = encabezados(clerk_falso, sub=sub)
+    if selector is not None:
+        h["X-Proptech-Administracion"] = (
+            str(api_clerk.admin_ajena) if selector == "ajena" else selector
+        )
+    sql: list[tuple[str, Any]] = []
+
+    def contar(*args: Any) -> None:
+        sql.append((args[2], args[3]))
+
+    event.listen(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    try:
+        r = api_clerk.cliente.get("/api/complejos", headers=h)
+    finally:
+        event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    assert r.status_code == 403
+    assert r.json() == {"detail": {"codigo": "sin_acceso"}}
+    assert not any("FROM complejo" in s or "FROM unidad" in s for s, _ in sql)
+    assert not any(str(api_clerk.admin_ajena) in str(p) for _, p in sql)
+    esperado = int(vinculada and selector is None)
+    assert api_clerk.filas("SELECT count(*) FROM auditoria WHERE accion='ingreso_fallido'") == [
+        (esperado,)
+    ]
+
+
+def test_dos_vinculos_sin_asignaciones_no_auditan_sin_elegir(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey
+) -> None:
+    api_clerk.filas(
+        "DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
+        (api_clerk.personas["editar"],),
+    )
+    with api_clerk.base.conectar_app() as c, c.transaction():
+        c.execute(
+            "SELECT set_config('app.administracion_id', %s, true)", (str(api_clerk.admin_ajena),)
+        )
+        c.execute(
+            "INSERT INTO persona(administracion_id,nombre,clerk_usuario_id) "
+            "VALUES (%s,'Sin asignación B',%s)",
+            (api_clerk.admin_ajena, sub_de(clerk_falso)),
+        )
+    r = api_clerk.cliente.get("/api/complejos", headers=encabezados(clerk_falso))
+    assert r.status_code == 403
+    assert r.json() == {"detail": {"codigo": "sin_acceso"}}
+    for admin in (api_clerk.admin, api_clerk.admin_ajena):
+        with api_clerk.base.conectar_app() as c, c.transaction():
+            c.execute("SELECT set_config('app.administracion_id', %s, true)", (str(admin),))
+            assert c.execute(
+                "SELECT count(*) FROM auditoria WHERE accion='ingreso_fallido'"
+            ).fetchone() == (0,)

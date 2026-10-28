@@ -3,6 +3,7 @@
 from typing import Any, Literal
 from uuid import UUID
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 
@@ -10,9 +11,18 @@ class Error401(BaseModel):
     detail: str
 
 
+Codigo403 = Literal["sin_acceso", "sin_permiso"]
+
+
 class PermisoFaltante(BaseModel):
-    detalle: Literal["sin_permiso"]
-    permiso_faltante: str
+    codigo: Codigo403
+    detalle: Literal["sin_permiso"] | None = None
+    permiso_faltante: str | None = None
+
+
+def sin_acceso_http() -> HTTPException:
+    """Traducción única, constante y sin datos de la identidad."""
+    return HTTPException(status_code=403, detail={"codigo": "sin_acceso"})
 
 
 class Error403(BaseModel):

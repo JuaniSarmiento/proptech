@@ -485,6 +485,14 @@ def test_cada_ruta_con_identidad_sin_asignacion_nunca_da_200_ni_201(
             f"({respuesta.status_code})"
         )
         assert respuesta.status_code in (403, 404), respuesta.status_code
+        if respuesta.status_code == 403:
+            assert isinstance(respuesta.json()["detail"], dict), (ruta, respuesta.json())
+            assert respuesta.json()["detail"].get("codigo") in ("sin_acceso", "sin_permiso"), (
+                ruta,
+                respuesta.json(),
+            )
+            assert respuesta.json()["detail"]["detalle"] == "sin_permiso"
+            assert respuesta.json()["detail"]["permiso_faltante"]
     finally:
         app_real.dependency_overrides.pop(identidad_actual, None)
 
@@ -630,3 +638,46 @@ def test_dos_guardas_401_cero_sql_con_cualquier_cuerpo(
     assert r.status_code == 401, (metodo, ruta, r.text)
     assert r.json() == {"detail": "Unauthorized"}
     assert sentencias == []
+
+
+def test_403_del_listado_sin_asignacion_lleva_codigo(api_edificio: Any) -> None:
+    api_edificio.como("ver")
+    api_edificio.filas(
+        "DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
+        (api_edificio.personas["ver"],),
+    )
+    r = api_edificio.cliente.get("/api/complejos")
+    assert r.status_code == 403
+    assert r.json() == {
+        "detail": {
+            "codigo": "sin_permiso",
+            "detalle": "sin_permiso",
+            "permiso_faltante": "ver_configuracion_del_edificio",
+        }
+    }
+
+
+def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
+    api_edificio.como("vecino")
+    mundo = {
+        "complejo_id": api_edificio.edificio,
+        "unidad_id": api_edificio.unidad,
+        "grupo_id": api_edificio.grupo_ajeno,
+        "categoria_id": api_edificio.categoria_ajena,
+        "otra_persona": api_edificio.personas["ver"],
+        "invitacion_id": uuid.uuid4(),
+        "asignacion_id": uuid.uuid4(),
+    }
+    cubiertas = []
+    for ruta, metodo in sorted(_RUTAS_CUBIERTAS - _RUTAS_CON_TOKEN - _RUTAS_SIN_ALCANCE):
+        r = _pedido(api_edificio.cliente, ruta, metodo, mundo)
+        if r.status_code == 403:
+            assert r.json()["detail"].get("codigo") in ("sin_acceso", "sin_permiso"), (
+                ruta,
+                r.json(),
+            )
+            assert r.json()["detail"]["permiso_faltante"]
+            cubiertas.append((ruta, metodo))
+    assert ("/api/complejos/{complejo_id}/categorias", "POST") in cubiertas
+    assert ("/api/complejos/{complejo_id}/asignaciones", "POST") in cubiertas
+    assert ("/api/personal", "GET") in cubiertas

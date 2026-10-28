@@ -98,7 +98,7 @@ def test_ingreso_deja_una_fila_con_request_id(
     assert filas == [(api_clerk.personas["editar"], api_clerk.admin, seguimiento, {})]
 
 
-def test_sin_asignacion_audita_y_confirma_antes_del_401(
+def test_sin_asignacion_audita_y_confirma_antes_del_403(
     api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey
 ) -> None:
     api_clerk.filas(
@@ -109,8 +109,8 @@ def test_sin_asignacion_audita_y_confirma_antes_del_401(
     respuesta = api_clerk.cliente.get(
         api_clerk.ruta(), headers=encabezados(clerk_falso) | {"X-Request-ID": str(seguimiento)}
     )
-    assert respuesta.status_code == 401
-    assert respuesta.json() == {"detail": "Unauthorized"}
+    assert respuesta.status_code == 403
+    assert respuesta.json() == {"detail": {"codigo": "sin_acceso"}}
     filas = api_clerk.filas(
         "SELECT persona_id, administracion_id, request_id, detalle FROM auditoria "
         "WHERE accion = 'ingreso_fallido'"
@@ -120,3 +120,59 @@ def test_sin_asignacion_audita_y_confirma_antes_del_401(
     ]
     assert "user_Prueba" not in str(filas)
     assert "@" not in str(filas)
+
+
+@pytest.mark.parametrize("vinculada", [False, True])
+def test_sesion_sin_acceso_tiene_cuerpo_y_cabeceras_constantes(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey, vinculada: bool
+) -> None:
+    ausente = api_clerk.cliente.get(
+        "/api/sesion", headers=encabezados(clerk_falso, sub="user_SinPersona")
+    )
+    if vinculada:
+        api_clerk.filas(
+            "DELETE FROM asignacion_rol WHERE persona_id=%s RETURNING id",
+            (api_clerk.personas["editar"],),
+        )
+    respuesta = api_clerk.cliente.get(
+        "/api/sesion",
+        headers=encabezados(clerk_falso, **({} if vinculada else {"sub": "user_Otra"})),
+    )
+    assert respuesta.status_code == ausente.status_code == 403
+    assert respuesta.json() == {"detail": {"codigo": "sin_acceso"}}
+    assert respuesta.content == ausente.content
+    assert dict(respuesta.headers) | {"x-request-id": ""} == dict(ausente.headers) | {
+        "x-request-id": ""
+    }
+
+
+@pytest.mark.parametrize("caso", ["ausente", "firma", "vencido", "aplicacion"])
+def test_sesion_token_invalido_sigue_401_sin_sql(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey, caso: str
+) -> None:
+    from typing import Any
+
+    from sqlalchemy import event
+
+    h = encabezados(clerk_falso)
+    if caso == "ausente":
+        h = {}
+    elif caso == "firma":
+        h = encabezados(rsa.generate_private_key(public_exponent=65537, key_size=2048))
+    elif caso == "vencido":
+        h = encabezados(clerk_falso, exp=1)
+    elif caso == "aplicacion":
+        h = encabezados(clerk_falso, azp="https://otra.invalid")
+    sql: list[str] = []
+
+    def contar(*args: Any) -> None:
+        sql.append(args[2])
+
+    event.listen(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    try:
+        r = api_clerk.cliente.get("/api/sesion", headers=h)
+    finally:
+        event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    assert r.status_code == 401
+    assert r.json() == {"detail": "Unauthorized"}
+    assert sql == []

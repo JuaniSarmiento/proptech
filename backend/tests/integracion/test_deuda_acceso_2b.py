@@ -110,3 +110,45 @@ def test_tiempos_403_y_404_con_identidad_real(
         f"control={control:.3f}, MAD={dispersion:.3f}, umbral={umbral:.3f}"
     )
     assert diferencia <= umbral, "diferencia explotable según el criterio declarado en tasks.md"
+
+
+@pytest.mark.parametrize("ruta", ["/api/sesion", "/api/complejos"])
+def test_el_403_no_depende_del_email_ni_lee_por_email(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey, ruta: str
+) -> None:
+    from typing import Any
+
+    from sqlalchemy import event
+
+    persona = api_clerk.personas["ver"]
+    api_clerk.filas(
+        "UPDATE persona SET email='x@ejemplo.invalid' WHERE id=%s RETURNING id", (persona,)
+    )
+    api_clerk.filas(
+        "INSERT INTO "
+        "invitacion(administracion_id,persona_id,estado,token_resumen,vence,creada_por) "
+        "VALUES (%s,%s,'enviada',%s,now()+interval '1 day',%s) RETURNING id",
+        (api_clerk.admin, persona, uuid4().bytes, api_clerk.personas["super_admin"]),
+    )
+    sql: list[str] = []
+
+    def contar(*args: Any) -> None:
+        sql.append(args[2])
+
+    event.listen(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    try:
+        respuestas = [
+            api_clerk.cliente.get(
+                ruta, headers=encabezados(clerk_falso, sub="user_NoVinculado", email=email)
+            )
+            for email in ("x@ejemplo.invalid", "otra@ejemplo.invalid")
+        ]
+    finally:
+        event.remove(api_clerk.app.state.engine, "before_cursor_execute", contar)
+    a, b = respuestas
+    assert a.status_code == b.status_code == 403
+    assert a.json() == {"detail": {"codigo": "sin_acceso"}}
+    assert a.content == b.content
+    assert dict(a.headers) | {"x-request-id": ""} == dict(b.headers) | {"x-request-id": ""}
+    assert str(api_clerk.admin) not in a.text and "Inventada API" not in a.text
+    assert not any("email" in s.lower() for s in sql)

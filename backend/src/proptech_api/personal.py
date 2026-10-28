@@ -49,7 +49,12 @@ def autorizar(sesion: Session, identidad: Identidad, complejo_id: UUID | None = 
             raise HTTPException(404, detail="no encontrado")
     if not puede(asignaciones, PERMISO, complejo_id):
         raise HTTPException(
-            403, detail={"detalle": "sin_permiso", "permiso_faltante": PERMISO.value}
+            403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": PERMISO.value,
+            },
         )
 
 
