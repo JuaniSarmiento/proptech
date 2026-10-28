@@ -62,10 +62,16 @@ def test_deploy_3a_y_rollback(base_para_migraciones: BaseDeEdificio) -> None:
             "SELECT tableowner FROM pg_tables WHERE schemaname='public' AND "
             "tablename='configuracion_versionada'"
         ).fetchone() == (base.contenedor.username,)
+        # Enmienda E11 (RE11-01/02, firmada 27/10/2026): `antes()` NUNCA
+        # devuelve al migrador la función de un trigger de una tabla
+        # protegida (`configuracion_versionada` está en
+        # TABLAS_DE_SOLO_AGREGAR) -- antes de la enmienda, esta aserción
+        # esperaba lo contrario (que SÍ volviera al migrador), que es
+        # exactamente la ventana que RE11-01 explotó.
         assert c.execute(
             "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE "
             "oid='fn_configuracion_versionada_bloqueada()'::regprocedure"
-        ).fetchone() == (base.entorno["POSTGRES_MIGRADOR_USER"],)
+        ).fetchone() == (base.contenedor.username,)
     with pytest.raises(AssertionError, match="must be owner"):
         base.migrar("downgrade", "0020")
     base.devolver_tablas_protegidas()
