@@ -40,7 +40,7 @@ gates están en el árbol de abajo.
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
    ✅ 3c pulido: bugs + ubicación + pisos (archivado 28/10/2026, D-128/D-129)
-   ⏳ 3d pulido-2 (nuevo, D-130) · Emiliano, en paralelo antes del 6
+   ⏳ 3d pulido-2 (nuevo, D-130) · Gianfranco, en paralelo antes del 6
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
@@ -65,7 +65,7 @@ gates están en el árbol de abajo.
 
 - **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
-- **En paralelo, no frenan a nadie:** 3d → 6 (Emiliano), 4d, 6b, 9, 11, 12 y 14.
+- **En paralelo, no frenan a nadie:** 3d (Gianfranco), 6 (Emiliano), 4d, 6b, 9, 11, 12 y 14.
 - **Numeración:** el número corto (4a, 7, 10b) es el de las fichas de abajo; el código C-xx es el
   mismo change con otro nombre (4a = C-07a, 7 = C-10).
 
@@ -88,7 +88,7 @@ C-01 infraestructura-base (1a)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │     └── C-06c pulido-de-la-configuracion (3c) ← archivado 28/10/2026 (D-128/D-129)
-                                │           └── C-22 pulido-2 (3d) ← nuevo (D-130); Emiliano, en paralelo antes del 6
+                                │           └── C-22 pulido-2 (3d) ← nuevo (D-130); Gianfranco, en paralelo antes del 6
                                 │
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
@@ -156,7 +156,7 @@ GATE 6: C-06a ✓
   → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: firmado por Emiliano el 26/10/2026, D-128;
     construido en paralelo al 4a, fuera del camino crítico; necesitó también C-06b y C-05b, archivados;
     **archivado 28/10/2026** tras el PR #2 y la Enmienda E11, D-129)
-    → C-22 pulido-2 (3d, nuevo, MEDIUM, D-130): Emiliano, en paralelo antes de C-09 (6)
+    → C-22 pulido-2 (3d, nuevo, MEDIUM, D-130): Gianfranco, en paralelo con C-09 (6, Emiliano)
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
@@ -585,7 +585,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-09] `gastos-y-cargos` · 6
-- **Estado**: `[ ]` pendiente. Emiliano, en paralelo con `3d` antes del camino crítico
+- **Estado**: `[ ]` pendiente. Emiliano, en paralelo con `3d` (Gianfranco) antes del camino crítico
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
   por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a

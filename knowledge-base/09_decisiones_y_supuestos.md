@@ -2574,7 +2574,7 @@ registrado como tal en su momento.)*
     recortado en `/ingresar` a 320px, y `ejemplo.py` escribiendo SQL directo en tablas de `acceso`
     (D-021, AR-6/BE-4/DB-7 del PR #1). Se adelanta en el orden porque es CRITICAL y porque bloquea
     cualquier recorrido manual futuro que entre con la cuenta de ejemplo.
-  - **Change nuevo `3d · pulido-2`** (web, bajo riesgo, Emiliano, en paralelo antes del 6): la API falsa
+  - **Change nuevo `3d · pulido-2`** (web, bajo riesgo, Gianfranco, en paralelo con el 6): la API falsa
     de e2e sin PATCH ni Georef (`web/e2e/api-falsa.ts:257-301,831`), la ayuda que sigue diciendo "0 de 6
     pasos" con el flujo ya en 7 (`web/src/app/edificios/[id]/ayuda.ts:13`), el orden de
     `vocabularioDePisos` que pone SS1 después del último piso en vez de arriba de PB —con un test que
@@ -2609,6 +2609,8 @@ registrado como tal en su momento.)*
 - **Por qué este orden**: `4c → 5 → 7` sigue el camino crítico ya escrito en `CHANGES.md`; `2d` se
   adelanta dentro de ese camino porque es la única deuda CRITICAL viva y porque cualquier recorrido
   manual de los changes siguientes puede pisarla sin querer (como ya le pasó a la regresión del 2b);
-  `3d` y `6` quedan en paralelo, a cargo de Emiliano, porque ninguno de los dos toca el camino crítico
-  ni una zona CRITICAL.
+  `3d` y `6` quedan en paralelo, porque ninguno de los dos toca el camino crítico ni una zona
+  CRITICAL: el `3d` a cargo de Gianfranco, que se suma al equipo de desarrollo el 28/10/2026 y lo toma
+  como primer change (web, riesgo bajo, sin firma HIGH/CRITICAL), y el `6` a cargo de Emiliano. El
+  `3d` sube primero su parte de la API falsa de e2e para que el `6` la use sin choques.
 - **Quién**: Juani, 28/10/2026.

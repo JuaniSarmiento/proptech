@@ -601,8 +601,9 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 
 > **Creada al archivar el 3c** (D-130, 28/10/2026), no por `openspec new`: junta la deuda de baja
 > severidad que la regresión del 27/10/2026 encontró en 3b/3c y que no entró en el propio PR #2 porque
-> no era bloqueante para mergear. Web, bajo riesgo, pensada para Emiliano en paralelo al 6 — ninguno de
-> los dos toca el camino crítico.
+> no era bloqueante para mergear. Web, bajo riesgo: el primer change de **Gianfranco** (se suma al equipo el
+> 28/10/2026), en paralelo al 6 de Emiliano — ninguno de los dos toca el camino crítico. Sube primero
+> la parte de la API falsa de e2e, para que el 6 la use sin choques.
 
 - **Objetivo**: cerrar la deuda chica que quedó viva después del 3c, sobre todo la que deja sin
   regresión automática de navegador a los flujos que el 3c agregó.
