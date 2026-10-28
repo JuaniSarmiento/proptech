@@ -330,16 +330,30 @@ MUTANTE D2 revertida sólo en selector: mismo runner --grep "2d API rechaza", 11
 
 ## 4. Recuadro de Clerk en `/ingresar`
 
-- [ ] 4.1 **Reproducir** con el Clerk de desarrollo real a 320 px y 1280 px: captura, ancho de
+- [x] 4.1 **Reproducir** con el Clerk de desarrollo real a 320 px y 1280 px: captura, ancho de
   contenido de `.panel`, ancho mínimo de `.cl-cardBox`, `scrollWidth` contra `clientWidth`. Pegar los
   números y confirmar o descartar la hipótesis (D8). Si no se reproduce, se cierra acá con la evidencia y
   la 4.2 se marca como no necesaria con el motivo.
-- [ ] 4.2 Si 4.1 lo reprodujo: **rojo** en e2e (sin el widget, L-032), a 320 px **y a 1280 px**:
+- [x] 4.2 Si 4.1 lo reprodujo: **rojo** en e2e (sin el widget, L-032), a 320 px **y a 1280 px**:
   inyectar con `page.evaluate` dentro de `.panel` un bloque del ancho mínimo medido en 4.1 y afirmar que
   su borde derecho queda dentro del área de contenido del panel y que `panel.scrollWidth <=
   panel.clientWidth` (QA-6). **Verde** con el ajuste de `tokens.css` (`.pagina-acceso`,
   `.clerk-proptech`, `cardBox` en la `apariencia`). Volver a medir con Clerk real a 320 px y 1280 px,
   con captura, y recorrer con teclado. **Mutante**: restaurar el relleno lateral del panel → rojo.
+
+  **Evidencia 4.1 (28/10/2026, 15:3x, orquestador)**: stack real con el Clerk de desarrollo
+  (`proptech-3c`, sin sesión iniciada), `/ingresar` medido con Playwright (`@playwright/test` 1.64.1, chromium)
+  a viewport 320 y 1280. Script y capturas en `.git/informes-2d/recuadro/` (local, sin ids).
+
+  ```text
+  320 px : .panel client 286 / scroll 286, contenido 246; .cl-cardBox ancho 246, min-width 0px,
+           borde derecho 283 <= 284 del área de contenido; documento scrollWidth 320; 0 elementos desbordan
+  1280 px: .panel client 328 / scroll 328, contenido 272; .cl-cardBox ancho 272, min-width 0px,
+           borde derecho 776 <= 777; documento scrollWidth 1280; 0 elementos desbordan
+  ```
+
+  **No se reproduce**: el recuadro entra en el panel a los dos anchos y no hay scroll horizontal. Hipótesis
+  de D8 descartada con esta evidencia; **4.2 no necesaria** por ese motivo (no se toca `tokens.css`).
 
 ## 5. El ejemplo vincula una cuenta de desarrollo
 
