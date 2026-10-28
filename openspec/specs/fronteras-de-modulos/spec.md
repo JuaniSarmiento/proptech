@@ -124,17 +124,20 @@ su propio módulo, ni `sqlalchemy` ni `psycopg` (D-021, D-114.7).
   `complejos.aplicacion.escritura`
 - **THEN** el test da rojo en cada una, nombrando el archivo
 
-
 ### Requirement: El SQL de cada módulo sólo nombra sus tablas
 
-El SQL de cada módulo de `proptech_core` SHALL nombrar sólo tablas propias, salvo excepciones por archivo y tabla completos con motivo. El test MUST nombrar archivo y tabla ajena, ignorar mayúsculas y excluir `FOR UPDATE OF` y funciones en FROM. En `proptech_api` y `proptech_worker` MUST prohibir SQL directo sobre tablas del libro y `candado_de_cuenta`; sus consumidores usan `cuenta_corriente.aplicacion`.
+El SQL de cada módulo de `proptech_core` SHALL nombrar sólo tablas propias, salvo excepciones por archivo y tabla completos con motivo. El test MUST nombrar archivo y tabla ajena, ignorar mayúsculas y excluir `FOR UPDATE OF` y funciones en FROM. En `proptech_api` y `proptech_worker` MUST prohibir SQL directo sobre tablas del libro y `candado_de_cuenta`; sus consumidores usan `cuenta_corriente.aplicacion`. El comando del edificio de ejemplo (`complejos/aplicacion/ejemplo.py`) MUST NOT tener excepción: la administración, la persona, la asignación y el vínculo de identidad del ejemplo se escriben por la capa de aplicación de `acceso`.
 
 #### Scenario: El código de hoy pasa con sus excepciones
 
 - **WHEN** el constructor ejecuta el escaneo sobre el árbol con el libro construido
-- **THEN** pasa, con `administracion` como tabla de `acceso` y las excepciones de
-  `complejos/aplicacion/escritura.py` (`asignacion_rol`), `complejos/aplicacion/lectura.py` (`persona`)
-  y `complejos/aplicacion/ejemplo.py` (`administracion`, `persona`, `asignacion_rol`)
+- **THEN** pasa, con `administracion` como tabla de `acceso` y sólo las excepciones de
+  `complejos/aplicacion/escritura.py` (`asignacion_rol`) y `complejos/aplicacion/lectura.py` (`persona`)
+
+#### Scenario: El ejemplo vuelve a escribir una tabla de acceso
+
+- **WHEN** el constructor agrega en una copia un `INSERT INTO persona` a `complejos/aplicacion/ejemplo.py`
+- **THEN** el test falla nombrando ese archivo y `persona`
 
 #### Scenario: Una tabla sin dueño declarado
 
@@ -165,3 +168,28 @@ El SQL de cada módulo de `proptech_core` SHALL nombrar sólo tablas propias, sa
 
 - **WHEN** el ensayo escanea `FOR UPDATE OF i`, `FROM unnest(...)` y `FROM generate_series(...)`
 - **THEN** no denuncia OF ni esos nombres de función como tablas sin dueño
+
+### Requirement: La vinculación de desarrollo sólo se importa desde el comando del ejemplo
+
+El módulo de `acceso.aplicacion` que vincula una cuenta de Clerk de desarrollo al ejemplo, sin
+invitación, SHALL poder importarse sólo desde `complejos/aplicacion/ejemplo.py`, por lista permitida
+(mismo estilo que las reglas de D-116). Cualquier otro archivo de `proptech_core`, `proptech_api` o
+`proptech_worker` que lo importe, por `import` o por `from … import`, MUST hacer fallar el test
+nombrando el archivo.
+
+#### Scenario: El código de hoy pasa
+
+- **WHEN** corre el test de fronteras sobre el árbol del change
+- **THEN** pasa, con `complejos/aplicacion/ejemplo.py` como único importador
+
+#### Scenario: La API importa la vinculación de desarrollo
+
+- **WHEN** el constructor agrega en una copia un `from proptech_core.acceso.aplicacion.<módulo> import
+  <función>` a `proptech_api/sesion.py`
+- **THEN** el test falla nombrando `proptech_api/sesion.py`
+
+#### Scenario: Otro módulo de acceso la importa
+
+- **WHEN** el constructor agrega en una copia un `import` de ese módulo a
+  `acceso/aplicacion/invitaciones.py`
+- **THEN** el test falla nombrando ese archivo

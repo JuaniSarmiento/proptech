@@ -1350,5 +1350,5 @@ AssertionError: expected "vi.fn()" to not be called at all, but actually been ca
 - El rompedor de `verify` absorbe la revisión independiente de la matriz que D-130 dejó pendiente
   ("el primer change que toque esa zona"): cotejar las 162 celdas contra D-106 y D-127, y decirlo en
   el veredicto.
-- Archivar con el `## Knowledge Base Impact` de `proposal.md`: D-nueva-1 a D-nueva-7 con su número
-  real, y la línea de D-127 sobre "gestionar".
+- Archivar con el `## Knowledge Base Impact` de `proposal.md`: D-131 a D-137 (número real, asignado
+  al archivar), y la línea de D-127 sobre "gestionar".

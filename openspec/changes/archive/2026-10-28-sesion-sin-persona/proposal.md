@@ -26,15 +26,14 @@ jerárquica. **Decisiones**: **D-021**
 **D-106** (la matriz, que suma `ver_personal`), **D-127** (`/personal` jerárquica aprobada en
 principio: es la decisión vigente, D-120 hoy es otra) y **D-128** (lo que el 3c dejó para un change de
 acceso), **D-130** (este change y sus cuatro ítems de acceso). Decisiones
-nuevas a escribir con la firma, con **número provisorio** porque el 3d (Gianfranco) y el 6 (Emiliano)
-corren en paralelo y el número real se asigna al mergear: **D-nueva-1** (contrato del 403
-`sin_acceso`, su precedencia sobre la elección y `codigo` como discriminador de todo 403),
-**D-nueva-2** (el `regreso` nunca apunta a una pantalla de acceso y el selector no rebota al ingreso),
-**D-nueva-3** (vinculación de una cuenta de desarrollo al ejemplo, con las trabas de entorno y de
-instancia de Clerk), **D-nueva-4** (las acciones permitidas viajan con la sesión y la web oculta lo
-que no se puede, 2.3), **D-nueva-5** (`ver_personal`: `/personal` jerárquica en sólo lectura, amplía
-D-106 según D-127), **D-nueva-6** (reinvitar el mismo email deja el nombre nuevo, 2.4), **D-nueva-7**
-(la invitación dice con qué cuenta se está, B-3).
+nuevas escritas al archivar, con su número real (`09_decisiones_y_supuestos.md`): **D-131** (contrato
+del 403 `sin_acceso`, su precedencia sobre la elección y `codigo` como discriminador de todo 403),
+**D-132** (el `regreso` nunca apunta a una pantalla de acceso y el selector no rebota al ingreso),
+**D-133** (vinculación de una cuenta de desarrollo al ejemplo, con las trabas de entorno y de
+instancia de Clerk), **D-134** (las acciones permitidas viajan con la sesión y la web oculta lo
+que no se puede, 2.3), **D-135** (`ver_personal`: `/personal` jerárquica en sólo lectura, amplía
+D-106 según D-127), **D-136** (reinvitar el mismo email deja el nombre nuevo, 2.4), **D-137**
+(la invitación dice con qué cuenta se está, B-3; enmendada el mismo día).
 
 ### Corrección al diagnóstico de la regresión
 
@@ -209,7 +208,7 @@ Archivos de `knowledge-base/` (listado del directorio, 28/10/2026): `01` a `16` 
 
 | documento | operación | qué |
 |---|---|---|
-| `09_decisiones_y_supuestos.md` | **APPEND** (al firmar) | **D-nueva-1** a **D-nueva-7** con su número real al mergear (403 `sin_acceso`, precedencia y `codigo`; `regreso` y selector; vinculación de desarrollo y sus trabas; acciones en la sesión; `ver_personal`; nombre al reinvitar; invitación con otra cuenta), y las respuestas a E1 a E11 |
+| `09_decisiones_y_supuestos.md` | **APPEND** (al firmar) | **D-131** a **D-137** (403 `sin_acceso`, precedencia y `codigo`; `regreso` y selector; vinculación de desarrollo y sus trabas; acciones en la sesión; `ver_personal`; nombre al reinvitar; invitación con otra cuenta), y las respuestas a E1 a E11 |
 | `09_decisiones_y_supuestos.md` | **APPEND** (al archivar) | Lo que la construcción agregue o corrija; una línea en D-127 que diga qué se construyó ("ver") y qué sigue pendiente ("gestionar"), sin reescribir la decisión fechada |
 | `03_actores_y_roles.md` | **REWRITE** (§"RBAC · Matriz de permisos" y §"Rutas públicas") | La matriz suma `ver_personal` (super admin y administrador principal); el administrador principal ve `/personal` en sólo lectura, nunca al super admin; `/sin-acceso` entra en las rutas de la web que no exigen persona, con lo que devuelve la API a un token válido sin acceso |
 | `04_modelo_de_datos.md` | **REWRITE** (vocabulario de `accion_de_auditoria`) | Suma `ver_personal` (migración `00NN`), y el evento de vinculación si E6 se aprueba con la alternativa |

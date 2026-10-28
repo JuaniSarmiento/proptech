@@ -11,12 +11,16 @@ acción sensible, con 404 fuera de alcance y 403 sin permiso, según D-037, D-07
 Todo endpoint de dominio SHALL exigir una identidad. Sin un token de sesión válido (ausente, mal
 formado, con firma, algoritmo, vigencia u origen inválidos), MUST responder 401 sin ejecutar ninguna
 consulta a la base. Con un token válido, la identidad MUST resolverse leyendo sólo el vínculo de esa
-identidad de Clerk con una persona y sus asignaciones; si no hay persona vinculada en la administración
-en uso, o no tiene ninguna asignación, la respuesta MUST ser el mismo 401, con el mismo cuerpo y los
-mismos encabezados salvo el `X-Request-ID`, sin leer ningún dato de dominio. Los tests pueden seguir
-inyectando la identidad. `GET /api/sesion` y `POST /api/invitaciones/aceptar` MUST exigir la
-segunda guarda, `token_de_sesion_actual`, sin persona completa; siguen protegidas y fuera de
-`_RUTAS_PUBLICAS`, también ante JSON roto. El barrido MUST comprobar ambas dependencias.
+identidad de Clerk con una persona y sus asignaciones, sin leer ningún dato de dominio. Si la identidad
+no tiene, en ninguna administración, una persona vinculada con al menos una asignación, la respuesta
+MUST ser el 403 `sin_acceso` de `autenticacion-con-clerk`, con su cuerpo constante. Si la tiene en
+alguna, pero no en la administración en uso (persona sin asignación en la elegida, administración
+ajena, varias sin elegir, selector que no es UUID), la respuesta MUST ser el mismo 401 que sin
+identidad, con el mismo cuerpo y los mismos encabezados salvo el `X-Request-ID`. El 403 `sin_acceso`
+prevalece sobre ese 401. Los tests pueden seguir inyectando la identidad. `GET /api/sesion` y
+`POST /api/invitaciones/aceptar` MUST exigir la segunda guarda, `token_de_sesion_actual`, sin persona
+completa; siguen protegidas y fuera de `_RUTAS_PUBLICAS`, también ante JSON roto. El barrido MUST
+comprobar ambas dependencias.
 
 #### Scenario: Pedido sin identidad
 
@@ -32,8 +36,14 @@ segunda guarda, `token_de_sesion_actual`, sin persona completa; siguen protegida
 #### Scenario: Token válido sin vínculo
 
 - **WHEN** se pide un complejo con un token válido de una identidad de Clerk sin persona vinculada
-- **THEN** la respuesta es 401, idéntica a la de un pedido sin identidad, y no se leyó ninguna fila de
-  complejo, unidad ni asignación
+- **THEN** la respuesta es el 403 con el cuerpo exacto `{"detail": {"codigo": "sin_acceso"}}`, y no se
+  leyó ninguna fila de complejo, unidad ni asignación
+
+#### Scenario: Token válido con acceso en otra administración
+
+- **WHEN** una identidad vinculada con asignación en A y sin asignación en B elige B y pide un complejo
+- **THEN** la respuesta es 401, idéntica a la de un pedido sin identidad salvo `X-Request-ID`, y no se
+  leyó ninguna fila de complejo de B
 
 ### Requirement: Alcance según el perfil
 
@@ -91,14 +101,17 @@ igual: mismo código 404, mismo cuerpo y mismos encabezados, salvo el `X-Request
 ### Requirement: Permiso por acción según la matriz de la empresa
 
 Cada acción sensible SHALL estar permitida sólo a los perfiles con alcance que marca esta matriz
-(D-106, que reemplaza la de D-096). Una asignación por edificio cuenta sólo en su complejo; una con
-alcance principal cuenta en todos los complejos de su administración. Dentro del alcance y sin el
-permiso, la respuesta MUST ser 403 con el nombre del permiso faltante. Fuera del alcance, la respuesta
-MUST ser 404 aunque tampoco tenga el permiso: el alcance se evalúa primero. Una acción que no está en
-la matriz MUST negarse. Contador, auxiliar y consejo MUST NOT poder ninguna acción que escriba. Sin
-complejo (`complejo_id` nulo, al crear un edificio) sólo MUST evaluarse el permiso `crear_edificio`:
+(D-106, que reemplaza la de D-096, ampliada por D-127 con `ver_personal`). Una asignación por edificio
+cuenta sólo en su complejo; una con alcance principal cuenta en todos los complejos de su
+administración. Dentro del alcance y sin el permiso, la respuesta MUST ser 403 con el cuerpo
+`{"detail": {"codigo": "sin_permiso", "detalle": "sin_permiso", "permiso_faltante": "<acción>"}}`.
+Fuera del alcance, la respuesta MUST ser 404 aunque tampoco tenga el permiso: el alcance se evalúa
+primero. Una acción que no está en la matriz MUST negarse. Contador, auxiliar y consejo MUST NOT poder
+ninguna acción que escriba. Sin complejo (`complejo_id` nulo) sólo MUST evaluarse `crear_edificio`,
+`invitar_usuarios_y_asignar_edificios` y `ver_personal`, las tres acciones de toda la administración:
 ninguna otra acción de la matriz MUST evaluarse sin complejo, aunque la asignación sea de alcance
-principal.
+principal. Las celdas permitidas de esas tres acciones MUST ser sólo de alcance principal, para que su
+respuesta no dependa de que se evalúen con o sin complejo.
 
 Columnas: SA, super admin; AP, administrador principal; AE, administrador por edificio; CP, contador
 principal; CE, contador por edificio; AX, auxiliar; CO, consejo; VP, vecino propietario; VI, vecino
@@ -111,11 +124,13 @@ inquilino.
 | `anular_liquidacion` | Sí | Sí | No | No | No | No | No | No | No |
 | `confirmar_pago_informado` | Sí | Sí | Sí | No | No | No | No | No | No |
 | `revertir_o_reimputar_pago` | Sí | Sí | No | No | No | No | No | No | No |
+| `corregir_movimiento` | Sí | Sí | No | No | No | No | No | No | No |
 | `condonar_intereses` | Sí | Sí | No | No | No | No | No | No | No |
 | `dar_de_baja_deuda` | Sí | Sí | No | No | No | No | No | No | No |
 | `aceptar_alertas_no_bloqueantes` | Sí | Sí | Sí | No | No | No | No | No | No |
 | `aceptar_alertas_bloqueantes` | Sí | Sí | No | No | No | No | No | No | No |
 | `invitar_usuarios_y_asignar_edificios` | Sí | No | No | No | No | No | No | No | No |
+| `ver_personal` | Sí | Sí | No | No | No | No | No | No | No |
 | `informar_pago` | No | No | No | No | No | No | No | Sí | Sí |
 | `crear_edificio` | Sí | No | No | No | No | No | No | No | No |
 | `crear_version_de_configuracion` | Sí | Sí | Sí | No | No | No | No | No | No |
@@ -130,7 +145,7 @@ configuración del edificio: ve sólo sus unidades y el complejo de cada una.
 #### Scenario: La matriz completa
 
 - **WHEN** se evalúa cada acción de la matriz para cada una de las nueve columnas, en un complejo del
-  alcance de la asignación
+  alcance de la asignación (y sin complejo para las tres acciones de toda la administración)
 - **THEN** el resultado coincide celda por celda con la matriz
 
 #### Scenario: Una asignación por edificio en otro complejo
@@ -151,11 +166,18 @@ configuración del edificio: ve sólo sus unidades y el complejo de cada una.
   bloqueante para un administrador principal en un complejo que nadie le asignó
 - **THEN** las cinco están permitidas
 
+#### Scenario: El administrador principal ve el personal pero no invita
+
+- **WHEN** se evalúan, sin complejo, `ver_personal` e `invitar_usuarios_y_asignar_edificios` para un
+  administrador principal
+- **THEN** ver el personal está permitido e invitar no
+
 #### Scenario: Colaborador asigna un edificio
 
 - **WHEN** un administrador por edificio (antes, colaborador "editar") intenta asignar un edificio a una persona en un complejo que
   tiene asignado
-- **THEN** la respuesta es 403 con el permiso faltante `invitar_usuarios_y_asignar_edificios`
+- **THEN** la respuesta es 403 con `codigo` `sin_permiso` y el permiso faltante
+  `invitar_usuarios_y_asignar_edificios`
 
 #### Scenario: Sin permiso y fuera de alcance
 
@@ -379,7 +401,6 @@ nombrar a ninguna persona.
 - **THEN** la vuelta atrás falla, dice cuántas filas de cada tipo lo impiden sin nombrar a nadie, y
   ninguna fila ni el esquema cambian
 
-
 ### Requirement: Corregir un movimiento es de super admin y administrador principal
 
 La matriz de permisos SHALL sumar la acción `corregir_movimiento`, permitida sólo a super admin (SA) y a
@@ -395,3 +416,135 @@ alcance 404, dentro y sin permiso 403 con el permiso faltante.
 
 - **WHEN** el test de rutas protegidas ejecuta el barrido sobre la app
 - **THEN** la ruta de corrección está en la lista y responde 401 sin identidad, sin tocar la base
+
+### Requirement: Todo 403 se distingue por `codigo`
+
+Todo 403 de la API SHALL llevar en `detail` la clave `codigo`, el único discriminador que la web lee
+para decidir qué significa. Sus valores MUST salir de una lista cerrada declarada una vez en el código:
+`sin_acceso` (cuerpo constante, sin otras claves) y `sin_permiso` (con `permiso_faltante`). La clave
+`detalle` MAY seguir, sin que la web dependa de ella. Un 403 sin `codigo`, o con
+uno desconocido, la web MUST tratarlo como `sin_permiso` "desconocido", nunca como `sin_acceso`.
+
+#### Scenario: Ningún 403 sin código
+
+- **WHEN** el barrido de rutas protegidas provoca un 403 en cada ruta que puede devolverlo, con la
+  identidad que lo dispara
+- **THEN** cada cuerpo tiene `detail.codigo` y su valor está en la lista cerrada
+
+#### Scenario: El 403 de permiso lleva su código
+
+- **WHEN** un auxiliar intenta crear una categoría en su edificio
+- **THEN** la respuesta es 403 con `codigo` `sin_permiso` y `permiso_faltante` `configurar_padron`
+
+#### Scenario: Un 403 sin código en la web
+
+- **WHEN** la web recibe un 403 cuyo cuerpo no trae `codigo`, o trae un valor que no conoce
+- **THEN** lo muestra como "sin permiso" con el permiso "desconocido" y no redirige a `/sin-acceso`
+
+### Requirement: Las acciones permitidas viajan con la sesión
+
+`GET /api/sesion` SHALL devolver, en cada administración, las acciones que la persona vinculada ahí
+puede hacer, en tres conjuntos: `administracion` (las de administración), `todos_los_edificios` (las de
+edificio que una asignación principal permite en cualquier edificio) y `por_edificio` (por cada edificio
+con asignación por edificio o por unidad, las de edificio que suma ahí). El 403 `sin_acceso` MUST NOT
+cambiar.
+
+#### Scenario: El super admin
+
+- **WHEN** el super admin de A pide `GET /api/sesion`
+- **THEN** A trae en `administracion` `crear_edificio`, `invitar_usuarios_y_asignar_edificios` y
+  `ver_personal`, y en `todos_los_edificios` todas las acciones de la matriz con complejo que su columna
+  permite
+
+#### Scenario: Un contador por edificio
+
+- **WHEN** un contador del edificio E de A pide `GET /api/sesion`
+- **THEN** A trae `administracion` y `todos_los_edificios` vacíos y en `por_edificio` sólo E, con
+  `ver_configuracion_del_edificio`
+
+#### Scenario: El 403 sin acceso no cambia
+
+- **WHEN** una identidad sin acceso pide `GET /api/sesion` con la sesión ampliada
+- **THEN** el cuerpo sigue siendo exactamente `{"detail": {"codigo": "sin_acceso"}}`
+
+### Requirement: Las acciones de la sesión coinciden con los 403
+
+Las acciones de la sesión SHALL calcularse en la API con la misma matriz y las mismas asignaciones que
+`puede` usa para responder 403, nunca guardadas aparte, y la comparación con `puede` MUST hacerse por
+tipo de acción, en todo contexto: sin edificio, un edificio propio y uno ajeno. Las acciones de
+administración (`crear_edificio`, `invitar_usuarios_y_asignar_edificios`, `ver_personal`) MUST
+declararse una sola vez en el código, y usarlas `puede` y la sesión.
+
+#### Scenario: Las acciones coinciden con los 403
+
+- **WHEN** se compara, para cada una de las nueve columnas y para combinaciones de dos asignaciones,
+  cada acción de la matriz en cada contexto (sin edificio, el edificio propio, uno ajeno), lo que dice la
+  sesión según su tipo contra `puede`
+- **THEN** coinciden en todas las comparaciones
+
+### Requirement: Una acción de administración no depende del edificio
+
+Para una acción de administración, "está en `administracion`" SHALL coincidir con `puede` en cualquier
+contexto, con o sin edificio, y la acción MUST NOT aparecer en `todos_los_edificios` ni en
+`por_edificio`. Sus celdas permitidas en la matriz MUST ser sólo de alcance principal.
+
+#### Scenario: Una acción de administración evaluada con un edificio
+
+- **WHEN** se evalúan `crear_edificio` e `invitar_usuarios_y_asignar_edificios` para el super admin con
+  un `complejo_id` válido de su administración, y para un administrador por edificio con el suyo
+- **THEN** `puede` da lo mismo que sin complejo (sí para el super admin, no para el administrador por
+  edificio) y coincide con que la acción esté o no en `administracion`
+
+#### Scenario: Las acciones de administración sólo tienen celdas principales
+
+- **WHEN** se recorren las celdas permitidas de `crear_edificio`, `invitar_usuarios_y_asignar_edificios`
+  y `ver_personal` en la matriz
+- **THEN** todas son de alcance principal, de modo que ninguna asignación por edificio o por unidad
+  cambia su respuesta
+
+### Requirement: Una acción de edificio se compara con el edificio
+
+Para una acción de edificio (toda acción que no es de administración), sin edificio `puede` SHALL ser
+falso y la acción MUST NOT estar en `administracion`; con un edificio, "está en `todos_los_edificios` o
+en `por_edificio` de ese edificio" MUST coincidir con `puede`.
+
+#### Scenario: Una acción de edificio sin edificio
+
+- **WHEN** se evalúa `configurar_padron` sin complejo para el super admin
+- **THEN** `puede` es falso y `configurar_padron` no está en `administracion`, aunque sí esté en
+  `todos_los_edificios`
+
+#### Scenario: Una acción de edificio en un edificio ajeno
+
+- **WHEN** se evalúa `configurar_padron` para un administrador del edificio E1 en el edificio E2
+- **THEN** `puede` es falso y `configurar_padron` no está en `todos_los_edificios` ni en
+  `por_edificio` de E2
+
+### Requirement: La web oculta lo que la persona no puede usar
+
+La web SHALL mostrar cada control que dispara una acción de la matriz ("Personal" en el menú de la
+administración, "Nuevo edificio", "Agregar unidad" y los controles de escritura del edificio y de
+`/personal`) sólo si la sesión dice que esa acción está permitida ahí. Las secciones de sólo lectura
+MUST seguir visibles. Ocultar MUST NOT reemplazar al chequeo de la API. Sin acciones de sesión, la web
+MUST ocultar todo control de escritura.
+
+#### Scenario: Un contador abre un edificio
+
+- **WHEN** un contador del edificio E abre el padrón de E
+- **THEN** ve las unidades sin "Agregar unidad" ni ningún control de edición, y el menú de la
+  administración no muestra "Personal"
+
+#### Scenario: Un administrador por edificio
+
+- **WHEN** un administrador del edificio E abre la lista de edificios y el padrón de E
+- **THEN** no ve "Nuevo edificio" y sí ve "Agregar unidad" en E
+
+#### Scenario: El control oculto pedido a mano
+
+- **WHEN** un contador manda a mano el pedido de crear una unidad en E
+- **THEN** la respuesta sigue siendo 403 con `codigo` `sin_permiso` y nada cambia
+
+#### Scenario: Sin acciones en la sesión
+
+- **WHEN** una pantalla del edificio se dibuja sin acciones de sesión disponibles
+- **THEN** no muestra ningún control de escritura
