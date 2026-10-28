@@ -92,6 +92,11 @@ class _CambioCoeficienteMiembro(_CambioCoeficiente):
     unidad_id: UUID
 
 
+class _CambiosDeMiembros(_DetalleBase):
+    entraron: list[UUID]
+    salieron: list[UUID]
+
+
 class _DetalleCrearUnidad(_DetalleAsignarEdificio):
     campos: list[Literal["identificador", "tipo", "piso", "coeficiente", "superficie_m2"]]
     coeficiente: _CambioCoeficiente | None = None
@@ -113,6 +118,7 @@ class _DetalleEditarGrupo(_DetalleAsignarEdificio):
 class _DetalleFijarUnidades(_DetalleAsignarEdificio):
     campos: list[Literal["modo_de_coeficientes", "unidades"]]
     coeficientes: list[_CambioCoeficienteMiembro] | None = None
+    miembros: _CambiosDeMiembros | None = None
 
 
 class _DetalleEditarCategoria(_DetalleAsignarEdificio):

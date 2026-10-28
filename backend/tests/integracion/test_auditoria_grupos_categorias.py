@@ -76,6 +76,60 @@ def test_grupo_coeficientes_y_no_op(api_edificio: ApiEdificio) -> None:
     assert registros[0][1] == api.personas["super_admin"]
 
 
+def test_fijar_unidades_solo_cambio_de_modo(api_edificio: ApiEdificio) -> None:
+    """RB-5 (4a): el mutante que borra el chequeo de `modo_de_coeficientes` en
+    `campos` sobrevivía porque ningún test aislaba un cambio de modo sin
+    cambio de unidades. Un grupo vacío lo aísla: antes y después son `{}`."""
+    api = api_edificio
+    g = grupo(api, [], modo="renormalizado")
+    cuerpo = {"modo_de_coeficientes": "propios", "unidades": []}
+    assert api.cliente.put(f"/api/grupos/{g}/unidades", json=cuerpo).status_code == 200
+    registros = eventos(api, "fijar_unidades", g)
+    assert len(registros) == 1
+    assert registros[0][0] == {
+        "complejo_id": str(api.edificio),
+        "campos": ["modo_de_coeficientes"],
+    }
+
+
+def test_fijar_unidades_entrada_y_salida_renormalizado(api_edificio: ApiEdificio) -> None:
+    """RB-5 (4a): en un grupo renormalizado el coeficiente siempre es `None`,
+    así que `coeficientes` nunca distingue qué unidad entró o salió. `miembros`
+    lo hace explícito."""
+    api = api_edificio
+    a, b, c = [alta(api, identificador=f"Nueva {i}") for i in range(3)]
+    g = grupo(api, [{"unidad_id": a}, {"unidad_id": b}], modo="renormalizado")
+    cuerpo = {
+        "modo_de_coeficientes": "renormalizado",
+        "unidades": [{"unidad_id": b}, {"unidad_id": c}],
+    }
+    assert api.cliente.put(f"/api/grupos/{g}/unidades", json=cuerpo).status_code == 200
+    registros = eventos(api, "fijar_unidades", g)
+    assert len(registros) == 1
+    assert registros[0][0] == {
+        "complejo_id": str(api.edificio),
+        "campos": ["unidades"],
+        "miembros": {"entraron": [c], "salieron": [a]},
+    }
+
+
+def test_fijar_unidades_solo_salida_renormalizado(api_edificio: ApiEdificio) -> None:
+    """Triangula el caso anterior: sólo sale una unidad, ninguna entra — un
+    `miembros` armado a mano con ambas listas iguales no pasaría esto."""
+    api = api_edificio
+    a, b = [alta(api, identificador=f"Nueva {i}") for i in range(2)]
+    g = grupo(api, [{"unidad_id": a}, {"unidad_id": b}], modo="renormalizado")
+    cuerpo = {"modo_de_coeficientes": "renormalizado", "unidades": [{"unidad_id": a}]}
+    assert api.cliente.put(f"/api/grupos/{g}/unidades", json=cuerpo).status_code == 200
+    registros = eventos(api, "fijar_unidades", g)
+    assert len(registros) == 1
+    assert registros[0][0] == {
+        "complejo_id": str(api.edificio),
+        "campos": ["unidades"],
+        "miembros": {"entraron": [], "salieron": [b]},
+    }
+
+
 def test_siete_eventos_y_solo_nombres(api_edificio: ApiEdificio) -> None:
     api = api_edificio
     uid = alta(api)
