@@ -32,7 +32,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
     casos_sensibles_registrados,
     registrar,
 )
-from proptech_core.acceso.dominio.eventos import EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.georef import leer_georef
@@ -40,6 +40,13 @@ from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
 from proptech_core.complejos.aplicacion.escritura import asignar_complejo_a_persona
 from proptech_core.complejos.dominio.configuracion import ConfiguracionEdificio
+from proptech_core.gastos.aplicacion import (
+    cargos_particulares,
+    gastos,
+    notas_de_credito,
+    proveedores,
+)
+from proptech_core.gastos.puertos import FilaCargoImportada
 
 pytestmark = pytest.mark.integracion
 
@@ -486,7 +493,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         )
         return edificio
 
-    _INVOCADORES: dict[Accion | EventoDelPadron, Callable[[Session], UUID]] = {
+    _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
                 sesion,
@@ -536,6 +543,153 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
 
     for evento in EventoDelPadron:
         _INVOCADORES[evento] = invocador(evento)
+
+    def invocar_gasto(sesion: Session, evento: EventoDelGasto) -> UUID:
+        """Cambio 6 `gastos-y-cargos`: mismo patrón que `invocar_padron`
+        (crea lo que necesita cada vez, por su propia cuenta)."""
+        complejo_id: UUID = datos["complejo_id"]
+        categoria_id = uuid.uuid4()
+        grupo_id = uuid.uuid4()
+        sesion.execute(
+            text(
+                "INSERT INTO categoria_de_gasto (id, administracion_id, complejo_id, clave, "
+                "nombre, orden) VALUES (:id, :admin, :complejo, 'auditada', 'Auditada', 0)"
+            ),
+            {"id": categoria_id, "admin": datos["administracion_id"], "complejo": complejo_id},
+        )
+        sesion.execute(
+            text(
+                "INSERT INTO grupo_de_reparto (id, administracion_id, complejo_id, clave, "
+                "nombre, metodo) VALUES (:id, :admin, :complejo, 'auditado', 'Auditado', "
+                "'partes_iguales')"
+            ),
+            {"id": grupo_id, "admin": datos["administracion_id"], "complejo": complejo_id},
+        )
+        if evento in (EventoDelGasto.CREAR_PROVEEDOR, EventoDelGasto.EDITAR_PROVEEDOR):
+            proveedor_id = proveedores.crear_proveedor(
+                sesion,
+                identidad,
+                complejo_id=complejo_id,
+                datos={"razon_social": "Proveedora Auditada", "cuit": "20123456786"},
+                request_id=uuid.uuid4(),
+            )
+            if evento == EventoDelGasto.EDITAR_PROVEEDOR:
+                proveedores.editar_proveedor(
+                    sesion,
+                    identidad,
+                    proveedor_id=proveedor_id,
+                    cambios={"razon_social": "Proveedora Auditada Editada"},
+                    request_id=uuid.uuid4(),
+                )
+            return proveedor_id
+        if evento in (
+            EventoDelGasto.CREAR_GASTO,
+            EventoDelGasto.EDITAR_GASTO,
+            EventoDelGasto.APROBAR_GASTO,
+            EventoDelGasto.CARGAR_NOTA_DE_CREDITO,
+        ):
+            gasto_id, _aviso = gastos.crear_gasto(
+                sesion,
+                identidad,
+                complejo_id=complejo_id,
+                datos={
+                    "concepto": "Gasto auditado",
+                    "categoria_id": categoria_id,
+                    "grupo_id": grupo_id,
+                    "periodo": date(2026, 10, 1),
+                    "importe": "1000.00",
+                    "cuit_emisor": "20123456786",
+                    "punto_de_venta": "0001",
+                    "tipo_de_comprobante": "factura_a",
+                    "numero_de_comprobante": f"{evento.value}-1",
+                },
+                request_id=uuid.uuid4(),
+            )
+            if evento == EventoDelGasto.EDITAR_GASTO:
+                gastos.editar_gasto(
+                    sesion,
+                    identidad,
+                    gasto_id=gasto_id,
+                    cambios={"concepto": "Gasto auditado editado"},
+                    request_id=uuid.uuid4(),
+                )
+                return gasto_id
+            if evento == EventoDelGasto.APROBAR_GASTO:
+                gastos.aprobar_gasto(sesion, identidad, gasto_id=gasto_id, request_id=uuid.uuid4())
+                return gasto_id
+            if evento == EventoDelGasto.CARGAR_NOTA_DE_CREDITO:
+                return notas_de_credito.crear_nota_de_credito(
+                    sesion,
+                    identidad,
+                    gasto_id=gasto_id,
+                    datos={
+                        "importe": "100.00",
+                        "periodo": date(2026, 10, 1),
+                        "cuit_emisor": "20123456786",
+                        "punto_de_venta": "0001",
+                        "tipo_de_comprobante": "nota_de_credito_a",
+                        "numero_de_comprobante": "1",
+                    },
+                    request_id=uuid.uuid4(),
+                )
+            return gasto_id
+        unidad_id = uuid.uuid4()
+        sesion.execute(
+            text(
+                "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, tipo, "
+                "piso, coeficiente, superficie_m2) VALUES (:id, :admin, :complejo, 'AUD', "
+                "'departamento', '1', '1.0', '50')"
+            ),
+            {"id": unidad_id, "admin": datos["administracion_id"], "complejo": complejo_id},
+        )
+        if evento == EventoDelGasto.IMPORTAR_CARGOS_PARTICULARES:
+
+            class _LectorFalso:
+                def leer(self, _contenido: bytes) -> list[FilaCargoImportada]:
+                    return [FilaCargoImportada(2, "AUD", "Importado auditado", "100.00")]
+
+            cargos_particulares.importar_cargos_particulares(
+                sesion,
+                identidad,
+                complejo_id=complejo_id,
+                lector=_LectorFalso(),
+                contenido=b"",
+                periodo=date(2026, 10, 1),
+                request_id=uuid.uuid4(),
+            )
+            return complejo_id
+        cargo_id = cargos_particulares.crear_cargo_particular(
+            sesion,
+            identidad,
+            complejo_id=complejo_id,
+            datos={
+                "unidad_id": unidad_id,
+                "concepto": "Cargo auditado",
+                "importe": "500.00",
+                "periodo": date(2026, 10, 1),
+                "motivo": "Prueba de auditoría",
+            },
+            request_id=uuid.uuid4(),
+        )
+        if evento == EventoDelGasto.EDITAR_CARGO_PARTICULAR:
+            cargos_particulares.editar_cargo_particular(
+                sesion,
+                identidad,
+                cargo_id=cargo_id,
+                cambios={"concepto": "Cargo auditado editado"},
+                request_id=uuid.uuid4(),
+            )
+        elif evento == EventoDelGasto.APROBAR_CARGO_PARTICULAR:
+            cargos_particulares.aprobar_cargo_particular(
+                sesion, identidad, cargo_id=cargo_id, request_id=uuid.uuid4()
+            )
+        return cargo_id
+
+    def invocador_de_gasto(evento: EventoDelGasto) -> Callable[[Session], UUID]:
+        return lambda sesion: invocar_gasto(sesion, evento)
+
+    for evento_gasto in EventoDelGasto:
+        _INVOCADORES[evento_gasto] = invocador_de_gasto(evento_gasto)
 
     registrados = casos_sensibles_registrados()
     assert set(registrados) == set(_INVOCADORES), (

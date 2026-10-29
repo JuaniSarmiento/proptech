@@ -70,7 +70,10 @@ D-046):
   auditoría).
 - Cada módulo con capas `dominio` (reglas puras), `aplicacion` (casos de uso), `puertos.py` e
   `adaptadores/`. Las dependencias apuntan hacia adentro.
-- Los módulos se comunican sólo por su capa `aplicacion`; nunca tocan tablas ajenas.
+- Los módulos se comunican sólo por su capa `aplicacion`; nunca tocan tablas ajenas. `gastos` dejó de
+  estar vacío con el cambio 6 (29/10/2026): proveedores, gastos y sus cuatro estados, notas de
+  crédito y cargos particulares, con dos lecturas agregadas pensadas para que el cambio 7 (todavía
+  sin construir) las consuma sin reimplementar ninguna regla.
 - Muchos edificios en una sola base, cada fila con su administración, y Row-Level Security de
   PostgreSQL como segundo candado de R10. **Vigente desde el cierre del cambio 2a** (15/10/2026,
   D-098): RLS forzada en `administracion`, `complejo`, `unidad`, `persona`, `asignacion_rol` y

@@ -28,9 +28,12 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDeAcceso, EventoDelGasto, EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+
+#: Alias corto para el vocabulario completo auditable (D9 + `gastos-y-cargos`).
+_Accionable = Accion | EventoDeAcceso | EventoDelPadron | EventoDelGasto
 
 
 class RegistroFueraDeTransaccion(Exception):
@@ -143,9 +146,67 @@ class _DetalleEditarEdificio(_DetalleAsignarEdificio):
     ]
 
 
+class _DetalleCrearProveedor(_DetalleAsignarEdificio):
+    pass
+
+
+class _DetalleEditarProveedor(_DetalleAsignarEdificio):
+    campos: list[Literal["razon_social", "activo"]]
+
+
+class _DetalleCrearGasto(_DetalleAsignarEdificio):
+    pass
+
+
+class _DetalleEditarGasto(_DetalleAsignarEdificio):
+    #: Sólo nombres de campo (nunca el valor, D9): "importe" puede figurar
+    #: acá, listado, mientras el gasto editable (borrador/sin_ia/en_revision)
+    #: cambie su monto — lo que el detalle nunca lleva es el VALOR del monto.
+    campos: list[
+        Literal[
+            "concepto",
+            "categoria_id",
+            "grupo_id",
+            "periodo",
+            "tipo",
+            "importe",
+            "proveedor_id",
+            "cuit_emisor",
+            "punto_de_venta",
+            "tipo_de_comprobante",
+            "numero_de_comprobante",
+            "documento_receptor",
+        ]
+    ]
+
+
+class _DetalleAprobarGasto(_DetalleAsignarEdificio):
+    pass
+
+
+class _DetalleCargarNotaDeCredito(_DetalleAsignarEdificio):
+    gasto_id: UUID
+
+
+class _DetalleCrearCargoParticular(_DetalleAsignarEdificio):
+    unidad_id: UUID
+
+
+class _DetalleEditarCargoParticular(_DetalleAsignarEdificio):
+    campos: list[Literal["concepto", "periodo", "importe", "unidad_id", "motivo"]]
+
+
+class _DetalleAprobarCargoParticular(_DetalleAsignarEdificio):
+    unidad_id: UUID
+
+
+class _DetalleImportarCargosParticulares(_DetalleAsignarEdificio):
+    cantidad: int
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
-_MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_DetalleBase]] = {
+_MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     EventoDelPadron.CREAR_UNIDAD: _DetalleCrearUnidad,
     EventoDelPadron.EDITAR_UNIDAD: _DetalleEditarUnidad,
     EventoDelPadron.CREAR_GRUPO: _DetalleCrearGrupo,
@@ -162,12 +223,20 @@ _MODELOS_DE_DETALLE: dict[Accion | EventoDeAcceso | EventoDelPadron, type[_Detal
     Accion.CORREGIR_MOVIMIENTO: _DetalleCorreccion,
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
+    EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
+    EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
+    EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,
+    EventoDelGasto.EDITAR_GASTO: _DetalleEditarGasto,
+    EventoDelGasto.APROBAR_GASTO: _DetalleAprobarGasto,
+    EventoDelGasto.CARGAR_NOTA_DE_CREDITO: _DetalleCargarNotaDeCredito,
+    EventoDelGasto.CREAR_CARGO_PARTICULAR: _DetalleCrearCargoParticular,
+    EventoDelGasto.EDITAR_CARGO_PARTICULAR: _DetalleEditarCargoParticular,
+    EventoDelGasto.APROBAR_CARGO_PARTICULAR: _DetalleAprobarCargoParticular,
+    EventoDelGasto.IMPORTAR_CARGOS_PARTICULARES: _DetalleImportarCargosParticulares,
 }
 
 
-def _detalle_validado(
-    accion: Accion | EventoDeAcceso | EventoDelPadron, detalle: dict[str, Any]
-) -> dict[str, Any]:
+def _detalle_validado(accion: _Accionable, detalle: dict[str, Any]) -> dict[str, Any]:
     modelo = _MODELOS_DE_DETALLE.get(accion, _DetalleBase)
     try:
         validado = modelo.model_validate(detalle)
@@ -183,7 +252,7 @@ def _detalle_validado(
 def registrar(
     sesion: Session,
     identidad: Identidad,
-    accion: Accion | EventoDeAcceso | EventoDelPadron,
+    accion: _Accionable,
     *,
     entidad: str,
     entidad_id: UUID,
@@ -223,11 +292,11 @@ _R = TypeVar("_R")
 #: Caso de uso marcado -> Accion que audita (D9). Nunca se edita a mano
 #: fuera del decorador: lo llena `accion_sensible` cuando el módulo del
 #: caso de uso se importa.
-_CASOS_SENSIBLES: dict[Accion | EventoDeAcceso | EventoDelPadron, Callable[..., Any]] = {}
+_CASOS_SENSIBLES: dict[_Accionable, Callable[..., Any]] = {}
 
 
 def accion_sensible(
-    accion: Accion | EventoDeAcceso | EventoDelPadron,
+    accion: _Accionable,
 ) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """Marca `funcion` como el caso de uso que audita `accion` (D9): no
     cambia su comportamiento, sólo la suma al registro que recorre el test
@@ -250,9 +319,7 @@ def accion_sensible(
     return decorador
 
 
-def casos_sensibles_registrados() -> dict[
-    Accion | EventoDeAcceso | EventoDelPadron, Callable[..., Any]
-]:
+def casos_sensibles_registrados() -> dict[_Accionable, Callable[..., Any]]:
     """Copia del registro (nunca el dict real): quien lo use no puede
     mutarlo por accidente."""
     return dict(_CASOS_SENSIBLES)

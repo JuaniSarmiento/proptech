@@ -590,15 +590,29 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
   por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a
   `campos` de `fijar_unidades`) — el 3c no lo tocó
-- **Dependencias**: C-06a, C-07a (el reparto); C-07b si escribe en el libro (SUPUESTO S-04 del
-  arquitecto del 4, sin verificar contra R14 y R25)
-- **Governance**: se declara en el propose (`openspec/config.yaml`)
+- **No construye** (queda explícitamente fuera, para un cambio que todavía **no existe**): **las
+  pantallas de HU-A3 y HU-A3b**. Revisado el roadmap completo el 28/10/2026, este cambio **no nombra a
+  ningún consumidor de pantalla**: a diferencia del 3a (que dejó las suyas al 3b, ya planificado) y del
+  4a y 4b (que nombran el cambio futuro de cada pantalla: 8 por D-120, 7 por D-124), acá no hay cambio
+  hermano planificado. Emiliano decide el 28/10/2026 que el 6 construye **sólo backend y API**, sin
+  partirse, y que la superficie web va en un **cambio nuevo, a crear más adelante y todavía sin
+  nombre**, que necesitará su sesión de `impeccable shape` por pantalla antes del propose (D-102).
+  Decisión en **D-131**
+- **Dependencias**: C-06a, C-07a (el reparto); C-07b **no es dependencia**: el propose del 28/10/2026
+  resolvió el SUPUESTO S-04 como **no escribe en el libro**, verificado contra R14 (manda los créditos
+  particulares a la ruta de corrección del 4b) y R22 (opera sobre el gasto, antes de prorratear); una
+  frontera de módulos con test lo vigila. El 4b está archivado igual
+- **Governance**: **MEDIUM**, declarado en el propose del 28/10/2026 — no requiere firma de D-094/D-111.
+  Respaldo: D-130 dice que el 6 no toca el camino crítico ni una zona CRITICAL. Sube a CRITICAL y se
+  frena si alguna tarea necesitara escribir en `movimiento`, `obligacion` o `imputacion`
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §6 y §4a (ficha 4a, deuda del cierre, RB-5)
   - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Gastos y cargos
   - `knowledge-base/06_funcionalidades.md` §HU-A3, HU-A3b
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
-  - `knowledge-base/10_preguntas_abiertas.md` (P15, P17, P25, P36, P37)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130, D-131)
+  - `knowledge-base/10_preguntas_abiertas.md` (P15, P17, P25, P36, P37). **P36 y P37 bloquean dos
+    tareas del change** (el período de imputación y la marca de gasto mensual obligatorio): el propose
+    las dejó señaladas con una propuesta cada una, sin inventar la respuesta
 
 ---
 

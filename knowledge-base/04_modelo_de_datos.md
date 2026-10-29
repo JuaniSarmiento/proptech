@@ -460,8 +460,10 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 
 - **Atributos** (`0008_categorias_de_gasto.py`): `id` · `UUID` PK; `administracion_id`/`complejo_id` ·
   `UUID NOT NULL`; `clave` · `TEXT NOT NULL`; `nombre` · `TEXT NOT NULL`; `orden` · `INTEGER NOT NULL`;
-  `activa` · `BOOLEAN NOT NULL`, default `true`.
-- **Relaciones**: pertenece a un `complejo`; clasificará muchos `gasto` (cambio 6).
+  `activa` · `BOOLEAN NOT NULL`, default `true`; `obligatorio_mensual` · `BOOLEAN NOT NULL`, default
+  `false` (migración `0032`, D7/D-132 del cambio 6: "el consorcio gasta todos los meses", con
+  independencia del proveedor que lo facture — sin edición por API todavía, se fija por SQL directo).
+- **Relaciones**: pertenece a un `complejo`; clasifica muchos `gasto` (cambio 6).
 - **Constraints**: `uq_categoria_clave`; `uq_categoria_orden` (única, `DEFERRABLE INITIALLY DEFERRED`,
   para poder reordenar todas en una transacción); `uq_categoria_nombre` (índice único por
   `lower(nombre)`, no se repite salvo mayúsculas); `ck_categoria_de_gasto_nombre_no_vacio` (`0016`). Una
@@ -543,39 +545,72 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 `configuracion_versionada` ya no son planificadas: ver "Existe hoy, dominio `complejos` y `acceso`" y
 "Existe hoy, dominio `complejos`" más arriba.
 
-### Planificado, dominio `gastos`
+### Existe hoy, dominio `gastos`
 
-#### `proveedor` · planificada (cambio 6)
+Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026): migraciones `0028` (`proveedor`,
+`gasto`), `0029` (los diez eventos de auditoría del dominio), `0030` (`complejo.cuit`, tarea 3.10),
+`0031` (`nota_de_credito`, `cargo_particular`) y `0032` (`categoria_de_gasto.obligatorio_mensual`,
+D7/D-132). RLS forzada en las cuatro, dueño `proptech_migrador` (D9 del design: ninguna es de sólo
+agregar mientras no está aprobada).
 
-- **Relaciones**: factura a un `complejo`; emite muchos `gasto`.
-- **Constraints**: identificado por CUIT (R12); el historial de montos por proveedor alimenta el
-  control de monto atípico (R23, propuesta, umbral pendiente P21).
+#### `proveedor` · existe (migración `0028`, R12, R16)
 
-#### `gasto` · planificada (cambio 6, manual; cambio 14, lectura por QR/IA)
+- **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `razon_social` · texto (1-200,
+  no vacío); `cuit` · texto, 11 dígitos (`ck_proveedor_cuit`); `activo` · booleano, default `true`;
+  `creado_en`.
+- **Relaciones**: pertenece a un `complejo`; referenciado por `gasto.proveedor_id` (nullable: el
+  sueldo del encargado se carga sin proveedor).
+- **Constraints**: `uq_proveedor_cuit` (único por `complejo_id` + `cuit`, el mismo CUIT puede repetirse
+  en otro edificio); `uq_proveedor_complejo_id` para que `gasto` pueda FK-ear compuesto. **Nunca se
+  borra**, sólo se desactiva (R16) — no existe ruta de borrado en la API.
 
-- **Atributos conocidos** (de R12, R13, R16, D-075): proveedor, concepto, categoría (obligatoria),
-  grupo de reparto, período, importe (`Dinero`), tipo ordinario/extraordinario (default ordinario), y
-  del comprobante: CUIT emisor, punto de venta, tipo y número de comprobante.
-- **Estados** (D-075, máquina de cuatro pasos): **borrador** → **sin IA** o **en revisión** (lectura
-  automática) → **aprobado**. Sólo el aprobado entra en el cálculo.
-- **Relaciones**: pertenece a un `complejo`, un `proveedor`, un `grupo_de_reparto`, una
-  `categoria_de_gasto`; puede tener una o más `nota_de_credito`.
-- **Constraints**: `cuit + punto_de_venta + tipo_comprobante + numero` no se repite dentro del complejo
-  (R12, clave completa aclarada por D-079/D-081 para no confundir una factura con su nota de crédito).
-- **Índices**: candidato único compuesto sobre esa misma clave, a decidir en el design del cambio 6.
+#### `gasto` · existe (migración `0028`, R12, R13, R16, D-075)
 
-#### `nota_de_credito` · planificada (cambio 6, R22, D-061)
+- **Atributos**: `proveedor_id` (nullable), `categoria_id`, `grupo_id` (obligatorios, FK compuestos
+  contra el edificio), `concepto`, `periodo` · fecha, primer día del mes (`ck_gasto_periodo`),
+  `periodo_de_imputacion` · fecha, arranca igual a `periodo` y sigue sincronizada mientras el gasto es
+  editable; se **fija al aprobar** (D8/D-132, bloque 7: el primer período no emitido al momento de
+  aprobar, nunca uno ya emitido — hoy ningún período puede estar "emitido" porque `liquidacion`,
+  cambio 7, no existe todavía); `tipo` · `ordinario`/`extraordinario` (default `ordinario`); `importe`
+  · `NUMERIC(14,2)`, mayor a cero; `estado` · `borrador`/`sin_ia`/`en_revision`/`aprobado` (D-075,
+  sólo el aprobado entra en el cálculo); los cuatro campos de la factura (`cuit_emisor`,
+  `punto_de_venta`, `tipo_de_comprobante`, `numero_de_comprobante`, D3: viajan juntos o no viajan,
+  `ck_gasto_factura`); `documento_receptor` · texto libre (tarea 3.10, el dato que informa el
+  administrador, distinto de `complejo.cuit`).
+- **Relaciones**: pertenece a un `complejo`, un `proveedor` opcional, un `grupo_de_reparto` (debe
+  estar activo, tarea 3.4), una `categoria_de_gasto`; puede tener una o más `nota_de_credito`.
+- **Constraints**: `uq_gasto_factura` sobre la clave completa de factura, por edificio (R12; los
+  `NULL` de un gasto sin factura no chocan entre sí, D5 del design). Editar importe/categoría/grupo/
+  período/tipo/datos de factura de un gasto `aprobado` se rechaza.
+- **No construido en este cambio**: lectura de QR ni IA (cambio 14); control de monto atípico R23
+  (cambio 7).
 
-- **Constraints**: asociada a la `gasto` (factura) que corrige; su monto no puede superar el de esa
-  factura; se descuenta del gasto antes de prorratear, en el período en que se carga (nunca reabre una
-  liquidación ya emitida, D-082).
+#### `nota_de_credito` · existe (migración `0031`, R22, D-061, D-082)
 
-#### `cargo_particular` · planificada (cambio 6, R14, D-025)
+- **Atributos**: `gasto_id` (la factura que corrige, obligatoria), `importe`, `periodo`, los cuatro
+  campos de su propia factura (`cuit_emisor`, `punto_de_venta`, `tipo_de_comprobante`,
+  `numero_de_comprobante`, todos obligatorios — a diferencia de `gasto`, una nota de crédito siempre
+  tiene comprobante propio).
+- **Relaciones**: pertenece a un `gasto` (FK compuesto contra el edificio, nunca cruza complejo).
+- **Constraints**: `uq_nota_factura` (mismo patrón de clave que `gasto`, por edificio). Su monto no
+  puede superar el saldo pendiente de su factura (R22, tope garantizado con `SELECT ... FOR UPDATE`
+  sobre el gasto, D5 del design — no con un `CHECK`, porque el tope depende de las notas previas). Se
+  descuenta del gasto **en el período en que se carga** (`periodo` propio de la nota, nunca el
+  `periodo_de_imputacion` de la factura) — nunca reabre una liquidación ya emitida (D-082).
 
-- **Atributos conocidos**: unidad, concepto, importe, período, motivo; o importado en lote desde Excel.
-- **Relaciones**: pertenece a una `unidad`.
-- **Constraints**: en borrador no entra en la liquidación; un **cargo recurrente del reglamento**
-  (propuesta, R14) lo genera la regla del motor cada período, no se carga a mano.
+#### `cargo_particular` · existe (migración `0031`, R14, D-025)
+
+- **Atributos**: `unidad_id`, `concepto`, `importe`, `periodo` (primer día del mes), `motivo`,
+  `estado` · `borrador`/`aprobado`.
+- **Relaciones**: pertenece a una `unidad` (FK compuesto contra el edificio) — **sin ninguna columna
+  de grupo de reparto** (D2 del design: la base lo hace imposible, no una consulta bien escrita; un
+  cargo particular nunca entra en la base prorrateable de R13).
+- **Constraints**: en `borrador` no entra en ninguna lectura de cargos aprobados; editar un cargo
+  `aprobado` se rechaza. Importación en lote desde Excel (puerto `LectorDePlanillaDeCargos`, adaptador
+  real con `openpyxl`): todo o nada, una fila inválida aborta la importación completa y audita una
+  sola fila con la cantidad, sin importes.
+- **No construido**: el **cargo recurrente del reglamento** (propuesta, R14) que la regla del motor
+  generaría cada período sin carga manual — sigue planificado, sin change asignado todavía.
 
 #### `ingreso` · planificada, propuesta (cambio 6/7, R38, pendiente P15)
 

@@ -70,6 +70,11 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     ("/api/sesion/ingreso", "POST"),
     ("/api/complejos/{complejo_id}/estado-de-migracion/sin-saldos-previos", "POST"),
     ("/api/invitaciones/{invitacion_id}/revocar", "POST"),
+    ("/api/gastos/{gasto_id}/aprobar", "POST"),
+    ("/api/cargos-particulares/{cargo_id}/aprobar", "POST"),
+    # Cambio 6 `gastos-y-cargos`: multipart (`UploadFile`), no JSON — el
+    # contrato de R11 para esta ruta se prueba en `test_cargos_particulares.py`.
+    ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
@@ -129,6 +134,36 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
     ("/api/complejos/{complejo_id}/asignaciones", "POST"): lambda mundo: {
         "persona_id": str(mundo["destinatario"]),
         "rol": "consejo",
+    },
+    # Cambio 6 `gastos-y-cargos`: validación `extra="forbid"` corta en la capa
+    # de pydantic, antes de tocar la base — no hace falta que categoria_id,
+    # grupo_id, proveedor_id o unidad_id existan de verdad (D7).
+    ("/api/complejos/{complejo_id}/proveedores", "POST"): lambda mundo: {
+        "razon_social": "Proveedora Ficticia",
+        "cuit": "20123456786",
+    },
+    ("/api/complejos/{complejo_id}/gastos", "POST"): lambda mundo: {
+        "concepto": "Gasto ficticio",
+        "categoria_id": str(uuid.uuid4()),
+        "grupo_id": str(uuid.uuid4()),
+        "periodo": "2026-10-01",
+        "importe": "1000.00",
+    },
+    ("/api/notas-de-credito", "POST"): lambda mundo: {
+        "gasto_id": str(uuid.uuid4()),
+        "importe": "100.00",
+        "periodo": "2026-10-01",
+        "cuit_emisor": "20123456786",
+        "punto_de_venta": "0001",
+        "tipo_de_comprobante": "nota_de_credito_a",
+        "numero_de_comprobante": "00000001",
+    },
+    ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
+        "unidad_id": str(mundo["unidad_id"]),
+        "concepto": "Cargo ficticio",
+        "importe": "500.00",
+        "periodo": "2026-10-01",
+        "motivo": "Prueba ficticia del barrido de altas",
     },
 }
 

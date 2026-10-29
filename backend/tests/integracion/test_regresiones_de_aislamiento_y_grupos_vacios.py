@@ -45,6 +45,36 @@ _CUERPOS = {
         "dia_de_vencimiento": 10,
         "modalidad_de_vencimiento": "unico",
     },
+    # Cambio 6 `gastos-y-cargos`: 404 de aislamiento llega ANTES de tocar
+    # ningún recurso (D7), así que estos cuerpos sólo necesitan ser válidos
+    # para pydantic, nunca referenciar filas reales.
+    "/api/complejos/{complejo_id}/proveedores": {"razon_social": "X", "cuit": "20123456786"},
+    "/api/proveedores/{proveedor_id}": {},
+    "/api/complejos/{complejo_id}/gastos": {
+        "concepto": "X",
+        "categoria_id": str(uuid4()),
+        "grupo_id": str(uuid4()),
+        "periodo": "2026-10-01",
+        "importe": "100.00",
+    },
+    "/api/gastos/{gasto_id}": {},
+    "/api/notas-de-credito": {
+        "gasto_id": str(uuid4()),
+        "importe": "100.00",
+        "periodo": "2026-10-01",
+        "cuit_emisor": "20123456786",
+        "punto_de_venta": "0001",
+        "tipo_de_comprobante": "nota_de_credito_a",
+        "numero_de_comprobante": "1",
+    },
+    "/api/complejos/{complejo_id}/cargos-particulares": {
+        "unidad_id": str(uuid4()),
+        "concepto": "X",
+        "importe": "100.00",
+        "periodo": "2026-10-01",
+        "motivo": "x",
+    },
+    "/api/cargos-particulares/{cargo_id}": {},
 }
 
 
@@ -109,6 +139,12 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             asignacion_id=uuid4(),
             provincia_id="50",
             departamento_id="50007",
+            # Cambio 6 `gastos-y-cargos`: mismo patrón, no hacen falta filas reales.
+            proveedor_id=uuid4(),
+            gasto_id=uuid4(),
+            nota_id=uuid4(),
+            cargo_id=uuid4(),
+            periodo="2026-10-01",
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
         if ruta == "/api/personal/invitaciones":
@@ -120,9 +156,18 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
                 "alcance": "edificio",
                 "complejo_id": str(api.edificio),
             }
-        respuesta = api.cliente.request(
-            metodo, resuelta, json=None if metodo == "GET" or "sin-saldos" in ruta else cuerpo
-        )
+        if ruta == "/api/complejos/{complejo_id}/cargos-particulares/importar":
+            # Cambio 6: multipart + query, no JSON — mismo motivo que
+            # `test_cargos_particulares.py` (D6, el puerto nunca es JSON).
+            respuesta = api.cliente.post(
+                resuelta,
+                params={"periodo": "2026-10-01"},
+                files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
+            )
+        else:
+            respuesta = api.cliente.request(
+                metodo, resuelta, json=None if metodo == "GET" or "sin-saldos" in ruta else cuerpo
+            )
         if respuesta.status_code != 404:
             fallas.append((metodo, ruta, respuesta.status_code, respuesta.text[:120]))
     lista = api.cliente.get("/api/complejos")

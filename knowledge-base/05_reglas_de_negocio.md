@@ -121,11 +121,12 @@ del 3c, D-128)
   `categoria_de_gasto.activa`). Ningún administrador borra de verdad un grupo ni una categoría: no
   existe esa ruta, ni en la API ni en la web. "Generales" nunca se desactiva, tampoco por SQL (protegido
   por el mismo trigger que protege el resto de sus columnas).
-- **Por qué también los grupos desde el 3c**: cuando exista el módulo de gastos (cambio 6), un grupo
-  borrado de verdad dejaría gastos huérfanos — el mismo problema que ya motivaba desactivar antes que
-  borrar las categorías. No hay hoy un segundo mecanismo de borrado real para ninguno de los dos
-  ("nunca tuvo gastos" no distingue nada todavía, porque el módulo de gastos no existe; se revisa de
-  nuevo cuando exista, E6 del design del 3c).
+- **Por qué también los grupos desde el 3c**: un grupo borrado de verdad dejaría gastos huérfanos — el
+  mismo problema que ya motivaba desactivar antes que borrar las categorías. Confirmado al construir
+  el módulo `gastos` (cambio 6, 29/10/2026): un grupo desactivado rechaza un gasto nuevo contra él
+  (tarea 3.4), y un gasto ya aprobado contra una categoría o un grupo desactivado sigue entrando en el
+  cálculo (R16 no reabre nada retroactivamente). "Nunca tuvo gastos" sigue sin distinguir nada: no hay
+  un segundo mecanismo de borrado real para ninguno de los dos.
 - **La clave de un grupo o una categoría se autogenera desde el nombre** (3c, D4, D-128): el
   administrador deja de escribirla en el formulario; una función pura la calcula (minúsculas, sin
   tildes, lo que no sea `[a-z0-9]` colapsa a `_`, prefijo garantizado por letra, recorte a 40,
@@ -401,6 +402,12 @@ del 3c, D-128)
 
 ## R12 · Registro de gastos desde facturas · Vigente (D-019)
 
+**Construido (cambio 6, 29/10/2026)**: la parte manual — carga sin IA, los cuatro datos de factura
+como clave, el control de duplicado (incluido contra un `INSERT` SQL directo) y el aviso de receptor
+distinto cuando `complejo.cuit` está cargado. **Pendiente (cambio 14)**: el QR de ARCA y la lectura
+por IA — hoy todo gasto nace y se aprueba a mano, sin estados `sin_ia`/`en_revision` poblados por
+lectura automática (la columna existe, D-075, pero nada la escribe todavía).
+
 - **IVA** *(propuesta, D-071, P17)*: el gasto se registra por el **total de la factura, con el IVA
   incluido**, porque el consorcio en general no lo descuenta: para él es parte del costo. Si algún
   consorcio fuera responsable inscripto, eso se trata aparte y fuera del MVP. A confirmar con un
@@ -436,6 +443,11 @@ del 3c, D-128)
 
 ## R13 · Expensa ordinaria y extraordinaria · Vigente (D-024)
 
+**Construido (cambio 6, 29/10/2026)**: la marca ordinario/extraordinario en `gasto` y la lectura
+agregada por grupo con subtotal de cada bloque (D10, `GET .../periodos/{periodo}/gastos-aprobados`),
+pensada para que el cambio 7 la consuma. El reparto en sí (la obligación por unidad) sigue siendo del
+cambio 7, que no existe todavía.
+
 - **Cada gasto se marca** como ordinario o extraordinario al cargarlo. Default: ordinario.
 - **Una obligación por unidad y período**, con el capital desglosado en ordinario y extraordinario.
   La expensa del vecino los muestra en bloques separados, con su subtotal.
@@ -452,6 +464,11 @@ del 3c, D-128)
   período (el ejemplo de $47.000).
 
 ## R14 · Cargos particulares · Vigente (D-025)
+
+**Construido (cambio 6, 29/10/2026)**: carga manual, importación en lote desde Excel (todo o nada,
+con el puerto que aísla al caso de uso de `openpyxl`), aprobación y el aislamiento por unidad (nunca
+una columna de grupo de reparto: la base lo hace imposible). **Pendiente**: el cargo recurrente del
+reglamento (propuesta, sin change asignado) y la liquidación real de la unidad (cambio 7).
 
 - **Qué es**: un importe que se carga a una sola unidad (limpieza del quincho, una multa aprobada,
   un consumo, un arreglo que causó ese lote). Distinto del cargo fijo por estado (R02), que es mensual
@@ -472,6 +489,11 @@ del 3c, D-128)
   la importación desde Excel rechaza unidades inexistentes; un cargo en borrador no entra.
 
 ## R22 · Nota de crédito asociada a la factura · Vigente (D-061) · extiende R12 · a validar (P42)
+
+**Construido (cambio 6, 29/10/2026)**: el tope contra el saldo de la factura (con `FOR UPDATE`,
+probado contra una carrera concurrente real con dos conexiones), el descuento en el período en que se
+carga (nunca reabre un período ya emitido), y que una factura y su nota de crédito con el mismo
+número no se marcan duplicadas entre sí.
 
 - **Regla**: una nota de crédito de un proveedor queda **asociada a la factura que corrige** y su
   monto **no puede superar** el de esa factura.

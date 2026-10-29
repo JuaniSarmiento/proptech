@@ -8,7 +8,16 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
-from proptech_api import complejos, cuenta_corriente, georef, invitaciones, personal, salud, sesion
+from proptech_api import (
+    complejos,
+    cuenta_corriente,
+    gastos,
+    georef,
+    invitaciones,
+    personal,
+    salud,
+    sesion,
+)
 from proptech_api.cuerpos import manejador_422
 from proptech_api.seguimiento import MiddlewareSeguimiento
 from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso
@@ -31,6 +40,8 @@ from proptech_core.compartido.logs import configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.cuenta_corriente.aplicacion import errores as errores_del_libro
+from proptech_core.gastos.adaptadores.excel import PlanillaInvalida
+from proptech_core.gastos.aplicacion import errores as errores_de_gastos
 
 _logger = logging.getLogger("proptech_api.app")
 
@@ -133,17 +144,26 @@ def crear_app() -> FastAPI:
     app.include_router(sesion.router_de_token)
     app.include_router(invitaciones.router_de_token)
     app.include_router(personal.router)
+    app.include_router(gastos.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
     app.add_exception_handler(RequestValidationError, manejador_422)
     for tipo_de_error in (NoEncontrado, Conflicto, EntradaInvalida):
         app.add_exception_handler(tipo_de_error, complejos.manejar_error_de_complejos)
-    for tipo in (
+    for tipo_del_libro in (
         errores_del_libro.NoEncontrado,
         errores_del_libro.Conflicto,
         errores_del_libro.EntradaInvalida,
         errores_del_libro.TemporalmenteNoDisponible,
     ):
-        app.add_exception_handler(tipo, cuenta_corriente.manejar_error_del_libro)
+        app.add_exception_handler(tipo_del_libro, cuenta_corriente.manejar_error_del_libro)
+    for tipo_de_gastos in (
+        errores_de_gastos.NoEncontrado,
+        errores_de_gastos.Conflicto,
+        errores_de_gastos.EntradaInvalida,
+        errores_de_gastos.ImportacionInvalida,
+    ):
+        app.add_exception_handler(tipo_de_gastos, gastos.manejar_error_de_gastos)
+    app.add_exception_handler(PlanillaInvalida, gastos.manejar_error_de_gastos)
     return app

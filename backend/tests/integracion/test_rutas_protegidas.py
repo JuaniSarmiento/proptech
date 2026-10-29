@@ -114,6 +114,26 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}", "PATCH"),
     ("/api/unidades/{unidad_id}", "GET"),
     ("/api/complejos/{complejo_id}/asignaciones", "POST"),
+    # --- Cambio 6 `gastos-y-cargos` ---
+    ("/api/complejos/{complejo_id}/proveedores", "GET"),
+    ("/api/complejos/{complejo_id}/proveedores", "POST"),
+    ("/api/proveedores/{proveedor_id}", "PATCH"),
+    ("/api/complejos/{complejo_id}/gastos", "GET"),
+    ("/api/complejos/{complejo_id}/gastos", "POST"),
+    ("/api/gastos/{gasto_id}", "GET"),
+    ("/api/gastos/{gasto_id}", "PATCH"),
+    ("/api/gastos/{gasto_id}/aprobar", "POST"),
+    ("/api/complejos/{complejo_id}/periodos/{periodo}/gastos-aprobados", "GET"),
+    ("/api/complejos/{complejo_id}/periodos/{periodo}/obligatorios-faltantes", "GET"),
+    ("/api/notas-de-credito", "POST"),
+    ("/api/notas-de-credito/{nota_id}", "GET"),
+    ("/api/complejos/{complejo_id}/cargos-particulares", "GET"),
+    ("/api/complejos/{complejo_id}/cargos-particulares", "POST"),
+    ("/api/cargos-particulares/{cargo_id}", "GET"),
+    ("/api/cargos-particulares/{cargo_id}", "PATCH"),
+    ("/api/cargos-particulares/{cargo_id}/aprobar", "POST"),
+    ("/api/complejos/{complejo_id}/periodos/{periodo}/cargos-aprobados", "GET"),
+    ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
 }
 
 
@@ -254,6 +274,16 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         # Ids reales de Georef (Mendoza / Capital), para las rutas de 2.5.
         "provincia_id": "50",
         "departamento_id": "50007",
+        # Cambio 6 `gastos-y-cargos`: ningún `cargar_*` necesita que la fila
+        # exista para estos tests — una persona sin asignación da 404 por
+        # "no alcanza" antes de importar si existe (D7, mismo patrón que el
+        # resto de este archivo), y sin identidad el 401 corta antes de
+        # tocar la base.
+        "proveedor_id": uuid.uuid4(),
+        "gasto_id": uuid.uuid4(),
+        "nota_id": uuid.uuid4(),
+        "cargo_id": uuid.uuid4(),
+        "periodo": "2026-10-01",
     }
 
 
@@ -417,6 +447,60 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
             metodo,
             ruta_resuelta,
             json={"clave": "cocheras", "nombre": "Cocheras", "metodo": "coeficiente"},
+        )
+    # --- Cambio 6 `gastos-y-cargos` (GET ya lo cubre el chequeo genérico de arriba) ---
+    if ruta.endswith("/aprobar"):
+        return cliente.post(ruta_resuelta)
+    if ruta.endswith("/cargos-particulares/importar"):
+        return cliente.post(
+            ruta_resuelta,
+            params={"periodo": mundo["periodo"]},
+            files={"archivo": ("cargos.xlsx", b"contenido-de-prueba", "application/octet-stream")},
+        )
+    if "/proveedores" in ruta:
+        if metodo == "PATCH":
+            return cliente.patch(ruta_resuelta, json={"razon_social": "Editado"})
+        return cliente.post(
+            ruta_resuelta, json={"razon_social": "Proveedor", "cuit": "20123456786"}
+        )
+    if ruta == "/api/notas-de-credito":
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "gasto_id": str(uuid.uuid4()),
+                "importe": "10.00",
+                "periodo": mundo["periodo"],
+                "cuit_emisor": "20123456786",
+                "punto_de_venta": "0001",
+                "tipo_de_comprobante": "NC",
+                "numero_de_comprobante": "1",
+            },
+        )
+    if "/cargos-particulares" in ruta:
+        if metodo == "PATCH":
+            return cliente.patch(ruta_resuelta, json={"concepto": "Editado"})
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "unidad_id": str(mundo["unidad_id"]),
+                "concepto": "Cargo de prueba",
+                "importe": "10.00",
+                "periodo": mundo["periodo"],
+                "motivo": "Prueba del candado",
+            },
+        )
+    if ruta == "/api/gastos/{gasto_id}" and metodo == "PATCH":
+        return cliente.patch(ruta_resuelta, json={"concepto": "Editado"})
+    if "/gastos" in ruta and metodo == "POST":
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "concepto": "Gasto de prueba",
+                "categoria_id": str(mundo["categoria_id"]),
+                "grupo_id": str(mundo["grupo_id"]),
+                "periodo": mundo["periodo"],
+                "importe": "10.00",
+            },
         )
     return cliente.post(
         ruta_resuelta,
