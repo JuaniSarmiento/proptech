@@ -230,7 +230,7 @@ cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
 esquema "$CARPETA_ENSAYO/esquema_antes.sql"
 
 migrar_restaurada upgrade head
-verificar_revision 0027
+verificar_revision 0032
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
 migrar_restaurada downgrade 0016
@@ -242,7 +242,7 @@ esquema "$CARPETA_ENSAYO/esquema_downgrade.sql"
 diff -u "$CARPETA_ENSAYO/esquema_antes.sql" "$CARPETA_ENSAYO/esquema_downgrade.sql"
 echo "ESQUEMA RESTAURADO: diff vacío entre esquema_antes.sql y esquema_downgrade.sql"
 migrar_restaurada upgrade head # segundo upgrade
-verificar_revision 0027
+verificar_revision 0032
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"
@@ -250,4 +250,4 @@ compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones \
   python -m proptech_core.compartido.roles despues
 conteos "$BASE_ORIGEN" "$CARPETA_ENSAYO/origen_despues.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/origen_despues.txt"
-echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0027/0016/0027 y origen intacto"
+echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0032/0016/0032 y origen intacto"
