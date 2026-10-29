@@ -48,7 +48,7 @@ def _crear_factura(
         },
     )
     assert alta.status_code == 201, alta.text
-    return alta.json()["id"]
+    return str(alta.json()["id"])
 
 
 def _nota(gasto_id: str, importe: str, **extra: object) -> dict[str, object]:
@@ -176,7 +176,7 @@ def test_carrera_entre_dos_notas_simultaneas(api_edificio: ApiEdificio) -> None:
     datos_b = _nota(factura, "60000.00")
 
     def _postear(datos: dict[str, object]) -> int:
-        return api_edificio.cliente.post("/api/notas-de-credito", json=datos).status_code
+        return int(api_edificio.cliente.post("/api/notas-de-credito", json=datos).status_code)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         resultados = list(pool.map(_postear, [datos_a, datos_b]))
@@ -211,20 +211,28 @@ def test_mutante_sin_for_update_rompe_la_carrera(api_edificio: ApiEdificio) -> N
                 "SELECT set_config('app.administracion_id', %s, true)",
                 (str(api_edificio.admin),),
             )
-        importe_a = con_a.execute("SELECT importe FROM gasto WHERE id = %s", (factura,)).fetchone()[
-            0
-        ]
-        importe_b = con_b.execute("SELECT importe FROM gasto WHERE id = %s", (factura,)).fetchone()[
-            0
-        ]
-        acreditado_a = con_a.execute(
+        fila_importe_a = con_a.execute(
+            "SELECT importe FROM gasto WHERE id = %s", (factura,)
+        ).fetchone()
+        fila_importe_b = con_b.execute(
+            "SELECT importe FROM gasto WHERE id = %s", (factura,)
+        ).fetchone()
+        fila_acreditado_a = con_a.execute(
             "SELECT COALESCE(SUM(importe), 0) FROM nota_de_credito WHERE gasto_id = %s",
             (factura,),
-        ).fetchone()[0]
-        acreditado_b = con_b.execute(
+        ).fetchone()
+        fila_acreditado_b = con_b.execute(
             "SELECT COALESCE(SUM(importe), 0) FROM nota_de_credito WHERE gasto_id = %s",
             (factura,),
-        ).fetchone()[0]
+        ).fetchone()
+        assert fila_importe_a is not None
+        assert fila_importe_b is not None
+        assert fila_acreditado_a is not None
+        assert fila_acreditado_b is not None
+        importe_a = fila_importe_a[0]
+        importe_b = fila_importe_b[0]
+        acreditado_a = fila_acreditado_a[0]
+        acreditado_b = fila_acreditado_b[0]
         assert importe_a - acreditado_a >= 60000  # A decide que 60.000 entra
         assert importe_b - acreditado_b >= 60000  # B, sin ver a A, decide lo mismo
         con_a.execute(

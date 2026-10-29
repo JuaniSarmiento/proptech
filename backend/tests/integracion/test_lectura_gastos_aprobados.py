@@ -12,22 +12,24 @@ _CUIT_A = "20123456786"
 
 
 def _categoria(api_edificio: ApiEdificio) -> str:
-    return api_edificio.cliente.post(
+    respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/categorias"), json={"nombre": f"Cat {uuid4().hex[:8]}"}
-    ).json()["id"]
+    )
+    return str(respuesta.json()["id"])
 
 
 def _grupo(api_edificio: ApiEdificio) -> str:
-    return api_edificio.cliente.post(
+    respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/grupos"),
         json={"nombre": f"Grupo {uuid4().hex[:8]}", "metodo": "coeficiente", "unidades": []},
-    ).json()["id"]
+    )
+    return str(respuesta.json()["id"])
 
 
 def _gasto(
     api_edificio: ApiEdificio, *, categoria: str, grupo: str, tipo: str, importe: str
 ) -> str:
-    gasto_id = api_edificio.cliente.post(
+    alta = api_edificio.cliente.post(
         api_edificio.ruta("/gastos"),
         json={
             "concepto": f"Gasto {tipo}",
@@ -37,7 +39,8 @@ def _gasto(
             "importe": importe,
             "tipo": tipo,
         },
-    ).json()["id"]
+    )
+    gasto_id = str(alta.json()["id"])
     api_edificio.cliente.post(f"/api/gastos/{gasto_id}/aprobar")
     return gasto_id
 
@@ -47,7 +50,7 @@ def _factura(
 ) -> str:
     """Igual que `_gasto`, pero con los cuatro datos de factura — necesarios
     para asociar una nota de crédito (R22)."""
-    gasto_id = api_edificio.cliente.post(
+    alta = api_edificio.cliente.post(
         api_edificio.ruta("/gastos"),
         json={
             "concepto": f"Factura {tipo}",
@@ -61,7 +64,8 @@ def _factura(
             "tipo_de_comprobante": "FA",
             "numero_de_comprobante": uuid4().hex[:8],
         },
-    ).json()["id"]
+    )
+    gasto_id = str(alta.json()["id"])
     api_edificio.cliente.post(f"/api/gastos/{gasto_id}/aprobar")
     return gasto_id
 
@@ -172,7 +176,7 @@ def test_mutante_que_suma_las_notas_de_credito_rompe_en_el_neto(
             .mappings()
             .all()
         )
-        grupos: dict = {}
+        grupos: dict[str, dict[str, dict[str, Dinero]]] = {}
         for fila in filas:
             g = grupos.setdefault(str(fila["grupo_id"]), {"ordinario": {}, "extraordinario": {}})
             b = g[fila["tipo"]]
@@ -196,7 +200,7 @@ def test_mutante_que_suma_las_notas_de_credito_rompe_en_el_neto(
             c = str(fila["categoria_id"])
             #: MUTANTE: suma en vez de restar.
             b[c] = b.get(c, Dinero("0.00")) + Dinero(fila["importe"])
-        resultado_grupos: dict = {}
+        resultado_grupos: dict[str, object] = {}
         total_general = Dinero("0.00")
         for grupo_id, bloques in grupos.items():
             subtotales = {

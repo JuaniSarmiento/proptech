@@ -40,11 +40,11 @@ def _crear_categoria_y_grupo(
         f"{ruta}/grupos", json={"nombre": nombre, "metodo": "coeficiente", "unidades": []}
     )
     assert grupo_resp.status_code == 201, grupo_resp.text
-    return categoria_resp.json()["id"], grupo_resp.json()["id"]
+    return str(categoria_resp.json()["id"]), str(grupo_resp.json()["id"])
 
 
 def _datos_minimos(categoria: str, grupo: str, **extra: object) -> dict[str, object]:
-    base = {
+    base: dict[str, object] = {
         "concepto": "Service del ascensor",
         "categoria_id": categoria,
         "grupo_id": grupo,
@@ -116,9 +116,8 @@ def test_categoria_de_otro_edificio_da_422_y_sql_directo_rechazado(
     api_edificio: ApiEdificio, app_edificio: psycopg.Connection, edificios: Edificios
 ) -> None:
     _categoria, grupo = _crear_categoria_y_grupo(api_edificio)
-    categoria_ajena, _grupo_ajeno = _crear_categoria_y_grupo(
-        api_edificio, complejo=api_edificio.otro
-    )
+    edificio_ajeno = str(api_edificio.otro)
+    categoria_ajena, _grupo_ajeno = _crear_categoria_y_grupo(api_edificio, complejo=edificio_ajeno)
     api_edificio.como("editar")
     respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/gastos"), json=_datos_minimos(categoria_ajena, grupo)
@@ -360,7 +359,8 @@ def test_factura_duplicada_en_el_mismo_edificio_da_409(api_edificio: ApiEdificio
 
 def test_misma_clave_en_otro_edificio_no_choca(api_edificio: ApiEdificio) -> None:
     categoria, grupo = _crear_categoria_y_grupo(api_edificio)
-    categoria_otro, grupo_otro = _crear_categoria_y_grupo(api_edificio, complejo=api_edificio.otro)
+    edificio_otro = str(api_edificio.otro)
+    categoria_otro, grupo_otro = _crear_categoria_y_grupo(api_edificio, complejo=edificio_otro)
     datos = _datos_minimos(
         categoria,
         grupo,

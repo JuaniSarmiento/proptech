@@ -26,16 +26,18 @@ def _marcar_obligatoria(api_edificio: ApiEdificio, categoria_id: str) -> None:
 
 def _categoria(api_edificio: ApiEdificio, nombre: str | None = None) -> str:
     api_edificio.como("super_admin")
-    return api_edificio.cliente.post(
+    respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/categorias"), json={"nombre": nombre or f"Cat {uuid4().hex[:8]}"}
-    ).json()["id"]
+    )
+    return str(respuesta.json()["id"])
 
 
 def _grupo(api_edificio: ApiEdificio) -> str:
-    return api_edificio.cliente.post(
+    respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/grupos"),
         json={"nombre": f"Grupo {uuid4().hex[:8]}", "metodo": "coeficiente", "unidades": []},
-    ).json()["id"]
+    )
+    return str(respuesta.json()["id"])
 
 
 def test_falta_un_obligatorio_sin_gasto_aprobado(api_edificio: ApiEdificio) -> None:

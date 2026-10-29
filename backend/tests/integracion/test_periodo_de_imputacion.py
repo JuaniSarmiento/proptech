@@ -2,7 +2,7 @@
 (D8, P36 resuelta en D-132)."""
 
 import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -31,7 +31,7 @@ def _categoria_y_grupo(api_edificio: ApiEdificio) -> tuple[str, str]:
 
 def _crear_gasto(api_edificio: ApiEdificio, categoria: str, grupo: str, periodo: str) -> str:
     api_edificio.como("editar")
-    return api_edificio.cliente.post(
+    respuesta = api_edificio.cliente.post(
         api_edificio.ruta("/gastos"),
         json={
             "concepto": "Gasto de prueba",
@@ -40,7 +40,8 @@ def _crear_gasto(api_edificio: ApiEdificio, categoria: str, grupo: str, periodo:
             "periodo": periodo,
             "importe": "1000.00",
         },
-    ).json()["id"]
+    )
+    return str(respuesta.json()["id"])
 
 
 def _sesion_directa(api_edificio: ApiEdificio) -> Session:
@@ -113,7 +114,7 @@ def test_aprobado_tarde_se_imputa_en_el_primer_periodo_no_emitido(
         modulo_gastos.aprobar_gasto(
             sesion,
             Identidad(api_edificio.admin, api_edificio.personas["super_admin"]),
-            gasto_id=gasto_id,
+            gasto_id=UUID(gasto_id),
             request_id=uuid4(),
             es_periodo_emitido=_solo_octubre_esta_emitido,
         )
@@ -145,7 +146,7 @@ def test_periodo_de_imputacion_nunca_queda_igual_a_un_periodo_emitido(
         modulo_gastos.aprobar_gasto(
             sesion,
             Identidad(api_edificio.admin, api_edificio.personas["super_admin"]),
-            gasto_id=gasto_id,
+            gasto_id=UUID(gasto_id),
             request_id=uuid4(),
             es_periodo_emitido=_emitido,
         )

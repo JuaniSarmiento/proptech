@@ -458,7 +458,7 @@ def test_dos_filas_con_problemas_distintos_se_informan_las_dos(
     ]
     with pytest.raises(ImportacionInvalida) as error:
         _importar_por_sesion(api_edificio, filas)
-    numeros = sorted(e["fila"] for e in error.value.errores)
+    numeros = sorted(int(e["fila"]) for e in error.value.errores)  # type: ignore[call-overload]
     assert numeros == [3, 4, 6]
 
 
