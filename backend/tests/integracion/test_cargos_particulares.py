@@ -285,6 +285,8 @@ def test_aprobar_sin_permiso_da_403(api_edificio: ApiEdificio) -> None:
     api_edificio.como("contador")
     respuesta = api_edificio.cliente.post(f"/api/cargos-particulares/{cargo}/aprobar")
     assert respuesta.status_code == 403, respuesta.text
+    # D-131 (2d): todo 403 lleva `codigo`; sumado al integrar `main`.
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
 
 
 # --- 5.6/5.7: importación desde Excel ---

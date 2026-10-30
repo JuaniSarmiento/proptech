@@ -751,6 +751,12 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "otra_persona": api_edificio.personas["ver"],
         "invitacion_id": uuid.uuid4(),
         "asignacion_id": uuid.uuid4(),
+        # Rutas del 6 (`gastos-y-cargos`), sumadas al integrar `main`.
+        "proveedor_id": uuid.uuid4(),
+        "gasto_id": uuid.uuid4(),
+        "nota_id": uuid.uuid4(),
+        "cargo_id": uuid.uuid4(),
+        "periodo": "2026-10-01",
     }
     cubiertas = []
     for ruta, metodo in sorted(_RUTAS_CUBIERTAS - _RUTAS_CON_TOKEN - _RUTAS_SIN_ALCANCE):

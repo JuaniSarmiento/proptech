@@ -210,6 +210,24 @@ def test_escritura_del_contador_da_403(api_edificio: ApiEdificio) -> None:
         api_edificio.ruta("/proveedores"), json={"razon_social": "Uno", "cuit": _CUIT_A}
     )
     assert respuesta.status_code == 403, respuesta.text
+    # D-131 (2d): todo 403 lleva `codigo`; sumado al integrar `main`.
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
+
+
+def test_editar_proveedor_sin_permiso_da_403_con_codigo(api_edificio: ApiEdificio) -> None:
+    """D-131 (2d), sumado al integrar `main`: el 403 de `_autorizar_proveedor`
+    también lleva `codigo`."""
+    api_edificio.como("editar")
+    proveedor_id = api_edificio.cliente.post(
+        api_edificio.ruta("/proveedores"), json={"razon_social": "Uno", "cuit": _CUIT_A}
+    ).json()["id"]
+    api_edificio.como("contador")
+    respuesta = api_edificio.cliente.patch(
+        f"/api/proveedores/{proveedor_id}", json={"razon_social": "Otro"}
+    )
+    assert respuesta.status_code == 403, respuesta.text
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
+    api_edificio.como("super_admin")
 
 
 def test_aislamiento_entre_administraciones_por_rls(

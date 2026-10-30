@@ -475,3 +475,5 @@ def test_contador_sin_permiso_da_403(api_edificio: ApiEdificio) -> None:
     api_edificio.como("contador")
     respuesta = api_edificio.cliente.post("/api/notas-de-credito", json=_nota(factura, "15000.00"))
     assert respuesta.status_code == 403, respuesta.text
+    # D-131 (2d): todo 403 lleva `codigo`; sumado al integrar `main`.
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text

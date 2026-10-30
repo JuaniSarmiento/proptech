@@ -78,7 +78,12 @@ def _edificio_autorizado(
         raise _no_encontrado()
     if not puede(asignaciones, accion, complejo_id):
         raise HTTPException(
-            status_code=403, detail={"detalle": "sin_permiso", "permiso_faltante": accion.value}
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": accion.value,
+            },
         )
 
 
@@ -95,6 +100,7 @@ def _autorizar_proveedor(
         raise HTTPException(
             status_code=403,
             detail={
+                "codigo": "sin_permiso",
                 "detalle": "sin_permiso",
                 "permiso_faltante": Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION.value,
             },
@@ -175,6 +181,7 @@ def _autorizar_gasto(sesion: Session, identidad: Identidad, gasto_id: UUID) -> d
         raise HTTPException(
             status_code=403,
             detail={
+                "codigo": "sin_permiso",
                 "detalle": "sin_permiso",
                 "permiso_faltante": Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION.value,
             },
@@ -381,6 +388,7 @@ def _autorizar_cargo(sesion: Session, identidad: Identidad, cargo_id: UUID) -> d
         raise HTTPException(
             status_code=403,
             detail={
+                "codigo": "sin_permiso",
                 "detalle": "sin_permiso",
                 "permiso_faltante": Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION.value,
             },
