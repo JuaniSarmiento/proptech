@@ -23,7 +23,12 @@
 	request_header X-Request-ID {http.request.uuid}
 
 	handle /api/salud {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 30s
+			}
+		}
 	}
 
 	# D4/RA2b-1: este 404 nace acá, sin tocar Next ni FastAPI.
@@ -33,9 +38,17 @@
 	}
 
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy web:3000 {
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 30s
+			}
+		}
 	}
 
+	# N2 (2e): `dial_timeout` y `response_header_timeout` en los dos `reverse_proxy`. Con un
+	# servicio PAUSADO (no caído) la conexión TCP igual se acepta, así que el que corta es
+	# `response_header_timeout`: sin él, Caddy esperaba más de 100 s. El humo (paso 6c) mide el corte.
 	# D1/D-051: cuatro cabeceras de seguridad, y Server/Via/X-Powered-By
 	# quitadas (también lo que viene de atrás: Caddy mismo agrega Via, y
 	# Next.js agrega X-Powered-By salvo que se le pida lo contrario,

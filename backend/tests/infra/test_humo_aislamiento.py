@@ -42,6 +42,7 @@ def _montar(tmp_path: Path, humo: Path = HUMO) -> Path:
     ci.mkdir(parents=True)
     shutil.copy(humo, ci / "humo.sh")
     shutil.copy(RAIZ / "infra" / "ci" / "pasos.sh", ci / "pasos.sh")
+    shutil.copy(RAIZ / "infra" / "ci" / "humo-lib.sh", ci / "humo-lib.sh")
     (tmp_path / "backend").mkdir()
     (tmp_path / "web").mkdir()
     bin_dir = tmp_path / "bin"

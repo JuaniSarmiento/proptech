@@ -89,8 +89,10 @@ capacidades esperadas declaradas, nombrando el servicio.
 
 #### Scenario: PID 1 de la base
 
-- **WHEN** una copia de `compose.yaml` quita `init: true` de `db`
-- **THEN** el chequeo del PID 1 de `db` da rojo, y la nota del humo dice que sólo se ve con ese cambio
+- **WHEN** una copia de `compose.yaml` agrega `init: true` a `db` (el PID 1 pasa a ser `docker-init`,
+  que corre como root)
+- **THEN** el chequeo del PID 1 de `db` da rojo, y un test estático impide que `compose.yaml` lo
+  declare; la nota del humo dice que el chequeo sólo se ve rojo con ese cambio
 
 ### Requirement: El verificador de cabeceras no acepta de más
 

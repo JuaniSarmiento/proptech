@@ -9,6 +9,8 @@ set -euo pipefail
 # falla. Se fuentea con la ruta del script (antes del `cd` de abajo).
 # shellcheck source=infra/ci/pasos.sh
 source "$(dirname "${BASH_SOURCE[0]}")/pasos.sh"
+# shellcheck source=infra/ci/humo-lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/humo-lib.sh"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -98,6 +100,8 @@ limpiar() {
   # entonces es un estado que nadie pidió.
   compose unpause db >/dev/null 2>&1 || true
   compose unpause redis >/dev/null 2>&1 || true
+  compose unpause api >/dev/null 2>&1 || true
+  compose unpause web >/dev/null 2>&1 || true
   compose down -v --remove-orphans || true
 
   if [ "$STACK_LEVANTADO" = "1" ]; then
@@ -131,9 +135,9 @@ contar_dumps() {
 paso 0 "compose up --build -d --wait"
 compose up --build -d --wait
 STACK_LEVANTADO=1
-dumps_tras_primer_arranque=$(contar_dumps)
+esperar_dumps 1
+dumps_tras_primer_arranque=1
 echo "dumps tras el primer arranque de respaldos: $dumps_tras_primer_arranque"
-[ "$dumps_tras_primer_arranque" = "1" ]
 
 # Se piden una sola vez y se reusan (en vez de un `printenv` nuevo cada vez
 # que hacen falta): el usuario y el nombre de la base en uso no cambian
@@ -194,9 +198,9 @@ paso 1b "segundo up sobre el mismo volumen (D2, R1, vuelta 2): un reinicio no ti
 compose down
 compose up -d --wait
 echo "ok: el segundo up terminó con exit 0 y el stack quedó sano de nuevo"
-dumps_tras_segundo_arranque=$(contar_dumps)
+dumps_tras_segundo_arranque=$((dumps_tras_primer_arranque + 1))
+esperar_dumps "$dumps_tras_segundo_arranque"
 echo "dumps tras el segundo arranque de respaldos: $dumps_tras_segundo_arranque"
-[ "$dumps_tras_segundo_arranque" = "$((dumps_tras_primer_arranque + 1))" ]
 echo "ok: cada arranque de respaldos dejó exactamente un .dump nuevo (D6)"
 
 paso 2 "sólo caddy publica puertos"
@@ -323,6 +327,9 @@ echo "uid pid1: api=$uid_pid1_api web=$uid_pid1_web worker=$uid_pid1_worker" \
 [ "$uid_pid1_respaldos" != "0" ]
 [ "$uid_pid1_redis" != "0" ]
 [ "$uid_pid1_db" != "0" ]
+# N9 (2e): este chequeo sólo se vio rojo para `db` al AGREGAR `init: true` al servicio (el PID 1 pasa a ser
+# `docker-init`, que corre como root). Ningún servicio de compose.yaml lo declara y un test estático
+# lo impide (test_humo_lib.py::test_db_no_declara_init_true).
 # `caddy` queda FUERA de este paso a propósito: se queda root (uid 0),
 # declarado (D3) — nada que verificar acá, el 3.4 verifica que sus
 # capacidades sean sólo NET_BIND_SERVICE.
@@ -375,15 +382,28 @@ verificar_privilegios() {
   fi
 }
 
-verificar_privilegios api 0000000000000000 nonewprivs_de capbnd_de
-verificar_privilegios web 0000000000000000 nonewprivs_de capbnd_de
-verificar_privilegios worker 0000000000000000 nonewprivs_de capbnd_de
-verificar_privilegios respaldos 0000000000000000 nonewprivs_de capbnd_de
-verificar_privilegios redis 00000000000001c0 nonewprivs_de capbnd_de
-verificar_privilegios db 00000000000000c3 nonewprivs_de capbnd_de
-verificar_privilegios caddy 0000000000000400 nonewprivs_de capbnd_de
-verificar_privilegios migraciones 0000000000000000 nonewprivs_de_migraciones capbnd_de_migraciones
-echo "ok: NoNewPrivs y CapBnd correctos en los ocho servicios, leídos de un proceso que depende de Compose"
+# C2V2-7 (2e): CapBnd esperado de cada servicio de Compose. La lista de servicios que se verifica sale de
+# `compose config --services`, no de esta tabla: un servicio nuevo sin entrada acá da rojo.
+declare -A CAPBND_ESPERADO=(
+  [api]=0000000000000000
+  [web]=0000000000000000
+  [worker]=0000000000000000
+  [respaldos]=0000000000000000
+  [redis]=00000000000001c0
+  [db]=00000000000000c3
+  [caddy]=0000000000000400
+  [migraciones]=0000000000000000
+)
+mapfile -t servicios_de_compose < <(compose config --services | sort)
+verificar_servicios_declarados "${servicios_de_compose[@]}"
+for servicio in "${servicios_de_compose[@]}"; do
+  if [ "$servicio" = "migraciones" ]; then
+    verificar_privilegios "$servicio" "${CAPBND_ESPERADO[$servicio]}" nonewprivs_de_migraciones capbnd_de_migraciones
+  else
+    verificar_privilegios "$servicio" "${CAPBND_ESPERADO[$servicio]}" nonewprivs_de capbnd_de
+  fi
+done
+echo "ok: NoNewPrivs y CapBnd correctos en los ${#servicios_de_compose[@]} servicios de Compose, leídos de un proceso que depende de Compose"
 
 paso 5 "las imágenes construidas no contienen .env"
 compose run --rm --no-deps --entrypoint sh api -c '[ ! -f /app/.env ]'
@@ -400,60 +420,6 @@ paso 6b "cabeceras de seguridad de punta a punta (D1), con el 502 y la persisten
 # Caddy con la api caída (que header -Server por sí solo NO cubre:
 # evidencia capturada contra el stack real antes de la 3.1, "Server:
 # Caddy" en el 502).
-#: C2-1 (rompedor/auditor, vuelta 1 del 2c): no alcanza con que la cabecera
-#: exista, hace falta su VALOR — una Referrer-Policy: unsafe-url pasaba
-#: todo. Juani confirmó `no-referrer` (como la spec y D1), no
-#: `strict-origin-when-cross-origin`.
-verificar_cabeceras() {
-  local descripcion="$1" encabezados="$2" cabecera valor_obtenido
-  local encabezados_sin_cr
-  encabezados_sin_cr=$(echo "$encabezados" | tr -d '\r')
-
-  for cabecera in X-Content-Type-Options Referrer-Policy X-Frame-Options Permissions-Policy; do
-    if ! echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
-      echo "ERROR: falta $cabecera en $descripcion" >&2
-      echo "$encabezados"
-      fallar_paso '! echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"'
-    fi
-  done
-
-  for cabecera in Server Via X-Powered-By; do
-    if echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
-      echo "ERROR: $cabecera presente en $descripcion (tiene que estar ausente)" >&2
-      echo "$encabezados"
-      fallar_paso 'echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"'
-    fi
-  done
-
-  for cabecera in X-Content-Type-Options:nosniff Referrer-Policy:no-referrer X-Frame-Options:DENY; do
-    valor_obtenido=$(echo "$encabezados_sin_cr" | grep -i "^${cabecera%%:*}:" | head -n1 \
-      | sed "s/^[^:]*:[[:space:]]*//")
-    if [ "$valor_obtenido" != "${cabecera#*:}" ]; then
-      echo "ERROR: ${cabecera%%:*} en $descripcion tiene el valor '$valor_obtenido'," \
-        "se esperaba '${cabecera#*:}'" >&2
-      echo "$encabezados"
-      fallar_paso '[ "$valor_obtenido" != "${cabecera#*:}" ]'
-    fi
-  done
-
-  local permissions_policy
-  permissions_policy=$(echo "$encabezados_sin_cr" | grep -i "^Permissions-Policy:" | head -n1)
-  for directiva in camera microphone geolocation; do
-    if ! echo "$permissions_policy" | grep -qi "${directiva}=()"; then
-      echo "ERROR: Permissions-Policy en $descripcion no niega $directiva ($permissions_policy)" >&2
-      fallar_paso '! echo "$permissions_policy" | grep -qi "${directiva}=()"'
-    fi
-  done
-}
-
-#: Sólo las cuatro cabeceras de seguridad, en minúsculas y ordenadas: lo
-#: que varía entre un GET y su HEAD (Date, Content-Length, X-Request-ID
-#: con otro UUID) queda afuera de la comparación a propósito.
-cabeceras_de_seguridad_normalizadas() {
-  echo "$1" | tr -d '\r' | tr '[:upper:]' '[:lower:]' \
-    | grep -E '^(x-content-type-options|referrer-policy|x-frame-options|permissions-policy):' \
-    | sort
-}
 
 encabezados_get_raiz=$(curl -fsS -D - -o /dev/null http://localhost/)
 encabezados_head_raiz=$(curl -fsSI http://localhost/)
@@ -512,6 +478,53 @@ verificar_cabeceras "Host: evil.example (ajeno)" "$encabezados_host_ajeno"
 verificar_cabeceras "por IP (127.0.0.1)" "$encabezados_por_ip"
 verificar_cabeceras "HTTP/1.0 sin Host" "$encabezados_sin_host"
 echo "ok: las tres formas de no matchear el sitio salen con las cuatro cabeceras y sin las tres prohibidas"
+
+# C2V2-6 (2e): el sitio de respaldo responde 421 y cuerpo vacío en los ocho métodos (nada lo fijaba).
+for metodo in GET HEAD POST PUT PATCH DELETE OPTIONS TRACE; do
+  opcion_de_metodo=(-X "$metodo")
+  if [ "$metodo" = "HEAD" ]; then
+    opcion_de_metodo=(--head)
+  fi
+  respuesta_respaldo=$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "${opcion_de_metodo[@]}" -H "Host: evil.example" http://localhost/)
+  echo "respaldo $metodo -> $respuesta_respaldo"
+  if [ "$respuesta_respaldo" != "421 0" ]; then
+    echo "ERROR: el sitio de respaldo respondió '$respuesta_respaldo' a $metodo, se esperaba '421 0'" >&2
+    fallar_paso '[ "$respuesta_respaldo" = "421 0" ]'
+  fi
+done
+echo "ok: el sitio de respaldo responde 421 y cuerpo vacío en los ocho métodos"
+
+paso 6c "con api o web pausadas (no caídas), el proxy corta dentro del plazo configurado (N2)"
+# N2 (2e): `response_header_timeout 30s` en el Caddyfile; el corte tiene que llegar antes de 30 s más un
+# margen de 5 s (antes, con la api pausada Caddy no respondía en 100 s). Se mide el tiempo real.
+cortar_en_plazo() {
+  local servicio="$1" ruta="$2" salida codigo segundos intentos=0
+  compose pause "$servicio"
+  salida=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 60 "http://localhost$ruta" || true)
+  compose unpause "$servicio"
+  codigo="${salida%% *}"
+  segundos="${salida##* }"
+  echo "$servicio pausada: GET $ruta -> $codigo en ${segundos}s"
+  if [ "$codigo" != "502" ] && [ "$codigo" != "504" ]; then
+    echo "ERROR: con $servicio pausada el proxy respondió '$codigo' en vez de 502 o 504" >&2
+    fallar_paso '[ "$codigo" = "502" ] || [ "$codigo" = "504" ]'
+  fi
+  if awk -v t="$segundos" 'BEGIN { exit !(t >= 35) }'; then
+    echo "ERROR: con $servicio pausada el proxy tardó ${segundos}s (cota: 35 s = 30 s de plazo + 5 s)" >&2
+    fallar_paso 'awk -v t="$segundos" "BEGIN { exit !(t < 35) }"'
+  fi
+  until curl -fsS -o /dev/null "http://localhost$ruta"; do
+    intentos=$((intentos + 1))
+    if [ "$intentos" -ge 30 ]; then
+      echo "ERROR: $servicio no volvió a responder en $ruta tras despausarla" >&2
+      fallar_paso 'curl -fsS -o /dev/null "http://localhost$ruta"'
+    fi
+    sleep 1
+  done
+}
+cortar_en_plazo api /api/salud
+cortar_en_plazo web /
+echo "ok: con api o web pausadas el proxy corta con 502 o 504 dentro del plazo y el servicio se recupera"
 
 paso 7 "request_id: el proxy pisa un valor elegido por el cliente"
 # Caddy pisa SIEMPRE X-Request-ID con su propio UUID (Caddyfile), así que un
@@ -809,12 +822,10 @@ echo "conteo por administración en la base restaurada: A=$(echo "$conteo_comple
 # `auditoria` de la 0004), contra las dos que miraba antes (sólo
 # `administracion` y `complejo`, L-017: la 5.4 mostró su rojo justo sobre
 # una de esas dos). Para cada una: `relrowsecurity`, `relforcerowsecurity`
-# y la cantidad de políticas, comparados contra la base en uso — no sólo
-# ">0", para que una política que falta también se vea. LÍMITE (C2V2-3,
-# D-101): se compara el CONTEO, no el contenido. Una política renombrada o
-# reemplazada por una más débil con la misma cantidad (`USING (true)`)
-# pasa este paso. Comparar la tupla completa de `pg_policies` es deuda
-# del cambio 15.
+# y el CONTENIDO de las políticas (C2V2-3, 2e: tabla, nombre, permisiva,
+# roles, comando, USING y WITH CHECK), comparado contra la base en uso: una
+# política que falta, que sobra, renombrada o debilitada a `USING (true)`
+# con la misma cantidad da rojo y se nombra.
 tablas_con_politicas_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" \
   -tAc "select distinct tablename from pg_policies order by tablename")
 echo "tablas con políticas en la base en uso: $(echo "$tablas_con_politicas_en_uso" | tr '\n' ' ')"
@@ -827,16 +838,17 @@ while IFS= read -r tabla; do
   # mismo stdin que el propio bucle usa para leer la lista de tablas, y
   # el bucle corta después de la primera — nombraba sólo `administracion`
   # y daba por buena toda la verificación sin haber mirado el resto.
+  consulta_politicas="select tablename, policyname, permissive, roles, cmd, coalesce(qual, ''), coalesce(with_check, '') from pg_policies where tablename = '$tabla' order by policyname"
   politicas_en_uso=$(compose exec -T db psql -U "$USUARIO_DB" -d "$BASE_EN_USO" \
-    -tAc "select count(*) from pg_policies where tablename = '$tabla'" < /dev/null | tr -d '[:space:]')
+    -tAc "$consulta_politicas" < /dev/null)
   rls_habilitada=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
     -tAc "select relrowsecurity from pg_class where relname = '$tabla'" < /dev/null | tr -d '[:space:]')
   rls_forzada=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
     -tAc "select relforcerowsecurity from pg_class where relname = '$tabla'" < /dev/null | tr -d '[:space:]')
   politicas_restauradas=$(compose exec -T db psql -U "$USUARIO_DB" -d proptech_restauracion \
-    -tAc "select count(*) from pg_policies where tablename = '$tabla'" < /dev/null | tr -d '[:space:]')
+    -tAc "$consulta_politicas" < /dev/null)
   echo "tabla=$tabla relrowsecurity=$rls_habilitada relforcerowsecurity=$rls_forzada" \
-    "políticas: en_uso=$politicas_en_uso restaurada=$politicas_restauradas"
+    "políticas comparadas: $(grep -c . <<< "$politicas_en_uso")"
   if [ "$rls_habilitada" != "t" ]; then
     echo "ERROR: $tabla en la base restaurada tiene relrowsecurity != t (tiene '$rls_habilitada')" >&2
     fallar_paso '[ "$rls_habilitada" != "t" ]'
@@ -845,13 +857,9 @@ while IFS= read -r tabla; do
     echo "ERROR: $tabla en la base restaurada tiene relforcerowsecurity != t (tiene '$rls_forzada')" >&2
     fallar_paso '[ "$rls_forzada" != "t" ]'
   fi
-  if [ "$politicas_restauradas" != "$politicas_en_uso" ]; then
-    echo "ERROR: $tabla en la base restaurada tiene $politicas_restauradas política(s)," \
-      "la base en uso tiene $politicas_en_uso" >&2
-    fallar_paso '[ "$politicas_restauradas" != "$politicas_en_uso" ]'
-  fi
+  verificar_politicas_iguales "$tabla" "$politicas_en_uso" "$politicas_restauradas"
 done <<< "$tablas_con_politicas_en_uso"
-echo "ok: RLS habilitada, forzada y mismas políticas que la base en uso, en todas las tablas con políticas"
+echo "ok: RLS habilitada, forzada y mismo contenido de políticas que la base en uso, en todas las tablas con políticas"
 
 revision_en_uso_despues=$(compose exec -T db psql -U "$USUARIO_DB" \
   -d "$BASE_EN_USO" -tAc "select version_num from alembic_version")

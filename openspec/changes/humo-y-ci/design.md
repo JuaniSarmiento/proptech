@@ -60,8 +60,14 @@ pasa como segundo argumento; los `if !` mantienen su `ERROR:` y suman la llamada
 **D3. Servicios derivados, capacidades declaradas.** La lista sale de `compose config --services`; las
 capacidades esperadas quedan en un arreglo asociativo en el humo (`CAPBND_ESPERADO[servicio]`), y un
 servicio sin entrada da rojo. `migraciones` conserva su lectura especial. El test estático cruza el
-arreglo con `compose.yaml`. N9: `init: true` de `db` queda como comentario y como test sobre
-`compose.yaml` (el chequeo de PID 1 no se puede ver rojo sin quitarlo, así que el test mutante lo quita).
+arreglo con `compose.yaml`. N9: hoy ningún servicio de `compose.yaml` declara `init: true`; el chequeo de PID 1 de `db` sólo se
+vio rojo al AGREGARLO (`docker-init` corre como root). Queda un test estático que prohíbe `init: true`
+y una nota en el humo; la mutación (agregarlo a una copia) se ve en WSL.
+
+**D3b. Funciones del humo en `infra/ci/humo-lib.sh`.** El verificador de cabeceras, la espera del
+volcado y el chequeo de servicios declarados se mueven a un archivo que `humo.sh` fuentea y que los
+tests fuentean sin Docker (con un `contar_dumps` y un arreglo `CAPBND_ESPERADO` propios). Sin ese
+corte, `humo.sh` es un script lineal que no se puede probar por partes.
 
 **D4. Carrera del `.dump`.** `contar_dumps` se reemplaza por `esperar_dumps N` con reintentos cada 0,5 s
 hasta 15 s, fallando con el conteo real. Se corrige el comentario falso de `humo.sh:85-89`.

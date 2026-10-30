@@ -57,38 +57,41 @@
 
 ## 4. Lo que el humo deja pasar
 
-- [ ] 4.1 C2V2-7: test estático rojo (noveno servicio en una copia de `compose.yaml` sin capacidades
+- [x] 4.1 C2V2-7: test estático rojo (noveno servicio en una copia de `compose.yaml` sin capacidades
   declaradas); verde con la lista derivada de `compose config --services`
-- [ ] 4.2 N9: test que quita `init: true` de `db` en una copia y comprueba que el chequeo del PID 1
-  da rojo; nota en el humo; [WSL] visto en el humo real
-- [ ] 4.3 C2-7: test de bash con un volcado que aparece a los 3 s (rojo con el conteo de hoy, verde
+- [x] 4.2 N9: test estático rojo que prohíbe `init: true` (hoy ningún servicio lo declara); nota en el
+  humo; [WSL] mutante: agregarlo a `db` en una copia y ver el rojo del PID 1 de `db`
+- [x] 4.3 C2-7: test de bash con un volcado que aparece a los 3 s (rojo con el conteo de hoy, verde
   con `esperar_dumps`); corregir el comentario falso de `humo.sh`
-- [ ] 4.4 N-a: tests de bash del verificador de cabeceras con fixtures (duplicado, valor con texto
+- [x] 4.4 N-a: tests de bash del verificador de cabeceras con fixtures (duplicado, valor con texto
   de más, valor bueno); rojos con el verificador de hoy, verdes con el nuevo
 
 ## 5. RLS restaurada por contenido (C2V2-3)
 
-- [ ] 5.1 Test que arma dos salidas de políticas (misma cantidad, `USING (true)` en una; nombre
+- [x] 5.1 Test que arma dos salidas de políticas (misma cantidad, `USING (true)` en una; nombre
   distinto en otra) y comprueba que la comparación las rechaza; rojo con el `count(*)` de hoy
-- [ ] 5.2 [WSL] En el humo real: mutante que debilita una política de la restaurada con la misma cantidad
+- [x] 5.2 [WSL] En el humo real: mutante que debilita una política de la restaurada con la misma cantidad
   y ve el rojo nombrando tabla y política; restaurar y ver el verde
 
 ## 6. Caddy
 
-- [ ] 6.1 C2V2-6: test estático de `respond 421` en `:80` y paso del humo con los ocho métodos; [WSL]
+- [x] 6.1 C2V2-6: test estático de `respond 421` en `:80` y paso del humo con los ocho métodos; [WSL]
   rojo con una copia del `Caddyfile` que responde 404
-- [ ] 6.2 C2V2-1: test estático que fija "sin `:443` ni HSTS" con mensaje que remite a la declaración;
+- [x] 6.2 C2V2-1: test estático que fija "sin `:443` ni HSTS" con mensaje que remite a la declaración;
   la declaración queda en el spec archivado al cerrar
-- [ ] 6.3 N2: timeouts de `reverse_proxy`; paso del humo que pausa `api` y mide que llega 502 o 504 antes
+- [x] 6.3 N2: timeouts de `reverse_proxy`; paso del humo que pausa `api` y mide que llega 502 o 504 antes
   del plazo más 5 s; [WSL] rojo sin los timeouts (los 100 s de hoy), verde con ellos; decidir y anotar
   los valores con la medición
 
 ## 7. `arranque_fallido` completo (C2-8)
 
-- [ ] 7.1 Tests rojos de la API con un puerto cerrado y con un `parametros.yaml` roto: línea
+- [x] 7.1 Tests rojos de la API con un puerto cerrado y con un `parametros.yaml` roto: línea
   `arranque_fallido` con causa, sin contraseña ni cadena de conexión; proceso distinto de 0
-- [ ] 7.2 Cambio mínimo en `proptech_api/app.py` hasta el verde; `mypy` y `ruff` limpios [WSL]
-- [ ] 7.3 Anotar si el worker tiene el mismo hueco (pregunta abierta 2); si lo tiene, ficha de deuda
+- [x] 7.2 Cambio mínimo en `proptech_api/app.py` hasta el verde; `mypy` y `ruff` limpios [WSL]
+- [x] 7.3 Anotar si el worker tiene el mismo hueco (pregunta abierta 2); si lo tiene, ficha de deuda
+  - Nota: `proptech_worker/ajustes.py:151,217` ya emite `arranque_fallido` con `str(error)` para otros
+    fallos de arranque; no se verificó si un YAML roto o una base inalcanzable lo evitan. Queda como deuda
+    para la ficha 2e (paridad del worker), sin tocar el worker en este change.
 
 ## 8. Tests del log (C2V2-2, N-b)
 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import OperationalError
 
 from proptech_api import (
     complejos,
@@ -37,7 +38,7 @@ from proptech_core.compartido.conexion_redis import ajustes_redis_arq
 from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 from proptech_core.compartido.georef import GeorefInvalido, leer_georef
 from proptech_core.compartido.logs import configurar_logs
-from proptech_core.compartido.parametros import leer_parametros
+from proptech_core.compartido.parametros import ParametrosInvalidos, leer_parametros
 from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.cuenta_corriente.aplicacion import errores as errores_del_libro
 from proptech_core.gastos.adaptadores.excel import PlanillaInvalida
@@ -68,7 +69,19 @@ def crear_app() -> FastAPI:
         raise
     # Idem con los parámetros del sistema (D6): un archivo inválido también
     # termina el arranque acá, nombrando cada campo con problemas.
-    parametros = leer_parametros(configuracion.proptech_parametros)
+    #
+    # C2-8 (2e): el archivo ilegible o inválido también deja su causa en el log, con la ruta (no es
+    # un secreto) y los campos que `ParametrosInvalidos` ya nombra, nunca los valores.
+    try:
+        parametros = leer_parametros(configuracion.proptech_parametros)
+    except ParametrosInvalidos as error:
+        _logger.error(
+            "arranque_fallido",
+            extra={
+                "causa": f"parámetros inválidos en {configuracion.proptech_parametros}: {error}"
+            },
+        )
+        raise
     # El archivo de Georef (D1) vive junto a `parametros.yaml` dentro del
     # mismo montaje de sólo lectura (`../config:/app/config:ro`,
     # `infra/compose.yaml`): no hace falta una variable de entorno nueva.
@@ -114,6 +127,17 @@ def crear_app() -> FastAPI:
                 verificar_tablas_de_solo_agregar(engine)
             except (RolDeAplicacionInseguro, TablasDeSoloAgregarDesprotegidas) as error:
                 _logger.error("arranque_fallido", extra={"causa": str(error)})
+                raise
+            except OperationalError:
+                # C2-8 (2e): la base no responde. NO se loguea `str(error)`: el mensaje del driver
+                # puede traer datos de la conexión (L-007); se nombra sólo dónde se la buscó.
+                _logger.error(
+                    "arranque_fallido",
+                    extra={
+                        "causa": "la base de datos no es alcanzable "
+                        f"({configuracion.postgres_host}:{configuracion.postgres_port})"
+                    },
+                )
                 raise
             yield
         finally:
