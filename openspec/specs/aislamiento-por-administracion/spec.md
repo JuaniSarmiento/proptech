@@ -168,7 +168,9 @@ El tenant SHALL salir sólo de la identidad autenticada. Un identificador de adm
 por el cliente en la ruta, la query o el cuerpo MUST NOT cambiar el tenant de la transacción. La única
 excepción es la administración elegida en el selector (D-099), que el servidor de la web manda en un
 encabezado propio: la API MUST usarla sólo si la identidad verificada tiene ahí una persona vinculada
-con asignación, y en cualquier otro caso MUST responder 401 sin leer datos de esa administración.
+con asignación. En cualquier otro caso MUST responder sin leer datos de esa administración: 401 si la
+identidad tiene acceso en alguna administración, y el 403 `sin_acceso` de `autenticacion-con-clerk` si
+no lo tiene en ninguna, que prevalece sobre el 401.
 
 #### Scenario: Encabezado o parámetro con otra administración
 
@@ -178,8 +180,15 @@ con asignación, y en cualquier otro caso MUST responder 401 sin leer datos de e
 
 #### Scenario: Selector con una administración ajena
 
-- **WHEN** una identidad vinculada sólo en A manda el id de B en el encabezado del selector
+- **WHEN** una identidad vinculada con asignación sólo en A manda el id de B en el encabezado del
+  selector
 - **THEN** la respuesta es 401 y no se leyó ninguna fila de B
+
+#### Scenario: Selector ajeno de una identidad sin acceso
+
+- **WHEN** una identidad sin acceso en ninguna administración manda el id de B en el encabezado del
+  selector
+- **THEN** la respuesta es el 403 `sin_acceso` y no se leyó ninguna fila de B
 
 ### Requirement: Las tablas de sólo agregar pasan al rol de arranque después de migrar
 
@@ -299,7 +308,6 @@ existir forma de saltear el chequeo por configuración.
 
 - **WHEN** todas las tablas del conjunto son del rol de arranque
 - **THEN** la API y el worker arrancan como antes
-
 
 ### Requirement: Las tablas del libro son de sólo agregar
 

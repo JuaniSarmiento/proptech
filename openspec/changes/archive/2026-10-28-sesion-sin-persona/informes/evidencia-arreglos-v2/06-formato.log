@@ -1,0 +1,47 @@
+src/app/edificios/[id]/unidades/permisos.test.tsx:138:3 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    136 │ it("R2D-R2: GET personal exitoso no habilita Agregar vecino al principal", async () => {
+    137 │   const valor = sesion(["configurar_padron"]);
+  > 138 │   valor.datos.administraciones[0]!.acciones.administracion = ["ver_personal"];
+        │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    139 │   render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>);
+    140 │   await userEvent.setup().click(screen.getByRole("button", { name: "1A" }));
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    136 136 │   it("R2D-R2: GET personal exitoso no habilita Agregar vecino al principal", async () => {
+    137 137 │     const valor = sesion(["configurar_padron"]);
+    138     │ - ··valor.datos.administraciones[0]!.acciones.administracion·=·["ver_personal"];
+        138 │ + ··valor.datos.administraciones[0]?.acciones.administracion·=·["ver_personal"];
+    139 139 │     render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>);
+    140 140 │     await userEvent.setup().click(screen.getByRole("button", { name: "1A" }));
+  
+
+src/app/edificios/[id]/unidades/permisos.test.tsx:146:3 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    144 │ it("R2D-R2: invitar habilita Agregar vecino", async () => {
+    145 │   const valor = sesion(["configurar_padron"]);
+  > 146 │   valor.datos.administraciones[0]!.acciones.administracion = [
+        │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    147 │     "ver_personal",
+    148 │     "invitar_usuarios_y_asignar_edificios",
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    144 144 │   it("R2D-R2: invitar habilita Agregar vecino", async () => {
+    145 145 │     const valor = sesion(["configurar_padron"]);
+    146     │ - ··valor.datos.administraciones[0]!.acciones.administracion·=·[
+        146 │ + ··valor.datos.administraciones[0]?.acciones.administracion·=·[
+    147 147 │       "ver_personal",
+    148 148 │       "invitar_usuarios_y_asignar_edificios",
+  
+
+Skipped 3 suggested fixes.
+If you wish to apply the suggested (unsafe) fixes, use the command biome check --write --unsafe
+
+Checked 13 files in 65ms. Fixed 10 files.
+Found 2 warnings.

@@ -1,0 +1,6 @@
+M9-proveedor-anticipado exit 1
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 1 failed | 7 skipped) 33ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+ ❯ src/app/invitacion/Pantalla.test.tsx:158:25
+      Tests  1 failed | 7 skipped (8)

@@ -511,13 +511,9 @@ _EXCEPCIONES_SQL = {
         "asignacion_rol",
     ): "Asignación inicial del edificio (2.2a, ARQ-3)",
     ("complejos/aplicacion/lectura.py", "persona"): "Autor de versión con FK compuesta y RLS (E11)",
-    **{
-        (
-            "complejos/aplicacion/ejemplo.py",
-            t,
-        ): "Carga inicial del ejemplo, pendiente mover a composición (E11)"
-        for t in ("administracion", "persona", "asignacion_rol")
-    },
+    #: 2d, grupo 6 (E7/D7): la administración, la persona y la asignación del
+    #: ejemplo se escriben por `acceso.aplicacion.alta_inicial`, no por SQL
+    #: directo de `ejemplo.py`: sin excepción.
 }
 _IDENTIFICADOR = r'"?[a-z_][a-z_0-9]*"?'
 _TABLA_SQL = re.compile(
@@ -536,9 +532,13 @@ def _tablas_sql(texto: str) -> set[str]:
     resultado = set()
     for m in _TABLA_SQL.finditer(texto):
         nombre = m.group(2).split(".")[-1].strip('"').lower()
-        if nombre == "of" or (
+        if nombre in ("of", "set") or (
             texto[m.end() :].lstrip().startswith("(") and m.group(1).lower() in {"from", "join"}
         ):
+            # "set": `ON CONFLICT … DO UPDATE SET col = …` hace que "update"
+            # (del regex) matchee "SET" como si fuera el nombre de una
+            # tabla — nunca lo es, "set" es la palabra reservada del upsert
+            # (2d/7.7, D12, usuarios.py).
             continue
         if nombre not in ctes:
             resultado.add(nombre)
@@ -607,6 +607,11 @@ def test_composicion_no_escribe_sql_del_libro() -> None:
         ("SELECT * FROM generate_series(1, 3) x JOIN obligacion o ON true", {"obligacion"}),
         ("WITH datos AS (SELECT * FROM movimiento) SELECT * FROM datos", {"movimiento"}),
         ('select * from public."movimiento"', {"movimiento"}),
+        (
+            "INSERT INTO persona (nombre) VALUES (:nombre) "
+            "ON CONFLICT (email) DO UPDATE SET nombre = EXCLUDED.nombre",
+            {"persona"},
+        ),
     ],
 )
 def test_of_funciones_y_ctes_conservan_tablas_reales(sql: str, esperadas: set[str]) -> None:
@@ -728,3 +733,69 @@ def test_otro_modulo_nombra_una_tabla_de_gastos(copia_core: Path) -> None:
     archivo.write_text('SQL = "SELECT * FROM gasto"')
     ofensores = _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
     assert "cuenta_corriente/aplicacion/mutante.py: gasto" in ofensores, ofensores
+
+
+@pytest.mark.parametrize("tabla", ["administracion", "persona", "asignacion_rol"])
+def test_el_ejemplo_vuelve_a_escribir_una_tabla_de_acceso(copia_core: Path, tabla: str) -> None:
+    """2d, grupo 6 (E7): sin la excepción que `6.2` sacó, un `INSERT` nuevo
+    de `ejemplo.py` en una tabla de `acceso` vuelve a quedar atrapado."""
+    archivo = copia_core / "complejos/aplicacion/ejemplo.py"
+    sql = f"INSERT INTO {tabla} (id) VALUES (1)"  # noqa: S608 (texto de prueba, no SQL ejecutado)
+    archivo.write_text(f"SQL = {sql!r}")
+    assert f"complejos/aplicacion/ejemplo.py: {tabla}" in _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+
+
+# E5: el bypass de invitación es exclusivamente del comando de desarrollo.
+_VINCULACION_DE_DESARROLLO = ("proptech_core", "acceso", "aplicacion", "vinculacion_de_desarrollo")
+_IMPORTADOR_DEL_EJEMPLO = "proptech_core/complejos/aplicacion/ejemplo.py"
+
+
+def _importadores_de_vinculacion(raices: list[Path]) -> list[str]:
+    importadores = []
+    for raiz in raices:
+        for archivo in sorted(raiz.rglob("*.py")):
+            paquete = (raiz.name, *archivo.relative_to(raiz).parts[:-1])
+            for level, module in _imports_de(archivo):
+                partes = tuple((module or "").split("."))
+                if level:
+                    partes = (*paquete[: len(paquete) - level + 1], *partes)
+                if partes[:4] == _VINCULACION_DE_DESARROLLO:
+                    importadores.append(str(archivo.relative_to(raiz.parent)))
+                    break
+    return importadores
+
+
+def test_vinculacion_de_desarrollo_solo_desde_ejemplo() -> None:
+    assert (RAIZ_SRC / "acceso/aplicacion/vinculacion_de_desarrollo.py").is_file()
+    importadores = _importadores_de_vinculacion(
+        [RAIZ_SRC, RAIZ_API, RAIZ_SRC.parent / "proptech_worker"]
+    )
+    assert importadores == [_IMPORTADOR_DEL_EJEMPLO], importadores
+
+
+@pytest.mark.parametrize(
+    "arbol,archivo,sentencia",
+    [
+        (
+            "api",
+            "sesion.py",
+            "from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import vincular",
+        ),
+        (
+            "core",
+            "acceso/aplicacion/invitaciones.py",
+            "import proptech_core.acceso.aplicacion.vinculacion_de_desarrollo",
+        ),
+    ],
+)
+def test_mutantes_vinculacion_fuera_del_ejemplo(
+    copia_core: Path, copia_de_proptech_api: Path, arbol: str, archivo: str, sentencia: str
+) -> None:
+    raiz = copia_de_proptech_api if arbol == "api" else copia_core
+    mutado = raiz / archivo
+    # Copia sin commit, fixture temporal; el repo nunca recibe el import.
+    mutado.write_text(sentencia + "\n" + mutado.read_text())
+    importadores = _importadores_de_vinculacion([copia_core, copia_de_proptech_api])
+    ofensor = str(mutado.relative_to(raiz.parent))
+    assert ofensor in importadores
+    assert importadores != [_IMPORTADOR_DEL_EJEMPLO]

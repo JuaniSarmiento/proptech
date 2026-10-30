@@ -1,0 +1,46 @@
+TIME 2026-10-28T15:57:03.244203-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M6-cerrar-sesion.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/Pantalla.test.tsx
+--- web/src/app/invitacion/Pantalla.tsx
++++ web/src/app/invitacion/Pantalla.tsx (mutante)
+@@ -119,7 +119,7 @@
+ function CerrarSesionDeInvitacion({ destino }: { destino: string }) {
+   const clerk = useClerk();
+   useEffect(() => {
+-    void clerk.signOut({ redirectUrl: destino });
++    void destino;
+   }, [clerk, destino]);
+   return null;
+ }
+
+
+ RUN  v5.0.3 <worktree>/web
+
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 2 failed) 294ms
+   × E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/sobre-1?__clerk_ticket=abc.123-xyz_9) 20ms
+   × E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/otro-sobre) 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/sobre-1?__clerk_ticket=abc.123-xyz_9)
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/otro-sobre)
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+
+Number of calls: 0
+
+ ❯ src/app/invitacion/Pantalla.test.tsx:145:21
+    143|     );
+    144|     await userEvent.setup().click(screen.getByText("Usar otra cuenta")…
+    145|     expect(signOut).toHaveBeenCalledWith({ redirectUrl: volverAInvitac…
+       |                     ^
+    146|   },
+    147| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+   Start at  15:57:03
+   Duration  1.32s (environment 42%, tests 24%, import 23%, transform 9%, setup 1%)
+

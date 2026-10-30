@@ -16,8 +16,12 @@ from proptech_core.compartido.base_de_datos import abrir_sesion, abrir_sesion_po
 _logger = logging.getLogger(__name__)
 
 
+class SinAcceso(Exception):
+    """Token válido sin asignaciones en ninguna administración vinculada."""
+
+
 class IdentidadNoDisponible(Exception):
-    """Sin detalles públicos: todos los rechazos se traducen al mismo 401."""
+    """Rechazo de elección de una identidad con acceso en otra administración."""
 
 
 def personas_vinculadas(fabrica: sessionmaker[Session], sub: str) -> list[Identidad]:
@@ -36,26 +40,26 @@ def resolver(
     if not personas:
         _logger.info(
             "ingreso_sin_vinculo",
-            extra={
-                "sub_resumen": hashlib.sha256(sub.encode()).hexdigest()[:12],
-            },
+            extra={"sub_resumen": hashlib.sha256(sub.encode()).hexdigest()[:12]},
         )
-        raise IdentidadNoDisponible
+        raise SinAcceso
+
+    # Elegir primero: sólo una persona elegida puede dejar ingreso_fallido.
+    identidad = None
     if selector is None:
-        if len(personas) != 1:
-            raise IdentidadNoDisponible
-        identidad = personas[0]
+        if len(personas) == 1:
+            identidad = personas[0]
     else:
         try:
             administracion = UUID(selector)
         except ValueError:
-            raise IdentidadNoDisponible from None
-        candidatas = [p for p in personas if p.administracion_id == administracion]
-        if not candidatas:
-            raise IdentidadNoDisponible
-        identidad = candidatas[0]
-    with abrir_sesion(fabrica, identidad.administracion_id) as sesion:
-        if not cargar_asignaciones(sesion, identidad.persona_id):
+            pass
+        else:
+            identidad = next((p for p in personas if p.administracion_id == administracion), None)
+    if identidad is not None:
+        with abrir_sesion(fabrica, identidad.administracion_id) as sesion:
+            if cargar_asignaciones(sesion, identidad.persona_id):
+                return identidad
             registrar(
                 sesion,
                 identidad,
@@ -66,5 +70,10 @@ def resolver(
                 detalle={"motivo": "sin_asignacion"},
             )
             sesion.commit()
-            raise IdentidadNoDisponible
-    return identidad
+
+    # El selector nunca autoriza una lectura: sólo se abren tenants vinculados.
+    for persona in personas:
+        with abrir_sesion(fabrica, persona.administracion_id) as sesion:
+            if cargar_asignaciones(sesion, persona.persona_id):
+                raise IdentidadNoDisponible
+    raise SinAcceso

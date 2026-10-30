@@ -21,12 +21,14 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import event, text
 
+from proptech_api.acceso import identidad_actual
 from proptech_core.acceso.aplicacion.usuarios import ConflictoDeAcceso, quitar_asignacion
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.sobres import generar
 from proptech_core.compartido.base_de_datos import abrir_sesion
 
 from ._api_edificios import ApiEdificio
+from ._clerk import api_clerk as api_clerk
 from ._clerk import clerk_falso as clerk_falso
 from ._clerk import encabezados, sub_de
 from ._usuarios import preparar
@@ -74,12 +76,151 @@ def test_listar_trae_personas_asignaciones_e_invitacion_vencida_calculada(
 
 def test_un_no_super_admin_recibe_403_en_las_tres(api_edificio: ApiEdificio) -> None:
     api_edificio.como("ver")
+    # 2d/7.3 (D13): el GET ahora exige `ver_personal`, no
+    # `invitar_usuarios_y_asignar_edificios` — ver
+    # `test_un_administrador_por_edificio_pide_el_personal`.
     r1 = api_edificio.cliente.get("/api/personal")
+    assert r1.status_code == 403, r1.text
+    assert r1.json()["detail"]["permiso_faltante"] == "ver_personal"
+    r2 = api_edificio.cliente.post(f"/api/invitaciones/{uuid.uuid4()}/revocar")
+    r3 = api_edificio.cliente.delete(f"/api/asignaciones/{uuid.uuid4()}")
+    for r in (r2, r3):
+        assert r.status_code == 403, r.text
+        assert r.json()["detail"]["permiso_faltante"] == "invitar_usuarios_y_asignar_edificios"
+
+
+def _persona_con_rol(
+    api_edificio: ApiEdificio, rol: str, complejo_id: uuid.UUID | None
+) -> uuid.UUID:
+    persona = uuid.uuid4()
+    with abrir_sesion(api_edificio.app.state.fabrica_de_sesiones, api_edificio.admin) as sesion:
+        sesion.execute(
+            text(
+                "INSERT INTO persona (id, administracion_id, nombre) "
+                "VALUES (:id, :admin, 'Persona ficticia')"
+            ),
+            {"id": persona, "admin": api_edificio.admin},
+        )
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id) "
+                "VALUES (:admin, :persona, :rol, :complejo)"
+            ),
+            {"admin": api_edificio.admin, "persona": persona, "rol": rol, "complejo": complejo_id},
+        )
+        sesion.commit()
+    return persona
+
+
+def test_el_administrador_principal_lista_el_personal(api_edificio: ApiEdificio) -> None:
+    """R2D: "El administrador principal lista el personal". `api_edificio`
+    ya tiene super_admin, editar (administrador por edificio), ver
+    (auxiliar), consejo y vecino; se suman otro administrador principal y un
+    contador por edificio. El principal debe ver sólo lo que está por debajo
+    (D13): editar, ver, consejo y el contador nuevo — nunca al super admin,
+    a sí mismo (pares) ni al vecino."""
+    principal2 = _persona_con_rol(api_edificio, "administrador", None)
+    contador = _persona_con_rol(api_edificio, "contador", api_edificio.edificio)
+
+    api_edificio.app.dependency_overrides[identidad_actual] = lambda: Identidad(
+        api_edificio.admin, principal2
+    )
+    r = api_edificio.cliente.get("/api/personal")
+    assert r.status_code == 200, r.text
+    personal = r.json()
+    ids = {p["persona_id"] for p in personal}
+    assert ids == {
+        str(api_edificio.personas["editar"]),
+        str(api_edificio.personas["ver"]),
+        str(api_edificio.personas["consejo"]),
+        str(contador),
+    }
+    crudo = r.text
+    for prohibido in (
+        str(api_edificio.personas["super_admin"]),
+        str(principal2),
+        str(api_edificio.personas["vecino"]),
+    ):
+        assert prohibido not in crudo
+
+
+def test_una_persona_sin_asignaciones_no_aparece_para_el_administrador_principal(
+    api_edificio: ApiEdificio,
+) -> None:
+    """R2D-2: a quien se le quitó su última asignación no aparece — ni
+    siquiera cuando esa última asignación era de super admin."""
+    principal2 = _persona_con_rol(api_edificio, "administrador", None)
+    sin_asignaciones = _persona_con_rol(api_edificio, "super_admin", None)
+    with abrir_sesion(api_edificio.app.state.fabrica_de_sesiones, api_edificio.admin) as sesion:
+        sesion.execute(
+            text("DELETE FROM asignacion_rol WHERE persona_id = :persona"),
+            {"persona": sin_asignaciones},
+        )
+        sesion.commit()
+
+    api_edificio.app.dependency_overrides[identidad_actual] = lambda: Identidad(
+        api_edificio.admin, principal2
+    )
+    r = api_edificio.cliente.get("/api/personal")
+    assert r.status_code == 200, r.text
+    ids = {p["persona_id"] for p in r.json()}
+    assert str(sin_asignaciones) not in ids
+    assert str(sin_asignaciones) not in r.text
+
+
+def test_una_sola_asignacion_de_arriba_basta_para_no_aparecer(api_edificio: ApiEdificio) -> None:
+    """D13: "todas sus asignaciones son de abajo" — una persona con una
+    asignación de consejo (de abajo) Y una de super admin (de arriba) no
+    aparece, ni su email. Filtrar por asignación en vez de por persona
+    mostraría la de consejo y revelaría a un super admin."""
+    principal2 = _persona_con_rol(api_edificio, "administrador", None)
+    mixta = _persona_con_rol(api_edificio, "super_admin", None)
+    with abrir_sesion(api_edificio.app.state.fabrica_de_sesiones, api_edificio.admin) as sesion:
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol, complejo_id) "
+                "VALUES (:admin, :persona, 'consejo', :edificio)"
+            ),
+            {"admin": api_edificio.admin, "persona": mixta, "edificio": api_edificio.edificio},
+        )
+        sesion.commit()
+
+    api_edificio.app.dependency_overrides[identidad_actual] = lambda: Identidad(
+        api_edificio.admin, principal2
+    )
+    r = api_edificio.cliente.get("/api/personal")
+    assert r.status_code == 200, r.text
+    assert str(mixta) not in r.text
+
+
+def test_el_administrador_principal_no_gestiona(api_edificio: ApiEdificio) -> None:
+    principal2 = _persona_con_rol(api_edificio, "administrador", None)
+    api_edificio.app.dependency_overrides[identidad_actual] = lambda: Identidad(
+        api_edificio.admin, principal2
+    )
+    r1 = api_edificio.cliente.post(
+        "/api/personal/invitaciones",
+        json={
+            "nombre": "Alguien",
+            "email": "alguien@example.invalid",
+            "rol": "auxiliar",
+            "alcance": "edificio",
+            "complejo_id": str(api_edificio.edificio),
+        },
+    )
     r2 = api_edificio.cliente.post(f"/api/invitaciones/{uuid.uuid4()}/revocar")
     r3 = api_edificio.cliente.delete(f"/api/asignaciones/{uuid.uuid4()}")
     for r in (r1, r2, r3):
         assert r.status_code == 403, r.text
         assert r.json()["detail"]["permiso_faltante"] == "invitar_usuarios_y_asignar_edificios"
+    assert api_edificio.filas("SELECT count(*) FROM persona WHERE nombre='Alguien'") == [(0,)]
+
+
+def test_un_administrador_por_edificio_pide_el_personal(api_edificio: ApiEdificio) -> None:
+    api_edificio.como("editar")
+    r = api_edificio.cliente.get("/api/personal")
+    assert r.status_code == 403, r.text
+    assert r.json()["detail"]["permiso_faltante"] == "ver_personal"
 
 
 def test_revocar_marca_revocada_encola_clerk_y_el_token_ya_no_se_acepta(
@@ -141,7 +282,7 @@ def test_revocar_marca_revocada_encola_clerk_y_el_token_ya_no_se_acepta(
         )
 
 
-def test_quitar_la_unica_asignacion_de_un_auxiliar_da_401_en_su_proximo_pedido(
+def test_quitar_la_unica_asignacion_de_un_auxiliar_da_403_sin_acceso_en_su_proximo_pedido(
     clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio
 ) -> None:
     sub = sub_de(clerk_falso)
@@ -167,7 +308,8 @@ def test_quitar_la_unica_asignacion_de_un_auxiliar_da_401_en_su_proximo_pedido(
     siguiente = api_edificio.cliente.post(
         "/api/sesion/ingreso", headers=encabezados(clerk_falso, sub=sub)
     )
-    assert siguiente.status_code == 401, siguiente.text
+    assert siguiente.status_code == 403, siguiente.text
+    assert siguiente.json() == {"detail": {"codigo": "sin_acceso"}}
 
 
 def test_el_unico_super_admin_no_puede_quitarse_su_asignacion(api_edificio: ApiEdificio) -> None:
@@ -344,3 +486,37 @@ def test_explain_el_listado_usa_los_indices_por_administracion_y_de_invitacion(
     )
     assert "ix_asignacion_rol_persona" in planes[1]
     assert "ix_invitacion_persona" in planes[2]
+
+
+def test_quitar_en_a_con_acceso_en_b_sigue_401(
+    api_clerk: ApiEdificio, clerk_falso: rsa.RSAPrivateKey
+) -> None:
+    with api_clerk.base.conectar_app() as c, c.transaction():
+        c.execute(
+            "SELECT set_config('app.administracion_id',%s,true)", (str(api_clerk.admin_ajena),)
+        )
+        persona = uuid.uuid4()
+        c.execute(
+            "INSERT INTO "
+            "persona(id,administracion_id,nombre,clerk_usuario_id) VALUES (%s,%s,'En B',%s)",
+            (persona, api_clerk.admin_ajena, sub_de(clerk_falso)),
+        )
+        c.execute(
+            "INSERT INTO asignacion_rol(administracion_id,persona_id,rol) "
+            "VALUES (%s,%s,'super_admin')",
+            (api_clerk.admin_ajena, persona),
+        )
+    (asignacion,) = api_clerk.filas(
+        "SELECT id FROM asignacion_rol WHERE persona_id=%s", (api_clerk.personas["editar"],)
+    )[0]
+    api_clerk.como("super_admin")
+    assert api_clerk.cliente.delete(f"/api/asignaciones/{asignacion}").status_code == 200
+    from proptech_api.acceso import identidad_actual
+
+    api_clerk.app.dependency_overrides.pop(identidad_actual, None)
+    r = api_clerk.cliente.get(
+        "/api/complejos",
+        headers=encabezados(clerk_falso) | {"X-Proptech-Administracion": str(api_clerk.admin)},
+    )
+    assert r.status_code == 401
+    assert r.json() == {"detail": "Unauthorized"}

@@ -234,3 +234,21 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Sobre** (de invitación): el identificador cifrado que viaja en la URL de regreso y que la API
   descifra para ubicar la invitación, distinto del token crudo (que nunca viaja) y del ticket de Clerk.
 
+## Sesión sin persona (cambio 2d, D-131 a D-137)
+
+- **Cuenta sin acceso**: una identidad de Clerk autenticada que no tiene ninguna persona vinculada, o
+  que la tiene vinculada sin ninguna asignación en ninguna administración. La API responde 403 con
+  `detail.codigo: "sin_acceso"` (D-131); la web la manda a la pantalla propia `/sin-acceso`, que no
+  llama a la API y ofrece "Cerrar sesión" o "Volver a intentar".
+- **`codigo`**: el único campo que `pedirApi` lee para decidir qué pantalla mostrar ante un 403:
+  `sin_acceso` va a `/sin-acceso`; cualquier otro valor (o ninguno) es `sin_permiso`, con el permiso
+  que venga (D-131).
+- **Acciones de la sesión**: los conjuntos (`administracion`, `todos_los_edificios`, `por_edificio`)
+  que `GET /api/sesion` suma a cada administración de la respuesta, calculados con la misma matriz que
+  `puede`. La web los usa para ocultar el menú y los controles de escritura que el rol no tiene, nunca
+  para mostrar de más (D-134).
+- **`ver_personal`**: la acción (super admin y administrador principal) que permite leer `/api/personal`
+  en sólo lectura; para el administrador principal, filtrada a quienes tienen asignaciones por debajo
+  suyo. Gestionar (invitar, revocar, quitar) sigue exigiendo `invitar_usuarios_y_asignar_edificios`,
+  sólo super admin (D-135).
+

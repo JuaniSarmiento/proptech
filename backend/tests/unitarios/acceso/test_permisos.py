@@ -15,11 +15,14 @@ import pytest
 
 from proptech_core.acceso.dominio import permisos
 from proptech_core.acceso.dominio.permisos import (
+    ACCIONES_DE_ADMINISTRACION,
     Accion,
+    AccionesPermitidas,
     Alcance,
     Asignacion,
     Perfil,
     Rol,
+    acciones_permitidas,
     alcanza,
     puede,
 )
@@ -62,6 +65,9 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
         False,
         False,
     ),
+    #: D13 (2d, grupo 7, D-127/E11): ver `/personal`, super admin y
+    #: administrador principal, sin complejo.
+    "ver_personal": (True, True, False, False, False, False, False, False, False),
     "informar_pago": (False, False, False, False, False, False, False, True, True),
     "crear_edificio": (True, False, False, False, False, False, False, False, False),
     "crear_version_de_configuracion": (True, True, True, False, False, False, False, False, False),
@@ -122,11 +128,27 @@ def test_cada_celda_de_la_matriz(nombre: str, perfil: int) -> None:
     assert puede([_PERFILES[perfil]], Accion(nombre), COMPLEJO) is _MATRIZ_A_MANO[nombre][perfil]
 
 
+#: D13: las tres acciones de toda la administración, evaluadas sin complejo.
+_ACCIONES_SIN_COMPLEJO_A_MANO = {
+    "crear_edificio": {0},  # sólo super admin
+    "invitar_usuarios_y_asignar_edificios": {0},  # sólo super admin
+    "ver_personal": {0, 1},  # super admin y administrador principal
+}
+
+
 @pytest.mark.parametrize("nombre", _MATRIZ_A_MANO)
 @pytest.mark.parametrize("perfil", range(9), ids=_COLUMNAS)
-def test_sin_complejo_crear_e_invitar_para_super_admin(nombre: str, perfil: int) -> None:
-    esperado = nombre in {"crear_edificio", "invitar_usuarios_y_asignar_edificios"} and perfil == 0
+def test_sin_complejo_solo_las_tres_acciones_de_administracion(nombre: str, perfil: int) -> None:
+    esperado = perfil in _ACCIONES_SIN_COMPLEJO_A_MANO.get(nombre, set())
     assert puede([_PERFILES[perfil]], Accion(nombre), None) is esperado
+
+
+def test_el_administrador_principal_ve_el_personal_pero_no_invita() -> None:
+    administrador_principal = _asignacion_de(Rol.ADMINISTRADOR)
+    assert puede([administrador_principal], Accion.VER_PERSONAL, None) is True
+    assert puede([administrador_principal], Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS, None) is (
+        False
+    )
 
 
 def test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario() -> None:
@@ -294,3 +316,80 @@ def test_alcance_de_dos_propietarios_e_inquilino_de_otra_unidad() -> None:
     assert alcanza(propietaria + inquilino, COMPLEJO, UNIDAD) is True
     assert alcanza(propietaria + inquilino, COMPLEJO, OTRA_UNIDAD) is True
     assert alcanza(propietaria + inquilino, OTRO_COMPLEJO) is False
+
+
+# --- D11/7.4: acciones_permitidas, la misma matriz que puede ---
+
+_CONTEXTOS: tuple[uuid.UUID | None, ...] = (None, COMPLEJO, OTRO_COMPLEJO)
+_IDS_CONTEXTOS = ["sin_edificio", "edificio_propio", "edificio_ajeno"]
+
+#: D11: combinaciones de dos asignaciones a la vez, además de las nueve
+#: columnas sueltas de `_PERFILES`.
+_COMBOS_DE_DOS = [
+    [Asignacion(Rol.ADMINISTRADOR, COMPLEJO), Asignacion(Rol.CONTADOR, OTRO_COMPLEJO)],
+    [Asignacion(Rol.SUPER_ADMIN, None), Asignacion(Rol.VECINO, COMPLEJO, UNIDAD, "propietario")],
+]
+
+
+def _coincide_con_puede(
+    resultado: AccionesPermitidas, accion: Accion, contexto: uuid.UUID | None
+) -> bool:
+    """El contrato de R2D-1, escrito aparte de la implementación: de
+    administración, siempre por `administracion`; de edificio, nunca sin
+    contexto, y con contexto por `todos_los_edificios` o `por_edificio`."""
+    if accion in ACCIONES_DE_ADMINISTRACION:
+        return accion in resultado.administracion
+    if contexto is None:
+        return False
+    return accion in resultado.todos_los_edificios or accion in resultado.por_edificio.get(
+        contexto, frozenset()
+    )
+
+
+@pytest.mark.parametrize("asignaciones", [[p] for p in _PERFILES] + _COMBOS_DE_DOS)
+@pytest.mark.parametrize("accion", list(Accion))
+@pytest.mark.parametrize("contexto", _CONTEXTOS, ids=_IDS_CONTEXTOS)
+def test_las_acciones_de_la_sesion_coinciden_con_los_403(
+    asignaciones: list[Asignacion], accion: Accion, contexto: uuid.UUID | None
+) -> None:
+    resultado = acciones_permitidas(asignaciones)
+    assert _coincide_con_puede(resultado, accion, contexto) is puede(asignaciones, accion, contexto)
+
+
+def test_una_accion_de_administracion_evaluada_con_un_edificio() -> None:
+    super_admin = [_asignacion_de(Rol.SUPER_ADMIN)]
+    administrador_por_edificio = [Asignacion(Rol.ADMINISTRADOR, COMPLEJO)]
+    for accion in (Accion.CREAR_EDIFICIO, Accion.INVITAR_USUARIOS_Y_ASIGNAR_EDIFICIOS):
+        assert puede(super_admin, accion, COMPLEJO) is puede(super_admin, accion, None) is True
+        assert (
+            puede(administrador_por_edificio, accion, COMPLEJO)
+            is puede(administrador_por_edificio, accion, None)
+            is False
+        )
+        resultado = acciones_permitidas(super_admin)
+        assert accion in resultado.administracion
+        assert accion not in resultado.todos_los_edificios
+        assert accion not in resultado.por_edificio.get(COMPLEJO, frozenset())
+
+
+def test_las_acciones_de_administracion_solo_tienen_celdas_principales() -> None:
+    for accion in ACCIONES_DE_ADMINISTRACION:
+        celdas = permisos._MATRIZ[accion]
+        assert all(alcance is Alcance.PRINCIPAL for _, alcance in celdas), accion
+
+
+def test_una_accion_de_edificio_sin_edificio() -> None:
+    super_admin = [_asignacion_de(Rol.SUPER_ADMIN)]
+    assert puede(super_admin, Accion.CONFIGURAR_PADRON, None) is False
+    resultado = acciones_permitidas(super_admin)
+    assert Accion.CONFIGURAR_PADRON not in resultado.administracion
+    assert Accion.CONFIGURAR_PADRON in resultado.todos_los_edificios
+
+
+def test_una_accion_de_edificio_en_un_edificio_ajeno() -> None:
+    administrador_e1 = [Asignacion(Rol.ADMINISTRADOR, COMPLEJO)]
+    assert puede(administrador_e1, Accion.CONFIGURAR_PADRON, OTRO_COMPLEJO) is False
+    resultado = acciones_permitidas(administrador_e1)
+    assert Accion.CONFIGURAR_PADRON not in resultado.todos_los_edificios
+    assert Accion.CONFIGURAR_PADRON not in resultado.por_edificio.get(OTRO_COMPLEJO, frozenset())
+    assert Accion.CONFIGURAR_PADRON in resultado.por_edificio.get(COMPLEJO, frozenset())

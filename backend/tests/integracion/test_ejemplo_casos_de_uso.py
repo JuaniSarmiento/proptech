@@ -31,6 +31,7 @@ import sys
 import threading
 from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
@@ -60,6 +61,7 @@ from ..conftest import (
     MIGRADOR_USER_DE_SESION,
 )
 from ._api_edificios import ApiEdificio
+from ._clerk import clerk_falso as clerk_falso
 from ._edificios import BaseDeEdificio
 
 pytestmark = pytest.mark.integracion
@@ -552,3 +554,477 @@ def test_el_comando_real_se_niega_a_correr_como_el_migrador(base_fresca: BaseDeE
     assert resultado.returncode == 1, resultado.stdout
     assert "RolDeAplicacionInseguro" in resultado.stderr, resultado.stderr[-2000:]
     assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
+
+
+# 2d: todo valor es ficticio; nunca se leen archivos de entorno.
+@pytest.mark.parametrize(
+    "usuario,emisor,permitido",
+    [
+        ("user_Dev123", None, False),
+        ("otra_forma", "https://x.clerk.accounts.dev", False),
+        ("user_", "https://x.clerk.accounts.dev", False),
+        ("user_" + "a" * 65, "https://x.clerk.accounts.dev", False),
+        ("user_ñ", "https://x.clerk.accounts.dev", False),
+        ("user_abc\n", "https://x.clerk.accounts.dev", False),
+        *[
+            ("user_Dev123", emisor, False)
+            for emisor in (
+                "",
+                "https://produccion.invalid",
+                "https://x.clerk.accounts.dev.evil.com",
+                "https://u:p@x.clerk.accounts.dev",
+                "https://x.clerk.accounts.dev?x=1",
+                "https://x.clerk.accounts.dev#f",
+                "https://x.clerk.accounts.dev/ruta",
+                "https://x.clerk.accounts.dev:puerto",
+                "https://x.clerk.accounts.dev:8443",
+                "http://x.clerk.accounts.dev",
+                "https://x.clerk.accounts.dev?",
+                "https://x.clerk.accounts.dev#",
+            )
+        ],
+        *[
+            ("user_Dev123", emisor, True)
+            for emisor in (
+                "https://X.CLERK.ACCOUNTS.DEV",
+                "https://x.clerk.accounts.dev/",
+                "https://x.clerk.accounts.dev:443",
+            )
+        ],
+    ],
+)
+def test_opcion_clerk_valida_antes_de_conectar_sin_repetir_valores(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    usuario: str,
+    emisor: str | None,
+    permitido: bool,
+) -> None:
+    monkeypatch.setenv("PROPTECH_ENTORNO", "desarrollo")
+    monkeypatch.setenv("PROPTECH_PARAMETROS", str(_PARAMETROS))
+    if emisor is None:
+        monkeypatch.delenv("CLERK_EMISOR", raising=False)
+    else:
+        monkeypatch.setenv("CLERK_EMISOR", emisor)
+    for campo, valor in {
+        "POSTGRES_HOST": "127.0.0.1",
+        "POSTGRES_PORT": "1",
+        "POSTGRES_DB": "proptech_ficticia",
+        "POSTGRES_APP_USER": APP_USER_DE_SESION,
+        "POSTGRES_APP_PASSWORD": APP_PASSWORD_DE_SESION,
+    }.items():
+        monkeypatch.setenv(campo, valor)
+
+    class ConexionIntentada(Exception):
+        pass
+
+    def conectar(_: Configuracion) -> Engine:
+        raise ConexionIntentada
+
+    monkeypatch.setattr(ejemplo, "crear_engine", conectar)
+    try:
+        resultado: int | str = ejemplo._main(["cargar", "--clerk-usuario", usuario])
+    except ConexionIntentada:
+        resultado = "conectó"
+    except SystemExit as error:
+        resultado = error.code if isinstance(error.code, int) else 1
+    except Exception:
+        resultado = "configuración rechazada antes del engine"
+    if permitido:
+        assert resultado == "conectó"
+    else:
+        assert resultado != "conectó"
+    assert os.environ.get("CLERK_EMISOR") == emisor
+    salida = capsys.readouterr()
+    assert usuario not in salida.out + salida.err
+    if emisor:
+        assert emisor not in salida.out + salida.err
+    assert resultado == ("conectó" if permitido else 1)
+
+
+def test_opcion_no_salta_guarda(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("PROPTECH_ENTORNO", raising=False)
+
+    def conectar(_: Configuracion) -> Engine:
+        pytest.fail("la guarda debe correr antes de conectar")
+
+    monkeypatch.setattr(ejemplo, "crear_engine", conectar)
+    assert ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"]) == 1
+    assert "user_Dev123" not in str(capsys.readouterr())
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        # B-2 (rompedor, vuelta 1): typo en el nombre de la opción.
+        ["cargar", "--clerk-usuarios", "user_Dev123"],
+        # el id como posicional extra.
+        ["cargar", "user_Dev123"],
+        # abreviatura de `--clerk-usuario`: `allow_abbrev` por defecto la acepta.
+        ["cargar", "--clerk", "user_Dev123"],
+    ],
+)
+def test_argumentos_no_reconocidos_no_repiten_el_id(
+    capsys: pytest.CaptureFixture[str], argv: list[str]
+) -> None:
+    """B-2 (rompedor, vuelta 1): con un error de tipeo, argparse imprimía el
+    id de Clerk tal cual en `unrecognized arguments`, y con `allow_abbrev`
+    (activo por defecto) aceptaba `--clerk` como si fuera `--clerk-usuario`.
+    El mensaje ahora es fijo y la abreviatura ya no se reconoce."""
+    with pytest.raises(SystemExit) as salida:
+        ejemplo._main(argv)
+    assert salida.value.code == 2
+    capturado = capsys.readouterr()
+    assert "user_Dev123" not in capturado.out + capturado.err
+
+
+def _cargar_con_usuario(
+    fabrica: sessionmaker[Session], usuario: str | None = None
+) -> ejemplo.ResultadoCarga:
+    return ejemplo.cargar(
+        fabrica,
+        parametros=_parametros(),
+        semilla=_semilla(),
+        georef=_georef(),
+        request_id=uuid4(),
+        clerk_usuario=usuario,
+    )
+
+
+def _usuario_ejemplo(fabrica: sessionmaker[Session]) -> str | None:
+    with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as sesion:
+        return cast(
+            str | None,
+            sesion.execute(
+                text("SELECT clerk_usuario_id FROM persona WHERE id=:id"),
+                {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+            ).scalar_one(),
+        )
+
+
+@pytest.mark.parametrize("ya_cargado", [False, True])
+def test_vincular_primera_carga_o_existente_e_idempotencia(
+    base_fresca: BaseDeEdificio, ya_cargado: bool
+) -> None:
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        if ya_cargado:
+            _cargar_con_usuario(fabrica)
+        _cargar_con_usuario(fabrica, "user_Dev123")
+        assert _usuario_ejemplo(fabrica) == "user_Dev123"
+        antes = {
+            t: _contar(fabrica, t, ejemplo.ADMINISTRACION_EJEMPLO_ID)
+            for t in ("persona", "unidad", "asignacion_rol", "auditoria")
+        }
+        _cargar_con_usuario(fabrica, "user_Dev123")
+        assert _usuario_ejemplo(fabrica) == "user_Dev123"
+        assert antes == {t: _contar(fabrica, t, ejemplo.ADMINISTRACION_EJEMPLO_ID) for t in antes}
+        error = None
+        try:
+            _cargar_con_usuario(fabrica, "user_Otro456")
+        except Exception as e:
+            error = e
+        assert error is not None and "otra cuenta" in str(error)
+        assert _usuario_ejemplo(fabrica) == "user_Dev123"
+    finally:
+        engine.dispose()
+
+
+def _entorno_clerk(monkeypatch: pytest.MonkeyPatch, base: BaseDeEdificio) -> None:
+    for variable, valor in _entorno_del_comando(
+        base, usuario=APP_USER_DE_SESION, clave=APP_PASSWORD_DE_SESION, entorno="desarrollo"
+    ).items():
+        monkeypatch.setenv(variable, valor)
+    monkeypatch.setenv("CLERK_EMISOR", "https://x.clerk.accounts.dev")
+
+
+def test_el_id_de_otra_persona_es_error_propio_sin_datos(
+    base_fresca: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _entorno_clerk(monkeypatch, base_fresca)
+    assert ejemplo._main(["cargar"]) == 0
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as sesion, sesion.begin():
+            sesion.execute(
+                text(
+                    "INSERT INTO persona(administracion_id,nombre,clerk_usuario_id) "
+                    "VALUES (:admin,'Otra ficticia','user_Dev123')"
+                ),
+                {"admin": ejemplo.ADMINISTRACION_EJEMPLO_ID},
+            )
+        antes = _filas_escritas(base_fresca)
+        from sqlalchemy import event
+
+        sentencias: list[str] = []
+
+        def espia(configuracion: Configuracion) -> Engine:
+            motor = crear_engine(configuracion)
+            event.listen(motor, "before_cursor_execute", lambda *args: sentencias.append(args[2]))
+            return motor
+
+        monkeypatch.setattr(ejemplo, "crear_engine", espia)
+        resultado = ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"])
+        salida = capsys.readouterr()
+        assert resultado != 0
+        assert any("SELECT id FROM persona WHERE clerk_usuario_id" in sql for sql in sentencias)
+        assert not any("UPDATE persona SET clerk_usuario_id" in sql for sql in sentencias)
+        assert "esa cuenta ya está vinculada a otra persona del ejemplo" in salida.err
+        assert all(
+            v not in salida.out + salida.err for v in ("user_Dev123", "Traceback", "[parameters:")
+        )
+        assert _usuario_ejemplo(fabrica) is None
+        assert _filas_escritas(base_fresca) == antes
+    finally:
+        engine.dispose()
+
+
+def test_carrera_de_unicidad_se_traduce_sin_parametros(
+    base_fresca: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from sqlalchemy import event
+
+    _entorno_clerk(monkeypatch, base_fresca)
+    assert ejemplo._main(["cargar"]) == 0
+    engine, fabrica = _fabrica_app(base_fresca)
+    otra = uuid4()
+    with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s, s.begin():
+        s.execute(
+            text(
+                "INSERT INTO persona(id,administracion_id,nombre) VALUES (:id,:a,'Otra ficticia')"
+            ),
+            {"id": otra, "a": ejemplo.ADMINISTRACION_EJEMPLO_ID},
+        )
+    disparo: list[bool] = []
+
+    def carrera(*args: object) -> None:
+        if "UPDATE persona SET clerk_usuario_id" in str(args[2]) and not disparo:
+            disparo.append(True)
+            with base_fresca.conectar_app() as c, c.transaction():
+                c.execute(
+                    "SELECT set_config('app.administracion_id',%s,true)",
+                    (str(ejemplo.ADMINISTRACION_EJEMPLO_ID),),
+                )
+                c.execute("UPDATE persona SET clerk_usuario_id='user_Dev123' WHERE id=%s", (otra,))
+
+    event.listen(engine, "before_cursor_execute", carrera)
+    monkeypatch.setattr(ejemplo, "crear_engine", lambda _: engine)
+    try:
+        resultado = ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"])
+        salida = capsys.readouterr()
+        assert resultado != 0
+        assert disparo == [True]
+        assert "esa cuenta ya está vinculada a otra persona del ejemplo" in salida.err
+        assert all(
+            v not in salida.out + salida.err for v in ("user_Dev123", "Traceback", "[parameters:")
+        )
+        assert _usuario_ejemplo(fabrica) is None
+    finally:
+        engine.dispose()
+
+
+def test_dos_vinculaciones_a_la_vez_no_pisan_a_la_ganadora(base_fresca: BaseDeEdificio) -> None:
+    from sqlalchemy import event
+
+    engine, fabrica = _fabrica_app(base_fresca)
+    _cargar_con_usuario(fabrica)
+    barrera = threading.Barrier(2, timeout=15)
+
+    def esperar(*args: object) -> None:
+        if "SELECT clerk_usuario_id FROM persona WHERE id" in str(args[2]):
+            barrera.wait()
+
+    event.listen(engine, "after_cursor_execute", esperar)
+    resultados: list[tuple[str, bool]] = []
+
+    def correr(usuario: str) -> None:
+        try:
+            _cargar_con_usuario(fabrica, usuario)
+            resultados.append((usuario, True))
+        except Exception:
+            resultados.append((usuario, False))
+
+    hilos = [threading.Thread(target=correr, args=(u,)) for u in ("user_Uno", "user_Dos")]
+    try:
+        for h in hilos:
+            h.start()
+        for h in hilos:
+            h.join(timeout=25)
+        event.remove(engine, "after_cursor_execute", esperar)
+        assert sorted(ok for _, ok in resultados) == [False, True]
+        assert _usuario_ejemplo(fabrica) == next(u for u, ok in resultados if ok)
+    finally:
+        engine.dispose()
+
+
+def test_conflicto_al_crear_revierte_toda_la_carga(
+    base_fresca: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typing import Any
+
+    original = ejemplo._crear_desde_cero
+
+    def con_vinculo(sesion: Session, identidad: Any, **kwargs: Any) -> UUID:
+        complejo = original(sesion, identidad, **kwargs)
+        sesion.execute(
+            text("UPDATE persona SET clerk_usuario_id='user_Otra' WHERE id=:id"),
+            {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+        )
+        return complejo
+
+    monkeypatch.setattr(ejemplo, "_crear_desde_cero", con_vinculo)
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        error = None
+        try:
+            _cargar_con_usuario(fabrica, "user_Dev123")
+        except Exception as e:
+            error = e
+        assert error is not None and "otra cuenta" in str(error)
+        assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
+    finally:
+        engine.dispose()
+
+
+def test_entrar_con_la_cuenta_vinculada(
+    base_fresca: BaseDeEdificio, clerk_falso: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from fastapi.testclient import TestClient
+
+    from proptech_api.app import crear_app
+
+    from ._clerk import encabezados, sub_de
+
+    assert isinstance(clerk_falso, rsa.RSAPrivateKey)
+    _entorno_clerk(monkeypatch, base_fresca)
+    usuario = sub_de(clerk_falso)
+    assert ejemplo._main(["cargar", "--clerk-usuario", usuario]) == 0
+    with TestClient(crear_app()) as cliente:
+        r = cliente.get(
+            "/api/sesion", headers=encabezados(clerk_falso, iss="https://x.clerk.accounts.dev")
+        )
+        assert r.status_code == 200
+        assert [a["id"] for a in r.json()["administraciones"]] == [
+            str(ejemplo.ADMINISTRACION_EJEMPLO_ID)
+        ]
+
+
+@pytest.mark.parametrize("otra_administracion", [False, True])
+def test_la_funcion_de_vinculacion_rechaza_otra_persona_sin_escribir(
+    base_fresca: BaseDeEdificio, otra_administracion: bool
+) -> None:
+    from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import vincular
+
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        _cargar_con_usuario(fabrica)
+        otra = uuid4()
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s, s.begin():
+            s.execute(
+                text(
+                    "INSERT INTO persona(id,administracion_id,nombre) "
+                    "VALUES (:id,:a,'Otra ficticia')"
+                ),
+                {"id": otra, "a": ejemplo.ADMINISTRACION_EJEMPLO_ID},
+            )
+        error = None
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s, s.begin():
+            try:
+                vincular(
+                    s,
+                    uuid4() if otra_administracion else ejemplo.ADMINISTRACION_EJEMPLO_ID,
+                    ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID if otra_administracion else otra,
+                    "user_Dev123",
+                )
+            except Exception as e:
+                error = e
+            assert error is not None
+            assert (
+                s.execute(
+                    text("SELECT clerk_usuario_id FROM persona WHERE id=:id"), {"id": otra}
+                ).scalar_one()
+                is None
+            )
+    finally:
+        engine.dispose()
+
+
+def test_vincular_el_mismo_id_otra_vez_no_escribe_la_fila(base_fresca: BaseDeEdificio) -> None:
+    """B-1 (rompedor, vuelta 1): la spec de `acceso-de-desarrollo` pide que
+    vincular dos veces el mismo id "no hace nada / sin escribir". Contar
+    filas no alcanza -- el `UPDATE` condicional coincidía igual cuando el id
+    ya era el mismo y Postgres escribía una versión nueva de la fila (el
+    rompedor lo midió con `xmin`: 764 antes, 782 después). Esta vez se
+    compara `xmin`, que sólo cambia si hubo una escritura real."""
+    from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import vincular
+
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        _cargar_con_usuario(fabrica, "user_Dev123")
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s:
+            xmin_antes = s.execute(
+                text("SELECT xmin::text FROM persona WHERE id=:id"),
+                {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+            ).scalar_one()
+
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s, s.begin():
+            resultado = vincular(
+                s,
+                ejemplo.ADMINISTRACION_EJEMPLO_ID,
+                ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                "user_Dev123",
+            )
+        assert resultado == "ya estaba vinculado"
+
+        with abrir_sesion(fabrica, ejemplo.ADMINISTRACION_EJEMPLO_ID) as s:
+            xmin_despues = s.execute(
+                text("SELECT xmin::text FROM persona WHERE id=:id"),
+                {"id": ejemplo.PERSONA_SUPER_ADMIN_EJEMPLO_ID},
+            ).scalar_one()
+        assert xmin_despues == xmin_antes
+    finally:
+        engine.dispose()
+
+
+def test_mensajes_de_vinculacion_no_imprimen_el_id(
+    base_fresca: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _entorno_clerk(monkeypatch, base_fresca)
+    assert ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"]) == 0
+    primera = capsys.readouterr()
+    assert "vinculado" in primera.out
+    assert "user_Dev123" not in primera.out + primera.err
+    assert ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"]) == 0
+    segunda = capsys.readouterr()
+    assert "ya estaba vinculado" in segunda.out
+    assert "user_Dev123" not in segunda.out + segunda.err
+
+
+def test_otro_integrity_error_no_se_disfraza_de_cuenta_ajena(
+    base_fresca: BaseDeEdificio,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _entorno_clerk(monkeypatch, base_fresca)
+    assert ejemplo._main(["cargar"]) == 0
+    with base_fresca.conectar_migrador() as c:
+        c.execute(
+            "ALTER TABLE persona ADD CONSTRAINT ck_solo_nulo_de_prueba "
+            "CHECK (clerk_usuario_id IS NULL)"
+        )
+    resultado = ejemplo._main(["cargar", "--clerk-usuario", "user_Dev123"])
+    salida = capsys.readouterr()
+    assert resultado == 1
+    assert "no se pudo completar la carga" in salida.err
+    assert "otra persona del ejemplo" not in salida.err
+    assert all(
+        v not in salida.out + salida.err for v in ("user_Dev123", "Traceback", "[parameters:")
+    )
+    engine, fabrica = _fabrica_app(base_fresca)
+    try:
+        assert _usuario_ejemplo(fabrica) is None
+    finally:
+        engine.dispose()

@@ -2437,6 +2437,10 @@ registrado como tal en su momento.)*
   lectura de `/personal`.
 - **Quién**: Emiliano Caceres, 26/10/2026 (D-110/D-111 extienden la firma CRITICAL a Juani, Alberto o
   Emiliano).
+- **Al archivar el 2d (28/10/2026)**: se construyó el "ver" — acción `ver_personal`, migración `0028`,
+  sólo lectura jerárquica para el administrador principal (D-135). El "gestionar" (invitar, revocar,
+  quitar a los de abajo) sigue sin construirse y queda como pregunta abierta nueva
+  (`10_preguntas_abiertas.md`, P71).
 
 ## D-128 · Cierre del 3c `pulido-de-la-configuracion`: ubicación, pisos, grupos desactivables y Georef (27/10/2026)
 
@@ -2597,6 +2601,14 @@ registrado como tal en su momento.)*
     rompedor del primer change que toque esa zona de código**, cuando la toque — 2.2a y 3a ya
     atravesaron un change entero (2b y 3b/3c) sin que nadie las retomara, así que un dueño fijo que
     nadie confirma es peor que decir la regla una vez: queda anotado en cada ficha.
+  - **El 2d (28/10/2026) tocó la matriz** (sumó `ver_personal`, ahora 162 celdas) pero **no absorbió**
+    la revisión independiente que este punto le pedía: ningún rompedor ni verify formal se convocó en
+    el change (`informes/LEEME.md` del 2d: "no se convocaron revisores en apply"; sin informe de
+    verify). Lo que sí corre y pasa, con las 162 celdas, es el test de propiedad de la tarea 7.2
+    (`test_matriz_entera_con_cada_celda_distinta_en_el_mensaje`, `test_cada_celda_de_la_matriz`,
+    `tests/unitarios/acceso/test_permisos.py`), que compara celda por celda contra `_MATRIZ_A_MANO` —
+    pero es el constructor verificando su propio trabajo, no la revisión independiente pedida. Sigue
+    para el primer change que toque esta zona.
   - **Deuda de severidad baja** (el resto, unos 25 ítems entre los cuatro informes): se queda con su
     dueño de hoy (7 o 15); la regresión no encontró ninguna que mereciera moverse, y suma a las fichas
     las que todavía no estaban escritas: `test_salud_cola_real.py` da rojo si se corre aislado sin un
@@ -2615,7 +2627,214 @@ registrado como tal en su momento.)*
   `3d` sube primero su parte de la API falsa de e2e para que el `6` la use sin choques.
 - **Quién**: Juani, 28/10/2026.
 
-## D-131 · Las pantallas de `gastos-y-cargos` no tienen cambio hermano planificado: el 6 es sólo backend y API
+## D-131 · 403 `sin_acceso` con precedencia, y `codigo` como único discriminador de todo 403 (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar la sección "Aprobación" del 2d `sesion-sin-persona` (E1 y E4 del
+  `design.md`).
+- **Decisión**: `acceso/aplicacion/identidad.py` suma `SinAcceso`, distinta de `IdentidadNoDisponible`.
+  `resolver` evalúa en este orden: (1) sin ninguna persona vinculada al `sub` → `SinAcceso` sin mirar el
+  selector; (2) rechazo de elección (selector ajeno, no UUID, varias sin elegir, o la persona elegida
+  sin asignaciones) → se pregunta si **alguna** persona del `sub` tiene asignaciones en otra
+  administración vinculada; si ninguna, `SinAcceso` (403); si alguna, sigue en 401 para que el selector
+  la lleve a la que corresponde. El 403 `sin_acceso` **prevalece** sobre los rechazos de elección. Todo
+  403 de la API lleva `detail.codigo` de una lista cerrada (`sin_acceso`, `sin_permiso`); la web
+  (`pedirApi`) lee **sólo** `codigo`, nunca la forma del cuerpo. `/sin-acceso` es una ruta propia que
+  exige sesión de Clerk pero no persona, no llama a la API, lee el email con `useUser()` en el
+  navegador y ofrece "Cerrar sesión" y "Volver a intentar"; reemplaza al estado vacío del selector.
+- **Por qué un solo cuerpo** para "sin persona" y "persona sin asignaciones": la pantalla es una sola y
+  la persona no puede hacer nada distinto en un caso y en otro; no es para esconder el historial de
+  vínculo, es porque el spec promete cuerpo y cabeceras iguales, no tiempos.
+- **Alternativas descartadas**: un tercer estado en `sesionActual()` (no puede saber si hay persona sin
+  preguntarle a la API); `/api/sesion` en 200 con `persona: null` (arregla el selector, no las pantallas
+  de dominio); un código en el 401 (mezcla "autenticate" con "sin acceso", que es lo que armó el bucle);
+  404 o 409 (significan otra cosa); que el selector mande 401 aunque no haya acceso en ninguna
+  (reproduce el bucle por otro camino).
+- **Costo de revertir**: medio — la web ya depende de `codigo`; revertir el contrato exige revertir
+  también la ruta `/sin-acceso`.
+- **Quién**: Juani, 28/10/2026.
+
+## D-132 · El selector no redirige ante un 401 ni una sesión nula, y `regresoSeguro` cierra el ciclo (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar E2 y E3 del `design.md` del 2d.
+- **Decisión**: `pedirApi` suma `alNoAutenticar: "redirigir" | "devolver"` (por defecto, el
+  comportamiento de hoy); sólo `/elegir-administracion` usa `"devolver"`, y muestra "No pudimos validar
+  tu sesión" con "Cerrar sesión", sin redirigir — también cuando la sesión de Clerk es nula en el
+  servidor. Las pantallas de dominio siguen yendo a `/ingresar` ante un 401. `regresoSeguro` decodifica
+  las secuencias `%XX` del `pathname` antes de comparar contra la lista cerrada de rutas de acceso
+  (`/ingresar`, `/registrarse`, `/elegir-administracion`, `/sin-acceso` y lo que cuelga de ellas) y
+  aplica el tope de 512 caracteres **dos veces** — a la entrada y a la salida ya armada —, porque `new
+  URL` puede alargar la cadena al codificarla y el tope sólo en la entrada dejaba una segunda pasada con
+  otro resultado.
+- **Por qué alcanza**: el selector es el nodo del ciclo `/ingresar` ↔ `/elegir-administracion` que hoy
+  vuelve a `/ingresar` con la sesión de Clerk todavía activa (el hallazgo CRITICAL de la regresión del
+  27/10/2026, D-130); si ahí ni un 401 ni una sesión nula redirigen, el ciclo pierde esa arista.
+- **Alternativas descartadas**: ir siempre a `/ingresar?cerrar=1` ante un 401 con sesión de Clerk activa
+  (cierra la sesión de quien sólo tiene que elegir administración); confiar sólo en el tope de largo sin
+  la lista cerrada (el ping-pong seguía sin un corte garantizado); el tope sólo sobre la entrada (no es
+  idempotente).
+- **Quién**: Juani, 28/10/2026.
+
+## D-133 · Vincular una cuenta de Clerk de desarrollo al ejemplo, sin auditarlo, y sacar el SQL de `acceso` de `ejemplo.py` (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar E5, E6 y E7 del `design.md` del 2d.
+- **Decisión**: el comando de carga del ejemplo acepta `--clerk-usuario <id>`, que vincula al
+  `super_admin` del ejemplo con ese id, sólo con `PROPTECH_ENTORNO=desarrollo` **y** un `CLERK_EMISOR`
+  de instancia de desarrollo validado como URL completa (esquema `https`, host que termina en
+  `.clerk.accounts.dev`, sin usuario, contraseña, query, fragmento ni puerto distinto de 443, ruta vacía
+  o `/`); formato validado antes de conectarse. La función de vinculación vive en `acceso.aplicacion`,
+  sólo la importa `complejos/aplicacion/ejemplo.py`, comprueba unicidad antes de escribir y hace un
+  `UPDATE` condicional envuelto en un `except IntegrityError` sobre `uq_persona_clerk_administracion`
+  para la carrera residual, con el mismo mensaje fijo y sin el id. **No se audita**: el control son esas
+  dos trabas y la función que sólo conoce al ejemplo, no hay actor ni tenant real que reconstruir. La
+  escritura de `acceso` que hacía `ejemplo.py` con SQL directo (D-021) se extrae a una función
+  compartida de `acceso.aplicacion`, reusada por `alta_inicial.py`: salen las tres excepciones del test
+  de fronteras.
+- **Por qué el emisor como URL completa**: es lo que la API usa para aceptar los tokens del `sub` que se
+  vincula; comparar sólo por host dejaba pasar `x.clerk.accounts.dev.evil.com`. Alternativa descartada
+  para la escritura: mover `ejemplo.py` a una raíz de composición (D-116) escondía el SQL de `acceso`
+  del escaneo en vez de sacarlo.
+- **Quién**: Juani, 28/10/2026.
+
+## D-134 · Las acciones permitidas viajan con la sesión y la web oculta lo que no se puede (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar E (2.3/D11 del `design.md`) del 2d.
+- **Decisión**: una función pura `acciones_permitidas(asignaciones)` en `acceso/dominio/permisos.py`
+  calcula, con la misma `_MATRIZ` que usa `puede`, tres conjuntos por administración: `administracion`
+  (acciones de administración), `todos_los_edificios` y `por_edificio` (acciones de edificio, por
+  `complejo_id`). `GET /api/sesion` suma `acciones` a cada administración de la respuesta; el 403
+  `sin_acceso` no cambia. En la web, `permite(sesion, accion, complejoId?)` decide con el mismo
+  contrato: sin sesión en el contexto, siempre `false` (se oculta de más, nunca se muestra de más). Se
+  ocultan así "Personal" (con `ver_personal`), "Nuevo edificio" (con `crear_edificio`), "Agregar unidad"
+  y los controles de escritura de las pantallas del edificio, cada uno con su acción.
+- **Por qué en `/api/sesion` y no un endpoint nuevo**: es la única lectura de la sesión que el layout ya
+  pide en cada pantalla protegida; sumar una ruta duplicaría la guarda y el barrido.
+- **Alternativas descartadas**: copiar la matriz en la web (dos copias divergen); una lista plana de
+  acciones sin edificio (un administrador por edificio vería controles de edificios ajenos); que la web
+  pruebe la acción y oculte al recibir 403 (muestra el control hasta que alguien lo toca).
+- **Quién**: Juani, 28/10/2026.
+
+## D-135 · `ver_personal`: el administrador principal ve, nunca gestiona, al personal por debajo suyo (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar E11 del `design.md` del 2d, que construye lo que D-127 aprobó en
+  principio.
+- **Decisión**: acción nueva `ver_personal` en `Accion` y en `_MATRIZ` (`_SA` y `_AP`, evaluada sin
+  complejo), con su migración `0028` del vocabulario de auditoría (DBA convocado, con bajada).
+  `GET /api/personal` exige `ver_personal`; las rutas que escriben (invitar, alta de vecino, revocar,
+  quitar) siguen exigiendo `invitar_usuarios_y_asignar_edificios`, sólo super admin. `listar_personal`
+  filtra en Python, para el administrador principal, a las personas con **al menos una** asignación y
+  cuyas asignaciones son **todas** de administrador por edificio, contador, auxiliar o consejo: nunca
+  aparece el super admin, otro administrador principal ni un vecino, ni su id, nombre o email; una
+  persona sin ninguna asignación tampoco aparece. La web muestra `/personal` en sólo lectura a quien no
+  tiene `invitar_usuarios_y_asignar_edificios`. "Gestionar" (invitar, revocar, quitar a los de abajo)
+  **no se construye**: queda abierta (ver `10_preguntas_abiertas.md`, P71).
+- **Por qué una migración y no una función aparte**: `Accion` es a la vez el permiso y el vocabulario de
+  auditoría, y el test de la tabla de auditoría exige que coincidan con la base; una función fuera de
+  `Accion` deja un permiso fuera de la matriz, con dos fuentes de verdad.
+- **Quién**: Juani, 28/10/2026.
+
+## D-136 · Reinvitar el mismo email actualiza el nombre, nunca entre administraciones ni sobre un super admin (28/10/2026)
+
+- **Fecha**: 28/10/2026, al firmar E (2.4/D12 del `design.md`) del 2d.
+- **Decisión**: `_persona_bloqueada` pasa de `ON CONFLICT … DO NOTHING` a `ON CONFLICT
+  (administracion_id, email) DO UPDATE SET nombre = EXCLUDED.nombre WHERE NOT EXISTS (… rol =
+  'super_admin')`, dentro del mismo `begin_nested()` que ya envuelve el alta: si la asignación después
+  da 409 o 422, el savepoint se deshace y el nombre no cambia. Vale para personal y para el alta de
+  vecinos. Nunca renombra a un super admin (el `WHERE` bloquea la fila sin actualizarla) ni a una
+  persona de otra administración (RLS más el `administracion_id` del conflicto).
+- **Por qué**: sólo el super admin invita, así que el nombre que pisa es el que cargó otro super admin
+  de la misma administración, y es el último dato que tiene a la vista quien invita.
+- **Quién**: Juani, 28/10/2026.
+
+## D-137 · La invitación dice con qué cuenta se está, sin leer el destinatario; "Usar otra cuenta" vuelve a la invitación (28/10/2026, enmendada el mismo día)
+
+- **Fecha**: 28/10/2026, al firmar E10 del `design.md` del 2d; enmendada el mismo día tras la
+  verificación manual con el Clerk de desarrollo real (tarea 8.2 e).
+- **Decisión**: con sesión activa, `/invitacion/[sobre]` lee el email del claim firmado del token de
+  sesión (el mismo que exige `POST /api/invitaciones/aceptar`) y la pantalla dice "Estás ingresado como
+  &lt;email&gt;" antes de "Aceptar e ingresar"; si la aceptación falla, "Este enlace no sirve con la
+  cuenta &lt;email&gt;…". Si el token no trae el claim de email, los dos textos van en forma genérica,
+  sin nombrar ningún email. La API no cambia y nunca se muestra el email destinatario (evita abrir una
+  lectura nueva que rompería la anti-enumeración del 404 uniforme).
+- **Enmienda** (verificación 8.2 e, Clerk real): la primera redacción de "Usar otra cuenta" cerraba la
+  sesión y conservaba `__clerk_ticket` hasta el ingreso; contra el Clerk de desarrollo real, una
+  invitación para una persona sin cuenta todavía, abierta con otra sesión, llevó por "Usar otra cuenta"
+  a `/ingresar` con el ticket: Clerk respondió "This invitation refers to a non-existing identification"
+  y, al reintentar, la página hospedada de Clerk volvió a `/invitacion/…` **sin** `__clerk_ticket`.
+  Corregido (commit `335f50d`): "Usar otra cuenta" cierra la sesión y vuelve a la **misma pantalla de la
+  invitación** con su `__clerk_ticket`, que ya ofrece ingresar o crear cuenta. El resto de la decisión
+  queda igual.
+- **Quién**: Juani, 28/10/2026 (decisión y enmienda).
+
+## D-138 · La deuda viva se adelanta a siete changes propios, repartidos entre seis desarrolladores (30/10/2026)
+
+- **Fecha**: 30/10/2026.
+- **Contexto**: con seis desarrolladores (Emiliano, Gianfranco, Neyen, Matías, Giuliano y Juan Cruz)
+  y un camino crítico que no admite más de tres changes a la vez, la mayor parte de la deuda de los
+  cierres esperaba al 15 o a dueños del tipo "quien toque X" que nunca actuaron (el 2d tocó
+  `ejemplo.py` y el 3c, el 2d y el PR #3 tocaron `web/` sin cerrar su deuda). El 30/10/2026 se
+  verificó toda la deuda contra el código de `main` (`e29e36d`) y contra los PR #3 y #4, por lectura
+  estática (sin correr tests ni mutantes): de unos 100 ítems, 12 ya estaban cerrados aunque la KB los
+  daba por abiertos, y quedaban unos 58 de código vivos y sin change propio.
+- **Decisión**: esa deuda pasa a siete changes nuevos, con responsable fijo:
+  C-23 `humo-y-ci` (2e, MEDIUM, Gianfranco); C-24 `respaldos-2` (1e, HIGH, Emiliano); C-25
+  `worker-y-logs` (1f, MEDIUM, Neyen); C-26 `pulido-web-3` (3e, MEDIUM, Matías); C-27
+  `ejemplo-robusto` (3f, LOW, Giuliano); C-28 `revisiones-independientes` (R1, MEDIUM, Juan Cruz,
+  sólo tests e informes); C-29 `base-y-rls` (2f, CRITICAL, sin asignar: un firmante de D-111). Los
+  dueños anteriores de cada ítem se conservan en las tablas de `12_fichas_de_changes.md`.
+- **Regla de reparto**: quien recién se suma al equipo sólo toma changes LOW o MEDIUM; lo CRITICAL lo
+  construye o lo supervisa un firmante de D-111. Si un change MEDIUM necesita cambiar la matriz de
+  permisos o código de `acceso` o `cuenta_corriente`, sube de nivel y ese pedazo sale del change.
+- **Lo que no se mueve**: la deuda del 4c (RB-6, RF-01, RF-02), la del 7 (D8, la configuración con
+  fecha pasada de D-103) y la que necesita el servidor real o datos del piloto (imágenes por digest,
+  HSTS con dominio, RD-2, SU-01, la 8.2 acortada del 2b, `/privacidad`) siguen donde estaban.
+- **Supuesto de planificación**: el 3d (PR #3) y el 6 (PR #4) se dan por terminados para repartir,
+  aunque al 30/10/2026 siguen en revisión sin mergear.
+- **Descartado**: dejar la deuda en el 15 (llegaría con más de 30 arreglos sueltos justo antes de
+  cargar datos reales) y darle el 4c a un desarrollador nuevo (es CRITICAL y del camino crítico).
+- **Quién**: Juani, 30/10/2026.
+
+## D-139 · El 3d cierra con el orden de pisos por altura y la deuda a C-26 y C-28 (30/10/2026)
+
+- **Fecha**: 30/10/2026.
+- **Contexto**: la ficha del 3d (D-130) se contradecía sola. En "Entra" pedía `SS1` arriba de `PB`
+  (orden de altura) y en "Terminado cuando" exigía `PB, 1..N, SS1..SSN`. Gianfranco construyó el
+  orden de altura el 28/10/2026 sin preguntar, y la raíz `/` (tarea 9.x) se construyó sin la
+  confirmación que el propio plan pedía. La revisión independiente del 30/10/2026 (rompedor en tres
+  intentos, F1 a F7; planner y plan-reviewer sobre la spec de la ayuda; constructor; auditor
+  BLOQUEANTES en el intento 1 y APROBADO en el intento 2, todos subagentes Claude) dejó seis
+  bloqueantes que pedían una decisión de Juani (BJ-1 a BJ-6, `tasks.md` del change archivado).
+- **Decisión**:
+  - **Orden de pisos**: `vocabularioDePisos` devuelve `SS2, SS1, PB, 1..N` (de abajo hacia arriba).
+    Elegido por Gianfranco el 28/10/2026 y confirmado por Juani el 30/10/2026 (BJ-6). El "Terminado
+    cuando" de la ficha 3d se reescribe con este orden; D-130 no se edita.
+  - **Raíz `/`**: redirige a `/edificios` con sesión y a `/ingresar` sin sesión, confirmado por Juani
+    (BJ-2). No cambia código.
+  - **BJ-1** (faltan los informes originales del planner, del revisor del plan, del constructor y de la
+    10.2, y el rojo del TDD de Gianfranco): deuda justificada. La evidencia sustituta son los mutantes
+    del rompedor (13 muertos en el intento 1, el sobreviviente muerto en el intento 2) y el vitest
+    completo sobre `decf692`; los faltantes quedan declarados en `informes/LEEME.md`. Cierra DA-7.
+  - **BJ-3** (tarea 1.2, aviso a Emiliano): se ratifica que la API falsa se hizo sin su respuesta,
+    porque el head del PR #4 (`2f81682`) no toca `web/e2e`. Se le avisa al rebasar el PR #4.
+  - **BJ-4** (tarea 2.5, e2e de Playwright de ubicación y grupo) y **BJ-5** (tarea 8.2, navegador real
+    a 1280 y 320 px, junto con DA-6, la raíz `/` sin test de navegador): pasan a C-26 `pulido-web-3`.
+  - **Ayuda del resumen**: el ejemplo dice "4 de 7 / 6 de 7" (F4 del rompedor, PR2-1 opción (a)): sólo
+    el texto, sin sincronizarlo con el cálculo de `lectura.py` (DA-1, a C-26).
+  - **Falso positivo de gitleaks**: `.gitleaksignore` en `main` (`bc7b9ce`, y `d534ac2` para la cita del
+    informe del auditor) ignora el `generic-api-key` de `a6bb954` (`test_gastos.py:120`, PR #4), que
+    ponía en rojo el job `secretos` de todo el repo porque gitleaks recorre todas las ramas (DA-12).
+  - El resto de la deuda (DA-1 a DA-12) queda con dueño en la ficha 3d de `12_fichas_de_changes.md`,
+    sobre todo C-26 y C-28.
+- **Descartado**: el orden `PB, 1..N, SS1..SSN` del "Terminado cuando" (pone los subsuelos arriba del
+  último piso, que es justo el defecto que el 3d venía a corregir); rediseñar la raíz `/` como
+  portal o landing (fuera del alcance del design); reconstruir el rojo del TDD original (los commits llevan test y código juntos, no se
+  puede); arreglar el falso positivo desde el 3d tocando `.gitleaks.toml` (cambio de seguridad del CI
+  fuera de alcance) o mergear con `secretos` en rojo.
+- **Cierre**: PR #3 mergeado en `main` (`73884d6`, 30/10/2026) con CI verde en `d534ac2` (backend, web,
+  humo, secretos y shellcheck); archivado en `5d79c2c`. Sin migraciones. MEDIUM: no lleva firma
+  (D-094, D-111).
+- **Quién**: Juani, 30/10/2026.
+
+## D-140 · Las pantallas de `gastos-y-cargos` no tienen cambio hermano planificado: el 6 es sólo backend y API
 
 - **Fecha**: 28/10/2026, en el propose del cambio 6 `gastos-y-cargos`.
 - **Qué se encontró**: al revisar el roadmap completo de `CHANGES.md` durante el propose, el cambio 6
@@ -2644,7 +2863,7 @@ registrado como tal en su momento.)*
 - **Quién**: Emiliano Caceres, 28/10/2026, como dueño del cambio 6. No es una firma de gobernanza: el
   cambio es MEDIUM (D-130) y no requiere aprobación de D-094/D-111.
 
-## D-132 · P36 y P37 resueltas: período de un gasto aprobado tarde, y dónde vive "gasto mensual obligatorio"
+## D-141 · P36 y P37 resueltas: período de un gasto aprobado tarde, y dónde vive "gasto mensual obligatorio"
 
 - **Fecha**: 28/10/2026, antes de arrancar el apply del cambio 6 `gastos-y-cargos`.
 - **P36 · un gasto que quedó afuera de su período (sin IA o en revisión aceptada) y se aprueba

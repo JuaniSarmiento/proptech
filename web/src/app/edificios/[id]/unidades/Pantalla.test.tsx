@@ -4,10 +4,44 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SesionVisible } from "../../../../componentes/SesionDePantalla";
 import type { Unidad } from "../../../../lib/api/tipos";
 import type { VecinoDeUnidad } from "../../../../lib/api/vecinos";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaPadron } from "./Pantalla";
+
+/**
+ * 2d/7.6 (D11): el resto de este archivo (anterior a 7.6) no le importa a
+ * esta pantalla quién pide "Agregar unidad" — por eso se mockea
+ * `useSesionDePantalla` una sola vez, acá arriba, con una sesión que
+ * siempre lo permite (`todos_los_edificios`, cualquier edificio). Los
+ * escenarios de D11 (abajo del todo) reemplazan este mock con
+ * `vi.mocked(useSesionDePantalla).mockReturnValueOnce(...)` para los casos
+ * sin ese permiso.
+ */
+vi.mock("../../../../componentes/SesionDePantalla", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../../../componentes/SesionDePantalla")>();
+  return {
+    ...real,
+    useSesionDePantalla: vi.fn(() => ({
+      datos: {
+        persona: { nombre: "Alguien" },
+        administraciones: [
+          {
+            id: "a",
+            nombre: "A",
+            acciones: {
+              administracion: ["invitar_usuarios_y_asignar_edificios"],
+              todos_los_edificios: ["configurar_padron"],
+              por_edificio: {},
+            },
+          },
+        ],
+      },
+      administracionId: "a",
+    })),
+  };
+});
 
 afterEach(cleanup);
 
@@ -528,7 +562,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
     const piso = screen.getByLabelText("Piso") as HTMLSelectElement;
     expect(piso.tagName).toBe("SELECT");
     const opciones = Array.from(piso.options).map((o) => o.value);
-    expect(opciones).toEqual(["", "PB", "1", "2", "3", "4", "SS1"]);
+    // pulido-2 (3d): orden de altura (subsuelos, PB, pisos); la opción vacía va primera (L-052).
+    expect(opciones).toEqual(["", "SS1", "PB", "1", "2", "3", "4"]);
   });
 
   it('D3 (6.2) "Unidades con el piso sin completar": se muestran marcadas en la tabla', () => {
@@ -568,5 +603,135 @@ describe("PantallaPadron, vecinos (7.4)", () => {
     await usuario.click(screen.getByRole("button", { name: "Guardar" }));
     const cuerpo = accionEditar.mock.calls[0]?.[1] as FormData;
     expect(cuerpo.get("piso")).toBe("");
+  });
+
+  // --- D11/7.6: "Agregar unidad" se oculta sin configurar_padron ---
+
+  describe("D11: Agregar unidad según la sesión", () => {
+    async function conSesion(sesion: SesionVisible | null) {
+      const { useSesionDePantalla } = await import("../../../../componentes/SesionDePantalla");
+      vi.mocked(useSesionDePantalla).mockReturnValueOnce(sesion);
+    }
+
+    it('un contador por edificio no ve "Agregar unidad" (Un contador abre un edificio)', async () => {
+      await conSesion({
+        datos: {
+          persona: { nombre: "Alguien" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: [],
+                por_edificio: { "1": ["ver_configuracion_del_edificio"] },
+              },
+            },
+          ],
+        },
+        administracionId: "a",
+      });
+      render(
+        <PantallaPadron
+          id="1"
+          nombreEdificio="Edificio API"
+          pisosDelEdificio={4}
+          subsuelosDelEdificio={1}
+          unidades={[UNIDAD_1A]}
+          informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+          accionCrear={accionNula}
+          accionEditar={accionNula}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Agregar unidad" })).toBeNull();
+    });
+
+    it('un administrador por edificio ve "Agregar unidad" en el suyo (Un administrador por edificio)', async () => {
+      await conSesion({
+        datos: {
+          persona: { nombre: "Alguien" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: [],
+                por_edificio: { "1": ["configurar_padron"] },
+              },
+            },
+          ],
+        },
+        administracionId: "a",
+      });
+      render(
+        <PantallaPadron
+          id="1"
+          nombreEdificio="Edificio API"
+          pisosDelEdificio={4}
+          subsuelosDelEdificio={1}
+          unidades={[UNIDAD_1A]}
+          informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+          accionCrear={accionNula}
+          accionEditar={accionNula}
+        />,
+      );
+      expect(screen.getAllByRole("button", { name: "Agregar unidad" }).length).toBeGreaterThan(0);
+    });
+
+    it('el mismo administrador NO ve "Agregar unidad" en un edificio ajeno', async () => {
+      await conSesion({
+        datos: {
+          persona: { nombre: "Alguien" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: [],
+                por_edificio: { "otro-edificio": ["configurar_padron"] },
+              },
+            },
+          ],
+        },
+        administracionId: "a",
+      });
+      render(
+        <PantallaPadron
+          id="1"
+          nombreEdificio="Edificio API"
+          pisosDelEdificio={4}
+          subsuelosDelEdificio={1}
+          unidades={[UNIDAD_1A]}
+          informe={{ suma: "1.000000", diferencia: "0.000000", estado: "ok" }}
+          accionCrear={accionNula}
+          accionEditar={accionNula}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Agregar unidad" })).toBeNull();
+    });
+
+    it('sin acciones en la sesión tampoco muestra "Agregar unidad" (Sin acciones en la sesión)', async () => {
+      await conSesion(null);
+      render(
+        <PantallaPadron
+          id="1"
+          nombreEdificio="Edificio API"
+          pisosDelEdificio={4}
+          subsuelosDelEdificio={1}
+          unidades={[]}
+          informe={{ suma: "0.000000", diferencia: "-1.000000", estado: "ok" }}
+          accionCrear={accionNula}
+          accionEditar={accionNula}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Agregar unidad" })).toBeNull();
+    });
+
+    // "El control oculto pedido a mano" (D11): que la API siga rechazando
+    // con 403 `sin_permiso` aunque nadie esconda el control en la web es un
+    // escenario de la API, no de esta pantalla — lo prueba el backend
+    // (`test_padron_api.py`), nunca una aserción tautológica acá.
   });
 });

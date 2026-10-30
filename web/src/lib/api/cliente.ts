@@ -7,6 +7,7 @@
  * `fetch` (no hay a dónde llamar).
  */
 
+import { redirect } from "next/navigation";
 import { cabecerasHaciaLaApi } from "../seguimiento";
 import { irAlIngreso, sesionActual } from "../sesion";
 
@@ -73,6 +74,7 @@ function textoSeguro(valor: unknown, porDefecto: string): string {
 }
 
 type OpcionesDePedido = {
+  alNoAutenticar?: "redirigir" | "devolver";
   metodo?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   cuerpo?: unknown;
   cabeceras?: Headers;
@@ -95,7 +97,10 @@ export async function pedirApi<T>(
   }
 
   const sesion = await sesionActual();
-  if (!sesion) return irAlIngreso();
+  if (!sesion) {
+    if (opciones.alNoAutenticar === "devolver") return { estado: "sin_sesion" };
+    return irAlIngreso();
+  }
   const cabeceras = cabecerasHaciaLaApi(opciones.cabeceras ?? new Headers());
   cabeceras.set("Authorization", `Bearer ${sesion.token}`);
   if (sesion.administracionId) {
@@ -122,6 +127,7 @@ export async function pedirApi<T>(
   }
 
   if (respuesta.status === 401) {
+    if (opciones.alNoAutenticar === "devolver") return { estado: "sin_sesion" };
     return irAlIngreso(sesion.regreso);
   }
   if (respuesta.status === 404) {
@@ -131,7 +137,11 @@ export async function pedirApi<T>(
     const leido = await leerJson(respuesta);
     const cuerpo = leido.parseo === "ok" ? comoRegistro(leido.valor) : {};
     const detalle = comoRegistro(cuerpo.detail);
-    const permiso = textoSeguro(detalle.permiso_faltante, "desconocido");
+    if (detalle.codigo === "sin_acceso") redirect("/sin-acceso");
+    const permiso =
+      detalle.codigo === "sin_permiso"
+        ? textoSeguro(detalle.permiso_faltante, "desconocido")
+        : "desconocido";
     return { estado: "sin_permiso", permiso };
   }
   if (respuesta.status === 409) {

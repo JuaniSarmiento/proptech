@@ -90,6 +90,36 @@ posteriores (M18).
 **En Windows**: los scripts de `infra/` (incluidos `respaldar.sh`, `restaurar.sh` y los de
 `infra/ci/`) son de Bash. Corren en **WSL2** o en **Git Bash**, nunca en PowerShell ni en `cmd`.
 
+### Entrar con el edificio de ejemplo
+
+Usá una base de desarrollo y una **instancia de Clerk de desarrollo**, la misma configurada en la API
+y la web. El comando corre como `proptech_app`, con los permisos existentes.
+
+1. En el panel de Clerk, seleccioná la instancia **Development** de la aplicación. Creá tu propia
+   cuenta de prueba en **Users** (o usá una que ya exista en esa instancia).
+2. Comprobá que la API y la web estén configuradas para esa misma instancia. `CLERK_EMISOR` debe ser
+   la URL HTTPS de desarrollo cuyo host termina en `.clerk.accounts.dev`, sin credenciales, rutas,
+   consulta ni fragmento; admite `/` final y el puerto estándar `443`. Las claves de la web también
+   deben ser las de desarrollo. Los valores reales quedan en la configuración local, fuera de git.
+3. Abrí **Users → tu cuenta → User ID** en el panel de Clerk y copiá el id. En el comando siguiente,
+   reemplazá `user_XXXXXXXX` por ese valor. Ejecutalo desde `infra/`, sobre tu stack de desarrollo:
+
+   ```bash
+   docker compose exec -e PROPTECH_ENTORNO=desarrollo api \
+     python -m proptech_core.complejos.aplicacion.ejemplo cargar --clerk-usuario user_XXXXXXXX
+   ```
+
+4. El comando carga el edificio si falta y dice **vinculado**. Si ya existía, conserva sus datos;
+   repetirlo con la misma cuenta dice **ya estaba vinculado**. Una cuenta diferente se rechaza sin
+   reemplazar el vínculo. El comando también se niega antes de conectarse si falta la guarda de
+   desarrollo, el id no tiene el formato permitido o el emisor no es de desarrollo.
+5. Abrí `http://localhost/ingresar` e ingresá con esa cuenta. Llegás a **Mis edificios**, con el
+   edificio de ejemplo. Si ya tenías abierta **Tu cuenta no tiene acceso todavía**, elegí **Volver a
+   intentar** después de ejecutar el comando. Si ingresaste con otra cuenta, elegí **Cerrar sesión**.
+
+El id queda en el panel de Clerk; no lo pegues en documentación, capturas ni commits. La vinculación
+se hace con este comando, sin escribir SQL ni saltear el login.
+
 ### Cómo restaurar un backup
 
 El servicio `respaldos` genera un backup completo al arrancar y después cada

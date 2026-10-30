@@ -92,7 +92,12 @@ def _autorizar(
 ) -> None:
     if not puede(cargar_asignaciones(sesion, identidad.persona_id), accion, complejo_id):
         raise HTTPException(
-            status_code=403, detail={"detalle": "sin_permiso", "permiso_faltante": accion.value}
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": accion.value,
+            },
         )
 
 
@@ -262,7 +267,14 @@ def mis_edificios(
 ) -> list[dict[str, str | None]]:
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
     if not asignaciones:
-        raise HTTPException(status_code=403, detail="sin_permiso")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": "ver_configuracion_del_edificio",
+            },
+        )
     return [
         {"id": str(e.id), "nombre": e.nombre, "localidad": e.localidad}
         for e in listar_complejos(sesion)
@@ -679,7 +691,11 @@ def asignar_complejo(
     if not puede(asignaciones, _ACCION, complejo_id):
         raise HTTPException(
             status_code=403,
-            detail={"detalle": "sin_permiso", "permiso_faltante": _ACCION.value},
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": _ACCION.value,
+            },
         )
     # La persona destino (del cuerpo, no del path): recién después del
     # permiso, para no revelar si existe antes de confirmar que quien pide

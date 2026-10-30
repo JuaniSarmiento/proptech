@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import (
@@ -13,7 +13,8 @@ from proptech_api.acceso import (
     sesion_con_tenant,
     token_de_sesion_actual,
 )
-from proptech_core.acceso.aplicacion.identidad import IdentidadNoDisponible
+from proptech_api.errores import sin_acceso_http
+from proptech_core.acceso.aplicacion.identidad import SinAcceso
 from proptech_core.acceso.aplicacion.sesion import consultar, registrar_ingreso
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.token import TokenVerificado
@@ -29,8 +30,8 @@ def sesion_actual(
 ) -> dict[str, Any]:
     try:
         return consultar(request.app.state.fabrica_de_sesiones, token.sub)
-    except IdentidadNoDisponible:
-        raise HTTPException(status_code=401) from None
+    except SinAcceso:
+        raise sin_acceso_http() from None
 
 
 @router.post("/sesion/ingreso")

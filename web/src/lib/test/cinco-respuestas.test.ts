@@ -5,6 +5,10 @@
  * comparten un `_mapear*` privado que ya cubre las cinco, y el escenario
  * de la spec dice "pantalla", no "acción".
  *
+ * 2d: `sin_acceso` se resuelve en pedirApi con redirect a /sin-acceso;
+ * nunca llega como resultado a acciones.ts. `sin_sesion` se devuelve sólo
+ * al selector que pide alNoAutenticar=devolver.
+ *
  * Las excepciones están documentadas acá, con el motivo — nunca en el
  * archivo que las tiene, para que una excepción nueva no se cuele sin
  * pasar por este test.

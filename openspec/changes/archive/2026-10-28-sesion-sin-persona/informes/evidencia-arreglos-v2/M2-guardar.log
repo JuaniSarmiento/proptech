@@ -1,0 +1,53 @@
+TIME 2026-10-28T15:56:52.170346-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M2-guardar.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -341,7 +341,7 @@
+          * campo ya tocado conservaba lo tipeado para la unidad anterior y
+          * el oculto `unidad_id` lo mandaba sobre la unidad nueva. La `key`
+          * por unidad (o "nueva") fuerza el remonte del formulario entero. */}
+-        {puedeConfigurar ? (
++        {true ? (
+           <Formulario
+             key={unidadEnEdicion?.id ?? "nueva"}
+             erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
+
+
+ RUN  v5.0.3 <worktree>/web
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 636ms
+   × R2D-R1: aun con permiso de invitar no monta editar ni guardar sin configurar padrón 55ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: aun con permiso de invitar no monta editar ni guardar sin configurar padrón
+AssertionError: expected <button type="submit" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  type="submit"
+>
+  Guardar
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:161:61
+    159|   await userEvent.setup().click(screen.getByRole("button", { name: "1A…
+    160|   expect(screen.getByRole("button", { name: "Agregar vecino" })).toBeT…
+    161|   expect(screen.queryByRole("button", { name: "Guardar" })).toBeNull();
+       |                                                             ^
+    162|   expect(screen.queryByLabelText("Identificador")).toBeNull();
+    163| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 passed (15)
+   Start at  15:56:52
+   Duration  1.74s (tests 39%, environment 31%, transform 17%, import 12%, setup 1%)
+

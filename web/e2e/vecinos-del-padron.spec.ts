@@ -64,6 +64,11 @@ test("7.4 sin permiso para leer personal: padrón normal, sin columna ni secció
   await page.goto(`/edificios/${EDIFICIO_API}/unidades`);
   await expect(page.getByRole("heading", { name: "Padrón de unidades" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Vecinos" })).toHaveCount(0);
-  await page.getByRole("button", { name: "1A", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Vecinos" })).toHaveCount(0);
+  // D11/7.6: sin acciones, el identificador sigue siendo lectura, no edición.
+  await expect(page.getByRole("row", { name: /^1A/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1A", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Agregar unidad" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guardar" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Agregar vecino" })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

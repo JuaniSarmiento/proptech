@@ -28,6 +28,7 @@ import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, CampoDeLista, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
+import { permite, useSesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import type { InformeDeCoeficientes, Unidad } from "../../../../lib/api/tipos";
 import { etiquetaDeVinculo, type VecinoDeUnidad } from "../../../../lib/api/vecinos";
 import {
@@ -81,8 +82,8 @@ type Props = {
   informe: InformeDeCoeficientes;
   accionCrear: AccionUnidad;
   accionEditar: AccionUnidad;
-  /** 7.4: `null` cuando quien mira no puede leer `/api/personal` (D5, sólo
-   * super admin) — esta pantalla entonces no muestra la sección Vecinos. */
+  /** 7.4: `null` cuando la lectura de `/api/personal` no está disponible.
+   * Leer personal no habilita gestionar vecinos (D11/E11). */
   vecinosPorUnidad?: Map<string, VecinoDeUnidad[]> | null;
   accionAltaVecino?: AccionVecino;
   accionRevocarVecino?: AccionSimple;
@@ -114,6 +115,9 @@ export function PantallaPadron({
   accionRevocarVecino = async () => null,
   accionQuitarVecino = async () => null,
 }: Props) {
+  const sesion = useSesionDePantalla();
+  const puedeConfigurar = permite(sesion, "configurar_padron", id);
+  const puedeInvitar = permite(sesion, "invitar_usuarios_y_asignar_edificios");
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
   const agregarRef = useRef<HTMLButtonElement>(null);
@@ -163,11 +167,11 @@ export function PantallaPadron({
     setPanelAbierto(true);
   }
 
-  const botonAgregar = (
+  const botonAgregar = puedeConfigurar ? (
     <button ref={agregarRef} type="button" className="boton-principal" onClick={abrirNueva}>
       Agregar unidad
     </button>
-  );
+  ) : undefined;
 
   return (
     <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="unidades">
@@ -180,7 +184,11 @@ export function PantallaPadron({
       <div className="disposicion">
         <Panel
           titulo="Unidades del edificio"
-          descripcion="Tocá el identificador de una unidad para corregir sus datos."
+          descripcion={
+            puedeConfigurar
+              ? "Tocá el identificador de una unidad para corregir sus datos."
+              : "Los datos de las unidades del edificio."
+          }
         >
           {unidades.length === 0 ? (
             <Estados
@@ -188,9 +196,11 @@ export function PantallaPadron({
               mensaje="Todavía no cargaste unidades"
               detalle="Empezá por la primera: identificador, tipo, superficie y coeficiente. Los datos los podés copiar de tu planilla."
               accion={
-                <button type="button" onClick={abrirNueva}>
-                  Agregar unidad
-                </button>
+                puedeConfigurar ? (
+                  <button type="button" onClick={abrirNueva}>
+                    Agregar unidad
+                  </button>
+                ) : undefined
               }
             />
           ) : (
@@ -216,13 +226,17 @@ export function PantallaPadron({
                     return (
                       <tr key={unidad.id}>
                         <td>
-                          <button
-                            type="button"
-                            className="boton-enlace"
-                            onClick={(e) => abrirEdicion(unidad, e)}
-                          >
-                            {unidad.identificador}
-                          </button>
+                          {puedeConfigurar || puedeInvitar ? (
+                            <button
+                              type="button"
+                              className="boton-enlace"
+                              onClick={(e) => abrirEdicion(unidad, e)}
+                            >
+                              {unidad.identificador}
+                            </button>
+                          ) : (
+                            unidad.identificador
+                          )}
                         </td>
                         <td>{etiquetaDeTipo(unidad.tipo)}</td>
                         <td>{unidad.piso ?? "Sin completar"}</td>
@@ -310,8 +324,14 @@ export function PantallaPadron({
       </div>
 
       <PanelLateral
-        abierto={panelAbierto}
-        titulo={unidadEnEdicion ? "Editar unidad" : "Agregar unidad"}
+        abierto={panelAbierto && (puedeConfigurar || puedeInvitar)}
+        titulo={
+          unidadEnEdicion
+            ? puedeConfigurar
+              ? "Editar unidad"
+              : "Vecinos de la unidad"
+            : "Agregar unidad"
+        }
         alCerrar={() => setPanelAbierto(false)}
         devolverFocoA={aperturaRef}
       >
@@ -321,89 +341,91 @@ export function PantallaPadron({
          * campo ya tocado conservaba lo tipeado para la unidad anterior y
          * el oculto `unidad_id` lo mandaba sobre la unidad nueva. La `key`
          * por unidad (o "nueva") fuerza el remonte del formulario entero. */}
-        <Formulario
-          key={unidadEnEdicion?.id ?? "nueva"}
-          erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
-          erroresDesconocidos={estado?.erroresDesconocidos ?? []}
-          action={enviar}
-          onSubmit={alEnviarUnidad}
-        >
-          {unidadEnEdicion ? (
-            <input type="hidden" name="unidad_id" value={unidadEnEdicion.id} />
-          ) : null}
-          <Campo
-            nombre="identificador"
-            etiqueta="Identificador"
-            name="identificador"
-            defaultValue={unidadEnEdicion?.identificador}
-            maxLength={IDENTIFICADOR_MAXIMO}
-            required
-          />
-          <p className="campo__ayuda">
-            Hasta {IDENTIFICADOR_MAXIMO} caracteres, letras y números como quieras (por ejemplo
-            "1A", "PB 2" o "Local 3"): no hay un formato fijo.
-          </p>
-          <label className="campo">
-            Tipo
-            <select name="tipo" defaultValue={unidadEnEdicion?.tipo ?? "departamento"}>
-              {_TIPOS.map((tipo) => (
-                <option key={tipo.valor} value={tipo.valor}>
-                  {tipo.etiqueta}
-                </option>
-              ))}
-            </select>
-          </label>
-          {pisosDelEdificio !== null && subsuelosDelEdificio !== null ? (
-            // D3 (tarea 6.2, F2): opción vacía EXPLÍCITA primero — sin
-            // ella, abrir el panel de una unidad migrada con `piso: null`
-            // selecciona (y guardaría) la primera opción real de la lista
-            // sin que nadie la haya elegido.
-            <CampoDeLista
-              nombre="piso"
-              etiqueta="Piso"
-              name="piso"
-              defaultValue={unidadEnEdicion?.piso ?? ""}
-            >
-              <option value="">Sin completar</option>
-              {vocabularioDePisos(pisosDelEdificio, subsuelosDelEdificio).map((piso) => (
-                <option key={piso} value={piso}>
-                  {piso}
-                </option>
-              ))}
-            </CampoDeLista>
-          ) : (
+        {puedeConfigurar ? (
+          <Formulario
+            key={unidadEnEdicion?.id ?? "nueva"}
+            erroresPorCampo={{ ...erroresPrevios, ...estado?.erroresPorCampo }}
+            erroresDesconocidos={estado?.erroresDesconocidos ?? []}
+            action={enviar}
+            onSubmit={alEnviarUnidad}
+          >
+            {unidadEnEdicion ? (
+              <input type="hidden" name="unidad_id" value={unidadEnEdicion.id} />
+            ) : null}
             <Campo
-              nombre="piso"
-              etiqueta="Piso"
-              name="piso"
-              defaultValue={unidadEnEdicion?.piso ?? ""}
+              nombre="identificador"
+              etiqueta="Identificador"
+              name="identificador"
+              defaultValue={unidadEnEdicion?.identificador}
+              maxLength={IDENTIFICADOR_MAXIMO}
+              required
             />
-          )}
-          <Campo
-            nombre="superficie_m2"
-            etiqueta="Superficie (m²)"
-            name="superficie_m2"
-            inputMode="decimal"
-            defaultValue={decimalParaCampo(unidadEnEdicion?.superficie_m2)}
-            required
-          />
-          <Campo
-            nombre="coeficiente"
-            etiqueta="Coeficiente"
-            name="coeficiente"
-            inputMode="decimal"
-            defaultValue={decimalParaCampo(unidadEnEdicion?.coeficiente)}
-            required
-          />
-          <button type="submit" className="boton-principal">
-            Guardar
-          </button>
-        </Formulario>
+            <p className="campo__ayuda">
+              Hasta {IDENTIFICADOR_MAXIMO} caracteres, letras y números como quieras (por ejemplo
+              "1A", "PB 2" o "Local 3"): no hay un formato fijo.
+            </p>
+            <label className="campo">
+              Tipo
+              <select name="tipo" defaultValue={unidadEnEdicion?.tipo ?? "departamento"}>
+                {_TIPOS.map((tipo) => (
+                  <option key={tipo.valor} value={tipo.valor}>
+                    {tipo.etiqueta}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {pisosDelEdificio !== null && subsuelosDelEdificio !== null ? (
+              // D3 (tarea 6.2, F2): opción vacía EXPLÍCITA primero — sin
+              // ella, abrir el panel de una unidad migrada con `piso: null`
+              // selecciona (y guardaría) la primera opción real de la lista
+              // sin que nadie la haya elegido.
+              <CampoDeLista
+                nombre="piso"
+                etiqueta="Piso"
+                name="piso"
+                defaultValue={unidadEnEdicion?.piso ?? ""}
+              >
+                <option value="">Sin completar</option>
+                {vocabularioDePisos(pisosDelEdificio, subsuelosDelEdificio).map((piso) => (
+                  <option key={piso} value={piso}>
+                    {piso}
+                  </option>
+                ))}
+              </CampoDeLista>
+            ) : (
+              <Campo
+                nombre="piso"
+                etiqueta="Piso"
+                name="piso"
+                defaultValue={unidadEnEdicion?.piso ?? ""}
+              />
+            )}
+            <Campo
+              nombre="superficie_m2"
+              etiqueta="Superficie (m²)"
+              name="superficie_m2"
+              inputMode="decimal"
+              defaultValue={decimalParaCampo(unidadEnEdicion?.superficie_m2)}
+              required
+            />
+            <Campo
+              nombre="coeficiente"
+              etiqueta="Coeficiente"
+              name="coeficiente"
+              inputMode="decimal"
+              defaultValue={decimalParaCampo(unidadEnEdicion?.coeficiente)}
+              required
+            />
+            <button type="submit" className="boton-principal">
+              Guardar
+            </button>
+          </Formulario>
+        ) : null}
 
-        {/* 7.4: sólo con una unidad existente (no al crear) y sólo si esta
-         * sesión puede leer vecinos (super admin, D5). Formulario propio,
-         * HERMANO del de arriba: dos `<form>` anidados no son válidos. */}
-        {unidadEnEdicion && vecinosPorUnidad ? (
+        {/* 7.4/D11: una lectura exitosa de personal no concede gestión.
+         * Sólo se ofrecen los controles con el permiso de invitar.
+         * Formulario hermano del de unidad, nunca anidado. */}
+        {unidadEnEdicion && vecinosPorUnidad && puedeInvitar ? (
           <SeccionVecinos
             unidadId={unidadEnEdicion.id}
             vecinos={vecinosPorUnidad.get(unidadEnEdicion.id) ?? []}

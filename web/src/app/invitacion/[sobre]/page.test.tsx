@@ -10,7 +10,9 @@ afterEach(() => {
 const SOBRE = "sobre-1";
 
 function sinSesion() {
-  vi.mocked(auth).mockResolvedValueOnce({ userId: null } as Awaited<ReturnType<typeof auth>>);
+  vi.mocked(auth).mockResolvedValueOnce({ userId: null } as unknown as Awaited<
+    ReturnType<typeof auth>
+  >);
 }
 
 async function enlacesDeInvitacion(ticket?: string) {
@@ -45,3 +47,56 @@ it.each([
   expect(ingreso).not.toContain("__clerk_ticket");
   expect(registro).not.toContain("__clerk_ticket");
 });
+
+// --- B-3 (2d, 7.8, D10): el claim de email llega a PantallaInvitacion ---
+
+it("sin sesión, claimEmail es null", async () => {
+  sinSesion();
+  const elemento = (await Invitacion({
+    params: Promise.resolve({ sobre: SOBRE }),
+    searchParams: Promise.resolve({}),
+  })) as ReactElement<{ claimEmail: string | null }>;
+  expect(elemento.props.claimEmail).toBeNull();
+});
+
+it("con sesión y el claim de email, lo pasa a la pantalla", async () => {
+  vi.mocked(auth).mockResolvedValueOnce({
+    userId: "user_prueba",
+    sessionClaims: { email: "alguien@example.invalid" },
+    getToken: async () => "token-local",
+  } as unknown as Awaited<ReturnType<typeof auth>>);
+  const elemento = (await Invitacion({
+    params: Promise.resolve({ sobre: SOBRE }),
+    searchParams: Promise.resolve({}),
+  })) as ReactElement<{ claimEmail: string | null }>;
+  expect(elemento.props.claimEmail).toBe("alguien@example.invalid");
+});
+
+it("un email en la query de la URL nunca llega como claimEmail (El email no sale de la URL)", async () => {
+  sinSesion();
+  const elemento = (await Invitacion({
+    params: Promise.resolve({ sobre: SOBRE }),
+    // @ts-expect-error -- un parámetro que la página no declara, a propósito.
+    searchParams: Promise.resolve({ email: "intruso@example.invalid" }),
+  })) as ReactElement<{ claimEmail: string | null }>;
+  expect(elemento.props.claimEmail).toBeNull();
+});
+
+it.each([undefined, "abc.123-xyz_9", "con espacio"])(
+  "E10: la URL de cierre vuelve a la misma invitación con ticket seguro (%s)",
+  async (ticket) => {
+    vi.mocked(auth).mockResolvedValueOnce({
+      userId: "user_prueba",
+      sessionClaims: {},
+      getToken: async () => "token-local",
+    } as unknown as Awaited<ReturnType<typeof auth>>);
+    const pantalla = (await Invitacion({
+      params: Promise.resolve({ sobre: "sobre con /" }),
+      searchParams: Promise.resolve({ __clerk_ticket: ticket }),
+    })) as ReactElement<{ volverAInvitacion: string }>;
+    const esperado =
+      "/invitacion/sobre%20con%20%2F" +
+      (ticket === "abc.123-xyz_9" ? "?__clerk_ticket=abc.123-xyz_9" : "");
+    expect(pantalla.props.volverAInvitacion).toBe(esperado);
+  },
+);

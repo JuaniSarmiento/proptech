@@ -164,6 +164,12 @@ def test_versiones_vigente_por_fecha_y_unique_violation_traducida_a_409(
         ("recargo_segundo_vencimiento", "NaN"),
         ("recargo_segundo_vencimiento", "20.01"),
         ("dia_de_vencimiento", 29),
+        # pulido-2 (3d): el tope 28 vale para toda la familia de días, no sólo el 29.
+        ("dia_de_vencimiento", 30),
+        ("dia_de_vencimiento", 31),
+        ("dia_segundo_vencimiento", 0),
+        ("dia_segundo_vencimiento", 29),
+        ("dia_segundo_vencimiento", 31),
         ("dia_de_vencimiento", 0),
         ("dia_de_vencimiento", "10"),
         ("dias_de_gracia", True),

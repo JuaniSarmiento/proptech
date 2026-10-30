@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -30,13 +31,24 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from proptech_core.acceso.aplicacion.auditoria import registrar
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso
+from proptech_core.acceso.aplicacion.alta_inicial import crear_administracion_y_super_admin
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    ADMINISTRACION_EJEMPLO_ID as ADMINISTRACION_EJEMPLO_ID,
+)
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    PERSONA_SUPER_ADMIN_EJEMPLO_ID as PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+)
+from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
+    VinculacionDeDesarrolloNoDisponible,
+    vincular,
+)
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.base_de_datos import (
     abrir_sesion,
@@ -58,11 +70,6 @@ from proptech_core.complejos.aplicacion.escritura import (
 from proptech_core.complejos.aplicacion.grupos import crear_grupo
 from proptech_core.complejos.aplicacion.unidades import crear_unidad
 
-#: Id fijo de la administración de ejemplo (D9 del 3a, D1 de
-#: `acceso-de-desarrollo`): nunca generado, para que `cargar()` compare contra
-#: la misma fila en cada corrida en vez de crear una nueva administración.
-ADMINISTRACION_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e0")
-PERSONA_SUPER_ADMIN_EJEMPLO_ID = UUID("00000000-0000-4000-8000-0000000000e1")
 NOMBRE_ADMINISTRACION_EJEMPLO = "Administración de ejemplo"
 NOMBRE_SUPER_ADMIN_EJEMPLO = "Super admin de ejemplo"
 #: Ficticio, nunca un dato personal real (D-093): sólo identifica la fila.
@@ -73,17 +80,17 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 ENTORNO_DE_DESARROLLO = "desarrollo"
 
 
-def _ruta_georef_por_defecto() -> Path:
-    base = Path(Configuracion().proptech_parametros).resolve().parent
+def _ruta_georef_por_defecto(configuracion: Configuracion | None = None) -> Path:
+    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
     return base / "georef"
 
 
-def _ruta_semilla_por_defecto() -> Path:
+def _ruta_semilla_por_defecto(configuracion: Configuracion | None = None) -> Path:
     """Relativa a `PROPTECH_PARAMETROS` (D-042), nunca calculada por la
     profundidad del archivo: esa cuenta difiere entre la corrida local (bajo
     `backend/`) y la imagen de Docker (`/app/src/...`), que no tienen el
     mismo número de carpetas hasta la raíz del repo."""
-    base = Path(Configuracion().proptech_parametros).resolve().parent
+    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
     return base / "semilla" / "edificio-ejemplo.yaml"
 
 
@@ -99,6 +106,7 @@ class ResultadoCarga:
     #: False cuando el ejemplo ya estaba igual ("ya estaba"); True cuando esta
     #: corrida lo creó.
     hizo_algo: bool
+    vinculacion: str | None = None
 
 
 def _reloj_por_defecto() -> datetime:
@@ -114,6 +122,7 @@ def _nombre_de_grupo(clave: str, parametros: Parametros) -> tuple[str, str]:
 
 def _crear_desde_cero(
     sesion: Session,
+    identidad: Identidad,
     *,
     parametros: Parametros,
     semilla: Semilla,
@@ -121,35 +130,9 @@ def _crear_desde_cero(
     reloj: Callable[[], datetime],
     request_id: UUID,
 ) -> UUID:
-    sesion.execute(
-        text(
-            "INSERT INTO persona(id, administracion_id, nombre, email) "
-            "VALUES (:id, :admin, :nombre, :email)"
-        ),
-        {
-            "id": PERSONA_SUPER_ADMIN_EJEMPLO_ID,
-            "admin": ADMINISTRACION_EJEMPLO_ID,
-            "nombre": NOMBRE_SUPER_ADMIN_EJEMPLO,
-            "email": EMAIL_SUPER_ADMIN_EJEMPLO,
-        },
-    )
-    sesion.execute(
-        text(
-            "INSERT INTO asignacion_rol(administracion_id, persona_id, rol) "
-            "VALUES (:admin, :persona, 'super_admin')"
-        ),
-        {"admin": ADMINISTRACION_EJEMPLO_ID, "persona": PERSONA_SUPER_ADMIN_EJEMPLO_ID},
-    )
-    identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_SUPER_ADMIN_EJEMPLO_ID)
-    registrar(
-        sesion,
-        identidad,
-        EventoDeAcceso.ALTA_INICIAL,
-        entidad="persona",
-        entidad_id=PERSONA_SUPER_ADMIN_EJEMPLO_ID,
-        request_id=request_id,
-    )
-
+    """La administración, la persona `super_admin` y su asignación ya las
+    creó `crear_administracion_y_super_admin` (L-009, D7, 2d grupo 6): acá
+    sólo se levanta el edificio con `identidad` ya resuelta."""
     complejo_id = crear_edificio(
         sesion,
         identidad,
@@ -333,6 +316,7 @@ def cargar(
     georef: Georef,
     reloj: Callable[[], datetime] = _reloj_por_defecto,
     request_id: UUID,
+    clerk_usuario: str | None = None,
     intentos: int = 50,
     espera_s: float = 0.1,
 ) -> ResultadoCarga:
@@ -343,23 +327,39 @@ def cargar(
     módulo, y no queda nada a medias (D1 de `acceso-de-desarrollo`)."""
     for _ in range(intentos):
         with abrir_sesion(fabrica, ADMINISTRACION_EJEMPLO_ID) as sesion, sesion.begin():
-            ganadora = sesion.execute(
-                text(
-                    "INSERT INTO administracion(id, nombre) VALUES (:id, :nombre) "
-                    "ON CONFLICT (id) DO NOTHING RETURNING id"
-                ),
-                {"id": ADMINISTRACION_EJEMPLO_ID, "nombre": NOMBRE_ADMINISTRACION_EJEMPLO},
-            ).first()
-            if ganadora is not None:
+            alta = crear_administracion_y_super_admin(
+                sesion,
+                administracion_id=ADMINISTRACION_EJEMPLO_ID,
+                persona_id=PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                nombre_administracion=NOMBRE_ADMINISTRACION_EJEMPLO,
+                nombre_persona=NOMBRE_SUPER_ADMIN_EJEMPLO,
+                email=EMAIL_SUPER_ADMIN_EJEMPLO,
+                request_id=request_id,
+            )
+            if alta is not None:
+                identidad = Identidad(ADMINISTRACION_EJEMPLO_ID, PERSONA_SUPER_ADMIN_EJEMPLO_ID)
                 complejo_id = _crear_desde_cero(
                     sesion,
+                    identidad,
                     parametros=parametros,
                     semilla=semilla,
                     georef=georef,
                     reloj=reloj,
                     request_id=request_id,
                 )
-                return ResultadoCarga(ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=True)
+                vinculacion = (
+                    vincular(
+                        sesion,
+                        ADMINISTRACION_EJEMPLO_ID,
+                        PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                        clerk_usuario,
+                    )
+                    if clerk_usuario is not None
+                    else None
+                )
+                return ResultadoCarga(
+                    ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=True, vinculacion=vinculacion
+                )
 
             complejo = sesion.execute(
                 text("SELECT id FROM complejo WHERE administracion_id=:admin LIMIT 1"),
@@ -367,7 +367,19 @@ def cargar(
             ).first()
             if complejo is not None:
                 _comparar_o_fallar(sesion, complejo.id, semilla)
-                return ResultadoCarga(ADMINISTRACION_EJEMPLO_ID, complejo.id, hizo_algo=False)
+                vinculacion = (
+                    vincular(
+                        sesion,
+                        ADMINISTRACION_EJEMPLO_ID,
+                        PERSONA_SUPER_ADMIN_EJEMPLO_ID,
+                        clerk_usuario,
+                    )
+                    if clerk_usuario is not None
+                    else None
+                )
+                return ResultadoCarga(
+                    ADMINISTRACION_EJEMPLO_ID, complejo.id, hizo_algo=False, vinculacion=vinculacion
+                )
             # Otra corrida ganó la carrera de `administracion` pero todavía no
             # terminó de cargar el edificio: esperar a que confirme, con una
             # sesión nueva (la actual ya leyó un estado que puede quedar
@@ -378,12 +390,48 @@ def cargar(
     )
 
 
+def _emisor_de_desarrollo(emisor: str | None) -> str | None:
+    if not emisor:
+        return None
+    try:
+        partes = urlsplit(emisor)
+        if (
+            partes.scheme != "https"
+            or not partes.hostname
+            or not partes.hostname.endswith(".clerk.accounts.dev")
+            or partes.username is not None
+            or partes.password is not None
+            or partes.port not in (None, 443)
+            or partes.query
+            or partes.fragment
+            or "?" in emisor
+            or "#" in emisor
+            or partes.path not in ("", "/")
+        ):
+            return None
+        return f"https://{partes.hostname}"
+    except ValueError:
+        return None
+
+
 def _main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Comando del edificio de ejemplo")
+    # B-2 (rompedor, vuelta 1): `allow_abbrev=False` en los dos parsers para
+    # que `--clerk` no se acepte como abreviatura de `--clerk-usuario`, y
+    # `parse_known_args` en vez de `parse_args` para no dejar que argparse
+    # arme su propio mensaje de `unrecognized arguments`, que repite tal
+    # cual cualquier valor del usuario (el id de Clerk incluido).
+    parser = argparse.ArgumentParser(
+        description="Comando del edificio de ejemplo", allow_abbrev=False
+    )
     subparsers = parser.add_subparsers(dest="accion", required=True)
-    cargar_parser = subparsers.add_parser("cargar", help="Carga el edificio de ejemplo en la base")
+    cargar_parser = subparsers.add_parser(
+        "cargar", help="Carga el edificio de ejemplo en la base", allow_abbrev=False
+    )
     cargar_parser.add_argument("--semilla", default=None)
-    args = parser.parse_args(argv)
+    cargar_parser.add_argument("--clerk-usuario", default=None)
+    args, no_reconocidos = parser.parse_known_args(argv)
+    if no_reconocidos:
+        parser.error("argumentos no reconocidos; no se escribió nada")
 
     if os.environ.get("PROPTECH_ENTORNO") != ENTORNO_DE_DESARROLLO:
         print(
@@ -393,11 +441,29 @@ def _main(argv: list[str]) -> int:
         )
         return 1
 
-    configuracion = Configuracion()
+    emisor_normalizado = None
+    if args.clerk_usuario is not None:
+        if re.fullmatch(r"user_[A-Za-z0-9]{1,64}", args.clerk_usuario, flags=re.ASCII) is None:
+            print(
+                "el id de cuenta no tiene el formato permitido; no se escribió nada",
+                file=sys.stderr,
+            )
+            return 1
+        emisor_normalizado = _emisor_de_desarrollo(os.environ.get("CLERK_EMISOR"))
+        if emisor_normalizado is None:
+            print(
+                "la vinculación exige una instancia de Clerk de desarrollo; no se escribió nada",
+                file=sys.stderr,
+            )
+            return 1
+
+    configuracion = Configuracion(clerk_emisor=emisor_normalizado)
     parametros = leer_parametros(configuracion.proptech_parametros)
     try:
-        georef = leer_georef(str(_ruta_georef_por_defecto()))
-        semilla = leer_semilla(args.semilla or str(_ruta_semilla_por_defecto()), parametros, georef)
+        georef = leer_georef(str(_ruta_georef_por_defecto(configuracion)))
+        semilla = leer_semilla(
+            args.semilla or str(_ruta_semilla_por_defecto(configuracion)), parametros, georef
+        )
     except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
         print(str(error), file=sys.stderr)
         return 1
@@ -416,10 +482,16 @@ def _main(argv: list[str]) -> int:
                 semilla=semilla,
                 georef=georef,
                 request_id=uuid4(),
+                clerk_usuario=args.clerk_usuario,
             )
-        except EjemploDistinto as error:
+        except (EjemploDistinto, VinculacionDeDesarrolloNoDisponible) as error:
             print(str(error), file=sys.stderr)
             return 1
+        except IntegrityError:
+            print("no se pudo completar la carga; no se escribió nada", file=sys.stderr)
+            return 1
+        if resultado.vinculacion is not None:
+            print(resultado.vinculacion)
         if resultado.hizo_algo:
             print(f"ejemplo cargado: {resultado.administracion_id}")
         else:

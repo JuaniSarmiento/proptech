@@ -1,14 +1,41 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render as renderOriginal, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { SesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import type { VersionDelHistorial } from "../../../../lib/api/tipos";
 import { sinViolaciones } from "../../../../lib/test/accesibilidad";
 import { PantallaConfiguracion } from "./Pantalla";
 
 afterEach(cleanup);
+function render(ui: ReactElement) {
+  return renderOriginal(
+    <SesionDePantalla
+      value={{
+        administracionId: "a",
+        datos: {
+          persona: { nombre: "Prueba" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: [],
+                todos_los_edificios: ["crear_version_de_configuracion"],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+      }}
+    >
+      {ui}
+    </SesionDePantalla>,
+  );
+}
 
 const V1: VersionDelHistorial = {
   id: "v1",

@@ -1,0 +1,52 @@
+$ next build
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 26ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 202ms
+  Running TypeScript ...
+  Finished TypeScript in 2.5s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/4) ...
+  Generating static pages using 15 workers (1/4) 
+  Generating static pages using 15 workers (2/4) 
+  Generating static pages using 15 workers (3/4) 
+✓ Generating static pages using 15 workers (4/4) in 122ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /edificios
+├ ƒ /edificios/[id]
+├ ƒ /edificios/[id]/categorias
+├ ƒ /edificios/[id]/configuracion
+├ ƒ /edificios/[id]/grupos
+├ ƒ /edificios/[id]/saldos-previos
+├ ƒ /edificios/[id]/unidades
+├ ƒ /elegir-administracion
+├ ƒ /ingresar/[[...paso]]
+├ ƒ /invitacion/[sobre]
+├ ƒ /personal
+├ ƒ /privacidad
+├ ƒ /registrarse/[[...paso]]
+├ ƒ /salud-web
+└ ƒ /sin-acceso
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+api-falsa escuchando en :43218
+▲ Next.js 16.4.3
+- Local:         http://localhost:43219
+- Network:       http://192.168.1.172:43219
+✓ Ready in 108ms
+✓ Running next.config.ts took 40ms
+
+Running 1 test using 1 worker
+
+  ✓  1 [chromium] › e2e/vecinos-del-padron.spec.ts:52:1 › 7.4 sin permiso para leer personal: padrón normal, sin columna ni sección Vecinos (719ms)
+
+  1 passed (1.3s)

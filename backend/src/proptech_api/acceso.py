@@ -19,7 +19,8 @@ from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as HTTPExceptionDeStarlette
 from starlette.responses import Response
 
-from proptech_core.acceso.aplicacion.identidad import IdentidadNoDisponible, resolver
+from proptech_api.errores import sin_acceso_http
+from proptech_core.acceso.aplicacion.identidad import IdentidadNoDisponible, SinAcceso, resolver
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.token import (
     TokenInvalido,
@@ -61,6 +62,8 @@ def identidad_actual(
             request.headers.get("X-Proptech-Administracion"),
             request_id=UUID(request_id_actual.get() or ""),
         )
+    except SinAcceso:
+        raise sin_acceso_http() from None
     except IdentidadNoDisponible:
         raise HTTPException(status_code=401) from None
 
@@ -69,7 +72,7 @@ def sesion_con_tenant(
     request: Request, identidad: Identidad = Depends(identidad_actual)
 ) -> Iterator[Session]:
     """Depende EXPLÍCITAMENTE de la identidad (D7): así FastAPI no abre la
-    sesión antes de saber quién es — si `identidad_actual` levanta 401, esta
+    sesión antes de saber quién es — si `identidad_actual` rechaza el acceso, esta
     dependencia nunca llega a correr su cuerpo, y ninguna sentencia toca la
     base. El tenant sale sólo de `identidad.administracion_id` (D4): nunca
     de un encabezado, un parámetro o un campo del cuerpo del pedido, aunque
@@ -106,7 +109,7 @@ _DETALLE_DEL_ERROR_DE_PARSEO_DEL_CUERPO = "There was an error parsing the body"
 
 
 class RutaConIdentidad(APIRoute):
-    """D6: un error del parser nunca se entrega antes del 401.
+    """D6: un error del parser nunca se entrega antes del rechazo de identidad.
 
     FastAPI parsea JSON antes de resolver dependencias. Si ESE parseo falla
     (nunca cualquier otro 400: RF-B-2, revisión final 19/10/2026, se compara

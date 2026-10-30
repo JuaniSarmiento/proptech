@@ -1,0 +1,51 @@
+TIME 2026-10-28T15:57:44.388175-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M9-proveedor-anticipado.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/invitacion/Pantalla.test.tsx -t abrir o rechazar
+--- web/src/app/invitacion/Pantalla.tsx
++++ web/src/app/invitacion/Pantalla.tsx (mutante)
+@@ -90,7 +90,7 @@
+            * con el ticket. El proveedor local se carga al pedir salir;
+            * los enlaces de ingreso y registro siguen siendo independientes. */}
+           {accion ? (
+-            cerrandoSesion ? (
++            true ? (
+               <>
+                 <p role="status">Cerrando sesión…</p>
+                 <ClerkProvider dynamic localization={esES}>
+
+
+ RUN  v5.0.3 <worktree>/web
+
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 1 failed | 7 skipped) 33ms
+   × E10: abrir o rechazar una invitación no carga proveedor de terceros antes de pedir salir 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: abrir o rechazar una invitación no carga proveedor de terceros antes de pedir salir
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array []
+
+
+Number of calls: 1
+
+ ❯ src/app/invitacion/Pantalla.test.tsx:158:25
+    156|     />,
+    157|   );
+    158|   expect(proveedor).not.toHaveBeenCalled();
+       |                         ^
+    159|   await userEvent.setup().click(screen.getByRole("button", { name: "Ac…
+    160|   expect(await screen.findByRole("alert")).toBeTruthy();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  15:57:44
+   Duration  1.07s (environment 53%, import 30%, transform 12%, tests 3%, setup 1%)
+

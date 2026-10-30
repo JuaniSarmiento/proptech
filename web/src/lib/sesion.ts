@@ -11,21 +11,49 @@ export async function sesionActual() {
   if (!token) return null;
   return {
     token,
+    email: claimDeEmail(sesion.sessionClaims),
     administracionId: (await cookies()).get("proptech_administracion")?.value,
     regreso: regresoSeguro((await headers()).get("x-proptech-ruta")),
   };
 }
 
+/**
+ * B-3 (2d, 7.8, D10): el mismo claim `email` que la API verifica
+ * (`acceso/dominio/token.py`) — SUPUESTO sin comprobar si el Clerk de
+ * desarrollo lo manda en el token de sesión (se comprueba con Clerk real
+ * en la tarea 8.2 e). `null`, nunca una cadena vacía, si no viene.
+ */
+function claimDeEmail(sessionClaims: unknown): string | null {
+  const claims = sessionClaims as { email?: unknown } | null | undefined;
+  return typeof claims?.email === "string" && claims.email.length > 0 ? claims.email : null;
+}
+
 export function regresoSeguro(valor: string | null | undefined): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: rechazar controles evita URLs normalizadas a otro origen.
-  if (!valor?.startsWith("/") || valor.startsWith("//") || /[\\\u0000-\u0020]/.test(valor)) {
+  if (
+    !valor?.startsWith("/") ||
+    valor.length > 512 ||
+    valor.startsWith("//") ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rechazar controles evita URLs normalizadas a otro origen.
+    /[\\\u0000-\u0020]/.test(valor)
+  ) {
     return "/edificios";
   }
   const url = new URL(valor, "https://proptech.invalid");
   if (url.origin !== "https://proptech.invalid" || url.pathname.startsWith("//")) {
     return "/edificios";
   }
-  return `${url.pathname}${url.search}${url.hash}`;
+  let camino: string;
+  try {
+    camino = decodeURIComponent(url.pathname).replace(/\/+$/, "");
+  } catch {
+    return "/edificios";
+  }
+  const pantallasDeAcceso = ["/ingresar", "/registrarse", "/elegir-administracion", "/sin-acceso"];
+  if (pantallasDeAcceso.some((ruta) => camino === ruta || camino.startsWith(`${ruta}/`))) {
+    return "/edificios";
+  }
+  const salida = `${url.pathname}${url.search}${url.hash}`;
+  return salida.length > 512 ? "/edificios" : salida;
 }
 
 /**

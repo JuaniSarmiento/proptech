@@ -1,0 +1,57 @@
+TIME 2026-10-28T15:56:50.168953-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M1-editar.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -226,7 +226,7 @@
+                     return (
+                       <tr key={unidad.id}>
+                         <td>
+-                          {puedeConfigurar || puedeInvitar ? (
++                          {true ? (
+                             <button
+                               type="button"
+                               className="boton-enlace"
+
+
+ RUN  v5.0.3 <worktree>/web
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 629ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar (null) 157ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}}) 39ms
+   × R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["configurar_padron"]}}}]}}) 33ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar (null)
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"1":["ver_configuracion_del_edificio"]}}}]}})
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R1: lectura conserva unidad sin controles de editar ni guardar ({"administracionId":"a","datos":{"persona":{"nombre":"Prueba"},"administraciones":[{"id":"a","nombre":"A","acciones":{"administracion":[],"todos_los_edificios":[],"por_edificio":{"otro":["configurar_padron"]}}}]}})
+AssertionError: expected <button type="button" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-enlace"
+  type="button"
+>
+  1A
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:60:58
+     58|     render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>…
+     59|     expect(screen.getByText("1A")).toBeTruthy();
+     60|     expect(screen.queryByRole("button", { name: "1A" })).toBeNull();
+       |                                                          ^
+     61|     expect(screen.queryByRole("button", { name: "Guardar" })).toBeNull…
+     62|     expect(screen.queryByLabelText("Identificador")).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 12 passed (15)
+   Start at  15:56:50
+   Duration  1.64s (tests 41%, environment 33%, transform 14%, import 13%, setup 1%)
+

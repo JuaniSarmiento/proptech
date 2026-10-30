@@ -7,7 +7,7 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearServidor, IDENTIFICADOR_DE_40, NOMBRE_DE_200 } from "./api-falsa";
 import { type ClaveDeEscenario, ESCENARIOS } from "./escenarios";
-import { cabecerasDePrueba, PUBLICA } from "./sesion-local";
+import { cabecerasDePrueba, crearToken, PUBLICA } from "./sesion-local";
 
 let servidor: Server;
 let base: string;
@@ -341,3 +341,23 @@ describe("api-falsa", () => {
 function pedir(url: string, opciones: RequestInit = {}) {
   return fetch(url, { ...opciones, headers: { ...cabecerasDePrueba(), ...opciones.headers } });
 }
+
+it.each(["/api/sesion", "/api/complejos"])(
+  "2d sin persona replica 403 constante en %s",
+  async (ruta) => {
+    const r = await fetch(base + ruta, {
+      headers: {
+        authorization: `Bearer ${crearToken({ sub: "user_sin_persona" })}`,
+        "x-proptech-administracion": "no-es-uuid",
+      },
+    });
+    expect(r.status).toBe(403);
+    expect(await r.json()).toEqual({ detail: { codigo: "sin_acceso" } });
+  },
+);
+it("2d token válido rechazado por API replica 401", async () => {
+  const r = await fetch(base + "/api/sesion", {
+    headers: { authorization: `Bearer ${crearToken({ sub: "user_api_rechaza" })}` },
+  });
+  expect(r.status).toBe(401);
+});

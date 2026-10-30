@@ -9,6 +9,7 @@ export async function elegirAdministracionAction(id: string): Promise<boolean> {
   if (!esIdValido(id)) return false;
   const resultado = await pedirApi<{ administraciones: { id: string; nombre: string }[] }>(
     "/api/sesion",
+    { alNoAutenticar: "devolver" },
   );
   if (resultado.estado !== "ok" || !resultado.datos.administraciones.some((a) => a.id === id)) {
     return false;
@@ -19,7 +20,10 @@ export async function elegirAdministracionAction(id: string): Promise<boolean> {
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
-  const ingreso = await pedirApi("/api/sesion/ingreso", { metodo: "POST" });
+  const ingreso = await pedirApi("/api/sesion/ingreso", {
+    metodo: "POST",
+    alNoAutenticar: "devolver",
+  });
   return ingreso.estado === "ok";
 }
 

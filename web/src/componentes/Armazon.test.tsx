@@ -33,7 +33,13 @@ describe("Armazon", () => {
         value={{
           datos: {
             persona: { nombre: "Ana Ejemplo" },
-            administraciones: [{ id: "a", nombre: "Administración del Parque" }],
+            administraciones: [
+              {
+                id: "a",
+                nombre: "Administración del Parque",
+                acciones: { administracion: [], todos_los_edificios: [], por_edificio: {} },
+              },
+            ],
           },
           administracionId: "a",
         }}

@@ -18,8 +18,10 @@ export default async function Invitacion({
   return (
     <PantallaInvitacion
       accion={sesion ? aceptarInvitacionAction.bind(null, sobre) : null}
-      ingreso={`/ingresar?${conTicket({ regreso, ...(sesion ? { cerrar: "1" } : {}) })}`}
+      ingreso={`/ingresar?${conTicket({ regreso })}`}
       registro={`/registrarse?${conTicket({ regreso })}`}
+      claimEmail={sesion?.email ?? null}
+      volverAInvitacion={`${regreso}${ticket ? `?${new URLSearchParams({ __clerk_ticket: ticket })}` : ""}`}
     />
   );
 }

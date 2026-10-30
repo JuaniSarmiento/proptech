@@ -141,10 +141,22 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   `POSTGRES_RESPALDO_PASSWORD`, sin superusuario, con `BYPASSRLS` y `pg_read_all_data`, sólo para
   `pg_dump`). Ningún servicio permanente tiene la contraseña del superusuario (R8).
 - **Autorización**: tres capas: administración (tenant, deducida del login), alcance por edificio
-  según el rol, permiso por acción (D-037, matriz de D-106). Fuera de alcance responde 404; sin permiso,
-  403 con el permiso faltante. Row-Level Security de PostgreSQL es el segundo candado del aislamiento
-  entre administraciones (R10, D-076), con `SET LOCAL` por transacción y `current_setting(...,
-  missing_ok=true)` + `nullif` para que una conexión sin tenant fijado falle cerrada, nunca abierta.
+  según el rol, permiso por acción (D-037, matriz de D-106, con `ver_personal` sumada por el 2d,
+  D-135). Fuera de alcance responde 404; sin permiso, 403 con el permiso faltante. Row-Level Security
+  de PostgreSQL es el segundo candado del aislamiento entre administraciones (R10, D-076), con `SET
+  LOCAL` por transacción y `current_setting(..., missing_ok=true)` + `nullif` para que una conexión
+  sin tenant fijado falle cerrada, nunca abierta.
+  - **Contrato de errores de la API** (2d `sesion-sin-persona`, CRITICAL, D-094/D-111; archivado
+    28/10/2026, D-131): todo 403 lleva `detail.codigo` de una lista cerrada — `sin_acceso` (sin
+    persona vinculada, o vinculada sin ninguna asignación en ninguna administración) o `sin_permiso`
+    (con `detalle` y `permiso_faltante`, como hoy). El 403 `sin_acceso` **prevalece** sobre los
+    rechazos de elección del selector (administración ajena, selector inválido, varias sin elegir)
+    cuando no hay ninguna otra administración con acceso; si la hay, sigue en 401. La web
+    (`pedirApi`) lee **sólo** `codigo`, nunca la forma del cuerpo: `sin_acceso` va a la pantalla propia
+    `/sin-acceso` (sin llamar a la API), cualquier otro valor va a `sin_permiso` con el permiso que
+    venga. `GET /api/sesion` trae, además, las acciones que la matriz permite a cada administración
+    (D-134), para que la web oculte el menú y los controles de escritura que el rol no tiene — nunca
+    los muestra de más.
 - **Auditoría de acciones sensibles** (D-016, D9, cambio 2a): tabla `auditoria`, de sólo agregar (dos
   triggers bloquean `UPDATE`, `DELETE` y `TRUNCATE` para cualquier rol, incluido su dueño), dueña el rol
   de arranque; vocabulario cerrado en `accion_de_auditoria` (sumar una acción exige una migración). Ver

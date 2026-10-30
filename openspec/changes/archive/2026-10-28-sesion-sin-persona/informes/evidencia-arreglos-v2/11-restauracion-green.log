@@ -1,0 +1,16 @@
+
+ RUN  v5.0.3 <worktree>/web
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  7 passed (7)
+      Tests  73 passed (73)
+   Start at  15:55:25
+   Duration  10.50s (tests 44%, environment 31%, import 19%, transform 5%, setup 1%)
+
+    Isolate  7 workers spawned · ~516ms startup each (spawn + environment, per file)
+             at least ~3.10s faster with isolate: false — reuses workers across files instead of one per file
+

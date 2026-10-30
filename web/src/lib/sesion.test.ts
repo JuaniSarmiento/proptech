@@ -27,6 +27,7 @@ it("lee el regreso del pedido y no transmite la cookie de Clerk", async () => {
   );
   expect(await sesionActual()).toEqual({
     token: "token-local",
+    email: null,
     administracionId: "10000000-0000-0000-0000-000000000001",
     regreso: "/edificios/uno/unidades",
   });
@@ -35,8 +36,28 @@ it("sin token no fabrica una sesión", async () => {
   vi.mocked(auth).mockResolvedValueOnce({
     userId: "user_prueba",
     getToken: async () => null,
-  } as Awaited<ReturnType<typeof auth>>);
+  } as unknown as Awaited<ReturnType<typeof auth>>);
   expect(await sesionActual()).toBeNull();
+});
+
+// --- B-3 (2d, 7.8, D10): el claim de email del token de sesión ---
+
+it("lee el email del claim firmado de la sesión", async () => {
+  vi.mocked(auth).mockResolvedValueOnce({
+    userId: "user_prueba",
+    sessionClaims: { email: "alguien@example.invalid" },
+    getToken: async () => "token-local",
+  } as unknown as Awaited<ReturnType<typeof auth>>);
+  expect((await sesionActual())?.email).toBe("alguien@example.invalid");
+});
+
+it("sin el claim de email da null, nunca una cadena vacía (Token sin email)", async () => {
+  vi.mocked(auth).mockResolvedValueOnce({
+    userId: "user_prueba",
+    sessionClaims: { email: "" },
+    getToken: async () => "token-local",
+  } as unknown as Awaited<ReturnType<typeof auth>>);
+  expect((await sesionActual())?.email).toBeNull();
 });
 
 const ID = "10000000-0000-0000-0000-000000000001";
@@ -90,3 +111,37 @@ it("rechaza la administración ajena sin escribir la cookie", async () => {
   );
   expect(set).not.toHaveBeenCalled();
 });
+
+it.each([
+  "/elegir-administracion?regreso=%2Fedificios",
+  "/ingresar?regreso=/edificios",
+  "/sin-acceso",
+  "/registrarse",
+  "/ingresar/",
+  "/./elegir-administracion",
+  "/edificios/../ingresar",
+  "/%69ngresar",
+  "/ingresar/paso",
+  "/%ZZ",
+])("2d rechaza acceso normalizado %s", (ruta) => expect(regresoSeguro(ruta)).toBe("/edificios"));
+it("2d conserva invitaciones", () =>
+  expect(regresoSeguro("/invitacion/abc")).toBe("/invitacion/abc"));
+it("2d tope exacto de entrada y salida", () => {
+  const limite = "/edificios/" + "a".repeat(501);
+  expect(limite.length).toBe(512);
+  expect(regresoSeguro(limite)).toBe(limite);
+  expect(regresoSeguro(limite + "a")).toBe("/edificios");
+  expect(regresoSeguro("/edificios/" + "ñ".repeat(100))).toBe("/edificios");
+});
+it.each([
+  undefined,
+  null,
+  "",
+  "/invitacion/abc",
+  "/edificios?x={",
+  "/edificios/ñ",
+  "/ingresar",
+  ...[500, 501, 502].flatMap((n) => ["/edificios/" + "a".repeat(n), "/edificios/" + "{".repeat(n)]),
+])("2d normalizar es idempotente %s", (ruta) =>
+  expect(regresoSeguro(regresoSeguro(ruta))).toBe(regresoSeguro(ruta)),
+);

@@ -1,0 +1,79 @@
+
+ RUN  v5.0.3 <worktree>/web
+
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+ ❯ src/app/invitacion/Pantalla.test.tsx (7 tests | 2 failed) 282ms
+   × E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/sobre-1?__clerk_ticket=abc.123-xyz_9) 19ms
+   × E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/otro-sobre) 15ms
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 3 failed) 28ms
+   × E10: la URL de cierre vuelve a la misma invitación con ticket seguro (undefined) 5ms
+   × E10: la URL de cierre vuelve a la misma invitación con ticket seguro (abc.123-xyz_9) 1ms
+   × E10: la URL de cierre vuelve a la misma invitación con ticket seguro (con espacio) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/sobre-1?__clerk_ticket=abc.123-xyz_9)
+ FAIL  src/app/invitacion/Pantalla.test.tsx > E10: Usar otra cuenta cierra y vuelve a la invitación (/invitacion/otro-sobre)
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+
+Number of calls: 0
+
+ ❯ src/app/invitacion/Pantalla.test.tsx:117:18
+    115|  render(<PantallaInvitacion accion={accionQueFalla} ingreso={INGRESO} …
+    116|  await userEvent.setup().click(screen.getByText("Usar otra cuenta"));
+    117|  expect(signOut).toHaveBeenCalledWith({ redirectUrl: volverAInvitacion…
+       |                  ^
+    118| });
+    119|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/app/invitacion/[sobre]/page.test.tsx > E10: la URL de cierre vuelve a la misma invitación con ticket seguro (undefined)
+ FAIL  src/app/invitacion/[sobre]/page.test.tsx > E10: la URL de cierre vuelve a la misma invitación con ticket seguro (con espacio)
+AssertionError: expected undefined to be '/invitacion/sobre%20con%20%2F' // Object.is equality
+
+- Expected:
+"/invitacion/sobre%20con%20%2F"
+
++ Received:
+undefined
+
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:89:43
+     87|  const pantalla = await Invitacion({ params: Promise.resolve({ sobre: …
+     88|  const esperado = "/invitacion/sobre%20con%20%2F" + (ticket === "abc.1…
+     89|  expect(pantalla.props.volverAInvitacion).toBe(esperado);
+       |                                           ^
+     90| });
+     91|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/app/invitacion/[sobre]/page.test.tsx > E10: la URL de cierre vuelve a la misma invitación con ticket seguro (abc.123-xyz_9)
+AssertionError: expected undefined to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+
+- Expected:
+"/invitacion/sobre%20con%20%2F?__clerk_ticket=abc.123-xyz_9"
+
++ Received:
+undefined
+
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:89:43
+     87|  const pantalla = await Invitacion({ params: Promise.resolve({ sobre: …
+     88|  const esperado = "/invitacion/sobre%20con%20%2F" + (ticket === "abc.1…
+     89|  expect(pantalla.props.volverAInvitacion).toBe(esperado);
+       |                                           ^
+     90| });
+     91|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 12 passed (17)
+   Start at  15:53:00
+   Duration  1.58s (environment 38%, import 23%, tests 22%, transform 15%, setup 1%, worker 1%)
+
+    Isolate  2 workers spawned · ~345ms startup each (spawn + environment, per file)
+             at least ~345ms faster with isolate: false — reuses workers across files instead of one per file
+

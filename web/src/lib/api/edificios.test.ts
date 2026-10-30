@@ -83,7 +83,7 @@ describe("listaDeEdificios / edificioPorId / crearEdificio", () => {
       "fetch",
       mockFetch({
         status: 403,
-        cuerpo: { detail: { permiso_faltante: "crear_edificio" } },
+        cuerpo: { detail: { codigo: "sin_permiso", permiso_faltante: "crear_edificio" } },
       }),
     );
     expect(

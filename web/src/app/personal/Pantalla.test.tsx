@@ -4,10 +4,42 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SesionVisible } from "../../componentes/SesionDePantalla";
 import type { Persona } from "../../lib/api/personal";
 import type { EdificioDeLista } from "../../lib/api/tipos";
 import { sinViolaciones } from "../../lib/test/accesibilidad";
 import { PantallaPersonal } from "./Pantalla";
+
+/**
+ * 2d/7.6 (D11, D13): el resto de este archivo (anterior a 7.6) prueba la
+ * pantalla del super admin — se mockea `useSesionDePantalla` una sola vez,
+ * acá arriba, con `invitar_usuarios_y_asignar_edificios` concedido. El
+ * escenario del administrador principal (sólo lectura, abajo del todo)
+ * reemplaza este mock con `mockReturnValueOnce`.
+ */
+vi.mock("../../componentes/SesionDePantalla", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../componentes/SesionDePantalla")>();
+  return {
+    ...real,
+    useSesionDePantalla: vi.fn(() => ({
+      datos: {
+        persona: { nombre: "Alguien" },
+        administraciones: [
+          {
+            id: "a",
+            nombre: "A",
+            acciones: {
+              administracion: ["invitar_usuarios_y_asignar_edificios", "ver_personal"],
+              todos_los_edificios: [],
+              por_edificio: {},
+            },
+          },
+        ],
+      },
+      administracionId: "a",
+    })),
+  };
+});
 
 afterEach(cleanup);
 
@@ -334,5 +366,83 @@ describe("PantallaPersonal", () => {
     await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(confirmNativo).not.toHaveBeenCalled();
     confirmNativo.mockRestore();
+  });
+
+  // --- D11/7.6 (D13): el administrador principal abre Personal en sólo lectura ---
+
+  describe("El administrador principal abre Personal", () => {
+    async function comoAdministradorPrincipal() {
+      const { useSesionDePantalla } = await import("../../componentes/SesionDePantalla");
+      const sesion: SesionVisible = {
+        datos: {
+          persona: { nombre: "Alguien" },
+          administraciones: [
+            {
+              id: "a",
+              nombre: "A",
+              acciones: {
+                administracion: ["ver_personal"],
+                todos_los_edificios: [],
+                por_edificio: {},
+              },
+            },
+          ],
+        },
+        administracionId: "a",
+      };
+      vi.mocked(useSesionDePantalla).mockReturnValueOnce(sesion);
+    }
+
+    it('no ve "Invitar a alguien", "Revocar" ni "Quitar"', async () => {
+      await comoAdministradorPrincipal();
+      render(
+        <PantallaPersonal
+          personas={PERSONAS}
+          edificios={EDIFICIOS}
+          accionInvitar={accionInvitarNula}
+          accionRevocar={accionSimpleNula}
+          accionQuitar={accionSimpleNula}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Invitar a alguien" })).toBeNull();
+      const filaAna = screen.getByText("Ana Pérez").closest("tr") as HTMLElement;
+      const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+      expect(within(filaAna).queryByRole("button", { name: "Quitar" })).toBeNull();
+      expect(within(filaBeto).queryByRole("button", { name: "Quitar" })).toBeNull();
+      expect(within(filaBeto).queryByRole("button", { name: "Revocar" })).toBeNull();
+    });
+
+    it("la ayuda dice que la gestión la hace el super admin", async () => {
+      await comoAdministradorPrincipal();
+      render(
+        <PantallaPersonal
+          personas={PERSONAS}
+          edificios={EDIFICIOS}
+          accionInvitar={accionInvitarNula}
+          accionRevocar={accionSimpleNula}
+          accionQuitar={accionSimpleNula}
+        />,
+      );
+      expect(
+        screen.getByText("La gestión (invitar, revocar, quitar) la hace el super admin."),
+      ).toBeTruthy();
+    });
+
+    it("sigue viendo la lista: personas, perfiles y estado de invitación", async () => {
+      await comoAdministradorPrincipal();
+      render(
+        <PantallaPersonal
+          personas={PERSONAS}
+          edificios={EDIFICIOS}
+          accionInvitar={accionInvitarNula}
+          accionRevocar={accionSimpleNula}
+          accionQuitar={accionSimpleNula}
+        />,
+      );
+      expect(screen.getByText("Ana Pérez")).toBeTruthy();
+      expect(screen.getByText("Beto Gómez")).toBeTruthy();
+      const filaBeto = screen.getByText("Beto Gómez").closest("tr") as HTMLElement;
+      expect(within(filaBeto).getByText("Auxiliar")).toBeTruthy();
+    });
   });
 });

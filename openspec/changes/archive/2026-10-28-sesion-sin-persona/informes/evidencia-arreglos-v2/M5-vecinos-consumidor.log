@@ -1,0 +1,82 @@
+TIME 2026-10-28T15:56:58.361205-03:00
+BACKUP /tmp/2d-arreglos-v2-evidencia/M5-vecinos-consumidor.backup
+COMMAND cd web && corepack pnpm@12.10.1 vitest run src/app/edificios/[id]/unidades/permisos.test.tsx src/app/edificios/[id]/unidades/page.test.tsx
+--- web/src/app/edificios/[id]/unidades/Pantalla.tsx
++++ web/src/app/edificios/[id]/unidades/Pantalla.tsx (mutante)
+@@ -425,7 +425,7 @@
+         {/* 7.4/D11: una lectura exitosa de personal no concede gestión.
+          * Sólo se ofrecen los controles con el permiso de invitar.
+          * Formulario hermano del de unidad, nunca anidado. */}
+-        {unidadEnEdicion && vecinosPorUnidad && puedeInvitar ? (
++        {unidadEnEdicion && vecinosPorUnidad ? (
+           <SeccionVecinos
+             unidadId={unidadEnEdicion.id}
+             vecinos={vecinosPorUnidad.get(unidadEnEdicion.id) ?? []}
+
+
+ RUN  v5.0.3 <worktree>/web
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 661ms
+   × R2D-R2: GET personal exitoso no habilita Agregar vecino al principal 57ms
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx (2 tests | 1 failed) 277ms
+   × R2D-R2 consumidor: GET personal 200 y permiso de invitar=false 211ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/edificios/[id]/unidades/page.test.tsx > R2D-R2 consumidor: GET personal 200 y permiso de invitar=false
+AssertionError: expected <button type="submit" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  type="submit"
+>
+  Agregar vecino
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx:78:75
+     76|     await userEvent.setup().click(screen.getByRole("button", { name: "…
+     77|     if (invita) expect(screen.getByRole("button", { name: "Agregar vec…
+     78|     else expect(screen.queryByRole("button", { name: "Agregar vecino" …
+       |                                                                           ^
+     79|   },
+     80| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/app/edificios/[id]/unidades/permisos.test.tsx > R2D-R2: GET personal exitoso no habilita Agregar vecino al principal
+AssertionError: expected <button type="submit" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="boton-principal"
+  type="submit"
+>
+  Agregar vecino
+</button>
+
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:140:68
+    138|   render(<SesionDePantalla value={valor}>{padron}</SesionDePantalla>);
+    139|   await userEvent.setup().click(screen.getByRole("button", { name: "1A…
+    140|   expect(screen.queryByRole("button", { name: "Agregar vecino" })).toB…
+       |                                                                    ^
+    141|   expect(screen.queryByRole("form", { name: "Agregar vecino" })).toBeN…
+    142| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 15 passed (17)
+   Start at  15:56:58
+   Duration  2.80s (environment 39%, tests 36%, import 15%, transform 9%, setup 1%)
+
+    Isolate  2 workers spawned · ~588ms startup each (spawn + environment, per file)
+             at least ~588ms faster with isolate: false — reuses workers across files instead of one per file
+

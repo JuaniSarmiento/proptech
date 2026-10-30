@@ -4,7 +4,11 @@ import { sinViolacionesEnElNavegador } from "./accesibilidad";
 import { expect, test } from "./prueba";
 import { cookiesDeContextoDePrueba } from "./sesion-local";
 
-const mensaje = "Este enlace ya no sirve. Pedile a tu administración que te invite de nuevo.";
+// 2d/7.8 (D10): sin el claim de email en el token de prueba (`sesion-local.ts`
+// no lo manda), el mensaje de rechazo con sesión es el genérico.
+const mensaje =
+  "Este enlace no sirve con la cuenta con la que ingresaste. Si la invitación es para otro " +
+  "email, usá otra cuenta; si es para ésta, pedile a tu administración que te invite de nuevo.";
 for (const ancho of [1440, 320]) {
   test(`7.1 ingreso sin Clerk, selector, invitación y barra a ${ancho}`, async ({
     page,
@@ -62,7 +66,7 @@ for (const sobre of ["sobre-vencido", "sobre-usado", "sobre-revocado", "email-di
     expect(res?.headers()["cache-control"]).toContain("no-store");
     await page.getByRole("button", { name: "Aceptar e ingresar" }).click();
     await expect(page.getByRole("alert").filter({ hasText: mensaje })).toHaveText(mensaje);
-    await expect(page.getByRole("link", { name: "Cerrar sesión" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Usar otra cuenta" })).toBeVisible();
     expect(terceros).toEqual([]);
   });
 }

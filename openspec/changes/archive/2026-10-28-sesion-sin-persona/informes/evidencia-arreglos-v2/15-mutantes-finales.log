@@ -1,0 +1,64 @@
+M1-editar exit 1
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 629ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="button" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:60:58
+      Tests  3 failed | 12 passed (15)
+M2-guardar exit 1
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 636ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:161:61
+      Tests  1 failed | 14 passed (15)
+M3-configuracion exit 1
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 649ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="button" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:87:75
+      Tests  3 failed | 12 passed (15)
+M4-saldos exit 1
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 3 failed) 643ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(2)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:119:63
+      Tests  3 failed | 12 passed (15)
+M5-vecinos-consumidor exit 1
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx (15 tests | 1 failed) 661ms
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx (2 tests | 1 failed) 277ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/page.test.tsx:78:75
+AssertionError: expected <button type="submit" …(1)></button> to be null
+ ❯ src/app/edificios/[id]/unidades/permisos.test.tsx:140:68
+      Tests  2 failed | 15 passed (17)
+M9-proveedor-anticipado exit 1
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 6 failed) 302ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+ ❯ src/app/invitacion/Pantalla.test.tsx:71:31
+ ❯ src/app/invitacion/Pantalla.test.tsx:90:21
+ ❯ src/app/invitacion/Pantalla.test.tsx:127:23
+ ❯ src/app/invitacion/Pantalla.test.tsx:144:42
+ ❯ src/app/invitacion/Pantalla.test.tsx:144:42
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+ ❯ src/app/invitacion/Pantalla.test.tsx:158:25
+      Tests  6 failed | 2 passed (8)
+M6-cerrar-sesion exit 1
+ ❯ src/app/invitacion/Pantalla.test.tsx (8 tests | 2 failed) 294ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+ ❯ src/app/invitacion/Pantalla.test.tsx:145:21
+      Tests  2 failed | 6 passed (8)
+M7-volver-ingreso exit 1
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 3 failed) 30ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected '/ingresar' to be '/invitacion/sobre%20con%20%2F' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+AssertionError: expected '/ingresar?__clerk_ticket=abc.123-xyz_9' to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+      Tests  3 failed | 7 passed (10)
+M8-perder-ticket exit 1
+ ❯ src/app/invitacion/[sobre]/page.test.tsx (10 tests | 1 failed) 28ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected '/invitacion/sobre%20con%20%2F' to be '/invitacion/sobre%20con%20%2F?__clerk…' // Object.is equality
+ ❯ src/app/invitacion/[sobre]/page.test.tsx:100:46
+      Tests  1 failed | 9 passed (10)

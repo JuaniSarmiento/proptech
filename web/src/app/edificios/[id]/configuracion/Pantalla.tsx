@@ -24,6 +24,7 @@ import { FilaConIcono } from "../../../../componentes/FilaConIcono";
 import { Campo, Formulario } from "../../../../componentes/Formulario";
 import { Panel } from "../../../../componentes/Panel";
 import { PanelLateral } from "../../../../componentes/PanelLateral";
+import { permite, useSesionDePantalla } from "../../../../componentes/SesionDePantalla";
 import type { ConfiguracionVigente, VersionDelHistorial } from "../../../../lib/api/tipos";
 import { decimalParaCampo, fecha } from "../../../../lib/formato";
 import { ArmazonDelEdificio } from "../Armazon";
@@ -64,6 +65,7 @@ export function PantallaConfiguracion({
   historial,
   accionCrear,
 }: Props) {
+  const puedeCrearVersion = permite(useSesionDePantalla(), "crear_version_de_configuracion", id);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [modalidadFormulario, setModalidadFormulario] = useState<Modalidad>(
     vigente?.modalidad_de_vencimiento === "doble" ? "doble" : "unico",
@@ -85,11 +87,11 @@ export function PantallaConfiguracion({
     setPanelAbierto(true);
   }
 
-  const botonCambiar = (
+  const botonCambiar = puedeCrearVersion ? (
     <button type="button" className="boton-principal" onClick={abrirPanel}>
       Cambiar configuración
     </button>
-  );
+  ) : undefined;
 
   const masNuevaPrimero = [...historial].reverse();
 
@@ -102,7 +104,7 @@ export function PantallaConfiguracion({
       />
 
       <PanelLateral
-        abierto={panelAbierto}
+        abierto={panelAbierto && puedeCrearVersion}
         titulo="Cambiar configuración"
         descripcion="La versión anterior no se borra: queda guardada en el historial."
         variante="ancho"

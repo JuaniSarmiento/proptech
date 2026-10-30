@@ -1,0 +1,338 @@
+$ next build
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 76ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1376ms
+  Running TypeScript ...
+  Finished TypeScript in 3.1s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/4) ...
+  Generating static pages using 15 workers (1/4) 
+  Generating static pages using 15 workers (2/4) 
+  Generating static pages using 15 workers (3/4) 
+✓ Generating static pages using 15 workers (4/4) in 147ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /edificios
+├ ƒ /edificios/[id]
+├ ƒ /edificios/[id]/categorias
+├ ƒ /edificios/[id]/configuracion
+├ ƒ /edificios/[id]/grupos
+├ ƒ /edificios/[id]/saldos-previos
+├ ƒ /edificios/[id]/unidades
+├ ƒ /elegir-administracion
+├ ƒ /ingresar/[[...paso]]
+├ ƒ /invitacion/[sobre]
+├ ƒ /personal
+├ ƒ /privacidad
+├ ƒ /registrarse/[[...paso]]
+├ ƒ /salud-web
+└ ƒ /sin-acceso
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+api-falsa escuchando en :43218
+▲ Next.js 16.4.3
+- Local:         http://localhost:43219
+- Network:       http://192.168.1.172:43219
+✓ Ready in 110ms
+✓ Running next.config.ts took 42ms
+
+Running 160 tests using 1 worker
+
+  ✘    1 [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 1440 (6.9s)
+  ✘    2 [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 320 (6.6s)
+  ✓    3 [chromium] › e2e/acceso-pantallas.spec.ts:59:3 › 7.1 rechazo uniforme: sobre-vencido, sin recursos de terceros (342ms)
+  ✓    4 [chromium] › e2e/acceso-pantallas.spec.ts:59:3 › 7.1 rechazo uniforme: sobre-usado, sin recursos de terceros (277ms)
+  ✓    5 [chromium] › e2e/acceso-pantallas.spec.ts:59:3 › 7.1 rechazo uniforme: sobre-revocado, sin recursos de terceros (256ms)
+  ✓    6 [chromium] › e2e/acceso-pantallas.spec.ts:59:3 › 7.1 rechazo uniforme: email-distinto, sin recursos de terceros (252ms)
+  ✓    7 [chromium] › e2e/acceso-pantallas.spec.ts:73:1 › 7.1 una sola entra directo, cookie httpOnly y salida disponible (542ms)
+  ✓    8 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › vacio (sin unidades) a 320px (1.7s)
+  ✓    9 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › vacio (sin unidades) a 1280px (1.5s)
+  ✓   10 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › lento (responde a los 3s) a 320px (4.0s)
+  ✓   11 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › lento (responde a los 3s) a 1280px (4.3s)
+  ✓   12 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › error_500 (500 con texto técnico) a 320px (1.5s)
+  ✓   13 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › error_500 (500 con texto técnico) a 1280px (1.3s)
+  ✓   14 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.4s)
+  ✓   15 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.4s)
+  ✓   16 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓   17 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › no_existe_404 (404, de otra administración) a 1280px (1.4s)
+  ✓   18 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › sin_sesion_401 (401, sin sesión) a 320px (291ms)
+  ✓   19 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › sin_sesion_401 (401, sin sesión) a 1280px (301ms)
+  ✓   20 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.6s)
+  ✓   21 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.6s)
+  ✓   22 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.5s)
+  ✓   23 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.7s)
+  ✓   24 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › doscientas_unidades (200 unidades en el padrón) a 320px (1.5s)
+  ✓   25 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › doscientas_unidades (200 unidades en el padrón) a 1280px (1.6s)
+  ✓   26 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.5s)
+  ✓   27 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Resumen del edificio › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.7s)
+  ✓   28 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › vacio (sin unidades) a 320px (1.5s)
+  ✓   29 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › vacio (sin unidades) a 1280px (1.6s)
+  ✓   30 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › lento (responde a los 3s) a 320px (4.2s)
+  ✓   31 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › lento (responde a los 3s) a 1280px (4.0s)
+  ✓   32 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › error_500 (500 con texto técnico) a 320px (1.6s)
+  ✓   33 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › error_500 (500 con texto técnico) a 1280px (1.4s)
+  ✓   34 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.5s)
+  ✓   35 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.5s)
+  ✓   36 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓   37 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › no_existe_404 (404, de otra administración) a 1280px (1.5s)
+  ✓   38 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › sin_sesion_401 (401, sin sesión) a 320px (301ms)
+  ✓   39 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › sin_sesion_401 (401, sin sesión) a 1280px (296ms)
+  ✓   40 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.7s)
+  ✓   41 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.7s)
+  ✓   42 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.6s)
+  ✓   43 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.8s)
+  ✓   44 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › doscientas_unidades (200 unidades en el padrón) a 320px (2.9s)
+  ✓   45 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › doscientas_unidades (200 unidades en el padrón) a 1280px (3.1s)
+  ✓   46 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.7s)
+  ✓   47 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Padrón de unidades › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.6s)
+  ✓   48 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › vacio (sin unidades) a 320px (1.6s)
+  ✓   49 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › vacio (sin unidades) a 1280px (1.6s)
+  ✓   50 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › lento (responde a los 3s) a 320px (4.1s)
+  ✓   51 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › lento (responde a los 3s) a 1280px (4.0s)
+  ✓   52 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › error_500 (500 con texto técnico) a 320px (1.5s)
+  ✓   53 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › error_500 (500 con texto técnico) a 1280px (1.6s)
+  ✓   54 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.3s)
+  ✓   55 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.4s)
+  ✓   56 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓   57 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › no_existe_404 (404, de otra administración) a 1280px (1.4s)
+  ✓   58 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › sin_sesion_401 (401, sin sesión) a 320px (289ms)
+  ✓   59 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › sin_sesion_401 (401, sin sesión) a 1280px (295ms)
+  ✓   60 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.5s)
+  ✓   61 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.8s)
+  ✓   62 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.6s)
+  ✓   63 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.7s)
+  ✓   64 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › doscientas_unidades (200 unidades en el padrón) a 320px (1.6s)
+  ✓   65 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › doscientas_unidades (200 unidades en el padrón) a 1280px (1.5s)
+  ✓   66 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.6s)
+  ✓   67 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Grupos de reparto › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.6s)
+  ✓   68 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › vacio (sin unidades) a 320px (1.6s)
+  ✓   69 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › vacio (sin unidades) a 1280px (1.6s)
+  ✓   70 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › lento (responde a los 3s) a 320px (4.6s)
+  ✓   71 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › lento (responde a los 3s) a 1280px (4.2s)
+  ✓   72 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › error_500 (500 con texto técnico) a 320px (1.4s)
+  ✓   73 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › error_500 (500 con texto técnico) a 1280px (1.3s)
+  ✓   74 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.5s)
+  ✓   75 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.5s)
+  ✓   76 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓   77 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › no_existe_404 (404, de otra administración) a 1280px (1.3s)
+  ✓   78 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › sin_sesion_401 (401, sin sesión) a 320px (293ms)
+  ✓   79 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › sin_sesion_401 (401, sin sesión) a 1280px (293ms)
+  ✓   80 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.8s)
+  ✓   81 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.8s)
+  ✓   82 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.9s)
+  ✓   83 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.8s)
+  ✓   84 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › doscientas_unidades (200 unidades en el padrón) a 320px (1.9s)
+  ✓   85 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › doscientas_unidades (200 unidades en el padrón) a 1280px (1.9s)
+  ✓   86 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.9s)
+  ✓   87 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Categorías de gasto › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.9s)
+  ✓   88 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › vacio (sin unidades) a 320px (1.4s)
+  ✓   89 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › vacio (sin unidades) a 1280px (1.6s)
+  ✓   90 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › lento (responde a los 3s) a 320px (3.9s)
+  ✓   91 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › lento (responde a los 3s) a 1280px (3.9s)
+  ✓   92 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › error_500 (500 con texto técnico) a 320px (1.5s)
+  ✓   93 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › error_500 (500 con texto técnico) a 1280px (1.4s)
+  ✓   94 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.6s)
+  ✓   95 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.3s)
+  ✓   96 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓   97 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › no_existe_404 (404, de otra administración) a 1280px (1.4s)
+  ✓   98 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › sin_sesion_401 (401, sin sesión) a 320px (283ms)
+  ✓   99 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › sin_sesion_401 (401, sin sesión) a 1280px (295ms)
+  ✓  100 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.6s)
+  ✓  101 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.7s)
+  ✓  102 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.7s)
+  ✓  103 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.7s)
+  ✓  104 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › doscientas_unidades (200 unidades en el padrón) a 320px (1.6s)
+  ✓  105 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › doscientas_unidades (200 unidades en el padrón) a 1280px (1.6s)
+  ✓  106 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.6s)
+  ✓  107 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Intereses y vencimiento › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.5s)
+  ✓  108 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › vacio (sin unidades) a 320px (1.6s)
+  ✓  109 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › vacio (sin unidades) a 1280px (1.6s)
+  ✓  110 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › lento (responde a los 3s) a 320px (3.9s)
+  ✓  111 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › lento (responde a los 3s) a 1280px (4.0s)
+  ✓  112 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › error_500 (500 con texto técnico) a 320px (1.6s)
+  ✓  113 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › error_500 (500 con texto técnico) a 1280px (1.3s)
+  ✓  114 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › sin_permiso_403 (403, colaborador sin permiso) a 320px (1.4s)
+  ✓  115 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › sin_permiso_403 (403, colaborador sin permiso) a 1280px (1.5s)
+  ✓  116 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › no_existe_404 (404, de otra administración) a 320px (1.5s)
+  ✓  117 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › no_existe_404 (404, de otra administración) a 1280px (1.5s)
+  ✓  118 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › sin_sesion_401 (401, sin sesión) a 320px (300ms)
+  ✓  119 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › sin_sesion_401 (401, sin sesión) a 1280px (273ms)
+  ✓  120 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › advertencia (coeficientes en advertencia (0,9999)) a 320px (1.5s)
+  ✓  121 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › advertencia (coeficientes en advertencia (0,9999)) a 1280px (1.5s)
+  ✓  122 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 320px (1.6s)
+  ✓  123 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › fuera_de_tolerancia (coeficientes fuera de tolerancia (-0,0002)) a 1280px (1.4s)
+  ✓  124 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › doscientas_unidades (200 unidades en el padrón) a 320px (1.5s)
+  ✓  125 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › doscientas_unidades (200 unidades en el padrón) a 1280px (1.7s)
+  ✓  126 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 320px (1.5s)
+  ✓  127 [chromium] › e2e/barrido-completo.spec.ts:82:9 › 5.1 Confirmar "sin saldos previos" › nombres_largos (nombre de edificio de 200 caracteres, identificador de 40) a 1280px (1.5s)
+  ✓  128 [chromium] › e2e/barrido-completo.spec.ts:111:5 › 5.1 Mis edificios › lista de edificios a 320px (1.6s)
+  ✓  129 [chromium] › e2e/barrido-completo.spec.ts:111:5 › 5.1 Mis edificios › lista de edificios a 1280px (1.8s)
+  ✓  130 [chromium] › e2e/bloque-c.spec.ts:19:3 › 4.1 Mis edificios › lista los edificios de la API falsa, a 320 px sin scroll horizontal (208ms)
+  ✓  131 [chromium] › e2e/bloque-c.spec.ts:29:3 › 4.2 Resumen del edificio › muestra el checklist de puesta a punto, a 320 px sin scroll horizontal (228ms)
+  ✓  132 [chromium] › e2e/bloque-c.spec.ts:41:3 › 4.3 Padrón de unidades › "fuera de tolerancia" muestra la diferencia en texto, a 320 px sin scroll (490ms)
+  ✓  133 [chromium] › e2e/bloque-c.spec.ts:50:3 › 4.3 Padrón de unidades › escenario "vacio": no rompe con informe null (gotcha de 3.8, visto en vivo) (204ms)
+  ✓  134 [chromium] › e2e/bloque-c.spec.ts:60:3 › 4.4 Grupos de reparto › "Generales" aparece primero y automático, a 320 px sin scroll (218ms)
+  ✓  135 [chromium] › e2e/escrituras-unidades.spec.ts:38:1 › Auditor 4: guarda una unidad por la pantalla y comprueba el JSON recibido por la API falsa (483ms)
+  ✓  136 [chromium] › e2e/escrituras-unidades.spec.ts:64:3 › R3C-3 pantalla: rechazo403 conserva todos los datos del panel tras dos rechazos (795ms)
+  ✓  137 [chromium] › e2e/escrituras-unidades.spec.ts:64:3 › R3C-3 pantalla: rechazo422 conserva todos los datos del panel tras dos rechazos (827ms)
+  ✓  138 [chromium] › e2e/estado-de-carga.spec.ts:16:3 › R3C-7 · estado de carga en el navegador real › axe sin violaciones mientras se ve el esqueleto de /unidades (351ms)
+  ✓  139 [chromium] › e2e/pulido.spec.ts:25:3 › pulido 3b a 1280 px › el menú lateral apila sus secciones, una debajo de la otra (1.2s)
+  ✓  140 [chromium] › e2e/pulido.spec.ts:45:3 › pulido 3b a 1280 px › en el checklist, el estado queda separado de la etiqueta del paso (518ms)
+  ✓  141 [chromium] › e2e/pulido.spec.ts:52:3 › pulido 3b a 1280 px › el panel lateral flota pegado al borde derecho, fuera del flujo (556ms)
+  ✓  142 [chromium] › e2e/pulido.spec.ts:61:3 › pulido 3b a 1280 px › en el padrón, los textos van a la izquierda y los números a la derecha (214ms)
+  ✓  143 [chromium] › e2e/pulido.spec.ts:83:3 › rediseño a todo el ancho › a 1440 px el contenido ocupa el ancho disponible, sin columna angosta (1.4s)
+  ✓  144 [chromium] › e2e/pulido.spec.ts:100:3 › rediseño a todo el ancho › la ayuda acoplada empuja el contenido y conserva el foco en su botón (1.5s)
+  ✓  145 [chromium] › e2e/pulido.spec.ts:130:3 › rediseño a todo el ancho › a 320 px la ayuda abierta queda en el flujo, a todo el ancho y sin scroll horizontal (1.5s)
+  ✓  146 [chromium] › e2e/pulido.spec.ts:146:3 › rediseño a todo el ancho › el resumen muestra la barra "N de 7 pasos" (la ubicación del 3c es el paso nuevo) y el formulario de configuración usa todo el ancho (1.6s)
+  ✓  147 [chromium] › e2e/sesion.spec.ts:5:1 › 6.1: sesión local abre Mis edificios y el token no está en HTML ni RSC (205ms)
+  ✓  148 [chromium] › e2e/sesion.spec.ts:17:1 › 6.1: sin sesión lleva al ingreso con el regreso propio (186ms)
+  ✓  149 [chromium] › e2e/sesion.spec.ts:26:1 › 6.1: el 401 de la API lleva al ingreso y conserva el padrón como regreso (309ms)
+  ✓  150 [chromium] › e2e/sesion.spec.ts:35:1 › R2B-4: el fixture de sesión nunca dispara el handshake de Clerk (162ms)
+  ✓  151 [chromium] › e2e/sesion.spec.ts:53:3 › 2d sin persona termina sin-acceso y teclado a 320 (463ms)
+  ✓  152 [chromium] › e2e/sesion.spec.ts:53:3 › 2d sin persona termina sin-acceso y teclado a 1280 (458ms)
+  ✓  153 [chromium] › e2e/sesion.spec.ts:102:1 › 2d API rechaza: selector se queda y no redirige al ingreso (479ms)
+  ✓  154 [chromium] › e2e/ticket-de-invitacion.spec.ts:9:1 › 8.2: el __clerk_ticket de la invitación llega hasta 'Crear cuenta desde mi invitación' (343ms)
+  ✓  155 [chromium] › e2e/ticket-de-invitacion.spec.ts:40:1 › 8.2: /ingresar y /registrarse con __clerk_ticket llevan las mismas cabeceras que /invitacion/ (262ms)
+  ✓  156 [chromium] › e2e/ticket-de-invitacion.spec.ts:58:1 › 8.2: sin __clerk_ticket, /ingresar no manda Referrer-Policy: no-referrer de más (166ms)
+  ✘  157 [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 1440 (612ms)
+  ✘  158 [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 320 (570ms)
+  ✓  159 [chromium] › e2e/vecinos-del-padron.spec.ts:41:1 › 7.4 revocar y quitar un vecino (695ms)
+  ✘  160 [chromium] › e2e/vecinos-del-padron.spec.ts:52:1 › 7.4 sin permiso para leer personal: padrón normal, sin columna ni sección Vecinos (30.0s)
+
+
+  1) [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 1440 
+
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
+
+      24 |     });
+      25 |     const dir = resolve("../.git/informes-2b/pantallas");
+    > 26 |     mkdirSync(dir, { recursive: true });
+         |     ^
+      27 |     await sinViolacionesEnElNavegador(page);
+      28 |     await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
+      29 |     // R2B-4: una sola lectura del reloj para iat y __client_uat.
+        at <worktree>/web/e2e/acceso-pantallas.spec.ts:26:5
+
+    Error Context: test-results/acceso-pantallas-7-1-ingre-3b7b5-r-invitación-y-barra-a-1440-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceso-pantallas-7-1-ingre-3b7b5-r-invitación-y-barra-a-1440-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceso-pantallas-7-1-ingre-3b7b5-r-invitación-y-barra-a-1440-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 320 
+
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
+
+      24 |     });
+      25 |     const dir = resolve("../.git/informes-2b/pantallas");
+    > 26 |     mkdirSync(dir, { recursive: true });
+         |     ^
+      27 |     await sinViolacionesEnElNavegador(page);
+      28 |     await page.screenshot({ path: `${dir}/ingresar-${ancho}.png`, fullPage: true });
+      29 |     // R2B-4: una sola lectura del reloj para iat y __client_uat.
+        at <worktree>/web/e2e/acceso-pantallas.spec.ts:26:5
+
+    Error Context: test-results/acceso-pantallas-7-1-ingre-a8a16-or-invitación-y-barra-a-320-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceso-pantallas-7-1-ingre-a8a16-or-invitación-y-barra-a-320-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceso-pantallas-7-1-ingre-a8a16-or-invitación-y-barra-a-320-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 1440 
+
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
+
+      22 |     await expect(panel.getByText(/Propietario.*Pendiente/)).toBeVisible();
+      23 |
+    > 24 |     mkdirSync(DIR, { recursive: true });
+         |     ^
+      25 |     await sinViolacionesEnElNavegador(page);
+      26 |     await page.screenshot({ path: `${DIR}/vecinos-${ancho}.png`, fullPage: true });
+      27 |
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:24:5
+
+    Error Context: test-results/vecinos-del-padron-7-4-vec-8c0b4-columna-panel-y-alta-a-1440-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/vecinos-del-padron-7-4-vec-8c0b4-columna-panel-y-alta-a-1440-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/vecinos-del-padron-7-4-vec-8c0b4-columna-panel-y-alta-a-1440-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 320 
+
+    Error: ENOTDIR: not a directory, mkdir '<worktree>/.git/informes-2b/pantallas'
+
+      22 |     await expect(panel.getByText(/Propietario.*Pendiente/)).toBeVisible();
+      23 |
+    > 24 |     mkdirSync(DIR, { recursive: true });
+         |     ^
+      25 |     await sinViolacionesEnElNavegador(page);
+      26 |     await page.screenshot({ path: `${DIR}/vecinos-${ancho}.png`, fullPage: true });
+      27 |
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:24:5
+
+    Error Context: test-results/vecinos-del-padron-7-4-vec-1fabd--columna-panel-y-alta-a-320-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/vecinos-del-padron-7-4-vec-1fabd--columna-panel-y-alta-a-320-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/vecinos-del-padron-7-4-vec-1fabd--columna-panel-y-alta-a-320-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › e2e/vecinos-del-padron.spec.ts:52:1 › 7.4 sin permiso para leer personal: padrón normal, sin columna ni sección Vecinos 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '1A', exact: true })
+
+
+      65 |   await expect(page.getByRole("heading", { name: "Padrón de unidades" })).toBeVisible();
+      66 |   await expect(page.getByRole("columnheader", { name: "Vecinos" })).toHaveCount(0);
+    > 67 |   await page.getByRole("button", { name: "1A", exact: true }).click();
+         |                                                               ^
+      68 |   await expect(page.getByRole("dialog").getByRole("heading", { name: "Vecinos" })).toHaveCount(0);
+      69 | });
+      70 |
+        at <worktree>/web/e2e/vecinos-del-padron.spec.ts:67:63
+
+    Error Context: test-results/vecinos-del-padron-7-4-sin-159a0--columna-ni-sección-Vecinos-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/vecinos-del-padron-7-4-sin-159a0--columna-ni-sección-Vecinos-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/vecinos-del-padron-7-4-sin-159a0--columna-ni-sección-Vecinos-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 1440 
+    [chromium] › e2e/acceso-pantallas.spec.ts:13:3 › 7.1 ingreso sin Clerk, selector, invitación y barra a 320 
+    [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 1440 
+    [chromium] › e2e/vecinos-del-padron.spec.ts:11:3 › 7.4 vecinos en el padrón: columna, panel y alta, a 320 
+    [chromium] › e2e/vecinos-del-padron.spec.ts:52:1 › 7.4 sin permiso para leer personal: padrón normal, sin columna ni sección Vecinos 
+  155 passed (4.6m)
