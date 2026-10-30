@@ -8,12 +8,23 @@
 
 ## 1. Baseline y medición
 
-- [ ] 1.1 [WSL] Baseline de integración sobre `origin/main` `60b3dd5` (`test-backend.sh -m integracion`):
+- [x] 1.1 [WSL] Baseline de integración sobre `origin/main` `60b3dd5` (`test-backend.sh -m integracion`):
   anotar pasados, fallidos (nombres) y duración, y verificar que `docker ps` queda igual que antes
-- [ ] 1.2 [WSL] Baseline del resto: `pytest backend/tests/infra`, unitarios, `shellcheck infra/ci/*.sh` y
+  - **1833 pasados, 1 xfail, 0 fallidos, 18 min 41 s, exit 0**, 2446 deseleccionados. Sin contenedores
+    sobrantes (`docker ps` vacío antes y después).
+- [x] 1.2 [WSL] Baseline del resto: `pytest backend/tests/infra`, unitarios, `shellcheck infra/ci/*.sh` y
   tiempo de la suite completa en serie; anotar los números como línea de base del 9.3
-- [ ] 1.3 [WSL] Baseline del humo y del ensayo de roles, cada uno en su proyecto (`proptech-humo-base`,
+  - Sobre `60b3dd5`, `-m "not integracion"` en serie: **2446 pasados, 94,6 s, exit 0**;
+    `shellcheck -x infra/ci/*.sh` exit 0. Suite completa en serie = 94,6 s + 18 min 41 s ≈ 20 min 20 s.
+- [x] 1.3 [WSL] Baseline del humo y del ensayo de roles, cada uno en su proyecto (`proptech-humo-base`,
   `proptech-ensayo-base`), con la salida real pegada y los pasos que tardan más
+  - **Desvío**: el humo de `main` no se puede aislar (`-p proptech` escrito en el script, el defecto
+    que arregla este change), así que corrió en el proyecto `proptech` con Docker vacío: `humo_exit=0`,
+    **181 s**. El ensayo, en `proptech-ensayo-base`: `ENSAYO ROLES OK ... ciclo 0028/0016/0028`,
+    `ensayo_exit=0`, **47 s**. El humo no imprime tiempos por paso; no se midieron.
+  - Primer intento: el humo cayó a los 7 s por el error transitorio de BuildKit "parent snapshot does not
+    exist" y el ensayo por falta de `infra/.env` en el clon (archivo ignorado por git, copiado). Se
+    repitieron ambos; los números de arriba son los de la repetición.
 
 ## 2. `humo.sh` en un proyecto aislado (L-047)
 
@@ -166,8 +177,11 @@
     ecosistema `docker-compose` en `/infra`, no `docker` (que sólo lee Dockerfile; confirmado en la
     referencia de opciones de Dependabot). Si Dependabot reconoce `compose.yaml` (no `docker-compose.yml`)
     sólo se ve en GitHub. Test estático con rojo visto (archivo ausente → 4 fallos).
-- [ ] 9.6 [GH, condicional] `.gitleaksignore`: si el PR #4 se rebasó, quitar la línea de `a6bb954` y
+- [x] 9.6 [GH, condicional] `.gitleaksignore`: si el PR #4 se rebasó, quitar la línea de `a6bb954` y
   ver `secretos` en verde; si no, anotarlo como deuda (pregunta abierta 1)
+  - **No se rebasó**: `git merge-base --is-ancestor a6bb954 origin/change/gastos-y-cargos` dice que el
+    commit sigue en la rama (cabeza `5b10687`). La línea queda en `.gitleaksignore` y se anota como deuda
+    en la ficha 2e: quitarla cuando se rebase el PR #4 (ver 10.3).
 
 ## 10. Cierre
 
