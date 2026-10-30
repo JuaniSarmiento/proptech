@@ -1,0 +1,4 @@
+# Falso positivo de generic-api-key en un test del PR #4 (gastos-y-cargos): `complejo=api_edificio.otro`
+# no es una clave. gitleaks recorre todas las ramas, así que ponía en rojo el job `secretos` de
+# todos los PRs (30/10/2026). Cuando se rebase el PR #4 ese commit deja de existir y esta línea sobra.
+a6bb95442afacd2af1774445eb5b3f78bd173104:backend/tests/integracion/test_gastos.py:generic-api-key:120
