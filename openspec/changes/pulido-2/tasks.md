@@ -104,3 +104,16 @@ Origen: `informes/verify-1-breaker.md` (revisión `b1ec660`). Cada una entra por
 - 30/10/2026 12:25: constructor intento 1 terminó 4.3 y 11.1 a 11.5 (`informes/apply-1-constructor.md`). Commits `b5d7cbb` (4.3) y `ef1d8e9` (11.x) sobre `b1ec660`. Corrida completa sobre `ef1d8e9`: `pnpm test` 12:23:26 -> 85 archivos, 595 passed, exit 0; `pnpm typecheck` 12:24:27 -> exit 0; `pnpm lint` (biome ci) 12:24:35 -> exit 0, 7 warnings y 6 infos, ninguno en archivos tocados. No corridos: Playwright (juez: CI, L-050) ni pytest (no se tocó el backend). Rol activo siguiente: rompedor intento 2 sobre `e29e36d...` HEAD de `revision-3d`, después auditor.
 - 30/10/2026 12:31: rompedor intento 2 cerró F1 a F6 y reprodujo F7 (`informes/verify-2-breaker.md`). Constructor intento 2: 11.6 en `173089b`. Próximo: rompedor sobre `173089b`, después auditor.
 - 30/10/2026: rompedor intento 3 sobre `d15c610`: ninguna falla reproducida (`informes/verify-3-breaker.md`). Rol activo: auditor (role-auditor, subagente nativo), intento 1. Próximo: veredicto; si APROBADO, push de la rama al PR #3 y CI sobre el SHA nuevo.
+
+## Decisiones de Juani sobre los bloqueantes del auditor (30/10/2026)
+
+Juani respondió en el chat de la sesión, el 30/10/2026: confirmó BJ-2 ("si") y para el resto eligió las recomendaciones del orquestador ("vamos con tus recomendados"). El orquestador las escribe acá en su nombre, tal cual las propuso.
+
+- **BJ-1** (faltan informes originales y el rojo del TDD de Gianfranco): se acepta como **deuda justificada**. La evidencia sustituta son los mutantes del rompedor (13 muertos en el intento 1, el sobreviviente muerto en el intento 2) y el vitest completo sobre `decf692`. Los faltantes quedan declarados en `informes/LEEME.md`. DA-7 se cierra con esto.
+- **BJ-2** (raíz `/`): **confirmado** el redirect: con sesión a `/edificios`, sin sesión a `/ingresar`. No cambia código.
+- **BJ-3** (tarea 1.2, aviso a Emiliano): se **ratifica** que la API falsa se hizo sin su respuesta, porque hoy no choca con el PR #4 (su head `2f81682` no toca `web/e2e`). Se le avisa al rebasar el PR #4.
+- **BJ-4** (tarea 2.5, e2e de Playwright de ubicación y grupo): pasa a **deuda de C-26 `pulido-web-3`**.
+- **BJ-5** (tarea 8.2, navegador real a 1280 y 320 px): pasa a **deuda de C-26 `pulido-web-3`**, junto con DA-6 (la raíz `/` sin test de navegador).
+- **BJ-6** (orden de pisos): queda el **orden de altura** construido (`SS2, SS1, PB, 1..N`). Al archivar entra una decisión nueva en `09_decisiones_y_supuestos.md` y se reescribe el "Terminado cuando" de la ficha 3d.
+
+Ninguna decisión cambia código. Próximo paso: el auditor relee `tasks.md`, `LEEME.md` y el CI del commit nuevo.
