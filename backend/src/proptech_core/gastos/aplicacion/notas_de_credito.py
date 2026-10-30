@@ -30,9 +30,11 @@ def cargar_nota_de_credito(sesion: Session, nota_id: UUID) -> dict[str, Any] | N
     fila = (
         sesion.execute(
             text(
-                "SELECT id, complejo_id, gasto_id, importe::text AS importe, periodo, "
-                "cuit_emisor, punto_de_venta, tipo_de_comprobante, numero_de_comprobante "
-                "FROM nota_de_credito WHERE id=:id"
+                "SELECT n.id, n.complejo_id, n.gasto_id, n.importe::text AS importe, "
+                "n.periodo, g.periodo AS periodo_de_la_factura, n.cuit_emisor, "
+                "n.punto_de_venta, n.tipo_de_comprobante, n.numero_de_comprobante "
+                "FROM nota_de_credito n JOIN gasto g ON g.id = n.gasto_id "
+                "AND g.administracion_id = n.administracion_id WHERE n.id=:id"
             ),
             {"id": nota_id},
         )

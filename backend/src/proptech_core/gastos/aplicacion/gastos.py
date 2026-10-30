@@ -245,10 +245,14 @@ def editar_gasto(
         except ValidationError as error:
             raise error_de_validacion(error) from None
         _validar_pertenencia(sesion, entrada, fila["complejo_id"])
-        if entrada.importe.a_texto() != Dinero(str(fila["importe"])).a_texto():
-            #: R22: la suma de las notas de crédito nunca supera su factura.
-            #: La fila ya está bloqueada (`FOR UPDATE`), igual que al cargar
-            #: una nota, así que las dos operaciones se serializan.
+        cambia_importe = entrada.importe.a_texto() != Dinero(str(fila["importe"])).a_texto()
+        quita_factura = any(getattr(entrada, campo) is None for campo in CAMPOS_DE_FACTURA) and all(
+            fila[campo] is not None for campo in CAMPOS_DE_FACTURA
+        )
+        if cambia_importe or quita_factura:
+            #: R22: toda nota de crédito corrige una factura y su suma nunca
+            #: la supera. La fila ya está bloqueada (`FOR UPDATE`), igual que
+            #: al cargar una nota, así que las dos operaciones se serializan.
             acreditado = Dinero(
                 str(
                     sesion.execute(
@@ -260,6 +264,10 @@ def editar_gasto(
                     ).scalar_one()
                 )
             )
+            if quita_factura and acreditado > Dinero("0.00"):
+                raise EntradaInvalida(
+                    "factura", "no se puede quitar la factura de un gasto con notas de crédito"
+                )
             if entrada.importe < acreditado:
                 raise EntradaInvalida(
                     "importe",

@@ -571,3 +571,46 @@ def test_bajar_la_factura_hasta_lo_acreditado_se_permite(api_edificio: ApiEdific
     respuesta = api_edificio.cliente.patch(f"/api/gastos/{factura}", json={"importe": "600.00"})
     assert respuesta.status_code == 200, respuesta.text
     assert api_edificio.cliente.get(f"/api/gastos/{factura}").json()["importe"] == "600.00"
+
+
+# --- Intento 3 (rompedor 2, F2-1): una factura con notas no puede perder sus
+# datos de factura. Por HTTP el PATCH ya rechaza `null` en cualquier campo
+# (`CuerpoDeEdicion`); el guardia del caso de uso se prueba en
+# `tests/unitarios/test_gastos_aplicacion.py`. ---
+
+
+def test_no_quitar_factura_con_nota_existente(api_edificio: ApiEdificio) -> None:
+    from proptech_core.gastos.dominio.gasto import CAMPOS_DE_FACTURA
+
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    factura = _crear_factura(api_edificio, categoria, grupo)
+    nota = api_edificio.cliente.post("/api/notas-de-credito", json=_nota(factura, "60.00"))
+    assert nota.status_code == 201, nota.text
+    assert api_edificio.cliente.get(f"/api/gastos/{factura}").json()["estado"] == "borrador"
+    respuesta = api_edificio.cliente.patch(
+        f"/api/gastos/{factura}", json=dict.fromkeys(CAMPOS_DE_FACTURA)
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    #: Lo frena la capa HTTP (un PATCH no anula campos), antes del caso de uso.
+    assert "el campo no admite null" in respuesta.text, respuesta.text
+    gasto = api_edificio.cliente.get(f"/api/gastos/{factura}").json()
+    assert all(gasto[campo] is not None for campo in CAMPOS_DE_FACTURA)
+
+
+# --- Intento 3 (rompedor 2, S4): la consulta de una nota devuelve, separados,
+# el período en que se descuenta y el de su factura (spec, escenario "Queda
+# registrado en qué período se descontó"). ---
+
+
+def test_nota_devuelve_periodo_de_su_factura(api_edificio: ApiEdificio) -> None:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    factura = _crear_factura(api_edificio, categoria, grupo)
+    nota = api_edificio.cliente.post(
+        "/api/notas-de-credito", json=_nota(factura, "60.00", periodo="2026-11-01")
+    )
+    assert nota.status_code == 201, nota.text
+    respuesta = api_edificio.cliente.get(f"/api/notas-de-credito/{nota.json()['id']}")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["periodo"] == "2026-11-01"
+    assert cuerpo.get("periodo_de_la_factura") == "2026-10-01", cuerpo
