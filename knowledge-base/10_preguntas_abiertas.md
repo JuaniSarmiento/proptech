@@ -108,9 +108,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   imputación propia y un destino fijo por tipo de crédito (D-086, R05).
 - [x] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
   se aprueba después: conserva su período de origen y entra en la primera liquidación que lo encuentre
-  aprobado, sin reabrir un emitido (D-141).
+  aprobado, sin reabrir un emitido (D-141; ratificada por Juani en D-142).
 - [x] **P37 · Dónde y quién marca un "gasto mensual obligatorio"**: en la categoría de gasto, no en el
-  proveedor ni en el gasto — es la única de las tres que existe antes de que haya gastos (D-141).
+  proveedor ni en el gasto — es la única de las tres que existe antes de que haya gastos (D-141; ratificada por Juani en D-142).
 - [ ] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): la de la
   transferencia o la de la nueva emisión. Antes del cambio 7.
 - [ ] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye.
