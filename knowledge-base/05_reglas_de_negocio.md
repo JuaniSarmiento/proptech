@@ -388,8 +388,9 @@ del 3c, D-128)
   (`umbral_saldo_chico`, sin default en la base). Una versión nueva que no lo trae hereda el de la
   inmediatamente anterior por `vigente_desde`, aunque sea futura; si no hay ninguna, el de
   `config/parametros.yaml` (`cuenta_corriente.umbral_saldo_chico: "500.00"`). Se carga por la API de
-  versiones y en el alta del edificio; ninguna pantalla lo muestra todavía. Contra qué se compara (P-4,
-  P-5) y su efecto sobre R20 son del 4c. Por debajo del umbral, el saldo no genera reclamo de cobranza ni
+  versiones y en el alta del edificio; ninguna pantalla lo muestra todavía. Se compara contra el **total vencido
+  de la unidad**, no contra cada expensa, y por debajo del umbral el interés sigue corriendo (R03): el
+  umbral sólo frena la cobranza (D-143, resuelve P53 y P54; lo construye el 4c). Por debajo del umbral, el saldo no genera reclamo de cobranza ni
   devolución automática, y se arrastra con R06 hasta que se acumula o se liquida junto con otro
   movimiento. Un saldo por debajo del umbral tampoco cuenta como vencido para R20 (moroso crítico,
   D-109, resuelve P31).
@@ -792,6 +793,10 @@ número no se marcan duplicadas entre sí.
 
 - **Definición**: una unidad es **moroso crítico** cuando tiene **dos o más liquidaciones vencidas
   con saldo impago**, calculado desde las imputaciones (nunca desde una marca de "pagada").
+- **Vencida** (D-143): una liquidación está vencida desde que corre su interés, después de los días de
+  gracia (R03). El interés pertenece al período de la obligación que lo generó, así que una expensa
+  impaga con su interés cuenta como una sola liquidación vencida. Sólo cuenta si el total vencido de la
+  unidad supera el umbral de R30.
 - **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
   el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
   cambio 10a se encarga del listado, la exportación y la presentación.

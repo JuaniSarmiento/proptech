@@ -156,7 +156,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   Bloquea el 4d. El 4b (E1, AR-6) construyó la cuenta personal única por **administración y edificio**
   (`uq_cuenta_persona`), distinto del explore; modificar ese único después de roles requiere préstamo
   D-115.3. La elección sigue sin firma y no contesta si esa deuda genera interés.
-- [ ] **P53 · De qué mes es el interés** (P-4, H-05): el interés por la mora de agosto que aparece en la
+- [x] **P53 · De qué mes es el interés** (resuelta en D-143: del período de la obligación que lo generó, también para R20) (P-4, H-05): el interés por la mora de agosto que aparece en la
   expensa de septiembre, ¿cuenta como deuda de agosto o de septiembre? Decide si septiembre cuenta como
   "vencida" para el moroso crítico. Bloquea el 4c. El 4b conserva el interés en el
   período de la obligación que lo generó para R04; responder "septiembre" aquí afecta al moroso crítico,
@@ -164,7 +164,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   contra-asentar un interés no habilita registrarlo de nuevo en ese mismo corte (DB-7, ya en `0023`).
   Decidir antes del 4c si necesita otro contrato o varios intereses del mismo corte; cambiar el único
   tras roles requiere préstamo D-115.3, no alcanza INSERT en el vocabulario (AR-7).
-- [ ] **P54 · El umbral de $500** (P-5, H-06, H-14): ¿se compara contra todo lo que debe la unidad o
+- [x] **P54 · El umbral de $500** (resuelta en D-143: contra el total vencido de la unidad; el interés sigue corriendo bajo el umbral; vencida desde que corre el interés, después de la gracia) (P-5, H-06, H-14): ¿se compara contra todo lo que debe la unidad o
   contra cada expensa? Por debajo de $500, ¿sigue corriendo interés? Y "vencida", para el moroso
   crítico, ¿es al día siguiente del vencimiento o después de los días de gracia? Bloquea el 4c.
   Revisar junto a P53 el único de interés por obligación/corte, ya construido en `0023` (E10, DB-7): no

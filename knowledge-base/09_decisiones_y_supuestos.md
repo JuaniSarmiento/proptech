@@ -2922,3 +2922,32 @@ registrado como tal en su momento.)*
   humo, secretos y shellcheck); archivado en `e965e0a`. Migraciones `0029` a `0033`. MEDIUM: no lleva
   firma (D-094, D-111).
 - **Quién**: Juani, 30/10/2026.
+
+## D-143 · P53 y P54 resueltas: el interés es del mes que lo generó, y el umbral de $500 mira el total vencido de la unidad (30/10/2026)
+
+- **Fecha**: 30/10/2026, antes del propose del 4c `intereses-saldo-inicial-y-moroso`.
+- **Contexto**: P53 y P54 eran las únicas preguntas que bloqueaban el 4c; P57 a P60 (Alberto) son
+  "antes del piloto" y no frenan la construcción.
+- **Decisión**:
+  1. **P53 · De qué mes es el interés**: del **período de la obligación que lo generó**. El interés por la
+     mora de agosto se muestra en la expensa de septiembre, pero es deuda de agosto, también para R20.
+     Así una sola expensa impaga nunca cuenta como dos liquidaciones vencidas. Coincide con lo que el 4b
+     ya construyó para R04 y con el único `uq_mov_interes(obligacion_id, corte)` de `0023`: el 4c no
+     necesita otro contrato ni el préstamo D-115.3. El interés es accesorio de la deuda principal y la
+     sigue (CCyC).
+  2. **P54 · El umbral de $500 (R30)**:
+     - Se compara contra el **total vencido de la unidad**, no contra cada expensa: dos saldos chicos
+       que suman $500 o más pasan el umbral.
+     - Por debajo del umbral **el interés sigue corriendo** (R03). El umbral sólo frena la cobranza:
+       avisos, reclamos y el cómputo de R20.
+     - Para R20, una liquidación está **vencida desde que corre su interés**: después de los días de
+       gracia (R03, D-081; hoy 0 por defecto, o sea el día siguiente al vencimiento). Una sola
+       definición de "vencida" para el interés y para la morosidad.
+     - Borde aceptado: con el total vencido sobre el umbral, R20 cuenta cada liquidación con saldo
+       impago aunque el saldo de una sea chico (por ejemplo $500 de agosto y $20 de septiembre), porque
+       R20 no es por monto.
+- **Descartado**: imputar el interés al mes en que aparece (una falta valdría por dos en R20 y obligaría
+  a cambiar el único de `0023`); comparar el umbral por expensa (esconde una deuda que crece en saldos
+  chicos); cortar el interés bajo el umbral (deber poco saldría gratis); "vencida" al día siguiente del
+  vencimiento ignorando la gracia (contaría como vencido algo que no genera interés).
+- **Quién**: Juani, 30/10/2026, con la recomendación del orquestador.
