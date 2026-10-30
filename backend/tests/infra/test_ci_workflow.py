@@ -219,3 +219,19 @@ def test_el_job_ensayo_roles_corre_el_script_en_su_proyecto() -> None:
     comandos = [paso.get("run", "") for paso in job["steps"]]
     assert "bash infra/ci/ensayo-roles.sh" in comandos
     assert any(paso.get("uses", "").startswith("actions/checkout@") for paso in job["steps"])
+
+
+def test_el_job_web_cachea_chromium_con_clave_que_cambia_con_el_lock() -> None:
+    """2e, L-044: instalar Chromium llegó a tardar 10 min. La caché va antes de la instalación y su
+    clave incluye el hash de `web/pnpm-lock.yaml`: si Playwright cambia de versión, cambia la clave
+    y Chromium se baja de nuevo."""
+    pasos = _workflow()["jobs"]["web"]["steps"]
+    posiciones = [i for i, p in enumerate(pasos) if p.get("uses", "").startswith("actions/cache@")]
+    assert len(posiciones) == 1, "el job web necesita exactamente un paso de caché"
+    paso = pasos[posiciones[0]]
+    assert PATRON_SHA_40.search(paso["uses"]), "la caché no está fijada a un SHA de 40 caracteres"
+    assert "ms-playwright" in paso["with"]["path"]
+    assert "hashFiles('web/pnpm-lock.yaml')" in paso["with"]["key"]
+    assert "runner.os" in paso["with"]["key"]
+    instalacion = next(i for i, p in enumerate(pasos) if "playwright install" in p.get("run", ""))
+    assert posiciones[0] < instalacion

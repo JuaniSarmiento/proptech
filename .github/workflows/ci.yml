@@ -34,8 +34,13 @@ jobs:
       - name: Tipos
         working-directory: backend
         run: uv run mypy
-      - name: Tests (incluye integración contra PostgreSQL real)
-        run: bash infra/ci/test-backend.sh
+      # 2e (D11): cada worker de xdist es un proceso con su propio PostgreSQL y su propio Redis (los
+      # fixtures de sesión son por proceso). 4 workers = los 4 vCPU del runner, nunca `auto`. Los
+      # unitarios van primero: no necesitan Docker y dan el rojo rápido.
+      - name: Tests unitarios y de infra
+        run: bash infra/ci/test-backend.sh -m "not integracion and not serial" -n 4
+      - name: Tests de integración contra PostgreSQL real
+        run: bash infra/ci/test-backend.sh -m "integracion and not serial" -n 4
       - name: Canario
         run: bash infra/ci/canario.sh backend
 
@@ -69,6 +74,15 @@ jobs:
         run: pnpm tsc --noEmit
       - name: Tests
         run: bash infra/ci/test-web.sh
+      # 2e (L-044): instalar Chromium llegó a tardar 10 min. Los navegadores de Playwright se cachean
+      # con una clave que lleva el hash del lock: si cambia la versión de Playwright, cambia la clave
+      # y se bajan de nuevo. Sin caché el paso siguiente instala igual. Los tiempos del segundo run
+      # (con caché) son la verificación [GH] de la tarea 9.4; hasta tenerlos no se toca el timeout.
+      - name: Caché de los navegadores de Playwright
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
       - name: Instalar Chromium (D7, tarea 3.8 - sólo este navegador)
         working-directory: web
         run: pnpm exec playwright install --with-deps chromium

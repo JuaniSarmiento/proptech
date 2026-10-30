@@ -126,14 +126,46 @@
   - Hecho: job con `PROPTECH_COMPOSE_PROYECTO: proptech-ensayo`, checkout fijado por SHA,
     `timeout-minutes: 20` provisorio (el ensayo tardó 48 s en WSL), 2 tests nuevos/ajustados (rojo
     visto antes: 3 fallos). **Pendiente [GH]**: leer el run real y ajustar el timeout con ese tiempo.
-- [ ] 9.3 Backend en paralelo: `pytest-xdist` en `uv.lock`, marcador `serial` registrado, `test-backend.sh`
+- [~] 9.3 Backend en paralelo: `pytest-xdist` en `uv.lock`, marcador `serial` registrado, `test-backend.sh`
   con `-n`, unitarios y de integración como pasos separados; [WSL] mismos tests pasados que en serie y
   tiempo antes y después (los de 1.2), pico de memoria; [GH] el tiempo en el runner
-- [ ] 9.4 Caché de Chromium en el job `web`; test estático de la clave y del paso; [GH] dos runs
+  - `pytest-xdist==3.8.0` (+ `execnet`) en el grupo `dev`; `uv.lock` conserva `revision = 3` (uv 0.13.6 de
+    WSL lo subía a 5; `uv lock --check` y `uv sync --locked` pasan con 3). Marcador `serial(reason)`
+    registrado; ningún test lo necesita hoy, y `test_backend_paralelo.py` exige que, si alguien marca
+    uno, tenga `reason=` y un paso propio con `-p no:xdist`.
+  - CI: dos pasos, `-m "not integracion and not serial" -n 4` y `-m "integracion and not serial" -n 4`
+    (`test-backend.sh` ya reenviaba los argumentos). 4 = los 4 vCPU del runner; nunca `auto`.
+  - Medición [WSL, 20 núcleos, 15 GB; el runner tiene 4 vCPU, así que el tiempo del runner puede ser
+    mayor]: no integración, mismo árbol, **serie 102,6 s / `-n 4` 51,0 s, 2500 pasados en ambos**
+    (baseline en `main`: 2446 en 94,6 s, shellcheck 0). Integración **serie 18 min 41 s (1833 pasados,
+    baseline en `main`) / `-n 4` 8 min 41 s (1833 pasados, 1 xfail)**, sin contenedores sobrantes; pico
+    de memoria usada del sistema 4.235 MB.
+  - Lo que la medición encontró (los fixtures de sesión por proceso NO bastaron, contra D11):
+    1. Tres tests de `test_salud_cola_real.py` dependían del orden: usaban la base de sesión sin pedir
+       `esquema_migrado`; en un worker donde corrían primero fallaban con `TablasDeSoloAgregarDesprotegidas`.
+       Rojo en serie con el archivo solo (`3 failed`), verde al pedir el fixture.
+    2. Carrera de arranque: `roles antes` recibía `Connection refused` cuando Postgres aún no aceptaba
+       conexiones (uno de cada ~3 corridas con 4 workers sobre 4 archivos; antes, 1 en 6 corridas
+       completas daba 42 errores). `conftest.py` ahora espera con `esperar_postgres` (conecta de verdad,
+       30 s, y si vence dice estado y últimas líneas del contenedor); 7 corridas seguidas en verde.
+       `roles_reales` y `test_rutas_protegidas._correr` dejan stdout/stderr en el fallo (antes un
+       `CalledProcessError` mudo). Los Postgres propios de módulo (`contenedor` de varios archivos) no
+       usan todavía la espera: deuda anotada si reaparece.
+  - **Pendiente [GH]**: tiempo en el runner de 4 vCPU.
+- [~] 9.4 Caché de Chromium en el job `web`; test estático de la clave y del paso; [GH] dos runs
   seguidos, el segundo con caché, con los tiempos por paso (L-044); ajustar `timeout-minutes` sólo con
   esos tiempos
-- [ ] 9.5 `.github/dependabot.yml` con los cuatro ecosistemas y test estático de directorios; [GH] que
+  - Hecho: paso `actions/cache@27d5ce7…` (v5.0.5, SHA resuelto con `git ls-remote`) sobre
+    `~/.cache/ms-playwright`, clave `playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}`,
+    antes de la instalación (que sigue corriendo y pasa igual sin caché). Test estático nuevo.
+    **Pendiente [GH]**: dos runs seguidos con sus tiempos; `timeout-minutes: 25` no se toca.
+- [~] 9.5 `.github/dependabot.yml` con los cuatro ecosistemas y test estático de directorios; [GH] que
   Dependabot abra su primer PR (no verificable antes de pushear)
+  - Hecho: `github-actions /`, `docker /backend` y `/web`, `uv /backend`, `npm /web`, semanal, tope de PR
+    por ecosistema, agrupados. **Desvío de D13**: las imágenes de `infra/compose.yaml` van con el
+    ecosistema `docker-compose` en `/infra`, no `docker` (que sólo lee Dockerfile; confirmado en la
+    referencia de opciones de Dependabot). Si Dependabot reconoce `compose.yaml` (no `docker-compose.yml`)
+    sólo se ve en GitHub. Test estático con rojo visto (archivo ausente → 4 fallos).
 - [ ] 9.6 [GH, condicional] `.gitleaksignore`: si el PR #4 se rebasó, quitar la línea de `a6bb954` y
   ver `secretos` en verde; si no, anotarlo como deuda (pregunta abierta 1)
 

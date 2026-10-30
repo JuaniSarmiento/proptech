@@ -188,7 +188,14 @@ def _alembic_env(contenedor: PostgresContainer) -> dict[str, str]:
 
 
 def _correr(args: list[str], entorno: dict[str, str]) -> None:
-    subprocess.run(args, cwd=RAIZ_BACKEND, env=entorno, check=True, capture_output=True, text=True)
+    resultado = subprocess.run(
+        args, cwd=RAIZ_BACKEND, env=entorno, check=False, capture_output=True, text=True
+    )
+    # 2e: sin esto un fallo de preparación no deja ni la causa (un `CalledProcessError` mudo).
+    assert resultado.returncode == 0, (
+        f"{args} salió con {resultado.returncode}: "
+        f"{resultado.stdout[-1500:]} // {resultado.stderr[-1500:]}"
+    )
 
 
 @pytest.fixture(scope="module")

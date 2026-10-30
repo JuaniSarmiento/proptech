@@ -1,0 +1,46 @@
+# 2e (D13): Dependabot propone las actualizaciones, una vez por semana y con tope de PR abiertos por
+# ecosistema para no inundar a seis desarrolladores en paralelo. Las acciones del CI ya están fijadas
+# por SHA de 40 caracteres: Dependabot mantiene ese formato (lo sigue exigiendo test_ci_workflow.py).
+# `docker-compose` es un ecosistema aparte de `docker` (éste sólo lee Dockerfile): lo necesitan las
+# imágenes de infra/compose.yaml (Postgres, Redis y Caddy).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      acciones-de-ci:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: docker
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: docker-compose
+    directory: /infra
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-menores-y-parches:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      web-menores-y-parches:
+        update-types: [minor, patch]
