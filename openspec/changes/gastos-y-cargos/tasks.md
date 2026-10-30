@@ -288,6 +288,9 @@ que van en un change nuevo, todavía sin crear ni nombrar.
 - Constructor de integración entregado (30/10/2026): `838a0b3` último con código, `d4816f2` con informe; suite 4641 passed, 1 xfailed en clon normal (14:46-15:04); ruff, format y mypy limpios; una cabeza `0033`. Informe `informes/apply-1-constructor.md`.
 - Rol activo: rompedor, intento 1, revisión `d4816f2` (código en `838a0b3`). Ejecutor: Codex (plugin `codex:codex-rescue`), por pedido de Juani (30/10/2026); recibe brief autocontenido. Sin bloqueantes abiertos.
 - Próximo paso: rompedor (Codex) -> `informes/verify-1-breaker.md`; si reproduce fallas, constructor; después auditor.
+- Rompedor intento 1 entregado (Codex vía plugin `codex:codex-rescue`; dentro de su sandbox no hubo Docker, así que no corrió integración ni RLS): F1 detalles por id sin permiso de lectura, F2 PATCH vacío desimputa un aprobado tardío, F3 el 422 del CUIT pierde el formato, F4 dos referencias del 6 a D-131. Orquestador corrió las 7 reproducciones en `40af1a1`: `7 failed in 0.52s`, por aserción.
+- Juicio del orquestador sobre la clasificación: F1 se corrige aplicando al detalle el mismo permiso que ya exige el listado según la spec revisada del 6; no cambia la matriz ni toca autenticación ni el libro. El 6 sigue MEDIUM. Si la corrección necesitara un permiso nuevo o cambiar la matriz, se para y se consulta a Juani.
+- Rol activo: constructor, intento 2 (corrección): F1 a F4 por TDD; reproducir con PostgreSQL las suposiciones S1 (nota contra gasto sin factura) y S2 (bajar el importe de una factura con notas) y corregir sólo si se reproducen; S3 y S4 quedan para el auditor como deuda candidata. Informe `informes/apply-2-constructor.md`. Después, rompedor intento 2 (Codex) y auditor.
 
 ### Constructor de integración, intento 1 (role-constructor, subagente nativo Claude, 30/10/2026)
 
