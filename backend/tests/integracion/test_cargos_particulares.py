@@ -543,3 +543,38 @@ def test_no_existe_ruta_de_credito_en_gastos(api_edificio: ApiEdificio) -> None:
 
     nombres = {nombre for nombre in dir(cargos_particulares) if not nombre.startswith("_")}
     assert not any("credit" in n.lower() or "acredit" in n.lower() for n in nombres)
+
+
+# --- Intento 2 (rompedor F1): el detalle de un cargo exige el mismo permiso
+# de lectura que su listado, no sólo alcanzar el edificio. ---
+
+
+def _cargo_cargado(api_edificio: ApiEdificio) -> str:
+    api_edificio.como("editar")
+    alta = api_edificio.cliente.post(
+        api_edificio.ruta("/cargos-particulares"), json=_datos(str(api_edificio.unidad))
+    )
+    assert alta.status_code == 201, alta.text
+    return str(alta.json()["id"])
+
+
+def test_vecino_del_edificio_no_lee_el_detalle_de_un_cargo(api_edificio: ApiEdificio) -> None:
+    cargo_id = _cargo_cargado(api_edificio)
+    api_edificio.como("vecino")
+    listado = api_edificio.cliente.get(api_edificio.ruta("/cargos-particulares"))
+    respuesta = api_edificio.cliente.get(f"/api/cargos-particulares/{cargo_id}")
+    assert listado.status_code == 403, listado.text
+    assert respuesta.status_code == 403, respuesta.text
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
+    assert respuesta.json()["detail"]["permiso_faltante"] == "ver_configuracion_del_edificio"
+    api_edificio.como("super_admin")
+
+
+@pytest.mark.parametrize("perfil", ["editar", "ver", "consejo", "contador"])
+def test_quien_lista_cargos_tambien_lee_su_detalle(api_edificio: ApiEdificio, perfil: str) -> None:
+    cargo_id = _cargo_cargado(api_edificio)
+    api_edificio.como(perfil)
+    respuesta = api_edificio.cliente.get(f"/api/cargos-particulares/{cargo_id}")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["id"] == cargo_id
+    api_edificio.como("super_admin")

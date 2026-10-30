@@ -245,14 +245,40 @@ def editar_gasto(
         except ValidationError as error:
             raise error_de_validacion(error) from None
         _validar_pertenencia(sesion, entrada, fila["complejo_id"])
+        if entrada.importe.a_texto() != Dinero(str(fila["importe"])).a_texto():
+            #: R22: la suma de las notas de crédito nunca supera su factura.
+            #: La fila ya está bloqueada (`FOR UPDATE`), igual que al cargar
+            #: una nota, así que las dos operaciones se serializan.
+            acreditado = Dinero(
+                str(
+                    sesion.execute(
+                        text(
+                            "SELECT COALESCE(SUM(importe), 0)::text FROM nota_de_credito "
+                            "WHERE gasto_id=:id"
+                        ),
+                        {"id": gasto_id},
+                    ).scalar_one()
+                )
+            )
+            if entrada.importe < acreditado:
+                raise EntradaInvalida(
+                    "importe",
+                    "no puede quedar por debajo de lo acreditado por sus notas de crédito "
+                    f"({acreditado.a_texto()})",
+                )
         nuevos = {
             "concepto": entrada.concepto,
             "categoria_id": entrada.categoria_id,
             "grupo_id": entrada.grupo_id,
             "proveedor_id": entrada.proveedor_id,
             "periodo": entrada.periodo,
-            #: D8: todavía no está fijado (no se aprobó) — sigue a `periodo`.
-            "periodo_de_imputacion": entrada.periodo,
+            #: D8: mientras no se aprobó sigue a `periodo`; aprobado, quedó
+            #: fijado al aprobar y ninguna edición lo mueve (D-141).
+            "periodo_de_imputacion": (
+                entrada.periodo
+                if fila["estado"] in _ESTADOS_EDITABLES
+                else fila["periodo_de_imputacion"]
+            ),
             "tipo": entrada.tipo,
             "importe": entrada.importe.a_texto(),
             "cuit_emisor": entrada.cuit_emisor,

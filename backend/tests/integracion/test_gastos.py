@@ -534,3 +534,80 @@ def test_aislamiento_por_administracion_tambien_por_sql(
     )
     fijar_tenant(app_edificio, edificios.administracion_a)
     assert app_edificio.execute("SELECT id FROM gasto").fetchall() == []
+
+
+# --- Intento 2 (rompedor F1): el detalle de un gasto exige el mismo permiso
+# de lectura que su listado (`ver_configuracion_del_edificio`), no sólo
+# alcanzar el edificio. Un vecino del edificio no lee gastos por id. ---
+
+
+def _gasto_en_borrador(api_edificio: ApiEdificio) -> str:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    api_edificio.como("editar")
+    alta = api_edificio.cliente.post(
+        api_edificio.ruta("/gastos"),
+        json=_datos_minimos(categoria, grupo, tipo="extraordinario"),
+    )
+    assert alta.status_code == 201, alta.text
+    return str(alta.json()["id"])
+
+
+def test_vecino_del_edificio_no_lee_el_detalle_de_un_gasto(api_edificio: ApiEdificio) -> None:
+    gasto_id = _gasto_en_borrador(api_edificio)
+    api_edificio.como("vecino")
+    listado = api_edificio.cliente.get(api_edificio.ruta("/gastos"))
+    detalle = api_edificio.cliente.get(f"/api/gastos/{gasto_id}")
+    assert listado.status_code == 403, listado.text
+    assert detalle.status_code == 403, detalle.text
+    assert detalle.json() == {
+        "detail": {
+            "codigo": "sin_permiso",
+            "detalle": "sin_permiso",
+            "permiso_faltante": "ver_configuracion_del_edificio",
+        }
+    }
+    api_edificio.como("super_admin")
+
+
+@pytest.mark.parametrize("perfil", ["editar", "ver", "consejo", "contador"])
+def test_quien_lista_gastos_tambien_lee_su_detalle(api_edificio: ApiEdificio, perfil: str) -> None:
+    gasto_id = _gasto_en_borrador(api_edificio)
+    api_edificio.como(perfil)
+    detalle = api_edificio.cliente.get(f"/api/gastos/{gasto_id}")
+    assert detalle.status_code == 200, detalle.text
+    assert detalle.json()["id"] == gasto_id
+    api_edificio.como("super_admin")
+
+
+def test_detalle_de_un_gasto_inexistente_sigue_en_404_antes_que_403(
+    api_edificio: ApiEdificio,
+) -> None:
+    api_edificio.como("vecino")
+    respuesta = api_edificio.cliente.get(f"/api/gastos/{uuid4()}")
+    assert respuesta.status_code == 404, respuesta.text
+    api_edificio.como("super_admin")
+
+
+# --- Intento 2 (rompedor F3): el 422 conserva la explicación del dominio,
+# nunca el valor recibido (L-051). ---
+
+
+@pytest.mark.parametrize(
+    "extra,campo,explicacion",
+    [
+        ({"importe": "0.00"}, "importe", "el importe debe ser mayor que cero"),
+        ({"periodo": "2026-10-15"}, "periodo", "el período debe ser el primer día de un mes"),
+    ],
+)
+def test_el_422_del_gasto_conserva_la_explicacion_del_dominio(
+    api_edificio: ApiEdificio, extra: dict[str, str], campo: str, explicacion: str
+) -> None:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    api_edificio.como("editar")
+    respuesta = api_edificio.cliente.post(
+        api_edificio.ruta("/gastos"), json=_datos_minimos(categoria, grupo, **extra)
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    (error,) = respuesta.json()["detail"]
+    assert error["loc"] == ["body", campo]
+    assert explicacion in error["msg"], error

@@ -41,8 +41,16 @@ class EntradaInvalida(ValueError):
 
 
 def error_de_validacion(error: ValidationError) -> EntradaInvalida:
-    campos = sorted({".".join(map(str, e["loc"])) for e in error.errors()})
-    return EntradaInvalida(", ".join(campos))
+    """Conserva la explicación de los validadores propios del dominio (L-051:
+    el formato del CUIT, "mayor que cero", "primer día de un mes"), que son
+    textos fijos sin el valor recibido. El resto de los errores de pydantic
+    sigue como "valor inválido"."""
+    errores = error.errors()
+    campos = sorted({".".join(map(str, e["loc"])) for e in errores})
+    explicaciones = sorted(
+        {str(e["ctx"]["error"]) for e in errores if e["type"] == "value_error" and "ctx" in e}
+    )
+    return EntradaInvalida(", ".join(campos), "; ".join(explicaciones) or "valor inválido")
 
 
 class ImportacionInvalida(Exception):

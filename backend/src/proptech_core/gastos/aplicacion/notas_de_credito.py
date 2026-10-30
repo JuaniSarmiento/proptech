@@ -20,6 +20,7 @@ from proptech_core.gastos.aplicacion.errores import (
     error_de_validacion,
     transaccion,
 )
+from proptech_core.gastos.dominio.gasto import CAMPOS_DE_FACTURA
 from proptech_core.gastos.dominio.nota_de_credito import DatosNotaDeCredito
 
 _CONFLICTOS = {"uq_nota_factura": "factura"}
@@ -60,8 +61,9 @@ def crear_nota_de_credito(
         factura = (
             sesion.execute(
                 text(
-                    "SELECT complejo_id, importe::text AS importe FROM gasto "
-                    "WHERE id=:id FOR UPDATE"
+                    "SELECT complejo_id, importe::text AS importe, cuit_emisor, "
+                    "punto_de_venta, tipo_de_comprobante, numero_de_comprobante "
+                    "FROM gasto WHERE id=:id FOR UPDATE"
                 ),
                 {"id": gasto_id},
             )
@@ -70,6 +72,9 @@ def crear_nota_de_credito(
         )
         if factura is None:
             raise NoEncontrado()
+        if any(factura[campo] is None for campo in CAMPOS_DE_FACTURA):
+            #: Spec: toda nota de crédito corrige un gasto **con factura**.
+            raise EntradaInvalida("gasto_id", "el gasto indicado no tiene factura")
         acreditado = Dinero(
             str(
                 sesion.execute(

@@ -306,3 +306,19 @@ def test_auditoria_falla_y_el_proveedor_no_queda(
             request_id=uuid4(),
         )
     assert proveedores.listar_proveedores(sesion_edificio, complejo_id) == []
+
+
+def test_cuit_invalido_da_422_con_el_formato_esperado(api_edificio: ApiEdificio) -> None:
+    """Intento 2 (rompedor F3), L-051: el 422 dice qué formato se espera,
+    con el mismo texto que usa el validador (`FORMATO_CUIT`)."""
+    from proptech_core.gastos.dominio.cuit import FORMATO_CUIT
+
+    api_edificio.como("editar")
+    respuesta = api_edificio.cliente.post(
+        api_edificio.ruta("/proveedores"), json={"razon_social": "Alguien", "cuit": "20123456780"}
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    (error,) = respuesta.json()["detail"]
+    assert error["loc"] == ["body", "cuit"]
+    assert FORMATO_CUIT in error["msg"], error
+    assert "20123456780" not in respuesta.text

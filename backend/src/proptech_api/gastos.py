@@ -22,7 +22,7 @@ from proptech_api.complejos import CuerpoDeEdicion
 from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
-from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
+from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza, puede
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
@@ -67,6 +67,23 @@ async def manejar_error_de_gastos(_request: Request, error: Exception) -> JSONRe
     if isinstance(error, PlanillaInvalida):
         return JSONResponse(status_code=422, content={"detail": [{"msg": "planilla inválida"}]})
     raise TypeError("error de gastos inesperado")
+
+
+def _lectura_autorizada(asignaciones: list[Asignacion], complejo_id: UUID) -> None:
+    """Detalle por id: el mismo permiso de lectura que el listado del recurso
+    (`ver_configuracion_del_edificio`), no sólo alcanzar el edificio. Orden
+    de D7: 404 si no alcanza, 403 si no puede."""
+    if not alcanza(asignaciones, complejo_id):
+        raise _no_encontrado()
+    if not puede(asignaciones, Accion.VER_CONFIGURACION_DEL_EDIFICIO, complejo_id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": Accion.VER_CONFIGURACION_DEL_EDIFICIO.value,
+            },
+        )
 
 
 def _edificio_autorizado(
@@ -268,8 +285,9 @@ def ver_gasto(
 ) -> dict[str, Any]:
     gasto = gastos.cargar_gasto(sesion, gasto_id)
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
-    if gasto is None or not alcanza(asignaciones, gasto["complejo_id"]):
+    if gasto is None:
         raise _no_encontrado()
+    _lectura_autorizada(asignaciones, gasto["complejo_id"])
     return gasto
 
 
@@ -371,8 +389,9 @@ def ver_nota_de_credito(
 ) -> dict[str, Any]:
     nota = notas_de_credito.cargar_nota_de_credito(sesion, nota_id)
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
-    if nota is None or not alcanza(asignaciones, nota["complejo_id"]):
+    if nota is None:
         raise _no_encontrado()
+    _lectura_autorizada(asignaciones, nota["complejo_id"])
     return nota
 
 
@@ -451,8 +470,9 @@ def ver_cargo_particular(
 ) -> dict[str, Any]:
     cargo = cargos_particulares.cargar_cargo(sesion, cargo_id)
     asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
-    if cargo is None or not alcanza(asignaciones, cargo["complejo_id"]):
+    if cargo is None:
         raise _no_encontrado()
+    _lectura_autorizada(asignaciones, cargo["complejo_id"])
     return cargo
 
 

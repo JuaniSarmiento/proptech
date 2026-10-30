@@ -477,3 +477,97 @@ def test_contador_sin_permiso_da_403(api_edificio: ApiEdificio) -> None:
     assert respuesta.status_code == 403, respuesta.text
     # D-131 (2d): todo 403 lleva `codigo`; sumado al integrar `main`.
     assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
+
+
+# --- Intento 2 (rompedor F1): el detalle de una nota exige el mismo permiso
+# de lectura que el resto del dominio, no sólo alcanzar el edificio. ---
+
+
+def _nota_cargada(api_edificio: ApiEdificio) -> str:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    factura = _crear_factura(api_edificio, categoria, grupo)
+    api_edificio.como("editar")
+    alta = api_edificio.cliente.post("/api/notas-de-credito", json=_nota(factura, "100.00"))
+    assert alta.status_code == 201, alta.text
+    return str(alta.json()["id"])
+
+
+def test_vecino_del_edificio_no_lee_el_detalle_de_una_nota(api_edificio: ApiEdificio) -> None:
+    nota_id = _nota_cargada(api_edificio)
+    api_edificio.como("vecino")
+    respuesta = api_edificio.cliente.get(f"/api/notas-de-credito/{nota_id}")
+    assert respuesta.status_code == 403, respuesta.text
+    assert respuesta.json()["detail"].get("codigo") == "sin_permiso", respuesta.text
+    assert respuesta.json()["detail"]["permiso_faltante"] == "ver_configuracion_del_edificio"
+    api_edificio.como("super_admin")
+
+
+@pytest.mark.parametrize("perfil", ["editar", "ver", "consejo", "contador"])
+def test_quien_lee_el_dominio_lee_el_detalle_de_una_nota(
+    api_edificio: ApiEdificio, perfil: str
+) -> None:
+    nota_id = _nota_cargada(api_edificio)
+    api_edificio.como(perfil)
+    respuesta = api_edificio.cliente.get(f"/api/notas-de-credito/{nota_id}")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["id"] == nota_id
+    api_edificio.como("super_admin")
+
+
+# --- Intento 2 (rompedor S1): una nota de crédito sólo corrige un gasto con
+# factura (spec "Toda nota de crédito está asociada a una factura"). ---
+
+
+def test_nota_contra_un_gasto_sin_factura_da_422(api_edificio: ApiEdificio) -> None:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    api_edificio.como("editar")
+    sin_factura = api_edificio.cliente.post(
+        api_edificio.ruta("/gastos"),
+        json={
+            "concepto": "Gasto sin factura",
+            "categoria_id": categoria,
+            "grupo_id": grupo,
+            "periodo": "2026-10-01",
+            "importe": "1000.00",
+        },
+    )
+    assert sin_factura.status_code == 201, sin_factura.text
+    respuesta = api_edificio.cliente.post(
+        "/api/notas-de-credito", json=_nota(sin_factura.json()["id"], "10.00")
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    (error,) = respuesta.json()["detail"]
+    assert error["loc"] == ["body", "gasto_id"], error
+    filas = api_edificio.filas(
+        "SELECT count(*) FROM nota_de_credito WHERE gasto_id=%s", (sin_factura.json()["id"],)
+    )
+    assert filas == [(0,)]
+
+
+# --- Intento 2 (rompedor S2): bajar el importe de una factura en borrador por
+# debajo de lo ya acreditado dejaría notas por más que su factura. ---
+
+
+def test_bajar_la_factura_por_debajo_de_sus_notas_da_422(api_edificio: ApiEdificio) -> None:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    factura = _crear_factura(api_edificio, categoria, grupo, importe="1000.00")
+    api_edificio.como("editar")
+    nota = api_edificio.cliente.post("/api/notas-de-credito", json=_nota(factura, "600.00"))
+    assert nota.status_code == 201, nota.text
+    respuesta = api_edificio.cliente.patch(f"/api/gastos/{factura}", json={"importe": "500.00"})
+    assert respuesta.status_code == 422, respuesta.text
+    (error,) = respuesta.json()["detail"]
+    assert error["loc"] == ["body", "importe"], error
+    gasto = api_edificio.cliente.get(f"/api/gastos/{factura}").json()
+    assert gasto["importe"] == "1000.00"
+
+
+def test_bajar_la_factura_hasta_lo_acreditado_se_permite(api_edificio: ApiEdificio) -> None:
+    categoria, grupo = _crear_categoria_y_grupo(api_edificio)
+    factura = _crear_factura(api_edificio, categoria, grupo, importe="1000.00")
+    api_edificio.como("editar")
+    nota = api_edificio.cliente.post("/api/notas-de-credito", json=_nota(factura, "600.00"))
+    assert nota.status_code == 201, nota.text
+    respuesta = api_edificio.cliente.patch(f"/api/gastos/{factura}", json={"importe": "600.00"})
+    assert respuesta.status_code == 200, respuesta.text
+    assert api_edificio.cliente.get(f"/api/gastos/{factura}").json()["importe"] == "600.00"

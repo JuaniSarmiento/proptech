@@ -157,3 +157,66 @@ def test_periodo_de_imputacion_nunca_queda_igual_a_un_periodo_emitido(
     gasto = api_edificio.cliente.get(f"/api/gastos/{gasto_id}").json()
     assert gasto["periodo_de_imputacion"] not in {"2026-10-01", "2026-11-01"}
     assert gasto["periodo_de_imputacion"] == "2026-12-01"
+
+
+# --- Intento 2 (rompedor F2): editar un aprobado tardío sin tocar campos
+# bloqueados nunca lo devuelve a su período de origen (D8, D-141). ---
+
+
+def _aprobado_tarde(api_edificio: ApiEdificio) -> str:
+    categoria, grupo = _categoria_y_grupo(api_edificio)
+    gasto_id = _crear_gasto(api_edificio, categoria, grupo, "2026-10-01")
+
+    def _octubre_emitido(sesion, complejo_id, periodo):  # type: ignore[no-untyped-def]
+        return periodo == datetime.date(2026, 10, 1)
+
+    sesion = _sesion_directa(api_edificio)
+    try:
+        modulo_gastos.aprobar_gasto(
+            sesion,
+            Identidad(api_edificio.admin, api_edificio.personas["super_admin"]),
+            gasto_id=UUID(gasto_id),
+            request_id=uuid4(),
+            es_periodo_emitido=_octubre_emitido,
+        )
+        sesion.commit()
+    finally:
+        sesion.bind.dispose()  # type: ignore[union-attr]
+    assert (
+        api_edificio.cliente.get(f"/api/gastos/{gasto_id}").json()["periodo_de_imputacion"]
+        == "2026-11-01"
+    )
+    return gasto_id
+
+
+def test_patch_vacio_de_un_aprobado_tarde_conserva_su_periodo_de_imputacion(
+    api_edificio: ApiEdificio,
+) -> None:
+    gasto_id = _aprobado_tarde(api_edificio)
+    api_edificio.como("editar")
+    respuesta = api_edificio.cliente.patch(f"/api/gastos/{gasto_id}", json={})
+    assert respuesta.status_code == 200, respuesta.text
+    gasto = api_edificio.cliente.get(f"/api/gastos/{gasto_id}").json()
+    assert gasto["periodo"] == "2026-10-01"
+    assert gasto["periodo_de_imputacion"] == "2026-11-01", gasto
+    filas = api_edificio.filas(
+        "SELECT periodo_de_imputacion::text FROM gasto WHERE id=%s", (gasto_id,)
+    )
+    assert filas == [("2026-11-01",)]
+
+
+def test_editar_un_campo_de_un_aprobado_tarde_da_422_y_no_lo_mueve(
+    api_edificio: ApiEdificio,
+) -> None:
+    """Borde: con un campo bloqueado el guardia de aprobado responde 422 y
+    la imputación fijada al aprobar tampoco se mueve."""
+    gasto_id = _aprobado_tarde(api_edificio)
+    api_edificio.como("editar")
+    respuesta = api_edificio.cliente.patch(
+        f"/api/gastos/{gasto_id}", json={"concepto": "Concepto corregido"}
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    filas = api_edificio.filas(
+        "SELECT periodo_de_imputacion::text FROM gasto WHERE id=%s", (gasto_id,)
+    )
+    assert filas == [("2026-11-01",)]
