@@ -6,7 +6,9 @@
  * Valida como la real (L-027): método, Content-Type, forma del cuerpo y tipos.
  */
 
+import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearServidor } from "./api-falsa";
 import { ESCENARIOS } from "./escenarios";
@@ -53,7 +55,9 @@ describe("PATCH /api/complejos/{id} (editar edificio y su ubicación)", () => {
       subsuelos: 2,
     });
     expect(respuesta.status).toBe(200);
-    expect(await respuesta.json()).toMatchObject({ id: EDIFICIO });
+    // 11.4 (F5, L-027): exacto, no `toMatchObject`. El fixture de lectura `edificio.json`
+    // tiene el mismo id; si la rama PATCH desaparece, el pedido cae en el fixture y esto falla.
+    expect(await respuesta.json()).toEqual({ id: EDIFICIO });
   });
 
   it("todos los campos son opcionales: un cuerpo vacío es válido", async () => {
@@ -194,9 +198,9 @@ describe("Georef simulado: provincia → departamento → localidad", () => {
 
   it("las localidades son las del departamento y traen la del fixture", async () => {
     const capital = await listar("departamentos/50007/localidades");
-    const godoyCruz = await listar("departamentos/50028/localidades");
+    const guaymallen = await listar("departamentos/50028/localidades");
     expect(capital.cuerpo).toContainEqual({ id: "50007010", nombre: "Mendoza" });
-    expect(godoyCruz.cuerpo).not.toContainEqual({ id: "50007010", nombre: "Mendoza" });
+    expect(guaymallen.cuerpo).not.toContainEqual({ id: "50007010", nombre: "Mendoza" });
   });
 
   it("una provincia o un departamento inexistente da 404, como la API real", async () => {
@@ -216,5 +220,84 @@ describe("Georef simulado: provincia → departamento → localidad", () => {
   it("sin sesión da 401", async () => {
     const respuesta = await fetch(`${base}/api/georef/provincias`);
     expect(respuesta.status).toBe(401);
+  });
+});
+
+// Correcciones del rompedor (verify-1, F1 a F3): RB3D-1 a RB3D-3, integrados acá.
+function patchCrudo(url: string, cuerpo: string) {
+  return pedir(url, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: cuerpo,
+  });
+}
+
+describe("F1: PATCH sin cuerpo o que no es JSON da 422, como la real", () => {
+  const rutas = [`/api/complejos/${EDIFICIO}`, `/api/grupos/${GRUPO}`];
+
+  it.each(rutas)("%s sin cuerpo da 422 missing en body", async (ruta) => {
+    const respuesta = await patchCrudo(`${base}${ruta}`, "");
+    expect(respuesta.status).toBe(422);
+    expect((await respuesta.json()).detail).toEqual([{ type: "missing", loc: ["body"] }]);
+  });
+
+  it.each(rutas)("%s con un cuerpo que no es JSON da 422 json_invalid", async (ruta) => {
+    const respuesta = await patchCrudo(`${base}${ruta}`, "no es json");
+    expect(respuesta.status).toBe(422);
+    expect((await respuesta.json()).detail).toEqual([{ type: "json_invalid", loc: ["body"] }]);
+  });
+
+  it.each(rutas)("%s con {} sigue dando 200 (todo es opcional)", async (ruta) => {
+    const respuesta = await patchCrudo(`${base}${ruta}`, "{}");
+    expect(respuesta.status).toBe(200);
+  });
+});
+
+describe("F2: el id de un grupo tiene que ser UUID, como en la real", () => {
+  it("PATCH /api/grupos/no-es-uuid da 422 uuid_parsing en el path", async () => {
+    const respuesta = await patch(`${base}/api/grupos/no-es-uuid`, { activo: false });
+    expect(respuesta.status).toBe(422);
+    expect((await respuesta.json()).detail).toEqual([
+      { type: "uuid_parsing", loc: ["path", "grupo_id"] },
+    ]);
+  });
+
+  it("un UUID en mayúsculas se acepta, como lo acepta pydantic", async () => {
+    const respuesta = await patch(`${base}/api/grupos/${GRUPO.toUpperCase()}`, { activo: false });
+    expect(respuesta.status).toBe(200);
+  });
+});
+
+describe("F3: el Georef simulado usa los nombres y padres de config/georef", () => {
+  type Fila = Record<string, string>;
+  const dir = join(__dirname, "../../config/georef");
+  const leer = (archivo: string) =>
+    JSON.parse(readFileSync(join(dir, `${archivo}.json`), "utf-8")) as Fila[];
+  const porId = (filas: Fila[]) => new Map(filas.map((fila) => [fila.id, fila]));
+  async function listar(ruta: string) {
+    const respuesta = await pedir(`${base}/api/georef/${ruta}`);
+    return (await respuesta.json()) as { id: string; nombre: string }[];
+  }
+
+  it("cada provincia, departamento y localidad simulados existen con ese nombre y ese padre", async () => {
+    const provincias = porId(leer("provincias"));
+    const departamentos = porId(leer("departamentos"));
+    const localidades = porId(leer("localidades"));
+    const distintos: string[] = [];
+    for (const p of await listar("provincias")) {
+      if (provincias.get(p.id)?.nombre !== p.nombre)
+        distintos.push(`provincia ${p.id}: ${p.nombre}`);
+      for (const d of await listar(`provincias/${p.id}/departamentos`)) {
+        const real = departamentos.get(d.id);
+        if (real?.nombre !== d.nombre || real?.provincia_id !== p.id)
+          distintos.push(`departamento ${d.id}: ${d.nombre}`);
+        for (const l of await listar(`departamentos/${d.id}/localidades`)) {
+          const realLoc = localidades.get(l.id);
+          if (realLoc?.nombre !== l.nombre || realLoc?.departamento_id !== d.id)
+            distintos.push(`localidad ${l.id}: ${l.nombre}`);
+        }
+      }
+    }
+    expect(distintos).toEqual([]);
   });
 });
