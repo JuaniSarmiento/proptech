@@ -33,14 +33,18 @@ imports sin ejecutar el código y MUST nombrar el archivo ofensor.
 
 ### Requirement: El SQL de cada módulo sólo nombra sus tablas
 
-El SQL de cada módulo de `proptech_core` SHALL nombrar sólo tablas propias, salvo excepciones por archivo y tabla completos con motivo. El test MUST nombrar archivo y tabla ajena, ignorar mayúsculas y excluir `FOR UPDATE OF` y funciones en FROM. En `proptech_api` y `proptech_worker` MUST prohibir SQL directo sobre tablas del libro y `candado_de_cuenta`; sus consumidores usan `cuenta_corriente.aplicacion`. Las tablas `proveedor`, `gasto`, `nota_de_credito` y `cargo_particular` MUST figurar en el mapa de dueños como tablas del módulo `gastos`, y ningún otro módulo MUST escribir SQL sobre ellas; `gastos` MUST NOT nombrar en su SQL ninguna tabla del libro (`cuenta`, `emision`, `evento_de_emision`, `obligacion`, `movimiento`, `imputacion`, `candado_de_cuenta`), ni siquiera por excepción.
+El SQL de cada módulo de `proptech_core` SHALL nombrar sólo tablas propias, salvo excepciones por archivo y tabla completos con motivo. El test MUST nombrar archivo y tabla ajena, ignorar mayúsculas y excluir `FOR UPDATE OF` y funciones en FROM. En `proptech_api` y `proptech_worker` MUST prohibir SQL directo sobre tablas del libro y `candado_de_cuenta`; sus consumidores usan `cuenta_corriente.aplicacion`. El comando del edificio de ejemplo (`complejos/aplicacion/ejemplo.py`) MUST NOT tener excepción: la administración, la persona, la asignación y el vínculo de identidad del ejemplo se escriben por la capa de aplicación de `acceso`. Las tablas `proveedor`, `gasto`, `nota_de_credito` y `cargo_particular` MUST figurar en el mapa de dueños como tablas del módulo `gastos`, y ningún otro módulo MUST escribir SQL sobre ellas; `gastos` MUST NOT nombrar en su SQL ninguna tabla del libro (`cuenta`, `emision`, `evento_de_emision`, `obligacion`, `movimiento`, `imputacion`, `candado_de_cuenta`), ni siquiera por excepción.
 
 #### Scenario: El código de hoy pasa con sus excepciones
 
 - **WHEN** el constructor ejecuta el escaneo sobre el árbol con el libro y el módulo de gastos construidos
-- **THEN** pasa, con `administracion` como tabla de `acceso` y las excepciones de
-  `complejos/aplicacion/escritura.py` (`asignacion_rol`), `complejos/aplicacion/lectura.py` (`persona`)
-  y `complejos/aplicacion/ejemplo.py` (`administracion`, `persona`, `asignacion_rol`)
+- **THEN** pasa, con `administracion` como tabla de `acceso` y sólo las excepciones de
+  `complejos/aplicacion/escritura.py` (`asignacion_rol`) y `complejos/aplicacion/lectura.py` (`persona`)
+
+#### Scenario: El ejemplo vuelve a escribir una tabla de acceso
+
+- **WHEN** el constructor agrega en una copia un `INSERT INTO persona` a `complejos/aplicacion/ejemplo.py`
+- **THEN** el test falla nombrando ese archivo y `persona`
 
 #### Scenario: Una tabla sin dueño declarado
 
