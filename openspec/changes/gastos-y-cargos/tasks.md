@@ -338,3 +338,10 @@ Informe original: `informes/apply-3-constructor.md`. Partida `a6029cf`; código 
 - Rompedor intento 3 entregado (Codex, revisión `8e6e13e`): ninguna falla reproducida; 33 tests nuevos de ataque. El orquestador corrió a las 16:18 los unitarios y el de integración pendiente con PostgreSQL: `33 passed`. Los dos archivos de ataque se conservan como regresión.
 - Rol activo: auditor, intento 1 (role-auditor, subagente nativo), sobre la revisión que sigue a este commit; corre la suite completa una vez (decisión de Juani). Informe `informes/verify-1-auditor.md`.
 - Auditor intento 1 (role-auditor, `fdaa424`, sobre `51a7ff3`): BLOQUEANTES B1 (falta plan-reviewer y el RED original de Emiliano es de setup) y B2 (P36/P37 respondidas por Emiliano y no por Juani o Alberto, D-141). Suite completa 4736 passed, 1 xfailed. Deuda D1 a D12. Esperando decisión escrita de Juani sobre B1 y B2; sin ella no avanza.
+
+## Decisiones de Juani sobre los bloqueantes del auditor (30/10/2026)
+
+- **B1** (falta plan-reviewer, rompedor y auditor de Emiliano; RED original de setup): Juani lo acepta como **deuda justificada** (D13), con la evidencia sustituta de las tres rondas de rompedor (8 hallazgos reproducidos y cerrados), los mutantes M1 a M6 y la suite completa del auditor. Mismo criterio que BJ-1 del 3d (D-139).
+- **B2** (P36 y P37 respondidas por Emiliano en D-141): Juani **ratifica** las dos respuestas tal como están en D-141 (P36: el gasto aprobado tarde conserva su período de origen y entra en la primera liquidación que lo encuentre aprobado, sin reabrir un emitido; P37: el gasto mensual obligatorio se marca en la categoría de gasto). Sin cambio de código.
+- Palabras de Juani: "si" a la pregunta "¿Las ratificás?" (B1 como deuda y B2 ratificadas).
+- Rol activo: auditor, intento 2, sobre `51a7ff3` (código sin cambios); no repite la suite.
