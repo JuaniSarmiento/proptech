@@ -9,9 +9,10 @@
 | `apply-3-constructor.md` | apply | 3 | constructor (F2-1 y S4 del rompedor 2) | role-constructor, subagente nativo de Claude (Claude Code), despachado por el orquestador | Claude | `a6029cf` + reproducciones sin commitear del rompedor 2 → entrega `f432055` (código) más un commit sólo de documentación |
 
 | `verify-3-breaker.md` | verify | 3 | rompedor | Codex vía plugin `codex:codex-rescue`, según dispatch explícito; sin Codex anidado | OpenAI/GPT; modelo no verificado | `8e6e13e` (código `f432055`) |
+| `verify-1-auditor.md` | verify | 1 | auditor | role-auditor, subagente nativo de Claude (Claude Code), despachado por el orquestador | Claude (misma familia que los constructores) | `51a7ff3` (código `f432055`) |
 
 Intento 3: ninguna falla reproducida; 68 casos unitarios verdes y un test PostgreSQL sólo recolectado. Falta ejecutar ese test y resolver la deuda anterior con auditoría.
 
-Falta, todavía no producido: el informe del auditor. F2-1 y S4 del rompedor 2 se corrigieron en `apply-3-constructor.md`; S3 queda como deuda candidata para el auditor. El rompedor del intento 1 no quedó limpio; sus hallazgos se corrigieron en `apply-2-constructor.md`.
+Auditor, intento 1 (`verify-1-auditor.md`, 30/10/2026): **BLOQUEANTES** B1 (falta el revisor del plan y el RED original es por setup) y B2 (P36/P37 respondidas por Emiliano, el plan pedía a Juani o Alberto), los dos de decisión humana; suite completa propia sobre `51a7ff3`: 4736 passed, 1 xfailed. Antes: F2-1 y S4 del rompedor 2 se corrigieron en `apply-3-constructor.md`; S3 queda como deuda candidata para el auditor. El rompedor del intento 1 no quedó limpio; sus hallazgos se corrigieron en `apply-2-constructor.md`.
 
 No hay informes originales del apply de Emiliano en esta carpeta: su evidencia TDD está en `tasks.md`, tareas 1.1 a 9.5.
