@@ -3,6 +3,13 @@
 # Supuesto del design: no hay producción ni datos reales. Todo lo sembrado es ficticio.
 set -euo pipefail
 
+# L-047 (2e): el ensayo hace `up --build` y `down -v`, igual que el humo, y comparte con él los
+# rechazos previos (`humo-lib.sh`): sin PROPTECH_COMPOSE_PROYECTO, con `proptech` o con los puertos
+# 80/443 ocupados no ejecuta ningún `compose`.
+# shellcheck source=infra/ci/humo-lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/humo-lib.sh"
+exigir_proyecto_de_compose_propio "PROPTECH_COMPOSE_PROYECTO=proptech-ensayo bash infra/ci/ensayo-roles.sh"
+
 RAIZ_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ_REPO/infra"
 mkdir -p "$RAIZ_REPO/.git/informes-login-bloque-a"
@@ -13,14 +20,12 @@ PROPTECH_UID="$(id -u)"
 PROPTECH_GID="$(id -g)"
 export PROPTECH_UID PROPTECH_GID
 
-# El ensayo hace `down -v`: corrido a mano junto a un stack levantado, se le da
-# un proyecto propio (PROPTECH_COMPOSE_PROYECTO=proptech-ensayo ...). Se exporta
-# para que restaurar.sh restaure en el MISMO proyecto, nunca en otro.
+# Se exporta para que restaurar.sh restaure en el MISMO proyecto, nunca en otro.
 # L-043 (2e): la revisión desde la que nace el origen y a la que vuelve el ciclo de bajada. Es el
 # único número de migración escrito a mano; la cabeza se pregunta a Alembic (CABEZA, más abajo).
 REVISION_DE_ORIGEN="0016"
 
-PROYECTO_COMPOSE="${PROPTECH_COMPOSE_PROYECTO:-proptech}"
+PROYECTO_COMPOSE="$PROPTECH_COMPOSE_PROYECTO"
 export PROPTECH_COMPOSE_PROYECTO="$PROYECTO_COMPOSE"
 compose() { docker compose -p "$PROYECTO_COMPOSE" "$@"; }
 limpiar() {

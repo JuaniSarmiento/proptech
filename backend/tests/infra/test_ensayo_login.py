@@ -35,10 +35,11 @@ def test_ensayo_no_escribe_ninguna_revision_de_alembic_a_mano() -> None:
 
 
 def test_ensayo_usa_un_proyecto_compose_parametrizable() -> None:
-    # El ensayo hace `down -v`: se tiene que poder correr en un proyecto aislado,
-    # con `proptech` como default para no cambiar a quien lo usa hoy.
+    # El ensayo hace `down -v`: corre sólo en un proyecto aislado y sin la variable se niega
+    # (2e, L-047; `test_rechazos_de_scripts_destructivos.py`). Nunca hay un default `proptech`.
     script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
-    assert 'PROYECTO_COMPOSE="${PROPTECH_COMPOSE_PROYECTO:-proptech}"' in script
+    assert 'PROYECTO_COMPOSE="$PROPTECH_COMPOSE_PROYECTO"' in script
+    assert ":-proptech" not in script
     assert 'compose() { docker compose -p "$PROYECTO_COMPOSE" "$@"; }' in script
     assert "-p proptech " not in script
 

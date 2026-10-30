@@ -131,13 +131,14 @@ def test_sin_variable_el_humo_se_niega_antes_de_tocar_docker_compose(tmp_path: P
     assert _llamadas_a_compose(registro) == []
 
 
-def test_con_proptech_y_contenedores_corriendo_el_humo_se_niega(tmp_path: Path) -> None:
+def test_con_proptech_el_humo_se_niega_con_o_sin_contenedores(tmp_path: Path) -> None:
+    """Desde la decisión D15 el rechazo no depende de los contenedores; el detalle por caso (sin
+    contenedores, corriendo, detenido) está en `test_rechazos_de_scripts_destructivos.py`."""
     resultado, registro = _correr(
         tmp_path, proyecto="proptech", puertos=str(_puerto_libre()), contenedores="a1b2c3"
     )
     assert resultado.returncode != 0
-    assert "proptech" in resultado.stderr
-    assert "contenedores" in resultado.stderr
+    assert "'proptech'" in resultado.stderr
     assert _llamadas_a_compose(registro) == []
 
 

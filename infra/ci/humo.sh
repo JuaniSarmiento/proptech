@@ -15,36 +15,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/humo-lib.sh"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # L-047 (2e `humo-y-ci`): el humo corre sólo en un proyecto de Compose propio y se niega ANTES de
-# ejecutar ningún `up` ni `down` (y antes de armar el `trap limpiar`, que baja el stack) si no puede
-# hacerlo sin tocar un stack real. Tres rechazos, cada uno con su causa y cómo correrlo:
-#  (a) falta PROPTECH_COMPOSE_PROYECTO;
-#  (b) vale `proptech` (el proyecto de uso real) y tiene contenedores corriendo;
-#  (c) el puerto 80 o el 443 del host están ocupados: Caddy los publica fijos
-#      (infra/compose.yaml), así que el humo no puede correr en paralelo con otro stack.
-# PROPTECH_HUMO_PUERTOS (por defecto "80 443") existe para que los tests prueben (c) con un
-# puerto que ellos mismos ocupan.
-COMO_CORRERLO="PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh"
-# Único `exit 1` fuera de `fallar_paso`: el rechazo corre antes de cualquier paso.
-rechazar() {
-  echo "ERROR: $1" >&2
-  echo "$2: $COMO_CORRERLO" >&2
-  exit 1
-}
-if [ -z "${PROPTECH_COMPOSE_PROYECTO:-}" ]; then
-  rechazar "falta PROPTECH_COMPOSE_PROYECTO: el humo corre sólo en un proyecto de Compose propio." "Corrélo así"
-fi
-if [ "$PROPTECH_COMPOSE_PROYECTO" = "proptech" ] \
-  && [ -n "$(docker ps -q --filter "label=com.docker.compose.project=proptech")" ]; then
-  rechazar "el proyecto 'proptech' tiene contenedores corriendo (el stack de uso real) y el humo haría 'down -v' sobre él." "Bajalo, o corré el humo en otro proyecto"
-fi
-puerto_ocupado() {
-  (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
-}
-for puerto in ${PROPTECH_HUMO_PUERTOS:-80 443}; do
-  if puerto_ocupado "$puerto"; then
-    rechazar "el puerto $puerto del host está ocupado: Caddy lo publica fijo y el humo no puede correr en paralelo con otro stack." "Bajá lo que lo usa y volvé a correr"
-  fi
-done
+# ejecutar ningún `up` ni `down` (y antes de armar el `trap limpiar`, que baja el stack). Los tres
+# rechazos viven en `humo-lib.sh` y los comparte `ensayo-roles.sh`.
+exigir_proyecto_de_compose_propio "PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh"
 # `restaurar.sh` lee esta variable (su default es `proptech`): sin exportarla, un humo en un proyecto
 # propio habría restaurado contra el proyecto `proptech` (humo.sh:741 antes de este cambio).
 export PROPTECH_COMPOSE_PROYECTO

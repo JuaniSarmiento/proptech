@@ -141,3 +141,36 @@ verificar_politicas_iguales() {
     fi
   done <<< "$restaurada"
 }
+
+# L-047 (2e): los scripts que hacen `up --build` y `down -v` (el humo y el ensayo de roles) corren sólo
+# en un proyecto de Compose propio, y se niegan ANTES de ejecutar ningún `compose`. Tres rechazos, cada
+# uno con su causa y cómo correr el script:
+#  (a) falta PROPTECH_COMPOSE_PROYECTO;
+#  (b) vale `proptech` (el proyecto de uso real), SIEMPRE: haya o no contenedores corriendo, porque el
+#      stack real detenido conserva sus volúmenes y `down -v` se los lleva (D15 del 2e; cambia lo
+#      aprobado antes, que sólo lo rechazaba con contenedores corriendo);
+#  (c) el puerto 80 o el 443 del host están ocupados: Caddy los publica fijos (infra/compose.yaml), así
+#      que no pueden correr en paralelo con otro stack. PROPTECH_HUMO_PUERTOS (por defecto "80 443")
+#      existe para que los tests prueben (c) con un puerto que ellos mismos ocupan.
+# `$1` es la forma de correr el script (se imprime en el mensaje); el rechazo usa `exit 1` porque corre
+# antes de cualquier `paso` y de cualquier `trap` de limpieza.
+exigir_proyecto_de_compose_propio() {
+  local como_correrlo="$1" puerto
+  if [ -z "${PROPTECH_COMPOSE_PROYECTO:-}" ]; then
+    echo "ERROR: falta PROPTECH_COMPOSE_PROYECTO: este script corre sólo en un proyecto de Compose propio." >&2
+    echo "Corrélo así: $como_correrlo" >&2
+    exit 1
+  fi
+  if [ "$PROPTECH_COMPOSE_PROYECTO" = "proptech" ]; then
+    echo "ERROR: el proyecto 'proptech' es el del stack de uso real y este script haría 'down -v' sobre él, con o sin contenedores corriendo." >&2
+    echo "Corré el script en otro proyecto: $como_correrlo" >&2
+    exit 1
+  fi
+  for puerto in ${PROPTECH_HUMO_PUERTOS:-80 443}; do
+    if (exec 3<>"/dev/tcp/127.0.0.1/$puerto") 2>/dev/null; then
+      echo "ERROR: el puerto $puerto del host está ocupado: Caddy lo publica fijo y este script no puede correr en paralelo con otro stack." >&2
+      echo "Bajá lo que lo usa y volvé a correr: $como_correrlo" >&2
+      exit 1
+    fi
+  done
+}

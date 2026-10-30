@@ -167,11 +167,12 @@ Los mismos comandos de test que usa el CI están en `infra/ci/test-backend.sh` y
 PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh
 ```
 
-`humo.sh` levanta el stack entero y lo baja con `down -v`, así que se niega a correr, antes de tocar
-nada y con un mensaje que dice por qué, en tres casos: si falta `PROPTECH_COMPOSE_PROYECTO`; si vale
-`proptech` y ese proyecto (el stack de uso real) tiene contenedores corriendo; o si el puerto 80 o el
-443 del host están ocupados, porque Caddy los publica fijos y el humo no puede correr en paralelo con
-otro stack. Bajá el stack de uso real antes de correrlo.
+`humo.sh` levanta el stack entero y lo baja con `down -v` (igual que `infra/ci/ensayo-roles.sh`, que
+comparte la comprobación), así que se niega a correr, antes de tocar nada y con un mensaje que dice por
+qué, en tres casos: si falta `PROPTECH_COMPOSE_PROYECTO`; si vale `proptech` (el stack de uso real),
+siempre, haya o no contenedores corriendo; o si el puerto 80 o el 443 del host están ocupados, porque
+Caddy los publica fijos y no pueden correr en paralelo con otro stack. Bajá el stack de uso real antes
+de correrlo.
 
 ## Variables de entorno
 

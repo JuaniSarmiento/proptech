@@ -25,16 +25,21 @@ nombrar esa misma revisión.
 - **WHEN** `ensayo-roles.sh` vuelve a tener un número de revisión literal en `verificar_revision`
 - **THEN** un test da rojo nombrando la línea
 
-### Requirement: El humo corre sólo en un proyecto de Compose aislado
+### Requirement: El humo y el ensayo de roles corren sólo en un proyecto de Compose aislado
 
-`infra/ci/humo.sh` SHALL tomar el nombre del proyecto de Compose de `PROPTECH_COMPOSE_PROYECTO`, MUST
-NOT llevar un nombre de proyecto fijo en el script, y MUST exportar esa variable para que todo script
-que invoca (la restauración incluida) opere sobre el mismo proyecto y nunca sobre otro. Antes de
-ejecutar ningún `up` ni ningún `down`, el humo MUST negarse a empezar, con un mensaje que nombre la
-causa y cómo correrlo, en tres casos: (a) la variable no está definida; (b) vale `proptech` (el
-proyecto del stack de uso real) y ese proyecto tiene contenedores corriendo; (c) el puerto 80 o el 443
-del host ya están ocupados, porque el proxy los publica fijos y el humo no puede correr en paralelo con
-otro stack. En el CI, el job define la variable.
+`infra/ci/humo.sh` e `infra/ci/ensayo-roles.sh` SHALL tomar el nombre del proyecto de Compose de
+`PROPTECH_COMPOSE_PROYECTO`, MUST NOT llevar un nombre de proyecto fijo ni un valor por defecto en el
+script, y MUST exportar esa variable para que todo script que invocan (la restauración incluida)
+opere sobre el mismo proyecto y nunca sobre otro. Antes de ejecutar ningún `up` ni ningún `down`, los
+dos MUST negarse a empezar, con un mensaje que nombre la causa y cómo correrlos, en tres casos: (a) la
+variable no está definida; (b) vale `proptech` (el proyecto del stack de uso real), **siempre**, haya o
+no contenedores corriendo; (c) el puerto 80 o el 443 del host ya están ocupados, porque el proxy los
+publica fijos y no pueden correr en paralelo con otro stack. Cualquier otro nombre MUST seguir
+permitido. La comprobación MUST vivir en un solo lugar compartido por los dos scripts. En el CI, cada
+job define su propia variable, distinta de `proptech`.
+
+*Cambia lo aprobado antes* (decisión D15 del diseño): el caso (b) sólo rechazaba `proptech` "con
+contenedores corriendo".
 
 #### Scenario: Sin variable
 
@@ -42,12 +47,18 @@ otro stack. En el CI, el job define la variable.
 - **THEN** el humo termina distinto de 0 antes de ejecutar ningún `up` ni `down`, y el mensaje dice que
   falta la variable y da un ejemplo de cómo correrlo
 
-#### Scenario: Proyecto `proptech` con contenedores
+#### Scenario: Proyecto `proptech`, con o sin contenedores
 
-- **WHEN** se corre el humo con `PROPTECH_COMPOSE_PROYECTO=proptech` y ese proyecto tiene contenedores
-  corriendo
-- **THEN** el humo termina distinto de 0 antes de tocar nada, nombra el proyecto, y el stack real sigue
-  levantado y con sus volúmenes
+- **WHEN** se corre el humo o el ensayo con `PROPTECH_COMPOSE_PROYECTO=proptech`, con el stack real
+  corriendo, detenido con sus volúmenes, o sin ningún contenedor
+- **THEN** el script termina distinto de 0 antes de invocar `compose` (ni un `up` ni un `down -v`),
+  nombra el proyecto, y el stack real conserva sus contenedores y sus volúmenes
+
+#### Scenario: El ensayo de roles comparte los rechazos
+
+- **WHEN** se corre `ensayo-roles.sh` sin la variable, con `proptech` o con el puerto 80 ocupado
+- **THEN** termina distinto de 0 antes de invocar `compose`, con el mismo mensaje que el humo y la forma
+  de correr el ensayo
 
 #### Scenario: Puertos ocupados
 

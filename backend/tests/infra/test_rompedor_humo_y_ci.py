@@ -202,7 +202,7 @@ def test_la_declaracion_del_443_ve_cualquier_sitio_https() -> None:
 def test_el_rechazo_por_puertos_mira_el_80_y_el_443_por_defecto() -> None:
     """Mutante M1: `PROPTECH_HUMO_PUERTOS:-80 443` -> `:-80` dejaba los 39 tests del humo en verde
     (todos fijan la variable). El 443 lo publica Caddy fijo igual que el 80."""
-    texto = HUMO.read_text(encoding="utf-8")
+    texto = LIB.read_text(encoding="utf-8")  # el rechazo vive en el helper compartido
     por_defecto = re.search(r"\$\{PROPTECH_HUMO_PUERTOS:-([0-9 ]+)\}", texto)
     assert por_defecto is not None
     assert set(por_defecto.group(1).split()) == {"80", "443"}

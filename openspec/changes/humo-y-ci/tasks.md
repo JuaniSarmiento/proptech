@@ -35,7 +35,7 @@
   `restaurar.sh` sobre `proptech` (error real de `humo.sh:741`); con la variable exportada opera sobre el
   proyecto del humo. Se explica en el PR qué proyecto habría restaurado [WSL para verlo con Docker]
 - [x] 2.3 Tests rojos y verdes del rechazo previo, uno por caso, sin ejecutar ningún `up` ni `down`:
-  (a) sin variable, (b) `proptech` con contenedores corriendo, (c) puerto 80 o 443 ocupado; cada
+  (a) sin variable, (b) `proptech` [con contenedores corriendo; desde D15, siempre], (c) puerto 80 o 443 ocupado; cada
   mensaje nombra la causa y cómo correrlo [WSL, con un stack `proptech` descartable y un puerto 80
   ocupado a propósito]
 - [x] 2.4 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
@@ -217,13 +217,20 @@
     - R8/R9: el helper del log ve una fuga seguida de punto y la que sale por un logger con `propagate=False`.
     - R6, R7, M1, M2: tests que matan los mutantes (timeouts en todo `reverse_proxy`, cualquier sitio `https://`
       o `:443`, el 443 en los puertos por defecto, política que sobra en la restaurada).
-  - **Abiertos, esperan decisión de Gianfranco** (los tests están en `scratchpad/rompedor/pendientes-de-decision.txt`
-    y NO entraron al repo para no dejar el CI en rojo):
-    - R1 (ALTA): el rechazo (b) mira `docker ps -q` (sólo corriendo). Con el stack `proptech` DETENIDO y sus
-      volúmenes vivos, el humo con `PROPTECH_COMPOSE_PROYECTO=proptech` pasa el rechazo y su `down -v` borra los
-      volúmenes. La spec aprobada dice "con contenedores corriendo": endurecerla cambia lo aprobado.
-    - R2 (ALTA): `ensayo-roles.sh` (ahora en el CI) conserva `:-proptech` por defecto y no tiene los tres rechazos.
-    - R10: el worker no deja `arranque_fallido` ante un YAML roto ni una base inalcanzable (verifica la 7.3).
+  - **R1 y R2, decididos por Gianfranco (30/10/2026), resueltos con la decisión D15** (cambia lo
+    aprobado antes, "con contenedores corriendo"): el valor `proptech` se rechaza siempre y el ensayo de
+    roles comparte los tres rechazos por `exigir_proyecto_de_compose_propio` (`humo-lib.sh`). Rojo:
+    `9 failed, 6 passed` en `test_rechazos_de_scripts_destructivos.py` (el humo con el stack detenido
+    llegaba a `compose`; el ensayo no rechazaba nada); verde: `272 passed` en `tests/infra`, shellcheck
+    limpio. Con Docker real: humo y ensayo con `proptech` y el ensayo sin variable terminan con 1 y su
+    mensaje, sin invocar `compose`; humo `humo_exit=0` y ensayo `ensayo_exit=0` en proyectos propios. El CI
+    usa `proptech-humo` y `proptech-ensayo` (test).
+  - **R10, queda como deuda (decisión de Gianfranco): el worker no deja `arranque_fallido`** ante un YAML
+    roto ni una base inalcanzable. Verificado con salida real que **no filtra la contraseña** (ni la de la
+    app ni la de otra): ante la base inalcanzable y ante Postgres vivo con otra contraseña deja una sola
+    línea JSON `excepcion_como_mensaje` / `tipo_error: sqlalchemy.exc.OperationalError` con una traza de
+    archivo:línea:función, sin mensaje, y stderr vacío; el marcador de la contraseña aparece 0 veces. No es
+    un problema de seguridad: es falta de causa en el log. Ficha 2e.
   - Auditor: pendiente.
 - [ ] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
   cierre del 2c", decisión nueva en `09`, lecciones en `15`; `diff AGENTS.md CLAUDE.md` vacío y sin

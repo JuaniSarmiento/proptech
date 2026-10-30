@@ -143,6 +143,18 @@ igual.
 ecosistema, agrupados donde se pueda. Un test estático lee el YAML y verifica que cada directorio existe.
 Que Dependabot abra los PR no es verificable en local.
 
+**D15. `proptech` se rechaza siempre y el ensayo comparte los rechazos (cambia lo aprobado).** El
+rechazo (b) del humo miraba `docker ps -q` y sólo actuaba con contenedores *corriendo*. El rompedor
+(R1, 30/10/2026) mostró el hueco: con el stack real *detenido* (un `compose stop`, un reinicio) sus
+volúmenes siguen vivos y el `down -v` del `trap limpiar` se los lleva. Decisión de Gianfranco: el valor
+`proptech` se rechaza siempre, sin mirar Docker, y cualquier otro nombre sigue permitido. El mismo
+riesgo vale para `ensayo-roles.sh` (R2: ahora corre en el CI, pero a mano conservaba `:-proptech`), así
+que los tres rechazos (a, b, c) pasan a `exigir_proyecto_de_compose_propio` en `humo-lib.sh`, que
+llaman el humo y el ensayo. *Alternativa descartada:* seguir con `docker ps -a` y `docker volume ls`
+filtrados por etiqueta: es más fino pero depende de que Docker conteste y de etiquetas que cambian entre
+versiones de Compose; rechazar el nombre no depende de nada. *Costo:* quien hoy corre el humo en el
+proyecto `proptech` tiene que pasar otro nombre (el mensaje le dice cuál).
+
 **D14. Tiempos y verificación.** Antes de cambiar nada se anotan los tiempos del baseline en WSL; al
 cierre se repiten sobre el mismo commit. El CI real se lee sobre el SHA del PR (L-037, L-042), con el
 límite de cada job puesto después de leer los tiempos por paso (L-044), y `test_ci_workflow.py` se

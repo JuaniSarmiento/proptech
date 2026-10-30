@@ -24,7 +24,7 @@ ficha de origen.
   - N-a: el verificador de cabeceras rechaza duplicados y valores con texto de más.
   - N9: nota y chequeo para el PID 1 de `db`, que sólo se vio rojo con `init: true`.
   - L-047: `humo.sh` toma el proyecto de `PROPTECH_COMPOSE_PROYECTO`, lo exporta y se niega a correr
-    antes de tocar nada si falta la variable, si vale `proptech` con contenedores corriendo o si los
+    antes de tocar nada si falta la variable, si vale `proptech` (siempre, D15) o si los
     puertos 80 o 443 están ocupados. Corrige un error real: `humo.sh:741` llamaba a `restaurar.sh` sin
     exportar la variable, y `restaurar.sh:46` usa `proptech` por defecto, así que un humo en un
     proyecto propio habría restaurado contra el proyecto `proptech` (la base del stack real, si estaba
