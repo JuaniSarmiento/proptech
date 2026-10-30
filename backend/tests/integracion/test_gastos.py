@@ -424,7 +424,7 @@ def test_datos_de_factura_incompletos_dan_422(
     assert respuesta.status_code == 422, respuesta.text
 
 
-# --- 3.10: aviso de receptor distinto (D-141-bis, decisión del 28/10/2026:
+# --- 3.10: aviso de receptor distinto (decisión de la tarea 3.10 del 28/10/2026:
 # `complejo.cuit`, nullable, migración `0031`) ---
 
 
