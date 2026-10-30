@@ -95,10 +95,18 @@
 
 ## 8. Tests del log (C2V2-2, N-b)
 
-- [ ] 8.1 Tests rojos: `WARNING` con el valor en otro logger pasa desapercibido; un campo con "123" da
+- [x] 8.1 Tests rojos: `WARNING` con el valor en otro logger pasa desapercibido; un campo con "123" da
   rojo falso con `valor=123`
-- [ ] 8.2 Helper y comparación por igualdad de valor hasta el verde; el rompedor repite los dos
+  - Rojo (L-013): con `logging.getLogger("otro.fuga").warning("recibido", extra={"x": valor})` puesto en
+    `_administracion_validada`, el test viejo de `test_worker_tenant.py` daba `10 passed` (el hueco);
+    `test_registros_del_log.py` falló por `ModuleNotFoundError: tests._registros_del_log` hasta escribir el helper.
+- [x] 8.2 Helper y comparación por igualdad de valor hasta el verde; el rompedor repite los dos
   mutantes con copia previa
+  - `tests/_registros_del_log.py` (`capturar_todo`, `fugas_del_valor`): 5 tests verdes. Con el mismo
+    mutante, el test nuevo da `4 failed, 6 passed` (los cuatro valores no triviales); código restaurado
+    desde copia previa (`git diff -- backend/src` vacío). `ruff`, `format` y `mypy` limpios [WSL].
+  - Decisión: la comparación es por hoja igual al valor o palabra aparte en el texto
+    (`(?<![\w.])123(?![\w.])`), no igualdad estricta, para seguir viendo `valor=123` dentro de un texto.
 
 ## 9. CI
 
