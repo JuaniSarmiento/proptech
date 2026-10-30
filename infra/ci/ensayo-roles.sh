@@ -27,7 +27,9 @@ REVISION_DE_ORIGEN="0016"
 
 PROYECTO_COMPOSE="$PROPTECH_COMPOSE_PROYECTO"
 export PROPTECH_COMPOSE_PROYECTO="$PROYECTO_COMPOSE"
-compose() { docker compose -p "$PROYECTO_COMPOSE" "$@"; }
+# `--env-file .env.example`: `infra/.env` está en .gitignore y el CI no lo crea (auditor B1, 2e); sin
+# esto `compose.yaml` aborta por las variables obligatorias. Mismo criterio que el humo.
+compose() { docker compose -p "$PROYECTO_COMPOSE" --env-file .env.example "$@"; }
 limpiar() {
   local estado=$?
   trap - EXIT
@@ -40,7 +42,9 @@ limpiar() {
 trap limpiar EXIT
 
 # La base de origen es la del stack efímero de este script. Nunca una base ajena.
-compose up --build -d --wait
+# Sólo lo que el ensayo usa: la base y `respaldos` (que arrastra a `migraciones`). Sin `web`, `api` ni
+# `caddy`: no necesita la clave de Clerk ni publica los puertos 80 y 443.
+compose up --build -d --wait db respaldos
 USUARIO_DB="$(compose exec -T db printenv POSTGRES_USER)"
 BASE_ORIGEN="$(compose exec -T db printenv POSTGRES_DB)"
 MIGRADOR="$(compose run --rm --no-deps -T migraciones printenv POSTGRES_MIGRADOR_USER)"
