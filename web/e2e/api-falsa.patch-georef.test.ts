@@ -253,7 +253,7 @@ describe("F1: PATCH sin cuerpo o que no es JSON da 422, como la real", () => {
   });
 });
 
-describe("F2: el id de un grupo tiene que ser UUID, como en la real", () => {
+describe("F2 y F7: el id de un grupo o de un edificio tiene que ser UUID, como en la real", () => {
   it("PATCH /api/grupos/no-es-uuid da 422 uuid_parsing en el path", async () => {
     const respuesta = await patch(`${base}/api/grupos/no-es-uuid`, { activo: false });
     expect(respuesta.status).toBe(422);
@@ -264,6 +264,20 @@ describe("F2: el id de un grupo tiene que ser UUID, como en la real", () => {
 
   it("un UUID en mayúsculas se acepta, como lo acepta pydantic", async () => {
     const respuesta = await patch(`${base}/api/grupos/${GRUPO.toUpperCase()}`, { activo: false });
+    expect(respuesta.status).toBe(200);
+  });
+
+  // F7 (RB3D-7 del rompedor, verify-2): la misma regla en la ruta del edificio.
+  it("PATCH /api/complejos/no-es-uuid da 422 uuid_parsing en el path", async () => {
+    const respuesta = await patch(`${base}/api/complejos/no-es-uuid`, {});
+    expect(respuesta.status).toBe(422);
+    expect((await respuesta.json()).detail).toEqual([
+      { type: "uuid_parsing", loc: ["path", "complejo_id"] },
+    ]);
+  });
+
+  it("un id de edificio en mayúsculas se acepta", async () => {
+    const respuesta = await patch(`${base}/api/complejos/${EDIFICIO.toUpperCase()}`, {});
     expect(respuesta.status).toBe(200);
   });
 });

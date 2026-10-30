@@ -1041,6 +1041,15 @@ export function crearServidor(
         respuesta.writeHead(405).end();
         return;
       }
+      if (metodo === "PATCH" && resto === "" && !_UUID.test(id)) {
+        // F7: `complejo_id: UUID` en la real, igual que `grupo_id` (F2).
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(
+            JSON.stringify({ detail: [{ type: "uuid_parsing", loc: ["path", "complejo_id"] }] }),
+          );
+        return;
+      }
       if (metodo === "PATCH" && cuerpo === "") {
         // F1: en la real el cuerpo del PATCH es obligatorio (`422 missing ["body"]`); `{}`
         // sí vale. Los POST conservan su forma: sin cuerpo ya les faltan los obligatorios.
