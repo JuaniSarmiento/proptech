@@ -162,6 +162,13 @@
        `roles_reales` y `test_rutas_protegidas._correr` dejan stdout/stderr en el fallo (antes un
        `CalledProcessError` mudo). Los Postgres propios de módulo (`contenedor` de varios archivos) no
        usan todavía la espera: deuda anotada si reaparece.
+    3. Colección no determinista: `test_falla_con_marca_en_el_futuro` tenía un parámetro calculado con la
+       hora (`999999999999 - int(time.time())`) y su valor era el id; con xdist cada trabajador veía un
+       id distinto y abortaba con `Different tests were collected between gw0 and gw3` cuando el reloj
+       cambiaba de segundo entre colecciones (visto 1 vez en 8 corridas). Rojo:
+       `test_coleccion_determinista.py` (`primera != segunda`, ids `[998206606093]` vs `...131]`); verde
+       con `pytest.param(..., id=...)`. Colección de unitarios (2506) e integración (1834) idéntica con
+       tres semillas de hash y el reloj corriendo.
   - **Pendiente [GH]**: tiempo en el runner de 4 vCPU.
 - [~] 9.4 Caché de Chromium en el job `web`; test estático de la clave y del paso; [GH] dos runs
   seguidos, el segundo con caché, con los tiempos por paso (L-044); ajustar `timeout-minutes` sólo con
@@ -185,9 +192,19 @@
 
 ## 10. Cierre
 
-- [ ] 10.1 [WSL] Corrida final sobre el código final (L-010): `pytest` completo (infra, unitarios,
+- [x] 10.1 [WSL] Corrida final sobre el código final (L-010): `pytest` completo (infra, unitarios,
   integración), `shellcheck`, `humo.sh` y `ensayo-roles.sh` en proyectos aislados; pegar la salida y
   comparar con el baseline de 1.1 a 1.3
+  - Por el camino prescrito (`git fetch /mnt/c/Proyectos/proptech change/humo-y-ci:refs/heads/prueba-humo-y-ci`,
+    clon `~/proptech`), con los comandos del CI, Docker vacío antes y después:
+    integración `-n 4`: **1833 pasados, 1 xfail, 0 fallidos, 7 min 9 s** (baseline 1833 / 18 min 41 s);
+    `shellcheck -x infra/ci/*.sh` exit 0; humo en `proptech-humo` `humo_exit=0` 222 s (baseline 181 s, con
+    pasos nuevos: 6c pausa 2×30 s); ensayo en `proptech-ensayo` `ENSAYO ROLES OK ... ciclo 0028/0016/0028`,
+    `ensayo_exit=0` 48 s (baseline 47 s).
+  - Unitarios e infra `-n 4`: la primera corrida dio `1 failed, 2504 passed`: `test_vocabulario_vigente`
+    (el vocabulario retirado en una variable de `test_caddy_respaldo_y_timeouts.py`; sólo mira lo
+    versionado, por eso no lo vio la corrida sobre el árbol sin commitear: L-010). Corregido; luego
+    `2505 passed` tres veces seguidas, y `2506` con el test de colección nuevo.
 - [ ] 10.2 Rompedor (sólo tests, nunca código) y auditor sobre el diff, con L-043, L-044 y L-047 a mano;
   hallazgos como tests rojos
 - [ ] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
