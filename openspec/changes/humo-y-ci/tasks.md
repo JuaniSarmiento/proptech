@@ -41,12 +41,19 @@
 
 ## 3. Pasos con línea y comando (C2-5, C2V2-8)
 
-- [ ] 3.1 Test de bash rojo: un script mínimo con `exit 1` explícito no nombra paso, línea ni comando;
+- [x] 3.1 Test de bash rojo: un script mínimo con `exit 1` explícito no nombra paso, línea ni comando;
   verde con `fallar_paso` en `pasos.sh`
-- [ ] 3.2 Test estático rojo que recorre `humo.sh` y señala cada `exit 1`/`if !` sin pasar por el
+- [x] 3.2 Test estático rojo que recorre `humo.sh` y señala cada `exit 1`/`if !` sin pasar por el
   formateador; verde al convertir los 25 caminos
-- [ ] 3.3 `compose()` informa la línea del llamado: test rojo con `BASH_LINENO[0]`, verde al arreglar
-- [ ] 3.4 [WSL] `humo.sh` entero en verde y una falla provocada que muestra paso, línea y comando
+- [x] 3.3 `compose()` informa la línea del llamado: test rojo con `BASH_LINENO[0]`, verde al arreglar
+- [x] 3.4 [WSL] `humo.sh` entero en verde y una falla provocada que muestra paso, línea y comando
+
+> Evidencia grupo 3 [WSL, 30/10/2026]: rojo `3 failed, 6 passed` en `test_pasos_humo.py` antes del
+> código; verde `34 passed` (pasos, humo, aislamiento, ci_workflow), `shellcheck` y `ruff` limpios.
+> Humo real en `proptech-humo-g3`: `humo_exit=0` (3 min 28 s). El primer intento cayó por un error
+> transitorio de caché de BuildKit y mostró el formato nuevo: `paso 0 ... falló en la línea 77:
+> docker compose -p "$PROPTECH_COMPOSE_PROYECTO" ... (llamado desde la línea 132)`. Los 22 `exit 1` de
+> los pasos pasan por `fallar_paso` con su condición; el único `exit 1` fuera es el de `rechazar`.
 
 ## 4. Lo que el humo deja pasar
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Prueba de humo del stack completo detrás de Caddy (D9, D14).
+# shellcheck disable=SC2016  # `fallar_paso` recibe la condición como TEXTO (2e): las comillas simples son a propósito.
 set -euo pipefail
 
 # D6 (tarea 2.1): pasos con nombre. `paso N "descripción"` reemplaza el
@@ -21,24 +22,25 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # PROPTECH_HUMO_PUERTOS (por defecto "80 443") existe para que los tests prueben (c) con un
 # puerto que ellos mismos ocupan.
 COMO_CORRERLO="PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh"
+# Único `exit 1` fuera de `fallar_paso`: el rechazo corre antes de cualquier paso.
+rechazar() {
+  echo "ERROR: $1" >&2
+  echo "$2: $COMO_CORRERLO" >&2
+  exit 1
+}
 if [ -z "${PROPTECH_COMPOSE_PROYECTO:-}" ]; then
-  echo "ERROR: falta PROPTECH_COMPOSE_PROYECTO: el humo corre sólo en un proyecto de Compose propio." >&2
-  echo "Corrélo así: $COMO_CORRERLO" >&2
-  exit 1
+  rechazar "falta PROPTECH_COMPOSE_PROYECTO: el humo corre sólo en un proyecto de Compose propio." "Corrélo así"
 fi
-if [ "$PROPTECH_COMPOSE_PROYECTO" = "proptech" ]   && [ -n "$(docker ps -q --filter "label=com.docker.compose.project=proptech")" ]; then
-  echo "ERROR: el proyecto 'proptech' tiene contenedores corriendo (el stack de uso real) y el humo haría 'down -v' sobre él." >&2
-  echo "Bajalo, o corré el humo en otro proyecto: $COMO_CORRERLO" >&2
-  exit 1
+if [ "$PROPTECH_COMPOSE_PROYECTO" = "proptech" ] \
+  && [ -n "$(docker ps -q --filter "label=com.docker.compose.project=proptech")" ]; then
+  rechazar "el proyecto 'proptech' tiene contenedores corriendo (el stack de uso real) y el humo haría 'down -v' sobre él." "Bajalo, o corré el humo en otro proyecto"
 fi
 puerto_ocupado() {
   (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
 }
 for puerto in ${PROPTECH_HUMO_PUERTOS:-80 443}; do
   if puerto_ocupado "$puerto"; then
-    echo "ERROR: el puerto $puerto del host está ocupado: Caddy lo publica fijo y el humo no puede correr en paralelo con otro stack." >&2
-    echo "Bajá lo que lo usa y volvé a correr: $COMO_CORRERLO" >&2
-    exit 1
+    rechazar "el puerto $puerto del host está ocupado: Caddy lo publica fijo y el humo no puede correr en paralelo con otro stack." "Bajá lo que lo usa y volvé a correr"
   fi
 done
 # `restaurar.sh` lee esta variable (su default es `proptech`): sin exportarla, un humo en un proyecto
@@ -226,7 +228,7 @@ mapeo_db=$(compose port db 5432 2>/dev/null || true)
 puerto_db_publicado="${mapeo_db##*:}"
 if [ -n "$puerto_db_publicado" ] && [ "$puerto_db_publicado" != "0" ]; then
   echo "ERROR: db tiene un mapeo de puerto hacia el host: $mapeo_db" >&2
-  exit 1
+  fallar_paso '[ -n "$puerto_db_publicado" ] && [ "$puerto_db_publicado" != "0" ]'
 fi
 echo "ok: db no tiene ports publicados (compose port db 5432 = '$mapeo_db')"
 
@@ -235,7 +237,7 @@ mapeo_redis=$(compose port redis 6379 2>/dev/null || true)
 puerto_redis_publicado="${mapeo_redis##*:}"
 if [ -n "$puerto_redis_publicado" ] && [ "$puerto_redis_publicado" != "0" ]; then
   echo "ERROR: redis tiene un mapeo de puerto hacia el host: $mapeo_redis" >&2
-  exit 1
+  fallar_paso '[ -n "$puerto_redis_publicado" ] && [ "$puerto_redis_publicado" != "0" ]'
 fi
 echo "ok: redis no tiene ports publicados (compose port redis 6379 = '$mapeo_redis')"
 
@@ -365,11 +367,11 @@ verificar_privilegios() {
   echo "privilegios $servicio: NoNewPrivs=$nnp CapBnd=$capbnd (esperado $capbnd_esperado)"
   if [ "$nnp" != "1" ]; then
     echo "ERROR: $servicio no tiene NoNewPrivs:1 (tiene '$nnp')" >&2
-    exit 1
+    fallar_paso '[ "$nnp" != "1" ]'
   fi
   if [ "$capbnd" != "$capbnd_esperado" ]; then
     echo "ERROR: $servicio tiene CapBnd=$capbnd, se esperaba $capbnd_esperado" >&2
-    exit 1
+    fallar_paso '[ "$capbnd" != "$capbnd_esperado" ]'
   fi
 }
 
@@ -411,7 +413,7 @@ verificar_cabeceras() {
     if ! echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
       echo "ERROR: falta $cabecera en $descripcion" >&2
       echo "$encabezados"
-      exit 1
+      fallar_paso '! echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"'
     fi
   done
 
@@ -419,7 +421,7 @@ verificar_cabeceras() {
     if echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"; then
       echo "ERROR: $cabecera presente en $descripcion (tiene que estar ausente)" >&2
       echo "$encabezados"
-      exit 1
+      fallar_paso 'echo "$encabezados_sin_cr" | grep -qi "^${cabecera}:"'
     fi
   done
 
@@ -430,7 +432,7 @@ verificar_cabeceras() {
       echo "ERROR: ${cabecera%%:*} en $descripcion tiene el valor '$valor_obtenido'," \
         "se esperaba '${cabecera#*:}'" >&2
       echo "$encabezados"
-      exit 1
+      fallar_paso '[ "$valor_obtenido" != "${cabecera#*:}" ]'
     fi
   done
 
@@ -439,7 +441,7 @@ verificar_cabeceras() {
   for directiva in camera microphone geolocation; do
     if ! echo "$permissions_policy" | grep -qi "${directiva}=()"; then
       echo "ERROR: Permissions-Policy en $descripcion no niega $directiva ($permissions_policy)" >&2
-      exit 1
+      fallar_paso '! echo "$permissions_policy" | grep -qi "${directiva}=()"'
     fi
   done
 }
@@ -468,12 +470,12 @@ verificar_cabeceras "GET a una ruta inexistente de la API" "$encabezados_404"
 if [ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_raiz")" \
      != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_raiz")" ]; then
   echo "ERROR: HEAD / no tiene las mismas cabeceras de seguridad que GET /" >&2
-  exit 1
+  fallar_paso '[ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_raiz")" != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_raiz")" ]'
 fi
 if [ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_salud")" \
      != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_salud")" ]; then
   echo "ERROR: HEAD /api/salud no tiene las mismas cabeceras de seguridad que GET /api/salud" >&2
-  exit 1
+  fallar_paso '[ "$(cabeceras_de_seguridad_normalizadas "$encabezados_get_salud")" != "$(cabeceras_de_seguridad_normalizadas "$encabezados_head_salud")" ]'
 fi
 echo "ok: GET, HEAD y la ruta inexistente de la API tienen las cuatro cabeceras y ninguna prohibida"
 
@@ -531,7 +533,7 @@ if compose logs api | grep -q "$request_id_devuelto"; then
   echo "ok: el request_id devuelto aparece en el log de la API"
 else
   echo "ERROR: el request_id devuelto no aparece en el log de la API" >&2
-  exit 1
+  fallar_paso '! compose logs api | grep -q "$request_id_devuelto"'
 fi
 
 paso 7b "request_id malicioso: no aparece en ningún log"
@@ -548,7 +550,7 @@ sleep 1
 for servicio in caddy api web worker redis respaldos; do
   if compose logs "$servicio" 2>/dev/null | grep -qF "$marcador_malicioso"; then
     echo "ERROR: el valor malicioso apareció en el log de $servicio" >&2
-    exit 1
+    fallar_paso 'compose logs "$servicio" 2>/dev/null | grep -qF "$marcador_malicioso"'
   fi
 done
 echo "ok: el valor malicioso no aparece en ningún log"
@@ -565,7 +567,7 @@ if compose logs api | grep -q "$request_id_salud_web"; then
   echo "ok: el request_id de /salud-web aparece en el log de la API"
 else
   echo "ERROR: el request_id de /salud-web no aparece en el log de la API" >&2
-  exit 1
+  fallar_paso '! compose logs api | grep -q "$request_id_salud_web"'
 fi
 
 paso 9 "worker: trabajo con un reintento, dentro del stack"
@@ -595,11 +597,11 @@ if compose logs worker | grep -q "$request_id_trabajo"; then
     echo "ok: el request_id del trabajo aparece en el log del worker junto a un reintento"
   else
     echo "ERROR: el request_id del trabajo está en el log del worker pero sin 'reintento_programado'" >&2
-    exit 1
+    fallar_paso '! compose logs worker | grep "$request_id_trabajo" | grep -q "reintento_programado"'
   fi
 else
   echo "ERROR: el request_id del trabajo no aparece en el log del worker" >&2
-  exit 1
+  fallar_paso '! compose logs worker | grep -q "$request_id_trabajo"'
 fi
 
 paso 9b "la api y el worker conectan como proptech_app, ni superusuario ni BYPASSRLS (D11, tarea 9.1)"
@@ -641,7 +643,7 @@ rm -f /tmp/salud_redis_pausado.json
 if [ "$duracion_ms" -ge 4000 ]; then
   echo "ERROR: /api/salud tardó ${duracion_ms}ms con Redis pausado (cota: 4000ms)" >&2
   compose unpause redis
-  exit 1
+  fallar_paso '[ "$duracion_ms" -ge 4000 ]'
 fi
 
 codigo_web_redis_pausado=$(curl -s -o /tmp/salud_web_redis_pausado.json -w '%{http_code}' http://localhost/salud-web || true)
@@ -680,7 +682,7 @@ if [ "$duracion_ms" -ge 2500 ]; then
   echo "ERROR: /api/salud tardó ${duracion_ms}ms con base y Redis pausados (cota: 2500ms)" >&2
   compose unpause db
   compose unpause redis
-  exit 1
+  fallar_paso '[ "$duracion_ms" -ge 2500 ]'
 fi
 [ "$codigo_doble" = "503" ]
 [ -n "$request_id_doble" ]
@@ -704,7 +706,7 @@ if grep -q "sin_conexion" /tmp/salud_web_doble.json; then
   rm -f /tmp/salud_web_doble.json
   compose unpause db
   compose unpause redis
-  exit 1
+  fallar_paso 'grep -q "sin_conexion" /tmp/salud_web_doble.json'
 fi
 rm -f /tmp/salud_web_doble.json
 compose unpause db
@@ -837,16 +839,16 @@ while IFS= read -r tabla; do
     "políticas: en_uso=$politicas_en_uso restaurada=$politicas_restauradas"
   if [ "$rls_habilitada" != "t" ]; then
     echo "ERROR: $tabla en la base restaurada tiene relrowsecurity != t (tiene '$rls_habilitada')" >&2
-    exit 1
+    fallar_paso '[ "$rls_habilitada" != "t" ]'
   fi
   if [ "$rls_forzada" != "t" ]; then
     echo "ERROR: $tabla en la base restaurada tiene relforcerowsecurity != t (tiene '$rls_forzada')" >&2
-    exit 1
+    fallar_paso '[ "$rls_forzada" != "t" ]'
   fi
   if [ "$politicas_restauradas" != "$politicas_en_uso" ]; then
     echo "ERROR: $tabla en la base restaurada tiene $politicas_restauradas política(s)," \
       "la base en uso tiene $politicas_en_uso" >&2
-    exit 1
+    fallar_paso '[ "$politicas_restauradas" != "$politicas_en_uso" ]'
   fi
 done <<< "$tablas_con_politicas_en_uso"
 echo "ok: RLS habilitada, forzada y mismas políticas que la base en uso, en todas las tablas con políticas"
@@ -885,7 +887,7 @@ grep -q '"base":"sin_conexion"' /tmp/salud_pausada.json
 rm -f /tmp/salud_pausada.json
 if [ "$duracion_ms" -ge 4000 ]; then
   echo "ERROR: /api/salud tardó ${duracion_ms}ms con la base pausada (cota: 4000ms)" >&2
-  exit 1
+  fallar_paso '[ "$duracion_ms" -ge 4000 ]'
 fi
 
 paso 14 "base caída -> 503 degradado"
