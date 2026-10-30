@@ -110,11 +110,22 @@
 
 ## 9. CI
 
-- [ ] 9.1 L-043: `ensayo-roles.sh` con la cabeza de `alembic heads`; `test_ensayo_login.py` pasa a
+- [x] 9.1 L-043: `ensayo-roles.sh` con la cabeza de `alembic heads`; `test_ensayo_login.py` pasa a
   exigir que no haya literal de revisión; [WSL] el ensayo entero corrido en `proptech-ensayo` con la
   salida pegada, y el mutante de una migración nueva falsa que lo deja viejo en el script de hoy
-- [ ] 9.2 Job `ensayo-roles` en `ci.yml` con `timeout-minutes`, SHAs fijados y `test_ci_workflow.py`
+  - Rojo: 4 tests fallaron contra el script viejo (cabeza escrita, `0028`/`0016` sueltos, mensaje fijo).
+  - Verde [WSL], proyecto `proptech-ensayo-91`, 48 s: `REVISION RESTAURADA: 0028`, `0016`, `0028` y
+    `ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0028/0016/0028 y origen intacto`,
+    `ensayo_exit=0`.
+  - Mutante (migración `0029_falsa` vacía sobre `0028`): script nuevo `ciclo 0029/0016/0029`,
+    `ensayo_exit=0`; script de `HEAD` en la misma copia: `ERROR: revisión restaurada esperada=0028
+    obtenida=0029`, `ensayo_exit=1`. Las dos corridas en copia congelada `~/ensayo-run`.
+  - `REVISION_DE_ORIGEN="0016"` es el único número escrito a mano; `shellcheck -x infra/ci/*.sh` limpio.
+- [~] 9.2 Job `ensayo-roles` en `ci.yml` con `timeout-minutes`, SHAs fijados y `test_ci_workflow.py`
   actualizado; [GH] el run del job leído sobre el SHA del PR
+  - Hecho: job con `PROPTECH_COMPOSE_PROYECTO: proptech-ensayo`, checkout fijado por SHA,
+    `timeout-minutes: 20` provisorio (el ensayo tardó 48 s en WSL), 2 tests nuevos/ajustados (rojo
+    visto antes: 3 fallos). **Pendiente [GH]**: leer el run real y ajustar el timeout con ese tiempo.
 - [ ] 9.3 Backend en paralelo: `pytest-xdist` en `uv.lock`, marcador `serial` registrado, `test-backend.sh`
   con `-n`, unitarios y de integración como pasos separados; [WSL] mismos tests pasados que en serie y
   tiempo antes y después (los de 1.2), pico de memoria; [GH] el tiempo en el runner

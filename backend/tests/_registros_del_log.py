@@ -1,8 +1,8 @@
 """Buscar un valor rechazado en TODO el log (C2V2-2, N-b del cambio 2e `humo-y-ci`).
 
 `capturar_todo` baja el logger raíz a `DEBUG` mientras dura el bloque, así un registro de cualquier
-nivel y de cualquier logger llega a `caplog`. `fugas_del_valor` mira el mensaje y cada campo extra
-de cada registro por VALOR (una hoja que es el valor, o un texto donde aparece como palabra
+severidad y de cualquier logger llega a `caplog`. `fugas_del_valor` mira el mensaje y cada campo
+extra de cada registro por VALOR (una hoja que es el valor, o un texto donde aparece como palabra
 aparte), no con `valor in str(campos)`: ese chequeo daba rojo falso cuando un número ajeno
 (`1230`, `a1234`, `created`, un id de hilo) contenía por azar los mismos dígitos.
 """
@@ -23,12 +23,12 @@ from proptech_core.compartido.logs import _ATRIBUTOS_ESTANDAR
 @contextmanager
 def capturar_todo(caplog: pytest.LogCaptureFixture) -> Iterator[None]:
     raiz = logging.getLogger()
-    nivel_anterior = raiz.level
+    severidad_anterior = raiz.level
     caplog.set_level(logging.DEBUG)
     try:
         yield
     finally:
-        raiz.setLevel(nivel_anterior)
+        raiz.setLevel(severidad_anterior)
 
 
 def _hojas(valor: Any) -> Iterator[Any]:

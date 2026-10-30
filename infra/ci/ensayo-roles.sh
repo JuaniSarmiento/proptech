@@ -16,6 +16,10 @@ export PROPTECH_UID PROPTECH_GID
 # El ensayo hace `down -v`: corrido a mano junto a un stack levantado, se le da
 # un proyecto propio (PROPTECH_COMPOSE_PROYECTO=proptech-ensayo ...). Se exporta
 # para que restaurar.sh restaure en el MISMO proyecto, nunca en otro.
+# L-043 (2e): la revisión desde la que nace el origen y a la que vuelve el ciclo de bajada. Es el
+# único número de migración escrito a mano; la cabeza se pregunta a Alembic (CABEZA, más abajo).
+REVISION_DE_ORIGEN="0016"
+
 PROYECTO_COMPOSE="${PROPTECH_COMPOSE_PROYECTO:-proptech}"
 export PROPTECH_COMPOSE_PROYECTO="$PROYECTO_COMPOSE"
 compose() { docker compose -p "$PROYECTO_COMPOSE" "$@"; }
@@ -35,9 +39,15 @@ compose up --build -d --wait
 USUARIO_DB="$(compose exec -T db printenv POSTGRES_USER)"
 BASE_ORIGEN="$(compose exec -T db printenv POSTGRES_DB)"
 MIGRADOR="$(compose run --rm --no-deps -T migraciones printenv POSTGRES_MIGRADOR_USER)"
+# La cabeza la dice `alembic heads` (formato `NNNN (head)`); una migración nueva no deja este script viejo.
+CABEZA="$(compose run --rm --no-deps -T migraciones alembic heads | awk '$2 == "(head)" { print $1 }')"
+if [ -z "$CABEZA" ] || [ "$(wc -w <<<"$CABEZA")" -ne 1 ]; then
+  echo "ERROR: alembic heads no devolvió una cabeza única: '$CABEZA'" >&2
+  exit 1
+fi
 # Paso 1 del rollback del Migration Plan (design, D-114.5), como rol de arranque:
 # tras `roles despues` la tabla protegida y su función no son del migrador, y
-# cruzar 0021 en cualquier sentido falla con `must be owner` (RB-1 del 4a).
+# cruzar la migración de la tabla protegida en cualquier sentido falla con `must be owner` (RB-1 del 4a).
 devolver_al_migrador() {
   compose exec -T db psql -U "$USUARIO_DB" -d "$1" -v ON_ERROR_STOP=1 \
     -v migrador="$MIGRADOR" <<'SQL'
@@ -93,7 +103,7 @@ ALTER FUNCTION fn_auditoria_bloqueada() OWNER TO :"migrador";
 SQL
 }
 devolver_al_migrador "$BASE_ORIGEN"
-compose run --rm --no-deps migraciones alembic downgrade 0016
+compose run --rm --no-deps migraciones alembic downgrade "$REVISION_DE_ORIGEN"
 
 # Las dos administraciones y sus dos complejos, como en humo.sh; cinco formas
 # legadas por administración para que el respaldo permita observar la conversión.
@@ -109,7 +119,7 @@ INSERT INTO unidad (administracion_id,complejo_id,identificador,tipo,piso,coefic
 INSERT INTO persona (administracion_id,nombre)
  SELECT a.id, 'Perfil ficticio ' || p.numero::text
  FROM administracion a CROSS JOIN generate_series(1,5) AS p(numero);
--- INSERT legado intencional: origen en 0016, antes del pg_dump (L-023).
+-- INSERT legado intencional: origen en la revisión de origen, antes del pg_dump (L-023).
 INSERT INTO asignacion_rol (administracion_id,persona_id,rol,complejo_id,unidad_id,nivel)
  SELECT p.administracion_id,p.id,
         CASE p.nombre WHEN 'Perfil ficticio 1' THEN 'titular'
@@ -170,7 +180,7 @@ verificar_conteos() {
 from pathlib import Path
 import sys
 modo, archivo = sys.argv[1:]
-# Oráculo literal independiente del código de 0017; cuenta no vacía por cada tenant.
+# Oráculo literal independiente del código de la migración de roles; cuenta no vacía por cada tenant.
 esperados = ({"titular": 1, "colaborador": 2, "consejo": 1, "vecino": 1}
              if modo == "legado" else
              {"super_admin": 1, "administrador": 1, "auxiliar": 1, "consejo": 1, "vecino": 1})
@@ -230,11 +240,11 @@ cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/antes.txt"
 esquema "$CARPETA_ENSAYO/esquema_antes.sql"
 
 migrar_restaurada upgrade head
-verificar_revision 0033
+verificar_revision "$CABEZA"
 conteos proptech_restauracion "$CARPETA_ENSAYO/primer_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/primer_upgrade.txt"
-migrar_restaurada downgrade 0016
-verificar_revision 0016
+migrar_restaurada downgrade "$REVISION_DE_ORIGEN"
+verificar_revision "$REVISION_DE_ORIGEN"
 conteos proptech_restauracion "$CARPETA_ENSAYO/downgrade.txt"
 verificar_conteos legado "$CARPETA_ENSAYO/downgrade.txt"
 cmp "$CARPETA_ENSAYO/antes.txt" "$CARPETA_ENSAYO/downgrade.txt"
@@ -242,7 +252,7 @@ esquema "$CARPETA_ENSAYO/esquema_downgrade.sql"
 diff -u "$CARPETA_ENSAYO/esquema_antes.sql" "$CARPETA_ENSAYO/esquema_downgrade.sql"
 echo "ESQUEMA RESTAURADO: diff vacío entre esquema_antes.sql y esquema_downgrade.sql"
 migrar_restaurada upgrade head # segundo upgrade
-verificar_revision 0033
+verificar_revision "$CABEZA"
 conteos proptech_restauracion "$CARPETA_ENSAYO/segundo_upgrade.txt"
 verificar_conteos nuevo "$CARPETA_ENSAYO/segundo_upgrade.txt"
 cmp "$CARPETA_ENSAYO/primer_upgrade.txt" "$CARPETA_ENSAYO/segundo_upgrade.txt"
@@ -250,4 +260,4 @@ compose run --rm --no-deps -e POSTGRES_DB=proptech_restauracion migraciones \
   python -m proptech_core.compartido.roles despues
 conteos "$BASE_ORIGEN" "$CARPETA_ENSAYO/origen_despues.txt"
 cmp "$CARPETA_ENSAYO/origen.txt" "$CARPETA_ENSAYO/origen_despues.txt"
-echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo 0033/0016/0033 y origen intacto"
+echo "ENSAYO ROLES OK: respaldo restaurado, 10 asignaciones, ciclo $CABEZA/$REVISION_DE_ORIGEN/$CABEZA y origen intacto"

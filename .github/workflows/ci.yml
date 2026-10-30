@@ -89,6 +89,20 @@ jobs:
       - name: Prueba de humo del stack completo
         run: bash infra/ci/humo.sh
 
+  ensayo-roles:
+    runs-on: ubuntu-24.04
+    # L-043 (2e): el ensayo de roles (restaurar el respaldo, subir a la cabeza, bajar al origen y
+    # volver a subir) llevaba semanas sin correr en el CI. 20 min es provisorio: se ajusta con los
+    # tiempos del primer run real (D5), no antes.
+    timeout-minutes: 20
+    env:
+      # El script hace `down -v`: su proyecto es propio, nunca `proptech` (L-047).
+      PROPTECH_COMPOSE_PROYECTO: proptech-ensayo
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Ensayo de roles (respaldo, ciclo de migraciones y origen intacto)
+        run: bash infra/ci/ensayo-roles.sh
+
   shellcheck:
     runs-on: ubuntu-24.04
     # D5: medido en menos de 20s; 5 min de margen.

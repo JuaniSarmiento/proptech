@@ -87,7 +87,7 @@ async def test_administracion_invalida_falla_una_sola_vez_sin_efecto(
     # propio del logger) — sin importar cómo se llame el campo nuevo que
     # alguien agregue el día de mañana.
     #
-    # C2V2-2 y N-b (2e): se captura TODO (cualquier nivel y logger: un `WARNING` con el valor en
+    # C2V2-2 y N-b (2e): se captura TODO (cualquier severidad y logger: un `WARNING` con el valor en
     # otro módulo también cuenta) y se busca el valor por igualdad / palabra aparte, no con
     # `representacion in str(campos)`, que daba rojo falso con "123" dentro de `1230` o `a1234`.
     # Ver `tests/_registros_del_log.py` y `test_registros_del_log.py`.

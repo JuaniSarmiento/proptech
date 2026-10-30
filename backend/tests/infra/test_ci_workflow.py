@@ -37,7 +37,7 @@ def test_workflow_existe() -> None:
 def test_jobs_esperados_existen() -> None:
     datos = _workflow()
     jobs = set(datos.get("jobs", {}))
-    for esperado in ("backend", "web", "humo", "secretos"):
+    for esperado in ("backend", "web", "humo", "ensayo-roles", "secretos"):
         assert esperado in jobs, f"falta el job {esperado}"
 
 
@@ -158,6 +158,7 @@ def test_canario_shellcheck_detecta_variable_sin_comillas() -> None:
 _TIMEOUT_MINUTES_ESPERADO = {
     "backend": 30,
     "humo": 15,
+    "ensayo-roles": 20,
     "web": 25,
     "shellcheck": 5,
     "secretos": 5,
@@ -207,3 +208,14 @@ def test_el_readme_explica_el_rechazo_del_humo() -> None:
     assert "PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh" in readme
     for causa in ("puerto 80", "proptech"):
         assert causa in readme
+
+
+def test_el_job_ensayo_roles_corre_el_script_en_su_proyecto() -> None:
+    """2e, L-043: el ensayo de roles (restaurar, bajar y subir hasta la cabeza) corre en el CI, en
+    un proyecto de Compose propio (el script hace `down -v`) y no en el de `proptech`."""
+    job = _workflow()["jobs"]["ensayo-roles"]
+    proyecto = job.get("env", {}).get("PROPTECH_COMPOSE_PROYECTO")
+    assert proyecto and proyecto != "proptech"
+    comandos = [paso.get("run", "") for paso in job["steps"]]
+    assert "bash infra/ci/ensayo-roles.sh" in comandos
+    assert any(paso.get("uses", "").startswith("actions/checkout@") for paso in job["steps"])

@@ -47,7 +47,7 @@ def test_el_valor_dentro_de_una_lista_o_un_diccionario_extra_se_ve(
     assert fugas_del_valor(caplog.records, 123) != []
 
 
-def test_capturar_todo_restaura_el_nivel_del_logger_raiz(
+def test_capturar_todo_restaura_la_severidad_del_logger_raiz(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     antes = logging.getLogger().level
