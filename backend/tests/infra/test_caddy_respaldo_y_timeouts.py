@@ -74,13 +74,13 @@ def _bloque_de_reverse_proxy(destino: str) -> str:
     fin_de_linea = texto.index("\n", inicio)
     if not texto[inicio:fin_de_linea].rstrip().endswith("{"):
         return texto[inicio:fin_de_linea]
-    nivel = 0
+    profundidad = 0
     for posicion in range(inicio, len(texto)):
         if texto[posicion] == "{":
-            nivel += 1
+            profundidad += 1
         elif texto[posicion] == "}":
-            nivel -= 1
-            if nivel == 0:
+            profundidad -= 1
+            if profundidad == 0:
                 return texto[inicio : posicion + 1]
     raise AssertionError(f"reverse_proxy {destino}: llave sin cerrar")
 
