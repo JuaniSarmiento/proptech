@@ -40,7 +40,8 @@ def test_ensayo_usa_un_proyecto_compose_parametrizable() -> None:
     script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
     assert 'PROYECTO_COMPOSE="$PROPTECH_COMPOSE_PROYECTO"' in script
     assert ":-proptech" not in script
-    assert 'compose() { docker compose -p "$PROYECTO_COMPOSE" --env-file .env.example "$@"; }' in script
+    funcion = 'compose() { docker compose -p "$PROYECTO_COMPOSE" --env-file .env.example "$@"; }'
+    assert funcion in script
     assert "-p proptech " not in script
 
 
@@ -96,8 +97,8 @@ def test_ensayo_compara_la_forma_del_esquema_tras_bajar() -> None:
 
 def test_ensayo_no_depende_de_infra_env_ni_levanta_servicios_de_mas() -> None:
     """Auditor B1 (2e): `infra/.env` está en `.gitignore` y el CI no lo crea; `compose.yaml` exige
-    variables con `:?`. El ensayo usa `.env.example` (como el humo) y levanta sólo lo que usa: la base
-    y `respaldos` (que arrastra a `migraciones`), nunca `web`, `api` ni `caddy`."""
+    variables con `:?`. El ensayo usa `.env.example` (como el humo) y levanta sólo lo que usa: la
+    base y `respaldos` (que arrastra a `migraciones`), nunca `web`, `api` ni `caddy`."""
     script = (RAIZ / "infra/ci/ensayo-roles.sh").read_text()
     assert 'docker compose -p "$PROYECTO_COMPOSE" --env-file .env.example' in script
     assert "compose up --build -d --wait db respaldos" in script

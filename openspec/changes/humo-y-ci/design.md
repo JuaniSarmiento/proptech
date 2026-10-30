@@ -152,7 +152,9 @@ riesgo vale para `ensayo-roles.sh` (R2: ahora corre en el CI, pero a mano conser
 que los tres rechazos (a, b, c) pasan a `exigir_proyecto_de_compose_propio` en `humo-lib.sh`, que
 llaman el humo y el ensayo. *Alternativa descartada:* seguir con `docker ps -a` y `docker volume ls`
 filtrados por etiqueta: es más fino pero depende de que Docker conteste y de etiquetas que cambian entre
-versiones de Compose; rechazar el nombre no depende de nada. *Costo:* quien hoy corre el humo en el
+versiones de Compose; rechazar el nombre no depende de nada. *Nota (auditor N5):* tras el arreglo B1 el ensayo ya no levanta Caddy, así que el rechazo (c) por
+puertos no le hace falta; se conserva porque la función es una sola y es más conservador (un ensayo que
+no publica puertos igual se niega junto a otro stack), y no cuesta nada en el CI. *Costo:* quien hoy corre el humo en el
 proyecto `proptech` tiene que pasar otro nombre (el mensaje le dice cuál).
 
 **D14. Tiempos y verificación.** Antes de cambiar nada se anotan los tiempos del baseline en WSL; al

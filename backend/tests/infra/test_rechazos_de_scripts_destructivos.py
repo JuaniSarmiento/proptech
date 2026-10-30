@@ -124,8 +124,8 @@ def test_sin_variable_se_niega_antes_de_tocar_compose(tmp_path: Path, script: st
 def test_con_el_proyecto_proptech_se_niega_siempre(
     tmp_path: Path, script: str, stub: dict[str, str]
 ) -> None:
-    """Cambia lo aprobado antes ("con contenedores corriendo"): `proptech` es el proyecto de uso real
-    y se rechaza haya o no contenedores corriendo. Ni un `up` ni un `down -v`."""
+    """Cambia lo aprobado antes ("con contenedores corriendo"): `proptech` es el proyecto de uso
+    real y se rechaza haya o no contenedores corriendo. Ni un `up` ni un `down -v`."""
     resultado, registro = _correr(
         tmp_path, script, proyecto="proptech", puertos=str(_puerto_libre()), **stub
     )

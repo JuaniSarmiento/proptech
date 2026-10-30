@@ -77,6 +77,11 @@
 - [x] 4.4 N-a: tests de bash del verificador de cabeceras con fixtures (duplicado, valor con texto
   de más, valor bueno); rojos con el verificador de hoy, verdes con el nuevo
 
+> Aviso del auditor (ronda 2, N3): en 4.1, 4.3, 4.4, 5.1, 6.2, 7.1 y 7.2 el rojo previo de cada test no
+> quedó pegado en su momento. Lo que sí hay es el verde actual (`tests/infra` `274 passed`) y, para las
+> piezas que el humo real ejercita, los mutantes de 10.2; el rojo previo de esos siete no se reconstruye
+> sin reescribir la historia, y se dice acá en vez de aparentarlo.
+
 ## 5. RLS restaurada por contenido (C2V2-3)
 
 - [x] 5.1 Test que arma dos salidas de políticas (misma cantidad, `USING (true)` en una; nombre
@@ -177,7 +182,7 @@
     `~/.cache/ms-playwright`, clave `playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}`,
     antes de la instalación (que sigue corriendo y pasa igual sin caché). Test estático nuevo.
     **Pendiente [GH]**: dos runs seguidos con sus tiempos; `timeout-minutes: 25` no se toca.
-- [~] 9.5 `.github/dependabot.yml` con los cuatro ecosistemas y test estático de directorios; [GH] que
+- [~] 9.5 `.github/dependabot.yml` con los cinco ecosistemas y test estático de directorios; [GH] que
   Dependabot abra su primer PR (no verificable antes de pushear)
   - Hecho: `github-actions /`, `docker /backend` y `/web`, `uv /backend`, `npm /web`, semanal, tope de PR
     por ecosistema, agrupados. **Desvío de D13**: las imágenes de `infra/compose.yaml` van con el
