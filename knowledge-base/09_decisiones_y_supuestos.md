@@ -2792,3 +2792,44 @@ registrado como tal en su momento.)*
 - **Descartado**: dejar la deuda en el 15 (llegaría con más de 30 arreglos sueltos justo antes de
   cargar datos reales) y darle el 4c a un desarrollador nuevo (es CRITICAL y del camino crítico).
 - **Quién**: Juani, 30/10/2026.
+
+## D-139 · El 3d cierra con el orden de pisos por altura y la deuda a C-26 y C-28 (30/10/2026)
+
+- **Fecha**: 30/10/2026.
+- **Contexto**: la ficha del 3d (D-130) se contradecía sola. En "Entra" pedía `SS1` arriba de `PB`
+  (orden de altura) y en "Terminado cuando" exigía `PB, 1..N, SS1..SSN`. Gianfranco construyó el
+  orden de altura el 28/10/2026 sin preguntar, y la raíz `/` (tarea 9.x) se construyó sin la
+  confirmación que el propio plan pedía. La revisión independiente del 30/10/2026 (rompedor en tres
+  intentos, F1 a F7; planner y plan-reviewer sobre la spec de la ayuda; constructor; auditor
+  BLOQUEANTES en el intento 1 y APROBADO en el intento 2, todos subagentes Claude) dejó seis
+  bloqueantes que pedían una decisión de Juani (BJ-1 a BJ-6, `tasks.md` del change archivado).
+- **Decisión**:
+  - **Orden de pisos**: `vocabularioDePisos` devuelve `SS2, SS1, PB, 1..N` (de abajo hacia arriba).
+    Elegido por Gianfranco el 28/10/2026 y confirmado por Juani el 30/10/2026 (BJ-6). El "Terminado
+    cuando" de la ficha 3d se reescribe con este orden; D-130 no se edita.
+  - **Raíz `/`**: redirige a `/edificios` con sesión y a `/ingresar` sin sesión, confirmado por Juani
+    (BJ-2). No cambia código.
+  - **BJ-1** (faltan los informes originales del planner, del revisor del plan, del constructor y de la
+    10.2, y el rojo del TDD de Gianfranco): deuda justificada. La evidencia sustituta son los mutantes
+    del rompedor (13 muertos en el intento 1, el sobreviviente muerto en el intento 2) y el vitest
+    completo sobre `decf692`; los faltantes quedan declarados en `informes/LEEME.md`. Cierra DA-7.
+  - **BJ-3** (tarea 1.2, aviso a Emiliano): se ratifica que la API falsa se hizo sin su respuesta,
+    porque el head del PR #4 (`2f81682`) no toca `web/e2e`. Se le avisa al rebasar el PR #4.
+  - **BJ-4** (tarea 2.5, e2e de Playwright de ubicación y grupo) y **BJ-5** (tarea 8.2, navegador real
+    a 1280 y 320 px, junto con DA-6, la raíz `/` sin test de navegador): pasan a C-26 `pulido-web-3`.
+  - **Ayuda del resumen**: el ejemplo dice "4 de 7 / 6 de 7" (F4 del rompedor, PR2-1 opción (a)): sólo
+    el texto, sin sincronizarlo con el cálculo de `lectura.py` (DA-1, a C-26).
+  - **Falso positivo de gitleaks**: `.gitleaksignore` en `main` (`bc7b9ce`, y `d534ac2` para la cita del
+    informe del auditor) ignora el `generic-api-key` de `a6bb954` (`test_gastos.py:120`, PR #4), que
+    ponía en rojo el job `secretos` de todo el repo porque gitleaks recorre todas las ramas (DA-12).
+  - El resto de la deuda (DA-1 a DA-12) queda con dueño en la ficha 3d de `12_fichas_de_changes.md`,
+    sobre todo C-26 y C-28.
+- **Descartado**: el orden `PB, 1..N, SS1..SSN` del "Terminado cuando" (pone los subsuelos arriba del
+  último piso, que es justo el defecto que el 3d venía a corregir); rediseñar la raíz `/` como
+  portal o landing (fuera del alcance del design); reconstruir el rojo del TDD original (los commits llevan test y código juntos, no se
+  puede); arreglar el falso positivo desde el 3d tocando `.gitleaks.toml` (cambio de seguridad del CI
+  fuera de alcance) o mergear con `secretos` en rojo.
+- **Cierre**: PR #3 mergeado en `main` (`73884d6`, 30/10/2026) con CI verde en `d534ac2` (backend, web,
+  humo, secretos y shellcheck); archivado en `5d79c2c`. Sin migraciones. MEDIUM: no lleva firma
+  (D-094, D-111).
+- **Quién**: Juani, 30/10/2026.

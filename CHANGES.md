@@ -36,11 +36,11 @@ gates están en el árbol de abajo.
 2 bis. SESIÓN SIN PERSONA (D-130)
    ✅ 2d sesion-sin-persona · CRITICAL (archivado 28/10/2026, D-131 a D-137)
 
-3. CONFIGURACIÓN DEL EDIFICIO
+3. CONFIGURACIÓN DEL EDIFICIO ✅
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
    ✅ 3c pulido: bugs + ubicación + pisos (archivado 28/10/2026, D-128/D-129)
-   👉 3d pulido-2 (D-130) · Gianfranco · en revisión (PR #3)
+   ✅ 3d pulido-2 · Gianfranco (archivado 30/10/2026, D-139; PR #3 mergeado)
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
@@ -71,7 +71,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
 
 - **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
-- **En paralelo, no frenan a nadie:** 3d (Gianfranco) y 6 (Emiliano), en revisión; los siete de
+- **En paralelo, no frenan a nadie:** 6 (Emiliano), en revisión (PR #4); los siete de
   deuda adelantada (D-138); 4d, 6b, 9, 11, 12 y 14.
 - **4c**: lo construye un firmante de D-111 (Juani, Alberto o Emiliano), nunca alguien recién llegado
   (D-138).
@@ -97,7 +97,7 @@ C-01 infraestructura-base (1a)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │     └── C-06c pulido-de-la-configuracion (3c) ← archivado 28/10/2026 (D-128/D-129)
-                                │           └── C-22 pulido-2 (3d) ← en revisión (PR #3, D-130); Gianfranco
+                                │           └── C-22 pulido-2 (3d) ← archivado 30/10/2026 (D-139); Gianfranco
                                 │
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
@@ -169,7 +169,8 @@ GATE 6: C-06a ✓
   → C-06c pulido-de-la-configuracion [Agente B] (3c, HIGH: firmado por Emiliano el 26/10/2026, D-128;
     construido en paralelo al 4a, fuera del camino crítico; necesitó también C-06b y C-05b, archivados;
     **archivado 28/10/2026** tras el PR #2 y la Enmienda E11, D-129)
-    → C-22 pulido-2 (3d, nuevo, MEDIUM, D-130): Gianfranco, en paralelo con C-09 (6, Emiliano)
+    → C-22 pulido-2 (3d, MEDIUM, D-130): Gianfranco, en paralelo con C-09 (6, Emiliano); **archivado
+      30/10/2026**, D-139
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
@@ -497,19 +498,28 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ---
 
-### [C-22] `pulido-2` · 3d (nuevo, D-130, 28/10/2026)
-- **Estado**: `[ ]` en revisión (PR #3, rama `change/pulido-2`), sin mergear. MEDIUM. Gianfranco.
-- **Scope**: `web/e2e/api-falsa.ts` con `PATCH` para edificio/grupos y Georef; `ayuda.ts` corregido a
-  "de 7 pasos"; el orden de `vocabularioDePisos` (`SS1` arriba de `PB`) con el test del propio
-  escenario arreglado; la raíz `/` deja de ser el placeholder de 1a; `axe` en más de un estado en las
-  cuatro pantallas del 3b que faltan; "clave explícita inválida" con test de punta a punta vía API;
-  CSP/nonce con test; el día 31 de vencimiento con su propio 422
+### [C-22] `pulido-2` · 3d (**archivado 30/10/2026**, D-139)
+- **Estado**: `[x]` archivado (30/10/2026, D-139). PR #3 mergeado en `main` (`73884d6`), CI verde en
+  `d534ac2`, archivado en `5d79c2c`. MEDIUM. Construyó Gianfranco; revisión independiente del
+  30/10/2026 (rompedor en tres intentos, constructor, auditor APROBADO en el intento 2). Sin
+  migraciones.
+- **Qué construyó**: `web/e2e/api-falsa.ts` con `PATCH` para edificio/grupos y Georef; la ayuda del
+  resumen con "4 de 7 / 6 de 7"; `vocabularioDePisos` por altura (`SS2, SS1, PB, 1..N`, D-139) con el
+  test del propio escenario arreglado; la raíz `/` redirige a `/edificios` con sesión y a `/ingresar`
+  sin sesión; `axe` en más de un estado en las cuatro pantallas del 3b que faltaban; "clave explícita
+  inválida" con test de punta a punta vía API; CSP/nonce con test; el día 31 de vencimiento con su
+  propio 422
+- **Deuda** (DA-1 a DA-12, detalle en la ficha `12_fichas_de_changes.md` §3d): a C-26 `pulido-web-3`
+  (DA-1, DA-2, DA-4, DA-6, DA-9, DA-10, S4), a C-28 `revisiones-independientes` (DA-5) y a C-23
+  `humo-y-ci` (`.gitleaksignore` al rebasar el PR #4).
+- **Archivo**: `openspec/changes/archive/2026-10-30-pulido-2/`.
 - **Dependencias**: C-06b, C-06c (archivados) — disponible desde ahora
 - **Governance**: MEDIUM — no toca `acceso`, pagos ni datos de usuario
 - **Leer antes**:
   - `knowledge-base/12_fichas_de_changes.md` §3d
   - `.git/informes-regresion/03-edificio.md` (deuda confirmada de 3b/3c)
-  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
+  - `knowledge-base/09_decisiones_y_supuestos.md` (D-130, D-139)
+  - `knowledge-base/15_lecciones.md` (L-059 a L-062)
 
 ---
 
@@ -609,7 +619,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ### [C-09] `gastos-y-cargos` · 6
 - **Estado**: `[ ]` en revisión (PR #4, rama `change/gastos-y-cargos`), sin mergear. Emiliano, en
-  paralelo con `3d` (Gianfranco) antes del camino crítico
+  paralelo con `3d` (Gianfranco, archivado 30/10/2026) antes del camino crítico; pendiente de rebase
+  sobre `main`
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
   por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a

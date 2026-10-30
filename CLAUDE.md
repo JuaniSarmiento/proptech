@@ -137,8 +137,13 @@ mercado de arranque es **Mendoza**.
   `sin_acceso`, el selector sin loop, `--clerk-usuario` para el ejemplo, el menú y los controles por
   rol, `ver_personal` (migración `0028`), reinvitar y la invitación que dice con qué cuenta se está.
   Deuda en la ficha 2d de `knowledge-base/12_fichas_de_changes.md`.
-- **En revisión, sin mergear**: **3d `pulido-2`** (PR #3, Gianfranco) y **6 `gastos-y-cargos`** (PR #4,
-  Emiliano).
+- **Cambio 3d `pulido-2` archivado** (30/10/2026, MEDIUM, D-139): la API falsa de e2e con `PATCH` de
+  edificio y grupos y Georef, el orden de pisos por altura (`SS2, SS1, PB, 1..N`), la ayuda "4 de 7",
+  la raíz `/` que redirige (a `/edificios` con sesión, a `/ingresar` sin sesión), CSP y axe con tests,
+  y el 422 del día de vencimiento y de la clave. Construyó Gianfranco (PR #3, `73884d6`); revisión
+  independiente con rompedor, constructor y auditor (APROBADO). Deuda a C-26 y C-28, en la ficha 3d de
+  `knowledge-base/12_fichas_de_changes.md`.
+- **En revisión, sin mergear**: **6 `gastos-y-cargos`** (PR #4, Emiliano).
 - **Deuda adelantada** (D-138, 30/10/2026): la deuda viva, verificada contra `main` (`e29e36d`), pasa a
   siete changes propios, uno por desarrollador: C-23 `humo-y-ci` (Gianfranco), C-24 `respaldos-2`
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
@@ -265,12 +270,13 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
   (24/10/2026, D-110, D-111), 4a `cimientos-del-libro` (26/10/2026, D-119), 4b
   `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7) y 3c
-  `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11) y 2d
-  `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`).
+  `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11), 2d
+  `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
+  D-139, PR #3, sin migraciones).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **En revisión**: `3d · pulido-2` (PR #3, Gianfranco) y `6 · gastos-y-cargos` (PR #4, Emiliano).
+- **En revisión**: `6 · gastos-y-cargos` (PR #4, Emiliano).
 - **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29, uno por
   desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).

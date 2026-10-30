@@ -934,3 +934,45 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Aplica a**: cualquier endpoint de lectura que hoy sólo visita un rol que también escribe, el día que
   se abre a un rol de sólo lectura — frontend y backend al revisar el diff de ese día, no sólo QA al
   escribir el mutante.
+
+## L-059 · Un número copiado a un texto de ayuda se valida contra el cálculo que lo produce, no contra el texto viejo
+
+- **Origen**: 3d `pulido-2`, hallazgo F4 del rompedor (intento 1, `informes/verify-1-breaker.md`) y
+  lecciones del auditor (`informes/verify-1-auditor.md`, 30/10/2026).
+- **Qué pasó**: el 3d cambió "de 6" por "de 7" en la ayuda del resumen y dejó "arranca en 0" sin mirar
+  `lectura.py`, que hace arrancar un edificio nuevo en 4 de 7. La spec misma exigía el número viejo, así
+  que el test pasaba certificando un texto falso. Hubo que corregir la spec (planner y plan-reviewer) y
+  después el texto ("4 de 7 / 6 de 7").
+- **Regla**: si una ayuda cita un valor que calcula el sistema, el test lo deriva del render o del
+  cálculo; si no puede, la spec lo declara como deuda (en el 3d, DA-1 a C-26).
+
+## L-060 · Una tarea con "no arranca sin X" necesita que alguien la frene, no sólo que lo diga
+
+- **Origen**: 3d `pulido-2`, bloqueantes BJ-2 y BJ-3 del auditor (`informes/verify-1-auditor.md`,
+  30/10/2026).
+- **Qué pasó**: la raíz `/` y el grupo 2 (API falsa) se construyeron sin la confirmación que el propio
+  plan exigía (Juani para la raíz, Emiliano para la API falsa). Las tareas decían "no arranca sin
+  respuesta" pero tenían casilla, y el constructor las hizo igual; hubo que ratificarlas después.
+- **Regla**: una tarea bloqueada por una persona queda sin casilla en `tasks.md` hasta que la respuesta
+  esté escrita, y el constructor la saltea.
+
+## L-061 · Un commit que junta test y producción no prueba el RED
+
+- **Origen**: 3d `pulido-2`, BJ-1 del auditor (`informes/verify-1-auditor.md`, A8; `informes/LEEME.md`,
+  30/10/2026).
+- **Qué pasó**: las tareas originales del 3d llegaron reescritas en bloque, con el test y el código en
+  el mismo commit y sin salida del RED guardada. El rojo no se pudo reconstruir y quedó como deuda
+  aceptada (DA-11), con los mutantes del rompedor como evidencia sustituta.
+- **Regla**: el RED se guarda con comando, hora y salida en `tasks.md` antes del commit de producción,
+  porque después no se puede reconstruir.
+
+## L-062 · Con `fetch-depth: 0`, gitleaks recorre todas las ramas: el falso positivo de un PR pone en rojo el `secretos` de todos
+
+- **Origen**: 3d `pulido-2`, auditor intento 2 (`informes/verify-2-auditor.md`, B4 y B5, 30/10/2026).
+- **Qué pasó**: el job `secretos` del 3d dio rojo por un `generic-api-key` en `a6bb954`
+  (`backend/tests/integracion/test_gastos.py:120`), un commit del PR #4 que no está en la historia del
+  3d ni en `main`. Como el checkout trae todas las ramas, gitleaks las recorre a todas. Se arregló con
+  `.gitleaksignore` en `main` (`bc7b9ce`, D-139).
+- **Regla**: ante un rojo de `secretos`, primero se comprueba la ancestría del commit
+  (`git merge-base --is-ancestor`) y se corre gitleaks sobre el rango propio. El arreglo lo hace el
+  dueño del commit, y un `gitleaks:allow` agregado después no cura la historia.

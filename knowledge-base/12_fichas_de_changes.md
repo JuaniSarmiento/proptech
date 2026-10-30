@@ -602,7 +602,7 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3a, 3b y 2b (archivados). Construido en paralelo al 4a. **Habilita**: la columna
   "piso" del importador (5) y un alta de edificio presentable para el piloto (15).
 
-### 3d · `pulido-2` · MEDIUM · pendiente (D-130, 28/10/2026) · C-22
+### 3d · `pulido-2` · MEDIUM · archivado (30/10/2026, D-139) · C-22
 
 > **Creada al archivar el 3c** (D-130, 28/10/2026), no por `openspec new`: junta la deuda de baja
 > severidad que la regresión del 27/10/2026 encontró en 3b/3c y que no entró en el propio PR #2 porque
@@ -638,10 +638,41 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
 - **Depende de**: 3b y 3c (archivados). **Habilita**: regresión automática de navegador confiable para
   el 6 y los que sigan tocando edificios/unidades.
 - **Gobernanza**: MEDIUM — no toca autenticación, pagos ni datos de usuario.
-- **Terminado cuando**: `api-falsa.ts` responde `PATCH` para edificio y grupos y simula Georef; el
-  orden de `vocabularioDePisos` tiene un test que lo exige correcto (`PB`, `1`...`N`, `SS1`...`SSN`);
-  la ayuda dice "de 7 pasos"; `axe` corre en más de un estado en las cuatro pantallas que faltan; la
-  clave inválida tiene un test de punta a punta.
+- **Terminado cuando** (reescrito al archivar, D-139): `api-falsa.ts` responde `PATCH` para edificio
+  y grupos y simula Georef; el orden de `vocabularioDePisos` tiene un test que lo exige por altura
+  (`SS2`, `SS1`, `PB`, `1`...`N`; el orden `PB, 1..N, SS1..SSN` de la primera redacción contradecía
+  "SS1 arriba de PB" de "Entra" y quedó descartado); la ayuda del resumen dice "4 de 7 / 6 de 7" y
+  ningún "de 6"; la raíz `/` redirige a `/edificios` con sesión y a `/ingresar` sin sesión; `axe` corre
+  en más de un estado en las cuatro pantallas que faltan; la CSP/nonce del proxy tiene test; el día 31
+  de vencimiento, sin la validación nativa del navegador, muestra el 422 en su campo; la clave
+  inválida de categorías y grupos responde 422 nombrando el campo, con test de punta a punta.
+- **Cierre** (30/10/2026, D-139): construyó **Gianfranco** (PR #3). Revisión independiente del
+  30/10/2026, toda con subagentes Claude: rompedor en tres intentos (F1 a F7 reproducidas y cerradas),
+  planner y plan-reviewer corrigieron la spec de la ayuda (F4, PR2-1), constructor por TDD (4.3 y 11.1
+  a 11.6), auditor BLOQUEANTES en el intento 1 y **APROBADO** en el intento 2, con las decisiones de
+  Juani sobre BJ-1 a BJ-6. Mergeado en `main` en `73884d6`, CI verde en `d534ac2` (backend, web, humo,
+  secretos, shellcheck); archivado en `5d79c2c`. Sin migraciones. Lecciones L-059 a L-062.
+- **Archivo**: `openspec/changes/archive/2026-10-30-pulido-2/`.
+
+#### 3d · deuda del cierre
+
+Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento 1), con dueño por
+ítem.
+
+| Deuda | Qué falta | Cambio |
+|---|---|---|
+| DA-1 | La ayuda del resumen no se sincroniza con el cálculo de `lectura.py`: si cambia, el texto queda viejo sin test rojo | **C-26 `pulido-web-3`** |
+| DA-2 | Los `PATCH` nuevos de la API falsa validan sólo tipos, no rangos (aceptan `pisos: 0`, `subsuelos: 6`, `nombre: ""`, `metodo: "raro"`, clave mal formada, que la real rechaza con 422) | **C-26** (primer change con e2e sobre esas rutas, hereda la 2.5) |
+| DA-3 | `PATCH /api/unidades/{id}` y `PATCH /api/categorias/{id}` no están declarados en la API falsa | El primer change con e2e de esas pantallas |
+| DA-4 | La API falsa no rechaza un `POST` a `/api/complejos/{no-uuid}/…` (mutante C3 sobrevive; hueco previo al 3d) | **C-26**, igual que DA-2 |
+| DA-5 | `assert clave not in respuesta.text` es vacía con `"abc\n"`, y el test del `PATCH` de grupo no comprueba que el 422 nombre `clave` (`loc`) | **C-28 `revisiones-independientes`** |
+| DA-6 | La raíz `/` no tiene test de navegador; `comprobaciones.spec.ts` dice "la portada real" y mide `/ingresar` | **C-26** (BJ-5) |
+| DA-7 | Las cifras de la 10.1 sin salida guardada | **Cerrada** con BJ-1 (`informes/LEEME.md`) |
+| DA-8 | Sospechas S1 a S4 del rompedor intento 1, sin reproducir (CSP con otro formato de Clerk, pisos no enteros, sesión sin token, piso fuera del vocabulario) | S1 a C-29 `base-y-rls` o al 15 (CSP); S4 a **C-26** |
+| DA-9 | Tarea 2.5: e2e de Playwright de ubicación con listas encadenadas y de desactivar un grupo | **C-26** (BJ-4) |
+| DA-10 | Tarea 8.2: recorrido en navegador real a 1280 y 320 px | **C-26** (BJ-5) |
+| DA-11 | Informes originales faltantes (planner, revisor del plan, constructor y 10.2 originales) y el rojo no comprobable del trabajo de Gianfranco | **Aceptada** (BJ-1); sin dueño de código |
+| DA-12 | `secretos` rojo en todo el repo por el falso positivo `generic-api-key` de `a6bb954` (`test_gastos.py:120`, PR #4) | Resuelta en `main` con `.gitleaksignore` (`bc7b9ce`, D-139); quitar la línea de `a6bb954` al rebasar el PR #4: **C-23 `humo-y-ci`** |
 
 ### 4 · `motor-de-cuenta-corriente` · crítico · explore propio · partido en 4a, 4b, 4c y 4d
 
@@ -1270,6 +1301,11 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   - Caché de Chromium en el job `web` del CI (4a, L-044): `ci.yml:74` instala Chromium en cada
     corrida, con `timeout-minutes: 25` (`:50`).
   - Dependabot (auditorías del 13/10): no existe `.github/dependabot.yml`.
+  - Paralelizar el backend del CI: hoy ~17,5 min en serie (4279 tests); separar unitarios de
+    integración y `pytest-xdist` con una base por worker; medir antes y después (pedido de Juani,
+    30/10/2026).
+  - Revisar `.gitleaksignore` cuando el PR #4 se rebase (DA-12 del 3d, D-139): la línea de `a6bb954`
+    sobra, porque ese commit deja de existir; la de `64ab39e` queda, porque ese commit está en `main`.
 - **No entra**: imágenes publicadas en un registro y fijadas por digest (quedan en el 15, necesitan el
   servidor real); HSTS con el dominio real (15).
 - **Depende de**: 1d, 2c y 4a (archivados).
@@ -1373,6 +1409,13 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   - Sacar las excepciones de la cuarentena de pnpm cuando cumplan la antigüedad
     (`acceso-de-desarrollo`, BE-6/AR-8): `web/pnpm-workspace.yaml:7-21` excluye `next@16.4.3`, nueve
     `@next/*` y además cuatro `@clerk/*` que la fila original no nombraba.
+  - Deuda del cierre del 3d (D-139, 30/10/2026; tabla "3d · deuda del cierre"): DA-1 (la ayuda del
+    resumen sincronizada con el cálculo de `lectura.py`); DA-2 y DA-4 (la API falsa valida rangos en los
+    `PATCH` nuevos y rechaza un `POST` a `/api/complejos/{no-uuid}/…`); DA-6 (test de navegador de la
+    raíz `/` y los títulos de `comprobaciones.spec.ts`); DA-9 (tarea 2.5 del 3d: e2e de Playwright de la
+    ubicación con listas encadenadas y de desactivar un grupo); DA-10 (tarea 8.2 del 3d: las cuatro
+    pantallas en navegador real a 1280 y 320 px); S4 del rompedor del 3d (piso fuera del vocabulario,
+    sin reproducir: reproducirlo o descartarlo).
 - **Ojo**: el menú se arma con las acciones permitidas de la sesión (D-134). El servidor sigue frenando
   con 403, por eso es MEDIUM, pero el rompedor tiene que probar cada perfil. No cambia la matriz de
   permisos: si hace falta cambiarla, sube a CRITICAL y sale de este change.
@@ -1438,6 +1481,10 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
     que dicen cubrir.
   - Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
     rompedor sobre RB4B-01, CX-01 y CX-02.
+  - DA-5 del 3d (D-139): la aserción `clave not in respuesta.text` es vacía con `"abc\n"`, y el test del
+    `PATCH` de grupo no comprueba que el 422 nombre `clave` (`loc`).
+  - Correr mutación (mutmut) sobre `cuenta_corriente`, `acceso` y `compartido` para medir la suite
+    entera (pedido de Juani, 30/10/2026).
 - **Regla**: si encuentra una falla reproducida en código CRITICAL (`acceso`, `cuenta_corriente`), no
   la arregla: la deja como test que falla y la pasa al change del firmante que corresponda (C-29, 4c o
   7).
