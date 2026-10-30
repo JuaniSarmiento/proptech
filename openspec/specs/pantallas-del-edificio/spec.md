@@ -207,7 +207,9 @@ menos 24 x 24 px y el movimiento MUST respetar `prefers-reduced-motion`.
 ### Requirement: Pantalla chica y accesibilidad
 
 Cada pantalla, en cada uno de sus estados, SHALL verse a 320 px de ancho sin scroll horizontal y
-MUST NOT tener violaciones de axe (WCAG 2.2 AA), incluido el contraste medido en un navegador real.
+MUST NOT tener violaciones de axe (WCAG 2.2 AA), incluido el contraste medido en un navegador real. Los
+estados que se miden son, al menos, el feliz, el vacío, el de error de la API y, en las pantallas con
+formulario, el formulario con un error de campo: las siete pantallas, no sólo las que hoy lo hacen.
 
 #### Scenario: 320 px
 
@@ -219,6 +221,12 @@ MUST NOT tener violaciones de axe (WCAG 2.2 AA), incluido el contraste medido en
 
 - **WHEN** se corre axe sobre cada pantalla en cada estado
 - **THEN** no hay violaciones
+
+#### Scenario: axe cubre más de un estado en categorías, grupos, configuración y saldos previos
+
+- **WHEN** se corre axe sobre las pantallas de categorías, grupos, intereses y vencimiento y saldos
+  previos en su estado feliz y en, al menos, su estado vacío y su estado con un error de campo
+- **THEN** ninguno de esos estados tiene violaciones
 
 ### Requirement: Mis edificios
 
@@ -462,3 +470,47 @@ equipo.
 
 - **WHEN** cualquier persona abre la página de privacidad
 - **THEN** ve, en castellano simple, que el aviso está en revisión y qué secciones faltan
+
+### Requirement: La ayuda del resumen describe los siete pasos
+
+La ayuda "?" del resumen del edificio SHALL hablar de los siete pasos de la puesta a punto, nunca de
+otra cantidad: su ejemplo y su cierre MUST decir "de 7 pasos" y coincidir con los siete pasos que
+muestra la pantalla.
+
+#### Scenario: Ejemplo de la ayuda
+
+- **WHEN** el titular abre la ayuda del resumen de un edificio
+- **THEN** el ejemplo habla de un edificio recién creado que arranca en "4 de 7 pasos" (ubicación,
+  grupos, categorías e intereses y vencimiento ya hechos al crearlo) y de una barra que, después de
+  cargar las unidades (con su piso) y sus coeficientes, queda en "6 de 7", y ningún texto de la
+  ayuda dice "de 6"
+- **AND** esos números son los que da hoy el cálculo real de pasos de la puesta a punto
+  (`lectura.py`, fijado por `test_resumen_puesta_a_punto.py::test_edificio_recien_creado`); el test
+  de la ayuda exige sólo el texto, y la sincronía automática con ese cálculo queda como deuda
+
+### Requirement: La raíz del sitio no es un marcador de posición
+
+La ruta `/` SHALL llevar a la persona a un lugar útil en lugar de mostrar un texto de relleno: a quien
+tiene sesión, a la lista de sus edificios; a quien no, a la pantalla de ingreso.
+
+#### Scenario: Con sesión
+
+- **WHEN** una persona con sesión abre `/`
+- **THEN** llega a `/edificios`
+
+#### Scenario: Sin sesión
+
+- **WHEN** una persona sin sesión abre `/`
+- **THEN** llega a `/ingresar`
+
+### Requirement: El día de vencimiento fuera de rango lo frena la aplicación
+
+El día de vencimiento (y el del segundo vencimiento) MUST aceptar de 1 a 28. Un día fuera de ese
+rango, como 29, 30 o 31, MUST rechazarse con un error que nombra el campo, aunque el navegador no haya
+frenado el envío antes por su validación nativa.
+
+#### Scenario: Día 31
+
+- **WHEN** el titular envía la configuración con el día de vencimiento 31 sin que el navegador frene
+  el formulario
+- **THEN** el servidor responde 422 y la pantalla marca sólo el campo "Día de vencimiento" con su mensaje
