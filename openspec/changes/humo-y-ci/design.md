@@ -33,13 +33,22 @@ Estado verificado contra `main` `60b3dd5` (30/10/2026). Motivación y alcance: v
 
 ## Decisions
 
-**D1. Proyecto aislado: la variable manda y el humo se niega ante un stack real.** `compose()` usa
-`-p "$PROYECTO_COMPOSE"` con `PROPTECH_COMPOSE_PROYECTO`, igual que `ensayo-roles.sh`. Si falta o es
-`proptech` y `docker compose -p proptech ps -q` devuelve algo, el humo aborta antes de cualquier
-`down -v`. El job `humo` del CI exporta un nombre propio. *Alternativa descartada:* generar un nombre
-aleatorio por defecto; oculta con qué proyecto se corre y el ensayo ya fijó la convención de que lo
-elige quien corre. *Orden:* es la primera tarea de código, porque todo lo demás se verifica corriendo
-el humo.
+**D1. Proyecto aislado: la variable manda y el humo se niega antes de tocar nada.** `compose()` usa
+`-p "$PROYECTO_COMPOSE"` con `PROPTECH_COMPOSE_PROYECTO`, igual que `ensayo-roles.sh`, y el script la
+`export`a. Una función `verificar_que_se_puede_correr` corre antes de cualquier `up`/`down` y rechaza
+con mensaje propio: (a) variable ausente; (b) valor `proptech` con `docker compose -p proptech ps -q`
+no vacío; (c) puerto 80 o 443 ocupado (comprobación con `ss -ltn` o, si no está, con `/dev/tcp`). El
+job `humo` del CI exporta un nombre propio. *Hallazgo al aplicar (30/10/2026):* `infra/compose.yaml`
+publica Caddy con `80:80` y `443:443` fijos (`:368-370`) y la red `aplicacion` tiene una IP fija
+(`172.28.0.254`, D17), así que el humo **no puede correr en paralelo** con un stack real aunque tenga
+otro nombre de proyecto: el aislamiento protege los volúmenes y el `down -v` del stack real, no los
+puertos. Hacerlos configurables queda fuera de este change (ver Open Questions). *Error real que
+esto corrige:* `humo.sh:741` llamaba a `restaurar.sh` sin exportar la variable, y `restaurar.sh:46`
+usa `proptech` por defecto, así que un humo en un proyecto propio habría restaurado contra el proyecto
+`proptech` (la base del stack real, si estaba levantado) en vez de contra la propia. *Alternativa
+descartada:* generar un nombre aleatorio por defecto; oculta con qué proyecto se corre y el ensayo ya
+fijó la convención de que lo elige quien corre. *Orden:* es la primera tarea de código, porque todo lo
+demás se verifica corriendo el humo.
 
 **D2. Pasos con línea y comando sin reescribir 22 `exit 1`.** Los `exit 1` explícitos pasan a
 `fallar_paso "mensaje"`, que llama a `reportar_fallo_paso` con `${BASH_LINENO[0]}` y el comando que se
@@ -172,3 +181,9 @@ tareas más que lo anotado):
    hueco.
 3. **Valores de los timeouts de Caddy (5 s y 30 s) y cantidad de workers**: se fijan al medir, no
    antes.
+4. **Humo en paralelo con un stack real (deuda, fuera del change):** haría falta que los puertos de
+   Caddy dejen de ser fijos (`infra/compose.yaml:368-370`, `"80:80"` y `"443:443"`, p. ej. con
+   `${PROPTECH_PUERTO_HTTP:-80}`) y que la red `aplicacion` no fije su subred ni la IP de Caddy
+   (`infra/compose.yaml:22` la subred `172.28.0.0/24`, `:374-375` el `ipv4_address: 172.28.0.254` de
+   Caddy y `:191` el `FORWARDED_ALLOW_IPS` de la API, que depende de esa IP, D17), y que las 20 referencias a
+   `localhost` de `humo.sh` usen ese puerto. Es cambiar la superficie de despliegue, no sólo el CI.

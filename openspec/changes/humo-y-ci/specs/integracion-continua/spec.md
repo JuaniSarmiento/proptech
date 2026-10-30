@@ -27,24 +27,47 @@ nombrar esa misma revisión.
 
 ### Requirement: El humo corre sólo en un proyecto de Compose aislado
 
-`infra/ci/humo.sh` SHALL tomar el nombre del proyecto de Compose de `PROPTECH_COMPOSE_PROYECTO` y MUST
-NOT llevar un nombre de proyecto fijo en el script. Si la variable no está definida, o vale `proptech`
-(el proyecto del stack de uso real) mientras ese proyecto tiene contenedores corriendo, el humo MUST
-negarse a empezar antes de ejecutar ningún `down` ni ningún `up`, nombrando el proyecto y por qué. En
-el CI, el job lo define.
+`infra/ci/humo.sh` SHALL tomar el nombre del proyecto de Compose de `PROPTECH_COMPOSE_PROYECTO`, MUST
+NOT llevar un nombre de proyecto fijo en el script, y MUST exportar esa variable para que todo script
+que invoca (la restauración incluida) opere sobre el mismo proyecto y nunca sobre otro. Antes de
+ejecutar ningún `up` ni ningún `down`, el humo MUST negarse a empezar, con un mensaje que nombre la
+causa y cómo correrlo, en tres casos: (a) la variable no está definida; (b) vale `proptech` (el
+proyecto del stack de uso real) y ese proyecto tiene contenedores corriendo; (c) el puerto 80 o el 443
+del host ya están ocupados, porque el proxy los publica fijos y el humo no puede correr en paralelo con
+otro stack. En el CI, el job define la variable.
 
-#### Scenario: Con un proyecto propio
+#### Scenario: Sin variable
 
-- **WHEN** se corre el humo con `PROPTECH_COMPOSE_PROYECTO=proptech-humo-prueba` y hay un stack
-  `proptech` levantado
-- **THEN** el humo usa sólo `proptech-humo-prueba`, y al terminar el stack `proptech` sigue levantado y
-  con sus volúmenes
+- **WHEN** se corre el humo sin `PROPTECH_COMPOSE_PROYECTO`
+- **THEN** el humo termina distinto de 0 antes de ejecutar ningún `up` ni `down`, y el mensaje dice que
+  falta la variable y da un ejemplo de cómo correrlo
 
-#### Scenario: Sin variable sobre un stack real
+#### Scenario: Proyecto `proptech` con contenedores
 
-- **WHEN** se corre el humo sin `PROPTECH_COMPOSE_PROYECTO` y existe un proyecto `proptech` con
-  contenedores corriendo
-- **THEN** el humo termina distinto de 0 antes de tocar nada, con un mensaje que nombra el proyecto
+- **WHEN** se corre el humo con `PROPTECH_COMPOSE_PROYECTO=proptech` y ese proyecto tiene contenedores
+  corriendo
+- **THEN** el humo termina distinto de 0 antes de tocar nada, nombra el proyecto, y el stack real sigue
+  levantado y con sus volúmenes
+
+#### Scenario: Puertos ocupados
+
+- **WHEN** se corre el humo con un proyecto propio mientras otro stack tiene el puerto 80 o el 443
+  publicados
+- **THEN** el humo termina distinto de 0 antes de ejecutar ningún `up` ni `down`, el mensaje nombra el
+  puerto ocupado, y el otro stack sigue intacto
+
+#### Scenario: Con un proyecto propio y el host libre
+
+- **WHEN** se corre el humo con `PROPTECH_COMPOSE_PROYECTO=proptech-humo-prueba` y nada ocupa el 80 ni
+  el 443
+- **THEN** el humo usa sólo ese proyecto, la restauración también, y al terminar no queda ningún
+  contenedor ni volumen de ese proyecto
+
+#### Scenario: La restauración sigue al proyecto del humo
+
+- **WHEN** el humo corre con un proyecto propio y invoca `restaurar.sh`
+- **THEN** la restauración opera sobre ese proyecto, nunca sobre `proptech`, y un test da rojo con una
+  copia del humo que no exporta la variable
 
 #### Scenario: Nombre fijo en el script
 

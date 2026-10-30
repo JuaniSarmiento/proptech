@@ -23,7 +23,12 @@ ficha de origen.
   - C2-7: el conteo de `.dump` deja de ser una carrera (espera acotada a que aparezca el volcado).
   - N-a: el verificador de cabeceras rechaza duplicados y valores con texto de más.
   - N9: nota y chequeo para el PID 1 de `db`, que sólo se vio rojo con `init: true`.
-  - L-047: `humo.sh` toma el proyecto de `PROPTECH_COMPOSE_PROYECTO` y falla si no es descartable.
+  - L-047: `humo.sh` toma el proyecto de `PROPTECH_COMPOSE_PROYECTO`, lo exporta y se niega a correr
+    antes de tocar nada si falta la variable, si vale `proptech` con contenedores corriendo o si los
+    puertos 80 o 443 están ocupados. Corrige un error real: `humo.sh:741` llamaba a `restaurar.sh` sin
+    exportar la variable, y `restaurar.sh:46` usa `proptech` por defecto, así que un humo en un
+    proyecto propio habría restaurado contra el proyecto `proptech` (la base del stack real, si estaba
+    levantado).
 - **Caddy**
   - C2V2-6: un test fija el `respond 421` del sitio de respaldo (ocho métodos).
   - C2V2-1 (sólo lo que se puede fijar sin dominio): se declara por escrito, con un test del
@@ -46,6 +51,11 @@ ficha de origen.
   - DA-12 (D-139): revisar `.gitleaksignore` cuando se rebase el PR #4.
 
 **No entra** (queda en el 15): imágenes en un registro por digest y HSTS con el dominio real.
+**No entra** (deuda nueva, anotada en la ficha 2e): correr el humo **en paralelo** con un stack real.
+Caddy publica `80:80` y `443:443` fijos y la red `aplicacion` fija su subred y la IP de Caddy
+(`infra/compose.yaml:22`, `:191`, `:368-375`), así que hoy el aislamiento por proyecto protege los
+volúmenes pero no los puertos; este change lo vuelve un rechazo claro en vez de un fallo a mitad de
+camino.
 
 ## Capabilities
 
@@ -69,7 +79,8 @@ Linux de WSL queda declarado como tal, nunca como probado.
 
 | Ítem | Dónde se verifica |
 |---|---|
-| C2V2-3, C2-5/C2V2-8, C2V2-7, C2-7, L-047, N-a, N9 (`humo.sh`) | WSL: `pytest backend/tests/infra`, `shellcheck` y `humo.sh` con Docker, con proyecto aislado |
+| C2V2-3, C2-5/C2V2-8, C2V2-7, C2-7, N-a, N9 (`humo.sh`) | WSL: `pytest backend/tests/infra`, `shellcheck` y `humo.sh` con Docker, con proyecto aislado |
+| L-047: proyecto, restauración y los tres rechazos (variable, `proptech` activo, puertos) | WSL: cada rechazo provocado a propósito (stack `proptech` descartable, puerto 80 ocupado); el job `humo` del CI **no** se ve local |
 | C2V2-6, C2V2-1, N2 (Caddyfile) | WSL: `humo.sh` contra el stack vivo; el test estático corre en cualquier lado |
 | C2-8 (`arranque_fallido`) | WSL: integración con Docker (una base inalcanzable y un YAML roto reales) |
 | C2V2-2, N-b (tests del log) | WSL: pytest, con el defecto puesto para ver el rojo (L-013) |

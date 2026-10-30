@@ -17,13 +17,20 @@
 
 ## 2. `humo.sh` en un proyecto aislado (L-047)
 
-- [ ] 2.1 Test estático rojo: `humo.sh` sin `-p proptech` literal, con `PROPTECH_COMPOSE_PROYECTO`; verde
-  al cambiar `compose()` y el resto de los usos del script
-- [ ] 2.2 Test rojo y verde del rechazo: sin variable (o `proptech`) y con un `proptech` corriendo, el humo
-  termina distinto de 0 antes de tocar nada; con un proyecto propio no toca el `proptech` [WSL, con
-  un stack `proptech` descartable levantado a propósito]
-- [ ] 2.3 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
-  variable; `test_ci_workflow.py` lo fija
+- [ ] 2.1 Test estático rojo: `humo.sh` sin `-p proptech` literal, con `PROPTECH_COMPOSE_PROYECTO`
+  exportada; verde al cambiar `compose()` y el resto de los usos del script (reemplaza
+  `test_toda_invocacion_de_docker_compose_lleva_p_proptech`, que fijaba lo contrario)
+- [ ] 2.2 Test rojo y verde de la restauración: una copia del humo que no exporta la variable llama a
+  `restaurar.sh` sobre `proptech` (error real de `humo.sh:741`); con la variable exportada opera sobre el
+  proyecto del humo. Se explica en el PR qué proyecto habría restaurado [WSL para verlo con Docker]
+- [ ] 2.3 Tests rojos y verdes del rechazo previo, uno por caso, sin ejecutar ningún `up` ni `down`:
+  (a) sin variable, (b) `proptech` con contenedores corriendo, (c) puerto 80 o 443 ocupado; cada
+  mensaje nombra la causa y cómo correrlo [WSL, con un stack `proptech` descartable y un puerto 80
+  ocupado a propósito]
+- [ ] 2.4 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
+  variable y el rechazo; `test_ci_workflow.py` lo fija
+- [ ] 2.5 Anotar la deuda "humo en paralelo con un stack real" (puertos y red fijos de
+  `infra/compose.yaml`, `:22`, `:191`, `:368-375`) en la ficha 2e al cerrar
 
 ## 3. Pasos con línea y comando (C2-5, C2V2-8)
 
