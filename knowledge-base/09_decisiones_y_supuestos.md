@@ -2886,3 +2886,39 @@ registrado como tal en su momento.)*
 - **Dónde queda registrado**: `knowledge-base/10_preguntas_abiertas.md` marca P36 y P37 resueltas con
   esta decisión; `openspec/changes/gastos-y-cargos/tasks.md` las usa en las tareas del modelo de
   `gasto` y `categoria_de_gasto`.
+
+## D-142 · El 6 cierra con la revisión independiente, P36 y P37 ratificadas por Juani y la deuda repartida (30/10/2026)
+
+- **Fecha**: 30/10/2026.
+- **Contexto**: Emiliano construyó el 6 (PR #4, 47 tareas) sobre `5c6d84c`, sin informes de revisor del
+  plan, rompedor ni auditor, y con un RED de los bloques 2 a 5 por setup, no por aserción (L-061). Juani
+  pidió el mismo flujo que el 3d antes de mergear: integración con `main` por merge (sin rebase ni
+  force-push), migraciones renumeradas a `0029`-`0033` detrás de `0028_ver_personal`, decisiones a
+  D-140/D-141 y lecciones a L-063/L-064. Después, tres rondas de rompedor (Codex, por pedido de Juani) y
+  constructor (Claude), y el auditor (Claude): BLOQUEANTES B1 y B2 en el intento 1, APROBADO en el 2.
+- **Hallazgos reproducidos y corregidos** (no son deuda): F1, los detalles por id de gasto, nota de
+  crédito y cargo particular no pedían el permiso de lectura que sí pide el listado (un inquilino del
+  mismo edificio los leía); F2, un PATCH vacío llevaba un gasto aprobado tarde a su período de origen;
+  F3, el 422 del CUIT perdía la explicación del formato; F4, dos referencias del 6 a D-131; S1, una nota
+  de crédito contra un gasto sin factura; S2, bajar el importe de una factura por debajo de lo
+  acreditado; F2-1, quitar la factura a un gasto con notas (guardia en el caso de uso; por HTTP es
+  inalcanzable); S4, la consulta de la nota devuelve `periodo_de_la_factura`. Más los 403 del 6 con
+  `codigo` (D-131 del 2d), detectados al integrar.
+- **Decisión**:
+  - **B1** (faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup):
+    deuda justificada, con la evidencia sustituta de las tres rondas de rompedor (8 hallazgos), los
+    mutantes M1 a M6 de los constructores y la suite completa del auditor (`4736 passed, 1 xfailed`).
+    Mismo criterio que BJ-1 del 3d (D-139).
+  - **B2**: Juani **ratifica P36 y P37** tal como las respondió Emiliano en D-141 (P36: el gasto aprobado
+    tarde conserva su período de origen y entra en la primera liquidación que lo encuentre aprobado, sin
+    reabrir un emitido; P37: el gasto mensual obligatorio se marca en la categoría de gasto). D-141 no se
+    edita: esta decisión registra la ratificación que el plan pedía a Juani o Alberto.
+  - El 6 sigue **MEDIUM**: F1 se corrigió con el permiso que ya existía, sin tocar la matriz, y el 6 no
+    escribe en `movimiento`, `obligacion` ni `imputacion`.
+  - La deuda (D1 a D13 del auditor) queda con dueño en la ficha 6 de `12_fichas_de_changes.md`.
+- **Descartado**: rebasar la rama de Emiliano (reescribe su historia y obliga a force-push); reconstruir
+  el RED original; mergear sin revisión independiente.
+- **Cierre**: PR #4 mergeado en `main` (`b94577d`, 30/10/2026) con CI verde en `5b10687` (backend, web,
+  humo, secretos y shellcheck); archivado en `e965e0a`. Migraciones `0029` a `0033`. MEDIUM: no lleva
+  firma (D-094, D-111).
+- **Quién**: Juani, 30/10/2026.

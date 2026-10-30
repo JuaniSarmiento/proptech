@@ -49,7 +49,7 @@ gates están en el árbol de abajo.
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
-   ⏳ 5 importar desde Excel       👉 6 gastos y cargos (Emiliano) · en revisión (PR #4)
+   ⏳ 5 importar desde Excel       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
    ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
 
 6. COBRAR Y SEGUIR
@@ -71,7 +71,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
 
 - **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
-- **En paralelo, no frenan a nadie:** 6 (Emiliano), en revisión (PR #4); los siete de
+- **En paralelo, no frenan a nadie:** los siete de
   deuda adelantada (D-138); 4d, 6b, 9, 11, 12 y 14.
 - **4c**: lo construye un firmante de D-111 (Juani, Alberto o Emiliano), nunca alguien recién llegado
   (D-138).
@@ -171,6 +171,7 @@ GATE 6: C-06a ✓
     **archivado 28/10/2026** tras el PR #2 y la Enmienda E11, D-129)
     → C-22 pulido-2 (3d, MEDIUM, D-130): Gianfranco, en paralelo con C-09 (6, Emiliano); **archivado
       30/10/2026**, D-139
+    → C-09 gastos-y-cargos (6, MEDIUM): Emiliano, PR #4; **archivado 30/10/2026**, D-140 a D-142
 
 GATE 6 bis: C-05a + C-06a + C-06b ✓
   → C-05a-bis roles-de-la-empresa (2.2a, archivado)
@@ -618,9 +619,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-09] `gastos-y-cargos` · 6
-- **Estado**: `[ ]` en revisión (PR #4, rama `change/gastos-y-cargos`), sin mergear. Emiliano, en
-  paralelo con `3d` (Gianfranco, archivado 30/10/2026) antes del camino crítico; pendiente de rebase
-  sobre `main`
+- **Estado**: `[x]` archivado (30/10/2026, D-140 a D-142). Emiliano (PR #4, mergeado en `b94577d` con CI
+  verde en `5b10687`), tras la revisión independiente: integración con `main` por merge, migraciones
+  `0029` a `0033`, tres rondas de rompedor (Codex) y constructor, auditor APROBADO. Deuda en la ficha 6
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
   por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a

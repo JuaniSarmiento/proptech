@@ -1032,3 +1032,30 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Aplica a**: cualquier change que agregue rutas, vocabulario de auditoría, una migración, o una
   persona/rol nuevo a una fixture compartida — correr la suite completa antes de declarar el cierre
   (L-041 generalizada), y revisar si la fixture que se extiende limpia lo que inserta.
+
+## L-065 · El detalle por id tiene que pedir el mismo permiso que el listado
+
+- **Origen**: 6 `gastos-y-cargos`, rompedor intento 1 (F1, `informes/verify-1-breaker.md`, 30/10/2026).
+- **Qué pasó**: los listados de gastos, notas de crédito y cargos pedían `ver_configuracion_del_edificio`,
+  pero `ver_gasto`, `ver_nota_de_credito` y `ver_cargo_particular` sólo chequeaban el alcance del
+  edificio. Un inquilino del mismo edificio leía por id un gasto extraordinario o el cargo de otra unidad.
+  Los tests probaban el listado, no el detalle.
+- **Regla**: cada ruta de detalle se prueba con el mismo perfil sin permiso que el listado (403 con
+  `codigo`), y el barrido de rutas protegidas incluye los GET por id.
+
+## L-066 · Un comentario que describe una librería se prueba contra la librería
+
+- **Origen**: 6 `gastos-y-cargos`, auditor intento 1 (D2, `informes/verify-1-auditor.md`, 30/10/2026).
+- **Qué pasó**: `excel.py` decía que las fórmulas se leen como texto crudo; con `openpyxl` y
+  `data_only=True` entra el valor en caché. La sonda del auditor lo reprodujo.
+- **Regla**: si un comentario o un design promete un comportamiento de seguridad de una dependencia,
+  hay un test con la entrada adversaria mínima, o el texto dice "no verificado".
+
+## L-067 · La revisión independiente de un PR ajeno no repone al revisor del plan
+
+- **Origen**: 3d (BJ-1, D-139) y 6 (B1, D-142), 30/10/2026.
+- **Qué pasó**: dos PRs de desarrolladores nuevos llegaron sin revisor del plan ni RED por aserción. La
+  revisión posterior encontró fallas reales, pero no puede reconstruir lo que el plan-reviewer habría
+  frenado antes de construir (en el 6, P36 y P37 respondidas por quien no correspondía).
+- **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
+  proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.

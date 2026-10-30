@@ -143,7 +143,13 @@ mercado de arranque es **Mendoza**.
   y el 422 del día de vencimiento y de la clave. Construyó Gianfranco (PR #3, `73884d6`); revisión
   independiente con rompedor, constructor y auditor (APROBADO). Deuda a C-26 y C-28, en la ficha 3d de
   `knowledge-base/12_fichas_de_changes.md`.
-- **En revisión, sin mergear**: **6 `gastos-y-cargos`** (PR #4, Emiliano).
+- **Cambio 6 `gastos-y-cargos` archivado** (30/10/2026, MEDIUM, D-140 a D-142): proveedores, gastos con
+  sus cuatro estados, notas de crédito topeadas a su factura, cargos particulares sueltos o por Excel, el
+  gasto mensual obligatorio en la categoría y el período de imputación de un gasto aprobado tarde (P36 y
+  P37, ratificadas por Juani). Sólo backend y API (D-140), sin escribir en el libro. Migraciones `0029`
+  a `0033`. Construyó Emiliano (PR #4, `b94577d`); revisión independiente con rompedor (Codex),
+  constructor y auditor (APROBADO), que corrigió el permiso de lectura de los detalles por id. Deuda en
+  la ficha 6 de `knowledge-base/12_fichas_de_changes.md`.
 - **Deuda adelantada** (D-138, 30/10/2026): la deuda viva, verificada contra `main` (`e29e36d`), pasa a
   siete changes propios, uno por desarrollador: C-23 `humo-y-ci` (Gianfranco), C-24 `respaldos-2`
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
@@ -272,11 +278,11 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7) y 3c
   `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11), 2d
   `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
-  D-139, PR #3, sin migraciones).
+  D-139, PR #3, sin migraciones) y 6 `gastos-y-cargos` (30/10/2026, D-140 a D-142, PR #4, migraciones
+  `0029` a `0033`).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **En revisión**: `6 · gastos-y-cargos` (PR #4, Emiliano).
 - **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29, uno por
   desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).

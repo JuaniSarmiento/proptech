@@ -881,7 +881,9 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   nada y lo informa; la suma importada coincide con la del archivo; cada diferencia por unidad se
   muestra aunque el total coincida.
 
-### 6 · `gastos-y-cargos`
+- **Recibe del 6** (D-142): D1 (límite de bytes y filas del Excel, una consulta al padrón por fila), D2 (el comentario falso sobre fórmulas con caché) y D5 (el guardia de F2-1 sólo con dobles), en la ficha 6.
+
+### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 
 - **Objetivo**: cargar los gastos del mes y los cargos de cada unidad, listos para liquidar.
 - **Lecturas y vínculos (D-106)**: contador (principal o por edificio) y consejo leen los gastos y
@@ -927,7 +929,7 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   crédito que supera el monto de su factura; una nota de crédito sin factura asociada.
 - **Terminado cuando**: se cumplen los criterios de HU-A3 (manual) y HU-A3b; un gasto en borrador,
   sin IA o en revisión no aparece en ningún cálculo; sólo el aprobado entra.
-- **Apply completo, pendiente de `/opsx:verify` y archivo** (29/10/2026): las 30 tareas de
+- **Apply completo** (29/10/2026; archivado el 30/10/2026, ver más abajo): las 30 tareas de
   `tasks.md` están en verde con su evidencia TDD (RED/GREEN/mutante) pegada — proveedores, gastos y
   sus cuatro estados, notas de crédito, cargos particulares e importación, la marca de gasto mensual
   obligatorio (D7/D-141) y el período de imputación (D8/D-141), más las dos lecturas agregadas para
@@ -939,6 +941,12 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   fila de `asignacion_rol` con `rol='contador'` sin limpiar, que un guardia de downgrade de la
   migración `0018` contaba sin filtrar por administración (`test_migracion_normaliza_textos.py`). Las
   cuatro están corregidas, no son deuda.
+
+- **Revisión independiente y archivo** (30/10/2026, D-142): integración con `main` por merge, tres
+  rondas de rompedor (Codex) y constructor, auditor APROBADO en el intento 2. Corregidos F1 (detalles por
+  id sin permiso de lectura), F2, F3, F4, S1, S2, F2-1 y S4; Juani ratificó P36 y P37 y aceptó B1 como
+  deuda. PR #4 mergeado (`b94577d`) con CI verde en `5b10687`. La fila "CI no disparado" de la tabla de
+  abajo queda resuelta.
 
 ##### 6 · deuda del cierre
 
@@ -952,6 +960,25 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | CI no disparado sobre esta rama todavía: no hay commit ni push de este apply al momento del cierre de tareas | `gh run list`/`gh workflow run` sobre el SHA final, después de commitear y pushear | Quien haga el `/opsx:archive` o el `ship` de este change |
 | `gastos-del-periodo` · "La auditoría falla al aprobar" y `notas-de-credito` · "La auditoría falla": sólo probado para proveedor (`test_auditoria_falla_y_el_proveedor_no_queda`), nunca para gasto ni nota de crédito aunque `aprobar_gasto`/`crear_nota_de_credito` usan la misma forma (`transaccion` + `registrar()` monkeypatcheado) | Agregar el mismo test con `registrar()` roto sobre `aprobar_gasto` y `crear_nota_de_credito` (verify del cierre, hallazgo 2 y 3, 29/10/2026) | Quien primero toque auditoría de `gastos` de nuevo |
 | `auditoria-de-acciones` · "Edición que no cambia nada" nombra gasto, proveedor o cargo particular; sólo hay test para proveedor (`test_edicion_sin_cambios_no_deja_fila`), aunque la misma guarda (campos vacíos → sin `registrar()`) está en los tres archivos | Agregar el mismo test sobre `editar_gasto` y `editar_cargo_particular` (verify del cierre, hallazgo 4, 29/10/2026) | Quien primero toque auditoría de `gastos` de nuevo |
+
+##### 6 · deuda de la revisión (auditor, 30/10/2026, D-142)
+
+| # | Deuda | Cambio |
+|---|---|---|
+| D1 | El importador de Excel no limita bytes ni filas y hace una consulta al padrón por fila | **5** `importacion-desde-excel` (C-08); a más tardar, las pantallas de gastos antes de exponer la ruta |
+| D2 | El comentario de `excel.py` dice que las fórmulas se leen como texto crudo; con `data_only=True` entra el valor en caché (L-066) | **5** (C-08) |
+| D3 | El vecino no ve por id su propio cargo particular (coherente con el listado) | **11** `portal-del-vecino` (C-16) |
+| D4 | `complejos/aplicacion/errores.py` (del 3a) pierde la explicación del 422, como F3 | C-26 `pulido-web-3` |
+| D5 | El guardia de F2-1 en `editar_gasto` sólo se prueba con dobles | **5** (C-08), o el primer consumidor que llame a `editar_gasto` sin HTTP |
+| D6 | Sin test de concurrencia entre editar el importe y cargar una nota | C-28 `revisiones-independientes` |
+| D7 | `ensayo-roles.sh` con cabeza `0033` sin ejecutar; `shellcheck` sin correr localmente | C-23 `humo-y-ci` |
+| D8 | `.gitleaks.toml` y `.gitleaksignore` cubren el mismo falso positivo de `a6bb954` | C-23 (junto con DA-12 del 3d) |
+| D9 | `test_gastos.py` citaba `D-141-bis`, inexistente | Resuelta en `5b10687` |
+| D9b | Registrar la ratificación de P36 y P37 por Juani | Resuelta en D-142 |
+| D10 | openspec 1.14.3 instalado en vez del 1.13.0 fijado | C-23 |
+| D11 | CI sobre el SHA final | Resuelta: verde en `5b10687` |
+| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Juani, al planificar |
+| D13 | Faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup (B1) | Aceptada (D-142); la prevención va a C-28 (L-067) |
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
@@ -1198,6 +1225,8 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   vencido, modificado o de otra unidad.
 - **Terminado cuando**: se cumplen HU-V1, V2, V3 y V5.
 
+- **Recibe del 6** (D-142): D3, el vecino no ve por id su propio cargo particular; decidir si el portal lo muestra.
+
 ### 12 · `vista-del-consejo` · HIGH (D-087)
 
 - **Objetivo**: transparencia para el consejo de propietarios.
@@ -1359,6 +1388,8 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   corre en el CI y toma la cabeza de migración de las migraciones reales; `humo.sh` respeta
   `PROPTECH_COMPOSE_PROYECTO`; Dependabot está configurado.
 
+- **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0).
+
 ### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de respaldos y
@@ -1474,6 +1505,8 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   sobre "Completar la ubicación" está tomada y construida; el recuadro de Clerk se ve integrado; las
   excepciones de pnpm ya cumplidas están fuera.
 
+- **Recibe del 6** (D-142): D4, `complejos/aplicacion/errores.py` pierde la explicación del 422 (el arreglo de F3 en `gastos` sirve de modelo).
+
 ### 3f · `ejemplo-robusto` · LOW · pendiente (D-138, 30/10/2026) · C-27
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de `ejemplo.py` que la
@@ -1539,6 +1572,8 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   con firma.
 - **Terminado cuando**: hay un informe original por cada bloque de "Entra" con lo leído, lo atacado y
   el resultado (también cuando da limpio), y cada falla reproducida quedó como test con dueño.
+
+- **Recibe del 6** (D-142): D6 (test de concurrencia entre editar el importe y cargar una nota) y la prevención de D13 (L-067: revisor del plan antes del apply en los changes de desarrolladores nuevos).
 
 ### 2f · `base-y-rls` · CRITICAL · pendiente (D-138, 30/10/2026) · C-29
 
