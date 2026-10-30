@@ -52,7 +52,9 @@ reportar_fallo_paso() {
 # (L-014). `$1` es la condición que no se cumplió, tal como está escrita en el script. La línea es
 # la de quien llama a `fallar_paso`, no la de esta función.
 fallar_paso() {
-  reportar_fallo_paso "${BASH_LINENO[0]}" "$1"
+  # Rompedor 2e: dentro de un helper (humo-lib.sh) `BASH_LINENO[0]` es la línea del helper; la cadena
+  # restante deja que `reportar_fallo_paso` informe también el llamado en el script principal.
+  reportar_fallo_paso "${BASH_LINENO[0]}" "$1" "${BASH_LINENO[*]:1}"
   exit 1
 }
 

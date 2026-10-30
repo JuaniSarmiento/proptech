@@ -205,8 +205,26 @@
     (el vocabulario retirado en una variable de `test_caddy_respaldo_y_timeouts.py`; sólo mira lo
     versionado, por eso no lo vio la corrida sobre el árbol sin commitear: L-010). Corregido; luego
     `2505 passed` tres veces seguidas, y `2506` con el test de colección nuevo.
-- [ ] 10.2 Rompedor (sólo tests, nunca código) y auditor sobre el diff, con L-043, L-044 y L-047 a mano;
+- [~] 10.2 Rompedor (sólo tests, nunca código) y auditor sobre el diff, con L-043, L-044 y L-047 a mano;
   hallazgos como tests rojos
+  - **Rompedor, ronda 1** (clon `~/rompedor`, parche en el scratchpad): 9 tests rojos y 5 mutantes que los
+    tests del constructor no detectaban. Resueltos (tests integrados en `test_rompedor_humo_y_ci.py` y
+    `test_rompedor_log_y_arranque.py`, 69 verdes junto a los del constructor, shellcheck limpio, humo real
+    `humo_exit=0` con la verificación nueva):
+    - R3: el bucle de los ocho métodos ahora verifica las cabeceras de seguridad de cada respuesta.
+    - R4: dos pasos se llamaban `6c`; el de las pausas pasa a `6d`.
+    - R5: `fallar_paso` dentro de un helper informa también "llamado desde la línea N" (cadena de `BASH_LINENO`).
+    - R8/R9: el helper del log ve una fuga seguida de punto y la que sale por un logger con `propagate=False`.
+    - R6, R7, M1, M2: tests que matan los mutantes (timeouts en todo `reverse_proxy`, cualquier sitio `https://`
+      o `:443`, el 443 en los puertos por defecto, política que sobra en la restaurada).
+  - **Abiertos, esperan decisión de Gianfranco** (los tests están en `scratchpad/rompedor/pendientes-de-decision.txt`
+    y NO entraron al repo para no dejar el CI en rojo):
+    - R1 (ALTA): el rechazo (b) mira `docker ps -q` (sólo corriendo). Con el stack `proptech` DETENIDO y sus
+      volúmenes vivos, el humo con `PROPTECH_COMPOSE_PROYECTO=proptech` pasa el rechazo y su `down -v` borra los
+      volúmenes. La spec aprobada dice "con contenedores corriendo": endurecerla cambia lo aprobado.
+    - R2 (ALTA): `ensayo-roles.sh` (ahora en el CI) conserva `:-proptech` por defecto y no tiene los tres rechazos.
+    - R10: el worker no deja `arranque_fallido` ante un YAML roto ni una base inalcanzable (verifica la 7.3).
+  - Auditor: pendiente.
 - [ ] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
   cierre del 2c", decisión nueva en `09`, lecciones en `15`; `diff AGENTS.md CLAUDE.md` vacío y sin
   tocar ninguno de los dos

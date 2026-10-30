@@ -25,9 +25,20 @@ def capturar_todo(caplog: pytest.LogCaptureFixture) -> Iterator[None]:
     raiz = logging.getLogger()
     severidad_anterior = raiz.level
     caplog.set_level(logging.DEBUG)
+    # `configurar_logs` deja `arq`, `uvicorn` y `uvicorn.error` con `propagate=False`: sus registros
+    # no llegan a la raíz y `caplog` no los vería. Se les engancha su manejador mientras dure.
+    enganchados = [
+        logger
+        for logger in logging.Logger.manager.loggerDict.values()
+        if isinstance(logger, logging.Logger) and not logger.propagate
+    ]
+    for logger in enganchados:
+        logger.addHandler(caplog.handler)
     try:
         yield
     finally:
+        for logger in enganchados:
+            logger.removeHandler(caplog.handler)
         raiz.setLevel(severidad_anterior)
 
 
@@ -54,7 +65,9 @@ def _aparece(hoja: Any, valor: Any, patron: re.Pattern[str]) -> bool:
 def fugas_del_valor(registros: list[logging.LogRecord], valor: Any) -> list[str]:
     """Dónde aparece `valor` en `registros`: una descripción por cada aparición."""
     texto = str(valor)
-    patron = re.compile(rf"(?<![\w.]){re.escape(texto)}(?![\w.])")
+    # Palabra aparte: ni pegada a otra letra o dígito, ni parte de un número con decimales o de una
+    # ruta (`123.5`, `a.123`); un punto de fin de oración (`... no-es-uuid.`) sí cuenta como borde.
+    patron = re.compile(rf"(?<![\w.]){re.escape(texto)}(?!\w|\.\w)")
     fugas = []
     for registro in registros:
         if patron.search(registro.getMessage()):

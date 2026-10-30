@@ -485,16 +485,21 @@ for metodo in GET HEAD POST PUT PATCH DELETE OPTIONS TRACE; do
   if [ "$metodo" = "HEAD" ]; then
     opcion_de_metodo=(--head)
   fi
-  respuesta_respaldo=$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "${opcion_de_metodo[@]}" -H "Host: evil.example" http://localhost/)
+  archivo_de_encabezados=$(mktemp)
+  respuesta_respaldo=$(curl -s -D "$archivo_de_encabezados" -o /dev/null -w '%{http_code} %{size_download}' "${opcion_de_metodo[@]}" -H "Host: evil.example" http://localhost/)
+  encabezados_del_respaldo=$(cat "$archivo_de_encabezados")
+  rm -f "$archivo_de_encabezados"
   echo "respaldo $metodo -> $respuesta_respaldo"
   if [ "$respuesta_respaldo" != "421 0" ]; then
     echo "ERROR: el sitio de respaldo respondió '$respuesta_respaldo' a $metodo, se esperaba '421 0'" >&2
     fallar_paso '[ "$respuesta_respaldo" = "421 0" ]'
   fi
+  # Rompedor 2e: "421 vacía" no alcanza; el escenario pide también las cabeceras de seguridad.
+  verificar_cabeceras "el sitio de respaldo ($metodo)" "$encabezados_del_respaldo"
 done
-echo "ok: el sitio de respaldo responde 421 y cuerpo vacío en los ocho métodos"
+echo "ok: el sitio de respaldo responde 421, cuerpo vacío y las cabeceras de seguridad en los ocho métodos"
 
-paso 6c "con api o web pausadas (no caídas), el proxy corta dentro del plazo configurado (N2)"
+paso 6d "con api o web pausadas (no caídas), el proxy corta dentro del plazo configurado (N2)"
 # N2 (2e): `response_header_timeout 30s` en el Caddyfile; el corte tiene que llegar antes de 30 s más un
 # margen de 5 s (antes, con la api pausada Caddy no respondía en 100 s). Se mide el tiempo real.
 cortar_en_plazo() {
