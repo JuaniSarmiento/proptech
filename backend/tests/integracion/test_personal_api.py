@@ -133,6 +133,9 @@ def test_el_administrador_principal_lista_el_personal(api_edificio: ApiEdificio)
         str(api_edificio.personas["editar"]),
         str(api_edificio.personas["ver"]),
         str(api_edificio.personas["consejo"]),
+        # El contador que la fixture suma desde el 6 (`gastos-y-cargos`) también
+        # está por debajo del principal (D13); entró al integrar `main`.
+        str(api_edificio.personas["contador"]),
         str(contador),
     }
     crudo = r.text

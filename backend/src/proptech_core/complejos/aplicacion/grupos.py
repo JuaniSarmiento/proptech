@@ -352,6 +352,11 @@ def fijar_unidades(
         coeficientes = _cambios_de_coeficientes(antes, despues)
         if coeficientes:
             detalle["coeficientes"] = coeficientes
+        if modo == "renormalizado":
+            entraron = sorted(despues.keys() - antes.keys())
+            salieron = sorted(antes.keys() - despues.keys())
+            if entraron or salieron:
+                detalle["miembros"] = {"entraron": entraron, "salieron": salieron}
         registrar(
             sesion,
             identidad,

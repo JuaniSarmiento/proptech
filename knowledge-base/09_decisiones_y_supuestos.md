@@ -2833,3 +2833,56 @@ registrado como tal en su momento.)*
   humo, secretos y shellcheck); archivado en `5d79c2c`. Sin migraciones. MEDIUM: no lleva firma
   (D-094, D-111).
 - **Quién**: Juani, 30/10/2026.
+
+## D-140 · Las pantallas de `gastos-y-cargos` no tienen cambio hermano planificado: el 6 es sólo backend y API
+
+- **Fecha**: 28/10/2026, en el propose del cambio 6 `gastos-y-cargos`.
+- **Qué se encontró**: al revisar el roadmap completo de `CHANGES.md` durante el propose, el cambio 6
+  **no nombra a ningún consumidor de pantalla en ningún lado**: ni en el árbol de dependencias, ni en
+  los gates de paralelismo, ni en su ficha de `12_fichas_de_changes.md`. Es un **hueco del roadmap**, y
+  es distinto de los casos que a primera vista se le parecen: el 3a dejó sus siete pantallas a un
+  cambio **ya planificado** (el 3b `pantallas-del-edificio`), y el 4a y el 4b nombran explícitamente a
+  qué cambio futuro le toca cada pantalla que no construyeron (la de corrección al 8, D-120; la acción
+  de anular en pantalla al 7, D-124). Justificar el alcance del 6 "por el precedente del 3a → 3b"
+  habría escondido el hueco en vez de registrarlo: ese precedente acá no existe.
+- **Decisión**: el cambio **sigue llamándose `gastos-y-cargos` y no se parte**. Construye **las 30
+  tareas de backend y API completas** (proveedores, gastos con sus cuatro estados, notas de crédito,
+  cargos particulares con su importación y las lecturas que consume el 7). **Las pantallas de HU-A3 y
+  HU-A3b quedan para un cambio nuevo, a crear más adelante y todavía sin nombre definitivo**, que
+  necesitará su sesión de `impeccable shape` por pantalla antes del propose, como el 3b (D-102). Los
+  criterios de aceptación de HU-A3 y HU-A3b se verifican en el 6 **contra la API**, no contra una
+  pantalla.
+- **Descartado**: (a) sumar las pantallas al alcance del 6, que obligaría a las sesiones de shape como
+  precondición y a partir el cambio antes de empezar; (b) nombrar y numerar ya el cambio de pantallas
+  en el roadmap — ubicarlo es decisión de quien coordina, y D-130 acaba de reordenar los próximos
+  cambios; (c) dejar el alcance sin pantallas sin registrar el hueco en ningún lado fuera de
+  `openspec/changes/`, donde nadie que planifique lo siguiente lo iba a encontrar.
+- **Dónde queda registrado**: la entrada `[C-09]` de `CHANGES.md` y la ficha §6 de
+  `knowledge-base/12_fichas_de_changes.md` llevan una sección "No construye" con esta decisión y su
+  fecha; `openspec/changes/gastos-y-cargos/proposal.md` la explica en "Decisión de alcance".
+- **Quién**: Emiliano Caceres, 28/10/2026, como dueño del cambio 6. No es una firma de gobernanza: el
+  cambio es MEDIUM (D-130) y no requiere aprobación de D-094/D-111.
+
+## D-141 · P36 y P37 resueltas: período de un gasto aprobado tarde, y dónde vive "gasto mensual obligatorio"
+
+- **Fecha**: 28/10/2026, antes de arrancar el apply del cambio 6 `gastos-y-cargos`.
+- **P36 · un gasto que quedó afuera de su período (sin IA o en revisión aceptada) y se aprueba
+  después**: conserva su **período de origen** y entra en la **primera liquidación que lo encuentre
+  aprobado**. Nunca reabre un emitido. Es la misma regla que D-082 ya fijó para la nota de crédito de
+  una factura ya liquidada ("se descuenta en el período en que se carga, sin reabrir el emitido", R22):
+  acá se guardan los dos datos (período de origen y período en que se aprueba), nunca uno solo.
+- **P37 · dónde y quién marca un "gasto mensual obligatorio"**: en la **categoría de gasto** del
+  edificio (una categoría marcada como obligatoria mensual, no el proveedor ni el gasto). Verificado
+  contra el código: `categoria_de_gasto` existe desde la migración `0008` (cambio 3a, archivado);
+  `proveedor` y `gasto` no existen todavía, los crea este cambio. Es la única de las tres candidatas
+  que existe antes de que haya un gasto que marcar, y permite al cambio 7 detectar "falta el gasto de
+  ascensor de este mes" sin un gasto previo que mirar.
+- **Por qué ahora**: las dos bloqueaban tareas concretas del cambio 6 (el modelo de `gasto` para P36,
+  el esquema de `categoria_de_gasto` para P37); el propose las dejó señaladas con una propuesta cada
+  una, sin inventar la respuesta.
+- **Quién**: Emiliano Caceres, 28/10/2026, como dueño del cambio 6 y responsable de cobros/cuenta
+  corriente en este change (no toca `movimiento` ni `obligacion` directamente, pero define cómo un
+  gasto llega al reparto que sí los alimenta en el 7).
+- **Dónde queda registrado**: `knowledge-base/10_preguntas_abiertas.md` marca P36 y P37 resueltas con
+  esta decisión; `openspec/changes/gastos-y-cargos/tasks.md` las usa en las tareas del modelo de
+  `gasto` y `categoria_de_gasto`.

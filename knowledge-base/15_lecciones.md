@@ -976,3 +976,59 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: ante un rojo de `secretos`, primero se comprueba la ancestría del commit
   (`git merge-base --is-ancestor`) y se corre gitleaks sobre el rango propio. El arreglo lo hace el
   dueño del commit, y un `gitleaks:allow` agregado después no cura la historia.
+
+## L-063 · `mypy` por archivo tocado no detecta un choque de nombre entre módulos hermanos; sólo `mypy` sobre todo `src/` lo ve
+
+- **Origen**: 6 `gastos-y-cargos`, cierre (tarea 9.2, 29/10/2026).
+- **Qué pasó**: cada bloque del apply corrió `mypy` sólo sobre los archivos que tocaba
+  (`src/proptech_core/gastos ...`), y pasó limpio bloque por bloque. Al cerrar, `mypy src/` sobre el
+  árbol completo encontró un error real en `proptech_api/app.py`: dos bucles `for tipo in (...)`
+  seguidos, uno para los errores de `cuenta_corriente` y otro para los de `gastos`, reusaban el mismo
+  nombre de variable (`tipo`). `mypy` infiere el tipo de `tipo` del primer bucle y lo reporta como
+  incompatible en el segundo — un error que nunca aparece si se tipa sólo el módulo nuevo, porque la
+  variable conflictiva vive en un archivo que ningún bloque de este change "tocó" en el sentido de
+  escribir lógica nueva (sólo agregó tres líneas de wiring).
+- **Regla**: el `mypy` de cierre (L-005 lo pide "igual que el CI") tiene que correr sobre **todo
+  `src/`**, no sólo sobre los archivos que el change editó — el mismo motivo que L-041 ya daba para
+  la suite de tests ("un chequeo de arranque cierra con la suite completa"). Un choque de nombres
+  entre dos bloques de código que nunca se tocaron entre sí sólo aparece cuando se tipa el programa
+  completo.
+- **Costo**: cero en producción — lo encontró el propio cierre del change, antes de cualquier commit.
+- **Aplica a**: cualquier change que agregue wiring a un archivo compartido (`app.py`, un router
+  central, un registro de handlers) reusando un patrón de bucle/variable que ya existía para otro
+  módulo. Renombrar la variable de cada bucle es más barato que depender de que nadie la reuse mal.
+
+## L-064 · La suite completa de cierre encuentra lo que la suite por bloque no puede: tests estructurales que hardcodean "todo lo que existe hoy"
+
+- **Origen**: 6 `gastos-y-cargos`, cierre (tarea 9.1, 29/10/2026).
+- **Qué pasó**: cada bloque del apply corrió su propio grupo de tests y los dos preexistentes
+  conocidos de Windows, nunca la suite entera. Al correr `tests/ -q` de punta a punta para el cierre,
+  aparecieron 4 fallas reales (más las ya conocidas de Windows/worker) que ningún bloque podía haber
+  visto porque viven en archivos que ningún bloque de este change tocó a propósito:
+  - `test_rutas_protegidas.py`: una lista `_RUTAS_CUBIERTAS` que tiene que ser EXACTAMENTE el conjunto
+    de rutas bajo `/api` — las 19 rutas nuevas de `gastos.py` nunca se agregaron ahí. Corregido: las 19
+    rutas, más sus cuerpos de prueba en `_pedido`, más los ids de `mundo`.
+  - `test_libro_rollback.py` y `test_vocabulario_configuracion.py`: hardcodeaban `alembic_version ==
+    "0027"` y el conjunto de nombres de `accion_de_auditoria` sin el vocabulario de `EventoDelGasto`
+    (10 eventos nuevos). Corregidos a `"0032"` y a incluir `EventoDelGasto` en la unión esperada.
+  - `test_migracion_normaliza_textos.py`: no era un hardcodeo, era una fuga real de datos — la
+    fixture compartida `api_edificio` (módulo-scoped en este archivo) sumó una persona `"contador"`
+    con una fila de `asignacion_rol` real, commiteada, nunca limpiada; un guardia de downgrade de la
+    migración `0018` hace un `count(*)` SIN FILTRAR por administración sobre `rol='contador'` en toda
+    la tabla, y lo encontraba aunque el test que lo disparó no tuviera nada que ver con proveedores.
+    Corregido con un `finally` en la fixture que borra esa fila puntual al terminar (no las otras
+    cinco personas, que no disparan ningún guardia existente).
+- **Regla**: agregar rutas, vocabulario de auditoría o una migración nueva **no termina en el código
+  que las agrega** — hay tests estructurales en otros archivos que afirman "esto es TODO lo que existe
+  hoy" y se desactualizan en silencio si nadie corre la suite completa antes de cerrar. L-041 ya decía
+  esto para un chequeo de arranque; acá se confirma que el radio es más amplio: cualquier test con un
+  conjunto hardcodeado (rutas, vocabulario, versión de migración) es candidato.
+- **Regla (fixture compartida)**: una fixture module/session-scoped que **commitea** filas reales
+  (no las envuelve en una transacción que haga rollback) tiene que limpiar lo que agrega si ese dato
+  puede activar un guardia o un `count(*)` sin alcance en otro archivo — "nadie más lo necesitaba
+  limpio hasta ahora" no es garantía de que seguirá siendo así.
+- **Costo**: cero en producción — los cuatro hallazgos los encontró este mismo cierre, antes de
+  cualquier commit. El costo real fue el tiempo de la corrida completa (~40 minutos en este entorno).
+- **Aplica a**: cualquier change que agregue rutas, vocabulario de auditoría, una migración, o una
+  persona/rol nuevo a una fixture compartida — correr la suite completa antes de declarar el cierre
+  (L-041 generalizada), y revisar si la fixture que se extiende limpia lo que inserta.

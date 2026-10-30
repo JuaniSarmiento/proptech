@@ -205,7 +205,11 @@ def api_edificio(
     monkeypatch.setenv("POSTGRES_APP_PASSWORD", APP_PASSWORD_DE_SESION)
     app = crear_app()
     admin, admin_b = uuid4(), uuid4()
-    personas = {rol: uuid4() for rol in ("super_admin", "editar", "ver", "consejo", "vecino")}
+    #: "contador" (gastos-y-cargos, tarea 2.6/3.11): rol real `contador`, mismo
+    #: alcance de edificio que "ver" (auxiliar) — lee D-096, no escribe.
+    personas = {
+        rol: uuid4() for rol in ("super_admin", "editar", "ver", "consejo", "vecino", "contador")
+    }
     with TestClient(app) as cliente:
         with abrir_sesion(app.state.fabrica_de_sesiones, admin) as sesion:
             sesion.execute(
@@ -314,4 +318,21 @@ def api_edificio(
             personas=personas,
         )
         api.como("super_admin")
-        yield api
+        try:
+            yield api
+        finally:
+            #: El rol `contador` es el único de esta fixture que colisiona con
+            #: el guardia de downgrade de `0018` (cuenta global de
+            #: `asignacion_rol` sin filtrar por administración, L-012/RB-5-bis
+            #: hallado en el cierre de `gastos-y-cargos`): esta fixture es
+            #: compartida y módulo-scoped en varios archivos, y esa fila nunca
+            #: se limpiaba. Las otras cinco personas no disparan ningún
+            #: guardia existente, así que no hace falta limpiarlas también.
+            with base_del_edificio.conectar_app() as conexion, conexion.transaction():
+                conexion.execute(
+                    "SELECT set_config('app.administracion_id', %s, true)", (str(admin),)
+                )
+                conexion.execute(
+                    "DELETE FROM asignacion_rol WHERE administracion_id=%s AND rol='contador'",
+                    (admin,),
+                )

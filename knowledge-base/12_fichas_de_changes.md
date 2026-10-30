@@ -793,7 +793,7 @@ dice.
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
 | RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar` sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro | **Cerrada en el 4b** (tasks.md 1.3): tabla homónima creada antes **y** después que la de `public`, mutante rojo en los dos órdenes | — |
-| RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive (la mitad "unidades" ya se cerró en el 4a, commit `9e62bc6`); tampoco se registra qué unidades entran o salen de un grupo `renormalizado` | Los coeficientes sí se registran; falta el nombre del campo. Reconfirmado abierto por la regresión del 27/10/2026 (`.git/informes-regresion/04-plata.md`: mutante aplicado en `grupos.py:345-346`, 43 passed con el mutante puesto) | **Confirmado: 6** (`gastos-y-cargos`, Emiliano), D-130. El 3c no tocó este punto de `grupos.py` |
+| RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive (la mitad "unidades" ya se cerró en el 4a, commit `9e62bc6`); tampoco se registra qué unidades entran o salen de un grupo `renormalizado` | **Cerrada el 28/10/2026** (commit `2e2e925`, Emiliano): modo y miembros de un grupo renormalizado ahora quedan en `campos` de la auditoría de `fijar_unidades`, con su mutante que lo prueba | — (cerrada, confirmado para el 6 por D-130 antes del fix) |
 | RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | **Sin consumidor todavía**: el 4b agregó `test_deuda_4a.py`/`test_deuda_4a_umbral.py` (tasks.md 5.1, commit `4164aa2`), pero el auditor final del 4b nota que **ningún revisor independiente los abrió**, sólo los mutantes del propio constructor (`16-auditor-final.md`, Chequeo 3/5). **Corrección del 30/10/2026 (D-138)**: lo de que esos tests cubren RB-6 es falso. Ni `test_deuda_4a.py` ni `test_deuda_4a_umbral.py` prueban `redondear_al_centavo`, `4164aa2` no tocó `reparto.py` y `test_reparto.py:34-39` llega sólo hasta `999999999999.995`: ningún test prueba \|valor\| ≥ 1e30. El defecto sigue en `reparto.py:18` (el `quantize` fuera del `try`) | 4c, primer consumidor real (interés). Antes decía "Tests existen; falta su revisión independiente"; corregido el 30/10/2026 (D-138): no hay test, y el 4c tiene que escribirlo y verlo fallar antes de envolver el `quantize` |
 | RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Igual que RB-6: cubierta por `test_deuda_4a.py` del 4b, sin revisión independiente confirmada | 4b, cerrada con la misma salvedad que RB-6. **Cerrada** (verificación del 30/10/2026, D-138): revisión independiente **estática**, sin correr mutantes; `dinero.py:54-56` usa `localcontext` con prec 32 y `test_deuda_4a.py:12-22` corre con prec=2, así que sacar el contexto haría fallar su aserción |
 | RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes | El mutante de vocabulario hace un trabajo equivalente (auditoría del apply) | — (se registra, no se reabre) |
@@ -900,7 +900,26 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   Excel; aprobación; nota de crédito asociada a la factura que corrige, con su monto topeado al de
   esa factura (R22, ProTecc H1).
 - **No entra**: la lectura de facturas por QR e IA (14): acá la carga es manual.
-- **Depende de**: 3 y el 4a (el reparto por mayor resto); si escribe en el libro, también el 4b (S-04, sin verificar contra R14 y R25). **Habilita**: 7, 14.
+- **No construye** (queda explícitamente fuera, para un cambio que todavía **no existe**): **las
+  pantallas de HU-A3 y HU-A3b**. Al revisar el roadmap completo de `CHANGES.md` el 28/10/2026, durante
+  el propose, se encontró que este cambio **no nombra a ningún consumidor de pantalla en ningún lado**:
+  ni en el árbol de dependencias, ni en los gates de paralelismo, ni en esta ficha. Es un hueco del
+  roadmap, no un patrón: el 3a dejó sus siete pantallas a un cambio **ya planificado** (el 3b), y el 4a
+  y el 4b nombran el cambio futuro de cada pantalla que no construyeron (la de corrección al 8, D-120;
+  la de anular al 7, D-124). **Emiliano decide el 28/10/2026** que el 6 construye **sólo backend y
+  API**, con sus 30 tareas completas y sin partirse, y que la superficie web de gastos va en un
+  **cambio nuevo, a crear más adelante y todavía sin nombre definitivo**, que necesitará su sesión de
+  `impeccable shape` por pantalla antes del propose (D-102). Registrado en **D-140**. Los criterios de
+  aceptación de HU-A3 y HU-A3b se verifican acá **contra la API**, no contra una pantalla.
+- **Depende de**: 3 y el 4a (el reparto por mayor resto). **El 4b no es dependencia**: el propose del
+  28/10/2026 resolvió el SUPUESTO S-04 como **no escribe en el libro**, verificado contra R14 (que manda
+  los créditos particulares a la ruta de corrección construida en el 4b, sin pedir una nueva) y R22
+  (que opera sobre el gasto, antes de prorratear), con una frontera de módulos y su test que lo vigilan.
+  **Habilita**: 7, 14.
+- **Gobernanza**: **MEDIUM** (propose del 28/10/2026), sin firma de D-094/D-111. Respaldo: D-130 dice
+  que el 6 no toca el camino crítico ni una zona CRITICAL, y el cambio no mueve plata de nadie (quien
+  convierte un gasto aprobado en deuda es el 7). **Sube a CRITICAL y se frena** si alguna tarea
+  necesitara escribir en `movimiento`, `obligacion` o `imputacion`.
 - **Bloqueado por**: P15, P17, P25, P36 y P37.
 - **Que intente romper el rompedor**: un gasto sin categoría que se aprueba; un cargo particular que
   termina repartido entre todos; un gasto de otro edificio; un importe con tres decimales; aprobar
@@ -908,6 +927,31 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   crédito que supera el monto de su factura; una nota de crédito sin factura asociada.
 - **Terminado cuando**: se cumplen los criterios de HU-A3 (manual) y HU-A3b; un gasto en borrador,
   sin IA o en revisión no aparece en ningún cálculo; sólo el aprobado entra.
+- **Apply completo, pendiente de `/opsx:verify` y archivo** (29/10/2026): las 30 tareas de
+  `tasks.md` están en verde con su evidencia TDD (RED/GREEN/mutante) pegada — proveedores, gastos y
+  sus cuatro estados, notas de crédito, cargos particulares e importación, la marca de gasto mensual
+  obligatorio (D7/D-141) y el período de imputación (D8/D-141), más las dos lecturas agregadas para
+  el 7 (D10). P36 y P37 resueltas por Emiliano en D-141 durante el apply. Migraciones `0029` a `0033` (renumeradas el 30/10/2026 al integrar `main`, detrás de `0028_ver_personal` del 2d).
+- **Cuatro fallas reales encontradas y corregidas durante el cierre** (tarea 9.1, suite completa,
+  L-064): `test_rutas_protegidas.py` no tenía las 19 rutas nuevas en `_RUTAS_CUBIERTAS`;
+  `test_libro_rollback.py` hardcodeaba la cabeza de la migración en `0027`; `test_vocabulario_configuracion.py`
+  no incluía los diez eventos de `EventoDelGasto`; la fixture compartida `api_edificio` dejaba una
+  fila de `asignacion_rol` con `rol='contador'` sin limpiar, que un guardia de downgrade de la
+  migración `0018` contaba sin filtrar por administración (`test_migracion_normaliza_textos.py`). Las
+  cuatro están corregidas, no son deuda.
+
+##### 6 · deuda del cierre
+
+| Deuda | Qué falta | Cambio |
+|---|---|---|
+| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | Las pantallas de HU-A3/HU-A3b, todavía sin change ni nombre (D-140) |
+| El puerto `es_periodo_emitido` (D8) no tiene adaptador real: hoy ningún período puede estar "emitido" porque `liquidacion` no existe, así que `periodo_de_imputacion` nunca se mueve de `periodo` | Construir el adaptador real contra el estado de emisión del libro y pasarlo a `aprobar_gasto` | **7** (`liquidacion-y-emision`), primer módulo que sabe qué período está emitido |
+| `tests/unitarios/test_umbral_parametros.py::test_umbral_cero` falla en la suite completa de este cierre (no lo toca ningún archivo de este change): `yaml.safe_dump` sin `allow_unicode=True` corrompe un nombre con tilde de `estados_de_unidad` en Windows | Revisar el test o forzar `allow_unicode=True` al volver a escribir el YAML de prueba | **15** (piloto), mismo cajón que el resto de la deuda de portabilidad Windows (D-110) |
+| Varios `test_worker_*.py`/`test_zz_rompedor_worker_*.py` fallan en la suite completa bajo Windows: `arq.worker.Worker.close()` llama `signal.SIGUSR1`, que no existe en Windows (`AttributeError`). Ajeno a este change (ningún archivo afectado toca `gastos`) | Parchear o saltar el cierre de señales POSIX del worker bajo Windows, o documentarlo como "sólo corre en CI/Linux" | **15** (piloto), mismo cajón que D-110 |
+| `test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo` falla sólo dentro de la suite completa (pasa solo: `3 passed`) — flaky por algún efecto de orden/estado compartido entre módulos, no identificado | Investigar qué deja el entorno (env var, monkeypatch sin revertir) entre módulos de test | Quien primero necesite la suite completa estable en CI; no identificado |
+| CI no disparado sobre esta rama todavía: no hay commit ni push de este apply al momento del cierre de tareas | `gh run list`/`gh workflow run` sobre el SHA final, después de commitear y pushear | Quien haga el `/opsx:archive` o el `ship` de este change |
+| `gastos-del-periodo` · "La auditoría falla al aprobar" y `notas-de-credito` · "La auditoría falla": sólo probado para proveedor (`test_auditoria_falla_y_el_proveedor_no_queda`), nunca para gasto ni nota de crédito aunque `aprobar_gasto`/`crear_nota_de_credito` usan la misma forma (`transaccion` + `registrar()` monkeypatcheado) | Agregar el mismo test con `registrar()` roto sobre `aprobar_gasto` y `crear_nota_de_credito` (verify del cierre, hallazgo 2 y 3, 29/10/2026) | Quien primero toque auditoría de `gastos` de nuevo |
+| `auditoria-de-acciones` · "Edición que no cambia nada" nombra gasto, proveedor o cargo particular; sólo hay test para proveedor (`test_edicion_sin_cambios_no_deja_fila`), aunque la misma guarda (campos vacíos → sin `registrar()`) está en los tres archivos | Agregar el mismo test sobre `editar_gasto` y `editar_cargo_particular` (verify del cierre, hallazgo 4, 29/10/2026) | Quien primero toque auditoría de `gastos` de nuevo |
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 

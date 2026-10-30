@@ -31,7 +31,7 @@ import psycopg
 import pytest
 from testcontainers.community.postgres import PostgresContainer
 
-from proptech_core.acceso.dominio.eventos import EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
 from proptech_core.acceso.dominio.permisos import Accion
 
 pytestmark = pytest.mark.integracion
@@ -562,6 +562,7 @@ def test_accion_de_auditoria_coincide_con_accion(
         {accion.value for accion in Accion}
         | _EVENTOS_DEL_2B
         | {evento.value for evento in EventoDelPadron}
+        | {evento.value for evento in EventoDelGasto}
     )
 
 

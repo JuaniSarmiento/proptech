@@ -57,17 +57,21 @@ def _primer_segmento_relevante(level: int, module: str | None) -> str | None:
     return partes[0] if partes and partes[0] else None
 
 
-def _archivos_que_importan(paquete_origen: str, paquete_objetivo: str) -> list[str]:
-    base = RAIZ_SRC / paquete_origen
+def _archivos_que_importan_en(raiz: Path, paquete_origen: str, paquete_objetivo: str) -> list[str]:
+    base = raiz / paquete_origen
     ofensores: list[str] = []
     if not base.is_dir():
         return ofensores
     for archivo in sorted(base.rglob("*.py")):
         for level, module in _imports_de(archivo):
             if _primer_segmento_relevante(level, module) == paquete_objetivo:
-                ofensores.append(str(archivo.relative_to(RAIZ_SRC.parent)))
+                ofensores.append(str(archivo.relative_to(raiz)))
                 break
     return ofensores
+
+
+def _archivos_que_importan(paquete_origen: str, paquete_objetivo: str) -> list[str]:
+    return _archivos_que_importan_en(RAIZ_SRC, paquete_origen, paquete_objetivo)
 
 
 def test_compartido_no_importa_acceso() -> None:
@@ -496,6 +500,10 @@ _DUENO_DE_TABLA = {
         ),
         "cuenta_corriente",
     ),
+    **dict.fromkeys(
+        ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
+        "gastos",
+    ),
 }
 _EXCEPCIONES_SQL = {
     (
@@ -638,6 +646,93 @@ def test_excepcion_sql_es_por_archivo_y_tabla() -> None:
         k: v for k, v in _EXCEPCIONES_SQL.items() if k[0] != "complejos/aplicacion/lectura.py"
     }
     assert _sql_ajeno(RAIZ_SRC, sin_lectura) == ["complejos/aplicacion/lectura.py: persona"]
+
+
+# --- gastos-y-cargos, tarea 1.1: el módulo `gastos` no depende del libro ni
+# de la liquidación (fronteras-de-modulos · "El módulo de gastos no depende
+# del libro ni de la liquidación"). Copias temporales, nunca el árbol real. ---
+
+
+def test_gastos_figura_entre_los_modulos_recorridos_y_sin_ofensores() -> None:
+    assert "gastos" in _modulos(RAIZ_SRC)
+    assert _archivos_que_importan("gastos", "cuenta_corriente") == []
+    assert _archivos_que_importan("gastos", "liquidacion") == []
+
+
+@pytest.fixture
+def copia_de_gastos() -> Iterator[Path]:
+    """Copia real de `gastos/` en una carpeta temporal: la mutación no toca
+    ni un byte del código real (L-013)."""
+    import shutil
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        destino = Path(carpeta) / "gastos"
+        shutil.copytree(RAIZ_SRC / "gastos", destino)
+        yield destino.parent
+
+
+def test_gastos_importa_la_cuenta_corriente_da_rojo(copia_de_gastos: Path) -> None:
+    archivo = copia_de_gastos / "gastos" / "aplicacion" / "mutante.py"
+    archivo.write_text("from proptech_core.cuenta_corriente import aplicacion  # noqa\n")
+    ofensores = _archivos_que_importan_en(copia_de_gastos, "gastos", "cuenta_corriente")
+    assert any("mutante.py" in o for o in ofensores), ofensores
+
+
+def test_gastos_importa_la_liquidacion_da_rojo(copia_de_gastos: Path) -> None:
+    archivo = copia_de_gastos / "gastos" / "aplicacion" / "mutante.py"
+    archivo.write_text("import proptech_core.liquidacion  # noqa\n")
+    ofensores = _archivos_que_importan_en(copia_de_gastos, "gastos", "liquidacion")
+    assert any("mutante.py" in o for o in ofensores), ofensores
+
+
+@pytest.mark.parametrize(
+    "sentencia",
+    [
+        "import sqlalchemy  # noqa\n",
+        "from proptech_core.gastos.aplicacion import algo  # noqa\n",
+    ],
+)
+def test_dominio_de_gastos_no_toca_su_infraestructura(
+    copia_de_gastos: Path, sentencia: str
+) -> None:
+    archivo = copia_de_gastos / "gastos" / "dominio" / "mutante.py"
+    archivo.write_text(sentencia)
+    ofensores = _dominio_sin_infraestructura(copia_de_gastos)
+    assert any("mutante.py" in o for o in ofensores), ofensores
+
+
+# --- tarea 1.3: el mapa de dueños del escaneo de SQL conoce las cuatro
+# tablas nuevas de `gastos`; `fronteras-de-modulos` · "El SQL de cada módulo
+# sólo nombra sus tablas" ---
+
+
+@pytest.mark.parametrize("tabla", ["proveedor", "gasto", "nota_de_credito", "cargo_particular"])
+def test_gastos_es_dueno_de_sus_tablas(tabla: str) -> None:
+    assert _DUENO_DE_TABLA[tabla] == "gastos"
+
+
+def test_gastos_nombra_una_tabla_del_libro(copia_core: Path) -> None:
+    archivo = copia_core / "gastos" / "aplicacion" / "mutante.py"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text('SQL = "INSERT INTO movimiento (id) VALUES (1)"')
+    ofensores = _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+    assert "gastos/aplicacion/mutante.py: movimiento" in ofensores, ofensores
+
+
+def test_gastos_nombra_obligacion_tambien_da_rojo(copia_core: Path) -> None:
+    archivo = copia_core / "gastos" / "aplicacion" / "mutante.py"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text('SQL = "SELECT * FROM obligacion"')
+    ofensores = _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+    assert "gastos/aplicacion/mutante.py: obligacion" in ofensores, ofensores
+
+
+def test_otro_modulo_nombra_una_tabla_de_gastos(copia_core: Path) -> None:
+    archivo = copia_core / "cuenta_corriente" / "aplicacion" / "mutante.py"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text('SQL = "SELECT * FROM gasto"')
+    ofensores = _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+    assert "cuenta_corriente/aplicacion/mutante.py: gasto" in ofensores, ofensores
 
 
 @pytest.mark.parametrize("tabla", ["administracion", "persona", "asignacion_rol"])

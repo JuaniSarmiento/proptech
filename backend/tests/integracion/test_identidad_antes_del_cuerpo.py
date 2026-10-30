@@ -31,6 +31,12 @@ def _resolver(api: ApiEdificio, ruta: str) -> str:
         # Ids reales de Georef (Mendoza / Capital), para las rutas de 2.5.
         provincia_id="50",
         departamento_id="50007",
+        # Cambio 6 `gastos-y-cargos`: mismo patrón, no hacen falta filas reales.
+        proveedor_id=uuid.uuid4(),
+        gasto_id=uuid.uuid4(),
+        nota_id=uuid.uuid4(),
+        cargo_id=uuid.uuid4(),
+        periodo="2026-10-01",
     )
 
 

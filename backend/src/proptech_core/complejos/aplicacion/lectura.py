@@ -36,6 +36,11 @@ class ComplejoLeido:
     #: inventado — ni un edificio nuevo ni uno migrado calculan este valor.
     pisos: int | None
     subsuelos: int | None
+    #: Nullable desde la migración del documento del edificio (gastos-y-cargos,
+    #: tarea 3.10): ningún edificio existente lo tiene cargado; sin valor, no
+    #: hay nada contra qué comparar el documento del receptor de una factura
+    #: (el aviso de R12 simplemente no se muestra, nunca bloquea).
+    cuit: str | None
 
 
 @dataclass(frozen=True)
@@ -52,7 +57,7 @@ class UnidadLeida:
 
 _COLUMNAS_COMPLEJO = (
     "id, administracion_id, nombre, localidad, estado_migracion, "
-    "provincia_id, departamento_id, localidad_id, calle_y_numero, pisos, subsuelos"
+    "provincia_id, departamento_id, localidad_id, calle_y_numero, pisos, subsuelos, cuit"
 )
 
 
@@ -97,10 +102,43 @@ def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
     )
 
 
+def cargar_unidad_por_identificador(
+    sesion: Session, complejo_id: UUID, identificador: str
+) -> UnidadLeida | None:
+    """Para `gastos` (importación de cargos particulares, tarea 5.7): la
+    planilla trae el identificador de la unidad, no su UUID. Mismo patrón
+    que `cargar_unidad`, sin SQL directo sobre `unidad` desde otro módulo
+    (frontera vigilada por `test_fronteras_de_modulos.py`)."""
+    fila = sesion.execute(
+        text(
+            "SELECT id, administracion_id, complejo_id, identificador, tipo, piso, "
+            "coeficiente::text, superficie_m2::text FROM unidad "
+            "WHERE complejo_id = :complejo AND identificador = :identificador"
+        ),
+        {"complejo": str(complejo_id), "identificador": identificador},
+    ).first()
+    if fila is None:
+        return None
+    return UnidadLeida(
+        id=fila.id,
+        administracion_id=fila.administracion_id,
+        complejo_id=fila.complejo_id,
+        identificador=fila.identificador,
+        tipo=fila.tipo,
+        piso=fila.piso,
+        coeficiente=fila.coeficiente,
+        superficie_m2=fila.superficie_m2,
+    )
+
+
 def cargar_grupo(sesion: Session, grupo_id: UUID) -> dict[str, Any] | None:
+    #: `activo` sumado para `gastos` (tarea 3.4): un gasto no puede cargarse
+    #: contra un grupo desactivado. Aditivo: los callers existentes sólo
+    #: leían `id`/`complejo_id` de este dict.
     fila = (
         sesion.execute(
-            text("SELECT id, complejo_id FROM grupo_de_reparto WHERE id=:id"), {"id": grupo_id}
+            text("SELECT id, complejo_id, activo FROM grupo_de_reparto WHERE id=:id"),
+            {"id": grupo_id},
         )
         .mappings()
         .first()
@@ -118,6 +156,23 @@ def cargar_categoria(sesion: Session, categoria_id: UUID) -> dict[str, Any] | No
         .first()
     )
     return None if fila is None else dict(fila)
+
+
+def listar_categorias_obligatorias(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+    """Puerto para `gastos` (bloque 6, D7/D-141): sólo lectura, nunca bloquea
+    nada — `gastos` no escribe SQL directo sobre `categoria_de_gasto` (la
+    frontera de módulos no se toca, mismo patrón que `cargar_grupo`)."""
+    return [
+        dict(f)
+        for f in sesion.execute(
+            text(
+                "SELECT id, nombre FROM categoria_de_gasto "
+                "WHERE complejo_id=:id AND activa AND obligatorio_mensual "
+                "ORDER BY orden"
+            ),
+            {"id": complejo_id},
+        ).mappings()
+    ]
 
 
 _COLUMNAS_CONFIGURACION = (

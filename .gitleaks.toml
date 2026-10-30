@@ -40,3 +40,16 @@ condition = "AND"
 regexTarget = "line"
 paths = ['''^infra/ci/humo\.sh$''']
 regexes = ['''Bearer prueba-del-borde''']
+
+# 4. Falso positivo de `generic-api-key` del CI del 29/10/2026 (change 6, gastos-y-cargos):
+#    `complejo=api_edificio.otro` (un kwarg con un identificador de atributo, no un valor) tiene
+#    suficiente entropía para la regla. Gitleaks escanea el historial completo (`fetch-depth: 0`),
+#    así que reescribir la línea en un commit posterior no alcanza — el texto sigue existiendo en
+#    el commit `a6bb954` y hay que permitirlo ahí también. Acotado por archivo Y por el texto
+#    exacto de la línea vieja (ya reescrita en el HEAD actual, no vuelve a aparecer de acá en más).
+[[allowlists]]
+description = "kwarg complejo=api_edificio.otro en test_gastos.py (texto histórico, ya reescrito)"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^backend/tests/integracion/test_gastos\.py$''']
+regexes = ['''complejo=api_edificio\.otro''']
