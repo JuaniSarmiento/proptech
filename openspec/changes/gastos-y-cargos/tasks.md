@@ -285,6 +285,9 @@ que van en un change nuevo, todavía sin crear ni nombrar.
 - Rol activo: constructor (role-constructor, subagente nativo), intento 1 de integración: resolver los conflictos, renumerar migraciones `0028`-`0032` a `0029`-`0033` detrás de `0028_ver_personal` (2d), renumerar D-131/D-132 del 6 a D-140/D-141 (D-131 a D-139 ya existen en main).
 - Informes: `informes/apply-1-constructor.md`, después `verify-1-breaker.md`, `verify-1-auditor.md`.
 - Próximo paso: constructor de integración; después rompedor, auditor.
+- Constructor de integración entregado (30/10/2026): `838a0b3` último con código, `d4816f2` con informe; suite 4641 passed, 1 xfailed en clon normal (14:46-15:04); ruff, format y mypy limpios; una cabeza `0033`. Informe `informes/apply-1-constructor.md`.
+- Rol activo: rompedor, intento 1, revisión `d4816f2` (código en `838a0b3`). Ejecutor: Codex (plugin `codex:codex-rescue`), por pedido de Juani (30/10/2026); recibe brief autocontenido. Sin bloqueantes abiertos.
+- Próximo paso: rompedor (Codex) -> `informes/verify-1-breaker.md`; si reproduce fallas, constructor; después auditor.
 
 ### Constructor de integración, intento 1 (role-constructor, subagente nativo Claude, 30/10/2026)
 
