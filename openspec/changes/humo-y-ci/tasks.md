@@ -38,8 +38,8 @@
   (a) sin variable, (b) `proptech` [con contenedores corriendo; desde D15, siempre], (c) puerto 80 o 443 ocupado; cada
   mensaje nombra la causa y cómo correrlo [WSL, con un stack `proptech` descartable y un puerto 80
   ocupado a propósito]
-- [x] 2.4 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
-  variable y el rechazo; `test_ci_workflow.py` lo fija
+- [x] 2.4 El job `humo` del CI exporta su proyecto; la sección del `README` "Cómo correr la prueba de humo" explica el
+  rechazo (la fija `test_ci_workflow.py::test_el_readme_explica_el_rechazo_del_humo`); `test_ci_workflow.py` lo fija
 > Evidencia grupo 2 [WSL, `~/apply-humo`, 30/10/2026]: rojo `6 failed, 5 passed` en
 > `test_humo_aislamiento.py` antes del código; verde `43 passed` (humo, aislamiento, pasos, ci_workflow,
 > readme, ensayo_login) y `ruff`/`mypy`/`shellcheck` limpios después. Con Docker real: sin variable,
@@ -231,7 +231,28 @@
     línea JSON `excepcion_como_mensaje` / `tipo_error: sqlalchemy.exc.OperationalError` con una traza de
     archivo:línea:función, sin mensaje, y stderr vacío; el marcador de la contraseña aparece 0 veces. No es
     un problema de seguridad: es falta de causa en el log. Ficha 2e.
-  - Auditor: pendiente.
+  - **Auditor, ronda 1: NO** por un bloqueante (B1) y varios hallazgos menores. Resueltos:
+    - B1: el job `ensayo-roles` habría fallado en un runner limpio, porque `infra/.env` está en `.gitignore`
+      y mi evidencia verde usaba una copia. El ensayo usa `--env-file .env.example` y levanta sólo `db` y
+      `respaldos` (`555d2a6`). Verde real en un clon **sin** `infra/.env`: `ENSAYO ROLES OK ... ciclo
+      0028/0016/0028`, `ensayo_exit=0`, 47 s.
+    - A1: el delta de `entorno-de-ejecucion` decía "la API o el worker"; ahora dice sólo la API y nombra la
+      deuda del worker con dueño C-25 `worker-y-logs`.
+    - A2: evidencia real de los mutantes (WSL, humo real, 30/10/2026): 4.2 `init: true` en `db` ->
+      `ERROR: paso 4 (... corren como no root (PID 1)) ... [ "$uid_pid1_db" != "0" ]`, `humo_exit=1`; 5.2
+      política debilitada -> `la política 'complejo_por_administracion' de la tabla complejo difiere en la
+      base restaurada`, `humo_exit=1`; 6.1 `Caddyfile` que responde 404 -> `el sitio de respaldo respondió
+      '404 0' a GET, se esperaba '421 0'` (paso 6c), `humo_exit=1`; 6.3 sin `dial_timeout` ni
+      `response_header_timeout` -> `api pausada: GET /api/salud -> 000 en 60.001280s`, `ERROR: ... paso 6d`,
+      `humo_exit=1`; con los timeouts, `504 en 30.008295s` (api) y `504 en 30.019182s` (web), `humo_exit=0`.
+    - M1: la sección del README (no `test_readme_variables.py`) explica el rechazo; texto de 2.4 y de
+      Riesgos corregido. M2: el paso 6d verifica las cabeceras de seguridad del corte (`humo_exit=0`, con la
+      verificación nueva). M3: Dependabot declara `docker-compose` en `/infra` (cinco ecosistemas), en el
+      spec y en D13. M4: el aislamiento entre trabajadores se declara por construcción (un contenedor de
+      Postgres por módulo). B-b: `PROPTECH_HUMO_PUERTOS` documentada en el README. B-c: el 443 queda para
+      el cambio 15.
+    - `tests/infra`: `274 passed`; shellcheck limpio. La primera corrida dio 9 fallos porque Docker Desktop
+      estaba apagado (sin Docker en WSL), no por el código.
 - [ ] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
   cierre del 2c", decisión nueva en `09`, lecciones en `15`; `diff AGENTS.md CLAUDE.md` vacío y sin
   tocar ninguno de los dos

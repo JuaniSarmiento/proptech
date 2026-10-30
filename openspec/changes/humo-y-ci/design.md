@@ -138,8 +138,8 @@ clave `playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}`; el p
 sistema, que no se cachean, y sólo descarga el navegador si falta), así que sin caché el job pasa
 igual.
 
-**D13. Dependabot.** `github-actions` en `/`, `docker` en `/backend`, `/web` (sus Dockerfile) y `/infra`
-(las imágenes de `compose.yaml`: Postgres, Redis y Caddy), `uv` en `/backend`, `npm` en `/web`. Semanal, límite de 5 PR por
+**D13. Dependabot.** `github-actions` en `/`, `docker` en `/backend` y `/web` (sus Dockerfile) y `docker-compose` en `/infra`
+(las imágenes de `compose.yaml`: Postgres, Redis y Caddy; `docker` sólo lee Dockerfile, así que se corrigió al implementar), `uv` en `/backend`, `npm` en `/web`. Semanal, límite de 5 PR por
 ecosistema, agrupados donde se pueda. Un test estático lee el YAML y verifica que cada directorio existe.
 Que Dependabot abra los PR no es verificable en local.
 
@@ -167,8 +167,8 @@ actualiza con cada límite.
 - [Tests de integración con estado compartido que sólo se rompen en paralelo] → primera pasada
   paralela en WSL antes de tocar el CI; `serial` con motivo escrito para los que no toleren.
 - [El humo se niega ante `proptech` y alguien lo usa sin saberlo] → el mensaje dice cómo correrlo
-  (`PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh`); README lo documenta en la tabla de
-  variables (`test_readme_variables.py` lo exige).
+  (`PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh`); README lo documenta en la sección "Cómo correr la prueba
+  de humo" (`test_ci_workflow.py::test_el_readme_explica_el_rechazo_del_humo` la fija).
 - [El ensayo en el CI duplica el tiempo del `down -v` y del build] → job aparte y en paralelo con
   `humo`; el costo es minutos de runner, no de camino crítico.
 - [Timeouts de Caddy demasiado cortos cortan una carga legítima de `web`] → `response_header_timeout`

@@ -172,7 +172,8 @@ comparte la comprobación), así que se niega a correr, antes de tocar nada y co
 qué, en tres casos: si falta `PROPTECH_COMPOSE_PROYECTO`; si vale `proptech` (el stack de uso real),
 siempre, haya o no contenedores corriendo; o si el puerto 80 o el 443 del host están ocupados, porque
 Caddy los publica fijos y no pueden correr en paralelo con otro stack. Bajá el stack de uso real antes
-de correrlo.
+de correrlo. La lista de puertos que se comprueba (`80 443` por defecto) se puede cambiar con
+`PROPTECH_HUMO_PUERTOS`; existe para los tests de los rechazos y no hace falta tocarla.
 
 ## Variables de entorno
 

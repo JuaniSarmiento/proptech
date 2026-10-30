@@ -124,13 +124,13 @@ en lugar de `no-referrer`).
 ### Requirement: Dependabot propone las actualizaciones
 
 El repositorio SHALL tener `.github/dependabot.yml` con actualizaciones semanales para `github-actions`,
-`docker` (los Dockerfile y `infra/compose.yaml`), `uv` (el backend) y `npm` (la web, con pnpm). Cada
+`docker` (los Dockerfile de `backend` y `web`), `docker-compose` (`infra/compose.yaml`), `uv` (el backend) y `npm` (la web, con pnpm). Cada
 ecosistema MUST apuntar a un directorio que exista y tener un límite de PR abiertos.
 
 #### Scenario: El archivo es válido
 
 - **WHEN** se lee `.github/dependabot.yml`
-- **THEN** declara los cuatro ecosistemas, cada `directory` existe en el repositorio y
+- **THEN** declara los cinco ecosistemas (`docker` y `docker-compose` cuentan por separado), cada `directory` existe en el repositorio y
   `open-pull-requests-limit` está presente en todos
 
 #### Scenario: Una acción nueva sin SHA
@@ -170,6 +170,9 @@ job completo MUST bajar respecto de la corrida en serie medida antes del cambio.
 
 - **WHEN** dos tests de integración que escriben en la misma tabla corren en trabajadores distintos
 - **THEN** ninguno ve las filas del otro
+
+*Se cumple por construcción, sin test propio*: cada módulo de test levanta su propio contenedor de
+Postgres (`testcontainers`), así que dos trabajadores no comparten base.
 
 #### Scenario: Un test no tolera el paralelo
 

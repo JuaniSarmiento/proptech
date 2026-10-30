@@ -476,10 +476,13 @@ paso 6d "con api o web pausadas (no caídas), el proxy corta dentro del plazo co
 # N2 (2e): `response_header_timeout 30s` en el Caddyfile; el corte tiene que llegar antes de 30 s más un
 # margen de 5 s (antes, con la api pausada Caddy no respondía en 100 s). Se mide el tiempo real.
 cortar_en_plazo() {
-  local servicio="$1" ruta="$2" salida codigo segundos intentos=0
+  local servicio="$1" ruta="$2" salida codigo segundos intentos=0 archivo_de_encabezados encabezados_del_corte
+  archivo_de_encabezados=$(mktemp)
   compose pause "$servicio"
-  salida=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 60 "http://localhost$ruta" || true)
+  salida=$(curl -s -D "$archivo_de_encabezados" -o /dev/null -w '%{http_code} %{time_total}' --max-time 60 "http://localhost$ruta" || true)
   compose unpause "$servicio"
+  encabezados_del_corte=$(cat "$archivo_de_encabezados")
+  rm -f "$archivo_de_encabezados"
   codigo="${salida%% *}"
   segundos="${salida##* }"
   echo "$servicio pausada: GET $ruta -> $codigo en ${segundos}s"
@@ -491,6 +494,8 @@ cortar_en_plazo() {
     echo "ERROR: con $servicio pausada el proxy tardó ${segundos}s (cota: 35 s = 30 s de plazo + 5 s)" >&2
     fallar_paso 'awk -v t="$segundos" "BEGIN { exit !(t < 35) }"'
   fi
+  # El corte también lleva las cabeceras de seguridad y no lleva Server (spec, auditor M2).
+  verificar_cabeceras "el corte con $servicio pausada" "$encabezados_del_corte"
   until curl -fsS -o /dev/null "http://localhost$ruta"; do
     intentos=$((intentos + 1))
     if [ "$intentos" -ge 30 ]; then

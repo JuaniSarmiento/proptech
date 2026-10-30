@@ -106,6 +106,15 @@ def test_el_humo_pausa_api_y_web_y_mide_el_corte() -> None:
     assert '"502"' in texto and '"504"' in texto
 
 
+def test_el_corte_por_plazo_verifica_las_cabeceras_de_seguridad() -> None:
+    """Auditor M2 (2e): el escenario pide el corte "con las cabeceras de seguridad y sin Server"."""
+    texto = HUMO.read_text(encoding="utf-8")
+    inicio = texto.index("cortar_en_plazo() {")
+    cuerpo = texto[inicio : texto.index("\n}\n", inicio)]
+    assert "curl -s -D" in cuerpo
+    assert 'verificar_cabeceras "el corte con $servicio pausada"' in cuerpo
+
+
 def test_limpiar_despausa_api_y_web_antes_del_down_v() -> None:
     texto = HUMO.read_text(encoding="utf-8")
     inicio = texto.index("limpiar() {")

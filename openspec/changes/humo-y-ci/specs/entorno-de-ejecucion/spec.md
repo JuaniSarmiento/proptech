@@ -22,7 +22,7 @@ Con `PROPTECH_SITIO=https://...`, el estado actual del proxy (sin bloque propio 
 fuera del sitio configurado, sin HSTS, redirección `308` de http a https generada por Caddy sin las
 cabeceras de seguridad) SHALL estar escrito en el spec y fijado por un test estático del `Caddyfile`,
 de modo que un cambio en esa conducta sin actualizar la declaración dé rojo. Cerrar esa brecha (HSTS y
-respaldo del 443) MUST quedar para el cambio que pone el dominio real.
+respaldo del 443) MUST quedar para el cambio 15, el que pone el dominio real.
 
 #### Scenario: El Caddyfile cambia sin declararlo
 
@@ -56,19 +56,21 @@ al cliente esperando más de ese plazo más un margen de 5 segundos.
 
 ### Requirement: La causa de un arranque rechazado queda en el log
 
-Cuando la API o el worker se niegan a arrancar por la configuración, por el rol con el que conectan a
+Cuando la API se niega a arrancar por la configuración, por el rol con el que conectan a
 la base, **porque la base no es alcanzable o porque el archivo de parámetros no se puede leer o está mal
 formado**, el log del contenedor SHALL tener una línea JSON con un evento propio de arranque fallido y
 la causa nombrada (la variable que falta, qué atributo del rol es inseguro, que la base no responde, o
 qué campo del archivo de parámetros es inválido), y MUST NOT incluir ningún valor secreto ni la cadena de
-conexión. El servicio MUST seguir sin arrancar.
+conexión. El servicio MUST seguir sin arrancar. *El worker queda fuera de este change*: hoy deja una línea
+`excepcion_como_mensaje` sin la causa nombrada (y sin filtrar secretos); la paridad es deuda de la ficha 2e,
+con dueño C-25 `worker-y-logs`.
 
 #### Scenario: Arranque rechazado con causa nombrada
 
 - **WHEN** una copia de Compose hace que `api` conecte con el rol de arranque (superusuario) y se mira
   `docker compose -p <proyecto> logs api`
 - **THEN** el contenedor no arranca, el log tiene la línea del arranque fallido con la causa, y ninguna
-  contraseña aparece en el log; lo mismo para `worker`
+  contraseña aparece en el log
 
 #### Scenario: Base inalcanzable
 
