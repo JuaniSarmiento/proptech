@@ -50,3 +50,12 @@ Autor: constructor. Comparé cada tarea contra su criterio de verificación en t
 - Un PATCH con id no UUID y además cuerpo inválido: la real podría juntar los dos errores en una sola lista; la falsa devuelve sólo el del path. No probado contra la real.
 - No corrí Playwright (juez: CI, L-050) ni pytest (no se tocó backend).
 - Entorno: `node_modules` es symlink al repo principal; pnpm imprime "Error: installing dependencies ... workspace hoist directory is not a real directory" por `verifyDepsBeforeRun` antes de cada script, con lockfile "up to date". No afectó los resultados (vitest, tsc y biome terminaron con exit 0). `sd` no está instalado en la máquina; usé Edit y python para los reemplazos.
+
+## Intento 2
+
+- Entrada: F7 de `informes/verify-2-breaker.md` (sólo esa sección y "Fallas reproducidas"), test RB3D-7 en `web/e2e/api-falsa.rompedor-3d-v2.test.ts` (sin commit). Tarea 11.6 agregada a tasks.md por decisión del orquestador.
+- EVIDENCIA: RED 12:28:52 por aserción (`expected 200 to be 422`) con RB3D-7 ya integrado en el describe "F2 y F7" de `api-falsa.patch-georef.test.ts`. GREEN 12:29:00: 64 passed (con `api-falsa.test.ts`). Mutante M-B6 sobre el borde de mayúsculas 12:29:10: rojo por aserción, revertido (`diff -q` idéntico). `pnpm test` 12:29:15 sobre `173089b`: 85 archivos, 597 passed, exit 0. `pnpm typecheck` 12:30:17: exit 0. Biome limpio sobre los dos archivos.
+- Cambios: `api-falsa.ts` rechaza `PATCH /api/complejos/{id}` con id no UUID (reutiliza `_UUID`; sólo PATCH de la raíz del edificio, los GET y POST no cambian); test integrado y `api-falsa.rompedor-3d-v2.test.ts` borrado.
+- JUICIO (constructor): confianza alta; los ids de `escenarios.ts` son todos UUID, así que el chequeo no cambia ningún escenario existente (la suite completa lo confirma).
+- SUPOSICIÓN: las divergencias que el rompedor dejó como JUICIO (UUID sin guiones, id devuelto en mayúsculas, path inválido más cuerpo vacío con 1 error en vez de 2) no se tocaron: fuera de la lista.
+- Contaminación: leí la F7 y el JUICIO adyacente del informe del rompedor intento 2; nada más.
