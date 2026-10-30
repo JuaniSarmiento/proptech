@@ -2,3 +2,5 @@
 # no es una clave. gitleaks recorre todas las ramas, así que ponía en rojo el job `secretos` de
 # todos los PRs (30/10/2026). Cuando se rebase el PR #4 ese commit deja de existir y esta línea sobra.
 a6bb95442afacd2af1774445eb5b3f78bd173104:backend/tests/integracion/test_gastos.py:generic-api-key:120
+# El informe del auditor del 3d cita ese mismo texto al explicar el hallazgo (30/10/2026).
+64ab39ec5702932df09eaaabec629721caf53bee:openspec/changes/pulido-2/informes/verify-2-auditor.md:generic-api-key:61
