@@ -20,7 +20,10 @@ módulos).
   ubicación/edificio, desactivar un grupo y el selector encadenado. **Este archivo se coordina con
   Emiliano antes de tocarlo** (ver Gobernanza).
 - **Ayuda del resumen** (`web/src/app/edificios/[id]/ayuda.ts`): "0 de 6 pasos … 2 de 6" pasa a 7
-  pasos, que es el flujo real desde el 3c.
+  pasos, que es el flujo real desde el 3c, con los números que da la API real: un edificio recién
+  creado arranca en "4 de 7" y, tras unidades y coeficientes, queda en "6 de 7" (corregido el
+  30/10/2026 por el hallazgo F4 del rompedor, `informes/verify-1-breaker.md`; antes decía "0 de 7 …
+  2 de 7", que era falso).
 - **Orden de los pisos** (`web/src/lib/pisos.ts`, `vocabularioDePisos`): la lista de la unidad pasa a
   `SS<N>`…`SS1`, `PB`, `1`…`<pisos>` (orden de altura, `SS1` pegado a `PB`). El test del escenario
   "Elegir el piso de la lista del edificio" (`unidades/Pantalla.test.tsx:511-531`) hoy fija el orden

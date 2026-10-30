@@ -35,8 +35,13 @@ muestra la pantalla.
 #### Scenario: Ejemplo de la ayuda
 
 - **WHEN** el titular abre la ayuda del resumen de un edificio
-- **THEN** el ejemplo habla de un edificio que arranca en "0 de 7 pasos" y de una barra que avanza a
-  "2 de 7", y ningún texto de la ayuda dice "de 6"
+- **THEN** el ejemplo habla de un edificio recién creado que arranca en "4 de 7 pasos" (ubicación,
+  grupos, categorías e intereses y vencimiento ya hechos al crearlo) y de una barra que, después de
+  cargar las unidades (con su piso) y sus coeficientes, queda en "6 de 7", y ningún texto de la
+  ayuda dice "de 6"
+- **AND** esos números son los que da hoy el cálculo real de pasos de la puesta a punto
+  (`lectura.py`, fijado por `test_resumen_puesta_a_punto.py::test_edificio_recien_creado`); el test
+  de la ayuda exige sólo el texto, y la sincronía automática con ese cálculo queda como deuda
 
 ### Requirement: La raíz del sitio no es un marcador de posición
 

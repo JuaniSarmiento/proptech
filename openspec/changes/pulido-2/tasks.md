@@ -23,6 +23,11 @@
 
 - [x] 4.1 Test rojo en el test de la pantalla del resumen que afirme que el texto de `AYUDA_RESUMEN` no contiene "de 6" y contiene "de 7". Verificación: falla con el texto actual.
 - [x] 4.2 Corregir `ayuda.ts` ("0 de 7 pasos", "2 de 7") y verificar que 4.1 pasa.
+- [x] 4.3 Corregir el ejemplo de la ayuda a 4 de 7 / 6 de 7 (hallazgo F4 del rompedor, `informes/verify-1-breaker.md`), con test rojo primero. Archivos: `web/src/app/edificios/[id]/ayuda.ts` (`AYUDA_RESUMEN.ejemplo`) y su test (puede partir de `ayuda.rompedor-3d.test.tsx`, que el rompedor dejó en rojo). El test de la 4.1, `web/src/app/edificios/[id]/ayuda.test.ts:14-16`, hoy afirma "0 de 7 pasos" y "2 de 7": hay que reescribirlo para que exija "4 de 7" y "6 de 7". Verificación: el test afirma "4 de 7" y "6 de 7" y ningún "0 de 7"/"2 de 7"/"de 6" (sólo el texto, opción (a) de PR2-1; los números son los del backend vigente, `lectura.py:250-264`, `test_resumen_puesta_a_punto.py:32-48`, y el "6 de 7" supone unidades con piso); se ve fallar con el texto actual y pasar con el corregido (escenario "Ejemplo de la ayuda", reescrito el 30/10/2026). La 4.2 queda superada por esta.
+  - Evidencia (constructor intento 1, `informes/apply-1-constructor.md`). Baseline 12:19:30 (`pnpm exec vitest run` de los 5 archivos enfocados sobre `b1ec660` + diff sin commit): 5 failed (RB3D-1 x2, RB3D-2, RB3D-3, RB3D-4) / 56 passed.
+  - RED 12:20:00: `pnpm exec vitest run "src/app/edificios/[id]/ayuda.test.ts" "src/app/edificios/[id]/ayuda.coherencia.test.tsx"` -> 2 failed / 2 passed. `ayuda.test.ts`: `expected 'Un edificio recién creado arranca en …' to contain 'arranca en 4 de 7 pasos'`; RB3D-4: `expected '0 de 7 pasos' to be '4 de 7 pasos'`. Por aserción.
+  - GREEN 12:20:09: `pnpm exec vitest run "src/app/edificios/[id]/"` -> 23 archivos, 136 passed. Commit `b5d7cbb`.
+  - `ayuda.test.ts` exige "arranca en 4 de 7 pasos", "6 de 7" y ningún `\b[02] de 7\b`; el test de "de 6" se conserva. RB3D-4 reubicado (no duplicado) en `ayuda.coherencia.test.tsx`: compara el arranque con la barra renderizada.
 
 ## 5. Día de vencimiento fuera de rango (escenario "Día 31")
 
@@ -54,3 +59,41 @@
 - [x] 10.2 Pasada que rompe y audita (un agente con los dos trabajos, tope de 3 vueltas, D-092): casos borde de cada tarea, regresiones en pantallas vecinas, dependencias de `api-falsa.ts`. Cada hallazgo vuelve como test antes del arreglo. Informe en EVIDENCIA / JUICIO / SUPUESTOS.
 - [ ] 10.3 Armar la descripción del PR con: qué cambia, por qué (C-22 / D-130), cómo se probó, lo que el rompedor intentó y su resultado, pendientes, y la corrección de la ficha (orden de pisos, CSP ya con e2e, día 29 ya cubierto). La corrida de cierre va después de la última vuelta (D-092). No se hace commit, push ni PR sin que Gianfranco lo confirme.
 - [ ] 10.4 Al archivar: actualizar `12_fichas_de_changes.md`, `CHANGES.md` (C-22 a `[x]`), agregar la decisión a `09_decisiones_y_supuestos.md` y, si corresponde, la lección a `15_lecciones.md`.
+
+## 11. Correcciones del rompedor (intento 1)
+
+Origen: `informes/verify-1-breaker.md` (revisión `b1ec660`). Cada una entra por TDD: test rojo por aserción primero (los RB3D-1 a RB3D-3 del rompedor sirven de punto de partida), después el arreglo mínimo. F4 va en la 4.3.
+
+- [x] 11.1 F1: un `PATCH` sin cuerpo a `/complejos/{id}` o a `/grupos/{id}` en la API falsa (`web/e2e/api-falsa.ts`) responde 422, como la real (`422 missing loc ["body"]`), en lugar de 200. Sólo el cuerpo vacío o que no es JSON pasa a 422: un `PATCH` con `{}` sigue dando 200, porque todos los campos son opcionales también en la real (`api-falsa.patch-georef.test.ts:59-62` se conserva). Verificación: RB3D-1 rojo antes del arreglo y verde después; los `POST` existentes siguen igual (`api-falsa.test.ts`).
+  - RED 12:21:17: `pnpm exec vitest run e2e/api-falsa.patch-georef.test.ts` -> 4 failed / 25 passed: los dos "sin cuerpo da 422 missing en body" (`expected 200 to be 422`), F2 (`expected 200 to be 422`) y F3 (lista de 4 nombres distintos). RB3D-1 a RB3D-3 integrados en este archivo; `api-falsa.rompedor-3d.test.ts` borrado (sin commit previo).
+  - GREEN 12:21:38: `pnpm exec vitest run e2e/api-falsa.patch-georef.test.ts e2e/api-falsa.test.ts` -> 62 passed (los POST de `api-falsa.test.ts` sin cambios). Commit `ef1d8e9`.
+  - Bordes nacidos verdes (no JSON -> 422 json_invalid en las dos rutas; `{}` -> 200 en las dos), probados con mutantes revertidos (12:22:01 a 12:22:17): M-B1 grupos catch -> `parseado = {}` rojo; M-B2 complejos catch -> `cuerpoParseado = {}` rojo (`expected 200 to be 422`; un primer intento de M-B2 cayó por timeout y se descartó por no ser aserción); M-B3/M-B4 rechazar también `{}` rojo en los tests de `{}` (incluido el original de las líneas 59-62).
+- [x] 11.2 F2: `PATCH /api/grupos/{id}` con un id que no es UUID responde 422 (`uuid_parsing`) en la API falsa, como la real. Verificación: RB3D-2 rojo antes y verde después.
+  - RED 12:21:17 (misma corrida que 11.1): `PATCH /api/grupos/no-es-uuid da 422 uuid_parsing en el path` -> `expected 200 to be 422`.
+  - GREEN 12:21:38: 62 passed. El detalle es `[{type:"uuid_parsing", loc:["path","grupo_id"]}]`. Borde: UUID en mayúsculas -> 200 (nació verde; mutante M-B5 quitar la `i` del patrón 12:22:09 -> rojo; revertido). Límite declarado en el comentario: la falsa sólo acepta la forma con guiones.
+- [x] 11.3 F3: los nombres de provincias, departamentos y localidades que simula la API falsa coinciden con `config/georef/` para los mismos ids (`50028` Guaymallén, `50028010` Colonia Segovia, `06028`/`06028010` Almirante Brown). Verificación: RB3D-3 rojo antes y verde después; si RB3D-3 no lee `config/georef/`, el constructor agrega una aserción que compare cada nombre simulado con ese archivo para el mismo id.
+  - RED 12:21:17: `expected [ …(4) ] to deeply equal []`: `departamento 50028: Godoy Cruz`, `localidad 50028010: Godoy Cruz`, `departamento 06028: Adolfo Alsina`, `localidad 06028010: Carhué`.
+  - GREEN 12:21:38: 62 passed. El test lee `config/georef/{provincias,departamentos,localidades}.json` y compara nombre y padre (`provincia_id`, `departamento_id`) de cada fila simulada, también las provincias.
+- [x] 11.4 F5 (L-027): el test del `PATCH` de edificio en `web/e2e/api-falsa.patch-georef.test.ts` falla si se quita la rama `PATCH` de `api-falsa.ts` (mutante A1 del rompedor), por ejemplo con `toEqual` exacto o un id distinto del de `edificio.json`. Verificación: aplicar A1 a mano, ver el test rojo por aserción, revertir y verlo verde; el mutante no se entrega.
+  - Mutante A1 antes de endurecer (12:22:24): `if (metodo === "PATCH" && resto === "")` -> `if (false)`: 62 passed (sobrevive, confirma F5). Revertido.
+  - Cambio del test: `toMatchObject({ id: EDIFICIO })` -> `toEqual({ id: EDIFICIO })`.
+  - RED con A1 (12:22:37): `un cambio válido de nombre y ubicación responde 200 con el id` -> `expected { …(10) } to deeply equal { Object (id) }` (recibe el fixture `edificio.json`). Revertido (`diff -q` contra la copia: idéntico).
+  - GREEN sin mutante (12:22:37): 62 passed. Commit `ef1d8e9`; el mutante no se entrega.
+- [x] 11.5 F6 (documental): corregir en los comentarios de `web/e2e/api-falsa.ts` las referencias a `complejos.py:330`/`:494` y a `editar_edificio`/`editar_grupo` por `modificar_edificio` (`complejos.py:342`) y `modificar_grupo` (`complejos.py:506`). Verificación: `rg -n "complejos.py:" web/e2e/api-falsa.ts` sólo muestra líneas vigentes en la revisión entregada; sin RED/GREEN de código (es sólo comentario).
+  - Validación documental (sin RED/GREEN de código), 12:23:00: se corrigieron las nueve citas de `complejos.py:` del archivo (no sólo las dos del plan: las otras siete también eran viejas y el criterio exige que todas sean vigentes). Cada una apunta al decorador `@router` de la función nombrada, comprobado con `awk` sobre `backend/src/proptech_api/complejos.py`: ver_complejo 363, modificar_edificio 342, resumen_edificio 318, vigente_del_edificio 612, alta_unidad 423, alta_grupo 485, alta_categoria 556, modificar_grupo 506 (dos veces), alta_version 635. `rg -n "editar_edificio|editar_grupo" web/e2e/api-falsa.ts` -> sin resultados. Commit `ef1d8e9`.
+
+### Decisiones y deuda de la revisión del plan (intento 2)
+
+- PR2-1 (`informes/propose-2-plan-reviewer.md`): se elige la opción (a), la de menor alcance (decisión del orquestador, 30/10/2026). El escenario "Ejemplo de la ayuda" exige sólo el texto "4 de 7 / 6 de 7" y que no diga "de 6"; el "6 de 7" supone unidades con piso.
+- DEUDA: la ayuda no se sincroniza automáticamente con el cálculo de pasos de `lectura.py`; si ese cálculo cambia, el texto puede quedar desactualizado sin que ningún test lo detecte. Destino: C-26 `pulido-web-3`.
+
+## Estado de la revisión independiente (orquestador, 30/10/2026)
+
+- Motivo: la 10.2 la hizo un solo agente que rompía y auditaba a la vez; no hay informes en la rama. Juani pidió rompedor, constructor si rompe, y auditor, antes de mergear el PR #3.
+- Rol activo: rompedor (role-breaker, subagente nativo de Claude). Intento 1.
+- Revisión: `b1ec660` (diff `e29e36d...b1ec660`, 27 archivos). CI verde en `b1ec660` (run 40790724706: backend, humo, secretos, shellcheck, web).
+- Informes: `informes/verify-1-breaker.md`.
+- Bloqueos abiertos: 1.2 (aviso a Emiliano), 8.2 (navegador real), 9.x (confirmar la raíz con Juani), orden de pisos contra la ficha.
+- Próximo paso: rompedor; si reproduce fallas, constructor por TDD; después auditor.
+- 30/10/2026 12:20: rompedor intento 1 terminó con F1 a F6 reproducidas (`informes/verify-1-breaker.md`). Plan corregido por el planner (subagente nativo) y revisado en dos vueltas (`informes/propose-2-plan-reviewer.md`: APTO PARA CONSTRUIR). Rol activo: constructor (role-constructor, subagente nativo), intento 1, tareas 4.3 y 11.1 a 11.5 sobre `b1ec660` más el diff sin commit. Próximo: rompedor intento 2 sobre el diff del constructor, después auditor.
+- 30/10/2026 12:25: constructor intento 1 terminó 4.3 y 11.1 a 11.5 (`informes/apply-1-constructor.md`). Commits `b5d7cbb` (4.3) y `ef1d8e9` (11.x) sobre `b1ec660`. Corrida completa sobre `ef1d8e9`: `pnpm test` 12:23:26 -> 85 archivos, 595 passed, exit 0; `pnpm typecheck` 12:24:27 -> exit 0; `pnpm lint` (biome ci) 12:24:35 -> exit 0, 7 warnings y 6 infos, ninguno en archivos tocados. No corridos: Playwright (juez: CI, L-050) ni pytest (no se tocó el backend). Rol activo siguiente: rompedor intento 2 sobre `e29e36d...` HEAD de `revision-3d`, después auditor.
