@@ -334,11 +334,16 @@ reemplazó por D-106 en el 2.2a y el método de login por D-107 en el 2b.
   fallos):
   - Repetir con Clerk real "Usar otra cuenta" con una cuenta **nueva** (sin cuenta previa en Clerk)
     después del arreglo `cfb99ce`, entrando como contador — la verificación 8.2 e sólo cubrió el caso
-    con una cuenta que ya existía en Clerk.
+    con una cuenta que ya existía en Clerk. **Corrección del 30/10/2026 (D-138)**: fue al revés. En la
+    8.2 e la cuenta B **no** tenía cuenta en Clerk, el camino falló y de ahí salió la Enmienda E10
+    (D-137). Lo que no se repitió es ese mismo camino después del arreglo `cfb99ce`. El caso de una
+    cuenta que ya existe en Clerk sigue sin probar (SU-01).
   - 5.4: el recorrido del `README` ("Entrar con el edificio de ejemplo") por Emiliano o Gianfranco.
   - El aspecto visual del recuadro de Clerk en `/ingresar` (no desborda, pero se ve como tarjeta
     dentro de tarjeta, encabezado cortado y placeholder truncado) — **propuesta, no decisión**: parece
-    encajar en un change de pulido web, como el `3d · pulido-2`.
+    encajar en un change de pulido web, como el `3d · pulido-2`. Cambio: **C-26 `pulido-web-3`**
+    (D-138, 30/10/2026); antes: propuesta de un change de pulido web, sin dueño (el PR #3 del 3d no
+    toca `ingresar/`).
   - "Gestionar" el personal de abajo desde `/personal` (D-127, D-135): queda abierta, ver
     `10_preguntas_abiertas.md` P71.
 - **Gobernanza**: CRITICAL (toca `acceso`, D-094/D-111).
@@ -584,7 +589,8 @@ ser una. Objetivo común: que el administrador cree un edificio y lo configure c
   **Deuda nueva, confirmada por la regresión del 27/10/2026** (`.git/informes-regresion/03-edificio.md`,
   `04-plata.md`; repartida por D-130): el paso "ubicación" del checklist, ya sin botón (eso sí se
   corrigió en 7.1), sigue mostrando el texto "Completar la ubicación" aunque esté "Hecho"
-  (`web/src/app/edificios/[id]/Pantalla.tsx:58,166-178`) — decisión pendiente del usuario, dueño 15; la
+  (`web/src/app/edificios/[id]/Pantalla.tsx:58,166-178`) — decisión pendiente del usuario, dueño 15
+  (pasa al **C-26 `pulido-web-3`**, D-138, 30/10/2026; antes: 15); la
   API falsa de e2e, la ayuda "0 de 6 pasos", el orden de `vocabularioDePisos`, la clave inválida sin
   test de punta a punta, la CSP/nonce sin test y el día 31 de vencimiento pasan al change nuevo **`3d ·
   pulido-2`** (D-130); el mutante de la Enmienda E11 (RE11-02) y el resto de los hallazgos de PR #2 ya
@@ -757,15 +763,15 @@ dice.
 |---|---|---|
 | RB-4: el mutante que saca `WHERE t.schemaname='public'` de `verificar_tablas_de_solo_agregar` sobrevive; el test de la tabla homónima pasa por el orden del catálogo, no por el filtro | **Cerrada en el 4b** (tasks.md 1.3): tabla homónima creada antes **y** después que la de `public`, mutante rojo en los dos órdenes | — |
 | RB-5: el mutante que no registra `modo_de_coeficientes` en `campos` de `fijar_unidades` sobrevive (la mitad "unidades" ya se cerró en el 4a, commit `9e62bc6`); tampoco se registra qué unidades entran o salen de un grupo `renormalizado` | Los coeficientes sí se registran; falta el nombre del campo. Reconfirmado abierto por la regresión del 27/10/2026 (`.git/informes-regresion/04-plata.md`: mutante aplicado en `grupos.py:345-346`, 43 passed con el mutante puesto) | **Confirmado: 6** (`gastos-y-cargos`, Emiliano), D-130. El 3c no tocó este punto de `grupos.py` |
-| RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | **Sin consumidor todavía**: el 4b agregó `test_deuda_4a.py`/`test_deuda_4a_umbral.py` (tasks.md 5.1, commit `4164aa2`), pero el auditor final del 4b nota que **ningún revisor independiente los abrió**, sólo los mutantes del propio constructor (`16-auditor-final.md`, Chequeo 3/5) | 4c, primer consumidor real (interés). Tests existen; falta su revisión independiente |
-| RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Igual que RB-6: cubierta por `test_deuda_4a.py` del 4b, sin revisión independiente confirmada | 4b, cerrada con la misma salvedad que RB-6 |
+| RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | **Sin consumidor todavía**: el 4b agregó `test_deuda_4a.py`/`test_deuda_4a_umbral.py` (tasks.md 5.1, commit `4164aa2`), pero el auditor final del 4b nota que **ningún revisor independiente los abrió**, sólo los mutantes del propio constructor (`16-auditor-final.md`, Chequeo 3/5). **Corrección del 30/10/2026 (D-138)**: lo de que esos tests cubren RB-6 es falso. Ni `test_deuda_4a.py` ni `test_deuda_4a_umbral.py` prueban `redondear_al_centavo`, `4164aa2` no tocó `reparto.py` y `test_reparto.py:34-39` llega sólo hasta `999999999999.995`: ningún test prueba \|valor\| ≥ 1e30. El defecto sigue en `reparto.py:18` (el `quantize` fuera del `try`) | 4c, primer consumidor real (interés). Antes decía "Tests existen; falta su revisión independiente"; corregido el 30/10/2026 (D-138): no hay test, y el 4c tiene que escribirlo y verlo fallar antes de envolver el `quantize` |
+| RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Igual que RB-6: cubierta por `test_deuda_4a.py` del 4b, sin revisión independiente confirmada | 4b, cerrada con la misma salvedad que RB-6. **Cerrada** (verificación del 30/10/2026, D-138): revisión independiente **estática**, sin correr mutantes; `dinero.py:54-56` usa `localcontext` con prec 32 y `test_deuda_4a.py:12-22` corre con prec=2, así que sacar el contexto haría fallar su aserción |
 | RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes | El mutante de vocabulario hace un trabajo equivalente (auditoría del apply) | — (se registra, no se reabre) |
-| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | **Corrido en el cierre del 4b** (`PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` → `ENSAYO ROLES OK`, proyecto aislado, tasks.md línea 547) | Sigue sin entrar al CI; dueño: quien lo agregue al workflow |
-| El mensaje del ensayo `ciclo 0018/0016/0018` ya no es verdad (14-auditor-final) | Es texto de salida; el ensayo hace lo correcto | Quien toque `ensayo-roles.sh`. Dueño propuesto, no confirmado por Juani |
-| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | **Reaparece en el 4b** como L-047 (`knowledge-base/15_lecciones.md`): `humo.sh` fija `-p proptech` e ignora la variable; el cierre del 4b lo esquivó con un envoltorio externo. Reconfirmado por la regresión del 27/10/2026 (`01-infraestructura.md`/`04-plata.md`): `restaurar.sh:46` ya respeta la variable por diseño, pero `infra/ci/humo.sh:40` sigue hardcodeando `-p proptech` | **Confirmado: 15** (piloto), D-130 |
-| Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
-| Revisión del propose, deuda aceptada del design: AR-5 (mover `ejemplo.py` a una raíz de composición), AR-7 (las reglas de fronteras miran sólo imports directos), AR-9 (dirección de los eventos); DB-2 (comparar el esquema de `0020` con `pg_dump -s` o `information_schema`, no con `pg_attribute` crudo); AN-7 y AN-9 | Escritas en el design (D4, D9) y en las specs | AR-5: quien toque `ejemplo.py`; el resto, sin dueño. Propuesto, no confirmado por Juani |
-| QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | **QA-15 cerrada en el 4b** (tasks.md 1.3: función de bloqueo con otro dueño y función con el texto de otra tabla, rojas en `despues()`). **QA-6, QA-7, QA-9, QA-12, QA-14**: cubiertas por `test_deuda_4a.py`/`test_deuda_4a_umbral.py` del 4b (5.1, `4164aa2`), con la misma salvedad que RB-6/RB-7: sin revisor independiente que las haya abierto | 4b, cerrado salvo la revisión independiente pendiente |
+| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | **Corrido en el cierre del 4b** (`PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` → `ENSAYO ROLES OK`, proyecto aislado, tasks.md línea 547) | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: Sigue sin entrar al CI; dueño: quien lo agregue al workflow |
+| El mensaje del ensayo `ciclo 0018/0016/0018` ya no es verdad (14-auditor-final) | Es texto de salida; el ensayo hace lo correcto | Quien toque `ensayo-roles.sh`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d, `8c9514a` (`ensayo-roles.sh:233,245,253` dicen 0028/0016/0028, la cabeza real). La familia (cabeza escrita a mano) sigue viva y va al C-23 junto con el ensayo en el CI |
+| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | **Reaparece en el 4b** como L-047 (`knowledge-base/15_lecciones.md`): `humo.sh` fija `-p proptech` e ignora la variable; el cierre del 4b lo esquivó con un envoltorio externo. Reconfirmado por la regresión del 27/10/2026 (`01-infraestructura.md`/`04-plata.md`): `restaurar.sh:46` ya respeta la variable por diseño, pero `infra/ci/humo.sh:40` sigue hardcodeando `-p proptech` | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: **Confirmado: 15** (piloto), D-130 |
+| Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
+| Revisión del propose, deuda aceptada del design: AR-5 (mover `ejemplo.py` a una raíz de composición), AR-7 (las reglas de fronteras miran sólo imports directos), AR-9 (dirección de los eventos); DB-2 (comparar el esquema de `0020` con `pg_dump -s` o `information_schema`, no con `pg_attribute` crudo); AN-7 y AN-9 | Escritas en el design (D4, D9) y en las specs | AR-7 y DB-2: **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: AR-5: quien toque `ejemplo.py`; el resto, sin dueño. Propuesto, no confirmado por Juani |
+| QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | **QA-15 cerrada en el 4b** (tasks.md 1.3: función de bloqueo con otro dueño y función con el texto de otra tabla, rojas en `despues()`). **QA-6, QA-7, QA-9, QA-12, QA-14**: cubiertas por `test_deuda_4a.py`/`test_deuda_4a_umbral.py` del 4b (5.1, `4164aa2`), con la misma salvedad que RB-6/RB-7: sin revisor independiente que las haya abierto | 4b, cerrado salvo la revisión independiente pendiente. **Cerrada** (verificación del 30/10/2026, D-138): revisión independiente **estática**, sin correr mutantes; cada aserción distingue su mutante (QA-6 y QA-7 en `test_deuda_4a.py:25-56`, QA-9 en `test_deuda_4a_umbral.py:16-47`, QA-12 en `test_detalle_padron.py:24-37`, QA-14 en `test_propiedad_protegida.py:87-122`) |
 
 **Nota sobre la salvedad "sin revisión independiente" (RB-6, RB-7, QA-6, QA-7, QA-9, QA-12, QA-14)**: el
 auditor final del 4b revisó contra el diff completo (`git diff 84badd1..8d25bd6 --stat`, 77 archivos) y
@@ -773,7 +779,10 @@ listó estos tests entre lo que "nadie miró salvo con los mutantes del construc
 corren verdes; lo que falta es que alguien distinto de quien los escribió los haya leído. No se marcan
 "cerrados sin más" para no repetir el patrón que esta misma tabla señala en L-012. **Decisión D-130
 (28/10/2026)**: esta revisión independiente no pasa a un change con fecha fija — la absorbe el
-rompedor del primer change que toque esta zona de código, cuando la toque.
+rompedor del primer change que toque esta zona de código, cuando la toque. **Actualización del
+30/10/2026 (D-138)**: la revisión independiente se hizo en forma estática, sin correr mutantes, y
+cierra RB-7, QA-6, QA-7, QA-9, QA-12 y QA-14 (ver sus filas). RB-6 no entra en ese cierre: no tiene
+test (ver su fila corregida) y sigue con el 4c.
 
 #### 4b · `libro-de-movimientos` · CRITICAL · archivado 27/10/2026 (D-121 a D-126)
 
@@ -810,13 +819,13 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 
 | Deuda | Qué falta | Cambio |
 |---|---|---|
-| Mutante de RF-01 (replay de emisión, "un `foto` por cuenta" en `registrar_emision`) sin matar: el único mutante corrido (`03-mutante-anular-sin-bloquear.log`) da `..F`, RF-01 y RF-04 quedan en verde | Escribir y correr el mutante que vuelve a publicar más de una foto por cuenta. Reconfirmado abierto dos veces por la regresión del 27/10/2026 (`04-plata.md` y `05-pasada3-codex.md`: mutante aplicado en `emisiones.py:224`, 3 passed con el mutante puesto) | **Confirmado: 4c** (`intereses-saldo-inicial-y-moroso`), D-130, primer consumidor real de `registrar_emision` con intereses |
+| Mutante de RF-01 (replay de emisión, "un `foto` por cuenta" en `registrar_emision`) sin matar: el único mutante corrido (`03-mutante-anular-sin-bloquear.log`) da `..F`, RF-01 y RF-04 quedan en verde | Escribir y correr el mutante que vuelve a publicar más de una foto por cuenta. Reconfirmado abierto dos veces por la regresión del 27/10/2026 (`04-plata.md` y `05-pasada3-codex.md`: mutante aplicado en `emisiones.py:224`, 3 passed con el mutante puesto). **Nota del 30/10/2026 (D-138)**: el test actual no puede matar este mutante. `test_cc_anulacion_candado.py:121-149` lanza la anulación tras la primera foto, pero `registrar_emision` ya tomó los candados (`emisiones.py:193`) y `anular_emision` espera por ellos (`:265`), así que la anulación queda frenada igual con una foto o con varias. El 4c necesita otra aserción (por ejemplo, contar las llamadas a `fotos` o un escritor sin candado), no volver a correr la misma | **Confirmado: 4c** (`intereses-saldo-inicial-y-moroso`), D-130, primer consumidor real de `registrar_emision` con intereses |
 | Test de RF-02 en la forma contra-asiento: sólo se probó en la forma crédito (`test_cc_anulacion_candado.py:184`) | Agregar el caso contra-asiento al mismo test (existe el helper `contra(...)` en `test_cc_correcciones.py`, nunca llamado desde `test_rf02_...`). Reconfirmado abierto por la regresión del 27/10/2026 (`04-plata.md`) | **Confirmado: 4c** (`intereses-saldo-inicial-y-moroso`), D-130 |
-| El registro de RF (los tres commits 447b8e5, 8496f00, 8d25bd6) no quedó en `tasks.md`, y ninguno de los tres lo revisó un rompedor o revisor distinto del constructor | Completar el registro o, si no se completa, que quien lo use sepa que esos tres commits están sin revisar | Orquestador, al cerrar un ciclo con RF. Sin dueño de cambio: es higiene de proceso |
-| Ficha del 7: `anular_emision` tiene que tomar los candados de las cuentas de su emisión antes de escribir (igual que las demás escrituras del libro, E2) | Construir esa toma de candado en el 7 | **7**, ya anotado arriba en su ficha y en D-124 |
+| El registro de RF (los tres commits 447b8e5, 8496f00, 8d25bd6) no quedó en `tasks.md`, y ninguno de los tres lo revisó un rompedor o revisor distinto del constructor | Completar el registro o, si no se completa, que quien lo use sepa que esos tres commits están sin revisar | La revisión de los tres commits: **C-28 `revisiones-independientes`** (D-138, 30/10/2026); el registro en `tasks.md` sigue siendo higiene del orquestador. Antes: Orquestador, al cerrar un ciclo con RF. Sin dueño de cambio: es higiene de proceso |
+| Ficha del 7: `anular_emision` tiene que tomar los candados de las cuentas de su emisión antes de escribir (igual que las demás escrituras del libro, E2) | Construir esa toma de candado en el 7 | **7**, ya anotado arriba en su ficha y en D-124. **Cerrada** (verificación del 30/10/2026, D-138): ya está en `main`, `447b8e5`; `emisiones.py:265` llama a `bloquear_cuentas(...)` antes del `INSERT` del evento. Falta sólo la revisión independiente de ese commit (C-28) |
 | D8 (crédito de corrección sobre una emisión anulada): Juani la anotó como deuda que bloquea el 7 en vez de resolverla ahora (opción c) | Decidir retenido (como E16) o a favor (como un pago) antes de construir `anular_emision`. Reconfirmada por la regresión del 27/10/2026 (`04-plata.md`): sigue sin caller en producción (`rg "anular_emision" backend/src/proptech_api backend/src/proptech_worker` sin resultado), así que no explota hoy | **7**, D-123; no se construye la anulación sin decidir esto |
-| RB4B-01, CX-01 y CX-02 (bloqueantes del rompedor de fases 1-3) arreglados en HEAD pero revisados sólo por el auditor, nunca por un rompedor independiente de ese arreglo puntual. Reconfirmado sin pasada nueva por la regresión del 27/10/2026 (`04-plata.md`: "nadie corrió una pasada de rompedor nueva desde el 16-auditor-final") | Una pasada de rompedor sobre los tres arreglos, antes de confiar en ellos para el 7 | Quien abra el 7; revisar antes de depender de `imputado_por_credito` y el candado de `registrar_emision`. **D-130**: la absorbe el rompedor del 7 cuando toque esta zona |
-| El auditor final no revisó código: "yo no reviso código, así que ese hueco sigue abierto" sobre el cierre de RF | Una revisión de código real (no documental) de 447b8e5, 8496f00 y 8d25bd6 | Quien abra el 7, como parte de leer qué recibe hecho. **D-130**: la absorbe el rompedor del 7 |
+| RB4B-01, CX-01 y CX-02 (bloqueantes del rompedor de fases 1-3) arreglados en HEAD pero revisados sólo por el auditor, nunca por un rompedor independiente de ese arreglo puntual. Reconfirmado sin pasada nueva por la regresión del 27/10/2026 (`04-plata.md`: "nadie corrió una pasada de rompedor nueva desde el 16-auditor-final") | Una pasada de rompedor sobre los tres arreglos, antes de confiar en ellos para el 7 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7; revisar antes de depender de `imputado_por_credito` y el candado de `registrar_emision`. **D-130**: la absorbe el rompedor del 7 cuando toque esta zona |
+| El auditor final no revisó código: "yo no reviso código, así que ese hueco sigue abierto" sobre el cierre de RF | Una revisión de código real (no documental) de 447b8e5, 8496f00 y 8d25bd6 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7, como parte de leer qué recibe hecho. **D-130**: la absorbe el rompedor del 7 |
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
@@ -935,7 +944,9 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   tarea, no la `COTA_OPERACION_S` genérica del 1c. También quedan a cargo de este cambio, sin ser
   bloqueantes: F12b (el `sys.excepthook` del worker no cubre una excepción de terceros envuelta por
   otra capa) y que `repr(RedisSettings)` no muestre la contraseña (no se demostró que llegue a un log,
-  pero tampoco está resuelto).
+  pero tampoco está resuelto). **Actualización del 30/10/2026 (D-138)**: F2c y F12b pasan al **C-25
+  `worker-y-logs`** y `repr(RedisSettings)` al **C-29 `base-y-rls`**; F2c sigue siendo bloqueante del
+  7 hasta que el C-25 lo cierre.
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
 - **Decidir en el design** (y en su explore): la frontera de la transacción; **qué pasa si falla el
@@ -1197,6 +1208,9 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 - **Deuda del 2c con dueño este cambio** (D-101): ver "Deuda del cierre del 2c" más abajo. Lo grueso:
   el proxy con `https://` y la 308, el humo que compara políticas de RLS por conteo, el log a todo nivel,
   la lista de servicios escrita a mano y los `exit 1` del humo sin línea.
+- **Actualización del 30/10/2026 (D-138)**: la deuda del 1d de arriba pasa al **C-24 `respaldos-2`**;
+  la del 2a, al **C-29 `base-y-rls`**; la del 2c, al **C-23 `humo-y-ci`**, salvo HSTS con el dominio
+  real y las imágenes por digest en un registro, que siguen acá. Ver las tablas de deuda de más abajo.
 - **Depende de**: todos los anteriores y los datos del piloto (P1).
 - **Bloqueado por**: P1 (el edificio piloto), P12 y el contenido legal del aviso de `/privacidad`
   (Juani y Alberto, D-130; sin ese texto aprobado no se opera con el edificio real).
@@ -1211,6 +1225,266 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 
 ---
 
+## Deuda adelantada (D-138)
+
+Siete changes que juntan la deuda viva de los archivados, verificada en forma estática contra `main`
+`e29e36d` el 30/10/2026 (lectura de código y `git log`, sin correr tests, mutantes ni docker), con
+plan aprobado por Juani el mismo día (D-138). Todos dependen sólo de changes archivados, así que se
+pueden proponer ya, y ninguno toca el camino crítico. Supuesto de planificación: el PR #3 (3d) y el PR
+#4 (6) se dan por listos, aunque siguen sin mergear. Cada ítem conserva su ID y su ficha de origen; las
+tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño anterior.
+
+### 2e · `humo-y-ci` · MEDIUM · pendiente (D-138, 30/10/2026) · C-23
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda del humo, de Caddy y del CI
+> que tenía como dueño el 15 o "quien toque" un archivo, verificada contra `main` `e29e36d` el
+> 30/10/2026. La construye **Gianfranco**.
+
+- **Objetivo**: que el humo y el CI distingan lo que dicen distinguir, y que el ensayo de roles deje de
+  quedar viejo con cada migración nueva sin que nadie lo vea.
+- **Entra**:
+  - C2V2-1 (2c), sólo la parte que se puede fijar sin dominio: un test o una declaración de qué
+    devuelve hoy el 443 con un `Host` ajeno y la 308 de http a https (`infra/Caddyfile`: el sitio de
+    respaldo es sólo `:80`, sin bloque 443 ni HSTS).
+  - C2V2-2 (2c): el test del log captura sólo ERROR de un logger
+    (`backend/tests/unitarios/test_worker_tenant.py:58`).
+  - C2V2-3 (2c): el humo compara la cantidad de políticas de RLS de la base restaurada, no su
+    contenido (`infra/ci/humo.sh:775-800`).
+  - C2V2-6 (2c): nada fija el `respond 421` del sitio de respaldo (ningún `421` en `humo.sh` ni en
+    `backend/tests/infra`).
+  - C2V2-7 (2c): la lista de servicios del chequeo de capacidades está escrita a mano
+    (`humo.sh:341-348`, ocho llamadas fijas a `verificar_privilegios`).
+  - C2-5 y C2V2-8 (2c): los 22 `exit 1` e `if !` del humo sin línea ni comando.
+  - C2-7 (2c): la carrera del conteo de `.dump` en el segundo `up` (`humo.sh:84-92`).
+  - C2-8 (2c): `arranque_fallido` sin base inalcanzable ni `parametros.yaml` mal formado
+    (`proptech_api/app.py:60`, `leer_parametros` sin `try`; `:103-105` no atrapa `OperationalError`).
+  - N2 (2c): con la `api` pausada, Caddy no responde en 100 s (`reverse_proxy` sin timeout en el
+    `Caddyfile`).
+  - N9 (2c): la nota del PID 1 de `db` visto rojo sólo con `init: true`.
+  - N-a (2c): el verificador de cabeceras acepta duplicados y valores sin límite de palabra
+    (`humo.sh:391-392` y `:402-405`).
+  - N-b (2c): el rojo falso del test del log con "123" (`test_worker_tenant.py:37` y `:90-99`).
+  - `infra/ci/humo.sh:40` con `-p proptech` fijo, que ignora `PROPTECH_COMPOSE_PROYECTO` (4a, L-047).
+  - `infra/ci/ensayo-roles.sh` al CI (4a, L-043), con la cabeza de migración derivada y no escrita a
+    mano: ya se desfasó dos veces (`8c9514a` y `484eb1b`). Hoy `.github/workflows/ci.yml` no lo corre.
+  - Caché de Chromium en el job `web` del CI (4a, L-044): `ci.yml:74` instala Chromium en cada
+    corrida, con `timeout-minutes: 25` (`:50`).
+  - Dependabot (auditorías del 13/10): no existe `.github/dependabot.yml`.
+- **No entra**: imágenes publicadas en un registro y fijadas por digest (quedan en el 15, necesitan el
+  servidor real); HSTS con el dominio real (15).
+- **Depende de**: 1d, 2c y 4a (archivados).
+- **Gobernanza**: MEDIUM: humo, CI y tests; no toca autenticación, plata ni datos de usuario.
+- **Terminado cuando**: cada ítem de "Entra" tiene un test o un chequeo que da rojo con el defecto
+  puesto, o una declaración escrita cuando no se puede fijar sin dominio (C2V2-1); `ensayo-roles.sh`
+  corre en el CI y toma la cabeza de migración de las migraciones reales; `humo.sh` respeta
+  `PROPTECH_COMPOSE_PROYECTO`; Dependabot está configurado.
+
+### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de respaldos y
+> restauración que el 1d, el 2a, el 2b y el 3a dejaron con dueño el 15 o "DevOps", verificada contra
+> `main` `e29e36d` el 30/10/2026. La construye **Emiliano**.
+
+- **Objetivo**: que el servicio `respaldos` y la restauración aguanten los casos que el 1d dejó
+  anotados, y que conmutar la aplicación a una base restaurada tenga un procedimiento con herramienta.
+- **Entra**:
+  - F4 (1d): con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7
+    (`infra/respaldos/respaldar.sh:82-125`, orden por nombre en `:101`).
+  - F5 (1d): `respaldos` ignora SIGTERM (`respaldar.sh` sin ningún `trap`).
+  - F6 (1d): un 503 puede salir sin `salud_degradada` (1 de 18). No se puede verificar en forma
+    estática: primero repetir la ráfaga del rompedor del 1d y, si se reproduce, arreglarlo.
+  - F8 (1d): líneas que no son JSON en el log de `respaldos` (`respaldar.sh:14`, `echo "error: $1"`
+    junto al `printf` JSON de `:68`).
+  - "14 copias no son 14 días" (1d): decidir si se documenta o se cambia la retención por cantidad
+    (`RESPALDO_CONSERVAR`, `respaldar.sh:49,109`).
+  - Procedimiento para conmutar la aplicación a una base restaurada (3a): `restaurar.sh` restaura
+    siempre en una base aparte y no hay script ni paso del README que conmute.
+  - Automatizar el `mkdir -p infra/datos-respaldos` (2b): hoy es un paso manual del README
+    (`README.md:58,68-71`).
+  - Volcado con el rol equivocado con `pg_dump` real (2a, regresión del 27/10/2026): hoy el test usa un
+    binario falso (`tests/infra/test_respaldos.py:905-940`, `FAKE_PG_DUMP_FALLA`) y sólo hay garantía
+    estática en `test_compose.py:510`.
+- **No entra**: la prueba de restauración con los datos del piloto, las métricas y alertas de un
+  respaldo fallido (OPS-3) y el deploy a producción (quedan en el 15).
+- **Depende de**: 1d, 2a, 2b y 3a (archivados).
+- **Gobernanza**: HIGH: necesita la firma escrita de Juani, Alberto o Emiliano antes de construir
+  (D-094, D-111). Emiliano es firmante y puede firmar su propio change: D-094 no exige que firme
+  otro (Alberto firma los suyos).
+- **Terminado cuando**: F4, F5 y F8 tienen un test que da rojo con el defecto; F6 está reproducido y
+  arreglado, o descartado con la ráfaga corrida y su salida; la decisión sobre "14 copias" está
+  escrita; el procedimiento de conmutación se ensayó con comandos y salida; el `mkdir` ya no depende de
+  quien levanta el stack; el volcado con el rol equivocado se prueba con `pg_dump` real.
+
+### 1f · `worker-y-logs` · MEDIUM · pendiente (D-138, 30/10/2026) · C-25
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda del worker y de los logs que
+> el 1c y el 2b dejaron con dueño el 7, el 15 o "quien suba FastAPI", verificada contra `main`
+> `e29e36d` el 30/10/2026. La construye **Neyen**.
+
+- **Objetivo**: que el worker no confirme efectos tarde ni esconda errores de terceros, y que los logs
+  digan lo que pasó, antes de que el 7 registre su primera tarea con efecto.
+- **Entra**:
+  - F2c (1c): un trabajo agotado por base congelada confirma su efecto cuando la base vuelve
+    (`backend/src/proptech_worker/tareas.py:39-59`, sin `statement_timeout` ni `lock_timeout` en
+    `backend/src`). Hoy el patrón sólo lo usa `tarea_de_prueba` (las tareas del 2b usan
+    `asyncio.to_thread` y son idempotentes por estado), pero bloquea al 7.
+  - F12b (1c): el `sys.excepthook` del worker decide sólo por `tipo.__module__`, sin mirar
+    `__cause__`, `__context__` ni `ExceptionGroup` (`proptech_worker/ajustes.py:97-122`).
+  - `tests/integracion/test_salud_cola_real.py` da rojo corrido aislado (1c, regresión del
+    27/10/2026): pide su propio fixture (`:25`) y no `esquema_migrado` (tests en `:65`, `:95` y `:122`).
+    Confirmarlo primero corriéndolo solo.
+  - Los logs del worker y de httpx salen sin interpolar (2b): `compartido/logs.py:3,109-113` usa
+    siempre `record.msg` (la plantilla), nunca `getMessage()`.
+  - F3b (1c): `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`,
+    `proptech_api/seguimiento.py:40,50`; `fastapi>=0.143.0,<0.144.0`).
+- **No entra**: `repr(RedisSettings)` con la contraseña: expone un secreto, es CRITICAL y va al C-29
+  `base-y-rls`.
+- **Depende de**: 1c y 2b (archivados). **Habilita**: que el 7 registre su primera tarea real sin
+  heredar F2c.
+- **Gobernanza**: MEDIUM: worker y logs, sin plata, sin autenticación ni datos de usuario.
+- **Terminado cuando**: F2c tiene un corte del lado de la base y un test que muestra que un trabajo
+  agotado no confirma después; F12b tiene un test por cada forma envuelta; `test_salud_cola_real.py`
+  pasa corrido solo; un log de httpx dice a qué URL y qué respondió; F3b no depende de un atributo
+  interno o tiene un test que lo detecte al subir FastAPI.
+
+### 3e · `pulido-web-3` · MEDIUM · pendiente (D-138, 30/10/2026) · C-26
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de interfaz que el 2b, el
+> 3b, el 3c, el 2d y `acceso-de-desarrollo` dejaron con dueño "revisión de UI", el 15 o "quien toque
+> `web/` primero", verificada contra `main` `e29e36d` el 30/10/2026. La construye **Matías**.
+
+- **Objetivo**: cerrar los defectos de interfaz que cada change fue pasando al siguiente, sobre todo el
+  menú vacío que el 2d empeoró.
+- **Entra**:
+  - Menú lateral vacío para contador, auxiliar y consejo en `/edificios`, y sin entrada a "Mis
+    edificios" (2b; empeoró con D-134 del 2d): `web/src/app/personal/secciones.ts:13-24` devuelve sólo
+    "Personal", y `[]` sin `ver_personal` (`edificios/Pantalla.tsx:70-75`).
+  - "Quitar" ofrecido sobre el único super admin (2b): la API lo frena (R2B-2), falta la affordance;
+    `BotonQuitar` (`personal/Pantalla.tsx:128-150`) no mira el rol.
+  - El selector aparece con una sola administración tras aceptar la invitación (2b):
+    `elegir-administracion/Pantalla.tsx:22` auto-envía sólo si `!aceptada`; el comportamiento está
+    fijado por `Pantalla.test.tsx:12` y `page.test.tsx:77`.
+  - `pedirApi` sin timeout ni `AbortController` (2b): `web/src/lib/api/cliente.ts:119-124`.
+  - Encabezado fijo de la tabla de 200 unidades (3b): `unidades/Pantalla.tsx:208-219`.
+  - "Completar la ubicación" aunque el paso esté "Hecho" (3c): `edificios/[id]/Pantalla.tsx:58` y
+    `:171-176`. Falta una decisión de UI antes de construir.
+  - El recuadro de Clerk en `/ingresar` (2d): tarjeta dentro de tarjeta, encabezado cortado,
+    placeholder truncado (`web/src/app/ingresar/Pantalla.tsx:22-30`).
+  - Sacar las excepciones de la cuarentena de pnpm cuando cumplan la antigüedad
+    (`acceso-de-desarrollo`, BE-6/AR-8): `web/pnpm-workspace.yaml:7-21` excluye `next@16.4.3`, nueve
+    `@next/*` y además cuatro `@clerk/*` que la fila original no nombraba.
+- **Ojo**: el menú se arma con las acciones permitidas de la sesión (D-134). El servidor sigue frenando
+  con 403, por eso es MEDIUM, pero el rompedor tiene que probar cada perfil. No cambia la matriz de
+  permisos: si hace falta cambiarla, sube a CRITICAL y sale de este change.
+- **No entra**: cambios en la matriz de permisos ni en la API de `acceso`; el contenido de
+  `/privacidad` (bloqueante del 15).
+- **Depende de**: 2b, 2d, 3b, 3c y `acceso-de-desarrollo` (archivados).
+- **Gobernanza**: MEDIUM: interfaz, con el servidor como candado; toda pantalla pasa por la skill
+  impeccable.
+- **Terminado cuando**: cada perfil ve un menú con al menos "Mis edificios"; "Quitar" no se ofrece
+  sobre el único super admin; con una sola administración se entra directo tras aceptar; `pedirApi`
+  corta con un tiempo límite y muestra el error; el encabezado de la tabla queda fijo; la decisión
+  sobre "Completar la ubicación" está tomada y construida; el recuadro de Clerk se ve integrado; las
+  excepciones de pnpm ya cumplidas están fuera.
+
+### 3f · `ejemplo-robusto` · LOW · pendiente (D-138, 30/10/2026) · C-27
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de `ejemplo.py` que la
+> revisión del PR #1 de `acceso-de-desarrollo` dejó para "el próximo cambio que toque `ejemplo.py`" o
+> "polish futuro" (el 2d lo tocó y no la tomó), verificada contra `main` `e29e36d` el 30/10/2026. La
+> construye **Giuliano**.
+
+- **Objetivo**: que el comando del edificio de ejemplo detecte un ejemplo cambiado, aguante dos cargas
+  a la vez de verdad y falle con mensajes y códigos propios.
+- **Entra** (todos de la deuda del cierre de `acceso-de-desarrollo`):
+  - QA-2: los mutantes M5 a M8 de la comparación de idempotencia sobreviven
+    (`complejos/aplicacion/ejemplo.py:207-302`; el único caso de "ejemplo distinto" cambia el
+    coeficiente, `test_ejemplo_casos_de_uso.py:266-277`).
+  - QA-7 y DB-3: el test de dos cargas a la vez no tiene barrera (`:298-345`) y la rama de
+    `RuntimeError` (`ejemplo.py:388`) no la alcanza ningún test.
+  - DB-4: `LIMIT 1` sin `ORDER BY` (`ejemplo.py:365`) y `_comparar_o_fallar` (`:204-302`) no compara la
+    persona del ejemplo.
+  - BE-3: los errores de configuración, de rol y de base salen como traceback (`ejemplo.py:460` y
+    `:463-466` fuera de `try`) y todo sale con código 1 (`:442`, `:451`, `:458`, `:469`, `:489`, `:492`).
+  - QA-3: exige `REDIS_HOST` y `REDIS_PASSWORD` sin usar Redis (`compartido/configuracion.py:193-195`,
+    `Configuracion` completa en `ejemplo.py:460`).
+  - QA-5: un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml`.
+- **No entra**: AR-5 (mover `ejemplo.py` a una raíz de composición, descartado en el 2d, D7/E7); DB-5
+  (el ejemplo no se puede borrar, por diseño); el recorrido del README por otra persona (5.4 del 2d).
+- **Depende de**: `acceso-de-desarrollo` y 2d (archivados).
+- **Gobernanza**: LOW: comando de desarrollo y datos de ejemplo. Puede juntar plan y revisión del plan
+  en el orquestador; constructor con TDD, rompedor y auditor van igual por separado.
+- **Terminado cuando**: M5 a M8 mueren con una aserción cada uno; el test de concurrencia fuerza la
+  carrera y la rama de `RuntimeError` tiene su test; la consulta del complejo es determinística y la
+  comparación mira la persona; cada error tiene su mensaje y su código; el comando corre sin Redis; la
+  guarda existe y da rojo si aparece alguno de los dos.
+
+### R1 · `revisiones-independientes` · MEDIUM · pendiente (D-138, 30/10/2026) · C-28
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta las revisiones independientes que
+> D-130 dejó para "el rompedor del primer change que toque la zona" y que ningún change retomó,
+> verificada contra `main` `e29e36d` el 30/10/2026. La hace **Juan Cruz**. Es trabajo de rompedor, sin
+> código de producción: sólo tests nuevos e informes.
+
+- **Objetivo**: que alguien distinto de quien construyó lea y ataque lo que hoy sólo revisó su propio
+  autor o su misma familia.
+- **Entra**:
+  - Revisión independiente de RR-1 a RR-4 del 2.2a (fila 2 de su deuda, heredada en el 2b): `0018`,
+    `escritura.py`, `auditoria.py`, `Estados.tsx` y las seis páginas tocadas por RR.
+  - Los ataques de base del 2.2a que no se repitieron (fila 5): las 162 celdas ya se cotejaron en el
+    2d (`.git/informes-2d/07-rompedor-vuelta2-codex.md:22,76`), pero por la misma familia que
+    construyó.
+  - Los diez archivos de test de la vuelta 2 del 3a (fila 6 de su deuda), leídos contra los escenarios
+    que dicen cubrir.
+  - Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
+    rompedor sobre RB4B-01, CX-01 y CX-02.
+- **Regla**: si encuentra una falla reproducida en código CRITICAL (`acceso`, `cuenta_corriente`), no
+  la arregla: la deja como test que falla y la pasa al change del firmante que corresponda (C-29, 4c o
+  7).
+- **No entra**: arreglar código de producción; el registro de los commits de RF en `tasks.md` (higiene
+  del orquestador); RB-6 y el mutante de RF-01 (son del 4c).
+- **Depende de**: 2.2a, 2b, 2d, 3a y 4b (archivados).
+- **Gobernanza**: MEDIUM: sólo tests e informes. Lo que encuentre en código CRITICAL vuelve a un change
+  con firma.
+- **Terminado cuando**: hay un informe original por cada bloque de "Entra" con lo leído, lo atacado y
+  el resultado (también cuando da limpio), y cada falla reproducida quedó como test con dueño.
+
+### 2f · `base-y-rls` · CRITICAL · pendiente (D-138, 30/10/2026) · C-29
+
+> **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de base, roles y RLS que el
+> 2a y el 4a dejaron con dueño el 15 o sin dueño, más el secreto de `repr(RedisSettings)` del 1c,
+> verificada contra `main` `e29e36d` el 30/10/2026. **Sin asignar**: lo construye o lo supervisa un
+> firmante de D-111. Puede quedar para antes del 15.
+
+- **Objetivo**: que los candados de la base (roles, RLS y el arranque que los verifica) tengan tests
+  que puedan dar rojo y no dependan de un supuesto sobre quién opera la base.
+- **Entra**:
+  - V2-3 (2a): `roles antes` no revoca membresías de `proptech_app` y la verificación de arranque no
+    las mira (`compartido/roles.py` sólo maneja la de `pg_read_all_data`, `:113` y `:389`).
+  - V3-4 (M2) (2a): la rama `invalidate` de `_checkin` sin test (`base_de_datos.py:230-231`); se cierra
+    con un mutante que la saque y `test_reset_de_pool_tras_corte.py`.
+  - V3-6 (2a): sin inodos, `--salud` da 0 (ningún `statvfs` en `infra/` ni `backend/`).
+  - V3-7 (2a): `despues()` sin `lock_timeout` (`roles.py:867`).
+  - Mutar los 25 archivos de test de RLS, permisos y rutas (Chequeo 5 del 2a).
+  - La verificación de arranque de las políticas de las tablas de negocio (Chequeo 5 del 2a, promesa
+    de Juani, D-098): hoy `roles.py` sólo verifica `auditoria` (`:551`) y las tablas de sólo agregar
+    (`:788`).
+  - DB-2 (4a): comparar el esquema con `pg_dump -s` o `information_schema` y no con `pg_attribute`
+    crudo (`tests/integracion/_catalogo_login.py:21-31`).
+  - AR-7 (4a): las reglas de fronteras miran sólo imports directos (sólo `_ciclos` es transitivo,
+    `test_fronteras_de_modulos.py:253-288`).
+  - `repr(RedisSettings)` muestra la contraseña (1c): `conexion_redis.py:41-44` pasa
+    `password=...get_secret_value()` y el `repr` de arq 0.28.0 imprime todos los campos. No se demostró
+    que llegue a un log.
+- **No entra**: RD-2 (supuesto sin producción, 15); el contenido de `/privacidad`; D-2 (aviso vigente,
+  sin violación).
+- **Depende de**: 1c, 2a y 4a (archivados).
+- **Gobernanza**: CRITICAL: toca roles, RLS y un secreto (D-094, D-111). Firma escrita y con fecha de
+  Juani, Alberto o Emiliano en la propuesta antes de codear; mutante en cada aserción de seguridad.
+- **Terminado cuando**: cada ítem de "Entra" tiene un test que da rojo con su mutante, visto fallar por
+  aserción; el arranque se niega a seguir si falta o cambia una política de una tabla de negocio; el
+  `repr` de la configuración de Redis no muestra la contraseña.
+
 ## Deuda técnica de las auditorías del 13/10
 
 Lo que dejaron las auditorías de código de Alberto, con el cambio que lo resuelve (D-089). Lo del 1c y
@@ -1223,7 +1497,7 @@ el 1d ya está en sus tareas (D-090).
 | Roles de PostgreSQL para RLS (migrador y aplicación) | 2a |
 | Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) — **cerrada en el 2c (las cinco cosas, tareas 3.1 a 4.3 y 7.1)** |
 | CSP en Next | 2b — **cerrada en el 2b (tarea 6.2)**: CSP estricta con nonce, resuelto E16 |
-| Dependabot | 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
+| Dependabot | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3a (tareas 2.3 y 2.4; el tope del YAML ya estaba hecho) |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
 
@@ -1235,17 +1509,17 @@ suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | 7 (bloqueante antes de registrar su primera tarea real) |
-| F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | 7 |
-| `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | 7 |
+| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 (bloqueante antes de registrar su primera tarea real) |
+| F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 |
+| `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 7 |
 | F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | resuelto en 1d |
 | `salud_degradada` duplicado (dos líneas por pedido colgado) | Sólo ensucia los logs | resuelto en 1d |
 | F7c: el parseo de un traceback crudo saca datos a `tipo_error`/`traza` con formas muy particulares | Formas muy raras, confianza baja | resuelto en 1d |
-| F3b: `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`) | FastAPI fijado `<0.144` y un test lo detecta | quien suba FastAPI |
-| M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2a (reescribe `configuracion.py` para las credenciales por rol) |
+| F3b: `_ruta_de` usa un atributo interno de FastAPI 0.143 (`effective_route_context`) | FastAPI fijado `<0.144` y un test lo detecta | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: quien suba FastAPI |
+| M12 a medias: `url_sqlalchemy()` devuelve `str` con la contraseña; Alberto pidió un objeto `URL` renderizado sólo en el borde | Impacto bajo | 2a (reescribe `configuracion.py` para las credenciales por rol). **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2a, `f9d7e3b`; `compartido/configuracion.py:326-341` devuelve `URL.create(...)` |
 | Redis congelado frena el worker mientras dura | Se recupera solo | aceptar, sin dueño |
 | `POSTGRES_PORT` y `REDIS_PORT` estrictos (cambia el comportamiento laxo del 1b) | En línea con L-008 | aceptar, sin dueño |
-| **Hallazgo nuevo de la regresión del 27/10/2026** (`01-infraestructura.md`): `tests/integracion/test_salud_cola_real.py` da rojo (3 de 4 tests) si se corre **aislado**, porque `verificar_tablas_de_solo_agregar()` exige que esas tablas ya existan y eso sólo pasa si, en la misma sesión de pytest, otro archivo ya pidió el fixture `esquema_migrado` sobre el mismo contenedor compartido. No es un bug de producto, es una dependencia de orden entre archivos de test no documentada | Confirmado reproducible dos veces; corriendo `test_worker_tarea_de_prueba.py` antes en la misma invocación, los mismos 3 tests pasan | **7** (mismo dueño que el resto de la deuda viva de 1c, L-012), D-130 |
+| **Hallazgo nuevo de la regresión del 27/10/2026** (`01-infraestructura.md`): `tests/integracion/test_salud_cola_real.py` da rojo (3 de 4 tests) si se corre **aislado**, porque `verificar_tablas_de_solo_agregar()` exige que esas tablas ya existan y eso sólo pasa si, en la misma sesión de pytest, otro archivo ya pidió el fixture `esquema_migrado` sobre el mismo contenedor compartido. No es un bug de producto, es una dependencia de orden entre archivos de test no documentada | Confirmado reproducible dos veces; corriendo `test_worker_tarea_de_prueba.py` antes en la misma invocación, los mismos 3 tests pasan | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: **7** (mismo dueño que el resto de la deuda viva de 1c, L-012), D-130 |
 
 ### Deuda del cierre del 1d (auditoría del 14/10, vuelta 3, D-095)
 
@@ -1255,11 +1529,11 @@ esté resuelta (L-012), no por el que suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| F4: con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7 | Cumple la letra del escenario "Reloj atrasado" | 15 |
-| F5: `respaldos` ignora SIGTERM (10 s y `KILL`) | La `.parcial` se borra sola al arrancar | 15 |
-| F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | 15 |
-| F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | 15 |
-| "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | 15 |
+| F4: con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7 | Cumple la letra del escenario "Reloj atrasado" | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
+| F5: `respaldos` ignora SIGTERM (10 s y `KILL`) | La `.parcial` se borra sola al arrancar | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
+| F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
+| F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
+| "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
 | F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2c (confianza media) — **cerrada en el 2c (5.1 y pasos nombrados; los `exit 1` sueltos quedan en C2-5)** |
 | El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c — **cerrada en el 2c (5.2)** |
 | PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) — **cerrada en el 2c (3.3, rojo en los siete)** |
@@ -1278,23 +1552,23 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | R6: el sweep de rutas protegidas no ve `include_router(prefix=...)` | Hoy no hay fuga (`app.py` sin prefix) | 3a (C-06a), bloqueante antes de su primera ruta nueva (tarea 2.1) |
 | R9: la igualdad de tiempo entre 403 y 404 | Necesita una identidad autenticada de la misma administración, que no existe hasta el login | 2b (C-05b) — **cerrada en el 2b (tarea 4.3)**: 200 pedidos por clase, diferencia 0.368ms bajo el umbral de 5ms |
 | R11: "el id lo genera siempre el servidor" en las altas | Hoy verificado sin agujero: no hay ninguna alta de complejo ni unidad todavía | 3a (C-06a), tarea 2.2 |
-| V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | 15 (piloto), antes de operar la base con el superusuario |
+| V2-3: `roles antes` no revoca membresías de `proptech_app`, y la verificación de arranque no las mira | No rompe la letra (D2 promete reparar atributos, no membresías); exige un superusuario que otorgue la membresía a mano y que la app además ejecute `SET ROLE` o DDL | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), antes de operar la base con el superusuario |
 | V2-5: la API no nombra en el log por qué no arrancó | La garantía (no arrancar) se cumple y la falla no queda escondida; sólo falta la causa nombrada | 2c (C-05c), junto con el humo con pasos nombrados — **cerrada en el 2c (6.1)** |
 | V2-7: el registro de `@accion_sensible` se pisa con la misma `Accion`; el sweep invoca una tabla paralela; el test de `test_auditoria_transaccion.py:416` no puede dar rojo | Hoy hay un solo caso, así que no hay agujero | 2b (C-05b) — **cerrada en el 2b (tarea 4.3)**: el test se reescribió y se vio rojo con un segundo caso |
-| V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | 15 (piloto), antes de tener cortes de base con tráfico real |
+| V3-4 (M2): la rama `invalidate` de `_checkin` no tiene test | Sin camino real hoy: hace falta un corte de base con tráfico real | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), antes de tener cortes de base con tráfico real |
 | V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 — **cerrada en el 2c (6.0)** |
-| V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | 15 (piloto), revisar con el monitoreo del servidor real |
-| V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | 15 (piloto), antes del primer redeploy con usuarios |
-| **Hallazgo nuevo de la regresión del 27/10/2026** (`02-acceso.md`, addendum): "Volcado con el rol equivocado" (`respaldos-de-la-base`) no tiene test de caja negra que corra `pg_dump` real con el rol equivocado | Hoy sólo hay garantía estática de que el compose fuerza el rol correcto | **15** (piloto), D-130, junto con la prueba de restauración |
+| V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), revisar con el monitoreo del servidor real |
+| V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), antes del primer redeploy con usuarios |
+| **Hallazgo nuevo de la regresión del 27/10/2026** (`02-acceso.md`, addendum): "Volcado con el rol equivocado" (`respaldos-de-la-base`) no tiene test de caja negra que corra `pg_dump` real con el rol equivocado | Hoy sólo hay garantía estática de que el compose fuerza el rol correcto | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: **15** (piloto), D-130, junto con la prueba de restauración |
 | V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests — **cerrada en el 2c (4.1)** |
 | V3-9: el test de R7 se cuelga en vez de dar rojo (sesiones sin `finally`) | Hoy R7 está cerrado; el riesgo es si vuelve a romperse y el CI se cuelga en vez de mostrar el rojo | 2c (C-05c), junto con el límite de tiempo del CI — **cerrada en el 2c (4.2)** |
 | V3-14: `POSTGRES_APP_USER` acepta un nombre que la migración no conoce | Falla ruidoso, sin agujero de seguridad | 2c (C-05c), con la tabla de variables del README — **cerrada en el 2c (6.2)** |
 | V3-15: README desactualizado (el worker sí tiene salida, el 1d no está "Propuesto", faltan las contraseñas distintas) y el humo no mira `relrowsecurity` | Dos frases falsas y un requisito no escrito, no una fuga | 2c (C-05c), con la tabla de variables del README y el humo con pasos nombrados — **cerrada en el 2c (7.1 y 5.4)** |
-| Chequeo 5: 25 archivos de test de RLS, permisos y rutas que nadie abrió ni mutó | El comportamiento de aislamiento sí se probó de caja negra con scripts propios; lo que no se sabe es si esos tests pueden dar rojo | 15 (piloto), una pasada de mutación antes de cargar datos reales |
-| Chequeo 5: ninguna verificación de arranque mira las políticas de las tablas de negocio (`complejo`, `unidad` y las otras), sólo las de `auditoria` | El diseño (D2) sólo promete esa verificación para la auditoría; para el resto no hay promesa rota, pero Juani decidió prometerlo | 15 (piloto) — decisión de Juani, no deuda sin dueño (D-098) |
+| Chequeo 5: 25 archivos de test de RLS, permisos y rutas que nadie abrió ni mutó | El comportamiento de aislamiento sí se probó de caja negra con scripts propios; lo que no se sabe es si esos tests pueden dar rojo | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), una pasada de mutación antes de cargar datos reales |
+| Chequeo 5: ninguna verificación de arranque mira las políticas de las tablas de negocio (`complejo`, `unidad` y las otras), sólo las de `auditoria` | El diseño (D2) sólo promete esa verificación para la auditoría; para el resto no hay promesa rota, pero Juani decidió prometerlo | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto) — decisión de Juani, no deuda sin dueño (D-098) |
 | D-1: de las 7 comparaciones de `_verificar_politica_de_auditoria`, 5 no tienen test que las exija (nombre, PERMISSIVE, comando, roles, WITH CHECK) | Hoy el código anda (caja negra); son mutantes vivos, no una falla observada | 2b (C-05b), junto con V3-5 — **cerrada en el 2b (tarea 4.3)**: un test por cada comparación, visto rojo con copia mutada |
 | D-2: la primera FK legítima hacia `auditoria` frena todo arranque (exit 1 en `despues`, con `SQLSTATE 0A000` y no el texto "FK") | Es lo diseñado (ruidoso en vez de ciego), pero nadie lo documentó como restricción del esquema | 2b (C-05b) — **verificada, no cerrada, en el 2b**: queda escrita en el design como restricción (ninguna FK hacia `auditoria`) y se confirmó que 0019/0020 no agregan ninguna; la primera tabla que sí la necesite vuelve a frenar el arranque, a propósito |
-| D-4: `vuelta-3/arbol/backend/.venv` de la copia del rompedor es un symlink al `.venv` real del repo; un `uv run`/`uv sync` desde ahí redirige la instalación editable | Hoy no hay daño (el `.pth` volvió a apuntar al repo); es el entorno de trabajo efímero del rompedor, no el repo | orquestador — borrar el symlink o el `arbol/` entero antes de reusar `vuelta-3/mutar.py`, no es un cambio del roadmap |
+| D-4: `vuelta-3/arbol/backend/.venv` de la copia del rompedor es un symlink al `.venv` real del repo; un `uv run`/`uv sync` desde ahí redirige la instalación editable | Hoy no hay daño (el `.pth` volvió a apuntar al repo); es el entorno de trabajo efímero del rompedor, no el repo | orquestador — borrar el symlink o el `arbol/` entero antes de reusar `vuelta-3/mutar.py`, no es un cambio del roadmap. **Cerrada** (verificación del 30/10/2026, D-138): cerrada de hecho, el árbol ya no existe (`fdfind -H -I` sobre el repo, `.git` y `/tmp` no encuentra `vuelta-3` ni su `arbol/`) |
 | D-5: `infra/ci/humo.sh` está en git como `100644` (sin `+x`); el CI lo corre con `bash` y no falla | Corrido a mano como `./humo.sh` da "Permiso denegado"; no afecta al CI | 2c (C-05c), con el humo con pasos nombrados — **cerrada en el 2c (commit de `humo.sh` con +x)** |
 | D-6: el test de M5 detecta "sin sonda de TRUNCATE" sólo porque la palabra `"TRUNCATE"` en mayúsculas no aparece en el aviso de catálogo | El caso de la FK lo sigue cubriendo | 2b (C-05b), con D-1 — **cerrada en el 2b (tarea 4.3)**: sonda que no depende de la palabra en mayúsculas |
 | Aviso para el 2b: la primera FK legítima hacia `auditoria` va a frenar cada arranque (V3-2, mismo mecanismo que D-2); contemplarlo antes de agregar cualquier referencia nueva a `auditoria` | Es el comportamiento diseñado, no una falla nueva | Vigente: 0019/0020 no agregaron FK hacia `auditoria`; sigue aplicando al primer cambio que sí lo haga |
@@ -1310,18 +1584,18 @@ compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no 
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| C2V2-1: con `PROPTECH_SITIO=https://...`, un `Host` ajeno por el 443 sale `200` con `Server: Caddy` y sin las cuatro cabeceras; la 308 de http a https tampoco las lleva | Hoy el stack corre en HTTP y el 443 no escucha; la spec quedó acotada a HTTP y lo dice | 15 (piloto), con el dominio real y HSTS |
-| C2V2-2: el test del log (`test_worker_tenant.py`) captura sólo ERROR de un logger; una fuga en WARNING o en otro logger llega al JSON de producción | Anterior al 2c (`741caf2`); hoy ningún WARNING ni INFO emite el valor | 15 (piloto), antes de cargar datos reales |
-| C2V2-3: el humo compara la CANTIDAD de políticas de RLS de la base restaurada, no su contenido; `USING (true)` o un renombre pasan | La RLS de la base en uso está intacta; el comentario de `humo.sh` ya declara el límite | 15 (piloto), junto con la prueba de restauración |
-| C2V2-6: nada fija qué devuelve el sitio de respaldo (hoy `421` vacío en ocho métodos) | La configuración de hoy es correcta | 15 (piloto), junto con C2V2-1 |
-| C2V2-7: la lista de servicios del chequeo de capacidades está escrita a mano; un noveno servicio no lo ve nadie | Hoy hay ocho y los ocho dan rojo | 15 (piloto) |
-| C2-5 y C2V2-8: 22 `exit 1` e `if !` del humo sin línea ni comando; `compose()` informa su propia línea | El paso se ve por su encabezado; la spec nombra la excepción | 15 (piloto) |
-| C2-7: el conteo de `.dump` en el segundo `up` es una carrera (el comentario de `humo.sh:84-88` es falso) | Hoy no se ve: el volcado tarda menos de 1 s | 15 (piloto) |
-| C2-8: `arranque_fallido` no cubre una base inalcanzable ni un `parametros.yaml` mal formado (confirmado con comando en la vuelta 2) | El contenedor igual no arranca; falta la causa nombrada | 15 (piloto), antes del despliegue |
-| N2: con la `api` pausada, Caddy no responde en 100 s | Sin tráfico real no muerde | 15 (piloto) |
-| N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | 15 (piloto), nota |
-| N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | 15 (piloto), con C2V2-1 |
-| N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | 15 (piloto), con C2V2-2 |
+| C2V2-1: con `PROPTECH_SITIO=https://...`, un `Host` ajeno por el 443 sale `200` con `Server: Caddy` y sin las cuatro cabeceras; la 308 de http a https tampoco las lleva | Hoy el stack corre en HTTP y el 443 no escucha; la spec quedó acotada a HTTP y lo dice | **C-23 `humo-y-ci`** (D-138, 30/10/2026), sólo la parte que se puede fijar sin dominio; antes: 15 (piloto), con el dominio real y HSTS. HSTS con el dominio real sigue en el 15 |
+| C2V2-2: el test del log (`test_worker_tenant.py`) captura sólo ERROR de un logger; una fuga en WARNING o en otro logger llega al JSON de producción | Anterior al 2c (`741caf2`); hoy ningún WARNING ni INFO emite el valor | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), antes de cargar datos reales |
+| C2V2-3: el humo compara la CANTIDAD de políticas de RLS de la base restaurada, no su contenido; `USING (true)` o un renombre pasan | La RLS de la base en uso está intacta; el comentario de `humo.sh` ya declara el límite | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), junto con la prueba de restauración |
+| C2V2-6: nada fija qué devuelve el sitio de respaldo (hoy `421` vacío en ocho métodos) | La configuración de hoy es correcta | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), junto con C2V2-1 |
+| C2V2-7: la lista de servicios del chequeo de capacidades está escrita a mano; un noveno servicio no lo ve nadie | Hoy hay ocho y los ocho dan rojo | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
+| C2-5 y C2V2-8: 22 `exit 1` e `if !` del humo sin línea ni comando; `compose()` informa su propia línea | El paso se ve por su encabezado; la spec nombra la excepción | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
+| C2-7: el conteo de `.dump` en el segundo `up` es una carrera (el comentario de `humo.sh:84-88` es falso) | Hoy no se ve: el volcado tarda menos de 1 s | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
+| C2-8: `arranque_fallido` no cubre una base inalcanzable ni un `parametros.yaml` mal formado (confirmado con comando en la vuelta 2) | El contenedor igual no arranca; falta la causa nombrada | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), antes del despliegue |
+| N2: con la `api` pausada, Caddy no responde en 100 s | Sin tráfico real no muerde | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
+| N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), nota |
+| N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), con C2V2-1 |
+| N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), con C2V2-2 |
 | N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 — **CERRADA** (`7555b59`): `test_set_config_de_administracion_id_no_sobrevive_al_commit_sin_pasar_por_checkin` en `backend/tests/integracion/test_tenant_por_transaccion.py`. Dos sesiones ligadas a la MISMA `Connection` (sin pasar por `checkin`, que tapaba el mutante vía R7); rojo confirmado con `set_config(..., true→false)` (assert en `test_tenant_por_transaccion.py:354`, 2026-10-22 12:48:51) y con quitar el reset del `checkin` (rojo cae en el test preexistente `test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin`, `test_tenant_por_transaccion.py:306`, 2026-10-22 12:49:21); verde final `10 passed` (2026-10-22 12:49:40) | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
 
 ### Deuda del cierre del 2.2a
@@ -1335,8 +1609,8 @@ Quedan estos límites; ninguna fila implica aceptación o dueño confirmado por 
 
 | Deuda o supuesto | Límite al cierre | Cambio |
 |---|---|---|
-| Auditor fila 2: falta lectura independiente de las correcciones RR | Se probó 0018 sobre el respaldo restaurado, pero eso no reemplaza la revisión independiente de 0018, `escritura.py`, `auditoria.py`, `Estados.tsx` y las seis páginas tocadas por RR. Sin ejecutar al cierre del 2b (ver su tabla de deuda) | **D-130 (28/10/2026)**: ya pasó por el 2b sin que nadie la retome; no se fija un dueño que nadie confirma — la absorbe el rompedor del primer change que toque identidades/acceso |
-| Auditor fila 5: el rompedor no repitió los ataques de base ni cotejó las celdas del test de permisos. **La cifra está desactualizada**: la regresión del 27/10/2026 (`.git/informes-regresion/02-acceso.md`) confirmó que la matriz `Accion × perfil` tiene hoy **153 celdas**, no 144 — se agregó `VER_CONFIGURACION_DEL_EDIFICIO` después de escrita esa cifra, y `test_cada_celda_de_la_matriz` ya ejercita las 153 | El auditor cotejó la matriz del código con D3, pero leer los tests del constructor no equivale a un segundo ataque independiente | **D-130**: la absorbe el rompedor del primer change que toque la matriz de permisos |
+| Auditor fila 2: falta lectura independiente de las correcciones RR | Se probó 0018 sobre el respaldo restaurado, pero eso no reemplaza la revisión independiente de 0018, `escritura.py`, `auditoria.py`, `Estados.tsx` y las seis páginas tocadas por RR. Sin ejecutar al cierre del 2b (ver su tabla de deuda) | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: **D-130 (28/10/2026)**: ya pasó por el 2b sin que nadie la retome; no se fija un dueño que nadie confirma — la absorbe el rompedor del primer change que toque identidades/acceso |
+| Auditor fila 5: el rompedor no repitió los ataques de base ni cotejó las celdas del test de permisos. **La cifra está desactualizada**: la regresión del 27/10/2026 (`.git/informes-regresion/02-acceso.md`) confirmó que la matriz `Accion × perfil` tiene hoy **153 celdas**, no 144 — se agregó `VER_CONFIGURACION_DEL_EDIFICIO` después de escrita esa cifra, y `test_cada_celda_de_la_matriz` ya ejercita las 153 | El auditor cotejó la matriz del código con D3, pero leer los tests del constructor no equivale a un segundo ataque independiente | Cotejo de celdas. **Cerrada** (verificación del 30/10/2026, D-138): el rompedor del 2d cotejó las 162 celdas contra D-106 y D-127 con un script propio (`.git/informes-2d/07-rompedor-vuelta2-codex.md:22,76`), aunque es la misma familia (Codex) que construyó y auditó el 2d. Los ataques de base: **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: **D-130**: la absorbe el rompedor del primer change que toque la matriz de permisos |
 | RD-2: se supone que no hay producción ni datos reales y que nunca se desplegó | No se verificó externamente; el ensayo usa el respaldo restaurado del humo con dos administraciones inventadas, no un respaldo de producción. Si el supuesto es falso, esa evidencia no alcanza | 15, antes de migrar datos reales; validar antes si aparecen. Dueño propuesto, no confirmado por Juani |
 | Auditor fila 3: falta el informe original de Sonnet 6.1/7.1 | Hay comandos en `tasks.md` y logs locales; la comparación se corrigió, pero el resumen del orquestador no reemplaza un informe original para futuras revisiones | Próximo cierre con varios constructores, aplicar el formato de `14_forma_de_trabajo.md`. Dueño propuesto, no confirmado por Juani |
 
@@ -1350,10 +1624,10 @@ firmado todavía, queda dicho en la fila.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | 15 (piloto). Dueño propuesto, no confirmado por Juani |
+| No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 (piloto). Dueño propuesto, no confirmado por Juani |
 | `complejo.localidad` puede quedar `''` en los edificios que vienen del 2a (el backfill de `0005` usa `server_default=""`); el `CHECK` de texto no vacío de `0016` la excluye a propósito, por ese mismo motivo (RF-D-2, hallado en la propia migración) | La API ya rechaza `''` en `localidad` con 422 (`CuerpoEdificio.localidad`); el agujero es sólo por SQL directo y sólo sobre edificios que ya existían antes del 3a | 3b (editar la localidad desde el padrón y agregar ahí el `CHECK`) |
 | RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b — **cerrada en el 2b**: Caddy deja de publicar `/api/*` salvo `/api/salud`; un anónimo ya no llega a sondear métodos ni rutas de la API (design D3) |
-| Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir. Reconfirmado sin dueño por la regresión del 27/10/2026 (`03-edificio.md`) | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | **D-130 (28/10/2026)**: ya pasó por el 3b sin que nadie la retome; la absorbe el rompedor del primer change que toque esos diez archivos |
+| Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir. Reconfirmado sin dueño por la regresión del 27/10/2026 (`03-edificio.md`) | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: **D-130 (28/10/2026)**: ya pasó por el 3b sin que nadie la retome; la absorbe el rompedor del primer change que toque esos diez archivos |
 | La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | Decisión tomada y declarada, no un agujero sin dueño: D-103 deja la excepción a propósito porque la migración de historia de edificios reales la va a necesitar | 7 (migración de historia de edificios reales) |
 
 ### Deuda del cierre del 3b
@@ -1366,7 +1640,7 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
 | La barra superior muestra "Administración" en vez de un usuario real | La API todavía no expone quién inició sesión (D-105d); mostrar un nombre inventado sería peor que no mostrar ninguno | 2b — **cerrada en el 2b (tarea 7.1)**: muestra nombre, administración, "Salir" y "Cambiar de administración" |
-| El encabezado de la tabla de 200 unidades no queda fijo (`sticky`) al bajar la página | La tabla sigue siendo legible, con scroll propio y operable con teclado; es una comodidad, no un defecto de acceso. Reconfirmado abierto por la regresión del 27/10/2026 (`03-edificio.md`) | **Confirmado: 15** (piloto), D-130 |
+| El encabezado de la tabla de 200 unidades no queda fijo (`sticky`) al bajar la página | La tabla sigue siendo legible, con scroll propio y operable con teclado; es una comodidad, no un defecto de acceso. Reconfirmado abierto por la regresión del 27/10/2026 (`03-edificio.md`) | **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: **Confirmado: 15** (piloto), D-130 |
 | La versión de configuración con fecha pasada se acepta por SQL, aunque la aplicación la rechaza | No es deuda nueva de este cambio: ya está decidida y declarada en D-103, y ya figura arriba en "Deuda del cierre del 3a" con dueño el cambio 7; no se repite acá | — (ver "Deuda del cierre del 3a") |
 
 ### Deuda del cierre del 2b (D-108, 22/10/2026)
@@ -1379,15 +1653,15 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
 | SU-01: invitar a un email que ya tiene usuario en Clerk, sin verificar contra Clerk real | La 8.2 acortada no llegó a probar este caso; lo que se vio fue el camino de un email nuevo | Antes de que un vecino o personal con cuenta previa necesite una invitación nueva, o antes del 15 (ver `09_decisiones_y_supuestos.md` SU-01) |
-| `pedirApi` (`web/src/lib/api/cliente.ts:112-122`) no tiene `timeout`/`AbortController`: un backend colgado deja la pantalla esperando sin límite | Preexistente a este cambio; confirmado todavía abierto por la regresión del 27/10/2026 (`03-edificio.md`) | **15** (piloto), D-130 |
+| `pedirApi` (`web/src/lib/api/cliente.ts:112-122`) no tiene `timeout`/`AbortController`: un backend colgado deja la pantalla esperando sin límite | Preexistente a este cambio; confirmado todavía abierto por la regresión del 27/10/2026 (`03-edificio.md`) | **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: **15** (piloto), D-130 |
 | 8.2 acortada (decisión de cierre 2): sin verificar ingreso con link por email, bloqueo por intentos fallidos, selector con una segunda administración, email secundario y cambio del principal, reinvitar con una invitación `enviada`, revocar en vuelo contra Clerk real | Decisión de Juani, no un agujero sin dueño; lo cubierto alcanza para registrarse, entrar, Google y revocar | 15 (piloto), antes de operar con usuarios reales. Dueño propuesto, no confirmado por Juani |
 | El rechazo de un Gmail no invitado termina en la página alojada de Clerk, en inglés y fuera de la app | No hay fuga de datos; sólo la experiencia es pobre | polish futuro. Dueño propuesto, no confirmado por Juani |
-| Levantar el stack sin `mkdir -p infra/datos-respaldos` del README deja la carpeta como root y el contenedor de respaldos reinicia en bucle | El README ya lo pide; es un error de quien levanta el stack, no del código | DevOps (documentar o automatizar el `mkdir`). Dueño propuesto, no confirmado por Juani |
-| Con una sola administración, tras aceptar la invitación se muestra el selector igual (el shape dice "entra directo") | Entra, sólo con un paso de más | 7.1, revisión de UI. Dueño propuesto, no confirmado por Juani |
-| Pantalla de personal: el botón "Quitar" cae en la columna de Invitación (desalineado) y se ofrece sobre el único super admin (la API lo rechaza, R2B-2) | La API frena la acción peligrosa; es un defecto visual y de affordance | 7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
-| El menú lateral sólo muestra "Personal": no hay entrada a "Mis edificios" | Se llega por URL directa; falta el acceso desde el menú | 7.1/7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
-| Los logs del worker y de httpx salen sin interpolar (`"HTTP Request: %s %s ..."`) | En producción un error de Clerk no dice a qué URL ni qué respondió; no es una fuga, es falta de información | 15 (piloto), antes de depender de esos logs para diagnosticar. Dueño propuesto, no confirmado por Juani |
-| Deuda heredada del 2.2a (filas 2 y 5 de "Deuda del cierre del 2.2a"): revisión independiente de RR-1 a RR-4 y cotejo de las 153 celdas (no 144, corregido por la regresión del 27/10/2026), propuesta como blanco del rompedor del 2b | No se encontró evidencia en `tasks.md` ni en los informes del rompedor/auditor de que se haya ejecutado como acción separada; queda igual que antes del 2b | **D-130 (28/10/2026)**: ya atravesó dos changes (2b y 3c) sin que nadie la retome; queda sin dueño fijo — la absorbe el rompedor del primer change que toque identidades |
+| Levantar el stack sin `mkdir -p infra/datos-respaldos` del README deja la carpeta como root y el contenedor de respaldos reinicia en bucle | El README ya lo pide; es un error de quien levanta el stack, no del código | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: DevOps (documentar o automatizar el `mkdir`). Dueño propuesto, no confirmado por Juani |
+| Con una sola administración, tras aceptar la invitación se muestra el selector igual (el shape dice "entra directo") | Entra, sólo con un paso de más | **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.1, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| Pantalla de personal: el botón "Quitar" cae en la columna de Invitación (desalineado) y se ofrece sobre el único super admin (la API lo rechaza, R2B-2) | La API frena la acción peligrosa; es un defecto visual y de affordance | Desalineado. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 3c (`028dfa7`), "Quitar" vive dentro de "Perfil y alcance" (`personal/Pantalla.tsx:96-117,207-216`). "Quitar" sobre el único super admin sigue abierto: **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| El menú lateral sólo muestra "Personal": no hay entrada a "Mis edificios" | Se llega por URL directa; falta el acceso desde el menú | Parcial (verificación del 30/10/2026, D-138): el logo de la barra lleva a `/edificios` (`Armazon.tsx:30`); el menú sigue sin la entrada y desde D-134 queda vacío para contador, auxiliar y consejo. El resto: **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.1/7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
+| Los logs del worker y de httpx salen sin interpolar (`"HTTP Request: %s %s ..."`) | En producción un error de Clerk no dice a qué URL ni qué respondió; no es una fuga, es falta de información | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 15 (piloto), antes de depender de esos logs para diagnosticar. Dueño propuesto, no confirmado por Juani |
+| Deuda heredada del 2.2a (filas 2 y 5 de "Deuda del cierre del 2.2a"): revisión independiente de RR-1 a RR-4 y cotejo de las 153 celdas (no 144, corregido por la regresión del 27/10/2026), propuesta como blanco del rompedor del 2b | No se encontró evidencia en `tasks.md` ni en los informes del rompedor/auditor de que se haya ejecutado como acción separada; queda igual que antes del 2b | Cotejo de celdas. **Cerrada** (verificación del 30/10/2026, D-138): 162/162 celdas cotejadas en el 2d (`.git/informes-2d/07-rompedor-vuelta2-codex.md:22,76`), por la misma familia que construyó. Revisión de RR-1 a RR-4 y ataques de base: **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: **D-130 (28/10/2026)**: ya atravesó dos changes (2b y 3c) sin que nadie la retome; queda sin dueño fijo — la absorbe el rompedor del primer change que toque identidades |
 | El aviso de privacidad (`/privacidad`) es un borrador: faltan identidad legal, domicilio y contacto del responsable, y la conservación | Decidido así por Juani (decisión de cierre 3); publicar sin esos datos sería afirmar un cumplimiento legal no verificado | **Bloqueante del 15** (D-130, 28/10/2026): no se opera con el edificio piloto sin este texto aprobado. Dueño del contenido: Juani y Alberto; dueño de aprobarlo en el change: Juani (tarea 7.2) |
 
 ### Deuda del cierre de `acceso-de-desarrollo` (3b-bis, D-110; revisión del PR #1, 25/10/2026)
@@ -1399,18 +1673,18 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| **Cómo se vinculó una cuenta de Clerk a la persona `super_admin` del ejemplo (`…e1`) no está escrito** (BE-1, DB-6, AR-7, QA-4). `ejemplo.py` la crea sin `clerk_usuario_id` ni invitación, y el único camino del código que lo completa es aceptar una invitación (`invitaciones.py:119`); por eso el recorrido de la tarea 1.1 no lo puede repetir otra persona, y tampoco trae capturas | Decisión de Juani (25/10/2026): el vínculo **no se rediseña** (nada de invitaciones para el ejemplo) y queda como deuda registrada. Si el paso fue un `UPDATE` a mano, se aparta de "nunca un punto de entrada que reemplace la identidad" del spec, y eso se ve recién cuando esté escrito | Dueño: **Emiliano**, que tiene que dejar escrito el paso exacto (comando o pantalla, con qué rol y contra qué base) para que otra persona pueda repetir la 1.1 |
+| **Cómo se vinculó una cuenta de Clerk a la persona `super_admin` del ejemplo (`…e1`) no está escrito** (BE-1, DB-6, AR-7, QA-4). `ejemplo.py` la crea sin `clerk_usuario_id` ni invitación, y el único camino del código que lo completa es aceptar una invitación (`invitaciones.py:119`); por eso el recorrido de la tarea 1.1 no lo puede repetir otra persona, y tampoco trae capturas | Decisión de Juani (25/10/2026): el vínculo **no se rediseña** (nada de invitaciones para el ejemplo) y queda como deuda registrada. Si el paso fue un `UPDATE` a mano, se aparta de "nunca un punto de entrada que reemplace la identidad" del spec, y eso se ve recién cuando esté escrito | Dueño: **Emiliano**, que tiene que dejar escrito el paso exacto (comando o pantalla, con qué rol y contra qué base) para que otra persona pueda repetir la 1.1. BE-1 **parcial** (verificación del 30/10/2026, D-138): el camino quedó escrito y en código en el 2d (`--clerk-usuario`, `ejemplo.py:417-458`, y `README.md:93-121`, D-133); falta que otra persona lo repita (5.4 del 2d) |
 | D-110 afirma que las siete pantallas se verificaron "a 1280 px, a 320 px y con teclado", pero ningún revisor de frontend lo miró y no hay capturas ni pasos que se puedan repetir (auditoría final del PR #1) | El cambio no toca la web (`git diff 116a97d..294cda6 -- web` sólo cambia la versión de Next.js); las pantallas son las del 3b, que ya pasaron su propio recorrido | Dueño: **Emiliano**, junto con el paso de vinculación a Clerk de la fila de arriba: capturas a 1280 y 320 px y el recorrido con teclado |
 | Dos cuentas de Mailinator quedaron nombradas en `CLAUDE.md`/`AGENTS.md`, en un repo público; las bandejas de Mailinator son públicas (BE-7) | Son cuentas del Clerk **de desarrollo**, no de producción; nadie verificó si siguen activas | **Decidido (P67, 26/10/2026)**: se borran del Clerk de desarrollo. Las direcciones ya no figuran en ningún documento vigente (esta fila incluida) desde el 26/10/2026, pero siguen en el historial de git; borrar las cuentas en Clerk vuelve ese resto inerte sin necesidad de reescribir la historia |
-| Contrato de errores del comando: los errores de configuración, de rol y de base salen como traceback crudo, y todo sale con el mismo código 1, incluida la guarda de entorno (BE-3, QA-3) | Es un comando de desarrollo, nunca expuesto a un usuario; el mensaje útil está en la última línea | polish futuro. Dueño propuesto, no confirmado por Juani |
-| El comando exige `REDIS_HOST` y `REDIS_PASSWORD` aunque no usa Redis (QA-3) | Con valores cualesquiera corre; sólo es fricción | polish futuro. Dueño propuesto, no confirmado por Juani |
-| La comparación de idempotencia sólo se prueba en una de sus ramas: los mutantes M5 a M8 (modo de los grupos, `estado_migracion`, tipo y piso de la unidad, conjunto de grupos) sobreviven; con cualquiera de ellos un ejemplo cambiado se informa como "ya estaba" (QA-2) | Afecta sólo a datos de ejemplo en desarrollo; M3 (la comparación entera) sí muere por la aserción | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
-| El test de "dos cargas a la vez" no fuerza la concurrencia (pasa igual si los hilos corren uno después del otro) y la rama de reintento con `RuntimeError` no la alcanza ningún test (QA-7, DB-3) | En READ COMMITTED el `INSERT … ON CONFLICT` del perdedor espera al ganador, así que el caso real termina en "ya estaba" | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
-| `SELECT id FROM complejo … LIMIT 1` sin `ORDER BY`, y la comparación no mira la `persona` del ejemplo (DB-4) | La administración de ejemplo tiene un solo complejo; nada la crea con dos | El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| Contrato de errores del comando: los errores de configuración, de rol y de base salen como traceback crudo, y todo sale con el mismo código 1, incluida la guarda de entorno (BE-3, QA-3) | Es un comando de desarrollo, nunca expuesto a un usuario; el mensaje útil está en la última línea | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
+| El comando exige `REDIS_HOST` y `REDIS_PASSWORD` aunque no usa Redis (QA-3) | Con valores cualesquiera corre; sólo es fricción | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
+| La comparación de idempotencia sólo se prueba en una de sus ramas: los mutantes M5 a M8 (modo de los grupos, `estado_migracion`, tipo y piso de la unidad, conjunto de grupos) sobreviven; con cualquiera de ellos un ejemplo cambiado se informa como "ya estaba" (QA-2) | Afecta sólo a datos de ejemplo en desarrollo; M3 (la comparación entera) sí muere por la aserción | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| El test de "dos cargas a la vez" no fuerza la concurrencia (pasa igual si los hilos corren uno después del otro) y la rama de reintento con `RuntimeError` no la alcanza ningún test (QA-7, DB-3) | En READ COMMITTED el `INSERT … ON CONFLICT` del perdedor espera al ganador, así que el caso real termina en "ya estaba" | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
+| `SELECT id FROM complejo … LIMIT 1` sin `ORDER BY`, y la comparación no mira la `persona` del ejemplo (DB-4) | La administración de ejemplo tiene un solo complejo; nada la crea con dos | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: El próximo cambio que toque `ejemplo.py`. Dueño propuesto, no confirmado por Juani |
 | El ejemplo no se puede borrar: `auditoria` y "Generales" lo impiden por diseño (DB-5) | Es la protección correcta; para rehacer el ejemplo se recrea la base de desarrollo | — (se registra para que nadie lo intente borrar por SQL) |
-| `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani |
-| La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
-| Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | polish futuro. Dueño propuesto, no confirmado por Juani |
+| `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d (D-133); `ejemplo.py:41-52` llama a `acceso.aplicacion` y no queda SQL sobre `persona` ni `asignacion_rol` |
+| La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | **C-26 `pulido-web-3`** (D-138, 30/10/2026; hoy la exclusión también tiene cuatro `@clerk/*`, `web/pnpm-workspace.yaml:7-21`); antes: Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
+| Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
 
 ## Pendientes de arranque
 

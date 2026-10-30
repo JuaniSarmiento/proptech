@@ -9,6 +9,10 @@ Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proces
   Emiliano Caceres es desarrollador del equipo; cada cambio lo programa uno solo (D-022, D-093).
   Decide el alcance y recibe el veredicto final de sus propios cambios. Las propuestas CRITICAL y HIGH
   las puede aprobar él, Alberto o Emiliano, por escrito y con fecha (D-094, D-111).
+- **El equipo de desarrollo** (desde el 30/10/2026, D-138): Emiliano, Gianfranco, Neyen, Matías,
+  Giuliano y Juan Cruz, cada uno con un change propio (la tabla está en `CHANGES.md`, "Deuda
+  adelantada"). Quien recién se suma toma sólo changes LOW o MEDIUM; lo CRITICAL lo construye o lo
+  supervisa un firmante de D-111.
 - **Claude, el orquestador**: la sesión que habla con Juani. No escribe código: arma cada pedido,
   lanza los agentes de a uno, lee lo que devuelven, decide el paso siguiente y le cuenta a Juani.
 - **Los agentes**, cada uno con un solo trabajo y sin ver las conclusiones de los otros salvo lo que

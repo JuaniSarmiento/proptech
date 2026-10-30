@@ -133,10 +133,20 @@ mercado de arranque es **Mendoza**.
   (MEDIUM) junta la deuda chica de 3b/3c sin e2e ni test (api-falsa sin PATCH/Georef, ayuda "0 de 6",
   orden de `vocabularioDePisos`, clave inválida sin test, CSP/nonce sin test, día 31 de vencimiento);
   el aviso de `/privacidad` queda **bloqueante del 15** (Juani y Alberto). Detalle completo en D-130.
-- **Próximo**: **`2d · sesion-sin-persona`** (CRITICAL; se adelanta lo antes posible, D-130) y **4c
-  `intereses-saldo-inicial-y-moroso`** (CRITICAL; por proponer) en el camino crítico; **`3d · pulido-2`**
-  (MEDIUM) y **6** `gastos-y-cargos` en paralelo, a cargo de Emiliano; después 4d `cambio-de-titular`
-  (CRITICAL).
+- **Cambio 2d `sesion-sin-persona` archivado** (28/10/2026, CRITICAL, D-131 a D-137): el 403
+  `sin_acceso`, el selector sin loop, `--clerk-usuario` para el ejemplo, el menú y los controles por
+  rol, `ver_personal` (migración `0028`), reinvitar y la invitación que dice con qué cuenta se está.
+  Deuda en la ficha 2d de `knowledge-base/12_fichas_de_changes.md`.
+- **En revisión, sin mergear**: **3d `pulido-2`** (PR #3, Gianfranco) y **6 `gastos-y-cargos`** (PR #4,
+  Emiliano).
+- **Deuda adelantada** (D-138, 30/10/2026): la deuda viva, verificada contra `main` (`e29e36d`), pasa a
+  siete changes propios, uno por desarrollador: C-23 `humo-y-ci` (Gianfranco), C-24 `respaldos-2`
+  (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
+  `ejemplo-robusto` (Giuliano), C-28 `revisiones-independientes` (Juan Cruz) y C-29 `base-y-rls`
+  (CRITICAL, sin asignar). Quien recién se suma toma sólo LOW o MEDIUM.
+- **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL, por proponer; lo construye un
+  firmante de D-111) en el camino crítico; los siete de deuda adelantada en paralelo; después 4d
+  `cambio-de-titular` (CRITICAL).
   Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -203,7 +213,7 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio**: constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
 | `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
 | `knowledge-base/16_proyecto_final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
-| `CHANGES.md` | **Los 24 cambios en orden, con su estado**: arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
+| `CHANGES.md` | **Todos los cambios en orden, con su estado** (los del roadmap y los de deuda adelantada, D-138): arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
 
 Si algo que vas a hacer contradice uno de estos archivos, **pará y preguntale a Juani (o a Alberto,
 si el cambio es de él)**. Si cambia una decisión, se escribe una decisión nueva; nunca se edita una
@@ -243,7 +253,7 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   2.2a de roles agregado por Juani el 20/10/2026, el 4 partido en 4a a 4d por su exploración del
   22/10/2026, el 3c de pulido agregado por Juani el 26/10/2026, y `2d` `sesion-sin-persona` y `3d`
   `pulido-2`, agregados por Juani al archivar el 3c, D-130), repartidos en M1 Liquida, M2 Cobra
-  y M3 Piloto.
+  y M3 Piloto. Más los siete changes de deuda adelantada, C-23 a C-29 (D-138).
 - **Camino crítico a M1** (reproducir al centavo la última liquidación del piloto):
   `1a → 1b → 1c → 1d → 2a → 3a → 4a → 4b → 4c → 5 → 7` (6 en paralelo desde el 4a si no escribe en
   el libro; 2b, 2c, 3b, 3c, 3d y 2d fuera de la cadena de dependencias, aunque `2d` se adelanta lo
@@ -255,12 +265,14 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   (20/10/2026, D-106), 2b `login-y-usuarios` (22/10/2026, D-108), `acceso-de-desarrollo`
   (24/10/2026, D-110, D-111), 4a `cimientos-del-libro` (26/10/2026, D-119), 4b
   `libro-de-movimientos` (27/10/2026, D-121 a D-126, OK salvo la deuda D8 que bloquea el 7) y 3c
-  `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11).
-  Sus migraciones son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
+  `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11) y 2d
+  `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`).
+  Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **Nuevos, pendientes de proponer** (D-130, 28/10/2026): `2d · sesion-sin-persona` (CRITICAL, se
-  adelanta lo antes posible) y `3d · pulido-2` (MEDIUM, Emiliano, en paralelo antes del 6).
+- **En revisión**: `3d · pulido-2` (PR #3, Gianfranco) y `6 · gastos-y-cargos` (PR #4, Emiliano).
+- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29, uno por
+  desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
@@ -346,3 +358,8 @@ El informe "Discovery Kooris Mendoza" (octubre de 2026, fuera del repo). **Koori
 proyecto** (D-035), así que el informe aplica directo: ~150 barrios y ~20 administradores en la
 Cámara de Mendoza, 75.124 departamentos ocupados en el Gran Mendoza (Censo 2022), líderes
 nacionales a ARS 2.950 por unidad, **AccessIN** como competidor mendocino en barrios.
+
+
+## Memoria del proyecto en Obsidian
+
+Al iniciar, leé `obsidian.md` para recuperar el estado y los pendientes. Al completar trabajo significativo, actualizá esa nota con avances verificables, decisiones y próximos pasos, sin incluir secretos. La base técnica `knowledge-base/` mantiene su función y sus propias reglas.
