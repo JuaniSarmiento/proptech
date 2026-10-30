@@ -33,14 +33,14 @@ gates están en el árbol de abajo.
    2a aislamiento por administración (cada empresa ve sólo lo suyo)
    2b login con Clerk · 2.2a roles de la empresa · 2c endurecimiento
 
-2 bis. SESIÓN SIN PERSONA (nuevo, D-130, 28/10/2026)
-   👉 2d sesion-sin-persona · CRITICAL · lo antes posible (loop /ingresar↔/elegir-administracion → 431)
+2 bis. SESIÓN SIN PERSONA (D-130)
+   ✅ 2d sesion-sin-persona · CRITICAL (archivado 28/10/2026, D-131 a D-137)
 
 3. CONFIGURACIÓN DEL EDIFICIO
    ✅ 3a datos del edificio      ✅ 3b pantallas
    ✅ acceso de desarrollo (PR #1)
    ✅ 3c pulido: bugs + ubicación + pisos (archivado 28/10/2026, D-128/D-129)
-   ⏳ 3d pulido-2 (nuevo, D-130) · Gianfranco, en paralelo antes del 6
+   👉 3d pulido-2 (D-130) · Gianfranco · en revisión (PR #3)
 
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
@@ -49,7 +49,7 @@ gates están en el árbol de abajo.
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
-   ⏳ 5 importar desde Excel       ⏳ 6 gastos y cargos (Emiliano, recibe RB-5 del 4a, D-130)
+   ⏳ 5 importar desde Excel       👉 6 gastos y cargos (Emiliano) · en revisión (PR #4)
    ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
 
 6. COBRAR Y SEGUIR
@@ -60,12 +60,21 @@ gates están en el árbol de abajo.
 
 7. PILOTO
    ⏳ 15 un edificio real en paralelo  ← el final; bloqueado también por el contenido legal de
-      `/privacidad` (Juani y Alberto, D-130) y por la deuda heredada de 1d/2a/2c
+      `/privacidad` (Juani y Alberto, D-130)
+
+DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crítico
+   ⏳ 2e humo-y-ci (Gianfranco)          ⏳ 1e respaldos-2 (Emiliano, HIGH)
+   ⏳ 1f worker-y-logs (Neyen)           ⏳ 3e pulido-web-3 (Matías)
+   ⏳ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
+   ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
 - **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
-- **En paralelo, no frenan a nadie:** 3d (Gianfranco), 6 (Emiliano), 4d, 6b, 9, 11, 12 y 14.
+- **En paralelo, no frenan a nadie:** 3d (Gianfranco) y 6 (Emiliano), en revisión; los siete de
+  deuda adelantada (D-138); 4d, 6b, 9, 11, 12 y 14.
+- **4c**: lo construye un firmante de D-111 (Juani, Alberto o Emiliano), nunca alguien recién llegado
+  (D-138).
 - **Numeración:** el número corto (4a, 7, 10b) es el de las fichas de abajo; el código C-xx es el
   mismo change con otro nombre (4a = C-07a, 7 = C-10).
 
@@ -88,7 +97,7 @@ C-01 infraestructura-base (1a)
                                 │
                                 ├── C-06b pantallas-del-edificio (3b)    ← fuera del camino crítico
                                 │     └── C-06c pulido-de-la-configuracion (3c) ← archivado 28/10/2026 (D-128/D-129)
-                                │           └── C-22 pulido-2 (3d) ← nuevo (D-130); Gianfranco, en paralelo antes del 6
+                                │           └── C-22 pulido-2 (3d) ← en revisión (PR #3, D-130); Gianfranco
                                 │
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
@@ -127,6 +136,10 @@ C-01 infraestructura-base (1a)
                                                 ▼
                                     C-20 piloto-en-paralelo (15)
 ```
+
+> **Deuda adelantada (D-138, 30/10/2026)**: C-23 a C-29 no figuran en el árbol porque dependen sólo
+> de changes archivados (1c, 1d, 2a, 2c, 3c, 2d) y no bloquean a ninguno del roadmap: van todos en
+> paralelo. Ver la sección "DEUDA ADELANTADA" al final de este archivo.
 
 ### Paralelismo por fase
 
@@ -485,7 +498,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-22] `pulido-2` · 3d (nuevo, D-130, 28/10/2026)
-- **Estado**: `[ ]` pendiente, no propuesto todavía. MEDIUM.
+- **Estado**: `[ ]` en revisión (PR #3, rama `change/pulido-2`), sin mergear. MEDIUM. Gianfranco.
 - **Scope**: `web/e2e/api-falsa.ts` con `PATCH` para edificio/grupos y Georef; `ayuda.ts` corregido a
   "de 7 pasos"; el orden de `vocabularioDePisos` (`SS1` arriba de `PB`) con el test del propio
   escenario arreglado; la raíz `/` deja de ser el placeholder de 1a; `axe` en más de un estado en las
@@ -595,7 +608,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-09] `gastos-y-cargos` · 6
-- **Estado**: `[ ]` pendiente. Emiliano, en paralelo con `3d` (Gianfranco) antes del camino crítico
+- **Estado**: `[ ]` en revisión (PR #4, rama `change/gastos-y-cargos`), sin mergear. Emiliano, en
+  paralelo con `3d` (Gianfranco) antes del camino crítico
 - **Scope**: proveedores, gastos con sus cuatro estados, sueldo del encargado como gasto, cargos
   particulares sueltos o por Excel, nota de crédito asociada a la factura. **Recibe del 4a, confirmado
   por D-130**: el mutante de RB-5 sin matar (`grupos.py:345-346`, `modo_de_coeficientes` nunca entra a
@@ -767,8 +781,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Estado**: `[ ]` pendiente
 - **Scope**: carga de los datos reales del piloto, un mes completo en paralelo, comparación al
   centavo, prueba de restauración de un backup, evidencia de aislamiento. **Bloqueado también por el
-  contenido legal del aviso de `/privacidad`** (Juani y Alberto, D-130) y por la deuda de baja
-  severidad heredada de 1d/2a/2c con dueño este cambio (ver `knowledge-base/12_fichas_de_changes.md`)
+  contenido legal del aviso de `/privacidad`** (Juani y Alberto, D-130). La mayor parte de la deuda
+  heredada de 1d/2a/2c pasó a los changes de deuda adelantada (D-138); acá queda la que necesita el
+  servidor real o los datos del piloto (ver `knowledge-base/12_fichas_de_changes.md`)
 - **Dependencias**: C-05b, C-05c, C-06c, C-07d, C-12, C-13, C-17, C-18, C-19, C-21, C-22 (y todos los
   anteriores) + datos del edificio piloto (P1) + contenido legal de `/privacidad`
 - **Governance**: se declara en el propose (`openspec/config.yaml`)
@@ -776,3 +791,89 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   - `knowledge-base/12_fichas_de_changes.md` §15
   - `knowledge-base/01_vision_y_objetivos.md` §Cómo se valida
   - `knowledge-base/10_preguntas_abiertas.md` (P1, P12)
+
+---
+
+## DEUDA ADELANTADA (D-138, 30/10/2026)
+
+> La deuda viva de los cierres, verificada contra `main` (`e29e36d`) el 30/10/2026, sale del 15 y de
+> los dueños del tipo "quien toque X" a siete changes propios. Todos dependen sólo de changes
+> archivados: se pueden proponer ya, en paralelo, y ninguno toca el camino crítico. Quien recién se
+> suma toma sólo LOW o MEDIUM; lo CRITICAL queda en manos de un firmante de D-111. El detalle ítem por
+> ítem, con su dueño anterior, está en `knowledge-base/12_fichas_de_changes.md` §Deuda adelantada.
+
+| Change | Código | Nivel | Responsable |
+|---|---|---|---|
+| C-23 `humo-y-ci` | 2e | MEDIUM | Gianfranco |
+| C-24 `respaldos-2` | 1e | HIGH (firma de D-111 antes de construir) | Emiliano |
+| C-25 `worker-y-logs` | 1f | MEDIUM | Neyen |
+| C-26 `pulido-web-3` | 3e | MEDIUM | Matías |
+| C-27 `ejemplo-robusto` | 3f | LOW | Giuliano |
+| C-28 `revisiones-independientes` | R1 | MEDIUM | Juan Cruz |
+| C-29 `base-y-rls` | 2f | CRITICAL | sin asignar: un firmante de D-111 |
+
+### [C-23] `humo-y-ci` · 2e
+- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Gianfranco.
+- **Scope**: los pasos del humo con línea y comando (C2-5/C2V2-8), la lista de servicios derivada y no
+  escrita a mano (C2V2-7), comparar el contenido de las políticas de RLS restauradas y no su cantidad
+  (C2V2-3), la carrera del `.dump` (C2-7), `arranque_fallido` con base inalcanzable y YAML mal formado
+  (C2-8), timeouts de Caddy (N2), el verificador de cabeceras (N-a), los tests del log (C2V2-2, N-b),
+  el `421` del sitio de respaldo (C2V2-6), `humo.sh` sin `-p proptech` fijo (L-047), el ensayo de roles
+  en el CI con la cabeza de migración derivada, cache de Chromium, Dependabot.
+- **Dependencias**: C-05c (archivado).
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §2e y "Deuda del cierre del 2c";
+  `knowledge-base/15_lecciones.md` (L-047, L-043, L-044).
+
+### [C-24] `respaldos-2` · 1e
+- **Estado**: `[ ]` pendiente, no propuesto. HIGH: firma escrita de un firmante de D-111 antes de
+  construir. Emiliano.
+- **Scope**: retención con el reloj atrasado (F4), SIGTERM (F5), la carrera del 503 (F6), logs en JSON
+  (F8), "14 copias" contra 14 días, conmutar la aplicación a una base restaurada, crear
+  `infra/datos-respaldos` sin paso manual, volcado con el rol equivocado contra `pg_dump` real.
+- **Dependencias**: C-04 (archivado).
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §1e y "Deuda del cierre del 1d".
+
+### [C-25] `worker-y-logs` · 1f
+- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Neyen.
+- **Scope**: F2c (bloquea al 7 antes de su primera tarea real), F12b, `test_salud_cola_real` que falla
+  corrido aislado, logs de worker y httpx sin interpolar, F3b. `repr(RedisSettings)` no entra: expone
+  un secreto y va a C-29.
+- **Dependencias**: C-03 (archivado).
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §1f y "Deuda del cierre del 1c".
+
+### [C-26] `pulido-web-3` · 3e
+- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Matías.
+- **Scope**: el menú lateral vacío para contador, auxiliar y consejo y sin "Mis edificios"; "Quitar"
+  ofrecido sobre el único super admin; el selector con una sola administración; `pedirApi` sin
+  timeout; el encabezado fijo de la tabla de unidades; "Completar la ubicación" aunque esté hecho; el
+  recuadro de Clerk en `/ingresar`; la cuarentena de pnpm. Si hace falta cambiar la matriz de
+  permisos, sube a CRITICAL y ese pedazo sale del change (D-138).
+- **Dependencias**: C-06c, C-21 (archivados); conviene después del 3d.
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §3e; `09_decisiones_y_supuestos.md` (D-134).
+
+### [C-27] `ejemplo-robusto` · 3f
+- **Estado**: `[ ]` pendiente, no propuesto. LOW. Giuliano.
+- **Scope**: la deuda de `acceso-de-desarrollo` sobre `ejemplo.py`: mutantes M5 a M8 (QA-2), la
+  concurrencia sin barrera (QA-7/DB-3), `LIMIT 1` sin `ORDER BY` (DB-4), errores como traceback (BE-3),
+  Redis exigido sin usarse (QA-3), el test de guarda (QA-5).
+- **Dependencias**: C-21 (archivado).
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §3f y "Deuda del cierre de
+  `acceso-de-desarrollo`"; `09_decisiones_y_supuestos.md` (D-110, D-133).
+
+### [C-28] `revisiones-independientes` · R1
+- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Juan Cruz.
+- **Scope**: trabajo de rompedor, sin código de producción: revisión de RR-1 a RR-4 y de los ataques de
+  base del 2.2a, los diez tests de la vuelta 2 del 3a, los commits de RF del 4b y RB4B-01, CX-01 y
+  CX-02. Una falla reproducida en `acceso` o `cuenta_corriente` no se arregla acá: queda como test que
+  falla y pasa al change del firmante (C-29, 4c o 7).
+- **Dependencias**: ninguna pendiente.
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §R1; `knowledge-base/15_lecciones.md`.
+
+### [C-29] `base-y-rls` · 2f
+- **Estado**: `[ ]` pendiente, no propuesto. CRITICAL. Sin asignar: lo construye o lo supervisa un
+  firmante de D-111.
+- **Scope**: V2-3, V3-4, V3-6, V3-7, la mutación de los 25 tests de RLS, permisos y rutas, la
+  verificación de arranque de las políticas de las tablas de negocio (D-098), DB-2, AR-7 y
+  `repr(RedisSettings)` con la contraseña.
+- **Dependencias**: C-05a (archivado). Antes del 15.
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §2f y "Deuda del cierre del 2a".

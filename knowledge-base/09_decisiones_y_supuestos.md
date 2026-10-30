@@ -2764,3 +2764,31 @@ registrado como tal en su momento.)*
   invitación** con su `__clerk_ticket`, que ya ofrece ingresar o crear cuenta. El resto de la decisión
   queda igual.
 - **Quién**: Juani, 28/10/2026 (decisión y enmienda).
+
+## D-138 · La deuda viva se adelanta a siete changes propios, repartidos entre seis desarrolladores (30/10/2026)
+
+- **Fecha**: 30/10/2026.
+- **Contexto**: con seis desarrolladores (Emiliano, Gianfranco, Neyen, Matías, Giuliano y Juan Cruz)
+  y un camino crítico que no admite más de tres changes a la vez, la mayor parte de la deuda de los
+  cierres esperaba al 15 o a dueños del tipo "quien toque X" que nunca actuaron (el 2d tocó
+  `ejemplo.py` y el 3c, el 2d y el PR #3 tocaron `web/` sin cerrar su deuda). El 30/10/2026 se
+  verificó toda la deuda contra el código de `main` (`e29e36d`) y contra los PR #3 y #4, por lectura
+  estática (sin correr tests ni mutantes): de unos 100 ítems, 12 ya estaban cerrados aunque la KB los
+  daba por abiertos, y quedaban unos 58 de código vivos y sin change propio.
+- **Decisión**: esa deuda pasa a siete changes nuevos, con responsable fijo:
+  C-23 `humo-y-ci` (2e, MEDIUM, Gianfranco); C-24 `respaldos-2` (1e, HIGH, Emiliano); C-25
+  `worker-y-logs` (1f, MEDIUM, Neyen); C-26 `pulido-web-3` (3e, MEDIUM, Matías); C-27
+  `ejemplo-robusto` (3f, LOW, Giuliano); C-28 `revisiones-independientes` (R1, MEDIUM, Juan Cruz,
+  sólo tests e informes); C-29 `base-y-rls` (2f, CRITICAL, sin asignar: un firmante de D-111). Los
+  dueños anteriores de cada ítem se conservan en las tablas de `12_fichas_de_changes.md`.
+- **Regla de reparto**: quien recién se suma al equipo sólo toma changes LOW o MEDIUM; lo CRITICAL lo
+  construye o lo supervisa un firmante de D-111. Si un change MEDIUM necesita cambiar la matriz de
+  permisos o código de `acceso` o `cuenta_corriente`, sube de nivel y ese pedazo sale del change.
+- **Lo que no se mueve**: la deuda del 4c (RB-6, RF-01, RF-02), la del 7 (D8, la configuración con
+  fecha pasada de D-103) y la que necesita el servidor real o datos del piloto (imágenes por digest,
+  HSTS con dominio, RD-2, SU-01, la 8.2 acortada del 2b, `/privacidad`) siguen donde estaban.
+- **Supuesto de planificación**: el 3d (PR #3) y el 6 (PR #4) se dan por terminados para repartir,
+  aunque al 30/10/2026 siguen en revisión sin mergear.
+- **Descartado**: dejar la deuda en el 15 (llegaría con más de 30 arreglos sueltos justo antes de
+  cargar datos reales) y darle el 4c a un desarrollador nuevo (es CRITICAL y del camino crítico).
+- **Quién**: Juani, 30/10/2026.
