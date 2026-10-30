@@ -562,7 +562,8 @@ describe("PantallaPadron, vecinos (7.4)", () => {
     const piso = screen.getByLabelText("Piso") as HTMLSelectElement;
     expect(piso.tagName).toBe("SELECT");
     const opciones = Array.from(piso.options).map((o) => o.value);
-    expect(opciones).toEqual(["", "PB", "1", "2", "3", "4", "SS1"]);
+    // pulido-2 (3d): orden de altura (subsuelos, PB, pisos); la opción vacía va primera (L-052).
+    expect(opciones).toEqual(["", "SS1", "PB", "1", "2", "3", "4"]);
   });
 
   it('D3 (6.2) "Unidades con el piso sin completar": se muestran marcadas en la tabla', () => {

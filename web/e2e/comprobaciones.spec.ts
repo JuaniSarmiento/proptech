@@ -4,7 +4,7 @@
  * construyó ninguna pantalla, así que no hay "siete pantallas" contra las
  * que correr todavía (eso es 5.1). Lo que exige esta tarea son los dos
  * rojos del chequeo en sí, y que el chequeo también pase contra la
- * portada real servida por `next start` (prueba que el script arma bien
+ * pantalla pública real servida por `next start` (la raíz `/` redirige; prueba que el script arma bien
  * el stack).
  */
 
@@ -14,7 +14,7 @@ import { expect, test } from "./prueba";
 test.describe("320 px sin scroll horizontal", () => {
   test("la portada real, servida por next start, entra en 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 800 });
-    await page.goto("/");
+    await page.goto("/ingresar");
     expect(await anchoExcedeLaVentana(page)).toBe(false);
   });
 
@@ -43,7 +43,7 @@ test("prefers-reduced-motion deja --duracion-transicion en 0ms en la portada rea
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/ingresar");
   const duracion = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue("--duracion-transicion").trim(),
   );

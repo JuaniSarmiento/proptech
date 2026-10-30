@@ -70,6 +70,47 @@ const _RUTAS: Record<string, string> = {
   "configuracion/versiones": "versiones",
 };
 
+// pulido-2 (3d): Georef simulado. Chico a propósito (no lee `config/georef/`); los ids
+// 50 / 50007 / 50007010 son los del fixture del edificio. Cada nombre y cada padre son los
+// de `config/georef/` para ese id (F3 del rompedor; lo vigila api-falsa.patch-georef.test.ts).
+type _OpcionGeoref = { id: string; nombre: string };
+const _GEOREF_PROVINCIAS: _OpcionGeoref[] = [
+  { id: "50", nombre: "Mendoza" },
+  { id: "06", nombre: "Buenos Aires" },
+];
+const _GEOREF_DEPARTAMENTOS: Record<string, _OpcionGeoref[]> = {
+  "50": [
+    { id: "50007", nombre: "Capital" },
+    { id: "50028", nombre: "Guaymallén" },
+  ],
+  "06": [{ id: "06028", nombre: "Almirante Brown" }],
+};
+const _GEOREF_LOCALIDADES: Record<string, _OpcionGeoref[]> = {
+  "50007": [{ id: "50007010", nombre: "Mendoza" }],
+  "50028": [{ id: "50028010", nombre: "Colonia Segovia" }],
+  "06028": [{ id: "06028010", nombre: "Almirante Brown" }],
+};
+
+/**
+ * UUID con guiones, sin distinguir mayúsculas. Pydantic acepta además otras formas (sin
+ * guiones, con `urn:uuid:`) que la web nunca manda; acá se rechazan y se pierde esa
+ * fidelidad a propósito, para no simular un parser entero.
+ */
+const _UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `null` si la ruta no existe o el padre no existe (404, como la API real). */
+function _listaDeGeoref(ruta: string[]): _OpcionGeoref[] | null {
+  const [nivel, padre, hijo] = ruta;
+  if (ruta.length === 1 && nivel === "provincias") return _GEOREF_PROVINCIAS;
+  if (ruta.length === 3 && nivel === "provincias" && hijo === "departamentos" && padre) {
+    return _GEOREF_DEPARTAMENTOS[padre] ?? null;
+  }
+  if (ruta.length === 3 && nivel === "departamentos" && hijo === "localidades" && padre) {
+    return _GEOREF_LOCALIDADES[padre] ?? null;
+  }
+  return null;
+}
+
 // `slice(0, 200)` sobre una base que repite de más: 200 caracteres EXACTOS,
 // sin depender de que la cuenta de `repeat` cierre justo.
 export const NOMBRE_DE_200 = "Consorcio Edificio Modelo ".repeat(8).slice(0, 200);
@@ -284,11 +325,23 @@ type _ContratoDeRuta = Partial<
 >;
 
 const _CONTRATO_DE_ESCRITURA: Record<string, _ContratoDeRuta> = {
-  "": {}, // ver_complejo (complejos.py:287): sólo GET.
-  resumen: {}, // resumen_edificio (complejos.py:263): sólo GET.
-  configuracion: {}, // vigente_del_edificio (complejos.py:502): sólo GET.
+  "": {
+    // ver_complejo (complejos.py:363) es GET; modificar_edificio (complejos.py:342) =
+    // CuerpoEdicionEdificio (pulido-2, 3d): todo opcional, la administración no se edita.
+    PATCH: {
+      nombre: { tipo: "texto", opcional: true },
+      provincia_id: { tipo: "texto", opcional: true },
+      departamento_id: { tipo: "texto", opcional: true },
+      localidad_id: { tipo: "texto", opcional: true },
+      calle_y_numero: { tipo: "texto", opcional: true },
+      pisos: { tipo: "entero", opcional: true },
+      subsuelos: { tipo: "entero", opcional: true },
+    },
+  },
+  resumen: {}, // resumen_edificio (complejos.py:318): sólo GET.
+  configuracion: {}, // vigente_del_edificio (complejos.py:612): sólo GET.
   unidades: {
-    // alta_unidad (complejos.py:341) = CuerpoUnidad = DatosUnidad, sin
+    // alta_unidad (complejos.py:423) = CuerpoUnidad = DatosUnidad, sin
     // campos opcionales (D7, R3A-1/R3A-6).
     POST: {
       identificador: { tipo: "texto" },
@@ -299,7 +352,7 @@ const _CONTRATO_DE_ESCRITURA: Record<string, _ContratoDeRuta> = {
     },
   },
   grupos: {
-    // alta_grupo (complejos.py:394) = CuerpoGrupo = DatosGrupo + modo/unidades opcionales.
+    // alta_grupo (complejos.py:485) = CuerpoGrupo = DatosGrupo + modo/unidades opcionales.
     POST: {
       clave: { tipo: "texto" },
       nombre: { tipo: "texto" },
@@ -309,14 +362,24 @@ const _CONTRATO_DE_ESCRITURA: Record<string, _ContratoDeRuta> = {
     },
   },
   categorias: {
-    // alta_categoria (complejos.py:456) = CuerpoCategoria = CategoriaDeGasto (sólo clave y nombre).
+    // alta_categoria (complejos.py:556) = CuerpoCategoria = CategoriaDeGasto (sólo clave y nombre).
     POST: {
       clave: { tipo: "texto" },
       nombre: { tipo: "texto" },
     },
   },
+  "/grupos/{id}": {
+    // modificar_grupo (complejos.py:506) = CuerpoEdicionGrupo (pulido-2, 3d). No cuelga de
+    // /complejos/{id}: la clave empieza con "/" para no chocar con ningún `resto` real.
+    PATCH: {
+      clave: { tipo: "texto", opcional: true },
+      nombre: { tipo: "texto", opcional: true },
+      metodo: { tipo: "texto", opcional: true },
+      activo: { tipo: "booleano", opcional: true },
+    },
+  },
   "configuracion/versiones": {
-    // alta_version (complejos.py:525) = CuerpoVersion = ConfiguracionEdificio + vigente_desde.
+    // alta_version (complejos.py:635) = CuerpoVersion = ConfiguracionEdificio + vigente_desde.
     POST: {
       tasa_mensual: { tipo: "texto" }, // Porcentaje: mismo patrón que Coeficiente, texto.
       dias_de_gracia: { tipo: "entero" },
@@ -757,6 +820,90 @@ export function crearServidor(
       return;
     }
 
+    // pulido-2 (3d): Georef (georef.py) sólo declara GET; padre inexistente = 404.
+    if (partes[0] === "api" && partes[1] === "georef") {
+      if (pedido.method !== "GET") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      const lista = _listaDeGeoref(partes.slice(2));
+      if (!lista) {
+        respuesta
+          .writeHead(404, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: "no encontrado" }));
+        return;
+      }
+      respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(lista));
+      return;
+    }
+
+    // pulido-2 (3d): `/api/grupos/{id}` sólo declara PATCH (complejos.py:506). Misma
+    // validación de forma que las escrituras de /complejos: Content-Type, JSON, objeto, campos.
+    if (partes[0] === "api" && partes[1] === "grupos" && partes.length === 3) {
+      const metodoGrupo = pedido.method ?? "GET";
+      if (!_metodosDeEscrituraPermitidos("/grupos/{id}").has(metodoGrupo)) {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      let cuerpoGrupo = "";
+      pedido.on("data", (trozo) => {
+        cuerpoGrupo += trozo;
+      });
+      pedido.on("end", () => {
+        const contentTypeGrupo = String(pedido.headers["content-type"] ?? "");
+        _ultimaEscritura = {
+          metodo: metodoGrupo,
+          url: pedido.url ?? "",
+          contentType: contentTypeGrupo,
+          cuerpo: cuerpoGrupo,
+        };
+        const rechazar422 = (detalle: unknown) =>
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(JSON.stringify({ detail: detalle }));
+        // F2: `grupo_id: UUID` en la real; un id que no lo es da 422 antes del handler.
+        if (!_UUID.test(partes[2] ?? "")) {
+          rechazar422([{ type: "uuid_parsing", loc: ["path", "grupo_id"] }]);
+          return;
+        }
+        if (!/^application\/json/.test(contentTypeGrupo)) {
+          respuesta
+            .writeHead(422, { "content-type": "application/json" })
+            .end(_ERROR_CONTENT_TYPE_INVALIDO);
+          return;
+        }
+        let parseado: unknown;
+        try {
+          // F1: el cuerpo es obligatorio en la real (`422 missing ["body"]`); `{}` sí vale.
+          if (cuerpoGrupo === "") {
+            rechazar422([{ type: "missing", loc: ["body"] }]);
+            return;
+          }
+          parseado = JSON.parse(cuerpoGrupo);
+        } catch {
+          rechazar422([{ type: "json_invalid", loc: ["body"] }]);
+          return;
+        }
+        if (parseado === null || typeof parseado !== "object" || Array.isArray(parseado)) {
+          rechazar422([{ type: "model_attributes_type", loc: ["body"] }]);
+          return;
+        }
+        const errores = _erroresDeContrato(
+          "/grupos/{id}",
+          metodoGrupo,
+          parseado as Record<string, unknown>,
+        );
+        if (errores) {
+          rechazar422(errores);
+          return;
+        }
+        respuesta
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify({ id: partes[2] }));
+      });
+      return;
+    }
+
     if (partes[0] !== "api" || partes[1] !== "complejos") {
       respuesta.writeHead(404).end();
       return;
@@ -894,6 +1041,23 @@ export function crearServidor(
         respuesta.writeHead(405).end();
         return;
       }
+      if (metodo === "PATCH" && resto === "" && !_UUID.test(id)) {
+        // F7: `complejo_id: UUID` en la real, igual que `grupo_id` (F2).
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(
+            JSON.stringify({ detail: [{ type: "uuid_parsing", loc: ["path", "complejo_id"] }] }),
+          );
+        return;
+      }
+      if (metodo === "PATCH" && cuerpo === "") {
+        // F1: en la real el cuerpo del PATCH es obligatorio (`422 missing ["body"]`); `{}`
+        // sí vale. Los POST conservan su forma: sin cuerpo ya les faltan los obligatorios.
+        respuesta
+          .writeHead(422, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: [{ type: "missing", loc: ["body"] }] }));
+        return;
+      }
       let cuerpoParseado: unknown;
       try {
         cuerpoParseado = cuerpo === "" ? {} : JSON.parse(cuerpo);
@@ -928,6 +1092,12 @@ export function crearServidor(
         return;
       }
       if (responderSegunEscenario()) {
+        return;
+      }
+      if (metodo === "PATCH" && resto === "") {
+        respuesta
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify({ id }));
         return;
       }
       if (metodo === "POST" && resto === "unidades") {

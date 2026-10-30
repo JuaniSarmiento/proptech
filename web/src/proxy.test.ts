@@ -61,3 +61,43 @@ it.each(["ausente", "vencido", "otra_firma"])(
     expect(red).not.toHaveBeenCalled();
   },
 );
+
+// pulido-2 (3d): el filtro propio de `proxy.ts` que le saca `'unsafe-inline'` y
+// `'unsafe-eval'` a `script-src` (Clerk 7.9.19 deja el primero aun con `strict`).
+// El e2e `csp.spec.ts` prueba la política completa contra Next real; esto prueba
+// el filtro sin levantar Next, en las dos cabeceras donde se aplica.
+it("CSP: script-src sin 'unsafe-inline' ni 'unsafe-eval' y con nonce, en la respuesta y en la cabecera que lee Next", async () => {
+  vi.stubEnv("CLERK_SECRET_KEY", SECRETA_FALSA);
+  vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", PUBLICABLE);
+  vi.stubEnv("CLERK_JWT_KEY", PUBLICA);
+  vi.stubEnv("CLERK_PARTES_AUTORIZADAS", "http://127.0.0.1:3100");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw new Error("red prohibida");
+    }),
+  );
+  const { default: proxy } = await import("./proxy");
+  const ahora = Math.floor(Date.now() / 1000);
+  const respuesta = await proxy(
+    new NextRequest("http://127.0.0.1:3100/edificios", {
+      headers: { cookie: `__session=${crearToken()}; __client_uat=${ahora}`, accept: "text/html" },
+    }),
+    {} as Parameters<typeof proxy>[1],
+  );
+
+  for (const cabecera of [
+    "content-security-policy",
+    "x-middleware-request-content-security-policy",
+  ]) {
+    const politica = respuesta?.headers.get(cabecera);
+    expect(politica, `falta ${cabecera}`).toBeTruthy();
+    const scriptSrc = (politica ?? "")
+      .split("; ")
+      .find((directiva) => directiva.startsWith("script-src "));
+    expect(scriptSrc, `${cabecera} sin script-src`).toBeDefined();
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(scriptSrc).not.toContain("'unsafe-eval'");
+    expect(scriptSrc).toMatch(/'nonce-[^']+'/);
+  }
+});

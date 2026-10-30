@@ -12,7 +12,7 @@ test("6.2: CSP completa en Next real, nonce distinto en cada pedido público y a
   page,
 }) => {
   const nonces = new Set<string>();
-  for (const ruta of ["/", "/edificios", "/edificios"]) {
+  for (const ruta of ["/ingresar", "/edificios", "/edificios"]) {
     const respuesta = await page.request.get(ruta);
     expect(respuesta.status()).toBe(200);
     const csp = respuesta.headers()["content-security-policy"];
