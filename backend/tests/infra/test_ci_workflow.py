@@ -190,3 +190,20 @@ def test_gitleaks_y_shellcheck_fijados_por_tag_y_digest() -> None:
             m.group(0) for m in _PATRON_IMAGEN_CON_DIGEST.finditer(texto) if imagen in m.group(0)
         ]
         assert coincidencias, f"{imagen} no está fijada con tag Y @sha256: en el workflow"
+
+
+def test_el_job_humo_define_su_proyecto_de_compose() -> None:
+    """2e, L-047: el humo se niega a correr sin `PROPTECH_COMPOSE_PROYECTO`; el job lo define
+    con un proyecto propio, nunca `proptech`."""
+    job = _workflow()["jobs"]["humo"]
+    proyecto = job.get("env", {}).get("PROPTECH_COMPOSE_PROYECTO")
+    assert proyecto, "el job humo no define PROPTECH_COMPOSE_PROYECTO"
+    assert proyecto != "proptech"
+
+
+def test_el_readme_explica_el_rechazo_del_humo() -> None:
+    """2e: quien corre el humo a mano tiene que poder leer cómo y por qué se niega."""
+    readme = (RAIZ / "README.md").read_text()
+    assert "PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh" in readme
+    for causa in ("puerto 80", "proptech"):
+        assert causa in readme

@@ -17,18 +17,25 @@
 
 ## 2. `humo.sh` en un proyecto aislado (L-047)
 
-- [ ] 2.1 Test estático rojo: `humo.sh` sin `-p proptech` literal, con `PROPTECH_COMPOSE_PROYECTO`
+- [x] 2.1 Test estático rojo: `humo.sh` sin `-p proptech` literal, con `PROPTECH_COMPOSE_PROYECTO`
   exportada; verde al cambiar `compose()` y el resto de los usos del script (reemplaza
   `test_toda_invocacion_de_docker_compose_lleva_p_proptech`, que fijaba lo contrario)
-- [ ] 2.2 Test rojo y verde de la restauración: una copia del humo que no exporta la variable llama a
+- [x] 2.2 Test rojo y verde de la restauración: una copia del humo que no exporta la variable llama a
   `restaurar.sh` sobre `proptech` (error real de `humo.sh:741`); con la variable exportada opera sobre el
   proyecto del humo. Se explica en el PR qué proyecto habría restaurado [WSL para verlo con Docker]
-- [ ] 2.3 Tests rojos y verdes del rechazo previo, uno por caso, sin ejecutar ningún `up` ni `down`:
+- [x] 2.3 Tests rojos y verdes del rechazo previo, uno por caso, sin ejecutar ningún `up` ni `down`:
   (a) sin variable, (b) `proptech` con contenedores corriendo, (c) puerto 80 o 443 ocupado; cada
   mensaje nombra la causa y cómo correrlo [WSL, con un stack `proptech` descartable y un puerto 80
   ocupado a propósito]
-- [ ] 2.4 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
+- [x] 2.4 El job `humo` del CI exporta su proyecto; `README` y `test_readme_variables.py` incluyen la
   variable y el rechazo; `test_ci_workflow.py` lo fija
+> Evidencia grupo 2 [WSL, `~/apply-humo`, 30/10/2026]: rojo `6 failed, 5 passed` en
+> `test_humo_aislamiento.py` antes del código; verde `43 passed` (humo, aislamiento, pasos, ci_workflow,
+> readme, ensayo_login) y `ruff`/`mypy`/`shellcheck` limpios después. Con Docker real: sin variable,
+> `proptech` con un contenedor etiquetado corriendo y puerto ocupado terminan con código 1 y mensaje
+> propio, sin tocar nada. Baseline de integración de `origin/main` `60b3dd5`: `1833 passed, 2446
+> deselected, 1 xfailed`, 0 fallos, 18 min 41 s.
+
 - [ ] 2.5 Anotar la deuda "humo en paralelo con un stack real" (puertos y red fijos de
   `infra/compose.yaml`, `:22`, `:191`, `:368-375`) en la ficha 2e al cerrar
 

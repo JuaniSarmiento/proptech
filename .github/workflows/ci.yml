@@ -81,6 +81,9 @@ jobs:
     runs-on: ubuntu-24.04
     # D5: medido en 1 a 2 min (1m00s a 2m00s en las últimas cuatro corridas).
     timeout-minutes: 15
+    env:
+      # L-047 (2e): el humo se niega a correr sin proyecto propio y nunca sobre `proptech`.
+      PROPTECH_COMPOSE_PROYECTO: proptech-humo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Prueba de humo del stack completo

@@ -11,29 +11,14 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[3]
 HUMO = RAIZ / "infra" / "ci" / "humo.sh"
 
-#: Cualquier línea que invoque `docker compose` (no un comentario ni un
-#: `echo` descriptivo: eso se cubre renombrando esas líneas, ver más abajo).
-_PATRON_DOCKER_COMPOSE = re.compile(r"docker compose\b")
-
-
-def _lineas_no_comentario(texto: str) -> list[str]:
-    return [linea for linea in texto.splitlines() if not linea.strip().startswith("#")]
-
 
 def test_humo_existe() -> None:
     assert HUMO.exists(), "falta infra/ci/humo.sh"
 
 
-def test_toda_invocacion_de_docker_compose_lleva_p_proptech() -> None:
-    """L-006: lo destructivo (sobre todo `down -v`) apunta siempre al
-    proyecto `proptech`, sin depender de que `name: proptech` siga en
-    `compose.yaml`."""
-    texto = HUMO.read_text(encoding="utf-8")
-    for linea in _lineas_no_comentario(texto):
-        if _PATRON_DOCKER_COMPOSE.search(linea):
-            assert "-p proptech" in linea, (
-                f"invocación de 'docker compose' sin '-p proptech': {linea.strip()!r}"
-            )
+# `test_toda_invocacion_de_docker_compose_lleva_p_proptech` (L-006) pasó a
+# `test_humo_aislamiento.py` al cambiar la regla (2e, L-047): el proyecto ya no es el literal
+# `proptech` sino `PROPTECH_COMPOSE_PROYECTO`, con rechazo previo ante un stack real.
 
 
 #: Mismo patrón que `_PATRON_UUID_CANONICO` de

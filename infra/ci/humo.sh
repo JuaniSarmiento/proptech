@@ -11,6 +11,40 @@ source "$(dirname "${BASH_SOURCE[0]}")/pasos.sh"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# L-047 (2e `humo-y-ci`): el humo corre sólo en un proyecto de Compose propio y se niega ANTES de
+# ejecutar ningún `up` ni `down` (y antes de armar el `trap limpiar`, que baja el stack) si no puede
+# hacerlo sin tocar un stack real. Tres rechazos, cada uno con su causa y cómo correrlo:
+#  (a) falta PROPTECH_COMPOSE_PROYECTO;
+#  (b) vale `proptech` (el proyecto de uso real) y tiene contenedores corriendo;
+#  (c) el puerto 80 o el 443 del host están ocupados: Caddy los publica fijos
+#      (infra/compose.yaml), así que el humo no puede correr en paralelo con otro stack.
+# PROPTECH_HUMO_PUERTOS (por defecto "80 443") existe para que los tests prueben (c) con un
+# puerto que ellos mismos ocupan.
+COMO_CORRERLO="PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh"
+if [ -z "${PROPTECH_COMPOSE_PROYECTO:-}" ]; then
+  echo "ERROR: falta PROPTECH_COMPOSE_PROYECTO: el humo corre sólo en un proyecto de Compose propio." >&2
+  echo "Corrélo así: $COMO_CORRERLO" >&2
+  exit 1
+fi
+if [ "$PROPTECH_COMPOSE_PROYECTO" = "proptech" ]   && [ -n "$(docker ps -q --filter "label=com.docker.compose.project=proptech")" ]; then
+  echo "ERROR: el proyecto 'proptech' tiene contenedores corriendo (el stack de uso real) y el humo haría 'down -v' sobre él." >&2
+  echo "Bajalo, o corré el humo en otro proyecto: $COMO_CORRERLO" >&2
+  exit 1
+fi
+puerto_ocupado() {
+  (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+}
+for puerto in ${PROPTECH_HUMO_PUERTOS:-80 443}; do
+  if puerto_ocupado "$puerto"; then
+    echo "ERROR: el puerto $puerto del host está ocupado: Caddy lo publica fijo y el humo no puede correr en paralelo con otro stack." >&2
+    echo "Bajá lo que lo usa y volvé a correr: $COMO_CORRERLO" >&2
+    exit 1
+  fi
+done
+# `restaurar.sh` lee esta variable (su default es `proptech`): sin exportarla, un humo en un proyecto
+# propio habría restaurado contra el proyecto `proptech` (humo.sh:741 antes de este cambio).
+export PROPTECH_COMPOSE_PROYECTO
+
 # El humo usa exclusivamente el ejemplo público: nunca lee el entorno privado.
 # No heredar claves del shell ni habilitar login/invitaciones en esta corrida.
 unset CLERK_JWT_KEY CLERK_SECRET_KEY CLERK_PARTES_AUTORIZADAS CLERK_EMISOR
@@ -33,11 +67,12 @@ export PROPTECH_UID
 export PROPTECH_GID
 
 # Todo lo que invoca "compose" en este script pasa por acá (L-006): el
-# proyecto es siempre `proptech`, sin depender de que `name: proptech` siga
-# en compose.yaml (lo que de verdad hace falta para lo destructivo, como
-# `down -v`, es que no dependa de un archivo que alguien podría tocar).
+# proyecto es siempre el de PROPTECH_COMPOSE_PROYECTO (L-047), sin depender de
+# que `name:` siga en compose.yaml (lo que de verdad hace falta para lo
+# destructivo, como `down -v`, es que no dependa de un archivo que alguien
+# podría tocar).
 compose() {
-  docker compose -p proptech --env-file .env.example -f compose.yaml -f compose.humo.yaml "$@"
+  docker compose -p "$PROPTECH_COMPOSE_PROYECTO" --env-file .env.example -f compose.yaml -f compose.humo.yaml "$@"
 }
 
 STACK_LEVANTADO=0
