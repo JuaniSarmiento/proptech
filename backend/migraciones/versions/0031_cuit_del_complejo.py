@@ -6,16 +6,16 @@ bloquea). Decisión confirmada por Emiliano el 28/10/2026 durante el apply
 de `gastos-y-cargos` (la ambigüedad real de la tarea 3.10: no existía ningún
 campo para el documento propio del edificio).
 
-Revision ID: 0030
-Revises: 0029
+Revision ID: 0031
+Revises: 0030
 """
 
 from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0030"
-down_revision: str | None = "0029"
+revision: str = "0031"
+down_revision: str | None = "0030"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

@@ -6,8 +6,8 @@ de `tasks.md`, tarea 2.7) ya necesita `crear_proveedor`/`editar_proveedor`
 en la base; el resto de los diez eventos se agrega en el mismo lote para
 no repetir la migración ni dejar un hueco en la cadena de revisiones.
 
-Revision ID: 0029
-Revises: 0028
+Revision ID: 0030
+Revises: 0029
 """
 
 from collections.abc import Sequence
@@ -15,8 +15,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0029"
-down_revision: str | None = "0028"
+revision: str = "0030"
+down_revision: str | None = "0029"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

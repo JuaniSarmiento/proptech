@@ -108,9 +108,9 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   imputación propia y un destino fijo por tipo de crédito (D-086, R05).
 - [x] **P36 · Un gasto de un período que quedó afuera** (sin IA, o en revisión con la alerta aceptada) y
   se aprueba después: conserva su período de origen y entra en la primera liquidación que lo encuentre
-  aprobado, sin reabrir un emitido (D-132).
+  aprobado, sin reabrir un emitido (D-141).
 - [x] **P37 · Dónde y quién marca un "gasto mensual obligatorio"**: en la categoría de gasto, no en el
-  proveedor ni en el gasto — es la única de las tres que existe antes de que haya gastos (D-132).
+  proveedor ni en el gasto — es la única de las tres que existe antes de que haya gastos (D-141).
 - [ ] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): la de la
   transferencia o la de la nueva emisión. Antes del cambio 7.
 - [ ] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye.
@@ -269,7 +269,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   change de acceso futuro.
 - **P9**: qué traen los extractos de Mendoza, antes del cambio 9.
 - **P20**: quién aprueba una condonación, antes del 10b.
-- **P25 a P32, P34, P38 a P41** (P24 y P33 están resueltas, D-100; P35, D-086; P36 y P37, D-132):
+- **P25 a P32, P34, P38 a P41** (P24 y P33 están resueltas, D-100; P35, D-086; P36 y P37, D-141):
   casos de borde de la quinta y la sexta revisión, cada uno con el cambio antes del cual se decide.
 - **P19**: resuelta en D-100 (vencimiento único o doble, por edificio); ya no bloquea el cambio 3.
 - **P21**: resuelta en D-109; el umbral de R30 ya se guarda por versión de configuración desde el 4a, y el

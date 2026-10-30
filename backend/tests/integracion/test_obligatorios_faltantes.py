@@ -1,5 +1,5 @@
 """Bloque 6 de `gastos-y-cargos`: la marca de gasto mensual obligatorio
-(D7, P37 resuelta en D-132) y su consulta de faltantes."""
+(D7, P37 resuelta en D-141) y su consulta de faltantes."""
 
 from uuid import uuid4
 

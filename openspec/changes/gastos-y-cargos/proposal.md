@@ -78,7 +78,8 @@ aparecer en `tasks.md`: queda cerrado y fuera del alcance de este change.
 - **Migraciones**: tablas nuevas (`proveedor`, `gasto`, `nota_de_credito`, `cargo_particular`) con
   Row-Level Security forzada por administración y las claves foráneas que atan cada fila a su edificio;
   más la ampliación del vocabulario de `accion_de_auditoria`. Numeración a partir de `0028` (la última
-  en `main` es `0027`).
+  en `main` era `0027`); al integrar `main` el 30/10/2026 quedaron `0029` a `0033`, detrás de
+  `0028_ver_personal` del 2d.
 - **Reutiliza sin tocar**: `compartido/reparto.py` y `compartido/dinero.py` (4a),
   `compartido/claves.py`, `acceso/aplicacion/auditoria.py` y `acceso/dominio/permisos.py`.
 - **Habilita**: el 7 (`liquidacion-y-emision`) y el 14 (`lectura-de-facturas`).
@@ -181,7 +182,7 @@ ese hueco en vez de registrarlo.
 Por eso la decisión se toma de frente y se registra fuera de `openspec/`, donde la va a encontrar quien
 planifique lo que sigue: en la entrada `[C-09]` de `CHANGES.md`, en la ficha §6 de
 `knowledge-base/12_fichas_de_changes.md` y como decisión propia en
-`knowledge-base/09_decisiones_y_supuestos.md` (**D-131**).
+`knowledge-base/09_decisiones_y_supuestos.md` (**D-140**).
 
 **Qué implica para este change**: HU-A3 y HU-A3b describen criterios de aceptación de administrador que
 acá **se verifican contra la API**, no contra una pantalla. El change nuevo que construya la superficie
@@ -195,7 +196,7 @@ nombrarlo y ubicarlo en el roadmap es una decisión de quien coordine, no de est
 | `knowledge-base/04_modelo_de_datos.md` | Las cuatro entidades nuevas (`proveedor`, `gasto`, `nota_de_credito`, `cargo_particular`) pasan de "planificadas" a existentes, con su ERD | **REWRITE** |
 | `knowledge-base/05_reglas_de_negocio.md` | R12, R13, R14, R16 y R22 pasan a tener código que las sostiene; R12 queda acotada a su parte manual (el QR y la IA siguen en el 14) | **REWRITE** |
 | `knowledge-base/12_fichas_de_changes.md` | La ficha §6 se cierra con lo construido, lo que quedó afuera y la deuda del cierre; la ficha §4a anota RB-5 como cerrada por `2e2e925` | **REWRITE** |
-| `knowledge-base/09_decisiones_y_supuestos.md` | **D-131 ya entró con este propose** (pantallas sin change hermano, decisión de Emiliano del 28/10/2026). Las respuestas a P36 y P37, y cualquier decisión nueva del apply, entran después como D-NNN nuevas | **APPEND** |
+| `knowledge-base/09_decisiones_y_supuestos.md` | **D-140 ya entró con este propose** (pantallas sin change hermano, decisión de Emiliano del 28/10/2026). Las respuestas a P36 y P37, y cualquier decisión nueva del apply, entran después como D-NNN nuevas | **APPEND** |
 | `knowledge-base/10_preguntas_abiertas.md` | P36 y P37 se marcan resueltas con su D-NNN; P25 sigue abierta y pasa a "antes del cambio 7"; P15 y P17 siguen abiertas | **REWRITE** |
 | `knowledge-base/15_lecciones.md` | Las lecciones que proponga el auditor al cerrar | **APPEND** |
 | `knowledge-base/06_funcionalidades.md` | HU-A3 y HU-A3b quedan cubiertas en su parte manual y de API; se aclara qué parte espera al 14 y qué parte espera pantallas | **REWRITE** |

@@ -1,7 +1,7 @@
 """Proveedores y gastos (R12, D-019; cambio 6 `gastos-y-cargos`).
 
-Revision ID: 0028
-Revises: 0027
+Revision ID: 0029
+Revises: 0028
 """
 
 from collections.abc import Sequence
@@ -10,8 +10,8 @@ from alembic import op
 
 from migraciones.ayudas_rls import aislar_por_administracion
 
-revision: str = "0028"
-down_revision: str | None = "0027"
+revision: str = "0029"
+down_revision: str | None = "0028"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

@@ -466,7 +466,7 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 - **Atributos** (`0008_categorias_de_gasto.py`): `id` · `UUID` PK; `administracion_id`/`complejo_id` ·
   `UUID NOT NULL`; `clave` · `TEXT NOT NULL`; `nombre` · `TEXT NOT NULL`; `orden` · `INTEGER NOT NULL`;
   `activa` · `BOOLEAN NOT NULL`, default `true`; `obligatorio_mensual` · `BOOLEAN NOT NULL`, default
-  `false` (migración `0032`, D7/D-132 del cambio 6: "el consorcio gasta todos los meses", con
+  `false` (migración `0033`, D7/D-141 del cambio 6: "el consorcio gasta todos los meses", con
   independencia del proveedor que lo facture — sin edición por API todavía, se fija por SQL directo).
 - **Relaciones**: pertenece a un `complejo`; clasifica muchos `gasto` (cambio 6).
 - **Constraints**: `uq_categoria_clave`; `uq_categoria_orden` (única, `DEFERRABLE INITIALLY DEFERRED`,
@@ -552,13 +552,13 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 
 ### Existe hoy, dominio `gastos`
 
-Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026): migraciones `0028` (`proveedor`,
-`gasto`), `0029` (los diez eventos de auditoría del dominio), `0030` (`complejo.cuit`, tarea 3.10),
-`0031` (`nota_de_credito`, `cargo_particular`) y `0032` (`categoria_de_gasto.obligatorio_mensual`,
-D7/D-132). RLS forzada en las cuatro, dueño `proptech_migrador` (D9 del design: ninguna es de sólo
+Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026): migraciones `0029` (`proveedor`,
+`gasto`), `0030` (los diez eventos de auditoría del dominio), `0031` (`complejo.cuit`, tarea 3.10),
+`0032` (`nota_de_credito`, `cargo_particular`) y `0033` (`categoria_de_gasto.obligatorio_mensual`,
+D7/D-141). RLS forzada en las cuatro, dueño `proptech_migrador` (D9 del design: ninguna es de sólo
 agregar mientras no está aprobada).
 
-#### `proveedor` · existe (migración `0028`, R12, R16)
+#### `proveedor` · existe (migración `0029`, R12, R16)
 
 - **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `razon_social` · texto (1-200,
   no vacío); `cuit` · texto, 11 dígitos (`ck_proveedor_cuit`); `activo` · booleano, default `true`;
@@ -569,12 +569,12 @@ agregar mientras no está aprobada).
   en otro edificio); `uq_proveedor_complejo_id` para que `gasto` pueda FK-ear compuesto. **Nunca se
   borra**, sólo se desactiva (R16) — no existe ruta de borrado en la API.
 
-#### `gasto` · existe (migración `0028`, R12, R13, R16, D-075)
+#### `gasto` · existe (migración `0029`, R12, R13, R16, D-075)
 
 - **Atributos**: `proveedor_id` (nullable), `categoria_id`, `grupo_id` (obligatorios, FK compuestos
   contra el edificio), `concepto`, `periodo` · fecha, primer día del mes (`ck_gasto_periodo`),
   `periodo_de_imputacion` · fecha, arranca igual a `periodo` y sigue sincronizada mientras el gasto es
-  editable; se **fija al aprobar** (D8/D-132, bloque 7: el primer período no emitido al momento de
+  editable; se **fija al aprobar** (D8/D-141, bloque 7: el primer período no emitido al momento de
   aprobar, nunca uno ya emitido — hoy ningún período puede estar "emitido" porque `liquidacion`,
   cambio 7, no existe todavía); `tipo` · `ordinario`/`extraordinario` (default `ordinario`); `importe`
   · `NUMERIC(14,2)`, mayor a cero; `estado` · `borrador`/`sin_ia`/`en_revision`/`aprobado` (D-075,
@@ -590,7 +590,7 @@ agregar mientras no está aprobada).
 - **No construido en este cambio**: lectura de QR ni IA (cambio 14); control de monto atípico R23
   (cambio 7).
 
-#### `nota_de_credito` · existe (migración `0031`, R22, D-061, D-082)
+#### `nota_de_credito` · existe (migración `0032`, R22, D-061, D-082)
 
 - **Atributos**: `gasto_id` (la factura que corrige, obligatoria), `importe`, `periodo`, los cuatro
   campos de su propia factura (`cuit_emisor`, `punto_de_venta`, `tipo_de_comprobante`,
@@ -603,7 +603,7 @@ agregar mientras no está aprobada).
   descuenta del gasto **en el período en que se carga** (`periodo` propio de la nota, nunca el
   `periodo_de_imputacion` de la factura) — nunca reabre una liquidación ya emitida (D-082).
 
-#### `cargo_particular` · existe (migración `0031`, R14, D-025)
+#### `cargo_particular` · existe (migración `0032`, R14, D-025)
 
 - **Atributos**: `unidad_id`, `concepto`, `importe`, `periodo` (primer día del mes), `motivo`,
   `estado` · `borrador`/`aprobado`.

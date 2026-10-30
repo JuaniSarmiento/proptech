@@ -10,16 +10,16 @@ nace verde, se escribe un mutante dirigido de 2 a 4 líneas que lo haga fallar *
 (L-034, L-049), se pega el diff y el rojo, se revierte y se vuelve a correr verde. El mutante nunca se
 commitea.
 
-**Tareas desbloqueadas (D-132, 28/10/2026)**: 6.1 y 7.1 estaban marcadas **BLOQUEADA** a la espera de
+**Tareas desbloqueadas (D-141, 28/10/2026)**: 6.1 y 7.1 estaban marcadas **BLOQUEADA** a la espera de
 respuesta escrita de Juani o Alberto a P37 y P36. Emiliano, como dueño del change 6, las aprobó el
-28/10/2026 (D-132, `knowledge-base/09_decisiones_y_supuestos.md`): P37 → la marca de "gasto mensual
+28/10/2026 (D-141, `knowledge-base/09_decisiones_y_supuestos.md`): P37 → la marca de "gasto mensual
 obligatorio" vive en `categoria_de_gasto`; P36 → un gasto aprobado tarde conserva su período de origen
 y entra en la primera liquidación que lo encuentre aprobado, sin reabrir un emitido. Ambas tareas
 arrancan normalmente, implementando esa respuesta.
 
 **Tamaño**: son 30 tareas, por encima del "unas veinte" de la convención del proyecto. **Emiliano
 decidió el 28/10/2026 que el change no se parte**: se llama `gastos-y-cargos` y se termina entero, con
-las 30 tareas de backend y API (D-131). Lo que sí quedó afuera son **las pantallas** de HU-A3 y HU-A3b,
+las 30 tareas de backend y API (D-140). Lo que sí quedó afuera son **las pantallas** de HU-A3 y HU-A3b,
 que van en un change nuevo, todavía sin crear ni nombrar.
 
 ## 1. Esqueleto del módulo y su frontera
@@ -190,9 +190,9 @@ que van en un change nuevo, todavía sin crear ni nombrar.
 
 **Safety net / re-verificación**: baseline de `test_fronteras_de_modulos.py` antes de tocar nada — 22:06:46 — `2 failed, 57 passed` (los mismos 2 preexistentes de Windows de siempre, ver bloque 2). No se vuelven a tocar.
 
-## 6. La marca de gasto mensual obligatorio · **P37 resuelta (D-132)**
+## 6. La marca de gasto mensual obligatorio · **P37 resuelta (D-141)**
 
-> P37 resuelta: la marca vive en `categoria_de_gasto` (D7 del design, confirmado por D-132, Emiliano,
+> P37 resuelta: la marca vive en `categoria_de_gasto` (D7 del design, confirmado por D-141, Emiliano,
 > 28/10/2026). Arranca normalmente.
 
 - [x] 6.1 Test y migración `0032` (renumerada, ver nota de 4) de la marca de gasto mensual obligatorio en `categoria_de_gasto`, con la consulta de faltantes: falta un obligatorio, el obligatorio cubierto no figura, un gasto en `borrador` no lo cubre, un edificio sin obligatorios devuelve lista vacía, y la consulta no bloquea ninguna operación. Cubre `gastos-del-periodo` · "Consulta de gasto mensual obligatorio faltante", los cinco escenarios
@@ -205,10 +205,10 @@ que van en un change nuevo, todavía sin crear ni nombrar.
   - **`down` contra copia real**: corrido con un test temporal (`_temp_down_0032.py`, nunca commiteado, L-013) que reusa las fixtures `postgres_contenedor`/`roles_reales`/`esquema_migrado` de `tests/conftest.py` para invocar `alembic downgrade -1` y `alembic upgrade head` como subprocesos contra el contenedor real de la sesión — 22:27:02 — `Running downgrade 0032 -> 0031` y `Running upgrade 0031 -> 0032`, los dos con código de salida 0, `1 passed`. El archivo temporal se borró después
   - **L-023** `rg` de `obligatorio_mensual` en `infra/` y `config/` — sin resultados
 
-## 7. Período de imputación · **P36 resuelta (D-132)**
+## 7. Período de imputación · **P36 resuelta (D-141)**
 
 > P36 resuelta: `periodo` + `periodo_de_imputacion`, fijado al aprobar, sin reabrir emitidos (D8 del
-> design, confirmado por D-132, Emiliano, 28/10/2026). Arranca normalmente.
+> design, confirmado por D-141, Emiliano, 28/10/2026). Arranca normalmente.
 
 - [x] 7.1 Test e implementación del período de imputación de un gasto aprobado fuera de su período: conserva `periodo` de origen, fija `periodo_de_imputacion` al aprobar, entra en la primera liquidación que lo encuentre aprobado, con el caso "nunca reabre un período emitido" probado
   - **Bug real encontrado durante el RED** (no sólo evidencia, L-016): `periodo_de_imputacion` se fijaba en el `INSERT` de creación (bloque 3) pero `editar_gasto` nunca lo actualizaba al editar `periodo` de un gasto en borrador — quedaba desincronizado. Corregido: `editar_gasto` ahora sincroniza `periodo_de_imputacion = periodo` mientras el gasto sigue editable (D8: "arranca igual a periodo", todavía no fijado porque no se aprobó)
@@ -238,7 +238,7 @@ que van en un change nuevo, todavía sin crear ni nombrar.
 
 - [x] 9.1 Correr la suite **completa** de backend (no sólo la de los grupos tocados, L-041) sobre el último commit del change, con `git rev-parse HEAD` anotado al lado del comando, la hora y la salida (L-010, L-031). Comparar el número de tests con el de `main`: si bajó, explicar por qué (L-003)
   - **Primera corrida completa** `cd backend && date +%T && uv run pytest tests/ -q` — 22:35:39 → terminó en `2400.99s` (0:40:00) — `42 failed, 3641 passed, 1 skipped, 1 xfailed`
-  - **Clasificación de los 42 failed** (L-056 nueva, ver `15_lecciones.md`): 4 fallas **reales, causadas por este change** y corregidas en el momento (detalladas abajo); el resto preexistente: 2 de `test_fronteras_de_modulos.py` (separador de ruta Windows, D-110), ~14 de `tests/infra/` (permisos Unix, D-110), varios `test_worker_*`/`test_zz_rompedor_worker_*` por `AttributeError: module 'signal' has no attribute 'SIGUSR1'` dentro de `arq.worker.Worker.close()` (Windows no tiene señales POSIX — nuevo hallazgo de portabilidad, mismo cajón que D-110, confirmado ajeno a este change: ninguno de esos archivos toca `gastos`), `test_umbral_parametros.py::test_umbral_cero` (hallazgo nuevo de portabilidad, ver ficha de deuda del 6) y `test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo` (pasa solo, `uv run pytest tests/unitarios/test_arranque_api_parametros.py -q` — 23:37:02 — `3 passed` — flaky bajo la suite completa, no relacionado a este código)
+  - **Clasificación de los 42 failed** (L-064 nueva, ver `15_lecciones.md`): 4 fallas **reales, causadas por este change** y corregidas en el momento (detalladas abajo); el resto preexistente: 2 de `test_fronteras_de_modulos.py` (separador de ruta Windows, D-110), ~14 de `tests/infra/` (permisos Unix, D-110), varios `test_worker_*`/`test_zz_rompedor_worker_*` por `AttributeError: module 'signal' has no attribute 'SIGUSR1'` dentro de `arq.worker.Worker.close()` (Windows no tiene señales POSIX — nuevo hallazgo de portabilidad, mismo cajón que D-110, confirmado ajeno a este change: ninguno de esos archivos toca `gastos`), `test_umbral_parametros.py::test_umbral_cero` (hallazgo nuevo de portabilidad, ver ficha de deuda del 6) y `test_arranque_api_parametros.py::test_el_proceso_termina_con_tasa_negativa_nombrando_el_campo` (pasa solo, `uv run pytest tests/unitarios/test_arranque_api_parametros.py -q` — 23:37:02 — `3 passed` — flaky bajo la suite completa, no relacionado a este código)
   - **Las 4 fallas reales, corregidas** (no son deuda, se arreglaron en esta misma tarea):
     1. `test_rutas_protegidas.py::test_las_rutas_del_candado_son_exactamente_las_cubiertas_acá`: las 19 rutas nuevas de `gastos.py` no estaban en `_RUTAS_CUBIERTAS`. Agregadas las 19, más sus cuerpos de prueba en `_pedido()` y los ids que faltaban en `mundo` (`proveedor_id`, `gasto_id`, `nota_id`, `cargo_id`, `periodo`). Re-verificación: `uv run pytest tests/integracion/test_rutas_protegidas.py -q` — 23:24:11…23:26:32 — `589 passed`
     2. `test_libro_rollback.py` (3 tests): hardcodeaban `alembic_version == ("0027",)` (la cabeza de antes del 6). Corregido a `("0032",)` en las tres aserciones
@@ -260,7 +260,7 @@ que van en un change nuevo, todavía sin crear ni nombrar.
 - [x] 9.2 Correr lint, formato y tipos (los mismos pasos que el CI, L-005) sobre el código final, y pegar la salida de cada uno
   - `uv run ruff format src/ tests/` — 22:37:44 — `359 files left unchanged`
   - `uv run ruff check src/ tests/ migraciones/` — 22:37:53 — `All checks passed!`
-  - `uv run mypy src/` — 22:38:03 — **1 error real encontrado** (no visto en los mypy parciales por bloque, L-055 nueva): `src/proptech_api/app.py:161`, dos bucles `for tipo in (...)` seguidos (uno para los errores de `cuenta_corriente`, otro para los de `gastos`) reusaban el nombre `tipo`, y mypy infería el tipo del primero para el segundo. Corregido renombrando a `tipo_del_libro`/`tipo_de_gastos`
+  - `uv run mypy src/` — 22:38:03 — **1 error real encontrado** (no visto en los mypy parciales por bloque, L-063 nueva): `src/proptech_api/app.py:161`, dos bucles `for tipo in (...)` seguidos (uno para los errores de `cuenta_corriente`, otro para los de `gastos`) reusaban el nombre `tipo`, y mypy infería el tipo del primero para el segundo. Corregido renombrando a `tipo_del_libro`/`tipo_de_gastos`
   - **Re-verificación** `uv run mypy src/` — 22:38:36 — `Success: no issues found in 104 source files`; `ruff format`/`ruff check` sobre `app.py` — sin cambios, `All checks passed!`
   - **Hallazgo real del primer CI (29/10/2026, ver 9.3)**: `uv run mypy src/` acotaba el chequeo a `src/`, nunca a `tests/`; el CI corre `uv run mypy` sin argumentos (el `[tool.mypy]` de `pyproject.toml` no restringe `files`), así que SÍ tipa `tests/`. Resultado: 22 errores reales en 6 archivos de test de este change (`test_periodo_de_imputacion.py`, `test_obligatorios_faltantes.py`, `test_notas_de_credito.py`, `test_lectura_gastos_aprobados.py`, `test_gastos.py`, `test_cargos_particulares.py`) que ningún `mypy` parcial de esta tarea había cubierto. Todos reales (`.json()["id"]` sin anotar devolviendo `Any`, `str` pasado donde se esperaba `UUID`, `fetchone()` indexado sin chequear `None`, `dict` sin tipos genéricos, invariancia de `dict[str, str]` vs `dict[str, object]`, `UUID` pasado donde se esperaba `str | None`), corregidos uno por uno. **Re-verificación**: `cd backend && uv run mypy` — 29/10/2026 — `Found 2 errors in 1 file (checked 359 source files)`, los 2 son el hallazgo preexistente de Windows ya conocido en `tests/infra/test_respaldos.py` (`killpg`/`SIGKILL`, D-110) — nunca aparece en CI porque corre en Linux. Tests de los 6 archivos corregidos re-verificados: `uv run pytest tests/integracion/test_gastos.py tests/integracion/test_notas_de_credito.py tests/integracion/test_lectura_gastos_aprobados.py tests/integracion/test_periodo_de_imputacion.py tests/integracion/test_obligatorios_faltantes.py tests/integracion/test_cargos_particulares.py tests/integracion/test_proveedores.py -q` — `105 passed`
 - [x] 9.3 Disparar el CI sobre el SHA final de la rama y leer el run completo antes de declarar el cierre: `gh run list --commit <sha>`; si está vacío, `gh workflow run CI --ref change/gastos-y-cargos` y esperar el resultado (L-042, L-037). Pegar el `headSha`, la conclusión y el estado de cada job
@@ -275,5 +275,13 @@ que van en un change nuevo, todavía sin crear ni nombrar.
   - También se cerró una deuda **heredada del 4a** (RB-5, confirmada "6" por D-130) que ya estaba resuelta en HEAD por el commit `2e2e925` (28/10/2026, anterior a esta sesión) — actualizado en la ficha 4a, no es deuda nueva de este cierre
 - [x] 9.5 Actualizar `knowledge-base/` según la sección Knowledge Base Impact de `proposal.md`: los REWRITE borran el texto que dejó de ser cierto, los APPEND sólo agregan. Si el cierre terminara con APPEND y ningún REWRITE, marcar el reporte como `SUSPICIOUS: append-only` y explicar por qué
   - **REWRITE**: `04_modelo_de_datos.md` (las cuatro entidades pasan de "planificada" a "existe", con columnas/constraints reales; nota de `obligatorio_mensual` en `categoria_de_gasto`); `05_reglas_de_negocio.md` (R12 acotada a su parte manual, R13/R14/R16/R22 con nota de "construido/pendiente"); `06_funcionalidades.md` (HU-A3/HU-A3b con nota de construido vía API, pantallas pendientes); `02_descripcion_general.md` (`gastos` deja de estar vacío); `11_glosario.md` (proveedor, período de imputación, gasto mensual obligatorio; cargo particular ampliado); `10_preguntas_abiertas.md` (la lista "P25 a P41" ya no incluye P36/P37, que están resueltas arriba); `12_fichas_de_changes.md` (ficha §6 cerrada con lo construido/deuda; RB-5 de la ficha 4a actualizada a cerrada por `2e2e925`)
-  - **APPEND**: `15_lecciones.md` (L-055, el hallazgo de mypy de esta misma tarea); `09_decisiones_y_supuestos.md` ya tenía D-131/D-132 desde el propose, sin cambios nuevos en el apply
+  - **APPEND**: `15_lecciones.md` (L-063, el hallazgo de mypy de esta misma tarea); `09_decisiones_y_supuestos.md` ya tenía D-140/D-141 desde el propose, sin cambios nuevos en el apply
   - No es `SUSPICIOUS: append-only`: hay ocho archivos con REWRITE real, con texto viejo efectivamente borrado (las secciones "planificada" de las cuatro entidades, la nota "P36 y P37" de la lista de casos de borde), no sólo agregado al final
+
+## Revisión independiente e integración con main (orquestador, 30/10/2026)
+
+- Motivo: Juani pidió el mismo flujo que el 3d antes de mergear el PR #4: integrar con `main`, rompedor, constructor si rompe, auditor.
+- Integración por merge de `origin/main` (sin rebase ni force-push sobre la rama de Emiliano). `main` en `60b3dd5`; la rama en `2f81682` (base `5c6d84c`, 25 commits detrás).
+- Rol activo: constructor (role-constructor, subagente nativo), intento 1 de integración: resolver los conflictos, renumerar migraciones `0028`-`0032` a `0029`-`0033` detrás de `0028_ver_personal` (2d), renumerar D-131/D-132 del 6 a D-140/D-141 (D-131 a D-139 ya existen en main).
+- Informes: `informes/apply-1-constructor.md`, después `verify-1-breaker.md`, `verify-1-auditor.md`.
+- Próximo paso: constructor de integración; después rompedor, auditor.

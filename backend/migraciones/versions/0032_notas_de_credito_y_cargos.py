@@ -2,8 +2,8 @@
 particulares (R14, D-025; bloque 5), en la misma migración (design.md ·
 Migration Plan, paso 2).
 
-Revision ID: 0031
-Revises: 0030
+Revision ID: 0032
+Revises: 0031
 """
 
 from collections.abc import Sequence
@@ -12,8 +12,8 @@ from alembic import op
 
 from migraciones.ayudas_rls import aislar_por_administracion
 
-revision: str = "0031"
-down_revision: str | None = "0030"
+revision: str = "0032"
+down_revision: str | None = "0031"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

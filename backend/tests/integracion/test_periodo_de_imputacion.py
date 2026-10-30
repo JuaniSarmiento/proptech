@@ -1,5 +1,5 @@
 """Bloque 7 de `gastos-y-cargos`: período de origen y período de imputación
-(D8, P36 resuelta en D-132)."""
+(D8, P36 resuelta en D-141)."""
 
 import datetime
 from uuid import UUID, uuid4

@@ -234,6 +234,11 @@ Cada `down` se ejecuta contra una copia real antes de darla por buena (regla fij
 proyecto). Las cuatro tablas nacen vacías, así que el `downgrade` no pierde datos de negocio; el de
 `0031` sí borra la marca, y eso queda escrito en la migración.
 
+**Nota de integración (30/10/2026)**: el plan de arriba quedó con la numeración del propose. Las
+migraciones construidas son `0029_gastos_y_proveedores`, `0030_vocabulario_del_gasto`,
+`0031_cuit_del_complejo`, `0032_notas_de_credito_y_cargos` y `0033_categoria_obligatoria_mensual`,
+encadenadas detrás de `0028_ver_personal` del 2d al integrar `main` (antes, `0028` a `0032`).
+
 **Orden de los bloques de apply** (ver `tasks.md`): fronteras y esqueleto del módulo → proveedores →
 gastos y sus estados → notas de crédito → cargos particulares e importación → lecturas para el 7 →
 cierre. Cada bloque cierra con su suite; el que toque un chequeo de arranque cierra con la suite

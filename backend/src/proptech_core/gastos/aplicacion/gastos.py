@@ -431,7 +431,7 @@ def gastos_aprobados_del_periodo(
 
 
 def obligatorios_faltantes(sesion: Session, complejo_id: UUID, periodo: date) -> dict[str, Any]:
-    """D7/D-132: qué categorías de gasto mensual obligatorio no tienen un
+    """D7/D-141: qué categorías de gasto mensual obligatorio no tienen un
     gasto aprobado en este período. Sólo lectura, nunca bloquea nada (D10:
     el control de si eso frena algo es del 7). `periodo_de_imputacion`, no
     `periodo` de origen — es la que efectivamente cubre esa liquidación."""

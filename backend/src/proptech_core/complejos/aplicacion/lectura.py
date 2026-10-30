@@ -159,7 +159,7 @@ def cargar_categoria(sesion: Session, categoria_id: UUID) -> dict[str, Any] | No
 
 
 def listar_categorias_obligatorias(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
-    """Puerto para `gastos` (bloque 6, D7/D-132): sólo lectura, nunca bloquea
+    """Puerto para `gastos` (bloque 6, D7/D-141): sólo lectura, nunca bloquea
     nada — `gastos` no escribe SQL directo sobre `categoria_de_gasto` (la
     frontera de módulos no se toca, mismo patrón que `cargar_grupo`)."""
     return [

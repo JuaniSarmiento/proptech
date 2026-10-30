@@ -909,7 +909,7 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
   la de anular al 7, D-124). **Emiliano decide el 28/10/2026** que el 6 construye **sólo backend y
   API**, con sus 30 tareas completas y sin partirse, y que la superficie web de gastos va en un
   **cambio nuevo, a crear más adelante y todavía sin nombre definitivo**, que necesitará su sesión de
-  `impeccable shape` por pantalla antes del propose (D-102). Registrado en **D-131**. Los criterios de
+  `impeccable shape` por pantalla antes del propose (D-102). Registrado en **D-140**. Los criterios de
   aceptación de HU-A3 y HU-A3b se verifican acá **contra la API**, no contra una pantalla.
 - **Depende de**: 3 y el 4a (el reparto por mayor resto). **El 4b no es dependencia**: el propose del
   28/10/2026 resolvió el SUPUESTO S-04 como **no escribe en el libro**, verificado contra R14 (que manda
@@ -930,10 +930,10 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 - **Apply completo, pendiente de `/opsx:verify` y archivo** (29/10/2026): las 30 tareas de
   `tasks.md` están en verde con su evidencia TDD (RED/GREEN/mutante) pegada — proveedores, gastos y
   sus cuatro estados, notas de crédito, cargos particulares e importación, la marca de gasto mensual
-  obligatorio (D7/D-132) y el período de imputación (D8/D-132), más las dos lecturas agregadas para
-  el 7 (D10). P36 y P37 resueltas por Emiliano en D-132 durante el apply. Migraciones `0028` a `0032`.
+  obligatorio (D7/D-141) y el período de imputación (D8/D-141), más las dos lecturas agregadas para
+  el 7 (D10). P36 y P37 resueltas por Emiliano en D-141 durante el apply. Migraciones `0029` a `0033` (renumeradas el 30/10/2026 al integrar `main`, detrás de `0028_ver_personal` del 2d).
 - **Cuatro fallas reales encontradas y corregidas durante el cierre** (tarea 9.1, suite completa,
-  L-056): `test_rutas_protegidas.py` no tenía las 19 rutas nuevas en `_RUTAS_CUBIERTAS`;
+  L-064): `test_rutas_protegidas.py` no tenía las 19 rutas nuevas en `_RUTAS_CUBIERTAS`;
   `test_libro_rollback.py` hardcodeaba la cabeza de la migración en `0027`; `test_vocabulario_configuracion.py`
   no incluía los diez eventos de `EventoDelGasto`; la fixture compartida `api_edificio` dejaba una
   fila de `asignacion_rol` con `rol='contador'` sin limpiar, que un guardia de downgrade de la
