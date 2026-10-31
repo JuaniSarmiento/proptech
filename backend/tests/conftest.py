@@ -74,6 +74,22 @@ def esperar_postgres(contenedor: PostgresContainer, plazo: float = 30.0) -> None
             time.sleep(0.25)
 
 
+_START_ORIGINAL = PostgresContainer.start
+
+
+def _start_que_espera_conexiones(self: PostgresContainer, *args: Any, **kwargs: Any) -> Any:
+    """Todo contenedor de Postgres de los tests, también los que cada módulo levanta por su cuenta,
+    queda aceptando conexiones antes de usarse (2e, xdist): con cuatro workers arrancando a la vez,
+    `roles antes` llegaba entre el servidor temporal de la imagen y el definitivo."""
+    contenedor = _START_ORIGINAL(self, *args, **kwargs)
+    esperar_postgres(self)
+    return contenedor
+
+
+_start_que_espera_conexiones.espera_conexiones = True  # type: ignore[attr-defined]
+PostgresContainer.start = _start_que_espera_conexiones  # type: ignore[method-assign]
+
+
 @pytest.fixture(scope="session")
 def postgres_contenedor() -> Iterator[PostgresContainer]:
     # Usuario con el patrón `proptech_[a-z_]{1,40}` (D1, D3, cambio 2a): antes
