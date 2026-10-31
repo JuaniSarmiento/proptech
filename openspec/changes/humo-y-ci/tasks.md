@@ -284,5 +284,26 @@
   tocar ninguno de los dos
   > Hecho: D-144 en `09`, L-068 a L-070 en `15`, ficha 2e con "Deuda del cierre del 2e", filas del 2c
   > cerradas, `CHANGES.md`. `diff AGENTS.md CLAUDE.md` vacío.
+- [x] 10.5 Deuda recibida del 6 (D-142, ficha 6: D7, D8 y D10), revisada contra el repo
+  - **D7** (cabeza `0033` escrita a mano y `shellcheck`): ya cubierta por este change. `infra/ci/ensayo-roles.sh`
+    deriva `CABEZA` de `alembic heads` (línea 43) y el único número escrito es `REVISION_DE_ORIGEN="0016"`
+    (línea 21); corrió con `ciclo 0033/0016/0033` (10.1) y `shellcheck -x infra/ci/*.sh` da exit 0.
+  - **D8** (`.gitleaks.toml` y `.gitleaksignore` cubren el mismo falso positivo de `a6bb954`): estaba
+    duplicado. Corrida real de gitleaks v8.30.1 con el digest y el comando del job `secretos`
+    (`git --config /repo/.gitleaks.toml -v .`, historial completo), WSL, 31/10/2026: configuración
+    actual `no leaks found`; **sin la línea de `a6bb954` en `.gitleaksignore`**, `no leaks found` (el
+    allowlist 4 del toml, acotado por archivo y por texto, alcanza); con el defecto puesto (sin la
+    línea y sin el allowlist 4) `leaks found: 1`, exit 1; sólo con la línea y sin el allowlist,
+    `no leaks found`. Se deja el allowlist del toml (no depende del sha de un commit) y se saca la línea
+    y su comentario de `.gitleaksignore`, que además decía que "ese commit deja de existir": no es así, el
+    PR #4 se mergeó y `a6bb954` está en la historia de `main`. La línea de `64ab39e` (informe del 3d) queda.
+  - **D10** (openspec 1.14.3 en vez de 1.13.0): fue la instalación de la máquina de quien construyó el 6,
+    no un archivo del repo; en el repo no queda nada con la 1.14.3 fuera de los informes archivados del 6.
+    Lo que sí se puede fijar es que lo commiteado siga generado con la versión del README: nuevo
+    `backend/tests/infra/test_openspec_fijado.py` (las seis `.claude/skills/openspec-*/SKILL.md` dicen
+    `generatedBy` igual a la versión de `npm install -g @fission-ai/openspec@X` del README). Verde: `2 passed`;
+    rojo con el defecto puesto en una copia (`openspec-propose` con `generatedBy: "1.14.3"`): `assert
+    ['.claude/skills/openspec-propose/SKILL.md: 1.14.3'] == []`. `ruff`, `format --check` y `mypy` limpios.
+    Lo que no se puede probar acá: que la máquina de cada uno tenga la 1.13.0 (`openspec --version`).
 - [ ] 10.4 [GH] Con el OK de Gianfranco: push y PR; leer el run completo sobre el SHA antes de decir
   "listo" (L-037, L-042)

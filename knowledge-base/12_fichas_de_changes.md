@@ -972,10 +972,10 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | D5 | El guardia de F2-1 en `editar_gasto` sólo se prueba con dobles | **5** (C-08), o el primer consumidor que llame a `editar_gasto` sin HTTP |
 | D6 | Sin test de concurrencia entre editar el importe y cargar una nota | C-28 `revisiones-independientes` |
 | D7 | **CERRADO por el 2e (D-144): la cabeza ya no se escribe a mano.** `ensayo-roles.sh` con cabeza `0033` sin ejecutar; `shellcheck` sin correr localmente | C-23 `humo-y-ci` |
-| D8 | `.gitleaks.toml` y `.gitleaksignore` cubren el mismo falso positivo de `a6bb954` | C-23 (junto con DA-12 del 3d) |
+| D8 | **CERRADO por el 2e (D-144)**: `.gitleaks.toml` y `.gitleaksignore` cubrían el mismo falso positivo de `a6bb954`; queda el allowlist del toml | C-23 (junto con DA-12 del 3d) |
 | D9 | `test_gastos.py` citaba `D-141-bis`, inexistente | Resuelta en `5b10687` |
 | D9b | Registrar la ratificación de P36 y P37 por Juani | Resuelta en D-142 |
-| D10 | openspec 1.14.3 instalado en vez del 1.13.0 fijado | C-23 |
+| D10 | **CERRADO por el 2e (D-144)**: openspec 1.14.3 instalado en vez del 1.13.0 fijado; `test_openspec_fijado.py` fija la versión de las skills | C-23 |
 | D11 | CI sobre el SHA final | Resuelta: verde en `5b10687` |
 | D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Juani, al planificar |
 | D13 | Faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup (B1) | Aceptada (D-142); la prevención va a C-28 (L-067) |
@@ -1388,7 +1388,7 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   corre en el CI y toma la cabeza de migración de las migraciones reales; `humo.sh` respeta
   `PROPTECH_COMPOSE_PROYECTO`; Dependabot está configurado.
 
-- **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0).
+- **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0). **Los tres cerrados por el 2e** (D-144, tarea 10.5): D7 con la cabeza derivada, D8 sacando la línea de `a6bb954` de `.gitleaksignore` (queda el allowlist del toml) y D10 con un test que fija la versión de las skills.
 
 #### Cierre del 2e (D-144)
 
@@ -1408,12 +1408,10 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 |---|---|---|
 | El humo no corre en paralelo con un stack real, y a veces falla el paso 0 con `Pool overlaps`: la subred fija `172.28.0.0/24` (`infra/compose.yaml:22`), la IP fija de Caddy (`:374-375`), `FORWARDED_ALLOW_IPS` (`:191`) y los puertos `80:80` y `443:443` (`:368-370`) chocan con una red huérfana de una corrida anterior; pasa al repetir | El humo se niega por puertos ocupados y el CI corre uno por runner | 15 (piloto) o un change de infra; dueño propuesto: Gianfranco |
 | El worker no deja `arranque_fallido` con la causa ante un YAML roto o una base inalcanzable (deja `excepcion_como_mensaje`) | Verificado con salida real: no filtra la contraseña, sólo falta la causa | **C-25 `worker-y-logs`** |
-| `.gitleaksignore` (D8 del 6): la línea de `a6bb954` sigue valiendo, porque ese commit quedó en la historia de `main` con el merge del PR #4 | El job `secretos` pasa | Quien toque `.gitleaks.toml` |
 | `_hay_tests_serial` sólo detecta `pytest.mark.serial` | Hoy no hay tests `serial` | Quien agregue el primero |
 | La caché de Chromium puede ahorrar poco: `playwright install --with-deps` sigue instalando paquetes con `apt` | Se mide en el PR [GH] | Mismo PR |
 | Los tiempos del runner (xdist, caché de Chromium) y los `timeout-minutes` de `ensayo-roles` y `web` son provisionales | Se ajustan con los pasos reales de la primera corrida del PR (L-037, L-042) | Mismo PR |
 | En 4.1, 4.3, 4.4, 5.1, 6.2, 7.1 y 7.2 de `tasks.md` el rojo previo no quedó pegado (N3 del auditor) | Hay verde actual y los mutantes del humo real | Se registra, no se arregla |
-| D10 del 6 (openspec 1.14.3 en vez de 1.13.0) | No es de este change | Sigue en el 6 |
 
 ### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
 

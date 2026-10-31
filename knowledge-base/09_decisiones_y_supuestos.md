@@ -2974,7 +2974,12 @@ registrado como tal en su momento.)*
      contenedor de Postgres de los tests espera a aceptar conexiones (`conftest.py`).
   4. **Dependabot** con cinco ecosistemas: `github-actions`, `docker` (`/backend` y `/web`),
      `docker-compose` (`/infra`: el ecosistema `docker` sólo lee Dockerfile), `uv` y `npm`.
-  5. **El worker queda como deuda**: no deja `arranque_fallido` con la causa. Verificado con salida real
+  5. **Deuda recibida del 6 (D-142), cerrada**: D7 por la cabeza derivada; D8 sacando de `.gitleaksignore`
+     la línea de `a6bb954` y su comentario (el allowlist del `.gitleaks.toml`, acotado por archivo y por
+     texto, cubre el mismo falso positivo y no depende del sha; verificado con gitleaks real sobre el
+     historial completo); D10 con `test_openspec_fijado.py`, que da rojo si las skills se regeneran con
+     otra versión de OpenSpec que la del README.
+  6. **El worker queda como deuda**: no deja `arranque_fallido` con la causa. Verificado con salida real
      que no filtra la contraseña; es falta de causa en el log (C-25).
 - **Descartado**: dejar `docker ps -a` y `docker volume ls` para decidir si `proptech` está en uso
   (depende de que Docker conteste); que el humo corra en paralelo con un stack real (Caddy publica
