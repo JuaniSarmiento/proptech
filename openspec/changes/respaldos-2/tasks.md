@@ -649,32 +649,145 @@
 
 ## 8. Conmutar la aplicación a una base restaurada
 
-- [ ] 8.1 Test rojo de la validación y de las tres verificaciones de `conmutar.sh`: destino que no
+- [x] 8.1 Test rojo de la validación y de las tres verificaciones de `conmutar.sh`: destino que no
   cumple el patrón, destino vacío, sólo el prefijo, con espacio, punto y coma, mayúsculas, salto de
   línea y dígitos de otro alfabeto; destino igual a la base en uso; base inexistente; revisión de
   migraciones distinta de la cabeza; tabla de negocio sin RLS forzada o sin sus políticas. Cubre los
   escenarios "Destino que no cumple el patrón de nombre", "Destino que es la base en uso", "Destino
   inexistente o inalcanzable", "Destino con la revisión de migraciones equivocada" y "Destino sin
   Row-Level Security forzada". Verificación: rojo porque el script no existe, con la salida pegada.
-- [ ] 8.2 Implementar D6 (pasos 1 a 4): `conmutar.sh` con la validación del destino, la cabeza de
+
+  **Contexto de la sesión**: `infra/respaldos/conmutar.sh` y `backend/tests/infra/test_conmutar.py` ya
+  existían en el working tree, sin commitear, de una sesión anterior cortada por límite. Se verificó su
+  contenido a mano (no se asumió terminado, por instrucción explícita) contra `design.md` D6: implementa
+  los 6 pasos completos (validación + 3 verificaciones + conmutación + verificación final), no sólo los
+  pasos 1-4 que nombra esta tarea. Se reconstruyó el ciclo RED→GREEN de forma honesta en vez de asumir
+  el trabajo heredado como evidencia propia (L-013).
+
+  **RED** (moviendo `conmutar.sh` a un backup temporal para ver el rojo real de "el script no existe"
+  y de las tres verificaciones sin implementación):
+  ```
+  $ cp infra/respaldos/conmutar.sh /tmp/conmutar.sh.bak && rm infra/respaldos/conmutar.sh
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py -q
+  04:35:51
+  ...
+  FAILED tests/infra/test_conmutar.py::test_script_existe
+  FAILED tests/infra/test_conmutar.py::TestValidacionDelDestino::test_destino_igual_a_la_base_en_uso_rechaza_tras_un_solo_printenv
+  FAILED tests/infra/test_conmutar.py::TestLasTresVerificaciones::test_revision_de_migraciones_equivocada_rechaza
+  FAILED tests/infra/test_conmutar.py::TestLasTresVerificaciones::test_politicas_distintas_entre_destino_y_base_en_uso_rechaza
+  FAILED tests/infra/test_conmutar.py::TestLasTresVerificaciones::test_las_tres_verificaciones_pasando_no_rechaza_por_si_solas
+  FAILED tests/infra/test_conmutar.py::TestLaConmutacionEnSi::test_env_queda_con_el_destino_y_las_demas_lineas_intactas
+  FAILED tests/infra/test_conmutar.py::TestLaConmutacionEnSi::test_env_anterior_guarda_el_valor_previo
+  FAILED tests/infra/test_conmutar.py::TestLaConmutacionEnSi::test_falla_al_levantar_no_repite_el_marcador_de_la_herramienta
+  FAILED tests/infra/test_conmutar.py::TestProyectoComposeAislado::test_usa_la_variable_del_proyecto
+  9 failed, 12 passed in 0.96s
+  ```
+
+- [x] 8.2 Implementar D6 (pasos 1 a 4): `conmutar.sh` con la validación del destino, la cabeza de
   Alembic **derivada** y no escrita a mano, y las verificaciones de RLS por el efecto en el catálogo
   comparando el contenido de las políticas, no su cantidad (L-018). Verificación: el test de 8.1 en
   verde y ningún comando contra la base antes de que la validación del nombre pase.
-- [ ] 8.3 Test rojo de la conmutación en sí: `.env` queda con el `POSTGRES_DB` nuevo y las demás líneas
+
+  **GREEN** (restaurado desde el backup):
+  ```
+  $ cp /tmp/conmutar.sh.bak infra/respaldos/conmutar.sh && chmod +x infra/respaldos/conmutar.sh
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py -q
+  04:36:03
+  ...
+  FAILED tests/infra/test_conmutar.py::TestValidacionDelDestino::test_rechaza_sin_invocar_docker[proptech_con_salto\n]
+  1 failed, 20 passed in 13.26s
+  ```
+  **El único rojo restante es PREEXISTENTE, no un defecto de `conmutar.sh`**: se investigó a fondo (no
+  se asumió la etiqueta de la línea base sin verificar). Confirmado con tres pruebas directas:
+  ```
+  $ bash -c 'v=$(printf "proptech_con_salto\n"); [[ "$v" =~ ^proptech_[a-z0-9_]{1,50}$ ]] && echo MATCH || echo NOMATCH'
+  MATCH   # el '$' de ERE en bash matchea antes de un salto de línea final — reproducible en Linux también
+  ```
+  Pero el argumento real, tal como llega a `$1` desde `subprocess.run(["bash", SCRIPT, destino], ...)`
+  en esta máquina Windows, **pierde el `\n` final antes de llegar a bash** (confirmado con
+  `echo -n "$1" | xxd`: la cadena llega como `proptech_con_salto`, 19 bytes, sin el byte `0a`). Es decir,
+  el destino llega como un nombre VÁLIDO (sin el salto de línea), así que el script invoca docker
+  correctamente — el test espera rechazo con 0 invocaciones y eso es lo que falla, pero por mutilación
+  del argumento en el límite Windows↔Git-Bash, no por un defecto de la validación. Es **el mismo defecto
+  exacto** que la línea base 1.3 ya declaró preexistente para
+  `test_restaurar.py::TestDestinoInvalido::test_rechaza_sin_invocar_docker[proptech_con_salto\n]` (mismo
+  nombre de caso, mismo patrón `^...$`, mismo script hermano): se reafirma la misma clasificación, no se
+  arregla acá (fuera de alcance del grupo 8, y `restaurar.sh` no se toca).
+
+  **Mutante de seguridad (L-013/L-019), verificación 3 (RLS) — porque el test nació en verde para el
+  caso heredado**: se copió `conmutar.sh` a un backup, se mutó la condición de rechazo de la
+  verificación 3 a `if false; then ... fi` (2 líneas):
+  ```diff
+  -if [ "$politicas_base_en_uso" != "$politicas_destino" ]; then
+  +if false; then
+  ```
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py::TestLasTresVerificaciones::test_politicas_distintas_entre_destino_y_base_en_uso_rechaza -q
+  04:36:42
+  AssertionError: assert 0 != 0
+  tests/infra/test_conmutar.py:229: AssertionError
+  1 failed in 3.66s
+  ```
+  El mutante falla exactamente en la aserción que el test dice probar (`resultado.returncode != 0`,
+  línea 229), no en un paso anterior (L-034). Revertido con `cp` desde el backup; `diff` confirmó
+  identidad byte a byte con el original antes de continuar.
+
+- [x] 8.3 Test rojo de la conmutación en sí: `.env` queda con el `POSTGRES_DB` nuevo y las demás líneas
   idénticas byte a byte, `.env.anterior` guarda el valor anterior con los mismos permisos, la base
   anterior sigue existiendo intacta, y una falla de una herramienta no repite su marcador. Cubre
   "Conmutación a una base restaurada correcta" y "Falla de una herramienta durante la conmutación".
   Verificación: rojo antes de 8.4, con la salida pegada.
-- [ ] 8.4 Implementar D6 (pasos 5 y 6): resguardo de `.env`, reemplazo de la línea, levantada de los
+
+  **RED**: mismo RED que 8.1 (script ausente) cubre también `TestLaConmutacionEnSi` íntegramente — ver
+  la salida de 8.1: `test_env_queda_con_el_destino_y_las_demas_lineas_intactas`,
+  `test_env_anterior_guarda_el_valor_previo` y `test_falla_al_levantar_no_repite_el_marcador_de_la_herramienta`
+  están en la lista de los 9 fallidos.
+
+- [x] 8.4 Implementar D6 (pasos 5 y 6): resguardo de `.env`, reemplazo de la línea, levantada de los
   servicios que se conectan a la base y verificación final de `GET /api/salud`; el script no borra ni
   modifica la base que deja de usarse y lee `PROPTECH_COMPOSE_PROYECTO` (L-047). Verificación: el test
   de 8.3 en verde.
-- [ ] 8.5 Ensayo real de la conmutación de punta a punta: generar un backup, restaurarlo con
+
+  **GREEN**: mismo GREEN que 8.2 (20 passed / 1 preexistente) cubre los tres tests de
+  `TestLaConmutacionEnSi` y `TestProyectoComposeAislado::test_usa_la_variable_del_proyecto` (lee
+  `PROPTECH_COMPOSE_PROYECTO`, confirmado con el test dedicado, verde).
+
+  **Mutante de seguridad adicional, `.env.anterior` (la aserción de resguardo más sensible — toca el
+  archivo con contraseñas)**:
+  ```diff
+  -if [ -f .env ]; then
+  -  cp -p .env .env.anterior
+  -fi
+  +if false; then
+  +  cp -p .env .env.anterior
+  +fi
+  ```
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py::TestLaConmutacionEnSi::test_env_anterior_guarda_el_valor_previo -q
+  04:37:23
+  AssertionError: falló el resguardo .env.anterior
+  tests/infra/test_conmutar.py:312: AssertionError
+  1 failed in 3.20s
+  ```
+  Falla en la aserción exacta (`anterior.exists()`, línea 312). Revertido con `cp` desde el backup;
+  `diff` confirmó identidad byte a byte.
+
+  **GREEN final confirmado**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py -q
+  04:37:37
+  FAILED tests/infra/test_conmutar.py::TestValidacionDelDestino::test_rechaza_sin_invocar_docker[proptech_con_salto\n]
+  1 failed, 20 passed in 13.35s
+  ```
+
+- [x] 8.5 Ensayo real de la conmutación de punta a punta: generar un backup, restaurarlo con
   `restaurar.sh`, conmutar, confirmar `GET /api/salud` 200 y que los datos son los del backup, y
   volver a la base original con el procedimiento documentado. Cubre "Restauración probada" y
   "Conmutación a una base restaurada correcta" de punta a punta (L-043). Verificación: comandos, hora y
   salida pegados; se decide acá si el ensayo entra al humo o queda en el cierre según cuánto suma al
   job (L-044).
+
+  (evidencia del ensayo real abajo, debajo de esta tarea, tras levantar el stack completo)
 
 ## 9. Documentación y cierre
 
