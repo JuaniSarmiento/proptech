@@ -87,7 +87,7 @@ def _start_que_espera_conexiones(self: PostgresContainer, *args: Any, **kwargs: 
 
 
 _start_que_espera_conexiones.espera_conexiones = True  # type: ignore[attr-defined]
-PostgresContainer.start = _start_que_espera_conexiones  # type: ignore[method-assign]
+PostgresContainer.start = _start_que_espera_conexiones  # type: ignore[method-assign, assignment]
 
 
 @pytest.fixture(scope="session")
