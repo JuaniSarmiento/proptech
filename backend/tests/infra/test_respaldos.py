@@ -1322,40 +1322,21 @@ class TestSalud:
 
 
 class TestSaludTrasUnFalloConUltimoOkBueno:
-    """R10 (vuelta 2, opción A): el rol equivocado hace fallar el volcado
-    (ya probado arriba, `test_falla_pg_dump_no_deja_archivos_y_loguea_error`),
-    pero antes `--salud` seguía dando 0 hasta 1,5 intervalos después del
-    último backup bueno — el escenario "Volcado con el rol equivocado"
-    pide que el servicio quede no saludable, y antes no quedaba si ya había
-    un backup previo (el caso real; el humo parte sin ninguno, L-016)."""
+    """R10 (vuelta 2, opción A): `--salud` seguía dando 0 hasta 1,5
+    intervalos después del último backup bueno, aunque un ciclo nuevo ya
+    hubiera fallado.
 
-    def test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno(
-        self,
-        tmp_path: Path,
-        entorno_con_bin_falso: dict[str, str],
-        escribir_herramienta_falsa: Callable[[str, str], Path],
-    ) -> None:
-        import time
-
-        carpeta = tmp_path / "respaldos"
-        carpeta.mkdir()
-        (carpeta / ".ultimo-ok").write_text(str(int(time.time())))
-
-        salud_antes = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
-        assert salud_antes.returncode == 0, salud_antes.stderr
-
-        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_FALLA)
-        resultado_ciclo = _correr(
-            tmp_path,
-            entorno_con_bin_falso,
-            carpeta=carpeta,
-            crear_carpeta=False,
-            args=["--una-vez"],
-        )
-        assert resultado_ciclo.returncode == 1
-
-        salud_despues = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
-        assert salud_despues.returncode != 0, "salud OK después de un ciclo fallido"
+    D8 (respaldos-2, L-019): el test
+    `test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno`
+    vivía ACÁ con un `FAKE_PG_DUMP_FALLA` genérico representando "el
+    escenario del rol equivocado" (según decía su docstring), pero un
+    binario falso que siempre falla no distingue un rol REALMENTE
+    rechazado de un `compose` mal escrito. Se **reemplazó**, no se
+    duplicó, por `tests/integracion/test_respaldos_rol_real.py`
+    (`pg_dump` real de la imagen, rol `proptech_app` real contra la base
+    real), que también verifica que `--salud` queda en rojo. Esta clase
+    conserva sólo el test de abajo (recuperación de la marca de fallo),
+    que no afirma nada sobre roles."""
 
     def test_un_exito_posterior_limpia_la_marca_de_fallo(
         self,

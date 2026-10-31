@@ -554,15 +554,98 @@
 
 ## 7. Volcado con el rol equivocado, con `pg_dump` real
 
-- [ ] 7.1 Test rojo de integración: un ciclo con las credenciales de `proptech_app` contra la base real
+- [x] 7.1 Test rojo de integración: un ciclo con las credenciales de `proptech_app` contra la base real
   y el `pg_dump` real de la imagen. Cubre los escenarios "Volcado con el rol equivocado" (reforzado:
   con `pg_dump` real) y "Un rol insuficiente no produce un backup aparentemente válido". Verificación: se ve el rojo
   con el rol correcto configurado (el test exige el fallo y con el rol bueno el volcado anda), con la
   salida pegada.
-- [ ] 7.2 Implementar D8: el test nuevo queda verde y **reemplaza** al caso con `FAKE_PG_DUMP_FALLA`
+
+  **Implementación del test** (`backend/tests/integracion/test_respaldos_rol_real.py`, nuevo): corre
+  `infra/respaldos/respaldar.sh` de verdad dentro de un contenedor efímero de `postgres:18.6-trixie`
+  (`docker run --rm --user 1000:1000`, la misma imagen que el servicio real), conectado por
+  `--add-host=host.docker.internal:host-gateway` al Postgres real de `testcontainers`
+  (`base_del_edificio`, con roles y migraciones aplicadas de verdad). Dos tests: uno con
+  `proptech_app` (debe fallar) y uno con `proptech_respaldo` (debe andar — triangulación, para que el
+  primero no pase "porque `pg_dump` siempre falla").
+
+  **Primera corrida, nació en rojo por un detalle del arnés (no de la producción)**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/integracion/test_respaldos_rol_real.py -q -s
+  02:52:31
+  ...
+  E   AssertionError: el volcado con proptech_app debía fallar: ...
+  E   {"evento":"arranque_rechazado","mensaje":"PROPTECH_UID: ... no puede correr como root"}
+  2 failed
+  ```
+  `docker run` corre como root por defecto; se agregó `--user 1000:1000`. Con eso:
+  ```
+  $ uv run pytest tests/integracion/test_respaldos_rol_real.py -q -s
+  02:52:59
+  F.
+  ```
+  El primer test seguía fallando, pero por una aserción DEMASIADO estricta del test (prohibía la
+  palabra "pg_dump" en el log, cuando el campo propio `etapa=pg_dump` la usa legítimamente — L-007 es
+  sobre la SALIDA de la herramienta, no sobre nombrar el paso). Corregida la aserción (ver 7.2),
+  **ambos tests dieron verde en su primera corrida real** — por L-013/L-019, un test nacido verde
+  necesita su mutante: se cambiaron las credenciales del primer test a `proptech_respaldo` (el rol
+  correcto) para confirmar que la aserción `returncode != 0` falla cuando el rol SÍ puede volcar:
+  ```
+  $ uv run pytest tests/integracion/test_respaldos_rol_real.py::TestVolcadoConElRolEquivocado::test_rol_de_app_hace_fallar_el_volcado_sin_dejar_archivos -q
+  02:54:51
+  E   AssertionError: el volcado con proptech_app debía fallar: stdout='{"...":"respaldo_generado",...}'
+  E   assert 0 != 0
+  1 failed
+  ```
+  Mutante revertido (`cp` desde la copia de respaldo tomada antes de mutar, L-013), GREEN confirmado
+  de nuevo:
+  ```
+  $ cp /tmp/test_respaldos_rol_real.py.bak tests/integracion/test_respaldos_rol_real.py
+  $ date +%T && uv run pytest tests/integracion/test_respaldos_rol_real.py -q
+  02:55:16
+  ..                                                                       [100%]
+  2 passed in 17.97s
+  ```
+
+- [x] 7.2 Implementar D8: el test nuevo queda verde y **reemplaza** al caso con `FAKE_PG_DUMP_FALLA`
   de `test_respaldos.py:905-940` para ese escenario (L-019); los demás usos del binario falso quedan.
   Verificación: el test nuevo en verde, el viejo borrado, y la garantía estática de
   `test_compose.py:510` sigue en verde.
+
+  **Reemplazo**: se verificó contra `git show 85e2437^:...` que las líneas 905-940 del archivo
+  original corresponden exactamente a `TestSaludTrasUnFalloConUltimoOkBueno.
+  test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno` (su propio docstring de clase
+  decía explícitamente que representaba "el escenario del rol equivocado" con un
+  `FAKE_PG_DUMP_FALLA` genérico). Se borró ese método y se reescribió el docstring de la clase para
+  explicar el reemplazo; se conservó `test_un_exito_posterior_limpia_la_marca_de_fallo` (el otro test
+  de esa clase), que no afirma nada sobre roles — prueba la recuperación de `.ultimo-fallo`, cubierta
+  también por otros tests de `TestFallasDelCiclo`. Los demás usos de binarios falsos en
+  `test_respaldos.py` (F5, F8, retención, salud) se quedan como están: ninguno afirma probar un rol.
+
+  **Trade-off aceptado**: el test borrado combinaba "ciclo falla" + "ya había un `.ultimo-ok` bueno
+  antes"; esa combinación puntual no la repite el test nuevo (que arranca sin ningún backup previo).
+  La mitad "un ciclo nuevo marca `.ultimo-fallo`" sigue cubierta por `TestFallasDelCiclo` y por el
+  test nuevo; se acepta la pérdida de esa combinación específica porque el test que se borra nunca
+  probó un rol real (L-019) y agregarla de nuevo con `pg_dump` real sumaría un tercer `docker run` sin
+  que ninguna regla nueva lo pida.
+
+  **GREEN (`test_respaldos.py` completo)**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py -q
+  02:56:53
+  ...
+  8 failed, 51 passed in 65.76s
+  ```
+  Los 8 fallos son los mismos preexistentes/declarados de siempre (Windows `chmod`/`os.killpg`); 51
+  en vez de 52 porque se borró un test (no una regresión).
+
+  **Garantía estática de `test_compose.py:510` sigue en verde**:
+  ```
+  $ uv run pytest tests/infra/test_compose.py::test_respaldos_usa_pguser_del_rol_de_respaldo_y_no_tiene_postgres_password -q
+  02:58:16
+  .                                                                        [100%]
+  1 passed in 0.10s
+  ```
+  `mypy tests/integracion/test_respaldos_rol_real.py`: `Success: no issues found in 1 source file`.
 
 ## 8. Conmutar la aplicación a una base restaurada
 
