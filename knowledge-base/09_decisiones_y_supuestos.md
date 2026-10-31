@@ -2951,3 +2951,57 @@ registrado como tal en su momento.)*
   chicos); cortar el interés bajo el umbral (deber poco saldría gratis); "vencida" al día siguiente del
   vencimiento ignorando la gracia (contaría como vencido algo que no genera interés).
 - **Quién**: Juani, 30/10/2026, con la recomendación del orquestador.
+
+## D-144 · "14 copias" gana un piso por antigüedad, nunca reemplaza la cantidad (31/10/2026, C-24 `respaldos-2`)
+
+- **Fecha**: 31/10/2026, apply del C-24 `respaldos-2` (design.md D2).
+- **Contexto**: la deuda del cierre del 1d decía "14 copias no son 14 días" si el stack se reinicia
+  muchas veces en la misma tarde: `RESPALDO_CONSERVAR` cuenta archivos, no tiempo.
+- **Decisión**: se agrega `RESPALDO_CONSERVAR_DIAS` (default 14, rango 1..365, validado igual que el
+  resto de los enteros del servicio) como un **piso adicional**, no un reemplazo: dentro de esa
+  ventana nunca se borra el backup más nuevo de cada día, aunque `RESPALDO_CONSERVAR` ya se haya
+  superado. Con los dos valores en 14 (el default), el comportamiento de hoy no cambia; la diferencia
+  sólo aparece con más de un backup por día.
+- **Descartado**: reemplazar la cantidad por una retención puramente temporal (un bucle de reinicios
+  con el intervalo bajo podría llenar el disco: la cantidad sigue siendo el techo); documentar la
+  diferencia sin cambiar código (el 15 va a necesitar la ventana real, no la nota al pie).
+- **Quién**: Emiliano, 31/10/2026 (constructor del C-24, dentro del scope ya firmado HIGH de la
+  propuesta).
+
+## D-145 · F6 (la carrera del 503 sin su línea) se reprodujo y se cerró por construcción, no por suerte (31/10/2026, C-24 `respaldos-2`)
+
+- **Fecha**: 31/10/2026, apply del C-24 `respaldos-2` (design.md D5).
+- **Contexto**: el rompedor del 1d había reproducido F6 1 de 18 veces; quedó como deuda porque una
+  ráfaga que falla 1 de 18 no prueba ni descarta la ventana.
+- **Decisión**: se repitió la ráfaga contra `salud()` real (30 intentos, llamando la misma función que
+  expone `GET /api/salud`, sin reimplementarla) y se reprodujo **14 de 30 veces** — más seguido que el
+  1d, por el overhead de scheduling de hilos de esta máquina. Se cierra arreglando, no descartando:
+  cada dependencia que se va a informar como `sin_conexion` pasa por `_informar_una_sola_vez`
+  (lock y bandera ya existentes) **antes** de devolver el 503, así "ni cero ni dos" queda garantizado
+  por construcción, con un test determinista que da rojo contra el código de antes sin depender de
+  ganar una carrera.
+- **Descartado**: agrandar la ráfaga como evidencia del arreglo (un test que falla por suerte sigue
+  sin vigilar nada, L-019); un lock nuevo o un orden nuevo entre hilos (innecesario: la bandera que ya
+  existe alcanza).
+- **Quién**: Emiliano, 31/10/2026 (constructor del C-24).
+
+## D-146 · Conmutar la aplicación a una base restaurada no vuelve a un nombre que no siga `proptech_algo` (31/10/2026, C-24 `respaldos-2`)
+
+- **Fecha**: 31/10/2026, ensayo real de punta a punta del C-24 `respaldos-2` (tarea 8.5).
+- **Contexto**: `infra/respaldos/conmutar.sh` valida el DESTINO con la misma expresión cerrada que
+  `restaurar.sh` (`^proptech_[a-z0-9_]{1,50}$`, L-006/L-008): siempre un prefijo `proptech_` seguido
+  de algo. El ensayo real mostró que el nombre de la base de producción de esta máquina (`proptech`,
+  sin el guión bajo) **no cumple ese patrón**, así que una segunda corrida de `conmutar.sh` apuntando
+  de vuelta a `proptech` se rechaza antes de tocar nada.
+- **Decisión**: se acepta el límite como está, sin ampliar el patrón de validación ni agregar un caso
+  especial para el nombre de producción (ampliarlo debilitaría la garantía de L-008 para el resto de
+  los destinos). El camino de vuelta documentado (README, sección "Cómo conmutar") es manual:
+  `cp infra/.env.anterior infra/.env` seguido de `infra/arrancar.sh up -d --no-deps api worker
+  respaldos` — el resguardo que el propio script ya deja escrito antes de conmutar.
+- **Descartado**: ampliar el patrón para aceptar nombres sin guión bajo (debilita la validación para
+  el resto de los casos, sin necesidad real: sólo el nombre de producción de esta instancia lo pide);
+  que `conmutar.sh` detecte y maneje el caso especial "volver al valor de `.env.anterior`" (agregaría
+  una rama nueva al script fuera del scope de D6, que es sólo conmutar HACIA una base restaurada).
+- **Quién**: Emiliano, 31/10/2026 (constructor del C-24; declarado como deuda nueva en la ficha 1e de
+  `12_fichas_de_changes.md`, sin bloquear el cierre: la restauración y la conmutación hacia adelante
+  están probadas de punta a punta).

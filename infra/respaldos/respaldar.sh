@@ -10,8 +10,30 @@ umask 077
 CARPETA="${RESPALDO_CARPETA:-/respaldos}"
 PREFIJO="proptech"
 
+#: Formatea una línea JSON con el esquema común (L-007: sólo valores propios,
+#: nunca la salida de una herramienta de terceros). Usada por `logear`
+#: (siempre a stdout) y por `error_salir` (siempre a stderr, F8): las dos
+#: comparten el mismo armado, así ninguna salida del servicio puede quedar
+#: en texto plano (D4).
+_formatear_json() {
+  local nivel="$1" evento="$2" ts campos=""
+  shift 2
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  for par in "$@"; do
+    campos+=",\"${par%%=*}\":\"${par#*=}\""
+  done
+  printf '{"ts":"%s","nivel":"%s","servicio":"respaldos","evento":"%s"%s}\n' \
+    "$ts" "$nivel" "$evento" "$campos"
+}
+
+# F8: ya no es `echo "error: $1"` (texto plano); emite la misma forma JSON
+# que `logear`, con nivel `error` y un evento propio por llamador
+# (`configuracion_invalida`, `carpeta_no_escribible`, `arranque_rechazado`),
+# siempre a stderr. El mensaje nombra la variable o la carpeta con problema,
+# nunca un valor de contraseña (ningún llamador de hoy lo hace).
 error_salir() {
-  echo "error: $1" >&2
+  local evento="$1" mensaje="$2"
+  _formatear_json error "$evento" "mensaje=$mensaje" >&2
   exit 1
 }
 
@@ -19,7 +41,7 @@ rechazar_si_root() {
   local uid
   uid="$(id -u)"
   if [ "$uid" = "0" ]; then
-    error_salir "PROPTECH_UID: el servicio de respaldos no puede correr como root"
+    error_salir arranque_rechazado "PROPTECH_UID: el servicio de respaldos no puede correr como root"
   fi
 }
 
@@ -27,19 +49,19 @@ rechazar_si_root() {
 validar_entero() {
   local nombre="$1" valor="$2" minimo="$3" maximo="$4"
   if [[ ! "$valor" =~ ^[1-9][0-9]{0,6}$ ]]; then
-    error_salir "$nombre: falta, está vacío o no es un entero válido"
+    error_salir configuracion_invalida "$nombre: falta, está vacío o no es un entero válido"
   fi
   if (( valor < minimo || valor > maximo )); then
-    error_salir "$nombre: fuera de rango ($minimo..$maximo)"
+    error_salir configuracion_invalida "$nombre: fuera de rango ($minimo..$maximo)"
   fi
 }
 
 validar_carpeta() {
   if [ ! -d "$CARPETA" ]; then
-    error_salir "la carpeta de respaldos no existe: $CARPETA"
+    error_salir carpeta_no_escribible "la carpeta de respaldos no existe: $CARPETA"
   fi
   if [ ! -w "$CARPETA" ]; then
-    error_salir "la carpeta de respaldos no tiene permiso de escritura: $CARPETA"
+    error_salir carpeta_no_escribible "la carpeta de respaldos no tiene permiso de escritura: $CARPETA"
   fi
 }
 
@@ -47,9 +69,11 @@ validar_configuracion() {
   rechazar_si_root
   validar_entero RESPALDO_INTERVALO_SEGUNDOS "${RESPALDO_INTERVALO_SEGUNDOS:-}" 60 604800
   validar_entero RESPALDO_CONSERVAR "${RESPALDO_CONSERVAR:-}" 1 365
+  validar_entero RESPALDO_CONSERVAR_DIAS "${RESPALDO_CONSERVAR_DIAS:-}" 1 365
   validar_entero RESPALDO_LIMITE_SEGUNDOS "${RESPALDO_LIMITE_SEGUNDOS:-}" 5 86400
   if (( RESPALDO_LIMITE_SEGUNDOS >= RESPALDO_INTERVALO_SEGUNDOS )); then
-    error_salir "RESPALDO_LIMITE_SEGUNDOS: tiene que ser menor que RESPALDO_INTERVALO_SEGUNDOS"
+    error_salir configuracion_invalida \
+      "RESPALDO_LIMITE_SEGUNDOS: tiene que ser menor que RESPALDO_INTERVALO_SEGUNDOS"
   fi
   validar_carpeta
 }
@@ -59,14 +83,7 @@ validar_configuracion() {
 # son siempre texto que el propio script generó (nombres de archivo con el
 # patrón fijo, nombres de variable), nunca texto ajeno.
 logear() {
-  local nivel="$1" evento="$2" ts campos=""
-  shift 2
-  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  for par in "$@"; do
-    campos+=",\"${par%%=*}\":\"${par#*=}\""
-  done
-  printf '{"ts":"%s","nivel":"%s","servicio":"respaldos","evento":"%s"%s}\n' \
-    "$ts" "$nivel" "$evento" "$campos"
+  _formatear_json "$@"
 }
 
 # Borra cualquier `.parcial` que haya sobrevivido a un corte anterior,
@@ -79,26 +96,45 @@ borrar_parciales_huerfanos() {
   done
 }
 
-# Conserva los RESPALDO_CONSERVAR backups correctos más recientes. El archivo
-# del ciclo en curso se excluye por nombre exacto antes de ordenar: si el
-# reloj del host atrasa, puede ordenar como el más viejo por nombre y una
-# retención ingenua lo borraría (M22). Sólo entran nombres que cumplen el
-# patrón completo (L-006, L-008): un archivo ajeno o con otra extensión nunca
-# se toca.
+# Conserva los RESPALDO_CONSERVAR backups correctos más recientes POR TIEMPO
+# DE MODIFICACIÓN (F4, D1), no por el orden alfabético del nombre: un reloj
+# del host atrasado o adelantado deja el nombre mintiendo sobre cuál es
+# realmente el más nuevo, y `aplicar_retencion` sólo puede confiar en lo que
+# el propio sistema de archivos escribió. El archivo del ciclo en curso se
+# excluye por nombre exacto antes de ordenar (protección que ya existía).
+# Sólo entran nombres que cumplen el patrón completo (L-006, L-008): un
+# archivo ajeno o con otra extensión nunca se toca.
+#
+# D2: además de la cantidad, dentro de RESPALDO_CONSERVAR_DIAS días nunca se
+# borra el backup correcto MÁS NUEVO de cada día (calculado por mtime, misma
+# razón que D1): protege contra "14 copias" cubriendo apenas unas horas con
+# muchos reinicios. Esto puede dejar más de RESPALDO_CONSERVAR archivos
+# (trade-off declarado en design.md); nunca menos.
 aplicar_retencion() {
   local archivo_actual="$1" nombre_actual listado total permitidos a_borrar
   local fallo=0
   nombre_actual="$(basename -- "$archivo_actual")"
 
+  # Cada línea: "<mtime_fraccionario> <mtime_entero> <dia:YYYYMMDD> <nombre>",
+  # ordenada NUMÉRICAMENTE por el mtime fraccionario (la más vieja primero).
+  # `%.Y` (GNU stat) da el mtime con nanosegundos: dos ciclos corridos dentro
+  # del mismo segundo de reloj NO pueden empatar y caer de vuelta en un
+  # desempate por nombre/fecha, que es exactamente el bug que D1 corrige
+  # (`%Y` a secas sí empata entre ciclos rápidos, y `sort` sin clave única
+  # desempata comparando la línea entera, reintroduciendo el orden por
+  # nombre).
   listado="$(
     for candidato in "$CARPETA/${PREFIJO}-"*.dump; do
       [ -e "$candidato" ] || continue
-      local nombre_candidato
+      local nombre_candidato mtime_frac mtime dia
       nombre_candidato="$(basename -- "$candidato")"
       [[ "$nombre_candidato" =~ ^proptech-[0-9]{8}T[0-9]{6}Z\.dump$ ]] || continue
       [ "$nombre_candidato" = "$nombre_actual" ] && continue
-      printf '%s\n' "$nombre_candidato"
-    done | sort
+      mtime_frac="$(stat -c '%.Y' -- "$candidato")"
+      mtime="$(stat -c %Y -- "$candidato")"
+      dia="$(date -u -d "@$mtime" +%Y%m%d)"
+      printf '%s %s %s %s\n' "$mtime_frac" "$mtime" "$dia" "$nombre_candidato"
+    done | sort -n -k1,1
   )"
 
   total=0
@@ -113,12 +149,29 @@ aplicar_retencion() {
   a_borrar=$(( total - permitidos ))
 
   if (( a_borrar > 0 )); then
-    # Proceso substitution (`< <(...)`), no un pipe: así la variable `fallo`
-    # que fija el `while` vive en ESTE shell, no en un subshell que
-    # desaparece al terminar el pipe (B2, L-014: `rm` fallando acá no debía
-    # pasar desapercibido).
-    while IFS= read -r nombre_a_borrar; do
+    local limite_mtime
+    limite_mtime=$(( $(date -u +%s) - RESPALDO_CONSERVAR_DIAS * 86400 ))
+
+    # El más nuevo de cada día DENTRO de la ventana, recorriendo el listado
+    # entero (no sólo los candidatos a borrar): como está ordenado por mtime
+    # ascendente, la última entrada que se ve para un día es la de mayor
+    # mtime de ese día (D2).
+    local -A mas_nuevo_del_dia=()
+    while IFS=' ' read -r mtime_frac mtime dia nombre; do
+      [ -n "$nombre" ] || continue
+      if (( mtime >= limite_mtime )); then
+        mas_nuevo_del_dia["$dia"]="$nombre"
+      fi
+    done <<< "$listado"
+
+    # Proceso substitution (`< <(...)`), no un pipe: así `fallo` vive en ESTE
+    # shell, no en un subshell que desaparece al terminar el pipe (B2,
+    # L-014: `rm` fallando acá no debía pasar desapercibido).
+    while IFS=' ' read -r mtime_frac mtime dia nombre_a_borrar; do
       [ -n "$nombre_a_borrar" ] || continue
+      if [ "${mas_nuevo_del_dia[$dia]:-}" = "$nombre_a_borrar" ]; then
+        continue  # piso por antigüedad (D2): el más nuevo de su día no se borra.
+      fi
       if ! rm -f -- "$CARPETA/$nombre_a_borrar"; then
         fallo=1
       fi
@@ -138,14 +191,52 @@ marcar_fallo() {
   date +%s > "$CARPETA/.ultimo-fallo" || true
 }
 
+# F5, D3: PID del hijo en curso (el `sleep` del modo continuo o el
+# `timeout ... pg_dump`), para que `manejar_apagado` sepa a quién matar.
+# Variable GLOBAL (no `local`): el handler de la señal corre en el mismo
+# shell, fuera de cualquier función, y tiene que poder leerla.
+PID_HIJO_ACTUAL=""
+
+# D3: un `trap` solo no alcanza — Bash no corre el handler mientras espera un
+# comando en PRIMER PLANO (acá, `sleep 86400` o `timeout ... pg_dump` sin
+# backgrounding se comerían la señal hasta terminar). Por eso el modo
+# continuo y el volcado largo corren en segundo plano con `& wait "$!"`
+# (ver `ciclo_backup` y el bucle principal): `wait` SÍ es interrumpible, y
+# ahí es donde este handler puede correr de verdad. El handler hace TODO el
+# trabajo de F5 y termina con `exit 0`: mata al hijo si hay uno, borra el
+# `.parcial` del ciclo en curso, emite su propio evento JSON y sale. No deja
+# ningún `respaldo_fallido` ni toca `.ultimo-fallo`: un apagado pedido no es
+# una falla de backup (D3).
+manejar_apagado() {
+  trap '' TERM INT  # una segunda señal durante la limpieza no reentra acá.
+  if [ -n "$PID_HIJO_ACTUAL" ]; then
+    if ! kill -TERM "$PID_HIJO_ACTUAL" 2>/dev/null; then
+      :  # el hijo ya pudo haber terminado solo; no es un error.
+    fi
+    wait "$PID_HIJO_ACTUAL" 2>/dev/null || true
+  fi
+  local archivo
+  for archivo in "$CARPETA/${PREFIJO}-"*.dump.parcial; do
+    [ -e "$archivo" ] || continue
+    rm -f -- "$archivo"
+  done
+  logear info apagado "motivo=senal"
+  exit 0
+}
+trap manejar_apagado TERM INT
+
 ciclo_backup() {
-  local marca archivo_final archivo_parcial
+  local marca archivo_final archivo_parcial codigo
   marca="$(date -u +%Y%m%dT%H%M%SZ)"
   archivo_final="$CARPETA/${PREFIJO}-${marca}.dump"
   archivo_parcial="${archivo_final}.parcial"
 
-  if ! PGCONNECT_TIMEOUT=5 timeout --kill-after=5 "$RESPALDO_LIMITE_SEGUNDOS" \
-        pg_dump --format=custom "--file=${archivo_parcial}" >/dev/null 2>/dev/null; then
+  PGCONNECT_TIMEOUT=5 timeout --kill-after=5 "$RESPALDO_LIMITE_SEGUNDOS" \
+        pg_dump --format=custom "--file=${archivo_parcial}" >/dev/null 2>/dev/null &
+  PID_HIJO_ACTUAL=$!
+  wait "$PID_HIJO_ACTUAL" && codigo=0 || codigo=$?
+  PID_HIJO_ACTUAL=""
+  if (( codigo != 0 )); then
     rm -f -- "$archivo_parcial"
     logear error respaldo_fallido etapa=pg_dump
     marcar_fallo
@@ -269,7 +360,10 @@ case "$modo" in
     # próximo ciclo es la única reintentada.
     ciclo_backup || true
     while true; do
-      sleep "$RESPALDO_INTERVALO_SEGUNDOS"
+      sleep "$RESPALDO_INTERVALO_SEGUNDOS" &
+      PID_HIJO_ACTUAL=$!
+      wait "$PID_HIJO_ACTUAL" || true
+      PID_HIJO_ACTUAL=""
       ciclo_backup || true
     done
     ;;

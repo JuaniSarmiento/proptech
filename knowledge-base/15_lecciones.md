@@ -1059,3 +1059,26 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   frenado antes de construir (en el 6, P36 y P37 respondidas por quien no correspondía).
 - **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
   proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.
+
+## L-068 · Un doble falso de `docker` que matchea subcadenas puede cubrir una consulta SQL que nunca corre de verdad
+
+- **Origen**: C-24 `respaldos-2`, ensayo real de la tarea 8.5, 31/10/2026.
+- **Qué pasó**: la verificación 3 de `conmutar.sh` (RLS/políticas por contenido, D6) tenía una consulta
+  SQL con tres errores reales contra PostgreSQL (`pg_tables.forcerowsecurity` no existe —vive en
+  `pg_class`, no en la vista `pg_tables`—; `pg_policy.qual`/`with_check` tampoco —son `polqual`/
+  `polwithcheck` en el catálogo, esos otros nombres son de la vista `pg_policies`—; y un `||` entre
+  `text` y `"char"` ambiguo sin cast). Los 20 tests de `test_conmutar.py`, con un `docker` falso que
+  sólo matchea la subcadena `pg_tables` del comando invocado y devuelve un string fijo, pasaban igual:
+  nunca ejecutan la consulta contra un Postgres real, así que nunca pudieron ver el error de sintaxis.
+  Recién el ensayo real de 8.5 (Docker/Postgres reales) lo mostró.
+- **Regla**: un doble falso de una herramienta que recibe una consulta SQL (o cualquier comando con
+  sintaxis propia) sólo prueba el CAMINO del script (qué se invoca, en qué orden, con qué argumentos
+  visibles desde afuera); nunca prueba que la consulta en sí sea válida. Todo script nuevo que arma una
+  consulta SQL se corre, al menos una vez, contra Postgres real antes de darlo por terminado — no
+  alcanza con que su test con doble falso esté en verde (L-043, mismo principio que un script de
+  mantenimiento).
+- **Costo**: dos vueltas de correcciones dentro del mismo ensayo (primero la columna, después los
+  nombres de `pg_policy`, después el cast de `polcmd`) hasta tener la consulta real funcionando; cero
+  costo en producción porque se encontró antes de cerrar el change.
+- **Aplica a**: constructor (al escribir cualquier script que arme SQL con un doble falso de la
+  herramienta de base), auditor.

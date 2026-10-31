@@ -55,9 +55,7 @@ Requisitos: Docker con Compose (`docker compose version`).
 
 ```bash
 cp infra/.env.example infra/.env   # completar las cuatro POSTGRES_*_PASSWORD con valores propios
-mkdir -p infra/datos-respaldos     # carpeta de los backups, fuera de git (D9)
-cd infra
-PROPTECH_UID=$(id -u) PROPTECH_GID=$(id -g) docker compose up --build
+infra/arrancar.sh up --build
 ```
 
 Las cuatro `POSTGRES_*_PASSWORD` (arranque, migrador, app y respaldo) tienen que ser **distintas entre
@@ -65,15 +63,19 @@ sí**: `roles antes` rechaza el arranque si dos coinciden, sin mostrar ningún v
 2a). El detalle completo de cada variable está en [Variables de entorno](#variables-de-entorno), más
 abajo.
 
-La carpeta de respaldos (`PROPTECH_DIR_RESPALDOS` en `.env`, por defecto
-`./datos-respaldos` relativo a `infra/`) hay que crearla **antes** del primer
-`docker compose up`: es una carpeta del host (bind mount, no un volumen de
-Docker), así sobrevive a un `docker compose down -v`. `PROPTECH_UID` y
-`PROPTECH_GID` son el usuario del host (`id -u` / `id -g`), para que esos
-archivos queden del dueño real y no de un uid que el host no conoce; sin
-ellos, Compose se niega a arrancar nombrando la variable que falta. Las demás
-variables de respaldos (`RESPALDO_INTERVALO_SEGUNDOS`, `RESPALDO_CONSERVAR`,
-`RESPALDO_LIMITE_SEGUNDOS`) ya traen un valor por defecto en `.env.example`.
+`infra/arrancar.sh` (D7, respaldos-2) reemplaza `cd infra && docker compose up`: lee
+`PROPTECH_DIR_RESPALDOS`/`PROPTECH_UID`/`PROPTECH_GID` del entorno o de `.env`, crea la carpeta de
+respaldos del host (bind mount, no un volumen de Docker, para sobrevivir a `docker compose down -v`)
+con ese dueño **si todavía no existe** — nunca cambia una carpeta que ya está ahí — y recién después
+delega en `docker compose` con los argumentos que se le pasen. Sin este paso, Docker crearía esa
+carpeta él mismo **como root** al encontrar el bind mount vacío, y el servicio `respaldos` quedaría
+reiniciando en bucle sin poder escribir en ella. Si alguien corre `docker compose up` directamente,
+sin pasar por `arrancar.sh` (por ejemplo, a mano, fuera del camino documentado), ese riesgo de la
+carpeta como root sigue existiendo: `arrancar.sh` es el camino que el README, el humo y el CI usan,
+no una garantía de Compose en sí (D7, límite declarado y aceptado por la firma del change
+`respaldos-2`). Las demás variables de respaldos (`RESPALDO_INTERVALO_SEGUNDOS`,
+`RESPALDO_CONSERVAR`, `RESPALDO_CONSERVAR_DIAS`, `RESPALDO_LIMITE_SEGUNDOS`) ya traen un valor por
+defecto en `.env.example`.
 
 Después de que los servicios queden sanos:
 
@@ -139,6 +141,45 @@ uso):
 infra/respaldos/restaurar.sh infra/datos-respaldos/proptech-20261014T120000Z.dump proptech_mi_prueba
 ```
 
+### Cómo conmutar la aplicación a una base restaurada
+
+Restaurar un backup (arriba) deja la base en una base aparte; la aplicación sigue apuntando a la que
+estaba sirviendo. `infra/respaldos/conmutar.sh` hace el segundo paso (D6, respaldos-2): conmuta
+`infra/.env` a la base restaurada, pero **antes** corre tres verificaciones contra esa misma base y se
+niega a conmutar si alguna falla:
+
+1. La base existe y acepta conexión.
+2. Su revisión de Alembic es exactamente la cabeza del repositorio (derivada, nunca una lista fija).
+3. Sus tablas de negocio conservan Row-Level Security forzada y las mismas políticas que la base en
+   uso (comparando el contenido completo, no sólo la cantidad).
+
+```bash
+infra/respaldos/conmutar.sh proptech_mi_prueba
+```
+
+(igual que `restaurar.sh`, exporta `PROPTECH_COMPOSE_PROYECTO` sólo para un ensayo contra un proyecto
+de Compose aislado, nunca en producción, L-006/L-047.)
+
+Si las tres pasan, el script guarda el valor anterior en `infra/.env.anterior`, reescribe
+`POSTGRES_DB` en `infra/.env` (las demás líneas, incluidas las contraseñas, quedan idénticas) y
+levanta de nuevo la API, el worker y el servicio de respaldos contra la base nueva. Nunca borra ni
+modifica la base que deja de usarse.
+
+**La ventana de datos perdidos** es la que separa el momento del backup del incidente: cualquier
+cambio hecho después de ese backup no está en la base restaurada. Conmutar a una base restaurada que
+pasó las tres verificaciones pero tiene datos atrasados sigue siendo una decisión de quien opera, no
+algo que el script pueda saber.
+
+**Para volver atrás**, `conmutar.sh` **no** sirve si el nombre de la base original no sigue el
+patrón `proptech_algo` (por ejemplo, la base de producción real puede llamarse simplemente `proptech`,
+sin el guión bajo): el script valida el destino con esa expresión y lo rechaza. El camino de vuelta es
+manual, con el resguardo que el propio script dejó:
+
+```bash
+cp -p infra/.env.anterior infra/.env
+infra/arrancar.sh up -d --no-deps api worker respaldos
+```
+
 ### Correr los tests
 
 Backend (requiere [uv](https://docs.astral.sh/uv/)):
@@ -199,6 +240,7 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `PROPTECH_GID` | `respaldos` | Obligatoria | sin default | GID del usuario del host, gemelo de `PROPTECH_UID` |
 | `RESPALDO_INTERVALO_SEGUNDOS` | `respaldos` | Opcional (60 a 604800) | 86400 (diario) | Cada cuánto corre un backup, además del de arranque |
 | `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
+| `RESPALDO_CONSERVAR_DIAS` | `respaldos` | Opcional (1 a 365) | 14 | Piso por antigüedad (respaldos-2, D2): nunca se borra el backup más nuevo de cada día dentro de esta ventana, aunque la cantidad de `RESPALDO_CONSERVAR` ya se haya superado |
 | `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite |
 | `CLERK_JWT_KEY` | API, web | Opcional; dejar comentada para apagar login; presente exige PEM RSA público de al menos 2048 bits | sin valor | Verificación local RS256; sale sólo del entorno |
 | `CLERK_PARTES_AUTORIZADAS` | API, web | Obligatoria con clave JWT | sin valor | Orígenes exactos separados por comas, HTTPS o HTTP para localhost |
