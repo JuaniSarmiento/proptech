@@ -5,7 +5,6 @@ crearla antes a mano. Corre el script real con un `docker` falso en el
 PATH (L-004), nunca Docker de verdad acá (eso es 6.2/integración real)."""
 
 import os
-import stat
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
