@@ -440,6 +440,94 @@ def test_salud_degradada_por_cola_congelada_lleva_el_request_id_del_pedido(
     assert rid in lineas_degradadas[0], lineas_degradadas[0]
 
 
+class _VerificadorQueNuncaInformaPorSuCuenta:
+    """F6/D5: simula EXACTAMENTE la carrera perdida que el rompedor del 1d
+    reprodujo contra `GET /api/salud` (1 de 18, y hasta 14 de 30 en esta
+    máquina, ver tasks.md 5.1): un verificador que devuelve `False` sin
+    haber llamado nunca a `_informar_una_sola_vez` — el caso en que el
+    hilo interno todavía no llegó a su propio camino de "informar" cuando
+    el de afuera ya decidió darse por vencido. Expone `lock`/`informado`/
+    `dependencia` con la MISMA forma que `_verificador_con_engine` para que
+    el código de producción (si ya tiene el arreglo de D5) pueda usarlos."""
+
+    def __init__(self, dependencia: str) -> None:
+        self.lock = threading.Lock()
+        self.informado: list[bool] = [False]
+        self.dependencia = dependencia
+
+    def __call__(self) -> bool:
+        return False
+
+
+def test_f6_ninguna_respuesta_503_sale_sin_su_linea_salud_degradada() -> None:
+    """D5: antes de este arreglo, `_ejecutar_verificaciones_en_paralelo` no
+    hacía nada con un verificador que devuelve `False` sin haber informado
+    — el 503 salía igual, sin ninguna línea. Esta es la versión
+    DETERMINISTA del escenario que 5.1 reprodujo con una ráfaga: no depende
+    de ganar una carrera de timing, fuerza el caso directamente."""
+    import logging
+
+    _logger = logging.getLogger("proptech_api.salud")
+    registro: list[logging.LogRecord] = []
+
+    class _Capturador(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            registro.append(record)
+
+    capturador = _Capturador()
+    _logger.addHandler(capturador)
+    nivel_anterior = _logger.level
+    _logger.setLevel(logging.DEBUG)
+    try:
+        verificador_base = _VerificadorQueNuncaInformaPorSuCuenta("base")
+        cliente = _cliente_con_verificadores(verificador_base, lambda: True)
+        respuesta = cliente.get("/api/salud")
+    finally:
+        _logger.removeHandler(capturador)
+        _logger.setLevel(nivel_anterior)
+
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"estado": "degradado", "base": "sin_conexion", "cola": "ok"}
+
+    degradadas = [r for r in registro if r.getMessage() == "salud_degradada"]
+    assert len(degradadas) == 1, (
+        f"se esperaba exactamente 1 línea salud_degradada (ni 0 ni 2), hubo {len(degradadas)}"
+    )
+    assert degradadas[0].dependencia == "base"  # type: ignore[attr-defined]
+
+
+def test_f6_la_cola_tambien_queda_cubierta() -> None:
+    """Triangulación: el mismo escenario del test anterior pero con la
+    dependencia `cola`, para que el arreglo no quede atado sólo a `base`."""
+    import logging
+
+    _logger = logging.getLogger("proptech_api.salud")
+    registro: list[logging.LogRecord] = []
+
+    class _Capturador(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            registro.append(record)
+
+    capturador = _Capturador()
+    _logger.addHandler(capturador)
+    nivel_anterior = _logger.level
+    _logger.setLevel(logging.DEBUG)
+    try:
+        verificador_cola = _VerificadorQueNuncaInformaPorSuCuenta("cola")
+        cliente = _cliente_con_verificadores(lambda: True, verificador_cola)
+        respuesta = cliente.get("/api/salud")
+    finally:
+        _logger.removeHandler(capturador)
+        _logger.setLevel(nivel_anterior)
+
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"estado": "degradado", "base": "ok", "cola": "sin_conexion"}
+
+    degradadas = [r for r in registro if r.getMessage() == "salud_degradada"]
+    assert len(degradadas) == 1
+    assert degradadas[0].dependencia == "cola"  # type: ignore[attr-defined]
+
+
 def test_head_responde_200_igual_que_get() -> None:
     """Tarea 2c 5.3 (`entorno-de-ejecucion` > "Respuesta de la web y de la
     API"): un HEAD a /api/salud tiene que responder como el GET (mismo

@@ -364,18 +364,97 @@
 
 ## 5. Ningún 503 sin su línea (F6)
 
-- [ ] 5.1 Repetir la ráfaga del rompedor del 1d sobre `GET /api/salud` con una dependencia congelada y
+- [x] 5.1 Repetir la ráfaga del rompedor del 1d sobre `GET /api/salud` con una dependencia congelada y
   pegar comando, cantidad de intentos y salida, nombrando qué servicio puede producir la línea
   (L-016). Verificación: queda escrito si F6 se reprodujo y en cuántos intentos; el resultado no cierra
   la tarea por sí solo.
-- [ ] 5.2 Test rojo determinista de D5: forzar la carrera perdida (el verificador devuelve `False` sin
+
+  **Se reprodujo**, con código de producción real (no una reimplementación propia, L-046): se llamó
+  directamente a `salud()` (la misma función que expone `GET /api/salud`) con
+  `_verificador_con_engine(_EngineCongelado())` real y un verificador de cola `lambda: True`, en un
+  script temporal (`backend/tests/unitarios/test_rafaga_f6_temporal.py`, borrado después de pegar esta
+  salida — nunca se commiteó):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_rafaga_f6_temporal.py -q -s
+  02:37:33
+  ...
+  intento 0: status=503 cuerpo={...'base': 'sin_conexion'...} tiene_linea=False
+  intento 1: status=503 ... tiene_linea=True
+  intento 6: status=503 ... tiene_linea=False
+  ... (30 intentos)
+  TOTAL: 14 de 30 intentos con 503 sin linea salud_degradada
+  1 passed in 45.81s
+  ```
+  **F6 se reprodujo en 14 de 30 intentos** (más seguido que el "1 de 18" del rompedor del 1d — la
+  ventana depende del overhead de scheduling de hilos del sistema, mayor en esta máquina/Windows que
+  en el entorno del rompedor original). El servicio que puede producir la línea es la propia API
+  (`proptech_api.salud`, logger `proptech_api.salud`, evento `salud_degradada`) — nombrado por L-016:
+  nunca Bash (`respaldos`), que no puede emitir este evento. La línea faltante en el momento del 503
+  apareció igual más tarde (se ve una línea `salud_degradada` suelta después de "1 passed" en la
+  salida completa): confirma que el hilo interno SÍ llega a informar, pero **después** de que la
+  respuesta ya salió — exactamente la ventana que describe `design.md` D5.
+
+- [x] 5.2 Test rojo determinista de D5: forzar la carrera perdida (el verificador devuelve `False` sin
   haber informado) y exigir la línea `salud_degradada` con el `request_id` antes del 503, ni cero ni
   dos. Cubre el escenario "Ráfaga de pedidos con una dependencia congelada" de `entorno-de-ejecucion`.
   Verificación: rojo contra `salud.py` de hoy, con la salida pegada; si diera verde, se declara con el
   mutante que prueba la aserción (L-049).
-- [ ] 5.3 Implementar D5 en `proptech_api/salud.py`: antes de responder, cada dependencia informada
+
+  **RED** (`backend/tests/unitarios/test_salud.py`, `_VerificadorQueNuncaInformaPorSuCuenta`, dos
+  tests: base y cola — triangulación):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_salud.py -k "f6" -q
+  02:39:03
+  ...
+  E       assert 0 == 1
+  E        +  where 0 = len([])
+  FAILED tests/unitarios/test_salud.py::test_f6_ninguna_respuesta_503_sale_sin_su_linea_salud_degradada
+  FAILED tests/unitarios/test_salud.py::test_f6_la_cola_tambien_queda_cubierta
+  2 failed, 18 deselected in 1.64s
+  ```
+  Rojo determinista (no depende de ganar una carrera): el doble de verificador nunca llama a
+  `_informar_una_sola_vez`, así que contra el código de hoy (que "no loguea nada por su cuenta: cada
+  verificador es dueño de informar su propia falla") la línea nunca aparece.
+
+- [x] 5.3 Implementar D5 en `proptech_api/salud.py`: antes de responder, cada dependencia informada
   como `sin_conexion` pasa por `_informar_una_sola_vez`. Verificación: el test de 5.2 en verde y el
   escenario "Una sola línea por verificación fallida" sigue en verde sin modificarse.
+
+  **Implementación**: `_verificador_con_engine`/`_verificador_con_cliente_redis` ahora crean su
+  `lock`/`informado` en el cuerpo de la fábrica (no dentro de `_verificar`, para que sean compartibles)
+  y los exponen como atributos del callable devuelto (`.lock`, `.informado`, `.dependencia`).
+  `_ejecutar_verificaciones_en_paralelo` gana `_asegurar_informado`: si una dependencia vuelve `False`
+  y el verificador expone esos atributos, llama a `_informar_una_sola_vez` con el MISMO lock/bandera
+  **antes** de devolver el resultado — así la línea queda escrita antes de que `salud()` arme el 503,
+  sin duplicar si el hilo interno ya informó (o informa después: encuentra la bandera puesta y no
+  escribe nada). Los dobles de prueba sin esos atributos (`lambda: False`) no activan este camino, así
+  que no cambian su comportamiento.
+
+  **GREEN**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/unitarios/test_salud.py -q
+  02:40:09
+  ....................                                                     [100%]
+  20 passed in 19.03s
+  ```
+  Las 20 incluyen las 2 nuevas de F6 y las existentes "Una sola línea por verificación fallida" (base y
+  cola), sin modificarlas. `mypy src/proptech_api/salud.py`: `Success: no issues found in 1 source
+  file`.
+
+  **Bloqueo declarado, no relacionado con este cambio**: `tests/integracion/test_salud_cola_real.py`
+  (3 tests) falla en esta máquina con `TablasDeSoloAgregarDesprotegidas` (las tablas de dominio no
+  existen en la base de `testcontainers`). Se confirmó que es **preexistente**, no causado por este
+  cambio: `git stash` (revirtiendo `salud.py` y `test_salud.py`) y se repitió exactamente el mismo
+  fallo:
+  ```
+  $ git stash && cd backend && date +%T && uv run pytest tests/integracion/test_salud_cola_real.py -q
+  02:41:20
+  ...
+  3 failed, 1 warning in 11.52s
+  $ cd .. && git stash pop
+  ```
+  No se investiga más (fuera de alcance): es un problema de migraciones/entorno de `testcontainers` en
+  esta máquina, no de `salud.py`.
 
 ## 6. La carpeta del host sin paso manual
 
