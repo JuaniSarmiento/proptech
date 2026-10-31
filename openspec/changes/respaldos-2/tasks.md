@@ -976,12 +976,37 @@
   Los 3 fallos son el mismo `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d` ya declarado
   preexistente en 6.2 (Windows/cp1252), no causado por este cambio del README; `test_arrancar.py`
   (6 tests, el escenario "sin paso manual" de 6.1) sigue 100% en verde.
-- [ ] 9.2 Knowledge base, según la sección "Knowledge Base Impact" del proposal: REWRITE de la ficha
+- [x] 9.2 Knowledge base, según la sección "Knowledge Base Impact" del proposal: REWRITE de la ficha
   §1e y de las filas de deuda cerradas en `12_fichas_de_changes.md`, REWRITE del estado de C-24 en
   `CHANGES.md`, REWRITE de la sección de infraestructura de `02_descripcion_general.md`, APPEND de las
   decisiones (D2, la conmutación verificada y el resultado de F6) en `09_decisiones_y_supuestos.md` y
   APPEND de las lecciones en `15_lecciones.md`. Verificación: los cinco archivos tocados, con el texto
   viejo borrado en los REWRITE (no sólo agregado al final).
+
+  **Documentación sin comportamiento ejecutable** (no hay TDD posible acá; se declara así en vez de
+  inventarlo): validación de formato/contrato hecha a mano, releyendo cada archivo tocado después de
+  editar. Los cinco archivos de la tabla "Knowledge Base Impact" de `proposal.md`, con qué se tocó:
+
+  - **REWRITE** `knowledge-base/12_fichas_de_changes.md`: ficha §1e reescrita de "pendiente" a
+    "archivado 31/10/2026", con qué entró y cómo cerró cada ítem (texto viejo de "Entra"/"Terminado
+    cuando" borrado, no agregado al lado); las 7 filas de deuda (F4, F5, F6, F8, "14 copias", el
+    volcado con el rol equivocado, el `mkdir`) reescritas de "antes: 15/DevOps" a "**Cerrada en el
+    C-24** (decisión, fecha)" — el texto viejo de cada celda "Cambio" se reemplazó, no se dejó al lado.
+  - **REWRITE** `CHANGES.md`: la línea de "DEUDA ADELANTADA" (`⏳ 1e` → `✅ 1e ... archivado`), la fila
+    de la tabla (`[ ]` pendiente → `[x]` archivado) y la sección `### [C-24]` con el resultado real en
+    vez del scope por hacer.
+  - **REWRITE** `knowledge-base/02_descripcion_general.md`: el párrafo de "Infraestructura" en
+    "Qué falta" suma la conmutación, la retención por días y la carpeta sin paso manual (el texto viejo
+    que sólo mencionaba el servicio de respaldos del 1d se extendió en el mismo párrafo, sin duplicar
+    la oración).
+  - **APPEND** `knowledge-base/09_decisiones_y_supuestos.md`: D-144 ("14 copias" gana un piso, no
+    reemplaza la cantidad), D-145 (F6 reproducido 14/30 y cerrado por construcción) y D-146 (límite real
+    de `conmutar.sh` para volver a un nombre que no sigue `proptech_algo`). D-091/D-095 no se tocaron.
+  - **APPEND** `knowledge-base/15_lecciones.md`: L-068 (un doble falso de `docker` que matchea
+    subcadenas no prueba que la consulta SQL sea válida — el hallazgo real de 8.5).
+
+  Releídos los cinco después de escribir, sin quedar texto contradictorio entre la ficha §1e, la tabla
+  de deuda del 1d/2a y `CHANGES.md` (los tres dicen "archivado"/"cerrada" para los mismos ítems).
 - [ ] 9.3 Corrida de cierre: la suite completa entera (no una selección) después del último commit, con
   `git rev-parse HEAD`, comando, hora y salida pegados; más el humo. Verificación: todo en verde sobre
   el SHA final; cualquier cambio de código posterior invalida esta corrida y obliga a repetirla

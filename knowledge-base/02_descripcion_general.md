@@ -57,7 +57,15 @@ vecinos se hace desde el padrón del edificio (`web/src/app/edificios/[id]`, D5)
 del vecino y del consejo todavía no existen (11, 12). **Infraestructura** Caddy como único proxy con HTTPS automático
 ya anda (D-043);
 el servicio de respaldos (`pg_dump` con la imagen `postgres:18.6-trixie`, D-087) está construido y
-archivado desde el cambio 1d (D-095; ver `08_arquitectura_propuesta.md` §Variables de entorno).
+archivado desde el cambio 1d (D-095; ver `08_arquitectura_propuesta.md` §Variables de entorno), y
+desde el C-24 `respaldos-2` (D-138, archivado 31/10/2026, D-144 a D-146) tiene retención por tiempo de
+modificación con un piso por antigüedad (`RESPALDO_CONSERVAR_DIAS`), apagado ordenado por `SIGTERM`,
+log íntegramente en JSON, la carpeta del host (`infra/datos-respaldos/`) creada sola por
+`infra/arrancar.sh` sin paso manual, y un procedimiento con herramienta para **conmutar** la
+aplicación a una base restaurada (`infra/respaldos/conmutar.sh`, hermano de `infra/respaldos/
+restaurar.sh`): verifica que la base destino existe, que su revisión de Alembic es la cabeza del
+repositorio y que conserva la misma Row-Level Security y políticas que la base en uso, antes de
+reescribir `infra/.env` y volver a levantar la API, el worker y el propio servicio de respaldos.
 
 ## Arquitectura general
 

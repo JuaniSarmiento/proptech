@@ -63,7 +63,7 @@ gates están en el árbol de abajo.
       `/privacidad` (Juani y Alberto, D-130)
 
 DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crítico
-   ⏳ 2e humo-y-ci (Gianfranco)          ⏳ 1e respaldos-2 (Emiliano, HIGH)
+   ⏳ 2e humo-y-ci (Gianfranco)          ✅ 1e respaldos-2 (Emiliano, HIGH) — archivado 31/10/2026
    ⏳ 1f worker-y-logs (Neyen)           ⏳ 3e pulido-web-3 (Matías)
    ⏳ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
@@ -831,7 +831,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 | Change | Código | Nivel | Responsable |
 |---|---|---|---|
 | C-23 `humo-y-ci` | 2e | MEDIUM | Gianfranco |
-| C-24 `respaldos-2` | 1e | HIGH (firma de D-111 antes de construir) | Emiliano |
+| C-24 `respaldos-2` | 1e | HIGH | Emiliano — **archivado 31/10/2026** |
 | C-25 `worker-y-logs` | 1f | MEDIUM | Neyen |
 | C-26 `pulido-web-3` | 3e | MEDIUM | Matías |
 | C-27 `ejemplo-robusto` | 3f | LOW | Giuliano |
@@ -851,13 +851,18 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   `knowledge-base/15_lecciones.md` (L-047, L-043, L-044).
 
 ### [C-24] `respaldos-2` · 1e
-- **Estado**: `[ ]` pendiente, no propuesto. HIGH: firma escrita de un firmante de D-111 antes de
-  construir. Emiliano.
+- **Estado**: `[x]` **archivado** (31/10/2026). HIGH, firmado por Emiliano Caceres el 31/10/2026.
 - **Scope**: retención con el reloj atrasado (F4), SIGTERM (F5), la carrera del 503 (F6), logs en JSON
   (F8), "14 copias" contra 14 días, conmutar la aplicación a una base restaurada, crear
-  `infra/datos-respaldos` sin paso manual, volcado con el rol equivocado contra `pg_dump` real.
+  `infra/datos-respaldos` sin paso manual, volcado con el rol equivocado contra `pg_dump` real. Las
+  ocho entraron y cerraron (detalle en `knowledge-base/12_fichas_de_changes.md` §1e); hallazgo
+  adicional de la sesión: la verificación 3 de `conmutar.sh` tenía una consulta SQL que nunca corre
+  contra PostgreSQL real, corregida en el mismo cierre (ver §1e).
 - **Dependencias**: C-04 (archivado).
-- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §1e y "Deuda del cierre del 1d".
+- **Deuda nueva declarada**: `conmutar.sh` no sirve para volver a un nombre de base de producción que
+  no siga el patrón `proptech_algo`; el camino de vuelta documentado en el README es manual, con
+  `.env.anterior`.
+- **Leer antes de tocar este scope otra vez**: `knowledge-base/12_fichas_de_changes.md` §1e.
 
 ### [C-25] `worker-y-logs` · 1f
 - **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Neyen.

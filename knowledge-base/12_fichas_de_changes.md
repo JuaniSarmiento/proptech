@@ -1390,41 +1390,68 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
 
 - **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0).
 
-### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
+### 1e · `respaldos-2` · HIGH · **archivado** (D-138, 30/10/2026; cerrado 31/10/2026) · C-24
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de respaldos y
 > restauración que el 1d, el 2a, el 2b y el 3a dejaron con dueño el 15 o "DevOps", verificada contra
-> `main` `e29e36d` el 30/10/2026. La construye **Emiliano**.
+> `main` `e29e36d` el 30/10/2026. Construida por **Emiliano**, firmada HIGH el 31/10/2026
+> (`proposal.md`, sección "Gobernanza").
 
 - **Objetivo**: que el servicio `respaldos` y la restauración aguanten los casos que el 1d dejó
   anotados, y que conmutar la aplicación a una base restaurada tenga un procedimiento con herramienta.
-- **Entra**:
-  - F4 (1d): con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7
-    (`infra/respaldos/respaldar.sh:82-125`, orden por nombre en `:101`).
-  - F5 (1d): `respaldos` ignora SIGTERM (`respaldar.sh` sin ningún `trap`).
-  - F6 (1d): un 503 puede salir sin `salud_degradada` (1 de 18). No se puede verificar en forma
-    estática: primero repetir la ráfaga del rompedor del 1d y, si se reproduce, arreglarlo.
-  - F8 (1d): líneas que no son JSON en el log de `respaldos` (`respaldar.sh:14`, `echo "error: $1"`
-    junto al `printf` JSON de `:68`).
-  - "14 copias no son 14 días" (1d): decidir si se documenta o se cambia la retención por cantidad
-    (`RESPALDO_CONSERVAR`, `respaldar.sh:49,109`).
-  - Procedimiento para conmutar la aplicación a una base restaurada (3a): `restaurar.sh` restaura
-    siempre en una base aparte y no hay script ni paso del README que conmute.
-  - Automatizar el `mkdir -p infra/datos-respaldos` (2b): hoy es un paso manual del README
-    (`README.md:58,68-71`).
-  - Volcado con el rol equivocado con `pg_dump` real (2a, regresión del 27/10/2026): hoy el test usa un
-    binario falso (`tests/infra/test_respaldos.py:905-940`, `FAKE_PG_DUMP_FALLA`) y sólo hay garantía
-    estática en `test_compose.py:510`.
-- **No entra**: la prueba de restauración con los datos del piloto, las métricas y alertas de un
-  respaldo fallido (OPS-3) y el deploy a producción (quedan en el 15).
+- **Entró, y cómo cerró cada ítem**:
+  - **F4** (1d, reloj atrasado): cerrado. `aplicar_retencion` ordena por `stat -c '%.Y'` (mtime con
+    nanosegundos, no por nombre); los siete ciclos del reloj atrasado se conservan los siete.
+  - **F5** (1d, SIGTERM): cerrado. `trap` más `& wait` (D3): el apagado sale con código 0 en menos de 1
+    segundo, sin dejar `.parcial`, medido contra Docker real (`docker compose stop -t 10`, 1s real).
+  - **F6** (1d, 503 sin su línea): **reproducido y arreglado**. La ráfaga de 30 pedidos contra
+    `salud()` real reprodujo la carrera 14 de 30 veces (más seguido que el "1 de 18" original); D5
+    (`_informar_una_sola_vez` compartido antes del 503) la cierra: el test determinista da rojo contra
+    el código de antes y verde después, sin depender de ganar una carrera.
+  - **F8** (1d, logs en texto plano): cerrado. `error_salir` emite JSON con nivel `error` y eventos
+    propios (`configuracion_invalida`, `carpeta_no_escribible`, `arranque_rechazado`); un test recorre
+    las cuatro formas de salida del servicio y exige que cada línea sea JSON.
+  - **"14 copias no son 14 días"** (1d): **se cambia la retención**, no sólo se documenta (D2):
+    `RESPALDO_CONSERVAR_DIAS` (default 14, rango 1..365) agrega un piso por antigüedad que nunca borra
+    el backup más nuevo de cada día dentro de la ventana, además de la cantidad.
+  - **Conmutar la aplicación a una base restaurada** (3a): cerrado con herramienta nueva
+    (`infra/respaldos/conmutar.sh`, D6): tres verificaciones contra la base destino (existe, revisión
+    de Alembic derivada, RLS/políticas por contenido) antes de reescribir `POSTGRES_DB` en
+    `infra/.env`. Ensayada de punta a punta contra Docker/Postgres reales (8.5): backup con un marcador
+    propio, restauración, conmutación, `GET /api/salud` 200 confirmando los datos del backup (no un
+    clon en vivo: un segundo marcador insertado en la base original DESPUÉS del backup no aparece en
+    la restaurada) y vuelta a la base original. **Límite real encontrado en el ensayo, no en los
+    tests con dobles falsos**: `conmutar.sh` valida el DESTINO con el mismo patrón `proptech_[a-z0-9_]+`
+    que `restaurar.sh`, así que **no sirve para volver** a un nombre de base de producción que no siga
+    ese patrón (por ejemplo, `proptech` solo, sin el guión bajo): el camino de vuelta documentado en el
+    README es manual, con `infra/.env.anterior` que el propio script deja escrito.
+  - **`mkdir -p infra/datos-respaldos`** (2b): cerrado (D7, grupo 6). `infra/arrancar.sh` crea la
+    carpeta con el dueño del host si falta y delega en `docker compose up`; el README ya no pide el
+    paso manual. Límite declarado: un `docker compose up` directo, fuera de `arrancar.sh`, puede seguir
+    creando la carpeta como root (respuesta del firmante a la Open Question de `design.md`: no se
+    reabre el requisito de contenedores sin root del 2c para evitarlo).
+  - **Volcado con el rol equivocado, `pg_dump` real** (2a, regresión del 27/10/2026): cerrado. Test de
+    integración nuevo (`tests/integracion/test_respaldos_rol_real.py`) corre `pg_dump` real dentro de
+    un contenedor efímero con las credenciales de `proptech_app` contra la base real y exige el fallo
+    (triangulado con `proptech_respaldo`, que sí puede); **reemplaza** (no duplica) el caso equivalente
+    con `FAKE_PG_DUMP_FALLA` de `test_respaldos.py` (L-019: ese binario falso no podía distinguir un rol
+    rechazado de un compose bien escrito).
+- **No entró, queda para el 15**: la prueba de restauración con los datos del piloto, las métricas y
+  alertas de un respaldo fallido (OPS-3) y el deploy a producción.
+- **Hallazgo real de la sesión, más allá del scope original**: la verificación 3 de `conmutar.sh`
+  (RLS/políticas) tenía una consulta SQL que nunca corre contra PostgreSQL real
+  (`pg_tables.forcerowsecurity` no existe; esa columna vive en `pg_class`, no en la vista `pg_tables`;
+  `pg_policy.qual`/`with_check` tampoco existen, son `polqual`/`polwithcheck` en el catálogo). Los 20
+  tests de `test_conmutar.py` con doble falso de `docker` pasaban igual, porque sólo matchean la
+  subcadena del comando y nunca ejecutan la consulta de verdad. Encontrado y corregido únicamente por
+  el ensayo real de 8.5 contra Postgres real — exactamente el motivo por el que D6/L-043 exigen
+  ejecutar la herramienta, no sólo probarla con dobles.
 - **Depende de**: 1d, 2a, 2b y 3a (archivados).
-- **Gobernanza**: HIGH: necesita la firma escrita de Juani, Alberto o Emiliano antes de construir
-  (D-094, D-111). Emiliano es firmante y puede firmar su propio change: D-094 no exige que firme
-  otro (Alberto firma los suyos).
-- **Terminado cuando**: F4, F5 y F8 tienen un test que da rojo con el defecto; F6 está reproducido y
-  arreglado, o descartado con la ráfaga corrida y su salida; la decisión sobre "14 copias" está
-  escrita; el procedimiento de conmutación se ensayó con comandos y salida; el `mkdir` ya no depende de
-  quien levanta el stack; el volcado con el rol equivocado se prueba con `pg_dump` real.
+- **Gobernanza**: HIGH, firmada por Emiliano el 31/10/2026 (`proposal.md`, sección "Gobernanza";
+  D-094, D-111). Emiliano es firmante y puede firmar su propio change: D-094 no exige que firme otro
+  (Alberto firma los suyos).
+- **Terminado**: las 27 tareas de `tasks.md` están `[x]` con evidencia (comando, hora, salida) pegada
+  bajo cada una; la suite completa corrió verde sobre el commit final (ver 9.3, `tasks.md`).
 
 ### 1f · `worker-y-logs` · MEDIUM · pendiente (D-138, 30/10/2026) · C-25
 
@@ -1655,11 +1682,11 @@ esté resuelta (L-012), no por el que suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| F4: con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7 | Cumple la letra del escenario "Reloj atrasado" | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
-| F5: `respaldos` ignora SIGTERM (10 s y `KILL`) | La `.parcial` se borra sola al arrancar | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
-| F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
-| F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
-| "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 |
+| F4: con el reloj del host atrasado, la retención por nombre deja 1 backup real de 7 | Cumple la letra del escenario "Reloj atrasado" | **Cerrada en el C-24 `respaldos-2`** (D1, 31/10/2026): orden por `stat -c '%.Y'`, 7 ciclos atrasados conservan los 7 |
+| F5: `respaldos` ignora SIGTERM (10 s y `KILL`) | La `.parcial` se borra sola al arrancar | **Cerrada en el C-24 `respaldos-2`** (D3, 31/10/2026): `trap` + `& wait`, apagado en <1s medido contra Docker real |
+| F6: un 503 puede salir sin `salud_degradada` (1 de 18) | Ventana de menos de 1 ms | **Cerrada en el C-24 `respaldos-2`** (D5, 31/10/2026): reproducida 14/30 veces y arreglada con `_informar_una_sola_vez` compartido antes del 503 |
+| F8: líneas que no son JSON en el log de `respaldos` | No llevan secretos | **Cerrada en el C-24 `respaldos-2`** (D4, 31/10/2026): `error_salir` emite JSON con evento propio |
+| "14 copias" no son 14 días si hay muchos reinicios | Cumple la spec (retención por cantidad, no por tiempo) | **Cerrada en el C-24 `respaldos-2`** (D2, 31/10/2026): `RESPALDO_CONSERVAR_DIAS`, piso por antigüedad además de la cantidad |
 | F7, resto: "aparece uno solo" no se verifica; los `[ ]` de los pasos 11 y 13 del humo fallan sin decir cuál | No esconde fallas | 2c (confianza media) — **cerrada en el 2c (5.1 y pasos nombrados; los `exit 1` sueltos quedan en C2-5)** |
 | El humo nunca congela las dos dependencias de salud a la vez | Lo cubren los unitarios de 5.1 | 2c — **cerrada en el 2c (5.2)** |
 | PID 1 no root: el rojo se mostró sólo para `redis`, no para `worker` ni `respaldos` | El assert es idéntico en los tres y lo que se probó es la lectura de `/proc/1/status` | 2c (endurecimiento de contenedores) — **cerrada en el 2c (3.3, rojo en los siete)** |
@@ -1685,7 +1712,7 @@ necesita que esté resuelta (L-012), no por el que suena más obvio.
 | V3-5: ningún test pasa por el cableado real de R7 y R8 en el arranque | El arranque real activa las dos protecciones hoy; lo que falta es un test que lo exija, para que una refactorización no las pierda con todo en verde | 2c (C-05c), tarea 6.0. Pasó del 2b al 2c por la respuesta (a) de Juani a P1 del 2c, 16/10/2026 — **cerrada en el 2c (6.0)** |
 | V3-6: sin inodos, `--salud` da 0 (no se puede ni crear la marca) | Mucho más raro que el disco lleno; queda declarado acá en vez de con un test | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), revisar con el monitoreo del servidor real |
 | V3-7: `despues()` espera sin límite un lock de `auditoria` (sin `lock_timeout`) | Hace falta tráfico real y un redeploy en caliente; hoy no hay ninguno de los dos | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 15 (piloto), antes del primer redeploy con usuarios |
-| **Hallazgo nuevo de la regresión del 27/10/2026** (`02-acceso.md`, addendum): "Volcado con el rol equivocado" (`respaldos-de-la-base`) no tiene test de caja negra que corra `pg_dump` real con el rol equivocado | Hoy sólo hay garantía estática de que el compose fuerza el rol correcto | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: **15** (piloto), D-130, junto con la prueba de restauración |
+| **Hallazgo nuevo de la regresión del 27/10/2026** (`02-acceso.md`, addendum): "Volcado con el rol equivocado" (`respaldos-de-la-base`) no tiene test de caja negra que corra `pg_dump` real con el rol equivocado | Hoy sólo hay garantía estática de que el compose fuerza el rol correcto | **Cerrada en el C-24 `respaldos-2`** (D8, 31/10/2026): `test_respaldos_rol_real.py` corre `pg_dump` real dentro de un contenedor efímero con `proptech_app` (debe fallar) y `proptech_respaldo` (triangulación); reemplaza al binario falso |
 | V3-8: flake de `unitarios/test_worker_tenant.py` (9% de las corridas, `"123"` en los metadatos del log) | No esconde una fuga hoy, aunque entrena a ignorar justo el test de L-007 | 2c (C-05c), antes de activar el CI en pull requests — **cerrada en el 2c (4.1)** |
 | V3-9: el test de R7 se cuelga en vez de dar rojo (sesiones sin `finally`) | Hoy R7 está cerrado; el riesgo es si vuelve a romperse y el CI se cuelga en vez de mostrar el rojo | 2c (C-05c), junto con el límite de tiempo del CI — **cerrada en el 2c (4.2)** |
 | V3-14: `POSTGRES_APP_USER` acepta un nombre que la migración no conoce | Falla ruidoso, sin agujero de seguridad | 2c (C-05c), con la tabla de variables del README — **cerrada en el 2c (6.2)** |
@@ -1750,7 +1777,7 @@ firmado todavía, queda dicho en la fila.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: 15 (piloto). Dueño propuesto, no confirmado por Juani |
+| No hay procedimiento con herramienta para pasar la aplicación a servir desde una base restaurada: `restaurar.sh` reconstruye siempre en una base aparte (D9 del 1d), nunca sobre la activa; 8.1 se cerró con esa limitación anotada en vez de resuelta | La restauración en una base aparte sí se probó entera, con conteos y filas idénticos y `/api/salud` en 200; falta sólo el paso de conmutar la aplicación, no la restauración en sí | **Cerrada en el C-24 `respaldos-2`** (D6, 31/10/2026): `conmutar.sh` con tres verificaciones y ensayo real de punta a punta (8.5); deuda nueva declarada ahí: no sirve para volver a un nombre de base que no siga `proptech_algo` (el camino de vuelta es `.env.anterior`, documentado en el README) |
 | `complejo.localidad` puede quedar `''` en los edificios que vienen del 2a (el backfill de `0005` usa `server_default=""`); el `CHECK` de texto no vacío de `0016` la excluye a propósito, por ese mismo motivo (RF-D-2, hallado en la propia migración) | La API ya rechaza `''` en `localidad` con 422 (`CuerpoEdificio.localidad`); el agujero es sólo por SQL directo y sólo sobre edificios que ya existían antes del 3a | 3b (editar la localidad desde el padrón y agregar ahí el `CHECK`) |
 | RF-B-4: un anónimo puede deducir qué rutas y métodos existen por el 405 con `Allow` y por el 404, fuera del contrato de error de D6 | Ninguna de las dos respuestas revela un dato de negocio, sólo la forma de la API | 2b — **cerrada en el 2b**: Caddy deja de publicar `/api/*` salvo `/api/salud`; un anónimo ya no llega a sondear métodos ni rutas de la API (design D3) |
 | Auditoría vuelta 2, fila 6: los diez archivos de test nuevos de la vuelta 2 de correcciones sólo tienen mutantes de su propio autor (Codex); nadie de otra familia los leyó contra los escenarios que dicen cubrir. Reconfirmado sin dueño por la regresión del 27/10/2026 (`03-edificio.md`) | El rompedor sí los corrió y pasan; falta la lectura independiente, no que fallen | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: **D-130 (28/10/2026)**: ya pasó por el 3b sin que nadie la retome; la absorbe el rompedor del primer change que toque esos diez archivos |
@@ -1782,7 +1809,7 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | `pedirApi` (`web/src/lib/api/cliente.ts:112-122`) no tiene `timeout`/`AbortController`: un backend colgado deja la pantalla esperando sin límite | Preexistente a este cambio; confirmado todavía abierto por la regresión del 27/10/2026 (`03-edificio.md`) | **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: **15** (piloto), D-130 |
 | 8.2 acortada (decisión de cierre 2): sin verificar ingreso con link por email, bloqueo por intentos fallidos, selector con una segunda administración, email secundario y cambio del principal, reinvitar con una invitación `enviada`, revocar en vuelo contra Clerk real | Decisión de Juani, no un agujero sin dueño; lo cubierto alcanza para registrarse, entrar, Google y revocar | 15 (piloto), antes de operar con usuarios reales. Dueño propuesto, no confirmado por Juani |
 | El rechazo de un Gmail no invitado termina en la página alojada de Clerk, en inglés y fuera de la app | No hay fuga de datos; sólo la experiencia es pobre | polish futuro. Dueño propuesto, no confirmado por Juani |
-| Levantar el stack sin `mkdir -p infra/datos-respaldos` del README deja la carpeta como root y el contenedor de respaldos reinicia en bucle | El README ya lo pide; es un error de quien levanta el stack, no del código | **C-24 `respaldos-2`** (D-138, 30/10/2026); antes: DevOps (documentar o automatizar el `mkdir`). Dueño propuesto, no confirmado por Juani |
+| Levantar el stack sin `mkdir -p infra/datos-respaldos` del README deja la carpeta como root y el contenedor de respaldos reinicia en bucle | El README ya lo pide; es un error de quien levanta el stack, no del código | **Cerrada en el C-24 `respaldos-2`** (D7, 31/10/2026): `infra/arrancar.sh` crea la carpeta con el dueño del host si falta; el README ya no pide el `mkdir` |
 | Con una sola administración, tras aceptar la invitación se muestra el selector igual (el shape dice "entra directo") | Entra, sólo con un paso de más | **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.1, revisión de UI. Dueño propuesto, no confirmado por Juani |
 | Pantalla de personal: el botón "Quitar" cae en la columna de Invitación (desalineado) y se ofrece sobre el único super admin (la API lo rechaza, R2B-2) | La API frena la acción peligrosa; es un defecto visual y de affordance | Desalineado. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 3c (`028dfa7`), "Quitar" vive dentro de "Perfil y alcance" (`personal/Pantalla.tsx:96-117,207-216`). "Quitar" sobre el único super admin sigue abierto: **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
 | El menú lateral sólo muestra "Personal": no hay entrada a "Mis edificios" | Se llega por URL directa; falta el acceso desde el menú | Parcial (verificación del 30/10/2026, D-138): el logo de la barra lleva a `/edificios` (`Armazon.tsx:30`); el menú sigue sin la entrada y desde D-134 queda vacío para contador, auxiliar y consejo. El resto: **C-26 `pulido-web-3`** (D-138, 30/10/2026); antes: 7.1/7.3, revisión de UI. Dueño propuesto, no confirmado por Juani |
