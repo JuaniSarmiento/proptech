@@ -47,8 +47,9 @@
 > propio, sin tocar nada. Baseline de integración de `origin/main` `60b3dd5`: `1833 passed, 2446
 > deselected, 1 xfailed`, 0 fallos, 18 min 41 s.
 
-- [ ] 2.5 Anotar la deuda "humo en paralelo con un stack real" (puertos y red fijos de
+- [x] 2.5 Anotar la deuda "humo en paralelo con un stack real" (puertos y red fijos de
   `infra/compose.yaml`, `:22`, `:191`, `:368-375`) en la ficha 2e al cerrar
+  > Hecho en 10.3: "Deuda del cierre del 2e" de la ficha 2e, con el fallo intermitente `Pool overlaps` del paso 0.
 
 ## 3. Pasos con línea y comando (C2-5, C2V2-8)
 
@@ -206,6 +207,18 @@
     `shellcheck -x infra/ci/*.sh` exit 0; humo en `proptech-humo` `humo_exit=0` 222 s (baseline 181 s, con
     pasos nuevos: 6c pausa 2×30 s); ensayo en `proptech-ensayo` `ENSAYO ROLES OK ... ciclo 0028/0016/0028`,
     `ensayo_exit=0` 48 s (baseline 47 s).
+  - **Repetida sobre el rebase en `origin/main` (`533a440`, 31/10/2026)**, en un `git clone` limpio sin
+    `infra/.env` (la lección L-068: una copia con `git archive` no tiene `.git` y rompe cuatro tests, y el
+    clon sin la espera de Postgres dio 1 y luego 8 errores `roles antes` por `Connection refused`).
+    Dos hallazgos reales, arreglados con commit propio: `test_zz_rompedor_api_application_name` dependía de
+    que otro test hubiera migrado el esquema (falla solo, también sobre la base anterior a esta rama; pide
+    `esquema_migrado`), y todo `PostgresContainer` de los tests espera a aceptar conexiones (`conftest.py`;
+    guardia: `test_postgres_espera_conexiones.py`, rojo con el `conftest.py` anterior, verde con el nuevo).
+    Resultado sobre el HEAD con ambos arreglos: unitarios `-n 4` **2631 pasan** (46 s), integración `-n 4`
+    **2192 pasan, 1 xfail, 0 fallidos, 7 min 4 s**, `tests/infra` 275 pasan, `ruff check`, `ruff format
+    --check` y `mypy` limpios, `shellcheck` exit 0, `uv sync --locked` exit 0; humo en `proptech-humo`
+    `humo_exit=0` 230 s y ensayo `ENSAYO ROLES OK ... ciclo 0033/0016/0033`, `ensayo_exit=0` 49 s (corridos
+    sobre el commit anterior a los dos arreglos de tests, que no tocan scripts ni compose).
   - Unitarios e infra `-n 4`: la primera corrida dio `1 failed, 2504 passed`: `test_vocabulario_vigente`
     (el vocabulario retirado en una variable de `test_caddy_respaldo_y_timeouts.py`; sólo mira lo
     versionado, por eso no lo vio la corrida sobre el árbol sin commitear: L-010). Corregido; luego
@@ -236,6 +249,14 @@
     línea JSON `excepcion_como_mensaje` / `tipo_error: sqlalchemy.exc.OperationalError` con una traza de
     archivo:línea:función, sin mensaje, y stderr vacío; el marcador de la contraseña aparece 0 veces. No es
     un problema de seguridad: es falta de causa en el log. Ficha 2e.
+  - **Auditor, ronda 2: NO** por un bloqueante nuevo (N1: tres líneas largas y un archivo sin formatear dejaban
+    el job `backend` en rojo por `ruff`; los introdujeron los arreglos de D15 y B1). Resuelto en `f603c12`,
+    con `ruff check`, `ruff format --check` y `mypy` limpios; N2 (repetir 10.1 sobre el HEAD final con
+    todos los comandos del CI) está hecho arriba, sobre el rebase; N3 (siete `[x]` sin el rojo pegado)
+    queda declarado en la nota del grupo 4; N4 (título de 9.5) y N5 (rechazo por puertos en el ensayo, que
+    ya no levanta Caddy) corregidos en el texto y en D15. **No hubo ronda 3**: las condiciones que el
+    auditor puso para el OK están cumplidas y verificadas por el constructor; queda a criterio de
+    Gianfranco pedir una tercera vuelta.
   - **Auditor, ronda 1: NO** por un bloqueante (B1) y varios hallazgos menores. Resueltos:
     - B1: el job `ensayo-roles` habría fallado en un runner limpio, porque `infra/.env` está en `.gitignore`
       y mi evidencia verde usaba una copia. El ensayo usa `--env-file .env.example` y levanta sólo `db` y
@@ -258,8 +279,10 @@
       el cambio 15.
     - `tests/infra`: `274 passed`; shellcheck limpio. La primera corrida dio 9 fallos porque Docker Desktop
       estaba apagado (sin Docker en WSL), no por el código.
-- [ ] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
+- [x] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
   cierre del 2c", decisión nueva en `09`, lecciones en `15`; `diff AGENTS.md CLAUDE.md` vacío y sin
   tocar ninguno de los dos
+  > Hecho: D-144 en `09`, L-068 a L-070 en `15`, ficha 2e con "Deuda del cierre del 2e", filas del 2c
+  > cerradas, `CHANGES.md`. `diff AGENTS.md CLAUDE.md` vacío.
 - [ ] 10.4 [GH] Con el OK de Gianfranco: push y PR; leer el run completo sobre el SHA antes de decir
   "listo" (L-037, L-042)

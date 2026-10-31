@@ -2951,3 +2951,37 @@ registrado como tal en su momento.)*
   chicos); cortar el interés bajo el umbral (deber poco saldría gratis); "vencida" al día siguiente del
   vencimiento ignorando la gracia (contaría como vencido algo que no genera interés).
 - **Quién**: Juani, 30/10/2026, con la recomendación del orquestador.
+
+## D-144 · El 2e `humo-y-ci`: el humo y el ensayo se niegan ante `proptech`, el backend corre en paralelo y el ensayo entra al CI (30/10/2026)
+
+- **Contexto**: el C-23 (D-138) junta la deuda del humo, de Caddy y del CI. Construyó Gianfranco, con
+  rompedor y auditor en dos rondas (la ronda 1 dio NO por un bloqueante, B1; la 2, NO por lint, N1; los
+  dos quedaron resueltos).
+- **Decidido** (Gianfranco, 30/10/2026):
+  1. **`humo.sh` y `ensayo-roles.sh` rechazan siempre el proyecto `proptech`** (haya o no contenedores
+     corriendo), rechazan si falta `PROPTECH_COMPOSE_PROYECTO` y rechazan si los puertos 80 o 443 del
+     host están ocupados. La comprobación vive en un solo lugar, `exigir_proyecto_de_compose_propio`
+     (`infra/ci/humo-lib.sh`). **Cambia lo aprobado en la propuesta**, que sólo rechazaba `proptech`
+     "con contenedores corriendo": el stack real detenido conserva sus volúmenes y el `down -v` del
+     `trap` se los lleva (hallazgo R1 del rompedor). Corrige además un error real: `humo.sh:741` llamaba
+     a `restaurar.sh` sin exportar la variable y `restaurar.sh` cae en `proptech`.
+  2. **El ensayo de roles corre en el CI** en un job propio (`ensayo-roles`), con la cabeza derivada de
+     `alembic heads` (el único número escrito es el piso del ciclo de bajada, `0016`). Usa
+     `--env-file .env.example` y levanta sólo `db` y `respaldos`, porque `infra/.env` está en
+     `.gitignore` y el CI no lo crea (B1 del auditor).
+  3. **El backend corre en paralelo con `pytest-xdist`** (`-n 4`, no `auto`), en dos pasos del CI
+     (unitarios e integración) con el marcador `serial` para lo que no tolere el paralelo. Todo
+     contenedor de Postgres de los tests espera a aceptar conexiones (`conftest.py`).
+  4. **Dependabot** con cinco ecosistemas: `github-actions`, `docker` (`/backend` y `/web`),
+     `docker-compose` (`/infra`: el ecosistema `docker` sólo lee Dockerfile), `uv` y `npm`.
+  5. **El worker queda como deuda**: no deja `arranque_fallido` con la causa. Verificado con salida real
+     que no filtra la contraseña; es falta de causa en el log (C-25).
+- **Descartado**: dejar `docker ps -a` y `docker volume ls` para decidir si `proptech` está en uso
+  (depende de que Docker conteste); que el humo corra en paralelo con un stack real (Caddy publica
+  `80:80` y `443:443` fijos y la red tiene subred e IP fijas: queda como deuda); `-n auto` (la memoria
+  del runner no está medida).
+- **Medido en WSL (20 núcleos, 30/10/2026)**: unitarios 102,6 s en serie a 51,0 s con `-n 4`; la
+  integración, 18 min 41 s en serie (baseline de `main` antes del rebase) a 7 min 04 s con `-n 4`
+  (ya con los tests nuevos de `main`). Los tiempos del runner de GitHub (4 vCPU) **no están medidos**:
+  se leen en la primera corrida del PR.
+- **Quién**: Gianfranco, 30/10/2026.

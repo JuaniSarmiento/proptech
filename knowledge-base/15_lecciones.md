@@ -1059,3 +1059,35 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   frenado antes de construir (en el 6, P36 y P37 respondidas por quien no correspondía).
 - **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
   proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.
+
+## L-068 · La evidencia verde de un job de CI se saca de una copia limpia, con lo que el CI tiene y nada más
+
+- **Origen**: 2e (B1 del auditor, N1 de la ronda 2), 30/10/2026.
+- **Qué pasó**: el job `ensayo-roles` iba a fallar en un runner limpio porque `infra/.env` está en
+  `.gitignore` y la evidencia verde se había sacado en un clon que tenía una copia. Aparte, una corrida
+  final "sobre el código final" no incluyó `ruff`, y tres líneas largas dejaron el job `backend` en rojo.
+  Una copia armada con `git archive` no tiene `.git` y rompe los tests que lo usan.
+- **Regla**: la corrida de cierre se hace en un `git clone` limpio (con `.git`, sin archivos ignorados)
+  de la punta de la rama, con todos los comandos del CI, `ruff` y `mypy` incluidos, y se repite si
+  llega un commit después.
+
+## L-069 · Paralelizar muestra las dependencias de orden y de arranque que la serie escondía
+
+- **Origen**: 2e (xdist), 30/10/2026.
+- **Qué pasó**: con `-n 4` aparecieron defectos que la serie no mostraba: un id de parámetro hecho con
+  la hora (los workers "coleccionan tests distintos"), tests que sólo pasaban si otro había migrado
+  antes el esquema, `roles antes` con `Connection refused` porque el contenedor de Postgres decía
+  "ready" por el servidor temporal de la imagen, y un test que lee `git ls-files` y sólo ve lo
+  commiteado.
+- **Regla**: los ids de `parametrize` son deterministas; un test que necesita el esquema lo pide por
+  fixture y no por el orden; todo contenedor de Postgres espera a conectar de verdad; y se corre cada
+  archivo solo antes de dar por buena una corrida paralela.
+
+## L-070 · Rechazar un nombre es más fuerte que rechazar un estado
+
+- **Origen**: 2e (R1 del rompedor, D-144), 30/10/2026.
+- **Qué pasó**: el humo se negaba ante `proptech` sólo "con contenedores corriendo". Con el stack real
+  detenido (un `compose stop`, un reinicio) sus volúmenes seguían vivos y el `down -v` del `trap` se
+  los llevaba.
+- **Regla**: una protección contra un comando destructivo no depende del estado que mira (qué corre
+  ahora): rechaza el nombre del recurso protegido siempre.
