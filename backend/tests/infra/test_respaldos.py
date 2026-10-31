@@ -796,6 +796,94 @@ class TestRetencion:
         )
 
 
+class TestTodasLasLineasSonJSON:
+    """F8: `error_salir` hoy escribe `echo "error: $1"` a stderr (texto
+    plano), al lado del `printf` JSON de `logear`. Ninguna línea de ninguna
+    salida del servicio, en ninguno de sus cuatro modos, puede quedar sin
+    parsear como JSON con `ts`, `nivel`, `servicio` y `evento` (requisito
+    "Los errores de las herramientas no llegan al log", escenario "Todas las
+    líneas del servicio son JSON")."""
+
+    def _assert_todas_json(self, texto: str) -> list[dict[str, object]]:
+        lineas_crudas = [linea for linea in texto.splitlines() if linea.strip()]
+        parseadas: list[dict[str, object]] = []
+        for linea in lineas_crudas:
+            try:
+                objeto = json.loads(linea)
+            except json.JSONDecodeError:
+                pytest.fail(f"línea no es JSON: {linea!r}; salida completa: {texto!r}")
+            assert set(objeto) >= {"ts", "nivel", "servicio", "evento"}, objeto
+            parseadas.append(objeto)
+        return parseadas
+
+    def test_configuracion_invalida_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_INTERVALO_SEGUNDOS": "abc"},
+        )
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    def test_carpeta_sin_permiso_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        carpeta = tmp_path / "sin-permiso-json"
+        carpeta.mkdir()
+        carpeta.chmod(0o500)
+        try:
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+            )
+            assert resultado.returncode != 0
+            self._assert_todas_json(_salida_combinada(resultado))
+        finally:
+            carpeta.chmod(0o700)
+
+    def test_rechazo_por_root_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("id", "echo 0\n")
+        resultado = _correr(tmp_path, entorno_con_bin_falso)
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    def test_una_vez_exitoso_todo_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        resultado = _correr(tmp_path, entorno_con_bin_falso)
+        assert resultado.returncode == 0, resultado.stderr
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    def test_salud_sin_marca_es_json_si_escribe_algo(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+
 def _correr_salud(
     tmp_path: Path,
     entorno_con_bin_falso: dict[str, str],

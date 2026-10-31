@@ -10,8 +10,30 @@ umask 077
 CARPETA="${RESPALDO_CARPETA:-/respaldos}"
 PREFIJO="proptech"
 
+#: Formatea una línea JSON con el esquema común (L-007: sólo valores propios,
+#: nunca la salida de una herramienta de terceros). Usada por `logear`
+#: (siempre a stdout) y por `error_salir` (siempre a stderr, F8): las dos
+#: comparten el mismo armado, así ninguna salida del servicio puede quedar
+#: en texto plano (D4).
+_formatear_json() {
+  local nivel="$1" evento="$2" ts campos=""
+  shift 2
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  for par in "$@"; do
+    campos+=",\"${par%%=*}\":\"${par#*=}\""
+  done
+  printf '{"ts":"%s","nivel":"%s","servicio":"respaldos","evento":"%s"%s}\n' \
+    "$ts" "$nivel" "$evento" "$campos"
+}
+
+# F8: ya no es `echo "error: $1"` (texto plano); emite la misma forma JSON
+# que `logear`, con nivel `error` y un evento propio por llamador
+# (`configuracion_invalida`, `carpeta_no_escribible`, `arranque_rechazado`),
+# siempre a stderr. El mensaje nombra la variable o la carpeta con problema,
+# nunca un valor de contraseña (ningún llamador de hoy lo hace).
 error_salir() {
-  echo "error: $1" >&2
+  local evento="$1" mensaje="$2"
+  _formatear_json error "$evento" "mensaje=$mensaje" >&2
   exit 1
 }
 
@@ -19,7 +41,7 @@ rechazar_si_root() {
   local uid
   uid="$(id -u)"
   if [ "$uid" = "0" ]; then
-    error_salir "PROPTECH_UID: el servicio de respaldos no puede correr como root"
+    error_salir arranque_rechazado "PROPTECH_UID: el servicio de respaldos no puede correr como root"
   fi
 }
 
@@ -27,19 +49,19 @@ rechazar_si_root() {
 validar_entero() {
   local nombre="$1" valor="$2" minimo="$3" maximo="$4"
   if [[ ! "$valor" =~ ^[1-9][0-9]{0,6}$ ]]; then
-    error_salir "$nombre: falta, está vacío o no es un entero válido"
+    error_salir configuracion_invalida "$nombre: falta, está vacío o no es un entero válido"
   fi
   if (( valor < minimo || valor > maximo )); then
-    error_salir "$nombre: fuera de rango ($minimo..$maximo)"
+    error_salir configuracion_invalida "$nombre: fuera de rango ($minimo..$maximo)"
   fi
 }
 
 validar_carpeta() {
   if [ ! -d "$CARPETA" ]; then
-    error_salir "la carpeta de respaldos no existe: $CARPETA"
+    error_salir carpeta_no_escribible "la carpeta de respaldos no existe: $CARPETA"
   fi
   if [ ! -w "$CARPETA" ]; then
-    error_salir "la carpeta de respaldos no tiene permiso de escritura: $CARPETA"
+    error_salir carpeta_no_escribible "la carpeta de respaldos no tiene permiso de escritura: $CARPETA"
   fi
 }
 
@@ -49,7 +71,8 @@ validar_configuracion() {
   validar_entero RESPALDO_CONSERVAR "${RESPALDO_CONSERVAR:-}" 1 365
   validar_entero RESPALDO_LIMITE_SEGUNDOS "${RESPALDO_LIMITE_SEGUNDOS:-}" 5 86400
   if (( RESPALDO_LIMITE_SEGUNDOS >= RESPALDO_INTERVALO_SEGUNDOS )); then
-    error_salir "RESPALDO_LIMITE_SEGUNDOS: tiene que ser menor que RESPALDO_INTERVALO_SEGUNDOS"
+    error_salir configuracion_invalida \
+      "RESPALDO_LIMITE_SEGUNDOS: tiene que ser menor que RESPALDO_INTERVALO_SEGUNDOS"
   fi
   validar_carpeta
 }
@@ -59,14 +82,7 @@ validar_configuracion() {
 # son siempre texto que el propio script generó (nombres de archivo con el
 # patrón fijo, nombres de variable), nunca texto ajeno.
 logear() {
-  local nivel="$1" evento="$2" ts campos=""
-  shift 2
-  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  for par in "$@"; do
-    campos+=",\"${par%%=*}\":\"${par#*=}\""
-  done
-  printf '{"ts":"%s","nivel":"%s","servicio":"respaldos","evento":"%s"%s}\n' \
-    "$ts" "$nivel" "$evento" "$campos"
+  _formatear_json "$@"
 }
 
 # Borra cualquier `.parcial` que haya sobrevivido a un corte anterior,
