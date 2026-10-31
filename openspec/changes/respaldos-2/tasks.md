@@ -934,10 +934,48 @@
 
 ## 9. Documentación y cierre
 
-- [ ] 9.1 README: el arranque sin `mkdir`, el procedimiento de conmutación con su línea sobre la
+- [x] 9.1 README: el arranque sin `mkdir`, el procedimiento de conmutación con su línea sobre la
   ventana de datos que separa el backup del incidente, y `RESPALDO_CONSERVAR_DIAS` en la tabla única de
   variables. Verificación: `test_readme_variables.py` en verde y el test de 6.1 que exige que no haya
   paso manual.
+
+  **El arranque sin `mkdir` ya estaba** (grupo 6, 6.2). Agregado en esta tarea:
+  - Sección nueva "Cómo conmutar la aplicación a una base restaurada" (después de "Cómo restaurar un
+    backup"): las tres verificaciones, el comando, la línea sobre la ventana de datos perdidos, y el
+    hallazgo real de 8.5 (volver atrás NO es una segunda corrida de `conmutar.sh` si el nombre de
+    producción no sigue el patrón `proptech_algo`; el camino es `cp .env.anterior .env` +
+    `arrancar.sh up -d --no-deps ...`).
+  - Fila `RESPALDO_CONSERVAR_DIAS` en la tabla única de variables (**faltaba**: 6.2 sólo la mencionó en
+    un párrafo, no en la tabla que `test_readme_variables.py` verifica en los dos sentidos).
+  - `PROPTECH_COMPOSE_PROYECTO` se documenta en **prosa**, no en la tabla: la tabla sólo cubre variables
+    de `.env.example`/`compose.yaml` (verificado leyendo `test_readme_variables.py`), y esa variable no
+    vive en ninguno de los dos (la leen `restaurar.sh`/`conmutar.sh` directo del entorno del shell) —
+    agregarla a la tabla hubiera hecho fallar `test_la_tabla_del_readme_no_nombra_una_variable_inexistente`.
+
+  **Verificación de la tabla (bloqueada en esta máquina por el mismo `UnicodeDecodeError` de cp1252
+  declarado en 6.2 — Python en Windows no abre `.env.example` como UTF-8 por default)**: se reprodujo
+  la lógica exacta de `test_readme_variables.py` a mano, forzando `encoding="utf-8"` (lo que el test
+  haría en Linux/CI):
+  ```
+  $ uv run --project backend python -c "<misma lógica de _variables_de_env_example/_variables_de_compose/_variables_de_la_tabla_del_readme, con encoding='utf-8'>"
+  faltantes: []
+  sobrantes: []
+  ```
+  Las dos listas vacías confirman que la tabla quedó exactamente alineada con `.env.example` +
+  `compose.yaml`, sin la fila que falló por el bug de encoding de esta máquina.
+
+  **GREEN (con el bloqueo declarado, igual a 6.2)**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_arrancar.py tests/infra/test_readme_variables.py -q
+  04:52:06
+  FAILED tests/infra/test_readme_variables.py::test_env_example_y_compose_tienen_al_menos_una_variable
+  FAILED tests/infra/test_readme_variables.py::test_toda_variable_de_env_example_y_compose_esta_en_la_tabla_del_readme
+  FAILED tests/infra/test_readme_variables.py::test_la_tabla_del_readme_no_nombra_una_variable_inexistente
+  3 failed, 11 passed in 0.67s
+  ```
+  Los 3 fallos son el mismo `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d` ya declarado
+  preexistente en 6.2 (Windows/cp1252), no causado por este cambio del README; `test_arrancar.py`
+  (6 tests, el escenario "sin paso manual" de 6.1) sigue 100% en verde.
 - [ ] 9.2 Knowledge base, según la sección "Knowledge Base Impact" del proposal: REWRITE de la ficha
   §1e y de las filas de deuda cerradas en `12_fichas_de_changes.md`, REWRITE del estado de C-24 en
   `CHANGES.md`, REWRITE de la sección de infraestructura de `02_descripcion_general.md`, APPEND de las

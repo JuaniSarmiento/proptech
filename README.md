@@ -141,6 +141,45 @@ uso):
 infra/respaldos/restaurar.sh infra/datos-respaldos/proptech-20261014T120000Z.dump proptech_mi_prueba
 ```
 
+### Cómo conmutar la aplicación a una base restaurada
+
+Restaurar un backup (arriba) deja la base en una base aparte; la aplicación sigue apuntando a la que
+estaba sirviendo. `infra/respaldos/conmutar.sh` hace el segundo paso (D6, respaldos-2): conmuta
+`infra/.env` a la base restaurada, pero **antes** corre tres verificaciones contra esa misma base y se
+niega a conmutar si alguna falla:
+
+1. La base existe y acepta conexión.
+2. Su revisión de Alembic es exactamente la cabeza del repositorio (derivada, nunca una lista fija).
+3. Sus tablas de negocio conservan Row-Level Security forzada y las mismas políticas que la base en
+   uso (comparando el contenido completo, no sólo la cantidad).
+
+```bash
+infra/respaldos/conmutar.sh proptech_mi_prueba
+```
+
+(igual que `restaurar.sh`, exporta `PROPTECH_COMPOSE_PROYECTO` sólo para un ensayo contra un proyecto
+de Compose aislado, nunca en producción, L-006/L-047.)
+
+Si las tres pasan, el script guarda el valor anterior en `infra/.env.anterior`, reescribe
+`POSTGRES_DB` en `infra/.env` (las demás líneas, incluidas las contraseñas, quedan idénticas) y
+levanta de nuevo la API, el worker y el servicio de respaldos contra la base nueva. Nunca borra ni
+modifica la base que deja de usarse.
+
+**La ventana de datos perdidos** es la que separa el momento del backup del incidente: cualquier
+cambio hecho después de ese backup no está en la base restaurada. Conmutar a una base restaurada que
+pasó las tres verificaciones pero tiene datos atrasados sigue siendo una decisión de quien opera, no
+algo que el script pueda saber.
+
+**Para volver atrás**, `conmutar.sh` **no** sirve si el nombre de la base original no sigue el
+patrón `proptech_algo` (por ejemplo, la base de producción real puede llamarse simplemente `proptech`,
+sin el guión bajo): el script valida el destino con esa expresión y lo rechaza. El camino de vuelta es
+manual, con el resguardo que el propio script dejó:
+
+```bash
+cp -p infra/.env.anterior infra/.env
+infra/arrancar.sh up -d --no-deps api worker respaldos
+```
+
 ### Correr los tests
 
 Backend (requiere [uv](https://docs.astral.sh/uv/)):
@@ -201,6 +240,7 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `PROPTECH_GID` | `respaldos` | Obligatoria | sin default | GID del usuario del host, gemelo de `PROPTECH_UID` |
 | `RESPALDO_INTERVALO_SEGUNDOS` | `respaldos` | Opcional (60 a 604800) | 86400 (diario) | Cada cuánto corre un backup, además del de arranque |
 | `RESPALDO_CONSERVAR` | `respaldos` | Opcional (1 a 365) | 14 | Cuántos backups se retienen antes de borrar los más viejos |
+| `RESPALDO_CONSERVAR_DIAS` | `respaldos` | Opcional (1 a 365) | 14 | Piso por antigüedad (respaldos-2, D2): nunca se borra el backup más nuevo de cada día dentro de esta ventana, aunque la cantidad de `RESPALDO_CONSERVAR` ya se haya superado |
 | `RESPALDO_LIMITE_SEGUNDOS` | `respaldos` | Opcional (5 a 86400, menor que el intervalo) | 1800 | Corta el volcado (`pg_dump`) si tarda más que este límite |
 | `CLERK_JWT_KEY` | API, web | Opcional; dejar comentada para apagar login; presente exige PEM RSA público de al menos 2048 bits | sin valor | Verificación local RS256; sale sólo del entorno |
 | `CLERK_PARTES_AUTORIZADAS` | API, web | Obligatoria con clave JWT | sin valor | Orígenes exactos separados por comas, HTTPS o HTTP para localhost |
