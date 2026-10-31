@@ -69,6 +69,7 @@ validar_configuracion() {
   rechazar_si_root
   validar_entero RESPALDO_INTERVALO_SEGUNDOS "${RESPALDO_INTERVALO_SEGUNDOS:-}" 60 604800
   validar_entero RESPALDO_CONSERVAR "${RESPALDO_CONSERVAR:-}" 1 365
+  validar_entero RESPALDO_CONSERVAR_DIAS "${RESPALDO_CONSERVAR_DIAS:-}" 1 365
   validar_entero RESPALDO_LIMITE_SEGUNDOS "${RESPALDO_LIMITE_SEGUNDOS:-}" 5 86400
   if (( RESPALDO_LIMITE_SEGUNDOS >= RESPALDO_INTERVALO_SEGUNDOS )); then
     error_salir configuracion_invalida \
@@ -95,26 +96,45 @@ borrar_parciales_huerfanos() {
   done
 }
 
-# Conserva los RESPALDO_CONSERVAR backups correctos más recientes. El archivo
-# del ciclo en curso se excluye por nombre exacto antes de ordenar: si el
-# reloj del host atrasa, puede ordenar como el más viejo por nombre y una
-# retención ingenua lo borraría (M22). Sólo entran nombres que cumplen el
-# patrón completo (L-006, L-008): un archivo ajeno o con otra extensión nunca
-# se toca.
+# Conserva los RESPALDO_CONSERVAR backups correctos más recientes POR TIEMPO
+# DE MODIFICACIÓN (F4, D1), no por el orden alfabético del nombre: un reloj
+# del host atrasado o adelantado deja el nombre mintiendo sobre cuál es
+# realmente el más nuevo, y `aplicar_retencion` sólo puede confiar en lo que
+# el propio sistema de archivos escribió. El archivo del ciclo en curso se
+# excluye por nombre exacto antes de ordenar (protección que ya existía).
+# Sólo entran nombres que cumplen el patrón completo (L-006, L-008): un
+# archivo ajeno o con otra extensión nunca se toca.
+#
+# D2: además de la cantidad, dentro de RESPALDO_CONSERVAR_DIAS días nunca se
+# borra el backup correcto MÁS NUEVO de cada día (calculado por mtime, misma
+# razón que D1): protege contra "14 copias" cubriendo apenas unas horas con
+# muchos reinicios. Esto puede dejar más de RESPALDO_CONSERVAR archivos
+# (trade-off declarado en design.md); nunca menos.
 aplicar_retencion() {
   local archivo_actual="$1" nombre_actual listado total permitidos a_borrar
   local fallo=0
   nombre_actual="$(basename -- "$archivo_actual")"
 
+  # Cada línea: "<mtime_fraccionario> <mtime_entero> <dia:YYYYMMDD> <nombre>",
+  # ordenada NUMÉRICAMENTE por el mtime fraccionario (la más vieja primero).
+  # `%.Y` (GNU stat) da el mtime con nanosegundos: dos ciclos corridos dentro
+  # del mismo segundo de reloj NO pueden empatar y caer de vuelta en un
+  # desempate por nombre/fecha, que es exactamente el bug que D1 corrige
+  # (`%Y` a secas sí empata entre ciclos rápidos, y `sort` sin clave única
+  # desempata comparando la línea entera, reintroduciendo el orden por
+  # nombre).
   listado="$(
     for candidato in "$CARPETA/${PREFIJO}-"*.dump; do
       [ -e "$candidato" ] || continue
-      local nombre_candidato
+      local nombre_candidato mtime_frac mtime dia
       nombre_candidato="$(basename -- "$candidato")"
       [[ "$nombre_candidato" =~ ^proptech-[0-9]{8}T[0-9]{6}Z\.dump$ ]] || continue
       [ "$nombre_candidato" = "$nombre_actual" ] && continue
-      printf '%s\n' "$nombre_candidato"
-    done | sort
+      mtime_frac="$(stat -c '%.Y' -- "$candidato")"
+      mtime="$(stat -c %Y -- "$candidato")"
+      dia="$(date -u -d "@$mtime" +%Y%m%d)"
+      printf '%s %s %s %s\n' "$mtime_frac" "$mtime" "$dia" "$nombre_candidato"
+    done | sort -n -k1,1
   )"
 
   total=0
@@ -129,12 +149,29 @@ aplicar_retencion() {
   a_borrar=$(( total - permitidos ))
 
   if (( a_borrar > 0 )); then
-    # Proceso substitution (`< <(...)`), no un pipe: así la variable `fallo`
-    # que fija el `while` vive en ESTE shell, no en un subshell que
-    # desaparece al terminar el pipe (B2, L-014: `rm` fallando acá no debía
-    # pasar desapercibido).
-    while IFS= read -r nombre_a_borrar; do
+    local limite_mtime
+    limite_mtime=$(( $(date -u +%s) - RESPALDO_CONSERVAR_DIAS * 86400 ))
+
+    # El más nuevo de cada día DENTRO de la ventana, recorriendo el listado
+    # entero (no sólo los candidatos a borrar): como está ordenado por mtime
+    # ascendente, la última entrada que se ve para un día es la de mayor
+    # mtime de ese día (D2).
+    local -A mas_nuevo_del_dia=()
+    while IFS=' ' read -r mtime_frac mtime dia nombre; do
+      [ -n "$nombre" ] || continue
+      if (( mtime >= limite_mtime )); then
+        mas_nuevo_del_dia["$dia"]="$nombre"
+      fi
+    done <<< "$listado"
+
+    # Proceso substitution (`< <(...)`), no un pipe: así `fallo` vive en ESTE
+    # shell, no en un subshell que desaparece al terminar el pipe (B2,
+    # L-014: `rm` fallando acá no debía pasar desapercibido).
+    while IFS=' ' read -r mtime_frac mtime dia nombre_a_borrar; do
       [ -n "$nombre_a_borrar" ] || continue
+      if [ "${mas_nuevo_del_dia[$dia]:-}" = "$nombre_a_borrar" ]; then
+        continue  # piso por antigüedad (D2): el más nuevo de su día no se borra.
+      fi
       if ! rm -f -- "$CARPETA/$nombre_a_borrar"; then
         fallo=1
       fi

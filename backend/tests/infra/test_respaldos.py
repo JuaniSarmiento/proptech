@@ -51,6 +51,7 @@ MARCADOR_CONTRASENA = "marcador-pgpassword-no-real-9f3c21"
 ENV_BASE_VALIDO = {
     "RESPALDO_INTERVALO_SEGUNDOS": "3600",
     "RESPALDO_CONSERVAR": "14",
+    "RESPALDO_CONSERVAR_DIAS": "14",
     "RESPALDO_LIMITE_SEGUNDOS": "1800",
 }
 
@@ -742,6 +743,9 @@ class TestRetencion:
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
+        import os as _os
+        import time as _time
+
         escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
         escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
 
@@ -749,6 +753,14 @@ class TestRetencion:
         carpeta.mkdir()
         nombres_viejos = [f"proptech-202610{(dia):02d}T000000Z.dump" for dia in range(1, 15)]
         _crear_backups(carpeta, nombres_viejos)
+        # D2: fuera de RESPALDO_CONSERVAR_DIAS (default 14) para que el piso
+        # por antigüedad no proteja a ninguno — este test valida la cantidad
+        # pura (RESPALDO_CONSERVAR), no el piso de D2 (ese es
+        # TestVentanaPorDias). Sin esto, los 14 archivos "viejos" quedan con
+        # mtime real de HOY (recién creados) y el piso protegería a uno.
+        hace_30_dias = _time.time() - 30 * 86400
+        for nombre in nombres_viejos:
+            _os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
 
         resultado = _correr(
             tmp_path,
@@ -882,6 +894,218 @@ class TestTodasLasLineasSonJSON:
         resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert resultado.returncode != 0
         self._assert_todas_json(_salida_combinada(resultado))
+
+
+FAKE_DATE_SECUENCIAL = """
+case "$*" in
+  *'+%Y%m%dT%H%M%SZ') echo "${FAKE_MARCA}T000000Z" ;;
+  *'+%Y-%m-%dT%H:%M:%SZ') echo "${FAKE_MARCA}T00:00:00Z" ;;
+  *'+%s') echo "1700000000" ;;
+  *) /usr/bin/date "$@" ;;
+esac
+"""
+
+
+class TestRetencionPorTiempoDeModificacion:
+    """F4: `aplicar_retencion` ordena hoy POR NOMBRE (`sort`), que es el
+    reloj del host al momento de crear el archivo. Con el reloj atrasado,
+    cada backup nuevo ordena como el más viejo por nombre y la retención lo
+    borra en el ciclo siguiente, aunque sea el backup real más reciente."""
+
+    def test_siete_ciclos_con_el_reloj_atrasado_conservan_los_siete(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_SECUENCIAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        # 14 backups "viejos" ya en la carpeta, con nombres de octubre.
+        nombres_viejos = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in range(1, 15)]
+        _crear_backups(carpeta, nombres_viejos)
+
+        # Siete ciclos seguidos con el reloj atrasado: cada uno más atrás que
+        # el anterior (septiembre, día 7 hacia el día 1), todos con nombres
+        # anteriores a los 14 ya existentes (octubre).
+        for dia in range(7, 0, -1):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={
+                    "RESPALDO_CONSERVAR": "14",
+                    "FAKE_MARCA": f"202609{dia:02d}",
+                },
+            )
+            assert resultado.returncode == 0, resultado.stderr
+
+        dumps_septiembre = [n for n in _archivos_dump(carpeta) if "202609" in n]
+        assert len(dumps_septiembre) == 7, (
+            f"se esperaban los 7 backups del reloj atrasado, quedaron: {dumps_septiembre}"
+        )
+
+    def test_reloj_adelantado_no_conserva_el_backup_para_siempre(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_SECUENCIAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        # Ciclo 1: el reloj del host adelanta a 2027 (el backup más VIEJO por
+        # mtime real, pero el de nombre más "nuevo").
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "2", "FAKE_MARCA": "20270101"},
+        )
+        assert resultado.returncode == 0, resultado.stderr
+        time.sleep(1.1)
+
+        # Ciclos 2 y 3: el reloj vuelve a la hora real (nombres de noviembre,
+        # que ordenan ANTES que "2027" por nombre, pero son los más nuevos
+        # por mtime real).
+        for marca in ("20261101", "20261102"):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={"RESPALDO_CONSERVAR": "2", "FAKE_MARCA": marca},
+            )
+            assert resultado.returncode == 0, resultado.stderr
+            time.sleep(1.1)
+
+        dumps = _archivos_dump(carpeta)
+        assert "proptech-20270101T000000Z.dump" not in dumps, (
+            f"el backup del reloj adelantado (el más viejo por mtime real) debía borrarse: {dumps}"
+        )
+        assert len(dumps) == 2, dumps
+
+
+class TestVentanaPorDias:
+    """D2: `RESPALDO_CONSERVAR_DIAS` (default 14, rango 1..365, L-008).
+    Además de la cantidad, conserva el backup correcto más nuevo de cada día
+    dentro de esa ventana."""
+
+    @pytest.mark.parametrize(
+        "valor",
+        ["0", "366", "abc", "060", "+1", "", " ", "\t", "\n", "١٤"],
+    )
+    def test_valores_invalidos_rechazan_nombrando_la_variable(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        valor: str,
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_CONSERVAR_DIAS": valor},
+        )
+        assert resultado.returncode != 0, f"valor {valor!r} debería rechazarse"
+        assert "RESPALDO_CONSERVAR_DIAS" in resultado.stderr
+        assert MARCADOR_CONTRASENA not in _salida_combinada(resultado)
+
+    def test_falta_la_variable_rechaza(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_CONSERVAR_DIAS": None},
+        )
+        assert resultado.returncode != 0
+        assert "RESPALDO_CONSERVAR_DIAS" in resultado.stderr
+
+    def test_muchos_reinicios_el_mismo_dia_conservan_el_mas_nuevo_de_dias_anteriores(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import os as _os
+        import time as _time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        # Un backup correcto de hace 5 días (dentro de la ventana de 14).
+        viejo = carpeta / "proptech-20261025T000000Z.dump"
+        viejo.write_text("backup de hace 5 dias")
+        hace_5_dias = _time.time() - 5 * 86400
+        _os.utime(viejo, (hace_5_dias, hace_5_dias))
+
+        overrides = {"RESPALDO_CONSERVAR": "2", "RESPALDO_CONSERVAR_DIAS": "14"}
+
+        # "Muchos reinicios" de hoy: tres ciclos seguidos.
+        for _ in range(3):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides=overrides,
+            )
+            assert resultado.returncode == 0, resultado.stderr
+            _time.sleep(1.1)
+
+        assert viejo.exists(), (
+            "el backup más nuevo del día de hace 5 días no debía borrarse "
+            "(piso por antigüedad, D2)"
+        )
+
+    def test_backups_mas_viejos_que_la_ventana_se_borran(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import os as _os
+        import time as _time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        viejo = carpeta / "proptech-20261001T000000Z.dump"
+        viejo.write_text("backup de hace 20 dias")
+        hace_20_dias = _time.time() - 20 * 86400
+        _os.utime(viejo, (hace_20_dias, hace_20_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "1", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not viejo.exists(), (
+            "un backup más viejo que la ventana no debía protegerse: el piso no es para siempre"
+        )
 
 
 def _correr_salud(

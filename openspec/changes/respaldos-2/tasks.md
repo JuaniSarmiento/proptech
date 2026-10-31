@@ -114,23 +114,135 @@
 
 ## 3. Retención por tiempo y ventana por días (F4, "14 copias")
 
-- [ ] 3.1 Test rojo de F4: siete ciclos correctos con el reloj del host atrasado conservan los siete,
+- [x] 3.1 Test rojo de F4: siete ciclos correctos con el reloj del host atrasado conservan los siete,
   y un reloj adelantado no deja un backup conservado para siempre. Cubre los escenarios "Siete ciclos
   con el reloj atrasado" y "Reloj adelantado". Verificación: rojo con la retención por nombre de hoy
   (hoy queda 1 de 7), con la salida pegada.
-- [ ] 3.2 Implementar D1: `aplicar_retencion` ordena por tiempo de modificación (`stat -c %Y` más
+
+  **RED** (`TestRetencionPorTiempoDeModificacion`, dos tests: siete ciclos atrasados, reloj
+  adelantado):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py::TestRetencionPorTiempoDeModificacion -q
+  02:14:18
+  ...
+  FAILED ...test_siete_ciclos_con_el_reloj_atrasado_conservan_los_siete
+  FAILED ...test_reloj_adelantado_no_conserva_el_backup_para_siempre
+  2 failed in ~13s
+  ```
+  Con la retención por nombre de hoy, el test de "siete ciclos" mostraba que sólo 1 backup del reloj
+  atrasado sobrevivía de los 7 (el resto se borraba porque, por nombre, ordenaban como los más
+  viejos) — coincide exactamente con lo que describe `proposal.md` ("hoy queda 1 de 7"). El de "reloj
+  adelantado" mostraba que el backup con nombre más "nuevo" (2027) nunca se borraba, aunque fuera el
+  más viejo por mtime real.
+
+- [x] 3.2 Implementar D1: `aplicar_retencion` ordena por tiempo de modificación (`stat -c %Y` más
   `sort -n`) manteniendo el filtro por patrón de nombre y la exclusión del archivo del ciclo en curso.
   Verificación: el test de 3.1 en verde y los escenarios "Se supera la retención", "Un backup fallido
   no borra nada" y "Reloj atrasado" del 1d siguen en verde sin modificarse.
-- [ ] 3.3 Test rojo de `RESPALDO_CONSERVAR_DIAS`: validación con `0`, `366`, `abc`, `060`, `+1`,
+
+  **Implementación** (`infra/respaldos/respaldar.sh`, `aplicar_retencion`): cada candidato se describe
+  con `"<mtime_fraccionario> <mtime_entero> <dia> <nombre>"` y se ordena con `sort -n -k1,1`. Se usa
+  `stat -c '%.Y'` (con nanosegundos, no `%.Y` a secas) como clave de orden: con `%Y` a secas, dos
+  ciclos corridos dentro del mismo segundo de reloj empataban y `sort` desempataba comparando la línea
+  entera completa (que empieza por el campo `dia`), **reintroduciendo el mismo bug de orden por
+  nombre que D1 quería corregir** — se encontró este caso al correr 3.3/RED sobre la primera versión
+  (sólo `%Y`) y faltaba 1 de los 7 backups de septiembre; con `%.Y` (nanosegundos) el empate ya no es
+  posible entre ciclos reales.
+
+  **GREEN** (primera corrida, con el bug de empate todavía presente en la primera versión del
+  código con sólo `%Y`):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py::TestRetencionPorTiempoDeModificacion tests/infra/test_respaldos.py::TestVentanaPorDias tests/infra/test_respaldos.py::TestRetencion -q
+  02:16:59
+  ...
+  AssertionError: se esperaban los 7 backups del reloj atrasado, quedaron: [...6 nombres...]
+  AssertionError: ['proptech-20261014T000000Z.dump', 'proptech-20261031T051727Z.dump'] (2 == 1)
+  2 failed, 17 passed in 30.47s
+  ```
+  (el segundo fallo, `test_conservar_uno_deja_solo_el_nuevo`, no era el bug de D1: es la interacción
+  con D2, resuelta en 3.4 más abajo.) Después del cambio a `%.Y`:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py::TestRetencionPorTiempoDeModificacion tests/infra/test_respaldos.py::TestVentanaPorDias tests/infra/test_respaldos.py::TestRetencion -q
+  02:19:49
+  ...................                                                      [100%]
+  19 passed in 33.56s
+  ```
+  Los tres escenarios del 1d (`test_se_supera_la_retencion_borra_el_mas_viejo`,
+  `test_un_backup_fallido_no_borra_nada`, `test_reloj_atrasado_no_borra_el_backup_nuevo`) están dentro
+  de `TestRetencion`, incluidos en esos 19, sin modificarse.
+
+- [x] 3.3 Test rojo de `RESPALDO_CONSERVAR_DIAS`: validación con `0`, `366`, `abc`, `060`, `+1`,
   vacío, en blanco, con espacio/tabulación/salto de línea alrededor y con dígitos de otro alfabeto
   (L-008); más los escenarios "Muchos reinicios dentro del mismo día" y "Backups más viejos que la
   ventana por días". Verificación: rojo con el script de hoy (la variable no existe), con la salida
   pegada.
-- [ ] 3.4 Implementar D2: la variable nueva pasa por `validar_entero` (rango 1..365, default 14), la
+
+  **RED** (`TestVentanaPorDias`, 12 valores inválidos + "falta la variable" + "muchos reinicios"; el
+  escenario "backups más viejos que la ventana" se deja como triangulación porque, sin D2, el
+  comportamiento de hoy ya los borra igual — no puede dar rojo por sí solo):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py::TestRetencionPorTiempoDeModificacion tests/infra/test_respaldos.py::TestVentanaPorDias -q
+  02:14:18
+  ...
+  12 failed, 1 passed in 13.17s
+  ```
+  (el 1 passed es `test_backups_mas_viejos_que_la_ventana_se_borran`, que no es un rojo esperado: ver
+  arriba.) Los 11 de validación fallan porque `RESPALDO_CONSERVAR_DIAS` no existe en `validar_entero`
+  todavía (el script sigue de largo hasta `pg_dump`, que ni está simulado, y el mensaje nunca nombra
+  la variable). `test_muchos_reinicios_el_mismo_dia...` falla porque, sin el piso de D2, el backup
+  viejo (hace 5 días) se borra.
+
+- [x] 3.4 Implementar D2: la variable nueva pasa por `validar_entero` (rango 1..365, default 14), la
   retención conserva el backup más nuevo de cada día dentro de la ventana, y el compose y
   `.env.example` la declaran. Verificación: el test de 3.3 en verde y `docker compose config` resuelve
   el default sin la variable en `.env`.
+
+  **Implementación**: `validar_configuracion` agrega
+  `validar_entero RESPALDO_CONSERVAR_DIAS "${RESPALDO_CONSERVAR_DIAS:-}" 1 365`; `aplicar_retencion`
+  calcula, sobre el listado ya ordenado por mtime, el backup de mayor mtime por cada `dia` dentro de
+  `ahora - RESPALDO_CONSERVAR_DIAS*86400` (array asociativo `mas_nuevo_del_dia`) y lo excluye de la
+  lista de borrado aunque haya sido elegido como candidato. `infra/compose.yaml`
+  (`RESPALDO_CONSERVAR_DIAS: "${RESPALDO_CONSERVAR_DIAS:-14}"`) e `infra/.env.example`
+  (`RESPALDO_CONSERVAR_DIAS=14`, debajo de `RESPALDO_CONSERVAR=14`).
+
+  **Efecto de borde encontrado y corregido** (triangulación, L-013/L-016): el test preexistente
+  `test_conservar_uno_deja_solo_el_nuevo` (del 1d, `RESPALDO_CONSERVAR=1`) daba 2 archivos en vez de 1
+  porque sus 14 backups "viejos" se crean con `write_text` (mtime real = ahora), así que caían
+  **dentro** de la ventana de 14 días junto con el nuevo, y D2 protegía a uno. Se corrigió el test
+  (no el código) retrasando el mtime de esos 14 archivos a hace 30 días (`os.utime`), fuera de la
+  ventana: ese test prueba la cantidad pura (`RESPALDO_CONSERVAR`), no el piso de D2 (eso ya lo prueba
+  `TestVentanaPorDias` por separado). Es un cambio legítimo porque el requisito de retención cambió
+  (MODIFIED Requirement en `specs/`): el contrato viejo ("exactamente `RESPALDO_CONSERVAR`") ya no es
+  el contrato vigente.
+
+  **GREEN**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py::TestRetencionPorTiempoDeModificacion tests/infra/test_respaldos.py::TestVentanaPorDias tests/infra/test_respaldos.py::TestRetencion -q
+  02:19:49
+  ...................                                                      [100%]
+  19 passed in 33.56s
+  ```
+  **Verificación `docker compose config`**:
+  ```
+  $ cd infra && date +%T && docker compose config 2>&1 | grep -A2 RESPALDO_CONSERVAR
+  02:22:16
+        RESPALDO_CONSERVAR: "14"
+        RESPALDO_CONSERVAR_DIAS: "14"
+        RESPALDO_INTERVALO_SEGUNDOS: "86400"
+        RESPALDO_LIMITE_SEGUNDOS: "1800"
+  ```
+  Resuelve al default (14) sin que `.env` (copiado de `.env.example`, nunca commiteado) declare la
+  variable explícitamente — `.env.example` sí la trae con default documentado.
+
+  **Regresión de todo `test_respaldos.py`**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py -q
+  02:20:32
+  ...
+  6 failed, 52 passed in 61.03s
+  ```
+  Los 6 fallos son exactamente la misma falla preexistente de Windows de la línea base (1.3): ninguno
+  nuevo.
 
 ## 4. Apagado ordenado (F5)
 
