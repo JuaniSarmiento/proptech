@@ -12,6 +12,7 @@ rechazado de un compose mal escrito (L-019)."""
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -23,6 +24,18 @@ from ._edificios import BaseDeEdificio
 RAIZ = Path(__file__).resolve().parents[3]
 SCRIPT = RAIZ / "infra" / "respaldos" / "respaldar.sh"
 IMAGEN = "postgres:18.6-trixie"
+
+# El mismo principio que `infra/arrancar.sh` y `compose.yaml` (D7, D3): el
+# contenedor corre con el UID/GID real de quien creó la carpeta del bind
+# mount (`tmp_path`), no un valor fijo — "1000:1000" sólo coincidía por
+# casualidad en la máquina donde se escribió esto; en el runner de CI
+# (uid real del usuario "runner"/"ubuntu", no 1000) el bind mount quedaba
+# sin permiso de escritura para un contenedor con un UID ajeno. `os.getuid`
+# no existe en Windows (Docker Desktop ahí no aplica UIDs POSIX al bind
+# mount), así que se cae a "1000:1000" sólo en ese caso.
+USUARIO_DOCKER = (
+    f"{os.getuid()}:{os.getgid()}" if hasattr(os, "getuid") else "1000:1000"  # type: ignore[attr-defined]
+)
 
 pytestmark = pytest.mark.skipif(
     subprocess.run(["docker", "info"], capture_output=True, check=False).returncode != 0,
@@ -50,7 +63,7 @@ def _correr_respaldar_real(
             "run",
             "--rm",
             "--user",
-            "1000:1000",
+            USUARIO_DOCKER,
             "--add-host=host.docker.internal:host-gateway",
             "-e",
             "PGHOST=host.docker.internal",

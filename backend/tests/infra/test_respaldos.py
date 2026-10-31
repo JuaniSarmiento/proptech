@@ -656,6 +656,17 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         # ciclo que genera uno nuevo tiene que borrar el viejo: ahí es donde
         # el `rm` falso falla.
         _crear_backups(carpeta, ["proptech-20200101T000000Z.dump"])
+        # D1: la retención ordena por `mtime` real, no por el nombre — sin
+        # esto el archivo nace con la fecha de HOY (`write_text`), cae
+        # dentro de la ventana de `RESPALDO_CONSERVAR_DIAS` y el piso por
+        # antigüedad (D2) lo protege de borrarse: `rm` nunca se llega a
+        # invocar y el `rm` falso de este test nunca falla (hallazgo real
+        # del CI, no sólo de Windows).
+        import os as _os
+        import time as _time
+
+        hace_20_dias = _time.time() - 20 * 86400
+        _os.utime(carpeta / "proptech-20200101T000000Z.dump", (hace_20_dias, hace_20_dias))
         proceso = _correr_continuo(
             tmp_path,
             entorno_con_bin_falso,
@@ -1207,8 +1218,11 @@ class TestApagadoOrdenado:
         )
         try:
             # Esperar a que exista el .parcial: recién ahí hay "un volcado en curso".
+            # 15s, no 5s: un runner de CI compartido puede tardar en que el
+            # proceso del script llegue a invocar el `pg_dump` falso, aunque
+            # éste escriba su .parcial de inmediato (hallazgo real del CI).
             parcial = None
-            for _ in range(50):
+            for _ in range(150):
                 parciales = list(carpeta.glob("*.dump.parcial"))
                 if parciales:
                     parcial = parciales[0]
