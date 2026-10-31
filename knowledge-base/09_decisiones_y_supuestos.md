@@ -2951,3 +2951,23 @@ registrado como tal en su momento.)*
   chicos); cortar el interés bajo el umbral (deber poco saldría gratis); "vencida" al día siguiente del
   vencimiento ignorando la gracia (contaría como vencido algo que no genera interés).
 - **Quién**: Juani, 30/10/2026, con la recomendación del orquestador.
+
+## D-144 · Las pantallas de gastos son el 6c `pantallas-de-gastos` (C-30), de Juan Cruz, y el C-28 se reordena (31/10/2026)
+
+- **Fecha**: 31/10/2026.
+- **Contexto**: D-140 dejó las pantallas de HU-A3 y HU-A3b sin cambio ni nombre, y D-142 lo anotó como
+  D12, a resolver por Juani al planificar. Juan Cruz recién se suma (sólo LOW o MEDIUM, D-138) y tenía
+  asignado C-28 `revisiones-independientes`, que es trabajo de rompedor sin código de producción.
+- **Decisión**:
+  1. Nace el **6c `pantallas-de-gastos` (C-30)**, MEDIUM, de **Juan Cruz**: las pantallas de HU-A3 y
+     HU-A3b sobre la API del 6. Cierra D12 y el hueco de D-140. Depende sólo de changes archivados (6 y
+     3b), así que se puede proponer ya, en paralelo, sin tocar el camino crítico. Hace el flujo completo,
+     con revisor del plan antes del apply (L-067).
+  2. El código **6b** ya es `motor-de-reglas` (C-12): por eso este es el **6c**.
+  3. **C-28 sigue siendo de Juan Cruz, después del 6c.** El bloque del libro (los commits de RF del 4b
+     `447b8e5`, `8496f00`, `8d25bd6` y la pasada sobre RB4B-01, CX-01 y CX-02) pasa al **rompedor del
+     4c**, que modifica ese mismo código: revisarlo después sería revisar código viejo. El alcance de los
+     bloques de tests (los diez del 3a y la mutación) se define con Juani más adelante.
+- **Descartado**: reusar "6b" (choca con el motor de reglas); dejarle a Juan Cruz sólo C-28 (no tendría
+  un change de código con el flujo completo); que C-28 revise el libro después del 4c.
+- **Quién**: Juani, 31/10/2026, con la recomendación del orquestador.
