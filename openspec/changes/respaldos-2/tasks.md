@@ -1007,7 +1007,7 @@
 
   Releídos los cinco después de escribir, sin quedar texto contradictorio entre la ficha §1e, la tabla
   de deuda del 1d/2a y `CHANGES.md` (los tres dicen "archivado"/"cerrada" para los mismos ítems).
-- [x] 9.3 Corrida de cierre: la suite completa entera (no una selección) después del último commit, con
+- [ ] 9.3 Corrida de cierre: la suite completa entera (no una selección) después del último commit, con
   `git rev-parse HEAD`, comando, hora y salida pegados; más el humo. Verificación: todo en verde sobre
   el SHA final; cualquier cambio de código posterior invalida esta corrida y obliga a repetirla
   (L-055, L-031, L-037).
