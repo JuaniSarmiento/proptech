@@ -63,7 +63,8 @@ gates están en el árbol de abajo.
       `/privacidad` (Juani y Alberto, D-130)
 
 DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crítico
-   ⏳ 2e humo-y-ci (Gianfranco)          ⏳ 1e respaldos-2 (Emiliano, HIGH)
+   ✅ 2e humo-y-ci (Gianfranco; construido, PR por abrir, D-144)
+   ⏳ 1e respaldos-2 (Emiliano, HIGH)
    ⏳ 1f worker-y-logs (Neyen)           ⏳ 3e pulido-web-3 (Matías)
    ⏳ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
@@ -839,7 +840,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 | C-29 `base-y-rls` | 2f | CRITICAL | sin asignar: un firmante de D-111 |
 
 ### [C-23] `humo-y-ci` · 2e
-- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Gianfranco.
+- **Estado**: `[x]` construido (30/10/2026, D-144), PR por abrir. MEDIUM. Gianfranco.
 - **Scope**: los pasos del humo con línea y comando (C2-5/C2V2-8), la lista de servicios derivada y no
   escrita a mano (C2V2-7), comparar el contenido de las políticas de RLS restauradas y no su cantidad
   (C2V2-3), la carrera del `.dump` (C2-7), `arranque_fallido` con base inalcanzable y YAML mal formado

@@ -877,8 +877,16 @@ class TestSalud:
     @pytest.mark.parametrize(
         "segundos_en_el_futuro",
         [
-            365 * 86400,  # un año adelantado (reloj del host mal puesto)
-            999999999999 - int(__import__("time").time()),  # el máximo de 12 dígitos
+            pytest.param(
+                365 * 86400,  # un año adelantado (reloj del host mal puesto)
+                id="un_anio_adelantado",
+            ),
+            # El id es fijo: el valor depende de la hora y, como id, hacía que xdist viera tests
+            # distintos en cada trabajador ("Different tests were collected", 2e).
+            pytest.param(
+                999999999999 - int(__import__("time").time()),  # el máximo de 12 dígitos
+                id="maximo_de_12_digitos",
+            ),
         ],
     )
     def test_falla_con_marca_en_el_futuro(

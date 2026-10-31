@@ -161,6 +161,20 @@ pnpm test
 Los mismos comandos de test que usa el CI están en `infra/ci/test-backend.sh` y
 `infra/ci/test-web.sh`.
 
+### Cómo correr la prueba de humo
+
+```bash
+PROPTECH_COMPOSE_PROYECTO=proptech-humo bash infra/ci/humo.sh
+```
+
+`humo.sh` levanta el stack entero y lo baja con `down -v` (igual que `infra/ci/ensayo-roles.sh`, que
+comparte la comprobación), así que se niega a correr, antes de tocar nada y con un mensaje que dice por
+qué, en tres casos: si falta `PROPTECH_COMPOSE_PROYECTO`; si vale `proptech` (el stack de uso real),
+siempre, haya o no contenedores corriendo; o si el puerto 80 o el 443 del host están ocupados, porque
+Caddy los publica fijos y no pueden correr en paralelo con otro stack. Bajá el stack de uso real antes
+de correrlo. La lista de puertos que se comprueba (`80 443` por defecto) se puede cambiar con
+`PROPTECH_HUMO_PUERTOS`; existe para los tests de los rechazos y no hace falta tocarla.
+
 ## Variables de entorno
 
 Tabla única (D8, tarea 2c): antes vivía (incompleta, y con una fila que ya mentía) en

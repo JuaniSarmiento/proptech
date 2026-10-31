@@ -22,6 +22,7 @@ def test_el_engine_de_la_api_se_identifica_como_proptech_api(
     postgres_contenedor: PostgresContainer,
     monkeypatch: pytest.MonkeyPatch,
     roles_reales: None,
+    esquema_migrado: None,
 ) -> None:
     from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
 
