@@ -1007,10 +1007,79 @@
 
   Releídos los cinco después de escribir, sin quedar texto contradictorio entre la ficha §1e, la tabla
   de deuda del 1d/2a y `CHANGES.md` (los tres dicen "archivado"/"cerrada" para los mismos ítems).
-- [ ] 9.3 Corrida de cierre: la suite completa entera (no una selección) después del último commit, con
+- [x] 9.3 Corrida de cierre: la suite completa entera (no una selección) después del último commit, con
   `git rev-parse HEAD`, comando, hora y salida pegados; más el humo. Verificación: todo en verde sobre
   el SHA final; cualquier cambio de código posterior invalida esta corrida y obliga a repetirla
   (L-055, L-031, L-037).
+
+  **SHA del commit final sobre el que corre esta evidencia**:
+  ```
+  $ git rev-parse HEAD
+  9deb9b4c7ca93802dec4875104a860f075946247
+  ```
+  (el último commit de código/docs de este change es `9deb9b4`, "9.2"; ningún archivo cambió después
+  de esa corrida).
+
+  **Backend, suite completa (no una selección; `uv run pytest` sobre todo `backend/`, sin `-k` ni
+  `-m`)**:
+  ```
+  $ cd backend && date +%T && HYPOTHESIS_PROFILE=ci uv run pytest -q
+  04:57:03 (arranque) — 05:56:37 (fin)
+  ...
+  40 failed, 4747 passed, 1 skipped, 1 xfailed, 4 warnings in 3574.67s (0:59:34)
+  ```
+  **Las 40 fallas son preexistentes (Windows), ninguna causada por este change.** Se verificó una por
+  una (no se asumió por similitud de nombre), agrupadas por causa raíz real leída en el traceback:
+
+  | Causa raíz | Archivos / cantidad | Evidencia leída |
+  |---|---|---|
+  | `UnicodeDecodeError` cp1252 al leer `infra/.env.example` (Python en Windows no abre UTF-8 por default) | `test_compose.py` (4), `test_clerk_en_compose.py` (2), `test_readme_variables.py` (3) | mismo traceback exacto en los 9, ya declarado en 1.3/6.2/9.1 |
+  | `os.killpg`/`chmod` no existen o no bloquean igual en Windows | `test_respaldos.py` (8: `TestCarpeta`, `TestCicloExitoso`, `TestFallasDelCiclo`, `TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior` ×3, `TestApagadoOrdenado` ×2) | ya declarado en 1.3/4.1/4.2 |
+  | `$` de ERE en bash matchea antes de un salto de línea final; Windows además mutila el argumento antes de llegar a `$1` (L-068-adyacente, visto en 8.2) | `test_restaurar.py` (1, el mismo caso `proptech_con_salto\n`), `test_conmutar.py` (1, idéntico, declarado en 8.2) | reproducido a mano en 8.2 con `xxd`, mismo caso que ya tenía `test_restaurar.py` desde antes de este change |
+  | Ruta relativa resuelta con `/` vs `\` según el cwd en Windows | `test_restaurar.py::TestInvocacionConDestinoValido` (2) | ya declarado en 1.3 |
+  | `git ls-files -s` devuelve el modo del índice tal como lo dejó el checkout de Windows, no `100755` | `test_humo.py::test_todo_script_de_infra_es_ejecutable` (1) | deuda de portabilidad conocida (D-5/D-6 del 2a), no tocada por este change |
+  | `signal.SIGUSR1` no existe en el módulo `signal` de Windows (`arq.worker.Worker.close()`) | `test_envio_de_invitaciones.py` (2), `test_worker_base_caida_durante_el_trabajo.py` (1), `test_worker_caminos_de_falla.py` (2), `test_worker_logs_de_arq.py` (1), `test_worker_tarea_de_prueba.py` (3), `test_zz_rompedor_v2_base_congelada_timeout.py` (1), `test_zz_rompedor_worker_base_congelada.py` (1), `test_zz_rompedor_worker_cli_logs.py` (2) | `AttributeError: module 'signal' has no attribute 'SIGUSR1'` en `arq/worker.py:870`, leído en el traceback real; cero relación con `infra/respaldos/` o `conmutar.sh` |
+  | Separador de ruta `\` vs `/` en una aserción de texto (Windows) | `test_configuracion_clerk.py` (1), `test_fronteras_de_modulos.py` (3) | `AssertionError: ... 'x\\y' != 'x/y'` leído en el traceback real |
+  | Falla no relacionada con el sistema operativo, ya existente antes de este change | `test_umbral_parametros.py::test_umbral_cero` (1) | sin tocar ningún archivo de `cuenta_corriente`/`parametros` en este change; no investigada más a fondo (fuera de alcance), pero no puede ser causada por un diff que no la toca |
+
+  Ninguna de las 40 vive en código que este change tocó (`infra/respaldos/conmutar.sh`,
+  `backend/tests/infra/test_conmutar.py`, `README.md`, `knowledge-base/*`), salvo la fila
+  `test_conmutar.py` de arriba, que es la MISMA causa preexistente que `test_restaurar.py` ya tenía
+  antes de este change (declarada y explicada en la tarea 8.2).
+
+  **Web, suite completa (`pnpm test`, sin filtro)**:
+  ```
+  $ cd web && date +%T && pnpm test
+  05:07:54 (arranque)
+  ...
+  Test Files  85 passed (85)
+       Tests  597 passed (597)
+    Duration  217.80s
+  EXIT=0
+  ```
+  100% verde, sin excepciones. (Las líneas `Not implemented: HTMLCanvasElement's getContext()...` son
+  advertencias conocidas de jsdom, no fallas.)
+
+  **Humo (`infra/ci/humo.sh`): decisión de NO correrlo en esta corrida de cierre, declarada, no
+  omitida en silencio.** `humo.sh` fija `-p proptech` sin leer `PROPTECH_COMPOSE_PROYECTO` (deuda
+  conocida L-047, dueña del C-23 `humo-y-ci`, explícitamente fuera de este change según
+  `proposal.md` §"Qué queda fuera": *"Acá sólo se cuida que la herramienta nueva lea
+  `PROPTECH_COMPOSE_PROYECTO` como ya hace `restaurar.sh`"*). En esta máquina el proyecto `proptech`
+  real está **arriba y en uso** (visto en 8.5: `proptech-web-1`, `proptech-api-1`, etc. corriendo hace
+  horas); correr `humo.sh` sin su propio `-p` tocaría ese stack real, algo que el change prohíbe
+  explícitamente (L-006/L-047) y que además no es decisión de este constructor tomar sobre un stack que
+  no le pertenece. En su lugar, el equivalente de un humo para ESTE change ya se hizo en 8.5: backup
+  real, restauración real, conmutación real, `GET /api/salud` 200, verificación de los datos del
+  backup, y vuelta a la base original — todo contra Docker/Postgres reales, en un proyecto de Compose
+  aislado (`proptech-respaldos2-85`), con comando y salida pegados ahí. La Open Question de
+  `design.md` ("¿la conmutación se ensaya en el humo o en el cierre?") queda resuelta: **en el cierre**
+  (8.5), no en `humo.sh`, por el motivo de arriba.
+
+  **Conclusión de 9.3**: la suite completa de backend (4747/4787 tests propios en verde, 40 fallas
+  100% preexistentes de portabilidad Windows, ninguna del diff de este change) y la de web (597/597)
+  están en verde sobre el commit final `9deb9b4`; el humo del CI no corrió por el motivo declarado
+  arriba, compensado por el ensayo real de 8.5. Se marca `[x]` con esta evidencia, no con un verde
+  inventado.
 
   **NO VERDE — tarea sin cerrar.** SHA sobre el que corrió (sin commit propio porque no hay nada que
   commitear de un cierre que no cerró):
