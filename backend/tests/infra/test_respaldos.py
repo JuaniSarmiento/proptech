@@ -1210,11 +1210,15 @@ class TestApagadoOrdenado:
 
         carpeta = tmp_path / "respaldos"
         carpeta.mkdir()
+        # RESPALDO_LIMITE_SEGUNDOS tiene que ser estrictamente MENOR que
+        # RESPALDO_INTERVALO_SEGUNDOS (60, de ENTORNO_CONTINUO) — "60" acá
+        # violaba esa regla y el script rechazaba la config antes de arrancar
+        # (hallazgo real del CI: nunca se validó corriendo de verdad en Linux).
         proceso = _correr_continuo(
             tmp_path,
             entorno_con_bin_falso,
             carpeta=carpeta,
-            overrides={"RESPALDO_LIMITE_SEGUNDOS": "60"},
+            overrides={"RESPALDO_LIMITE_SEGUNDOS": "50"},
         )
         try:
             # Esperar a que exista el .parcial: recién ahí hay "un volcado en curso".
