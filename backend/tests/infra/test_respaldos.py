@@ -568,7 +568,7 @@ def _matar(proceso: subprocess.Popen[str]) -> str:
     hijo del bash, también suelte el extremo de escritura del pipe de
     stdout para devolver EOF; de otro modo `communicate()` cuelga esperando
     un EOF que nunca llega)."""
-    os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
+    getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
     return proceso.communicate(timeout=5)[0]
 
 
@@ -1181,12 +1181,12 @@ class TestApagadoOrdenado:
         try:
             time.sleep(1)  # el ciclo de arranque ya corrió; está en el sleep.
             inicio = time.monotonic()
-            os.killpg(proceso.pid, signal.SIGTERM)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
+            getattr(os, "killpg")(proceso.pid, signal.SIGTERM)  # noqa: B009
             codigo = proceso.wait(timeout=5)
             duracion = time.monotonic() - inicio
         finally:
             if proceso.poll() is None:
-                os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
+                getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
                 proceso.wait(timeout=5)
         salida = proceso.stdout.read() if proceso.stdout else ""
 
@@ -1231,12 +1231,12 @@ class TestApagadoOrdenado:
             assert parcial is not None, "el pg_dump falso no llegó a escribir el .parcial"
 
             inicio = time.monotonic()
-            os.killpg(proceso.pid, signal.SIGTERM)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
+            getattr(os, "killpg")(proceso.pid, signal.SIGTERM)  # noqa: B009
             codigo = proceso.wait(timeout=10)
             duracion = time.monotonic() - inicio
         finally:
             if proceso.poll() is None:
-                os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
+                getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
                 proceso.wait(timeout=5)
         salida = proceso.stdout.read() if proceso.stdout else ""
 

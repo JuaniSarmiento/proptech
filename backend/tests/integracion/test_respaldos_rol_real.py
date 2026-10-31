@@ -34,7 +34,9 @@ IMAGEN = "postgres:18.6-trixie"
 # no existe en Windows (Docker Desktop ahí no aplica UIDs POSIX al bind
 # mount), así que se cae a "1000:1000" sólo en ese caso.
 USUARIO_DOCKER = (
-    f"{os.getuid()}:{os.getgid()}" if hasattr(os, "getuid") else "1000:1000"  # type: ignore[attr-defined]
+    f"{getattr(os, 'getuid')()}:{getattr(os, 'getgid')()}"  # noqa: B009
+    if hasattr(os, "getuid")
+    else "1000:1000"
 )
 
 pytestmark = pytest.mark.skipif(
