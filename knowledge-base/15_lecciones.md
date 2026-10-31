@@ -1077,6 +1077,23 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   consulta SQL se corre, al menos una vez, contra Postgres real antes de darlo por terminado — no
   alcanza con que su test con doble falso esté en verde (L-043, mismo principio que un script de
   mantenimiento).
+
+## L-069 · Un test de `infra/` que depende de señales POSIX o de `chmod` real agrega deuda nueva de Windows, no la hereda
+
+- **Origen**: C-24 `respaldos-2`, PR #6, 31/10/2026 (D-144 a D-146).
+- **Qué pasó**: `TestApagadoOrdenado` (tarea 4.1/4.2, D3) se escribió reusando el patrón ya existente de
+  `_matar` (`os.killpg`/`signal.SIGKILL`, de antes de este change) para mandar `SIGTERM` al grupo de
+  proceso del script. Correcto en Linux/CI; en Windows nativo `signal.SIGKILL` no existe en absoluto
+  (`AttributeError` en tiempo de ejecución, no sólo un aviso de `mypy`) — el change agregó 5 ocurrencias
+  nuevas del mismo patrón ya frágil, sin notarlo hasta que el usuario preguntó "¿esto andaba igual
+  antes?" y se comparó `main` (1 ocurrencia preexistente) contra la rama (6).
+- **Regla**: todo test nuevo bajo `backend/tests/infra/` que dependa de semántica POSIX real (grupos de
+  proceso, señales que Windows no tiene, bits de permiso `rwx`, `os.kill` sobre un PID ajeno) se marca
+  `@SOLO_POSIX` (`pytest.mark.skipif(sys.platform == "win32", ...)`, definido en `test_respaldos.py`)
+  desde que se escribe, no después de que alguien lo note en un repo clonado en Windows. Repetir un
+  patrón ya existente en el repo no es excusa: cada ocurrencia nueva es deuda nueva si nadie la marca.
+  `mypy` necesita además `# type: ignore[attr-defined]` en la línea exacta (el `skipif` no cambia el
+  chequeo estático, sólo el runtime).
 - **Costo**: dos vueltas de correcciones dentro del mismo ensayo (primero la columna, después los
   nombres de `pg_policy`, después el cast de `polcmd`) hasta tener la consulta real funcionando; cero
   costo en producción porque se encontró antes de cerrar el change.

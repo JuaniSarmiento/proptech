@@ -15,12 +15,25 @@ import re
 import signal
 import stat
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 PATRON_NOMBRE_BACKUP = re.compile(r"^proptech-[0-9]{8}T[0-9]{6}Z\.dump$")
+
+# `respaldar.sh` corre siempre dentro de un contenedor Linux (D9); estos tests
+# lo invocan con `bash` y dependen de semántica POSIX real (grupos de proceso,
+# `SIGKILL`/`SIGTERM`, bits de permiso `rwx`) que Windows nativo no tiene —
+# ni con Git Bash encima, que no emula señales ni `chmod` a nivel de kernel.
+# Se saltan explícitamente en Windows en vez de fallar con un `AttributeError`
+# o una aserción de permisos que nunca puede cumplirse ahí.
+SOLO_POSIX = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="requiere semántica POSIX (señales de grupo de proceso o chmod real); "
+    "respaldar.sh sólo corre dentro de un contenedor Linux, nunca nativo en Windows",
+)
 
 FAKE_PG_DUMP_OK = """
 archivo=""
@@ -215,6 +228,7 @@ class TestCarpeta:
         assert "no-existe" in resultado.stderr
         assert MARCADOR_CONTRASENA not in _salida_combinada(resultado)
 
+    @SOLO_POSIX
     def test_carpeta_sin_permiso_de_escritura(
         self,
         tmp_path: Path,
@@ -262,6 +276,7 @@ class TestCorreComoRoot:
 
 
 class TestCicloExitoso:
+    @SOLO_POSIX
     def test_genera_backup_con_nombre_y_permisos_correctos(
         self,
         tmp_path: Path,
@@ -402,6 +417,7 @@ class TestFallasDelCiclo:
 
         assert MARCADOR_ERROR_PG_DUMP not in _salida_combinada(resultado)
 
+    @SOLO_POSIX
     def test_base_que_no_responde_se_corta_y_el_proceso_muere(
         self,
         tmp_path: Path,
@@ -552,7 +568,7 @@ def _matar(proceso: subprocess.Popen[str]) -> str:
     hijo del bash, también suelte el extremo de escritura del pipe de
     stdout para devolver EOF; de otro modo `communicate()` cuelga esperando
     un EOF que nunca llega)."""
-    os.killpg(proceso.pid, signal.SIGKILL)
+    os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
     return proceso.communicate(timeout=5)[0]
 
 
@@ -566,6 +582,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
     `pg_restore --list`, el ciclo no puede loguear `respaldo_generado` (la
     spec: "no saludable si todavía no generó ninguno")."""
 
+    @SOLO_POSIX
     def test_falla_el_mv_no_declara_exito(
         self,
         tmp_path: Path,
@@ -594,6 +611,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert salud.returncode != 0, "salud OK sin ningún backup en la carpeta"
 
+    @SOLO_POSIX
     def test_falla_la_escritura_de_ultimo_ok_no_declara_exito(
         self,
         tmp_path: Path,
@@ -621,6 +639,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert salud.returncode != 0, "salud OK sin una marca válida"
 
+    @SOLO_POSIX
     def test_falla_la_retencion_no_declara_exito(
         self,
         tmp_path: Path,
@@ -841,6 +860,7 @@ class TestTodasLasLineasSonJSON:
         assert resultado.returncode != 0
         self._assert_todas_json(_salida_combinada(resultado))
 
+    @SOLO_POSIX
     def test_carpeta_sin_permiso_es_json(
         self,
         tmp_path: Path,
@@ -1131,6 +1151,7 @@ class TestApagadoOrdenado:
     su propio evento JSON y salir con 0 — sin marcar `respaldo_fallido` ni
     `.ultimo-fallo` (D3: un apagado pedido no es una falla de backup)."""
 
+    @SOLO_POSIX
     def test_apagado_mientras_no_hay_volcado_en_curso(
         self,
         tmp_path: Path,
@@ -1149,12 +1170,12 @@ class TestApagadoOrdenado:
         try:
             time.sleep(1)  # el ciclo de arranque ya corrió; está en el sleep.
             inicio = time.monotonic()
-            os.killpg(proceso.pid, signal.SIGTERM)
+            os.killpg(proceso.pid, signal.SIGTERM)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
             codigo = proceso.wait(timeout=5)
             duracion = time.monotonic() - inicio
         finally:
             if proceso.poll() is None:
-                os.killpg(proceso.pid, signal.SIGKILL)
+                os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
                 proceso.wait(timeout=5)
         salida = proceso.stdout.read() if proceso.stdout else ""
 
@@ -1164,6 +1185,7 @@ class TestApagadoOrdenado:
         apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
         assert apagados, f"se esperaba un evento de apagado: {salida}"
 
+    @SOLO_POSIX
     def test_apagado_durante_un_volcado_en_curso(
         self,
         tmp_path: Path,
@@ -1195,12 +1217,12 @@ class TestApagadoOrdenado:
             assert parcial is not None, "el pg_dump falso no llegó a escribir el .parcial"
 
             inicio = time.monotonic()
-            os.killpg(proceso.pid, signal.SIGTERM)
+            os.killpg(proceso.pid, signal.SIGTERM)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
             codigo = proceso.wait(timeout=10)
             duracion = time.monotonic() - inicio
         finally:
             if proceso.poll() is None:
-                os.killpg(proceso.pid, signal.SIGKILL)
+                os.killpg(proceso.pid, signal.SIGKILL)  # type: ignore[attr-defined]  # POSIX-only, ver SOLO_POSIX
                 proceso.wait(timeout=5)
         salida = proceso.stdout.read() if proceso.stdout else ""
 
