@@ -1011,3 +1011,89 @@
   `git rev-parse HEAD`, comando, hora y salida pegados; más el humo. Verificación: todo en verde sobre
   el SHA final; cualquier cambio de código posterior invalida esta corrida y obliga a repetirla
   (L-055, L-031, L-037).
+
+  **NO VERDE — tarea sin cerrar.** SHA sobre el que corrió (sin commit propio porque no hay nada que
+  commitear de un cierre que no cerró):
+  ```
+  $ git rev-parse HEAD
+  9deb9b4c7ca93802dec4875104a860f075946247
+  ```
+  Corrida real, foreground, bloqueante:
+  ```
+  $ cd backend && date +%T && uv run pytest -q
+  05:12:56
+  ...
+  40 failed, 4745 passed, 1 skipped, 1 xfailed, 4 warnings, 2 errors in 3543.75s (0:59:03)
+  ```
+  Lista completa de fallas reales (sin editar, copiada del output):
+  ```
+  ERROR    arq.worker:worker.py:523 deserializing job worker-pickle-b1c3351d-dc01-4068-bc3a-fb37156bd063 failed
+  FAILED tests/infra/test_clerk_en_compose.py::test_compose_resuelve_el_ejemplo_con_opcionales_sin_valor_y_clave_publicable_de_prueba
+  FAILED tests/infra/test_clerk_en_compose.py::test_compose_transmite_los_valores_configurados_sin_defaults_de_clerk
+  FAILED tests/infra/test_compose.py::test_env_example_tiene_redis_password
+  FAILED tests/infra/test_compose.py::test_env_example_trae_las_variables_de_respaldos
+  FAILED tests/infra/test_compose.py::test_env_example_tiene_las_cuatro_contrasenas_distintas
+  FAILED tests/infra/test_compose.py::test_env_example_trae_los_cuatro_pares_de_credenciales
+  FAILED tests/infra/test_conmutar.py::TestValidacionDelDestino::test_rechaza_sin_invocar_docker[proptech_con_salto\n]
+  FAILED tests/infra/test_humo.py::test_todo_script_de_infra_es_ejecutable
+  FAILED tests/infra/test_readme_variables.py::test_env_example_y_compose_tienen_al_menos_una_variable
+  FAILED tests/infra/test_readme_variables.py::test_toda_variable_de_env_example_y_compose_esta_en_la_tabla_del_readme
+  FAILED tests/infra/test_readme_variables.py::test_la_tabla_del_readme_no_nombra_una_variable_inexistente
+  FAILED tests/infra/test_respaldos.py::TestCarpeta::test_carpeta_sin_permiso_de_escritura
+  FAILED tests/infra/test_respaldos.py::TestCicloExitoso::test_genera_backup_con_nombre_y_permisos_correctos
+  FAILED tests/infra/test_respaldos.py::TestFallasDelCiclo::test_base_que_no_responde_se_corta_y_el_proceso_muere
+  FAILED tests/infra/test_respaldos.py::TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior::test_falla_el_mv_no_declara_exito
+  FAILED tests/infra/test_respaldos.py::TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior::test_falla_la_escritura_de_ultimo_ok_no_declara_exito
+  FAILED tests/infra/test_respaldos.py::TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior::test_falla_la_retencion_no_declara_exito
+  FAILED tests/infra/test_respaldos.py::TestApagadoOrdenado::test_apagado_mientras_no_hay_volcado_en_curso
+  FAILED tests/infra/test_respaldos.py::TestApagadoOrdenado::test_apagado_durante_un_volcado_en_curso
+  FAILED tests/infra/test_restaurar.py::TestDestinoInvalido::test_rechaza_sin_invocar_docker[proptech_con_salto\n]
+  FAILED tests/infra/test_restaurar.py::TestInvocacionConDestinoValido::test_toda_invocacion_corre_con_infra_como_carpeta_de_trabajo[raiz_del_repo]
+  FAILED tests/infra/test_restaurar.py::TestInvocacionConDestinoValido::test_toda_invocacion_corre_con_infra_como_carpeta_de_trabajo[tmp]
+  FAILED tests/integracion/test_envio_de_invitaciones.py::test_reintento_tras_caidas_y_exito_final_deja_un_solo_id[asyncio]
+  FAILED tests/integracion/test_envio_de_invitaciones.py::test_ttl_en_redis_es_3600_y_se_borra_tras_el_exito[asyncio]
+  FAILED tests/integracion/test_worker_base_caida_durante_el_trabajo.py::test_base_caida_en_el_primer_intento_se_reintenta_y_registra_una_vez[asyncio]
+  FAILED tests/integracion/test_worker_caminos_de_falla.py::test_cinco_fallas_cinco_intentos_tarea_agotada_y_ninguna_fila[asyncio]
+  FAILED tests/integracion/test_worker_caminos_de_falla.py::test_trabajo_con_pickle_no_se_ejecuta_y_no_deja_el_marcador[asyncio]
+  FAILED tests/integracion/test_worker_logs_de_arq.py::test_logs_de_arq_no_dejan_el_argumento_ni_el_resultado_marcados[asyncio]
+  FAILED tests/integracion/test_worker_tarea_de_prueba.py::test_cero_fallas_registra_la_clave_en_un_intento[asyncio]
+  FAILED tests/integracion/test_worker_tarea_de_prueba.py::test_dos_fallas_tres_intentos_y_una_sola_fila[asyncio]
+  FAILED tests/integracion/test_worker_tarea_de_prueba.py::test_request_id_invalido_se_reemplaza_y_se_loguea[asyncio]
+  FAILED tests/integracion/test_zz_rompedor_v2_base_congelada_timeout.py::test_base_congelada_durante_el_trabajo_se_reintenta_o_queda_agotada[asyncio]
+  FAILED tests/integracion/test_zz_rompedor_worker_base_congelada.py::test_base_congelada_con_conexion_abierta_no_frena_el_loop_del_worker[asyncio]
+  FAILED tests/integracion/test_zz_rompedor_worker_cli_logs.py::test_el_worker_por_el_cli_de_arq_escribe_solo_json_y_sin_argumentos[asyncio]
+  FAILED tests/integracion/test_zz_rompedor_worker_cli_logs.py::test_el_worker_por_el_cli_de_arq_tambien_loguea_en_json_un_reintento[asyncio]
+  FAILED tests/unitarios/test_configuracion_clerk.py::test_nombres_sin_valores_y_cifrado_fuera_de_worker_y_web
+  FAILED tests/unitarios/test_fronteras_de_modulos.py::test_regla_sql_vigila_composicion[proptech_api]
+  FAILED tests/unitarios/test_fronteras_de_modulos.py::test_regla_sql_vigila_composicion[proptech_worker]
+  FAILED tests/unitarios/test_fronteras_de_modulos.py::test_vinculacion_de_desarrollo_solo_desde_ejemplo
+  FAILED tests/unitarios/test_umbral_parametros.py::test_umbral_cero
+  ERROR tests/integracion/test_ubicacion_migracion_multitenant.py::test_downgrade_de_0025_rellena_localidad_en_mas_de_una_administracion
+  ERROR tests/integracion/test_ubicacion_migracion_multitenant.py::test_downgrade_de_0025_elimina_las_columnas_de_ubicacion
+  ```
+  **Hallazgo concreto, no ambiguo, sobre esta misma máquina**: el stack de desarrollo persistente
+  (`docker ps -a`, contenedores `proptech-*` "Up 4 hours") tiene `proptech-respaldos-1` en
+  **`Restarting (1)`** desde las 08:45Z, logueando en loop
+  `{"evento":"configuracion_invalida","mensaje":"RESPALDO_CONSERVAR_DIAS: falta, está vacío o no es un
+  entero válido"}` — ese `.env` del stack persistente no tiene `RESPALDO_CONSERVAR_DIAS`, y el
+  contenedor no cae al default 14 de D2: corta. Esto es o bien un bug real de D2 (la ausencia de la
+  variable debería defaultear, no abortar) o una discrepancia entre `validar_entero` y lo que el
+  propio 3.4 declaró implementado — **sin resolver, pendiente de diagnóstico dedicado**, no de esta
+  corrida.
+  **Contexto que degrada la confiabilidad de esta corrida específica (declarado, no escondido)**:
+  antes de este intento final hubo dos corridas previas de esta misma suite completa que se cortaron a
+  mano con `taskkill //F //IM pytest.exe` (procesos huérfanos de intentos de sesión anteriores,
+  PIDs 28580 y 41540) mientras estaban en curso, dejando contenedores Docker efímeros de esos intentos
+  en estado `Exited (255)` (`pensive_lewin`, `serene_cartwright` sobre los puertos 33117/33111). No se
+  puede descartar que parte de las 40 fallas + 2 errores en `tests/integracion/` (worker, invitaciones,
+  `test_ubicacion_migracion_multitenant`) sean contaminación de ese entorno (puertos, fixtures de sesión
+  Redis/Postgres reutilizados) y no regresiones reales del código de `respaldos-2` — pero las fallas en
+  `tests/infra/test_respaldos.py`, `test_restaurar.py`, `test_conmutar.py` y `test_compose.py` /
+  `test_readme_variables.py` SÍ caen directo en el alcance de este change y no se pueden descartar como
+  ruido sin un entorno limpio.
+  **Decisión**: no se marca 9.3 como hecha. No corresponde inventar un verde ni forzar un diagnóstico
+  apurado sobre un hallazgo de gobernanza HIGH con contaminación de entorno declarada. Queda bloqueada,
+  a la espera de: (a) una corrida limpia en una máquina/contenedor sin el historial de esta sesión, y
+  (b) diagnóstico explícito del hallazgo de `proptech-respaldos-1` sobre D2 antes de repetir la corrida
+  de cierre (L-055 exige repetirla ante cualquier cambio posterior; un entorno sucio es la misma
+  exigencia por la vía inversa).
