@@ -1100,12 +1100,32 @@
   "RESPALDO_INTERVALO_SEGUNDOS=86400"
   "RESPALDO_CONSERVAR=14"
   ```
-  Tras recrear: `RESPALDO_CONSERVAR_DIAS=14` presente, el loop de reinicio termina (`RestartCount=0`,
-  container estable). Queda una línea `respaldo_fallido etapa=pg_dump` en el primer ciclo, separada y
-  **ya declarada preexistente en la tarea 4.3** (permisos del bind mount por `PROPTECH_UID/GID` que no
-  coinciden con el dueño real de `./datos-respaldos` en este host) — no relacionada con D2 ni con este
-  hallazgo. **Diagnóstico cerrado**: no hay bug de D2; era un contenedor del stack persistente de esta
-  máquina sin recrear, ya resuelto.
+  Tras recrear: `RESPALDO_CONSERVAR_DIAS=14` presente, el loop de reinicio termina (`RestartCount=0`).
+  **Corrección sobre lo que la sesión anterior cerró acá**: el diagnóstico de arriba ("ya declarado
+  preexistente en 4.3, no relacionado") es INCORRECTO — no se esperó a que el healthcheck corriera de
+  verdad (`health: starting` no es un resultado, es un estado transitorio). Verificado después, con el
+  contenedor efectivamente estable en el tiempo (`Up 2 hours`, no 35 segundos): **`unhealthy` real**,
+  dos causas reales y distintas, ninguna relacionada con `PROPTECH_UID/GID` de la 4.3:
+
+  1. `infra/datos-respaldos/.ultimo-ok` tenía fecha del 23/10 (antes de que este stack corriera con
+     `user: "1000:1000"`), dueño uid `197614` ajeno al contenedor, modo `0600`. El contenedor (uid
+     `1000`) no podía leerlo: `cat: /respaldos/.ultimo-ok: Permission denied`. `verificar_salud` en
+     `respaldar.sh` ya maneja esto correctamente (un archivo ilegible no pasa el `fullmatch` del
+     contenido y cuenta como no saludable, igual que uno ausente) — **no es un bug de código**, es
+     basura de un contenedor viejo de este host. Se resolvió borrando el archivo huérfano.
+  2. Con eso borrado, el ciclo siguiente falló en `pg_dump` con
+     `FATAL: password authentication failed for user "proptech_respaldo"`: el rol de Postgres dentro
+     del volumen persistente tenía una contraseña vieja, desincronizada de `POSTGRES_RESPALDO_PASSWORD`
+     en `infra/.env` tras alguna recreación de `.env` durante esta sesión — drift de entorno de un
+     stack de horas, no del código de este change. Se resolvió con
+     `ALTER ROLE proptech_respaldo WITH PASSWORD '<la de infra/.env>'` contra `proptech-db-1`.
+
+  Con las dos causas corregidas: `respaldar.sh --una-vez` generó un backup real
+  (`"evento":"respaldo_generado"`) y, 20s después, `docker ps` confirma
+  `proptech-respaldos-1   Up 2 hours (healthy)`. **Diagnóstico cerrado de verdad esta vez**: ningún bug
+  de D2, D4 ni del código de `respaldos-2`; dos causas de entorno (archivo huérfano + contraseña
+  desincronizada) propias de un stack de desarrollo que estuvo horas arriba durante esta sesión larga,
+  ninguna de las dos relacionada con `PROPTECH_UID/GID` como afirmaba el texto anterior.
 
   **Web, suite completa (`pnpm test`, sin filtro)**:
   ```
