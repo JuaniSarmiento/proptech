@@ -246,17 +246,121 @@
 
 ## 4. Apagado ordenado (F5)
 
-- [ ] 4.1 Test rojo del apagado: `SIGTERM` en espera y `SIGTERM` durante un volcado en curso. Cubre
+- [x] 4.1 Test rojo del apagado: `SIGTERM` en espera y `SIGTERM` durante un volcado en curso. Cubre
   los escenarios "Apagado mientras no hay volcado en curso" y "Apagado durante un volcado" de
   `respaldos-de-la-base`. Verificación: rojo con el script sin `trap` (el proceso no sale por su
   cuenta y queda el `.parcial`), con la salida y el tiempo medido pegados.
-- [ ] 4.2 Implementar D3: `trap` de `SIGTERM`/`SIGINT`, espera y volcado con `& wait "$!"`, muerte del
+
+  **BLOQUEO parcial declarado**: los dos tests de pytest escritos (`TestApagadoOrdenado`) usan
+  `os.killpg`, que **no existe en el Python nativo de Windows** (`AttributeError: module 'os' has no
+  attribute 'killpg'`) — la misma causa raíz exacta que las fallas preexistentes de la línea base
+  (1.3) y las de `TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior`. No es un fallo nuevo de este
+  cambio: en CI (Linux) `os.killpg` existe y estos tests corren de verdad. Para tener un RED/GREEN
+  real en esta máquina, se reprodujo el mismo escenario **directamente en Bash** (POSIX real, vía Git
+  Bash), sin pasar por el `subprocess`/`os.killpg` de Python:
+  ```
+  $ date +%T
+  02:25:01
+  $ # (fakes pg_dump/pg_restore en /tmp/f5bin, RESPALDO_CARPETA=/tmp/f5carpeta)
+  $ bash infra/respaldos/respaldar.sh > /tmp/f5carpeta/salida.log 2>&1 &
+  PID=14294
+  $ sleep 1 && kill -TERM "$PID" && wait "$PID"; echo "codigo=$?"
+  codigo=143
+  $ cat /tmp/f5carpeta/salida.log
+  mv: cannot stat '/tmp/f5carpeta/proptech-20261031T052501Z.dump.parcial': No such file or directory
+  {"ts":"2026-10-31T05:25:01Z","nivel":"error","servicio":"respaldos","evento":"respaldo_fallido","etapa":"mv"}
+  ```
+  Código de salida **143** (128+15, SIGTERM "crudo", sin manejar) en vez de 0: confirma F5 contra el
+  script de hoy (sin `trap`). Los dos tests de pytest quedan escritos en el repo (correrán en CI); se
+  declara el bloqueo de Windows en vez de forzarlos o inventar una corrida que no pasó.
+
+- [x] 4.2 Implementar D3: `trap` de `SIGTERM`/`SIGINT`, espera y volcado con `& wait "$!"`, muerte del
   hijo, borrado del `.parcial`, evento JSON de apagado y salida 0; un apagado no escribe
   `respaldo_fallido` ni `.ultimo-fallo`, y todo el camino con `if !` explícito (L-014). Verificación:
   el test de 4.1 en verde y la suite de 1.3 sin regresiones.
-- [ ] 4.3 Ejecutar el apagado del stack real y medir. Cubre "Apagado del stack completo".
+
+  **Implementación** (`infra/respaldos/respaldar.sh`): variable global `PID_HIJO_ACTUAL`, función
+  `manejar_apagado` registrada con `trap manejar_apagado TERM INT`: mata el hijo en curso (si hay),
+  borra todo `.parcial` que haya quedado, emite `logear info apagado motivo=senal` y `exit 0`
+  directamente desde el handler (como pide D3: "el handler hace todo el trabajo"). El `sleep` del
+  modo continuo y el `timeout ... pg_dump` de `ciclo_backup` pasan a correr en segundo plano
+  (`& `) con `PID_HIJO_ACTUAL=$!` seguido de `wait`, que es interrumpible (a diferencia de un comando
+  en primer plano, que se come la señal hasta terminar). Dentro de `ciclo_backup`, el código de salida
+  de `wait` se captura con `wait "$PID" && codigo=0 || codigo=$?` (nunca un `wait` desnudo, para no
+  disparar `set -e` al volver `ciclo_backup || true`, L-014).
+
+  **GREEN, mismo escenario de 4.1, directo en Bash**:
+  ```
+  $ date +%T
+  02:26:32
+  $ bash infra/respaldos/respaldar.sh > /tmp/f5carpeta/salida.log 2>&1 &
+  PID=...
+  $ sleep 1; START=$(date +%s); kill -TERM "$PID"; wait "$PID"; CODIGO=$?; END=$(date +%s)
+  $ echo "codigo=$CODIGO duracion=$((END-START))s"
+  codigo=0 duracion=0s
+  $ cat /tmp/f5carpeta/salida.log
+  mv: cannot stat '...': No such file or directory
+  {"ts":"...","nivel":"error","servicio":"respaldos","evento":"respaldo_fallido","etapa":"mv"}
+  {"ts":"2026-10-31T05:26:33Z","nivel":"info","servicio":"respaldos","evento":"apagado","motivo":"senal"}
+  ```
+  Código 0, menos de 1 segundo, y el evento `apagado` JSON presente — confirma D3 funcionando (la
+  línea `respaldo_fallido etapa=mv` es un artefacto de los fakes mínimos usados para esta demostración
+  manual, no de F5; no aparece con los fakes reales de los tests de pytest, ver 4.1).
+
+  **Regresión `test_respaldos.py` completo** (incluida la suite de 1.3 sin cambios en su resultado,
+  salvo los 2 nuevos tests bloqueados por Windows):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_respaldos.py -q
+  02:30:18
+  ...
+  8 failed, 52 passed in 66.86s
+  ```
+  Los 8 fallos = los 6 preexistentes de la línea base + los 2 de `TestApagadoOrdenado` (mismo
+  `os.killpg`, declarado arriba). Ninguna regresión nueva.
+
+  **Hallazgo lateral, corregido en el mismo commit**: al preparar 4.3 (Docker real), el contenedor
+  `respaldos` moría en bucle con `env: 'bash\r': No such file or directory` — el checkout de Windows
+  de este repo tiene `core.autocrlf=true`, y como `respaldar.sh`/`restaurar.sh` (y el resto de
+  `infra/**/*.sh`) se bindean DIRECTO al contenedor Linux (bind mount, nunca una capa de imagen que
+  normalice), el working tree los materializaba con CRLF. Esto es preexistente a este change (el blob
+  de git ya es LF; sólo el checkout local tenía CRLF) y rompe **cualquier** script de `infra/` bind-
+  montado en este tipo de checkout, no sólo los de este change. Se agregó `.gitattributes`
+  (`infra/**/*.sh text eol=lf`) y se renormalizó el working tree; `git diff --stat` confirma que los
+  siete scripts de `infra/ci/` no cambiaron de contenido (sólo el fin de línea), y
+  `respaldar.sh`/`restaurar.sh` muestran sólo el diff de contenido real de este change.
+
+- [x] 4.3 Ejecutar el apagado del stack real y medir. Cubre "Apagado del stack completo".
   Verificación: el contenedor de respaldos sale por su cuenta, sin consumir el plazo de gracia ni
   recibir `SIGKILL`; comando, tiempo y salida pegados.
+
+  **Evidencia real (Docker, proyecto aislado `proptech-respaldos2-f5`, nunca `proptech`, L-006/L-047)**:
+  ```
+  $ cd infra && export COMPOSE_PROJECT_NAME=proptech-respaldos2-f5
+  $ docker compose -p "$COMPOSE_PROJECT_NAME" up -d --build db migraciones respaldos
+  ... Container proptech-respaldos2-f5-respaldos-1 Started
+  $ docker compose -p "$COMPOSE_PROJECT_NAME" ps respaldos
+  ... Up 3 seconds (health: starting)
+  $ date +%T && START=$(date +%s)
+  02:29:58
+  $ docker compose -p "$COMPOSE_PROJECT_NAME" stop -t 10 respaldos
+   Container proptech-respaldos2-f5-respaldos-1 Stopping
+   Container proptech-respaldos2-f5-respaldos-1 Stopped
+  $ END=$(date +%s); echo "duracion_stop=$((END-START))s"
+  duracion_stop=1s
+  $ docker inspect proptech-respaldos2-f5-respaldos-1 --format '{{.State.Status}} ExitCode={{.State.ExitCode}}'
+  exited ExitCode=0
+  $ docker compose -p "$COMPOSE_PROJECT_NAME" logs respaldos | tail -3
+  respaldos-1  | {"ts":"2026-10-31T05:29:59Z","nivel":"info","servicio":"respaldos","evento":"apagado","motivo":"senal"}
+  $ docker compose -p "$COMPOSE_PROJECT_NAME" down -v
+  ```
+  `docker compose stop -t 10` (plazo de gracia de 10s) tardó **1 segundo**, con `ExitCode=0` (no 137,
+  que sería `SIGKILL`) y la línea `apagado` en el log: el contenedor salió por su cuenta, muy por
+  debajo del plazo de gracia, sin que Docker tuviera que mandar `SIGKILL`.
+  **Nota**: en esta corrida el volcado de arranque falló por un problema de permisos del bind mount
+  (`.ultimo-ok: Permission denied`, con `PROPTECH_UID/GID=1000` del `.env.example` no coincidiendo con
+  el dueño real de `./datos-respaldos` en este host) — no afecta la medición del apagado (el servicio
+  sigue corriendo en modo continuo igual, con o sin un backup exitoso previo) y es exactamente el tipo
+  de problema que el grupo 6 (D7, carpeta del host) va a resolver.
 
 ## 5. Ningún 503 sin su línea (F6)
 

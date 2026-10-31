@@ -191,14 +191,52 @@ marcar_fallo() {
   date +%s > "$CARPETA/.ultimo-fallo" || true
 }
 
+# F5, D3: PID del hijo en curso (el `sleep` del modo continuo o el
+# `timeout ... pg_dump`), para que `manejar_apagado` sepa a quién matar.
+# Variable GLOBAL (no `local`): el handler de la señal corre en el mismo
+# shell, fuera de cualquier función, y tiene que poder leerla.
+PID_HIJO_ACTUAL=""
+
+# D3: un `trap` solo no alcanza — Bash no corre el handler mientras espera un
+# comando en PRIMER PLANO (acá, `sleep 86400` o `timeout ... pg_dump` sin
+# backgrounding se comerían la señal hasta terminar). Por eso el modo
+# continuo y el volcado largo corren en segundo plano con `& wait "$!"`
+# (ver `ciclo_backup` y el bucle principal): `wait` SÍ es interrumpible, y
+# ahí es donde este handler puede correr de verdad. El handler hace TODO el
+# trabajo de F5 y termina con `exit 0`: mata al hijo si hay uno, borra el
+# `.parcial` del ciclo en curso, emite su propio evento JSON y sale. No deja
+# ningún `respaldo_fallido` ni toca `.ultimo-fallo`: un apagado pedido no es
+# una falla de backup (D3).
+manejar_apagado() {
+  trap '' TERM INT  # una segunda señal durante la limpieza no reentra acá.
+  if [ -n "$PID_HIJO_ACTUAL" ]; then
+    if ! kill -TERM "$PID_HIJO_ACTUAL" 2>/dev/null; then
+      :  # el hijo ya pudo haber terminado solo; no es un error.
+    fi
+    wait "$PID_HIJO_ACTUAL" 2>/dev/null || true
+  fi
+  local archivo
+  for archivo in "$CARPETA/${PREFIJO}-"*.dump.parcial; do
+    [ -e "$archivo" ] || continue
+    rm -f -- "$archivo"
+  done
+  logear info apagado "motivo=senal"
+  exit 0
+}
+trap manejar_apagado TERM INT
+
 ciclo_backup() {
-  local marca archivo_final archivo_parcial
+  local marca archivo_final archivo_parcial codigo
   marca="$(date -u +%Y%m%dT%H%M%SZ)"
   archivo_final="$CARPETA/${PREFIJO}-${marca}.dump"
   archivo_parcial="${archivo_final}.parcial"
 
-  if ! PGCONNECT_TIMEOUT=5 timeout --kill-after=5 "$RESPALDO_LIMITE_SEGUNDOS" \
-        pg_dump --format=custom "--file=${archivo_parcial}" >/dev/null 2>/dev/null; then
+  PGCONNECT_TIMEOUT=5 timeout --kill-after=5 "$RESPALDO_LIMITE_SEGUNDOS" \
+        pg_dump --format=custom "--file=${archivo_parcial}" >/dev/null 2>/dev/null &
+  PID_HIJO_ACTUAL=$!
+  wait "$PID_HIJO_ACTUAL" && codigo=0 || codigo=$?
+  PID_HIJO_ACTUAL=""
+  if (( codigo != 0 )); then
     rm -f -- "$archivo_parcial"
     logear error respaldo_fallido etapa=pg_dump
     marcar_fallo
@@ -322,7 +360,10 @@ case "$modo" in
     # próximo ciclo es la única reintentada.
     ciclo_backup || true
     while true; do
-      sleep "$RESPALDO_INTERVALO_SEGUNDOS"
+      sleep "$RESPALDO_INTERVALO_SEGUNDOS" &
+      PID_HIJO_ACTUAL=$!
+      wait "$PID_HIJO_ACTUAL" || true
+      PID_HIJO_ACTUAL=""
       ciclo_backup || true
     done
     ;;

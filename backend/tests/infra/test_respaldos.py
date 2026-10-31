@@ -1108,6 +1108,113 @@ class TestVentanaPorDias:
         )
 
 
+FAKE_PG_DUMP_LARGO = """
+archivo=""
+for arg in "$@"; do
+  case "$arg" in
+    --file=*) archivo="${arg#--file=}" ;;
+  esac
+done
+echo "parcial-en-progreso" > "$archivo"
+sleep 30
+echo "esto nunca debia escribirse: el ciclo ya debia haber muerto" >> "$archivo"
+exit 0
+"""
+
+
+class TestApagadoOrdenado:
+    """F5: hoy no hay ningún `trap`, así que `docker compose stop` espera 10
+    segundos y manda `SIGKILL` (D9). El apagado tiene que cortar la espera
+    del próximo ciclo o el volcado en curso, borrar el `.parcial`, loguear
+    su propio evento JSON y salir con 0 — sin marcar `respaldo_fallido` ni
+    `.ultimo-fallo` (D3: un apagado pedido no es una falla de backup)."""
+
+    def test_apagado_mientras_no_hay_volcado_en_curso(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        import time
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        proceso = _correr_continuo(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            overrides={"RESPALDO_INTERVALO_SEGUNDOS": "3600"},
+        )
+        try:
+            time.sleep(1)  # el ciclo de arranque ya corrió; está en el sleep.
+            inicio = time.monotonic()
+            os.killpg(proceso.pid, signal.SIGTERM)
+            codigo = proceso.wait(timeout=5)
+            duracion = time.monotonic() - inicio
+        finally:
+            if proceso.poll() is None:
+                os.killpg(proceso.pid, signal.SIGKILL)
+                proceso.wait(timeout=5)
+        salida = proceso.stdout.read() if proceso.stdout else ""
+
+        assert codigo == 0, f"código de salida {codigo}, salida: {salida}"
+        assert duracion < 2, f"tardó {duracion}s en salir"
+        lineas = _lineas_json(salida)
+        apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
+        assert apagados, f"se esperaba un evento de apagado: {salida}"
+
+    def test_apagado_durante_un_volcado_en_curso(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_LARGO)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        proceso = _correr_continuo(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            overrides={"RESPALDO_LIMITE_SEGUNDOS": "60"},
+        )
+        try:
+            # Esperar a que exista el .parcial: recién ahí hay "un volcado en curso".
+            parcial = None
+            for _ in range(50):
+                parciales = list(carpeta.glob("*.dump.parcial"))
+                if parciales:
+                    parcial = parciales[0]
+                    break
+                time.sleep(0.1)
+            assert parcial is not None, "el pg_dump falso no llegó a escribir el .parcial"
+
+            inicio = time.monotonic()
+            os.killpg(proceso.pid, signal.SIGTERM)
+            codigo = proceso.wait(timeout=10)
+            duracion = time.monotonic() - inicio
+        finally:
+            if proceso.poll() is None:
+                os.killpg(proceso.pid, signal.SIGKILL)
+                proceso.wait(timeout=5)
+        salida = proceso.stdout.read() if proceso.stdout else ""
+
+        assert codigo == 0, f"código de salida {codigo}, salida: {salida}"
+        assert duracion < 6, f"tardó {duracion}s en salir: {salida}"
+        assert list(carpeta.glob("*.parcial")) == [], "no debía quedar ningún .parcial"
+        assert list(carpeta.glob("*.dump")) == [], "no debía quedar ningún .dump nuevo"
+        assert not (carpeta / ".ultimo-fallo").exists(), (
+            "un apagado pedido no es una falla de backup (D3)"
+        )
+        lineas = _lineas_json(salida)
+        assert not [l for l in lineas if l.get("evento") == "respaldo_fallido"], salida
+        apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
+        assert apagados, f"se esperaba un evento de apagado: {salida}"
+
+
 def _correr_salud(
     tmp_path: Path,
     entorno_con_bin_falso: dict[str, str],
