@@ -1218,17 +1218,42 @@ class TestApagadoOrdenado:
         )
         try:
             # Esperar a que exista el .parcial: recién ahí hay "un volcado en curso".
-            # 15s, no 5s: un runner de CI compartido puede tardar en que el
+            # 30s, no 5s: un runner de CI compartido puede tardar en que el
             # proceso del script llegue a invocar el `pg_dump` falso, aunque
-            # éste escriba su .parcial de inmediato (hallazgo real del CI).
+            # éste escriba su .parcial de inmediato (hallazgo real del CI). Si
+            # el proceso ya murió solo mientras esperamos, es un error real
+            # (config rechazada, etc.) y no un simple problema de margen: se
+            # corta la espera ahí mismo y se muestra la salida real, no un
+            # mensaje ciego sin contexto.
             parcial = None
-            for _ in range(150):
+            proceso_murio_temprano = False
+            for _ in range(300):
                 parciales = list(carpeta.glob("*.dump.parcial"))
                 if parciales:
                     parcial = parciales[0]
                     break
+                if proceso.poll() is not None:
+                    proceso_murio_temprano = True
+                    break
                 time.sleep(0.1)
-            assert parcial is not None, "el pg_dump falso no llegó a escribir el .parcial"
+            if parcial is None:
+                # Si murió solo, su stdout ya llegó a EOF: leerlo es seguro.
+                # Si en cambio seguía vivo tras los 30s, hay que matarlo PRIMERO
+                # (está en un `sleep 30` real) — leer un pipe de un proceso vivo
+                # sin que cierre su extremo de escritura cuelga para siempre.
+                if not proceso_murio_temprano and proceso.poll() is None:
+                    getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
+                    proceso.wait(timeout=5)
+                salida_temprana = proceso.stdout.read() if proceso.stdout else ""
+                if proceso_murio_temprano:
+                    pytest.fail(
+                        f"el proceso terminó solo (código {proceso.returncode}) antes de "
+                        f"escribir el .parcial, salida: {salida_temprana!r}"
+                    )
+                pytest.fail(
+                    f"el pg_dump falso no llegó a escribir el .parcial en 30s, "
+                    f"salida hasta ahora: {salida_temprana!r}"
+                )
 
             inicio = time.monotonic()
             getattr(os, "killpg")(proceso.pid, signal.SIGTERM)  # noqa: B009
