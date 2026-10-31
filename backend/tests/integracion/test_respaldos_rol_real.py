@@ -53,7 +53,7 @@ def _correr_respaldar_real(
             "1000:1000",
             "--add-host=host.docker.internal:host-gateway",
             "-e",
-            f"PGHOST=host.docker.internal",
+            "PGHOST=host.docker.internal",
             "-e",
             f"PGPORT={puerto}",
             "-e",
@@ -90,7 +90,7 @@ def _correr_respaldar_real(
 
 
 def _lineas_json(texto: str) -> list[dict[str, object]]:
-    return [json.loads(l) for l in texto.splitlines() if l.strip()]
+    return [json.loads(linea) for linea in texto.splitlines() if linea.strip()]
 
 
 class TestVolcadoConElRolEquivocado:
@@ -115,7 +115,7 @@ class TestVolcadoConElRolEquivocado:
         assert list(carpeta.glob("*.parcial")) == [], "no debía quedar ningún .parcial"
 
         lineas = _lineas_json(resultado.stdout + resultado.stderr)
-        fallidas = [l for l in lineas if l.get("evento") == "respaldo_fallido"]
+        fallidas = [linea for linea in lineas if linea.get("evento") == "respaldo_fallido"]
         assert fallidas, f"se esperaba respaldo_fallido en el log: {lineas}"
         # L-007: el campo `etapa` (nuestro propio nombre de paso, "pg_dump")
         # es distinto de la SALIDA real de la herramienta ("FATAL: permiso

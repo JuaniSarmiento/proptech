@@ -125,9 +125,7 @@ class TestValidacionDelDestino:
     ) -> None:
         escribir_herramienta_falsa("docker", FAKE_DOCKER_REGISTRA)
 
-        resultado, registro = _correr(
-            tmp_path, entorno_con_bin_falso, destino="proptech_principal"
-        )
+        resultado, registro = _correr(tmp_path, entorno_con_bin_falso, destino="proptech_principal")
 
         assert resultado.returncode != 0
         invocaciones = _invocaciones(registro)
@@ -174,7 +172,7 @@ class TestLasTresVerificaciones:
         assert resultado.returncode != 0
         invocaciones = [c for _, c in _invocaciones(registro)]
         assert not any("alembic" in c for c in invocaciones), (
-            "no debía llegar a la verificación de migraciones: " f"{invocaciones}"
+            f"no debía llegar a la verificación de migraciones: {invocaciones}"
         )
 
     def test_revision_de_migraciones_equivocada_rechaza(
@@ -183,9 +181,7 @@ class TestLasTresVerificaciones:
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
-        escribir_herramienta_falsa(
-            "docker", _fake_docker_con_verificaciones(revision="0001")
-        )
+        escribir_herramienta_falsa("docker", _fake_docker_con_verificaciones(revision="0001"))
 
         resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
 
@@ -193,7 +189,7 @@ class TestLasTresVerificaciones:
         assert "migraciones" in resultado.stderr.lower()
         invocaciones = [c for _, c in _invocaciones(registro)]
         assert not any("pg_class" in c for c in invocaciones), (
-            "no debía llegar a la verificación de RLS: " f"{invocaciones}"
+            f"no debía llegar a la verificación de RLS: {invocaciones}"
         )
 
     def test_sin_revision_en_la_base_destino_rechaza(
@@ -202,11 +198,9 @@ class TestLasTresVerificaciones:
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
-        escribir_herramienta_falsa(
-            "docker", _fake_docker_con_verificaciones(revision=None)
-        )
+        escribir_herramienta_falsa("docker", _fake_docker_con_verificaciones(revision=None))
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        resultado, _registro = _correr(tmp_path, entorno_con_bin_falso)
 
         assert resultado.returncode != 0
 
@@ -224,7 +218,7 @@ class TestLasTresVerificaciones:
             ),
         )
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        resultado, _registro = _correr(tmp_path, entorno_con_bin_falso)
 
         assert resultado.returncode != 0
         assert "seguridad" in resultado.stderr.lower() or "rls" in resultado.stderr.lower()
@@ -239,7 +233,7 @@ class TestLasTresVerificaciones:
         las tres verificaciones no termina en un error DE LAS TRES."""
         escribir_herramienta_falsa("docker", _fake_docker_con_verificaciones())
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        _resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
 
         invocaciones = [c for _, c in _invocaciones(registro)]
         assert any("alembic heads" in c for c in invocaciones)
@@ -288,7 +282,7 @@ class TestLaConmutacionEnSi:
     ) -> None:
         escribir_herramienta_falsa("docker", FAKE_DOCKER_CONMUTACION_EXITOSA)
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        resultado, _registro = _correr(tmp_path, entorno_con_bin_falso)
 
         assert resultado.returncode == 0, resultado.stderr
         env_de_prueba = tmp_path / "infra-de-prueba" / ".env"
@@ -305,7 +299,7 @@ class TestLaConmutacionEnSi:
     ) -> None:
         escribir_herramienta_falsa("docker", FAKE_DOCKER_CONMUTACION_EXITOSA)
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        resultado, _registro = _correr(tmp_path, entorno_con_bin_falso)
 
         assert resultado.returncode == 0, resultado.stderr
         anterior = tmp_path / "infra-de-prueba" / ".env.anterior"
@@ -320,7 +314,7 @@ class TestLaConmutacionEnSi:
     ) -> None:
         escribir_herramienta_falsa("docker", FAKE_DOCKER_FALLA_AL_LEVANTAR)
 
-        resultado, registro = _correr(tmp_path, entorno_con_bin_falso)
+        resultado, _registro = _correr(tmp_path, entorno_con_bin_falso)
 
         assert resultado.returncode != 0
         assert MARCADOR_ERROR_HERRAMIENTA not in resultado.stderr
@@ -340,7 +334,7 @@ class TestProyectoComposeAislado:
     ) -> None:
         escribir_herramienta_falsa("docker", _fake_docker_con_verificaciones(existe=False))
 
-        resultado, registro = _correr(
+        _resultado, registro = _correr(
             tmp_path,
             entorno_con_bin_falso,
             overrides={"PROPTECH_COMPOSE_PROYECTO": "proptech-ensayo-x"},

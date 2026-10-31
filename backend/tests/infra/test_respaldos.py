@@ -1055,7 +1055,10 @@ class TestVentanaPorDias:
         hace_5_dias = _time.time() - 5 * 86400
         _os.utime(viejo, (hace_5_dias, hace_5_dias))
 
-        overrides = {"RESPALDO_CONSERVAR": "2", "RESPALDO_CONSERVAR_DIAS": "14"}
+        overrides: dict[str, str | None] = {
+            "RESPALDO_CONSERVAR": "2",
+            "RESPALDO_CONSERVAR_DIAS": "14",
+        }
 
         # "Muchos reinicios" de hoy: tres ciclos seguidos.
         for _ in range(3):
@@ -1070,8 +1073,7 @@ class TestVentanaPorDias:
             _time.sleep(1.1)
 
         assert viejo.exists(), (
-            "el backup más nuevo del día de hace 5 días no debía borrarse "
-            "(piso por antigüedad, D2)"
+            "el backup más nuevo del día de hace 5 días no debía borrarse (piso por antigüedad, D2)"
         )
 
     def test_backups_mas_viejos_que_la_ventana_se_borran(
@@ -1210,7 +1212,7 @@ class TestApagadoOrdenado:
             "un apagado pedido no es una falla de backup (D3)"
         )
         lineas = _lineas_json(salida)
-        assert not [l for l in lineas if l.get("evento") == "respaldo_fallido"], salida
+        assert not [linea for linea in lineas if linea.get("evento") == "respaldo_fallido"], salida
         apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
         assert apagados, f"se esperaba un evento de apagado: {salida}"
 
