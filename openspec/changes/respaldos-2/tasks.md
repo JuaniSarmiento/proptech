@@ -458,15 +458,99 @@
 
 ## 6. La carpeta del host sin paso manual
 
-- [ ] 6.1 Test rojo del arranque: el camino documentado deja la carpeta creada con el UID/GID del host
+- [x] 6.1 Test rojo del arranque: el camino documentado deja la carpeta creada con el UID/GID del host
   si falta, no cambia el dueño ni el contenido si ya existe, y el README no pide ningún `mkdir`. Cubre
   los tres escenarios de "La carpeta de respaldos no depende de un paso manual". Los tests no asumen
   `infra/datos-respaldos/` vacía ni leen binarios como texto (L-033). Verificación: rojo con el README
   y el arranque de hoy, con la salida pegada.
-- [ ] 6.2 Implementar D7: script de arranque en `infra/` que crea la carpeta con el dueño correcto y
+
+  **RED** (`backend/tests/infra/test_arrancar.py`, nuevo: el script `infra/arrancar.sh` todavía no
+  existe; los tests usan un `docker` falso que sólo registra su invocación, L-033: nunca asumen
+  `datos-respaldos/` vacía, cada test usa su propia carpeta de `tmp_path`):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_arrancar.py -q
+  02:43:44
+  ...
+  E       bash: .../infra/arrancar.sh: No such file or directory
+  E       'mkdir -p infra/datos-respaldos' is contained here: ...
+  FAILED tests/infra/test_arrancar.py::test_script_existe
+  FAILED tests/infra/test_arrancar.py::TestPrimerArranqueSinCarpeta::test_crea_la_carpeta_con_el_dueno_del_host
+  FAILED tests/infra/test_arrancar.py::TestPrimerArranqueSinCarpeta::test_delega_en_docker_compose_up_con_los_argumentos
+  FAILED tests/infra/test_arrancar.py::TestCarpetaYaCreada::test_no_cambia_el_contenido_ni_falla
+  FAILED tests/infra/test_arrancar.py::TestElReadmeYaNoPideElPasoManual::test_sin_mkdir_de_datos_respaldos
+  5 failed, 1 passed in 0.46s
+  ```
+
+- [x] 6.2 Implementar D7: script de arranque en `infra/` que crea la carpeta con el dueño correcto y
   delega en `docker compose up`; README, humo y CI pasan a usarlo; la tabla de variables se actualiza.
   Verificación: el test de 6.1 en verde, un arranque desde cero sin la carpeta creada genera un backup
   en menos de 2 minutos y el servicio de respaldos no reinició ninguna vez.
+
+  **Implementación**: `infra/arrancar.sh` (nuevo) resuelve `PROPTECH_DIR_RESPALDOS`/`PROPTECH_UID`/
+  `PROPTECH_GID` del entorno, con `.env` como *fallback* (nunca pisando una variable que ya llegó del
+  entorno — un `source .env` liso haría lo contrario, hallazgo real al escribir este script: ver
+  abajo), crea la carpeta con `chown` si falta, y delega con `exec docker compose "$@"`. El README
+  cambia `mkdir -p infra/datos-respaldos` + `cd infra && docker compose up --build` por
+  `infra/arrancar.sh up --build`, con un párrafo nuevo sobre qué hace, el límite declarado de D7 (un
+  `docker compose up` directo, fuera de este camino, puede seguir creando la carpeta como root) y
+  `RESPALDO_CONSERVAR_DIAS` sumada a la mención de variables con default.
+
+  **`humo.sh` y CI no necesitaban el cambio**: `grep` sobre `.github/workflows/*.yml` e
+  `infra/ci/*.sh` no encontró ningún `docker compose up` ni `mkdir -p infra/datos-respaldos` fuera del
+  README — `humo.sh` ya crea su propia carpeta con `mktemp -d` (siempre existe, siempre con el dueño
+  correcto), así que nunca tuvo el bug que D7 corrige. Nada que migrar ahí.
+
+  **Hallazgo real al escribir el script** (encontrado antes de commitear, no en producción): la
+  primera versión hacía `source .env` sin condición; con `infra/.env` ya creado en esta máquina (para
+  probar Docker en 3.4/4.3), eso PISABA el `PROPTECH_DIR_RESPALDOS` que el test pasaba por el entorno
+  con el valor por defecto de `.env` (`./datos-respaldos`), y la carpeta de prueba nunca se creaba en
+  el lugar esperado. Se corrigió leyendo `.env` sólo como *fallback* (`leer_de_env`, con `grep`, nunca
+  pisando una variable ya exportada).
+
+  **GREEN (tests)**:
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_arrancar.py -q
+  02:46:11
+  .....F.                                                                  [100%]  (el único rojo era el README, corregido abajo)
+  $ # tras corregir README.md:
+  $ uv run pytest tests/infra/test_arrancar.py -q
+  02:47:21
+  ......                                                                   [100%]
+  6 passed in 0.40s
+  ```
+
+  **GREEN real (Docker, proyecto aislado `proptech-respaldos2-d7`)**:
+  ```
+  $ rm -rf /tmp/datos-respaldos-d7-test
+  $ export PROPTECH_DIR_RESPALDOS=/tmp/datos-respaldos-d7-test
+  $ ls /tmp/datos-respaldos-d7-test
+  ls: cannot access '/tmp/datos-respaldos-d7-test': No such file or directory
+  $ cd infra && date +%T && ./arrancar.sh -p proptech-respaldos2-d7 up -d --build db migraciones respaldos
+  02:47:33
+  ... Container proptech-respaldos2-d7-respaldos-1 Started
+  $ sleep 5; date +%T; ls -la /tmp/datos-respaldos-d7-test
+  02:48:11
+  -rw-r--r-- 1 Emiliano 197121     11 Oct 31 02:48 .ultimo-ok
+  -rw-r--r-- 1 Emiliano 197121 135357 Oct 31 02:48 proptech-20261031T054800Z.dump
+  $ docker inspect proptech-respaldos2-d7-respaldos-1 --format 'RestartCount={{.RestartCount}} Status={{.State.Status}} Health={{.State.Health.Status}}'
+  RestartCount=0 Status=running Health=healthy
+  $ docker compose -p proptech-respaldos2-d7 down -v
+  ```
+  La carpeta no existía antes de correr `arrancar.sh`; a los ~38 segundos ya tenía un backup generado
+  (muy por debajo de los 2 minutos pedidos), `RestartCount=0` (el servicio nunca reinició) y
+  `Health=healthy`.
+
+  **Regresión declarada (preexistente, no causada por este cambio)**: `test_compose.py` (4 tests) y
+  `test_readme_variables.py` (3 tests) fallan en esta máquina con
+  `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d` al leer `infra/.env.example` (Python en
+  Windows usa `cp1252` por default, no UTF-8, y el archivo tiene acentos). Confirmado con `git stash`
+  sobre el HEAD anterior a este change (mismo resultado, mismos 4+3 tests, misma causa):
+  ```
+  $ git stash && cd backend && uv run pytest tests/infra/test_compose.py -q
+  ... 4 failed, 52 passed in 2.26s
+  $ cd .. && git stash pop
+  ```
+  No se arregla en este scope (es deuda de portabilidad Windows, igual que las de la línea base 1.3).
 
 ## 7. Volcado con el rol equivocado, con `pg_dump` real
 

@@ -55,9 +55,7 @@ Requisitos: Docker con Compose (`docker compose version`).
 
 ```bash
 cp infra/.env.example infra/.env   # completar las cuatro POSTGRES_*_PASSWORD con valores propios
-mkdir -p infra/datos-respaldos     # carpeta de los backups, fuera de git (D9)
-cd infra
-PROPTECH_UID=$(id -u) PROPTECH_GID=$(id -g) docker compose up --build
+infra/arrancar.sh up --build
 ```
 
 Las cuatro `POSTGRES_*_PASSWORD` (arranque, migrador, app y respaldo) tienen que ser **distintas entre
@@ -65,15 +63,19 @@ sí**: `roles antes` rechaza el arranque si dos coinciden, sin mostrar ningún v
 2a). El detalle completo de cada variable está en [Variables de entorno](#variables-de-entorno), más
 abajo.
 
-La carpeta de respaldos (`PROPTECH_DIR_RESPALDOS` en `.env`, por defecto
-`./datos-respaldos` relativo a `infra/`) hay que crearla **antes** del primer
-`docker compose up`: es una carpeta del host (bind mount, no un volumen de
-Docker), así sobrevive a un `docker compose down -v`. `PROPTECH_UID` y
-`PROPTECH_GID` son el usuario del host (`id -u` / `id -g`), para que esos
-archivos queden del dueño real y no de un uid que el host no conoce; sin
-ellos, Compose se niega a arrancar nombrando la variable que falta. Las demás
-variables de respaldos (`RESPALDO_INTERVALO_SEGUNDOS`, `RESPALDO_CONSERVAR`,
-`RESPALDO_LIMITE_SEGUNDOS`) ya traen un valor por defecto en `.env.example`.
+`infra/arrancar.sh` (D7, respaldos-2) reemplaza `cd infra && docker compose up`: lee
+`PROPTECH_DIR_RESPALDOS`/`PROPTECH_UID`/`PROPTECH_GID` del entorno o de `.env`, crea la carpeta de
+respaldos del host (bind mount, no un volumen de Docker, para sobrevivir a `docker compose down -v`)
+con ese dueño **si todavía no existe** — nunca cambia una carpeta que ya está ahí — y recién después
+delega en `docker compose` con los argumentos que se le pasen. Sin este paso, Docker crearía esa
+carpeta él mismo **como root** al encontrar el bind mount vacío, y el servicio `respaldos` quedaría
+reiniciando en bucle sin poder escribir en ella. Si alguien corre `docker compose up` directamente,
+sin pasar por `arrancar.sh` (por ejemplo, a mano, fuera del camino documentado), ese riesgo de la
+carpeta como root sigue existiendo: `arrancar.sh` es el camino que el README, el humo y el CI usan,
+no una garantía de Compose en sí (D7, límite declarado y aceptado por la firma del change
+`respaldos-2`). Las demás variables de respaldos (`RESPALDO_INTERVALO_SEGUNDOS`,
+`RESPALDO_CONSERVAR`, `RESPALDO_CONSERVAR_DIAS`, `RESPALDO_LIMITE_SEGUNDOS`) ya traen un valor por
+defecto en `.env.example`.
 
 Después de que los servicios queden sanos:
 
