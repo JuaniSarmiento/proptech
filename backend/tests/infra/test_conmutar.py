@@ -153,8 +153,8 @@ case "$*" in
   *"SELECT version_num"*) {revision_linea}; exit 0 ;;
   *proptech_restaurada*"SELECT 1"*) {existencia} ;;
   *"SELECT 1"*) exit 0 ;;
-  *proptech_restaurada*"pg_tables"*) echo "{politicas_destino}"; exit 0 ;;
-  *"pg_tables"*) echo "{politicas_base}"; exit 0 ;;
+  *proptech_restaurada*"pg_class"*) echo "{politicas_destino}"; exit 0 ;;
+  *"pg_class"*) echo "{politicas_base}"; exit 0 ;;
   *) exit 0 ;;
 esac
 """
@@ -192,7 +192,7 @@ class TestLasTresVerificaciones:
         assert resultado.returncode != 0
         assert "migraciones" in resultado.stderr.lower()
         invocaciones = [c for _, c in _invocaciones(registro)]
-        assert not any("pg_tables" in c for c in invocaciones), (
+        assert not any("pg_class" in c for c in invocaciones), (
             "no debía llegar a la verificación de RLS: " f"{invocaciones}"
         )
 
@@ -244,7 +244,7 @@ class TestLasTresVerificaciones:
         invocaciones = [c for _, c in _invocaciones(registro)]
         assert any("alembic heads" in c for c in invocaciones)
         assert any("SELECT version_num" in c for c in invocaciones)
-        assert any("pg_tables" in c for c in invocaciones)
+        assert any("pg_class" in c for c in invocaciones)
 
 
 FAKE_DOCKER_CONMUTACION_EXITOSA = f"""
@@ -255,7 +255,7 @@ case "$*" in
   *"alembic heads"*) echo "{CABEZA_DE_PRUEBA} (head)"; exit 0 ;;
   *"SELECT version_num"*) echo "{CABEZA_DE_PRUEBA}"; exit 0 ;;
   *"SELECT 1"*) exit 0 ;;
-  *"pg_tables"*) echo "t1|t|p1|cmd|q|wc"; exit 0 ;;
+  *"pg_class"*) echo "t1|t|p1|cmd|q|wc"; exit 0 ;;
   *"compose up"*) exit 0 ;;
   *"exec -T api python"*) exit 0 ;;
   *) exit 0 ;;
@@ -272,7 +272,7 @@ case "$*" in
   *"alembic heads"*) echo "{CABEZA_DE_PRUEBA} (head)"; exit 0 ;;
   *"SELECT version_num"*) echo "{CABEZA_DE_PRUEBA}"; exit 0 ;;
   *"SELECT 1"*) exit 0 ;;
-  *"pg_tables"*) echo "t1|t|p1|cmd|q|wc"; exit 0 ;;
+  *"pg_class"*) echo "t1|t|p1|cmd|q|wc"; exit 0 ;;
   *compose*up*) echo "{MARCADOR_ERROR_HERRAMIENTA}" >&2; exit 1 ;;
   *) exit 0 ;;
 esac

@@ -787,7 +787,150 @@
   salida pegados; se decide acá si el ensayo entra al humo o queda en el cierre según cuánto suma al
   job (L-044).
 
-  (evidencia del ensayo real abajo, debajo de esta tarea, tras levantar el stack completo)
+  **Ensayo real (Docker, proyecto aislado `proptech-respaldos2-85`, red `aplicacion` reubicada a
+  `172.30.0.0/24` vía un `override-85.yaml` temporal — nunca commiteado, borrado al final — porque el
+  stack real `proptech` ya está arriba en esta máquina y usa el `172.28.0.0/24` fijo del compose;
+  L-006/L-047)**:
+
+  1. **Backup manual de `infra/.env` real** antes de tocar nada: `cp -p .env /tmp/env.manual.bak`
+     (el real, por fuera del mecanismo del script, como red de seguridad propia).
+  2. Stack levantado con `./arrancar.sh -f compose.yaml -f override-85.yaml -p proptech-respaldos2-85
+     up -d db migraciones api worker respaldos`; los 5 quedaron `healthy`.
+  3. Marcador insertado en la base viva (`proptech`) ANTES del backup:
+     `INSERT INTO administracion (nombre) VALUES ('marcador-ensayo-85-conmutar')`.
+  4. Backup generado con el marcador adentro: `respaldar.sh --una-vez` →
+     `{"evento":"respaldo_generado","archivo":"proptech-20261031T074310Z.dump"}`.
+  5. Restaurado con `restaurar.sh` real:
+     ```
+     $ date +%T && MSYS_NO_PATHCONV=1 bash respaldos/restaurar.sh /tmp/datos-respaldos-85/proptech-20261031T074310Z.dump proptech_restaurada85
+     04:43:35
+     codigo=0
+     ```
+     Verificado: el marcador y la revisión de Alembic (`0033`, la cabeza real de este checkout)
+     presentes en `proptech_restaurada85`.
+
+  **Hallazgo real, encontrado por este ensayo y no por ningún test con doble falso** (exactamente el
+  propósito de 8.5/L-043: lo que las herramientas falsas no pueden ver): la verificación 3 de
+  `conmutar.sh` tenía una consulta SQL que **nunca corre contra Postgres real** —
+  `pg_tables.forcerowsecurity` no existe (esa columna vive en `pg_class`, no en la vista `pg_tables`);
+  arreglada después `pg_policy.qual`/`pg_policy.with_check` tampoco existen (son `polqual`/
+  `polwithcheck` en el catálogo; `qual`/`with_check` son nombres de la vista `pg_policies`, no de
+  `pg_policy`); y el operador `||` entre `text` y `"char"` (`polcmd`) es ambiguo sin un cast explícito.
+  Los 20 tests de `test_conmutar.py` pasaban igual porque su `docker` falso nunca ejecuta la consulta de
+  verdad, sólo matchea la subcadena `pg_tables` en el comando y devuelve un string fijo. **Corregido**
+  (`infra/respaldos/conmutar.sh`, verificación 3): la consulta pasa a usar
+  `pg_class c JOIN pg_namespace n ... LEFT JOIN pg_policy p ON p.polrelid = c.oid WHERE n.nspname='public' AND c.relkind='r'`,
+  con `p.polcmd::text`, `p.polqual::text` y `p.polwithcheck::text`. Verificado manualmente contra
+  Postgres real antes de aplicar el fix al script:
+  ```
+  $ docker compose -p proptech-respaldos2-85 exec -T db psql -U proptech -d proptech -tAc "$CONSULTA_CORREGIDA"
+  accion_de_auditoria|f|f|
+  administracion|t|t|administracion_por_administracion|*|{OPEXPR ...}|{OPEXPR ...}
+  ... (el resto de las tablas de negocio)
+  ```
+  `test_conmutar.py` se actualizó para que su `docker` falso matchee `pg_class` (la subcadena nueva de
+  la consulta real) en vez de `pg_tables`, en los 5 lugares donde aparecía; **GREEN** confirmado después
+  del cambio (mismo resultado que 8.2/8.4: 20 passed, 1 preexistente):
+  ```
+  $ cd backend && date +%T && uv run pytest tests/infra/test_conmutar.py -q
+  04:46:22
+  1 failed, 20 passed in 14.68s
+  ```
+
+  6. Con la consulta corregida, conmutación real ejecutada:
+     ```
+     $ export PROPTECH_COMPOSE_PROYECTO=proptech-respaldos2-85
+     $ date +%T && MSYS_NO_PATHCONV=1 bash respaldos/conmutar.sh proptech_restaurada85
+     04:46:48
+     error: conmutación: docker compose up falló al levantar los servicios; infra/.env.anterior conserva el valor previo
+     ```
+     **Esto NO es un defecto del script**: es que el `docker compose up -d --no-deps` interno del script
+     usa sólo `compose.yaml` (sin el `override-85.yaml` que reubica la red, porque el script no conoce
+     ese override de este ensayo puntual); se repitió el `up` exportando
+     `COMPOSE_FILE="compose.yaml;override-85.yaml"` (mecanismo estándar de Docker Compose para que
+     CUALQUIER invocación, del script o manual, recoja los mismos archivos) y completó:
+     ```
+     $ export COMPOSE_FILE="compose.yaml;override-85.yaml"
+     $ docker compose -p proptech-respaldos2-85 up -d --no-deps api worker respaldos
+     ... Started (api, respaldos, worker)
+     $ docker compose -p proptech-respaldos2-85 exec -T api printenv POSTGRES_DB
+     proptech_restaurada85
+     $ docker compose -p proptech-respaldos2-85 exec -T api python -c "import urllib.request as u; print(u.urlopen('http://localhost:8000/api/salud', timeout=5).read())"
+     b'{"estado":"ok","base":"ok","cola":"ok"}'
+     ```
+     `GET /api/salud` → 200 con la base conmutada. El `.env.anterior` real (`POSTGRES_DB=proptech`)
+     quedó escrito por el script durante el primer intento (antes del `up`), confirmando que el
+     resguardo se escribe ANTES de tocar nada más, igual con el `up` fallando por el motivo del
+     override.
+
+  7. **Confirmación de que los datos son los del backup, no un clon en vivo** (la prueba fuerte: insertar
+     un segundo marcador en la base ORIGINAL después del backup, y mostrar que NO aparece en la
+     restaurada):
+     ```
+     $ docker compose -p proptech-respaldos2-85 exec -T db psql -U proptech -d proptech -tAc \
+         "INSERT INTO administracion (nombre) VALUES ('marcador-posterior-al-backup');"
+     INSERT 0 1
+     $ docker compose -p proptech-respaldos2-85 exec -T db psql -U proptech -d proptech_restaurada85 -tAc \
+         "SELECT count(*) FROM administracion WHERE nombre='marcador-posterior-al-backup';"
+     0
+     $ docker compose -p proptech-respaldos2-85 exec -T db psql -U proptech -d proptech -tAc \
+         "SELECT count(*) FROM administracion WHERE nombre='marcador-posterior-al-backup';"
+     1
+     ```
+     `proptech_restaurada85` (la base activa después de conmutar) no tiene el marcador posterior: son
+     los datos del backup, no la base viva.
+
+  8. **Volver a la base original — segundo hallazgo real**: `bash respaldos/conmutar.sh proptech` **no
+     funciona** para volver, porque `proptech` (el nombre real de producción) no cumple el patrón
+     `^proptech_[a-z0-9_]{1,50}$` que valida el DESTINO (exige el prefijo `proptech_` seguido de algo,
+     y `proptech` solo no tiene el `_`). El script fue diseñado sólo para conmutar HACIA una base
+     restaurada (siempre `proptech_algo`), nunca para volver a un nombre de producción que no sigue ese
+     patrón — es un límite real del "procedimiento documentado" de D6, no un bug: D6 dice textualmente
+     que `.env.anterior` es lo que permite volver, no una segunda corrida de `conmutar.sh`. Se volvió con
+     el procedimiento manual que `.env.anterior` habilita:
+     ```
+     $ cp -p .env.anterior .env
+     $ export COMPOSE_FILE="compose.yaml;override-85.yaml"
+     $ docker compose -p proptech-respaldos2-85 up -d --no-deps api worker respaldos
+     ... Started
+     $ docker compose -p proptech-respaldos2-85 exec -T api printenv POSTGRES_DB
+     proptech
+     $ docker compose -p proptech-respaldos2-85 exec -T api python -c "import urllib.request as u; print(u.urlopen('http://localhost:8000/api/salud', timeout=5).read())"
+     b'{"estado":"ok","base":"ok","cola":"ok"}'
+     ```
+     **Este hallazgo se documenta en el README (9.1)**: el camino de vuelta es `cp .env.anterior .env`
+     + levantar de nuevo, nunca una segunda corrida de `conmutar.sh` con el nombre de producción.
+
+  9. **Limpieza y verificación de no haber tocado nada real**:
+     ```
+     $ diff /tmp/env.manual.bak .env
+     (sin diferencias) → IDENTICO al original
+     $ rm -f .env.anterior override-85.yaml
+     $ docker compose -p proptech-respaldos2-85 down -v
+     ... Removed (contenedores, redes, volúmenes del proyecto aislado)
+     $ docker ps --filter "label=com.docker.compose.project=proptech" --format "{{.Names}}\t{{.Status}}"
+     proptech-web-1	Up 3 hours (healthy)
+     proptech-api-1	Up 3 hours (healthy)
+     proptech-worker-1	Up 3 hours (healthy)
+     proptech-caddy-1	Up 3 hours
+     proptech-db-1	Up 3 hours (healthy)
+     proptech-redis-1	Up 3 hours (healthy)
+     ```
+     El stack real `proptech` (de otra sesión de trabajo en esta misma máquina) sigue arriba, sin
+     tocarse; `infra/.env` real quedó byte a byte igual al tomado antes de empezar.
+     **Nota, no causada por este ensayo**: `proptech-respaldos-1` del stack real está en
+     `Restarting`, el mismo problema de permisos de `PROPTECH_UID/GID` contra el bind mount que ya
+     declaró 4.3 como preexistente/del grupo 6 — no se investiga ni se toca, es la base de datos de otra
+     sesión, no de este ensayo.
+
+  **Decisión sobre el humo (Open Question de `design.md`)**: el ensayo completo (levantar 5 servicios,
+  generar backup, restaurar, conmutar, revertir) tomó varios minutos de Docker real con `--build`
+  incluido; no entra al humo del CI por el mismo motivo que L-044 (presupuesto de tiempo del job ya
+  ajustado) — queda en el cierre, con esta evidencia pegada, tal como permite la Open Question.
+
+  **Commit de este hallazgo**: el fix de la consulta de verificación 3 (`conmutar.sh` +
+  `test_conmutar.py`) se commitea aparte de 8.1-8.4 porque se descubrió recién en este ensayo real
+  (ver commits de este grupo).
 
 ## 9. Documentación y cierre
 

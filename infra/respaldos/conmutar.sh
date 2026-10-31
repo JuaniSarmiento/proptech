@@ -84,7 +84,7 @@ fi
 # alguna vez) en vez de contra una lista fija de tablas escrita a mano: así
 # el chequeo no queda viejo cuando un change futuro agregue una tabla de
 # negocio nueva.
-consulta_rls="SELECT t.tablename, t.rowsecurity, t.forcerowsecurity, coalesce(string_agg(p.polname || '|' || p.polcmd || '|' || coalesce(p.qual::text,'') || '|' || coalesce(p.with_check::text,''), ';' ORDER BY p.polname), '') FROM pg_tables t LEFT JOIN pg_policy p ON p.polrelid = (quote_ident(t.schemaname)||'.'||quote_ident(t.tablename))::regclass WHERE t.schemaname='public' GROUP BY 1,2,3 ORDER BY 1"
+consulta_rls="SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity, coalesce(string_agg(p.polname || '|' || p.polcmd::text || '|' || coalesce(p.polqual::text,'') || '|' || coalesce(p.polwithcheck::text,''), ';' ORDER BY p.polname), '') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_policy p ON p.polrelid = c.oid WHERE n.nspname='public' AND c.relkind='r' GROUP BY c.relname, c.relrowsecurity, c.relforcerowsecurity ORDER BY 1"
 
 politicas_base_en_uso="$(psql_en "$base_en_uso" "$consulta_rls" 2>/dev/null)" \
   || error_salir "verificación 3 (seguridad de filas): no se pudo leer la base en uso"
