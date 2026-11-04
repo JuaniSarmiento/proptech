@@ -13,10 +13,15 @@ tiene lo que estos casos de uso necesitan (D1 del design de
 `acceso-de-desarrollo`).
 
 Comparación de idempotencia (datos-semilla, "Carga del edificio de ejemplo en
-la base"): sólo lo que sale de la semilla -- unidades, grupos y estado de
-migración --, nunca la configuración versionada ni las categorías, que vienen
-de `parametros.yaml` (D-042): esas dos cambian con el archivo sin que eso
-cuente como "el ejemplo cambió".
+la base"): el edificio que se llama como dice la semilla, con lo que sale de
+ella -- unidades, grupos y estado de migración -- y el super admin del ejemplo --
+su nombre, su email y que siga con esa asignación --. Nunca la configuración
+versionada ni las categorías, que vienen de `parametros.yaml` (D-042): esas dos
+cambian con el archivo sin que eso cuente como "el ejemplo cambió". Tampoco otros
+edificios, otras personas ni el vínculo con una cuenta de Clerk.
+
+Cada error del comando sale con su mensaje y su código, sin traceback (`_main`): la
+tabla de códigos está en el spec `datos-semilla` y en el README.
 """
 
 from __future__ import annotations
@@ -31,14 +36,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import NoReturn
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from proptech_core.acceso.aplicacion.alta_inicial import crear_administracion_y_super_admin
+from proptech_core.acceso.aplicacion.usuarios import listar_personal
 from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
     ADMINISTRACION_EJEMPLO_ID as ADMINISTRACION_EJEMPLO_ID,
 )
@@ -51,6 +58,8 @@ from proptech_core.acceso.aplicacion.vinculacion_de_desarrollo import (
 )
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.base_de_datos import (
+    RolDeAplicacionInseguro,
+    TablasDeSoloAgregarDesprotegidas,
     abrir_sesion,
     crear_engine,
     crear_fabrica_de_sesiones,
@@ -59,10 +68,11 @@ from proptech_core.compartido.base_de_datos import (
     verificar_rol_de_aplicacion_seguro,
     verificar_tablas_de_solo_agregar,
 )
-from proptech_core.compartido.configuracion import Configuracion
-from proptech_core.compartido.georef import Georef, leer_georef
-from proptech_core.compartido.parametros import Parametros, leer_parametros
-from proptech_core.compartido.semilla import Semilla, leer_semilla
+from proptech_core.compartido.configuracion import ConfiguracionDelEjemplo, ConfiguracionInvalida
+from proptech_core.compartido.georef import Georef, GeorefInvalido, leer_georef
+from proptech_core.compartido.parametros import Parametros, ParametrosInvalidos, leer_parametros
+from proptech_core.compartido.semilla import Semilla, SemillaInvalida, leer_semilla
+from proptech_core.complejos.aplicacion.errores import EntradaInvalida
 from proptech_core.complejos.aplicacion.escritura import (
     confirmar_sin_saldos_previos,
     crear_edificio,
@@ -79,24 +89,47 @@ EMAIL_SUPER_ADMIN_EJEMPLO = "super-admin@ejemplo.proptech.invalid"
 #: que el entorno diga explícitamente que es una máquina de desarrollo.
 ENTORNO_DE_DESARROLLO = "desarrollo"
 
+# Códigos de salida (spec `datos-semilla`, D4 y D10 de `ejemplo-robusto`). El 1 es sólo de
+# la guarda (D-112), por eso `_main` no deja escapar `Exception`: Python también usa 1 para
+# una excepción sin capturar. Tampoco `KeyboardInterrupt`, que dejaría un traceback: sale con
+# 130 (D10). `argparse` sale por su `SystemExit`, con el 2 de `_Parser` o el 0 de `--help`.
+# Están en la tabla del README.
+CODIGO_FUERA_DE_DESARROLLO = 1
+CODIGO_USO = 2
+CODIGO_CONFIGURACION = 3
+CODIGO_BASE_INSEGURA = 4
+CODIGO_BASE_NO_DISPONIBLE = 5
+CODIGO_EJEMPLO_DISTINTO = 6
+CODIGO_VINCULACION_RECHAZADA = 7
+CODIGO_CARGA_INCOMPLETA = 8
+CODIGO_INESPERADO = 9
+CODIGO_INTERRUMPIDO = 130
 
-def _ruta_georef_por_defecto(configuracion: Configuracion | None = None) -> Path:
-    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
-    return base / "georef"
+_ARCHIVO_ILEGIBLE = "no se puede leer el archivo: "
 
 
-def _ruta_semilla_por_defecto(configuracion: Configuracion | None = None) -> Path:
+def _ruta_georef_por_defecto(configuracion: ConfiguracionDelEjemplo) -> Path:
+    return Path(configuracion.proptech_parametros).resolve().parent / "georef"
+
+
+def _ruta_semilla_por_defecto(configuracion: ConfiguracionDelEjemplo) -> Path:
     """Relativa a `PROPTECH_PARAMETROS` (D-042), nunca calculada por la
     profundidad del archivo: esa cuenta difiere entre la corrida local (bajo
     `backend/`) y la imagen de Docker (`/app/src/...`), que no tienen el
     mismo número de carpetas hasta la raíz del repo."""
-    base = Path((configuracion or Configuracion()).proptech_parametros).resolve().parent
+    base = Path(configuracion.proptech_parametros).resolve().parent
     return base / "semilla" / "edificio-ejemplo.yaml"
 
 
 class EjemploDistinto(Exception):
     """El ejemplo ya está en la base pero distinto al de la semilla: no se
     escribió nada (datos-semilla, "El ejemplo cambió en la base")."""
+
+
+class EsperaAgotada(Exception):
+    """La administración de ejemplo existe sin edificio y ninguno apareció
+    durante la espera (datos-semilla, "La administración de ejemplo quedó sin
+    edificio"). No se escribió nada."""
 
 
 @dataclass(frozen=True)
@@ -196,7 +229,7 @@ def _crear_desde_cero(
     elif semilla.edificio.estado_migracion == "confirmada":
         # Sin caso de uso propio todavía (llega con la liquidación, changes 4
         # a 7): la semilla del repositorio no usa este estado hoy.
-        raise NotImplementedError("estado_migracion=confirmada: sin caso de uso todavía")
+        raise EntradaInvalida("estado_migracion", "confirmada: sin caso de uso todavía")
 
     return complejo_id
 
@@ -235,13 +268,15 @@ def _comparar_o_fallar(sesion: Session, complejo_id: UUID, semilla: Semilla) -> 
     else:
         for identificador, unidad in esperadas.items():
             fila = existentes[identificador]
-            if (
-                fila["tipo"] != unidad.tipo
-                or fila["piso"] != unidad.piso
-                or Decimal(fila["coeficiente"]) != unidad.coeficiente
-                or Decimal(fila["superficie_m2"]) != unidad.superficie_m2.decimal
+            # D9: un mensaje por campo, sin valores.
+            for campo, distinto in (
+                ("tipo", fila["tipo"] != unidad.tipo),
+                ("piso", fila["piso"] != unidad.piso),
+                ("coeficiente", Decimal(fila["coeficiente"]) != unidad.coeficiente),
+                ("superficie_m2", Decimal(fila["superficie_m2"]) != unidad.superficie_m2.decimal),
             ):
-                diferencias.append(f"unidades[{identificador}]: difiere de la semilla")
+                if distinto:
+                    diferencias.append(f"unidades[{identificador}].{campo}: difiere de la semilla")
 
     filas_grupo = (
         sesion.execute(
@@ -304,8 +339,49 @@ def _comparar_o_fallar(sesion: Session, complejo_id: UUID, semilla: Semilla) -> 
                         "difiere de la semilla"
                     )
 
+    diferencias.extend(_diferencias_del_super_admin(sesion))
+
     if diferencias:
         raise EjemploDistinto("; ".join(diferencias))
+
+
+def _diferencias_del_super_admin(sesion: Session) -> list[str]:
+    """D3 de `ejemplo-robusto`: la persona se lee por `acceso.aplicacion`, sin SQL
+    propio sobre sus tablas (D-133). Basta con que tenga una asignación de
+    `super_admin`: asignaciones de más, otras personas o una cuenta vinculada no
+    son "el ejemplo cambió". Los mensajes nombran el dato, nunca su valor."""
+    super_admin = next(
+        (
+            persona
+            for persona in listar_personal(sesion)
+            if persona["persona_id"] == str(PERSONA_SUPER_ADMIN_EJEMPLO_ID)
+        ),
+        None,
+    )
+    if super_admin is None:
+        return ["persona: no está el super admin del ejemplo"]
+    diferencias: list[str] = []
+    if super_admin["nombre"] != NOMBRE_SUPER_ADMIN_EJEMPLO:
+        diferencias.append("persona.nombre: difiere del ejemplo")
+    if super_admin["email"] != EMAIL_SUPER_ADMIN_EJEMPLO:
+        diferencias.append("persona.email: difiere del ejemplo")
+    if not any(asignacion["rol"] == "super_admin" for asignacion in super_admin["asignaciones"]):
+        diferencias.append("persona.asignaciones: perdió la de super_admin")
+    return diferencias
+
+
+def _edificio_del_ejemplo(edificios: list[tuple[UUID, str]], semilla: Semilla) -> UUID:
+    """D2 de `ejemplo-robusto`: el edificio del ejemplo es el que se llama como dice
+    la semilla, con cualquier otro al lado. `complejo` no tiene unicidad por nombre
+    ni fecha de creación, y su `id` es aleatorio: sin un nombre que coincida una sola
+    vez no hay forma de saber cuál es, y eso ya es "el ejemplo cambió"."""
+    coinciden = [id_ for id_, nombre in edificios if nombre == semilla.edificio.nombre]
+    if len(coinciden) != 1:
+        raise EjemploDistinto(
+            f"edificio.nombre: hay {len(coinciden)} edificios con el nombre de la semilla "
+            "y se esperaba uno"
+        )
+    return coinciden[0]
 
 
 def cargar(
@@ -361,12 +437,15 @@ def cargar(
                     ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=True, vinculacion=vinculacion
                 )
 
-            complejo = sesion.execute(
-                text("SELECT id FROM complejo WHERE administracion_id=:admin LIMIT 1"),
+            edificios = sesion.execute(
+                text("SELECT id, nombre FROM complejo WHERE administracion_id=:admin"),
                 {"admin": ADMINISTRACION_EJEMPLO_ID},
-            ).first()
-            if complejo is not None:
-                _comparar_o_fallar(sesion, complejo.id, semilla)
+            ).all()
+            if edificios:
+                complejo_id = _edificio_del_ejemplo(
+                    [(fila.id, fila.nombre) for fila in edificios], semilla
+                )
+                _comparar_o_fallar(sesion, complejo_id, semilla)
                 vinculacion = (
                     vincular(
                         sesion,
@@ -378,15 +457,18 @@ def cargar(
                     else None
                 )
                 return ResultadoCarga(
-                    ADMINISTRACION_EJEMPLO_ID, complejo.id, hizo_algo=False, vinculacion=vinculacion
+                    ADMINISTRACION_EJEMPLO_ID, complejo_id, hizo_algo=False, vinculacion=vinculacion
                 )
-            # Otra corrida ganó la carrera de `administracion` pero todavía no
-            # terminó de cargar el edificio: esperar a que confirme, con una
+            # La administración existe y no tiene edificios. Una corrida en
+            # paralelo no llega acá: el `ON CONFLICT` de arriba espera a que la
+            # otra confirme, y toda la carga va en una transacción. Es un estado
+            # que quedó de otra forma, así que se mira de nuevo un rato, con una
             # sesión nueva (la actual ya leyó un estado que puede quedar
-            # obsoleto).
+            # obsoleto), y se avisa lo que se ve.
         time.sleep(espera_s)
-    raise RuntimeError(
-        "la carga del ejemplo no terminó a tiempo: otra corrida en paralelo no confirmó"
+    raise EsperaAgotada(
+        "la administración de ejemplo existe sin edificio y no apareció ninguno durante la "
+        "espera; no se escribió nada"
     )
 
 
@@ -414,15 +496,27 @@ def _emisor_de_desarrollo(emisor: str | None) -> str | None:
         return None
 
 
-def _main(argv: list[str]) -> int:
+def _fallar(codigo: int, mensaje: str) -> int:
+    print(mensaje, file=sys.stderr)
+    return codigo
+
+
+class _Parser(argparse.ArgumentParser):
+    """argparse repite en sus errores lo que se tipeó mal (`invalid choice`,
+    `unrecognized arguments`), y eso puede ser el id de la cuenta (B-2, spec de los
+    códigos): el mensaje es siempre el mismo, sin el valor."""
+
+    def error(self, message: str) -> NoReturn:
+        self.print_usage(sys.stderr)
+        self.exit(CODIGO_USO, "argumentos no reconocidos; no se escribió nada\n")
+
+
+def _leer_argumentos(argv: list[str]) -> argparse.Namespace:
     # B-2 (rompedor, vuelta 1): `allow_abbrev=False` en los dos parsers para
     # que `--clerk` no se acepte como abreviatura de `--clerk-usuario`, y
-    # `parse_known_args` en vez de `parse_args` para no dejar que argparse
-    # arme su propio mensaje de `unrecognized arguments`, que repite tal
-    # cual cualquier valor del usuario (el id de Clerk incluido).
-    parser = argparse.ArgumentParser(
-        description="Comando del edificio de ejemplo", allow_abbrev=False
-    )
+    # `parse_known_args` en vez de `parse_args` para que lo que sobra termine en
+    # `_Parser.error`, sin repetir ningún valor del usuario.
+    parser = _Parser(description="Comando del edificio de ejemplo", allow_abbrev=False)
     subparsers = parser.add_subparsers(dest="accion", required=True)
     cargar_parser = subparsers.add_parser(
         "cargar", help="Carga el edificio de ejemplo en la base", allow_abbrev=False
@@ -431,42 +525,63 @@ def _main(argv: list[str]) -> int:
     cargar_parser.add_argument("--clerk-usuario", default=None)
     args, no_reconocidos = parser.parse_known_args(argv)
     if no_reconocidos:
-        parser.error("argumentos no reconocidos; no se escribió nada")
+        parser.error("argumentos no reconocidos")
+    return args
 
+
+def _sin_la_ruta_del_archivo(mensaje: str, ruta_semilla: str, ruta_parametros: str) -> str:
+    """D4: el lector de archivos repite la ruta, y `--semilla` es algo que se tipeó, que
+    puede ser el id de la cuenta. Se saca sólo si el mensaje entero es ése: dentro de otro
+    texto, una ruta corta como `e` se come las letras del mensaje. Georef ya nombra sólo
+    el archivo (L-007)."""
+    if mensaje == f"{_ARCHIVO_ILEGIBLE}{ruta_semilla}":
+        return f"{_ARCHIVO_ILEGIBLE}<semilla>"
+    if mensaje == f"{_ARCHIVO_ILEGIBLE}{ruta_parametros}":
+        return f"{_ARCHIVO_ILEGIBLE}<parámetros>"
+    return mensaje
+
+
+def _ejecutar(args: argparse.Namespace) -> int:
+    """El orden es parte del contrato (D4). `argparse` corre antes, en `_leer_argumentos`: un
+    error de uso da 2 y `--help` da 0 en cualquier entorno, sin correr el comando ni
+    conectarse. Después van la guarda, `--semilla` vacío, id, emisor, configuración, archivos,
+    base y carga. La guarda va primero porque D-112 fija su código aunque no haya ninguna
+    otra variable (RV-1)."""
     if os.environ.get("PROPTECH_ENTORNO") != ENTORNO_DE_DESARROLLO:
-        print(
+        return _fallar(
+            CODIGO_FUERA_DE_DESARROLLO,
             "este comando es sólo para desarrollo: no corre sin "
             f"PROPTECH_ENTORNO={ENTORNO_DE_DESARROLLO}; no se escribió nada",
-            file=sys.stderr,
         )
-        return 1
 
-    emisor_normalizado = None
+    if args.semilla == "":
+        return _fallar(CODIGO_USO, "--semilla no puede estar vacío; no se escribió nada")
+
     if args.clerk_usuario is not None:
         if re.fullmatch(r"user_[A-Za-z0-9]{1,64}", args.clerk_usuario, flags=re.ASCII) is None:
-            print(
-                "el id de cuenta no tiene el formato permitido; no se escribió nada",
-                file=sys.stderr,
+            return _fallar(
+                CODIGO_USO, "el id de cuenta no tiene el formato permitido; no se escribió nada"
             )
-            return 1
-        emisor_normalizado = _emisor_de_desarrollo(os.environ.get("CLERK_EMISOR"))
-        if emisor_normalizado is None:
-            print(
+        if _emisor_de_desarrollo(os.environ.get("CLERK_EMISOR")) is None:
+            return _fallar(
+                CODIGO_CONFIGURACION,
                 "la vinculación exige una instancia de Clerk de desarrollo; no se escribió nada",
-                file=sys.stderr,
             )
-            return 1
 
-    configuracion = Configuracion(clerk_emisor=emisor_normalizado)
-    parametros = leer_parametros(configuracion.proptech_parametros)
     try:
+        configuracion = ConfiguracionDelEjemplo()
+    except ConfiguracionInvalida as error:
+        return _fallar(CODIGO_CONFIGURACION, str(error))
+    ruta_semilla = args.semilla or str(_ruta_semilla_por_defecto(configuracion))
+    try:
+        parametros = leer_parametros(configuracion.proptech_parametros)
         georef = leer_georef(str(_ruta_georef_por_defecto(configuracion)))
-        semilla = leer_semilla(
-            args.semilla or str(_ruta_semilla_por_defecto(configuracion)), parametros, georef
+        semilla = leer_semilla(ruta_semilla, parametros, georef)
+    except (ParametrosInvalidos, GeorefInvalido, SemillaInvalida) as error:
+        return _fallar(
+            CODIGO_CONFIGURACION,
+            _sin_la_ruta_del_archivo(str(error), ruta_semilla, configuracion.proptech_parametros),
         )
-    except Exception as error:  # SemillaInvalida, ParametrosInvalidos o GeorefInvalido
-        print(str(error), file=sys.stderr)
-        return 1
 
     engine = crear_engine(configuracion)
     try:
@@ -475,21 +590,14 @@ def _main(argv: list[str]) -> int:
         fabrica = crear_fabrica_de_sesiones(engine)
         registrar_tenant_por_administracion(fabrica)
         registrar_reset_del_tenant_al_devolver(engine)
-        try:
-            resultado = cargar(
-                fabrica,
-                parametros=parametros,
-                semilla=semilla,
-                georef=georef,
-                request_id=uuid4(),
-                clerk_usuario=args.clerk_usuario,
-            )
-        except (EjemploDistinto, VinculacionDeDesarrolloNoDisponible) as error:
-            print(str(error), file=sys.stderr)
-            return 1
-        except IntegrityError:
-            print("no se pudo completar la carga; no se escribió nada", file=sys.stderr)
-            return 1
+        resultado = cargar(
+            fabrica,
+            parametros=parametros,
+            semilla=semilla,
+            georef=georef,
+            request_id=uuid4(),
+            clerk_usuario=args.clerk_usuario,
+        )
         if resultado.vinculacion is not None:
             print(resultado.vinculacion)
         if resultado.hizo_algo:
@@ -497,8 +605,59 @@ def _main(argv: list[str]) -> int:
         else:
             print(f"el ejemplo ya estaba: {resultado.administracion_id}")
         return 0
+    except RolDeAplicacionInseguro:
+        return _fallar(
+            CODIGO_BASE_INSEGURA,
+            "el rol de la aplicación no es seguro para este comando: tiene privilegios de "
+            "más; no se escribió nada",
+        )
+    except TablasDeSoloAgregarDesprotegidas as error:
+        # D4: su texto sólo trae cada tabla y un motivo fijo (`verificar_tablas_de_solo_agregar`),
+        # y la tabla es lo que hay que ir a arreglar.
+        return _fallar(
+            CODIGO_BASE_INSEGURA,
+            f"la base no es segura para este comando: {error}; no se escribió nada",
+        )
+    except OperationalError:
+        return _fallar(
+            CODIGO_BASE_NO_DISPONIBLE,
+            "la base no está disponible: no se pudo conectar o se cortó la conexión",
+        )
+    except EjemploDistinto as error:
+        return _fallar(CODIGO_EJEMPLO_DISTINTO, str(error))
+    except VinculacionDeDesarrolloNoDisponible as error:
+        return _fallar(CODIGO_VINCULACION_RECHAZADA, str(error))
+    except EsperaAgotada as error:
+        return _fallar(CODIGO_CARGA_INCOMPLETA, str(error))
+    except EntradaInvalida as error:
+        # D10: sólo su `campo`, porque el `motivo` no llega nunca al cliente.
+        return _fallar(
+            CODIGO_CONFIGURACION,
+            f"la semilla o los parámetros no se pueden cargar: {error.campo}; no se escribió nada",
+        )
+    except DBAPIError:
+        # También `IntegrityError`. Texto fijo: `str(error)` trae la sentencia y los
+        # parámetros del driver.
+        return _fallar(
+            CODIGO_CARGA_INCOMPLETA, "no se pudo completar la carga; no se escribió nada"
+        )
     finally:
         engine.dispose()
+
+
+def _main(argv: list[str]) -> int:
+    try:
+        return _ejecutar(_leer_argumentos(argv))
+    except KeyboardInterrupt:
+        # D10: no dice "no se escribió nada", porque puede llegar después del commit.
+        return _fallar(
+            CODIGO_INTERRUMPIDO,
+            "interrumpido: una carga a medias no queda, porque toda la carga va en una transacción",
+        )
+    except Exception as error:
+        # D4: lo que ninguna familia contempla sale con su tipo y nada más, porque su
+        # texto puede repetir datos. Para depurarlo se llama a `cargar()` desde un test.
+        return _fallar(CODIGO_INESPERADO, f"error inesperado: {type(error).__name__}")
 
 
 def main() -> None:

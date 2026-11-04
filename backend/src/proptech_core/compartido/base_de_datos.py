@@ -2,13 +2,12 @@
 
 import uuid
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy import Engine, MetaData, create_engine, event, text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import URL, Connection
 from sqlalchemy.orm import DeclarativeBase, Session, SessionTransaction, sessionmaker
 
-from proptech_core.compartido.configuracion import Configuracion
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.compartido.tablas_protegidas import TABLAS_DE_SOLO_AGREGAR
 
@@ -34,8 +33,21 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=_NAMING_CONVENTION)
 
 
+class ConfiguracionDeEngine(Protocol):
+    """Lo que `crear_engine` lee de una configuración: la cumplen `Configuracion` (la
+    API y el worker) y `ConfiguracionDelEjemplo` (D5 de `ejemplo-robusto`)."""
+
+    db_pool_pre_ping: bool
+    db_pool_size: int
+    db_pool_recycle_s: int
+    db_pool_timeout_s: int
+    db_connect_timeout_s: int
+
+    def url_sqlalchemy(self) -> URL: ...
+
+
 def crear_engine(
-    configuracion: Configuracion, connect_args: dict[str, object] | None = None
+    configuracion: ConfiguracionDeEngine, connect_args: dict[str, object] | None = None
 ) -> Engine:
     """Crea el engine sincrónico a partir de la configuración.
 

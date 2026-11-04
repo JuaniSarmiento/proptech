@@ -155,6 +155,11 @@ mercado de arranque es **Mendoza**.
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
   `ejemplo-robusto` (Giuliano), C-28 `revisiones-independientes` (Juan Cruz) y C-29 `base-y-rls`
   (CRITICAL, sin asignar). Quien recién se suma toma sólo LOW o MEDIUM.
+- **Cambio 3f `ejemplo-robusto` archivado** (C-27, 04/11/2026, LOW, D-145): el comando del edificio de
+  ejemplo identifica el edificio por nombre, compara al super admin, corre sin Redis y sale con un
+  mensaje y un código propios por familia de error (0 a 9 y 130), sin traceback. Construyó Giuliano con
+  el flujo de cinco roles; auditor APROBADO con el CI verde del PR #7 (sin mergear al archivar). Deuda
+  DE-1 a DE-12 en la ficha 3f de `knowledge-base/12_fichas_de_changes.md`.
 - **6c `pantallas-de-gastos`** (C-30, MEDIUM, D-144, 31/10/2026): las pantallas de HU-A3 y HU-A3b sobre
   la API del 6, de Juan Cruz, por proponer; cierra D12 del 6. Juan Cruz hace C-28 después del 6c, y el
   bloque del libro de C-28 pasa al rompedor del 4c.
@@ -282,12 +287,12 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11), 2d
   `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
   D-139, PR #3, sin migraciones) y 6 `gastos-y-cargos` (30/10/2026, D-140 a D-142, PR #4, migraciones
-  `0029` a `0033`).
+  `0029` a `0033`) y 3f `ejemplo-robusto` (04/11/2026, D-145, PR #7, sin migraciones).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29, uno por
-  desarrollador; tabla en `CHANGES.md`.
+- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-27
+  (archivado), uno por desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
