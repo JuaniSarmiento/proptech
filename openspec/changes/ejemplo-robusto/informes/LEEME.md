@@ -14,6 +14,7 @@
 | `verify-1-auditor.md` | auditor, verify 1: **BLOQUEANTES** (B1, B2) | subagente nativo `role-auditor`, Claude Opus 5.5 | Claude | hash del diff `6dd4630f` |
 | `verify-2-breaker.md` | rompedor, verify 2, acotado al grupo 9: F10, F11 (mutantes), O6, O7, S5 | subagente nativo `role-breaker`, Claude Opus 5.5 | Claude | commit `7110aac` |
 | `apply-4-constructor.md` | constructor, intento 4: grupo 10 (F10, F11, O7) | subagente nativo `role-constructor`, Claude Opus 5.5 | Claude | `7110aac` más el árbol, diff `26b9a96b` |
+| `verify-3-breaker.md` | rompedor, verify 3: F10 y F11 cerrados, sin fallas nuevas | subagente nativo `role-breaker`, Claude Opus 5.5 | Claude | commit `5fd45c0` |
 
 ## Faltan
 
@@ -33,4 +34,5 @@
 - Constructor, intento 3, segundo agente (subagente nativo `role-constructor`, familia Claude, sin sustitución): agente nuevo, despachado el 03/11/2026 a pedido de Giuliano, porque el primero del intento 3 fue detenido y no se pudo retomar. Recibió el grupo 9, el plan corregido, los informes del rompedor y de la revisión 3, el estado del árbol (`bb902f98...`), la decisión de Giuliano sobre tests mínimos y sin segunda vuelta de rompedor, y los límites. Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Rompedor, verify 2 (subagente nativo `role-breaker`, familia Claude, sin sustitución): despachado el 03/11/2026 por decisión de Giuliano, acotado al grupo 9 (delta `22bb0402` a `6dd4630f`, commit `7110aac`) y sus consumidores. Recibió las tareas 9.1 a 9.5, los informes del rompedor 1, de la revisión 3 y del constructor 3, el B1 del auditor y los límites. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Constructor, intento 4 (subagente nativo `role-constructor`, familia Claude, sin sustitución): despachado el 03/11/2026 con el grupo 10 (F10, F11, O7), los mutantes B4 y B7 del rompedor y los límites. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
+- Rompedor, verify 3 (subagente nativo `role-breaker`, familia Claude, sin sustitución): despachado el 03/11/2026, confirmación acotada a los dos tests del grupo 10 sobre `5fd45c0`. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Auditor, verify 1 (subagente nativo `role-auditor`, familia Claude, sin sustitución): despachado el 03/11/2026 sobre `6dd4630f...`, con todos los informes originales, el plan, la decisión de Giuliano de no repetir el rompedor ni correr la suite, y los huecos declarados. Sin acceso a `.git/informes-*` ni a `infra/.env`.
