@@ -1,7 +1,9 @@
 """D3: los cuatro consumidores frenan antes de operar con tablas sin proteger."""
 
 import asyncio
+import contextlib
 import importlib
+import io
 import os
 import sys
 from typing import Any
@@ -80,6 +82,23 @@ def test_cada_proceso_frena(
 
         monkeypatch.setattr(logger, "error", registrar_error)
     try:
+        if consumidor == "ejemplo":
+            # D4 de `ejemplo-robusto`: el comando no deja escapar la excepción, termina
+            # con su código y nombra la tabla. El doble de `cargar` es para que, si no
+            # frena, el rojo sea el código 0 y no un ejemplo escrito en la base compartida.
+            from proptech_core.complejos.aplicacion import ejemplo
+
+            monkeypatch.setattr(
+                ejemplo,
+                "cargar",
+                lambda *a, **kw: ejemplo.ResultadoCarga(uuid4(), uuid4(), False),
+            )
+            errores = io.StringIO()
+            with contextlib.redirect_stderr(errores):
+                codigo = ejemplo._main(["cargar"])
+            assert codigo == 4
+            assert tabla in errores.getvalue()
+            return
         with pytest.raises(TablasDeSoloAgregarDesprotegidas, match=tabla):
             if consumidor == "api":
                 with TestClient(crear_app()):
@@ -115,15 +134,6 @@ def test_cada_proceso_frena(
                     ],
                 )
                 alta_inicial.main()
-            else:
-                from proptech_core.complejos.aplicacion import ejemplo
-
-                monkeypatch.setattr(
-                    ejemplo,
-                    "cargar",
-                    lambda *a, **kw: ejemplo.ResultadoCarga(uuid4(), uuid4(), False),
-                )
-                ejemplo._main(["cargar"])
         if consumidor in {"api", "worker"}:
             assert len(registros) == 1
             assert registros[0]["evento"] == "arranque_fallido"
