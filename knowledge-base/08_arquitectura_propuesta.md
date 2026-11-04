@@ -86,7 +86,9 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   existe**: lo descartó D11 del 2b, y en desarrollo se entra por el login real con Clerk de desarrollo.
   Para recorrer las pantallas con datos, `acceso-de-desarrollo` (D-110) carga el edificio de ejemplo
   con un comando que corre como `proptech_app` (el camino de "alta inicial", D10 del 2b), sin `GRANT`
-  nuevo y sólo con `PROPTECH_ENTORNO=desarrollo`; no hay `backend/desarrollo/` ni compose propio.
+  nuevo y sólo con `PROPTECH_ENTORNO=desarrollo`; no hay `backend/desarrollo/` ni compose propio. Desde
+  el 3f (C-27, D-145) ese comando no necesita Redis (lee su propia configuración,
+  `ConfiguracionDelEjemplo`) y termina cada familia de error con su código de salida, sin traceback.
 - **Un cliente y un mapa de errores** (D2): `web/src/lib/api/` traduce cada respuesta de la API a una
   unión discriminada (`ok`, `sin_sesion`, `sin_permiso`, `no_existe`, `conflicto`, `invalido`,
   `fallo`); ningún texto que viene de la API llega tal cual a la pantalla (L-007), y los valores de
