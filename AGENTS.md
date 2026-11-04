@@ -155,6 +155,9 @@ mercado de arranque es **Mendoza**.
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
   `ejemplo-robusto` (Giuliano), C-28 `revisiones-independientes` (Juan Cruz) y C-29 `base-y-rls`
   (CRITICAL, sin asignar). Quien recién se suma toma sólo LOW o MEDIUM.
+- **6c `pantallas-de-gastos`** (C-30, MEDIUM, D-144, 31/10/2026): las pantallas de HU-A3 y HU-A3b sobre
+  la API del 6, de Juan Cruz, por proponer; cierra D12 del 6. Juan Cruz hace C-28 después del 6c, y el
+  bloque del libro de C-28 pasa al rompedor del 4c.
 - **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL, por proponer; lo construye un
   firmante de D-111) en el camino crítico; los siete de deuda adelantada en paralelo; después 4d
   `cambio-de-titular` (CRITICAL).

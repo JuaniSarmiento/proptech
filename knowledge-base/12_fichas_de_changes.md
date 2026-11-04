@@ -952,7 +952,7 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 
 | Deuda | Qué falta | Cambio |
 |---|---|---|
-| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | Las pantallas de HU-A3/HU-A3b, todavía sin change ni nombre (D-140) |
+| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | **6c** `pantallas-de-gastos` (C-30, D-144) |
 | El puerto `es_periodo_emitido` (D8) no tiene adaptador real: hoy ningún período puede estar "emitido" porque `liquidacion` no existe, así que `periodo_de_imputacion` nunca se mueve de `periodo` | Construir el adaptador real contra el estado de emisión del libro y pasarlo a `aprobar_gasto` | **7** (`liquidacion-y-emision`), primer módulo que sabe qué período está emitido |
 | `tests/unitarios/test_umbral_parametros.py::test_umbral_cero` falla en la suite completa de este cierre (no lo toca ningún archivo de este change): `yaml.safe_dump` sin `allow_unicode=True` corrompe un nombre con tilde de `estados_de_unidad` en Windows | Revisar el test o forzar `allow_unicode=True` al volver a escribir el YAML de prueba | **15** (piloto), mismo cajón que el resto de la deuda de portabilidad Windows (D-110) |
 | Varios `test_worker_*.py`/`test_zz_rompedor_worker_*.py` fallan en la suite completa bajo Windows: `arq.worker.Worker.close()` llama `signal.SIGUSR1`, que no existe en Windows (`AttributeError`). Ajeno a este change (ningún archivo afectado toca `gastos`) | Parchear o saltar el cierre de señales POSIX del worker bajo Windows, o documentarlo como "sólo corre en CI/Linux" | **15** (piloto), mismo cajón que D-110 |
@@ -977,8 +977,37 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | D9b | Registrar la ratificación de P36 y P37 por Juani | Resuelta en D-142 |
 | D10 | openspec 1.14.3 instalado en vez del 1.13.0 fijado | C-23 |
 | D11 | CI sobre el SHA final | Resuelta: verde en `5b10687` |
-| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Juani, al planificar |
+| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Resuelta en D-144: **6c** `pantallas-de-gastos` (C-30), Juan Cruz |
 | D13 | Faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup (B1) | Aceptada (D-142); la prevención va a C-28 (L-067) |
+
+### 6c · `pantallas-de-gastos` · MEDIUM · pendiente (D-144, 31/10/2026) · C-30
+
+> **Creada por D-144** (31/10/2026), no por `openspec new`: cierra D12 del 6 y el hueco de D-140. La
+> hace **Juan Cruz**.
+
+- **Objetivo**: que el administrador cargue y apruebe gastos y cargos particulares desde la web, sin
+  tocar la API a mano.
+- **Entra**: las pantallas de HU-A3 y HU-A3b sobre la API que construyó el 6: proveedores; gastos con
+  sus cuatro estados (`borrador`, `sin_ia`, `en_revision`, `aprobado`), el aviso de receptor distinto y el
+  freno por duplicado; notas de crédito asociadas a su factura, con su tope (R22); cargos particulares
+  sueltos y su aprobación. Los PATCH que faltan para `categoria_de_gasto.obligatorio_mensual` y
+  `complejo.cuit` (tarea 3.10 del 6), si una pantalla los necesita.
+- **Importación de cargos por Excel**: si el 6c expone esa pantalla, antes resuelve D1 (límite de bytes
+  y filas, una consulta al padrón por archivo y no por fila); si no, la pantalla queda fuera y D1 sigue
+  en el 5.
+- **Reglas**: el frontend no calcula montos (los muestra como texto desde la API); errores de
+  formulario en su campo (3c); permisos por rol desde la sesión, con los controles que el 2d ya adapta
+  al perfil; toda interfaz pasa por la skill **impeccable**; la API falsa de e2e se extiende con cada
+  endpoint nuevo (L-027, §4.11 de la exploración del 4).
+- **No entra**: QR, lectura por IA y R23 (cambio 14); escribir en el libro o tocar la liquidación (7);
+  cambios de backend más allá de los PATCH nombrados.
+- **Depende de**: 6 y 3b (archivados).
+- **Gobernanza**: MEDIUM. Cinco roles; revisor del plan antes del apply (L-067). Juan Cruz recién se
+  suma: si algo del plan sube a HIGH o CRITICAL, para y lo firma un firmante de D-111.
+- **Terminado cuando**: cada criterio de HU-A3 y HU-A3b construido en el 6 tiene su pantalla y su e2e,
+  con recorrido a 1280 px, 320 px y con teclado, y el auditor da APROBADO.
+- **Leer antes**: ficha 6 (arriba), D-140 a D-142, `knowledge-base/06_funcionalidades.md` HU-A3 y
+  HU-A3b, `knowledge-base/15_lecciones.md`.
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
@@ -1556,8 +1585,9 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
     construyó.
   - Los diez archivos de test de la vuelta 2 del 3a (fila 6 de su deuda), leídos contra los escenarios
     que dicen cubrir.
-  - Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
-    rompedor sobre RB4B-01, CX-01 y CX-02.
+  - ~~Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
+    rompedor sobre RB4B-01, CX-01 y CX-02.~~ Pasa al **rompedor del 4c** (D-144), que modifica ese mismo
+    código.
   - DA-5 del 3d (D-139): la aserción `clave not in respuesta.text` es vacía con `"abc\n"`, y el test del
     `PATCH` de grupo no comprueba que el 422 nombre `clave` (`loc`).
   - Correr mutación (mutmut) sobre `cuenta_corriente`, `acceso` y `compartido` para medir la suite
@@ -1574,6 +1604,7 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   el resultado (también cuando da limpio), y cada falla reproducida quedó como test con dueño.
 
 - **Recibe del 6** (D-142): D6 (test de concurrencia entre editar el importe y cargar una nota) y la prevención de D13 (L-067: revisor del plan antes del apply en los changes de desarrolladores nuevos).
+- **Orden (D-144)**: Juan Cruz lo hace **después del 6c**. El alcance de los diez tests del 3a y de la mutación se define con Juani más adelante.
 
 ### 2f · `base-y-rls` · CRITICAL · pendiente (D-138, 30/10/2026) · C-29
 
