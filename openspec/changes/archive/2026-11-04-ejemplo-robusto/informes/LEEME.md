@@ -15,13 +15,13 @@
 | `verify-2-breaker.md` | rompedor, verify 2, acotado al grupo 9: F10, F11 (mutantes), O6, O7, S5 | subagente nativo `role-breaker`, Claude Opus 5.5 | Claude | commit `7110aac` |
 | `apply-4-constructor.md` | constructor, intento 4: grupo 10 (F10, F11, O7) | subagente nativo `role-constructor`, Claude Opus 5.5 | Claude | `7110aac` más el árbol, diff `26b9a96b` |
 | `verify-3-breaker.md` | rompedor, verify 3: F10 y F11 cerrados, sin fallas nuevas | subagente nativo `role-breaker`, Claude Opus 5.5 | Claude | commit `5fd45c0` |
+| `verify-2-auditor.md` | auditor, verify 2: **APROBADO** (guardado textual por el orquestador) | subagente nativo `role-auditor`, Claude Opus 5.5 | Claude | commit `1d090f6`, CI run `41767075030` |
 
 ## Faltan
 
-- Rompedor, intento 2: no corre, por decisión de Giuliano (03/11/2026). Hueco declarado para el auditor.
-
-- Suite completa local: no se corre, por decisión de Giuliano. El juez es el CI del PR (8.1), que todavía no existe.
-- Auditor: corrió el 03/11/2026 y dio BLOQUEANTES. Los dos huecos de arriba son sus B1 y B2; falta la decisión de Giuliano.
+- Ningún informe requerido. El rompedor corrió tres veces (verify 1 a 3), el CI del PR #7 existe y está verde, y el auditor aprobó en verify 2.
+- Hueco declarado: el conteo `N passed` del run `41767075030` (DE-12), porque los logs del CI piden login.
+- Suite completa local: no se corrió, por decisión de Giuliano; la reemplaza el CI.
 
 ## Qué recibió cada rol
 
@@ -35,4 +35,5 @@
 - Rompedor, verify 2 (subagente nativo `role-breaker`, familia Claude, sin sustitución): despachado el 03/11/2026 por decisión de Giuliano, acotado al grupo 9 (delta `22bb0402` a `6dd4630f`, commit `7110aac`) y sus consumidores. Recibió las tareas 9.1 a 9.5, los informes del rompedor 1, de la revisión 3 y del constructor 3, el B1 del auditor y los límites. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Constructor, intento 4 (subagente nativo `role-constructor`, familia Claude, sin sustitución): despachado el 03/11/2026 con el grupo 10 (F10, F11, O7), los mutantes B4 y B7 del rompedor y los límites. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Rompedor, verify 3 (subagente nativo `role-breaker`, familia Claude, sin sustitución): despachado el 03/11/2026, confirmación acotada a los dos tests del grupo 10 sobre `5fd45c0`. Sin la suite completa (la corre el CI). Sin acceso a `.git/informes-*` ni a `infra/.env`.
+- Auditor, verify 2 (subagente nativo `role-auditor`, familia Claude, sin sustitución): despachado el 04/11/2026 sobre `1d090f6` (PR #7), lectura liviana de B1 y B2 de su verify 1, como él mismo propuso, con los informes nuevos y la evidencia del CI. Sin acceso a `.git/informes-*` ni a `infra/.env`.
 - Auditor, verify 1 (subagente nativo `role-auditor`, familia Claude, sin sustitución): despachado el 03/11/2026 sobre `6dd4630f...`, con todos los informes originales, el plan, la decisión de Giuliano de no repetir el rompedor ni correr la suite, y los huecos declarados. Sin acceso a `.git/informes-*` ni a `infra/.env`.
