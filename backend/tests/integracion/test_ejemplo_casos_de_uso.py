@@ -1663,6 +1663,19 @@ def test_la_semilla_vacia_fuera_de_desarrollo_termina_con_1() -> None:
     assert "PROPTECH_ENTORNO=desarrollo" in resultado.stderr, resultado.stderr[-2000:]
 
 
+def test_la_semilla_vacia_va_antes_que_la_configuracion() -> None:
+    """F11 de verify 2: el orden de D4 pone `--semilla` vacío (2) antes de leer la
+    configuración (3). Sin ninguna variable de PostgreSQL, un comando que leyera primero la
+    configuración terminaría con 3 (mutante B4)."""
+    resultado = _correr_comando(
+        {**_entorno_limpio(), "PROPTECH_ENTORNO": "desarrollo"}, "--semilla="
+    )
+
+    assert resultado.returncode == 2, resultado.stderr[-2000:]
+    assert "--semilla no puede estar vacío" in resultado.stderr, resultado.stderr[-2000:]
+    _afirmar_salida_limpia(resultado.stdout + resultado.stderr)
+
+
 def test_el_id_con_formato_invalido_termina_con_2_por_el_proceso_real() -> None:
     """Escenario "Id de cuenta con formato inválido": el código sale del proceso."""
     resultado = _correr_comando(
@@ -2375,6 +2388,29 @@ def test_cada_familia_de_error_de_la_carga_tiene_su_codigo(
         "user_Sembrado1",
         "x.clerk.accounts.dev",
     )
+
+
+def test_un_value_error_no_previsto_en_la_carga_termina_con_9(
+    base_fresca: BaseDeEdificio,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """F10 de verify 2: `EntradaInvalida` hereda de `ValueError`, pero sólo ella es la familia
+    del 3. Cualquier otro `ValueError` dentro de la carga real es lo no previsto de D4: sale
+    con 9, nombra sólo su tipo y no deja nada escrito. Distingue `except EntradaInvalida` de
+    un `except ValueError` más ancho (mutante B7)."""
+    _entorno_clerk(monkeypatch, base_fresca)
+
+    def _lanzar(*_: object, **__: object) -> NoReturn:
+        raise ValueError(_VALOR_SEMBRADO)
+
+    monkeypatch.setattr(ejemplo, "crear_grupo", _lanzar)
+
+    assert _codigo_de_main() == 9
+    salida = capsys.readouterr()
+    assert salida.err.strip() == "error inesperado: ValueError"
+    _afirmar_salida_limpia(salida.out + salida.err, _VALOR_SEMBRADO, APP_PASSWORD_DE_SESION)
+    assert _filas_escritas(base_fresca) == _SIN_ESCRITURAS
 
 
 def test_una_excepcion_no_prevista_al_leer_los_archivos_termina_con_9(
