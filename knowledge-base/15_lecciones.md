@@ -1206,3 +1206,25 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   costo en producción porque se encontró antes de cerrar el change.
 - **Aplica a**: constructor (al escribir cualquier script que arme SQL con un doble falso de la
   herramienta de base), auditor.
+
+## L-080 · Un test de robustez ataca la causa, no el síntoma que la causa suele producir
+
+- **Origen**: H-003 (integración del PR #6 `respaldos-2`, D-151), 11/11/2026.
+- **Qué pasó**: F4 ("la retención con el reloj atrasado") se dio por cerrado con tests que atrasaban el
+  NOMBRE del backup y dejaban el mtime creciente. Con el reloj del host retrocedido de verdad (nombre y
+  mtime) la retención borró 5 de 7 copias nuevas. El primer arreglo (un mtime monótono) volvió a probar
+  el síntoma y rompió el piso por días de D-148; hicieron falta cuatro vueltas.
+- **Regla**: el test de una falla de entorno simula la causa completa (acá, el reloj: todo lo que lo
+  lee), no la manifestación que el autor tenía en mente. Y un arreglo se ataca contra las otras reglas
+  del mismo componente (el piso por días) antes de proponerlo.
+
+## L-081 · Una verificación de seguridad compara estructuras, nunca texto pegado con separadores
+
+- **Origen**: H-003 (`conmutar.sh`), 11/11/2026.
+- **Qué pasó**: la comparación de políticas de RLS entre la base en uso y la restaurada resumía cada
+  política pegando campos con `,`, `|` y `;`. Un rol llamado `"app,otro"` y un nombre de política
+  fabricado (`"p|*|false|PUBLIC|false|;q"`) daban el mismo resumen que una seguridad distinta, y la
+  conmutación se aceptaba con una fila antes bloqueada a la vista. Se cerró comparando un JSON armado
+  por PostgreSQL (`jsonb_agg`), con los roles como array ordenado de `quote_ident`.
+- **Regla**: si una igualdad de texto decide algo de seguridad, el texto sale de un serializador
+  inequívoco (JSON, arrays), nunca de concatenar campos que pueden contener el separador.
