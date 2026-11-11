@@ -8,17 +8,16 @@ malformada. Lecciones: L-007, L-008.
 
 from __future__ import annotations
 
-import logging
 import uuid
 from typing import Any
 
 import pytest
 
-from proptech_core.compartido.logs import _ATRIBUTOS_ESTANDAR
 from proptech_core.compartido.tenant_de_tarea import (
     AdministracionInvalida,
     con_administracion_de_tarea,
 )
+from tests._registros_del_log import capturar_todo, fugas_del_valor
 
 pytestmark = pytest.mark.anyio
 
@@ -55,7 +54,7 @@ async def test_administracion_invalida_falla_una_sola_vez_sin_efecto(
         nonlocal efecto_corrio
         efecto_corrio = True
 
-    with caplog.at_level(logging.ERROR, logger="proptech_core.compartido.tenant_de_tarea"):
+    with capturar_todo(caplog):
         with pytest.raises(AdministracionInvalida):
             await _tarea_con_efecto({}, administracion_id=valor)
 
@@ -87,18 +86,13 @@ async def test_administracion_invalida_falla_una_sola_vez_sin_efecto(
     # mismo criterio que usa `FormateadorJSON` para separar "extra" de lo
     # propio del logger) — sin importar cómo se llame el campo nuevo que
     # alguien agregue el día de mañana.
-    representacion = str(valor)
-    if representacion not in ("", "None"):
-        for registro in caplog.records:
-            assert representacion not in registro.getMessage()
-            campos_extra = {
-                clave: valor_campo
-                for clave, valor_campo in registro.__dict__.items()
-                if clave not in _ATRIBUTOS_ESTANDAR
-            }
-            assert representacion not in str(campos_extra), (
-                f"el valor apareció en un campo extra del log: {campos_extra}"
-            )
+    #
+    # C2V2-2 y N-b (2e): se captura TODO (cualquier severidad y logger: un `WARNING` con el valor en
+    # otro módulo también cuenta) y se busca el valor por igualdad / palabra aparte, no con
+    # `representacion in str(campos)`, que daba rojo falso con "123" dentro de `1230` o `a1234`.
+    # Ver `tests/_registros_del_log.py` y `test_registros_del_log.py`.
+    if str(valor) not in ("", "None"):
+        assert fugas_del_valor(caplog.records, valor) == []
 
 
 async def test_administracion_valida_le_llega_a_la_tarea_como_uuid() -> None:

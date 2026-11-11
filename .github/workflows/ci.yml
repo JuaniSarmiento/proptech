@@ -34,8 +34,13 @@ jobs:
       - name: Tipos
         working-directory: backend
         run: uv run mypy
-      - name: Tests (incluye integración contra PostgreSQL real)
-        run: bash infra/ci/test-backend.sh
+      # 2e (D11): cada worker de xdist es un proceso con su propio PostgreSQL y su propio Redis (los
+      # fixtures de sesión son por proceso). 4 workers = los 4 vCPU del runner, nunca `auto`. Los
+      # unitarios van primero: no necesitan Docker y dan el rojo rápido.
+      - name: Tests unitarios y de infra
+        run: bash infra/ci/test-backend.sh -m "not integracion and not serial" -n 4
+      - name: Tests de integración contra PostgreSQL real
+        run: bash infra/ci/test-backend.sh -m "integracion and not serial" -n 4
       - name: Canario
         run: bash infra/ci/canario.sh backend
 
@@ -69,6 +74,15 @@ jobs:
         run: pnpm tsc --noEmit
       - name: Tests
         run: bash infra/ci/test-web.sh
+      # 2e (L-044): instalar Chromium llegó a tardar 10 min. Los navegadores de Playwright se cachean
+      # con una clave que lleva el hash del lock: si cambia la versión de Playwright, cambia la clave
+      # y se bajan de nuevo. Sin caché el paso siguiente instala igual. Los tiempos del segundo run
+      # (con caché) son la verificación [GH] de la tarea 9.4; hasta tenerlos no se toca el timeout.
+      - name: Caché de los navegadores de Playwright
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
       - name: Instalar Chromium (D7, tarea 3.8 - sólo este navegador)
         working-directory: web
         run: pnpm exec playwright install --with-deps chromium
@@ -81,10 +95,27 @@ jobs:
     runs-on: ubuntu-24.04
     # D5: medido en 1 a 2 min (1m00s a 2m00s en las últimas cuatro corridas).
     timeout-minutes: 15
+    env:
+      # L-047 (2e): el humo se niega a correr sin proyecto propio y nunca sobre `proptech`.
+      PROPTECH_COMPOSE_PROYECTO: proptech-humo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Prueba de humo del stack completo
         run: bash infra/ci/humo.sh
+
+  ensayo-roles:
+    runs-on: ubuntu-24.04
+    # L-043 (2e): el ensayo de roles (restaurar el respaldo, subir a la cabeza, bajar al origen y
+    # volver a subir) llevaba semanas sin correr en el CI. 20 min es provisorio: se ajusta con los
+    # tiempos del primer run real (D5), no antes.
+    timeout-minutes: 20
+    env:
+      # El script hace `down -v`: su proyecto es propio, nunca `proptech` (L-047).
+      PROPTECH_COMPOSE_PROYECTO: proptech-ensayo
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Ensayo de roles (respaldo, ciclo de migraciones y origen intacto)
+        run: bash infra/ci/ensayo-roles.sh
 
   shellcheck:
     runs-on: ubuntu-24.04

@@ -4,10 +4,12 @@
 import os
 import subprocess
 import sys
+import time
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
 
+import psycopg
 import pytest
 import yaml
 from testcontainers.community.postgres import PostgresContainer
@@ -42,6 +44,52 @@ IMAGEN_POSTGRES_PARA_TESTS = _leer_imagen_de_compose("db")
 IMAGEN_REDIS_PARA_TESTS = _leer_imagen_de_compose("redis")
 
 
+def esperar_postgres(contenedor: PostgresContainer, plazo: float = 30.0) -> None:
+    """Espera a que el contenedor acepte conexiones de verdad (2e, xdist).
+
+    El mensaje "ready to accept connections" sale también del servidor temporal de la inicialización
+    de la imagen; con cuatro workers arrancando a la vez, `roles antes` llegaba entre los dos y
+    recibía `Connection refused`. Se intenta conectar hasta que responde o vence el plazo."""
+    limite = time.monotonic() + plazo
+    while True:
+        try:
+            with psycopg.connect(
+                host=contenedor.get_container_host_ip(),
+                port=int(contenedor.get_exposed_port(5432)),
+                user=contenedor.username,
+                password=contenedor.password,
+                dbname=contenedor.dbname,
+                connect_timeout=3,
+            ):
+                return
+        except psycopg.OperationalError as error:
+            if time.monotonic() >= limite:
+                interno = contenedor.get_wrapped_container()
+                interno.reload()
+                registro = interno.logs(tail=30).decode("utf-8", "replace")
+                raise AssertionError(
+                    f"Postgres no aceptó conexiones en {plazo} s ({error}); contenedor "
+                    f"{interno.status}; últimas líneas: {registro}"
+                ) from error
+            time.sleep(0.25)
+
+
+_START_ORIGINAL = PostgresContainer.start
+
+
+def _start_que_espera_conexiones(self: PostgresContainer, *args: Any, **kwargs: Any) -> Any:
+    """Todo contenedor de Postgres de los tests, también los que cada módulo levanta por su cuenta,
+    queda aceptando conexiones antes de usarse (2e, xdist): con cuatro workers arrancando a la vez,
+    `roles antes` llegaba entre el servidor temporal de la imagen y el definitivo."""
+    contenedor = _START_ORIGINAL(self, *args, **kwargs)
+    esperar_postgres(self)
+    return contenedor
+
+
+_start_que_espera_conexiones.espera_conexiones = True  # type: ignore[attr-defined]
+PostgresContainer.start = _start_que_espera_conexiones  # type: ignore[method-assign, assignment]
+
+
 @pytest.fixture(scope="session")
 def postgres_contenedor() -> Iterator[PostgresContainer]:
     # Usuario con el patrón `proptech_[a-z_]{1,40}` (D1, D3, cambio 2a): antes
@@ -55,6 +103,7 @@ def postgres_contenedor() -> Iterator[PostgresContainer]:
         username="proptech_test",
         password="proptech_test",  # noqa: S106 (contraseña de este contenedor de test, nunca real)
     ) as contenedor:
+        esperar_postgres(contenedor)
         yield contenedor
 
 
@@ -78,13 +127,19 @@ def roles_reales(postgres_contenedor: PostgresContainer) -> None:
         "POSTGRES_RESPALDO_USER": RESPALDO_USER_DE_SESION,
         "POSTGRES_RESPALDO_PASSWORD": RESPALDO_PASSWORD_DE_SESION,
     }
-    subprocess.run(
+    resultado = subprocess.run(
         [sys.executable, "-m", "proptech_core.compartido.roles", "antes"],
         cwd=RAIZ / "backend",
         env=entorno,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
+    )
+    # 2e: con xdist un fallo de preparación intermitente tiene que dejar su causa, no un
+    # `CalledProcessError` mudo.
+    assert resultado.returncode == 0, (
+        f"roles antes salió con {resultado.returncode}: "
+        f"{resultado.stdout[-1500:]} // {resultado.stderr[-1500:]}"
     )
 
 

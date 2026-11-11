@@ -28,10 +28,34 @@ paso() {
   echo "--- ($_PASO_NUMERO) $_PASO_DESCRIPCION ---"
 }
 
+# `$3` (opcional): las líneas de BASH_LINENO tal como las ve el trap (separadas por espacios). Si la
+# falla ocurrió dentro de una función (`compose()`, un helper), la última línea distinta de cero es la
+# del llamado en el script principal, y se informa además de la línea de adentro (2e, C2V2-8).
 reportar_fallo_paso() {
   local linea="$1"
   local comando="$2"
-  echo "ERROR: paso ${_PASO_NUMERO:-?} (${_PASO_DESCRIPCION:-sin descripción}) falló en la línea ${linea}: ${comando}" >&2
+  local lineas_de_llamada="${3:-}"
+  local llamado="" candidata
+  for candidata in $lineas_de_llamada; do
+    if [ "$candidata" != "0" ]; then
+      llamado="$candidata"
+    fi
+  done
+  local desde=""
+  if [ -n "$llamado" ]; then
+    desde=" (llamado desde la línea ${llamado})"
+  fi
+  echo "ERROR: paso ${_PASO_NUMERO:-?} (${_PASO_DESCRIPCION:-sin descripción}) falló en la línea ${linea}: ${comando}${desde}" >&2
 }
 
-trap 'reportar_fallo_paso "$LINENO" "$BASH_COMMAND"' ERR
+# 2e, C2-5: el camino de falla explícito (`exit 1` tras un `echo "ERROR: ..."`) que `trap ERR` no ve
+# (L-014). `$1` es la condición que no se cumplió, tal como está escrita en el script. La línea es
+# la de quien llama a `fallar_paso`, no la de esta función.
+fallar_paso() {
+  # Rompedor 2e: dentro de un helper (humo-lib.sh) `BASH_LINENO[0]` es la línea del helper; la cadena
+  # restante deja que `reportar_fallo_paso` informe también el llamado en el script principal.
+  reportar_fallo_paso "${BASH_LINENO[0]}" "$1" "${BASH_LINENO[*]:1}"
+  exit 1
+}
+
+trap 'reportar_fallo_paso "$LINENO" "$BASH_COMMAND" "${BASH_LINENO[*]}"' ERR
