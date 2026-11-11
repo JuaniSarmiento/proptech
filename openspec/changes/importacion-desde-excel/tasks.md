@@ -42,6 +42,18 @@ mutante, en un commit anterior al de producción (L-061). -->
   importacion-de-padron "Columnas en otro orden", "Falta un encabezado", "No es un Excel", "Archivo
   enorme", "Fórmula sin valor en caché". Mutantes: leer por posición; `float()` sobre la celda; sin
   límite de bytes.
+  - **RED 1.2** (11/11/2026 20:47, contra un lector provisorio que devuelve las tres hojas vacías):
+    `cd backend && uv run pytest tests/unitarios/test_importacion_lector_excel.py -q` →
+    `32 failed, 1 passed`. Leído en el traceback: todos caen en la aserción del propio test, ninguno en
+    un helper (`IndexError` iniciales reescritos como `assert len(...)`): `assert () == ('Unidad', 'T...',
+    'Email')` (encabezados, x5), `assert [] == ['0.000083']` y las otras 7 celdas numéricas, `assert 0 ==
+    2000` (x2, límite de filas), `Failed: DID NOT RAISE ArchivoInvalido` (x6: csv, pdf, truncado, vacío,
+    2 MiB, justo en el límite), `assert 'Unidades' not in {...}` (x3, nombre de hoja parecido), fórmula
+    sin caché `assert [] == [(2, frozenset(), ...)]`. El único verde, `test_una_hoja_con_solo_encabezados_
+    no_tiene_filas`, coincide con el provisorio (sin filas): no cuenta como RED.
+  - D2 del 6 (L-066): `tests/unitarios/test_lector_de_planilla_excel.py` suma dos pruebas de caracterización
+    del lector de gastos (fórmula con caché entra por su valor; sin caché entra vacía). Pasan antes y
+    después: documentan lo que el docstring corregido promete, no son un RED.
 - [ ] 1.3 **Validación del padrón (dominio puro).** `importacion/dominio/padron.py`: todo o nada con
   todos los errores (hoja, fila, columna, motivo), números (E14), unidad repetida, tipo, piso exacto del
   vocabulario, coeficiente, superficie, email, suma de coeficientes con la tolerancia de R01 (E4: fuera

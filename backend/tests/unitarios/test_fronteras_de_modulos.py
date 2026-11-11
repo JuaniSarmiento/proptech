@@ -836,7 +836,8 @@ def test_un_modulo_que_importa_importacion_cierra_un_ciclo(copia_core: Path, ori
     (copia_core / "importacion" / "mutante.py").write_text(
         f"import proptech_core.{origen}.aplicacion\n"
     )
-    esperado = " → ".join(sorted([origen, "importacion"]) + [sorted([origen, "importacion"])[0]])
+    primero, segundo = sorted([origen, "importacion"])
+    esperado = f"{primero} → {segundo} → {primero}"
     assert esperado in _ciclos(copia_core), _ciclos(copia_core)
 
 
