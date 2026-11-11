@@ -3216,3 +3216,19 @@ registrado como tal en su momento.)*
 - **Costo aceptado**: un fallo que sólo ve la suite completa (como L-064) aparece tarde, al final del
   change, y puede tocar varias historias.
 - **Quién**: Juani, 11/11/2026.
+
+## D-155 · Un saldo inicial cargado de menos se corrige con un "ajuste de saldo inicial" (11/11/2026, PA-1, antes del 5)
+
+- **Contexto**: PA-1 del 4c. R09 dice que un saldo inicial mal cargado se corrige después de confirmar
+  "con un ajuste con motivo (R08)", pero el libro no admite un débito libre: las correcciones del 4b
+  (contra-asiento y crédito de corrección) sólo bajan deuda. Un saldo cargado de menos no tenía arreglo,
+  y PA-1 bloqueaba el 5.
+- **Decisión**: se agrega un movimiento nuevo, **ajuste de saldo inicial**: un débito con motivo
+  obligatorio sobre la cuenta de una unidad de un edificio con la migración confirmada, que se registra
+  con su propio permiso y queda en la auditoría. No edita ni borra nada (R08). La migración no se reabre
+  (R09). Un saldo cargado de más se sigue corrigiendo con las correcciones del 4b.
+- **Descartado**: reabrir la migración (R09 lo prohíbe y rompe la carga única del 4c).
+- **Pendiente para el propose del 5**: si el ajuste genera interés y desde cuándo, y qué vencimiento
+  lleva.
+- **Quién**: Juani, 11/11/2026.
+
