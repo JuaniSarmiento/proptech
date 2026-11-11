@@ -115,18 +115,44 @@ def c01(arbol: str | None, conflictos: str) -> None:
 def c02(cabeza: str) -> None:
     datos = json.loads(correr("gh", "api", f"repos/{REPO}/commits/{cabeza}/check-runs").stdout)
     corridas = datos["check_runs"]
-    malas = [f"{c['name']}={c['status']}/{c['conclusion']}" for c in corridas
+    malas = [c for c in corridas
              if c["status"] != "completed" or c["conclusion"] not in ("success", "skipped")]
     runs = json.loads(correr("gh", "run", "list", "--repo", REPO, "--commit", cabeza, "--event",
                              "pull_request", "--json", "conclusion").stdout)
+    # Excepción aprobada por Juani el 11/11/2026: el job `web` caído por la red del runner de GitHub
+    # (DNS del mirror de Ubuntu al instalar Chromium, antes de correr ningún test) no cuenta. Sólo
+    # `web`, sólo con esa causa en su log y sólo en el paso de Chromium; cualquier otra falla sigue
+    # rompiendo C02.
+    perdonadas = [c for c in malas if c["name"] == "web" and c["status"] == "completed"
+                  and falla_de_red_al_instalar_chromium(c)]
+    malas = [c for c in malas if c not in perdonadas]
     if len(corridas) < CHECKS_MINIMOS:
         anotar("C02", False, f"{len(corridas)} checks sobre {cabeza[:7]}, se esperan al menos {CHECKS_MINIMOS}")
     elif malas:
-        anotar("C02", False, f"checks que no están en verde: {malas}")
-    elif not any(r["conclusion"] == "success" for r in runs):
+        anotar("C02", False, f"checks que no están en verde: {[f'{c['name']}={c['status']}/{c['conclusion']}' for c in malas]}")
+    elif not runs:
+        anotar("C02", False, f"ningún run del evento pull_request sobre {cabeza[:7]}")
+    elif not perdonadas and not any(r["conclusion"] == "success" for r in runs):
         anotar("C02", False, f"ningún run del evento pull_request en verde sobre {cabeza[:7]}")
+    elif perdonadas:
+        anotar("C02", True, f"{len(corridas) - 1} checks en verde sobre {cabeza[:7]}; `web` cayó por la red del runner "
+               "al instalar Chromium (excepción aprobada por Juani el 11/11/2026)")
     else:
         anotar("C02", True, f"{len(corridas)} checks en verde sobre {cabeza[:7]}")
+
+
+def falla_de_red_al_instalar_chromium(check: dict) -> bool:
+    m = re.search(r"/job/(\d+)", check.get("details_url") or "")
+    if m is None:
+        return False
+    trabajo = correr("gh", "api", f"repos/{REPO}/actions/jobs/{m.group(1)}", chequear=False)
+    if trabajo.returncode != 0:
+        return False
+    pasos = json.loads(trabajo.stdout).get("steps") or []
+    fallidos = [p["name"] for p in pasos if p.get("conclusion") == "failure"]
+    log = correr("gh", "api", f"repos/{REPO}/actions/jobs/{m.group(1)}/logs", chequear=False).stdout
+    return (bool(fallidos) and all(n.startswith("Instalar Chromium") for n in fallidos)
+            and "Temporary failure resolving" in log)
 
 
 def c03(destino: Path) -> None:
