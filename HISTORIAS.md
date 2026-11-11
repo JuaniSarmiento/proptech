@@ -13,7 +13,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | HU | Change | Resultado esperado | Dificultad / riesgo | Estado |
 |---|---|---|---|---|
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
-| H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | En proceso |
+| H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -59,7 +59,7 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   - H-001.C06: el comando del ejemplo devuelve los códigos de salida de D-145 e identifica el
     edificio por nombre.
 - Dificultad y riesgo: baja / LOW (sin migraciones, permisos ni plata). El PR no tiene descripción.
-- Constructor: a definir con Juani (Giuliano en su rama o `rein-constructor`).
+- Constructor: `rein-constructor` (Claude), elegido por Juani el 11/11/2026.
 - Demo: correr el comando del ejemplo dos veces y con un edificio inexistente, y mirar los códigos de salida.
 - Aceptación aprobada por Juani el 11/11/2026: **`25275f0db275c8a0ce051e1be3a1ab69a8d2a7bd`** (reemplaza
   a `58651ed`, que incluía C04; mismo código de verificación, sólo cambió la línea de C04). Archivo
@@ -131,7 +131,24 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   `main` (los seis rechazos llaman a docker). Pasan sobre la fusión de prueba: los 762 tests de los 22
   archivos (1m56s; los 167 de los 19 que quedan están dentro) y C07 (8 casos). Los 19 archivos
   recolectan 167 en la cabeza del PR. C02 pasa hoy (6 checks sobre `f2be967`).
-- Evidencia y demo: pendientes.
+- Construcción (11/11/2026, `rein-constructor` Sonnet), pusheada a `change/humo-y-ci` (`f2be967..31ef580`):
+  `17486b2` merge de `origin/main`, `c0e8ca8` renumeración (27 líneas), `f6add07` tarea 10.4 (run
+  41154566331 sobre `f2be967`), `c809b0d` archivo con openspec 1.13.0 (13 requisitos sincronizados),
+  `31ef580` KB del cierre. Sin atribución a IA (verificado por el orquestador).
+- Evidencia (11/11/2026, orquestador, aceptación sacada de `ff7836b` a un archivo fuera del repo): cabeza
+  `31ef580` sobre `origin/main` `6efbcea`. C01 PASA (D-147, L-073 a L-075, nada repetido), C02 PASA (6
+  checks en verde: backend 8m50s, ensayo-roles 1m7s, humo, web, secretos, shellcheck), C03 PASA
+  (167/167, 0 skips), C05 PASA, C06 PASA (32 tareas), C07 PASA (8 casos). Salida 0. El backend del CI
+  bajó de 22m40s (run del PR #7) a 8m50s con la corrida en paralelo.
+- Demo (C08), corrida por el orquestador el 11/11/2026 sobre un clon de `31ef580`, con un `docker` falso
+  que devuelve 1: (1) sin la variable, "falta PROPTECH_COMPOSE_PROYECTO… Corrélo así: …", código 1;
+  (2) con `proptech`, "el proyecto 'proptech' es el del stack de uso real y este script haría 'down -v'
+  sobre él…", código 1; (3) con `proptech-humo` y el primer paso fallando, "paso 0 (compose up --build
+  -d --wait) falló en la línea 52: docker compose -p \"$PROPTECH_COMPOSE_PROYECTO\" … (llamado desde la
+  línea 109)", vuelca `ps -a` y `logs` y hace `down -v` sólo sobre `proptech-humo`; código 1. El camino
+  feliz completo lo cubre el CI (humo 3m41s y ensayo-roles 1m7s en verde, C02).
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 después de la demo. Integrada a `main`
+  con el merge del PR #5.
 
 ### H-003 · Integrar el PR #6, `respaldos-2` (C-24, Emiliano)
 
