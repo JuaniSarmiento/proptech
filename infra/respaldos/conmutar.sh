@@ -84,7 +84,13 @@ fi
 # alguna vez) en vez de contra una lista fija de tablas escrita a mano: así
 # el chequeo no queda viejo cuando un change futuro agregue una tabla de
 # negocio nueva.
-consulta_rls="SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity, coalesce(string_agg(p.polname || '|' || p.polcmd::text || '|' || coalesce(p.polqual::text,'') || '|' || coalesce(p.polwithcheck::text,''), ';' ORDER BY p.polname), '') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_policy p ON p.polrelid = c.oid WHERE n.nspname='public' AND c.relkind='r' GROUP BY c.relname, c.relrowsecurity, c.relforcerowsecurity ORDER BY 1"
+#
+# H-003 B1: la definición COMPLETA de cada política (nombre, comando, modo
+# permisiva/restrictiva, roles por NOMBRE, y las expresiones USING y WITH
+# CHECK con `pg_get_expr`, no el árbol interno con OID), más la RLS
+# habilitada y forzada. Comparar menos acepta un destino cuya seguridad deja
+# ver filas que antes estaban bloqueadas.
+consulta_rls="SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity, coalesce(string_agg(p.polname || '|' || p.polcmd::text || '|' || p.polpermissive::text || '|' || coalesce((SELECT string_agg(CASE WHEN o = 0 THEN 'PUBLIC' ELSE (SELECT r.rolname FROM pg_roles r WHERE r.oid = o) END, ',' ORDER BY CASE WHEN o = 0 THEN 'PUBLIC' ELSE (SELECT r.rolname FROM pg_roles r WHERE r.oid = o) END) FROM unnest(p.polroles) AS o), '') || '|' || coalesce(pg_get_expr(p.polqual, p.polrelid),'') || '|' || coalesce(pg_get_expr(p.polwithcheck, p.polrelid),''), ';' ORDER BY p.polname), '') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_policy p ON p.polrelid = c.oid WHERE n.nspname='public' AND c.relkind='r' GROUP BY c.relname, c.relrowsecurity, c.relforcerowsecurity ORDER BY 1"
 
 politicas_base_en_uso="$(psql_en "$base_en_uso" "$consulta_rls" 2>/dev/null)" \
   || error_salir "verificación 3 (seguridad de filas): no se pudo leer la base en uso"
