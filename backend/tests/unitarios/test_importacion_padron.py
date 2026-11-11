@@ -110,7 +110,7 @@ def test_un_padron_valido_devuelve_sus_unidades_ya_tipadas() -> None:
     assert padron.advertencias == ()
     assert [u.identificador for u in padron.unidades] == [f"U{n}" for n in range(1, 13)]
     primera, *_, ultima = padron.unidades
-    assert (primera.fila, primera.tipo, primera.piso) == (2, "departamento", "1")
+    assert (primera.fila, primera.tipo, primera.piso) == (2, "departamento", "SS1")
     assert primera.coeficiente.decimal == Decimal("0.083333")
     assert primera.superficie_m2.decimal == Decimal("45.50")
     assert (primera.propietario, primera.email) == (
