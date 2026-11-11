@@ -105,7 +105,7 @@
 
 ## 2. Esquema, protección y semilla
 
-- [ ] 2.1 **Migración `0034` y protección de las tablas nuevas.** Archivos:
+- [x] 2.1 **Migración `0034` y protección de las tablas nuevas.** Archivos:
   `backend/migraciones/versions/0034_intereses_y_saldo_inicial.py` (nuevo, design D4, D5, D10),
   `backend/src/proptech_core/compartido/tablas_protegidas.py` (tres entradas),
   `backend/tests/unitarios/test_fronteras_de_modulos.py` (`_DUENO_DE_TABLA`: las tres a
@@ -150,12 +150,80 @@
     DISABLE TRIGGER` del propio test, porque el trigger de sentencia no existe aún): rojo de setup, no de
     aserción; su rojo por aserción es el del mutante "sin trigger por fila". Los CHECK y las FK nacen verdes
     porque la tabla sin protección ya las lleva: su prueba es el mutante de cada uno.
+  - GREEN (15:50, `uv run pytest tests/integracion/test_intereses_esquema.py tests/unitarios/test_fronteras_de_modulos.py
+    -q`): `89 passed`. Commit de producción `7896ae0` (`0034_tramo_de_interes.py`, una entrada en
+    `tablas_protegidas.py`, `tramo_de_interes` -> `cuenta_corriente` en `_DUENO_DE_TABLA`).
+  - L-064: cabeza `0033` -> `0034` en `test_libro_rollback.py` (3 lugares) y `test_conmutar_politicas_reales.py`;
+    `tramo_de_interes` en `_SONDA_SIN_FILA` de `test_catalogo_rls.py`; `devolver_libro` devuelve también la
+    tabla nueva y un `devolver_tramos` en `test_libro_rollback.py` (lo usan `test_0024_con_correccion_...`
+    y `test_rf_0024_down_up_vocabulario`, que ahora bajan la `0034` antes que la `0024` y fallaron con
+    `must be owner of table tramo_de_interes` hasta devolverla). `rg -n '"0033"|0033' backend/tests`: vacío.
+    Verdes (15:50): `test_libro_rollback`, `test_dueno_de_tablas_solo_agregar`,
+    `test_arranque_tablas_protegidas`, `test_catalogo_rls`, `test_libro_proteccion`,
+    `test_propiedad_protegida`, `test_conmutar_politicas_reales`, `test_migracion_0024_vocabulario`,
+    `test_funciones_restauradas`, `test_sonda_tablas_protegidas` (175 passed + los 4 corregidos).
+  - Aceptación de esquema (15:51, copiada del SHA `d2da37e` a un clon fuera del repo en `7896ae0`):
+    `test_h004_esquema.py` y `test_h004_migracion.py` `12 passed` (incluye el ciclo de devolución de la 0034).
+  - Mutantes (15:52 a 15:55, copia previa en el scratchpad, uno a la vez, revertidos con `git checkout`;
+    `uv run pytest tests/integracion/test_intereses_esquema.py -q --tb=line`):
+    - sin `ENABLE` ni política (`GRANT` sin `aislar_por_administracion`): **rojo por otra defensa**. El
+      chequeo de arranque de `roles despues` (`_verificar_tabla_protegida`, que declara la tabla) frena
+      antes: 22 errores de setup `la protección de tramo_de_interes no se pudo confirmar: ROW LEVEL
+      SECURITY habilitada y FORCE`. Con ese chequeo apagado a propósito (`if False:` en `roles.py`,
+      sólo para ver el test): `1 failed, 22 passed`, rojo en `test_otra_administracion_no_ve_el_detalle`
+      por `otra administración ve filas de tramo_de_interes` (`assert (1,) == (0,)`). El mismo caso
+      aplica a "sin `FORCE`": rojo por el chequeo de arranque con el mismo mensaje (probado con el test
+      del catálogo, `test_el_esquema_real_no_tiene_ningun_problema`: error de setup de su fixture
+      `esquema`, `roles despues` sale con 1 y el stderr es `la protección de tramo_de_interes no se
+      pudo confirmar: ROW LEVEL SECURITY habilitada y FORCE`), no por la aserción `RLS no está activada
+      y forzada` del catálogo, que no se alcanza.
+    - fuera de `TABLAS_DE_SOLO_AGREGAR`: `4 failed, 19 passed`; `test_la_app_no_tiene_permiso_de_edicion`
+      [UPDATE] y [DELETE] por `AssertionError: tramo_de_interes UPDATE: P0001` (da el trigger, no el
+      `42501`), más `test_tramo_esta_declarado_...` y el dueño (`proptech_migrador`).
+    - sin trigger por fila: **rojo por el chequeo de arranque** (22 errores de setup `trigger
+      trg_tramo_de_interes_sin_update_delete no existe`). Quitando además el nombre de la declaración
+      (`tablas_protegidas.py`, para que `roles despues` no lo busque): `3 failed, 20 passed`;
+      `test_trigger_por_fila_sin_el_de_sentencia` [UPDATE] y [DELETE] por `DID NOT RAISE
+      RaiseException`, más `test_tramo_esta_declarado_...` (declaración distinta, esperado).
+    - sin trigger por sentencia: **rojo por el chequeo de arranque, por el efecto** (22 errores de setup
+      `... no existe; admite UPDATE; admite DELETE`). Con la declaración sin el nombre y el chequeo
+      por el efecto apagado en `roles.py:857` (sólo para verlo): `5 failed`;
+      `test_trigger_por_sentencia_sin_filas` [DELETE WHERE false] y [UPDATE WHERE false] por `DID NOT
+      RAISE RaiseException`; `[TRUNCATE]` sigue verde (lo frena su propio trigger); los dos de fila dan
+      `UndefinedObject` (su `DISABLE TRIGGER`) y está el de declaración.
+    - FK a `movimiento` sin `cuenta_id` (y sin edificio ni sentido): `2 failed`; `test_un_tramo_no_se_cuelga_
+      de_otra_cuenta` y `..._de_un_movimiento_ajeno_en_otro_edificio` por `DID NOT RAISE ForeignKeyViolation`.
+    - FK a `complejo` ausente: `test_catalogo_rls.py::test_el_esquema_real_no_tiene_ningun_problema`
+      rojo por `tramo_de_interes: no tiene la FK compuesta (administracion_id, complejo_id) -> complejo
+      (administracion_id, id)`; los tests de `test_intereses_esquema.py` quedan verdes (la FK compuesta a
+      `movimiento` también fija el edificio), como dice la matriz.
+    - CHECK, uno por uno, cada uno rojo sólo en el caso que nombra, por `DID NOT RAISE CheckViolation`:
+      `ck_tramo_dias` ([dias_incoherentes]), `ck_tramo_orden` ([hasta_antes_de_desde]), `ck_tramo_base`
+      ([base_cero], [base_negativa]), `ck_tramo_forma` ([forma_fuera_del_vocabulario]), `ck_tramo_sentido`
+      ([sentido_credito], con un movimiento de crédito para que la FK no lo tape), y los dos de mes
+      entero: sin la condición de mismo mes sólo entra 30/09-31/10 con `dias = 32`
+      ([mes_entero_de_dos_meses]); sin la de fin de mes sólo entra 01/10-30/10
+      ([mes_entero_sin_fin_de_mes]).
 - [ ] 2.2 **Semilla con configuración.** Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
   (una versión de configuración con tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde
   01/01/2026, para los tres edificios del mundo). Antes del cambio, correr `pytest tests/integracion -k
   test_cc_` y guardar conteo y fallas previas como línea de base; después, el mismo conteo y ninguna falla
   nueva. No es TDD de comportamiento (es fixture): se registra como validación. Consumidores: todos los
   `test_cc_*` del 4b que usan `sembrar` (`test_cc_auditoria_api.py` usa `ApiEdificio` y se revisa en 5.5).
+  - **No se pudo hacer como dice el plan (11/11/2026, sin marcar):** sumar la versión a la `sembrar` por
+    defecto contradice la aceptación congelada (`d2da37e`): sus tests siembran con `sembrar(base)` y
+    (a) C11 `test_c11_sin_configuracion_vigente` espera `Conflicto("configuracion")` sobre un mundo sin
+    versión, y (b) casi todos llaman `configurar(base, mundo)` con `desde=2026-01-01` por defecto, que
+    chocaría con `uq_configuracion_vigencia`. Se hizo la variante que no la rompe: `sembrar(base, *,
+    con_configuracion=False)` (parámetro opcional, por defecto igual que antes) que suma la versión pedida
+    (tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde 01/01/2026) a los tres edificios; la
+    5.5 la pide en los `test_cc_*` del 4b que llaman `registrar_emision`. Test:
+    `test_intereses_esquema.py::test_sembrar_con_configuracion_suma_una_version_por_edificio`.
+  - Línea de base (15:46 a 15:48, `cd backend && uv run pytest tests/integracion -k test_cc_ -q`, antes de
+    tocar nada): `182 passed, 2240 deselected in 88.44s`, sin fallas. Después (15:56 a 15:57, con la `0034`
+    y la semilla opcional): `182 passed, 2265 deselected in 86.95s`, sin fallas nuevas (el valor por
+    defecto de `sembrar` no cambió, así que ningún `test_cc_*` ve la configuración). Queda `[ ]`: el
+    orquestador decide si esta variante cierra la 2.2 o si hay que revisar la aceptación.
 
 ## 3. Estado y foto: lo que el cálculo necesita
 

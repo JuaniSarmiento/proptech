@@ -7,6 +7,7 @@ cálculo.
 """
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
@@ -224,3 +225,41 @@ def test_el_dueno_es_el_arranque_y_la_app_no_es_dueña(base_del_edificio: BaseDe
             "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid=to_regprocedure(%s)",
             (f"fn_{TABLA}_bloqueada()",),
         ).fetchone() == (base.contenedor.username,)
+
+
+def test_sembrar_con_configuracion_suma_una_version_por_edificio(
+    base_del_edificio: BaseDeEdificio,
+) -> None:
+    """Tarea 2.2: la semilla opcional deja los tres edificios con su versión; la de por defecto,
+    ninguna (la aceptación de H-004 la crea con `configurar`)."""
+    from ._cuenta_corriente import sembrar
+
+    sin = sembrar(base_del_edificio)
+    con = sembrar(base_del_edificio, con_configuracion=True)
+    with base_del_edificio.conectar_app() as c:
+        c.autocommit = False
+        for mundo, esperadas in ((sin, 0), (con, 1)):
+            for admin, edificios in (
+                (mundo.admin, (mundo.complejo, mundo.otro_complejo)),
+                (mundo.admin_b, (mundo.complejo_b,)),
+            ):
+                fijar_tenant(c, admin)
+                for edificio in edificios:
+                    assert c.execute(
+                        "SELECT count(*), min(tasa_mensual), min(umbral_saldo_chico), "
+                        "min(dias_de_gracia), min(forma_de_calculo), min(vigente_desde) "
+                        "FROM configuracion_versionada WHERE complejo_id = %s",
+                        (edificio,),
+                    ).fetchone() == (
+                        (esperadas, None, None, None, None, None)
+                        if not esperadas
+                        else (
+                            1,
+                            Decimal("0.00"),
+                            Decimal("500.00"),
+                            0,
+                            PROPORCIONAL,
+                            date(2026, 1, 1),
+                        )
+                    )
+                c.rollback()
