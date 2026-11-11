@@ -65,6 +65,14 @@ mutante, en un commit anterior al de producción (L-061). -->
   rechaza, dentro y distinta de 1 advierte). Escenarios de importacion-de-padron. Mutantes: devolver sólo
   el primer error; recortar el piso; redondear un coeficiente de 7 decimales; aceptar la suma 0,9998;
   rechazar la 0,9999.
+  - **RED 1.3** (11/11/2026 20:53, contra `padron.py` y `numeros.py` provisorios: `validar_padron`
+    devuelve un padrón vacío sin rechazar nada y `leer_decimal` devuelve 0): `cd backend && uv run pytest
+    tests/unitarios/test_importacion_padron.py -q` → `134 failed, 3 passed`. Por causa: `Failed: DID NOT
+    RAISE PadronInvalido` x75, `AssertionError: el padrón válido no devolvió todas sus unidades` x27
+    (aserción del helper `_aceptado`, explícita y propia del test, no un error de setup), `Failed: DID NOT
+    RAISE NumeroInvalido` x19, `assert Decimal(0) == <esperado>` x13. Los 3 verdes
+    (`test_edificio_con_unidades_acepta_un_archivo_sin_padron[...]`) coinciden con el provisorio, que
+    acepta todo: no valen como RED; los cubre el mutante "edificio con unidades exige la hoja".
 - [ ] 1.4 **Migración `0036_importacion`.** Tabla `importacion` (D5) con RLS forzada, FK compuestas a
   `complejo` y `persona`, único parcial de un `borrador` por edificio, único de huella por edificio; las
   acciones `importar_padron_y_saldos` en `Accion`, en la matriz (E6) y en `accion_de_auditoria`. Tests de
