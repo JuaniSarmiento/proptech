@@ -731,6 +731,13 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   difieren; no chequear filas repetidas; validar el capital por fila en vez de por período (rechaza
   "Fila de sólo interés junto a otra con capital", que tiene que entrar). Verificación extra: ninguna
   fila escrita (`contar_escrituras`).
+  - RED (18:44, tanda 2, andamio sin comportamiento: `dominio/saldo_inicial.py` con los tipos y `normalizar_pedido`/
+    `firmar_pedido` triviales, y `registrar_saldo_inicial` que devuelve un resultado vacío sin escribir):
+    `uv run pytest tests/integracion/test_cc_saldo_inicial.py -q` da `25 failed, 3 passed`. Los rechazos de 6.1 fallan por
+    `Failed: DID NOT RAISE EntradaInvalida` en `test_cada_rechazo_nombra_su_campo_y_no_escribe_nada` (primer caso del bucle,
+    `vencimiento_un_dia_despues_de_la_migracion`) y en el resto de los de 6.1; los de registro, por
+    `AssertionError: la unidad no tiene cuenta` (nada se escribió). Pasan en el andamio, y se prueban sólo con su mutante en la tanda de producción, los de
+    replay (otro orden, tras confirmar) y `otra_administracion_no_ve_la_carga` (ver 6.4).
 - [ ] 6.2 **Registro con detalle, total único, interés importado y crédito.** Escenarios: "Dos períodos
   viejos", "Dos conceptos del mismo período", "Fila de sólo interés junto a otra con capital", "Total
   único", "Interés importado sin recalcular", "Total único con interés traído", "Unidad con saldo a
@@ -741,6 +748,8 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   se imputa; el origen se liga a otra fila; el interés importado se liga a todas las filas del período →
   rojo porque la fila 13 queda ligada al interés. Consumidor: el 5 (el contrato de filas se copia a su
   ficha al cerrar, con el signo del crédito como responsabilidad del 5).
+  - RED de 6.2: ver arriba (`test_dos_conceptos_*`, `test_el_interes_importado_*`, `test_total_unico_*`,
+    `test_el_credito_se_imputa_*`, `test_el_origen_*`, `test_devuelve_cuentas_y_totales`, todos en rojo por `AssertionError`).
 - [ ] 6.3 **Interés desde la migración, contra la emisión (E3.2, E13, E18).** Escenarios: "Primer interés
   después de migrar" ($1.280,00 y $1.360,00 con corte 31/10/2026), el total único con gracia 0 ($800,00),
   "Mes entero después de migrar" ($2.400,00 y $2.550,00, tramo 16/10-31/10), "Mes entero después de
@@ -766,6 +775,13 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   `85000.00`; la firma sin el interés acumulado de cada fila → mover $1.000 de interés de la fila 12 a la
   13 pasa como replay, rojo (caso extra del test unitario). Consumidor: el 5; su contrato se copia a la
   ficha del 5 al cerrar, con PA-1 como bloqueante y el pedido de E18 (mostrar el mes de la migración).
+
+  - RED de 6.4 (18:44): `tests/unitarios/cuenta_corriente/test_firma_saldo_inicial.py` da `16 failed, 5 passed`
+    (`assert 'v1:000...' != 'v1:000...'` en las propiedades de "otra firma"; pasan, vacuamente, las de "misma firma", que
+    se prueban con su mutante). En integración: `Failed: DID NOT RAISE Conflicto` en `test_solo_se_carga_con_la_migracion_pendiente`
+    (las dos), `test_segunda_carga_con_otra_operacion`, `test_misma_operacion_con_*`; `AssertionError: se esperaba una sola carga,
+    hay 2` en las dos cargas simultáneas; `DID NOT RAISE NoEncontrado` / `IdentidadDeOtraAdministracion` /
+    `RegistroFueraDeTransaccion` en tenant y transacción.
 
 ## 7. Situación de cobranza (R20, R30)
 
