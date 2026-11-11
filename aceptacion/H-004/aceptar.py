@@ -47,7 +47,7 @@ REPO = "JuaniSarmiento/proptech"
 RAMA_DEL_PR = "change/intereses-por-mora"
 CAMBIO = "intereses-saldo-inicial-y-moroso"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "d2da37ef509cfb88ef62d5e12b5d4b3ec18d270e"
 CARPETA = "aceptacion/H-004/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h004"
 TESTS_ESPERADOS = 67

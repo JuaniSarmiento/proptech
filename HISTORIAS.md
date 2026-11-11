@@ -346,9 +346,13 @@ Cierre:
 
 - Demo: correr la aceptación desde su SHA y, sobre una base real, emitir octubre y noviembre con
   septiembre impago y mostrar movimientos y tramos.
-- Constructor: por elegir (L-048: Codex o un agente de Claude con la conversación de la firma, nunca un
-  constructor genérico sin ella).
-- Aceptación aprobada: pendiente. Los importes de C19 a C22 se verifican contra R03 al escribirla.
+- Firma CRITICAL: Juani, 11/11/2026, E1 a E19 con la recomendación de `design.md` (`7dc5399`).
+- Aceptación aprobada: **Juani la aprobó por adelantado el 11/11/2026**, antes de verla escrita ("sé
+  que la aceptación está bien"), y dejó al orquestador a cargo de congelarla después de su revisión
+  técnica (rojos por aserción, importes verificados) y de correr las tandas hasta Lista. Los importes de
+  C19 a C22 verificados con `Fraction` (cierran todos). **SHA congelado: `d2da37ef509cfb88ef62d5e12b5d4b3ec18d270e`**; 67 tests (60 rojos por aserción y 7 de regresión sobre `7dc5399`, 0 errores, 0 skips), más C17, C18 y C28 en `aceptar.py`. Comando: `python3 aceptacion/H-004/aceptar.py`.
+- Constructor: Sonnet (`rein-constructor`), elegido por Juani el 11/11/2026, en seis tandas secuenciales
+  con brief y relevo propios.
 - Evidencia y demo: pendientes.
 
 ## Plantilla de historia
