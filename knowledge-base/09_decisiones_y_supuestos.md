@@ -2952,7 +2952,145 @@ registrado como tal en su momento.)*
   vencimiento ignorando la gracia (contaría como vencido algo que no genera interés).
 - **Quién**: Juani, 30/10/2026, con la recomendación del orquestador.
 
-## D-144 · "14 copias" gana un piso por antigüedad, nunca reemplaza la cantidad (31/10/2026, C-24 `respaldos-2`)
+## D-144 · Las pantallas de gastos son el 6c `pantallas-de-gastos` (C-30), de Juan Cruz, y el C-28 se reordena (31/10/2026)
+
+- **Fecha**: 31/10/2026.
+- **Contexto**: D-140 dejó las pantallas de HU-A3 y HU-A3b sin cambio ni nombre, y D-142 lo anotó como
+  D12, a resolver por Juani al planificar. Juan Cruz recién se suma (sólo LOW o MEDIUM, D-138) y tenía
+  asignado C-28 `revisiones-independientes`, que es trabajo de rompedor sin código de producción.
+- **Decisión**:
+  1. Nace el **6c `pantallas-de-gastos` (C-30)**, MEDIUM, de **Juan Cruz**: las pantallas de HU-A3 y
+     HU-A3b sobre la API del 6. Cierra D12 y el hueco de D-140. Depende sólo de changes archivados (6 y
+     3b), así que se puede proponer ya, en paralelo, sin tocar el camino crítico. Hace el flujo completo,
+     con revisor del plan antes del apply (L-067).
+  2. El código **6b** ya es `motor-de-reglas` (C-12): por eso este es el **6c**.
+  3. **C-28 sigue siendo de Juan Cruz, después del 6c.** El bloque del libro (los commits de RF del 4b
+     `447b8e5`, `8496f00`, `8d25bd6` y la pasada sobre RB4B-01, CX-01 y CX-02) pasa al **rompedor del
+     4c**, que modifica ese mismo código: revisarlo después sería revisar código viejo. El alcance de los
+     bloques de tests (los diez del 3a y la mutación) se define con Juani más adelante.
+- **Descartado**: reusar "6b" (choca con el motor de reglas); dejarle a Juan Cruz sólo C-28 (no tendría
+  un change de código con el flujo completo); que C-28 revise el libro después del 4c.
+- **Quién**: Juani, 31/10/2026, con la recomendación del orquestador.
+
+## D-145 · El 3f `ejemplo-robusto` cierra con los códigos de salida del comando del ejemplo, el edificio identificado por nombre y O1 como interpretación de D-112 (04/11/2026)
+
+- **Fecha**: 04/11/2026.
+- **Contexto**: C-27 (D-138), LOW, de Giuliano. Auditor **APROBADO** en verify 2
+  (`openspec/changes/archive/2026-11-04-ejemplo-robusto/informes/verify-2-auditor.md`), con el CI
+  del PR #7 verde sobre `1d090f6` (run `41767075030`).
+- **Decisión**:
+  1. **Códigos de salida** del comando del edificio de ejemplo: 0 cargado, ya estaba o vinculado; 1
+     fuera de desarrollo (D-112); 2 uso (argumentos, `--semilla` vacío, id de cuenta inválido); 3
+     configuración, o semilla que el caso de uso rechaza; 4 base no segura (rol o tablas de sólo
+     agregar); 5 base no disponible; 6 ejemplo distinto; 7 vinculación rechazada; 8 carga no
+     completada; 9 error inesperado, nombrando sólo su tipo; 130 Ctrl-C. Ningún mensaje muestra
+     contraseñas, el id de la cuenta, el emisor, datos de la conexión ni parámetros del driver. La
+     tabla vive en el spec `datos-semilla` y en el README.
+  2. **El edificio del ejemplo se identifica por el nombre de la semilla**, sin `LIMIT 1`, y la
+     comparación suma al super admin del ejemplo, leído con `listar_personal` de `acceso.aplicacion`,
+     sin SQL nuevo. Corrige la deuda de origen: "nada la crea con dos" era falso, porque un
+     `super_admin` vinculado puede crear otro edificio por la API.
+  3. **El comando corre sin Redis**, con `ConfiguracionDelEjemplo`. La API y el worker siguen
+     exigiéndolo con `Configuracion`.
+  4. **O1, interpretación de D-112, para que Juani la ratifique o la cambie**: `argparse` corre antes
+     de la guarda, así que un error de uso fuera de desarrollo da 2 y `--help` da 0, sin conectarse a la
+     base. Es el comportamiento previo al change (`9649471:ejemplo.py:432-436`); el change lo escribe,
+     no lo inventa. D-112 no se edita.
+  5. **Excepción de publicación**: Giuliano autorizó por escrito (03/11/2026) el push y el PR antes del
+     APROBADO, sólo para obtener el CI. No es aprobación de nadie, y el merge no lo hace el agente.
+  6. **Cuenta de intentos por gate** (L-072): rompedor, 2 fallidos y 1 limpio; auditor, 1 fallido y 1
+     aprobado; constructor, 4 intentos.
+- **Descartado**: copiar los topes del caso de uso en `semilla.py` para que la semilla rechazada saliera
+  antes de conectarse (L-009, D10 del design); reemplazar la ruta de la semilla por subcadena (F1,
+  L-069); dejar `Conflicto` en otro código sin reproducirlo (DE-6).
+- **Deuda**: DE-1 a DE-12, en la ficha 3f de `12_fichas_de_changes.md`.
+- **Quién**: Giuliano, 04/11/2026, con el orquestador; O1 pendiente de Juani.
+
+## D-146 · El ciclo de Juani pasa a Rein: historias con aceptación congelada y demo, y Claude como orquestador (10/11/2026)
+
+- **Fecha**: 10/11/2026.
+- **Contexto**: el ciclo de Juani (proponente, constructor, rompedor y auditor, D-048, D-092, D-125) daba
+  por aprobado un cambio con el OK del auditor, y los tests que decidían esa aprobación los escribía el
+  mismo constructor. Juani adopta Rein (`.rein/METODO.md`, instalado con ReinStack `--agent both`) para su
+  propio trabajo, con Claude como orquestador.
+- **Decisión**:
+  1. **Alcance**: Rein reemplaza **sólo el ciclo de Juani**. Alberto y el equipo de deuda adelantada
+     (D-138) siguen con OPSX de Active Stack v1 (D-093) sobre el mismo repo.
+  2. **Unidad de trabajo**: cada change de `CHANGES.md` que construye Juani se parte en una o más
+     **historias** en `HISTORIAS.md` (`H-001`, `H-002`…; los criterios son `H-001.C01`, para no chocar con
+     las `HU-*` de `06_funcionalidades.md` ni con los `C-23` de la deuda adelantada). `HISTORIAS.md` lleva
+     el contrato, el SHA aprobado y la evidencia; `obsidian.md` lleva el estado y el próximo paso (no hay
+     `ORQUESTADOR.md`).
+  3. **OpenSpec se conserva** como lugar del diseño: `proposal.md` y `design.md` del change, la firma de
+     CRITICAL y HIGH (D-094, D-111), las specs y el `openspec archive` que actualiza `knowledge-base/`. Las
+     reglas duras no cambian.
+  4. **Aceptación antes de construir**: el orquestador escribe las pruebas que deciden cada historia en
+     `aceptacion/<H-xxx>/`, Juani las aprueba, se commitean y se anota el SHA. El constructor
+     (`rein-constructor`) no las toca; si un criterio está mal, pide la decisión y va otro SHA.
+  5. **Roles**: el orquestador (la sesión que habla con Juani) acuerda, escribe la aceptación, delega y
+     verifica contra el SHA aprobado (worktree o `git show`, nunca la copia del constructor). Un
+     constructor por historia; el modelo lo elige Juani (Codex `xhigh` cuando hay cuota, si no Sonnet) y
+     cambiarlo pide su OK y queda anotado en la historia. En CRITICAL y HIGH sigue el **rompedor**, de
+     otra familia de modelo que el constructor (L-025, D-125), como revisión adversarial. **El auditor deja
+     de ser la compuerta.**
+  6. **Cierre**: Lista no es aprobación. Una historia pasa a **Terminada sólo con el sí explícito de Juani
+     después de la demo** criterio por criterio. Con dos historias en Lista no se construye nada nuevo.
+     El change se archiva (KB, `openspec archive`, commit y push a `main`, D-049) cuando todas sus
+     historias están Terminadas.
+  7. **Tests**: los agentes corren comprobaciones focalizadas y el orquestador la aceptación de la
+     historia. La suite completa (unos 18 minutos) la corre el CI o Juani, y su evidencia se enlaza en la
+     historia; nadie la da por corrida sin esa evidencia.
+  8. **Documentación viva = `knowledge-base/`**: la KB sigue siendo la fuente de verdad y se actualiza
+     en el mismo trabajo: decisiones y preguntas al acordar una historia, y el "Knowledge Base Impact"
+     completo al archivar el change. `HISTORIAS.md` enlaza reglas y decisiones; no las copia.
+- **Descartado**: Rein para todo el repo (el equipo recién arranca con OPSX y tiene los PR #5, #6 y #7 en
+  vuelo); abandonar OpenSpec (se perderían la firma, las specs sincronizadas y el archivo que comparte el
+  equipo); mantener al auditor como compuerta (el OK de un agente no reemplaza la demo ante Juani).
+- **Reemplaza**: el ciclo de Juani de `14_forma_de_trabajo.md` (D-048, D-092 en lo que hace al auditor,
+  D-125 en lo que hace al auditor final). El tope de tres vueltas sigue, con Juani decidiendo en vez del
+  auditor.
+- **Quién**: Juani, 10/11/2026, con la propuesta del orquestador.
+
+## D-147 · El 2e `humo-y-ci`: el humo y el ensayo se niegan ante `proptech`, el backend corre en paralelo y el ensayo entra al CI (30/10/2026)
+
+- **Contexto**: el C-23 (D-138) junta la deuda del humo, de Caddy y del CI. Construyó Gianfranco, con
+  rompedor y auditor en dos rondas (la ronda 1 dio NO por un bloqueante, B1; la 2, NO por lint, N1; los
+  dos quedaron resueltos).
+- **Decidido** (Gianfranco, 30/10/2026):
+  1. **`humo.sh` y `ensayo-roles.sh` rechazan siempre el proyecto `proptech`** (haya o no contenedores
+     corriendo), rechazan si falta `PROPTECH_COMPOSE_PROYECTO` y rechazan si los puertos 80 o 443 del
+     host están ocupados. La comprobación vive en un solo lugar, `exigir_proyecto_de_compose_propio`
+     (`infra/ci/humo-lib.sh`). **Cambia lo aprobado en la propuesta**, que sólo rechazaba `proptech`
+     "con contenedores corriendo": el stack real detenido conserva sus volúmenes y el `down -v` del
+     `trap` se los lleva (hallazgo R1 del rompedor). Corrige además un error real: `humo.sh:741` llamaba
+     a `restaurar.sh` sin exportar la variable y `restaurar.sh` cae en `proptech`.
+  2. **El ensayo de roles corre en el CI** en un job propio (`ensayo-roles`), con la cabeza derivada de
+     `alembic heads` (el único número escrito es el piso del ciclo de bajada, `0016`). Usa
+     `--env-file .env.example` y levanta sólo `db` y `respaldos`, porque `infra/.env` está en
+     `.gitignore` y el CI no lo crea (B1 del auditor).
+  3. **El backend corre en paralelo con `pytest-xdist`** (`-n 4`, no `auto`), en dos pasos del CI
+     (unitarios e integración) con el marcador `serial` para lo que no tolere el paralelo. Todo
+     contenedor de Postgres de los tests espera a aceptar conexiones (`conftest.py`).
+  4. **Dependabot** con cinco ecosistemas: `github-actions`, `docker` (`/backend` y `/web`),
+     `docker-compose` (`/infra`: el ecosistema `docker` sólo lee Dockerfile), `uv` y `npm`.
+  5. **Deuda recibida del 6 (D-142), cerrada**: D7 por la cabeza derivada; D8 sacando de `.gitleaksignore`
+     la línea de `a6bb954` y su comentario (el allowlist del `.gitleaks.toml`, acotado por archivo y por
+     texto, cubre el mismo falso positivo y no depende del sha; verificado con gitleaks real sobre el
+     historial completo); D10 con `test_openspec_fijado.py`, que da rojo si las skills se regeneran con
+     otra versión de OpenSpec que la del README.
+  6. **El worker queda como deuda**: no deja `arranque_fallido` con la causa. Verificado con salida real
+     que no filtra la contraseña; es falta de causa en el log (C-25).
+- **Descartado**: dejar `docker ps -a` y `docker volume ls` para decidir si `proptech` está en uso
+  (depende de que Docker conteste); que el humo corra en paralelo con un stack real (Caddy publica
+  `80:80` y `443:443` fijos y la red tiene subred e IP fijas: queda como deuda); `-n auto` (la memoria
+  del runner no está medida).
+- **Medido en WSL (20 núcleos, 30/10/2026)**: unitarios 102,6 s en serie a 51,0 s con `-n 4`; la
+  integración, 18 min 41 s en serie (baseline de `main` antes del rebase) a 7 min 04 s con `-n 4`
+  (ya con los tests nuevos de `main`). Los tiempos del runner de GitHub (4 vCPU) **no están medidos**:
+  se leen en la primera corrida del PR.
+- **Quién**: Gianfranco, 30/10/2026.
+
+## D-148 · "14 copias" gana un piso por antigüedad, nunca reemplaza la cantidad (31/10/2026, C-24 `respaldos-2`)
 
 - **Fecha**: 31/10/2026, apply del C-24 `respaldos-2` (design.md D2).
 - **Contexto**: la deuda del cierre del 1d decía "14 copias no son 14 días" si el stack se reinicia
@@ -2968,7 +3106,7 @@ registrado como tal en su momento.)*
 - **Quién**: Emiliano, 31/10/2026 (constructor del C-24, dentro del scope ya firmado HIGH de la
   propuesta).
 
-## D-145 · F6 (la carrera del 503 sin su línea) se reprodujo y se cerró por construcción, no por suerte (31/10/2026, C-24 `respaldos-2`)
+## D-149 · F6 (la carrera del 503 sin su línea) se reprodujo y se cerró por construcción, no por suerte (31/10/2026, C-24 `respaldos-2`)
 
 - **Fecha**: 31/10/2026, apply del C-24 `respaldos-2` (design.md D5).
 - **Contexto**: el rompedor del 1d había reproducido F6 1 de 18 veces; quedó como deuda porque una
@@ -2985,7 +3123,7 @@ registrado como tal en su momento.)*
   existe alcanza).
 - **Quién**: Emiliano, 31/10/2026 (constructor del C-24).
 
-## D-146 · Conmutar la aplicación a una base restaurada no vuelve a un nombre que no siga `proptech_algo` (31/10/2026, C-24 `respaldos-2`)
+## D-150 · Conmutar la aplicación a una base restaurada no vuelve a un nombre que no siga `proptech_algo` (31/10/2026, C-24 `respaldos-2`)
 
 - **Fecha**: 31/10/2026, ensayo real de punta a punta del C-24 `respaldos-2` (tarea 8.5).
 - **Contexto**: `infra/respaldos/conmutar.sh` valida el DESTINO con la misma expresión cerrada que

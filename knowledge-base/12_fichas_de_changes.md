@@ -797,10 +797,10 @@ dice.
 | RB-6: `redondear_al_centavo` con \|valor\| ≥ ~1e30 levanta `decimal.InvalidOperation`, no `MontoInvalido` como dice D7 del design | **Sin consumidor todavía**: el 4b agregó `test_deuda_4a.py`/`test_deuda_4a_umbral.py` (tasks.md 5.1, commit `4164aa2`), pero el auditor final del 4b nota que **ningún revisor independiente los abrió**, sólo los mutantes del propio constructor (`16-auditor-final.md`, Chequeo 3/5). **Corrección del 30/10/2026 (D-138)**: lo de que esos tests cubren RB-6 es falso. Ni `test_deuda_4a.py` ni `test_deuda_4a_umbral.py` prueban `redondear_al_centavo`, `4164aa2` no tocó `reparto.py` y `test_reparto.py:34-39` llega sólo hasta `999999999999.995`: ningún test prueba \|valor\| ≥ 1e30. El defecto sigue en `reparto.py:18` (el `quantize` fuera del `try`) | 4c, primer consumidor real (interés). Antes decía "Tests existen; falta su revisión independiente"; corregido el 30/10/2026 (D-138): no hay test, y el 4c tiene que escribirlo y verlo fallar antes de envolver el `quantize` |
 | RB-7 (anterior al 4a): `Dinero(texto)` construido bajo un contexto decimal de baja precisión levanta `InvalidOperation`; la aritmética sí está aislada, el constructor no | Igual que RB-6: cubierta por `test_deuda_4a.py` del 4b, sin revisión independiente confirmada | 4b, cerrada con la misma salvedad que RB-6. **Cerrada** (verificación del 30/10/2026, D-138): revisión independiente **estática**, sin correr mutantes; `dinero.py:54-56` usa `localcontext` con prec 32 y `test_deuda_4a.py:12-22` corre con prec=2, así que sacar el contexto haría fallar su aserción |
 | RB-11: la 4.1 no tiene el rojo de la aceptación con `0022` vacía; lo reemplazan dos mutantes | El mutante de vocabulario hace un trabajo equivalente (auditoría del apply) | — (se registra, no se reabre) |
-| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | **Corrido en el cierre del 4b** (`PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` → `ENSAYO ROLES OK`, proyecto aislado, tasks.md línea 547) | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: Sigue sin entrar al CI; dueño: quien lo agregue al workflow |
+| El ensayo de roles (`infra/ci/ensayo-roles.sh`) no corre en CI: `test_ensayo_login.py` fija el número de revisión y el orden del paso 1 del rollback en el texto del script, no que funcione. Sólo se prueba corriéndolo a mano (L-043) | **Corrido en el cierre del 4b** (`PROPTECH_COMPOSE_PROYECTO=proptech-cierre-4b bash infra/ci/ensayo-roles.sh` → `ENSAYO ROLES OK`, proyecto aislado, tasks.md línea 547) | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: Sigue sin entrar al CI; dueño: quien lo agregue al workflow |
 | El mensaje del ensayo `ciclo 0018/0016/0018` ya no es verdad (14-auditor-final) | Es texto de salida; el ensayo hace lo correcto | Quien toque `ensayo-roles.sh`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d, `8c9514a` (`ensayo-roles.sh:233,245,253` dicen 0028/0016/0028, la cabeza real). La familia (cabeza escrita a mano) sigue viva y va al C-23 junto con el ensayo en el CI |
-| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | **Reaparece en el 4b** como L-047 (`knowledge-base/15_lecciones.md`): `humo.sh` fija `-p proptech` e ignora la variable; el cierre del 4b lo esquivó con un envoltorio externo. Reconfirmado por la regresión del 27/10/2026 (`01-infraestructura.md`/`04-plata.md`): `restaurar.sh:46` ya respeta la variable por diseño, pero `infra/ci/humo.sh:40` sigue hardcodeando `-p proptech` | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: **Confirmado: 15** (piloto), D-130 |
-| Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
+| `PROPTECH_COMPOSE_PROYECTO` exportada en la shell se filtra a `restaurar.sh`, que deja de apuntar a `proptech` (14-auditor-final) | **Reaparece en el 4b** como L-047 (`knowledge-base/15_lecciones.md`): `humo.sh` fija `-p proptech` e ignora la variable; el cierre del 4b lo esquivó con un envoltorio externo. Reconfirmado por la regresión del 27/10/2026 (`01-infraestructura.md`/`04-plata.md`): `restaurar.sh:46` ya respeta la variable por diseño, pero `infra/ci/humo.sh:40` sigue hardcodeando `-p proptech` | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: **Confirmado: 15** (piloto), D-130 |
+| Cachear Chromium en el job `web` del CI: hoy se instala en cada corrida (hasta 10 minutos) y el límite del job pasó a 25 (L-044) | Con 25 minutos pasa; la última corrida tardó 7 | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: Quien toque `.github/workflows/ci.yml`. Dueño propuesto, no confirmado por Juani |
 | Revisión del propose, deuda aceptada del design: AR-5 (mover `ejemplo.py` a una raíz de composición), AR-7 (las reglas de fronteras miran sólo imports directos), AR-9 (dirección de los eventos); DB-2 (comparar el esquema de `0020` con `pg_dump -s` o `information_schema`, no con `pg_attribute` crudo); AN-7 y AN-9 | Escritas en el design (D4, D9) y en las specs | AR-7 y DB-2: **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: AR-5: quien toque `ejemplo.py`; el resto, sin dueño. Propuesto, no confirmado por Juani |
 | QA sin tarea propia: QA-6 y QA-7 sin test dedicado más allá de 2.1, 2.2 y 2.4; QA-9 (SQLSTATE del `UPDATE` del umbral y borde "0.00" del `CHECK`); QA-12 (modelo de detalle permisivo); QA-14 (migración de prueba que hace algo antes del `ALTER`); QA-15 (función con otro dueño) | **QA-15 cerrada en el 4b** (tasks.md 1.3: función de bloqueo con otro dueño y función con el texto de otra tabla, rojas en `despues()`). **QA-6, QA-7, QA-9, QA-12, QA-14**: cubiertas por `test_deuda_4a.py`/`test_deuda_4a_umbral.py` del 4b (5.1, `4164aa2`), con la misma salvedad que RB-6/RB-7: sin revisor independiente que las haya abierto | 4b, cerrado salvo la revisión independiente pendiente. **Cerrada** (verificación del 30/10/2026, D-138): revisión independiente **estática**, sin correr mutantes; cada aserción distingue su mutante (QA-6 y QA-7 en `test_deuda_4a.py:25-56`, QA-9 en `test_deuda_4a_umbral.py:16-47`, QA-12 en `test_detalle_padron.py:24-37`, QA-14 en `test_propiedad_protegida.py:87-122`) |
 
@@ -952,7 +952,7 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 
 | Deuda | Qué falta | Cambio |
 |---|---|---|
-| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | Las pantallas de HU-A3/HU-A3b, todavía sin change ni nombre (D-140) |
+| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | **6c** `pantallas-de-gastos` (C-30, D-144) |
 | El puerto `es_periodo_emitido` (D8) no tiene adaptador real: hoy ningún período puede estar "emitido" porque `liquidacion` no existe, así que `periodo_de_imputacion` nunca se mueve de `periodo` | Construir el adaptador real contra el estado de emisión del libro y pasarlo a `aprobar_gasto` | **7** (`liquidacion-y-emision`), primer módulo que sabe qué período está emitido |
 | `tests/unitarios/test_umbral_parametros.py::test_umbral_cero` falla en la suite completa de este cierre (no lo toca ningún archivo de este change): `yaml.safe_dump` sin `allow_unicode=True` corrompe un nombre con tilde de `estados_de_unidad` en Windows | Revisar el test o forzar `allow_unicode=True` al volver a escribir el YAML de prueba | **15** (piloto), mismo cajón que el resto de la deuda de portabilidad Windows (D-110) |
 | Varios `test_worker_*.py`/`test_zz_rompedor_worker_*.py` fallan en la suite completa bajo Windows: `arq.worker.Worker.close()` llama `signal.SIGUSR1`, que no existe en Windows (`AttributeError`). Ajeno a este change (ningún archivo afectado toca `gastos`) | Parchear o saltar el cierre de señales POSIX del worker bajo Windows, o documentarlo como "sólo corre en CI/Linux" | **15** (piloto), mismo cajón que D-110 |
@@ -971,14 +971,43 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | D4 | `complejos/aplicacion/errores.py` (del 3a) pierde la explicación del 422, como F3 | C-26 `pulido-web-3` |
 | D5 | El guardia de F2-1 en `editar_gasto` sólo se prueba con dobles | **5** (C-08), o el primer consumidor que llame a `editar_gasto` sin HTTP |
 | D6 | Sin test de concurrencia entre editar el importe y cargar una nota | C-28 `revisiones-independientes` |
-| D7 | `ensayo-roles.sh` con cabeza `0033` sin ejecutar; `shellcheck` sin correr localmente | C-23 `humo-y-ci` |
-| D8 | `.gitleaks.toml` y `.gitleaksignore` cubren el mismo falso positivo de `a6bb954` | C-23 (junto con DA-12 del 3d) |
+| D7 | **CERRADO por el 2e (D-147): la cabeza ya no se escribe a mano.** `ensayo-roles.sh` con cabeza `0033` sin ejecutar; `shellcheck` sin correr localmente | C-23 `humo-y-ci` |
+| D8 | **CERRADO por el 2e (D-147)**: `.gitleaks.toml` y `.gitleaksignore` cubrían el mismo falso positivo de `a6bb954`; queda el allowlist del toml | C-23 (junto con DA-12 del 3d) |
 | D9 | `test_gastos.py` citaba `D-141-bis`, inexistente | Resuelta en `5b10687` |
 | D9b | Registrar la ratificación de P36 y P37 por Juani | Resuelta en D-142 |
-| D10 | openspec 1.14.3 instalado en vez del 1.13.0 fijado | C-23 |
+| D10 | **CERRADO por el 2e (D-147)**: openspec 1.14.3 instalado en vez del 1.13.0 fijado; `test_openspec_fijado.py` fija la versión de las skills | C-23 |
 | D11 | CI sobre el SHA final | Resuelta: verde en `5b10687` |
-| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Juani, al planificar |
+| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Resuelta en D-144: **6c** `pantallas-de-gastos` (C-30), Juan Cruz |
 | D13 | Faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup (B1) | Aceptada (D-142); la prevención va a C-28 (L-067) |
+
+### 6c · `pantallas-de-gastos` · MEDIUM · pendiente (D-144, 31/10/2026) · C-30
+
+> **Creada por D-144** (31/10/2026), no por `openspec new`: cierra D12 del 6 y el hueco de D-140. La
+> hace **Juan Cruz**.
+
+- **Objetivo**: que el administrador cargue y apruebe gastos y cargos particulares desde la web, sin
+  tocar la API a mano.
+- **Entra**: las pantallas de HU-A3 y HU-A3b sobre la API que construyó el 6: proveedores; gastos con
+  sus cuatro estados (`borrador`, `sin_ia`, `en_revision`, `aprobado`), el aviso de receptor distinto y el
+  freno por duplicado; notas de crédito asociadas a su factura, con su tope (R22); cargos particulares
+  sueltos y su aprobación. Los PATCH que faltan para `categoria_de_gasto.obligatorio_mensual` y
+  `complejo.cuit` (tarea 3.10 del 6), si una pantalla los necesita.
+- **Importación de cargos por Excel**: si el 6c expone esa pantalla, antes resuelve D1 (límite de bytes
+  y filas, una consulta al padrón por archivo y no por fila); si no, la pantalla queda fuera y D1 sigue
+  en el 5.
+- **Reglas**: el frontend no calcula montos (los muestra como texto desde la API); errores de
+  formulario en su campo (3c); permisos por rol desde la sesión, con los controles que el 2d ya adapta
+  al perfil; toda interfaz pasa por la skill **impeccable**; la API falsa de e2e se extiende con cada
+  endpoint nuevo (L-027, §4.11 de la exploración del 4).
+- **No entra**: QR, lectura por IA y R23 (cambio 14); escribir en el libro o tocar la liquidación (7);
+  cambios de backend más allá de los PATCH nombrados.
+- **Depende de**: 6 y 3b (archivados).
+- **Gobernanza**: MEDIUM. Cinco roles; revisor del plan antes del apply (L-067). Juan Cruz recién se
+  suma: si algo del plan sube a HIGH o CRITICAL, para y lo firma un firmante de D-111.
+- **Terminado cuando**: cada criterio de HU-A3 y HU-A3b construido en el 6 tiene su pantalla y su e2e,
+  con recorrido a 1280 px, 320 px y con teclado, y el auditor da APROBADO.
+- **Leer antes**: ficha 6 (arriba), D-140 a D-142, `knowledge-base/06_funcionalidades.md` HU-A3 y
+  HU-A3b, `knowledge-base/15_lecciones.md`.
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
@@ -1338,7 +1367,7 @@ pueden proponer ya, y ninguno toca el camino crítico. Supuesto de planificació
 #4 (6) se dan por listos, aunque siguen sin mergear. Cada ítem conserva su ID y su ficha de origen; las
 tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño anterior.
 
-### 2e · `humo-y-ci` · MEDIUM · pendiente (D-138, 30/10/2026) · C-23
+### 2e · `humo-y-ci` · MEDIUM · archivado 11/11/2026 (D-147) · C-23
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda del humo, de Caddy y del CI
 > que tenía como dueño el 15 o "quien toque" un archivo, verificada contra `main` `e29e36d` el
@@ -1388,7 +1417,32 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   corre en el CI y toma la cabeza de migración de las migraciones reales; `humo.sh` respeta
   `PROPTECH_COMPOSE_PROYECTO`; Dependabot está configurado.
 
-- **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0).
+- **Recibe del 6** (D-142): D7 (`ensayo-roles.sh` con cabeza `0033` y `shellcheck`), D8 (gitleaks duplicado) y D10 (volver openspec a 1.13.0). **Los tres cerrados por el 2e** (D-147, tarea 10.5): D7 con la cabeza derivada, D8 sacando la línea de `a6bb954` de `.gitleaksignore` (queda el allowlist del toml) y D10 con un test que fija la versión de las skills.
+
+#### Cierre del 2e (D-147)
+
+Construyó Gianfranco; rompedor (9 tests rojos y 5 mutantes en la ronda 1) y auditor en dos rondas, cuyos
+bloqueantes (B1, N1) están resueltos. Cerrado: los pasos del humo con línea y comando; la lista de
+servicios derivada; las políticas de RLS restauradas comparadas por contenido; la carrera del `.dump`;
+`arranque_fallido` de la API con base inalcanzable y YAML mal formado; los timeouts de Caddy; el
+verificador de cabeceras; los tests del log; el `421` del sitio de respaldo en ocho métodos; el humo y
+el ensayo sin `-p proptech` fijo y con los tres rechazos; el ensayo de roles en el CI con la cabeza
+derivada; la caché de Chromium; Dependabot; el backend en paralelo. Números finales en un clon limpio
+sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan y 1 xfail (7 min 04 s con
+`-n 4`), humo 230 s, ensayo 49 s con `ciclo 0033/0016/0033`, `shellcheck`, `ruff` y `mypy` limpios.
+
+**Deuda del cierre del 2e** (ninguna fila tiene dueño confirmado por Juani):
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| El humo no corre en paralelo con un stack real, y a veces falla el paso 0 con `Pool overlaps`: la subred fija `172.28.0.0/24` (`infra/compose.yaml:22`), la IP fija de Caddy (`:374-375`), `FORWARDED_ALLOW_IPS` (`:191`) y los puertos `80:80` y `443:443` (`:368-370`) chocan con una red huérfana de una corrida anterior; pasa al repetir | El humo se niega por puertos ocupados y el CI corre uno por runner | 15 (piloto) o un change de infra; dueño propuesto: Gianfranco |
+| El worker no deja `arranque_fallido` con la causa ante un YAML roto o una base inalcanzable (deja `excepcion_como_mensaje`) | Verificado con salida real: no filtra la contraseña, sólo falta la causa | **C-25 `worker-y-logs`** |
+| `_hay_tests_serial` sólo detecta `pytest.mark.serial` | Hoy no hay tests `serial` | Quien agregue el primero |
+| La caché de Chromium puede ahorrar poco: `playwright install --with-deps` sigue instalando paquetes con `apt` | Se mide en el PR [GH] | Mismo PR |
+| Los tiempos del runner (xdist, caché de Chromium) y los `timeout-minutes` de `ensayo-roles` y `web` son provisionales | Se ajustan con los pasos reales de la primera corrida del PR (L-037, L-042) | Mismo PR |
+| En 4.1, 4.3, 4.4, 5.1, 6.2, 7.1 y 7.2 de `tasks.md` el rojo previo no quedó pegado (N3 del auditor) | Hay verde actual y los mutantes del humo real | Se registra, no se arregla |
+| `infra/ci/ensayo-roles.sh` escribe su evidencia en `.git/` y falla dentro de un git worktree (donde `.git` es un archivo); encontrado al escribir la aceptación de H-002 | Menor: se corre desde el clon principal y el CI usa un clon normal | Sin dueño |
+| La red `aplicacion` de `infra/compose.yaml` tiene la subred fija `172.28.0.0/24`: dos stacks de PropTech no conviven (la red que quedó de `proptech-3c` la ocupa), y la imagen `proptech-backend:local` es compartida entre proyectos de compose, así que un `down --rmi local` de uno se la lleva al otro; encontrado en la demo de H-001 (11/11/2026), que movió la subred con un override | El humo ya se niega con los puertos ocupados; el CI corre un solo stack | Sin dueño |
 
 ### 1e · `respaldos-2` · HIGH · **archivado** (D-138, 30/10/2026; cerrado 31/10/2026) · C-24
 
@@ -1534,7 +1588,24 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
 
 - **Recibe del 6** (D-142): D4, `complejos/aplicacion/errores.py` pierde la explicación del 422 (el arreglo de F3 en `gastos` sirve de modelo).
 
-### 3f · `ejemplo-robusto` · LOW · pendiente (D-138, 30/10/2026) · C-27
+### 3f · `ejemplo-robusto` · LOW · archivado 04/11/2026 (D-145) · C-27
+
+- **Cierre** (04/11/2026, D-145): construido por Giuliano con el flujo de cinco roles (plan y revisión
+  juntos en el orquestador, por LOW). Cuatro intentos de constructor, tres vueltas de rompedor y dos de
+  auditor; **APROBADO** en verify 2. CI verde del PR #7 sobre `1d090f6` (run `41767075030`). Archivo:
+  `openspec/changes/archive/2026-11-04-ejemplo-robusto/`.
+- **Lo que quedó**: el edificio del ejemplo se identifica por el nombre de la semilla, sin `LIMIT 1`;
+  la comparación mira cada dato de la semilla (con un test y su mutante por rama) y al super admin
+  del ejemplo, leído con `listar_personal`; dos cargas a la vez se prueban con una barrera; cada
+  familia de error sale con su mensaje y su código (0 a 9 y 130, tabla en el spec `datos-semilla` y en
+  el README), sin traceback; el comando corre sin Redis con su propia lectura de configuración
+  (`ConfiguracionDelEjemplo`), y la API y el worker siguen exigiéndolo; la guarda de QA-5 existe.
+- **Corrección de la deuda de origen**: la fila de DB-4 decía que "nada la crea con dos". Es falso:
+  un `super_admin` vinculado con `--clerk-usuario` puede crear otro edificio por `POST /complejos`.
+  Por eso el edificio se identifica por nombre.
+- **Deuda del cierre**: en "Deuda del cierre del 3f", más abajo.
+
+> El texto que sigue es la ficha original, tal como se planificó.
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de `ejemplo.py` que la
 > revisión del PR #1 de `acceso-de-desarrollo` dejó para "el próximo cambio que toque `ejemplo.py`" o
@@ -1583,8 +1654,9 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
     construyó.
   - Los diez archivos de test de la vuelta 2 del 3a (fila 6 de su deuda), leídos contra los escenarios
     que dicen cubrir.
-  - Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
-    rompedor sobre RB4B-01, CX-01 y CX-02.
+  - ~~Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
+    rompedor sobre RB4B-01, CX-01 y CX-02.~~ Pasa al **rompedor del 4c** (D-144), que modifica ese mismo
+    código.
   - DA-5 del 3d (D-139): la aserción `clave not in respuesta.text` es vacía con `"abc\n"`, y el test del
     `PATCH` de grupo no comprueba que el 422 nombre `clave` (`loc`).
   - Correr mutación (mutmut) sobre `cuenta_corriente`, `acceso` y `compartido` para medir la suite
@@ -1601,6 +1673,7 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
   el resultado (también cuando da limpio), y cada falla reproducida quedó como test con dueño.
 
 - **Recibe del 6** (D-142): D6 (test de concurrencia entre editar el importe y cargar una nota) y la prevención de D13 (L-067: revisor del plan antes del apply en los changes de desarrolladores nuevos).
+- **Orden (D-144)**: Juan Cruz lo hace **después del 6c**. El alcance de los diez tests del 3a y de la mutación se define con Juani más adelante.
 
 ### 2f · `base-y-rls` · CRITICAL · pendiente (D-138, 30/10/2026) · C-29
 
@@ -1650,7 +1723,7 @@ el 1d ya está en sus tareas (D-090).
 | Roles de PostgreSQL para RLS (migrador y aplicación) | 2a |
 | Cabeceras de seguridad en Caddy, volúmenes de Caddy, CI con `pull_request`, límites de tiempo y gitleaks fijado por digest, endurecimiento de contenedores, tabla de variables del README | 2c (no hacen al candado, D-097) — **cerrada en el 2c (las cinco cosas, tareas 3.1 a 4.3 y 7.1)** |
 | CSP en Next | 2b — **cerrada en el 2b (tarea 6.2)**: CSP estricta con nonce, resuelto E16 |
-| Dependabot | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
+| Dependabot | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15, propuesto (no lo necesita ni el candado ni el login; va con las imágenes por digest; lo confirma E4 de la aprobación del 2a) |
 | `naming_convention` en la base de SQLAlchemy, tipos `Porcentaje` y `Superficie`, versión de la semilla como `Literal[1]`, pydantic declarado como dependencia directa, app con `--factory`, tope de lectura del YAML, test de chmod salteado en Windows, `.gitignore` ampliado, healthcheck de la web contra 127.0.0.1 | 3a (tareas 2.3 y 2.4; el tope del YAML ya estaba hecho) |
 | Imágenes publicadas en un registro con tag de SHA y despliegue que sólo hace pull, imágenes fijadas por digest | 15 |
 
@@ -1737,18 +1810,18 @@ compara un resumen y no el conjunto. Quien la tome, que arregle la familia y no 
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| C2V2-1: con `PROPTECH_SITIO=https://...`, un `Host` ajeno por el 443 sale `200` con `Server: Caddy` y sin las cuatro cabeceras; la 308 de http a https tampoco las lleva | Hoy el stack corre en HTTP y el 443 no escucha; la spec quedó acotada a HTTP y lo dice | **C-23 `humo-y-ci`** (D-138, 30/10/2026), sólo la parte que se puede fijar sin dominio; antes: 15 (piloto), con el dominio real y HSTS. HSTS con el dominio real sigue en el 15 |
-| C2V2-2: el test del log (`test_worker_tenant.py`) captura sólo ERROR de un logger; una fuga en WARNING o en otro logger llega al JSON de producción | Anterior al 2c (`741caf2`); hoy ningún WARNING ni INFO emite el valor | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), antes de cargar datos reales |
-| C2V2-3: el humo compara la CANTIDAD de políticas de RLS de la base restaurada, no su contenido; `USING (true)` o un renombre pasan | La RLS de la base en uso está intacta; el comentario de `humo.sh` ya declara el límite | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), junto con la prueba de restauración |
-| C2V2-6: nada fija qué devuelve el sitio de respaldo (hoy `421` vacío en ocho métodos) | La configuración de hoy es correcta | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), junto con C2V2-1 |
-| C2V2-7: la lista de servicios del chequeo de capacidades está escrita a mano; un noveno servicio no lo ve nadie | Hoy hay ocho y los ocho dan rojo | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
-| C2-5 y C2V2-8: 22 `exit 1` e `if !` del humo sin línea ni comando; `compose()` informa su propia línea | El paso se ve por su encabezado; la spec nombra la excepción | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
-| C2-7: el conteo de `.dump` en el segundo `up` es una carrera (el comentario de `humo.sh:84-88` es falso) | Hoy no se ve: el volcado tarda menos de 1 s | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
-| C2-8: `arranque_fallido` no cubre una base inalcanzable ni un `parametros.yaml` mal formado (confirmado con comando en la vuelta 2) | El contenedor igual no arranca; falta la causa nombrada | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), antes del despliegue |
-| N2: con la `api` pausada, Caddy no responde en 100 s | Sin tráfico real no muerde | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto) |
-| N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), nota |
-| N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), con C2V2-1 |
-| N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | **C-23 `humo-y-ci`** (D-138, 30/10/2026); antes: 15 (piloto), con C2V2-2 |
+| C2V2-1: con `PROPTECH_SITIO=https://...`, un `Host` ajeno por el 443 sale `200` con `Server: Caddy` y sin las cuatro cabeceras; la 308 de http a https tampoco las lleva | Hoy el stack corre en HTTP y el 443 no escucha; la spec quedó acotada a HTTP y lo dice | **Declaración y test estático CERRADOS por el 2e** (D-147); HSTS y el 443 con dominio siguen en el 15; antes C-23 (D-138), sólo la parte que se puede fijar sin dominio; antes: 15 (piloto), con el dominio real y HSTS. HSTS con el dominio real sigue en el 15 |
+| C2V2-2: el test del log (`test_worker_tenant.py`) captura sólo ERROR de un logger; una fuga en WARNING o en otro logger llega al JSON de producción | Anterior al 2c (`741caf2`); hoy ningún WARNING ni INFO emite el valor | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), antes de cargar datos reales |
+| C2V2-3: el humo compara la CANTIDAD de políticas de RLS de la base restaurada, no su contenido; `USING (true)` o un renombre pasan | La RLS de la base en uso está intacta; el comentario de `humo.sh` ya declara el límite | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), junto con la prueba de restauración |
+| C2V2-6: nada fija qué devuelve el sitio de respaldo (hoy `421` vacío en ocho métodos) | La configuración de hoy es correcta | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), junto con C2V2-1 |
+| C2V2-7: la lista de servicios del chequeo de capacidades está escrita a mano; un noveno servicio no lo ve nadie | Hoy hay ocho y los ocho dan rojo | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto) |
+| C2-5 y C2V2-8: 22 `exit 1` e `if !` del humo sin línea ni comando; `compose()` informa su propia línea | El paso se ve por su encabezado; la spec nombra la excepción | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto) |
+| C2-7: el conteo de `.dump` en el segundo `up` es una carrera (el comentario de `humo.sh:84-88` es falso) | Hoy no se ve: el volcado tarda menos de 1 s | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto) |
+| C2-8: `arranque_fallido` no cubre una base inalcanzable ni un `parametros.yaml` mal formado (confirmado con comando en la vuelta 2) | El contenedor igual no arranca; falta la causa nombrada | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), antes del despliegue |
+| N2: con la `api` pausada, Caddy no responde en 100 s | Sin tráfico real no muerde | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto) |
+| N9: el chequeo de PID 1 de `db` se vio rojo sólo con `init: true` | El chequeo funciona; la prueba original no lo mostraba por su cuenta | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), nota |
+| N-a: el verificador de cabeceras acepta duplicados y valores sin límite de palabra | No explotable hoy: el `Caddyfile` es correcto | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), con C2V2-1 |
+| N-b: el test del log da rojo falso con un campo que contenga "123" | 0 de 200 hoy | **CERRADA por C-23 `humo-y-ci`** (2e, D-147, 30/10/2026); antes: 15 (piloto), con C2V2-2 |
 | N-c: el tenant por transacción (D4 del 2a) no tiene ningún test que pueda dar rojo; con el tenant por sesión pasan los 900 — **CERRADA** (`7555b59`): `test_set_config_de_administracion_id_no_sobrevive_al_commit_sin_pasar_por_checkin` en `backend/tests/integracion/test_tenant_por_transaccion.py`. Dos sesiones ligadas a la MISMA `Connection` (sin pasar por `checkin`, que tapaba el mutante vía R7); rojo confirmado con `set_config(..., true→false)` (assert en `test_tenant_por_transaccion.py:354`, 2026-10-22 12:48:51) y con quitar el reset del `checkin` (rojo cae en el test preexistente `test_un_set_de_sesion_sin_local_no_contagia_gracias_al_reset_de_checkin`, `test_tenant_por_transaccion.py:306`, 2026-10-22 12:49:21); verde final `10 passed` (2026-10-22 12:49:40) | R7 tapa la fuga, no hay exposición | 3 (C-06), antes de su primera tabla nueva con RLS. Dueño propuesto por el orquestador; lo confirma Juani |
 
 ### Deuda del cierre del 2.2a
@@ -1838,6 +1911,30 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d (D-133); `ejemplo.py:41-52` llama a `acceso.aplicacion` y no queda SQL sobre `persona` ni `asignacion_rol` |
 | La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | **C-26 `pulido-web-3`** (D-138, 30/10/2026; hoy la exclusión también tiene cuatro `@clerk/*`, `web/pnpm-workspace.yaml:7-21`); antes: Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
 | Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
+
+> **Cerradas por el 3f** (04/11/2026, D-145): BE-3 y el código único, QA-3 (Redis), QA-2 (M5 a M8 y
+> las demás ramas), QA-7 y DB-3 (barrera y las dos ramas de la espera), DB-4 (identificación por
+> nombre y comparación del super admin; "nada la crea con dos" era falso, ver la ficha 3f) y QA-5.
+
+### Deuda del cierre del 3f (`ejemplo-robusto`, C-27, 04/11/2026)
+
+La del auditor (`informes/verify-2-auditor.md` del archivo del change, DE-1 a DE-12). Dueño: el primer
+change que toque la pieza (L-012).
+
+| # | Deuda | Cambio |
+|---|---|---|
+| DE-1 | La comparación no mira `pisos`, `subsuelos`, la ubicación ni `activo` de un grupo: una semilla que sólo cambia eso da "ya estaba" | Próximo change que toque `ejemplo.py` |
+| DE-2 | `acceso/aplicacion/alta_inicial.py`, el gemelo: traceback y exigencia de Redis (L-009) | Primer change que toque `alta_inicial.py`, con su propia clasificación (está en `acceso`) |
+| DE-3 | Un error de uso fuera de desarrollo da 2, no 1: `argparse` corre antes de la guarda. Es previo al change y queda como interpretación de D-112 | Juani ratifica o cambia (D-145) |
+| DE-4 | Sin reproducir: límite de conexión por dirección (S1), `print` con la salida cerrada (S2), parámetros sin permiso de lectura (S4), Ctrl-C durante los imports deja traceback (S5) | Próximo change que toque `ejemplo.py`, con una corrida en Linux |
+| DE-5 | `--semilla` con un archivo especial puede agotar la memoria antes del tope de 1 MiB (S3) | Primer change que toque `compartido/cargador_yaml.py` |
+| DE-6 | `Conflicto` sigue en el 9 sin reproducir; base lenta sin `statement_timeout` (L-001) | Próximo change que toque `ejemplo.py` |
+| DE-7 | Los validadores del pool y del archivo de parámetros viven en dos lectores (`_LectorDeApp` y `_LectorDelEjemplo`) | Próximo change que toque `compartido/configuracion.py` |
+| DE-8 | Todos los roles del 3f fueron de la familia Claude; el proyecto no declara `## Role executors` (L-025) | C-28 `revisiones-independientes` |
+| DE-9 | Fallas de Windows que D-110 no nombra (separador de ruta en `test_fronteras_de_modulos.py`, `test_umbral_cero` y otras familias); `mypy` de Windows con 2 errores en `tests/infra/test_respaldos.py:554` | Se suman a las fallas de portabilidad de la ficha 3b-bis; lo de `respaldos`, a C-24 |
+| DE-10 | CRLF de `infra/respaldos/*.sh` en Windows, sin `.gitattributes` | C-24 `respaldos-2` |
+| DE-11 | El gemelo de parámetros de F1 se prueba con un doble que repite el formato de `leer_archivo`: si ese texto cambia, la ruta de `PROPTECH_PARAMETROS` saldría sin que un test lo note | Primer change que toque `cargador_yaml.py` o `ejemplo.py` |
+| DE-12 | El conteo `N passed` del run `41767075030` no se leyó (los logs piden login) | Giuliano o quien tenga login, si lo pega en `tasks.md` 8.1 del archivo; si no, queda declarado (no bloquea) |
 
 ## Pendientes de arranque
 

@@ -1060,7 +1060,114 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
   proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.
 
-## L-068 · Un doble falso de `docker` que matchea subcadenas puede cubrir una consulta SQL que nunca corre de verdad
+## L-068 · Un constructor detenido deja código sin evidencia: el siguiente lo prueba revirtiendo a la forma que describió el rompedor
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), apply 3 (03/11/2026).
+- **Qué pasó**: el agente cortado el 01/11 dejó escritas la producción y los tests del grupo 9 sin
+  ningún RED. El agente nuevo no dio nada por probado: obtuvo cada rojo volviendo la producción a la
+  forma que pegó `verify-1-breaker.md` y comparó la salida con la del rompedor.
+- **Regla**: el código que deja un agente detenido es código sin evidencia. El RED se obtiene
+  revirtiendo a la versión anterior documentada, y vale si reproduce la salida que ya había registrado
+  otro rol. Se declara como "RED contra la producción anterior", no como RED antes de producción
+  (L-061). Aplica a constructor y auditor.
+
+## L-069 · Para ocultar un valor tipeado en un mensaje se compara el mensaje entero, nunca se reemplaza la subcadena
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), F1 de verify 1 (31/10/2026).
+- **Qué pasó**: `str.replace(ruta, "<semilla>")` sobre todo el mensaje convirtió `--semilla e` en
+  `no s<semilla> pu<semilla>d<semilla>...` y borró el nombre del campo cuando el archivo se llamaba
+  `unidades`.
+- **Regla**: si un texto de error trae un valor del usuario que no debe salir, se reconoce el mensaje
+  conocido por igualdad y se reescribe entero. Un reemplazo de subcadena falla con valores cortos o que
+  son palabras del propio mensaje (L-007). Aplica a constructor y rompedor.
+
+## L-070 · Ahorrar la segunda vuelta del rompedor o la suite de cierre no las reemplaza: se acotan, no se saltean
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), decisión de Giuliano del 03/11/2026 y verify 1 del auditor.
+- **Qué pasó**: para ahorrar tiempo y memoria se pidió no repetir el rompedor ni la suite. El change
+  llegó al auditor con las correcciones sin atacar y sin regresiones medidas, y no pudo aprobarse.
+  Acotado al delta, el rompedor encontró dos huecos reales en minutos, y el CI del PR resolvió la suite
+  sin la corrida local de más de una hora.
+- **Regla**: cuando la corrección es chica, la vuelta del rompedor se acota al delta y a sus
+  consumidores, y la suite se delega al CI con el PR armado antes de pedir el veredicto. Aplica a
+  orquestador y auditor.
+
+## L-071 · Sin login, el CI verde se certifica por la definición del paso y su conclusión; el conteo es un complemento
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), B2 de verify 1 y tarea 8.1 (04/11/2026).
+- **Qué pasó**: la API pública de GitHub da la conclusión de cada paso pero no sus logs, y `gh` no
+  estaba instalado, así que el `N passed` que pide L-055 no se pudo leer.
+- **Regla**: el run sobre el SHA de origen, con su paso de tests leído en `ci.yml` y en el script que
+  llama (sin filtro de archivo ni de `-k`) y en `success`, certifica la suite entera. El conteo se pide
+  aparte a quien tenga login y se declara como hueco si falta; no se inventa ni se da por leído. Aplica
+  a orquestador y auditor.
+
+## L-072 · La cuenta de intentos se declara por gate y se aplica en cada vuelta
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), `tasks.md` del change (03/11/2026).
+- **Qué pasó**: el registro contó los resultados no aprobados de toda la etapa verify ("con un tercero
+  se frena"), y en la vuelta siguiente reabrió el grupo 10 sin aplicar esa misma cuenta. Contada por
+  gate, como dice la regla global, nadie llegó a tres.
+- **Regla**: `tasks.md` dice qué cuenta usa (por gate: rompedor y auditor por separado) y, en cada
+  resultado no aprobado, anota el número de esa gate. Así la frenada en el tercero no depende de una
+  interpretación hecha después. Aplica al orquestador.
+
+## L-073 · La evidencia verde de un job de CI se saca de una copia limpia, con lo que el CI tiene y nada más
+
+- **Origen**: 2e (B1 del auditor, N1 de la ronda 2), 30/10/2026.
+- **Qué pasó**: el job `ensayo-roles` iba a fallar en un runner limpio porque `infra/.env` está en
+  `.gitignore` y la evidencia verde se había sacado en un clon que tenía una copia. Aparte, una corrida
+  final "sobre el código final" no incluyó `ruff`, y tres líneas largas dejaron el job `backend` en rojo.
+  Una copia armada con `git archive` no tiene `.git` y rompe los tests que lo usan.
+- **Regla**: la corrida de cierre se hace en un `git clone` limpio (con `.git`, sin archivos ignorados)
+  de la punta de la rama, con todos los comandos del CI, `ruff` y `mypy` incluidos, y se repite si
+  llega un commit después.
+
+## L-074 · Paralelizar muestra las dependencias de orden y de arranque que la serie escondía
+
+- **Origen**: 2e (xdist), 30/10/2026.
+- **Qué pasó**: con `-n 4` aparecieron defectos que la serie no mostraba: un id de parámetro hecho con
+  la hora (los workers "coleccionan tests distintos"), tests que sólo pasaban si otro había migrado
+  antes el esquema, `roles antes` con `Connection refused` porque el contenedor de Postgres decía
+  "ready" por el servidor temporal de la imagen, y un test que lee `git ls-files` y sólo ve lo
+  commiteado.
+- **Regla**: los ids de `parametrize` son deterministas; un test que necesita el esquema lo pide por
+  fixture y no por el orden; todo contenedor de Postgres espera a conectar de verdad; y se corre cada
+  archivo solo antes de dar por buena una corrida paralela.
+
+## L-075 · Rechazar un nombre es más fuerte que rechazar un estado
+
+- **Origen**: 2e (R1 del rompedor, D-147), 30/10/2026.
+- **Qué pasó**: el humo se negaba ante `proptech` sólo "con contenedores corriendo". Con el stack real
+  detenido (un `compose stop`, un reinicio) sus volúmenes seguían vivos y el `down -v` del `trap` se
+  los llevaba.
+- **Regla**: una protección contra un comando destructivo no depende del estado que mira (qué corre
+  ahora): rechaza el nombre del recurso protegido siempre.
+
+## L-076 · Los números de decisión y de lección se reparten entre ramas abiertas, no sólo en `main`
+
+- **Origen**: H-001 y H-002 (integración de los PR #7 y #5, D-146), 11/11/2026.
+- **Qué pasó**: tres PRs abiertos en paralelo numeraron sus decisiones y lecciones mirando sólo `main`.
+  El #5 trajo D-144 (en `main` era la del 6c) y L-068 a L-070 (ya del 3f); el #6 trae D-144 a D-146 y
+  otra L-068 y L-069. Git no lo marca: las dos decisiones se agregan al final y el conflicto es de
+  posición, no de número. Al integrar hubo que renumerar el encabezado y cada referencia del PR, sin
+  tocar las de `main` con el mismo número.
+- **Regla**: antes de numerar una D o una L, mirar también las ramas `change/*` abiertas. Al integrar,
+  verificar sobre la fusión que ningún encabezado se repita y que ninguna línea agregada por el PR nombre
+  los números viejos.
+
+## L-077 · La guarda de un script destructivo se prueba con un `docker` falso, nunca con el real
+
+- **Origen**: H-002 (aceptación del PR #5), 11/11/2026.
+- **Qué pasó**: para probar que `humo.sh` y `ensayo-roles.sh` se niegan antes de tocar Docker, la
+  aceptación los corrió con un `docker` falso en el `PATH` que sólo anota si lo llamaron. Contra `main`,
+  sin la guarda, el `humo.sh` viejo con `proptech` llamó a `docker` en los tres casos de rechazo: con el
+  real habría hecho `down -v` sobre el stack en uso.
+- **Regla**: una prueba de "no llega a ejecutar X" reemplaza X por un doble que registra la llamada y
+  falla. Ver fallar la prueba contra la versión sin guarda es exactamente el caso que no se puede correr
+  con el binario real.
+
+## L-078 · Un doble falso de `docker` que matchea subcadenas puede cubrir una consulta SQL que nunca corre de verdad
 
 - **Origen**: C-24 `respaldos-2`, ensayo real de la tarea 8.5, 31/10/2026.
 - **Qué pasó**: la verificación 3 de `conmutar.sh` (RLS/políticas por contenido, D6) tenía una consulta
@@ -1078,7 +1185,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   alcanza con que su test con doble falso esté en verde (L-043, mismo principio que un script de
   mantenimiento).
 
-## L-069 · Un test de `infra/` que depende de señales POSIX o de `chmod` real agrega deuda nueva de Windows, no la hereda
+## L-079 · Un test de `infra/` que depende de señales POSIX o de `chmod` real agrega deuda nueva de Windows, no la hereda
 
 - **Origen**: C-24 `respaldos-2`, PR #6, 31/10/2026 (D-144 a D-146).
 - **Qué pasó**: `TestApagadoOrdenado` (tarea 4.1/4.2, D3) se escribió reusando el patrón ya existente de

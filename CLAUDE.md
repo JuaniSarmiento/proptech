@@ -155,6 +155,20 @@ mercado de arranque es **Mendoza**.
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
   `ejemplo-robusto` (Giuliano), C-28 `revisiones-independientes` (Juan Cruz) y C-29 `base-y-rls`
   (CRITICAL, sin asignar). Quien recién se suma toma sólo LOW o MEDIUM.
+- **Cambio 2e `humo-y-ci` archivado** (C-23, 11/11/2026, MEDIUM, D-147): el humo y el ensayo de roles se
+  niegan ante el proyecto `proptech`, cada paso del humo dice cuál es y deja su evidencia, la lista de
+  servicios y las políticas de RLS se comparan por derivación y contenido, el backend corre en paralelo
+  en el CI, el ensayo de roles entra al CI con la cabeza de migración derivada, Chromium cacheado y
+  Dependabot. Construyó Gianfranco (PR #5), integrado con `main` en H-002 con el CI verde sobre la
+  cabeza final. Deuda en la ficha 2e de `knowledge-base/12_fichas_de_changes.md`.
+- **Cambio 3f `ejemplo-robusto` archivado** (C-27, 04/11/2026, LOW, D-145): el comando del edificio de
+  ejemplo identifica el edificio por nombre, compara al super admin, corre sin Redis y sale con un
+  mensaje y un código propios por familia de error (0 a 9 y 130), sin traceback. Construyó Giuliano con
+  el flujo de cinco roles; auditor APROBADO con el CI verde del PR #7 (sin mergear al archivar). Deuda
+  DE-1 a DE-12 en la ficha 3f de `knowledge-base/12_fichas_de_changes.md`.
+- **6c `pantallas-de-gastos`** (C-30, MEDIUM, D-144, 31/10/2026): las pantallas de HU-A3 y HU-A3b sobre
+  la API del 6, de Juan Cruz, por proponer; cierra D12 del 6. Juan Cruz hace C-28 después del 6c, y el
+  bloque del libro de C-28 pasa al rompedor del 4c.
 - **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL, por proponer; lo construye un
   firmante de D-111) en el camino crítico; los siete de deuda adelantada en paralelo; después 4d
   `cambio-de-titular` (CRITICAL).
@@ -221,7 +235,8 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `knowledge-base/11_glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `knowledge-base/12_fichas_de_changes.md` | El detalle de cada cambio del roadmap (objetivo, reglas, dependencias, qué prueba el rompedor) | Se reescribe |
 | `knowledge-base/13_motor_de_reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN y su riesgo real, versiones, fallas y dónde entra en el roadmap | Se reescribe |
-| `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio**: constructor, rompedor y auditor en secuencia; aprueba el auditor | Se reescribe |
+| `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio** con Rein (D-146): historias, aceptación congelada, constructor, rompedor en CRITICAL/HIGH, demo; sólo Juani da por Terminada una historia | Se reescribe |
+| `HISTORIAS.md` | El backlog de Juani con Rein: cada historia, sus criterios, el SHA de su aceptación y la evidencia | Se reescribe |
 | `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
 | `knowledge-base/16_proyecto_final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
 | `CHANGES.md` | **Todos los cambios en orden, con su estado** (los del roadmap y los de deuda adelantada, D-138): arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
@@ -279,12 +294,13 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `pulido-de-la-configuracion` (28/10/2026, D-128, D-129, tras el PR #2 y la Enmienda E11), 2d
   `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
   D-139, PR #3, sin migraciones) y 6 `gastos-y-cargos` (30/10/2026, D-140 a D-142, PR #4, migraciones
-  `0029` a `0033`).
+  `0029` a `0033`), 3f `ejemplo-robusto` (04/11/2026, D-145, PR #7, sin migraciones) y 2e
+  `humo-y-ci` (11/11/2026, D-147, PR #5, sin migraciones).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29, uno por
-  desarrollador; tabla en `CHANGES.md`.
+- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23 y C-27
+  (archivados), uno por desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
@@ -349,17 +365,21 @@ archive` y una actualización de `knowledge-base/` según su sección "Knowledge
 6. /opsx:archive <nombre-del-change> + marcar [x] en CHANGES.md
 ```
 
-**El de Juani, constructor/rompedor/auditor en secuencia** (detalle completo en
-`knowledge-base/14_forma_de_trabajo.md`):
+**El de Juani, con Rein** (D-146, desde el 10/11/2026; método en `.rein/METODO.md`, aplicación a
+PropTech en `knowledge-base/14_forma_de_trabajo.md`):
 
 ```
-1. Proponer ──► 2. Construir (TDD) ──► 3. Romper ──► 4. Auditar ──► 5. Archivar (commit + push)
+1. Acordar ──► 2. Aceptación (SHA) ──► 3. Construir ──► 4. Romper ──► 5. Verificar ──► 6. Demo ──► Archivar
 ```
 
-El proponente escribe `proposal.md`/`design.md`/`tasks.md`; el constructor implementa con TDD
-estricto; el rompedor intenta romperlo y deja cada falla como un test; el auditor da el veredicto
-final (**OK** o **NO con motivos**) y un cambio queda aprobado cuando lo da. Los cambios CRITICAL o
-HIGH llevan además la aprobación escrita de Juani, Alberto o Emiliano antes de codear (D-094, D-111).
+Cada change se parte en historias (`H-001`…) en `HISTORIAS.md`. Claude es el orquestador: acuerda la
+historia con Juani, escribe la aceptación ejecutable en `aceptacion/<H-xxx>/` antes de construir
+(Juani la aprueba y queda congelada en un SHA), delega en `rein-constructor` (Codex o Claude, lo elige
+Juani), suma un rompedor de otra familia de modelo en CRITICAL y HIGH, verifica contra el SHA aprobado y
+presenta la demo. **Sólo Juani pasa una historia a Terminada.** El change se archiva cuando todas sus
+historias están Terminadas, con `knowledge-base/` actualizada en el mismo trabajo. OpenSpec sigue
+llevando la propuesta, el diseño y la firma: los cambios CRITICAL o HIGH llevan la aprobación escrita de
+Juani, Alberto o Emiliano antes de codear (D-094, D-111).
 
 Aplicar TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas
 duras prevalecen.
@@ -375,3 +395,16 @@ nacionales a ARS 2.950 por unidad, **AccessIN** como competidor mendocino en bar
 ## Memoria del proyecto en Obsidian
 
 Al iniciar, leé `obsidian.md` para recuperar el estado y los pendientes. Al completar trabajo significativo, actualizá esa nota con avances verificables, decisiones y próximos pasos, sin incluir secretos. La base técnica `knowledge-base/` mantiene su función y sus propias reglas.
+
+<!-- REINSTACK BEGIN -->
+## ReinStack
+
+Leé `.rein/METODO.md`, `HISTORIAS.md` y el archivo de estado (`obsidian.md` si el proyecto lo tiene,
+si no `ORQUESTADOR.md`) antes de trabajar.
+El agente principal actúa como
+orquestador Rein: acuerda el alcance con la persona y delega la implementación
+al perfil `rein-constructor`. El constructor no modifica la aceptación
+aprobada. Una historia sólo pasa a Terminada con verificación y aceptación
+explícita de la persona. Si no hay subagentes disponibles, informalo y acordá
+cómo seguir antes de asumir el trabajo del constructor.
+<!-- REINSTACK END -->
