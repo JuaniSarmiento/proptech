@@ -1367,7 +1367,7 @@ pueden proponer ya, y ninguno toca el camino crítico. Supuesto de planificació
 #4 (6) se dan por listos, aunque siguen sin mergear. Cada ítem conserva su ID y su ficha de origen; las
 tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño anterior.
 
-### 2e · `humo-y-ci` · MEDIUM · construido, PR por abrir (D-138, D-147, 30/10/2026) · C-23
+### 2e · `humo-y-ci` · MEDIUM · archivado 11/11/2026 (D-147) · C-23
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda del humo, de Caddy y del CI
 > que tenía como dueño el 15 o "quien toque" un archivo, verificada contra `main` `e29e36d` el
@@ -1441,6 +1441,7 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 | La caché de Chromium puede ahorrar poco: `playwright install --with-deps` sigue instalando paquetes con `apt` | Se mide en el PR [GH] | Mismo PR |
 | Los tiempos del runner (xdist, caché de Chromium) y los `timeout-minutes` de `ensayo-roles` y `web` son provisionales | Se ajustan con los pasos reales de la primera corrida del PR (L-037, L-042) | Mismo PR |
 | En 4.1, 4.3, 4.4, 5.1, 6.2, 7.1 y 7.2 de `tasks.md` el rojo previo no quedó pegado (N3 del auditor) | Hay verde actual y los mutantes del humo real | Se registra, no se arregla |
+| `infra/ci/ensayo-roles.sh` escribe su evidencia en `.git/` y falla dentro de un git worktree (donde `.git` es un archivo); encontrado al escribir la aceptación de H-002 | Menor: se corre desde el clon principal y el CI usa un clon normal | Sin dueño |
 
 ### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
 
