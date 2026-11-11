@@ -51,6 +51,11 @@ mutante, en un commit anterior al de producción (L-061). -->
     2 MiB, justo en el límite), `assert 'Unidades' not in {...}` (x3, nombre de hoja parecido), fórmula
     sin caché `assert [] == [(2, frozenset(), ...)]`. El único verde, `test_una_hoja_con_solo_encabezados_
     no_tiene_filas`, coincide con el provisorio (sin filas): no cuenta como RED.
+  - **RED 1.2 bis** (11/11/2026 20:50): descubierto al escribir 1.3: un `0.125` numérico no puede
+    tomarse por el texto ambiguo `1.234`. `FilaLeida.numericas` (campo con default vacío) y la prueba
+    `test_se_distingue_la_celda_numerica_del_texto_con_el_mismo_aspecto`: `uv run pytest
+    tests/unitarios/test_importacion_lector_excel.py -q` → `1 failed, 32 passed`; aserción: `assert
+    [frozenset(), frozenset()] == [frozenset({'Coeficiente'}), frozenset({'Superficie m2'})]`.
   - D2 del 6 (L-066): `tests/unitarios/test_lector_de_planilla_excel.py` suma dos pruebas de caracterización
     del lector de gastos (fórmula con caché entra por su valor; sin caché entra vacía). Pasan antes y
     después: documentan lo que el docstring corregido promete, no son un RED.

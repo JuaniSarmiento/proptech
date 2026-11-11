@@ -293,3 +293,17 @@ def test_una_fila_con_solo_una_formula_sin_cache_no_es_una_fila_en_blanco() -> N
     hoja = _unidades_leidas(contenido)
     assert [f.numero for f in hoja.filas] == [2]
     assert hoja.filas[0].formulas_sin_cache == {"Superficie m2"}
+
+
+def test_se_distingue_la_celda_numerica_del_texto_con_el_mismo_aspecto() -> None:
+    """Un `0.125` numérico es exacto; el texto `0.125` (o `1.234`) puede ser ambiguo (E14): el
+    lector dice cuál es cuál para que `padron` no rechace un número bien escrito."""
+    contenido = _unidades(
+        _fila_valida("1A", Coeficiente=0.125, **{"Superficie m2": "45.5"}),
+        _fila_valida("1B", Coeficiente="0.125", **{"Superficie m2": 45}),
+    )
+    filas = _unidades_leidas(contenido).filas
+    assert [f.numericas for f in filas] == [
+        frozenset({"Coeficiente"}),
+        frozenset({"Superficie m2"}),
+    ]
