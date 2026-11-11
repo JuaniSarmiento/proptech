@@ -77,7 +77,8 @@ las `HU-*` de `06_funcionalidades.md` ni con los `C-23` a `C-30` de la deuda ade
    historia a Terminada, con un sí explícito**; el silencio no es aceptación. Si la rechaza, vuelve a En
    proceso con el motivo; si la posterga, a Pendiente con el motivo.
 
-**Archivar un change**: cuando todas sus historias están Terminadas, se actualiza `knowledge-base/`
+**Archivar un change**: cuando todas sus historias están Terminadas, corre el CI de GitHub sobre la rama
+del change (D-154) y, en verde, se actualiza `knowledge-base/`
 (ver "Documentación viva"), se corre `openspec archive`, se marca en `CHANGES.md` y se commitea y
 pushea a `main` sin preguntar (D-049).
 
@@ -125,10 +126,12 @@ contra esa copia. Decirlo en el informe.
 Dificultad y riesgo son distintos: un cambio chico que toca plata o datos personales va por la fila de
 su riesgo. El orquestador puede subir una historia de fila si aparece algo serio.
 
-**Tests (D-146)**: el constructor corre las comprobaciones focalizadas de su cambio, más `ruff` y
-`mypy`; el orquestador corre la aceptación de la historia. **La suite completa** (unos 18 minutos) la
-corre el CI o Juani, y su evidencia se enlaza en la historia; nadie la da por corrida sin esa salida.
-El orquestador dice en cada brief qué corre cada uno y por qué.
+**Tests (D-146, D-154)**: el constructor corre sólo los tests de los archivos que toca, más `ruff` y
+`mypy`; el orquestador corre la aceptación de la historia y la demo. **Una historia no espera al CI**:
+todas las historias de un change se construyen en la misma rama `change/<nombre>`, una detrás de otra.
+**El CI de GitHub y la suite completa corren una vez, al cerrar el change**: con todas sus historias
+Terminadas se abre o actualiza el PR, se espera el CI en verde (lo que rompa se arregla ahí), se
+archiva y se mergea a `main`. El orquestador dice en cada brief qué corre cada uno y por qué.
 
 **Verificación real con un servicio externo de identidad** (desde el 2b `login-y-usuarios`,
 22/10/2026): cuando una historia integra un proveedor externo de autenticación (Clerk y lo que venga

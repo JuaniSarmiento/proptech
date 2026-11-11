@@ -263,6 +263,8 @@ Partido el 11/11/2026 en tres historias, en orden y cada una sobre la anterior: 
 grupos 1 a 5 de `tasks.md`), H-005 (saldo inicial, grupo 6) y H-006 (situación de cobranza, grupo 7). El
 grupo 8 (cierre) se reparte entre las tres. Sin rompedor (D-152): todo lo que tiene que fallar va en la
 aceptación. **Nada se construye sin la firma CRITICAL de E1 a E19** en `proposal.md` (D-094, D-111).
+Desde D-154 las tres historias van en la rama `change/intereses-por-mora` (PR #20) y el CI de GitHub
+corre una sola vez, al cerrar el change; el PR se mergea con H-006 Terminada y el CI en verde.
 
 ### H-004 · Interés por mora al emitir
 
