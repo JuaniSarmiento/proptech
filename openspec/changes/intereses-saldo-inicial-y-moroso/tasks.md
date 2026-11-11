@@ -900,6 +900,20 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     siempre dice "sin deuda"): `16 failed, 1 passed`, cada rojo por `AssertionError: assert ('0.00', 0, ...,
     'sin_deuda_vencida') == (<total>, <liquidaciones>, ..., <etiqueta>)`. Pasa, vacuamente, "Emisión anulada"
     (el andamio ya dice sin deuda): se prueba con su mutante.
+  - Mutantes de 7.1 (19:13, uno a la vez, copia previa en el scratchpad, revertidos; `git diff` limpio después; comando
+    `pytest tests/unitarios/cuenta_corriente/test_cobranza.py`; cada rojo en la aserción nombrada):
+    M1 `not umbral < total` en vez de `total < umbral` (apaga E6, "$500 o más no queda bajo") -> `1 failed`,
+    `test_justo_en_el_umbral_no_queda_bajo` (`bajo_umbral` True != False); M2 contar un período con sólo interés
+    (`de_capital + de_interes > 0`; apaga E7) -> `3 failed`, `test_un_periodo_con_solo_interes_no_cuenta_como_liquidacion`
+    (`liquidaciones` 2 != 1) y los dos de "sólo intereses"; M3 restar el crédito a favor del total -> `1 failed`,
+    `test_el_credito_a_favor_no_resta_del_total_vencido` (`'-2000.00' != '1000.00'`); M4 vencida al día siguiente
+    ignorando la gracia -> `1 failed`, `test_dentro_de_la_gracia_no_esta_vencida_y_al_dia_siguiente_si`
+    (`'85000.00' != '0.00'`); M5 umbral comparado por obligación en vez de por cuenta -> `2 failed`,
+    `test_dos_saldos_chicos_que_juntos_pasan_el_umbral` (`bajo_umbral` True != False) y `test_justo_en_el_umbral_no_queda_bajo`.
+    M6 (quitar de `clasificar` la exclusión de las obligaciones de una emisión anulada) queda VERDE, 17 passed: es un
+    mutante equivalente, porque `calcular_estado` ya deja sus obligaciones sin residual (`debido` sólo las que cuentan). El
+    control del escenario "Emisión anulada" está en `test_cc_cobranza.py` (con el libro real). La exclusión de `clasificar` queda
+    como defensa redundante a propósito.
 - [ ] 7.2 **Situación por cuenta y por edificio (E14, PR-01, PR-06).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/cobranza.py` (nuevo),
   `backend/tests/integracion/test_cc_cobranza.py`. Escenarios: "Emisión anulada", "Deshacer un pago
@@ -925,6 +939,23 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     `umbral 300`, `una entrada por cuenta de unidad`, y los controles "con la versión vigente responde" y "se
     vieron sentencias"). Pasan "Un pago posterior cuenta aunque la fecha sea anterior" (el andamio ya dice cero) y
     el ensayo del filtro de tenant (la sentencia ya filtra): se prueban con su mutante.
+  - Mutantes de 7.2 (19:13 a 19:16, uno a la vez, con copia previa y revertidos; comando `pytest
+    tests/integracion/test_cc_cobranza.py`; todos los rojos en la aserción nombrada): leer el umbral de un valor fijo
+    de `parametros.yaml` ($500) en vez de la versión vigente -> `test_el_umbral_y_la_gracia_son_los_de_la_version_vigente_a_la_fecha`
+    (`umbral 300`: `bajo_umbral` True != False); gracia 0 en vez de la de la versión -> el mismo test (`gracia 5`);
+    filtrar los movimientos por `fecha_valor <= 2026-09-30` en la foto -> `test_un_pago_posterior_cuenta_aunque_la_fecha_sea_anterior`
+    (`'85000.00' != '165000.00'`: prueba que no se promete historia) y `test_deshacer_un_pago_vuelve_a_marcar`; traducir el
+    `NoEncontrado` de `configuracion_vigente` a `Conflicto("configuracion")` ->
+    `test_edificio_y_cuenta_de_otra_administracion_dan_no_encontrado` (sale `Conflicto` en vez de `NoEncontrado`); quitar
+    `c.administracion_id = t.adm` de la sentencia del edificio ->
+    `test_la_sentencia_del_edificio_filtra_por_tenant_aunque_rls_no_filtre` (`la sentencia trajo cuentas de otra
+    administración`), y el test de otra administración como app queda verde, como se esperaba (lo tapa RLS); responder la
+    cuenta de una persona -> `test_la_cuenta_de_una_persona_no_tiene_situacion` (`DID NOT RAISE NoEncontrado`, test sumado
+    después del RED para el caso que el contrato no nombra). Incluir cuentas de persona en el listado tiene dos defensas (el
+    `AND c.unidad_id IS NOT NULL` del SQL y el `if f.unidad_id is not None` de Python): quitar una sola deja VERDE (12 passed,
+    cada una cubre a la otra); quitar las dos -> `test_listado_del_edificio_trae_una_entrada_por_cuenta_de_unidad` (`las cuentas
+    de persona quedan fuera`). Precondición del ensayo de tenant afirmada: la conexión del contenedor tiene `rolsuper OR
+    rolbypassrls`.
 
 ## 8. Cierre del constructor
 

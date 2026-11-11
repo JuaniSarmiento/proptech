@@ -357,3 +357,27 @@ def test_la_sentencia_del_edificio_filtra_por_tenant_aunque_rls_no_filtre(
             fijar_tenant(conexion, mundo.admin_b)
             ajenas = conexion.execute(sentencia, {"complejo": mundo.complejo}).fetchall()
             assert ajenas == [], "la sentencia trajo cuentas de otra administración"
+
+
+def test_la_cuenta_de_una_persona_no_tiene_situacion(
+    mundo: Mundo, base_del_edificio: BaseDeEdificio
+) -> None:
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        dos_periodos(s, mundo)
+        persona = uuid4()
+        s.execute(
+            text(
+                "INSERT INTO cuenta (id, administracion_id, complejo_id, persona_id, creada_en) "
+                "VALUES (:id, :adm, :c, :p, :en)"
+            ),
+            {
+                "id": persona,
+                "adm": mundo.admin,
+                "c": mundo.complejo,
+                "p": mundo.persona,
+                "en": datetime(2026, 9, 1, 12, tzinfo=UTC),
+            },
+        )
+        paso(s)
+        with pytest.raises(NoEncontrado):
+            cobranza.situacion_de_cuenta(s, cuenta_id=persona, fecha=dia(9, 30))
