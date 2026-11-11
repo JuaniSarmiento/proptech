@@ -230,6 +230,46 @@
     (dueño, las dos). Excepción: los cuatro `test_trigger_por_fila_sin_el_de_sentencia` dan `UndefinedObject`
     (su `DISABLE TRIGGER`): rojo de setup; su rojo por aserción es el del mutante. CHECK, únicos y FK nacen
     verdes porque la tabla sin protección ya los lleva: su prueba es cada mutante.
+  - GREEN H-005 (18:25, `uv run pytest tests/integracion/test_saldo_inicial_esquema.py
+    tests/unitarios/test_fronteras_de_modulos.py tests/infra/test_ensayo_login.py -q`): `120 passed`; commit de
+    producción `8dc11d4` (`0035_saldo_inicial.py`, dos entradas en `tablas_protegidas.py`, las dos tablas ->
+    `cuenta_corriente` en `_DUENO_DE_TABLA`, `ensayo-roles.sh`: array de filas y dos bloques `OWNER TO`).
+    L-064: cabeza `0034` -> `0035` en `test_libro_rollback.py` (3 lugares) y `test_conmutar_politicas_reales.py`;
+    las dos tablas en `_SONDA_SIN_FILA` (`test_catalogo_rls.py`; sus NOT NULL hacen falsa la sonda mínima);
+    `devolver_libro` y `devolver_tramos` cubren `POSTERIORES_AL_LIBRO` (las tres). `rg -n '"0034"' backend/tests`:
+    sólo el texto de dos comentarios.
+  - Barrido local de migraciones (D-154; 18:25 a 18:34, `uv run pytest -q $(rg -l "downgrade|\.migrar\(|
+    alembic.*(up|down)grade|pg_restore" tests/integracion)` desde `backend/`, 43 archivos): `1315 passed, 4
+    warnings in 543.47s`.
+  - Mutantes H-005 (18:34 a 18:39, copia previa en el scratchpad, uno a la vez, revertidos; `uv run pytest
+    tests/integracion/test_saldo_inicial_esquema.py -q --tb=line`), en las dos tablas salvo que se diga:
+    - sin `ENABLE` ni política, sin `FORCE` y sin trigger por sentencia: **rojo por el chequeo de arranque**
+      de `roles despues` (44 errores de setup `la protección de carga_de_saldo_inicial no se pudo confirmar:
+      ROW LEVEL SECURITY habilitada y FORCE` / `trigger ..._por_sentencia no existe; admite UPDATE; admite
+      DELETE`), igual que en H-004. Con ese chequeo apagado a propósito (`if faltantes and False:` en
+      `roles.py:862`, sólo para verlo, revertido): sin `ENABLE` `2 failed` en `test_otra_administracion_no_ve_las_
+      filas` por `otra administración ve filas de <tabla>`; sin trigger por sentencia `8 failed` (4 por
+      `DID NOT RAISE RaiseException` de `DELETE`/`UPDATE WHERE false`, 4 `UndefinedObject` del `DISABLE TRIGGER`
+      del test de fila); sin `FORCE` `44 passed` (la app no es dueña y `ENABLE` + política la filtran: la matriz
+      lo anticipa), y con el chequeo encendido lo atrapan el arranque y `test_catalogo_rls.py` (fixture `esquema`).
+    - fuera de `TABLAS_DE_SOLO_AGREGAR` (cada tabla): `4 failed, 40 passed`; `UPDATE`/`DELETE` como app por
+      `AssertionError: <tabla> UPDATE: P0001` (da el trigger, no el `42501`), más la declaración y el dueño
+      (`proptech_migrador`).
+    - sin trigger por fila (`WHEN (false)`): `4 failed` por `DID NOT RAISE RaiseException`.
+    - FK a `obligacion` sin `cuenta_id` (`(obligacion_id) -> obligacion (id)`) y FK a `movimiento` sin cuenta
+      ni sentido: `1 failed` cada uno por `DID NOT RAISE ForeignKeyViolation`. FK a la carga sin `complejo_id`:
+      `1 failed`, `'fk_origen_obligacion' == 'fk_origen_carga'` (el insert falla igual, por otra FK).
+    - FK a `complejo` ausente (carga y origen): `1 failed` cada uno en `test_la_fila_no_se_cuelga_de_un_edificio_
+      de_otra_administracion`; y `test_catalogo_rls.py`: `2 failed` (`no tiene la FK compuesta
+      (administracion_id, complejo_id) -> complejo`). FK a `persona` ausente: `1 failed`.
+    - CHECK uno por uno, cada uno rojo sólo en sus casos: `ck_carga_origen` (3), `ck_carga_firma` (3),
+      `ck_origen_referencia` (2), `ck_origen_fila` (2), `ck_origen_sentido` (1); únicos `uq_carga_complejo` (1) y
+      `uq_carga_operacion` (1), por `DID NOT RAISE`.
+  - Aceptación H-005 de esquema y migración (SHA `0b4c5cb`, copiada a un directorio temporal de
+    `backend/tests/integracion`, borrado): `12 passed, 1 failed`. La falla es
+    `test_c19_una_carga_y_su_origen_bien_formados_entran`: inserta **dos** cargas del mismo edificio
+    (importador y manual) y choca con `uq_carga_complejo`, que D5 y el brief exigen (único por edificio).
+    Contradice el design; el constructor no toca `aceptacion/`: queda al orquestador.
 - [x] 2.2 **Semilla con configuración.** **Decisión del orquestador (11/11/2026, H-004)**: la versión de configuración entra por `sembrar(base, con_configuracion=True)`, no por defecto: por defecto rompería C11 de la aceptación congelada (`d2da37e`, mundo sin configuración) y chocaría con `uq_configuracion_vigencia` en los tests que fijan su propia versión. La 5.5 pasa `con_configuracion=True` en los `test_cc_*` que emiten con deuda vencida. Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
   (una versión de configuración con tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde
   01/01/2026, para los tres edificios del mundo). Antes del cambio, correr `pytest tests/integracion -k
