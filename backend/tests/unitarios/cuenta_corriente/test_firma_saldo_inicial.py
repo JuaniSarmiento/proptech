@@ -100,7 +100,7 @@ def test_el_importe_escrito_sin_decimales_da_la_misma_firma() -> None:
 
 
 def test_iguales_sumas_con_otras_filas_dan_otra_firma() -> None:
-    """Escenario: Misma operación con iguales sumas y otras filas ($85.000/$20.000 y $84.000/$21.000)."""
+    """Escenario: iguales sumas y otras filas ($85.000/$20.000 frente a $84.000/$21.000)."""
     assert firma([u5(a="84000.00", b="21000.00")]) != firma([u5()])
 
 
@@ -125,7 +125,15 @@ def _con_cambio(nombre: str) -> tuple[Any, ...]:
         "numero_de_fila": ([replace(base, filas=(replace(primera, fila=14), segunda))], {}),
         "periodo": ([replace(base, filas=(replace(primera, periodo=AGO), segunda))], {}),
         "vencimiento": (
-            [replace(base, filas=(replace(primera, vencimiento=date(2026, 9, 9)), segunda))],
+            [
+                replace(
+                    base,
+                    filas=(
+                        replace(primera, vencimiento=date(2026, 9, 9)),
+                        replace(segunda, vencimiento=date(2026, 9, 9)),
+                    ),
+                )
+            ],
             {},
         ),
         "componente": (

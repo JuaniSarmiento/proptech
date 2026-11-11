@@ -318,9 +318,12 @@ def test_cada_rechazo_nombra_su_campo_y_no_escribe_nada(
         antes = conteos(s)
         for nombre, campo, kw in _casos_invalidos(mundo):
             pedido = {"unidades": [septiembre(mundo)], **kw}
-            with pytest.raises(EntradaInvalida) as e:
+            try:
                 cargar(s, mundo, **pedido)
-            assert e.value.campo == campo, f"{nombre}: nombró {e.value.campo!r}, no {campo!r}"
+            except EntradaInvalida as e:
+                assert e.campo == campo, f"{nombre}: nombró {e.campo!r}, no {campo!r}"
+            else:
+                pytest.fail(f"{nombre}: el pedido inválido se registró")
             assert escrituras == [], f"{nombre}: escribió {escrituras}"
             assert conteos(s) == antes, nombre
 
@@ -536,7 +539,7 @@ def test_unidad_con_saldo_a_favor_y_cuenta_sin_deuda(
 def test_el_origen_liga_cada_fila_a_lo_que_formo(
     base_del_edificio: BaseDeEdificio, mundo: Mundo
 ) -> None:
-    """Mutantes "el origen se liga a otra fila" y "el interés se liga a todas las filas del período"."""
+    """Mutantes "el origen se liga a otra fila" y "el interés se liga a todas las filas"."""
     with sesion_app(base_del_edificio, mundo.admin) as s:
         cargar(s, mundo, [dos_conceptos(mundo)])
         cuenta = cuenta_de(s, mundo.unidades[5])
@@ -708,7 +711,7 @@ def _foto(r: SaldoInicialRegistrado) -> tuple[Any, ...]:
 def test_replay_despues_de_confirmar_devuelve_lo_registrado(
     base_del_edificio: BaseDeEdificio, mundo: Mundo
 ) -> None:
-    """Mutante "replay después del chequeo de estado": con la migración `confirmada` da conflicto."""
+    """Mutante "replay después del chequeo de estado": confirmada daría conflicto."""
     op = uuid4()
     pedido = [dos_conceptos(mundo), septiembre(mundo, 1)]
     with sesion_app(base_del_edificio, mundo.admin) as s:
