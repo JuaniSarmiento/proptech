@@ -315,7 +315,7 @@
 Archivo de producción: `backend/src/proptech_core/cuenta_corriente/dominio/intereses.py` (nuevo, design
 D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo). Sin base.
 
-- [ ] 4.1 **Proporcional, base, nunca interés sobre interés, tasa cero y redondeo único.** Escenarios:
+- [x] 4.1 **Proporcional, base, nunca interés sobre interés, tasa cero y redondeo único.** Escenarios:
   "Expensa de septiembre impaga en la emisión de octubre" ($2.000,00), "Nunca interés sobre interés"
   ($3.100,00), "Pago parcial reduce la base" ($1.600,00 en dos tramos), "Tasa cero", "Medio centavo
   hacia arriba" ($0,13 sobre $62,50), "Redondeo único sobre dos tramos" ($0,13 sobre $64,00 y $63,00),
@@ -337,12 +337,41 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
     pasan el corte"; su prueba es el mutante (registrar $0,00 y `<` en el borde de la gracia, abajo). El escenario
     "Un débito de capital suma a la base" es nuevo de esta tanda (la tarea no lo nombra): cubre la parte "débitos
     de capital que cuentan" de la base.
+  - GREEN (16:07, `uv run pytest tests/unitarios/cuenta_corriente/test_intereses.py -q`): `26 passed`; con toda la
+    carpeta `tests/unitarios/cuenta_corriente/`: `72 passed`. `ruff check`, `ruff format --check`, `mypy` (389
+    archivos) y `tests/unitarios/test_fronteras_de_modulos.py` (66 passed) limpios.
+  - Mutantes de 4.1 (16:07 y 16:08; copia previa `intereses.orig.py` en el scratchpad, uno a la vez, revertidos y
+    verificados con `diff`; `uv run pytest tests/unitarios/cuenta_corriente/test_intereses.py -q --tb=line`). Todos
+    rojos por aserción en el escenario nombrado:
+    - redondear cada tramo y sumar: sólo `test_redondeo_unico_sobre_dos_tramos` (`assert Dinero("0.12") == Dinero("0.13")`);
+      "Medio centavo" sigue verde (un solo tramo), como dice la tarea.
+    - `ROUND_HALF_EVEN`: sólo `test_medio_centavo_hacia_arriba`; truncar (`ROUND_DOWN`): ese y "Redondeo único".
+    - la base suma el componente `interes`: `test_nunca_interes_sobre_interes` (da $3.162,00 en la cuenta) y cuatro
+      de mes entero y de cambio de forma que parten de un interés previo.
+    - dividir por 31 y por 365/12 (`tasa * 12 / 100 / 365`): 13 y 12 rojos, incluido "Expensa de septiembre".
+    - la imputación baja la base desde su propio día (`<=`): "Pago parcial reduce la base", "Redondeo único sobre
+      dos tramos", "Detalle de un pago total" y "Pago un día después de la gracia".
+    - registrar $0,00 (sin el `continue`): `test_tasa_cero` (y "Pago dentro de la gracia").
+    - estirar el último tramo hasta el corte: `test_detalle_de_un_pago_total` (fechas) y "Pago un día después de la
+      gracia".
+    - ignorar los débitos de capital: `test_un_debito_de_capital_suma_a_la_base_desde_el_dia_siguiente`.
 - [ ] 4.2 **Gracia e inicio natural.** Escenarios: "Pago dentro de la gracia", "Pago un día después de la
   gracia" ($600,00), "Corte dentro de la gracia" ($3.300,00 en noviembre), "Lo cubierto por un interés
   anterior no se vuelve a cobrar", saldo-inicial "Primer interés después de migrar" (sólo la parte de
   dominio: inicio el día siguiente a la migración). Mutantes: el interés corre desde `vencimiento +
   gracia`; `<` en vez de `<=` en el borde de la gracia; el inicio de una obligación migrada es su
   vencimiento; el inicio ignora lo cubierto por un interés que cuenta.
+  - GREEN (16:07): mismas corridas que 4.1.
+  - Mutantes de 4.2 (16:07, mismo método), rojos por aserción:
+    - el interés corre desde `vencimiento + gracia` (el inicio se corre y las imputaciones dentro de la gracia
+      no se tratan como pagadas al vencimiento): "Pago un día después de la gracia", "Corte dentro de la gracia",
+      el borde del corte y "Corte dentro de la gracia con mes entero".
+    - `<` en vez de `<=` en el borde de la gracia, uno por uno: en la imputación sólo
+      `test_pago_dentro_de_la_gracia` (cobra 11/09-15/09); en el corte sólo
+      `test_corte_en_el_ultimo_dia_de_la_gracia_no_cobra` (test agregado para este mutante: vence 25/09, gracia 5,
+      corte 30/09).
+    - el inicio de una obligación migrada es su vencimiento: los dos tests de `interes_desde`.
+    - el inicio ignora lo cubierto: "Lo cubierto por un interés anterior..." y seis más que parten de un interés previo.
   - Escenarios de saldo inicial de 4.2 y 4.3 ("Primer interés después de migrar", "Mes entero después de migrar",
     "Segundo mes después de migrar"): **pendientes de H-005**. El dominio ya recibe `interes_desde`; dos tests
     (`..._obligacion_migrada_es_el_que_pasa_el_lector` y `mes_entero_respeta_el_inicio_...`) sólo prueban que lo
@@ -368,6 +397,25 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
   por fechas en "Detalle de un pago total con mes entero" (PR-15: da 11/09-20/09 en vez de 11/09-30/09),
   que va en esta tarea con su importe ($3.000,00) y sus fechas. Además, el error de "días no contiguos
   dentro de un mes" (D2, invariante) con una entrada armada a mano: lanza y no devuelve importe.
+  - GREEN (16:07): mismas corridas que 4.1. Esta tarea queda `[ ]` por los escenarios de saldo inicial (H-005).
+  - Mutantes de 4.3 (16:07 y 16:08, mismo método), rojos por aserción:
+    - bloques de 30 días anclados en el primer día a cobrar: "De proporcional a mes entero" (da $6.000,00), "El
+      mes siguiente", "Corte dentro de la gracia", "Pago a mitad de mes" y el del corte que no es fin de mes.
+      "De mes entero a proporcional" (la tarea esperaba $200,00) **no** da rojo: el mutante sólo toca el camino de
+      mes entero y ese test calcula el corte 31/10 en proporcional, con el interés de septiembre como dato. Su
+      aserción sigue vigilando el inicio en `01/10` por los mutantes del inicio y de lo cubierto.
+    - una fracción de mes no cuenta: "Un día de atraso con mes entero" ($0,00 / sin interés), "Corte dentro de la
+      gracia con mes entero", "Pago a mitad de mes", "Detalle de un pago total con mes entero" y el de `interes_desde`.
+    - un mes por cada 30 días completos: los mismos cinco, incluido "Corte dentro de la gracia con mes entero".
+    - base del último día en vez del primero: `test_pago_a_mitad_de_mes_con_mes_entero` (`assert Dinero("1800.00")
+      == Dinero("3000.00")`, corte 30/09) y "Detalle de un pago total con mes entero".
+    - el tramo empieza el día 1: "Un día de atraso" (fechas), "Corte dentro de la gracia", "Pago a mitad de mes",
+      "Detalle de un pago total" y el de `interes_desde`.
+    - febrero sin el 29 en 2028 (proporcional): sólo `test_febrero_proporcional`.
+    - la exclusión de días con base cero aplicada a mes entero: sólo `test_detalle_de_un_pago_total_con_mes_entero`
+      (PR-15, fechas).
+    - sin la comprobación de contigüidad y de fin de mes: se ejercitan con los tests de error (`DID NOT RAISE
+      EntradaInvalida`); el de "corte que no es fin de mes" lo agregué porque el CHECK de la base lo exige.
 - [ ] 4.4 **Huecos: días de un interés que no cuenta y de un corte sin importe (E1, E17, E19).**
   Escenarios: "Anular y volver a emitir no cobra dos veces", "El corte siguiente recupera el tramo" (51
   días, $5.100,00), "El tramo recuperado usa la tasa del corte siguiente" (51 días al 6%, $10.200,00), "Un
