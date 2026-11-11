@@ -199,6 +199,28 @@ del 3c, D-128)
   de los días de gracia genera interés desde el vencimiento; cambio de tasa entre períodos; nunca hay
   interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo; el
   interés devengado después del cierre del período no se cobra en esa emisión, sino en la siguiente.
+- **Cómo se calcula** (4c, H-004, firma de Juani del 11/11/2026, D-153):
+  - **Corte** de cada emisión: el último día del mes anterior al período que se emite (la emisión de
+    octubre corta el 30/09). El interés de una emisión cobra sólo días hasta su corte (E2).
+  - **Proporcional**: tasa mensual / 30 por cada día de atraso (E3.1). **Mes entero**: un mes
+    calendario con algún día a cobrar cobra la tasa completa una vez, sobre el capital impago de su
+    primer día a cobrar, aunque sea una fracción del mes (E3.2, decisión de Juani del 30/10/2026).
+  - **Base día por día**: el capital impago (ordinaria, fondo de reserva y extraordinaria, más los
+    débitos de capital que cuentan, menos las imputaciones de capital que cuentan); un pago baja la base
+    desde el día siguiente a su fecha valor; lo pagado dentro de la gracia no genera interés (E5).
+  - **Configuración**: la vigente al corte (tasa, gracia y forma). Sin versión vigente al corte y con
+    deuda vencida, la emisión se rechaza con conflicto en `configuracion` (E4).
+  - **Días cubiertos**: la unión de los tramos de los intereses que cuentan de la obligación; cada corte
+    cobra los días desde el inicio natural hasta el corte que ninguno cubre, así un hueco (un interés
+    contra-asentado) se recupera y ningún día se cobra dos veces (E17). Un corte que da $0,00 (tasa 0,
+    base 0 o redondeo) no registra nada y sus días los cobra el primer corte que registre, con su
+    configuración: una tasa 0 difiere, no perdona (E19).
+  - **Redondeo**: una sola vez sobre la suma exacta de los tramos, medio hacia arriba (R07).
+  - **Detalle**: cada débito de interés guarda sus tramos en `tramo_de_interes` (desde, hasta, días,
+    base, tasa, forma, gracia y versión de configuración), de sólo agregar.
+  - **Dónde vive**: el cálculo puro en `cuenta_corriente/dominio/intereses.py`; el registro, dentro de
+    `registrar_emision` (`cuenta_corriente/aplicacion/emisiones.py`), bajo los candados de todas las
+    cuentas de unidad del edificio. Las cuentas de persona no generan interés hasta el 4d (E10).
 
 ## R04 · Orden de imputación · Vigente (D-011, D-121)
 
@@ -571,6 +593,12 @@ número no se marcan duplicadas entre sí.
   liquidación distribuida (por la acción "distribuir", por un email o por una vista
   en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
   emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
+- **Re-emisión e interés** (4c, H-004, E1, D-153): el interés registrado por una emisión anulada queda
+  en el libro sin contar. La re-emisión del mismo período no registra otro interés en ese corte
+  (`uq_mov_interes`); los días que cubría pasan al **corte siguiente**, que los cobra con la
+  configuración vigente a ese corte, así que el importe puede diferir del anulado. Anular bloquea, en un
+  solo pedido ordenado, todas las cuentas alcanzadas por la emisión, también las que sólo recibieron
+  interés.
 
 ## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio 6 de Alberto)
 

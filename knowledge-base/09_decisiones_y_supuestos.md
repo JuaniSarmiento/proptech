@@ -3183,3 +3183,20 @@ registrado como tal en su momento.)*
 - **Consecuencia**: el bloque del libro de C-28 que D-144 pasaba al rompedor del 4c vuelve a C-28
   `revisiones-independientes`. Las firmas CRITICAL y HIGH (D-094, D-111) siguen igual.
 - **Quién**: Juani, 11/11/2026.
+
+## D-153 · Firma del 4c: E1 a E19 con la recomendación del diseño (11/11/2026, H-004)
+
+- **Fecha**: 11/11/2026, antes de construir H-004.
+- **Decisión**: Juani firma la propuesta completa del 4c `intereses-saldo-inicial-y-moroso` con las
+  elecciones E1 a E19 de `design.md` en su **recomendación** (`7dc5399`). Las que eran una elección
+  real: E1 (re-emitir no registra otro interés en el mismo corte, los días pasan al siguiente), E2 (corte
+  al último día del mes anterior), E3.1 (proporcional por tasa / 30), E7 (un período con sólo interés no
+  cuenta como liquidación vencida), E11 (se rechaza un período migrado con sólo interés), E14
+  (situación sobre el libro de hoy), E15 (el saldo anterior del replay se recalcula), E16 (las filas del
+  Excel se agrupan y el replay se controla por la firma del pedido), E17 (cobertura por la unión de
+  tramos), E18 (se cobra la fracción del mes de la migración con mes entero; riesgo de doble cobro, a
+  mostrar en el 5 y a preguntar a Alberto en P58) y E19 (una tasa 0 difiere los días, no los perdona).
+  E6 ratifica D-143; E3.2 y E13 ratifican la decisión de Juani del 30/10/2026 sobre "mes entero".
+- **Además**: el 4c se parte en H-004, H-005 y H-006 sin rompedor (D-152); la `0034` crea sólo
+  `tramo_de_interes` y las tablas del saldo inicial van en una `0035` de H-005.
+- **Quién**: Juani, 11/11/2026.

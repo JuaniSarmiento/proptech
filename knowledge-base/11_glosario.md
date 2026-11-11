@@ -167,6 +167,16 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Mora**: atraso en el pago después del vencimiento.
 - **Interés por mora**: el recargo que genera la mora, según la política del complejo.
 - **Anatocismo**: cobrar intereses sobre intereses. El art. 770 del Código Civil y Comercial lo limita.
+- **Corte**: la fecha hasta la que cobra el interés de una emisión: el último día del mes anterior al
+  período que se emite (R03, E2). Los días posteriores los cobra la emisión siguiente.
+- **Tramo de interés**: cada pedazo del detalle de un débito de interés, con sus fechas desde y hasta,
+  días, base, tasa, forma de cálculo y versión de configuración (`tramo_de_interes`, R03).
+- **Días cubiertos**: la unión de los tramos de los intereses que cuentan de una obligación; lo que no
+  está cubierto lo cobra el próximo corte (E17).
+- **Mes entero**: forma de cálculo en la que cada mes calendario con algún día de atraso cobra la tasa
+  completa una vez, aunque sea una fracción del mes (R03, decisión de Juani del 30/10/2026).
+- **Cuentas alcanzadas por una emisión**: las que tienen una obligación suya y las que sólo recibieron
+  un interés suyo; las bloquea la anulación y las lee el saldo anterior.
 - **Moroso crítico**: una unidad con dos o más liquidaciones vencidas con saldo impago, calculado
   desde las imputaciones. Se define por antigüedad, nunca por monto (R20). En el MVP no bloquea
   amenities porque las reservas no están en el alcance.

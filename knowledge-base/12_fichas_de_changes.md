@@ -858,6 +858,25 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | RB4B-01, CX-01 y CX-02 (bloqueantes del rompedor de fases 1-3) arreglados en HEAD pero revisados sólo por el auditor, nunca por un rompedor independiente de ese arreglo puntual. Reconfirmado sin pasada nueva por la regresión del 27/10/2026 (`04-plata.md`: "nadie corrió una pasada de rompedor nueva desde el 16-auditor-final") | Una pasada de rompedor sobre los tres arreglos, antes de confiar en ellos para el 7 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7; revisar antes de depender de `imputado_por_credito` y el candado de `registrar_emision`. **D-130**: la absorbe el rompedor del 7 cuando toque esta zona |
 | El auditor final no revisó código: "yo no reviso código, así que ese hueco sigue abierto" sobre el cierre de RF | Una revisión de código real (no documental) de 447b8e5, 8496f00 y 8d25bd6 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7, como parte de leer qué recibe hecho. **D-130**: la absorbe el rompedor del 7 |
 
+#### 4c · `intereses-saldo-inicial-y-moroso` · CRITICAL · en construcción con Rein (firma de Juani, 11/11/2026)
+
+Partido en tres historias de `HISTORIAS.md` (D-152, sin rompedor): **H-004** interés por mora al emitir
+(tareas 1 a 5), H-005 saldo inicial (6) y H-006 situación de cobranza (7). Propuesta, diseño y
+elecciones E1 a E19 firmadas en `openspec/changes/intereses-saldo-inicial-y-moroso/` (`7dc5399`,
+D-153).
+
+- **H-004** (aceptación congelada en `d2da37e`, constructor Sonnet en seis tandas): cierra RB-6, RF-01
+  y RF-02 de la deuda del 4b; migración `0034_tramo_de_interes` (sólo esa tabla: las del saldo inicial
+  van en una `0035` de H-005, cambio contra D10 del diseño); el interés de R03 dentro de
+  `registrar_emision`, su replay y su anulación. La semilla de tests con configuración quedó opcional
+  (`sembrar(base, con_configuracion=True)`), porque por defecto rompía la aceptación (C11).
+- **Para el 7**: `EmisionRegistrada` suma `intereses` por cuenta y el saldo anterior de todas las
+  cuentas alcanzadas; el replay devuelve los mismos intereses y un saldo anterior recalculado (E15); el
+  7 guarda la foto de la liquidación. Dos emisiones no se pueden encadenar en una sola transacción
+  (`BloqueoFueraDeOrden`).
+- **Pendiente de H-005**: `interes_desde` desde la migración (el `LEFT JOIN` a la carga en la foto) y
+  los escenarios de saldo inicial del cálculo.
+
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
 - **Objetivo**: cargar un edificio real desde su Excel sin tipear nada.
