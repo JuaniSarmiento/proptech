@@ -722,7 +722,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
 Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/saldo_inicial.py`
 (nuevo, design D5). Tests: `backend/tests/integracion/test_cc_saldo_inicial.py` (nuevo).
 
-- [ ] 6.1 **Contrato de filas y validaciones (E11, E16).** Escenarios: "Vencimiento futuro", "Período con
+- [x] 6.1 **Contrato de filas y validaciones (E11, E16).** Escenarios: "Vencimiento futuro", "Período con
   sólo interés", "Unidad repetida", "Fila repetida", "Mismo período con vencimientos distintos", "Carga
   manual sin motivo", y los demás rechazos de "La carga rechaza entradas que no puede registrar" (detalle
   y total mezclados, importe negativo, crédito no positivo, período que no es día 1 o posterior al mes de
@@ -738,7 +738,19 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     `vencimiento_un_dia_despues_de_la_migracion`) y en el resto de los de 6.1; los de registro, por
     `AssertionError: la unidad no tiene cuenta` (nada se escribió). Pasan en el andamio, y se prueban sólo con su mutante en la tanda de producción, los de
     replay (otro orden, tras confirmar) y `otra_administracion_no_ve_la_carga` (ver 6.4).
-- [ ] 6.2 **Registro con detalle, total único, interés importado y crédito.** Escenarios: "Dos períodos
+  - GREEN y mutantes de 6.1 (18:46 a 18:48, producción `be2c077`; copia previa en el scratchpad, uno a la vez, revertido;
+    `pytest tests/integracion/test_cc_saldo_inicial.py -q`, `1 failed, 27 passed` salvo donde se indica). GREEN: `49 passed`
+    (28 de integración y 21 del unitario de la firma). Defensa apagada y aserción roja:
+    vencimiento hasta migración + 1 día (M1), rojo en `test_cada_rechazo_nombra_su_campo_y_no_escribe_nada` por
+    `Failed: vencimiento_un_dia_despues_de_la_migracion: el pedido inválido se registró`; sin el chequeo de vencimientos distintos
+    del mismo período (M2), `mismo_periodo_con_vencimientos_distintos: el pedido inválido se registró`; sin el chequeo de filas
+    repetidas (M3), `fila_repetida_entre_unidades: ...`; vencimiento mirado sólo en la primera fila (M2b), rojo en el mismo test y
+    en `test_el_vencimiento_se_compara_en_cada_fila_no_solo_en_la_primera` (`DID NOT RAISE EntradaInvalida`); capital medido por fila
+    en vez de por período (M4), rojo en `test_fila_de_solo_interes_junto_a_otra_con_capital_entra` y en
+    `test_una_fila_de_solo_interes_se_liga_al_interes_y_no_a_la_obligacion` por `EntradaInvalida: interes_acumulado` (el pedido que
+    tiene que entrar se rechaza). Ninguna fila escrita: el bucle de rechazos afirma `escrituras == []` (`contar_escrituras`) y
+    `conteos(s) == antes` en la misma transacción, y `test_la_transaccion_sigue_usable_despues_de_un_rechazo` registra después.
+- [x] 6.2 **Registro con detalle, total único, interés importado y crédito.** Escenarios: "Dos períodos
   viejos", "Dos conceptos del mismo período", "Fila de sólo interés junto a otra con capital", "Total
   único", "Interés importado sin recalcular", "Total único con interés traído", "Unidad con saldo a
   favor", "Deuda y crédito en la misma unidad" ($7.000), "Origen del importador" (fila 7 de
@@ -750,6 +762,16 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   ficha al cerrar, con el signo del crédito como responsabilidad del 5).
   - RED de 6.2: ver arriba (`test_dos_conceptos_*`, `test_el_interes_importado_*`, `test_total_unico_*`,
     `test_el_credito_se_imputa_*`, `test_el_origen_*`, `test_devuelve_cuentas_y_totales`, todos en rojo por `AssertionError`).
+  - GREEN y mutantes de 6.2 (18:48, mismo método): una obligación por fila (M5), rojo en 11 tests, la primera
+    mitad por `psycopg.errors.UniqueViolation: uq_obligacion_operacion` y `CheckViolation: ck_obligacion_importes` (la base, no una
+    aserción: el brief prevé "choca con `uq_obligacion_operacion`"); el interés importado entra en la base de la obligación (M6, la
+    base de datos impide otro componente: `ck_mov_interes`), rojo en `test_dos_conceptos_del_mismo_periodo_son_una_obligacion` por
+    `assert ('10500.00', ...) == ('10000.00', ...)` y en `test_devuelve_cuentas_y_totales`; el crédito no se imputa (M7), rojo en
+    `test_el_credito_se_imputa_a_la_deuda_con_r04` por `assert (Dinero("1000...` == (Dinero("7000...` (deuda $10.000 en vez de
+    $7.000); el interés se liga a las filas de capital (M8) o a todas las filas del período (M9), rojo en
+    `test_el_origen_liga_cada_fila_a_lo_que_formo` por `assert {12, 13} == {12}` y en
+    `test_una_fila_de_solo_interes_...` por `assert {15} == {14}` / `{14, 15} == {14}`; el origen de capital ligado sólo a la primera
+    fila (M9b), rojo por `assert {12} == {12, 13}` y `set() == {15}`.
 - [ ] 6.3 **Interés desde la migración, contra la emisión (E3.2, E13, E18).** Escenarios: "Primer interés
   después de migrar" ($1.280,00 y $1.360,00 con corte 31/10/2026), el total único con gracia 0 ($800,00),
   "Mes entero después de migrar" ($2.400,00 y $2.550,00, tramo 16/10-31/10), "Mes entero después de
@@ -758,7 +780,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   por el monto proporcional ($1.280,00 pasa a $6.560,00 sobre agosto, 82 días) y por la fecha del tramo; el mes de la
   migración no se cobra (la alternativa (a) de E18) → $0,00 en el corte 31/10, rojo; el interés importado
   suma a la base → rojo en el escenario con interés importado ($2.520,00 sobre $84.000).
-- [ ] 6.4 **Estado de migración, carga única, replay por firma y tenant (PR-11).** Archivos además de los
+- [x] 6.4 **Estado de migración, carga única, replay por firma y tenant (PR-11).** Archivos además de los
   del grupo: `backend/tests/unitarios/cuenta_corriente/test_firma_saldo_inicial.py` (nuevo, la función pura
   que normaliza y firma el pedido, design D5). Escenarios: "Edificio sin saldos previos", "Importador
   cerrado sin carga previa", "Segunda carga con otra operación", "Dos cargas simultáneas" (PostgreSQL
@@ -783,6 +805,26 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     hay 2` en las dos cargas simultáneas; `DID NOT RAISE NoEncontrado` / `IdentidadDeOtraAdministracion` /
     `RegistroFueraDeTransaccion` en tenant y transacción.
 
+  - GREEN y mutantes de 6.4 (18:49, mismo método): sin el chequeo de `pendiente` (M10), rojo en las dos de
+    `test_solo_se_carga_con_la_migracion_pendiente` por `Failed: DID NOT RAISE Conflicto`; replay después del chequeo de estado (M12),
+    rojo en `test_replay_despues_de_confirmar_devuelve_lo_registrado` por `Conflicto: conflicto` (de `estado_migracion`); sin el único
+    por edificio (M11, se quita `uq_carga_complejo` de la migración 0035 en una copia, restaurada), rojo en
+    `test_segunda_carga_con_otra_operacion` (`DID NOT RAISE Conflicto`) y en `test_dos_cargas_simultaneas_...` por
+    `AssertionError: se esperaba una sola carga, hay 2`; firma sin ordenar unidades y filas (M14), rojo en
+    `test_mismo_pedido_en_otro_orden_da_la_misma_firma` (`assert 'v1:18267c...' == 'v1:43895c...'`) y en
+    `test_mismo_pedido_en_otro_orden_y_con_importes_sin_decimales_es_replay` (`Conflicto`); firma sobre las sumas por período y
+    componente (M13), rojo en `test_iguales_sumas_con_otras_filas_dan_otra_firma` (`assert 'v1:e585...' != 'v1:e585...'`), en
+    `test_mover_interes_de_una_fila_a_otra_da_otra_firma`, en `[numero_de_fila]` y, contra PostgreSQL,
+    en `test_misma_operacion_con_iguales_sumas_y_otras_filas_es_conflicto` (`DID NOT RAISE Conflicto`); firma sin el interés
+    acumulado de cada fila (M16), rojo en `test_mover_interes_...` y `[interes]` por `assert 'v1:eefa...' != 'v1:eefa...'`; origen
+    sin recortar antes de firmar (M17), rojo en `test_el_archivo_se_normaliza_antes_de_firmar`.
+    **Mutante no ejecutable, equivalente:** "importes sin normalizar a dos decimales": `Dinero` los cuantiza a dos decimales al
+    construirse, así que `85000` y `85000.00` ya son el mismo valor antes de firmar; el caso queda cubierto por
+    `test_el_importe_escrito_sin_decimales_da_la_misma_firma` y no hay mutante que lo distinga sin tocar `Dinero`.
+    Aceptación: `python3 aceptacion/H-005/aceptar.py --codigo HEAD --sin-regresion` sobre `be2c077` (aceptación `2fcf6ba`): C01 a C03,
+    C07 a C11 y C13 a C19 PASAN; C04 falla sólo en `test_c04_interes_importado_sin_recalcular` (`Dinero("6560.00") == Dinero("1280.00")`,
+    el interés de R03 desde la migración: es de 6.3); C05, C06 (salvo "segundo mes", que ya pasa) y C12, de 6.3; C20, C21 y C22 no
+    son de código.
 ## 7. Situación de cobranza (R20, R30)
 
 - [ ] 7.1 **Clasificación pura.** Archivos: `backend/src/proptech_core/cuenta_corriente/dominio/cobranza.py`
