@@ -56,7 +56,7 @@
   - Mutante (15:42, copia previa en el scratchpad, revertido; defensa apagada: la traducción
     `InvalidOperation` a `MontoInvalido`): `pytest ... -k enorme -q` da `3 failed, 41 deselected`, con
     `decimal.InvalidOperation` en `reparto.py:18` dentro de `pytest.raises(MontoInvalido)`, los tres casos.
-- [ ] 1.2 **RF-01, una sola lectura final de todas las cuentas.** Archivo:
+- [x] 1.2 **RF-01, una sola lectura final de todas las cuentas.** Archivo:
   `backend/tests/integracion/test_cc_anulacion_candado.py` (test nuevo, nueva y replay). Escenarios:
   libro-de-movimientos "Una sola lectura al publicar una emisión nueva" y "...al repetir una emisión".
   Observación: escucha `before_cursor_execute` de SQLAlchemy que registra cada ejecución de la sentencia
@@ -68,7 +68,19 @@
   cuentas pedidas (no por un error), con copia previa y revertido (L-013, L-034). Los dos tests RF-01/RF-04
   existentes quedan; su docstring dice que no matan este mutante (D-138). La 5.4 extiende este escucha a
   las cuentas que sólo reciben interés.
-- [ ] 1.3 **RF-02 en forma contra-asiento.** Archivo: `backend/tests/integracion/test_cc_anulacion_candado.py:184`
+  - Nace verde (15:42, `cd backend && uv run pytest tests/integracion/test_cc_anulacion_candado.py -q -k
+    ultima_foto`): `2 passed, 3 deselected`. Test: `_FotosObservadas` (escucha `before_cursor_execute`,
+    reconoce `_FOTO` por `WITH t AS` + `cuentas AS` + `ANY(`, lee los `ids` reales) y los dos tests
+    `test_rf01_la_ultima_foto_de_la_emision_nueva_...` y `..._del_replay_...`.
+  - Mutante nueva (15:43, copia previa en el scratchpad, revertido; defensa apagada: una sola foto de todas
+    las cuentas; `actuales = {c: foto(sesion, c) for c in sorted(cuentas.values())}` en
+    `emisiones.py:224`): `1 failed, 1 passed`; rojo en `test_rf01_la_ultima_foto_de_la_emision_nueva_...`
+    por `assert {UUID(...)} == {UUID(...)}` (la última foto pidió 1 de 2 cuentas; `Extra items in the
+    right set`), el del replay sigue verde.
+  - Mutante replay (15:43, mismo método, en `emisiones.py:117`): `1 failed, 1 passed`; rojo en
+    `test_rf01_la_ultima_foto_del_replay_...` por el mismo `assert {..} == {..}`, el de la emisión nueva
+    sigue verde.
+- [x] 1.3 **RF-02 en forma contra-asiento.** Archivo: `backend/tests/integracion/test_cc_anulacion_candado.py:184`
   (parametrizar `credito` y `contra_asiento`; la segunda contra-asienta un crédito de corrección de una
   obligación de la emisión con `contra(...)` de `test_cc_correcciones.py:114`). El crédito original se
   registra y confirma **antes** de instalar la pausa sobre `_anulada`, para que la carrera observe el
@@ -76,6 +88,20 @@
   corrección" y "Anulación durante un contra-asiento". Nace verde; mutante: `anular_emision` sin
   `bloquear_cuentas` (`emisiones.py:265`) pone rojas las **dos** formas por `anuladas_al_escribir == 0`.
   Si la forma contra-asiento no se pone roja, el test no vigila (L-035) y se informa antes de seguir.
+  - Nace verde (15:44, `uv run pytest tests/integracion/test_cc_anulacion_candado.py -q`): `6 passed`
+    (los dos `[credito]` y `[contra_asiento]` del RF-02 incluidos).
+  - Primer intento de mutante (15:43, `anular_emision` sin `bloquear_cuentas`, `emisiones.py:265`, con la
+    pausa tras la primera llamada a `_anulada` en las dos formas): `[credito]` rojo por `assert 1 == 0`
+    pero `[contra_asiento]` rojo por `Conflicto` en `correcciones.py:189`, no por la aserción. Causa: el
+    blanco del contra-asiento (un crédito de corrección) no tiene `emision_id`, así que su primera
+    llamada a `_anulada` devuelve `False` sin consultar y el chequeo real es la segunda
+    (`emision_de_la_obligacion`); con la pausa tras la primera, la anulación ya estaba confirmada para
+    la segunda. Ajuste de test: `_tras_la_primera_llamada(..., llamada=2)` en la forma contra-asiento
+    (pausa tras el último chequeo, que es donde se abre la carrera).
+  - Mutante (15:44, copia previa, revertido; defensa apagada: `bloquear_cuentas` en `anular_emision`):
+    `pytest ... -k rf02 -q` da `2 failed, 4 deselected`; `[credito]` y `[contra_asiento]` rojos los dos
+    por `AssertionError: la anulación se confirmó debajo de la corrección` / `assert 1 == 0`
+    (`anuladas_al_escribir == 0`).
 
 ## 2. Esquema, protección y semilla
 

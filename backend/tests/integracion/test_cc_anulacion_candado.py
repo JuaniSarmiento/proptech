@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.cuenta_corriente.aplicacion import correcciones, emisiones
@@ -21,7 +21,7 @@ from proptech_core.cuenta_corriente.aplicacion.emisiones import ObligacionAEmiti
 
 from ._cuenta_corriente import Mundo, sembrar, sesion_app
 from ._edificios import BaseDeEdificio
-from .test_cc_correcciones import credito_corr, emitir
+from .test_cc_correcciones import contra, credito_corr, emitir
 
 pytestmark = pytest.mark.integracion
 
@@ -80,11 +80,19 @@ def _anuladas(base: BaseDeEdificio, mundo: Mundo, emision_id: UUID) -> int:
 
 
 def _tras_la_primera_llamada(
-    real: Callable[..., Any], al_volver: Callable[[], None], hecho: list[bool]
+    real: Callable[..., Any],
+    al_volver: Callable[[], None],
+    hecho: list[bool],
+    *,
+    llamada: int = 1,
 ) -> Callable[..., Any]:
+    """Dispara `al_volver` al volver la llamada número `llamada` (la primera por defecto)."""
+    llamadas: list[bool] = []
+
     def envuelta(*args: Any, **kw: Any) -> Any:
         resultado = real(*args, **kw)
-        if not hecho:
+        llamadas.append(True)
+        if not hecho and len(llamadas) == llamada:
             hecho.append(True)
             al_volver()
         return resultado
@@ -116,6 +124,69 @@ def _registrar(
         obligaciones=obligaciones,
         request_id=uuid4(),
     )
+
+
+class _FotosObservadas:
+    """Registra cada ejecución de la sentencia de la foto con los `ids` reales que recibió.
+
+    La sentencia se reconoce por su texto compilado (`WITH t AS` y `cuentas AS`, que sólo tiene
+    `_FOTO`); sus parámetros reales son los `ids` expandidos en la ejecución (L-016).
+    """
+
+    def __init__(self, sesion: Any) -> None:
+        self.pedidas: list[set[UUID]] = []
+        self._bind = sesion.get_bind()
+        event.listen(self._bind, "before_cursor_execute", self._escuchar)
+
+    def _escuchar(self, conn: Any, cursor: Any, sentencia: str, parametros: Any, *a: Any) -> None:
+        if "WITH t AS" in sentencia and "cuentas AS" in sentencia and "ANY(" in sentencia:
+            ids = parametros["ids"] if isinstance(parametros, dict) else parametros[0]
+            self.pedidas.append({UUID(str(i)) for i in ids})
+
+    def cerrar(self) -> None:
+        event.remove(self._bind, "before_cursor_execute", self._escuchar)
+
+
+def test_rf01_la_ultima_foto_de_la_emision_nueva_pide_todas_las_cuentas(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RF-01 (D-138): el saldo anterior sale de UNA sentencia con todas las cuentas de la emisión.
+
+    Los tests de las anulaciones intercaladas no matan "una foto por cuenta" (la primera llamada
+    dispara la carrera y las demás ven el mismo candado); éste observa qué pidió la última foto.
+    """
+    _, oct_ = _setiembre_y_octubre(mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            r = _registrar(s, mundo, uuid4(), date(2026, 10, 1), oct_)
+        finally:
+            observadas.cerrar()
+        s.commit()
+    assert len(r.cuentas) == 2
+    assert observadas.pedidas, "la emisión no ejecutó ninguna foto"
+    assert observadas.pedidas[-1] == set(r.cuentas.values()), observadas.pedidas
+
+
+def test_rf01_la_ultima_foto_del_replay_pide_todas_las_cuentas(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RF-01, RF-04 (D-138): el replay también calcula el saldo con una sola foto de todas."""
+    _, oct_ = _setiembre_y_octubre(mundo)
+    oct_id = uuid4()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        primera = _registrar(s, mundo, oct_id, date(2026, 10, 1), oct_)
+        s.commit()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            replay = _registrar(s, mundo, oct_id, date(2026, 10, 1), oct_)
+        finally:
+            observadas.cerrar()
+        s.commit()
+    assert replay.cuentas == primera.cuentas
+    assert observadas.pedidas, "el replay no ejecutó ninguna foto"
+    assert observadas.pedidas[-1] == set(replay.cuentas.values()), observadas.pedidas
 
 
 def test_rf01_la_emision_nueva_publica_una_sola_foto(
@@ -181,27 +252,46 @@ def test_rf04_el_replay_de_emision_publica_una_sola_foto(
     ), replay.saldo_anterior
 
 
+@pytest.mark.parametrize("forma", ["credito", "contra_asiento"])
 def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch, forma: str
 ) -> None:
     """RF-02, E6, R08: el chequeo `_anulada` corre bajo el candado; la anulación lo respeta.
 
     Con el candado, la anulación espera a que la corrección se confirme (orden serial válido:
     corrección y después anulación). Sin él, la anulación se confirma después del chequeo y antes
-    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada.
+    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada. Vale para
+    las dos formas: el crédito y el contra-asiento de un crédito ya registrado (D-138).
     """
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emision, _, obl = emitir(s, mundo, 4, "100.00")
         s.commit()
+    credito_previo: UUID | None = None
+    if forma == "contra_asiento":
+        # Se confirma ANTES de instalar la pausa: la carrera observa el contra-asiento, no esto.
+        with sesion_app(base_del_edificio, mundo.admin) as s:
+            credito_previo = credito_corr(s, mundo, obl, "30.00")
+            s.commit()
     anulacion = _AnulacionEnOtroHilo(base_del_edificio, mundo, emision)
     hecho: list[bool] = []
     monkeypatch.setattr(
         correcciones,
         "_anulada",
-        _tras_la_primera_llamada(correcciones._anulada, anulacion.lanzar, hecho),
+        # El crédito chequea la emisión de su obligación en la primera llamada; el contra-asiento
+        # (su blanco no tiene emisión propia) la chequea en la segunda: la pausa va después del
+        # último chequeo, que es donde se abre la carrera.
+        _tras_la_primera_llamada(
+            correcciones._anulada,
+            anulacion.lanzar,
+            hecho,
+            llamada=1 if credito_previo is None else 2,
+        ),
     )
     with sesion_app(base_del_edificio, mundo.admin) as s:
-        credito_corr(s, mundo, obl, "30.00")
+        if credito_previo is None:
+            credito_corr(s, mundo, obl, "30.00")
+        else:
+            contra(s, mundo, credito_previo)
         anuladas_al_escribir = _anuladas(base_del_edificio, mundo, emision)
         s.commit()
     anulacion.terminar()
