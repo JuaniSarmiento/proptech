@@ -1060,7 +1060,59 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
   proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.
 
-## L-068 · La evidencia verde de un job de CI se saca de una copia limpia, con lo que el CI tiene y nada más
+## L-068 · Un constructor detenido deja código sin evidencia: el siguiente lo prueba revirtiendo a la forma que describió el rompedor
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), apply 3 (03/11/2026).
+- **Qué pasó**: el agente cortado el 01/11 dejó escritas la producción y los tests del grupo 9 sin
+  ningún RED. El agente nuevo no dio nada por probado: obtuvo cada rojo volviendo la producción a la
+  forma que pegó `verify-1-breaker.md` y comparó la salida con la del rompedor.
+- **Regla**: el código que deja un agente detenido es código sin evidencia. El RED se obtiene
+  revirtiendo a la versión anterior documentada, y vale si reproduce la salida que ya había registrado
+  otro rol. Se declara como "RED contra la producción anterior", no como RED antes de producción
+  (L-061). Aplica a constructor y auditor.
+
+## L-069 · Para ocultar un valor tipeado en un mensaje se compara el mensaje entero, nunca se reemplaza la subcadena
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), F1 de verify 1 (31/10/2026).
+- **Qué pasó**: `str.replace(ruta, "<semilla>")` sobre todo el mensaje convirtió `--semilla e` en
+  `no s<semilla> pu<semilla>d<semilla>...` y borró el nombre del campo cuando el archivo se llamaba
+  `unidades`.
+- **Regla**: si un texto de error trae un valor del usuario que no debe salir, se reconoce el mensaje
+  conocido por igualdad y se reescribe entero. Un reemplazo de subcadena falla con valores cortos o que
+  son palabras del propio mensaje (L-007). Aplica a constructor y rompedor.
+
+## L-070 · Ahorrar la segunda vuelta del rompedor o la suite de cierre no las reemplaza: se acotan, no se saltean
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), decisión de Giuliano del 03/11/2026 y verify 1 del auditor.
+- **Qué pasó**: para ahorrar tiempo y memoria se pidió no repetir el rompedor ni la suite. El change
+  llegó al auditor con las correcciones sin atacar y sin regresiones medidas, y no pudo aprobarse.
+  Acotado al delta, el rompedor encontró dos huecos reales en minutos, y el CI del PR resolvió la suite
+  sin la corrida local de más de una hora.
+- **Regla**: cuando la corrección es chica, la vuelta del rompedor se acota al delta y a sus
+  consumidores, y la suite se delega al CI con el PR armado antes de pedir el veredicto. Aplica a
+  orquestador y auditor.
+
+## L-071 · Sin login, el CI verde se certifica por la definición del paso y su conclusión; el conteo es un complemento
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), B2 de verify 1 y tarea 8.1 (04/11/2026).
+- **Qué pasó**: la API pública de GitHub da la conclusión de cada paso pero no sus logs, y `gh` no
+  estaba instalado, así que el `N passed` que pide L-055 no se pudo leer.
+- **Regla**: el run sobre el SHA de origen, con su paso de tests leído en `ci.yml` y en el script que
+  llama (sin filtro de archivo ni de `-k`) y en `success`, certifica la suite entera. El conteo se pide
+  aparte a quien tenga login y se declara como hueco si falta; no se inventa ni se da por leído. Aplica
+  a orquestador y auditor.
+
+## L-072 · La cuenta de intentos se declara por gate y se aplica en cada vuelta
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), `tasks.md` del change (03/11/2026).
+- **Qué pasó**: el registro contó los resultados no aprobados de toda la etapa verify ("con un tercero
+  se frena"), y en la vuelta siguiente reabrió el grupo 10 sin aplicar esa misma cuenta. Contada por
+  gate, como dice la regla global, nadie llegó a tres.
+- **Regla**: `tasks.md` dice qué cuenta usa (por gate: rompedor y auditor por separado) y, en cada
+  resultado no aprobado, anota el número de esa gate. Así la frenada en el tercero no depende de una
+  interpretación hecha después. Aplica al orquestador.
+
+## L-073 · La evidencia verde de un job de CI se saca de una copia limpia, con lo que el CI tiene y nada más
 
 - **Origen**: 2e (B1 del auditor, N1 de la ronda 2), 30/10/2026.
 - **Qué pasó**: el job `ensayo-roles` iba a fallar en un runner limpio porque `infra/.env` está en
@@ -1071,7 +1123,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   de la punta de la rama, con todos los comandos del CI, `ruff` y `mypy` incluidos, y se repite si
   llega un commit después.
 
-## L-069 · Paralelizar muestra las dependencias de orden y de arranque que la serie escondía
+## L-074 · Paralelizar muestra las dependencias de orden y de arranque que la serie escondía
 
 - **Origen**: 2e (xdist), 30/10/2026.
 - **Qué pasó**: con `-n 4` aparecieron defectos que la serie no mostraba: un id de parámetro hecho con
@@ -1083,7 +1135,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   fixture y no por el orden; todo contenedor de Postgres espera a conectar de verdad; y se corre cada
   archivo solo antes de dar por buena una corrida paralela.
 
-## L-070 · Rechazar un nombre es más fuerte que rechazar un estado
+## L-075 · Rechazar un nombre es más fuerte que rechazar un estado
 
 - **Origen**: 2e (R1 del rompedor, D-144), 30/10/2026.
 - **Qué pasó**: el humo se negaba ante `proptech` sólo "con contenedores corriendo". Con el stack real

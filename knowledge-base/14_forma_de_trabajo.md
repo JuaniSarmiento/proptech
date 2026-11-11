@@ -1,113 +1,148 @@
 # Forma de trabajo
 
 Cómo se construye cada cambio del MVP. **Se reescribe** cuando cambia el proceso; el porqué va a
-`09_decisiones_y_supuestos.md` (D-048).
+`09_decisiones_y_supuestos.md` (D-048, D-146).
+
+Conviven dos ciclos sobre el mismo repositorio (D-146):
+
+- **El de Juani, con Rein** (desde el 10/11/2026, D-146): historias con aceptación congelada antes de
+  construir y demo ante Juani. Método completo en `.rein/METODO.md`; este archivo dice cómo se aplica
+  en PropTech.
+- **El de Alberto y el equipo, con OPSX de Active Stack v1** (D-093, D-138): `explore`, `propose`,
+  `apply`, `verify` y `archive`, como dice `CLAUDE.md`.
 
 ## Quiénes
 
-- **Juani**: dueño del proyecto y desarrollador. Desde el 14/10/2026 Alberto también programa, y
-  Emiliano Caceres es desarrollador del equipo; cada cambio lo programa uno solo (D-022, D-093).
-  Decide el alcance y recibe el veredicto final de sus propios cambios. Las propuestas CRITICAL y HIGH
-  las puede aprobar él, Alberto o Emiliano, por escrito y con fecha (D-094, D-111).
-- **El equipo de desarrollo** (desde el 30/10/2026, D-138): Emiliano, Gianfranco, Neyen, Matías,
-  Giuliano y Juan Cruz, cada uno con un change propio (la tabla está en `CHANGES.md`, "Deuda
+- **Juani**: dueño del proyecto y desarrollador. Decide el alcance, aprueba la aceptación de cada
+  historia y es el único que pasa una historia suya a Terminada. Las propuestas CRITICAL y HIGH las
+  puede aprobar él, Alberto o Emiliano, por escrito y con fecha (D-094, D-111).
+- **Alberto y el equipo de desarrollo** (desde el 30/10/2026, D-138): Emiliano, Gianfranco, Neyen,
+  Matías, Giuliano y Juan Cruz, cada uno con un change propio (tabla en `CHANGES.md`, "Deuda
   adelantada"). Quien recién se suma toma sólo changes LOW o MEDIUM; lo CRITICAL lo construye o lo
   supervisa un firmante de D-111.
-- **Claude, el orquestador**: la sesión que habla con Juani. No escribe código: arma cada pedido,
-  lanza los agentes de a uno, lee lo que devuelven, decide el paso siguiente y le cuenta a Juani.
-- **Los agentes**, cada uno con un solo trabajo y sin ver las conclusiones de los otros salvo lo que
-  el orquestador les pase:
+- **Claude, el orquestador** (perfil `rein-orchestrator`): la sesión que habla con Juani. Acuerda la
+  historia, escribe su aceptación ejecutable, arma el brief, delega, verifica contra el SHA aprobado y
+  presenta la demo. No escribe el código de producción, salvo un cambio chico y local que Juani le pida.
+- **Los agentes**, cada uno con un solo trabajo y sin ver las conclusiones de los otros salvo lo que el
+  orquestador les pase:
 
 | Agente | Trabajo | Modelo | Puede editar |
 |---|---|---|---|
-| **Proponente** | Escribe la propuesta, el diseño y las tareas del cambio en `openspec/changes/` | opus | Sólo los artefactos del cambio |
-| **Constructor** | Implementa las tareas con TDD estricto: ve fallar cada test antes de escribir el código | sonnet | Sí |
-| **Rompedor** | Intenta romper lo construido: entradas límite, pagos simultáneos, otro edificio, datos raros, errores de red. Cada falla que encuentra la deja como un test que falla y la reproducción | sonnet | Sólo tests nuevos, nunca el código |
-| **Auditor** | Lee lo que hizo y pensó cada uno (informes, diff, tests, salida de los comandos) y verifica el cambio contra su propuesta y contra `knowledge-base/`. Da el veredicto | opus | No |
+| **Constructor** (`rein-constructor`) | Implementa una historia con el menor cambio razonable, TDD según el riesgo; escribe sus tests de apoyo | Lo elige Juani: Codex `xhigh` si hay cuota, si no Sonnet | Sí, salvo `aceptacion/` |
+| **Rompedor** | Revisión adversarial en CRITICAL y HIGH: entradas límite, concurrencia, otro edificio u otra administración, datos raros, errores de red. Cada falla queda como un test que falla y su reproducción | De otra familia que el constructor (L-025, D-125) | Sólo tests nuevos, nunca el código |
 
-## El ciclo de cada cambio
+## Los archivos
+
+| Archivo | Qué lleva |
+|---|---|
+| `HISTORIAS.md` | El backlog de Juani: cada historia con su estado, criterios, SHA aprobado, comando y evidencia |
+| `aceptacion/<H-xxx>/` | Las pruebas que deciden la historia. Las escribe el orquestador, nunca el constructor |
+| `openspec/changes/<change>/` | `proposal.md` (con la firma de CRITICAL y HIGH) y `design.md` del change; sus specs |
+| `obsidian.md` | El estado: qué está en curso, qué bloquea y el próximo paso. No hay `ORQUESTADOR.md` |
+| `CHANGES.md` y `12_fichas_de_changes.md` | El roadmap y el detalle de cada change, como siempre |
+
+Identificadores: las historias son `H-001`, `H-002`… y sus criterios `H-001.C01`, para no chocar con
+las `HU-*` de `06_funcionalidades.md` ni con los `C-23` a `C-30` de la deuda adelantada.
+
+## El ciclo de una historia
 
 ```
-1. Proponer ──► 2. Construir ──► 3. Romper ──► 4. Auditar ──► 5. Archivar
-                     ▲               │             │
-                     └── fallas ─────┘             │
-                     ▲                             │
-                     └──────── NO, con motivos ────┘
+1. Acordar ──► 2. Aceptación ──► 3. Construir ──► 4. Romper ──► 5. Verificar ──► 6. Demo
+   (Juani)       (SHA aprobado)                    (CRITICAL/HIGH)                  │
+                                     ▲                  │              │            │
+                                     └── fallas ────────┴──────────────┴── rechazo ─┘
 ```
 
-1. **Proponer.** El proponente escribe `proposal.md`, `design.md` y `tasks.md`, con las historias,
-   reglas y decisiones que cubre y la sección "Knowledge Base Impact". En los cambios marcados con ⓔ
-   en `01_vision_y_objetivos.md`, antes corre un explore. **La propuesta de los cambios críticos la
-   aprueba Juani, Alberto o Emiliano, por escrito y con fecha** (acceso, cuenta corriente, importación
-   desde Excel, liquidación, pagos y 10b, D-077, D-094, D-111); en los demás sigue el orquestador.
-2. **Construir.** El constructor implementa las tareas en orden, con TDD, y devuelve qué hizo, qué
-   comandos corrió y su salida.
-3. **Romper.** El rompedor recibe el cambio terminado y trata de romperlo. Si encuentra fallas, vuelve
-   al paso 2 con los tests que fallan. Si no encuentra nada, lo dice en una línea con lo que probó.
-   **Salvo que ya se dieron tres vueltas** (tope de vueltas, D-092, más abajo): ahí el rompedor no
-   vuelve al paso 2, va directo al paso 4 con su informe final.
-4. **Auditar.** El auditor revisa todo y responde **OK** o **NO con motivos**. Si es NO, vuelve al
-   paso 2. **Un cambio está aprobado cuando el auditor da el OK.**
-5. **Archivar.** Se actualiza `knowledge-base/` según el "Knowledge Base Impact" (lo vigente se
-   reescribe, las decisiones se agregan), se archiva el cambio en OpenSpec y se commitea.
+1. **Acordar.** Se parte del change de `CHANGES.md` y de su ficha. Orquestador y Juani acuerdan cada
+   historia: resultado observable, qué incluye y qué no, dificultad y riesgo (son distintos), criterios
+   con identificador y guion de demo. Para CRITICAL y HIGH, la propuesta del change en OpenSpec tiene
+   que estar firmada antes del paso 3 (D-094, D-111). La historia se anota en `HISTORIAS.md` y en el
+   tablero de Jarvis (`registrar_historia`).
+2. **Aceptación.** El orquestador escribe las pruebas de cada criterio en `aceptacion/<H-xxx>/`, las ve
+   fallar por aserción (no por un error de setup), Juani las aprueba, se commitean y el SHA y el comando
+   quedan en la historia. Un criterio de interfaz se prueba en un navegador real.
+3. **Construir.** Un constructor por historia, con un brief acotado: la historia, el SHA de la
+   aceptación, los archivos que le tocan y `15_lecciones.md`. Construye con TDD según el riesgo (estricto
+   en el núcleo y en todo lo que toca plata) y devuelve lo que hizo, los comandos y su salida. No toca
+   `aceptacion/`; si un criterio está mal, pide la decisión y, si Juani la cambia, va otro commit y otro
+   SHA con el motivo.
+4. **Romper.** Sólo en CRITICAL y HIGH: el rompedor recibe la historia construida y trata de romperla.
+   Si encuentra fallas, vuelve al paso 3 con los tests que fallan.
+5. **Verificar.** El orquestador recupera `aceptacion/<H-xxx>/` del SHA aprobado en un worktree o con
+   `git show`, nunca de la copia del constructor, y la corre contra el código entregado. Compara los
+   casos esperados con los ejecutados: un faltante o un skip no es éxito. La historia pasa a **Lista**
+   con la evidencia y lo que quede sin verificar.
+6. **Demo.** El orquestador recorre el guion criterio por criterio con Juani. **Sólo Juani pasa la
+   historia a Terminada, con un sí explícito**; el silencio no es aceptación. Si la rechaza, vuelve a En
+   proceso con el motivo; si la posterga, a Pendiente con el motivo.
 
-**Tope de vueltas (D-092)**: si entre construir, romper y auditar se dan tres vueltas sin llegar al
-OK, el rompedor **ya no vuelve al constructor**. En vez de eso: el rompedor entrega su informe final
-con el diagnóstico de cada hallazgo (severidad, si lo demostró, impacto hoy y a futuro, recomendación)
-directo al auditor; el auditor separa lo que bloquea de lo que es deuda aceptable y da su veredicto
-sobre esa base; el veredicto llega **textual** a Juani (ver "Lo que cada agente devuelve"), que decide
-si se cierra con la deuda anotada o se pide otra vuelta. No se sigue iterando a ciegas entre
-constructor y rompedor.
+**Archivar un change**: cuando todas sus historias están Terminadas, se actualiza `knowledge-base/`
+(ver "Documentación viva"), se corre `openspec archive`, se marca en `CHANGES.md` y se commitea y
+pushea a `main` sin preguntar (D-049).
 
-**La corrida de cierre va después de la última vuelta (D-092, L-010)**: la tarea de cierre (7.1 o la
-que corresponda, L-003) se corre **después de la última vuelta de correcciones**, nunca antes. Si el
-código cambia después de esa corrida, la corrida queda vencida aunque siga en verde y hay que
-repetirla sobre el código final.
+## Documentación viva: Rein más la base de conocimiento
 
-**El auditor lee los informes originales (D-092)**: nunca un resumen armado por el orquestador. El
-orquestador puede transcribirlos para pasarlos de un agente a otro, pero el auditor trabaja sobre lo
-que cada agente escribió, no sobre una síntesis.
+Rein pide que la documentación crezca con el producto. En PropTech esa documentación es
+**`knowledge-base/`**, que sigue siendo la fuente de verdad, más `HISTORIAS.md` y `obsidian.md`. Un
+change no está terminado hasta que su documentación lo está, en el mismo trabajo y no después.
 
-**Mutar para ver el rojo sin commitear (D-092, L-013)**: mientras un cambio no está commiteado, no
-hay `git diff` posible contra "el código antes de mutarlo". Antes de mutar código a propósito (para
-una prueba de mutación, por ejemplo), sacar una copia previa (`git stash`, o un commit local temporal
-que se descarta después) y comparar con un diff real contra esa copia antes de seguir. Decirlo en el
-informe.
+| Cuándo | Qué se actualiza |
+|---|---|
+| **Al acordar una historia** | `HISTORIAS.md` (la historia, sus criterios y el guion de demo); si de la charla sale una decisión, una D nueva en `09_decisiones_y_supuestos.md`; si sale una pregunta, `10_preguntas_abiertas.md` |
+| **Al cambiar de estado una historia** | `HISTORIAS.md` (estado, SHA, evidencia, motivo de un rechazo) y el tablero de Jarvis |
+| **Al cerrar cada día de trabajo** | `obsidian.md`: se reescribe el presente (`estado`, `ultimo`, Estado actual, Próximos pasos) y se apila el historial |
+| **Al archivar el change** | La sección "Knowledge Base Impact" de su propuesta, aplicada: los archivos que se reescriben (`04` modelo de datos, `05` reglas, `06` funcionalidades, `07` flujos, `08` arquitectura, `11` glosario, `12` fichas con la deuda del cierre, `02` si cambió el stack) quedan con lo vigente; los que sólo se agregan (`09` decisiones, `15` lecciones) suman lo nuevo; `CHANGES.md`, el estado de `CLAUDE.md`/`AGENTS.md` (idénticos) y el README si cambió cómo se corre |
+
+La KB describe el sistema; `HISTORIAS.md` describe cómo se construyó y se aceptó cada pedazo. No se
+copia una en la otra: la historia enlaza la regla o la decisión (`R03`, `D-143`) y la KB no repite la
+evidencia de las historias.
+
+Estados: **Pendiente → En proceso → Lista → Terminada.** Lista no es aceptación.
+
+**Cerrar antes de abrir**: con dos historias en Lista no se construye nada nuevo; el orquestador
+propone una sesión de demos. Sólo Juani levanta ese límite, por escrito y para una historia concreta.
+Una sola historia en construcción salvo paralelismo explícito.
+
+**Tope de vueltas (D-092)**: si entre construir, romper y verificar se dan tres vueltas sin llegar a
+Lista, no se sigue iterando a ciegas. El rompedor entrega su informe final con el diagnóstico de cada
+hallazgo (severidad, si lo demostró, impacto hoy y a futuro, recomendación) y el orquestador se lo
+pasa **textual** a Juani, que decide si la historia sigue, se parte o se cierra con la deuda anotada.
+
+**Mutar para ver el rojo sin commitear (D-092, L-013)**: antes de mutar código a propósito, sacar una
+copia previa (`git stash` o un commit local temporal que se descarta) y comparar con un diff real
+contra esa copia. Decirlo en el informe.
 
 ## Escalado por riesgo
 
-| Tipo de cambio | Ciclo |
+| Riesgo | Qué lleva la historia |
 |---|---|
-| **Toca plata o tiene peso legal** (2, 4, 5, 6, 7, 8, 9 y 10b del roadmap; de esos, 2, 4, 5, 7, 8 y 10b además llevan la aprobación de Juani, Alberto o Emiliano antes de codear, D-077, D-094, D-111) | Completo: constructor, rompedor y auditor por separado |
-| **Chico o de sólo lectura** (10a, 12, 13; el 12 con revisión previa por ser HIGH) | Constructor y después **una sola pasada que rompe y audita** (un agente con los dos trabajos) |
-| **Infraestructura y el resto** (1a, 1b, 1c, 1d, 3, 6b, 11, 14, 15; el 1d, el 3 y el 12 son HIGH: se propone y se espera la revisión de Juani, Alberto o Emiliano, D-087, D-094, D-111) | Completo |
+| **CRITICAL** (cuenta corriente, cobros, liquidación, acceso, importación, 10b) | Firma de la propuesta antes de construir; aceptación con bordes y fallos; TDD estricto; rompedor por tanda alternando Claude y Codex (D-125) |
+| **HIGH** | Firma de la propuesta; aceptación con bordes; un rompedor |
+| **MEDIUM** | Aceptación con ejemplos de borde; TDD donde aporte; sin rompedor salvo que el orquestador lo pida |
+| **LOW** | Aceptación focalizada; se resuelve con tests y CI |
 
-El orquestador puede subir un cambio al ciclo completo si en la pasada única aparece algo serio.
+Dificultad y riesgo son distintos: un cambio chico que toca plata o datos personales va por la fila de
+su riesgo. El orquestador puede subir una historia de fila si aparece algo serio.
 
-**Revisión proporcional al riesgo** (aprobada por Juani el 27/10/2026, al cerrar el 4b; detalle y
-alternativa descartada en `knowledge-base/09_decisiones_y_supuestos.md` D-125): CRITICAL convoca
-revisores de rol sólo en `propose` (nunca mientras el `apply` sigue escribiendo), un rompedor por
-tanda alternando Claude y Codex, y un auditor al final; HIGH/MEDIUM se quedan con un revisor más un
-rompedor; LOW se resuelve con tests y CI. Esta tabla de arriba (escalado por tipo de cambio) sigue
-rigiendo qué agentes se convocan; D-125 fija cuántas pasadas de cada uno, por gobernanza.
+**Tests (D-146)**: el constructor corre las comprobaciones focalizadas de su cambio, más `ruff` y
+`mypy`; el orquestador corre la aceptación de la historia. **La suite completa** (unos 18 minutos) la
+corre el CI o Juani, y su evidencia se enlaza en la historia; nadie la da por corrida sin esa salida.
+El orquestador dice en cada brief qué corre cada uno y por qué.
 
 **Verificación real con un servicio externo de identidad** (desde el 2b `login-y-usuarios`,
-22/10/2026): cuando un cambio integra un proveedor externo de autenticación (Clerk y lo que venga
-después), el cierre no se da por completo con tests contra un doble falso, aunque pasen todos. Antes
-de archivar, **el socio que corresponda se sienta al teclado** y recorre el camino real contra la
-instancia de desarrollo del proveedor (alta, invitación, aceptación, ingreso, revocación), con el
-orquestador anotando hora y la fila de auditoría que deja cada paso. Es la única forma en que se
-encontró el hallazgo del `__clerk_ticket` perdido (L-032): el doble falso de los tests e2e no modela
-el modo restringido del proveedor real. El alcance de esa corrida puede acortarse por decisión del
-socio (como pasó en el 2b, decisión de cierre 2), dejando el resto como deuda declarada, nunca
-asumida como probada.
+22/10/2026): cuando una historia integra un proveedor externo de autenticación (Clerk y lo que venga
+después), no alcanza con tests contra un doble falso, aunque pasen todos. En la demo, **el socio que
+corresponda se sienta al teclado** y recorre el camino real contra la instancia de desarrollo del
+proveedor (alta, invitación, aceptación, ingreso, revocación), con el orquestador anotando hora y la
+fila de auditoría que deja cada paso. Es la única forma en que se encontró el `__clerk_ticket` perdido
+(L-032). El alcance puede acortarse por decisión del socio, dejando el resto como deuda declarada,
+nunca asumida como probada.
 
 ## Lecciones
 
-Antes de empezar cada cambio, **el constructor y el rompedor leen `15_lecciones.md`**: es la lista de
-ataques y puntos ciegos que ya nos costaron una vuelta. **El auditor cierra su veredicto con una
-sección LECCIONES** (lo que este ciclo enseñó, como regla general, o "ninguna") y el orquestador las
-agrega a `15_lecciones.md` al archivar.
+Antes de empezar cada historia, **el constructor y el rompedor leen `15_lecciones.md`**: es la lista
+de ataques y puntos ciegos que ya nos costaron una vuelta. Al archivar el change, el orquestador agrega
+lo que enseñó (como regla general, o "ninguna") a `15_lecciones.md`.
 
 ## Lo que cada agente devuelve
 
@@ -116,59 +151,41 @@ Todos informan en tres secciones, sólo las que tengan contenido:
 - **JUICIO**: lo que opinan, con qué lo compararon y su confianza.
 - **SUPUESTOS**: lo que dieron por cierto sin verificarlo.
 
-El orquestador no resume ni suaviza el veredicto del auditor: se lo pasa a Juani tal cual.
+El orquestador no resume ni suaviza los hallazgos del rompedor: se los pasa a Juani tal cual cuando
+deciden algo.
 
 ## Constructor con Codex (desde el 3a)
 
-Desde el cambio 3a, el constructor puede ser **Codex (GPT-6.1-Sol, esfuerzo `xhigh`)** en vez de un
-agente de Claude. Rompedor, auditor y los revisores de rol siguen siendo siempre de Claude, de otra
-familia de modelo que el constructor (L-025).
+El constructor puede ser **Codex (GPT-6.1-Sol, esfuerzo `xhigh`)**, con el perfil
+`.codex/agents/rein-constructor.toml`, o un agente de Claude con `.claude/agents/rein-constructor.md`.
+Lo elige Juani; cambiarlo (por ejemplo, por falta de cuota) pide su OK y queda anotado en la historia.
+El rompedor siempre es de otra familia que el constructor (L-025).
 
-- **Briefs por bloque**: las tareas del cambio se agrupan en bloques de 3 a 6, cada uno con su propio
-  brief (`.git/informes-<cambio>/codex-<cambio>/brief-bloque-X.md`) más unas reglas comunes a todos los
-  bloques (TDD estricto, rojo y verde pegados en `tasks.md`, tope de evidencia, conventional commits
-  **sin** atribución a IA ni `Co-Authored-By`). Un brief nombra sólo lo que esa tarea necesita leer; no
-  nombra, por defecto, los consumidores fuera del área que toca (L-023, L-025): eso hay que escribirlo
-  a propósito cuando aplique.
-- **Acceso total, autorizado por Juani el 19/10/2026**: Codex corre sin sandbox, en la máquina de
-  Juani, con permiso explícito para usar Docker (sólo a través de los tests o de `infra/ci/*.sh`,
-  nunca comandos sueltos que toquen contenedores de otros proyectos de la máquina), leer el repo entero
-  y commitear. El **sandbox `workspace-write` no sirve** para este rol: no llega a Docker (ni siquiera
-  a través de los tests) y no puede commitear, así que cada tarea con integración real o con un commit
-  pendiente queda a medio hacer.
-- **El orquestador compara `docker ps`** antes y después de cada bloque (mismos contenedores, ningún
-  `proptech`/`proptech-clon` quedando atrás) y **revisa la atribución de cada commit** del bloque antes
-  de seguir, porque es la regla más fácil de pasar por alto en una corrida larga y sin supervisión
-  línea por línea.
-- **Lo que Codex no puede terminar, lo termina el orquestador**: correr la suite completa o el humo
-  cuando el sandbox no alcanza, commitear una tarea que Codex dejó sin commit, y la verificación
-  independiente de cada bloque cerrado (L-023, L-024).
-- **Medición del 19/10/2026** (cambio 3a): 22 tareas completadas en unas 2 horas de trabajo real,
-  aproximadamente 1,3 millones de tokens de la cuota de ChatGPT consumidos; la ventana de 5 horas de
-  Plus se agotó en aproximadamente 2,5 horas (quedó sin cuota antes de cerrar el bloque E, que terminó
-  el orquestador).
-- **Medición del 20/10/2026** (cambio 3b): con **Claude Sonnet como constructor** (TDD estricto, una
-  vuelta de rompedor y auditor Claude Opus), cada bloque tardó alrededor de 1 hora real y consumió
-  entre 450 y 550 mil tokens; Codex, sobre tareas comparables del 3a, resolvía un bloque en unos 20
-  minutos. Codex vuelve a ser el constructor cuando tiene cuota disponible. El orquestador mira las
-  pantallas en un navegador real después de cada bloque de UI (L-026), no sólo al final del cambio.
-
-**Esquema del 2.2a (20/10/2026)**: Codex construye, Claude rompe y audita; Juani corre el script de
-firma de la propuesta y firma aparte las correcciones posteriores que agregan reglas (RR-1 a RR-4,
-`610eb4a`, L-029).
+- **Un brief por historia**, en `.git/informes-<change>/brief-<H-xxx>.md`, con reglas comunes (TDD según
+  el riesgo, no tocar `aceptacion/`, tope de evidencia, conventional commits **sin** atribución a IA ni
+  `Co-Authored-By`). Un brief nombra sólo lo que esa historia necesita leer; los consumidores fuera del
+  área que toca hay que nombrarlos a propósito cuando aplique (L-023, L-025).
+- **Acceso total, autorizado por Juani el 19/10/2026**: Codex corre sin sandbox, en la máquina de Juani,
+  con permiso para usar Docker (sólo a través de los tests o de `infra/ci/*.sh`, nunca comandos sueltos
+  que toquen contenedores de otros proyectos), leer el repo entero y commitear. El sandbox
+  `workspace-write` no sirve para este rol: no llega a Docker ni puede commitear.
+- **El orquestador compara `docker ps`** antes y después de cada historia (mismos contenedores, ningún
+  `proptech`/`proptech-clon` quedando atrás) y **revisa la atribución de cada commit** antes de seguir.
+- **Lo que Codex no puede terminar, lo termina el orquestador**: commitear lo que quedó sin commit y la
+  verificación independiente (L-023, L-024). La suite completa sigue siendo del CI o de Juani.
+- **Mediciones**: con Codex, el 3a hizo 22 tareas en unas 2 horas reales (aprox. 1,3 millones de tokens;
+  la ventana de 5 horas de Plus se agotó en 2,5). Con Claude Sonnet, en el 3b, cada bloque tardó cerca
+  de una hora y entre 450 y 550 mil tokens; Codex resolvía uno comparable en unos 20 minutos. El
+  orquestador mira las pantallas en un navegador real después de cada historia con UI (L-026).
 
 ## Reglas del proceso
 
-- **De a un cambio por vez**, en el orden de `CHANGES.md`, con la ficha detallada de cada uno en
-  `12_fichas_de_changes.md`. El siguiente arranca recién cuando el anterior
-  está archivado.
+- **Una historia en construcción por vez**, en el orden de `CHANGES.md`, salvo paralelismo explícito.
 - **Ningún agente lanza otros agentes.**
-- **Git**: sin ramas, todo sobre `main`; así se decidió cuando trabajaba una sola persona. Con dos
-  desarrolladores (D-093), el criterio de ramas o turnos está abierto (P47). Al archivar cada cambio,
-  con el OK del auditor, se commitea y se pushea a `main` sin preguntar (autorizado por Juani,
-  D-049). Cualquier otro push se pregunta.
-- **Toda pantalla lleva su ayuda "?"** (D-102, The Always-Help Rule de `DESIGN.md`, HU-T1): en un
-  cambio con frontend, una pantalla sin su "?" y sin las tres partes del texto escritas no está
-  terminada, y el rompedor lo verifica pantalla por pantalla.
+- **Git**: el ciclo de Juani trabaja sobre `main`; el equipo trabaja en ramas `change/*` con PR (P47
+  sigue abierta para el criterio general). Al archivar un change con todas sus historias Terminadas,
+  se commitea y se pushea a `main` sin preguntar (D-049). Cualquier otro push se pregunta.
+- **Toda pantalla lleva su ayuda "?"** (D-102, The Always-Help Rule de `DESIGN.md`, HU-T1): una pantalla
+  sin su "?" y sin las tres partes del texto no está terminada, y la aceptación lo prueba.
 - **El repositorio es público**: nunca secretos ni datos personales reales, ni en código ni en tests.
 - **Nada se da por probado sin la salida del comando** que lo prueba, y de esta versión del código.

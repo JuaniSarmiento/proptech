@@ -124,9 +124,8 @@ Como administrador, quiero cargar los gastos del mes a mano o subiendo la factur
 en la liquidación.
 
 **Construido (cambio 6, 29/10/2026)**: los criterios de carga manual, duplicado, aviso de receptor
-distinto y nota de crédito — por API, sin pantalla propia todavía (va en un change nuevo de pantallas
-de gastos, sin nombrar, que junto con las de HU-A3b quedó fuera del 6 por decisión de Emiliano,
-D-140). **Pendiente (cambio 14)**: QR, lectura por IA y el control de monto atípico R23.
+distinto y nota de crédito — por API, sin pantalla propia todavía (van en el **6c** `pantallas-de-gastos`, D-144,
+que junto con las de HU-A3b quedaron fuera del 6 por decisión de Emiliano, D-140). **Pendiente (cambio 14)**: QR, lectura por IA y el control de monto atípico R23.
 
 **Criterios de aceptación**:
 - Dado un gasto cargado a mano, cuando lo guardo, entonces queda en borrador con proveedor,
@@ -156,8 +155,8 @@ Como administrador, quiero cargarle un importe a una unidad puntual (o importar 
 Excel), para cobrar el uso del SUM, una multa o un consumo.
 
 **Construido (cambio 6, 29/10/2026)**: carga manual, importación desde Excel (todo o nada) y
-aprobación, por API, sin pantalla propia todavía (mismo change de pantallas pendiente que HU-A3,
-D-140). El criterio de "no cambia lo que pagan las demás" está probado contra la lectura agregada por
+aprobación, por API, sin pantalla propia todavía (el **6c** `pantallas-de-gastos`, como HU-A3,
+D-140, D-144). El criterio de "no cambia lo que pagan las demás" está probado contra la lectura agregada por
 grupo; la expensa real de la unidad es del cambio 7, que no existe todavía.
 
 **Criterios de aceptación**:

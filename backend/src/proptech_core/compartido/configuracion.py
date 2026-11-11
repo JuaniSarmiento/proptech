@@ -15,6 +15,8 @@ usuario y la contraseña vienen de una variable distinta por rol:
   estándar de libpq, no esta clase).
 - `Configuracion`: `POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD` (la usan la API y el
   worker), además de Redis y el archivo de parámetros del sistema (D11).
+- `ConfiguracionDelEjemplo`: el mismo par y los parámetros, sin Redis (el comando del
+  edificio de ejemplo, D5 de `ejemplo-robusto`).
 
 Los tres roles nuevos (migrador, respaldo, app) validan que el nombre de usuario
 cumpla `^proptech_[a-z_]{1,40}$` (D1, L-008); el rol de arranque no, porque no es
@@ -310,7 +312,7 @@ class _ConfiguracionPostgresBase:
     postgres_password: SecretStr
     postgres_db: str
 
-    def _cargar(self, lector_cls: type[_LectorPostgresComun]) -> None:
+    def _cargar[T: _LectorPostgresComun](self, lector_cls: type[T]) -> T:
         try:
             base = lector_cls()
         except ValidationError as error:
@@ -322,6 +324,7 @@ class _ConfiguracionPostgresBase:
         self.postgres_user = base.postgres_user  # type: ignore[attr-defined]
         self.postgres_password = base.postgres_password  # type: ignore[attr-defined]
         self.postgres_db = base.postgres_db
+        return base
 
     def url_sqlalchemy(self) -> URL:
         """La URL de conexión como objeto `sqlalchemy.engine.URL` (M12): `create_engine`
@@ -400,6 +403,66 @@ class ConfiguracionDeAppSoloPostgres(_ConfiguracionPostgresBase):
         self._cargar(_LectorDeAppSoloPostgres)
 
 
+class _LectorDelEjemplo(_LectorDeAppSoloPostgres):
+    """Lo que usa el comando del edificio de ejemplo (D5 de `ejemplo-robusto`): las
+    credenciales de la app, el archivo de parámetros y el pool, sin Redis ni Clerk.
+    El pool y los parámetros son gemelos de `_LectorDeApp` (L-009): un cambio en uno
+    se repite en el otro, y `test_ejemplo_casos_de_uso.py` les pasa los mismos valores."""
+
+    proptech_parametros: str
+
+    db_pool_pre_ping: bool = True
+    db_pool_size: int = Field(default=5, ge=1, le=50)
+    db_pool_recycle_s: int = Field(default=1800, ge=60, le=86400)
+    db_pool_timeout_s: int = Field(default=5, ge=1, le=60)
+    db_connect_timeout_s: int = Field(default=2, ge=1, le=30)
+
+    @field_validator(
+        "db_pool_size",
+        "db_pool_recycle_s",
+        "db_pool_timeout_s",
+        "db_connect_timeout_s",
+        mode="before",
+    )
+    @classmethod
+    def _enteros_del_pool_ascii_estrictos(cls, valor: object) -> object:
+        return _entero_ascii_estricto(valor)
+
+    @field_validator("proptech_parametros")
+    @classmethod
+    def _parametros_recortados(cls, valor: str) -> str:
+        return _recortado_sin_cambios(valor)
+
+    @field_validator("proptech_parametros")
+    @classmethod
+    def _archivo_de_parametros_del_ejemplo_existe(cls, valor: str) -> str:
+        if not Path(valor).is_file():
+            raise ValueError("el archivo no existe o no se puede leer")
+        return valor
+
+
+class ConfiguracionDelEjemplo(_ConfiguracionPostgresBase):
+    """`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`, los parámetros y el pool: la usa el
+    comando del edificio de ejemplo, que no habla con Redis y por eso no lo exige. La
+    API y el worker siguen con `Configuracion` y su exigencia (D5 de `ejemplo-robusto`)."""
+
+    proptech_parametros: str
+    db_pool_pre_ping: bool
+    db_pool_size: int
+    db_pool_recycle_s: int
+    db_pool_timeout_s: int
+    db_connect_timeout_s: int
+
+    def __init__(self) -> None:
+        base = self._cargar(_LectorDelEjemplo)
+        self.proptech_parametros = base.proptech_parametros
+        self.db_pool_pre_ping = base.db_pool_pre_ping
+        self.db_pool_size = base.db_pool_size
+        self.db_pool_recycle_s = base.db_pool_recycle_s
+        self.db_pool_timeout_s = base.db_pool_timeout_s
+        self.db_connect_timeout_s = base.db_connect_timeout_s
+
+
 class Configuracion(_ConfiguracionPostgresBase):
     """`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD` más Redis y los parámetros del
     sistema (D11): la usan la API y el worker."""
@@ -420,13 +483,9 @@ class Configuracion(_ConfiguracionPostgresBase):
     invitaciones_clave_cifrado: SecretStr | None
     proptech_url_publica: str | None
 
-    def __init__(self, *, clerk_emisor: str | None = None) -> None:
+    def __init__(self) -> None:
         try:
-            # El comando de ejemplo puede normalizar su señal de desarrollo;
-            # los consumidores sin override conservan la validación exacta.
-            base = (
-                _LectorDeApp() if clerk_emisor is None else _LectorDeApp(clerk_emisor=clerk_emisor)
-            )
+            base = _LectorDeApp()
         except ValidationError as error:
             raise ConfiguracionInvalida(
                 f"Configuración inválida — {_mensaje_configuracion_invalida(error)}"

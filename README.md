@@ -120,6 +120,26 @@ y la web. El comando corre como `proptech_app`, con los permisos existentes.
 El id queda en el panel de Clerk; no lo pegues en documentación, capturas ni commits. La vinculación
 se hace con este comando, sin escribir SQL ni saltear el login.
 
+El comando no usa Redis, así que corre sin `REDIS_HOST` ni `REDIS_PASSWORD`. Cada error sale con un
+mensaje propio, sin traceback ni datos de la conexión, y con su código de salida:
+
+| Código | Significado |
+|---|---|
+| 0 | Cargado, ya estaba o vinculado |
+| 1 | Fuera de desarrollo: falta `PROPTECH_ENTORNO=desarrollo` (D-112) |
+| 2 | Uso: argumentos no reconocidos, `--semilla` vacío o id de cuenta con formato inválido |
+| 3 | Configuración: variables, parámetros, semilla o Georef inválidos, semilla que el caso de uso rechaza, o instancia de Clerk que no es de desarrollo |
+| 4 | La base no es segura para correr: rol con privilegios de más o tablas de sólo agregar desprotegidas |
+| 5 | Base no disponible |
+| 6 | El ejemplo cargado es distinto: el mensaje dice qué difiere |
+| 7 | Vinculación de la cuenta rechazada |
+| 8 | La carga no se completó: violación de integridad, otro error de la base o espera agotada |
+| 9 | Error inesperado: el mensaje nombra sólo su tipo |
+| 130 | Interrumpido con Ctrl-C: una carga a medias no queda |
+
+Otro edificio con otro nombre en la administración de ejemplo no molesta. Un ejemplo renombrado, o
+con el nombre repetido en otro edificio, termina con el código 6.
+
 ### Cómo restaurar un backup
 
 El servicio `respaldos` genera un backup completo al arrancar y después cada

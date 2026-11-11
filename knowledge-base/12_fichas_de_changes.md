@@ -952,7 +952,7 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 
 | Deuda | Qué falta | Cambio |
 |---|---|---|
-| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | Las pantallas de HU-A3/HU-A3b, todavía sin change ni nombre (D-140) |
+| Sin PATCH para `categoria_de_gasto.obligatorio_mensual` ni para `complejo.cuit` (tarea 3.10): las dos se fijan hoy por SQL directo | Agregar su edición por API cuando exista una pantalla que la necesite | **6c** `pantallas-de-gastos` (C-30, D-144) |
 | El puerto `es_periodo_emitido` (D8) no tiene adaptador real: hoy ningún período puede estar "emitido" porque `liquidacion` no existe, así que `periodo_de_imputacion` nunca se mueve de `periodo` | Construir el adaptador real contra el estado de emisión del libro y pasarlo a `aprobar_gasto` | **7** (`liquidacion-y-emision`), primer módulo que sabe qué período está emitido |
 | `tests/unitarios/test_umbral_parametros.py::test_umbral_cero` falla en la suite completa de este cierre (no lo toca ningún archivo de este change): `yaml.safe_dump` sin `allow_unicode=True` corrompe un nombre con tilde de `estados_de_unidad` en Windows | Revisar el test o forzar `allow_unicode=True` al volver a escribir el YAML de prueba | **15** (piloto), mismo cajón que el resto de la deuda de portabilidad Windows (D-110) |
 | Varios `test_worker_*.py`/`test_zz_rompedor_worker_*.py` fallan en la suite completa bajo Windows: `arq.worker.Worker.close()` llama `signal.SIGUSR1`, que no existe en Windows (`AttributeError`). Ajeno a este change (ningún archivo afectado toca `gastos`) | Parchear o saltar el cierre de señales POSIX del worker bajo Windows, o documentarlo como "sólo corre en CI/Linux" | **15** (piloto), mismo cajón que D-110 |
@@ -977,8 +977,37 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | D9b | Registrar la ratificación de P36 y P37 por Juani | Resuelta en D-142 |
 | D10 | **CERRADO por el 2e (D-144)**: openspec 1.14.3 instalado en vez del 1.13.0 fijado; `test_openspec_fijado.py` fija la versión de las skills | C-23 |
 | D11 | CI sobre el SHA final | Resuelta: verde en `5b10687` |
-| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Juani, al planificar |
+| D12 | El change de pantallas de HU-A3/HU-A3b no tiene nombre ni lugar en el roadmap (D-140) | Resuelta en D-144: **6c** `pantallas-de-gastos` (C-30), Juan Cruz |
 | D13 | Faltan el revisor del plan, el rompedor y el auditor de Emiliano, y su RED es de setup (B1) | Aceptada (D-142); la prevención va a C-28 (L-067) |
+
+### 6c · `pantallas-de-gastos` · MEDIUM · pendiente (D-144, 31/10/2026) · C-30
+
+> **Creada por D-144** (31/10/2026), no por `openspec new`: cierra D12 del 6 y el hueco de D-140. La
+> hace **Juan Cruz**.
+
+- **Objetivo**: que el administrador cargue y apruebe gastos y cargos particulares desde la web, sin
+  tocar la API a mano.
+- **Entra**: las pantallas de HU-A3 y HU-A3b sobre la API que construyó el 6: proveedores; gastos con
+  sus cuatro estados (`borrador`, `sin_ia`, `en_revision`, `aprobado`), el aviso de receptor distinto y el
+  freno por duplicado; notas de crédito asociadas a su factura, con su tope (R22); cargos particulares
+  sueltos y su aprobación. Los PATCH que faltan para `categoria_de_gasto.obligatorio_mensual` y
+  `complejo.cuit` (tarea 3.10 del 6), si una pantalla los necesita.
+- **Importación de cargos por Excel**: si el 6c expone esa pantalla, antes resuelve D1 (límite de bytes
+  y filas, una consulta al padrón por archivo y no por fila); si no, la pantalla queda fuera y D1 sigue
+  en el 5.
+- **Reglas**: el frontend no calcula montos (los muestra como texto desde la API); errores de
+  formulario en su campo (3c); permisos por rol desde la sesión, con los controles que el 2d ya adapta
+  al perfil; toda interfaz pasa por la skill **impeccable**; la API falsa de e2e se extiende con cada
+  endpoint nuevo (L-027, §4.11 de la exploración del 4).
+- **No entra**: QR, lectura por IA y R23 (cambio 14); escribir en el libro o tocar la liquidación (7);
+  cambios de backend más allá de los PATCH nombrados.
+- **Depende de**: 6 y 3b (archivados).
+- **Gobernanza**: MEDIUM. Cinco roles; revisor del plan antes del apply (L-067). Juan Cruz recién se
+  suma: si algo del plan sube a HIGH o CRITICAL, para y lo firma un firmante de D-111.
+- **Terminado cuando**: cada criterio de HU-A3 y HU-A3b construido en el 6 tiene su pantalla y su e2e,
+  con recorrido a 1280 px, 320 px y con teclado, y el auditor da APROBADO.
+- **Leer antes**: ficha 6 (arriba), D-140 a D-142, `knowledge-base/06_funcionalidades.md` HU-A3 y
+  HU-A3b, `knowledge-base/15_lecciones.md`.
 
 ### 7 · `liquidacion-y-emision` · crítico · explore propio
 
@@ -1530,7 +1559,24 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 
 - **Recibe del 6** (D-142): D4, `complejos/aplicacion/errores.py` pierde la explicación del 422 (el arreglo de F3 en `gastos` sirve de modelo).
 
-### 3f · `ejemplo-robusto` · LOW · pendiente (D-138, 30/10/2026) · C-27
+### 3f · `ejemplo-robusto` · LOW · archivado 04/11/2026 (D-145) · C-27
+
+- **Cierre** (04/11/2026, D-145): construido por Giuliano con el flujo de cinco roles (plan y revisión
+  juntos en el orquestador, por LOW). Cuatro intentos de constructor, tres vueltas de rompedor y dos de
+  auditor; **APROBADO** en verify 2. CI verde del PR #7 sobre `1d090f6` (run `41767075030`). Archivo:
+  `openspec/changes/archive/2026-11-04-ejemplo-robusto/`.
+- **Lo que quedó**: el edificio del ejemplo se identifica por el nombre de la semilla, sin `LIMIT 1`;
+  la comparación mira cada dato de la semilla (con un test y su mutante por rama) y al super admin
+  del ejemplo, leído con `listar_personal`; dos cargas a la vez se prueban con una barrera; cada
+  familia de error sale con su mensaje y su código (0 a 9 y 130, tabla en el spec `datos-semilla` y en
+  el README), sin traceback; el comando corre sin Redis con su propia lectura de configuración
+  (`ConfiguracionDelEjemplo`), y la API y el worker siguen exigiéndolo; la guarda de QA-5 existe.
+- **Corrección de la deuda de origen**: la fila de DB-4 decía que "nada la crea con dos". Es falso:
+  un `super_admin` vinculado con `--clerk-usuario` puede crear otro edificio por `POST /complejos`.
+  Por eso el edificio se identifica por nombre.
+- **Deuda del cierre**: en "Deuda del cierre del 3f", más abajo.
+
+> El texto que sigue es la ficha original, tal como se planificó.
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de `ejemplo.py` que la
 > revisión del PR #1 de `acceso-de-desarrollo` dejó para "el próximo cambio que toque `ejemplo.py`" o
@@ -1579,8 +1625,9 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
     construyó.
   - Los diez archivos de test de la vuelta 2 del 3a (fila 6 de su deuda), leídos contra los escenarios
     que dicen cubrir.
-  - Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
-    rompedor sobre RB4B-01, CX-01 y CX-02.
+  - ~~Revisión de código de los commits de RF del 4b (`447b8e5`, `8496f00`, `8d25bd6`) y una pasada de
+    rompedor sobre RB4B-01, CX-01 y CX-02.~~ Pasa al **rompedor del 4c** (D-144), que modifica ese mismo
+    código.
   - DA-5 del 3d (D-139): la aserción `clave not in respuesta.text` es vacía con `"abc\n"`, y el test del
     `PATCH` de grupo no comprueba que el 422 nombre `clave` (`loc`).
   - Correr mutación (mutmut) sobre `cuenta_corriente`, `acceso` y `compartido` para medir la suite
@@ -1597,6 +1644,7 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
   el resultado (también cuando da limpio), y cada falla reproducida quedó como test con dueño.
 
 - **Recibe del 6** (D-142): D6 (test de concurrencia entre editar el importe y cargar una nota) y la prevención de D13 (L-067: revisor del plan antes del apply en los changes de desarrolladores nuevos).
+- **Orden (D-144)**: Juan Cruz lo hace **después del 6c**. El alcance de los diez tests del 3a y de la mutación se define con Juani más adelante.
 
 ### 2f · `base-y-rls` · CRITICAL · pendiente (D-138, 30/10/2026) · C-29
 
@@ -1834,6 +1882,30 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d (D-133); `ejemplo.py:41-52` llama a `acceso.aplicacion` y no queda SQL sobre `persona` ni `asignacion_rol` |
 | La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | **C-26 `pulido-web-3`** (D-138, 30/10/2026; hoy la exclusión también tiene cuatro `@clerk/*`, `web/pnpm-workspace.yaml:7-21`); antes: Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
 | Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
+
+> **Cerradas por el 3f** (04/11/2026, D-145): BE-3 y el código único, QA-3 (Redis), QA-2 (M5 a M8 y
+> las demás ramas), QA-7 y DB-3 (barrera y las dos ramas de la espera), DB-4 (identificación por
+> nombre y comparación del super admin; "nada la crea con dos" era falso, ver la ficha 3f) y QA-5.
+
+### Deuda del cierre del 3f (`ejemplo-robusto`, C-27, 04/11/2026)
+
+La del auditor (`informes/verify-2-auditor.md` del archivo del change, DE-1 a DE-12). Dueño: el primer
+change que toque la pieza (L-012).
+
+| # | Deuda | Cambio |
+|---|---|---|
+| DE-1 | La comparación no mira `pisos`, `subsuelos`, la ubicación ni `activo` de un grupo: una semilla que sólo cambia eso da "ya estaba" | Próximo change que toque `ejemplo.py` |
+| DE-2 | `acceso/aplicacion/alta_inicial.py`, el gemelo: traceback y exigencia de Redis (L-009) | Primer change que toque `alta_inicial.py`, con su propia clasificación (está en `acceso`) |
+| DE-3 | Un error de uso fuera de desarrollo da 2, no 1: `argparse` corre antes de la guarda. Es previo al change y queda como interpretación de D-112 | Juani ratifica o cambia (D-145) |
+| DE-4 | Sin reproducir: límite de conexión por dirección (S1), `print` con la salida cerrada (S2), parámetros sin permiso de lectura (S4), Ctrl-C durante los imports deja traceback (S5) | Próximo change que toque `ejemplo.py`, con una corrida en Linux |
+| DE-5 | `--semilla` con un archivo especial puede agotar la memoria antes del tope de 1 MiB (S3) | Primer change que toque `compartido/cargador_yaml.py` |
+| DE-6 | `Conflicto` sigue en el 9 sin reproducir; base lenta sin `statement_timeout` (L-001) | Próximo change que toque `ejemplo.py` |
+| DE-7 | Los validadores del pool y del archivo de parámetros viven en dos lectores (`_LectorDeApp` y `_LectorDelEjemplo`) | Próximo change que toque `compartido/configuracion.py` |
+| DE-8 | Todos los roles del 3f fueron de la familia Claude; el proyecto no declara `## Role executors` (L-025) | C-28 `revisiones-independientes` |
+| DE-9 | Fallas de Windows que D-110 no nombra (separador de ruta en `test_fronteras_de_modulos.py`, `test_umbral_cero` y otras familias); `mypy` de Windows con 2 errores en `tests/infra/test_respaldos.py:554` | Se suman a las fallas de portabilidad de la ficha 3b-bis; lo de `respaldos`, a C-24 |
+| DE-10 | CRLF de `infra/respaldos/*.sh` en Windows, sin `.gitattributes` | C-24 `respaldos-2` |
+| DE-11 | El gemelo de parámetros de F1 se prueba con un doble que repite el formato de `leer_archivo`: si ese texto cambia, la ruta de `PROPTECH_PARAMETROS` saldría sin que un test lo note | Primer change que toque `cargador_yaml.py` o `ejemplo.py` |
+| DE-12 | El conteo `N passed` del run `41767075030` no se leyó (los logs piden login) | Giuliano o quien tenga login, si lo pega en `tasks.md` 8.1 del archivo; si no, queda declarado (no bloquea) |
 
 ## Pendientes de arranque
 

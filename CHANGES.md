@@ -50,6 +50,7 @@ gates están en el árbol de abajo.
 
 5. CARGAR Y LIQUIDAR
    ⏳ 5 importar desde Excel       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
+   ⏳ 6c pantallas de gastos (Juan Cruz, D-144)
    ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
 
 6. COBRAR Y SEGUIR
@@ -66,14 +67,14 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
    ✅ 2e humo-y-ci (Gianfranco; construido, PR por abrir, D-144)
    ⏳ 1e respaldos-2 (Emiliano, HIGH)
    ⏳ 1f worker-y-logs (Neyen)           ⏳ 3e pulido-web-3 (Matías)
-   ⏳ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
+   ✅ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
 - **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
 - **En paralelo, no frenan a nadie:** los siete de
-  deuda adelantada (D-138); 4d, 6b, 9, 11, 12 y 14.
+  deuda adelantada (D-138); 4d, 6b, 6c, 9, 11, 12 y 14.
 - **4c**: lo construye un firmante de D-111 (Juani, Alberto o Emiliano), nunca alguien recién llegado
   (D-138).
 - **Numeración:** el número corto (4a, 7, 10b) es el de las fichas de abajo; el código C-xx es el
@@ -103,6 +104,7 @@ C-01 infraestructura-base (1a)
                                 └── C-07a cimientos-del-libro (4a)        ← archivado 26/10/2026; el 4 partido en 4a a 4d (D-117)
                                       │
                                       ├── C-09 gastos-y-cargos (6)        ← tras el 4a si no escribe en el libro (S-04); si escribe, tras el 4b
+                                      │     └── C-30 pantallas-de-gastos (6c) ← D-144; Juan Cruz, en paralelo
                                       │
                                       └── C-07b libro-de-movimientos (4b)  ← archivado 27/10/2026
                                             │
@@ -587,6 +589,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   - `knowledge-base/05_reglas_de_negocio.md` (R03, R09, R20, R30)
   - `knowledge-base/09_decisiones_y_supuestos.md` (D-130)
   - `knowledge-base/10_preguntas_abiertas.md` (P53, P54; P57 a P60 para Alberto)
+- **Recibe de C-28 (D-144)**: su rompedor revisa los commits de RF del 4b (`447b8e5`, `8496f00`,
+  `8d25bd6`) y hace la pasada sobre RB4B-01, CX-01 y CX-02, que este change modifica
 
 ---
 
@@ -836,7 +840,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 | C-25 `worker-y-logs` | 1f | MEDIUM | Neyen |
 | C-26 `pulido-web-3` | 3e | MEDIUM | Matías |
 | C-27 `ejemplo-robusto` | 3f | LOW | Giuliano |
-| C-28 `revisiones-independientes` | R1 | MEDIUM | Juan Cruz |
+| C-28 `revisiones-independientes` | R1 | MEDIUM | Juan Cruz, después del 6c (D-144) |
 | C-29 `base-y-rls` | 2f | CRITICAL | sin asignar: un firmante de D-111 |
 
 ### [C-23] `humo-y-ci` · 2e
@@ -879,7 +883,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §3e; `09_decisiones_y_supuestos.md` (D-134).
 
 ### [C-27] `ejemplo-robusto` · 3f
-- **Estado**: `[ ]` pendiente, no propuesto. LOW. Giuliano.
+- **Estado**: `[x]` archivado (04/11/2026, D-145). LOW. Giuliano. Auditor APROBADO, CI verde del PR #7
+  sobre `1d090f6`; el PR queda para merge. Deuda DE-1 a DE-12 en la ficha 3f.
 - **Scope**: la deuda de `acceso-de-desarrollo` sobre `ejemplo.py`: mutantes M5 a M8 (QA-2), la
   concurrencia sin barrera (QA-7/DB-3), `LIMIT 1` sin `ORDER BY` (DB-4), errores como traceback (BE-3),
   Redis exigido sin usarse (QA-3), el test de guarda (QA-5).
@@ -904,3 +909,13 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   `repr(RedisSettings)` con la contraseña.
 - **Dependencias**: C-05a (archivado). Antes del 15.
 - **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §2f y "Deuda del cierre del 2a".
+
+### [C-30] `pantallas-de-gastos` · 6c
+- **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Juan Cruz (D-144).
+- **Scope**: las pantallas de HU-A3 y HU-A3b sobre la API del 6 (proveedores, gastos con sus cuatro
+  estados, notas de crédito, cargos particulares); los PATCH de `obligatorio_mensual` y `cuit` si una
+  pantalla los necesita; la importación de cargos por Excel sólo si antes resuelve D1. Cierra D12 del 6.
+- **Dependencias**: C-09 (6) y C-06b (3b), archivados.
+- **Governance**: MEDIUM, cinco roles, revisor del plan antes del apply (L-067).
+- **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §6c y ficha 6; D-140 a D-142 y D-144;
+  `knowledge-base/06_funcionalidades.md` HU-A3 y HU-A3b; `knowledge-base/15_lecciones.md`.
