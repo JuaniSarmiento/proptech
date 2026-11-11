@@ -10,8 +10,8 @@ Verifica sobre la fusión de `origin/main` con la cabeza del PR, sin tocar el á
   C03  los tres archivos de tests del change corren completos sobre la fusión: 258 esperados,
        258 pasados, ningún skip, falla ni error.
   C05  el change está archivado, CHANGES.md y la ficha lo dan por cerrado, CLAUDE.md == AGENTS.md.
-C04 (revisión independiente) y C06 (demo) no son ejecutables: se registran como evidencia en
-HISTORIAS.md.
+C06 (demo) no es ejecutable: se registra como evidencia en HISTORIAS.md. C04 (revisión
+independiente) se sacó el 11/11/2026: un LOW no lleva revisión aparte (D-146).
 
 Sale con 0 sólo si todos los criterios pasan.
 """
@@ -155,7 +155,6 @@ def main() -> int:
     print(f"H-001 · PR #{PR} · cabeza {cabeza[:7]} sobre {BASE}")
     for criterio, ok, detalle in resultados:
         print(f"  H-001.{criterio}  {'PASA ' if ok else 'FALLA'}  {detalle}")
-    print("  H-001.C04  manual  revisión independiente: evidencia en HISTORIAS.md")
     print("  H-001.C06  manual  demo con Juani: evidencia en HISTORIAS.md")
     return 0 if all(ok for _, ok, _ in resultados) else 1
 
