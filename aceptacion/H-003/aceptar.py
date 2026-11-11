@@ -10,8 +10,9 @@ Verifica sobre la fusión de `origin/main` con la cabeza del PR, sin tocar el á
        changes); las líneas que agrega el PR no nombran D-144 a D-146 ni L-068 ni L-069.
   C02  la cabeza del PR tiene todos sus checks en verde (al menos 6, con ensayo-roles) y un run del
        evento pull_request.
-  C03  los 5 archivos de tests del change corren completos sobre la fusión: 108 esperados, 108
-       pasados, ningún skip, falla ni error.
+  C03  los 6 archivos de tests del change corren completos sobre la fusión: 121 esperados, 121
+       pasados, ningún skip, falla ni error (eran 5 y 108; los arreglos de B1, B2 y B3 de las cuatro
+       vueltas suman 13 tests, 6 de ellos en un archivo nuevo de integración, el 11/11/2026).
   C05  el change está archivado con sus specs sincronizadas, ninguna tarea sin marcar, CHANGES.md y la
        ficha del 1e lo dan por cerrado, CLAUDE.md == AGENTS.md.
   C06  la propuesta archivada lleva la firma de Juani del 11/11/2026 (D-094, D-111).
@@ -51,10 +52,11 @@ TESTS = [
     "tests/infra/test_arrancar.py",
     "tests/infra/test_conmutar.py",
     "tests/infra/test_respaldos.py",
+    "tests/integracion/test_conmutar_politicas_reales.py",
     "tests/integracion/test_respaldos_rol_real.py",
     "tests/unitarios/test_salud.py",
 ]
-TESTS_ESPERADOS = 108
+TESTS_ESPERADOS = 121
 CHECKS_MINIMOS = 6
 
 resultados: list[tuple[str, bool, str]] = []
