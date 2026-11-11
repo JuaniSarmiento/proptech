@@ -63,10 +63,16 @@ def _verificador_con_engine(engine: Engine) -> Callable[[], bool]:
     `tipo_error`, nunca el mensaje de psycopg (L-007), exactamente una vez
     aunque el hilo termine después de vencido el plazo (D20)."""
 
+    # D5 (F6): declarados ACÁ (una vez por pedido, al resolver la
+    # dependencia), no dentro de `_verificar` — así `_ejecutar_verificaciones_en_paralelo`
+    # puede leerlos como atributos de `_verificar` y compartir el MISMO
+    # lock/bandera si el plazo total (medido afuera) vence antes de que el
+    # plazo interno de acá abajo llegue a su propio `queue.Empty`.
+    lock = threading.Lock()
+    informado: list[bool] = [False]
+
     def _verificar() -> bool:
         resultado: queue.Queue[bool] = queue.Queue(maxsize=1)
-        lock = threading.Lock()
-        informado = [False]
 
         def _trabajo() -> None:
             try:
@@ -99,6 +105,9 @@ def _verificador_con_engine(engine: Engine) -> Callable[[], bool]:
             _informar_una_sola_vez(lock, informado, "base", None)
             return False
 
+    _verificar.lock = lock  # type: ignore[attr-defined]
+    _verificar.informado = informado  # type: ignore[attr-defined]
+    _verificar.dependencia = "base"  # type: ignore[attr-defined]
     return _verificar
 
 
@@ -124,10 +133,11 @@ def _verificador_con_cliente_redis(cliente: redis.Redis) -> Callable[[], bool]:
     mensaje de redis-py (L-007), exactamente una vez aunque el hilo termine
     después de vencido el plazo (D20)."""
 
+    lock = threading.Lock()
+    informado: list[bool] = [False]
+
     def _verificar() -> bool:
         resultado: queue.Queue[bool] = queue.Queue(maxsize=1)
-        lock = threading.Lock()
-        informado = [False]
 
         def _trabajo() -> None:
             try:
@@ -149,6 +159,12 @@ def _verificador_con_cliente_redis(cliente: redis.Redis) -> Callable[[], bool]:
             _informar_una_sola_vez(lock, informado, "cola", None)
             return False
 
+    # D5 (F6, gemelo del verificador de base, L-009): mismos atributos
+    # expuestos para que `_ejecutar_verificaciones_en_paralelo` comparta el
+    # lock/bandera con el hilo interno.
+    _verificar.lock = lock  # type: ignore[attr-defined]
+    _verificar.informado = informado  # type: ignore[attr-defined]
+    _verificar.dependencia = "cola"  # type: ignore[attr-defined]
     return _verificar
 
 
@@ -168,8 +184,13 @@ def _ejecutar_verificaciones_en_paralelo(
     y las espera contra un plazo total ÚNICO (D20, F13): el plazo se cuenta
     desde acá, una sola vez para las dos, así el tiempo de la respuesta es el
     de un plazo y no la suma de los dos, aunque las dos dependencias estén
-    congeladas. No loguea nada por su cuenta: cada verificador (real o un
-    verificador de prueba) es dueño de informar su propia falla."""
+    congeladas. D5 (F6): antes de devolver una dependencia como caída,
+    garantiza que su línea `salud_degradada` ya está escrita — sin eso, el
+    verificador real podía devolver `False` por su PROPIO plazo interno
+    (ligeramente más tarde que el de acá, por el overhead de arrancar el
+    hilo) sin haber llegado todavía a informar, y el 503 salía sin ninguna
+    línea (reproducido 1 de 18 por el rompedor del 1d, hasta 14 de 30 en
+    esta máquina: `tasks.md`, tarea 5.1)."""
     plazo_limite = time.monotonic() + PLAZO_TOTAL_SALUD_S
     resultado_base: queue.Queue[bool] = queue.Queue(maxsize=1)
     resultado_cola: queue.Queue[bool] = queue.Queue(maxsize=1)
@@ -209,7 +230,27 @@ def _ejecutar_verificaciones_en_paralelo(
         except queue.Empty:
             return False
 
-    return _esperar(resultado_base), _esperar(resultado_cola)
+    def _asegurar_informado(
+        verificador: Callable[[], bool], ok: bool, dependencia_default: str
+    ) -> bool:
+        if ok:
+            return ok
+        # Sólo los verificadores reales (`_verificador_con_engine`,
+        # `_verificador_con_cliente_redis`) exponen estos atributos (D5);
+        # un doble de prueba (`lambda: False`) no los tiene, y entonces no
+        # hay lock/bandera compartida para usar — esos dobles no ejercitan
+        # F6 y no necesitan este camino.
+        lock = getattr(verificador, "lock", None)
+        informado = getattr(verificador, "informado", None)
+        if lock is None or informado is None:
+            return ok
+        dependencia = getattr(verificador, "dependencia", dependencia_default)
+        _informar_una_sola_vez(lock, informado, dependencia, None)
+        return ok
+
+    ok_base = _asegurar_informado(verificador_base, _esperar(resultado_base), "base")
+    ok_cola = _asegurar_informado(verificador_cola, _esperar(resultado_cola), "cola")
+    return ok_base, ok_cola
 
 
 #: GET y HEAD (D1, tarea 2c 5.3, entorno-de-ejecucion > "Respuesta de la web y

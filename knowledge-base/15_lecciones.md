@@ -1166,3 +1166,43 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: una prueba de "no llega a ejecutar X" reemplaza X por un doble que registra la llamada y
   falla. Ver fallar la prueba contra la versión sin guarda es exactamente el caso que no se puede correr
   con el binario real.
+
+## L-078 · Un doble falso de `docker` que matchea subcadenas puede cubrir una consulta SQL que nunca corre de verdad
+
+- **Origen**: C-24 `respaldos-2`, ensayo real de la tarea 8.5, 31/10/2026.
+- **Qué pasó**: la verificación 3 de `conmutar.sh` (RLS/políticas por contenido, D6) tenía una consulta
+  SQL con tres errores reales contra PostgreSQL (`pg_tables.forcerowsecurity` no existe —vive en
+  `pg_class`, no en la vista `pg_tables`—; `pg_policy.qual`/`with_check` tampoco —son `polqual`/
+  `polwithcheck` en el catálogo, esos otros nombres son de la vista `pg_policies`—; y un `||` entre
+  `text` y `"char"` ambiguo sin cast). Los 20 tests de `test_conmutar.py`, con un `docker` falso que
+  sólo matchea la subcadena `pg_tables` del comando invocado y devuelve un string fijo, pasaban igual:
+  nunca ejecutan la consulta contra un Postgres real, así que nunca pudieron ver el error de sintaxis.
+  Recién el ensayo real de 8.5 (Docker/Postgres reales) lo mostró.
+- **Regla**: un doble falso de una herramienta que recibe una consulta SQL (o cualquier comando con
+  sintaxis propia) sólo prueba el CAMINO del script (qué se invoca, en qué orden, con qué argumentos
+  visibles desde afuera); nunca prueba que la consulta en sí sea válida. Todo script nuevo que arma una
+  consulta SQL se corre, al menos una vez, contra Postgres real antes de darlo por terminado — no
+  alcanza con que su test con doble falso esté en verde (L-043, mismo principio que un script de
+  mantenimiento).
+
+## L-079 · Un test de `infra/` que depende de señales POSIX o de `chmod` real agrega deuda nueva de Windows, no la hereda
+
+- **Origen**: C-24 `respaldos-2`, PR #6, 31/10/2026 (D-148 a D-150).
+- **Qué pasó**: `TestApagadoOrdenado` (tarea 4.1/4.2, D3) se escribió reusando el patrón ya existente de
+  `_matar` (`os.killpg`/`signal.SIGKILL`, de antes de este change) para mandar `SIGTERM` al grupo de
+  proceso del script. Correcto en Linux/CI; en Windows nativo `signal.SIGKILL` no existe en absoluto
+  (`AttributeError` en tiempo de ejecución, no sólo un aviso de `mypy`) — el change agregó 5 ocurrencias
+  nuevas del mismo patrón ya frágil, sin notarlo hasta que el usuario preguntó "¿esto andaba igual
+  antes?" y se comparó `main` (1 ocurrencia preexistente) contra la rama (6).
+- **Regla**: todo test nuevo bajo `backend/tests/infra/` que dependa de semántica POSIX real (grupos de
+  proceso, señales que Windows no tiene, bits de permiso `rwx`, `os.kill` sobre un PID ajeno) se marca
+  `@SOLO_POSIX` (`pytest.mark.skipif(sys.platform == "win32", ...)`, definido en `test_respaldos.py`)
+  desde que se escribe, no después de que alguien lo note en un repo clonado en Windows. Repetir un
+  patrón ya existente en el repo no es excusa: cada ocurrencia nueva es deuda nueva si nadie la marca.
+  `mypy` necesita además `# type: ignore[attr-defined]` en la línea exacta (el `skipif` no cambia el
+  chequeo estático, sólo el runtime).
+- **Costo**: dos vueltas de correcciones dentro del mismo ensayo (primero la columna, después los
+  nombres de `pg_policy`, después el cast de `polcmd`) hasta tener la consulta real funcionando; cero
+  costo en producción porque se encontró antes de cerrar el change.
+- **Aplica a**: constructor (al escribir cualquier script que arme SQL con un doble falso de la
+  herramienta de base), auditor.
