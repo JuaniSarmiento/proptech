@@ -851,3 +851,45 @@ def test_sin_transaccion_abierta(base_del_edificio: BaseDeEdificio, mundo: Mundo
     with sesion_app(base_del_edificio, mundo.admin, comenzar=False) as s:
         with pytest.raises(RegistroFueraDeTransaccion):
             cargar(s, mundo, [septiembre(mundo)])
+
+
+# --- 3.2 y 6.3 · la foto trae `interes_desde` desde la migración (E13, E18) ---------------------
+
+
+def test_la_foto_trae_el_interes_desde_el_dia_siguiente_a_la_migracion(
+    base_del_edificio: BaseDeEdificio,
+) -> None:
+    """La obligación de una carga corre desde el día siguiente a su `fecha_de_migracion`; una
+    obligación emitida sigue corriendo desde su vencimiento más un día. Total único: su vencimiento
+    es la migración, así que el día siguiente coincide con él (C07)."""
+    from .test_cc_lecturas import emitir
+
+    mundo = sembrar(base_del_edificio, con_configuracion=True)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cargar(
+            s,
+            mundo,
+            [
+                u(mundo, 1, deuda(7, AGO, date(2026, 8, 10), "80000.00", interes="4000.00")),
+                u(mundo, 2, FilaDeTotal(20, d("50000.00"), d("0.00")), modo="total"),
+            ],
+        )
+        s.commit()
+        s.execute(text("SELECT 1"))
+        nov = emitir(s, mundo, date(2026, 11, 1), "100.00", "100.00", "100.00")
+        s.commit()
+        s.execute(text("SELECT 1"))
+        c1, c2, c0 = (cuenta_de(s, mundo.unidades[n]) for n in (1, 2, 0))
+        desde = {
+            (cuenta, o.periodo): o.interes_desde
+            for cuenta in (c1, c2, c0)
+            for o in lecturas.foto(s, cuenta).estado.obligaciones
+        }
+        assert nov.cuentas[mundo.unidades[0]] == c0
+    assert desde == {
+        (c1, AGO): date(2026, 10, 16),
+        (c2, OCT): date(2026, 10, 16),
+        (c0, date(2026, 11, 1)): date(2026, 11, 11),
+        (c1, date(2026, 11, 1)): date(2026, 11, 11),
+        (c2, date(2026, 11, 1)): date(2026, 11, 11),
+    }

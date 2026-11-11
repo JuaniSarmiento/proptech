@@ -1,8 +1,9 @@
 """4.1 a 4.3 · Cálculo puro del interés por mora (R03, D2 del 4c), sin base.
 
 Cada test afirma el importe y las fechas de los tramos. Los escenarios de saldo inicial ("Primer
-interés después de migrar", "Mes entero después de migrar", "Segundo mes después de migrar") son de
-H-005: acá sólo se ejercita que el dominio respeta `interes_desde`.
+interés después de migrar", "Mes entero después de migrar", "Segundo mes después de migrar") van al
+final de este archivo: el dominio recibe `interes_desde` (el día siguiente a la migración) y el interés
+importado no entra en la base.
 """
 
 from datetime import UTC, date, datetime
@@ -457,3 +458,77 @@ def test_un_corte_sin_importe_por_base_chica_no_pierde_sus_centavos() -> None:
     interes = unico(libro.emitir(f(10, 31)))
     assert interes.importe == Dinero("0.03")
     assert detalle(interes) == [(f(9, 30), f(10, 31), 32, "1.00")]
+
+
+# ---------------------------------------------------------------------------------------------
+# H-005 · 4.2 y 4.3 · escenarios de saldo inicial (migración el 15/10/2026, E13, E18)
+# ---------------------------------------------------------------------------------------------
+
+MIGRACION_SIGUIENTE = f(10, 16)
+
+
+def test_primer_interes_despues_de_migrar() -> None:
+    agosto = unico(
+        cobro(f(8, 10), f(10, 31), capital="80000.00", interes_desde=MIGRACION_SIGUIENTE)
+    )
+    septiembre = unico(
+        cobro(f(9, 10), f(10, 31), capital="85000.00", interes_desde=MIGRACION_SIGUIENTE)
+    )
+    assert (agosto.importe, septiembre.importe) == (Dinero("1280.00"), Dinero("1360.00"))
+    assert detalle(agosto) == [(f(10, 16), f(10, 31), 16, "80000.00")]
+    assert detalle(septiembre) == [(f(10, 16), f(10, 31), 16, "85000.00")]
+
+
+def test_mes_entero_despues_de_migrar() -> None:
+    agosto = unico(
+        cobro(
+            f(8, 10),
+            f(10, 31),
+            capital="80000.00",
+            forma=MES,
+            interes_desde=MIGRACION_SIGUIENTE,
+        )
+    )
+    septiembre = unico(
+        cobro(
+            f(9, 10),
+            f(10, 31),
+            capital="85000.00",
+            forma=MES,
+            interes_desde=MIGRACION_SIGUIENTE,
+        )
+    )
+    assert (agosto.importe, septiembre.importe) == (Dinero("2400.00"), Dinero("2550.00"))
+    assert detalle(agosto) == [(f(10, 16), f(10, 31), 16, "80000.00")]
+    assert detalle(septiembre) == [(f(10, 16), f(10, 31), 16, "85000.00")]
+
+
+def test_mes_entero_despues_de_migrar_con_interes_importado_no_suma_a_la_base() -> None:
+    # El interés importado ($4.000, corte en la migración, sin tramos) no entra en la base.
+    interes = unico(
+        cobro(
+            f(8, 10),
+            f(10, 31),
+            capital="80000.00",
+            forma=MES,
+            previos=(("4000.00", f(10, 15), ()),),
+            interes_desde=MIGRACION_SIGUIENTE,
+        )
+    )
+    assert interes.importe == Dinero("2400.00")
+    assert detalle(interes) == [(f(10, 16), f(10, 31), 16, "80000.00")]
+
+
+def test_segundo_mes_despues_de_migrar() -> None:
+    interes = unico(
+        cobro(
+            f(8, 10),
+            f(11, 30),
+            capital="80000.00",
+            forma=MES,
+            previos=(("2400.00", f(10, 31), ((f(10, 16), f(10, 31)),)),),
+            interes_desde=MIGRACION_SIGUIENTE,
+        )
+    )
+    assert interes.importe == Dinero("2400.00")
+    assert detalle(interes) == [(f(11, 1), f(11, 30), 30, "80000.00")]

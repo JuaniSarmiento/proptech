@@ -365,6 +365,15 @@
     tests/unitarios/cuenta_corriente/test_estado_propiedades.py tests/integracion/test_cc_lecturas.py
     tests/integracion/test_cc_anulacion_candado.py -q`: `43 passed`; `ruff check`, `ruff format --check` y
     `mypy` (387 archivos) limpios.
+  - H-005 tanda 3, RED (18:53, `cd backend && uv run pytest tests/integracion/test_cc_saldo_inicial.py -q
+    --tb=short -k interes_desde`): `1 failed, 28 deselected`, por aserción: `assert {... (c1, 2026-08-01):
+    date(2026, 8, 11) ...} == {... date(2026, 10, 16) ...}` en
+    `test_la_foto_trae_el_interes_desde_el_dia_siguiente_a_la_migracion` (carga en detalle y en total único
+    más una emisión de noviembre; la obligación migrada de agosto trae su vencimiento más un día, no la
+    migración más un día; las emitidas y el total único ya coinciden). Los cuatro escenarios de saldo
+    inicial del dominio (`test_primer_interes_despues_de_migrar`, `test_mes_entero_despues_de_migrar`,
+    `..._con_interes_importado_no_suma_a_la_base`, `test_segundo_mes_despues_de_migrar`) nacen verdes
+    (el dominio ya recibe `interes_desde`); se miden con mutantes en 4.2 y 4.3.
 
 ## 4. Cálculo del interés (dominio puro, R03)
 
