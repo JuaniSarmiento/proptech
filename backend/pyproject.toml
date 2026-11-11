@@ -4,13 +4,13 @@ version = "0.1.0"
 description = "PropTech backend: proptech_core, proptech_api y proptech_worker"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-  "fastapi>=0.143.0,<0.144.0",
+  "fastapi>=0.162.2,<0.163.0",
   "uvicorn>=0.54.0,<0.55.0",
-  "sqlalchemy>=2.1.4,<2.2.0",
-  "alembic>=1.20.0,<1.21.0",
+  "sqlalchemy>=2.1.8,<2.2.0",
+  "alembic>=1.20.1,<1.21.0",
   "psycopg[binary]>=3.3.6,<3.4.0",
-  "pydantic>=2.14.0,<2.15.0",
-  "pydantic-settings>=2.15.0,<2.16.0",
+  "pydantic>=2.14.3,<2.15.0",
+  "pydantic-settings>=2.16.2,<2.17.0",
   "pyyaml>=6.0.3,<7",
   "arq==0.28.0",
   "redis[hiredis]>=5.3.1,<6",
@@ -18,17 +18,17 @@ dependencies = [
   "cryptography==50.0.2",
   "httpx==0.28.1",
   "openpyxl==3.1.5",
-  "python-multipart==0.0.32",
+  "python-multipart==0.0.33",
 ]
 
 [dependency-groups]
 dev = [
-  "ruff==0.16.10",
-  "mypy==2.4.0",
-  "pytest==9.1.1",
+  "ruff==0.17.4",
+  "mypy==2.4.1",
+  "pytest==9.2.0",
   "testcontainers[postgres]==4.15.0",
   "types-pyyaml==6.0.12.20250915",
-  "hypothesis==6.170.11",
+  "hypothesis==6.170.15",
   "types-openpyxl==3.1.5.20261017",
   "pytest-xdist==3.8.0",
 ]
