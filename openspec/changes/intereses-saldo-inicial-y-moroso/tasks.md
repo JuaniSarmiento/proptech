@@ -214,6 +214,22 @@
       entero: sin la condición de mismo mes sólo entra 30/09-31/10 con `dias = 32`
       ([mes_entero_de_dos_meses]); sin la de fin de mes sólo entra 01/10-30/10
       ([mes_entero_sin_fin_de_mes]).
+  - **H-005, tanda 1 (saldo inicial, `0035`)**: la parte de la 2.1 que H-004 dejó afuera. Tablas
+    `carga_de_saldo_inicial` y `origen_de_saldo_inicial` en `0035_saldo_inicial.py`; tests propios en
+    `backend/tests/integracion/test_saldo_inicial_esquema.py` (parametrizados por tabla). Decisión del
+    constructor: se suma `ck_origen_sentido` (`(movimiento_id IS NULL) = (sentido_del_movimiento IS NULL)`),
+    porque con el sentido nulo la FK compuesta a `movimiento` no se evalúa (MATCH SIMPLE) y un origen podría
+    colgarse de un movimiento cualquiera; el design D5 no lo lista.
+  - RED H-005 (18:24, `cd backend && uv run pytest tests/integracion/test_saldo_inicial_esquema.py -q --tb=line`,
+    con la `0035` **sin protección**: tablas, CHECK, únicos, FK e índice, sin triggers, sin RLS, fuera de
+    `TABLAS_DE_SOLO_AGREGAR`): `20 failed, 24 passed`. Por aserción: `carga_de_saldo_inicial no está en
+    TABLAS_DE_SOLO_AGREGAR` (y la de origen); `AssertionError: tabla UPDATE/DELETE: 23503` y `Failed: DID NOT
+    RAISE Error` (la app edita; el DELETE de la carga da 23503 por la FK del origen, no 42501); `otra
+    administración ve filas de <tabla>` (`assert (1,) == (0,)`); `DID NOT RAISE RaiseException` de TRUNCATE,
+    `DELETE WHERE false` y `UPDATE WHERE false` como arranque; `('proptech_migrador',) == ('proptech_test',)`
+    (dueño, las dos). Excepción: los cuatro `test_trigger_por_fila_sin_el_de_sentencia` dan `UndefinedObject`
+    (su `DISABLE TRIGGER`): rojo de setup; su rojo por aserción es el del mutante. CHECK, únicos y FK nacen
+    verdes porque la tabla sin protección ya los lleva: su prueba es cada mutante.
 - [x] 2.2 **Semilla con configuración.** **Decisión del orquestador (11/11/2026, H-004)**: la versión de configuración entra por `sembrar(base, con_configuracion=True)`, no por defecto: por defecto rompería C11 de la aceptación congelada (`d2da37e`, mundo sin configuración) y chocaría con `uq_configuracion_vigencia` en los tests que fijan su propia versión. La 5.5 pasa `con_configuracion=True` en los `test_cc_*` que emiten con deuda vencida. Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
   (una versión de configuración con tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde
   01/01/2026, para los tres edificios del mundo). Antes del cambio, correr `pytest tests/integracion -k
