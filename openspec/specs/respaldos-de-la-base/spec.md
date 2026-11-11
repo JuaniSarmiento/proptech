@@ -143,6 +143,14 @@ borrar nunca el archivo generado en el ciclo en curso.
   anteriores a los que ya estaban
 - **THEN** los siete siguen en la carpeta y la cantidad conservada es la configurada, no uno solo
 
+#### Scenario: El reloj del host retrocedió: la retención no borra nada
+
+- **WHEN** algún backup con nombre propio tiene un tiempo de modificación posterior al momento actual
+  (el reloj del host retrocedió) y se corre un ciclo
+- **THEN** la retención de ese ciclo no borra ningún archivo, el backup del ciclo se genera igual y el
+  ciclo termina con éxito, se emite una sola línea de log JSON con nivel `warning`, evento
+  `reloj_atrasado`, el archivo más nuevo y su mtime, y la salud no cambia
+
 #### Scenario: Reloj adelantado
 
 - **WHEN** el reloj del host adelanta y se genera un backup correcto cuyo nombre ordena como el más

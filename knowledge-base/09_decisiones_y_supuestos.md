@@ -3143,3 +3143,24 @@ registrado como tal en su momento.)*
 - **Quién**: Emiliano, 31/10/2026 (constructor del C-24; declarado como deuda nueva en la ficha 1e de
   `12_fichas_de_changes.md`, sin bloquear el cierre: la restauración y la conmutación hacia adelante
   están probadas de punta a punta).
+
+## D-151 · Con el reloj del host retrocedido, la retención de ese ciclo no borra nada (11/11/2026, H-003, C-24 `respaldos-2`)
+
+- **Fecha**: 11/11/2026, vuelta 3 de H-003 sobre `respaldos-2`.
+- **Contexto**: B2 de H-003, dos pasadas del rompedor. La primera mostró que con el reloj atrasado de
+  verdad (nombre y mtime) la retención por mtime (D1) borraba copias nuevas: 2 de 7 sobrevivían. El
+  arreglo de la vuelta 1 fijaba el mtime de cada backup nuevo en el del más nuevo más un segundo
+  (contador monótono); la segunda pasada mostró que un mtime futuro se propaga a las copias nuevas,
+  colapsa los días y rompe el piso por días de D-148 (14 copias, todas en un mismo día de 2036, se
+  pierden las únicas del 1 y 2 de noviembre), y que si `touch` falla vuelve la pérdida 2/7.
+- **Decisión** (opción A): antes de aplicar la retención, si algún backup con nombre propio tiene un
+  mtime posterior al momento actual, el reloj del host retrocedió y la retención de ese ciclo no
+  borra ningún archivo. Emite una línea de log JSON, `nivel` "warning", `evento` "reloj_atrasado",
+  con el archivo más nuevo y su mtime. El respaldo del ciclo se genera igual, el ciclo termina con
+  éxito y la salud no cambia. Se quita `asegurar_mtime_monotono`.
+- **Descartado**: el mtime monótono (rompe el piso por días de D-148 ante un mtime futuro y depende de
+  que `touch` no falle); un contador persistido en un archivo (reescribe el requisito de retención
+  por tiempo de modificación); dejarlo como deuda (se siguen perdiendo copias).
+- **Costo aceptado**: el disco crece mientras el reloj no se ponga al día; un backup con mtime muy en
+  el futuro congela la retención hasta esa fecha, con la línea de log como aviso.
+- **Quién**: Juani, 11/11/2026, con la recomendación del orquestador.
