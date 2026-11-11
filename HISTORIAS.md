@@ -595,7 +595,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C15** estado: con la migración en `confirmada` o `sin_saldos_previos` da conflicto en
     `estado_migracion`.
   - **C16** permisos y tenant: contador, auxiliar, consejo, vecino propietario e inquilino reciben 403;
-    un administrador por edificio de **otro** edificio recibe 403; la administración B sobre un edificio
+    un administrador por edificio de **otro** edificio recibe 404 (D7 del 2a: el alcance va antes que el permiso; corregido por el orquestador al escribir la aceptación); la administración B sobre un edificio
     de A recibe 404; sin sesión, 401.
   - **C17** concurrencia: dos subidas simultáneas del padrón al mismo edificio vacío: una crea las 12
     unidades y la otra da conflicto; nunca quedan 24.
