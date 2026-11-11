@@ -16,7 +16,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
-| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Sin acordar |
+| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | En proceso |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Sin acordar |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -387,6 +387,55 @@ Cierre:
   anterior $74.372,00.
 - Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sí, perfecto entonces"). El PR #20 se
   mergea recién con el CI en verde.
+
+### H-005 · Saldo inicial
+
+- Change: C-07c 4c. Reglas: R09, R03, R04, R05, R08; decisiones D-080, D-082, D-083, D-153; elecciones
+  E9, E11, E13, E16, E18 con la recomendación firmada; `design.md` D5; spec `saldo-inicial`.
+- Resultado para Juani: un edificio que llega con deuda previa la carga una sola vez, queda en el libro
+  con su origen (archivo y fila), y el interés de R03 corre desde la fecha de migración.
+- Alcance: migración `0035` (`carga_de_saldo_inicial`, `origen_de_saldo_inicial`),
+  `registrar_saldo_inicial` (lo llama el 5) y el `interes_desde` desde la migración que quedó de H-004
+  (foto y escenarios del cálculo). Exclusiones: el Excel, el borrador y la comparación (5); autorizar y
+  auditar (D9, del llamador).
+- Dificultad y riesgo: alta / CRITICAL. Rama `change/intereses-por-mora` (D-154: sin CI por historia).
+- Base de los ejemplos: migración 15/10/2026, 3% proporcional, gracia 0.
+- Criterios acordados con Juani el 11/11/2026:
+  - Tienen que pasar: **C01** dos períodos de U1 (agosto $80.000, septiembre $85.000) dan dos
+    obligaciones y $165.000; **C02** dos conceptos de septiembre de U5 dan una obligación ($85.000 +
+    $20.000) y un interés importado de $3.000,00; **C03** total único de $50.000: una obligación, período
+    01/10, vence 15/10; **C04** interés importado tal cual con corte 15/10 y fuera de la base (agosto con
+    $4.000; total único con $2.000 debe $52.000; fila de sólo interés junto a otra con capital entra);
+    **C05** proporcional después de migrar: noviembre cobra 16 días, $1.280,00 y $1.360,00, nada antes
+    de la migración; **C06** mes entero: $2.400,00 y $2.550,00 (tramo 16/10-31/10), igual con interés
+    importado, y diciembre $2.400,00 (01/11-30/11); **C07** total único con gracia 5: pagado el 19/10
+    sin interés, impago 16 días $800,00; **C08** crédito inicial: U3 $3.000 a favor, U4 $10.000 − $3.000
+    debe $7.000, crédito $15.000 contra $10.000 deja $5.000 a favor; **C09** origen: fila 7 de
+    `saldos-octubre.xlsx` ligada a agosto de U1, la obligación de U5 a las filas 12 y 13 y su interés
+    sólo a la 12, carga manual con motivo; **C10** replay: el mismo pedido devuelve lo mismo sin
+    escribir, también confirmada, en otro orden o con `85000` por `85000.00`; **C11** devuelve cuenta,
+    capital, interés importado y crédito por unidad y del edificio; **C12** migración el 31/10:
+    noviembre sin días, diciembre 01/11-30/11.
+  - Tienen que fallar sin escribir nada: **C13** estado (sin saldos previos o confirmada sin carga →
+    `estado_migracion`; segunda carga → conflicto y una sola; dos simultáneas → una entra); **C14**
+    fechas (vencimiento posterior a la migración, período que no es día 1 o posterior al mes de
+    migración, migración futura, mismo período con vencimientos distintos → `vencimiento`); **C15**
+    montos (período con sólo interés → `interes_acumulado`; importe negativo o crédito 0 → `importe`);
+    **C16** forma (unidad repetida o sin filas → `unidades`; mezcla de detalle y total o fila repetida
+    → `fila`; manual sin motivo → `motivo`; importador sin archivo → `archivo`); **C17** el mismo
+    `operacion_id` con otro importe o con iguales sumas en otras filas → `operacion_id`; **C18** tenant
+    (unidad de otro edificio u otra administración → no encontrado; B no ve cargas ni orígenes de A; sin
+    transacción → error); **C19** tablas nuevas (`42501`, `P0001`, CHECK de origen, firma, fila y una
+    sola referencia, FK a la obligación de otra cuenta).
+  - Cierre: **C20** la `0035` sube y baja en el ciclo de devolución, las dos tablas en el ensayo de
+    roles y en todos los tests que bajan migraciones; la aceptación de H-004 y los tests del 4b siguen
+    verdes; **C21** KB (R09 en `05`, tablas en `04` y `08`, glosario, ficha 4c); **C22** cada escenario de
+    la spec `saldo-inicial` con su test en verde. Sin criterio de CI (D-154).
+- Demo: cargar `saldos-octubre.xlsx` (inventado), emitir noviembre y mostrar libro, orígenes e interés
+  desde la migración.
+- Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
+  archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
+- Aceptación: pendiente de escribir y congelar.
 
 ## Plantilla de historia
 
