@@ -1506,6 +1506,23 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
   (Alberto firma los suyos).
 - **Terminado**: las 27 tareas de `tasks.md` están `[x]` con evidencia (comando, hora, salida) pegada
   bajo cada una; la suite completa corrió verde sobre el commit final (ver 9.3, `tasks.md`).
+- **Arreglos de H-003 (11/11/2026), sobre los bloqueantes del rompedor**: B1, `conmutar.sh` compara la
+  definición completa de cada política (comando, permisiva/restrictiva, roles por nombre, `USING` y
+  `WITH CHECK` con `pg_get_expr`); B2, F4 con el reloj atrasado de verdad: antes de publicar un backup
+  su mtime se fija en el del más nuevo más un segundo si no lo supera, así el mtime es un contador
+  monótono de creación (mismo nombre, mismo `--salud`, misma spec); B3, sólo se borran archivos
+  regulares con el patrón completo `proptech-<marca>.dump.parcial`.
+
+**Deuda del cierre de H-003 (rompedor, 11/11/2026), de `respaldos-2`**:
+
+| Deuda | Por qué no bloquea | Cambio |
+|---|---|---|
+| Colisión de timestamp: dos ciclos con la misma marca de segundo hacen que `mv` pise un backup previo ya validado (reproducción: `date` falso fijo en `20261111T120000Z`, backup previo `BACKUP_BUENO_PREVIO`, queda `NUEVO`); ya existía en `6efbcea`. Origen: rompedor de H-003, 11/11/2026 | No se vio un dump truncado; hace falta un reloj fijo o dos ciclos en el mismo segundo | Sin dueño |
+| `conmutar.sh` lee la base activa de `printenv POSTGRES_DB` del contenedor `db`, que sigue con la base original tras conmutar (sólo recrea `api`, `worker` y `respaldos`): repetir la conmutación al destino ya activo se acepta y `.env.anterior` pierde el destino previo (reproducción: dos corridas seguidas de `conmutar.sh proptech_destino`, `REPETIR_DESTINO_ACTIVO`). Origen: rompedor de H-003, 11/11/2026 | Pierde el resguardo, no los datos | Sin dueño |
+| D-149: `_informar_una_sola_vez` publica la bandera antes de escribir el log, fuera de su escritura; un 503 puede salir con cero líneas escritas (reproducción: `logger.error` bloqueado tras publicar la bandera, 503 con `lineas_escritas 0`). Origen: rompedor de H-003, 11/11/2026 | La ventana es de un solo hilo y de microsegundos | Sin dueño |
+| SIGTERM durante `pg_restore --list` no se atiende: Bash espera el comando en primer plano, consume el plazo de gracia y tras el KILL queda el `.parcial` (reproducción: `senales.py`, fase restore, `rc -9` a los 10 s). Origen: rompedor de H-003, 11/11/2026 | Sólo en esa fase, que dura milisegundos; el `.parcial` lo limpia el arranque siguiente | Sin dueño |
+| F8 incompleto: una ruta con comillas en `RESPALDO_CARPETA` rompe el JSON de `error_salir` (`LOG_RUTA_COMILLAS`, `json_valido False`) y un `rm` que falla deja su stderr crudo (`LOG_RM`, `MARCADOR_AJENO_RM`). El caso de un directorio con nombre de parcial ya no se reproduce por B3. Origen: rompedor de H-003, 11/11/2026 | Una ruta con comillas no es un valor operativo real | Sin dueño |
+| `arrancar.sh` interpreta distinto el `.env`: `PROPTECH_DIR_RESPALDOS="./con espacios"` conserva las comillas como parte de la ruta, crea otra carpeta y devuelve 0 (`ARRANCAR_RUTA_ENTRE_COMILLAS`). Origen: rompedor de H-003, 11/11/2026 | Docker Compose sí quita las comillas, el desajuste es sólo del script | Sin dueño |
 
 ### 1f · `worker-y-logs` · MEDIUM · pendiente (D-138, 30/10/2026) · C-25
 
