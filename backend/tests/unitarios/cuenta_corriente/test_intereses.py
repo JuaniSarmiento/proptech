@@ -324,3 +324,136 @@ def test_mes_entero_con_un_corte_que_no_es_fin_de_mes_lanza() -> None:
 def test_los_dias_no_cobrados_no_pasan_el_corte() -> None:
     # Una obligación que vence después del corte no cobra nada.
     assert cobro(f(10, 10), f(9, 30)) == ()
+
+
+# ---------------------------------------------------------------------------------------------
+# 4.4 · Huecos: días de un interés que no cuenta y de un corte sin importe (E1, E17, E19)
+# ---------------------------------------------------------------------------------------------
+
+
+class Libro:
+    """Una obligación y su libro de intereses: encadena cortes como lo hace la emisión.
+
+    `emitir` calcula con el estado actual y registra lo que el dominio devuelve; `anular` deja el
+    interés de un corte en el libro, sin contar (contra-asiento), como lo hace la corrección.
+    """
+
+    def __init__(self, vencimiento: date, capital: str = "100000.00") -> None:
+        self.obligacion = Obligacion(
+            uuid4(),
+            None,
+            vencimiento.replace(day=1),
+            vencimiento,
+            Dinero(capital),
+            Dinero("0.00"),
+            Dinero("0.00"),
+        )
+        self.movimientos: list[Movimiento] = []
+
+    def emitir(
+        self, corte: date, tasa: str = "3.00", forma: FormaDeCalculo = PROP, gracia: int = 0
+    ) -> tuple[InteresCalculado, ...]:
+        estado = calcular_estado([self.obligacion], self.movimientos, [], [])
+        configuracion = ConfiguracionDeInteres(Porcentaje(tasa), gracia, forma)
+        resultado = calcular_intereses(estado, self.movimientos, corte, configuracion)
+        for interes in resultado:
+            self.movimientos.append(
+                Movimiento(
+                    uuid4(),
+                    "interes",
+                    "debito",
+                    interes.importe,
+                    interes.corte,
+                    HOY,
+                    self.obligacion.id,
+                    Componente.INTERES,
+                    corte=interes.corte,
+                    tramos=tuple((t.desde, t.hasta) for t in interes.tramos),
+                )
+            )
+        return resultado
+
+    def anular(self, corte: date) -> None:
+        interes = next(
+            m
+            for m in reversed(self.movimientos)
+            if m.tipo == "interes"
+            and m.corte == corte
+            and not any(c.corrige_a == m.id for c in self.movimientos)
+        )
+        self.movimientos.append(
+            Movimiento(
+                uuid4(),
+                "contra_asiento",
+                "credito",
+                interes.importe,
+                interes.fecha_valor,
+                HOY,
+                self.obligacion.id,
+                Componente.INTERES,
+                corrige_a=interes.id,
+            )
+        )
+
+
+def test_anular_y_volver_a_emitir_no_cobra_dos_veces() -> None:
+    libro = Libro(f(9, 10))
+    assert unico(libro.emitir(f(9, 30))).importe == Dinero("2000.00")
+    libro.anular(f(9, 30))
+    assert libro.emitir(f(9, 30)) == (), "ninguno nuevo: el corte ya lo ocupa el interés anulado"
+
+
+def test_un_corte_con_un_interes_que_cuenta_no_recibe_otro() -> None:
+    libro = Libro(f(9, 10))
+    assert unico(libro.emitir(f(9, 30))).importe == Dinero("2000.00")
+    assert libro.emitir(f(9, 30)) == ()
+
+
+def test_el_corte_siguiente_recupera_el_tramo() -> None:
+    libro = Libro(f(9, 10))
+    libro.emitir(f(9, 30))
+    libro.anular(f(9, 30))
+    libro.emitir(f(9, 30))
+    interes = unico(libro.emitir(f(10, 31)))
+    assert interes.importe == Dinero("5100.00")
+    assert detalle(interes) == [(f(9, 11), f(10, 31), 51, "100000.00")]
+
+
+def test_el_tramo_recuperado_usa_la_tasa_del_corte_siguiente() -> None:
+    libro = Libro(f(9, 10))
+    libro.emitir(f(9, 30), tasa="3.00")
+    libro.anular(f(9, 30))
+    assert libro.emitir(f(9, 30), tasa="3.00") == ()
+    interes = unico(libro.emitir(f(10, 31), tasa="6.00"))
+    assert interes.importe == Dinero("10200.00")
+    assert detalle(interes) == [(f(9, 11), f(10, 31), 51, "100000.00")]
+
+
+def test_un_hueco_anterior_se_recupera_aunque_haya_un_interes_posterior() -> None:
+    libro = Libro(f(9, 10))
+    assert unico(libro.emitir(f(9, 30))).importe == Dinero("2000.00")
+    assert unico(libro.emitir(f(10, 31))).importe == Dinero("3100.00")
+    libro.anular(f(9, 30))
+    interes = unico(libro.emitir(f(11, 30)))
+    assert interes.importe == Dinero("5000.00")
+    assert detalle(interes) == [
+        (f(9, 11), f(9, 30), 20, "100000.00"),
+        (f(11, 1), f(11, 30), 30, "100000.00"),
+    ]
+
+
+def test_los_dias_de_un_corte_con_tasa_cero_se_cobran_despues() -> None:
+    libro = Libro(f(9, 10))
+    assert libro.emitir(f(9, 30), tasa="0.00") == ()
+    interes = unico(libro.emitir(f(10, 31), tasa="3.00"))
+    assert interes.importe == Dinero("5100.00")
+    assert detalle(interes) == [(f(9, 11), f(10, 31), 51, "100000.00")]
+
+
+def test_un_corte_sin_importe_por_base_chica_no_pierde_sus_centavos() -> None:
+    # $1,00 un día al 3%: $0,001 redondea a $0,00 y no registra; 32 días valen $0,032 = $0,03.
+    libro = Libro(f(9, 29), capital="1.00")
+    assert libro.emitir(f(9, 30)) == ()
+    interes = unico(libro.emitir(f(10, 31)))
+    assert interes.importe == Dinero("0.03")
+    assert detalle(interes) == [(f(9, 30), f(10, 31), 32, "1.00")]

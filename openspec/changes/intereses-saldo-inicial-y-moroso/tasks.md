@@ -429,6 +429,16 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
   11/09-30/11 → rojo por la aserción de fechas de los tramos (además, octubre quedaría cubierto por dos
   intereses que cuentan, y la propiedad de 4.5 sin solapamiento falla); tratar un corte con tasa 0
   como cubierto → "Los días de un corte con tasa cero..." da $3.100,00.
+  - RED (16:12, `cd backend && uv run pytest tests/unitarios/cuenta_corriente/test_intereses.py -q --tb=line`, contra
+    `intereses.py` de la t4, sin la regla E1): `3 failed, 30 passed`. Rojos por aserción: "Anular y volver a emitir no
+    cobra dos veces" (`AssertionError: ninguno nuevo: el corte ya lo ocupa el interés anulado`: el dominio registra
+    otro interés con corte 30/09) y, en cascada por ese segundo interés, "El corte siguiente recupera el tramo"
+    (`assert Dinero("3100.00") == Dinero("5100.00")`) y "El tramo recuperado usa la tasa del corte siguiente"
+    (`assert Dinero("3100.00") == Dinero("10200.00")`). Nacen verdes porque E17 (unión de intervalos) ya está en la t4:
+    "Un hueco anterior se recupera...", "Los días de un corte con tasa cero...", "Un corte con interés que cuenta no
+    recibe otro" y "Un corte sin importe por base chica no pierde sus centavos" (agregado); su prueba son los
+    mutantes de abajo. Los escenarios encadenan cortes con la clase `Libro` del test (calcula, registra lo que
+    devuelve el dominio y contra-asienta), así que un corte que "no registra" de verdad no deja cobertura.
 - [ ] 4.5 **Propiedades con `hypothesis`.** Archivo: `backend/tests/unitarios/cuenta_corriente/test_intereses_propiedades.py`.
   Oráculo independiente con `fractions.Fraction` día por día y su propia agrupación por mes calendario,
   que **no** reusa la función de producción (QA-4 del 4a): el importe es el redondeo medio hacia arriba de
@@ -451,6 +461,12 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
   de control: el redondeo por tramo hace fallar la primera propiedad (además del escenario fijo de 4.1,
   que es el que garantiza el rojo); la cobertura por máximo hace fallar la de cobertura de lo cobrable (además
   del escenario fijo "Un hueco anterior se recupera..." de 4.4, que es el que garantiza el rojo).
+  - RED (16:12, `cd backend && uv run pytest tests/unitarios/cuenta_corriente/test_intereses_propiedades.py -q --tb=short`,
+    perfil local, 400 ejemplos por propiedad): `2 failed, 7 passed`. Rojos por aserción, ambos con el mismo contraejemplo
+    mínimo (E1 sin construir: anular un interés y volver a emitir su corte): "el importe es el redondeo medio hacia
+    arriba..." (`assert paso.resultado == ()` con un interés de $0,52 de más) y "lo cubierto es exactamente lo que
+    asigna el oráculo" (`assert dias_de_produccion == paso.esperado.dias`). Las otras siete nacen verdes: su prueba son
+    los mutantes de control y los de 4.4.
 
 ## 5. Interés en la emisión (aplicación, PostgreSQL real)
 
