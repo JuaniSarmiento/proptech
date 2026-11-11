@@ -391,6 +391,8 @@ Cierre:
 - Demo (11/11/2026, en vivo sobre `f2f56d5` y PostgreSQL real): octubre $2.000,00 (20 días), pago de
   $30.000 el 05/10, noviembre $2.372,00 en dos tramos (5 días sobre $100.000 y 26 sobre $72.000), saldo
   anterior $74.372,00.
+- CI del PR #20 sobre `92ac3bc` (el código final de H-004), cuando volvió GitHub Actions: los seis jobs en
+  verde (backend 10m51s con la suite completa, ensayo-roles, humo, secretos, shellcheck, web). C17 cerrado.
 - Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sí, perfecto entonces"). El PR #20 se
   mergea recién con el CI en verde.
 
