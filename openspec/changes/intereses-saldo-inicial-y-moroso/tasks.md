@@ -135,6 +135,21 @@
   backend/tests` vacío salvo historia. Verificación: esos archivos verdes; `alembic upgrade head` y la
   bajada de `0034` con tablas vacías **dentro del ciclo real de devolución de propiedad** (como la bajada
   de `0023`), no con un `alembic downgrade -1` aislado.
+  - Decisión del 11/11/2026 (orquestador, brief de la tanda 2): la `0034` crea **sólo** `tramo_de_interes`
+    (`0034_tramo_de_interes.py`); las tablas de saldo inicial y origen van en una `0035` de H-005. Rigen sólo
+    las filas de la matriz que valen para `tramo_de_interes`; los tests nuevos están en
+    `test_intereses_esquema.py` (sólo esa tabla).
+  - RED (15:49, `cd backend && uv run pytest tests/integracion/test_intereses_esquema.py -q --tb=line`, con la
+    migración **sin protección**: tabla, CHECK, FK e índice, sin triggers, sin RLS, fuera de
+    `TABLAS_DE_SOLO_AGREGAR`): `10 failed, 13 passed`. Por aserción: `tramo_de_interes no está en
+    TABLAS_DE_SOLO_AGREGAR`; `Failed: DID NOT RAISE` de UPDATE y DELETE como app (la app edita; TRUNCATE
+    ya da 42501 sin el REVOKE porque la app no recibe ese privilegio); `otra administración ve filas de
+    tramo_de_interes` (`assert (1,) == (0,)`); `assert ('proptech_migrador',) == ('proptech_test',)` (dueño);
+    `DID NOT RAISE RaiseException` de TRUNCATE, `DELETE WHERE false` y `UPDATE WHERE false` como arranque.
+    Excepción: los dos `test_trigger_por_fila_sin_el_de_sentencia` dan `UndefinedObject` (el `ALTER TABLE ...
+    DISABLE TRIGGER` del propio test, porque el trigger de sentencia no existe aún): rojo de setup, no de
+    aserción; su rojo por aserción es el del mutante "sin trigger por fila". Los CHECK y las FK nacen verdes
+    porque la tabla sin protección ya las lleva: su prueba es el mutante de cada uno.
 - [ ] 2.2 **Semilla con configuración.** Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
   (una versión de configuración con tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde
   01/01/2026, para los tres edificios del mundo). Antes del cambio, correr `pytest tests/integracion -k
