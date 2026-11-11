@@ -35,6 +35,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def pagar(
     s: Session,
     mundo: Mundo,
@@ -191,9 +198,13 @@ def test_replay_concurrente_de_un_contra_asiento(
 
 @pytest.mark.parametrize("forma", ["pago", "credito_correccion"])
 def test_el_replay_que_perdio_la_carrera_no_reimputa(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch, forma: str
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
+    forma: str,
 ) -> None:
     """Crédito de $100 a septiembre; al anularlo, su replay no lo pasa a octubre."""
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         sep, cuenta, obligacion = emitir(s, mundo, 0, "100.00", date(2026, 9, 1))
         emitir(s, mundo, 0, "100.00", date(2026, 10, 1))
@@ -287,10 +298,13 @@ def test_replay_de_emision_que_otra_registro_mientras_tanto(
 
 
 def test_el_replay_de_emision_devuelve_una_sola_foto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Saldo anterior A=$0/B=$100 antes y A=$100/B=$0 después de una transacción atómica: el replay
     devuelve una de las dos fotos (suma $100), nunca la mezcla A=$0/B=$0."""
+    mundo = mundo_con_configuracion
     sep = [
         ObligacionAEmitir(u, date(2026, 9, 10), Dinero("100.00"), Dinero("0.00"), Dinero("0.00"))
         for u in mundo.unidades[:2]

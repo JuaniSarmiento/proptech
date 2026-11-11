@@ -39,8 +39,15 @@ class Mundo:
         return Identidad(self.admin_b, self.persona_b)
 
 
-def sembrar(base: BaseDeEdificio, unidades: int = 12) -> Mundo:
-    """Datos confirmados: las pruebas de concurrencia los leen desde dos conexiones."""
+def sembrar(base: BaseDeEdificio, unidades: int = 12, *, con_configuracion: bool = False) -> Mundo:
+    """Datos confirmados: las pruebas de concurrencia los leen desde dos conexiones.
+
+    `con_configuracion` suma una versión de configuración a cada uno de los tres edificios (tasa
+    0,00, gracia 0, proporcional, umbral 500,00, vigente desde el 01/01/2026): la exigen los casos
+    de uso que calculan interés (4c). Por defecto no la suma: la aceptación congelada de H-004
+    siembra sin configuración (C11) y crea la suya con `configurar` en esa misma fecha
+    (`uq_configuracion_vigencia`).
+    """
     admin, admin_b = uuid4(), uuid4()
     complejo, otro, complejo_b = uuid4(), uuid4(), uuid4()
     persona, persona_b = uuid4(), uuid4()
@@ -63,6 +70,15 @@ def sembrar(base: BaseDeEdificio, unidades: int = 12) -> Mundo:
                     "VALUES (%s, %s, 'Edificio ficticio', 'Mendoza')",
                     (cx, adm),
                 )
+                if con_configuracion:
+                    c.execute(
+                        "INSERT INTO configuracion_versionada (administracion_id, complejo_id, "
+                        "autor_id, vigente_desde, tasa_mensual, umbral_saldo_chico, "
+                        "dias_de_gracia, forma_de_calculo, porcentaje_fondo, dia_de_vencimiento, "
+                        "modalidad_de_vencimiento) VALUES (%s, %s, %s, '2026-01-01', "
+                        "'0.00', '500.00', 0, 'proporcional_por_dia', '0.00', 10, 'unico')",
+                        (adm, cx, per),
+                    )
         fijar_tenant(c, admin)
         for n in range(unidades):
             ids.append(insertar_unidad(c, admin, complejo, f"U{n:03d}", coeficiente="0.010000"))

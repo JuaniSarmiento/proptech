@@ -105,7 +105,21 @@ tablas del candado, detalladas en "Entidades" más abajo. Desde el cierre del 3a
 migraciones `0005` a `0016`) `complejo` y `unidad` quedan completos y se suman `grupo_de_reparto`,
 `grupo_unidad`, `categoria_de_gasto` y `configuracion_versionada`. Desde el cierre del 4b (27/10/2026,
 migraciones `0023_libro_de_movimientos` y `0024_corregir_movimiento`) existen además las ocho tablas
-del libro y su candado, detalladas en "Entidades hoy, dominio `cuenta_corriente`" más abajo.
+del libro y su candado, detalladas en "Entidades hoy, dominio `cuenta_corriente`" más abajo. Desde
+H-004 (4c, migración `0034_tramo_de_interes`) existe `tramo_de_interes`: el detalle de cada débito de
+interés (R03), de sólo agregar, con RLS forzada; columnas `administracion_id`, `complejo_id`,
+`cuenta_id`, `movimiento_id`, `sentido_del_movimiento` (siempre `debito`), `desde`, `hasta`, `dias`,
+`base`, `tasa_mensual`, `forma_de_calculo`, `dias_de_gracia`, `configuracion_id` y `registrado_en`.
+FK compuesta al movimiento de su misma cuenta (por `uq_mov_sentido`) y al complejo; sin
+`obligacion_id` (sale del movimiento) y `configuracion_id` sin FK (la coherencia la asegura la
+aplicación). CHECK: `hasta >= desde`, `dias = hasta - desde + 1`, `base > 0`, forma del vocabulario y,
+en mes entero, un solo mes calendario que termina en su último día. Los tramos de un mismo interés
+pueden no ser contiguos (un hueco recuperado, E17). Desde H-005 (migración `0035_saldo_inicial`)
+existen `carga_de_saldo_inicial` (una por edificio y por operación: fecha de migración, origen
+`importador` con archivo o `manual` con motivo, `firma_del_pedido` con forma `v1:` + 64 hexadecimales,
+quién y cuándo) y `origen_de_saldo_inicial` (cada fila del archivo ligada a la obligación, al crédito o al
+interés importado que formó, siempre de la misma cuenta por FK compuesta, con exactamente una
+referencia). Las dos son de sólo agregar, con RLS forzada.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 

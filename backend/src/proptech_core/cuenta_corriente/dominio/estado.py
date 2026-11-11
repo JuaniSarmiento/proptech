@@ -6,7 +6,7 @@ estado se deriva cada vez.
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from proptech_core.compartido.dinero import Dinero
@@ -29,6 +29,13 @@ class Obligacion:
     ordinaria: Dinero
     fondo_de_reserva: Dinero
     extraordinaria: Dinero
+    #: Primer día que corre interés. Sin saldo inicial es el día siguiente al vencimiento; con un
+    #: origen de saldo inicial (H-005) lo pasa la lectura. `date.min` pide el defecto.
+    interes_desde: date = field(default=date.min, kw_only=True)
+
+    def __post_init__(self) -> None:
+        if self.interes_desde == date.min:
+            object.__setattr__(self, "interes_desde", self.vencimiento + timedelta(days=1))
 
     def capital(self) -> dict[Componente, Dinero]:
         return {
@@ -52,10 +59,25 @@ class Movimiento:
     emision_id: UUID | None = None
     corrige_a: UUID | None = None
     enlazado_a: UUID | None = None
+    #: Sólo en un interés: el fin de mes que cobró; `tramos` son los intervalos `(desde, hasta)`
+    #: de días que cubrió, vacíos si no es un interés o si es el importado (E17).
+    corte: date | None = None
+    tramos: tuple[tuple[date, date], ...] = ()
 
 
 @dataclass(frozen=True)
 class ImputacionRegistrada:
+    movimiento_id: UUID
+    obligacion_id: UUID
+    componente: Componente
+    importe: Dinero
+    orden: int
+
+
+@dataclass(frozen=True)
+class ParteDeImputacion:
+    """Lo que de una imputación cuenta: el importe ya topeado por lo debido y por el crédito."""
+
     movimiento_id: UUID
     obligacion_id: UUID
     componente: Componente
@@ -78,6 +100,7 @@ class EstadoDeCuenta:
     credito_a_favor_aplicable: Dinero
     credito_a_favor_retenido: Dinero
     _por_id: dict[UUID, Obligacion] = field(default_factory=dict, repr=False)
+    imputaciones_que_cuentan: tuple[ParteDeImputacion, ...] = ()
 
     def deudas(self) -> list[Deuda]:
         """Lo pendiente, en la forma que consume `imputar`."""
@@ -176,6 +199,7 @@ def calcular_estado(
     # imputación más reciente a la más antigua (E7); lo que excede el importe se recorta.
     imputado: dict[Clave, Dinero] = {clave: _CERO for clave in debido}
     imputado_por_credito: dict[UUID, Dinero] = {}
+    partes: list[ParteDeImputacion] = []
     for i in sorted(imputaciones, key=lambda x: x.orden):
         clave = (i.obligacion_id, i.componente)
         if i.movimiento_id not in cuentan or clave not in debido:
@@ -185,6 +209,10 @@ def calcular_estado(
             por_mov[i.movimiento_id].importe - imputado_por_credito.get(i.movimiento_id, _CERO),
         )
         parte = min(i.importe, cabe) if cabe > _CERO else _CERO
+        if parte > _CERO:
+            partes.append(
+                ParteDeImputacion(i.movimiento_id, i.obligacion_id, i.componente, parte, i.orden)
+            )
         imputado[clave] = imputado[clave] + parte
         imputado_por_credito[i.movimiento_id] = (
             imputado_por_credito.get(i.movimiento_id, _CERO) + parte
@@ -220,4 +248,5 @@ def calcular_estado(
         credito_a_favor_aplicable=total_a_favor - retenido,
         credito_a_favor_retenido=retenido,
         _por_id=por_id,
+        imputaciones_que_cuentan=tuple(partes),
     )

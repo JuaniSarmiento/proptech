@@ -858,6 +858,46 @@ resuelta (L-012); donde no lo firmó nadie, la fila lo dice.
 | RB4B-01, CX-01 y CX-02 (bloqueantes del rompedor de fases 1-3) arreglados en HEAD pero revisados sólo por el auditor, nunca por un rompedor independiente de ese arreglo puntual. Reconfirmado sin pasada nueva por la regresión del 27/10/2026 (`04-plata.md`: "nadie corrió una pasada de rompedor nueva desde el 16-auditor-final") | Una pasada de rompedor sobre los tres arreglos, antes de confiar en ellos para el 7 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7; revisar antes de depender de `imputado_por_credito` y el candado de `registrar_emision`. **D-130**: la absorbe el rompedor del 7 cuando toque esta zona |
 | El auditor final no revisó código: "yo no reviso código, así que ese hueco sigue abierto" sobre el cierre de RF | Una revisión de código real (no documental) de 447b8e5, 8496f00 y 8d25bd6 | **C-28 `revisiones-independientes`** (D-138, 30/10/2026); antes: Quien abra el 7, como parte de leer qué recibe hecho. **D-130**: la absorbe el rompedor del 7 |
 
+#### 4c · `intereses-saldo-inicial-y-moroso` · CRITICAL · archivado 11/11/2026 con Rein (firma de Juani, D-153)
+
+Partido en tres historias de `HISTORIAS.md` (D-152, sin rompedor): **H-004** interés por mora al emitir
+(tareas 1 a 5), H-005 saldo inicial (6) y H-006 situación de cobranza (7). Propuesta, diseño y
+elecciones E1 a E19 firmadas en `openspec/changes/intereses-saldo-inicial-y-moroso/` (`7dc5399`,
+D-153).
+
+- **H-004** (aceptación congelada en `d2da37e`, constructor Sonnet en seis tandas): cierra RB-6, RF-01
+  y RF-02 de la deuda del 4b; migración `0034_tramo_de_interes` (sólo esa tabla: las del saldo inicial
+  van en una `0035` de H-005, cambio contra D10 del diseño); el interés de R03 dentro de
+  `registrar_emision`, su replay y su anulación. La semilla de tests con configuración quedó opcional
+  (`sembrar(base, con_configuracion=True)`), porque por defecto rompía la aceptación (C11).
+- **Para el 7**: `EmisionRegistrada` suma `intereses` por cuenta y el saldo anterior de todas las
+  cuentas alcanzadas; el replay devuelve los mismos intereses y un saldo anterior recalculado (E15); el
+  7 guarda la foto de la liquidación. Dos emisiones no se pueden encadenar en una sola transacción
+  (`BloqueoFueraDeOrden`).
+- **H-005** (saldo inicial, aceptación congelada en `0b4c5cb`, Sonnet en tres tandas): migración
+  `0035_saldo_inicial` con `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; `registrar_saldo_inicial`
+  con el contrato de D5 (filas agrupadas por período, firma del pedido, replay, carga única); el interés
+  desde la migración, que había quedado pendiente de H-004.
+- **H-006** (situación de cobranza, aceptación congelada en `3f6629b`, Sonnet): `clasificar` puro en
+  `dominio/cobranza.py` y `situacion_de_cuenta` / `situacion_del_edificio` en `aplicacion/cobranza.py`,
+  sin escrituras ni candados. Sin migraciones.
+- **Para el 8, el 10a y el 10b**: piden la situación con la fecha de hoy (E14: no hay historia); el 10a
+  arma el listado y la exportación sobre `situacion_del_edificio` con su permiso (D9); el 10b excluirá
+  la gestión judicial.
+- **Para el 5**: llama a `registrar_saldo_inicial` al confirmar, en la misma transacción en la que
+  autoriza, audita y pasa el estado de migración a `confirmada` (la carga no cambia el estado). Le pasa
+  las filas ya traducidas (concepto a componente, saldo negativo a crédito). Muestra en la comparación que
+  el primer interés del sistema cubre el mes de la migración (E18). PA-1 (corregir un saldo cargado de
+  menos después de confirmar) sigue abierta y lo bloquea.
+- **Deuda encontrada al integrar H-004 (sin verificar en la operación real)**: una restauración con
+  `pg_restore --no-owner --no-acl` pierde el `GRANT REFERENCES` que `roles despues` da al migrador sobre
+  las tablas del libro, y una migración posterior que las referencia (como la `0034`) falla con
+  `permission denied for table movimiento`. El test `test_restauracion_antes_de_migrar.py` lo repone a
+  mano. Falta comprobar si `infra/respaldos/restaurar.sh` seguido de subir migraciones tiene el mismo
+  hueco. Dueño propuesto: C-29 `base-y-rls` (2f), o el 1e si se reabre.
+- **Mutantes débiles declarados en H-004**: bloquear en dos pedidos (M12) depende del orden de los uuid;
+  "el replay recalcula y escribe" no tiene mutante posible con E1.
+
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
 - **Objetivo**: cargar un edificio real desde su Excel sin tipear nada.

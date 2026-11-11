@@ -3,7 +3,7 @@
 import re
 from collections.abc import Hashable, Sequence
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal, localcontext
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, localcontext
 from typing import Any
 from uuid import UUID
 
@@ -15,7 +15,11 @@ def redondear_al_centavo(valor: Decimal) -> Dinero:
         raise MontoInvalido("el monto debe ser Decimal finito")
     with localcontext() as contexto:
         contexto.prec = 32
-        return Dinero.desde_decimal(valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        try:
+            redondeado = valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except InvalidOperation as e:
+            raise MontoInvalido("el monto excede la precisión admitida") from e
+        return Dinero.desde_decimal(redondeado)
 
 
 def clave_de_orden_natural(identificador: str, id: UUID) -> tuple[Any, ...]:

@@ -15,9 +15,9 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
-| H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Pendiente |
-| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Sin acordar |
-| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Sin acordar |
+| H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
+| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
+| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -263,6 +263,18 @@ Partido el 11/11/2026 en tres historias, en orden y cada una sobre la anterior: 
 grupos 1 a 5 de `tasks.md`), H-005 (saldo inicial, grupo 6) y H-006 (situación de cobranza, grupo 7). El
 grupo 8 (cierre) se reparte entre las tres. Sin rompedor (D-152): todo lo que tiene que fallar va en la
 aceptación. **Nada se construye sin la firma CRITICAL de E1 a E19** en `proposal.md` (D-094, D-111).
+Desde D-154 las tres historias van en la rama `change/intereses-por-mora` (PR #20) y el CI de GitHub
+corre una sola vez, al cerrar el change; el PR se mergea con H-006 Terminada y el CI en verde.
+
+**CI de cierre del change (11/11/2026)**: PR #20 sobre `275336c`, los seis jobs en verde (backend con la
+suite completa: 2.793 unitarios e infra y 2.528 de integración, 1 xfailed previo). Queda: las demos de
+H-005 y H-006 con Juani, archivar el change y mergear a `main`.
+
+**Delegación de Juani (11/11/2026)**: deja al orquestador a cargo de terminar el change entero: construir
+H-005, **escribir y aprobar por adelantado los criterios de H-006** (sobre la spec
+`situacion-de-cobranza` y las elecciones firmadas), construirla, correr el CI con la suite completa en
+verde y dejar el PR #20 listo para mergear. Pasar cada historia a Terminada y mergear a `main` quedan
+para Juani, después de las demos.
 
 ### H-004 · Interés por mora al emitir
 
@@ -352,8 +364,165 @@ Cierre:
   técnica (rojos por aserción, importes verificados) y de correr las tandas hasta Lista. Los importes de
   C19 a C22 verificados con `Fraction` (cierran todos). **SHA congelado: `d2da37ef509cfb88ef62d5e12b5d4b3ec18d270e`**; 67 tests (60 rojos por aserción y 7 de regresión sobre `7dc5399`, 0 errores, 0 skips), más C17, C18 y C28 en `aceptar.py`. Comando: `python3 aceptacion/H-004/aceptar.py`.
 - Constructor: Sonnet (`rein-constructor`), elegido por Juani el 11/11/2026, en seis tandas secuenciales
-  con brief y relevo propios.
-- Evidencia y demo: pendientes.
+  con brief y relevo propios (`.git/informes-intereses-saldo-inicial-y-moroso/brief-H-004-t1..t6.md` y
+  `relevo-H-004-t1..t6.md`), rama `change/intereses-por-mora`, PR #20.
+- Construcción (cada tanda verificada por el orquestador antes de lanzar la siguiente):
+  - t1 (1.1 a 1.3): RB-6 arreglado; tests de RF-01 y RF-02 contra-asiento con mutantes rojos.
+    Aceptación sobre `53cf5c0`: C15 PASA. Un id de test del 4b parametrizado rompía C17; arreglado en t3.
+  - t2 (2.1, 2.2): `0034_tramo_de_interes` con protección y mutantes. **Decisión del orquestador**:
+    semilla con configuración opcional (`con_configuracion=True`), porque por defecto rompía C11.
+    Cuatro mutantes de protección los frena el chequeo de arranque antes que el test: dos defensas reales.
+  - t3 (3.1, 3.2): partes de imputación que cuentan; la foto trae `corte` y `tramos`.
+    `interes_desde` desde la migración queda para H-005.
+  - t4 (4.1 a 4.3) y t5 (4.4, 4.5): cálculo puro en `dominio/intereses.py`, 88 tests unitarios,
+    mutantes, regla E1 y propiedades con `hypothesis` contra un oráculo propio (400 ejemplos).
+    Los escenarios de saldo inicial del cálculo quedan para H-005.
+  - t6 (5.1 a 5.5): el interés dentro de `registrar_emision`, replay y anulación sobre las cuentas
+    alcanzadas. Regresión `test_cc_`/`test_libro`: 429 pasados (405 de base + 24 nuevos), ningún id
+    cambiado. Mes entero con días no contiguos: la emisión rechaza con `Conflicto("interes")` sin
+    escribir. Mutantes débiles declarados: M12 (bloquear en dos pedidos) depende del orden de los uuid;
+    "el replay recalcula y escribe" sin mutante posible con E1.
+- Demo preparada: el guion corre en un clon de la rama y muestra el libro y los tramos (septiembre
+  impago, octubre $2.000,00, pago de $30.000 el 05/10, noviembre $2.372,00 en dos tramos, saldo
+  anterior $74.372,00). Probada el 11/11/2026.
+- Evidencia final (11/11/2026): `python3 aceptacion/H-004/aceptar.py --codigo f2f56d5` desde la
+  aceptación `d2da37e`: **67 esperados, 67 ejecutados, 67 pasados**, 0 fallas, 0 errores, 0 skips;
+  C01 a C16, C19 a C27, C18 y C28 PASA; C17 PASA en el ciclo de la `0034`, sin tests atados a la `0033` y
+  con los tests del 4b enteros, y **queda pendiente sólo el CI del PR #20**, que no corrió por la caída de
+  GitHub Actions ("major outage" en githubstatus.com, corridas en cola desde las 17:19). Dos vueltas
+  previas del CI cayeron por L-064 (el ensayo de roles y tres tests que bajan migraciones no devolvían
+  `tramo_de_interes`); arregladas en `7a7e972` y `a74f342`, con un barrido de 53 archivos (1.313 en verde).
+- Demo (11/11/2026, en vivo sobre `f2f56d5` y PostgreSQL real): octubre $2.000,00 (20 días), pago de
+  $30.000 el 05/10, noviembre $2.372,00 en dos tramos (5 días sobre $100.000 y 26 sobre $72.000), saldo
+  anterior $74.372,00.
+- CI del PR #20 sobre `92ac3bc` (el código final de H-004), cuando volvió GitHub Actions: los seis jobs en
+  verde (backend 10m51s con la suite completa, ensayo-roles, humo, secretos, shellcheck, web). C17 cerrado.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sí, perfecto entonces"). El PR #20 se
+  mergea recién con el CI en verde.
+
+### H-005 · Saldo inicial
+
+- Change: C-07c 4c. Reglas: R09, R03, R04, R05, R08; decisiones D-080, D-082, D-083, D-153; elecciones
+  E9, E11, E13, E16, E18 con la recomendación firmada; `design.md` D5; spec `saldo-inicial`.
+- Resultado para Juani: un edificio que llega con deuda previa la carga una sola vez, queda en el libro
+  con su origen (archivo y fila), y el interés de R03 corre desde la fecha de migración.
+- Alcance: migración `0035` (`carga_de_saldo_inicial`, `origen_de_saldo_inicial`),
+  `registrar_saldo_inicial` (lo llama el 5) y el `interes_desde` desde la migración que quedó de H-004
+  (foto y escenarios del cálculo). Exclusiones: el Excel, el borrador y la comparación (5); autorizar y
+  auditar (D9, del llamador).
+- Dificultad y riesgo: alta / CRITICAL. Rama `change/intereses-por-mora` (D-154: sin CI por historia).
+- Base de los ejemplos: migración 15/10/2026, 3% proporcional, gracia 0.
+- Criterios acordados con Juani el 11/11/2026:
+  - Tienen que pasar: **C01** dos períodos de U1 (agosto $80.000, septiembre $85.000) dan dos
+    obligaciones y $165.000; **C02** dos conceptos de septiembre de U5 dan una obligación ($85.000 +
+    $20.000) y un interés importado de $3.000,00; **C03** total único de $50.000: una obligación, período
+    01/10, vence 15/10; **C04** interés importado tal cual con corte 15/10 y fuera de la base (agosto con
+    $4.000; total único con $2.000 debe $52.000; fila de sólo interés junto a otra con capital entra);
+    **C05** proporcional después de migrar: noviembre cobra 16 días, $1.280,00 y $1.360,00, nada antes
+    de la migración; **C06** mes entero: $2.400,00 y $2.550,00 (tramo 16/10-31/10), igual con interés
+    importado, y diciembre $2.400,00 (01/11-30/11); **C07** total único con gracia 5: pagado el 19/10
+    sin interés, impago 16 días $800,00; **C08** crédito inicial: U3 $3.000 a favor, U4 $10.000 − $3.000
+    debe $7.000, crédito $15.000 contra $10.000 deja $5.000 a favor; **C09** origen: fila 7 de
+    `saldos-octubre.xlsx` ligada a agosto de U1, la obligación de U5 a las filas 12 y 13 y su interés
+    sólo a la 12, carga manual con motivo; **C10** replay: el mismo pedido devuelve lo mismo sin
+    escribir, también confirmada, en otro orden o con `85000` por `85000.00`; **C11** devuelve cuenta,
+    capital, interés importado y crédito por unidad y del edificio; **C12** migración el 31/10:
+    noviembre sin días, diciembre 01/11-30/11.
+  - Tienen que fallar sin escribir nada: **C13** estado (sin saldos previos o confirmada sin carga →
+    `estado_migracion`; segunda carga → conflicto y una sola; dos simultáneas → una entra); **C14**
+    fechas (vencimiento posterior a la migración, período que no es día 1 o posterior al mes de
+    migración, migración futura, mismo período con vencimientos distintos → `vencimiento`); **C15**
+    montos (período con sólo interés → `interes_acumulado`; importe negativo o crédito 0 → `importe`);
+    **C16** forma (unidad repetida o sin filas → `unidades`; mezcla de detalle y total o fila repetida
+    → `fila`; manual sin motivo → `motivo`; importador sin archivo → `archivo`); **C17** el mismo
+    `operacion_id` con otro importe o con iguales sumas en otras filas → `operacion_id`; **C18** tenant
+    (unidad de otro edificio u otra administración → no encontrado; B no ve cargas ni orígenes de A; sin
+    transacción → error); **C19** tablas nuevas (`42501`, `P0001`, CHECK de origen, firma, fila y una
+    sola referencia, FK a la obligación de otra cuenta).
+  - Cierre: **C20** la `0035` sube y baja en el ciclo de devolución, las dos tablas en el ensayo de
+    roles y en todos los tests que bajan migraciones; la aceptación de H-004 y los tests del 4b siguen
+    verdes; **C21** KB (R09 en `05`, tablas en `04` y `08`, glosario, ficha 4c); **C22** cada escenario de
+    la spec `saldo-inicial` con su test en verde. Sin criterio de CI (D-154).
+- Demo: cargar `saldos-octubre.xlsx` (inventado), emitir noviembre y mostrar libro, orígenes e interés
+  desde la migración.
+- Construcción (Sonnet, tres tandas verificadas una por una): t1 `0035_saldo_inicial` con protección,
+  mutantes, ensayo de roles y barrido local de migraciones (1.315 en verde); agregó `ck_origen_sentido`
+  (sin sentido la FK a `movimiento` no se evalúa), aceptado. t2 `registrar_saldo_inicial` con la firma
+  del pedido (49 tests, 17 mutantes; los rechazos dentro de un SAVEPOINT). t3 el interés desde la
+  migración: la foto trae `interes_desde` con un `LEFT JOIN` a la carga; 3.2, 4.2, 4.3 y 6.3 cerradas.
+- **Correcciones de la aceptación hechas por el orquestador** (sin tocar ningún criterio): C19 metía dos
+  cargas en un edificio (recongelada en `2fcf6ba`); la regresión de C20 perdona sólo el test de H-004
+  que fija la cabeza en `0034` con ese mensaje exacto (quedó atado a su momento, `d083832`); R09 tenía
+  "carga de saldo inicial" partido en dos líneas.
+- Evidencia (11/11/2026): `python3 aceptacion/H-005/aceptar.py --codigo d083832` desde `2fcf6ba`:
+  **60/60**, 0 fallas, 0 errores, 0 skips; C01 a C22 PASA, con C20 corriendo H-004 67/67, los tests del
+  4b y el barrido de migraciones. La aceptación de H-006 (su C19) volvió a correr H-005 60/60 sobre
+  `4cb5e36`.
+- Demo probada (11/11/2026, PostgreSQL real): carga de U1 (agosto $80.000 con $4.000 de interés y
+  septiembre $85.000), U2 (total único $50.000 con $2.000), U3 (crédito $3.000) y U4 ($300); orígenes
+  fila por fila; replay en otro orden sin escribir; segunda carga rechazada; noviembre cobra $1.280,00 y
+  $1.360,00 desde el 16/10.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sisi"), después de la demo en vivo
+  sobre `0caafe1`.
+- Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
+  archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
+- Aceptación: **congelada en `0b4c5cb69628cd69c7a6ee49ac27f3fb439c1234`** (aprobación por delegación de Juani, después de la revisión técnica): 60 tests, 60 rojos por aserción sobre `aee113a`, 0 errores, 0 skips; C20 (ciclo de la `0035`, ensayo de roles, H-004 67/67 desde `d2da37e`, tests del 4b, barrido de migraciones), C21 y C22 en `aceptar.py`. Contrato para el constructor en `aceptacion/H-005/CONTRATO.md`. **Recongelada en `2fcf6ba91c518abcaccdd5ac5aef3c09bdecaea9`** (11/11/2026, por el orquestador): el test `test_c19_una_carga_y_su_origen_bien_formados_entran` metía dos cargas en el mismo edificio, contra la carga única de D5 y C13; lo encontró la tanda 1. Ahora la carga manual entra en un savepoint que se deshace. Ningún otro test cambió. Importes verificados con `Fraction`. Comando: `python3 aceptacion/H-005/aceptar.py --codigo HEAD` (unos 20 min con la regresión; `--sin-regresion` para una corrida rápida).
+
+### H-006 · Situación de cobranza
+
+- Change: C-07c 4c. Reglas: R20, R30, R05, R08; decisiones D-058, D-074, D-081, D-109.3, D-109.4,
+  D-143; elecciones E6, E7, E8, E14 con la recomendación firmada; `design.md` D6; spec
+  `situacion-de-cobranza`.
+- Resultado para Juani: para una cuenta de unidad o para un edificio entero y a una fecha, el sistema
+  dice cuánto hay vencido, cuántas liquidaciones vencidas con capital, si está bajo el umbral de saldos
+  chicos, si es sólo deuda de intereses y si es moroso crítico, derivado del libro y nunca guardado.
+- Alcance: `dominio/cobranza.py` (`clasificar`, puro) y `aplicacion/cobranza.py`
+  (`situacion_de_cuenta`, `situacion_del_edificio`). Exclusiones: rutas, pantallas, avisos (10a), gestión
+  judicial (10b), cuentas de persona (4d), historia de la deuda a una fecha pasada (E14).
+- Dificultad y riesgo: media / CRITICAL. Sin migraciones.
+- **Criterios escritos y aprobados por el orquestador por delegación de Juani (11/11/2026)**, sujetos a su
+  demo. Base de los ejemplos: umbral $500, gracia 0, salvo que diga otra cosa.
+  - Tienen que pasar: **C01** vencida desde que corre el interés: gracia 5 y vencimiento 10/09, al 15/09
+    no está vencida y al 16/09 sí; **C02** total vencido con el interés en su período: agosto ($80.000 +
+    $4.000 de interés) y septiembre ($85.000) dan $169.000 y dos liquidaciones, no tres; **C03** umbral:
+    $300 en dos períodos queda bajo el umbral y no es moroso; $300 + $250 no queda bajo y es moroso;
+    exactamente $500 es moroso (E6, `>=`); el umbral no frena el interés: la emisión de octubre registra
+    $6,00 sobre $300 de septiembre (20 días al 3%); **C04** moroso crítico: una sola vencida no; dos con
+    capital sí; un pago parcial de agosto no lo cambia; $500 + $20 sí (D-143); un período con sólo
+    interés no cuenta (E7: agosto con sólo $4.000 de interés y septiembre con capital es una liquidación,
+    no moroso); contra-asentar el pago de agosto vuelve a marcar; **C05** deuda de intereses: sólo $4.000
+    de interés vencido es deuda de intereses, no moroso, total $4.000; **C06** saldo inicial: U1 migrada
+    con dos períodos es morosa; U2 con total único tiene una liquidación y no es morosa; **C07** la fecha
+    clasifica y no reconstruye (E14): con pagos del 20/10 y fecha 30/09, total vencido $0; **C08** por
+    edificio: una entrada por cada cuenta de unidad con todos los campos; **C09** la etiqueta única
+    respeta la precedencia de D6 (sin deuda vencida → bajo el umbral → deuda de intereses → moroso
+    crítico → con deuda vencida), con un caso por etiqueta; **C10** la configuración es la vigente a la
+    fecha: con umbral $500 hasta el 30/09 y $1.000 desde el 01/10, $700 vencidos en dos períodos son
+    moroso al 30/09 y bajo el umbral al 31/10; **C11** es una lectura: no escribe nada ni toma candados.
+  - Tienen que fallar o no contar: **C12** una obligación de una emisión anulada no cuenta; **C13** una
+    obligación con fecha igual a vencimiento + gracia no está vencida, y una que vence después de la
+    fecha tampoco; **C14** edificio o cuenta de otra administración → no encontrado; **C15** sin versión
+    de configuración vigente a la fecha, o sólo una futura → `Conflicto("configuracion")`; **C16** las
+    cuentas de persona no aparecen en el listado del edificio.
+  - Cierre: **C17** KB: R20 con `>=` (se corrige "supera", E6) y dónde vive, R30 dónde vive, glosario
+    (situación de cobranza, fecha de clasificación, deuda de intereses), ficha 4c con H-006; **C18** cada
+    escenario de la spec `situacion-de-cobranza` con su test en verde; **C19** las aceptaciones de H-004
+    y H-005 siguen en verde. Sin criterio de CI: el CI con la suite completa cierra el change (D-154).
+- Demo: un edificio con cinco unidades (al día, saldo chico, deuda de intereses, una vencida, moroso
+  crítico) y su listado.
+- Construcción (Sonnet, una tanda): `dominio/cobranza.py` (`clasificar`) y `aplicacion/cobranza.py`
+  (`situacion_de_cuenta`, `situacion_del_edificio`), sin escrituras ni candados; mutantes en rojo (umbral
+  `<=`, período con sólo interés, crédito restado, gracia ignorada, umbral fijo, filtro por fecha valor,
+  tenant en la sentencia). Agregó que una cuenta de persona da `NoEncontrado` en `situacion_de_cuenta`,
+  con test (fuera del contrato, aceptado). Un mutante equivalente declarado (la exclusión de anuladas ya
+  la hace `calcular_estado`).
+- Evidencia (11/11/2026): `python3 aceptacion/H-006/aceptar.py --codigo 4cb5e36` desde `3f6629b`:
+  **33/33**, C01 a C19 PASA, con C19 corriendo H-004 67/67 y H-005 60/60.
+- Demo probada: el listado del edificio migrado da U1 moroso crítico ($171.640, dos liquidaciones), U2
+  con deuda vencida ($52.800, una), U3 sin deuda vencida y U4 bajo el umbral ($304,80).
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sisi"), después de la demo en vivo
+  sobre `0caafe1`, junto con H-005.
+- Aceptación: **congelada en `3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401`** (aprobación por delegación de Juani, después de la revisión técnica): 33 tests, 33 rojos por aserción sobre `3378b43`, 0 errores, 0 skips; C17 (KB), C18 (20 escenarios) y C19 (H-004 y H-005 desde sus SHA) en `aceptar.py`. Contrato en `aceptacion/H-006/CONTRATO.md`. Importes verificados con `Fraction`.
 
 ## Plantilla de historia
 

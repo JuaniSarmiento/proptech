@@ -199,6 +199,28 @@ del 3c, D-128)
   de los días de gracia genera interés desde el vencimiento; cambio de tasa entre períodos; nunca hay
   interés calculado sobre un interés; con "mes entero", un día de atraso cobra el mes completo; el
   interés devengado después del cierre del período no se cobra en esa emisión, sino en la siguiente.
+- **Cómo se calcula** (4c, H-004, firma de Juani del 11/11/2026, D-153):
+  - **Corte** de cada emisión: el último día del mes anterior al período que se emite (la emisión de
+    octubre corta el 30/09). El interés de una emisión cobra sólo días hasta su corte (E2).
+  - **Proporcional**: tasa mensual / 30 por cada día de atraso (E3.1). **Mes entero**: un mes
+    calendario con algún día a cobrar cobra la tasa completa una vez, sobre el capital impago de su
+    primer día a cobrar, aunque sea una fracción del mes (E3.2, decisión de Juani del 30/10/2026).
+  - **Base día por día**: el capital impago (ordinaria, fondo de reserva y extraordinaria, más los
+    débitos de capital que cuentan, menos las imputaciones de capital que cuentan); un pago baja la base
+    desde el día siguiente a su fecha valor; lo pagado dentro de la gracia no genera interés (E5).
+  - **Configuración**: la vigente al corte (tasa, gracia y forma). Sin versión vigente al corte y con
+    deuda vencida, la emisión se rechaza con conflicto en `configuracion` (E4).
+  - **Días cubiertos**: la unión de los tramos de los intereses que cuentan de la obligación; cada corte
+    cobra los días desde el inicio natural hasta el corte que ninguno cubre, así un hueco (un interés
+    contra-asentado) se recupera y ningún día se cobra dos veces (E17). Un corte que da $0,00 (tasa 0,
+    base 0 o redondeo) no registra nada y sus días los cobra el primer corte que registre, con su
+    configuración: una tasa 0 difiere, no perdona (E19).
+  - **Redondeo**: una sola vez sobre la suma exacta de los tramos, medio hacia arriba (R07).
+  - **Detalle**: cada débito de interés guarda sus tramos en `tramo_de_interes` (desde, hasta, días,
+    base, tasa, forma, gracia y versión de configuración), de sólo agregar.
+  - **Dónde vive**: el cálculo puro en `cuenta_corriente/dominio/intereses.py`; el registro, dentro de
+    `registrar_emision` (`cuenta_corriente/aplicacion/emisiones.py`), bajo los candados de todas las
+    cuentas de unidad del edificio. Las cuentas de persona no generan interés hasta el 4d (E10).
 
 ## R04 · Orden de imputación · Vigente (D-011, D-121)
 
@@ -368,6 +390,25 @@ del 3c, D-128)
   errores de signo opuesto en dos unidades (+10.000 y -10.000) dan el total correcto y aun así
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
   diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
+- **Cómo se registra en el libro** (4c, H-005, D-153, E9, E11, E16, E18): el 5, al confirmar, llama a
+  `registrar_saldo_inicial` (`cuenta_corriente/aplicacion/saldo_inicial.py`), que hace una sola
+  **carga de saldo inicial** por edificio, sólo con el estado de migración `pendiente`; una segunda carga o dos
+  simultáneas se rechazan con conflicto. Recibe las filas del archivo (fila, período, vencimiento,
+  componente, importe, interés acumulado) y agrupa las de cada unidad y período en **una** obligación,
+  sin emisión; todas las filas de un período tienen el mismo vencimiento. El total único va a una
+  obligación con todo en ordinaria, período el primer día del mes de la migración y vencimiento en la
+  migración. El interés acumulado entra como un interés con corte en la fecha de migración y nunca forma
+  base. El crédito entra como un crédito `saldo_inicial` con fecha valor en la migración y se imputa con
+  R04. Un período cuyas filas suman capital 0 se rechaza (E11). Cada fila queda ligada a lo que formó en
+  `origen_de_saldo_inicial`, y la carga guarda archivo o motivo en `carga_de_saldo_inicial`. Repetir la
+  carga con el mismo `operacion_id` se controla con la **firma del pedido** (`v1:` + SHA-256 del pedido
+  normalizado): el mismo pedido, en cualquier orden, devuelve lo registrado sin escribir; uno distinto,
+  aunque sume lo mismo, se rechaza. Cualquier rechazo deja el libro como estaba. No autoriza ni audita:
+  lo hace el 5 (D9).
+- **Interés desde la migración** (H-005, R03): una obligación cargada como saldo inicial arranca el día
+  siguiente a la fecha de migración, nunca antes. Con mes entero se cobra el mes de la migración por su
+  fracción posterior (E18; riesgo de doble cobro si el Excel ya cobró ese mes: lo muestra el 5 y se
+  pregunta a Alberto en P58). El total único aplica la gracia desde su vencimiento, que es la migración.
 
 ## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
 
@@ -384,6 +425,9 @@ del 3c, D-128)
   por debajo de lo que tiene sentido reclamar o devolver.
 - **Regla** (D-109, resuelve P21): el umbral es **$500**, configurable por edificio como parámetro
   con vigencia (igual que R03).
+- **Dónde se aplica** (4c, H-006): la situación de cobranza (`cuenta_corriente/dominio/cobranza.py`)
+  marca "bajo el umbral" a una cuenta con total vencido mayor que cero y menor que el umbral vigente a la
+  fecha pedida; con $500 o más sigue el camino normal (E6).
 - **Dónde vive** (4a, D-114.1): en cada versión de `configuracion_versionada`
   (`umbral_saldo_chico`, sin default en la base). Una versión nueva que no lo trae hereda el de la
   inmediatamente anterior por `vigente_desde`, aunque sea futura; si no hay ninguna, el de
@@ -571,6 +615,12 @@ número no se marcan duplicadas entre sí.
   liquidación distribuida (por la acción "distribuir", por un email o por una vista
   en el portal) lo rechaza; la anulación sin motivo se rechaza; una liquidación anulada permite volver a
   emitir el período; anular una liquidación en borrador o ya anulada se rechaza.
+- **Re-emisión e interés** (4c, H-004, E1, D-153): el interés registrado por una emisión anulada queda
+  en el libro sin contar. La re-emisión del mismo período no registra otro interés en ese corte
+  (`uq_mov_interes`); los días que cubría pasan al **corte siguiente**, que los cobra con la
+  configuración vigente a ese corte, así que el importe puede diferir del anulado. Anular bloquea, en un
+  solo pedido ordenado, todas las cuentas alcanzadas por la emisión, también las que sólo recibieron
+  interés.
 
 ## R24 · Modo degradado de emisión · Vigente (D-075, ProTecc A4, principio 6 de Alberto)
 
@@ -796,10 +846,19 @@ número no se marcan duplicadas entre sí.
 - **Vencida** (D-143): una liquidación está vencida desde que corre su interés, después de los días de
   gracia (R03). El interés pertenece al período de la obligación que lo generó, así que una expensa
   impaga con su interés cuenta como una sola liquidación vencida. Sólo cuenta si el total vencido de la
-  unidad supera el umbral de R30.
-- **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
-  el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
-  cambio 10a se encarga del listado, la exportación y la presentación.
+  unidad es de **$500 o más** (`>=` el umbral de R30; D-143, ratificado en E6).
+- **Qué cuenta** (4c, H-006, E7, E8): obligaciones vencidas con **capital** impago, no meses distintos.
+  Un período con el capital pagado y sólo su interés impago no cuenta como liquidación vencida, aunque
+  la cuenta tenga otro período con capital. Una cuenta cuyo total vencido es sólo interés es **deuda de
+  intereses** (D-109.4) y no es moroso crítico. Una obligación de una emisión anulada no cuenta.
+- **Dónde vive** (D-074, 4c H-006): la función pura `clasificar` en `cuenta_corriente/dominio/cobranza.py`
+  y, en aplicación, `situacion_de_cuenta` y `situacion_del_edificio` (`cuenta_corriente/aplicacion/
+  cobranza.py`), que leen la configuración vigente a la fecha pedida. No hay nada que "reevaluar" ni
+  marca guardada: el resultado se deriva del libro cada vez que se pide. La fecha es de
+  **clasificación** (E14): decide qué está vencido y qué gracia y umbral rigen, sin reconstruir la deuda
+  de un día pasado. Cada cuenta lleva una etiqueta única, con precedencia: sin deuda vencida, bajo el
+  umbral, deuda de intereses, moroso crítico, con deuda vencida. Las cuentas de persona quedan fuera
+  hasta el 4d. El cambio 10a se encarga del listado, la exportación y la presentación.
 - **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
   cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
   una sola.

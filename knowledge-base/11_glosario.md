@@ -167,9 +167,32 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 - **Mora**: atraso en el pago después del vencimiento.
 - **Interés por mora**: el recargo que genera la mora, según la política del complejo.
 - **Anatocismo**: cobrar intereses sobre intereses. El art. 770 del Código Civil y Comercial lo limita.
+- **Corte**: la fecha hasta la que cobra el interés de una emisión: el último día del mes anterior al
+  período que se emite (R03, E2). Los días posteriores los cobra la emisión siguiente.
+- **Tramo de interés**: cada pedazo del detalle de un débito de interés, con sus fechas desde y hasta,
+  días, base, tasa, forma de cálculo y versión de configuración (`tramo_de_interes`, R03).
+- **Días cubiertos**: la unión de los tramos de los intereses que cuentan de una obligación; lo que no
+  está cubierto lo cobra el próximo corte (E17).
+- **Mes entero**: forma de cálculo en la que cada mes calendario con algún día de atraso cobra la tasa
+  completa una vez, aunque sea una fracción del mes (R03, decisión de Juani del 30/10/2026).
+- **Carga de saldo inicial**: la única carga, por edificio, de la deuda y el crédito que el edificio trae
+  al migrar; guarda su fecha de migración y de qué archivo y filas salió cada cosa (R09, H-005).
+- **Firma del pedido**: la huella (`v1:` + SHA-256) del pedido de carga de saldo inicial normalizado;
+  decide si repetir una carga es el mismo pedido o uno distinto, aunque sume lo mismo (R09, E16).
+- **Fecha de migración**: el día en que el edificio pasa al sistema con su saldo inicial; el interés de
+  R03 de esa deuda corre desde el día siguiente.
+- **Cuentas alcanzadas por una emisión**: las que tienen una obligación suya y las que sólo recibieron
+  un interés suyo; las bloquea la anulación y las lee el saldo anterior.
 - **Moroso crítico**: una unidad con dos o más liquidaciones vencidas con saldo impago, calculado
   desde las imputaciones. Se define por antigüedad, nunca por monto (R20). En el MVP no bloquea
   amenities porque las reservas no están en el alcance.
+- **Situación de cobranza**: lo que el sistema dice de una cuenta de unidad a una fecha, derivado del
+  libro y nunca guardado: total vencido, liquidaciones vencidas con capital, si está bajo el umbral, si
+  es deuda de intereses y si es moroso crítico (R20, R30, H-006).
+- **Fecha de clasificación**: la fecha con la que se pide la situación de cobranza; decide qué está
+  vencido y qué configuración rige, pero el libro se lee como está hoy (E14).
+- **Deuda de intereses**: una cuenta que no está bajo el umbral y cuyo total vencido es sólo interés;
+  la deuda sigue existiendo, pero no es moroso crítico (D-109.4).
 - **Gestión judicial**: marca de una unidad cuya deuda ya está en manos del abogado del complejo.
   Frena los recordatorios automáticos de mora y la saca del cálculo de moroso crítico (R31, propuesta).
 - **Condonación de interés**: un movimiento que neutraliza un recargo por mora, total o parcialmente,

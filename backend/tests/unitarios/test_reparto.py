@@ -39,6 +39,13 @@ def test_redondeo_invalido(entrada: object) -> None:
         redondear_al_centavo(entrada)  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("entrada", ["1E+30", "-1E+30", "1E+40"])
+def test_redondeo_enorme_es_monto_invalido(entrada: str) -> None:
+    """RB-6: un valor enorme es `MontoInvalido`, no `decimal.InvalidOperation` filtrada."""
+    with pytest.raises(MontoInvalido):
+        redondear_al_centavo(Decimal(entrada))
+
+
 @pytest.mark.parametrize(
     "entrada,esperado",
     [

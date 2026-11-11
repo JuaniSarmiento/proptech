@@ -9,6 +9,7 @@ import uuid
 import pytest
 
 from ._edificios import BaseDeEdificio
+from .test_libro_rollback import devolver_tramos
 from .test_umbral_migracion import arranque
 
 pytestmark = pytest.mark.integracion
@@ -30,12 +31,16 @@ def _version(base: BaseDeEdificio) -> tuple[str] | None:
 def test_rf_0028_down_up_vocabulario(base_del_edificio: BaseDeEdificio) -> None:
     base = base_del_edificio
     assert _vocabulario(base) == [("ver_personal",)]
+    devolver_tramos(base)
     base.migrar("downgrade", "0027")
     assert _version(base) == ("0027",)
     assert _vocabulario(base) == []
     base.migrar("upgrade", "0028")
     assert _version(base) == ("0028",)
     assert _vocabulario(base) == [("ver_personal",)]
+    # La base es del módulo: queda en la cabeza (con la `0034` y la `0035` de vuelta) para el
+    # test que sigue.
+    base.migrar("upgrade", "head")
     base.roles("despues")
 
 
@@ -55,6 +60,7 @@ def test_rf_0028_bajada_con_fila_de_auditoria_falla_por_fk(
             "SELECT count(*) FROM auditoria WHERE accion='ver_personal'"
         ).fetchone()
     assert fila_antes == (1,)
+    devolver_tramos(base)
     with pytest.raises(AssertionError, match=r"23503|ForeignKeyViolation"):
         base.migrar("downgrade", "0027")
     assert _vocabulario(base) == anterior_vocabulario

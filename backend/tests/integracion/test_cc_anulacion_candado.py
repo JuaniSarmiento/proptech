@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.cuenta_corriente.aplicacion import correcciones, emisiones
@@ -21,7 +21,9 @@ from proptech_core.cuenta_corriente.aplicacion.emisiones import ObligacionAEmiti
 
 from ._cuenta_corriente import Mundo, sembrar, sesion_app
 from ._edificios import BaseDeEdificio
-from .test_cc_correcciones import credito_corr, emitir
+from .test_cc_correcciones import contra, credito_corr, emitir
+from .test_cc_intereses import configurar, intereses, obl
+from .test_cc_intereses import emitir as emitir_con_interes
 
 pytestmark = pytest.mark.integracion
 
@@ -32,6 +34,13 @@ _ESPERA = 2.0
 @pytest.fixture
 def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
+
+
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Los tests que emiten octubre con deuda de septiembre necesitan versión de configuración
+    (4c): la de tasa 0,00 no registra interés y conserva sus expectativas de saldo."""
+    return sembrar(base_del_edificio, con_configuracion=True)
 
 
 class _AnulacionEnOtroHilo:
@@ -80,11 +89,19 @@ def _anuladas(base: BaseDeEdificio, mundo: Mundo, emision_id: UUID) -> int:
 
 
 def _tras_la_primera_llamada(
-    real: Callable[..., Any], al_volver: Callable[[], None], hecho: list[bool]
+    real: Callable[..., Any],
+    al_volver: Callable[[], None],
+    hecho: list[bool],
+    *,
+    llamada: int = 1,
 ) -> Callable[..., Any]:
+    """Dispara `al_volver` al volver la llamada número `llamada` (la primera por defecto)."""
+    llamadas: list[bool] = []
+
     def envuelta(*args: Any, **kw: Any) -> Any:
         resultado = real(*args, **kw)
-        if not hecho:
+        llamadas.append(True)
+        if not hecho and len(llamadas) == llamada:
             hecho.append(True)
             al_volver()
         return resultado
@@ -118,10 +135,78 @@ def _registrar(
     )
 
 
+class _FotosObservadas:
+    """Registra cada ejecución de la sentencia de la foto con los `ids` reales que recibió.
+
+    La sentencia se reconoce por su texto compilado (`WITH t AS` y `cuentas AS`, que sólo tiene
+    `_FOTO`); sus parámetros reales son los `ids` expandidos en la ejecución (L-016).
+    """
+
+    def __init__(self, sesion: Any) -> None:
+        self.pedidas: list[set[UUID]] = []
+        self._bind = sesion.get_bind()
+        event.listen(self._bind, "before_cursor_execute", self._escuchar)
+
+    def _escuchar(self, conn: Any, cursor: Any, sentencia: str, parametros: Any, *a: Any) -> None:
+        if "WITH t AS" in sentencia and "cuentas AS" in sentencia and "ANY(" in sentencia:
+            ids = parametros["ids"] if isinstance(parametros, dict) else parametros[0]
+            self.pedidas.append({UUID(str(i)) for i in ids})
+
+    def cerrar(self) -> None:
+        event.remove(self._bind, "before_cursor_execute", self._escuchar)
+
+
+def test_rf01_la_ultima_foto_de_la_emision_nueva_pide_todas_las_cuentas(
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
+) -> None:
+    """RF-01 (D-138): el saldo anterior sale de UNA sentencia con todas las cuentas de la emisión.
+
+    Los tests de las anulaciones intercaladas no matan "una foto por cuenta" (la primera llamada
+    dispara la carrera y las demás ven el mismo candado); éste observa qué pidió la última foto.
+    """
+    mundo = mundo_con_configuracion
+    _, oct_ = _setiembre_y_octubre(mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            r = _registrar(s, mundo, uuid4(), date(2026, 10, 1), oct_)
+        finally:
+            observadas.cerrar()
+        s.commit()
+    assert len(r.cuentas) == 2
+    assert observadas.pedidas, "la emisión no ejecutó ninguna foto"
+    assert observadas.pedidas[-1] == set(r.cuentas.values()), observadas.pedidas
+
+
+def test_rf01_la_ultima_foto_del_replay_pide_todas_las_cuentas(
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
+) -> None:
+    """RF-01, RF-04 (D-138): el replay también calcula el saldo con una sola foto de todas."""
+    mundo = mundo_con_configuracion
+    _, oct_ = _setiembre_y_octubre(mundo)
+    oct_id = uuid4()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        primera = _registrar(s, mundo, oct_id, date(2026, 10, 1), oct_)
+        s.commit()
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            replay = _registrar(s, mundo, oct_id, date(2026, 10, 1), oct_)
+        finally:
+            observadas.cerrar()
+        s.commit()
+    assert replay.cuentas == primera.cuentas
+    assert observadas.pedidas, "el replay no ejecutó ninguna foto"
+    assert observadas.pedidas[-1] == set(replay.cuentas.values()), observadas.pedidas
+
+
 def test_rf01_la_emision_nueva_publica_una_sola_foto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """RF-01, E12: la anulación de setiembre no se mete entre las lecturas del saldo de octubre."""
+    mundo = mundo_con_configuracion
     sep, oct_ = _setiembre_y_octubre(mundo)
     sep_id, oct_id = uuid4(), uuid4()
     with sesion_app(base_del_edificio, mundo.admin) as s:
@@ -150,9 +235,12 @@ def test_rf01_la_emision_nueva_publica_una_sola_foto(
 
 
 def test_rf04_el_replay_de_emision_publica_una_sola_foto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """RF-04, CX-02: el mismo intercalado en el replay."""
+    mundo = mundo_con_configuracion
     sep, oct_ = _setiembre_y_octubre(mundo)
     sep_id, oct_id = uuid4(), uuid4()
     with sesion_app(base_del_edificio, mundo.admin) as s:
@@ -181,6 +269,47 @@ def test_rf04_el_replay_de_emision_publica_una_sola_foto(
     ), replay.saldo_anterior
 
 
+def _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch, forma: str
+) -> None:
+    """Cuerpo compartido de RF-02 para las dos formas: `credito` y `contra_asiento` (D-138)."""
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        emision, _, obl = emitir(s, mundo, 4, "100.00")
+        s.commit()
+    credito_previo: UUID | None = None
+    if forma == "contra_asiento":
+        # Se confirma ANTES de instalar la pausa: la carrera observa el contra-asiento, no esto.
+        with sesion_app(base_del_edificio, mundo.admin) as s:
+            credito_previo = credito_corr(s, mundo, obl, "30.00")
+            s.commit()
+    anulacion = _AnulacionEnOtroHilo(base_del_edificio, mundo, emision)
+    hecho: list[bool] = []
+    monkeypatch.setattr(
+        correcciones,
+        "_anulada",
+        # El crédito chequea la emisión de su obligación en la primera llamada; el contra-asiento
+        # (su blanco no tiene emisión propia) la chequea en la segunda: la pausa va después del
+        # último chequeo, que es donde se abre la carrera.
+        _tras_la_primera_llamada(
+            correcciones._anulada,
+            anulacion.lanzar,
+            hecho,
+            llamada=1 if credito_previo is None else 2,
+        ),
+    )
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        if credito_previo is None:
+            credito_corr(s, mundo, obl, "30.00")
+        else:
+            contra(s, mundo, credito_previo)
+        anuladas_al_escribir = _anuladas(base_del_edificio, mundo, emision)
+        s.commit()
+    anulacion.terminar()
+    assert hecho
+    assert anuladas_al_escribir == 0, "la anulación se confirmó debajo de la corrección"
+    assert _anuladas(base_del_edificio, mundo, emision) == 1
+
+
 def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
     base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -188,12 +317,73 @@ def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
 
     Con el candado, la anulación espera a que la corrección se confirme (orden serial válido:
     corrección y después anulación). Sin él, la anulación se confirma después del chequeo y antes
-    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada.
+    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada. Forma
+    crédito; el nombre es el de `main` (C17 de H-004 exige que los ids existentes no cambien).
     """
-    with sesion_app(base_del_edificio, mundo.admin) as s:
-        emision, _, obl = emitir(s, mundo, 4, "100.00")
+    _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
+        base_del_edificio, mundo, monkeypatch, "credito"
+    )
+
+
+def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso_contra_asiento(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RF-02 en forma contra-asiento de un crédito de corrección ya registrado (D-138)."""
+    _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
+        base_del_edificio, mundo, monkeypatch, "contra_asiento"
+    )
+
+
+# --- 5.4 del 4c (PR-02, design D0) · cuentas alcanzadas que sólo recibieron interés ---------------
+
+
+def _septiembre_de_dos_y_octubre_de_una(
+    base: BaseDeEdificio, mundo: Mundo
+) -> tuple[UUID, UUID, UUID]:
+    """U1 y U2 deben septiembre; la emisión de octubre sólo emite a U1 y le cobra interés a U2."""
+    configurar(base, mundo)
+    with sesion_app(base, mundo.admin) as s:
+        sep = emitir_con_interes(
+            s,
+            mundo,
+            date(2026, 9, 1),
+            [obl(mundo, 0, date(2026, 9, 10)), obl(mundo, 1, date(2026, 9, 10))],
+        )
+        u1, u2 = (sep.cuentas[mundo.unidades[n]] for n in (0, 1))
+        octubre = emitir_con_interes(
+            s, mundo, date(2026, 10, 1), [obl(mundo, 0, date(2026, 10, 10), "1.00")]
+        )
         s.commit()
-    anulacion = _AnulacionEnOtroHilo(base_del_edificio, mundo, emision)
+    return u1, u2, octubre.emision_id
+
+
+def test_cc_anular_bloquea_tambien_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    u1, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    llamadas: list[list[UUID]] = []
+    real = emisiones.bloquear_cuentas  # type: ignore[attr-defined]
+
+    def espia(sesion: Any, cuentas: Any) -> None:
+        llamadas.append(list(cuentas))
+        real(sesion, cuentas)
+
+    monkeypatch.setattr(emisiones, "bloquear_cuentas", espia)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        emisiones.anular_emision(
+            s, mundo.identidad, emision_id=octubre, motivo="Mal cargada", request_id=uuid4()
+        )
+    assert [set(c) for c in llamadas] == [{u1, u2}], f"candados pedidos: {llamadas}"
+
+
+def test_cc_anulacion_durante_el_contra_asiento_de_un_interes_sin_obligacion(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        de_u2 = [i for i in intereses(s, cuenta=u2) if i.emision_id == octubre]
+    assert len(de_u2) == 1, "U2 no recibió el interés de septiembre en la emisión de octubre"
+    anulacion = _AnulacionEnOtroHilo(base_del_edificio, mundo, octubre)
     hecho: list[bool] = []
     monkeypatch.setattr(
         correcciones,
@@ -201,10 +391,59 @@ def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
         _tras_la_primera_llamada(correcciones._anulada, anulacion.lanzar, hecho),
     )
     with sesion_app(base_del_edificio, mundo.admin) as s:
-        credito_corr(s, mundo, obl, "30.00")
-        anuladas_al_escribir = _anuladas(base_del_edificio, mundo, emision)
+        contra(s, mundo, de_u2[0].id)
+        anuladas_al_escribir = _anuladas(base_del_edificio, mundo, octubre)
         s.commit()
     anulacion.terminar()
     assert hecho
-    assert anuladas_al_escribir == 0, "la anulación se confirmó debajo de la corrección"
-    assert _anuladas(base_del_edificio, mundo, emision) == 1
+    assert anuladas_al_escribir == 0, "la anulación se confirmó debajo del contra-asiento"
+    assert _anuladas(base_del_edificio, mundo, octubre) == 1
+
+
+def test_cc_la_lectura_incluye_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    configurar(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        sep = emitir_con_interes(
+            s,
+            mundo,
+            date(2026, 9, 1),
+            [obl(mundo, 0, date(2026, 9, 10)), obl(mundo, 1, date(2026, 9, 10))],
+        )
+        u1, u2 = (sep.cuentas[mundo.unidades[n]] for n in (0, 1))
+        observadas = _FotosObservadas(s)
+        try:
+            r = emitir_con_interes(
+                s,
+                mundo,
+                date(2026, 10, 1),
+                [obl(mundo, 0, date(2026, 10, 10), "1.00")],
+                confirmar=False,
+            )
+        finally:
+            observadas.cerrar()
+    assert observadas.pedidas and observadas.pedidas[-1] == {u1, u2}, observadas.pedidas
+    assert r.saldo_anterior[u2] == Dinero("102000.00")
+
+
+def test_cc_la_lectura_del_replay_incluye_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RF-01, RF-04, D0: el replay bloquea y lee las alcanzadas, también la de sólo interés."""
+    u1, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            replay = emitir_con_interes(
+                s,
+                mundo,
+                date(2026, 10, 1),
+                [obl(mundo, 0, date(2026, 10, 10), "1.00")],
+                emision_id=octubre,
+                confirmar=False,
+            )
+        finally:
+            observadas.cerrar()
+    assert observadas.pedidas and observadas.pedidas[-1] == {u1, u2}, observadas.pedidas
+    assert replay.saldo_anterior[u2] == Dinero("102000.00")

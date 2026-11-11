@@ -3,6 +3,7 @@
 import pytest
 
 from ._edificios import BaseDeEdificio
+from .test_libro_rollback import devolver_tramos
 
 pytestmark = pytest.mark.integracion
 
@@ -23,6 +24,7 @@ def _version(base: BaseDeEdificio) -> tuple[str] | None:
 def test_rf_0024_down_up_vocabulario(base_del_edificio: BaseDeEdificio) -> None:
     base = base_del_edificio
     assert _vocabulario(base) == [("corregir_movimiento",)]
+    devolver_tramos(base)
     base.migrar("downgrade", "0023")
     assert _version(base) == ("0023",)
     assert _vocabulario(base) == []

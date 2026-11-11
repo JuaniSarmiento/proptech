@@ -27,6 +27,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -110,7 +117,8 @@ def test_deuda_del_edificio_no_trae_cuentas_de_otro_edificio(
         assert {f.cuenta_id: f.deuda for f in filas} == {r.cuentas[mundo.unidades[0]]: d("100.00")}
 
 
-def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
+def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emitir(s, mundo, date(2026, 3, 1), "30000.00")
         abril = emitir(s, mundo, date(2026, 4, 1), "40000.00")
@@ -132,8 +140,9 @@ def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None
 
 
 def test_saldo_anterior_con_credito_a_favor(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         marzo = emitir(s, mundo, date(2026, 3, 1), "30000.00")
         cuenta = marzo.cuentas[mundo.unidades[0]]
@@ -194,6 +203,111 @@ def test_otra_administracion_no_ve_el_edificio(
         s.commit()
     with sesion_app(base_del_edificio, mundo.admin_b) as s:
         assert lecturas.deuda_del_edificio(s, complejo_id=mundo.complejo) == []
+
+
+# --- 3.2 · corte, tramos e interes_desde en la foto (D3, E17) ----------------------------------
+
+
+def _interes_a_mano(
+    s: Session,
+    mundo: Mundo,
+    cuenta: UUID,
+    obligacion: UUID,
+    corte: date,
+    tramos: list[tuple[date, date]],
+) -> UUID:
+    """Un interés y sus tramos insertados como la app (el cálculo es de la 5.x): no se emite."""
+    movimiento = uuid4()
+    s.execute(
+        text(
+            "INSERT INTO movimiento (id, administracion_id, complejo_id, cuenta_id, tipo, sentido, "
+            "importe, fecha_valor, registrado_por, request_id, registrado_en, obligacion_id, "
+            "componente, corte) VALUES (:id, :adm, :cx, :cu, 'interes', 'debito', 10.00, :corte, "
+            ":persona, :req, now(), :obl, 'interes', :corte)"
+        ),
+        {
+            "id": movimiento,
+            "adm": mundo.admin,
+            "cx": mundo.complejo,
+            "cu": cuenta,
+            "corte": corte,
+            "persona": mundo.persona,
+            "req": uuid4(),
+            "obl": obligacion,
+        },
+    )
+    for desde, hasta in tramos:
+        s.execute(
+            text(
+                "INSERT INTO tramo_de_interes (id, administracion_id, complejo_id, cuenta_id, "
+                "movimiento_id, sentido_del_movimiento, desde, hasta, dias, base, tasa_mensual, "
+                "forma_de_calculo, dias_de_gracia, configuracion_id, registrado_en) VALUES "
+                "(:id, :adm, :cx, :cu, :mov, 'debito', :d, :h, :dias, 100.00, 3.00, "
+                "'proporcional_por_dia', 0, :conf, now())"
+            ),
+            {
+                "id": uuid4(),
+                "adm": mundo.admin,
+                "cx": mundo.complejo,
+                "cu": cuenta,
+                "mov": movimiento,
+                "d": desde,
+                "h": hasta,
+                "dias": (hasta - desde).days + 1,
+                "conf": uuid4(),
+            },
+        )
+    return movimiento
+
+
+def test_la_foto_trae_corte_tramos_e_interes_desde(
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
+) -> None:
+    """E17: la foto trae **todos** los intervalos de cada interés, por `desde`, y su `corte`.
+
+    Un interés con dos tramos no contiguos (se insertan a propósito en orden inverso), otro sin
+    tramos (el importado) y un pago: los últimos dos no traen corte con tramos. En H-004 el
+    `interes_desde` de cada obligación es el día siguiente a su vencimiento.
+    """
+    mundo = mundo_con_configuracion
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        sep = emitir(s, mundo, date(2026, 9, 1), "100.00")
+        s.commit()
+        s.execute(text("SELECT 1"))
+        octubre = emitir(s, mundo, date(2026, 10, 1), "100.00")
+        s.commit()
+        s.execute(text("SELECT 1"))
+        cuenta = sep.cuentas[mundo.unidades[0]]
+        assert octubre.cuentas[mundo.unidades[0]] == cuenta
+        obligaciones = {o.periodo: o for o in lecturas.foto(s, cuenta).estado.obligaciones}
+        con_tramos = _interes_a_mano(
+            s,
+            mundo,
+            cuenta,
+            obligaciones[date(2026, 9, 1)].id,
+            date(2026, 11, 30),
+            [(date(2026, 11, 1), date(2026, 11, 30)), (date(2026, 9, 11), date(2026, 9, 30))],
+        )
+        sin_tramos = _interes_a_mano(
+            s, mundo, cuenta, obligaciones[date(2026, 10, 1)].id, date(2026, 10, 31), []
+        )
+        pago = pagar(s, mundo, cuenta, "5.00")
+        escrituras = contar_escrituras(s)
+        f = lecturas.foto(s, cuenta)
+        assert escrituras == []
+    assert f.movimientos[con_tramos].corte == date(2026, 11, 30)
+    assert f.movimientos[con_tramos].tramos == (
+        (date(2026, 9, 11), date(2026, 9, 30)),
+        (date(2026, 11, 1), date(2026, 11, 30)),
+    )
+    assert f.movimientos[sin_tramos].corte == date(2026, 10, 31)
+    assert f.movimientos[sin_tramos].tramos == ()
+    assert f.movimientos[pago].corte is None
+    assert f.movimientos[pago].tramos == ()
+    assert {o.periodo: o.interes_desde for o in f.estado.obligaciones} == {
+        date(2026, 9, 1): date(2026, 9, 11),
+        date(2026, 10, 1): date(2026, 10, 11),
+    }
 
 
 # --- Planes (DB-2, RC-08, RC-15) ---------------------------------------------------------------

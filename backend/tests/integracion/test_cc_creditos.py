@@ -28,6 +28,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -78,7 +85,10 @@ def imputaciones(s: Session, movimiento: UUID) -> list[tuple[str, str]]:
     ]
 
 
-def test_ejemplo_de_r04_contra_la_base(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
+def test_ejemplo_de_r04_contra_la_base(
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
+) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         cuenta = emitir(s, mundo, date(2026, 8, 1), 0, "80000.00")
         emitir(s, mundo, date(2026, 9, 1), 0, "85000.00")
@@ -153,9 +163,10 @@ def test_importe_no_positivo(base_del_edificio: BaseDeEdificio, mundo: Mundo, im
 
 
 def test_destino_fijo_sin_destino_y_sin_capacidad(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """E16: condonación sin interés: 422 `destino`, nada registrado; diciembre sigue en $40.000."""
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         cuenta = emitir(s, mundo, date(2026, 11, 1), 8, "80000.00")
         obligacion = s.execute(
@@ -272,9 +283,10 @@ def test_identidad_de_otra_administracion_antes_de_escribir(
 
 
 def test_reusar_la_operacion_con_otro_destino(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """RB4B-04 (credito_replay_sin_destino): E4 compara también la obligación de destino."""
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         cuenta = emitir(s, mundo, date(2026, 10, 1), 10, "100.00")
         emitir(s, mundo, date(2026, 11, 1), 10, "100.00")

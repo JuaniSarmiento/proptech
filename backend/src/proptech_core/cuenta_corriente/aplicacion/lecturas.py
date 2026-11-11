@@ -33,7 +33,11 @@ _IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
 
 #: Una foto por cuenta en UNA sentencia. Los importes viajan como texto: nunca float.
 #: Sirve a `ix_obligacion_cuenta_periodo`, `ix_movimiento_cuenta` e `ix_imputacion_cuenta`
-#: (administracion_id, cuenta_id), que son el acceso de esta consulta.
+#: (administracion_id, cuenta_id), que son el acceso de esta consulta. Los tramos de cada interés
+#: (E17: todos los intervalos, no su máximo) van por `ix_tramo_movimiento`. El `interes_desde` de
+#: una obligación de saldo inicial es el día siguiente a la `fecha_de_migracion` de su carga (E13,
+#: E18): el `LEFT JOIN` va por `uq_carga_operacion` y deja `NULL` en las emitidas (su defecto es el
+#: vencimiento más un día).
 _FOTO = """
 WITH t AS (SELECT nullif(current_setting('app.administracion_id', true), '')::uuid AS adm),
 cuentas AS (
@@ -44,13 +48,23 @@ SELECT c.id, c.complejo_id, c.unidad_id,
   (SELECT coalesce(json_agg(json_build_object(
       'id', o.id, 'emision_id', o.emision_id, 'periodo', o.periodo, 'vencimiento', o.vencimiento,
       'ordinaria', o.ordinaria::text, 'fondo_de_reserva', o.fondo_de_reserva::text,
-      'extraordinaria', o.extraordinaria::text)), '[]')
-   FROM obligacion o, t WHERE o.administracion_id = t.adm AND o.cuenta_id = c.id) AS obligaciones,
+      'extraordinaria', o.extraordinaria::text,
+      'interes_desde', car.fecha_de_migracion + 1)), '[]')
+   FROM obligacion o
+   LEFT JOIN carga_de_saldo_inicial car
+     ON car.administracion_id = o.administracion_id AND car.operacion_id = o.operacion_id
+    AND o.emision_id IS NULL,
+   t WHERE o.administracion_id = t.adm AND o.cuenta_id = c.id) AS obligaciones,
   (SELECT coalesce(json_agg(json_build_object(
       'id', m.id, 'tipo', m.tipo, 'sentido', m.sentido, 'importe', m.importe::text,
       'fecha_valor', m.fecha_valor, 'registrado_en', m.registrado_en,
       'obligacion_id', m.obligacion_id, 'componente', m.componente, 'emision_id', m.emision_id,
-      'corrige_a', m.corrige_a, 'enlazado_a', m.enlazado_a)), '[]')
+      'corrige_a', m.corrige_a, 'enlazado_a', m.enlazado_a, 'corte', m.corte,
+      'tramos', (SELECT coalesce(json_agg(json_build_array(tr.desde, tr.hasta)
+                                          ORDER BY tr.desde), '[]')
+                 FROM tramo_de_interes tr
+                 WHERE tr.administracion_id = t.adm AND tr.cuenta_id = c.id
+                   AND tr.movimiento_id = m.id))), '[]')
    FROM movimiento m, t WHERE m.administracion_id = t.adm AND m.cuenta_id = c.id) AS movimientos,
   (SELECT coalesce(json_agg(json_build_object(
       'movimiento_id', i.movimiento_id, 'obligacion_id', i.obligacion_id,
@@ -112,6 +126,11 @@ def _foto(fila: Any) -> FotoDeCuenta:
             Dinero(o["ordinaria"]),
             Dinero(o["fondo_de_reserva"]),
             Dinero(o["extraordinaria"]),
+            **(
+                {}
+                if o["interes_desde"] is None
+                else {"interes_desde": date.fromisoformat(o["interes_desde"])}
+            ),
         )
         for o in _carga(fila.obligaciones)
     ]
@@ -128,6 +147,8 @@ def _foto(fila: Any) -> FotoDeCuenta:
             _uuid(m["emision_id"]),
             _uuid(m["corrige_a"]),
             _uuid(m["enlazado_a"]),
+            None if m["corte"] is None else date.fromisoformat(m["corte"]),
+            tuple((date.fromisoformat(d), date.fromisoformat(h)) for d, h in m["tramos"]),
         )
         for m in _carga(fila.movimientos)
     ]
@@ -165,6 +186,15 @@ def foto(sesion: Session, cuenta_id: UUID) -> FotoDeCuenta:
 
 def estado_de_cuenta(sesion: Session, *, cuenta_id: UUID) -> EstadoDeCuenta:
     return foto(sesion, cuenta_id).estado
+
+
+def fotos_del_edificio(
+    sesion: Session, complejo_id: UUID, sentencia: str = SENTENCIA_DEL_EDIFICIO
+) -> list[FotoDeCuenta]:
+    """Una sola sentencia por edificio (D12). `sentencia` permite a un consumidor, como la
+    situación de cobranza, acotar qué cuentas enumera sin duplicar la foto."""
+    filas = sesion.execute(text(sentencia), {"complejo": complejo_id}).all()
+    return [_foto(f) for f in filas]
 
 
 def deuda_del_edificio(sesion: Session, *, complejo_id: UUID) -> list[DeudaDeCuenta]:
