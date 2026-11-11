@@ -305,5 +305,9 @@
     rojo con el defecto puesto en una copia (`openspec-propose` con `generatedBy: "1.14.3"`): `assert
     ['.claude/skills/openspec-propose/SKILL.md: 1.14.3'] == []`. `ruff`, `format --check` y `mypy` limpios.
     Lo que no se puede probar acá: que la máquina de cada uno tenga la 1.13.0 (`openspec --version`).
-- [ ] 10.4 [GH] Con el OK de Gianfranco: push y PR; leer el run completo sobre el SHA antes de decir
+- [x] 10.4 [GH] Con el OK de Gianfranco: push y PR; leer el run completo sobre el SHA antes de decir
   "listo" (L-037, L-042)
+  Evidencia: PR #5 abierto (change/humo-y-ci); run del evento `pull_request` sobre `f2be967`
+  (leído el 11/11/2026 con `gh run list --commit f2be967478358e765a421d5427dd052341c3b5e4
+  --event pull_request`): id 41154566331, conclusión `success`. El run sobre la cabeza final, con
+  `origin/main` integrado, lo verifica H-002.C02.
