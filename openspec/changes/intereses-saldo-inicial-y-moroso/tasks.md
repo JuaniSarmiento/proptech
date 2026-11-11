@@ -885,7 +885,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     son de código.
 ## 7. Situación de cobranza (R20, R30)
 
-- [ ] 7.1 **Clasificación pura.** Archivos: `backend/src/proptech_core/cuenta_corriente/dominio/cobranza.py`
+- [x] 7.1 **Clasificación pura.** Archivos: `backend/src/proptech_core/cuenta_corriente/dominio/cobranza.py`
   (nuevo, design D6), `backend/tests/unitarios/cuenta_corriente/test_cobranza.py`. Escenarios: "Dentro de
   la gracia", "Interés en su período" (dos liquidaciones, $169.000), "Saldo chico", "Dos saldos chicos
   que juntos pasan el umbral", "Justo en el umbral", "Una sola vencida", "Dos vencidas con saldo", "Pago
@@ -914,7 +914,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     mutante equivalente, porque `calcular_estado` ya deja sus obligaciones sin residual (`debido` sólo las que cuentan). El
     control del escenario "Emisión anulada" está en `test_cc_cobranza.py` (con el libro real). La exclusión de `clasificar` queda
     como defensa redundante a propósito.
-- [ ] 7.2 **Situación por cuenta y por edificio (E14, PR-01, PR-06).** Archivos:
+- [x] 7.2 **Situación por cuenta y por edificio (E14, PR-01, PR-06).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/cobranza.py` (nuevo),
   `backend/tests/integracion/test_cc_cobranza.py`. Escenarios: "Emisión anulada", "Deshacer un pago
   vuelve a marcar" (contra-asiento de un pago), "Migrada con dos períodos", "Migrada con total único",
@@ -956,6 +956,11 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     cada una cubre a la otra); quitar las dos -> `test_listado_del_edificio_trae_una_entrada_por_cuenta_de_unidad` (`las cuentas
     de persona quedan fuera`). Precondición del ensayo de tenant afirmada: la conexión del contenedor tiene `rolsuper OR
     rolbypassrls`.
+  - Cierre de 7.1 y 7.2 (19:2x, `4cb5e36`): `tests/unitarios/cuenta_corriente` + fronteras + `test_cc_cobranza.py`: `208 passed`;
+    `ruff check`, `ruff format --check` y `mypy` limpios. Aceptación: `python3 aceptacion/H-006/aceptar.py --codigo HEAD`
+    (aceptación `3f6629b`): TESTS 33/33, C01 a C19 PASAN (C17 y C18 incluidas; C19: H-004 67/67 y H-005 60/60). Hay un
+    helper nuevo en `lecturas.py` (`fotos_del_edificio`, con la sentencia como parámetro) y `cobranza` importa
+    `complejos.aplicacion.lectura` y `complejos.aplicacion.errores` (el no encontrado del edificio pasa a ser el del libro).
 
 ## 8. Cierre del constructor
 
