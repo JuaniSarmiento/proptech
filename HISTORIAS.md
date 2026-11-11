@@ -229,6 +229,21 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   (reemplaza a `16d8719`): C03 pasa a 6 archivos y **121 tests** (13 nuevos de los arreglos, 6 en
   `test_conmutar_politicas_reales.py`). Comando: `git show 8108f2f:aceptacion/H-003/aceptar.py >
   <fuera-del-repo>/aceptar.py && python3 <fuera-del-repo>/aceptar.py`.
+- Demo (C07), corrida por el orquestador el 11/11/2026 sobre un clon de `00d7578`, proyecto
+  `proptech-demo` con el override de red: API en `proptech` con salud 200; backup del arranque; restaurado
+  en `proptech_demo_restaurada` (código 0); conmutar a `proptech_no_existe` rechazado ("verificación 1
+  (existencia)…", código 1, la API sigue en `proptech`); conmutar a la restaurada (código 0, la API en
+  `proptech_demo_restaurada`, salud 200, `.env.anterior` con el valor previo); vuelta manual con
+  `.env.anterior` (API en `proptech`, salud 200); SIGTERM: `stop` en 0,3 s, 0 parciales, evento `apagado`,
+  **pero el volcado ya había terminado** (base chica): el SIGTERM a mitad del volcado lo cubren los tests y
+  el reproductor del rompedor (`SENAL SIGTERM fase dump rc 0 parciales 0`). Stack desarmado con `down -v`.
+- C02: el job `web` del PR cayó tres veces por la red del runner de GitHub (`Temporary failure resolving
+  'azure.archive.ubuntu.com'` al instalar Chromium, sin correr tests; el PR no toca `web/`); también cayó
+  así en `main` (`a8f5ed1`). **Decisión de Juani (11/11/2026): aceptar esa falla como externa.**
+  **Aceptación vigente: `4c1d6438ae4c6e4ac5870a70ead45e7c76d526f8`** (reemplaza a `8108f2f`): C02 perdona
+  sólo `web`, sólo si el paso fallido es "Instalar Chromium" y su log tiene `Temporary failure resolving`.
+  Probado: True con el job real caído por DNS (130623673376) y False con un `backend` caído en "Tipos"
+  (130568564628).
 - Evidencia y demo: pendientes.
 
 ## Changes por partir en historias
