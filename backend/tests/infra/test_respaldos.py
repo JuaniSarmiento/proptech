@@ -1504,6 +1504,72 @@ class TestSaludConUltimoFalloVacioODisco:
         assert resultado.returncode == 0, resultado.stderr
 
 
+FAKE_DATE_RELOJ_ATRASADO_REAL = """
+case "$*" in
+  *'+%Y%m%dT%H%M%SZ') echo "${FAKE_MARCA}" ;;
+  *'+%s') echo "${FAKE_AHORA}" ;;
+  *) /usr/bin/date "$@" ;;
+esac
+"""
+
+# Un reloj atrasado de verdad escribe también el mtime del archivo: el
+# `pg_dump` falso lo deja en `FAKE_AHORA`, no en el mtime real del sistema.
+FAKE_PG_DUMP_CON_MTIME_DEL_RELOJ = """
+archivo=""
+for arg in "$@"; do
+  case "$arg" in
+    --file=*) archivo="${arg#--file=}" ;;
+  esac
+done
+echo "contenido-dump-de-prueba" > "$archivo"
+touch -d "@${FAKE_AHORA}" "$archivo"
+exit 0
+"""
+
+
+class TestRetencionConRelojAtrasadoDeVerdad:
+    """H-003 B2: con el reloj del host atrasado, el nombre Y el mtime del
+    backup nuevo quedan más viejos que los anteriores. Ordenar por mtime a
+    secas (D1) borra copias nuevas; el orden no puede depender del reloj."""
+
+    def test_siete_ciclos_con_nombre_y_mtime_atrasados_conservan_los_siete(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_CON_MTIME_DEL_RELOJ)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_RELOJ_ATRASADO_REAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        base_octubre = 1790812800  # 2026-10-01
+        for i in range(14):
+            archivo = carpeta / f"proptech-20261001T0000{i:02d}Z.dump"
+            archivo.write_text("viejo")
+            os.utime(archivo, (base_octubre + i, base_octubre + i))
+
+        base_septiembre = 1788220800  # 2026-09-01: el reloj retrocedió.
+        for i in range(7):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={
+                    "RESPALDO_CONSERVAR": "14",
+                    "RESPALDO_CONSERVAR_DIAS": "1",
+                    "FAKE_MARCA": f"20260901T0000{i:02d}Z",
+                    "FAKE_AHORA": str(base_septiembre + i),
+                },
+            )
+            assert resultado.returncode == 0, resultado.stderr
+
+        nuevos = [n for n in _archivos_dump(carpeta) if n.startswith("proptech-202609")]
+        assert len(nuevos) == 7, f"se esperaban los 7 nuevos, quedaron: {nuevos}"
+
+
 class TestParcialesAjenosNoSeBorran:
     """H-003 B3 (L-006): sólo se borra un archivo REGULAR con el patrón
     completo del nombre propio; un ajeno (`proptech-notas.dump.parcial`) o un

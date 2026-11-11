@@ -226,6 +226,36 @@ manejar_apagado() {
 }
 trap manejar_apagado TERM INT
 
+# H-003 B2: con el reloj del host atrasado de verdad, el mtime que el sistema
+# de archivos le pone a un backup nuevo queda MÁS VIEJO que el de los
+# anteriores, y ordenar por mtime (D1) lo tomaría por el más viejo. Antes de
+# publicarlo, si su mtime no es estrictamente posterior al de todos los
+# backups ya existentes, se le fija el del más nuevo más un segundo. Así el
+# mtime es un contador monótono de creación (el orden en que este servicio
+# los publicó), sin cambiar el nombre, la spec ni `--salud`. Consecuencia
+# declarada: con el reloj atrasado el mtime de un backup puede quedar
+# levemente en el futuro respecto del reloj; el orden relativo, que es lo que
+# la retención usa, sigue siendo el de creación.
+asegurar_mtime_monotono() {
+  local archivo="$1" candidato nombre mayor=0 mtime
+  local hay_mas_nuevo=0
+  for candidato in "$CARPETA/${PREFIJO}-"*.dump; do
+    [ -e "$candidato" ] || continue
+    nombre="$(basename -- "$candidato")"
+    [[ "$nombre" =~ ^proptech-[0-9]{8}T[0-9]{6}Z\.dump$ ]] || continue
+    mtime="$(stat -c %Y -- "$candidato")"
+    if (( mtime > mayor )); then
+      mayor="$mtime"
+    fi
+    if [ ! "$archivo" -nt "$candidato" ]; then
+      hay_mas_nuevo=1
+    fi
+  done
+  if (( hay_mas_nuevo )); then
+    touch -d "@$(( mayor + 1 ))" -- "$archivo" || true
+  fi
+}
+
 ciclo_backup() {
   local marca archivo_final archivo_parcial codigo
   marca="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -259,6 +289,9 @@ ciclo_backup() {
   # éxito se loguea recién al final, cuando los tres ya pasaron: así ningún
   # paso que falla DESPUÉS de `pg_restore --list` puede dejar una línea
   # `respaldo_generado` sin que el backup esté de verdad completo.
+  # H-003 B2: el orden de la retención no puede depender del reloj del host.
+  asegurar_mtime_monotono "$archivo_parcial"
+
   if ! mv -- "$archivo_parcial" "$archivo_final"; then
     rm -f -- "$archivo_parcial" "$archivo_final"
     logear error respaldo_fallido etapa=mv
