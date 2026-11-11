@@ -38,7 +38,8 @@ def test_rf_0028_down_up_vocabulario(base_del_edificio: BaseDeEdificio) -> None:
     base.migrar("upgrade", "0028")
     assert _version(base) == ("0028",)
     assert _vocabulario(base) == [("ver_personal",)]
-    # La base es del módulo: queda en la cabeza (con la `0034` de vuelta) para el test que sigue.
+    # La base es del módulo: queda en la cabeza (con la `0034` y la `0035` de vuelta) para el
+    # test que sigue.
     base.migrar("upgrade", "head")
     base.roles("despues")
 

@@ -498,6 +498,8 @@ _DUENO_DE_TABLA = {
             "imputacion",
             "tipo_de_movimiento",
             "tramo_de_interes",
+            "carga_de_saldo_inicial",
+            "origen_de_saldo_inicial",
         ),
         "cuenta_corriente",
     ),

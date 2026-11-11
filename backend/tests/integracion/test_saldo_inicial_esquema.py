@@ -124,9 +124,9 @@ def test_otra_administracion_no_ve_las_filas(libro: Libro, tabla: str) -> None:
         (fila_id,),
     ).fetchone() == (1,)
     fijar_tenant(c, libro.edificios.administracion_b)
-    assert c.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))).fetchone() == (
-        0,
-    ), f"otra administración ve filas de {tabla}"
+    assert c.execute(
+        sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
+    ).fetchone() == (0,), f"otra administración ve filas de {tabla}"
 
 
 def test_un_origen_no_se_cuelga_de_la_obligacion_de_otra_cuenta(libro: Libro) -> None:

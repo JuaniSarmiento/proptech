@@ -137,7 +137,8 @@ def test_restaurar_antes_de_0027_deja_que_antes_reasigne_fn_grupo_generales_prot
         )
 
         # `--no-acl` borró el `GRANT REFERENCES` que `despues` da al migrador sobre el
-        # libro, y 0034 (`tramo_de_interes`) lo necesita para sus claves foráneas (L-064).
+        # libro, y 0034 y 0035 (`tramo_de_interes` y las del saldo inicial) lo necesitan para sus
+        # claves foráneas (L-064).
         with psycopg.connect(
             host=contenedor.get_container_host_ip(),
             port=contenedor.get_exposed_port(5432),
