@@ -266,6 +266,10 @@ aceptación. **Nada se construye sin la firma CRITICAL de E1 a E19** en `proposa
 Desde D-154 las tres historias van en la rama `change/intereses-por-mora` (PR #20) y el CI de GitHub
 corre una sola vez, al cerrar el change; el PR se mergea con H-006 Terminada y el CI en verde.
 
+**CI de cierre del change (11/11/2026)**: PR #20 sobre `275336c`, los seis jobs en verde (backend con la
+suite completa: 2.793 unitarios e infra y 2.528 de integración, 1 xfailed previo). Queda: las demos de
+H-005 y H-006 con Juani, archivar el change y mergear a `main`.
+
 **Delegación de Juani (11/11/2026)**: deja al orquestador a cargo de terminar el change entero: construir
 H-005, **escribir y aprobar por adelantado los criterios de H-006** (sobre la spec
 `situacion-de-cobranza` y las elecciones firmadas), construirla, correr el CI con la suite completa en

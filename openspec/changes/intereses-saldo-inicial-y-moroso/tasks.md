@@ -964,13 +964,18 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
 
 ## 8. Cierre del constructor
 
-- [ ] 8.1 **Fronteras, calidad y suite completa sobre el SHA entregado.** `pytest
+- [x] 8.1 **Fronteras, calidad y suite completa sobre el SHA entregado.** `pytest
   tests/unitarios/test_fronteras_de_modulos.py` verde con el import nuevo `cuenta_corriente →
   complejos.aplicacion.lectura` y sin SQL ajeno; `ruff check`, `ruff format --check` y `mypy` sobre todo
   `src/` (L-063); suite completa `pytest tests/` una vez, entera, sobre el SHA final (L-041, L-055,
   L-064), con conteo propio y fallas previas conocidas nombradas (por ejemplo, las de Windows de D-110 si
   aplica). Registrar comando, hora, SHA y resultado acá; lo que no se pudo correr queda como no
   ejecutado, no como verde.
+  - **Cierre (orquestador, 11/11/2026, D-154)**: suite completa en el CI de GitHub del PR #20 sobre
+    `275336c` (código final de H-004, H-005 y H-006), run 43110776282: backend unitarios y de infra
+    **2.793 passed**; backend integración contra PostgreSQL real **2.528 passed, 1 xfailed** (la xfail ya
+    existía); `ruff`, `mypy` y fronteras dentro del job backend en verde; ensayo-roles, humo, secretos,
+    shellcheck y web en verde. Sin fallas.
 
 ## Workflow follow-up
 
