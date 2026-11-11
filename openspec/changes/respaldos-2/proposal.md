@@ -119,6 +119,10 @@ mount con credenciales de la base.
 > sin privilegios de root del `2c` — el camino documentado (script de arranque propio, README/humo/CI)
 > queda como está escrito; se acepta el límite declarado de que un `docker compose up` manual, fuera
 > del camino documentado, puede seguir creando la carpeta como root.
+>
+> **Firma: Juani Sarmiento, 2026-11-11.** Firmo el scope completo de "What Changes" y la resolución
+> de la Open Question D7. Firmo después del apply, al integrar el PR #6 (H-003): ratifico lo construido
+> sujeto a la aceptación y al rompedor de H-003.
 
 Además, L-048 y L-060 aplican: ningún sub-agente constructor arranca este change por su cuenta
 mientras esta sección diga "pendiente".
