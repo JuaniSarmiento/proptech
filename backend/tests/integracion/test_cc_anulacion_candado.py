@@ -36,6 +36,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Los tests que emiten octubre con deuda de septiembre necesitan versión de configuración
+    (4c): la de tasa 0,00 no registra interés y conserva sus expectativas de saldo."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 class _AnulacionEnOtroHilo:
     """Anula en otro hilo y espera `_ESPERA`: si terminó, se confirmó en el medio."""
 
@@ -150,13 +157,14 @@ class _FotosObservadas:
 
 
 def test_rf01_la_ultima_foto_de_la_emision_nueva_pide_todas_las_cuentas(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """RF-01 (D-138): el saldo anterior sale de UNA sentencia con todas las cuentas de la emisión.
 
     Los tests de las anulaciones intercaladas no matan "una foto por cuenta" (la primera llamada
     dispara la carrera y las demás ven el mismo candado); éste observa qué pidió la última foto.
     """
+    mundo = mundo_con_configuracion
     _, oct_ = _setiembre_y_octubre(mundo)
     with sesion_app(base_del_edificio, mundo.admin) as s:
         observadas = _FotosObservadas(s)
@@ -171,9 +179,10 @@ def test_rf01_la_ultima_foto_de_la_emision_nueva_pide_todas_las_cuentas(
 
 
 def test_rf01_la_ultima_foto_del_replay_pide_todas_las_cuentas(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """RF-01, RF-04 (D-138): el replay también calcula el saldo con una sola foto de todas."""
+    mundo = mundo_con_configuracion
     _, oct_ = _setiembre_y_octubre(mundo)
     oct_id = uuid4()
     with sesion_app(base_del_edificio, mundo.admin) as s:
@@ -192,9 +201,12 @@ def test_rf01_la_ultima_foto_del_replay_pide_todas_las_cuentas(
 
 
 def test_rf01_la_emision_nueva_publica_una_sola_foto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """RF-01, E12: la anulación de setiembre no se mete entre las lecturas del saldo de octubre."""
+    mundo = mundo_con_configuracion
     sep, oct_ = _setiembre_y_octubre(mundo)
     sep_id, oct_id = uuid4(), uuid4()
     with sesion_app(base_del_edificio, mundo.admin) as s:
@@ -223,9 +235,12 @@ def test_rf01_la_emision_nueva_publica_una_sola_foto(
 
 
 def test_rf04_el_replay_de_emision_publica_una_sola_foto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """RF-04, CX-02: el mismo intercalado en el replay."""
+    mundo = mundo_con_configuracion
     sep, oct_ = _setiembre_y_octubre(mundo)
     sep_id, oct_id = uuid4(), uuid4()
     with sesion_app(base_del_edificio, mundo.admin) as s:
@@ -347,7 +362,7 @@ def test_cc_anular_bloquea_tambien_la_cuenta_que_solo_recibio_interes(
 ) -> None:
     u1, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
     llamadas: list[list[UUID]] = []
-    real = emisiones.bloquear_cuentas
+    real = emisiones.bloquear_cuentas  # type: ignore[attr-defined]
 
     def espia(sesion: Any, cuentas: Any) -> None:
         llamadas.append(list(cuentas))

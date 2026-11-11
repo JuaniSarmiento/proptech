@@ -28,6 +28,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -311,9 +318,10 @@ def test_original_restaurado_no_se_contra_asienta_otra_vez(
 
 
 def test_credito_de_correccion_va_con_r04_a_la_deuda_mas_vieja(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """AN-10, R14: aunque referencie octubre, imputa primero agosto."""
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emitir(s, mundo, 7, "1000.00", date(2026, 8, 1))
         _, _, octubre = emitir(s, mundo, 7, "1000.00", date(2026, 10, 1))

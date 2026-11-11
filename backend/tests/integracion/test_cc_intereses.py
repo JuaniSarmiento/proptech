@@ -522,10 +522,11 @@ def test_cc_replay_inmediato_con_interes_no_escribe(
         obls, eid = [obl(mundo, 0, dia(10, 10), "50000.00")], uuid4()
         emitir(s, mundo, OCT, obls, emision_id=eid)
         antes = conteos(s)
-        escrituras = contar_escrituras(s)
+        vistas = contar_escrituras(s)
         replay = emitir(s, mundo, OCT, obls, emision_id=eid)
         assert informados(replay)[cuenta] == [(o, dia(9, 30), d("2000.00"))]
         assert replay.saldo_anterior[cuenta] == d("102000.00")
+        escrituras = [v for v in vistas if "candado_de_cuenta" not in v]  # el candado no es libro
         assert escrituras == [] and conteos(s) == antes, "el replay escribió"
 
 

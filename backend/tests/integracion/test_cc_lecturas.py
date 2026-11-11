@@ -27,6 +27,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -110,7 +117,8 @@ def test_deuda_del_edificio_no_trae_cuentas_de_otro_edificio(
         assert {f.cuenta_id: f.deuda for f in filas} == {r.cuentas[mundo.unidades[0]]: d("100.00")}
 
 
-def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
+def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emitir(s, mundo, date(2026, 3, 1), "30000.00")
         abril = emitir(s, mundo, date(2026, 4, 1), "40000.00")
@@ -132,8 +140,9 @@ def test_saldo_anterior(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None
 
 
 def test_saldo_anterior_con_credito_a_favor(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         marzo = emitir(s, mundo, date(2026, 3, 1), "30000.00")
         cuenta = marzo.cuentas[mundo.unidades[0]]
@@ -252,7 +261,7 @@ def _interes_a_mano(
 
 
 def test_la_foto_trae_corte_tramos_e_interes_desde(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """E17: la foto trae **todos** los intervalos de cada interés, por `desde`, y su `corte`.
 
@@ -260,6 +269,7 @@ def test_la_foto_trae_corte_tramos_e_interes_desde(
     tramos (el importado) y un pago: los últimos dos no traen corte con tramos. En H-004 el
     `interes_desde` de cada obligación es el día siguiente a su vencimiento.
     """
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         sep = emitir(s, mundo, date(2026, 9, 1), "100.00")
         s.commit()

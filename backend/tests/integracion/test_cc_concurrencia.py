@@ -33,6 +33,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -162,7 +169,10 @@ def test_dos_emisiones_simultaneas_del_mismo_periodo(
         )
 
 
-def test_una_emision_y_un_pago_a_la_vez(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> None:
+def test_una_emision_y_un_pago_a_la_vez(
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
+) -> None:
+    mundo = mundo_con_configuracion
     previa = emitir_confirmado(
         base_del_edificio, mundo, date(2026, 9, 1), [obligacion(mundo, 0, "0.01")]
     )
@@ -185,9 +195,12 @@ CREAR_EN_ORDEN_DE_ENTRADA = False
 
 
 def test_emisiones_con_unidades_nuevas_cruzadas(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+    base_del_edificio: BaseDeEdificio,
+    mundo_con_configuracion: Mundo,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """RC-03: períodos DISTINTOS del mismo edificio, así el único de emisión no tapa el defecto."""
+    mundo = mundo_con_configuracion
     a, b = sorted(mundo.unidades[10:12])
     llegaron = [threading.Event(), threading.Event()]
     nombres: dict[int, int] = {}

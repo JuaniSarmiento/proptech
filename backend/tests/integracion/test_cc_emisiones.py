@@ -29,6 +29,13 @@ def mundo(base_del_edificio: BaseDeEdificio) -> Mundo:
     return sembrar(base_del_edificio)
 
 
+@pytest.fixture
+def mundo_con_configuracion(base_del_edificio: BaseDeEdificio) -> Mundo:
+    """Para los tests que emiten con deuda vencida: el 4c exige versión de configuración al corte.
+    La de `sembrar(con_configuracion=True)` tiene tasa 0,00 y no registra interés."""
+    return sembrar(base_del_edificio, con_configuracion=True)
+
+
 def d(t: str) -> Dinero:
     return Dinero(t)
 
@@ -119,8 +126,9 @@ def test_segunda_emision_del_periodo_sin_anular(
 
 
 def test_emitir_de_nuevo_despues_de_anular_imputa_el_pago_devuelto(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         primera = emitir(s, mundo, NOV, obligaciones(mundo, "40000.00"))
         cuenta = next(iter(primera.cuentas.values()))
@@ -162,8 +170,9 @@ def test_emitir_de_nuevo_despues_de_anular_imputa_el_pago_devuelto(
 
 
 def test_credito_a_favor_se_imputa_en_la_emision_siguiente(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         r = emitir(s, mundo, OCT, obligaciones(mundo, "50000.00", desde=2))
         cuenta = r.cuentas[mundo.unidades[2]]
@@ -339,10 +348,11 @@ def test_anular_con_identidad_de_otra_administracion(
 
 
 def test_replay_devuelve_el_saldo_anterior_por_cuenta(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo_con_configuracion: Mundo
 ) -> None:
     """RB4B-05: el replay devuelve `saldo_anterior` por cuenta, no un diccionario vacío. El libro no
     persiste la foto: la recalcula; sin escrituras en el medio da lo mismo que la primera vez."""
+    mundo = mundo_con_configuracion
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emitir(s, mundo, OCT, obligaciones(mundo, "40000.00", "30000.00"))
         obls = obligaciones(mundo, "1000.00", "2000.00")
