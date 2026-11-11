@@ -136,6 +136,19 @@ def test_restaurar_antes_de_0027_deja_que_antes_reasigne_fn_grupo_generales_prot
             f"(es {dueno_tras_antes[0]!r}): 0027 va a fallar con 'must be owner'"
         )
 
+        # `--no-acl` borró el `GRANT REFERENCES` que `despues` da al migrador sobre el
+        # libro, y 0034 (`tramo_de_interes`) lo necesita para sus claves foráneas (L-064).
+        with psycopg.connect(
+            host=contenedor.get_container_host_ip(),
+            port=contenedor.get_exposed_port(5432),
+            dbname=contenedor.dbname,
+            user=contenedor.username,
+            password=contenedor.password,
+            autocommit=True,
+        ) as conexion:
+            for tabla in ("cuenta", "emision", "evento_de_emision", "obligacion", "movimiento"):
+                conexion.execute(f"GRANT REFERENCES ON {tabla} TO {MIGRADOR_USER}")
+
         # El caso que motivó E11: con la función ya del migrador, 0027
         # (CREATE OR REPLACE conectada como el migrador) y `despues()`
         # tienen que terminar en 0, sin "must be owner of function".
