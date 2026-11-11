@@ -40,7 +40,7 @@
 
 ## 1. Deuda heredada (antes de confiar en `registrar_emision` con interés)
 
-- [ ] 1.1 **RB-6, `redondear_al_centavo` con valores enormes.** Archivos: `backend/tests/unitarios/test_reparto.py`
+- [x] 1.1 **RB-6, `redondear_al_centavo` con valores enormes.** Archivos: `backend/tests/unitarios/test_reparto.py`
   (test nuevo), `backend/src/proptech_core/compartido/reparto.py:13-18`. Escenario: reparto-de-montos
   "Valor enorme rechazado como monto inválido". RED: `pytest tests/unitarios/test_reparto.py -k enorme`
   muestra `decimal.InvalidOperation` saliendo de `redondear_al_centavo` con `1e30`, `-1e30` y `1e40`.
@@ -51,6 +51,11 @@
     41 deselected`; los tres casos (`1E+30`, `-1E+30`, `1E+40`) terminan en `reparto.py:18`
     `valor.quantize(...)` con `decimal.InvalidOperation` dentro del `pytest.raises(MontoInvalido)`: el
     defecto es el esperado, no un error de import ni de setup.
+  - GREEN (15:42): traducción `InvalidOperation` a `MontoInvalido` en `reparto.py`; `pytest
+    tests/unitarios/test_reparto.py tests/unitarios/test_reparto_propiedades.py -q`: `48 passed`.
+  - Mutante (15:42, copia previa en el scratchpad, revertido; defensa apagada: la traducción
+    `InvalidOperation` a `MontoInvalido`): `pytest ... -k enorme -q` da `3 failed, 41 deselected`, con
+    `decimal.InvalidOperation` en `reparto.py:18` dentro de `pytest.raises(MontoInvalido)`, los tres casos.
 - [ ] 1.2 **RF-01, una sola lectura final de todas las cuentas.** Archivo:
   `backend/tests/integracion/test_cc_anulacion_candado.py` (test nuevo, nueva y replay). Escenarios:
   libro-de-movimientos "Una sola lectura al publicar una emisión nueva" y "...al repetir una emisión".
