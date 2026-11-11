@@ -14,7 +14,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 |---|---|---|---|---|
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
-| H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | En proceso |
+| H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -244,6 +244,10 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   sólo `web`, sólo si el paso fallido es "Instalar Chromium" y su log tiene `Temporary failure resolving`.
   Probado: True con el job real caído por DNS (130623673376) y False con un `backend` caído en "Tipos"
   (130568564628).
+- Evidencia final (11/11/2026, orquestador, aceptación sacada de `4c1d643` a un archivo fuera del repo):
+  cabeza `00d7578` sobre `origin/main` `a8f5ed1`. C01 PASA, C02 PASA (5 checks en verde; `web` caído por
+  la red del runner, perdonado por la excepción), C03 PASA (121/121, 0 skips), C05 PASA, C06 PASA. Salida 0.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026. Integrada a `main` con el merge del PR #6.
 - Evidencia y demo: pendientes.
 
 ## Changes por partir en historias
