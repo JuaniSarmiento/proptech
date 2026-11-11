@@ -878,6 +878,12 @@ D-153).
   `0035_saldo_inicial` con `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; `registrar_saldo_inicial`
   con el contrato de D5 (filas agrupadas por período, firma del pedido, replay, carga única); el interés
   desde la migración, que había quedado pendiente de H-004.
+- **H-006** (situación de cobranza, aceptación congelada en `3f6629b`, Sonnet): `clasificar` puro en
+  `dominio/cobranza.py` y `situacion_de_cuenta` / `situacion_del_edificio` en `aplicacion/cobranza.py`,
+  sin escrituras ni candados. Sin migraciones.
+- **Para el 8, el 10a y el 10b**: piden la situación con la fecha de hoy (E14: no hay historia); el 10a
+  arma el listado y la exportación sobre `situacion_del_edificio` con su permiso (D9); el 10b excluirá
+  la gestión judicial.
 - **Para el 5**: llama a `registrar_saldo_inicial` al confirmar, en la misma transacción en la que
   autoriza, audita y pasa el estado de migración a `confirmada` (la carga no cambia el estado). Le pasa
   las filas ya traducidas (concepto a componente, saldo negativo a crédito). Muestra en la comparación que

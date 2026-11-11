@@ -425,6 +425,9 @@ del 3c, D-128)
   por debajo de lo que tiene sentido reclamar o devolver.
 - **Regla** (D-109, resuelve P21): el umbral es **$500**, configurable por edificio como parámetro
   con vigencia (igual que R03).
+- **Dónde se aplica** (4c, H-006): la situación de cobranza (`cuenta_corriente/dominio/cobranza.py`)
+  marca "bajo el umbral" a una cuenta con total vencido mayor que cero y menor que el umbral vigente a la
+  fecha pedida; con $500 o más sigue el camino normal (E6).
 - **Dónde vive** (4a, D-114.1): en cada versión de `configuracion_versionada`
   (`umbral_saldo_chico`, sin default en la base). Una versión nueva que no lo trae hereda el de la
   inmediatamente anterior por `vigente_desde`, aunque sea futura; si no hay ninguna, el de
@@ -843,10 +846,19 @@ número no se marcan duplicadas entre sí.
 - **Vencida** (D-143): una liquidación está vencida desde que corre su interés, después de los días de
   gracia (R03). El interés pertenece al período de la obligación que lo generó, así que una expensa
   impaga con su interés cuenta como una sola liquidación vencida. Sólo cuenta si el total vencido de la
-  unidad supera el umbral de R30.
-- **Dónde vive** (D-074): es una función pura sobre el libro de la cuenta corriente y se construye en
-  el cambio 4. No hay nada que "reevaluar": el resultado se deriva del libro cada vez que se pide. El
-  cambio 10a se encarga del listado, la exportación y la presentación.
+  unidad es de **$500 o más** (`>=` el umbral de R30; D-143, ratificado en E6).
+- **Qué cuenta** (4c, H-006, E7, E8): obligaciones vencidas con **capital** impago, no meses distintos.
+  Un período con el capital pagado y sólo su interés impago no cuenta como liquidación vencida, aunque
+  la cuenta tenga otro período con capital. Una cuenta cuyo total vencido es sólo interés es **deuda de
+  intereses** (D-109.4) y no es moroso crítico. Una obligación de una emisión anulada no cuenta.
+- **Dónde vive** (D-074, 4c H-006): la función pura `clasificar` en `cuenta_corriente/dominio/cobranza.py`
+  y, en aplicación, `situacion_de_cuenta` y `situacion_del_edificio` (`cuenta_corriente/aplicacion/
+  cobranza.py`), que leen la configuración vigente a la fecha pedida. No hay nada que "reevaluar" ni
+  marca guardada: el resultado se deriva del libro cada vez que se pide. La fecha es de
+  **clasificación** (E14): decide qué está vencido y qué gracia y umbral rigen, sin reconstruir la deuda
+  de un día pasado. Cada cuenta lleva una etiqueta única, con precedencia: sin deuda vencida, bajo el
+  umbral, deuda de intereses, moroso crítico, con deuda vencida. Las cuentas de persona quedan fuera
+  hasta el 4d. El cambio 10a se encarga del listado, la exportación y la presentación.
 - **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
   cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
   una sola.
