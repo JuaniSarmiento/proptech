@@ -15,7 +15,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
-| H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Pendiente |
+| H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Sin acordar |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Sin acordar |
 
@@ -373,7 +373,18 @@ Cierre:
 - Demo preparada: el guion corre en un clon de la rama y muestra el libro y los tramos (septiembre
   impago, octubre $2.000,00, pago de $30.000 el 05/10, noviembre $2.372,00 en dos tramos, saldo
   anterior $74.372,00). Probada el 11/11/2026.
-- Evidencia final: pendiente del CI del PR #20 y de la aceptación desde `d2da37e`.
+- Evidencia final (11/11/2026): `python3 aceptacion/H-004/aceptar.py --codigo f2f56d5` desde la
+  aceptación `d2da37e`: **67 esperados, 67 ejecutados, 67 pasados**, 0 fallas, 0 errores, 0 skips;
+  C01 a C16, C19 a C27, C18 y C28 PASA; C17 PASA en el ciclo de la `0034`, sin tests atados a la `0033` y
+  con los tests del 4b enteros, y **queda pendiente sólo el CI del PR #20**, que no corrió por la caída de
+  GitHub Actions ("major outage" en githubstatus.com, corridas en cola desde las 17:19). Dos vueltas
+  previas del CI cayeron por L-064 (el ensayo de roles y tres tests que bajan migraciones no devolvían
+  `tramo_de_interes`); arregladas en `7a7e972` y `a74f342`, con un barrido de 53 archivos (1.313 en verde).
+- Demo (11/11/2026, en vivo sobre `f2f56d5` y PostgreSQL real): octubre $2.000,00 (20 días), pago de
+  $30.000 el 05/10, noviembre $2.372,00 en dos tramos (5 días sobre $100.000 y 26 sobre $72.000), saldo
+  anterior $74.372,00.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sí, perfecto entonces"). El PR #20 se
+  mergea recién con el CI en verde.
 
 ## Plantilla de historia
 
