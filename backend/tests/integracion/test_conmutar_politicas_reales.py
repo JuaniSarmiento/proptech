@@ -44,11 +44,11 @@ elif "printenv POSTGRES_DB" in s:
 elif "printenv POSTGRES_USER" in s:
     print("prueba")
 elif "alembic heads" in s:
-    print("0033 (head)")
+    print("0034 (head)")
 """
 
 PREPARAR = (
-    "CREATE TABLE alembic_version(version_num text); INSERT INTO alembic_version VALUES ('0033');"
+    "CREATE TABLE alembic_version(version_num text); INSERT INTO alembic_version VALUES ('0034');"
     "CREATE TABLE datos(id int, edificio int); INSERT INTO datos VALUES (1, 1);"
     "GRANT SELECT ON datos TO app, otro;"
     "ALTER TABLE datos ENABLE ROW LEVEL SECURITY; ALTER TABLE datos FORCE ROW LEVEL SECURITY;"

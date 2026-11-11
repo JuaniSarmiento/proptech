@@ -497,6 +497,7 @@ _DUENO_DE_TABLA = {
             "movimiento",
             "imputacion",
             "tipo_de_movimiento",
+            "tramo_de_interes",
         ),
         "cuenta_corriente",
     ),

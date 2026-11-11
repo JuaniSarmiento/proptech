@@ -79,6 +79,16 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 }
             ),
         ),
+        "tramo_de_interes": TablaProtegida(
+            "tramo_de_interes no admite",
+            frozenset(
+                {
+                    "trg_tramo_de_interes_sin_update_delete",
+                    "trg_tramo_de_interes_sin_truncate",
+                    "trg_tramo_de_interes_sin_update_delete_por_sentencia",
+                }
+            ),
+        ),
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(

@@ -13,9 +13,16 @@ from .test_umbral_migracion import arranque
 pytestmark = pytest.mark.integracion
 
 
+def devolver_tramos(base: BaseDeEdificio) -> None:
+    """La `0034` baja antes que la `0024`: su tabla vuelve al migrador como las del libro."""
+    with arranque(base) as c:
+        for objeto in ("TABLE tramo_de_interes", "FUNCTION fn_tramo_de_interes_bloqueada()"):
+            c.execute(f"ALTER {objeto} OWNER TO proptech_migrador")
+
+
 def devolver_libro(base: BaseDeEdificio) -> None:
     with arranque(base) as c:
-        for tabla in LIBRO:
+        for tabla in (*LIBRO, "tramo_de_interes"):
             c.execute(
                 sql.SQL("ALTER TABLE {} OWNER TO proptech_migrador").format(sql.Identifier(tabla))
             )
@@ -57,7 +64,7 @@ def test_ciclo_0022_0024_0022_conserva_esquema(
     base.migrar("upgrade", "head")
     base.roles("despues")
     with base.conectar_app() as c:
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0033",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0034",)
         for tabla in LIBRO:
             assert c.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
@@ -83,7 +90,7 @@ def test_downgrade_con_fila_conserva_el_libro(base_para_migraciones: BaseDeEdifi
             "el downgrade borró el libro con filas, invisible al dueño por FORCE sin tenant"
         )
         assert c.execute("SELECT count(*) FROM cuenta WHERE id=%s", (cuenta,)).fetchone() == (1,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0033",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0034",)
     assert rechazo is not None and "tiene filas" in rechazo
     base.roles("despues")
 
@@ -113,11 +120,13 @@ def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio)
             request_id=uuid4(),
         )
         s.commit()
+    devolver_tramos(base)
     rechazo = None
     try:
         base.migrar("downgrade", "0023")
     except AssertionError as error:
         rechazo = str(error)
+    base.roles("despues")
     assert rechazo is not None and "ForeignKeyViolation" in rechazo, rechazo
     # SQLSTATE del mismo DELETE de 0024, sin aceptar otro fallo del CLI como prueba.
     import psycopg
@@ -126,7 +135,7 @@ def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio)
         with pytest.raises(psycopg.errors.ForeignKeyViolation) as error_fk:
             c.execute("DELETE FROM accion_de_auditoria WHERE nombre='corregir_movimiento'")
         assert error_fk.value.sqlstate == "23503"
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0033",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0034",)
     with sesion_app(base, datos.admin) as s:
         from sqlalchemy import text
 

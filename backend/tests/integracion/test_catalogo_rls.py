@@ -59,6 +59,7 @@ _SONDA_SIN_FILA = {
     "obligacion",
     "movimiento",
     "imputacion",
+    "tramo_de_interes",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}
