@@ -18,6 +18,10 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
+| H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Pendiente |
+| H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Pendiente |
+| H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Pendiente |
+| H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -523,6 +527,223 @@ Cierre:
 - Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sisi"), después de la demo en vivo
   sobre `0caafe1`, junto con H-005.
 - Aceptación: **congelada en `3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401`** (aprobación por delegación de Juani, después de la revisión técnica): 33 tests, 33 rojos por aserción sobre `3378b43`, 0 errores, 0 skips; C17 (KB), C18 (20 escenarios) y C19 (H-004 y H-005 desde sus SHA) en `aceptar.py`. Contrato en `aceptacion/H-006/CONTRATO.md`. Importes verificados con `Fraction`.
+
+## Importación desde Excel (5, C-08)
+
+Propuesta, diseño, specs y tareas en `openspec/changes/importacion-desde-excel/`. **Firma CRITICAL por
+adelantado de Juani** (`04ebf1e`, 11/11/2026, opción 1): aprueba las elecciones E1 a E15 de `design.md`
+en la recomendación del orquestador; lo que no le cierre en la demo vuelve a En proceso. **Los criterios de
+H-007 a H-010 los escribió el orquestador por delegación de Juani, bajo esa firma.** Rama
+`change/importacion-desde-excel`; sin rompedor (D-152); el CI de GitHub con la suite completa corre una vez
+al cerrar el change (D-154); las historias que agregan tablas protegidas corren el barrido local de
+migraciones (L-083).
+
+**Base de los ejemplos** (datos inventados): edificio "Torre Ficticia" con 3 pisos y 1 subsuelo (pisos
+`SS1`, `PB`, `1`, `2`, `3`), migración el 15/10/2026, hoy 11/11/2026, 3% proporcional, gracia 0, umbral
+$500. Plantilla `padron-torre-ficticia.xlsx` con 12 unidades (`1A`…`3D`, `C1`, `C2`) cuyos coeficientes
+suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (e2e de `web/`).
+
+### H-007 · Plantilla y padrón
+
+- Change: C-08 5. Reglas: R09, R01, D-068, D-077, D-100, D-128; elecciones E1 a E9, E14, E15.
+  Spec `importacion-de-padron`; tareas 1.1 a 1.6.
+- Resultado para Juani: el administrador sube la plantilla y, si está bien, el edificio queda con su
+  padrón y sus propietarios; si tiene un solo error, no se carga nada y ve todos los errores, con hoja,
+  fila, columna y motivo.
+- Alcance: módulo `importacion`, lector de la plantilla, validación del padrón, migración `0036`, caso de
+  uso de importar (padrón), ruta y pantalla de importar. Exclusiones: saldos (H-008), confirmar (H-009),
+  ajuste (H-010), grupos parciales, inquilinos, invitar.
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** archivo válido de 12 unidades: el edificio queda con 12 unidades con su tipo, piso,
+    coeficiente y superficie, todas en el grupo general, y una auditoría de alta por unidad.
+  - **C02** columnas en cualquier orden (por ejemplo `Email, Piso, Unidad, Superficie m2, Tipo,
+    Coeficiente, Propietario`) se leen igual; columnas extra se ignoran.
+  - **C03** propietarios: 10 filas con propietario y email crean 10 personas y 10 asignaciones de vecino
+    propietario, **sin ninguna invitación encolada**; un propietario sin email se crea sin email; el
+    mismo email en dos filas es una sola persona propietaria de las dos unidades; un email que ya existe
+    en la administración reusa esa persona.
+  - **C04** números: `0,083333` y `0.083333` como texto, y una celda numérica `0.083333`, dan el mismo
+    coeficiente; `8.3e-05` en una celda numérica es `0.000083`; `45,5` y `45.50` de superficie dan `45.50`;
+    una fórmula con valor en caché se lee por su valor.
+  - **C05** coeficientes que suman `0.9999` (dentro de la tolerancia) cargan con la advertencia de la suma;
+    `1.0001` también; exactamente `1` sin advertencia.
+  - **C06** el edificio ya con unidades acepta un archivo sin hoja `Unidades` o con la hoja vacía (para
+    los saldos de H-008) sin tocar el padrón.
+  - **C07** la respuesta informa unidades creadas, propietarios creados y reusados, y advertencias.
+  - **C08** interfaz (Playwright): subir el archivo válido muestra el resumen; subir uno con errores
+    muestra la tabla de errores (hoja, fila, columna, motivo) y no cambia el padrón; el botón descarga la
+    plantilla.
+- Tienen que fallar sin escribir nada (0 unidades, 0 personas, 0 importaciones, ninguna auditoría):
+  - **C09** archivo: un `.csv`, un PDF renombrado a `.xlsx`, un `.xlsx` corrupto, un archivo de 3 MiB,
+    una hoja con 2.001 filas de datos, sin la hoja `Unidades` en un edificio sin unidades, una hoja con
+    otro nombre (`unidades`, `Unidades `), un encabezado faltante o mal escrito (`Coeficiente ` o
+    `Coef.`), con un error que nombra hoja y columna.
+  - **C10** filas: `Unidad` vacía, de 41 caracteres o con un carácter de control; `Unidad` repetida en el
+    archivo (el error nombra la otra fila); `Tipo` vacío o fuera del vocabulario (`Depto`, `Departamento`);
+    `Piso` vacío, fuera del vocabulario (`4`, `SS2`), con variantes (`1°`, `Entrepiso`, `planta alta`) o
+    con espacios (` PB`); `Coeficiente` 0, negativo, mayor que 1, con 7 decimales o ambiguo (`1.234`);
+    `Superficie m2` 0, negativa o con 3 decimales; email inválido; una fórmula sin valor en caché.
+  - **C11** todos los errores juntos: un archivo con 3 errores en 3 filas distintas devuelve los 3, cada
+    uno con hoja, fila del Excel (el encabezado es la fila 1), columna y motivo.
+  - **C12** coeficientes que suman `0.9998` o `1.0002` (fuera de la tolerancia) rechazan el archivo
+    nombrando la suma y la tolerancia.
+  - **C13** padrón: el edificio sin pisos configurados rechaza nombrando `piso`; el edificio con unidades
+    rechaza una fila en `Unidades`; una `Unidad` que ya existe en el edificio es error de fila.
+  - **C14** reimportación: el mismo archivo (misma huella) subido de nuevo al mismo edificio da conflicto
+    en `archivo` nombrando la importación anterior, y el padrón no cambia.
+  - **C15** estado: con la migración en `confirmada` o `sin_saldos_previos` da conflicto en
+    `estado_migracion`.
+  - **C16** permisos y tenant: contador, auxiliar, consejo, vecino propietario e inquilino reciben 403;
+    un administrador por edificio de **otro** edificio recibe 403; la administración B sobre un edificio
+    de A recibe 404; sin sesión, 401.
+  - **C17** concurrencia: dos subidas simultáneas del padrón al mismo edificio vacío: una crea las 12
+    unidades y la otra da conflicto; nunca quedan 24.
+- Cierre:
+  - **C18** la migración `0036` sube y baja dentro del ciclo de devolución; `importacion` con RLS forzada
+    (otra administración no ve filas); las acciones nuevas en el vocabulario de auditoría y en la matriz;
+    los tests de fronteras, rutas cubiertas y vocabulario en verde; las aceptaciones de H-004 a H-006
+    siguen en verde.
+  - **C19** KB: R09 y R01 en `05`, `importacion` en `04` y `08`, las acciones en `03`, HU-A2 en `06`,
+    Flujo 2 en `07`, glosario (plantilla), ficha 5.
+  - **C20** cada escenario de la spec `importacion-de-padron` tiene su test en verde.
+- Demo: subir `padron-torre-ficticia.xlsx` en el navegador, ver el resumen; subir una copia con tres
+  errores y ver la tabla; subir el mismo archivo otra vez y ver el rechazo.
+
+### H-008 · Borrador de saldos y comparación
+
+- Change: C-08 5. Reglas: R09, D-068, E11/E16/E18 del 4c; elecciones E7, E13, E14. Spec
+  `borrador-de-saldos`; tareas 2.1 a 2.5.
+- Resultado para Juani: los saldos previos del Excel quedan en un borrador que no toca el libro, comparado
+  unidad por unidad con el control del administrador; con diferencias, se aceptan con registro.
+- Alcance: validación de `Saldos` y `Control`, migración `0037`, borrador, comparación, aceptación, rutas
+  y pantalla de comparación. Exclusiones: confirmar (H-009).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** `1A` con agosto ($80.000 ordinaria, vence 10/08, $4.000 de interés) y septiembre ($85.000,
+    vence 10/09) queda en el borrador con sus dos filas y su número de fila del Excel.
+  - **C02** `1B` con septiembre ordinaria $85.000 y extraordinaria $20.000 (mismo vencimiento) queda como
+    dos filas del mismo período.
+  - **C03** `2A` sin período (total único) $50.000 con $2.000 de interés; `2B` con −$3.000 (crédito).
+  - **C04** el libro no cambia: ninguna cuenta, obligación ni movimiento nuevo en el edificio.
+  - **C05** comparación: por unidad, borrador (capital + interés − crédito), control y diferencia; totales
+    del borrador y del control; cantidad de unidades con diferencia. `1A` con borrador $169.000 y control
+    $169.000 no tiene diferencia.
+  - **C06** dos errores de signo opuesto: `1A` $10.000 de más y `2A` $10.000 de menos; los totales
+    coinciden y la comparación muestra las dos diferencias.
+  - **C07** unidad con control y sin saldo, y unidad con saldo y sin control, aparecen con su diferencia.
+  - **C08** con "mes entero" vigente a la migración, cada unidad con deuda avisa que el primer interés
+    cubre octubre de 2026; con "proporcional" no hay aviso.
+  - **C09** aceptar diferencias: el administrador principal acepta; queda la lista exacta (unidad,
+    borrador, control, diferencia), quién y cuándo, y una auditoría.
+  - **C10** un borrador nuevo (otro archivo con el padrón ya creado) descarta el anterior y la aceptación
+    anterior deja de valer.
+  - **C11** números de importes: `85.000,00`, `85000,00`, `85000.00` y la celda numérica `85000` dan lo
+    mismo.
+  - **C12** interfaz (Playwright): la comparación muestra las diferencias aunque el total coincida, el
+    aviso de mes entero y el botón "Aceptar diferencias" con su confirmación.
+- Tienen que fallar sin escribir nada:
+  - **C13** filas de `Saldos`: unidad inexistente; período posterior al mes de la migración; período que
+    no es un mes (`2026-13`); vencimiento posterior a la migración; vencimiento vacío con período; dos
+    vencimientos en el mismo período de una unidad; concepto fuera del vocabulario; importe con 3
+    decimales o ambiguo (`1.234`); interés acumulado negativo; período con capital 0 y sólo interés (E11);
+    una unidad que mezcla filas con y sin período; crédito con período o concepto.
+  - **C14** hojas: `Saldos` sin `Control`; `Control` con una unidad inexistente o repetida; encabezados
+    faltantes en `Saldos` o `Control`.
+  - **C15** aceptar: un administrador por edificio, contador, consejo o vecino reciben 403; sin
+    diferencias no hay nada que aceptar (conflicto); otra administración 404; con la migración cerrada,
+    conflicto en `estado_migracion`.
+- Cierre:
+  - **C16** la migración `0037` sube y baja en el ciclo de devolución; `aceptacion_de_diferencias` de sólo
+    agregar (`42501` para la app, `P0001` para el arranque, otra administración no la ve); las tablas en
+    el ensayo de roles y en los tests que bajan migraciones (barrido local en verde); H-004 a H-007 siguen
+    en verde.
+  - **C17** KB: R09 (borrador, control, aceptación), las tablas en `04` y `08`, glosario (borrador de
+    saldos, control), ficha 5.
+  - **C18** cada escenario de la spec `borrador-de-saldos` tiene su test en verde.
+- Demo: subir saldos con una diferencia de signo opuesto, ver la comparación y aceptar.
+
+### H-009 · Confirmar
+
+- Change: C-08 5. Reglas: R09, D-068, D-082; elecciones E6, E8, E10, E12, E15. Spec
+  `confirmacion-de-saldos`; tareas 3.1 a 3.3.
+- Resultado para Juani: con el borrador comparado, el administrador principal confirma: el libro recibe el
+  saldo inicial, el edificio queda en "Saldos iniciales confirmados" y el importador se cierra.
+- Alcance: migración `0038`, caso de uso `confirmar`, el estado `confirmada` en `complejos`, web (texto,
+  paso 7, botón). Exclusiones: ajuste (H-010).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** confirmar un borrador sin diferencias: el libro tiene las obligaciones, intereses importados
+    y créditos del borrador (por ejemplo, `1A` agosto $80.000 con interés $4.000 y septiembre $85.000; `2A`
+    $50.000 total único con $2.000; `2B` $3.000 a favor), el edificio en `confirmada`, la importación en
+    `confirmada` y una auditoría.
+  - **C02** la suma importada coincide con el archivo: los totales que devuelve la carga son exactamente
+    los del borrador (capital, interés importado, crédito).
+  - **C03** confirmar con diferencias aceptadas funciona; la carga es la del borrador, no la del control.
+  - **C04** cada obligación y crédito queda ligado a su fila del Excel y al nombre del archivo (origen del
+    4c).
+  - **C05** después de confirmar, la emisión de noviembre cobra interés desde el 16/10 ($1.280 sobre los
+    $80.000 de agosto de `1A`).
+  - **C06** interfaz (Playwright): el resumen dice "Saldos iniciales confirmados" y no ofrece importar; con
+    la migración pendiente, el paso 7 ofrece "Importar desde Excel" y "Confirmar sin saldos previos".
+- Tienen que fallar sin escribir nada:
+  - **C07** diferencias sin aceptar → conflicto en `diferencias`; sin borrador vigente (o una importación
+    sin hoja `Saldos`, E10) → conflicto.
+  - **C08** repetir la confirmación → conflicto en `estado_migracion` y una sola carga en el libro.
+  - **C09** con la migración ya cerrada (`confirmada` o `sin_saldos_previos`), confirmar, aceptar o subir
+    → conflicto en `estado_migracion`.
+  - **C10** permisos y tenant: administrador por edificio, contador, consejo y vecinos 403; otra
+    administración 404.
+  - **C11** concurrencia contra PostgreSQL real: dos confirmaciones simultáneas → una termina, la otra
+    conflicto, una sola carga; confirmar y "sin saldos previos" simultáneos → uno gana y el edificio queda
+    en un solo estado coherente.
+  - **C12** si la carga del 4c rechaza (por ejemplo, una fecha de migración posterior a hoy), el edificio
+    sigue `pendiente`, la importación sigue en `borrador` y no hay auditoría de confirmar.
+- Cierre:
+  - **C13** la `0038` sube y baja; vocabulario y matriz en verde; H-004 a H-008 siguen en verde.
+  - **C14** KB: R09 (confirmar y cerrar), `03`, `07`, ficha 5, `CHANGES.md` cuando cierre el change.
+  - **C15** cada escenario de la spec `confirmacion-de-saldos` tiene su test en verde.
+- Demo: confirmar en el navegador y ver el libro de `1A` y el resumen.
+
+### H-010 · Ajuste de saldo inicial
+
+- Change: C-08 5. Reglas: R08, R09, R03, R04; D-155; elección E11 (refina D-155: obligación nueva, no
+  movimiento). Spec `ajuste-de-saldo-inicial`; tareas 4.1 a 4.3.
+- Resultado para Juani: un saldo inicial cargado de menos se corrige sumando deuda nueva con su motivo,
+  sin tocar nada de lo cargado.
+- Alcance: migración `0039`, caso de uso `ajustar_saldo_inicial`, ruta y pantalla. Exclusiones: saldo de
+  más (correcciones del 4b).
+- Dificultad y riesgo: media / CRITICAL.
+- Tienen que pasar:
+  - **C01** el 05/11/2026 el administrador principal ajusta `1A` en $5.000 de ordinaria con el motivo
+    "Faltó la expensa extraordinaria de julio": obligación nueva de $5.000, período 01/10/2026, vence
+    05/11/2026, su registro con motivo, autor y fecha, y una auditoría; lo anterior de `1A` no cambia.
+  - **C02** una unidad migrada sin saldo (sin cuenta) recibe el ajuste: se crea su cuenta.
+  - **C03** una unidad con $3.000 a favor ajustada en $2.000 queda con $1.000 a favor (R04).
+  - **C04** el interés del ajuste corre desde el 06/11: al 3% proporcional, la emisión de diciembre
+    (corte 30/11) cobra 25 días, $125,00; nunca días anteriores al ajuste.
+  - **C05** con "mes entero" el ajuste cobra noviembre entero ($150,00 sobre $5.000).
+  - **C06** el ajuste cuenta en la situación de cobranza como una liquidación cuando vence.
+  - **C07** replay: el mismo `operacion_id` con los mismos datos devuelve el mismo ajuste sin escribir.
+  - **C08** interfaz (Playwright): desde la unidad de un edificio confirmado, ajustar con motivo muestra la
+    deuda nueva; con la migración pendiente la acción no aparece.
+- Tienen que fallar sin escribir nada:
+  - **C09** edificio `pendiente` o `sin_saldos_previos` → conflicto en `estado_migracion`.
+  - **C10** motivo vacío, en blanco o de 501 caracteres → `motivo`; importe 0, negativo o con 3 decimales
+    → `importe`; componente `interes` o desconocido → `componente`.
+  - **C11** el mismo `operacion_id` con otro importe → conflicto en `operacion_id`.
+  - **C12** permisos y tenant: administrador por edificio, contador, consejo y vecinos 403; unidad de otro
+    edificio o de otra administración 404.
+  - **C13** `ajuste_de_saldo_inicial`: `UPDATE`/`DELETE` como app `42501`, `TRUNCATE` como arranque
+    `P0001`, otra administración no la ve, una FK frena el ajuste ligado a la obligación de otra cuenta, el
+    CHECK frena un motivo en blanco.
+- Cierre:
+  - **C14** la `0039` sube y baja en el ciclo de devolución, la tabla en el ensayo de roles y en los tests
+    que bajan migraciones (barrido local); H-004 a H-009 siguen en verde.
+  - **C15** KB: R09 (ajuste), `04`, `08`, `03`, glosario (ajuste de saldo inicial), decisión nueva que
+    registra E11 sobre D-155, ficha 5.
+  - **C16** cada escenario de la spec `ajuste-de-saldo-inicial` tiene su test en verde.
+- Demo: ajustar `1A` en el navegador y emitir diciembre para ver el interés de $125,00.
 
 ## Plantilla de historia
 
