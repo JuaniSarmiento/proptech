@@ -1143,3 +1143,26 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   los llevaba.
 - **Regla**: una protección contra un comando destructivo no depende del estado que mira (qué corre
   ahora): rechaza el nombre del recurso protegido siempre.
+
+## L-076 · Los números de decisión y de lección se reparten entre ramas abiertas, no sólo en `main`
+
+- **Origen**: H-001 y H-002 (integración de los PR #7 y #5, D-146), 11/11/2026.
+- **Qué pasó**: tres PRs abiertos en paralelo numeraron sus decisiones y lecciones mirando sólo `main`.
+  El #5 trajo D-144 (en `main` era la del 6c) y L-068 a L-070 (ya del 3f); el #6 trae D-144 a D-146 y
+  otra L-068 y L-069. Git no lo marca: las dos decisiones se agregan al final y el conflicto es de
+  posición, no de número. Al integrar hubo que renumerar el encabezado y cada referencia del PR, sin
+  tocar las de `main` con el mismo número.
+- **Regla**: antes de numerar una D o una L, mirar también las ramas `change/*` abiertas. Al integrar,
+  verificar sobre la fusión que ningún encabezado se repita y que ninguna línea agregada por el PR nombre
+  los números viejos.
+
+## L-077 · La guarda de un script destructivo se prueba con un `docker` falso, nunca con el real
+
+- **Origen**: H-002 (aceptación del PR #5), 11/11/2026.
+- **Qué pasó**: para probar que `humo.sh` y `ensayo-roles.sh` se niegan antes de tocar Docker, la
+  aceptación los corrió con un `docker` falso en el `PATH` que sólo anota si lo llamaron. Contra `main`,
+  sin la guarda, el `humo.sh` viejo con `proptech` llamó a `docker` en los tres casos de rechazo: con el
+  real habría hecho `down -v` sobre el stack en uso.
+- **Regla**: una prueba de "no llega a ejecutar X" reemplaza X por un doble que registra la llamada y
+  falla. Ver fallar la prueba contra la versión sin guarda es exactamente el caso que no se puede correr
+  con el binario real.

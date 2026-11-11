@@ -1442,6 +1442,7 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 | Los tiempos del runner (xdist, caché de Chromium) y los `timeout-minutes` de `ensayo-roles` y `web` son provisionales | Se ajustan con los pasos reales de la primera corrida del PR (L-037, L-042) | Mismo PR |
 | En 4.1, 4.3, 4.4, 5.1, 6.2, 7.1 y 7.2 de `tasks.md` el rojo previo no quedó pegado (N3 del auditor) | Hay verde actual y los mutantes del humo real | Se registra, no se arregla |
 | `infra/ci/ensayo-roles.sh` escribe su evidencia en `.git/` y falla dentro de un git worktree (donde `.git` es un archivo); encontrado al escribir la aceptación de H-002 | Menor: se corre desde el clon principal y el CI usa un clon normal | Sin dueño |
+| La red `aplicacion` de `infra/compose.yaml` tiene la subred fija `172.28.0.0/24`: dos stacks de PropTech no conviven (la red que quedó de `proptech-3c` la ocupa), y la imagen `proptech-backend:local` es compartida entre proyectos de compose, así que un `down --rmi local` de uno se la lleva al otro; encontrado en la demo de H-001 (11/11/2026), que movió la subred con un override | El humo ya se niega con los puertos ocupados; el CI corre un solo stack | Sin dueño |
 
 ### 1e · `respaldos-2` · HIGH · pendiente (D-138, 30/10/2026) · C-24
 
