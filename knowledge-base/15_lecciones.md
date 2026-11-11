@@ -1187,7 +1187,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 
 ## L-079 · Un test de `infra/` que depende de señales POSIX o de `chmod` real agrega deuda nueva de Windows, no la hereda
 
-- **Origen**: C-24 `respaldos-2`, PR #6, 31/10/2026 (D-144 a D-146).
+- **Origen**: C-24 `respaldos-2`, PR #6, 31/10/2026 (D-148 a D-150).
 - **Qué pasó**: `TestApagadoOrdenado` (tarea 4.1/4.2, D3) se escribió reusando el patrón ya existente de
   `_matar` (`os.killpg`/`signal.SIGKILL`, de antes de este change) para mandar `SIGTERM` al grupo de
   proceso del script. Correcto en Linux/CI; en Windows nativo `signal.SIGKILL` no existe en absoluto

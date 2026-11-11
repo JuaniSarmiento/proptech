@@ -999,10 +999,10 @@
     "Qué falta" suma la conmutación, la retención por días y la carpeta sin paso manual (el texto viejo
     que sólo mencionaba el servicio de respaldos del 1d se extendió en el mismo párrafo, sin duplicar
     la oración).
-  - **APPEND** `knowledge-base/09_decisiones_y_supuestos.md`: D-144 ("14 copias" gana un piso, no
-    reemplaza la cantidad), D-145 (F6 reproducido 14/30 y cerrado por construcción) y D-146 (límite real
+  - **APPEND** `knowledge-base/09_decisiones_y_supuestos.md`: D-148 ("14 copias" gana un piso, no
+    reemplaza la cantidad), D-149 (F6 reproducido 14/30 y cerrado por construcción) y D-150 (límite real
     de `conmutar.sh` para volver a un nombre que no sigue `proptech_algo`). D-091/D-095 no se tocaron.
-  - **APPEND** `knowledge-base/15_lecciones.md`: L-068 (un doble falso de `docker` que matchea
+  - **APPEND** `knowledge-base/15_lecciones.md`: L-078 (un doble falso de `docker` que matchea
     subcadenas no prueba que la consulta SQL sea válida — el hallazgo real de 8.5).
 
   Releídos los cinco después de escribir, sin quedar texto contradictorio entre la ficha §1e, la tabla
