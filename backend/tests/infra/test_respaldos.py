@@ -1502,3 +1502,52 @@ class TestSaludConUltimoFalloVacioODisco:
 
         resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert resultado.returncode == 0, resultado.stderr
+
+
+class TestParcialesAjenosNoSeBorran:
+    """H-003 B3 (L-006): sólo se borra un archivo REGULAR con el patrón
+    completo del nombre propio; un ajeno (`proptech-notas.dump.parcial`) o un
+    directorio con ese nombre no se toca."""
+
+    def test_arranque_borra_el_parcial_propio_y_deja_el_ajeno(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        propio = carpeta / "proptech-20200101T000000Z.dump.parcial"
+        propio.write_text("restos")
+        ajeno = carpeta / "proptech-notas.dump.parcial"
+        ajeno.write_text("notas de alguien")
+
+        resultado = _correr(tmp_path, entorno_con_bin_falso, carpeta=carpeta)
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not propio.exists(), "el parcial propio debía borrarse"
+        assert ajeno.exists(), "el parcial ajeno no se toca"
+        assert ajeno.read_text() == "notas de alguien"
+
+    def test_un_directorio_con_nombre_de_parcial_no_rompe_ni_se_borra(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        directorio = carpeta / "proptech-20200101T000000Z.dump.parcial"
+        directorio.mkdir()
+
+        resultado = _correr(tmp_path, entorno_con_bin_falso, carpeta=carpeta)
+
+        assert directorio.is_dir(), "un directorio con ese nombre no se toca"
+        assert "rm:" not in resultado.stderr, resultado.stderr
+        assert resultado.returncode == 0, resultado.stderr

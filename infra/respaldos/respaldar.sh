@@ -86,13 +86,18 @@ logear() {
   _formatear_json "$@"
 }
 
-# Borra cualquier `.parcial` que haya sobrevivido a un corte anterior,
-# siempre dentro del patrón de nombre propio (L-006).
-borrar_parciales_huerfanos() {
-  local archivo
+# Borra los `.parcial` propios que hayan sobrevivido a un corte anterior (o
+# al ciclo en curso, desde el handler de apagado). L-006, L-008: sólo un
+# ARCHIVO REGULAR (no un directorio ni un enlace) cuyo nombre cumple el
+# patrón completo `proptech-<marca>.dump.parcial`; un ajeno como
+# `proptech-notas.dump.parcial` nunca se toca (H-003 B3).
+borrar_parciales_propios() {
+  local archivo nombre
   for archivo in "$CARPETA/${PREFIJO}-"*.dump.parcial; do
-    [ -e "$archivo" ] || continue
-    rm -f -- "$archivo"
+    nombre="$(basename -- "$archivo")"
+    [[ "$nombre" =~ ^proptech-[0-9]{8}T[0-9]{6}Z\.dump\.parcial$ ]] || continue
+    [ -f "$archivo" ] && [ ! -L "$archivo" ] || continue
+    rm -f -- "$archivo" || true
   done
 }
 
@@ -215,11 +220,7 @@ manejar_apagado() {
     fi
     wait "$PID_HIJO_ACTUAL" 2>/dev/null || true
   fi
-  local archivo
-  for archivo in "$CARPETA/${PREFIJO}-"*.dump.parcial; do
-    [ -e "$archivo" ] || continue
-    rm -f -- "$archivo"
-  done
+  borrar_parciales_propios
   logear info apagado "motivo=senal"
   exit 0
 }
@@ -347,7 +348,7 @@ if [ "$modo" = "--salud" ]; then
 fi
 
 validar_configuracion
-borrar_parciales_huerfanos
+borrar_parciales_propios
 
 case "$modo" in
   --una-vez)
