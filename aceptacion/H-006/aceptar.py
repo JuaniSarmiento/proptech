@@ -44,7 +44,7 @@ from pathlib import Path
 RAMA = "change/intereses-por-mora"
 CAMBIO = "intereses-saldo-inicial-y-moroso"
 #: El commit que congela esta aceptación (por delegación de Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401"
 CARPETA = "aceptacion/H-006/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h006"
 #: Las aceptaciones anteriores del change, congeladas, que tienen que seguir en verde (C19).

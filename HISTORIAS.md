@@ -487,6 +487,7 @@ Cierre:
     y H-005 siguen en verde. Sin criterio de CI: el CI con la suite completa cierra el change (D-154).
 - Demo: un edificio con cinco unidades (al día, saldo chico, deuda de intereses, una vencida, moroso
   crítico) y su listado.
+- Aceptación: **congelada en `3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401`** (aprobación por delegación de Juani, después de la revisión técnica): 33 tests, 33 rojos por aserción sobre `3378b43`, 0 errores, 0 skips; C17 (KB), C18 (20 escenarios) y C19 (H-004 y H-005 desde sus SHA) en `aceptar.py`. Contrato en `aceptacion/H-006/CONTRATO.md`. Importes verificados con `Fraction`.
 
 ## Plantilla de historia
 
