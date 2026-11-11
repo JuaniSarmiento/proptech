@@ -33,7 +33,8 @@ _IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
 
 #: Una foto por cuenta en UNA sentencia. Los importes viajan como texto: nunca float.
 #: Sirve a `ix_obligacion_cuenta_periodo`, `ix_movimiento_cuenta` e `ix_imputacion_cuenta`
-#: (administracion_id, cuenta_id), que son el acceso de esta consulta.
+#: (administracion_id, cuenta_id), que son el acceso de esta consulta. Los tramos de cada interés
+#: (E17: todos los intervalos, no su máximo) van por `ix_tramo_movimiento`.
 _FOTO = """
 WITH t AS (SELECT nullif(current_setting('app.administracion_id', true), '')::uuid AS adm),
 cuentas AS (
@@ -50,7 +51,12 @@ SELECT c.id, c.complejo_id, c.unidad_id,
       'id', m.id, 'tipo', m.tipo, 'sentido', m.sentido, 'importe', m.importe::text,
       'fecha_valor', m.fecha_valor, 'registrado_en', m.registrado_en,
       'obligacion_id', m.obligacion_id, 'componente', m.componente, 'emision_id', m.emision_id,
-      'corrige_a', m.corrige_a, 'enlazado_a', m.enlazado_a)), '[]')
+      'corrige_a', m.corrige_a, 'enlazado_a', m.enlazado_a, 'corte', m.corte,
+      'tramos', (SELECT coalesce(json_agg(json_build_array(tr.desde, tr.hasta)
+                                          ORDER BY tr.desde), '[]')
+                 FROM tramo_de_interes tr
+                 WHERE tr.administracion_id = t.adm AND tr.cuenta_id = c.id
+                   AND tr.movimiento_id = m.id))), '[]')
    FROM movimiento m, t WHERE m.administracion_id = t.adm AND m.cuenta_id = c.id) AS movimientos,
   (SELECT coalesce(json_agg(json_build_object(
       'movimiento_id', i.movimiento_id, 'obligacion_id', i.obligacion_id,
@@ -128,6 +134,8 @@ def _foto(fila: Any) -> FotoDeCuenta:
             _uuid(m["emision_id"]),
             _uuid(m["corrige_a"]),
             _uuid(m["enlazado_a"]),
+            None if m["corte"] is None else date.fromisoformat(m["corte"]),
+            tuple((date.fromisoformat(d), date.fromisoformat(h)) for d, h in m["tramos"]),
         )
         for m in _carga(fila.movimientos)
     ]

@@ -291,6 +291,24 @@
     en `f.movimientos[con_tramos].corte` (la foto no trae el corte). Test:
     `test_la_foto_trae_corte_tramos_e_interes_desde` (interés con dos tramos no contiguos insertados en
     orden inverso, otro sin tramos, un pago, y el `interes_desde` de dos obligaciones).
+  - GREEN (16:02): `lecturas.py` suma `'corte', m.corte` y `'tramos'` (subselect con `json_agg` ordenado
+    por `desde`, por `ix_tramo_movimiento`) al objeto de cada movimiento, en la misma sentencia (se
+    conservan `WITH t AS`, `cuentas AS`, `ANY(`, `AS imputaciones` y `AS anuladas`); `_foto` los lee
+    (`corte` a `date | None`, `tramos` a tupla de pares). `pytest tests/integracion/test_cc_lecturas.py -q`:
+    `9 passed`, con los dos ensayos de `EXPLAIN` ("Plan del edificio..." y "Plan de una cuenta...") sin
+    Seq Scan. Nota: `_barridos` sólo mira `obligacion`, `movimiento` e `imputacion` (`GRANDES`); el
+    volumen del ensayo no carga `tramo_de_interes`, así que su acceso por `ix_tramo_movimiento` no se
+    ensaya con volumen (queda para la 5.x o el 8.1 si se quiere).
+  - Mutantes (16:02 y 16:03, copia previa en el scratchpad, revertidos; defensa apagada: la foto trae
+    **todos** los intervalos, en orden): (a) sólo el máximo `hasta`: rojo por `assert ((9/11, 9/30), (11/1,
+    11/30)) == ...` en `corte`/`tramos` de `con_tramos` (un solo intervalo); (b) sólo el último tramo
+    (`ORDER BY desde DESC LIMIT 1`): rojo por la misma aserción de los dos intervalos (`At index 0 diff:
+    (11/1, 11/30) != (9/11, 9/30)`, `Right contains one more item`); (c) sin `ORDER BY tr.desde`: rojo
+    por la misma aserción (`At index 0 diff`), porque el test inserta los tramos en orden inverso.
+  - Comprobaciones de la tanda (16:03): `uv run pytest tests/unitarios/cuenta_corriente/test_estado.py
+    tests/unitarios/cuenta_corriente/test_estado_propiedades.py tests/integracion/test_cc_lecturas.py
+    tests/integracion/test_cc_anulacion_candado.py -q`: `43 passed`; `ruff check`, `ruff format --check` y
+    `mypy` (387 archivos) limpios.
 
 ## 4. Cálculo del interés (dominio puro, R03)
 
