@@ -190,6 +190,45 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   prueba: C01 (D-144 a D-146 y L-068, L-069 repetidas; 10 líneas con los números viejos), C05 (sin
   archivar), C06 (sin propuesta archivada) y C03 esperando 107 (108 ejecutados). Pasan sobre la fusión
   de prueba: los 108 tests (1m07s, 0 skips). C02 hoy falla: 0 checks.
+- Construcción 1 (11/11/2026, `rein-constructor` Sonnet), pusheada a `change/respaldos-2`
+  (`93cba69..401576f`): `237d85e` merge, `714d9d4` renumeración, `f8623cd` archivo con openspec 1.13.0 (8
+  requisitos sincronizados), `401576f` KB del cierre. Sin atribución a IA ni cambios de código después
+  del merge (verificado por el orquestador).
+- Rompedor 1 (C04, Codex, sobre `401576f`): **con bloqueantes**. Informe en el scratchpad de la sesión;
+  reproductores en `h003-tmp/` (`ataques.py`, `senales.py`, `test_ataques_reales.py`), corridos de nuevo
+  por el orquestador con la misma salida. Bloqueantes: (B1) `conmutar.sh` acepta una base con políticas
+  de RLS distintas (`consulta_rls` no compara roles ni permisivo/restrictivo: una fila antes bloqueada
+  queda visible); (B2) F4 sigue abierto si el reloj del host retrocede de verdad (también el mtime): de
+  7 copias nuevas sobreviven 2; (B3, heredado de `6efbcea`) la limpieza de `proptech-*.dump.parcial` no
+  valida el patrón completo y borra archivos ajenos. Deuda: colisión de timestamp que pisa una copia
+  validada (heredada), la base activa leída del contenedor `db` después de conmutar, D-149 publica la
+  bandera antes del log (503 con 0 líneas), SIGTERM durante `pg_restore --list` agota el plazo, F8 con
+  rutas con comillas y errores de `rm` crudos, `arrancar.sh` con rutas entre comillas en `.env`.
+- Decisión de Juani (11/11/2026): los tres bloqueantes se arreglan en esta historia, con TDD desde los
+  reproductores, y otra pasada del rompedor sobre ellos; las seis deudas van a la ficha 1e, sin dueño.
+  Avisarle a Emiliano que se toca su rama. Vuelve a En proceso (nunca llegó a Lista).
+- Construcción 2 (vuelta 2, Sonnet, `401576f..169d189`): B3 cerrado; B1 con la definición completa de
+  cada política; B2 con mtime monótono. Rompedor 2 (Codex): **con bloqueantes**: B1 incompleto (un rol
+  con coma en el nombre da el mismo resumen que dos roles) y regresión de B2 (un mtime futuro destruye
+  el piso por días de D-148; si `touch` falla vuelve el 2/7). B3 pasó.
+- Decisión de Juani (11/11/2026) para B2: **opción A**, si el reloj retrocedió el ciclo no borra nada y
+  deja un log `reloj_atrasado` (D-151). Descartadas: contador persistido (reescribe la spec) y dejarlo
+  como deuda. La aceptación con 115 tests queda sin aprobar hasta la vuelta 3, porque el número cambia.
+- Construcción 3 (vuelta 3 de 3, Sonnet, `169d189..fc70425`): B1 con roles escapados con `quote_ident`;
+  B2 opción A (D-151), con el mtime monótono revertido. Rompedor 3: **con bloqueantes**: B1 sigue
+  abierto por el nombre de la política (`"p|*|false|PUBLIC|false|;q"` oculta una restrictiva: 0 filas en
+  origen, 1 en destino, conmutación aceptada); deuda en B2: si el dump nuevo es el único con mtime
+  futuro, la retención borra y no avisa (no se demostró pérdida de copias). Tope D-092 alcanzado.
+- Decisión de Juani (11/11/2026): **cuarta vuelta acotada**: comparar las políticas en JSON y contar el
+  archivo actual en la detección de D-151.
+- Construcción 4 (Sonnet, `fc70425..00d7578`): B1 con un JSON de PostgreSQL (`jsonb_agg`) por tabla y
+  política; B2 con el archivo actual en la detección. Rompedor 4 (pasada corta): **sin bloqueantes**;
+  el nombre fabricado se rechaza (rc 1), una base equivalente con otros OID se acepta, el dump nuevo con
+  mtime futuro conserva 4/4 y avisa una vez. **C04 cumplido.**
+- **Aceptación vigente, aprobada por Juani el 11/11/2026: `8108f2fe3f3592da8b296715cc33cc0c9d2caa0c`**
+  (reemplaza a `16d8719`): C03 pasa a 6 archivos y **121 tests** (13 nuevos de los arreglos, 6 en
+  `test_conmutar_politicas_reales.py`). Comando: `git show 8108f2f:aceptacion/H-003/aceptar.py >
+  <fuera-del-repo>/aceptar.py && python3 <fuera-del-repo>/aceptar.py`.
 - Evidencia y demo: pendientes.
 
 ## Changes por partir en historias
