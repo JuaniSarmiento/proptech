@@ -12,7 +12,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 
 | HU | Change | Resultado esperado | Dificultad / riesgo | Estado |
 |---|---|---|---|---|
-| H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | En proceso |
+| H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Pendiente |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Pendiente |
 
@@ -66,12 +66,25 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   `aceptacion/H-001/aceptar.py`. Comando: `git show 25275f0:aceptacion/H-001/aceptar.py >
   <fuera-del-repo>/aceptar.py && python3 <fuera-del-repo>/aceptar.py`, desde la raíz del repo. Casos
   esperados: C01, C02, C03 (258/258) y C05 en PASA; C06, con evidencia manual.
-- Construcción: `rein-constructor` (Claude), merge `a0ef218` pusheado a `change/ejemplo-robusto` el
-  11/11/2026; D-145 antes de D-146, el diff del PR contra `main` sigue siendo de 34 archivos.
   Vista fallar por aserción: C01 contra el PR de hoy (conflicto en `09`), C03 esperando 257 (258
   ejecutados) y C05 contra `main` (sin el archivo del change). Sobre la fusión resuelta a mano en un
   worktree descartable: C01, C03 (258/258) y C05 pasan.
-- Evidencia y demo: pendientes.
+- Construcción: `rein-constructor` (Claude), merge `a0ef218` pusheado a `change/ejemplo-robusto` el
+  11/11/2026; D-145 antes de D-146, el diff del PR contra `main` sigue siendo de 34 archivos.
+- Evidencia (11/11/2026, orquestador, aceptación sacada de `25275f0` a un archivo fuera del repo):
+  cabeza `a0ef218` sobre `origin/main` `4decbff`. C01 PASA (146 decisiones, ninguna repetida), C02 PASA
+  (5 checks del run 43023822732 en verde: backend 22m40s, humo, web, secretos, shellcheck), C03 PASA
+  (258 esperados, 258 ejecutados, 258 pasados, 0 fallas, 0 errores, 0 skips), C05 PASA. Salida 0.
+- Demo (C06), corrida por el orquestador el 11/11/2026 a pedido de Juani, sobre el código de `a0ef218`
+  en el proyecto de compose `proptech-demo` (sólo `db` y `migraciones`, hasta la `0033`, y la imagen
+  de `api` con `run --no-deps`). Override de red para la demo: la subred fija de `aplicacion`
+  (`172.28.0.0/24`) choca con la red que quedó de `proptech-3c`, así que se movió a `172.32.0.0/24`
+  sólo ahí. Resultados: (1) primera carga, "ejemplo cargado", código 0; (2) segunda carga, "el ejemplo
+  ya estaba", 0; (3) sin `PROPTECH_ENTORNO=desarrollo`, "este comando es sólo para desarrollo… no se
+  escribió nada", 1; (4) `--semilla ""`, "--semilla no puede estar vacío; no se escribió nada", 2;
+  (5) con la base apagada, "la base no está disponible…", 5. Stack desarmado con `down -v`.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 después de la demo. Integrada a `main`
+  con el merge del PR #7.
 
 ### H-002 · Integrar el PR #5, `humo-y-ci` (C-23, Gianfranco)
 
