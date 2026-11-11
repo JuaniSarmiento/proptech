@@ -14,7 +14,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 |---|---|---|---|---|
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
-| H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Pendiente |
+| H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -159,23 +159,35 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   (`infra/respaldos/conmutar.sh`), todo en `main`.
 - Alcance: la rama `change/respaldos-2` (22 commits, 24 archivos: `infra/respaldos/`, `infra/`, tests de
   infra y KB).
-- Criterios: H-003.C01 a C05. Específicos:
-  - H-003.C01: se rebasa después de H-002, y sus tres D pasan a las próximas libres.
-  - H-003.C02: hoy el PR no muestra checks. El CI corrió por `workflow_dispatch` (el último, en verde el
-    31/10), pero no como check del PR, y tiene que correr así.
-  - H-003.C03: 46 escenarios (11 de `entorno-de-ejecucion` y 35 de `respaldos-de-la-base`).
-  - H-003.C04: HIGH, así que un rompedor de otra familia de modelo (sin revisor aparte). Corregido el
-    11/11/2026, antes de aprobar su aceptación.
-  - H-003.C06: la firma queda válida según D-094 y D-111. Emiliano firmó su propio change; Juani
-    decide si vale o firma él o Alberto.
-  - H-003.C07: el ensayo de conmutación de punta a punta corre contra Docker real en un proyecto de
-    compose propio (backup, restauración, conmutación, `GET /api/salud` 200 y vuelta a la base
-    original).
+- Criterios (los verifica `aceptacion/H-003/aceptar.py`, salvo C04 y C07):
+  - H-003.C01: la fusión con `main` no tiene conflictos (hoy chocan `CHANGES.md`, `09` y `15`); ninguna
+    D ni L se repite; sus decisiones pasan de D-144 a D-146 a **D-148 a D-150** y sus lecciones de
+    L-068 y L-069 a **L-078 y L-079**; ninguna línea que agrega el PR nombra los números viejos.
+  - H-003.C02: CI del evento `pull_request` en verde sobre la cabeza final, con al menos 6 checks
+    (`ensayo-roles` incluido). Hoy no corre porque el PR está en conflicto (`CONFLICTING`): GitHub no
+    arma el commit de fusión y el `pull_request` no dispara. Por eso Emiliano lo corrió a mano.
+  - H-003.C03: sobre la fusión, los 5 archivos de tests del change dan **108 esperados y 108 pasados**,
+    sin skips, fallas ni errores.
+  - H-003.C04: HIGH, así que un rompedor de otra familia de modelo (sin revisor aparte), sin
+    bloqueantes. Corregido el 11/11/2026, antes de aprobar su aceptación.
+  - H-003.C05: change archivado de verdad con sus specs sincronizadas y todas las tareas marcadas;
+    `CHANGES.md` y la ficha del 1e al día; `CLAUDE.md` igual a `AGENTS.md`. Hoy la rama dice "archivado
+    31/10/2026", pero el change sigue en `openspec/changes/respaldos-2/`: nunca se corrió el archivo.
+  - H-003.C06: la propuesta archivada lleva la firma de Juani. **Firmada por Juani el 11/11/2026**
+    (`93cba69` en la rama del PR), después del apply: ratifica lo construido sujeto a esta aceptación y
+    al rompedor.
+  - H-003.C07: demo con la conmutación real contra Docker, en un proyecto de compose propio (backup,
+    restauración, conmutación, `GET /api/salud` 200 y vuelta a la base original), y el apagado con
+    SIGTERM a mitad de un volcado.
 - Dificultad y riesgo: media / HIGH. Toca la restauración y la conmutación de la base. No escribe en
   `cuenta_corriente` ni en `pagos`, pero un error ahí apunta la aplicación a la base equivocada.
 - Constructor: a definir con Juani.
 - Demo: el ensayo de conmutación real y el apagado con SIGTERM a mitad de un volcado.
-- Aceptación aprobada, evidencia y demo: pendientes.
+- Aceptación: `aceptacion/H-003/aceptar.py`, por aprobar. Vista fallar por aserción sobre una fusión de
+  prueba: C01 (D-144 a D-146 y L-068, L-069 repetidas; 10 líneas con los números viejos), C05 (sin
+  archivar), C06 (sin propuesta archivada) y C03 esperando 107 (108 ejecutados). Pasan sobre la fusión
+  de prueba: los 108 tests (1m07s, 0 skips). C02 hoy falla: 0 checks.
+- Evidencia y demo: pendientes.
 
 ## Changes por partir en historias
 
