@@ -158,11 +158,18 @@ def test_c19_las_tablas_son_de_solo_agregar(app: psycopg.Connection) -> None:
 def test_c19_una_carga_y_su_origen_bien_formados_entran(
     libro: Libro, app: psycopg.Connection
 ) -> None:
-    """Control de los CHECK: una carga del importador, una manual y un origen ligado a una
-    obligación de su misma cuenta entran."""
+    """Control de los CHECK: una carga manual (en un savepoint que se deshace, porque hay una sola
+    carga por edificio, D5), una del importador y un origen ligado a una obligación de su misma
+    cuenta entran."""
     exigir_tablas(app)
+
+    class _Deshacer(Exception):
+        pass
+
+    with pytest.raises(_Deshacer), app.transaction():
+        carga(app, libro, origen="manual", archivo=None, motivo="Cuaderno")
+        raise _Deshacer
     k = carga(app, libro)
-    carga(app, libro, origen="manual", archivo=None, motivo="Cuaderno")
     origen(app, libro, k, obligacion=libro.obligacion_0)
 
 
