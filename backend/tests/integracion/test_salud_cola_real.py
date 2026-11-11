@@ -67,6 +67,7 @@ def test_redis_pausado_responde_503_cola_sin_conexion_en_menos_de_4s(
     contenedor_redis_propio: DockerContainer,
     monkeypatch: pytest.MonkeyPatch,
     roles_reales: None,
+    esquema_migrado: None,
 ) -> None:
     _configurar_entorno(
         monkeypatch,
@@ -97,6 +98,7 @@ def test_redis_detenido_responde_503_cola_sin_conexion_en_menos_de_4s(
     contenedor_redis_propio: DockerContainer,
     monkeypatch: pytest.MonkeyPatch,
     roles_reales: None,
+    esquema_migrado: None,
 ) -> None:
     _configurar_entorno(
         monkeypatch,
@@ -123,6 +125,7 @@ def test_crear_app_expone_la_cola_cableada_y_arranca_sin_intentar_conectar(
     postgres_contenedor: PostgresContainer,
     monkeypatch: pytest.MonkeyPatch,
     roles_reales: None,
+    esquema_migrado: None,
 ) -> None:
     """Redis inalcanzable (IP privada sin ruta, L-001): `crear_app()` no se
     cuelga al armar la cola (pool perezoso, D4) y `/api/salud` responde."""
