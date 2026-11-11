@@ -5,6 +5,7 @@ destino cuya seguridad deja ver filas que antes estaban bloqueadas. Sólo el
 `docker compose exec ... psql` se sustituye por un `docker` falso que reenvía
 el SQL a la base real (nunca se toca el Docker real ni un stack levantado)."""
 
+# ruff: noqa: S106  (contraseña del contenedor efímero de este test, nunca real)
 from __future__ import annotations
 
 import os
