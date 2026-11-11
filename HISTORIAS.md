@@ -13,7 +13,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | HU | Change | Resultado esperado | Dificultad / riesgo | Estado |
 |---|---|---|---|---|
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
-| H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Pendiente |
+| H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | En proceso |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -94,23 +94,40 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 - Alcance: la rama `change/humo-y-ci` (21 commits, 46 archivos: `infra/ci/`, tests de infra, unitarios y
   de integración, `ci.yml`, `dependabot.yml`, `Caddyfile` y la causa de `arranque_fallido` en
   `proptech_api/app.py`).
-- Criterios: H-002.C01 a C05. Específicos:
-  - H-002.C01: su D-144 pasa a la próxima D libre al momento del merge.
-  - H-002.C03: 40 escenarios (9 de `entorno-de-ejecucion` y 31 de `integracion-continua`).
+- Criterios (los verifica `aceptacion/H-002/aceptar.py`, salvo C08):
+  - H-002.C01: la fusión con `main` no tiene conflictos; ninguna D ni L se repite; la decisión del 2e
+    pasa de D-144 a **D-147** y sus tres lecciones de L-068 a L-070 a **L-073 a L-075** (en `main`,
+    L-068 a L-070 son del 3f); ninguna línea que agrega el PR nombra D-144 ni L-068 a L-070.
+  - H-002.C02: CI del evento `pull_request` en verde sobre la cabeza final.
+  - H-002.C03: sobre la fusión, los 19 archivos de tests que prueban el change dan **167 esperados y
+    167 pasados**, sin skips, fallas ni errores. Quedan afuera `test_rutas_protegidas.py` (591),
+    `test_salud_cola_real.py` y `test_zz_rompedor_api_application_name.py`: el PR sólo les tocó la
+    preparación, y los corre la suite completa del CI (C02). Ajustado por Juani el 11/11/2026 (eran 762).
   - H-002.C04: MEDIUM, sin rompedor (tabla de `14_forma_de_trabajo.md`): lo cubren la aceptación y
     el CI. Corregido el 11/11/2026, antes de aprobar su aceptación: decía "un revisor y un rompedor",
     arrastrado de D-125.
-  - H-002.C06: la tarea 10.4, la única abierta de 32, queda cerrada con el run completo leído sobre el
-    SHA final.
-  - H-002.C07: `humo.sh` y `ensayo-roles.sh` terminan con exit 1, antes de tocar `docker compose`,
-    sin `PROPTECH_COMPOSE_PROYECTO`, con el valor `proptech` y con el 80 o el 443 ocupados. Con otro
-    nombre, corren.
+  - H-002.C05: change archivado con sus specs sincronizadas (cada requisito del delta está en
+    `openspec/specs/`), `CHANGES.md` y la ficha del 2e al día, `CLAUDE.md` igual a `AGENTS.md`.
+  - H-002.C06: ninguna tarea del change sin marcar; la 10.4 (push, PR y run leído) se cierra con la
+    evidencia del run sobre la cabeza final.
+  - H-002.C07: `humo.sh` y `ensayo-roles.sh` terminan con 1 **sin llamar a docker** sin
+    `PROPTECH_COMPOSE_PROYECTO`, con `proptech` y con un puerto que miran ocupado; con otro nombre y los
+    puertos libres pasan la guarda y llegan a docker. Se prueba con un `docker` falso en el `PATH`.
+  - H-002.C08: demo.
+- Deuda menor encontrada al escribir la aceptación: `ensayo-roles.sh` escribe su evidencia en `.git/` y
+  falla en un worktree, donde `.git` es un archivo. No bloquea; va a la deuda del cierre del 2e.
 - Dificultad y riesgo: media / MEDIUM. **Cambia el comportamiento**: el humo sin la variable, o con
   `proptech`, deja de correr. Hay que avisarle al equipo.
 - Constructor: a definir con Juani.
 - Demo: correr el humo sin variable, con `proptech` y con `proptech-humo`, y forzar una falla para ver
   paso, línea y comando.
-- Aceptación aprobada, evidencia y demo: pendientes.
+- Aceptación: `aceptacion/H-002/aceptar.py`, por aprobar. Vista fallar por aserción: C01 sobre una
+  fusión de prueba (D-144 y L-068 a L-070 repetidas, 31 líneas con los números viejos), C03 esperando
+  761 sobre los 22 archivos originales (762 ejecutados), C05 y C06 (change sin archivar), C07 contra
+  `main` (los seis rechazos llaman a docker). Pasan sobre la fusión de prueba: los 762 tests de los 22
+  archivos (1m56s; los 167 de los 19 que quedan están dentro) y C07 (8 casos). Los 19 archivos
+  recolectan 167 en la cabeza del PR. C02 pasa hoy (6 checks sobre `f2be967`).
+- Evidencia y demo: pendientes.
 
 ### H-003 · Integrar el PR #6, `respaldos-2` (C-24, Emiliano)
 
