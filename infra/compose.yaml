@@ -351,7 +351,7 @@ services:
 
   caddy:
     <<: *logs
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.9-alpine
     restart: unless-stopped
     # D3: `caddy` se queda root (uid 0, declarado) — con `no-new-privileges`
     # las capacidades de archivo del binario no se aplican (J5 de la
