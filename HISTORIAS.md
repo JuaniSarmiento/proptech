@@ -52,17 +52,22 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
     (`test_ejemplo_casos_de_uso.py`, `test_arranque_tablas_protegidas.py` y
     `test_puntos_de_entrada_prohibidos.py`) dan **258 esperados y 258 pasados**, sin skips, fallas ni
     errores. La suite completa la corre el CI (C02).
-  - H-001.C04: LOW, así que una sola pasada que rompe y audita. Entrega la matriz de los 34 escenarios
-    de `datos-semilla` contra el test que cubre cada uno; un escenario sin test es un hallazgo.
+  - ~~H-001.C04~~: **sacado por Juani el 11/11/2026.** Motivo: un LOW no lleva revisión aparte según la
+    tabla de riesgo; el PR ya pasó por constructor, tres rompedores y auditor en su ciclo OPSX; y lo que
+    nos toca (integración, tests completos, suite) ya lo cubren C01, C03 y C02. La primera corrida de
+    Codex se trabó esperando stdin y la segunda se cortó antes de producir nada: no hay informe.
   - H-001.C06: el comando del ejemplo devuelve los códigos de salida de D-145 e identifica el
     edificio por nombre.
 - Dificultad y riesgo: baja / LOW (sin migraciones, permisos ni plata). El PR no tiene descripción.
 - Constructor: a definir con Juani (Giuliano en su rama o `rein-constructor`).
 - Demo: correr el comando del ejemplo dos veces y con un edificio inexistente, y mirar los códigos de salida.
-- Aceptación aprobada por Juani el 11/11/2026: `58651ed95f53c68f077a258a4462323d27d5dbb7`, archivo
-  `aceptacion/H-001/aceptar.py`. Comando: `git show 58651ed:aceptacion/H-001/aceptar.py >
+- Aceptación aprobada por Juani el 11/11/2026: **`25275f0db275c8a0ce051e1be3a1ab69a8d2a7bd`** (reemplaza
+  a `58651ed`, que incluía C04; mismo código de verificación, sólo cambió la línea de C04). Archivo
+  `aceptacion/H-001/aceptar.py`. Comando: `git show 25275f0:aceptacion/H-001/aceptar.py >
   <fuera-del-repo>/aceptar.py && python3 <fuera-del-repo>/aceptar.py`, desde la raíz del repo. Casos
-  esperados: C01, C02, C03 (258/258) y C05 en PASA; C04 y C06, con evidencia manual.
+  esperados: C01, C02, C03 (258/258) y C05 en PASA; C06, con evidencia manual.
+- Construcción: `rein-constructor` (Claude), merge `a0ef218` pusheado a `change/ejemplo-robusto` el
+  11/11/2026; D-145 antes de D-146, el diff del PR contra `main` sigue siendo de 34 archivos.
   Vista fallar por aserción: C01 contra el PR de hoy (conflicto en `09`), C03 esperando 257 (258
   ejecutados) y C05 contra `main` (sin el archivo del change). Sobre la fusión resuelta a mano en un
   worktree descartable: C01, C03 (258/258) y C05 pasan.
@@ -79,7 +84,9 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 - Criterios: H-002.C01 a C05. Específicos:
   - H-002.C01: su D-144 pasa a la próxima D libre al momento del merge.
   - H-002.C03: 40 escenarios (9 de `entorno-de-ejecucion` y 31 de `integracion-continua`).
-  - H-002.C04: MEDIUM, así que un revisor y un rompedor.
+  - H-002.C04: MEDIUM, sin rompedor (tabla de `14_forma_de_trabajo.md`): lo cubren la aceptación y
+    el CI. Corregido el 11/11/2026, antes de aprobar su aceptación: decía "un revisor y un rompedor",
+    arrastrado de D-125.
   - H-002.C06: la tarea 10.4, la única abierta de 32, queda cerrada con el run completo leído sobre el
     SHA final.
   - H-002.C07: `humo.sh` y `ensayo-roles.sh` terminan con exit 1, antes de tocar `docker compose`,
@@ -106,7 +113,8 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   - H-003.C02: hoy el PR no muestra checks. El CI corrió por `workflow_dispatch` (el último, en verde el
     31/10), pero no como check del PR, y tiene que correr así.
   - H-003.C03: 46 escenarios (11 de `entorno-de-ejecucion` y 35 de `respaldos-de-la-base`).
-  - H-003.C04: HIGH, así que un rompedor de otra familia de modelo y un revisor.
+  - H-003.C04: HIGH, así que un rompedor de otra familia de modelo (sin revisor aparte). Corregido el
+    11/11/2026, antes de aprobar su aceptación.
   - H-003.C06: la firma queda válida según D-094 y D-111. Emiliano firmó su propio change; Juani
     decide si vale o firma él o Alberto.
   - H-003.C07: el ensayo de conmutación de punta a punta corre contra Docker real en un proyecto de
