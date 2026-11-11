@@ -443,7 +443,7 @@ Cierre:
   desde la migración.
 - Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
   archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
-- Aceptación: **congelada en `0b4c5cb69628cd69c7a6ee49ac27f3fb439c1234`** (aprobación por delegación de Juani, después de la revisión técnica): 60 tests, 60 rojos por aserción sobre `aee113a`, 0 errores, 0 skips; C20 (ciclo de la `0035`, ensayo de roles, H-004 67/67 desde `d2da37e`, tests del 4b, barrido de migraciones), C21 y C22 en `aceptar.py`. Contrato para el constructor en `aceptacion/H-005/CONTRATO.md`. Importes verificados con `Fraction`. Comando: `python3 aceptacion/H-005/aceptar.py --codigo HEAD` (unos 20 min con la regresión; `--sin-regresion` para una corrida rápida).
+- Aceptación: **congelada en `0b4c5cb69628cd69c7a6ee49ac27f3fb439c1234`** (aprobación por delegación de Juani, después de la revisión técnica): 60 tests, 60 rojos por aserción sobre `aee113a`, 0 errores, 0 skips; C20 (ciclo de la `0035`, ensayo de roles, H-004 67/67 desde `d2da37e`, tests del 4b, barrido de migraciones), C21 y C22 en `aceptar.py`. Contrato para el constructor en `aceptacion/H-005/CONTRATO.md`. **Recongelada en `2fcf6ba91c518abcaccdd5ac5aef3c09bdecaea9`** (11/11/2026, por el orquestador): el test `test_c19_una_carga_y_su_origen_bien_formados_entran` metía dos cargas en el mismo edificio, contra la carga única de D5 y C13; lo encontró la tanda 1. Ahora la carga manual entra en un savepoint que se deshace. Ningún otro test cambió. Importes verificados con `Fraction`. Comando: `python3 aceptacion/H-005/aceptar.py --codigo HEAD` (unos 20 min con la regresión; `--sin-regresion` para una corrida rápida).
 
 ### H-006 · Situación de cobranza
 
