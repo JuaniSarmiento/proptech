@@ -446,7 +446,7 @@ def test_el_movimiento_trae_corte_y_tramos_vacios_por_defecto_y_los_conserva() -
 
 
 def test_la_obligacion_inicia_su_interes_el_dia_siguiente_al_vencimiento() -> None:
-    """H-004: sin saldo inicial, `interes_desde` es el vencimiento más un día (H-005 lo extiende)."""
+    """H-004: sin saldo inicial, `interes_desde` es el vencimiento más un día (H-005 lo suma)."""
     o = obligacion(date(2026, 10, 1), "100.00")  # vence el 10/10
     assert o.interes_desde == date(2026, 10, 11)
     migrada = Obligacion(

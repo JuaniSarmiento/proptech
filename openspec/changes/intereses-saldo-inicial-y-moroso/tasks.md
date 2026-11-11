@@ -237,7 +237,7 @@
 
 ## 3. Estado y foto: lo que el cálculo necesita
 
-- [ ] 3.1 **Partes de imputación que cuentan, `corte`, `tramos` e `interes_desde` en el
+- [x] 3.1 **Partes de imputación que cuentan, `corte`, `tramos` e `interes_desde` en el
   dominio.** Archivos: `backend/src/proptech_core/cuenta_corriente/dominio/estado.py` (design D3),
   `backend/tests/unitarios/cuenta_corriente/test_estado.py`. RED: un test que pide la parte topeada de
   una imputación por encima de lo debido (caso E7 del 4b) falla porque el estado no la expone. GREEN:
@@ -259,6 +259,15 @@
     `assert datetime.date(1, 1, 1) == datetime.date(2026, 10, 11)` (`interes_desde`). Los otros cuatro
     (sin partes si no cuenta; `corte` y `tramos` por defecto) nacen verdes con el andamiaje: son
     campos de datos. El andamiaje se revirtió desde copia previa del scratchpad antes del commit.
+  - GREEN (16:00): `ParteDeImputacion`, `imputaciones_que_cuentan` (paso 3 de `calcular_estado`, sólo
+    partes mayores que cero), `Movimiento.corte`/`tramos` y `Obligacion.interes_desde` (defecto en
+    `__post_init__`) en `estado.py`; `pytest tests/unitarios/cuenta_corriente/test_estado.py
+    tests/unitarios/cuenta_corriente/test_estado_propiedades.py -q`: `28 passed`, sin tocar sus expectativas.
+  - Mutante (16:00, copia previa en el scratchpad, revertido; defensa apagada: la parte topeada, se
+    devuelve `i.importe` en vez de `parte`): `test_estado.py -q` da `2 failed, 23 passed`, rojos por
+    `assert (ParteDeImputacion(...),) == (ParteDeImputacion(...),)` en
+    `test_las_partes_de_imputacion_que_cuentan_salen_topeadas_...` (`:396`) y
+    `test_una_parte_de_imputacion_no_pasa_de_lo_debido_...` (`:414`).
 - [ ] 3.2 **Foto con `corte`, `tramos` e `interes_desde` (E17).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/lecturas.py:37-69` y `_foto`,
   `backend/tests/integracion/test_cc_lecturas.py`. RED: la foto de una cuenta con un interés de corte
