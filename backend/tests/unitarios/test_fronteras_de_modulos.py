@@ -507,6 +507,7 @@ _DUENO_DE_TABLA = {
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",
     ),
+    "importacion": "importacion",
 }
 _EXCEPCIONES_SQL = {
     (
