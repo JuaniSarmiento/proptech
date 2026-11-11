@@ -26,7 +26,7 @@ mutante, en un commit anterior al de producción (L-061). -->
 
 ## 1. H-007 · Plantilla y padrón
 
-- [ ] 1.1 **Módulo `importacion` y fronteras.** `backend/src/proptech_core/importacion/` (`dominio/`,
+- [x] 1.1 **Módulo `importacion` y fronteras.** `backend/src/proptech_core/importacion/` (`dominio/`,
   `aplicacion/`, `adaptadores/`, `puertos.py`), `_DUENO_DE_TABLA` y la regla de importación permitida en
   `tests/unitarios/test_fronteras_de_modulos.py` (design D0). Mutante: `complejos` importando
   `importacion` → rojo en el test de ciclos.
@@ -35,7 +35,15 @@ mutante, en un commit anterior al de producción (L-061). -->
     `10 failed, 66 deselected`. Cada rojo cae en su aserción: `assert 'importacion' in ['acceso',
     'complejos', 'cuenta_corriente', 'gastos']`; `assert None == 'importacion'` (`_DUENO_DE_TABLA`); y 8 veces
     `AssertionError: falta el módulo importacion` (ciclos x4, dominio vs `aplicacion` x3, SQL ajeno x1).
-- [ ] 1.2 **Lector de la plantilla (adaptador).** `importacion/adaptadores/excel.py`: hojas y encabezados
+  - **Verde 1.1** (`39db12d`, 20:46): `tests/unitarios/test_fronteras_de_modulos.py` → `76 passed`.
+  - **Mutante 1.1** (árbol real, archivos nuevos borrados después; `git status` limpio): `complejos/
+    mutante.py` con `import proptech_core.importacion.aplicacion` e `importacion/mutante.py` con `import
+    proptech_core.complejos.aplicacion` → `test_sin_ciclos_entre_modulos` rojo (`Left contains one more
+    item: 'complejos → importacion → complejos'`) y `test_importacion_figura_entre_los_modulos_
+    recorridos_y_nadie_lo_importa` rojo (`{'complejos': ['complejos/mutante.py']}`). Sólo la arista
+    `complejos → importacion`: rojo en el segundo test. Además, `test_un_modulo_que_importa_importacion_
+    cierra_un_ciclo[x4]` es el mismo mutante sobre una copia temporal, permanente.
+- [x] 1.2 **Lector de la plantilla (adaptador).** `importacion/adaptadores/excel.py`: hojas y encabezados
   por nombre, 2 MiB y 2.000 filas, fórmulas por valor en caché y sin caché = error, celdas numéricas a
   `Decimal(repr())` en notación fija, fechas. Corregir el docstring de `gastos/adaptadores/excel.py` (D2
   del 6). Tests unitarios con archivos `.xlsx` armados en el test (`openpyxl`). Escenarios:
@@ -59,7 +67,19 @@ mutante, en un commit anterior al de producción (L-061). -->
   - D2 del 6 (L-066): `tests/unitarios/test_lector_de_planilla_excel.py` suma dos pruebas de caracterización
     del lector de gastos (fórmula con caché entra por su valor; sin caché entra vacía). Pasan antes y
     después: documentan lo que el docstring corregido promete, no son un RED.
-- [ ] 1.3 **Validación del padrón (dominio puro).** `importacion/dominio/padron.py`: todo o nada con
+  - **Verde 1.2** (`ab8e17f`, `ca57c88`): `test_importacion_lector_excel.py` + `test_lector_de_planilla_
+    excel.py` → `33 passed` y `6 passed`.
+  - **Mutantes 1.2** (copia previa en el scratchpad, uno a la vez, `diff` vacío contra la copia al
+    revertir; cada uno rojo en la aserción que se esperaba): (1) leer por posición en vez de por nombre
+    → `test_columnas_en_otro_orden_se_leen_igual` (`'Unidad' != 'Email'`); (2) `str(valor)` sobre la
+    celda `float` → `['8.3e-05'] == ['0.000083']`; (3) `f"{float(valor):.6f}"` → `['0.000000'] ==
+    ['0.0000001']`; (4) sin límite de bytes → `assert '2 MiB' in 'El archivo no es un Excel (.xlsx)
+    válido'`; (5) límite `>=` en bytes → `test_justo_en_el_limite_de_bytes...`; (6) límite de filas `>`
+    en vez de `==` → `DID NOT RAISE` en 2.001; (7) límite de filas `- 1` → falla en 2.000; (8) sin
+    reconocer la fórmula (`data_type == "f"`) → `test_una_formula_sin_valor_en_cache_queda_marcada`;
+    (9) fila con sólo fórmula tratada como en blanco → `assert [] == [2]`; (10) `numericas` siempre
+    vacío / contando textos → `test_se_distingue_la_celda_numerica...`.
+- [x] 1.3 **Validación del padrón (dominio puro).** `importacion/dominio/padron.py`: todo o nada con
   todos los errores (hoja, fila, columna, motivo), números (E14), unidad repetida, tipo, piso exacto del
   vocabulario, coeficiente, superficie, email, suma de coeficientes con la tolerancia de R01 (E4: fuera
   rechaza, dentro y distinta de 1 advierte). Escenarios de importacion-de-padron. Mutantes: devolver sólo
@@ -73,6 +93,22 @@ mutante, en un commit anterior al de producción (L-061). -->
     RAISE NumeroInvalido` x19, `assert Decimal(0) == <esperado>` x13. Los 3 verdes
     (`test_edificio_con_unidades_acepta_un_archivo_sin_padron[...]`) coinciden con el provisorio, que
     acepta todo: no valen como RED; los cubre el mutante "edificio con unidades exige la hoja".
+  - **Verde 1.3** (`ec37459`): `test_importacion_padron.py` → `137 passed`; con el lector y las fronteras,
+    `252 passed`. `tests/unitarios` entero (por si otro test recorre el árbol) → `2614 passed`.
+  - **Mutantes 1.3** (copia previa, uno a la vez, restaurado y `diff` vacío; rojo donde se esperaba):
+    (1) devolver sólo el primer error → `test_varios_errores_juntos_en_el_orden_del_archivo`
+    (`Right contains one more item: ('Unidades', 7, 'Superficie m2')`); (2) recortar el piso →
+    `test_piso_fuera_del_vocabulario_o_con_espacios_no_se_recorta[ PB]` (`DID NOT RAISE`); (3) redondear
+    el coeficiente de 7 decimales → `test_numero_invalido_desde_texto_nunca_se_redondea[0.0833333-6]`;
+    (4) aceptar la suma 0,9998 (tolerancia 0,0002 a mano) → `..._fuera_de_la_tolerancia_...[0.083137-
+    0,9998]` (`DID NOT RAISE`); (5) rechazar la 0,9999 (`estado != "ok"`) → `test_suma_dentro_de_la_
+    tolerancia_distinta_de_uno_advierte[0.083237-0,9999]`; (6) edificio con unidades exige la hoja →
+    `..._acepta_un_archivo_sin_padron[sin_hoja]`; (7) sin chequeo de ambiguo → `[1.234-6]`; (8) la celda
+    numérica también ambigua → `test_una_celda_numerica_no_es_ambigua[0.125-0.125]`; (9) duplicado sin
+    recortar → `test_una_unidad_repetida_se_detecta_aun_con_espacios_en_el_borde`; (10) informar la
+    suma con errores de fila → `test_con_errores_de_fila_no_se_informa_la_suma`.
+  - Linters al cierre: `uv run ruff check .` (All checks passed), `uv run ruff format --check .`,
+    `uv run mypy` (`Success: no issues found in 411 source files`).
 - [ ] 1.4 **Migración `0036_importacion`.** Tabla `importacion` (D5) con RLS forzada, FK compuestas a
   `complejo` y `persona`, único parcial de un `borrador` por edificio, único de huella por edificio; las
   acciones `importar_padron_y_saldos` en `Accion`, en la matriz (E6) y en `accion_de_auditoria`. Tests de
