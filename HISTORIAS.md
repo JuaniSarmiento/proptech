@@ -17,7 +17,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | En proceso |
-| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Sin acordar |
+| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -442,6 +442,49 @@ Cierre:
 - Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
   archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
 - Aceptación: pendiente de escribir y congelar.
+
+### H-006 · Situación de cobranza
+
+- Change: C-07c 4c. Reglas: R20, R30, R05, R08; decisiones D-058, D-074, D-081, D-109.3, D-109.4,
+  D-143; elecciones E6, E7, E8, E14 con la recomendación firmada; `design.md` D6; spec
+  `situacion-de-cobranza`.
+- Resultado para Juani: para una cuenta de unidad o para un edificio entero y a una fecha, el sistema
+  dice cuánto hay vencido, cuántas liquidaciones vencidas con capital, si está bajo el umbral de saldos
+  chicos, si es sólo deuda de intereses y si es moroso crítico, derivado del libro y nunca guardado.
+- Alcance: `dominio/cobranza.py` (`clasificar`, puro) y `aplicacion/cobranza.py`
+  (`situacion_de_cuenta`, `situacion_del_edificio`). Exclusiones: rutas, pantallas, avisos (10a), gestión
+  judicial (10b), cuentas de persona (4d), historia de la deuda a una fecha pasada (E14).
+- Dificultad y riesgo: media / CRITICAL. Sin migraciones.
+- **Criterios escritos y aprobados por el orquestador por delegación de Juani (11/11/2026)**, sujetos a su
+  demo. Base de los ejemplos: umbral $500, gracia 0, salvo que diga otra cosa.
+  - Tienen que pasar: **C01** vencida desde que corre el interés: gracia 5 y vencimiento 10/09, al 15/09
+    no está vencida y al 16/09 sí; **C02** total vencido con el interés en su período: agosto ($80.000 +
+    $4.000 de interés) y septiembre ($85.000) dan $169.000 y dos liquidaciones, no tres; **C03** umbral:
+    $300 en dos períodos queda bajo el umbral y no es moroso; $300 + $250 no queda bajo y es moroso;
+    exactamente $500 es moroso (E6, `>=`); el umbral no frena el interés: la emisión de octubre registra
+    $6,00 sobre $300 de septiembre (20 días al 3%); **C04** moroso crítico: una sola vencida no; dos con
+    capital sí; un pago parcial de agosto no lo cambia; $500 + $20 sí (D-143); un período con sólo
+    interés no cuenta (E7: agosto con sólo $4.000 de interés y septiembre con capital es una liquidación,
+    no moroso); contra-asentar el pago de agosto vuelve a marcar; **C05** deuda de intereses: sólo $4.000
+    de interés vencido es deuda de intereses, no moroso, total $4.000; **C06** saldo inicial: U1 migrada
+    con dos períodos es morosa; U2 con total único tiene una liquidación y no es morosa; **C07** la fecha
+    clasifica y no reconstruye (E14): con pagos del 20/10 y fecha 30/09, total vencido $0; **C08** por
+    edificio: una entrada por cada cuenta de unidad con todos los campos; **C09** la etiqueta única
+    respeta la precedencia de D6 (sin deuda vencida → bajo el umbral → deuda de intereses → moroso
+    crítico → con deuda vencida), con un caso por etiqueta; **C10** la configuración es la vigente a la
+    fecha: con umbral $500 hasta el 30/09 y $1.000 desde el 01/10, $700 vencidos en dos períodos son
+    moroso al 30/09 y bajo el umbral al 31/10; **C11** es una lectura: no escribe nada ni toma candados.
+  - Tienen que fallar o no contar: **C12** una obligación de una emisión anulada no cuenta; **C13** una
+    obligación con fecha igual a vencimiento + gracia no está vencida, y una que vence después de la
+    fecha tampoco; **C14** edificio o cuenta de otra administración → no encontrado; **C15** sin versión
+    de configuración vigente a la fecha, o sólo una futura → `Conflicto("configuracion")`; **C16** las
+    cuentas de persona no aparecen en el listado del edificio.
+  - Cierre: **C17** KB: R20 con `>=` (se corrige "supera", E6) y dónde vive, R30 dónde vive, glosario
+    (situación de cobranza, fecha de clasificación, deuda de intereses), ficha 4c con H-006; **C18** cada
+    escenario de la spec `situacion-de-cobranza` con su test en verde; **C19** las aceptaciones de H-004
+    y H-005 siguen en verde. Sin criterio de CI: el CI con la suite completa cierra el change (D-154).
+- Demo: un edificio con cinco unidades (al día, saldo chico, deuda de intereses, una vencida, moroso
+  crítico) y su listado.
 
 ## Plantilla de historia
 
