@@ -22,6 +22,8 @@ from proptech_core.cuenta_corriente.aplicacion.emisiones import ObligacionAEmiti
 from ._cuenta_corriente import Mundo, sembrar, sesion_app
 from ._edificios import BaseDeEdificio
 from .test_cc_correcciones import contra, credito_corr, emitir
+from .test_cc_intereses import configurar, intereses, obl
+from .test_cc_intereses import emitir as emitir_con_interes
 
 pytestmark = pytest.mark.integracion
 
@@ -315,3 +317,96 @@ def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso_contra_as
     _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
         base_del_edificio, mundo, monkeypatch, "contra_asiento"
     )
+
+
+# --- 5.4 del 4c (PR-02, design D0) · cuentas alcanzadas que sólo recibieron interés ---------------
+
+
+def _septiembre_de_dos_y_octubre_de_una(
+    base: BaseDeEdificio, mundo: Mundo
+) -> tuple[UUID, UUID, UUID]:
+    """U1 y U2 deben septiembre; la emisión de octubre sólo emite a U1 y le cobra interés a U2."""
+    configurar(base, mundo)
+    with sesion_app(base, mundo.admin) as s:
+        sep = emitir_con_interes(
+            s,
+            mundo,
+            date(2026, 9, 1),
+            [obl(mundo, 0, date(2026, 9, 10)), obl(mundo, 1, date(2026, 9, 10))],
+        )
+        u1, u2 = (sep.cuentas[mundo.unidades[n]] for n in (0, 1))
+        octubre = emitir_con_interes(
+            s, mundo, date(2026, 10, 1), [obl(mundo, 0, date(2026, 10, 10), "1.00")]
+        )
+        s.commit()
+    return u1, u2, octubre.emision_id
+
+
+def test_cc_anular_bloquea_tambien_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    u1, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    llamadas: list[list[UUID]] = []
+    real = emisiones.bloquear_cuentas
+
+    def espia(sesion: Any, cuentas: Any) -> None:
+        llamadas.append(list(cuentas))
+        real(sesion, cuentas)
+
+    monkeypatch.setattr(emisiones, "bloquear_cuentas", espia)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        emisiones.anular_emision(
+            s, mundo.identidad, emision_id=octubre, motivo="Mal cargada", request_id=uuid4()
+        )
+    assert [set(c) for c in llamadas] == [{u1, u2}], f"candados pedidos: {llamadas}"
+
+
+def test_cc_anulacion_durante_el_contra_asiento_de_un_interes_sin_obligacion(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        de_u2 = [i for i in intereses(s, cuenta=u2) if i.emision_id == octubre]
+    assert len(de_u2) == 1, "U2 no recibió el interés de septiembre en la emisión de octubre"
+    anulacion = _AnulacionEnOtroHilo(base_del_edificio, mundo, octubre)
+    hecho: list[bool] = []
+    monkeypatch.setattr(
+        correcciones,
+        "_anulada",
+        _tras_la_primera_llamada(correcciones._anulada, anulacion.lanzar, hecho),
+    )
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        contra(s, mundo, de_u2[0].id)
+        anuladas_al_escribir = _anuladas(base_del_edificio, mundo, octubre)
+        s.commit()
+    anulacion.terminar()
+    assert hecho
+    assert anuladas_al_escribir == 0, "la anulación se confirmó debajo del contra-asiento"
+    assert _anuladas(base_del_edificio, mundo, octubre) == 1
+
+
+def test_cc_la_lectura_incluye_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    configurar(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        sep = emitir_con_interes(
+            s,
+            mundo,
+            date(2026, 9, 1),
+            [obl(mundo, 0, date(2026, 9, 10)), obl(mundo, 1, date(2026, 9, 10))],
+        )
+        u1, u2 = (sep.cuentas[mundo.unidades[n]] for n in (0, 1))
+        observadas = _FotosObservadas(s)
+        try:
+            r = emitir_con_interes(
+                s,
+                mundo,
+                date(2026, 10, 1),
+                [obl(mundo, 0, date(2026, 10, 10), "1.00")],
+                confirmar=False,
+            )
+        finally:
+            observadas.cerrar()
+    assert observadas.pedidas and observadas.pedidas[-1] == {u1, u2}, observadas.pedidas
+    assert r.saldo_anterior[u2] == Dinero("102000.00")

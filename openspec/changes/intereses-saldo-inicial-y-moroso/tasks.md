@@ -523,6 +523,10 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   el interés; un tramo ligado al movimiento de otra cuenta (lo rechaza la FK de 2.1; acá se afirma que la
   aplicación nunca lo intenta). Consumidor: el 7 (contrato nuevo de `EmisionRegistrada`, anotado en la
   ficha del 7 al cerrar).
+  - RED 5.1 (16:23, `cd backend && uv run pytest tests/integracion/test_cc_intereses.py tests/integracion/test_cc_anulacion_candado.py -k cc_ -q`, extracto de `.git/red_t6.txt`): 6 tests de 5.1 rojos por aserción: `se espera un interés
+    con corte 2026-09-30, hay 0` (septiembre, anulada, redondeo, la tasa) y `EmisionRegistrada no informa
+    intereses`; `unidad sin obligación`, `saldo anterior` y `mitad de mes` con la lista de intereses vacía.
+    Ningún error de setup ni del helper `emitir`.
 - [ ] 5.2 **Configuración al corte (PR-01).** Escenarios: "Cambio de tasa entre períodos" ($2.000,00 y
   $6.200,00, y el primero no cambia), "Sin configuración vigente" y "Sólo una versión futura"
   (`Conflicto("configuracion")` y `contar_escrituras` vacío), "Edificio de otra administración" (no
@@ -534,6 +538,10 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   configuración): se deja como regresión, sin mutante propio en esta tarea; el mutante de traducir
   `NoEncontrado` lo mata la 7.2. Además: un test que el `configuracion_id` guardado en cada tramo es el
   de la versión vigente al corte (mutante: guardar el de la última versión → rojo en "Cambio de tasa").
+  - RED 5.2 (16:23, mismo comando): `DID NOT RAISE Conflicto` en `sin configuración` y `sólo una versión futura`;
+    `cambio de tasa` por `se espera un interés con corte 2026-09-30, hay 0`; `forma que no cierra` por `DID NOT RAISE
+    Conflicto` (con `raising=False`: `emisiones` todavía no importa `calcular_intereses`). `otra administración`
+    nace verde por la FK, como anota la tarea.
 - [ ] 5.3 **Re-emisión, replay (E15) y concurrencia.** Escenarios: "Anular y volver a emitir no cobra dos
   veces", "El corte siguiente recupera el tramo" y "El tramo recuperado usa la tasa del corte siguiente"
   contra la base; "Un hueco anterior se recupera aunque haya un interés posterior" (E17) contra la base,
@@ -548,6 +556,9 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   dos pedidos (emisión y después el resto) da `BloqueoFueraDeOrden` o interbloqueo; la foto trae sólo el
   máximo `hasta` de cada interés (mutante de la 3.2 sobre el camino real) → "Un hueco anterior..." da
   $3.000,00, rojo.
+  - RED 5.3 (16:23, mismo comando): hueco, tasa cero, recupera el tramo y no cobra dos veces rojos por `hay 0`;
+    los tres replay por `EmisionRegistrada no informa intereses`; la concurrente por `el pago de U2 no esperó a
+    la emisión que le registra interés` (hoy U2 no se bloquea ni tiene interés).
 - [ ] 5.4 **Cuentas alcanzadas: anulación y replay (PR-02, design D0).** Archivos:
   `emisiones.py` (`anular_emision`, hoy `:257-265`; `_replay`, `:85-121`, con el bloqueo y la foto en `:116-117`),
   `backend/tests/integracion/test_cc_anulacion_candado.py`. Escenarios: libro-de-movimientos "Anular
@@ -561,6 +572,9 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   `bloquear_cuentas` (obligaciones y después intereses) → espía rojo o `BloqueoFueraDeOrden`; el replay
   bloquea y lee sólo las cuentas de sus obligaciones → el escucha de 1.2 rojo (la última lectura no pide
   U2).
+  - RED 5.4 (16:23, mismo comando): `candados pedidos: [[<una cuenta>]]` en vez de `{u1, u2}`; `U2 no recibió el
+    interés de septiembre en la emisión de octubre`; la última foto del registro pidió una sola cuenta en vez de
+    `{u1, u2}`.
 - [ ] 5.5 **Regresión de los consumidores del 4b.** Correr `pytest tests/integracion -k "test_cc_ or
   test_libro"` y `tests/unitarios/cuenta_corriente`; comparar con la línea de base de la 2.2. Inventario
   de llamadas directas a `registrar_emision` (revisor del plan, intento 1), cada uno con su resultado
