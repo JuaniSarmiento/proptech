@@ -74,6 +74,18 @@ def _cubiertos(
     return cubiertos
 
 
+def _corte_ocupado(obligacion: Obligacion, corte: date, movimientos: Iterable[Movimiento]) -> bool:
+    """Ya hay un interés con ese corte para la obligación, cuente o no (E1, `uq_mov_interes`).
+
+    Un interés anulado o contra-asentado sigue en el libro y ocupa su corte: no se registra otro y
+    sus días, que ya no cubren nada, los cobra el primer corte siguiente que registre (E17).
+    """
+    return any(
+        m.tipo == "interes" and m.obligacion_id == obligacion.id and m.corte == corte
+        for m in movimientos
+    )
+
+
 def _base_del_dia(
     obligacion: Obligacion,
     estado: EstadoDeCuenta,
@@ -174,8 +186,10 @@ def calcular_intereses(
 ) -> tuple[InteresCalculado, ...]:
     """El interés de cada obligación que cuenta hasta `corte`, con su detalle por tramo.
 
-    Cobra los días entre `interes_desde` y el corte que ningún interés que cuenta cubre. Un importe
-    que redondea a $0,00 no se devuelve. Aritmética exacta; el redondeo ocurre una sola vez, sobre
+    Cobra los días entre `interes_desde` y el corte que ningún interés que cuenta cubre, con la
+    configuración de este corte (E4). Si la obligación ya tiene un interés con este corte, cuente o
+    no, no recibe otro (E1). Un importe que redondea a $0,00 no se devuelve y sus días quedan para
+    el primer corte que registre (E19). Aritmética exacta; el redondeo ocurre una sola vez, sobre
     la suma de los tramos.
     """
     por_id = {m.id: m for m in movimientos}
@@ -185,6 +199,8 @@ def calcular_intereses(
         if obligacion.id not in estado.obligaciones_que_cuentan:
             continue
         if (corte - obligacion.vencimiento).days <= configuracion.dias_de_gracia:
+            continue
+        if _corte_ocupado(obligacion, corte, por_id.values()):
             continue
         cubiertos = _cubiertos(obligacion, estado, por_id.values())
         dias = [d for d in _dias(obligacion.interes_desde, corte) if d not in cubiertos]
