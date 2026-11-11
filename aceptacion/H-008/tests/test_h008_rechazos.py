@@ -75,13 +75,6 @@ CASOS_DE_SALDOS: dict[str, tuple[Callable[[Filas], Filas], tuple[str, int, str]]
     "credito_con_concepto": (_cambiar(8, 3, "Ordinaria"), ("Saldos", 8, "Concepto")),
 }
 
-_ESCENARIOS = {
-    "unidad_inexistente": "Unidad que no existe",
-    "vencimiento_posterior_a_la_migracion": "Vencimiento posterior a la migración",
-    "dos_vencimientos_en_un_periodo": "Mismo período con dos vencimientos",
-    "unidad_que_mezcla_detalle_y_total": "Mezcla de detalle y total",
-}
-
 
 @pytest.mark.parametrize("caso", sorted(CASOS_DE_SALDOS))
 def test_c13_fila_de_saldos_invalida(mundo: Mundo, caso: str) -> None:

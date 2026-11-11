@@ -63,7 +63,8 @@ class ArchivoInvalido(Exception):
 class FilaLeida:
     """Una fila de datos. `valores` tiene sólo las columnas de la plantilla (las extras se ignoran),
     cada una como texto exacto de la celda o `None` si está vacía. `formulas_sin_cache` nombra las
-    columnas cuya celda es una fórmula sin valor guardado; `numericas`, las de una celda numérica."""
+    columnas cuya celda es una fórmula sin valor guardado; `numericas`, las de una celda
+    numérica."""
 
     numero: int
     valores: Mapping[str, str | None]

@@ -10,7 +10,8 @@ Qué hace de verdad la librería, probado en `tests/unitarios/test_importacion_l
   lectura, así que el libro se abre una segunda vez sin `data_only` sólo para reconocerla y
   marcarla en `formulas_sin_cache`.
 - Ninguna celda pasa por `float`: una celda numérica se convierte con `Decimal(repr(valor))` y se
-  escribe en notación fija (`8.3e-05` es `0.000083`). Los textos llegan exactos, sin recortar.
+  escribe en notación fija (`8.3e-05` es `0.000083`), y su columna queda en `numericas` (un número
+  nunca es ambiguo, un texto sí). Los textos llegan exactos, sin recortar.
 - Antes de abrir nada se mide el archivo (2 MiB) y por hoja se cuentan las filas con datos (2.000).
 """
 
@@ -102,10 +103,14 @@ def _leer_hoja(nombre: str, con_valores: Any, con_formulas: Any) -> HojaLeida:
             continue
         valores: dict[str, str | None] = {}
         sin_cache: set[str] = set()
+        numericas: set[str] = set()
         for posicion, encabezado in columnas.items():
             celda_valor = _celda(fila_valores, posicion)
             celda_formula = _celda(fila_formulas, posicion)
-            valor = None if celda_valor is None else _texto_de_celda(celda_valor.value)
+            crudo = None if celda_valor is None else celda_valor.value
+            valor = _texto_de_celda(crudo)
+            if isinstance(crudo, (int, float, Decimal)) and not isinstance(crudo, bool):
+                numericas.add(encabezado)
             if (
                 valor is None
                 and celda_formula is not None
@@ -117,7 +122,7 @@ def _leer_hoja(nombre: str, con_valores: Any, con_formulas: Any) -> HojaLeida:
             continue
         if len(filas) == LIMITE_DE_FILAS:
             raise _demasiadas_filas(nombre)
-        filas.append(FilaLeida(numero, valores, frozenset(sin_cache)))
+        filas.append(FilaLeida(numero, valores, frozenset(sin_cache), frozenset(numericas)))
     return HojaLeida(nombre, tuple(columnas.values()), tuple(filas))
 
 
