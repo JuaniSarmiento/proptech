@@ -102,6 +102,16 @@
     `pytest ... -k rf02 -q` da `2 failed, 4 deselected`; `[credito]` y `[contra_asiento]` rojos los dos
     por `AssertionError: la anulación se confirmó debajo de la corrección` / `assert 1 == 0`
     (`anuladas_al_escribir == 0`).
+  - Arreglo previo de la tanda 3 (15:59, C17 de H-004): el test parametrizado cambiaba el id de
+    `test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso` (pasaba a `[credito]`). Queda con
+    su nombre original, sin parametrizar (forma crédito), y la forma contra-asiento es
+    `..._en_curso_contra_asiento`; los dos comparten el helper
+    `_rf02_la_anulacion_no_se_confirma_bajo_una_correccion`. `uv run pytest --collect-only -q
+    tests/integracion -k "test_cc_ or test_libro"` lista el id original. Mutante repetido (15:59, copia previa
+    en el scratchpad, revertido; defensa apagada: `bloquear_cuentas` en `anular_emision`,
+    `emisiones.py:265`): `pytest tests/integracion/test_cc_anulacion_candado.py -q -k rf02 --tb=line` da
+    `2 failed, 4 deselected`; los dos rojos por `AssertionError: la anulación se confirmó debajo de la
+    corrección` / `assert 1 == 0` (`anuladas_al_escribir == 0`).
 
 ## 2. Esquema, protección y semilla
 

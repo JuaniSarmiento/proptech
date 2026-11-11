@@ -252,17 +252,10 @@ def test_rf04_el_replay_de_emision_publica_una_sola_foto(
     ), replay.saldo_anterior
 
 
-@pytest.mark.parametrize("forma", ["credito", "contra_asiento"])
-def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
+def _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
     base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch, forma: str
 ) -> None:
-    """RF-02, E6, R08: el chequeo `_anulada` corre bajo el candado; la anulación lo respeta.
-
-    Con el candado, la anulación espera a que la corrección se confirme (orden serial válido:
-    corrección y después anulación). Sin él, la anulación se confirma después del chequeo y antes
-    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada. Vale para
-    las dos formas: el crédito y el contra-asiento de un crédito ya registrado (D-138).
-    """
+    """Cuerpo compartido de RF-02 para las dos formas: `credito` y `contra_asiento` (D-138)."""
     with sesion_app(base_del_edificio, mundo.admin) as s:
         emision, _, obl = emitir(s, mundo, 4, "100.00")
         s.commit()
@@ -298,3 +291,27 @@ def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
     assert hecho
     assert anuladas_al_escribir == 0, "la anulación se confirmó debajo de la corrección"
     assert _anuladas(base_del_edificio, mundo, emision) == 1
+
+
+def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RF-02, E6, R08: el chequeo `_anulada` corre bajo el candado; la anulación lo respeta.
+
+    Con el candado, la anulación espera a que la corrección se confirme (orden serial válido:
+    corrección y después anulación). Sin él, la anulación se confirma después del chequeo y antes
+    de la escritura: la corrección queda escrita sobre una emisión que ya estaba anulada. Forma
+    crédito; el nombre es el de `main` (C17 de H-004 exige que los ids existentes no cambien).
+    """
+    _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
+        base_del_edificio, mundo, monkeypatch, "credito"
+    )
+
+
+def test_rf02_la_anulacion_no_se_confirma_bajo_una_correccion_en_curso_contra_asiento(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RF-02 en forma contra-asiento de un crédito de corrección ya registrado (D-138)."""
+    _rf02_la_anulacion_no_se_confirma_bajo_una_correccion(
+        base_del_edificio, mundo, monkeypatch, "contra_asiento"
+    )
