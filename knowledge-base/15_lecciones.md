@@ -1059,3 +1059,55 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   frenado antes de construir (en el 6, P36 y P37 respondidas por quien no correspondía).
 - **Regla**: con MEDIUM o más, el revisor del plan corre antes del apply, o su falta se declara en el
   proposal desde el principio. Quien planifica el change de un desarrollador nuevo lo verifica.
+
+## L-068 · Un constructor detenido deja código sin evidencia: el siguiente lo prueba revirtiendo a la forma que describió el rompedor
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), apply 3 (03/11/2026).
+- **Qué pasó**: el agente cortado el 01/11 dejó escritas la producción y los tests del grupo 9 sin
+  ningún RED. El agente nuevo no dio nada por probado: obtuvo cada rojo volviendo la producción a la
+  forma que pegó `verify-1-breaker.md` y comparó la salida con la del rompedor.
+- **Regla**: el código que deja un agente detenido es código sin evidencia. El RED se obtiene
+  revirtiendo a la versión anterior documentada, y vale si reproduce la salida que ya había registrado
+  otro rol. Se declara como "RED contra la producción anterior", no como RED antes de producción
+  (L-061). Aplica a constructor y auditor.
+
+## L-069 · Para ocultar un valor tipeado en un mensaje se compara el mensaje entero, nunca se reemplaza la subcadena
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), F1 de verify 1 (31/10/2026).
+- **Qué pasó**: `str.replace(ruta, "<semilla>")` sobre todo el mensaje convirtió `--semilla e` en
+  `no s<semilla> pu<semilla>d<semilla>...` y borró el nombre del campo cuando el archivo se llamaba
+  `unidades`.
+- **Regla**: si un texto de error trae un valor del usuario que no debe salir, se reconoce el mensaje
+  conocido por igualdad y se reescribe entero. Un reemplazo de subcadena falla con valores cortos o que
+  son palabras del propio mensaje (L-007). Aplica a constructor y rompedor.
+
+## L-070 · Ahorrar la segunda vuelta del rompedor o la suite de cierre no las reemplaza: se acotan, no se saltean
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), decisión de Giuliano del 03/11/2026 y verify 1 del auditor.
+- **Qué pasó**: para ahorrar tiempo y memoria se pidió no repetir el rompedor ni la suite. El change
+  llegó al auditor con las correcciones sin atacar y sin regresiones medidas, y no pudo aprobarse.
+  Acotado al delta, el rompedor encontró dos huecos reales en minutos, y el CI del PR resolvió la suite
+  sin la corrida local de más de una hora.
+- **Regla**: cuando la corrección es chica, la vuelta del rompedor se acota al delta y a sus
+  consumidores, y la suite se delega al CI con el PR armado antes de pedir el veredicto. Aplica a
+  orquestador y auditor.
+
+## L-071 · Sin login, el CI verde se certifica por la definición del paso y su conclusión; el conteo es un complemento
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), B2 de verify 1 y tarea 8.1 (04/11/2026).
+- **Qué pasó**: la API pública de GitHub da la conclusión de cada paso pero no sus logs, y `gh` no
+  estaba instalado, así que el `N passed` que pide L-055 no se pudo leer.
+- **Regla**: el run sobre el SHA de origen, con su paso de tests leído en `ci.yml` y en el script que
+  llama (sin filtro de archivo ni de `-k`) y en `success`, certifica la suite entera. El conteo se pide
+  aparte a quien tenga login y se declara como hueco si falta; no se inventa ni se da por leído. Aplica
+  a orquestador y auditor.
+
+## L-072 · La cuenta de intentos se declara por gate y se aplica en cada vuelta
+
+- **Origen**: 3f `ejemplo-robusto` (C-27), `tasks.md` del change (03/11/2026).
+- **Qué pasó**: el registro contó los resultados no aprobados de toda la etapa verify ("con un tercero
+  se frena"), y en la vuelta siguiente reabrió el grupo 10 sin aplicar esa misma cuenta. Contada por
+  gate, como dice la regla global, nadie llegó a tres.
+- **Regla**: `tasks.md` dice qué cuenta usa (por gate: rompedor y auditor por separado) y, en cada
+  resultado no aprobado, anota el número de esa gate. Así la frenada en el tercero no depende de una
+  interpretación hecha después. Aplica al orquestador.

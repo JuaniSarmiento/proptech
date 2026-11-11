@@ -66,7 +66,7 @@ gates están en el árbol de abajo.
 DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crítico
    ⏳ 2e humo-y-ci (Gianfranco)          ⏳ 1e respaldos-2 (Emiliano, HIGH)
    ⏳ 1f worker-y-logs (Neyen)           ⏳ 3e pulido-web-3 (Matías)
-   ⏳ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
+   ✅ 3f ejemplo-robusto (Giuliano)      ⏳ R1 revisiones-independientes (Juan Cruz)
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
@@ -882,7 +882,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 - **Leer antes**: `knowledge-base/12_fichas_de_changes.md` §3e; `09_decisiones_y_supuestos.md` (D-134).
 
 ### [C-27] `ejemplo-robusto` · 3f
-- **Estado**: `[ ]` pendiente, no propuesto. LOW. Giuliano.
+- **Estado**: `[x]` archivado (04/11/2026, D-145). LOW. Giuliano. Auditor APROBADO, CI verde del PR #7
+  sobre `1d090f6`; el PR queda para merge. Deuda DE-1 a DE-12 en la ficha 3f.
 - **Scope**: la deuda de `acceso-de-desarrollo` sobre `ejemplo.py`: mutantes M5 a M8 (QA-2), la
   concurrencia sin barrera (QA-7/DB-3), `LIMIT 1` sin `ORDER BY` (DB-4), errores como traceback (BE-3),
   Redis exigido sin usarse (QA-3), el test de guarda (QA-5).
