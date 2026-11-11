@@ -2,8 +2,8 @@
 
 Cada test afirma el importe y las fechas de los tramos. Los escenarios de saldo inicial ("Primer
 interés después de migrar", "Mes entero después de migrar", "Segundo mes después de migrar") van al
-final de este archivo: el dominio recibe `interes_desde` (el día siguiente a la migración) y el interés
-importado no entra en la base.
+final de este archivo: el dominio recibe `interes_desde` (el día siguiente a la migración) y el
+interés importado no entra en la base.
 """
 
 from datetime import UTC, date, datetime
