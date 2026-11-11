@@ -244,6 +244,21 @@
   exponerla sin cambiar `residual`, `imputado` ni el crédito a favor. Mutante: devolver el importe
   original en vez de la parte topeada → rojo. `test_estado.py` y `test_estado_propiedades.py` siguen
   verdes sin tocar sus expectativas.
+  - Decisión de la tanda 3: `ParteDeImputacion(movimiento_id, obligacion_id, componente, importe, orden)`
+    y `EstadoDeCuenta.imputaciones_que_cuentan` (ordenadas por `orden`, sin las partes de importe cero).
+    `Movimiento.corte`/`tramos` y `Obligacion.interes_desde` con defecto (`None`, `()`, vencimiento más un
+    día) para no tocar a los tests existentes. En H-004 `interes_desde` es siempre el vencimiento más un
+    día; el origen de saldo inicial es de H-005.
+  - RED (16:00, `cd backend && uv run pytest tests/unitarios/cuenta_corriente/test_estado.py -q`): sin
+    producción el módulo no importa (`ImportError: cannot import name 'ParteDeImputacion'`), un error de
+    colección, no una aserción (L-049). Para leer la aserción se agregó **a mano y sin commitear** el
+    andamiaje mínimo (clase `ParteDeImputacion`, `imputaciones_que_cuentan = ()` y los campos con su
+    defecto, `interes_desde = date.min`) y se corrió `-k "partes or parte or corte or interes_desde or
+    dia_siguiente or no_son_partes"`: `3 failed, 4 passed`. Rojos por aserción:
+    `assert () == (ParteDeImputacion(...),)` (partes topeadas y tope por lo debido) y
+    `assert datetime.date(1, 1, 1) == datetime.date(2026, 10, 11)` (`interes_desde`). Los otros cuatro
+    (sin partes si no cuenta; `corte` y `tramos` por defecto) nacen verdes con el andamiaje: son
+    campos de datos. El andamiaje se revirtió desde copia previa del scratchpad antes del commit.
 - [ ] 3.2 **Foto con `corte`, `tramos` e `interes_desde` (E17).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/lecturas.py:37-69` y `_foto`,
   `backend/tests/integracion/test_cc_lecturas.py`. RED: la foto de una cuenta con un interés de corte

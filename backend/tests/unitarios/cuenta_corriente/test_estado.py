@@ -11,6 +11,7 @@ from proptech_core.cuenta_corriente.dominio.estado import (
     ImputacionRegistrada,
     Movimiento,
     Obligacion,
+    ParteDeImputacion,
     calcular_estado,
 )
 from proptech_core.cuenta_corriente.dominio.imputacion import Componente
@@ -368,3 +369,94 @@ def test_ajuste_enlazado_a_un_movimiento_fuera_de_la_cuenta_no_cuenta() -> None:
     e = lb.estado()
     assert ajuste.id not in e.movimientos_que_cuentan
     assert e.deuda == d("11.00")
+
+
+# --- 3.1 · lo que el cálculo del interés necesita (D3) ------------------------------------------
+
+
+def test_las_partes_de_imputacion_que_cuentan_salen_topeadas_por_lo_debido_y_por_el_credito() -> (
+    None
+):
+    """3.1: el estado expone la parte que cuenta de cada imputación, no el importe registrado.
+
+    B de $3.000 imputó $1.000 al interés y $2.500 al capital: cuenta $2.000 (el tope es su importe)
+    y el P de $500 cuenta entero. Un pago A de $9.000 sobre un interés de $4.000 cuenta $4.000 (el
+    tope es lo debido). Una fila recortada del todo no es una parte.
+    """
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "40000.00")
+    i1 = interes(o, "1000.00")
+    b, p = credito("3000.00"), credito("500.00")
+    lb.obligaciones, lb.movimientos = [o], [i1, b, p]
+    lb.imputa(b, o, INT, "1000.00")
+    lb.imputa(b, o, ORD, "2500.00")
+    lb.imputa(b, o, FON, "100.00")  # el crédito ya se agotó: cuenta 0 y no es una parte
+    lb.imputa(p, o, ORD, "500.00")
+    e = lb.estado()
+    assert e.imputaciones_que_cuentan == (
+        ParteDeImputacion(b.id, o.id, INT, d("1000.00"), 1),
+        ParteDeImputacion(b.id, o.id, ORD, d("2000.00"), 2),
+        ParteDeImputacion(p.id, o.id, ORD, d("500.00"), 4),
+    )
+    # lo que ya calculaba no cambia
+    assert e.imputado[(o.id, ORD)] == d("2500.00")
+    assert e.a_favor_por_credito == {b.id: CERO, p.id: CERO}
+
+
+def test_una_parte_de_imputacion_no_pasa_de_lo_debido_en_el_componente() -> None:
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "40000.00")
+    i1 = interes(o, "4000.00")
+    a = credito("9000.00")
+    lb.obligaciones, lb.movimientos = [o], [i1, a]
+    lb.imputa(a, o, INT, "9000.00")
+    e = lb.estado()
+    assert e.imputaciones_que_cuentan == (ParteDeImputacion(a.id, o.id, INT, d("4000.00"), 1),)
+
+
+def test_las_imputaciones_de_lo_que_no_cuenta_no_son_partes() -> None:
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "40000.00")
+    i1 = interes(o, "4000.00")
+    a = credito("4000.00")
+    lb.obligaciones, lb.movimientos = [o], [i1, a]
+    lb.imputa(a, o, INT, "4000.00")
+    lb.movimientos.append(contra(i1))  # el interés deja de contar: su imputación no tiene qué pagar
+    e = lb.estado()
+    assert e.imputaciones_que_cuentan == ()
+
+
+def test_el_movimiento_trae_corte_y_tramos_vacios_por_defecto_y_los_conserva() -> None:
+    o = obligacion(date(2026, 10, 1), "100.00")
+    assert interes(o, "1.00").corte is None
+    assert interes(o, "1.00").tramos == ()
+    tramos = ((date(2026, 9, 11), date(2026, 9, 30)), (date(2026, 11, 1), date(2026, 11, 30)))
+    m = Movimiento(
+        uuid4(),
+        "interes",
+        "debito",
+        d("1.00"),
+        HOY.date(),
+        HOY,
+        corte=date(2026, 11, 30),
+        tramos=tramos,
+    )
+    assert m.corte == date(2026, 11, 30)
+    assert m.tramos == tramos
+
+
+def test_la_obligacion_inicia_su_interes_el_dia_siguiente_al_vencimiento() -> None:
+    """H-004: sin saldo inicial, `interes_desde` es el vencimiento más un día (H-005 lo extiende)."""
+    o = obligacion(date(2026, 10, 1), "100.00")  # vence el 10/10
+    assert o.interes_desde == date(2026, 10, 11)
+    migrada = Obligacion(
+        uuid4(),
+        None,
+        date(2026, 9, 1),
+        date(2026, 9, 10),
+        d("1.00"),
+        d("0.00"),
+        d("0.00"),
+        interes_desde=date(2026, 10, 16),
+    )
+    assert migrada.interes_desde == date(2026, 10, 16)
