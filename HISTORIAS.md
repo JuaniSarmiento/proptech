@@ -16,8 +16,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
-| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | En proceso |
-| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Pendiente |
+| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Lista |
+| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -441,6 +441,23 @@ Cierre:
     la spec `saldo-inicial` con su test en verde. Sin criterio de CI (D-154).
 - Demo: cargar `saldos-octubre.xlsx` (inventado), emitir noviembre y mostrar libro, orígenes e interés
   desde la migración.
+- Construcción (Sonnet, tres tandas verificadas una por una): t1 `0035_saldo_inicial` con protección,
+  mutantes, ensayo de roles y barrido local de migraciones (1.315 en verde); agregó `ck_origen_sentido`
+  (sin sentido la FK a `movimiento` no se evalúa), aceptado. t2 `registrar_saldo_inicial` con la firma
+  del pedido (49 tests, 17 mutantes; los rechazos dentro de un SAVEPOINT). t3 el interés desde la
+  migración: la foto trae `interes_desde` con un `LEFT JOIN` a la carga; 3.2, 4.2, 4.3 y 6.3 cerradas.
+- **Correcciones de la aceptación hechas por el orquestador** (sin tocar ningún criterio): C19 metía dos
+  cargas en un edificio (recongelada en `2fcf6ba`); la regresión de C20 perdona sólo el test de H-004
+  que fija la cabeza en `0034` con ese mensaje exacto (quedó atado a su momento, `d083832`); R09 tenía
+  "carga de saldo inicial" partido en dos líneas.
+- Evidencia (11/11/2026): `python3 aceptacion/H-005/aceptar.py --codigo d083832` desde `2fcf6ba`:
+  **60/60**, 0 fallas, 0 errores, 0 skips; C01 a C22 PASA, con C20 corriendo H-004 67/67, los tests del
+  4b y el barrido de migraciones. La aceptación de H-006 (su C19) volvió a correr H-005 60/60 sobre
+  `4cb5e36`.
+- Demo probada (11/11/2026, PostgreSQL real): carga de U1 (agosto $80.000 con $4.000 de interés y
+  septiembre $85.000), U2 (total único $50.000 con $2.000), U3 (crédito $3.000) y U4 ($300); orígenes
+  fila por fila; replay en otro orden sin escribir; segunda carga rechazada; noviembre cobra $1.280,00 y
+  $1.360,00 desde el 16/10.
 - Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
   archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
 - Aceptación: **congelada en `0b4c5cb69628cd69c7a6ee49ac27f3fb439c1234`** (aprobación por delegación de Juani, después de la revisión técnica): 60 tests, 60 rojos por aserción sobre `aee113a`, 0 errores, 0 skips; C20 (ciclo de la `0035`, ensayo de roles, H-004 67/67 desde `d2da37e`, tests del 4b, barrido de migraciones), C21 y C22 en `aceptar.py`. Contrato para el constructor en `aceptacion/H-005/CONTRATO.md`. **Recongelada en `2fcf6ba91c518abcaccdd5ac5aef3c09bdecaea9`** (11/11/2026, por el orquestador): el test `test_c19_una_carga_y_su_origen_bien_formados_entran` metía dos cargas en el mismo edificio, contra la carga única de D5 y C13; lo encontró la tanda 1. Ahora la carga manual entra en un savepoint que se deshace. Ningún otro test cambió. Importes verificados con `Fraction`. Comando: `python3 aceptacion/H-005/aceptar.py --codigo HEAD` (unos 20 min con la regresión; `--sin-regresion` para una corrida rápida).
@@ -487,6 +504,16 @@ Cierre:
     y H-005 siguen en verde. Sin criterio de CI: el CI con la suite completa cierra el change (D-154).
 - Demo: un edificio con cinco unidades (al día, saldo chico, deuda de intereses, una vencida, moroso
   crítico) y su listado.
+- Construcción (Sonnet, una tanda): `dominio/cobranza.py` (`clasificar`) y `aplicacion/cobranza.py`
+  (`situacion_de_cuenta`, `situacion_del_edificio`), sin escrituras ni candados; mutantes en rojo (umbral
+  `<=`, período con sólo interés, crédito restado, gracia ignorada, umbral fijo, filtro por fecha valor,
+  tenant en la sentencia). Agregó que una cuenta de persona da `NoEncontrado` en `situacion_de_cuenta`,
+  con test (fuera del contrato, aceptado). Un mutante equivalente declarado (la exclusión de anuladas ya
+  la hace `calcular_estado`).
+- Evidencia (11/11/2026): `python3 aceptacion/H-006/aceptar.py --codigo 4cb5e36` desde `3f6629b`:
+  **33/33**, C01 a C19 PASA, con C19 corriendo H-004 67/67 y H-005 60/60.
+- Demo probada: el listado del edificio migrado da U1 moroso crítico ($171.640, dos liquidaciones), U2
+  con deuda vencida ($52.800, una), U3 sin deuda vencida y U4 bajo el umbral ($304,80).
 - Aceptación: **congelada en `3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401`** (aprobación por delegación de Juani, después de la revisión técnica): 33 tests, 33 rojos por aserción sobre `3378b43`, 0 errores, 0 skips; C17 (KB), C18 (20 escenarios) y C19 (H-004 y H-005 desde sus SHA) en `aceptar.py`. Contrato en `aceptacion/H-006/CONTRATO.md`. Importes verificados con `Fraction`.
 
 ## Plantilla de historia
