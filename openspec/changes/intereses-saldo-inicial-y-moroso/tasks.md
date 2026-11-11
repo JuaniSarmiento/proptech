@@ -329,12 +329,25 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
   vez del siguiente → "Redondeo único sobre dos tramos" y "Pago parcial..." cambian; registrar $0,00 →
   "Tasa cero" registra un débito; estirar el último tramo con base positiva hasta el corte → "Detalle de un
   pago total" da un tramo 11/09-30/09, rojo por fechas.
+  - RED (16:06, `cd backend && uv run pytest tests/unitarios/cuenta_corriente/test_intereses.py -q --tb=short`,
+    contra `intereses.py` con la firma y `calcular_intereses` que devuelve `()`): `23 failed, 3 passed`. Los 23
+    rojos son por aserción: `AssertionError: se esperaba un interés y hay 0` (`assert 0 == 1`, de `unico()`) o,
+    en los de "dias no contiguos" y "corte que no es fin de mes", `Failed: DID NOT RAISE`. Nacen verdes tres
+    negativos que el stub vacío ya cumple: "Tasa cero", "Pago dentro de la gracia" y "Los días no cobrados no
+    pasan el corte"; su prueba es el mutante (registrar $0,00 y `<` en el borde de la gracia, abajo). El escenario
+    "Un débito de capital suma a la base" es nuevo de esta tanda (la tarea no lo nombra): cubre la parte "débitos
+    de capital que cuentan" de la base.
 - [ ] 4.2 **Gracia e inicio natural.** Escenarios: "Pago dentro de la gracia", "Pago un día después de la
   gracia" ($600,00), "Corte dentro de la gracia" ($3.300,00 en noviembre), "Lo cubierto por un interés
   anterior no se vuelve a cobrar", saldo-inicial "Primer interés después de migrar" (sólo la parte de
   dominio: inicio el día siguiente a la migración). Mutantes: el interés corre desde `vencimiento +
   gracia`; `<` en vez de `<=` en el borde de la gracia; el inicio de una obligación migrada es su
   vencimiento; el inicio ignora lo cubierto por un interés que cuenta.
+  - Escenarios de saldo inicial de 4.2 y 4.3 ("Primer interés después de migrar", "Mes entero después de migrar",
+    "Segundo mes después de migrar"): **pendientes de H-005**. El dominio ya recibe `interes_desde`; dos tests
+    (`..._obligacion_migrada_es_el_que_pasa_el_lector` y `mes_entero_respeta_el_inicio_...`) sólo prueban que lo
+    respeta, y los mutantes de "inicio migrado" y "tramo desde el día 1" se ejercitan con ellos y con "Un día de
+    atraso con mes entero".
 - [ ] 4.3 **Mes entero por meses calendario (E3.2, E13, decisión de Juani del 30/10/2026).** Escenarios:
   "Un día de atraso con mes entero" ($3.000,00, tramo 30/09-30/09), "El mes siguiente con mes entero"
   ($3.000,00, tramo 01/10-31/10), "Corte dentro de la gracia con mes entero" ($6.000,00, tramos 29/09-30/09
