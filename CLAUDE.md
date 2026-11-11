@@ -155,6 +155,13 @@ mercado de arranque es **Mendoza**.
   (Emiliano, HIGH), C-25 `worker-y-logs` (Neyen), C-26 `pulido-web-3` (Matías), C-27
   `ejemplo-robusto` (Giuliano), C-28 `revisiones-independientes` (Juan Cruz) y C-29 `base-y-rls`
   (CRITICAL, sin asignar). Quien recién se suma toma sólo LOW o MEDIUM.
+- **Cambio 1e `respaldos-2` archivado** (C-24, 11/11/2026, HIGH, D-148 a D-150): el servicio de respaldos
+  aguanta el reloj atrasado, SIGTERM y los logs en JSON, la retención de "14 copias" suma un piso por
+  antigüedad, `conmutar.sh` pasa la aplicación a una base restaurada, `infra/arrancar.sh` crea la carpeta
+  de respaldos sin paso manual y la carrera del 503 sin su línea de salud queda cerrada. Construyó
+  Emiliano (PR #6, construido el 31/10/2026), firmado por Emiliano el 31/10 y por Juani el 11/11 después
+  del apply, integrado con `main` en H-003. Deuda en la ficha 1e de
+  `knowledge-base/12_fichas_de_changes.md`.
 - **Cambio 2e `humo-y-ci` archivado** (C-23, 11/11/2026, MEDIUM, D-147): el humo y el ensayo de roles se
   niegan ante el proyecto `proptech`, cada paso del humo dice cuál es y deja su evidencia, la lista de
   servicios y las políticas de RLS se comparan por derivación y contenido, el backend corre en paralelo
@@ -295,12 +302,13 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
   D-139, PR #3, sin migraciones) y 6 `gastos-y-cargos` (30/10/2026, D-140 a D-142, PR #4, migraciones
   `0029` a `0033`), 3f `ejemplo-robusto` (04/11/2026, D-145, PR #7, sin migraciones) y 2e
-  `humo-y-ci` (11/11/2026, D-147, PR #5, sin migraciones).
+  `humo-y-ci` (11/11/2026, D-147, PR #5, sin migraciones) y 1e `respaldos-2` (11/11/2026, D-148 a D-150,
+  PR #6, sin migraciones).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
-- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23 y C-27
-  (archivados), uno por desarrollador; tabla en `CHANGES.md`.
+- **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23, C-24 y
+  C-27 (archivados), uno por desarrollador; tabla en `CHANGES.md`.
 - **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los

@@ -15,12 +15,26 @@ import re
 import signal
 import stat
 import subprocess
+import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 PATRON_NOMBRE_BACKUP = re.compile(r"^proptech-[0-9]{8}T[0-9]{6}Z\.dump$")
+
+# `respaldar.sh` corre siempre dentro de un contenedor Linux (D9); estos tests
+# lo invocan con `bash` y dependen de semántica POSIX real (grupos de proceso,
+# `SIGKILL`/`SIGTERM`, bits de permiso `rwx`) que Windows nativo no tiene —
+# ni con Git Bash encima, que no emula señales ni `chmod` a nivel de kernel.
+# Se saltan explícitamente en Windows en vez de fallar con un `AttributeError`
+# o una aserción de permisos que nunca puede cumplirse ahí.
+SOLO_POSIX = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="requiere semántica POSIX (señales de grupo de proceso o chmod real); "
+    "respaldar.sh sólo corre dentro de un contenedor Linux, nunca nativo en Windows",
+)
 
 FAKE_PG_DUMP_OK = """
 archivo=""
@@ -51,6 +65,7 @@ MARCADOR_CONTRASENA = "marcador-pgpassword-no-real-9f3c21"
 ENV_BASE_VALIDO = {
     "RESPALDO_INTERVALO_SEGUNDOS": "3600",
     "RESPALDO_CONSERVAR": "14",
+    "RESPALDO_CONSERVAR_DIAS": "14",
     "RESPALDO_LIMITE_SEGUNDOS": "1800",
 }
 
@@ -214,6 +229,7 @@ class TestCarpeta:
         assert "no-existe" in resultado.stderr
         assert MARCADOR_CONTRASENA not in _salida_combinada(resultado)
 
+    @SOLO_POSIX
     def test_carpeta_sin_permiso_de_escritura(
         self,
         tmp_path: Path,
@@ -261,6 +277,7 @@ class TestCorreComoRoot:
 
 
 class TestCicloExitoso:
+    @SOLO_POSIX
     def test_genera_backup_con_nombre_y_permisos_correctos(
         self,
         tmp_path: Path,
@@ -401,6 +418,7 @@ class TestFallasDelCiclo:
 
         assert MARCADOR_ERROR_PG_DUMP not in _salida_combinada(resultado)
 
+    @SOLO_POSIX
     def test_base_que_no_responde_se_corta_y_el_proceso_muere(
         self,
         tmp_path: Path,
@@ -551,7 +569,7 @@ def _matar(proceso: subprocess.Popen[str]) -> str:
     hijo del bash, también suelte el extremo de escritura del pipe de
     stdout para devolver EOF; de otro modo `communicate()` cuelga esperando
     un EOF que nunca llega)."""
-    os.killpg(proceso.pid, signal.SIGKILL)
+    getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
     return proceso.communicate(timeout=5)[0]
 
 
@@ -565,6 +583,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
     `pg_restore --list`, el ciclo no puede loguear `respaldo_generado` (la
     spec: "no saludable si todavía no generó ninguno")."""
 
+    @SOLO_POSIX
     def test_falla_el_mv_no_declara_exito(
         self,
         tmp_path: Path,
@@ -593,6 +612,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert salud.returncode != 0, "salud OK sin ningún backup en la carpeta"
 
+    @SOLO_POSIX
     def test_falla_la_escritura_de_ultimo_ok_no_declara_exito(
         self,
         tmp_path: Path,
@@ -620,6 +640,7 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         salud = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
         assert salud.returncode != 0, "salud OK sin una marca válida"
 
+    @SOLO_POSIX
     def test_falla_la_retencion_no_declara_exito(
         self,
         tmp_path: Path,
@@ -636,6 +657,17 @@ class TestModoContinuoNoDeclaraExitoSiFallaUnPasoPosterior:
         # ciclo que genera uno nuevo tiene que borrar el viejo: ahí es donde
         # el `rm` falso falla.
         _crear_backups(carpeta, ["proptech-20200101T000000Z.dump"])
+        # D1: la retención ordena por `mtime` real, no por el nombre — sin
+        # esto el archivo nace con la fecha de HOY (`write_text`), cae
+        # dentro de la ventana de `RESPALDO_CONSERVAR_DIAS` y el piso por
+        # antigüedad (D2) lo protege de borrarse: `rm` nunca se llega a
+        # invocar y el `rm` falso de este test nunca falla (hallazgo real
+        # del CI, no sólo de Windows).
+        import os as _os
+        import time as _time
+
+        hace_20_dias = _time.time() - 20 * 86400
+        _os.utime(carpeta / "proptech-20200101T000000Z.dump", (hace_20_dias, hace_20_dias))
         proceso = _correr_continuo(
             tmp_path,
             entorno_con_bin_falso,
@@ -742,6 +774,9 @@ class TestRetencion:
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
+        import os as _os
+        import time as _time
+
         escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
         escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
 
@@ -749,6 +784,14 @@ class TestRetencion:
         carpeta.mkdir()
         nombres_viejos = [f"proptech-202610{(dia):02d}T000000Z.dump" for dia in range(1, 15)]
         _crear_backups(carpeta, nombres_viejos)
+        # D2: fuera de RESPALDO_CONSERVAR_DIAS (default 14) para que el piso
+        # por antigüedad no proteja a ninguno — este test valida la cantidad
+        # pura (RESPALDO_CONSERVAR), no el piso de D2 (ese es
+        # TestVentanaPorDias). Sin esto, los 14 archivos "viejos" quedan con
+        # mtime real de HOY (recién creados) y el piso protegería a uno.
+        hace_30_dias = _time.time() - 30 * 86400
+        for nombre in nombres_viejos:
+            _os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
 
         resultado = _correr(
             tmp_path,
@@ -763,12 +806,14 @@ class TestRetencion:
         for nombre_viejo in nombres_viejos:
             assert nombre_viejo not in dumps
 
-    def test_reloj_atrasado_no_borra_el_backup_nuevo(
+    def test_reloj_atrasado_no_borra_nada_y_avisa(
         self,
         tmp_path: Path,
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
+        # D-151: el reloj del host (falso, en 2025) quedó antes que el mtime de
+        # las copias existentes; el ciclo conserva todo, incluida la nueva.
         escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
         escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
         escribir_herramienta_falsa("date", FAKE_DATE_RELOJ_ATRASADO)
@@ -787,13 +832,454 @@ class TestRetencion:
 
         assert resultado.returncode == 0, resultado.stderr
         dumps = _archivos_dump(carpeta)
-        assert "proptech-20261001T000000Z.dump" in dumps, (
-            "el backup nuevo (que ordena como el más viejo) no debía borrarse"
+        assert "proptech-20261001T000000Z.dump" in dumps, "el backup nuevo no debía borrarse"
+        assert len(dumps) == 15, dumps
+        assert any(
+            linea.get("evento") == "reloj_atrasado" for linea in _lineas_json(resultado.stdout)
         )
-        assert len(dumps) == 14, dumps
-        assert "proptech-20261020T000000Z.dump" not in dumps, (
-            "debía borrarse el más viejo de los anteriores"
+
+
+class TestTodasLasLineasSonJSON:
+    """F8: `error_salir` hoy escribe `echo "error: $1"` a stderr (texto
+    plano), al lado del `printf` JSON de `logear`. Ninguna línea de ninguna
+    salida del servicio, en ninguno de sus cuatro modos, puede quedar sin
+    parsear como JSON con `ts`, `nivel`, `servicio` y `evento` (requisito
+    "Los errores de las herramientas no llegan al log", escenario "Todas las
+    líneas del servicio son JSON")."""
+
+    def _assert_todas_json(self, texto: str) -> list[dict[str, object]]:
+        lineas_crudas = [linea for linea in texto.splitlines() if linea.strip()]
+        parseadas: list[dict[str, object]] = []
+        for linea in lineas_crudas:
+            try:
+                objeto = json.loads(linea)
+            except json.JSONDecodeError:
+                pytest.fail(f"línea no es JSON: {linea!r}; salida completa: {texto!r}")
+            assert set(objeto) >= {"ts", "nivel", "servicio", "evento"}, objeto
+            parseadas.append(objeto)
+        return parseadas
+
+    def test_configuracion_invalida_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_INTERVALO_SEGUNDOS": "abc"},
         )
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    @SOLO_POSIX
+    def test_carpeta_sin_permiso_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        carpeta = tmp_path / "sin-permiso-json"
+        carpeta.mkdir()
+        carpeta.chmod(0o500)
+        try:
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+            )
+            assert resultado.returncode != 0
+            self._assert_todas_json(_salida_combinada(resultado))
+        finally:
+            carpeta.chmod(0o700)
+
+    def test_rechazo_por_root_es_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("id", "echo 0\n")
+        resultado = _correr(tmp_path, entorno_con_bin_falso)
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    def test_una_vez_exitoso_todo_json(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        resultado = _correr(tmp_path, entorno_con_bin_falso)
+        assert resultado.returncode == 0, resultado.stderr
+        self._assert_todas_json(_salida_combinada(resultado))
+
+    def test_salud_sin_marca_es_json_si_escribe_algo(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert resultado.returncode != 0
+        self._assert_todas_json(_salida_combinada(resultado))
+
+
+FAKE_DATE_SECUENCIAL = """
+case "$*" in
+  *'+%Y%m%dT%H%M%SZ') echo "${FAKE_MARCA}T000000Z" ;;
+  *'+%Y-%m-%dT%H:%M:%SZ') echo "${FAKE_MARCA}T00:00:00Z" ;;
+  *) /usr/bin/date "$@" ;;
+esac
+"""
+
+
+class TestRetencionPorTiempoDeModificacion:
+    """F4: `aplicar_retencion` ordena hoy POR NOMBRE (`sort`), que es el
+    reloj del host al momento de crear el archivo. Con el reloj atrasado,
+    cada backup nuevo ordena como el más viejo por nombre y la retención lo
+    borra en el ciclo siguiente, aunque sea el backup real más reciente."""
+
+    def test_siete_ciclos_con_el_reloj_atrasado_conservan_los_siete(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_SECUENCIAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        # 14 backups "viejos" ya en la carpeta, con nombres de octubre.
+        nombres_viejos = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in range(1, 15)]
+        _crear_backups(carpeta, nombres_viejos)
+
+        # Siete ciclos seguidos con el reloj atrasado: cada uno más atrás que
+        # el anterior (septiembre, día 7 hacia el día 1), todos con nombres
+        # anteriores a los 14 ya existentes (octubre).
+        for dia in range(7, 0, -1):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={
+                    "RESPALDO_CONSERVAR": "14",
+                    "FAKE_MARCA": f"202609{dia:02d}",
+                },
+            )
+            assert resultado.returncode == 0, resultado.stderr
+
+        dumps_septiembre = [n for n in _archivos_dump(carpeta) if "202609" in n]
+        assert len(dumps_septiembre) == 7, (
+            f"se esperaban los 7 backups del reloj atrasado, quedaron: {dumps_septiembre}"
+        )
+
+    def test_reloj_adelantado_no_conserva_el_backup_para_siempre(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_SECUENCIAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        # Ciclo 1: el reloj del host adelanta a 2027 (el backup más VIEJO por
+        # mtime real, pero el de nombre más "nuevo").
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "2", "FAKE_MARCA": "20270101"},
+        )
+        assert resultado.returncode == 0, resultado.stderr
+        time.sleep(1.1)
+
+        # Ciclos 2 y 3: el reloj vuelve a la hora real (nombres de noviembre,
+        # que ordenan ANTES que "2027" por nombre, pero son los más nuevos
+        # por mtime real).
+        for marca in ("20261101", "20261102"):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={"RESPALDO_CONSERVAR": "2", "FAKE_MARCA": marca},
+            )
+            assert resultado.returncode == 0, resultado.stderr
+            time.sleep(1.1)
+
+        dumps = _archivos_dump(carpeta)
+        assert "proptech-20270101T000000Z.dump" not in dumps, (
+            f"el backup del reloj adelantado (el más viejo por mtime real) debía borrarse: {dumps}"
+        )
+        assert len(dumps) == 2, dumps
+
+
+class TestVentanaPorDias:
+    """D2: `RESPALDO_CONSERVAR_DIAS` (default 14, rango 1..365, L-008).
+    Además de la cantidad, conserva el backup correcto más nuevo de cada día
+    dentro de esa ventana."""
+
+    @pytest.mark.parametrize(
+        "valor",
+        ["0", "366", "abc", "060", "+1", "", " ", "\t", "\n", "١٤"],
+    )
+    def test_valores_invalidos_rechazan_nombrando_la_variable(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        valor: str,
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_CONSERVAR_DIAS": valor},
+        )
+        assert resultado.returncode != 0, f"valor {valor!r} debería rechazarse"
+        assert "RESPALDO_CONSERVAR_DIAS" in resultado.stderr
+        assert MARCADOR_CONTRASENA not in _salida_combinada(resultado)
+
+    def test_falta_la_variable_rechaza(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            overrides={"RESPALDO_CONSERVAR_DIAS": None},
+        )
+        assert resultado.returncode != 0
+        assert "RESPALDO_CONSERVAR_DIAS" in resultado.stderr
+
+    def test_muchos_reinicios_el_mismo_dia_conservan_el_mas_nuevo_de_dias_anteriores(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import os as _os
+        import time as _time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        # Un backup correcto de hace 5 días (dentro de la ventana de 14).
+        viejo = carpeta / "proptech-20261025T000000Z.dump"
+        viejo.write_text("backup de hace 5 dias")
+        hace_5_dias = _time.time() - 5 * 86400
+        _os.utime(viejo, (hace_5_dias, hace_5_dias))
+
+        overrides: dict[str, str | None] = {
+            "RESPALDO_CONSERVAR": "2",
+            "RESPALDO_CONSERVAR_DIAS": "14",
+        }
+
+        # "Muchos reinicios" de hoy: tres ciclos seguidos.
+        for _ in range(3):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides=overrides,
+            )
+            assert resultado.returncode == 0, resultado.stderr
+            _time.sleep(1.1)
+
+        assert viejo.exists(), (
+            "el backup más nuevo del día de hace 5 días no debía borrarse (piso por antigüedad, D2)"
+        )
+
+    def test_backups_mas_viejos_que_la_ventana_se_borran(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import os as _os
+        import time as _time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+
+        viejo = carpeta / "proptech-20261001T000000Z.dump"
+        viejo.write_text("backup de hace 20 dias")
+        hace_20_dias = _time.time() - 20 * 86400
+        _os.utime(viejo, (hace_20_dias, hace_20_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "1", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not viejo.exists(), (
+            "un backup más viejo que la ventana no debía protegerse: el piso no es para siempre"
+        )
+
+
+FAKE_PG_DUMP_LARGO = """
+archivo=""
+for arg in "$@"; do
+  case "$arg" in
+    --file=*) archivo="${arg#--file=}" ;;
+  esac
+done
+echo "parcial-en-progreso" > "$archivo"
+sleep 30
+echo "esto nunca debia escribirse: el ciclo ya debia haber muerto" >> "$archivo"
+exit 0
+"""
+
+
+class TestApagadoOrdenado:
+    """F5: hoy no hay ningún `trap`, así que `docker compose stop` espera 10
+    segundos y manda `SIGKILL` (D9). El apagado tiene que cortar la espera
+    del próximo ciclo o el volcado en curso, borrar el `.parcial`, loguear
+    su propio evento JSON y salir con 0 — sin marcar `respaldo_fallido` ni
+    `.ultimo-fallo` (D3: un apagado pedido no es una falla de backup)."""
+
+    @SOLO_POSIX
+    def test_apagado_mientras_no_hay_volcado_en_curso(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+    ) -> None:
+        import time
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        proceso = _correr_continuo(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            overrides={"RESPALDO_INTERVALO_SEGUNDOS": "3600"},
+        )
+        try:
+            time.sleep(1)  # el ciclo de arranque ya corrió; está en el sleep.
+            inicio = time.monotonic()
+            getattr(os, "killpg")(proceso.pid, signal.SIGTERM)  # noqa: B009
+            codigo = proceso.wait(timeout=5)
+            duracion = time.monotonic() - inicio
+        finally:
+            if proceso.poll() is None:
+                getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
+                proceso.wait(timeout=5)
+        salida = proceso.stdout.read() if proceso.stdout else ""
+
+        assert codigo == 0, f"código de salida {codigo}, salida: {salida}"
+        assert duracion < 2, f"tardó {duracion}s en salir"
+        lineas = _lineas_json(salida)
+        apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
+        assert apagados, f"se esperaba un evento de apagado: {salida}"
+
+    @SOLO_POSIX
+    def test_apagado_durante_un_volcado_en_curso(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        import time
+
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_LARGO)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        # RESPALDO_LIMITE_SEGUNDOS tiene que ser estrictamente MENOR que
+        # RESPALDO_INTERVALO_SEGUNDOS (60, de ENTORNO_CONTINUO) — "60" acá
+        # violaba esa regla y el script rechazaba la config antes de arrancar
+        # (hallazgo real del CI: nunca se validó corriendo de verdad en Linux).
+        proceso = _correr_continuo(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            overrides={"RESPALDO_LIMITE_SEGUNDOS": "50"},
+        )
+        try:
+            # Esperar a que exista el .parcial: recién ahí hay "un volcado en curso".
+            # 30s, no 5s: un runner de CI compartido puede tardar en que el
+            # proceso del script llegue a invocar el `pg_dump` falso, aunque
+            # éste escriba su .parcial de inmediato (hallazgo real del CI). Si
+            # el proceso ya murió solo mientras esperamos, es un error real
+            # (config rechazada, etc.) y no un simple problema de margen: se
+            # corta la espera ahí mismo y se muestra la salida real, no un
+            # mensaje ciego sin contexto.
+            parcial = None
+            proceso_murio_temprano = False
+            for _ in range(300):
+                parciales = list(carpeta.glob("*.dump.parcial"))
+                if parciales:
+                    parcial = parciales[0]
+                    break
+                if proceso.poll() is not None:
+                    proceso_murio_temprano = True
+                    break
+                time.sleep(0.1)
+            if parcial is None:
+                # Si murió solo, su stdout ya llegó a EOF: leerlo es seguro.
+                # Si en cambio seguía vivo tras los 30s, hay que matarlo PRIMERO
+                # (está en un `sleep 30` real) — leer un pipe de un proceso vivo
+                # sin que cierre su extremo de escritura cuelga para siempre.
+                if not proceso_murio_temprano and proceso.poll() is None:
+                    getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
+                    proceso.wait(timeout=5)
+                salida_temprana = proceso.stdout.read() if proceso.stdout else ""
+                if proceso_murio_temprano:
+                    pytest.fail(
+                        f"el proceso terminó solo (código {proceso.returncode}) antes de "
+                        f"escribir el .parcial, salida: {salida_temprana!r}"
+                    )
+                pytest.fail(
+                    f"el pg_dump falso no llegó a escribir el .parcial en 30s, "
+                    f"salida hasta ahora: {salida_temprana!r}"
+                )
+
+            inicio = time.monotonic()
+            getattr(os, "killpg")(proceso.pid, signal.SIGTERM)  # noqa: B009
+            codigo = proceso.wait(timeout=10)
+            duracion = time.monotonic() - inicio
+        finally:
+            if proceso.poll() is None:
+                getattr(os, "killpg")(proceso.pid, getattr(signal, "SIGKILL"))  # noqa: B009
+                proceso.wait(timeout=5)
+        salida = proceso.stdout.read() if proceso.stdout else ""
+
+        assert codigo == 0, f"código de salida {codigo}, salida: {salida}"
+        assert duracion < 6, f"tardó {duracion}s en salir: {salida}"
+        assert list(carpeta.glob("*.parcial")) == [], "no debía quedar ningún .parcial"
+        assert list(carpeta.glob("*.dump")) == [], "no debía quedar ningún .dump nuevo"
+        assert not (carpeta / ".ultimo-fallo").exists(), (
+            "un apagado pedido no es una falla de backup (D3)"
+        )
+        lineas = _lineas_json(salida)
+        assert not [linea for linea in lineas if linea.get("evento") == "respaldo_fallido"], salida
+        apagados = [linea for linea in lineas if linea.get("evento") == "apagado"]
+        assert apagados, f"se esperaba un evento de apagado: {salida}"
 
 
 def _correr_salud(
@@ -911,40 +1397,21 @@ class TestSalud:
 
 
 class TestSaludTrasUnFalloConUltimoOkBueno:
-    """R10 (vuelta 2, opción A): el rol equivocado hace fallar el volcado
-    (ya probado arriba, `test_falla_pg_dump_no_deja_archivos_y_loguea_error`),
-    pero antes `--salud` seguía dando 0 hasta 1,5 intervalos después del
-    último backup bueno — el escenario "Volcado con el rol equivocado"
-    pide que el servicio quede no saludable, y antes no quedaba si ya había
-    un backup previo (el caso real; el humo parte sin ninguno, L-016)."""
+    """R10 (vuelta 2, opción A): `--salud` seguía dando 0 hasta 1,5
+    intervalos después del último backup bueno, aunque un ciclo nuevo ya
+    hubiera fallado.
 
-    def test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno(
-        self,
-        tmp_path: Path,
-        entorno_con_bin_falso: dict[str, str],
-        escribir_herramienta_falsa: Callable[[str, str], Path],
-    ) -> None:
-        import time
-
-        carpeta = tmp_path / "respaldos"
-        carpeta.mkdir()
-        (carpeta / ".ultimo-ok").write_text(str(int(time.time())))
-
-        salud_antes = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
-        assert salud_antes.returncode == 0, salud_antes.stderr
-
-        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_FALLA)
-        resultado_ciclo = _correr(
-            tmp_path,
-            entorno_con_bin_falso,
-            carpeta=carpeta,
-            crear_carpeta=False,
-            args=["--una-vez"],
-        )
-        assert resultado_ciclo.returncode == 1
-
-        salud_despues = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
-        assert salud_despues.returncode != 0, "salud OK después de un ciclo fallido"
+    D8 (respaldos-2, L-019): el test
+    `test_salud_falla_si_un_ciclo_falla_despues_de_un_ultimo_ok_bueno`
+    vivía ACÁ con un `FAKE_PG_DUMP_FALLA` genérico representando "el
+    escenario del rol equivocado" (según decía su docstring), pero un
+    binario falso que siempre falla no distingue un rol REALMENTE
+    rechazado de un `compose` mal escrito. Se **reemplazó**, no se
+    duplicó, por `tests/integracion/test_respaldos_rol_real.py`
+    (`pg_dump` real de la imagen, rol `proptech_app` real contra la base
+    real), que también verifica que `--salud` queda en rojo. Esta clase
+    conserva sólo el test de abajo (recuperación de la marca de fallo),
+    que no afirma nada sobre roles."""
 
     def test_un_exito_posterior_limpia_la_marca_de_fallo(
         self,
@@ -1034,4 +1501,282 @@ class TestSaludConUltimoFalloVacioODisco:
         os.utime(marca_ok, (ahora, ahora))  # estrictamente más nueva que el fallo.
 
         resultado = _correr_salud(tmp_path, entorno_con_bin_falso, carpeta)
+        assert resultado.returncode == 0, resultado.stderr
+
+
+FAKE_DATE_RELOJ_ATRASADO_REAL = """
+case "$*" in
+  *'+%Y%m%dT%H%M%SZ') echo "${FAKE_MARCA}" ;;
+  *'+%s') echo "${FAKE_AHORA}" ;;
+  *) /usr/bin/date "$@" ;;
+esac
+"""
+
+# Un reloj atrasado de verdad escribe también el mtime del archivo: el
+# `pg_dump` falso lo deja en `FAKE_AHORA`, no en el mtime real del sistema.
+FAKE_PG_DUMP_CON_MTIME_DEL_RELOJ = """
+archivo=""
+for arg in "$@"; do
+  case "$arg" in
+    --file=*) archivo="${arg#--file=}" ;;
+  esac
+done
+echo "contenido-dump-de-prueba" > "$archivo"
+touch -d "@${FAKE_AHORA}" "$archivo"
+exit 0
+"""
+
+
+class TestRetencionConRelojAtrasadoDeVerdad:
+    """H-003 B2: con el reloj del host atrasado, el nombre Y el mtime del
+    backup nuevo quedan más viejos que los anteriores. Ordenar por mtime a
+    secas (D1) borra copias nuevas; el orden no puede depender del reloj."""
+
+    def test_siete_ciclos_con_nombre_y_mtime_atrasados_conservan_los_siete(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_CON_MTIME_DEL_RELOJ)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        escribir_herramienta_falsa("date", FAKE_DATE_RELOJ_ATRASADO_REAL)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        base_octubre = 1790812800  # 2026-10-01
+        for i in range(14):
+            archivo = carpeta / f"proptech-20261001T0000{i:02d}Z.dump"
+            archivo.write_text("viejo")
+            os.utime(archivo, (base_octubre + i, base_octubre + i))
+
+        base_septiembre = 1788220800  # 2026-09-01: el reloj retrocedió.
+        for i in range(7):
+            resultado = _correr(
+                tmp_path,
+                entorno_con_bin_falso,
+                carpeta=carpeta,
+                crear_carpeta=False,
+                overrides={
+                    "RESPALDO_CONSERVAR": "14",
+                    "RESPALDO_CONSERVAR_DIAS": "1",
+                    "FAKE_MARCA": f"20260901T0000{i:02d}Z",
+                    "FAKE_AHORA": str(base_septiembre + i),
+                },
+            )
+            assert resultado.returncode == 0, resultado.stderr
+
+        nuevos = [n for n in _archivos_dump(carpeta) if n.startswith("proptech-202609")]
+        assert len(nuevos) == 7, f"se esperaban los 7 nuevos, quedaron: {nuevos}"
+
+
+def _preparar_copias_con_una_del_futuro(carpeta: Path) -> tuple[list[Path], Path, int]:
+    """Dos copias por día durante los siete días anteriores (catorce, todas
+    deletreables por cantidad) y una copia cuyo mtime está un año en el futuro."""
+    medianoche = (int(time.time()) // 86400) * 86400
+    anteriores: list[Path] = []
+    for dias_atras in range(1, 8):
+        for hora in (11, 12):
+            instante = medianoche - dias_atras * 86400 + hora * 3600
+            marca = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(instante))
+            archivo = carpeta / f"proptech-{marca}.dump"
+            archivo.write_text("anterior")
+            os.utime(archivo, (instante, instante))
+            anteriores.append(archivo)
+    futuro = carpeta / "proptech-20271101T000000Z.dump"
+    futuro.write_text("del futuro")
+    mtime_futuro = int(time.time()) + 365 * 86400
+    os.utime(futuro, (mtime_futuro, mtime_futuro))
+    return anteriores, futuro, mtime_futuro
+
+
+class TestRelojDelHostRetrocedio:
+    """H-003 B2, D-151: si algún backup con nombre propio tiene un mtime
+    posterior al momento actual, el reloj del host retrocedió y ese ciclo NO
+    borra nada (el piso por días de D-148 no se rompe), con una línea de log."""
+
+    def test_con_una_copia_del_futuro_no_se_borra_ninguna_de_dias_anteriores(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        anteriores, futuro, _ = _preparar_copias_con_una_del_futuro(carpeta)
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        borradas = [a.name for a in anteriores if not a.exists()]
+        assert borradas == [], f"con el reloj retrocedido no se borra nada: {borradas}"
+        assert futuro.exists()
+        assert len(_archivos_dump(carpeta)) == 16
+
+    def test_la_linea_reloj_atrasado_sale_una_vez_por_ciclo_en_json_valido(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        _, futuro, mtime_futuro = _preparar_copias_con_una_del_futuro(carpeta)
+        # Un segundo backup en el futuro, menos lejano: el aviso nombra al más nuevo.
+        otro = carpeta / "proptech-20270101T000000Z.dump"
+        otro.write_text("otro del futuro")
+        os.utime(otro, (mtime_futuro - 86400, mtime_futuro - 86400))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        lineas = _lineas_json(resultado.stdout)
+        avisos = [linea for linea in lineas if linea.get("evento") == "reloj_atrasado"]
+        assert len(avisos) == 1, resultado.stdout
+        aviso = avisos[0]
+        assert aviso["nivel"] == "warning"
+        assert aviso["servicio"] == "respaldos"
+        assert aviso["archivo"] == futuro.name
+        assert aviso["mtime"] == str(mtime_futuro)
+        assert any(linea.get("evento") == "respaldo_generado" for linea in lineas)
+
+    def test_con_el_reloj_normal_no_hay_aviso_y_la_retencion_sigue_igual(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        # La retención de siempre, con reloj normal, ya la cubren
+        # TestRetencion::test_se_supera_la_retencion_borra_el_mas_viejo y
+        # ::test_conservar_uno_deja_solo_el_nuevo; acá sólo se agrega que no
+        # hay aviso y que el sobrante se borra igual.
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        nombres = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in range(1, 15)]
+        _crear_backups(carpeta, nombres)
+        hace_30_dias = time.time() - 30 * 86400
+        for nombre in nombres:
+            os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not any(
+            linea.get("evento") == "reloj_atrasado" for linea in _lineas_json(resultado.stdout)
+        )
+        assert len(_archivos_dump(carpeta)) == 14
+
+
+class TestRelojRetrocedidoDuranteElDump:
+    """H-003 vuelta 4, B2: si el dump del ciclo en curso es el ÚNICO con mtime
+    futuro, la detección igual lo ve (sigue fuera de los candidatos a borrar)."""
+
+    def test_el_dump_nuevo_con_mtime_futuro_congela_la_retencion_y_avisa_una_vez(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        futuro = int(time.time()) + 365 * 86400
+        escribir_herramienta_falsa(
+            "pg_dump", FAKE_PG_DUMP_OK.replace("exit 0", f'touch -d @{futuro} "$archivo"\nexit 0')
+        )
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        viejas = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in (1, 2, 3)]
+        _crear_backups(carpeta, viejas)
+        hace_30_dias = time.time() - 30 * 86400
+        for nombre in viejas:
+            os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "2", "RESPALDO_CONSERVAR_DIAS": "1"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert len(_archivos_dump(carpeta)) == 4, _archivos_dump(carpeta)
+        avisos = [
+            linea
+            for linea in _lineas_json(resultado.stdout)
+            if linea.get("evento") == "reloj_atrasado"
+        ]
+        assert len(avisos) == 1, resultado.stdout
+        assert avisos[0]["mtime"] == str(futuro)
+
+
+class TestParcialesAjenosNoSeBorran:
+    """H-003 B3 (L-006): sólo se borra un archivo REGULAR con el patrón
+    completo del nombre propio; un ajeno (`proptech-notas.dump.parcial`) o un
+    directorio con ese nombre no se toca."""
+
+    def test_arranque_borra_el_parcial_propio_y_deja_el_ajeno(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        propio = carpeta / "proptech-20200101T000000Z.dump.parcial"
+        propio.write_text("restos")
+        ajeno = carpeta / "proptech-notas.dump.parcial"
+        ajeno.write_text("notas de alguien")
+
+        resultado = _correr(tmp_path, entorno_con_bin_falso, carpeta=carpeta)
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not propio.exists(), "el parcial propio debía borrarse"
+        assert ajeno.exists(), "el parcial ajeno no se toca"
+        assert ajeno.read_text() == "notas de alguien"
+
+    def test_un_directorio_con_nombre_de_parcial_no_rompe_ni_se_borra(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        directorio = carpeta / "proptech-20200101T000000Z.dump.parcial"
+        directorio.mkdir()
+
+        resultado = _correr(tmp_path, entorno_con_bin_falso, carpeta=carpeta)
+
+        assert directorio.is_dir(), "un directorio con ese nombre no se toca"
+        assert "rm:" not in resultado.stderr, resultado.stderr
         assert resultado.returncode == 0, resultado.stderr

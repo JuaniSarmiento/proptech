@@ -97,6 +97,10 @@ y con los parámetros de su pool tomados de la configuración, y cada verificaci
 aunque la conexión ya esté abierta en el pool. Una verificación fallida MUST registrar en el log
 exactamente una línea `salud_degradada` con la dependencia y el tipo de error, nunca el mensaje del
 driver, aunque el hilo que corría la verificación termine con un error después de vencido el plazo.
+Ninguna respuesta 503 MUST salir sin su línea `salud_degradada` ya registrada: por cada dependencia
+que la respuesta informa como `sin_conexion` tiene que haber en el log exactamente una línea para esa
+dependencia y ese pedido, ni cero ni dos, sin importar cómo compitan el vencimiento del plazo y el
+hilo que termina tarde.
 
 #### Scenario: Un solo engine por proceso
 
@@ -161,6 +165,15 @@ driver, aunque el hilo que corría la verificación termine con un error despué
   después con un error
 - **THEN** el log tiene exactamente una línea `salud_degradada` para esa dependencia en ese pedido, esa
   línea lleva el `request_id` del pedido, y ninguna línea contiene el mensaje del error tardío
+
+#### Scenario: Ráfaga de pedidos con una dependencia congelada
+
+- **WHEN** se hacen muchos pedidos seguidos a `GET /api/salud` con una dependencia congelada, de modo
+  que el vencimiento del plazo y el final del hilo de la verificación caigan en el mismo instante en
+  algunos de ellos
+- **THEN** cada respuesta 503 tiene en el log su línea `salud_degradada` para la dependencia que
+  informa como `sin_conexion`, con el `request_id` de ese pedido: no hay ninguna respuesta 503 sin
+  línea, ni ninguna dependencia con dos líneas en el mismo pedido
 
 ### Requirement: Migraciones como trabajo aparte
 

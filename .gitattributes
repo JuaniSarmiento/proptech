@@ -1,0 +1,8 @@
+# Los scripts de infra/ se bindean directamente dentro de contenedores
+# Linux (bind mount, nunca una capa de imagen que normalice el archivo):
+# con `core.autocrlf=true` en un checkout de Windows, el working tree
+# materializa CRLF y el intérprete del contenedor lo rechaza
+# ("env: 'bash\r': No such file or directory"). Fijar LF siempre, sin
+# importar la configuración local de quien clona (respaldos-2, hallazgo
+# real al correr `docker compose up` con `respaldos` en este checkout).
+infra/**/*.sh text eol=lf
