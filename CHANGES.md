@@ -836,7 +836,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 | Change | Código | Nivel | Responsable |
 |---|---|---|---|
 | C-23 `humo-y-ci` | 2e | MEDIUM | Gianfranco |
-| C-24 `respaldos-2` | 1e | HIGH | Emiliano — **archivado 31/10/2026** |
+| C-24 `respaldos-2` | 1e | HIGH | Emiliano — **archivado 11/11/2026** (construido 31/10/2026, D-148 a D-150) |
 | C-25 `worker-y-logs` | 1f | MEDIUM | Neyen |
 | C-26 `pulido-web-3` | 3e | MEDIUM | Matías |
 | C-27 `ejemplo-robusto` | 3f | LOW | Giuliano |
@@ -858,7 +858,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
   `knowledge-base/15_lecciones.md` (L-047, L-043, L-044).
 
 ### [C-24] `respaldos-2` · 1e
-- **Estado**: `[x]` **archivado** (31/10/2026). HIGH, firmado por Emiliano Caceres el 31/10/2026.
+- **Estado**: `[x]` **archivado** (11/11/2026, D-148 a D-150; construido el 31/10/2026). HIGH, firmado por Emiliano
+  Caceres el 31/10/2026 y por Juani el 11/11/2026 después del apply. PR #6 integrado con `main` (H-003).
+- **Archivo**: `openspec/changes/archive/2026-11-11-respaldos-2/`.
 - **Scope**: retención con el reloj atrasado (F4), SIGTERM (F5), la carrera del 503 (F6), logs en JSON
   (F8), "14 copias" contra 14 días, conmutar la aplicación a una base restaurada, crear
   `infra/datos-respaldos` sin paso manual, volcado con el rol equivocado contra `pg_dump` real. Las

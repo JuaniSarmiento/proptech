@@ -1444,7 +1444,7 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 | `infra/ci/ensayo-roles.sh` escribe su evidencia en `.git/` y falla dentro de un git worktree (donde `.git` es un archivo); encontrado al escribir la aceptación de H-002 | Menor: se corre desde el clon principal y el CI usa un clon normal | Sin dueño |
 | La red `aplicacion` de `infra/compose.yaml` tiene la subred fija `172.28.0.0/24`: dos stacks de PropTech no conviven (la red que quedó de `proptech-3c` la ocupa), y la imagen `proptech-backend:local` es compartida entre proyectos de compose, así que un `down --rmi local` de uno se la lleva al otro; encontrado en la demo de H-001 (11/11/2026), que movió la subred con un override | El humo ya se niega con los puertos ocupados; el CI corre un solo stack | Sin dueño |
 
-### 1e · `respaldos-2` · HIGH · **archivado** (D-138, 30/10/2026; cerrado 31/10/2026) · C-24
+### 1e · `respaldos-2` · HIGH · archivado 11/11/2026 (D-148 a D-150; construido 31/10/2026) · C-24
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de respaldos y
 > restauración que el 1d, el 2a, el 2b y el 3a dejaron con dueño el 15 o "DevOps", verificada contra
@@ -1501,7 +1501,7 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
   el ensayo real de 8.5 contra Postgres real — exactamente el motivo por el que D6/L-043 exigen
   ejecutar la herramienta, no sólo probarla con dobles.
 - **Depende de**: 1d, 2a, 2b y 3a (archivados).
-- **Gobernanza**: HIGH, firmada por Emiliano el 31/10/2026 (`proposal.md`, sección "Gobernanza";
+- **Gobernanza**: HIGH, firmada por Emiliano el 31/10/2026 y por Juani el 11/11/2026 después del apply (`proposal.md`, sección "Gobernanza";
   D-094, D-111). Emiliano es firmante y puede firmar su propio change: D-094 no exige que firme otro
   (Alberto firma los suyos).
 - **Terminado**: las 27 tareas de `tasks.md` están `[x]` con evidencia (comando, hora, salida) pegada
