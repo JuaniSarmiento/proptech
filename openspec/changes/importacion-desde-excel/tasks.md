@@ -30,6 +30,11 @@ mutante, en un commit anterior al de producción (L-061). -->
   `aplicacion/`, `adaptadores/`, `puertos.py`), `_DUENO_DE_TABLA` y la regla de importación permitida en
   `tests/unitarios/test_fronteras_de_modulos.py` (design D0). Mutante: `complejos` importando
   `importacion` → rojo en el test de ciclos.
+  - **RED 1.1** (11/11/2026 20:45, antes de crear el módulo ni tocar `_DUENO_DE_TABLA`):
+    `cd backend && uv run pytest tests/unitarios/test_fronteras_de_modulos.py -q -k importacion` →
+    `10 failed, 66 deselected`. Cada rojo cae en su aserción: `assert 'importacion' in ['acceso',
+    'complejos', 'cuenta_corriente', 'gastos']`; `assert None == 'importacion'` (`_DUENO_DE_TABLA`); y 8 veces
+    `AssertionError: falta el módulo importacion` (ciclos x4, dominio vs `aplicacion` x3, SQL ajeno x1).
 - [ ] 1.2 **Lector de la plantilla (adaptador).** `importacion/adaptadores/excel.py`: hojas y encabezados
   por nombre, 2 MiB y 2.000 filas, fórmulas por valor en caché y sin caché = error, celdas numéricas a
   `Decimal(repr())` en notación fija, fechas. Corregir el docstring de `gastos/adaptadores/excel.py` (D2
