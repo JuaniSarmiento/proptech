@@ -16,6 +16,7 @@ import signal
 import stat
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -805,12 +806,14 @@ class TestRetencion:
         for nombre_viejo in nombres_viejos:
             assert nombre_viejo not in dumps
 
-    def test_reloj_atrasado_no_borra_el_backup_nuevo(
+    def test_reloj_atrasado_no_borra_nada_y_avisa(
         self,
         tmp_path: Path,
         entorno_con_bin_falso: dict[str, str],
         escribir_herramienta_falsa: Callable[[str, str], Path],
     ) -> None:
+        # D-151: el reloj del host (falso, en 2025) quedó antes que el mtime de
+        # las copias existentes; el ciclo conserva todo, incluida la nueva.
         escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
         escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
         escribir_herramienta_falsa("date", FAKE_DATE_RELOJ_ATRASADO)
@@ -829,12 +832,10 @@ class TestRetencion:
 
         assert resultado.returncode == 0, resultado.stderr
         dumps = _archivos_dump(carpeta)
-        assert "proptech-20261001T000000Z.dump" in dumps, (
-            "el backup nuevo (que ordena como el más viejo) no debía borrarse"
-        )
-        assert len(dumps) == 14, dumps
-        assert "proptech-20261020T000000Z.dump" not in dumps, (
-            "debía borrarse el más viejo de los anteriores"
+        assert "proptech-20261001T000000Z.dump" in dumps, "el backup nuevo no debía borrarse"
+        assert len(dumps) == 15, dumps
+        assert any(
+            linea.get("evento") == "reloj_atrasado" for linea in _lineas_json(resultado.stdout)
         )
 
 
@@ -931,7 +932,6 @@ FAKE_DATE_SECUENCIAL = """
 case "$*" in
   *'+%Y%m%dT%H%M%SZ') echo "${FAKE_MARCA}T000000Z" ;;
   *'+%Y-%m-%dT%H:%M:%SZ') echo "${FAKE_MARCA}T00:00:00Z" ;;
-  *'+%s') echo "1700000000" ;;
   *) /usr/bin/date "$@" ;;
 esac
 """
@@ -1568,6 +1568,127 @@ class TestRetencionConRelojAtrasadoDeVerdad:
 
         nuevos = [n for n in _archivos_dump(carpeta) if n.startswith("proptech-202609")]
         assert len(nuevos) == 7, f"se esperaban los 7 nuevos, quedaron: {nuevos}"
+
+
+def _preparar_copias_con_una_del_futuro(carpeta: Path) -> tuple[list[Path], Path, int]:
+    """Dos copias por día durante los siete días anteriores (catorce, todas
+    deletreables por cantidad) y una copia cuyo mtime está un año en el futuro."""
+    medianoche = (int(time.time()) // 86400) * 86400
+    anteriores: list[Path] = []
+    for dias_atras in range(1, 8):
+        for hora in (11, 12):
+            instante = medianoche - dias_atras * 86400 + hora * 3600
+            marca = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(instante))
+            archivo = carpeta / f"proptech-{marca}.dump"
+            archivo.write_text("anterior")
+            os.utime(archivo, (instante, instante))
+            anteriores.append(archivo)
+    futuro = carpeta / "proptech-20271101T000000Z.dump"
+    futuro.write_text("del futuro")
+    mtime_futuro = int(time.time()) + 365 * 86400
+    os.utime(futuro, (mtime_futuro, mtime_futuro))
+    return anteriores, futuro, mtime_futuro
+
+
+class TestRelojDelHostRetrocedio:
+    """H-003 B2, D-151: si algún backup con nombre propio tiene un mtime
+    posterior al momento actual, el reloj del host retrocedió y ese ciclo NO
+    borra nada (el piso por días de D-148 no se rompe), con una línea de log."""
+
+    def test_con_una_copia_del_futuro_no_se_borra_ninguna_de_dias_anteriores(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        anteriores, futuro, _ = _preparar_copias_con_una_del_futuro(carpeta)
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        borradas = [a.name for a in anteriores if not a.exists()]
+        assert borradas == [], f"con el reloj retrocedido no se borra nada: {borradas}"
+        assert futuro.exists()
+        assert len(_archivos_dump(carpeta)) == 16
+
+    def test_la_linea_reloj_atrasado_sale_una_vez_por_ciclo_en_json_valido(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        _, futuro, mtime_futuro = _preparar_copias_con_una_del_futuro(carpeta)
+        # Un segundo backup en el futuro, menos lejano: el aviso nombra al más nuevo.
+        otro = carpeta / "proptech-20270101T000000Z.dump"
+        otro.write_text("otro del futuro")
+        os.utime(otro, (mtime_futuro - 86400, mtime_futuro - 86400))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        lineas = _lineas_json(resultado.stdout)
+        avisos = [linea for linea in lineas if linea.get("evento") == "reloj_atrasado"]
+        assert len(avisos) == 1, resultado.stdout
+        aviso = avisos[0]
+        assert aviso["nivel"] == "warning"
+        assert aviso["servicio"] == "respaldos"
+        assert aviso["archivo"] == futuro.name
+        assert aviso["mtime"] == str(mtime_futuro)
+        assert any(linea.get("evento") == "respaldo_generado" for linea in lineas)
+
+    def test_con_el_reloj_normal_no_hay_aviso_y_la_retencion_sigue_igual(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        # La retención de siempre, con reloj normal, ya la cubren
+        # TestRetencion::test_se_supera_la_retencion_borra_el_mas_viejo y
+        # ::test_conservar_uno_deja_solo_el_nuevo; acá sólo se agrega que no
+        # hay aviso y que el sobrante se borra igual.
+        escribir_herramienta_falsa("pg_dump", FAKE_PG_DUMP_OK)
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        nombres = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in range(1, 15)]
+        _crear_backups(carpeta, nombres)
+        hace_30_dias = time.time() - 30 * 86400
+        for nombre in nombres:
+            os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "14", "RESPALDO_CONSERVAR_DIAS": "14"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert not any(
+            linea.get("evento") == "reloj_atrasado" for linea in _lineas_json(resultado.stdout)
+        )
+        assert len(_archivos_dump(carpeta)) == 14
 
 
 class TestParcialesAjenosNoSeBorran:

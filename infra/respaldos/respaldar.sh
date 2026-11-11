@@ -145,6 +145,20 @@ aplicar_retencion() {
   total=0
   if [ -n "$listado" ]; then
     total="$(printf '%s\n' "$listado" | wc -l)"
+
+    # H-003 B2, D-151: si algún backup tiene un mtime posterior a ESTE momento,
+    # el reloj del host retrocedió y el orden por mtime ya no dice cuál es el
+    # más nuevo: este ciclo no borra nada (el costo es que el disco crece
+    # hasta que el reloj se ponga al día) y lo avisa UNA vez. El último del
+    # listado ordenado es el de mayor mtime.
+    local ultimo_mtime ultimo_nombre ahora
+    ultimo_mtime="$(printf '%s\n' "$listado" | tail -n 1 | cut -d' ' -f2)"
+    ultimo_nombre="$(printf '%s\n' "$listado" | tail -n 1 | cut -d' ' -f4)"
+    ahora="$(date -u +%s)"
+    if (( ultimo_mtime > ahora )); then
+      logear warning reloj_atrasado "archivo=${ultimo_nombre}" "mtime=${ultimo_mtime}"
+      return 0
+    fi
   fi
 
   permitidos=$(( RESPALDO_CONSERVAR - 1 ))
