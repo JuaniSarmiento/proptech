@@ -175,6 +175,12 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
   está cubierto lo cobra el próximo corte (E17).
 - **Mes entero**: forma de cálculo en la que cada mes calendario con algún día de atraso cobra la tasa
   completa una vez, aunque sea una fracción del mes (R03, decisión de Juani del 30/10/2026).
+- **Carga de saldo inicial**: la única carga, por edificio, de la deuda y el crédito que el edificio trae
+  al migrar; guarda su fecha de migración y de qué archivo y filas salió cada cosa (R09, H-005).
+- **Firma del pedido**: la huella (`v1:` + SHA-256) del pedido de carga de saldo inicial normalizado;
+  decide si repetir una carga es el mismo pedido o uno distinto, aunque sume lo mismo (R09, E16).
+- **Fecha de migración**: el día en que el edificio pasa al sistema con su saldo inicial; el interés de
+  R03 de esa deuda corre desde el día siguiente.
 - **Cuentas alcanzadas por una emisión**: las que tienen una obligación suya y las que sólo recibieron
   un interés suyo; las bloquea la anulación y las lee el saldo anterior.
 - **Moroso crítico**: una unidad con dos o más liquidaciones vencidas con saldo impago, calculado

@@ -874,8 +874,15 @@ D-153).
   cuentas alcanzadas; el replay devuelve los mismos intereses y un saldo anterior recalculado (E15); el
   7 guarda la foto de la liquidación. Dos emisiones no se pueden encadenar en una sola transacción
   (`BloqueoFueraDeOrden`).
-- **Pendiente de H-005**: `interes_desde` desde la migración (el `LEFT JOIN` a la carga en la foto) y
-  los escenarios de saldo inicial del cálculo.
+- **H-005** (saldo inicial, aceptación congelada en `0b4c5cb`, Sonnet en tres tandas): migración
+  `0035_saldo_inicial` con `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; `registrar_saldo_inicial`
+  con el contrato de D5 (filas agrupadas por período, firma del pedido, replay, carga única); el interés
+  desde la migración, que había quedado pendiente de H-004.
+- **Para el 5**: llama a `registrar_saldo_inicial` al confirmar, en la misma transacción en la que
+  autoriza, audita y pasa el estado de migración a `confirmada` (la carga no cambia el estado). Le pasa
+  las filas ya traducidas (concepto a componente, saldo negativo a crédito). Muestra en la comparación que
+  el primer interés del sistema cubre el mes de la migración (E18). PA-1 (corregir un saldo cargado de
+  menos después de confirmar) sigue abierta y lo bloquea.
 - **Deuda encontrada al integrar H-004 (sin verificar en la operación real)**: una restauración con
   `pg_restore --no-owner --no-acl` pierde el `GRANT REFERENCES` que `roles despues` da al migrador sobre
   las tablas del libro, y una migración posterior que las referencia (como la `0034`) falla con

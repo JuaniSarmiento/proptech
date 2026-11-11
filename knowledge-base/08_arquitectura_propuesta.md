@@ -165,7 +165,8 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   `04_modelo_de_datos.md` para el detalle de columnas. Desde el 4a se auditan también los siete
   cambios del padrón que deciden el reparto, en la misma transacción (D-114.2, D-114.3).
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
-  (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora; su bajada de migración
+  (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, y desde H-005
+  `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; su bajada de migración
   necesita devolver la propiedad como las del libro). `cuenta_corriente.aplicacion` lee la
   configuración vigente de `complejos.aplicacion.lectura` (D-116: sólo `aplicacion`, sin ciclo).
   `roles despues` las transfiere al rol de arranque y verifica la protección por el efecto (`UPDATE` y

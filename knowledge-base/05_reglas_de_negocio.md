@@ -390,6 +390,25 @@ del 3c, D-128)
   errores de signo opuesto en dos unidades (+10.000 y -10.000) dan el total correcto y aun así
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
   diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
+- **Cómo se registra en el libro** (4c, H-005, D-153, E9, E11, E16, E18): el 5, al confirmar, llama a
+  `registrar_saldo_inicial` (`cuenta_corriente/aplicacion/saldo_inicial.py`), que hace **una sola carga
+  de saldo inicial por edificio**, sólo con el estado de migración `pendiente`; una segunda carga o dos
+  simultáneas se rechazan con conflicto. Recibe las filas del archivo (fila, período, vencimiento,
+  componente, importe, interés acumulado) y agrupa las de cada unidad y período en **una** obligación,
+  sin emisión; todas las filas de un período tienen el mismo vencimiento. El total único va a una
+  obligación con todo en ordinaria, período el primer día del mes de la migración y vencimiento en la
+  migración. El interés acumulado entra como un interés con corte en la fecha de migración y nunca forma
+  base. El crédito entra como un crédito `saldo_inicial` con fecha valor en la migración y se imputa con
+  R04. Un período cuyas filas suman capital 0 se rechaza (E11). Cada fila queda ligada a lo que formó en
+  `origen_de_saldo_inicial`, y la carga guarda archivo o motivo en `carga_de_saldo_inicial`. Repetir la
+  carga con el mismo `operacion_id` se controla con la **firma del pedido** (`v1:` + SHA-256 del pedido
+  normalizado): el mismo pedido, en cualquier orden, devuelve lo registrado sin escribir; uno distinto,
+  aunque sume lo mismo, se rechaza. Cualquier rechazo deja el libro como estaba. No autoriza ni audita:
+  lo hace el 5 (D9).
+- **Interés desde la migración** (H-005, R03): una obligación cargada como saldo inicial arranca el día
+  siguiente a la fecha de migración, nunca antes. Con mes entero se cobra el mes de la migración por su
+  fracción posterior (E18; riesgo de doble cobro si el Excel ya cobró ese mes: lo muestra el 5 y se
+  pregunta a Alberto en P58). El total único aplica la gracia desde su vencimiento, que es la migración.
 
 ## R26 · Recargo escalonado por primer y segundo vencimiento · Pendiente (ProTecc G4, Q9) · alternativa a R03
 

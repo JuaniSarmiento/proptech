@@ -114,7 +114,12 @@ FK compuesta al movimiento de su misma cuenta (por `uq_mov_sentido`) y al comple
 `obligacion_id` (sale del movimiento) y `configuracion_id` sin FK (la coherencia la asegura la
 aplicación). CHECK: `hasta >= desde`, `dias = hasta - desde + 1`, `base > 0`, forma del vocabulario y,
 en mes entero, un solo mes calendario que termina en su último día. Los tramos de un mismo interés
-pueden no ser contiguos (un hueco recuperado, E17).
+pueden no ser contiguos (un hueco recuperado, E17). Desde H-005 (migración `0035_saldo_inicial`)
+existen `carga_de_saldo_inicial` (una por edificio y por operación: fecha de migración, origen
+`importador` con archivo o `manual` con motivo, `firma_del_pedido` con forma `v1:` + 64 hexadecimales,
+quién y cuándo) y `origen_de_saldo_inicial` (cada fila del archivo ligada a la obligación, al crédito o al
+interés importado que formó, siempre de la misma cuenta por FK compuesta, con exactamente una
+referencia). Las dos son de sólo agregar, con RLS forzada.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 
