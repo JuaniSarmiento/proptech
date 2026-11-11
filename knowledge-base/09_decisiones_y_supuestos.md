@@ -2972,6 +2972,40 @@ registrado como tal en su momento.)*
   un change de código con el flujo completo); que C-28 revise el libro después del 4c.
 - **Quién**: Juani, 31/10/2026, con la recomendación del orquestador.
 
+## D-145 · El 3f `ejemplo-robusto` cierra con los códigos de salida del comando del ejemplo, el edificio identificado por nombre y O1 como interpretación de D-112 (04/11/2026)
+
+- **Fecha**: 04/11/2026.
+- **Contexto**: C-27 (D-138), LOW, de Giuliano. Auditor **APROBADO** en verify 2
+  (`openspec/changes/archive/2026-11-04-ejemplo-robusto/informes/verify-2-auditor.md`), con el CI
+  del PR #7 verde sobre `1d090f6` (run `41767075030`).
+- **Decisión**:
+  1. **Códigos de salida** del comando del edificio de ejemplo: 0 cargado, ya estaba o vinculado; 1
+     fuera de desarrollo (D-112); 2 uso (argumentos, `--semilla` vacío, id de cuenta inválido); 3
+     configuración, o semilla que el caso de uso rechaza; 4 base no segura (rol o tablas de sólo
+     agregar); 5 base no disponible; 6 ejemplo distinto; 7 vinculación rechazada; 8 carga no
+     completada; 9 error inesperado, nombrando sólo su tipo; 130 Ctrl-C. Ningún mensaje muestra
+     contraseñas, el id de la cuenta, el emisor, datos de la conexión ni parámetros del driver. La
+     tabla vive en el spec `datos-semilla` y en el README.
+  2. **El edificio del ejemplo se identifica por el nombre de la semilla**, sin `LIMIT 1`, y la
+     comparación suma al super admin del ejemplo, leído con `listar_personal` de `acceso.aplicacion`,
+     sin SQL nuevo. Corrige la deuda de origen: "nada la crea con dos" era falso, porque un
+     `super_admin` vinculado puede crear otro edificio por la API.
+  3. **El comando corre sin Redis**, con `ConfiguracionDelEjemplo`. La API y el worker siguen
+     exigiéndolo con `Configuracion`.
+  4. **O1, interpretación de D-112, para que Juani la ratifique o la cambie**: `argparse` corre antes
+     de la guarda, así que un error de uso fuera de desarrollo da 2 y `--help` da 0, sin conectarse a la
+     base. Es el comportamiento previo al change (`9649471:ejemplo.py:432-436`); el change lo escribe,
+     no lo inventa. D-112 no se edita.
+  5. **Excepción de publicación**: Giuliano autorizó por escrito (03/11/2026) el push y el PR antes del
+     APROBADO, sólo para obtener el CI. No es aprobación de nadie, y el merge no lo hace el agente.
+  6. **Cuenta de intentos por gate** (L-072): rompedor, 2 fallidos y 1 limpio; auditor, 1 fallido y 1
+     aprobado; constructor, 4 intentos.
+- **Descartado**: copiar los topes del caso de uso en `semilla.py` para que la semilla rechazada saliera
+  antes de conectarse (L-009, D10 del design); reemplazar la ruta de la semilla por subcadena (F1,
+  L-069); dejar `Conflicto` en otro código sin reproducirlo (DE-6).
+- **Deuda**: DE-1 a DE-12, en la ficha 3f de `12_fichas_de_changes.md`.
+- **Quién**: Giuliano, 04/11/2026, con el orquestador; O1 pendiente de Juani.
+
 ## D-146 · El ciclo de Juani pasa a Rein: historias con aceptación congelada y demo, y Claude como orquestador (10/11/2026)
 
 - **Fecha**: 10/11/2026.

@@ -1536,7 +1536,24 @@ tablas de deuda de más abajo dicen a qué change pasó y quién era el dueño a
 
 - **Recibe del 6** (D-142): D4, `complejos/aplicacion/errores.py` pierde la explicación del 422 (el arreglo de F3 en `gastos` sirve de modelo).
 
-### 3f · `ejemplo-robusto` · LOW · pendiente (D-138, 30/10/2026) · C-27
+### 3f · `ejemplo-robusto` · LOW · archivado 04/11/2026 (D-145) · C-27
+
+- **Cierre** (04/11/2026, D-145): construido por Giuliano con el flujo de cinco roles (plan y revisión
+  juntos en el orquestador, por LOW). Cuatro intentos de constructor, tres vueltas de rompedor y dos de
+  auditor; **APROBADO** en verify 2. CI verde del PR #7 sobre `1d090f6` (run `41767075030`). Archivo:
+  `openspec/changes/archive/2026-11-04-ejemplo-robusto/`.
+- **Lo que quedó**: el edificio del ejemplo se identifica por el nombre de la semilla, sin `LIMIT 1`;
+  la comparación mira cada dato de la semilla (con un test y su mutante por rama) y al super admin
+  del ejemplo, leído con `listar_personal`; dos cargas a la vez se prueban con una barrera; cada
+  familia de error sale con su mensaje y su código (0 a 9 y 130, tabla en el spec `datos-semilla` y en
+  el README), sin traceback; el comando corre sin Redis con su propia lectura de configuración
+  (`ConfiguracionDelEjemplo`), y la API y el worker siguen exigiéndolo; la guarda de QA-5 existe.
+- **Corrección de la deuda de origen**: la fila de DB-4 decía que "nada la crea con dos". Es falso:
+  un `super_admin` vinculado con `--clerk-usuario` puede crear otro edificio por `POST /complejos`.
+  Por eso el edificio se identifica por nombre.
+- **Deuda del cierre**: en "Deuda del cierre del 3f", más abajo.
+
+> El texto que sigue es la ficha original, tal como se planificó.
 
 > **Creada por D-138** (30/10/2026), no por `openspec new`: junta la deuda de `ejemplo.py` que la
 > revisión del PR #1 de `acceso-de-desarrollo` dejó para "el próximo cambio que toque `ejemplo.py`" o
@@ -1842,6 +1859,30 @@ ese dueño lo propuso el orquestador sin que Juani lo haya firmado todavía, que
 | `ejemplo.py` escribe con SQL directo en tablas de `acceso` (`persona`, `asignacion_rol`), contra D-021, con el precedente de `escritura.py:59`; y el texto de "Risks" del design no coincide con el código (no verifica que exista un `super_admin` y compara contra la semilla) (AR-6, BE-4, DB-7) | El test de fronteras sólo mira imports, no SQL; la RLS sigue aislando | Un caso de uso en `acceso/aplicacion` que `ejemplo.py` llame, en el próximo cambio que toque `acceso`. Dueño propuesto, no confirmado por Juani. **Cerrada** (verificación del 30/10/2026, D-138): cerrada en el 2d (D-133); `ejemplo.py:41-52` llama a `acceso.aplicacion` y no queda SQL sobre `persona` ni `asignacion_rol` |
 | La cuarentena de dependencias de pnpm (`minimumReleaseAgeExclude`) se salteó para `next@16.4.3` y 9 paquetes `@next/*`, sin el id del CVE ni una decisión que lo registre (BE-6, AR-8) | La subida resuelve un `next build` bloqueado; sacar las entradas cuando 16.4.3 cumpla la antigüedad es barato | **C-26 `pulido-web-3`** (D-138, 30/10/2026; hoy la exclusión también tiene cuatro `@clerk/*`, `web/pnpm-workspace.yaml:7-21`); antes: Quien toque `web/` primero. Dueño propuesto, no confirmado por Juani |
 | Falta un test de guarda de que no existen `backend/desarrollo/` ni `infra/compose.desarrollo.yaml` (QA-5) | Hoy no existen (inspección de QA); el spec lo prohíbe | **C-27 `ejemplo-robusto`** (D-138, 30/10/2026); antes: polish futuro. Dueño propuesto, no confirmado por Juani |
+
+> **Cerradas por el 3f** (04/11/2026, D-145): BE-3 y el código único, QA-3 (Redis), QA-2 (M5 a M8 y
+> las demás ramas), QA-7 y DB-3 (barrera y las dos ramas de la espera), DB-4 (identificación por
+> nombre y comparación del super admin; "nada la crea con dos" era falso, ver la ficha 3f) y QA-5.
+
+### Deuda del cierre del 3f (`ejemplo-robusto`, C-27, 04/11/2026)
+
+La del auditor (`informes/verify-2-auditor.md` del archivo del change, DE-1 a DE-12). Dueño: el primer
+change que toque la pieza (L-012).
+
+| # | Deuda | Cambio |
+|---|---|---|
+| DE-1 | La comparación no mira `pisos`, `subsuelos`, la ubicación ni `activo` de un grupo: una semilla que sólo cambia eso da "ya estaba" | Próximo change que toque `ejemplo.py` |
+| DE-2 | `acceso/aplicacion/alta_inicial.py`, el gemelo: traceback y exigencia de Redis (L-009) | Primer change que toque `alta_inicial.py`, con su propia clasificación (está en `acceso`) |
+| DE-3 | Un error de uso fuera de desarrollo da 2, no 1: `argparse` corre antes de la guarda. Es previo al change y queda como interpretación de D-112 | Juani ratifica o cambia (D-145) |
+| DE-4 | Sin reproducir: límite de conexión por dirección (S1), `print` con la salida cerrada (S2), parámetros sin permiso de lectura (S4), Ctrl-C durante los imports deja traceback (S5) | Próximo change que toque `ejemplo.py`, con una corrida en Linux |
+| DE-5 | `--semilla` con un archivo especial puede agotar la memoria antes del tope de 1 MiB (S3) | Primer change que toque `compartido/cargador_yaml.py` |
+| DE-6 | `Conflicto` sigue en el 9 sin reproducir; base lenta sin `statement_timeout` (L-001) | Próximo change que toque `ejemplo.py` |
+| DE-7 | Los validadores del pool y del archivo de parámetros viven en dos lectores (`_LectorDeApp` y `_LectorDelEjemplo`) | Próximo change que toque `compartido/configuracion.py` |
+| DE-8 | Todos los roles del 3f fueron de la familia Claude; el proyecto no declara `## Role executors` (L-025) | C-28 `revisiones-independientes` |
+| DE-9 | Fallas de Windows que D-110 no nombra (separador de ruta en `test_fronteras_de_modulos.py`, `test_umbral_cero` y otras familias); `mypy` de Windows con 2 errores en `tests/infra/test_respaldos.py:554` | Se suman a las fallas de portabilidad de la ficha 3b-bis; lo de `respaldos`, a C-24 |
+| DE-10 | CRLF de `infra/respaldos/*.sh` en Windows, sin `.gitattributes` | C-24 `respaldos-2` |
+| DE-11 | El gemelo de parámetros de F1 se prueba con un doble que repite el formato de `leer_archivo`: si ese texto cambia, la ruta de `PROPTECH_PARAMETROS` saldría sin que un test lo note | Primer change que toque `cargador_yaml.py` o `ejemplo.py` |
+| DE-12 | El conteo `N passed` del run `41767075030` no se leyó (los logs piden login) | Giuliano o quien tenga login, si lo pega en `tasks.md` 8.1 del archivo; si no, queda declarado (no bloquea) |
 
 ## Pendientes de arranque
 
