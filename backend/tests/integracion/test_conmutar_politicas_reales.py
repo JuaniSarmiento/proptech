@@ -68,7 +68,7 @@ def pg() -> Iterator[PostgresContainer]:
             dbname="prueba",
             autocommit=True,
         ) as admin:
-            admin.execute("CREATE ROLE app; CREATE ROLE otro")
+            admin.execute('CREATE ROLE app; CREATE ROLE otro; CREATE ROLE "app,otro"')
         yield contenedor
 
 
@@ -173,6 +173,17 @@ class TestConmutarComparaLaDefinicionCompleta:
             "CREATE POLICY permitir ON datos TO app USING (edificio = 1);"
             "CREATE POLICY aislar ON datos AS RESTRICTIVE TO app USING (false);",
         )
+        resultado = _conmutar(pg, tmp_path)
+        assert resultado.returncode != 0, resultado.stdout
+        assert "seguridad de filas" in resultado.stderr
+
+    def test_rol_con_coma_no_se_confunde_con_dos_roles(
+        self, pg: PostgresContainer, tmp_path: Path
+    ) -> None:
+        # Un rol llamado "app,otro" y los roles `app` y `otro` no pueden dar el
+        # mismo resumen: en el destino `app` pasaría a ver filas (H-003, B1).
+        _base(pg, "proptech_original", 'CREATE POLICY p ON datos TO "app,otro" USING (true);')
+        _base(pg, "proptech_destino", "CREATE POLICY p ON datos TO app, otro USING (true);")
         resultado = _conmutar(pg, tmp_path)
         assert resultado.returncode != 0, resultado.stdout
         assert "seguridad de filas" in resultado.stderr
