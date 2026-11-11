@@ -1,5 +1,5 @@
-"""H-008 · C13 y C14: las hojas `Saldos` y `Control` mal formadas se rechazan enteras, con un informe
-por fila (hoja, fila, columna, motivo) y sin escribir nada.
+"""H-008 · C13 y C14: las hojas `Saldos` y `Control` mal formadas se rechazan enteras, con un
+informe por fila (hoja, fila, columna, motivo) y sin escribir nada.
 
 Fila del Excel = índice + 2 (el encabezado es la fila 1). Cada caso cambia una sola cosa de la base.
 """

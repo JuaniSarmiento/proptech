@@ -1,5 +1,6 @@
 """H-008 · C16 (esquema, protección y vocabulario): las tablas de la `0037` con RLS forzada,
-`aceptacion_de_diferencias` de sólo agregar, y la acción nueva en el vocabulario y en la matriz (E6)."""
+`aceptacion_de_diferencias` de sólo agregar, y la acción nueva en el vocabulario y en la matriz
+(E6)."""
 
 from __future__ import annotations
 

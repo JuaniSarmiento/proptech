@@ -1,22 +1,25 @@
-"""Ayudas de la aceptación de H-008 (borrador de saldos y comparación, change 5). Caja negra: todo pasa
-por la API real (`POST /api/complejos/{id}/importaciones`, `GET .../importaciones/comparacion`,
-`POST .../importaciones/aceptacion-de-diferencias`) con la identidad inyectada, y se mira el resultado
-con lecturas SQL como `proptech_app` con el tenant fijado.
+"""Ayudas de la aceptación de H-008 (borrador de saldos y comparación, change 5).
+
+Caja negra: todo pasa por la API real (`POST /api/complejos/{id}/importaciones`,
+`GET .../importaciones/comparacion`, `POST .../importaciones/aceptacion-de-diferencias`) con la
+identidad inyectada, y se mira el resultado con lecturas SQL como `proptech_app` con el
+tenant fijado.
 
 Los archivos Excel se generan acá con `openpyxl` (datos inventados). Lo que todavía no existe en el
-código (las rutas, las tablas de la `0037`) se pide con un `assert` y un mensaje, nunca con un error de
-setup.
+código (las rutas, las tablas de la `0037`) se pide con un `assert` y un mensaje, nunca con un error
+de setup.
 
-Base de los ejemplos (HISTORIAS.md, H-008): "Edificio Ficticio de Saldos", 3 pisos y 1 subsuelo, con el
-padrón ya cargado (`1A`, `1B`, `2A`, `2B`, `3C`, `4D`, `5E`), migración el 15/10/2026.
+Base de los ejemplos (HISTORIAS.md, H-008): "Edificio Ficticio de Saldos", 3 pisos y 1 subsuelo, con
+el padrón ya cargado (`1A`, `1B`, `2A`, `2B`, `3C`, `4D`, `5E`), migración el 15/10/2026. Hoja
+`Saldos` (fila del Excel) y su borrador y control:
 
-| Unidad | Hoja `Saldos` (fila del Excel) | Borrador | Control |
-|---|---|---|---|
-| `1A` | 2: agosto ordinaria $80.000, vence 10/08, $4.000 de interés; 3: septiembre ordinaria $85.000, vence 10/09 | $169.000 | $169.000 |
-| `1B` | 4: septiembre ordinaria $85.000; 5: septiembre extraordinaria $20.000 (vencen 10/09) | $105.000 | $105.000 |
-| `2A` | 6: total único $50.000 con $2.000 de interés | $52.000 | $52.000 |
-| `2B` | 7: crédito −$3.000 | −$3.000 | −$3.000 |
-| `4D` | 8: crédito −$3.000 | −$3.000 | −$3.000 |
+- `1A`: fila 2, agosto ordinaria $80.000, vence 10/08, $4.000 de interés; fila 3, septiembre
+  ordinaria $85.000, vence 10/09. Borrador y control $169.000.
+- `1B`: fila 4, septiembre ordinaria $85.000; fila 5, septiembre extraordinaria $20.000 (vencen
+  10/09). Borrador y control $105.000.
+- `2A`: fila 6, total único $50.000 con $2.000 de interés. Borrador y control $52.000.
+- `2B`: fila 7, crédito de $3.000. Borrador y control -$3.000.
+- `4D`: fila 8, crédito de $3.000. Borrador y control -$3.000.
 
 Total del borrador = total de control = $320.000.
 """
@@ -335,7 +338,8 @@ class Error:
 
 
 def errores(respuesta: Any) -> list[Error]:
-    """El informe del 422: `{"detail": [{"hoja", "fila", "columna", "motivo"}]}` (contrato de H-007)."""
+    """El informe del 422 (contrato de H-007):
+    `{"detail": [{"hoja", "fila", "columna", "motivo"}]}`."""
     assert respuesta.status_code == 422, (
         f"se esperaba 422 (archivo rechazado), llegó {respuesta.status_code}: "
         f"{respuesta.text[:400]}"
@@ -459,7 +463,8 @@ def libro_del_edificio(m: Mundo) -> tuple[int, int, int]:
 
 
 def filas_del_borrador(m: Mundo, importacion_id: str) -> list[tuple[Any, ...]]:
-    """(unidad, fila, tipo, período, vencimiento, concepto, importe, interés) de cada fila de saldo."""
+    """(unidad, fila, tipo, período, vencimiento, concepto, importe, interés) de cada fila del
+    borrador."""
     assert existe(m, "fila_de_saldo_importada"), "falta la tabla fila_de_saldo_importada (0037)"
     return sorted(
         m.filas(
@@ -499,4 +504,3 @@ def en_paralelo(*funciones: Any) -> list[Any]:
     for h in hilos:
         h.join(timeout=120)
     return resultados
-

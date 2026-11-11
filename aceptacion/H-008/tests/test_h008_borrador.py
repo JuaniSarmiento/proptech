@@ -27,7 +27,7 @@ from ._h008 import (
 pytestmark = pytest.mark.integracion
 
 
-# --- C01 a C03 · Las filas quedan en el borrador ----------------------------------------------------
+# --- C01 a C03 · Las filas quedan en el borrador -------------------------------------------------
 
 
 def test_c01_dos_periodos_quedan_en_el_borrador(mundo: Mundo) -> None:
@@ -35,7 +35,16 @@ def test_c01_dos_periodos_quedan_en_el_borrador(mundo: Mundo) -> None:
     assert cuerpo["filas_de_saldo"] == 7, f"siete filas de saldo: {cuerpo}"
     filas = [f for f in filas_del_borrador(mundo, cuerpo["importacion_id"]) if f[0] == "1A"]
     assert filas == [
-        ("1A", 2, "detalle", date(2026, 8, 1), date(2026, 8, 10), "ordinaria", "80000.00", "4000.00"),
+        (
+            "1A",
+            2,
+            "detalle",
+            date(2026, 8, 1),
+            date(2026, 8, 10),
+            "ordinaria",
+            "80000.00",
+            "4000.00",
+        ),
         ("1A", 3, "detalle", date(2026, 9, 1), date(2026, 9, 10), "ordinaria", "85000.00", "0.00"),
     ], f"las dos filas de 1A con su número de fila del Excel: {filas}"
 
