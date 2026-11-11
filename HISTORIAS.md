@@ -181,9 +181,12 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
     SIGTERM a mitad de un volcado.
 - Dificultad y riesgo: media / HIGH. Toca la restauración y la conmutación de la base. No escribe en
   `cuenta_corriente` ni en `pagos`, pero un error ahí apunta la aplicación a la base equivocada.
-- Constructor: a definir con Juani.
+- Constructor: `rein-constructor` con Sonnet, elegido por Juani el 11/11/2026. Rompedor: Codex (otra familia).
 - Demo: el ensayo de conmutación real y el apagado con SIGTERM a mitad de un volcado.
-- Aceptación: `aceptacion/H-003/aceptar.py`, por aprobar. Vista fallar por aserción sobre una fusión de
+- Aceptación aprobada por Juani el 11/11/2026: **`16d8719b1da5837694179d96c857284e49545818`**. Comando:
+  `git show 16d8719:aceptacion/H-003/aceptar.py > <fuera-del-repo>/aceptar.py && python3
+  <fuera-del-repo>/aceptar.py`, desde la raíz del repo. Casos esperados: C01, C02, C03 (108/108), C05 y
+  C06 en PASA; C04 (rompedor) y C07 (demo), con evidencia manual. Vista fallar por aserción sobre una fusión de
   prueba: C01 (D-144 a D-146 y L-068, L-069 repetidas; 10 líneas con los números viejos), C05 (sin
   archivar), C06 (sin propuesta archivada) y C03 esperando 107 (108 ejecutados). Pasan sobre la fusión
   de prueba: los 108 tests (1m07s, 0 skips). C02 hoy falla: 0 checks.
