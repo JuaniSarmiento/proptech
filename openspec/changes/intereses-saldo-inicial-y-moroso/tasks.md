@@ -204,7 +204,7 @@
       entero: sin la condición de mismo mes sólo entra 30/09-31/10 con `dias = 32`
       ([mes_entero_de_dos_meses]); sin la de fin de mes sólo entra 01/10-30/10
       ([mes_entero_sin_fin_de_mes]).
-- [ ] 2.2 **Semilla con configuración.** Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
+- [x] 2.2 **Semilla con configuración.** **Decisión del orquestador (11/11/2026, H-004)**: la versión de configuración entra por `sembrar(base, con_configuracion=True)`, no por defecto: por defecto rompería C11 de la aceptación congelada (`d2da37e`, mundo sin configuración) y chocaría con `uq_configuracion_vigencia` en los tests que fijan su propia versión. La 5.5 pasa `con_configuracion=True` en los `test_cc_*` que emiten con deuda vencida. Archivo: `backend/tests/integracion/_cuenta_corriente.py::sembrar`
   (una versión de configuración con tasa 0,00, gracia 0, proporcional, umbral 500,00, vigente desde
   01/01/2026, para los tres edificios del mundo). Antes del cambio, correr `pytest tests/integracion -k
   test_cc_` y guardar conteo y fallas previas como línea de base; después, el mismo conteo y ninguna falla
