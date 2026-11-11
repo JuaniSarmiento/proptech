@@ -106,7 +106,8 @@ mutante, en un commit anterior al de producción (L-061). -->
     `..._acepta_un_archivo_sin_padron[sin_hoja]`; (7) sin chequeo de ambiguo → `[1.234-6]`; (8) la celda
     numérica también ambigua → `test_una_celda_numerica_no_es_ambigua[0.125-0.125]`; (9) duplicado sin
     recortar → `test_una_unidad_repetida_se_detecta_aun_con_espacios_en_el_borde`; (10) informar la
-    suma con errores de fila → `test_con_errores_de_fila_no_se_informa_la_suma`.
+    suma con errores de fila → `test_un_solo_error_nombra_hoja_fila_columna_y_motivo` (el primero en caer
+    con `-x`: `assert ('Unidades', None, 'Coeficiente') == ('Unidades', 9, 'Piso')`).
   - Linters al cierre: `uv run ruff check .` (All checks passed), `uv run ruff format --check .`,
     `uv run mypy` (`Success: no issues found in 411 source files`).
 - [ ] 1.4 **Migración `0036_importacion`.** Tabla `importacion` (D5) con RLS forzada, FK compuestas a
