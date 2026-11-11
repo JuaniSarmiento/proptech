@@ -663,6 +663,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
     saldos, control), ficha 5.
   - **C18** cada escenario de la spec `borrador-de-saldos` tiene su test en verde.
 - Demo: subir saldos con una diferencia de signo opuesto, ver la comparación y aceptar.
+- Aceptación: **congelada en `f214893eb656d466043716aff3a085d9e0a482ec`** (firma por adelantado de Juani, revisión técnica del orquestador): 58 tests de backend y 4 en navegador, 62 rojos por aserción sobre `ca57c88`, 0 errores; regresión H-004 a H-007, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-008/CONTRATO.md`. Decisión del orquestador: aceptar dos veces da 409 `aceptacion`.
 
 ### H-009 · Confirmar
 
