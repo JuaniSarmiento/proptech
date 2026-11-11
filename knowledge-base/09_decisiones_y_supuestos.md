@@ -3005,3 +3005,48 @@ registrado como tal en su momento.)*
   L-069); dejar `Conflicto` en otro código sin reproducirlo (DE-6).
 - **Deuda**: DE-1 a DE-12, en la ficha 3f de `12_fichas_de_changes.md`.
 - **Quién**: Giuliano, 04/11/2026, con el orquestador; O1 pendiente de Juani.
+
+## D-146 · El ciclo de Juani pasa a Rein: historias con aceptación congelada y demo, y Claude como orquestador (10/11/2026)
+
+- **Fecha**: 10/11/2026.
+- **Contexto**: el ciclo de Juani (proponente, constructor, rompedor y auditor, D-048, D-092, D-125) daba
+  por aprobado un cambio con el OK del auditor, y los tests que decidían esa aprobación los escribía el
+  mismo constructor. Juani adopta Rein (`.rein/METODO.md`, instalado con ReinStack `--agent both`) para su
+  propio trabajo, con Claude como orquestador.
+- **Decisión**:
+  1. **Alcance**: Rein reemplaza **sólo el ciclo de Juani**. Alberto y el equipo de deuda adelantada
+     (D-138) siguen con OPSX de Active Stack v1 (D-093) sobre el mismo repo.
+  2. **Unidad de trabajo**: cada change de `CHANGES.md` que construye Juani se parte en una o más
+     **historias** en `HISTORIAS.md` (`H-001`, `H-002`…; los criterios son `H-001.C01`, para no chocar con
+     las `HU-*` de `06_funcionalidades.md` ni con los `C-23` de la deuda adelantada). `HISTORIAS.md` lleva
+     el contrato, el SHA aprobado y la evidencia; `obsidian.md` lleva el estado y el próximo paso (no hay
+     `ORQUESTADOR.md`).
+  3. **OpenSpec se conserva** como lugar del diseño: `proposal.md` y `design.md` del change, la firma de
+     CRITICAL y HIGH (D-094, D-111), las specs y el `openspec archive` que actualiza `knowledge-base/`. Las
+     reglas duras no cambian.
+  4. **Aceptación antes de construir**: el orquestador escribe las pruebas que deciden cada historia en
+     `aceptacion/<H-xxx>/`, Juani las aprueba, se commitean y se anota el SHA. El constructor
+     (`rein-constructor`) no las toca; si un criterio está mal, pide la decisión y va otro SHA.
+  5. **Roles**: el orquestador (la sesión que habla con Juani) acuerda, escribe la aceptación, delega y
+     verifica contra el SHA aprobado (worktree o `git show`, nunca la copia del constructor). Un
+     constructor por historia; el modelo lo elige Juani (Codex `xhigh` cuando hay cuota, si no Sonnet) y
+     cambiarlo pide su OK y queda anotado en la historia. En CRITICAL y HIGH sigue el **rompedor**, de
+     otra familia de modelo que el constructor (L-025, D-125), como revisión adversarial. **El auditor deja
+     de ser la compuerta.**
+  6. **Cierre**: Lista no es aprobación. Una historia pasa a **Terminada sólo con el sí explícito de Juani
+     después de la demo** criterio por criterio. Con dos historias en Lista no se construye nada nuevo.
+     El change se archiva (KB, `openspec archive`, commit y push a `main`, D-049) cuando todas sus
+     historias están Terminadas.
+  7. **Tests**: los agentes corren comprobaciones focalizadas y el orquestador la aceptación de la
+     historia. La suite completa (unos 18 minutos) la corre el CI o Juani, y su evidencia se enlaza en la
+     historia; nadie la da por corrida sin esa evidencia.
+  8. **Documentación viva = `knowledge-base/`**: la KB sigue siendo la fuente de verdad y se actualiza
+     en el mismo trabajo: decisiones y preguntas al acordar una historia, y el "Knowledge Base Impact"
+     completo al archivar el change. `HISTORIAS.md` enlaza reglas y decisiones; no las copia.
+- **Descartado**: Rein para todo el repo (el equipo recién arranca con OPSX y tiene los PR #5, #6 y #7 en
+  vuelo); abandonar OpenSpec (se perderían la firma, las specs sincronizadas y el archivo que comparte el
+  equipo); mantener al auditor como compuerta (el OK de un agente no reemplaza la demo ante Juani).
+- **Reemplaza**: el ciclo de Juani de `14_forma_de_trabajo.md` (D-048, D-092 en lo que hace al auditor,
+  D-125 en lo que hace al auditor final). El tope de tres vueltas sigue, con Juani decidiendo en vez del
+  auditor.
+- **Quién**: Juani, 10/11/2026, con la propuesta del orquestador.

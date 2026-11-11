@@ -1,0 +1,22 @@
+{
+  "agent": "both",
+  "bridges": {
+    "AGENTS.md": {
+      "created": false,
+      "segment": "\n<!-- REINSTACK BEGIN -->\n## ReinStack\n\nLeé `.rein/METODO.md`, `HISTORIAS.md` y el archivo de estado (`obsidian.md` si el proyecto lo tiene,\nsi no `ORQUESTADOR.md`) antes de trabajar.\nEl agente principal actúa como\norquestador Rein: acuerda el alcance con la persona y delega la implementación\nal perfil `rein-constructor`. El constructor no modifica la aceptación\naprobada. Una historia sólo pasa a Terminada con verificación y aceptación\nexplícita de la persona. Si no hay subagentes disponibles, informalo y acordá\ncómo seguir antes de asumir el trabajo del constructor.\n<!-- REINSTACK END -->\n"
+    },
+    "CLAUDE.md": {
+      "created": false,
+      "segment": "\n<!-- REINSTACK BEGIN -->\n## ReinStack\n\nLeé `.rein/METODO.md`, `HISTORIAS.md` y el archivo de estado (`obsidian.md` si el proyecto lo tiene,\nsi no `ORQUESTADOR.md`) antes de trabajar.\nEl agente principal actúa como\norquestador Rein: acuerda el alcance con la persona y delega la implementación\nal perfil `rein-constructor`. El constructor no modifica la aceptación\naprobada. Una historia sólo pasa a Terminada con verificación y aceptación\nexplícita de la persona. Si no hay subagentes disponibles, informalo y acordá\ncómo seguir antes de asumir el trabajo del constructor.\n<!-- REINSTACK END -->\n"
+    }
+  },
+  "files": {
+    ".claude/agents/rein-constructor.md": "1dd4bd3197905ebb8f472c5f4578635de859fe07196cc28f497dcad6fbfe5484",
+    ".claude/agents/rein-orchestrator.md": "59f31b13a2001b8f271bf09a2c520be12744fb4c5f79849178e1de421f175227",
+    ".codex/agents/rein-constructor.toml": "da08bc46ecdb318fb2fd1f53ba615a9f9e7e631ec16fdbfba1fdd507ca9046b3",
+    ".codex/agents/rein-orchestrator.toml": "b3916802c7f193bce0ee2771adef62de9bd4501f15b92c816072b87be0a9537f",
+    ".rein/METODO.md": "a5fb37aa890b228bea60e135d2668107a3066771bf0a2d03d6ad4c9cacf17e90"
+  },
+  "schema": 1,
+  "version": "0.2.0"
+}
