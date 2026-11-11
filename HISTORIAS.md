@@ -118,10 +118,14 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
   falla en un worktree, donde `.git` es un archivo. No bloquea; va a la deuda del cierre del 2e.
 - Dificultad y riesgo: media / MEDIUM. **Cambia el comportamiento**: el humo sin la variable, o con
   `proptech`, deja de correr. Hay que avisarle al equipo.
-- Constructor: a definir con Juani.
 - Demo: correr el humo sin variable, con `proptech` y con `proptech-humo`, y forzar una falla para ver
   paso, línea y comando.
-- Aceptación: `aceptacion/H-002/aceptar.py`, por aprobar. Vista fallar por aserción: C01 sobre una
+- Aceptación aprobada por Juani el 11/11/2026: **`ff7836bd015b4e5c300c5c05887ee1ccc026216a`**. Comando:
+  `git show ff7836b:aceptacion/H-002/aceptar.py > <fuera-del-repo>/aceptar.py && python3
+  <fuera-del-repo>/aceptar.py`, desde la raíz del repo. Casos esperados: C01, C02, C03 (167/167), C05,
+  C06 y C07 en PASA; C08, demo.
+- Constructor: `rein-constructor` con Sonnet, elegido por Juani el 11/11/2026.
+- Historia de la aceptación: Vista fallar por aserción: C01 sobre una
   fusión de prueba (D-144 y L-068 a L-070 repetidas, 31 líneas con los números viejos), C03 esperando
   761 sobre los 22 archivos originales (762 ejecutados), C05 y C06 (change sin archivar), C07 contra
   `main` (los seis rechazos llaman a docker). Pasan sobre la fusión de prueba: los 762 tests de los 22
