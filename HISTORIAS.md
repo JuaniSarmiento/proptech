@@ -16,8 +16,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
-| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Lista |
-| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Lista |
+| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
+| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -462,6 +462,8 @@ Cierre:
   septiembre $85.000), U2 (total único $50.000 con $2.000), U3 (crédito $3.000) y U4 ($300); orígenes
   fila por fila; replay en otro orden sin escribir; segunda carga rechazada; noviembre cobra $1.280,00 y
   $1.360,00 desde el 16/10.
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sisi"), después de la demo en vivo
+  sobre `0caafe1`.
 - Constructor: Sonnet en tandas (migración; carga; interés desde la migración). Tests: sólo los de los
   archivos tocados, más el barrido local de migraciones (la historia agrega tablas).
 - Aceptación: **congelada en `0b4c5cb69628cd69c7a6ee49ac27f3fb439c1234`** (aprobación por delegación de Juani, después de la revisión técnica): 60 tests, 60 rojos por aserción sobre `aee113a`, 0 errores, 0 skips; C20 (ciclo de la `0035`, ensayo de roles, H-004 67/67 desde `d2da37e`, tests del 4b, barrido de migraciones), C21 y C22 en `aceptar.py`. Contrato para el constructor en `aceptacion/H-005/CONTRATO.md`. **Recongelada en `2fcf6ba91c518abcaccdd5ac5aef3c09bdecaea9`** (11/11/2026, por el orquestador): el test `test_c19_una_carga_y_su_origen_bien_formados_entran` metía dos cargas en el mismo edificio, contra la carga única de D5 y C13; lo encontró la tanda 1. Ahora la carga manual entra en un savepoint que se deshace. Ningún otro test cambió. Importes verificados con `Fraction`. Comando: `python3 aceptacion/H-005/aceptar.py --codigo HEAD` (unos 20 min con la regresión; `--sin-regresion` para una corrida rápida).
@@ -518,6 +520,8 @@ Cierre:
   **33/33**, C01 a C19 PASA, con C19 corriendo H-004 67/67 y H-005 60/60.
 - Demo probada: el listado del edificio migrado da U1 moroso crítico ($171.640, dos liquidaciones), U2
   con deuda vencida ($52.800, una), U3 sin deuda vencida y U4 bajo el umbral ($304,80).
+- Aprobación de Juani: **Terminada**, sí explícito el 11/11/2026 ("sisi"), después de la demo en vivo
+  sobre `0caafe1`, junto con H-005.
 - Aceptación: **congelada en `3f6629bbdbc69ca81f31b1716a28a9d1c1fc1401`** (aprobación por delegación de Juani, después de la revisión técnica): 33 tests, 33 rojos por aserción sobre `3378b43`, 0 errores, 0 skips; C17 (KB), C18 (20 escenarios) y C19 (H-004 y H-005 desde sus SHA) en `aceptar.py`. Contrato en `aceptacion/H-006/CONTRATO.md`. Importes verificados con `Fraction`.
 
 ## Plantilla de historia

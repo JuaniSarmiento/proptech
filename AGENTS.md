@@ -175,10 +175,19 @@ mercado de arranque es **Mendoza**.
   DE-1 a DE-12 en la ficha 3f de `knowledge-base/12_fichas_de_changes.md`.
 - **6c `pantallas-de-gastos`** (C-30, MEDIUM, D-144, 31/10/2026): las pantallas de HU-A3 y HU-A3b sobre
   la API del 6, de Juan Cruz, por proponer; cierra D12 del 6. Juan Cruz hace C-28 después del 6c, y el
-  bloque del libro de C-28 pasa al rompedor del 4c.
-- **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL, por proponer; lo construye un
-  firmante de D-111) en el camino crítico; los siete de deuda adelantada en paralelo; después 4d
-  `cambio-de-titular` (CRITICAL).
+  bloque del libro de C-28 vuelve a C-28 (D-152).
+- **Cambio 4c `intereses-saldo-inicial-y-moroso` archivado** (11/11/2026, CRITICAL, D-152 a D-154): el
+  primero construido entero con Rein, en tres historias de `HISTORIAS.md` y sin rompedor (D-152). H-004:
+  el interés por mora de R03 dentro de `registrar_emision` (corte, proporcional y mes entero, tramos en
+  `tramo_de_interes`, re-emisión y huecos), más la deuda RB-6, RF-01 y RF-02 del 4b. H-005: el saldo
+  inicial de R09 (`registrar_saldo_inicial`, carga única con su origen y la firma del pedido, interés
+  desde la migración). H-006: la situación de cobranza de R20 y R30 (`situacion_de_cuenta`,
+  `situacion_del_edificio`). Migraciones `0034` y `0035`. El CI corre una vez al cerrar el change
+  (D-154). Firma de Juani con E1 a E19 (D-153). Deuda en la ficha 4c de
+  `knowledge-base/12_fichas_de_changes.md`.
+- **Próximo**: **5 `importacion-desde-excel`** (CRITICAL; PA-1 lo bloquea) y después el 7 (D8 lo
+  bloquea) en el camino crítico; los de deuda adelantada en paralelo; 4d `cambio-de-titular` después
+  del 7.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -302,14 +311,15 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   `sesion-sin-persona` (28/10/2026, D-131 a D-137, migración `0028`) y 3d `pulido-2` (30/10/2026,
   D-139, PR #3, sin migraciones) y 6 `gastos-y-cargos` (30/10/2026, D-140 a D-142, PR #4, migraciones
   `0029` a `0033`), 3f `ejemplo-robusto` (04/11/2026, D-145, PR #7, sin migraciones) y 2e
-  `humo-y-ci` (11/11/2026, D-147, PR #5, sin migraciones) y 1e `respaldos-2` (11/11/2026, D-148 a D-150,
-  PR #6, sin migraciones).
+  `humo-y-ci` (11/11/2026, D-147, PR #5, sin migraciones), 1e `respaldos-2` (11/11/2026, D-148 a D-150,
+  PR #6, sin migraciones) y 4c `intereses-saldo-inicial-y-moroso` (11/11/2026, D-152 a D-154, PR #20,
+  migraciones `0034` y `0035`).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
 - **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23, C-24 y
   C-27 (archivados), uno por desarrollador; tabla en `CHANGES.md`.
-- **Sigue**: el 4c `intereses-saldo-inicial-y-moroso` (CRITICAL, por proponer).
+- **Sigue**: el 5 `importacion-desde-excel` (CRITICAL, por proponer; PA-1 lo bloquea).
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

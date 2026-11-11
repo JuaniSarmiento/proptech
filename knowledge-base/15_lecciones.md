@@ -1228,3 +1228,25 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   por PostgreSQL (`jsonb_agg`), con los roles como array ordenado de `quote_ident`.
 - **Regla**: si una igualdad de texto decide algo de seguridad, el texto sale de un serializador
   inequívoco (JSON, arrays), nunca de concatenar campos que pueden contener el separador.
+
+## L-082 · Una aceptación no fija "la última migración"
+
+- **Origen**: H-005 (4c), 11/11/2026.
+- **Qué pasó**: la aceptación de H-004 afirmaba que la cabeza de alembic era la `0034`. Cuando H-005
+  agregó la `0035`, la regresión de H-004 dio rojo sin que nada estuviera roto, y hubo que perdonar ese
+  test con su mensaje exacto en las aceptaciones de H-005 y H-006.
+- **Regla**: una aceptación prueba lo que su historia construye (la migración sube y baja, la tabla
+  existe), nunca "lo último que existe hoy". Es el mismo error que L-064, pero en la aceptación.
+
+## L-083 · Una tabla protegida nueva rompe todo lo que baja migraciones
+
+- **Origen**: H-004 (4c), 11/11/2026.
+- **Qué pasó**: con `tramo_de_interes` en `TABLAS_DE_SOLO_AGREGAR`, el CI cayó dos veces: el ensayo de
+  roles y tres tests de migraciones viejas bajaban por la `0034` sin devolverle la propiedad al
+  migrador, y una restauración con `--no-acl` perdía el `GRANT REFERENCES` sobre el libro. Ninguno lo
+  vio la aceptación ni los tests de la historia.
+- **Regla**: una historia que agrega una tabla protegida corre en local el barrido de los tests que
+  bajan o restauran migraciones (`rg -l "downgrade|\.migrar\(|alembic.*(up|down)grade|pg_restore"
+  backend/tests/integracion`) y suma la tabla a `infra/ci/ensayo-roles.sh` antes de darse por lista
+  (D-154).
+

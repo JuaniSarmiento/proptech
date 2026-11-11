@@ -45,7 +45,7 @@ gates están en el árbol de abajo.
 4. LA PLATA (cuenta corriente)
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
    ✅ 4b libro de movimientos (deudas y pagos) (27/10/2026)
-   👉 4c intereses y moroso (recibe RF-01/RF-02 del 4b, D-130)
+   ✅ 4c intereses, saldo inicial y moroso (archivado 11/11/2026, D-152 a D-154, PR #20)
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
@@ -71,7 +71,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
-- **Orden obligado (camino crítico):** 4c → 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a y 4b ya archivados).
+- **Orden obligado (camino crítico):** 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a, 4b y 4c ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
 - **En paralelo, no frenan a nadie:** los siete de
   deuda adelantada (D-138); 4d, 6b, 6c, 9, 11, 12 y 14.
@@ -108,7 +108,7 @@ C-01 infraestructura-base (1a)
                                       │
                                       └── C-07b libro-de-movimientos (4b)  ← archivado 27/10/2026
                                             │
-                                            └── C-07c intereses-saldo-inicial-y-moroso (4c)  ← próximo del camino crítico
+                                            └── C-07c intereses-saldo-inicial-y-moroso (4c)  ← archivado 11/11/2026 (H-004 a H-006)
                                                   │
                                                   └── C-08 importacion-desde-excel (5)
                                                         │
@@ -188,7 +188,7 @@ GATE 7: C-07a ✓ (26/10/2026)                             ← PRIMER FORK real 
     verificar contra R14 y R25; si escribe, pasa al GATE 8)
 
 GATE 8: C-07b ✓ (27/10/2026)
-  → C-07c intereses-saldo-inicial-y-moroso (4c, CRITICAL: aprobación de un firmante de D-111; próximo del camino crítico)
+  → C-07c intereses-saldo-inicial-y-moroso (4c, CRITICAL; **archivado 11/11/2026**, firma de Juani, D-153)
 
 GATE 9: C-07c ✓
   → C-08 importacion-desde-excel (CRITICAL)
@@ -575,7 +575,10 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-07c] `intereses-saldo-inicial-y-moroso` · 4c
-- **Estado**: `[ ]` pendiente (CRITICAL)
+- **Estado**: `[x]` archivado (11/11/2026, CRITICAL, firma de Juani `7dc5399`, D-152 a D-154). Con Rein en
+  tres historias, H-004 interés por mora, H-005 saldo inicial y H-006 situación de cobranza, sin
+  rompedor; migraciones `0034` y `0035`; PR #20; CI de cierre en verde con la suite completa. El bloque
+  del libro de C-28 vuelve a C-28 (D-152)
 - **Scope**: R03 con corte al cierre del período (D-113); R09, el caso de uso de saldo inicial que
   llama el 5; R20 con "deuda de intereses" y R30. **Recibe del 4b, confirmado por D-130**: el mutante
   de RF-01 sin matar (`emisiones.py:224`, un `foto` por cuenta) y el test de RF-02 sin su forma
