@@ -894,6 +894,12 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   (cumple D-143, E6); contar un período con sólo interés (E7); restar el crédito a favor del total
   vencido; vencida al día siguiente del vencimiento ignorando la gracia; umbral comparado por obligación
   en vez de por cuenta.
+
+  - RED de 7.1 (19:10, `uv run pytest tests/unitarios/cuenta_corriente/test_cobranza.py -q`, tanda 1 de H-006,
+    andamio sin comportamiento: `dominio/cobranza.py` con el tipo `SituacionDeCobranza` y un `clasificar` que
+    siempre dice "sin deuda"): `16 failed, 1 passed`, cada rojo por `AssertionError: assert ('0.00', 0, ...,
+    'sin_deuda_vencida') == (<total>, <liquidaciones>, ..., <etiqueta>)`. Pasa, vacuamente, "Emisión anulada"
+    (el andamio ya dice sin deuda): se prueba con su mutante.
 - [ ] 7.2 **Situación por cuenta y por edificio (E14, PR-01, PR-06).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/cobranza.py` (nuevo),
   `backend/tests/integracion/test_cc_cobranza.py`. Escenarios: "Emisión anulada", "Deshacer un pago
@@ -911,6 +917,14 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   sentencia → este ensayo rojo; el test de "Edificio de otra administración" como app queda verde, como
   se espera (lo tapa RLS) y se anota. Consumidores: 10a, 10b y 8, anotados en sus fichas al cerrar con el
   significado de la fecha (E14).
+
+  - RED de 7.2 (19:11, `uv run pytest tests/integracion/test_cc_cobranza.py -q`, PostgreSQL real, andamio sin
+    comportamiento: `aplicacion/cobranza.py` con `situacion_de_cuenta` que devuelve "sin deuda",
+    `situacion_del_edificio` que devuelve `[]` y `SENTENCIA_DE_COBRANZA = SENTENCIA_DEL_EDIFICIO`):
+    `9 failed, 2 passed`, cada rojo por aserción (`assert ('0.00', 0, ...) == ('165000.00', 2, ...)`,
+    `umbral 300`, `una entrada por cuenta de unidad`, y los controles "con la versión vigente responde" y "se
+    vieron sentencias"). Pasan "Un pago posterior cuenta aunque la fecha sea anterior" (el andamio ya dice cero) y
+    el ensayo del filtro de tenant (la sentencia ya filtra): se prueban con su mutante.
 
 ## 8. Cierre del constructor
 
