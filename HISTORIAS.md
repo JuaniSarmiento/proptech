@@ -15,6 +15,9 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-001 | C-27 `ejemplo-robusto` (PR #7) | El PR de Giuliano verificado e integrado a `main` | Baja / LOW | Terminada |
 | H-002 | C-23 `humo-y-ci` (PR #5) | El PR de Gianfranco verificado e integrado a `main` | Media / MEDIUM | Terminada |
 | H-003 | C-24 `respaldos-2` (PR #6) | El PR de Emiliano verificado e integrado a `main` | Media / HIGH | Terminada |
+| H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Pendiente |
+| H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Sin acordar |
+| H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Sin acordar |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -252,9 +255,101 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 
 ## Changes por partir en historias
 
-- **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL): propuesta y diseño en
-  `openspec/changes/intereses-saldo-inicial-y-moroso/`, sin commitear y sin la firma de D-094. Falta
-  acordar con Juani cómo se parte en historias.
+- Ninguno: el 4c quedó partido en H-004, H-005 y H-006 (11/11/2026).
+
+## Interés, saldo inicial y moroso (4c, C-07c)
+
+Partido el 11/11/2026 en tres historias, en orden y cada una sobre la anterior: H-004 (interés por mora,
+grupos 1 a 5 de `tasks.md`), H-005 (saldo inicial, grupo 6) y H-006 (situación de cobranza, grupo 7). El
+grupo 8 (cierre) se reparte entre las tres. Sin rompedor (D-152): todo lo que tiene que fallar va en la
+aceptación. **Nada se construye sin la firma CRITICAL de E1 a E19** en `proposal.md` (D-094, D-111).
+
+### H-004 · Interés por mora al emitir
+
+- Change: C-07c 4c `intereses-saldo-inicial-y-moroso`. Reglas: R03, R07, R08, R17; decisiones D-109.5,
+  D-113, D-143; elecciones E1 a E5, E10, E15, E17 y E19 de `design.md`, con su recomendación.
+- Resultado para Juani: al registrar la emisión de un período, cada obligación vencida e impaga de las
+  cuentas de unidad del edificio recibe su débito de interés simple al centavo, con su corte y su detalle
+  por tramo; nunca interés sobre interés ni dos veces el mismo día.
+- Alcance: deuda heredada (RB-6, RF-01, RF-02), migración `0034` sólo con `tramo_de_interes`, foto con
+  corte y tramos, cálculo puro (`dominio/intereses.py`) e interés dentro de `registrar_emision`, su replay
+  y su anulación. **Cambio contra `design.md` D10**: las dos tablas del saldo inicial pasan a una `0035`
+  en H-005.
+- Exclusiones: saldo inicial (H-005), situación de cobranza (H-006), cuentas de persona (4d), rutas de API
+  y pantallas.
+- Dificultad y riesgo: alta / CRITICAL.
+- Base de los ejemplos, salvo que diga otra cosa: ordinaria de septiembre de $100.000 vencida el
+  10/09/2026, 3% mensual proporcional, gracia 0.
+
+Criterios que tienen que pasar:
+
+- **H-004.C01 · Interés al emitir**: la emisión de octubre registra $2.000,00 con corte 30/09/2026 que
+  referencia la emisión; una unidad sin obligación nueva también recibe su interés; `EmisionRegistrada`
+  informa el interés y un saldo anterior de $102.000,00; emitir el 15/10 cobra sólo hasta el 30/09.
+- **H-004.C02 · Simple y sólo sobre el capital**: noviembre da $3.100,00 (no sobre $102.000) con tramo
+  desde el 01/10; pago parcial de $40.000 el 20/09 da $1.600,00 en tramos 11/09-20/09 y 21/09-30/09; pago
+  total el 20/09 da $1.000,00 en un solo tramo 11/09-20/09; febrero de 2028 cuenta 19 días, $1.900,00.
+- **H-004.C03 · Gracia de 5 días**: pagada el 15/09, sin interés; el 16/09, $600,00; vencida el 28/09 e
+  impaga, octubre sin interés y noviembre $3.300,00.
+- **H-004.C04 · Mes entero**: un día de atraso $3.000,00 (tramo 30/09); el mes siguiente $3.000,00 (tramo
+  01/10-31/10); con gracia $6.000,00 en dos tramos; pago a mitad de mes $3.000,00 y $1.800,00; pago total
+  $3.000,00 con tramo 11/09-30/09; de proporcional a mes entero $2.000,00 y $3.000,00; de mes entero a
+  proporcional $3.000,00 y $3.100,00.
+- **H-004.C05 · Configuración vigente al corte**: 3% y desde el 01/10 6% dan $2.000,00 y $6.200,00, y el
+  primero no cambia; cada tramo guarda la versión de configuración del corte.
+- **H-004.C06 · Redondeo único medio hacia arriba**: $62,50 da $0,13; dos tramos de $0,064 y $0,063 dan
+  $0,13.
+- **H-004.C07 · Re-emisión y huecos**: anular y volver a emitir no registra otro interés; noviembre
+  recupera 51 días, $5.100,00 (o $10.200,00 con el 6%); un hueco que deja un contra-asiento se cobra en dos
+  tramos, $5.000,00; los días con tasa 0 se cobran después, $5.100,00.
+- **H-004.C08 · Replay**: repetir la emisión devuelve los mismos intereses sin escribir nada; saldo
+  anterior $102.000,00 sin cambios, $72.000,00 después de un pago y $100.000,00 después de anular.
+- **H-004.C09 · Una sola lectura y candados**: la última foto pide todas las cuentas alcanzadas, incluida
+  la que sólo recibió interés; anular bloquea U1 y U2 en una sola llamada ordenada; una emisión
+  concurrente con un pago de otra unidad termina sin interbloqueo.
+- **H-004.C19 · Un día**: vencida el 29/09, $100,00.
+- **H-004.C20 · Base con los tres componentes**: ordinaria $70.000, fondo $10.000 y extraordinaria
+  $20.000 dan $2.000,00.
+- **H-004.C21 · Tasa con decimales**: 2,5% da $1.666,67.
+- **H-004.C22 · Pago imputado a interés y capital**: $30.000 el 05/10 ($2.000 al interés, $28.000 al
+  capital); noviembre da 5 días sobre $100.000 más 26 sobre $72.000, $2.372,00.
+
+Criterios que tienen que fallar o no registrar nada:
+
+- **H-004.C10**: con tasa 0, o con un importe que redondea a $0,00, no hay débito.
+- **H-004.C11**: sin configuración vigente al corte, o con sólo una versión futura, `Conflicto("configuracion")`
+  y el libro sin cambios.
+- **H-004.C12**: un edificio de otra administración da no encontrado, nunca conflicto de configuración.
+- **H-004.C13**: las obligaciones de una emisión anulada no generan interés; un corte ya ocupado no recibe
+  otro interés.
+- **H-004.C14**: `tramo_de_interes` rechaza `UPDATE`/`DELETE` de la app (`42501`) y `TRUNCATE` del
+  arranque (`P0001`); otra administración no ve tramos; un tramo ligado al movimiento de otra cuenta lo
+  frena la FK; días incoherentes o mes entero mal formado (30/09-31/10, 01/10-30/10) los frena el CHECK.
+- **H-004.C15**: `redondear_al_centavo` con un valor enorme da `MontoInvalido`, no `InvalidOperation`.
+- **H-004.C16**: la anulación espera una corrección en curso, crédito o contra-asiento, y ninguna
+  corrección queda escrita sobre una emisión ya anulada.
+- **H-004.C23**: vencida el 30/09, el día del corte: sin interés en octubre.
+- **H-004.C24**: vencida el 05/10, después del corte: sin interés en octubre.
+- **H-004.C25**: pagada entera con fecha valor igual al vencimiento: nunca genera interés.
+- **H-004.C26**: emitir el edificio A no toca ninguna cuenta del edificio B de la misma administración.
+- **H-004.C27**: las cuentas de persona no reciben interés.
+
+Cierre:
+
+- **H-004.C17**: CI verde sobre el SHA final; `0034` sube y baja dentro del ciclo real de devolución de
+  propiedad; ningún test atado a `0033`; los `test_cc_*` del 4b con el mismo conteo y sin fallas nuevas.
+- **H-004.C18**: KB al día para el interés: R03 y R17 en `05`, `tramo_de_interes` en `04`, `08`, `11` y la
+  ficha del 4c.
+- **H-004.C28 · Cobertura**: cada escenario de `intereses-por-mora`, `libro-de-movimientos` y
+  `reparto-de-montos` tiene su test en la aceptación; esperados contra ejecutados, un faltante o un skip
+  es falla.
+
+- Demo: correr la aceptación desde su SHA y, sobre una base real, emitir octubre y noviembre con
+  septiembre impago y mostrar movimientos y tramos.
+- Constructor: por elegir (L-048: Codex o un agente de Claude con la conversación de la firma, nunca un
+  constructor genérico sin ella).
+- Aceptación aprobada: pendiente. Los importes de C19 a C22 se verifican contra R03 al escribirla.
+- Evidencia y demo: pendientes.
 
 ## Plantilla de historia
 
@@ -268,6 +363,5 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 - Constructor (modelo elegido por Juani; cualquier cambio, con su OK y el motivo):
 - Brief y archivos relevantes:
 - Aceptación aprobada: SHA, comando y casos esperados:
-- Rompedor (CRITICAL y HIGH): informe y fallas devueltas:
 - Evidencia: aceptación del SHA aprobado, suite completa (CI o Juani), pendientes:
 - Demo y aprobación de Juani (fecha, o motivo del rechazo o la postergación):

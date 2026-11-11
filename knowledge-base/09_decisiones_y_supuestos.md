@@ -3164,3 +3164,22 @@ registrado como tal en su momento.)*
 - **Costo aceptado**: el disco crece mientras el reloj no se ponga al día; un backup con mtime muy en
   el futuro congela la retención hasta esa fecha, con la línea de log como aviso.
 - **Quién**: Juani, 11/11/2026, con la recomendación del orquestador.
+
+## D-152 · El ciclo de Juani con Rein no lleva rompedor, tampoco en CRITICAL ni en HIGH (11/11/2026, H-004)
+
+- **Fecha**: 11/11/2026, al acordar H-004 (4c `intereses-saldo-inicial-y-moroso`).
+- **Contexto**: D-146 sumó al ciclo de Rein un rompedor de otra familia de modelo en CRITICAL (por tanda)
+  y en HIGH (uno). Rein no lo tiene: `.rein/METODO.md` decide la historia con la aceptación ejecutable
+  congelada. En H-003 (HIGH) el rompedor llevó la historia a cuatro vueltas.
+- **Decisión**: ninguna historia lleva rompedor, cualquiera sea su riesgo. Lo que el rompedor cubría lo
+  cubre la aceptación: en CRITICAL y HIGH, el orquestador escribe antes de construir los criterios que
+  tienen que pasar **y** los que tienen que fallar (rechazos, aislamiento, concurrencia, bordes), Juani
+  los aprueba y quedan congelados en su SHA. El constructor sigue con TDD estricto y con sus mutantes
+  nombrados como evidencia, que el orquestador revisa al verificar.
+- **Descartado**: un rompedor por historia en CRITICAL (la recomendación del orquestador, por RF-01 y
+  RF-02 del 4b, que la aceptación no veía); el rompedor por tanda de D-146.
+- **Costo aceptado**: se pierde la mirada adversarial de otra familia de modelo; lo que la aceptación
+  no piense no lo encuentra nadie antes de la demo.
+- **Consecuencia**: el bloque del libro de C-28 que D-144 pasaba al rompedor del 4c vuelve a C-28
+  `revisiones-independientes`. Las firmas CRITICAL y HIGH (D-094, D-111) siguen igual.
+- **Quién**: Juani, 11/11/2026.

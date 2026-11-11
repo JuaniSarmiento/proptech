@@ -29,7 +29,10 @@ Conviven dos ciclos sobre el mismo repositorio (D-146):
 | Agente | Trabajo | Modelo | Puede editar |
 |---|---|---|---|
 | **Constructor** (`rein-constructor`) | Implementa una historia con el menor cambio razonable, TDD según el riesgo; escribe sus tests de apoyo | Lo elige Juani: Codex `xhigh` si hay cuota, si no Sonnet | Sí, salvo `aceptacion/` |
-| **Rompedor** | Revisión adversarial en CRITICAL y HIGH: entradas límite, concurrencia, otro edificio u otra administración, datos raros, errores de red. Cada falla queda como un test que falla y su reproducción | De otra familia que el constructor (L-025, D-125) | Sólo tests nuevos, nunca el código |
+
+**Sin rompedor (D-152)**: ninguna historia lleva revisión adversarial aparte, cualquiera sea su riesgo.
+Lo que antes buscaba el rompedor (entradas límite, concurrencia, otro edificio u otra administración,
+datos raros) va como criterios que tienen que fallar en la aceptación, escritos antes de construir.
 
 ## Los archivos
 
@@ -47,10 +50,10 @@ las `HU-*` de `06_funcionalidades.md` ni con los `C-23` a `C-30` de la deuda ade
 ## El ciclo de una historia
 
 ```
-1. Acordar ──► 2. Aceptación ──► 3. Construir ──► 4. Romper ──► 5. Verificar ──► 6. Demo
-   (Juani)       (SHA aprobado)                    (CRITICAL/HIGH)                  │
-                                     ▲                  │              │            │
-                                     └── fallas ────────┴──────────────┴── rechazo ─┘
+1. Acordar ──► 2. Aceptación ──► 3. Construir ──► 4. Verificar ──► 5. Demo
+   (Juani)       (SHA aprobado)                                      │
+                                     ▲                 │             │
+                                     └── fallas ───────┴── rechazo ──┘
 ```
 
 1. **Acordar.** Se parte del change de `CHANGES.md` y de su ficha. Orquestador y Juani acuerdan cada
@@ -66,13 +69,11 @@ las `HU-*` de `06_funcionalidades.md` ni con los `C-23` a `C-30` de la deuda ade
    en el núcleo y en todo lo que toca plata) y devuelve lo que hizo, los comandos y su salida. No toca
    `aceptacion/`; si un criterio está mal, pide la decisión y, si Juani la cambia, va otro commit y otro
    SHA con el motivo.
-4. **Romper.** Sólo en CRITICAL y HIGH: el rompedor recibe la historia construida y trata de romperla.
-   Si encuentra fallas, vuelve al paso 3 con los tests que fallan.
-5. **Verificar.** El orquestador recupera `aceptacion/<H-xxx>/` del SHA aprobado en un worktree o con
+4. **Verificar.** El orquestador recupera `aceptacion/<H-xxx>/` del SHA aprobado en un worktree o con
    `git show`, nunca de la copia del constructor, y la corre contra el código entregado. Compara los
    casos esperados con los ejecutados: un faltante o un skip no es éxito. La historia pasa a **Lista**
    con la evidencia y lo que quede sin verificar.
-6. **Demo.** El orquestador recorre el guion criterio por criterio con Juani. **Sólo Juani pasa la
+5. **Demo.** El orquestador recorre el guion criterio por criterio con Juani. **Sólo Juani pasa la
    historia a Terminada, con un sí explícito**; el silencio no es aceptación. Si la rechaza, vuelve a En
    proceso con el motivo; si la posterga, a Pendiente con el motivo.
 
@@ -103,10 +104,10 @@ Estados: **Pendiente → En proceso → Lista → Terminada.** Lista no es acept
 propone una sesión de demos. Sólo Juani levanta ese límite, por escrito y para una historia concreta.
 Una sola historia en construcción salvo paralelismo explícito.
 
-**Tope de vueltas (D-092)**: si entre construir, romper y verificar se dan tres vueltas sin llegar a
-Lista, no se sigue iterando a ciegas. El rompedor entrega su informe final con el diagnóstico de cada
-hallazgo (severidad, si lo demostró, impacto hoy y a futuro, recomendación) y el orquestador se lo
-pasa **textual** a Juani, que decide si la historia sigue, se parte o se cierra con la deuda anotada.
+**Tope de vueltas (D-092)**: si entre construir y verificar se dan tres vueltas sin llegar a Lista, no
+se sigue iterando a ciegas. El orquestador le pasa a Juani el diagnóstico de cada criterio que no pasa
+(qué falla, si está demostrado, impacto hoy y a futuro, recomendación), y Juani decide si la historia
+sigue, se parte o se cierra con la deuda anotada.
 
 **Mutar para ver el rojo sin commitear (D-092, L-013)**: antes de mutar código a propósito, sacar una
 copia previa (`git stash` o un commit local temporal que se descarta) y comparar con un diff real
@@ -116,9 +117,9 @@ contra esa copia. Decirlo en el informe.
 
 | Riesgo | Qué lleva la historia |
 |---|---|
-| **CRITICAL** (cuenta corriente, cobros, liquidación, acceso, importación, 10b) | Firma de la propuesta antes de construir; aceptación con bordes y fallos; TDD estricto; rompedor por tanda alternando Claude y Codex (D-125) |
-| **HIGH** | Firma de la propuesta; aceptación con bordes; un rompedor |
-| **MEDIUM** | Aceptación con ejemplos de borde; TDD donde aporte; sin rompedor salvo que el orquestador lo pida |
+| **CRITICAL** (cuenta corriente, cobros, liquidación, acceso, importación, 10b) | Firma de la propuesta antes de construir; aceptación con criterios que tienen que pasar y criterios que tienen que fallar (rechazos, aislamiento, concurrencia, bordes); TDD estricto con mutantes nombrados en lo que toca plata o seguridad |
+| **HIGH** | Firma de la propuesta; aceptación con criterios que tienen que pasar y que tienen que fallar |
+| **MEDIUM** | Aceptación con ejemplos de borde; TDD donde aporte |
 | **LOW** | Aceptación focalizada; se resuelve con tests y CI |
 
 Dificultad y riesgo son distintos: un cambio chico que toca plata o datos personales va por la fila de
@@ -140,8 +141,9 @@ nunca asumida como probada.
 
 ## Lecciones
 
-Antes de empezar cada historia, **el constructor y el rompedor leen `15_lecciones.md`**: es la lista
-de ataques y puntos ciegos que ya nos costaron una vuelta. Al archivar el change, el orquestador agrega
+Antes de empezar cada historia, **el orquestador y el constructor leen `15_lecciones.md`**: es la
+lista de ataques y puntos ciegos que ya nos costaron una vuelta, y de ahí salen los criterios que
+tienen que fallar. Al archivar el change, el orquestador agrega
 lo que enseñó (como regla general, o "ninguna") a `15_lecciones.md`.
 
 ## Lo que cada agente devuelve
@@ -151,15 +153,11 @@ Todos informan en tres secciones, sólo las que tengan contenido:
 - **JUICIO**: lo que opinan, con qué lo compararon y su confianza.
 - **SUPUESTOS**: lo que dieron por cierto sin verificarlo.
 
-El orquestador no resume ni suaviza los hallazgos del rompedor: se los pasa a Juani tal cual cuando
-deciden algo.
-
 ## Constructor con Codex (desde el 3a)
 
 El constructor puede ser **Codex (GPT-6.1-Sol, esfuerzo `xhigh`)**, con el perfil
 `.codex/agents/rein-constructor.toml`, o un agente de Claude con `.claude/agents/rein-constructor.md`.
 Lo elige Juani; cambiarlo (por ejemplo, por falta de cuota) pide su OK y queda anotado en la historia.
-El rompedor siempre es de otra familia que el constructor (L-025).
 
 - **Un brief por historia**, en `.git/informes-<change>/brief-<H-xxx>.md`, con reglas comunes (TDD según
   el riesgo, no tocar `aceptacion/`, tope de evidencia, conventional commits **sin** atribución a IA ni

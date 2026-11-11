@@ -179,7 +179,7 @@ mercado de arranque es **Mendoza**.
 - **Próximo**: **4c `intereses-saldo-inicial-y-moroso`** (CRITICAL, por proponer; lo construye un
   firmante de D-111) en el camino crítico; los siete de deuda adelantada en paralelo; después 4d
   `cambio-de-titular` (CRITICAL).
-  Antes de cada cambio, constructor y rompedor leen `knowledge-base/15_lecciones.md`.
+  Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
   ante la AAIP (P12), el acceso de soporte (P13), el plazo del libre deuda (P14), los ingresos mayores que los gastos
@@ -242,9 +242,9 @@ subir secretos, datos personales ni el material de Alberto (`especificacion/` es
 | `knowledge-base/11_glosario.md` | El idioma común. El código usa estos nombres, en español | Se reescribe |
 | `knowledge-base/12_fichas_de_changes.md` | El detalle de cada cambio del roadmap (objetivo, reglas, dependencias, qué prueba el rompedor) | Se reescribe |
 | `knowledge-base/13_motor_de_reglas.md` | El puerto de políticas (D-064) y GoRules ZEN con editor visual y validador propio (D-066, D-067): contrato, qué hace bien ZEN y su riesgo real, versiones, fallas y dónde entra en el roadmap | Se reescribe |
-| `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio** con Rein (D-146): historias, aceptación congelada, constructor, rompedor en CRITICAL/HIGH, demo; sólo Juani da por Terminada una historia | Se reescribe |
+| `knowledge-base/14_forma_de_trabajo.md` | **Cómo construye Juani cada cambio** con Rein (D-146): historias, aceptación congelada con criterios que pasan y que fallan, constructor, demo, sin rompedor (D-152); sólo Juani da por Terminada una historia | Se reescribe |
 | `HISTORIAS.md` | El backlog de Juani con Rein: cada historia, sus criterios, el SHA de su aceptación y la evidencia | Se reescribe |
-| `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen constructor y rompedor antes de empezar | **Sólo se agrega** |
+| `knowledge-base/15_lecciones.md` | Lo que cada cambio enseñó sobre cómo se rompe el sistema; lo leen orquestador y constructor antes de empezar | **Sólo se agrega** |
 | `knowledge-base/16_proyecto_final.md` | Fases posteriores al MVP con su criterio de entrada | Se reescribe |
 | `CHANGES.md` | **Todos los cambios en orden, con su estado** (los del roadmap y los de deuda adelantada, D-138): arrancá cada propose desde ahí y desde la ficha de `12_fichas_de_changes.md` | Se reescribe |
 
@@ -377,13 +377,13 @@ archive` y una actualización de `knowledge-base/` según su sección "Knowledge
 PropTech en `knowledge-base/14_forma_de_trabajo.md`):
 
 ```
-1. Acordar ──► 2. Aceptación (SHA) ──► 3. Construir ──► 4. Romper ──► 5. Verificar ──► 6. Demo ──► Archivar
+1. Acordar ──► 2. Aceptación (SHA) ──► 3. Construir ──► 4. Verificar ──► 5. Demo ──► Archivar
 ```
 
 Cada change se parte en historias (`H-001`…) en `HISTORIAS.md`. Claude es el orquestador: acuerda la
 historia con Juani, escribe la aceptación ejecutable en `aceptacion/<H-xxx>/` antes de construir
 (Juani la aprueba y queda congelada en un SHA), delega en `rein-constructor` (Codex o Claude, lo elige
-Juani), suma un rompedor de otra familia de modelo en CRITICAL y HIGH, verifica contra el SHA aprobado y
+Juani), sin rompedor (D-152: los casos que tienen que fallar van en la aceptación), verifica contra el SHA aprobado y
 presenta la demo. **Sólo Juani pasa una historia a Terminada.** El change se archiva cuando todas sus
 historias están Terminadas, con `knowledge-base/` actualizada en el mismo trabajo. OpenSpec sigue
 llevando la propuesta, el diseño y la firma: los cambios CRITICAL o HIGH llevan la aprobación escrita de
