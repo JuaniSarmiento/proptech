@@ -266,6 +266,12 @@ aceptación. **Nada se construye sin la firma CRITICAL de E1 a E19** en `proposa
 Desde D-154 las tres historias van en la rama `change/intereses-por-mora` (PR #20) y el CI de GitHub
 corre una sola vez, al cerrar el change; el PR se mergea con H-006 Terminada y el CI en verde.
 
+**Delegación de Juani (11/11/2026)**: deja al orquestador a cargo de terminar el change entero: construir
+H-005, **escribir y aprobar por adelantado los criterios de H-006** (sobre la spec
+`situacion-de-cobranza` y las elecciones firmadas), construirla, correr el CI con la suite completa en
+verde y dejar el PR #20 listo para mergear. Pasar cada historia a Terminada y mergear a `main` quedan
+para Juani, después de las demos.
+
 ### H-004 · Interés por mora al emitir
 
 - Change: C-07c 4c `intereses-saldo-inicial-y-moroso`. Reglas: R03, R07, R08, R17; decisiones D-109.5,
