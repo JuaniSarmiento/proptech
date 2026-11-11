@@ -352,8 +352,28 @@ Cierre:
   técnica (rojos por aserción, importes verificados) y de correr las tandas hasta Lista. Los importes de
   C19 a C22 verificados con `Fraction` (cierran todos). **SHA congelado: `d2da37ef509cfb88ef62d5e12b5d4b3ec18d270e`**; 67 tests (60 rojos por aserción y 7 de regresión sobre `7dc5399`, 0 errores, 0 skips), más C17, C18 y C28 en `aceptar.py`. Comando: `python3 aceptacion/H-004/aceptar.py`.
 - Constructor: Sonnet (`rein-constructor`), elegido por Juani el 11/11/2026, en seis tandas secuenciales
-  con brief y relevo propios.
-- Evidencia y demo: pendientes.
+  con brief y relevo propios (`.git/informes-intereses-saldo-inicial-y-moroso/brief-H-004-t1..t6.md` y
+  `relevo-H-004-t1..t6.md`), rama `change/intereses-por-mora`, PR #20.
+- Construcción (cada tanda verificada por el orquestador antes de lanzar la siguiente):
+  - t1 (1.1 a 1.3): RB-6 arreglado; tests de RF-01 y RF-02 contra-asiento con mutantes rojos.
+    Aceptación sobre `53cf5c0`: C15 PASA. Un id de test del 4b parametrizado rompía C17; arreglado en t3.
+  - t2 (2.1, 2.2): `0034_tramo_de_interes` con protección y mutantes. **Decisión del orquestador**:
+    semilla con configuración opcional (`con_configuracion=True`), porque por defecto rompía C11.
+    Cuatro mutantes de protección los frena el chequeo de arranque antes que el test: dos defensas reales.
+  - t3 (3.1, 3.2): partes de imputación que cuentan; la foto trae `corte` y `tramos`.
+    `interes_desde` desde la migración queda para H-005.
+  - t4 (4.1 a 4.3) y t5 (4.4, 4.5): cálculo puro en `dominio/intereses.py`, 88 tests unitarios,
+    mutantes, regla E1 y propiedades con `hypothesis` contra un oráculo propio (400 ejemplos).
+    Los escenarios de saldo inicial del cálculo quedan para H-005.
+  - t6 (5.1 a 5.5): el interés dentro de `registrar_emision`, replay y anulación sobre las cuentas
+    alcanzadas. Regresión `test_cc_`/`test_libro`: 429 pasados (405 de base + 24 nuevos), ningún id
+    cambiado. Mes entero con días no contiguos: la emisión rechaza con `Conflicto("interes")` sin
+    escribir. Mutantes débiles declarados: M12 (bloquear en dos pedidos) depende del orden de los uuid;
+    "el replay recalcula y escribe" sin mutante posible con E1.
+- Demo preparada: el guion corre en un clon de la rama y muestra el libro y los tramos (septiembre
+  impago, octubre $2.000,00, pago de $30.000 el 05/10, noviembre $2.372,00 en dos tramos, saldo
+  anterior $74.372,00). Probada el 11/11/2026.
+- Evidencia final: pendiente del CI del PR #20 y de la aceptación desde `d2da37e`.
 
 ## Plantilla de historia
 

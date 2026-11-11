@@ -876,6 +876,14 @@ D-153).
   (`BloqueoFueraDeOrden`).
 - **Pendiente de H-005**: `interes_desde` desde la migración (el `LEFT JOIN` a la carga en la foto) y
   los escenarios de saldo inicial del cálculo.
+- **Deuda encontrada al integrar H-004 (sin verificar en la operación real)**: una restauración con
+  `pg_restore --no-owner --no-acl` pierde el `GRANT REFERENCES` que `roles despues` da al migrador sobre
+  las tablas del libro, y una migración posterior que las referencia (como la `0034`) falla con
+  `permission denied for table movimiento`. El test `test_restauracion_antes_de_migrar.py` lo repone a
+  mano. Falta comprobar si `infra/respaldos/restaurar.sh` seguido de subir migraciones tiene el mismo
+  hueco. Dueño propuesto: C-29 `base-y-rls` (2f), o el 1e si se reabre.
+- **Mutantes débiles declarados en H-004**: bloquear en dos pedidos (M12) depende del orden de los uuid;
+  "el replay recalcula y escribe" no tiene mutante posible con E1.
 
 ### 5 · `importacion-desde-excel` · crítico (D-077)
 
