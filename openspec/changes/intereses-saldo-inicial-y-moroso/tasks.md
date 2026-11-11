@@ -324,7 +324,7 @@
     `assert (ParteDeImputacion(...),) == (ParteDeImputacion(...),)` en
     `test_las_partes_de_imputacion_que_cuentan_salen_topeadas_...` (`:396`) y
     `test_una_parte_de_imputacion_no_pasa_de_lo_debido_...` (`:414`).
-- [ ] 3.2 **Foto con `corte`, `tramos` e `interes_desde` (E17).** Archivos:
+- [x] 3.2 **Foto con `corte`, `tramos` e `interes_desde` (E17).** Archivos:
   `backend/src/proptech_core/cuenta_corriente/aplicacion/lecturas.py:37-69` y `_foto`,
   `backend/tests/integracion/test_cc_lecturas.py`. RED: la foto de una cuenta con un interés de corte
   30/11/2026 con dos tramos **no contiguos** (11/09-30/09/2026 y 01/11-30/11/2026), otro interés sin tramos
@@ -341,7 +341,7 @@
     (el defecto de `Obligacion`, sin tocar el SQL). **Pendiente de H-005**: el `LEFT JOIN` a
     `carga_de_saldo_inicial` por `operacion_id` para el `interes_desde` de una obligación de saldo
     inicial (y su RED y su mutante "`interes_desde` siempre el vencimiento más un día"). La tarea 3.2
-    queda `[ ]` por esa parte.
+    queda `[ ]` por esa parte. (Hecho en la tanda 3 de H-005, más abajo: la 3.2 queda `[x]`.)
   - RED (16:01, `cd backend && uv run pytest tests/integracion/test_cc_lecturas.py -q --tb=short -k
     trae_corte`): `1 failed, 8 deselected`, por aserción: `assert None == datetime.date(2026, 11, 30)`
     en `f.movimientos[con_tramos].corte` (la foto no trae el corte). Test:
@@ -374,6 +374,23 @@
     inicial del dominio (`test_primer_interes_despues_de_migrar`, `test_mes_entero_despues_de_migrar`,
     `..._con_interes_importado_no_suma_a_la_base`, `test_segundo_mes_despues_de_migrar`) nacen verdes
     (el dominio ya recibe `interes_desde`); se miden con mutantes en 4.2 y 4.3.
+  - H-005 tanda 3, GREEN (18:56): `lecturas.py` suma al objeto de cada obligación `'interes_desde',
+    car.fecha_de_migracion + 1` con `LEFT JOIN carga_de_saldo_inicial car ON car.administracion_id =
+    o.administracion_id AND car.operacion_id = o.operacion_id AND o.emision_id IS NULL`, dentro del mismo
+    subselect de `obligaciones` (misma sentencia; `WITH t AS`, `cuentas AS`, `ANY(`, `AS imputaciones` y `AS
+    anuladas` intactos); `_foto` pasa `interes_desde` sólo si no es nulo (el defecto sigue siendo el
+    vencimiento más un día). Se identifica la obligación migrada por el `LEFT JOIN` (la forma de D5 y D2)
+    y no por `emision_id IS NULL` más el corte del interés importado, que no existe sin interés. La unión va
+    por `uq_carga_operacion (administracion_id, operacion_id)`. `uv run pytest
+    tests/integracion/test_cc_lecturas.py tests/integracion/test_cc_saldo_inicial.py
+    tests/integracion/test_cc_intereses.py -q`: `58 passed`, con los dos `EXPLAIN` ("Plan del edificio..." y
+    "Plan de una cuenta...") sin Seq Scan.
+  - Mutantes de la tanda 3 (copia previa en el scratchpad, uno a la vez, revertidos con `git diff` vacío en
+    el archivo): la foto ignora `interes_desde` (siempre vencimiento más un día): rojo por `assert
+    {...(c1, 2026-08-01): date(2026, 8, 11)...} == {...date(2026, 10, 16)...}` en
+    `test_la_foto_trae_el_interes_desde_el_dia_siguiente_a_la_migracion`, y en la aceptación de H-005
+    (`aceptacion_h005/test_h005_interes.py`, copiada sin tocar el original a una carpeta de trabajo y
+    borrada) cinco rojos: C04 `Dinero("6560.00") == Dinero("1280.00")`, C05, los dos C06 y C12.
 
 ## 4. Cálculo del interés (dominio puro, R03)
 
@@ -420,7 +437,7 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
     - estirar el último tramo hasta el corte: `test_detalle_de_un_pago_total` (fechas) y "Pago un día después de la
       gracia".
     - ignorar los débitos de capital: `test_un_debito_de_capital_suma_a_la_base_desde_el_dia_siguiente`.
-- [ ] 4.2 **Gracia e inicio natural.** Escenarios: "Pago dentro de la gracia", "Pago un día después de la
+- [x] 4.2 **Gracia e inicio natural.** Escenarios: "Pago dentro de la gracia", "Pago un día después de la
   gracia" ($600,00), "Corte dentro de la gracia" ($3.300,00 en noviembre), "Lo cubierto por un interés
   anterior no se vuelve a cobrar", saldo-inicial "Primer interés después de migrar" (sólo la parte de
   dominio: inicio el día siguiente a la migración). Mutantes: el interés corre desde `vencimiento +
@@ -438,11 +455,18 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
     - el inicio de una obligación migrada es su vencimiento: los dos tests de `interes_desde`.
     - el inicio ignora lo cubierto: "Lo cubierto por un interés anterior..." y seis más que parten de un interés previo.
   - Escenarios de saldo inicial de 4.2 y 4.3 ("Primer interés después de migrar", "Mes entero después de migrar",
-    "Segundo mes después de migrar"): **pendientes de H-005**. El dominio ya recibe `interes_desde`; dos tests
+    "Segundo mes después de migrar"): **hechos en la tanda 3 de H-005 (más abajo en esta tarea)**. El dominio ya recibe `interes_desde`; dos tests
     (`..._obligacion_migrada_es_el_que_pasa_el_lector` y `mes_entero_respeta_el_inicio_...`) sólo prueban que lo
     respeta, y los mutantes de "inicio migrado" y "tramo desde el día 1" se ejercitan con ellos y con "Un día de
     atraso con mes entero".
-- [ ] 4.3 **Mes entero por meses calendario (E3.2, E13, decisión de Juani del 30/10/2026).** Escenarios:
+  - H-005 tanda 3 (4.2, escenario "Primer interés después de migrar", dominio): `test_primer_interes_despues_de_migrar`
+    en `tests/unitarios/cuenta_corriente/test_intereses.py` ($1.280,00 sobre $80.000 y $1.360,00 sobre
+    $85.000, tramo 16/10-31/10, `interes_desde` = migración + 1). Nace verde (el dominio ya recibe
+    `interes_desde`). Mutante (copia previa, revertido; el inicio de una obligación migrada es su vencimiento
+    más un día): seis rojos por aserción, entre ellos este (`assert Dinero("6560.00") == Dinero("1280.00")`,
+    `assert (Dinero("6560...ro("4335.00")) == (Dinero("1280...ro("1360.00"))`). `uv run pytest
+    tests/unitarios/cuenta_corriente/test_intereses.py -q`: `37 passed`.
+- [x] 4.3 **Mes entero por meses calendario (E3.2, E13, decisión de Juani del 30/10/2026).** Escenarios:
   "Un día de atraso con mes entero" ($3.000,00, tramo 30/09-30/09), "El mes siguiente con mes entero"
   ($3.000,00, tramo 01/10-31/10), "Corte dentro de la gracia con mes entero" ($6.000,00, tramos 29/09-30/09
   y 01/10-31/10), "Pago a mitad de mes con mes entero" ($3.000,00 y $1.800,00), "Febrero proporcional"
@@ -462,7 +486,8 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
   por fechas en "Detalle de un pago total con mes entero" (PR-15: da 11/09-20/09 en vez de 11/09-30/09),
   que va en esta tarea con su importe ($3.000,00) y sus fechas. Además, el error de "días no contiguos
   dentro de un mes" (D2, invariante) con una entrada armada a mano: lanza y no devuelve importe.
-  - GREEN (16:07): mismas corridas que 4.1. Esta tarea queda `[ ]` por los escenarios de saldo inicial (H-005).
+  - GREEN (16:07): mismas corridas que 4.1. Esta tarea quedó `[ ]` por los escenarios de saldo inicial; se
+    hicieron en la tanda 3 de H-005 y quedó `[x]`.
   - Mutantes de 4.3 (16:07 y 16:08, mismo método), rojos por aserción:
     - bloques de 30 días anclados en el primer día a cobrar: "De proporcional a mes entero" (da $6.000,00), "El
       mes siguiente", "Corte dentro de la gracia", "Pago a mitad de mes" y el del corte que no es fin de mes.
@@ -481,6 +506,17 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
       (PR-15, fechas).
     - sin la comprobación de contigüidad y de fin de mes: se ejercitan con los tests de error (`DID NOT RAISE
       EntradaInvalida`); el de "corte que no es fin de mes" lo agregué porque el CHECK de la base lo exige.
+  - H-005 tanda 3 (4.3, dominio): `test_mes_entero_despues_de_migrar` ($2.400,00 y $2.550,00, tramo
+    16/10-31/10), `test_mes_entero_despues_de_migrar_con_interes_importado_no_suma_a_la_base` ($2.400,00) y
+    `test_segundo_mes_despues_de_migrar` ($2.400,00, tramo 01/11-30/11, con un interés previo que cubre
+    16/10-31/10). Nacen verdes. Mutantes (copia previa, uno a la vez, revertidos), rojos por aserción: el inicio
+    migrado es el vencimiento más un día: los tres nuevos y los dos que ya existían (`6560.00`, `7200.00`,
+    `5100.00`); el interés importado suma a la base (se quita la exclusión de `Componente.INTERES`): ocho rojos,
+    entre ellos `assert Dinero("2520.00") == Dinero("2400.00")` en el del interés importado y
+    `assert Dinero("2472.00") == Dinero("2400.00")` en el segundo mes; el cálculo ignora lo cubierto por un
+    interés que cuenta: nueve rojos, entre ellos `assert Dinero("4800.00") == Dinero("2400.00")` en el segundo
+    mes; el tramo de mes entero empieza el día 1 aunque el primer día a cobrar sea posterior: siete rojos por
+    fechas, entre ellos los dos escenarios de mes entero de la migración (16/10).
 - [x] 4.4 **Huecos: días de un interés que no cuenta y de un corte sin importe (E1, E17, E19).**
   Escenarios: "Anular y volver a emitir no cobra dos veces", "El corte siguiente recupera el tramo" (51
   días, $5.100,00), "El tramo recuperado usa la tasa del corte siguiente" (51 días al 6%, $10.200,00), "Un
@@ -781,7 +817,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     `test_el_origen_liga_cada_fila_a_lo_que_formo` por `assert {12, 13} == {12}` y en
     `test_una_fila_de_solo_interes_...` por `assert {15} == {14}` / `{14, 15} == {14}`; el origen de capital ligado sólo a la primera
     fila (M9b), rojo por `assert {12} == {12, 13}` y `set() == {15}`.
-- [ ] 6.3 **Interés desde la migración, contra la emisión (E3.2, E13, E18).** Escenarios: "Primer interés
+- [x] 6.3 **Interés desde la migración, contra la emisión (E3.2, E13, E18).** Escenarios: "Primer interés
   después de migrar" ($1.280,00 y $1.360,00 con corte 31/10/2026), el total único con gracia 0 ($800,00),
   "Mes entero después de migrar" ($2.400,00 y $2.550,00, tramo 16/10-31/10), "Mes entero después de
   migrar, con interés importado" ($2.400,00), "Segundo mes después de migrar" ($2.400,00, tramo
@@ -789,6 +825,19 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   por el monto proporcional ($1.280,00 pasa a $6.560,00 sobre agosto, 82 días) y por la fecha del tramo; el mes de la
   migración no se cobra (la alternativa (a) de E18) → $0,00 en el corte 31/10, rojo; el interés importado
   suma a la base → rojo en el escenario con interés importado ($2.520,00 sobre $84.000).
+  - H-005 tanda 3 (6.3): los escenarios contra la emisión real son `test_c04_*`, `test_c05_*`, `test_c06_*`,
+    `test_c07_*` y `test_c12_*` de la aceptación congelada (`aceptacion/H-005/tests/test_h005_interes.py`, sin
+    tocar), más el apoyo `test_la_foto_trae_el_interes_desde_el_dia_siguiente_a_la_migracion`. Antes del
+    cambio de `lecturas.py` fallaban `test_c04_interes_importado_sin_recalcular`, C05, C06 (primer mes y con
+    interés importado) y C12 (`Dinero("6560.00")` frente a `1280.00`); con él, el archivo da `9 passed`
+    (copiado sin tocar el original a una carpeta de trabajo y borrada después). Mutantes (copia previa,
+    revertidos): el interés corre desde el vencimiento original: cinco rojos (`Dinero("6560.00") ==
+    Dinero("1280.00")`, `7200.00` frente a `2400.00` y `8100.00` frente a `3000.00` en C12); el mes de la
+    migración no se cobra (alternativa (a) de E18; `interes_desde` = día 1 del mes siguiente): siete rojos por
+    `se espera un interés con corte 2026-10-31 sobre la obligación, hay 0`; el interés importado suma a la
+    base: ocho rojos de dominio, entre ellos `Dinero("2520.00") == Dinero("2400.00")` (el escenario con interés
+    importado). C07 (total único con gracia desde su vencimiento, que es la migración) y C12 (migración el 31/10
+    sin choque con `uq_mov_interes` en la emisión de noviembre) pasan sin código adicional.
 - [x] 6.4 **Estado de migración, carga única, replay por firma y tenant (PR-11).** Archivos además de los
   del grupo: `backend/tests/unitarios/cuenta_corriente/test_firma_saldo_inicial.py` (nuevo, la función pura
   que normaliza y firma el pedido, design D5). Escenarios: "Edificio sin saldos previos", "Importador
