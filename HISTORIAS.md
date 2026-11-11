@@ -609,6 +609,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C20** cada escenario de la spec `importacion-de-padron` tiene su test en verde.
 - Demo: subir `padron-torre-ficticia.xlsx` en el navegador, ver el resumen; subir una copia con tres
   errores y ver la tabla; subir el mismo archivo otra vez y ver el rechazo.
+- Aceptación: **congelada en `d183ff611d87b69f061f8a0947ffd52ea92973d1`** (firma por adelantado de Juani, revisión técnica del orquestador): 87 tests de backend y 4 en navegador (Playwright), 91 rojos por aserción sobre `15f30bd`, 0 errores; cierre, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-007/CONTRATO.md`.
 
 ### H-008 · Borrador de saldos y comparación
 
