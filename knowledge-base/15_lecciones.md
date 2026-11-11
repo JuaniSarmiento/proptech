@@ -1137,7 +1137,7 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 
 ## L-075 · Rechazar un nombre es más fuerte que rechazar un estado
 
-- **Origen**: 2e (R1 del rompedor, D-144), 30/10/2026.
+- **Origen**: 2e (R1 del rompedor, D-147), 30/10/2026.
 - **Qué pasó**: el humo se negaba ante `proptech` sólo "con contenedores corriendo". Con el stack real
   detenido (un `compose stop`, un reinicio) sus volúmenes seguían vivos y el `down -v` del `trap` se
   los llevaba.

@@ -208,7 +208,7 @@
     pasos nuevos: 6c pausa 2×30 s); ensayo en `proptech-ensayo` `ENSAYO ROLES OK ... ciclo 0028/0016/0028`,
     `ensayo_exit=0` 48 s (baseline 47 s).
   - **Repetida sobre el rebase en `origin/main` (`533a440`, 31/10/2026)**, en un `git clone` limpio sin
-    `infra/.env` (la lección L-068: una copia con `git archive` no tiene `.git` y rompe cuatro tests, y el
+    `infra/.env` (la lección L-073: una copia con `git archive` no tiene `.git` y rompe cuatro tests, y el
     clon sin la espera de Postgres dio 1 y luego 8 errores `roles antes` por `Connection refused`).
     Dos hallazgos reales, arreglados con commit propio: `test_zz_rompedor_api_application_name` dependía de
     que otro test hubiera migrado el esquema (falla solo, también sobre la base anterior a esta rama; pide
@@ -282,7 +282,7 @@
 - [x] 10.3 Knowledge Base Impact: `CHANGES.md` (C-23 `[x]`), ficha 2e, filas cerradas de "Deuda del
   cierre del 2c", decisión nueva en `09`, lecciones en `15`; `diff AGENTS.md CLAUDE.md` vacío y sin
   tocar ninguno de los dos
-  > Hecho: D-144 en `09`, L-068 a L-070 en `15`, ficha 2e con "Deuda del cierre del 2e", filas del 2c
+  > Hecho: D-147 en `09`, L-073 a L-075 en `15`, ficha 2e con "Deuda del cierre del 2e", filas del 2c
   > cerradas, `CHANGES.md`. `diff AGENTS.md CLAUDE.md` vacío.
 - [x] 10.5 Deuda recibida del 6 (D-142, ficha 6: D7, D8 y D10), revisada contra el repo
   - **D7** (cabeza `0033` escrita a mano y `shellcheck`): ya cubierta por este change. `infra/ci/ensayo-roles.sh`
