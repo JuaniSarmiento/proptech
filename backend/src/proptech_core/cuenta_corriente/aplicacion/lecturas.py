@@ -188,6 +188,15 @@ def estado_de_cuenta(sesion: Session, *, cuenta_id: UUID) -> EstadoDeCuenta:
     return foto(sesion, cuenta_id).estado
 
 
+def fotos_del_edificio(
+    sesion: Session, complejo_id: UUID, sentencia: str = SENTENCIA_DEL_EDIFICIO
+) -> list[FotoDeCuenta]:
+    """Una sola sentencia por edificio (D12). `sentencia` permite a un consumidor, como la
+    situación de cobranza, acotar qué cuentas enumera sin duplicar la foto."""
+    filas = sesion.execute(text(sentencia), {"complejo": complejo_id}).all()
+    return [_foto(f) for f in filas]
+
+
 def deuda_del_edificio(sesion: Session, *, complejo_id: UUID) -> list[DeudaDeCuenta]:
     """Una sola sentencia: enumera `cuenta` del edificio y lee el resto por `= ANY(ids)`."""
     filas = sesion.execute(text(SENTENCIA_DEL_EDIFICIO), {"complejo": complejo_id}).all()
