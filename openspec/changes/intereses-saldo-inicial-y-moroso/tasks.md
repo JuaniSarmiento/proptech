@@ -416,7 +416,7 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
       (PR-15, fechas).
     - sin la comprobación de contigüidad y de fin de mes: se ejercitan con los tests de error (`DID NOT RAISE
       EntradaInvalida`); el de "corte que no es fin de mes" lo agregué porque el CHECK de la base lo exige.
-- [ ] 4.4 **Huecos: días de un interés que no cuenta y de un corte sin importe (E1, E17, E19).**
+- [x] 4.4 **Huecos: días de un interés que no cuenta y de un corte sin importe (E1, E17, E19).**
   Escenarios: "Anular y volver a emitir no cobra dos veces", "El corte siguiente recupera el tramo" (51
   días, $5.100,00), "El tramo recuperado usa la tasa del corte siguiente" (51 días al 6%, $10.200,00), "Un
   hueco anterior se recupera aunque haya un interés posterior" ($5.000,00 en dos tramos, 11/09-30/09 y
@@ -439,7 +439,30 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
     recibe otro" y "Un corte sin importe por base chica no pierde sus centavos" (agregado); su prueba son los
     mutantes de abajo. Los escenarios encadenan cortes con la clase `Libro` del test (calcula, registra lo que
     devuelve el dominio y contra-asienta), así que un corte que "no registra" de verdad no deja cobertura.
-- [ ] 4.5 **Propiedades con `hypothesis`.** Archivo: `backend/tests/unitarios/cuenta_corriente/test_intereses_propiedades.py`.
+  - GREEN (16:13, regla E1 en `_corte_ocupado` de `intereses.py`: cualquier `Movimiento` `interes` de la obligación con ese
+    `corte`, cuente o no; se deriva de los movimientos que ya recibe, sin cambiar la firma):
+    `uv run pytest tests/unitarios/cuenta_corriente -q` da `88 passed` (33 de `test_intereses.py`, 9 de propiedades);
+    `ruff check`, `ruff format --check` y `mypy` (390 archivos) limpios; `tests/unitarios/test_fronteras_de_modulos.py`,
+    66 passed.
+  - Mutantes de 4.4 (16:13; copia previa `intereses.t5.orig.py` en el scratchpad, uno a la vez, revertidos y verificados
+    con `diff`; `uv run pytest tests/unitarios/cuenta_corriente/test_intereses.py -q --tb=line`):
+    - tomar como cubierto el corte de un interés aunque no cuente (se saca `m.id in estado.movimientos_que_cuentan` de
+      `_cubiertos`): rojo por días de menos en "El corte siguiente recupera el tramo", "El tramo recuperado usa la tasa..."
+      y "Un hueco anterior se recupera...".
+    - registrar otro interés en un corte ya ocupado (`_corte_ocupado` devuelve `False`): rojo en "Anular y volver a emitir
+      no cobra dos veces" (`ninguno nuevo`), más los dos de recuperación por cascada. Variante "sólo mira los intereses que
+      cuentan": rojo igual, en el mismo test.
+    - calcular los días recuperados con la tasa del interés anulado (el dominio no la recibe: se la deriva del importe y
+      de los días del anulado, 3%): rojo sólo en "El tramo recuperado usa la tasa del corte siguiente" (da $5.100,00 en
+      vez de $10.200,00).
+    - cobertura por el máximo de los `hasta`: "Un hueco anterior se recupera..." da `$3.000,00` y un solo tramo
+      01/11-30/11 (`assert Dinero("3000.00") == Dinero("5000.00")`); también rojo `test_dias_no_contiguos...` de 4.3.
+    - los dos intervalos como un solo tramo (se saca la contigüidad de la fusión en `_proporcional`): rojo por fechas en
+      "Un hueco anterior..." (`(11/09, 30/11, 50, ...)` contra `(11/09, 30/09, 20, ...)`).
+    - tratar un corte con tasa 0 como cubierto (devuelve un interés de $0,00 con sus tramos y la prueba lo registra):
+      rojo en "Los días de un corte con tasa cero se cobran después", "Un corte sin importe por base chica..." y
+      `test_tasa_cero`.
+- [x] 4.5 **Propiedades con `hypothesis`.** Archivo: `backend/tests/unitarios/cuenta_corriente/test_intereses_propiedades.py`.
   Oráculo independiente con `fractions.Fraction` día por día y su propia agrupación por mes calendario,
   que **no** reusa la función de producción (QA-4 del 4a): el importe es el redondeo medio hacia arriba de
   la suma exacta de los tramos; nunca negativo; con tasa 0 o base 0 no hay importe; agregar un pago nunca
@@ -467,6 +490,21 @@ D2). Tests: `backend/tests/unitarios/cuenta_corriente/test_intereses.py` (nuevo)
     arriba..." (`assert paso.resultado == ()` con un interés de $0,52 de más) y "lo cubierto es exactamente lo que
     asigna el oráculo" (`assert dias_de_produccion == paso.esperado.dias`). Las otras siete nacen verdes: su prueba son
     los mutantes de control y los de 4.4.
+  - GREEN (16:13): con la regla E1 las nueve propiedades pasan (`88 passed` en la carpeta). Cuentan: 400 ejemplos por
+    propiedad (`@settings(max_examples=400)`), perfil `local` aleatorio y `ci` derandomizado; dos `@example` fijos
+    ("Detalle de un pago total", proporcional, y su discriminante de mes entero) en importe, cobertura y mes entero.
+    Propiedades: importe = redondeo medio hacia arriba de la suma exacta de los tramos (y = al del oráculo), nunca
+    negativo, tasa 0, base 0 (todo pagado al vencimiento), agregar un pago no sube, no solapamiento, cobertura de lo
+    cobrable (PR-13, PR-15: con la base por día en proporcional y la del primer día en mes entero), mes entero (un mes
+    por tramo, termina en fin de mes, uno por mes) y partir un tramo (diferencia de a lo sumo un centavo). El oráculo
+    lleva su propio modelo de cobertura y de cortes ocupados, y calcula con `Fraction`; el dominio lanzando
+    `EntradaInvalida` se compara con el oráculo (mes entero con días no contiguos o que no terminan en fin de mes).
+    Los escenarios de saldo inicial del generador quedan para H-005, como pidió el brief.
+  - Mutantes de control de 4.5 (copia previa, revertidos con `diff`; 3 corridas en `local` y 1 en `ci` cada uno, todas
+    rojas): redondear cada tramo y sumar: rojo en "el importe es el redondeo medio hacia arriba..." (y en "lo cubierto
+    es exactamente...", porque un tramo que redondea a $0,00 deja de registrar; en `ci` también "mes entero"); cobertura
+    por el máximo de los `hasta`: rojo en "lo cubierto es exactamente lo que asigna el oráculo" y en "el importe...".
+    Las corridas de `local` tardaron entre 9 y 54 s por el shrinking; ninguna dejó de fallar.
 
 ## 5. Interés en la emisión (aplicación, PostgreSQL real)
 
