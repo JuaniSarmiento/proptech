@@ -279,6 +279,18 @@
   `interes_desde` siempre igual al vencimiento más un día → rojo; la foto trae sólo el máximo `hasta` (o
   sólo el último tramo) → rojo por la aserción de los dos intervalos. Regresión: los dos ensayos de
   `EXPLAIN` de la foto ("Plan del edificio..." y "Plan de una cuenta...") siguen sin Seq Scan.
+  - Ajuste de la tanda 3 por la partición en historias: la tabla `carga_de_saldo_inicial` no existe en
+    H-004 (va en la `0035` de H-005). La foto suma `corte` y `tramos` (subselect con `json_agg` ordenado
+    por `desde`) en la misma sentencia; **`interes_desde` en H-004 es siempre el vencimiento más un día**
+    (el defecto de `Obligacion`, sin tocar el SQL). **Pendiente de H-005**: el `LEFT JOIN` a
+    `carga_de_saldo_inicial` por `operacion_id` para el `interes_desde` de una obligación de saldo
+    inicial (y su RED y su mutante "`interes_desde` siempre el vencimiento más un día"). La tarea 3.2
+    queda `[ ]` por esa parte.
+  - RED (16:01, `cd backend && uv run pytest tests/integracion/test_cc_lecturas.py -q --tb=short -k
+    trae_corte`): `1 failed, 8 deselected`, por aserción: `assert None == datetime.date(2026, 11, 30)`
+    en `f.movimientos[con_tramos].corte` (la foto no trae el corte). Test:
+    `test_la_foto_trae_corte_tramos_e_interes_desde` (interés con dos tramos no contiguos insertados en
+    orden inverso, otro sin tramos, un pago, y el `interes_desde` de dos obligaciones).
 
 ## 4. Cálculo del interés (dominio puro, R03)
 
