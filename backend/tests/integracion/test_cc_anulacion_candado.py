@@ -425,3 +425,25 @@ def test_cc_la_lectura_incluye_la_cuenta_que_solo_recibio_interes(
             observadas.cerrar()
     assert observadas.pedidas and observadas.pedidas[-1] == {u1, u2}, observadas.pedidas
     assert r.saldo_anterior[u2] == Dinero("102000.00")
+
+
+def test_cc_la_lectura_del_replay_incluye_la_cuenta_que_solo_recibio_interes(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """RF-01, RF-04, D0: el replay bloquea y lee las alcanzadas, también la de sólo interés."""
+    u1, u2, octubre = _septiembre_de_dos_y_octubre_de_una(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        observadas = _FotosObservadas(s)
+        try:
+            replay = emitir_con_interes(
+                s,
+                mundo,
+                date(2026, 10, 1),
+                [obl(mundo, 0, date(2026, 10, 10), "1.00")],
+                emision_id=octubre,
+                confirmar=False,
+            )
+        finally:
+            observadas.cerrar()
+    assert observadas.pedidas and observadas.pedidas[-1] == {u1, u2}, observadas.pedidas
+    assert replay.saldo_anterior[u2] == Dinero("102000.00")

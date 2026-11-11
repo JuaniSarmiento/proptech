@@ -512,7 +512,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
 (`registrar_emision`, `_replay`, `anular_emision`, `EmisionRegistrada`; design D0, D1). Tests:
 `backend/tests/integracion/test_cc_intereses.py` (nuevo) y `test_cc_anulacion_candado.py`.
 
-- [ ] 5.1 **Registro del interés al emitir.** Escenarios: "Expensa de septiembre impaga en la emisión de
+- [x] 5.1 **Registro del interés al emitir.** Escenarios: "Expensa de septiembre impaga en la emisión de
   octubre" (débito con corte 30/09, referencia a la emisión, tramos guardados), "Unidad sin obligación en
   la emisión nueva", "Emisión anulada no genera interés sobre sus obligaciones", "Saldo anterior con
   interés" ($102.000,00 y el interés en `EmisionRegistrada`), "Emitir a mitad de mes no adelanta
@@ -527,7 +527,23 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     con corte 2026-09-30, hay 0` (septiembre, anulada, redondeo, la tasa) y `EmisionRegistrada no informa
     intereses`; `unidad sin obligación`, `saldo anterior` y `mitad de mes` con la lista de intereses vacía.
     Ningún error de setup ni del helper `emitir`.
-- [ ] 5.2 **Configuración al corte (PR-01).** Escenarios: "Cambio de tasa entre períodos" ($2.000,00 y
+  - GREEN 5.1 (16:30, `cd backend && uv run pytest tests/integracion/test_cc_intereses.py tests/integracion/test_cc_anulacion_candado.py -q -k cc_`): `25 passed`; la aceptación sobre `2f1ce29` pasa C01 a C16 y C19 a C27. Decisiones:
+    corte = `periodo - 1 día` (E2); `fecha_valor` del interés = su corte; se bloquean todas las cuentas de
+    unidad del edificio (`complejo_id` y `unidad_id` no nulo) con las creadas, en un solo pedido; la
+    configuración se lee sólo si alguna obligación que cuenta de esas cuentas vence antes del corte; se pasan
+    a `calcular_intereses` todos los movimientos de la cuenta (también anulados o contra-asentados, E1).
+    Test nuevo, nacido verde y probado con su mutante: el crédito a favor cubre el interés (R04).
+  - Mutantes 5.1 (16:32 a 16:33, copia previa en el scratchpad comprobada con `git diff --quiet` tras revertir; un
+    mutante a la vez): M1 corte en el último día del mes del período
+    (defensa apagada: E2) rojo en `test_cc_interes_de_septiembre_en_la_emision_de_octubre` por
+    `assert (importe, cuenta, emisión) == ...` (el interés de septiembre queda en la emisión de septiembre);
+    M2 sólo cuentas de la emisión (E10) rojo por `assert [] == [Dinero("2000.00")]` en `unidad_sin_obligacion`;
+    M3 imputar pendientes antes de registrar el interés rojo en `el_credito_a_favor_cubre_el_interes` por
+    `assert Dinero("0.00") == Dinero("1000.00")` (el crédito fue a octubre); M4 saldo anterior sin el interés
+    rojo por `assert Dinero("100000.00") == Dinero("102000.00")`; M5 un tramo ligado a otra cuenta: rojo por
+    `ForeignKeyViolation fk_tramo_movimiento` (no por una aserción: lo rechaza la FK de 2.1, como anota la
+    tarea; la aplicación nunca lo intenta).
+- [x] 5.2 **Configuración al corte (PR-01).** Escenarios: "Cambio de tasa entre períodos" ($2.000,00 y
   $6.200,00, y el primero no cambia), "Sin configuración vigente" y "Sólo una versión futura"
   (`Conflicto("configuracion")` y `contar_escrituras` vacío), "Edificio de otra administración" (no
   encontrado). Usa `complejos.aplicacion.lectura.configuracion_vigente` (`lectura.py:213-227`): `None` se
@@ -542,7 +558,22 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
     `cambio de tasa` por `se espera un interés con corte 2026-09-30, hay 0`; `forma que no cierra` por `DID NOT RAISE
     Conflicto` (con `raising=False`: `emisiones` todavía no importa `calcular_intereses`). `otra administración`
     nace verde por la FK, como anota la tarea.
-- [ ] 5.3 **Re-emisión, replay (E15) y concurrencia.** Escenarios: "Anular y volver a emitir no cobra dos
+  - GREEN 5.2 (16:30, mismo comando): verde. Mutantes (16:33): M6 leer la versión a la fecha del reloj en vez
+    del corte rojo por `DID NOT RAISE Conflicto` en `sólo una versión futura`; M7 seguir sin interés si no hay
+    versión rojo por `DID NOT RAISE Conflicto` en `sin configuración vigente` (con `-x` corre el primero; el
+    de la versión futura es el mismo camino); M8 guardar el id de la última versión rojo en
+    `cambio_de_tasa_entre_periodos` por `assert {('3.00', v)} == {('3.00', v)}` (la versión del tramo de
+    septiembre). M9 (decisión de mes entero, abajo): sin traducir el error del dominio rojo por
+    `EntradaInvalida` en vez de `Conflicto`.
+  - **Decisión (mes entero con días no contiguos).** El dominio lanza `EntradaInvalida` cuando, tras restar lo
+    cubierto, los días de un mes no forman un bloque contiguo. La emisión lo traduce a `Conflicto("interes")` y
+    se rechaza entera, sin escribir nada (el SAVEPOINT deshace lo ya insertado): saltear la obligación callaría
+    un interés (plata perdida sin aviso) y dejaría un libro que el 7 no sabe que está incompleto. Queda a la
+    vista del administrador, que puede volver la forma a proporcional o corregir. El caso real es difícil de
+    armar con el libro (necesita un hueco dentro de un mes); el test lo fuerza sustituyendo
+    `emisiones.calcular_intereses` y comprueba el código y que `conteos` no cambia. Si el 7 prefiere otra
+    política, lo cambia ahí; no es un contrato de la aceptación.
+- [x] 5.3 **Re-emisión, replay (E15) y concurrencia.** Escenarios: "Anular y volver a emitir no cobra dos
   veces", "El corte siguiente recupera el tramo" y "El tramo recuperado usa la tasa del corte siguiente"
   contra la base; "Un hueco anterior se recupera aunque haya un interés posterior" (E17) contra la base,
   con el contra-asiento hecho por el caso de uso real de correcciones del 4b (`correcciones.py`, que hoy
@@ -559,7 +590,18 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   - RED 5.3 (16:23, mismo comando): hueco, tasa cero, recupera el tramo y no cobra dos veces rojos por `hay 0`;
     los tres replay por `EmisionRegistrada no informa intereses`; la concurrente por `el pago de U2 no esperó a
     la emisión que le registra interés` (hoy U2 no se bloquea ni tiene interés).
-- [ ] 5.4 **Cuentas alcanzadas: anulación y replay (PR-02, design D0).** Archivos:
+  - GREEN 5.3 (16:30, mismo comando): verde, con el contra-asiento hecho por `correcciones.corregir`.
+    Mutantes (16:33 a 16:34): M10 replay devuelve sólo los intereses que cuentan rojo por `KeyError` al leer
+    la cuenta en `replay_despues_de_anular...` (el interés ya no figura); M11 replay arma el saldo sin los
+    intereses rojo por `assert Dinero("100000.00") == Dinero("102000.00")` en `replay_inmediato...`; M12
+    bloquear en dos pedidos rojo por `BloqueoFueraDeOrden` en la concurrente (depende del orden de ids de
+    cuenta: una corrida de la otra prueba quedó verde por azar del `uuid4`); M13 la foto con cobertura desde
+    el principio hasta el máximo `hasta` (mutante de 3.2 sobre el camino real) rojo en `un_hueco_anterior...`
+    por `assert Dinero("3000.00") == Dinero("5000.00")`. **Sin mutante, por equivalente**: "el replay
+    recalcula y escribe intereses": un replay que recalculara encontraría el corte ocupado (E1) y no
+    escribiría nada; lo vigilan `escrituras == []` y `conteos` iguales, que no se pueden poner rojos con un
+    recálculo honesto de este diseño.
+- [x] 5.4 **Cuentas alcanzadas: anulación y replay (PR-02, design D0).** Archivos:
   `emisiones.py` (`anular_emision`, hoy `:257-265`; `_replay`, `:85-121`, con el bloqueo y la foto en `:116-117`),
   `backend/tests/integracion/test_cc_anulacion_candado.py`. Escenarios: libro-de-movimientos "Anular
   bloquea también la cuenta que sólo recibió interés", "Anulación durante el contra-asiento de un interés
@@ -575,7 +617,7 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   - RED 5.4 (16:23, mismo comando): `candados pedidos: [[<una cuenta>]]` en vez de `{u1, u2}`; `U2 no recibió el
     interés de septiembre en la emisión de octubre`; la última foto del registro pidió una sola cuenta en vez de
     `{u1, u2}`.
-- [ ] 5.5 **Regresión de los consumidores del 4b.** Correr `pytest tests/integracion -k "test_cc_ or
+- [x] 5.5 **Regresión de los consumidores del 4b.** Correr `pytest tests/integracion -k "test_cc_ or
   test_libro"` y `tests/unitarios/cuenta_corriente`; comparar con la línea de base de la 2.2. Inventario
   de llamadas directas a `registrar_emision` (revisor del plan, intento 1), cada uno con su resultado
   anotado acá: `test_cc_lecturas.py:35,96`, `test_cc_emisiones.py:50,291`,
@@ -586,6 +628,38 @@ Archivos de producción: `backend/src/proptech_core/cuenta_corriente/aplicacion/
   debería) en vez de suponerlo. Cada expectativa que cambie se explica en esta tarea (por qué el interés
   la cambia) o se corrige el código, nunca se ajusta en silencio. Incluye volver a correr los mutantes de
   1.2 y 1.3 sobre el código nuevo.
+
+  - GREEN 5.4 (16:30, mismo comando): verde. Mutantes (16:34): M14 anular descubre cuentas sólo desde
+    `obligacion` rojo por `candados pedidos: [[u1]]` (`assert [{u1}] == [{u1, u2}]`); M15 dos llamadas a
+    `bloquear_cuentas` rojo por `candados pedidos: [[u1], [u2]]`; M16 el replay bloquea y lee sólo las cuentas de
+    sus obligaciones rojo por `assert [{u1}] == {u1, u2}` en `la_lectura_del_replay_incluye...` (test
+    agregado a 5.4 porque el escucha de 1.2 no tiene cuenta de sólo interés). La carrera del contra-asiento
+    del interés de U2 queda verde con el código nuevo (el mutante M14 la pone roja junto con el espía; con `-x`
+    se vio el espía primero).
+  - Evidencia 5.5 (16:35; regresión de los consumidores del 4b, `cd backend && uv run pytest tests/integracion -k
+  "test_cc_ or test_libro" -q`): `429 passed` (línea de base de `main` más la 2.2: 405; suma 24 tests nuevos
+  de 5.1 a 5.4); `tests/unitarios/cuenta_corriente` y `test_fronteras_de_modulos.py`: `154 passed`; `ruff
+  check`, `ruff format --check` y `mypy` limpios. Primera pasada con el interés: 15 tests rojos, todos
+  `Conflicto("configuracion")` (emitir con deuda vencida sin versión de configuración). Se corrigió el
+  **setup**, no la expectativa: cada uno pide `sembrar(base, con_configuracion=True)` (tasa 0,00, no registra
+  interés) con una fixture `mundo_con_configuracion` en su archivo y un alias `mundo = ...`; ningún nombre de
+  test cambió ni ninguna expectativa de importe. Inventario:
+  `test_cc_lecturas.py` (`test_saldo_anterior`, `..._con_credito_a_favor`, `test_la_foto_trae_corte_tramos_e_interes_desde`:
+  emiten dos períodos); `test_cc_emisiones.py` (`test_emitir_de_nuevo_despues_de_anular_imputa_el_pago_devuelto`,
+  `test_credito_a_favor_se_imputa_en_la_emision_siguiente`, `test_replay_devuelve_el_saldo_anterior_por_cuenta`);
+  `test_cc_creditos.py` (`test_ejemplo_de_r04_contra_la_base`, `test_destino_fijo_sin_destino_y_sin_capacidad`,
+  `test_reusar_la_operacion_con_otro_destino`); `test_cc_correcciones.py`
+  (`test_credito_de_correccion_va_con_r04_a_la_deuda_mas_vieja`); `test_cc_replay_carrera.py`
+  (`test_el_replay_que_perdio_la_carrera_no_reimputa[pago|credito_correccion]`,
+  `test_el_replay_de_emision_devuelve_una_sola_foto`); `test_cc_concurrencia.py`
+  (`test_una_emision_y_un_pago_a_la_vez`, `test_emisiones_con_unidades_nuevas_cruzadas`);
+  `test_cc_anulacion_candado.py` (los cuatro RF-01/RF-04 de emisión y replay, que emiten octubre con deuda de
+  septiembre). Sin cambio y verdes: `test_cc_auditoria_api.py` (una sola emisión sobre un edificio sin deuda
+  previa: no llega a leer la configuración, comprobado al pasar sin tocarlo) y las demás llamadas del
+  inventario. Mutantes de 1.2 y 1.3 sobre el código nuevo (16:35, mismo método): "una foto por cuenta" al emitir
+  (M17) rojo en `test_rf01_la_ultima_foto_de_la_emision_nueva_pide_todas_las_cuentas` por `assert {a} == {a, b}`;
+  en el replay (M18) rojo en `..._del_replay_...` por el mismo `assert`; `anular_emision` sin `bloquear_cuentas`
+  (M19) rojo en las dos formas de RF-02 por `anuladas_al_escribir == 0` (`assert 1 == 0`).
 
 ## 6. Saldo inicial (R09)
 

@@ -348,6 +348,28 @@ def test_cc_redondeo_unico_sobre_dos_tramos_contra_la_base(
         ]
 
 
+def test_cc_el_credito_a_favor_cubre_el_interes_recien_registrado(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """R04, D1: el interés se registra antes de imputar pendientes; el crédito a favor va a él."""
+    configurar(base_del_edificio, mundo)
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        cuenta, o = septiembre(s, mundo)
+        pago = pagar(s, mundo, cuenta, "101000.00", dia(9, 20))  # $1.000 quedan a favor
+        r = emitir(s, mundo, OCT, [obl(mundo, 0, dia(10, 10), "50000.00")])
+        assert interes_unico(s, o, dia(9, 30)).importe == d("1000.00")
+        a_interes = s.execute(
+            text(
+                "SELECT coalesce(sum(importe), 0)::text FROM imputacion "
+                "WHERE movimiento_id = :m AND componente = 'interes'"
+            ),
+            {"m": pago},
+        ).scalar_one()
+        assert d(a_interes) == d("1000.00"), "el crédito a favor no cubrió el interés"
+        assert lecturas.estado_de_cuenta(s, cuenta_id=cuenta).deuda == d("50000.00")
+        assert r.saldo_anterior[cuenta] == d("0.00")
+
+
 # --- 5.2 · Configuración al corte (PR-01) ----------------------------------------------------
 
 
