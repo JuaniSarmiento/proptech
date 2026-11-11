@@ -391,8 +391,8 @@ del 3c, D-128)
   aparecen como dos diferencias; el borrador no genera movimientos hasta confirmar; aceptar
   diferencias deja registro; con el importador cerrado, un segundo intento de importar se rechaza.
 - **Cómo se registra en el libro** (4c, H-005, D-153, E9, E11, E16, E18): el 5, al confirmar, llama a
-  `registrar_saldo_inicial` (`cuenta_corriente/aplicacion/saldo_inicial.py`), que hace **una sola carga
-  de saldo inicial por edificio**, sólo con el estado de migración `pendiente`; una segunda carga o dos
+  `registrar_saldo_inicial` (`cuenta_corriente/aplicacion/saldo_inicial.py`), que hace una sola
+  **carga de saldo inicial** por edificio, sólo con el estado de migración `pendiente`; una segunda carga o dos
   simultáneas se rechazan con conflicto. Recibe las filas del archivo (fila, período, vencimiento,
   componente, importe, interés acumulado) y agrupa las de cada unidad y período en **una** obligación,
   sin emisión; todas las filas de un período tienen el mismo vencimiento. El total único va a una

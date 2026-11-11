@@ -167,14 +167,23 @@ def regresion_de_los_tests_del_4b(destino: Path) -> list[str]:
     return [f"faltan {len(faltan)} tests del 4b, el primero: {faltan[0]}"] if faltan else []
 
 
+#: Tests de aceptaciones anteriores que quedaron atados a su momento: la H-004 fija la cabeza de
+#: alembic en la `0034`, que la `0035` de H-005 supera. Sólo se perdonan con ese mensaje exacto; el
+#: ciclo de migraciones lo vigila el test de la `0035` (decisión del orquestador, 11/11/2026).
+CADUCOS = {"test_c17_la_0034_sube_y_baja_en_el_ciclo_de_devolucion": "la cabeza no es la 0034"}
+
+
+def caduco(caso: dict[str, str]) -> bool:
+    return caso["estado"] != "pasa" and CADUCOS.get(caso["nombre"], "\0") in caso["mensaje"]
+
 def aceptacion_de_h004(destino: Path) -> list[str]:
     copiar_desde(H004_SHA, H004_CARPETA, destino / H004_DESTINO)
     codigo, casos, final = junit(destino / "backend", "tests/integracion/aceptacion_h004")
     if casos is None:
         return [f"la aceptación de H-004 no corrió (código {codigo}): {final}"]
-    pasados = sum(x["estado"] == "pasa" for x in casos)
+    pasados = sum(x["estado"] == "pasa" or caduco(x) for x in casos)
     if len(casos) != H004_ESPERADOS or pasados != H004_ESPERADOS:
-        malos = [x for x in casos if x["estado"] != "pasa"]
+        malos = [x for x in casos if x["estado"] != "pasa" and not caduco(x)]
         primero = f", el primero: {malos[0]['nombre']} ({malos[0]['mensaje']})" if malos else ""
         return [f"aceptación de H-004: {pasados} de {len(casos)} (se esperan {H004_ESPERADOS}){primero}"]
     return []

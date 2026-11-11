@@ -153,15 +153,24 @@ def h005_congelada() -> tuple[str, int]:
     return sha.group(1), int(esperados.group(1))
 
 
+#: Tests de aceptaciones anteriores que quedaron atados a su momento: la H-004 fija la cabeza de
+#: alembic en la `0034`, que la `0035` de H-005 supera. Sólo se perdonan con ese mensaje exacto; el
+#: ciclo de migraciones lo vigila el test de la `0035` (decisión del orquestador, 11/11/2026).
+CADUCOS = {"test_c17_la_0034_sube_y_baja_en_el_ciclo_de_devolucion": "la cabeza no es la 0034"}
+
+
+def caduco(caso: dict[str, str]) -> bool:
+    return caso["estado"] != "pasa" and CADUCOS.get(caso["nombre"], "\0") in caso["mensaje"]
+
 def aceptacion_previa(destino: Path, historia: str, sha: str, esperados: int) -> list[str]:
     carpeta = f"backend/tests/integracion/aceptacion_{historia.lower().replace('-', '')}"
     copiar_desde(sha, f"aceptacion/{historia}/tests", destino / carpeta)
     codigo, casos, final = junit(destino / "backend", carpeta.removeprefix("backend/"))
     if casos is None:
         return [f"la aceptación de {historia} no corrió (código {codigo}): {final}"]
-    pasados = sum(x["estado"] == "pasa" for x in casos)
+    pasados = sum(x["estado"] == "pasa" or caduco(x) for x in casos)
     if len(casos) != esperados or pasados != esperados:
-        malos = [x for x in casos if x["estado"] != "pasa"]
+        malos = [x for x in casos if x["estado"] != "pasa" and not caduco(x)]
         primero = f", el primero: {malos[0]['nombre']} ({malos[0]['mensaje']})" if malos else ""
         return [f"aceptación de {historia}: {pasados} de {len(casos)} (se esperan {esperados}){primero}"]
     return []
