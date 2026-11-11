@@ -59,7 +59,14 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 - Dificultad y riesgo: baja / LOW (sin migraciones, permisos ni plata). El PR no tiene descripción.
 - Constructor: a definir con Juani (Giuliano en su rama o `rein-constructor`).
 - Demo: correr el comando del ejemplo dos veces y con un edificio inexistente, y mirar los códigos de salida.
-- Aceptación aprobada, evidencia y demo: pendientes.
+- Aceptación aprobada por Juani el 11/11/2026: `58651ed95f53c68f077a258a4462323d27d5dbb7`, archivo
+  `aceptacion/H-001/aceptar.py`. Comando: `git show 58651ed:aceptacion/H-001/aceptar.py >
+  <fuera-del-repo>/aceptar.py && python3 <fuera-del-repo>/aceptar.py`, desde la raíz del repo. Casos
+  esperados: C01, C02, C03 (258/258) y C05 en PASA; C04 y C06, con evidencia manual.
+  Vista fallar por aserción: C01 contra el PR de hoy (conflicto en `09`), C03 esperando 257 (258
+  ejecutados) y C05 contra `main` (sin el archivo del change). Sobre la fusión resuelta a mano en un
+  worktree descartable: C01, C03 (258/258) y C05 pasan.
+- Evidencia y demo: pendientes.
 
 ### H-002 · Integrar el PR #5, `humo-y-ci` (C-23, Gianfranco)
 
