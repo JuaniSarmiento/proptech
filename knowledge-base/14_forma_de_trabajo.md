@@ -132,6 +132,11 @@ todas las historias de un change se construyen en la misma rama `change/<nombre>
 **El CI de GitHub y la suite completa corren una vez, al cerrar el change**: con todas sus historias
 Terminadas se abre o actualiza el PR, se espera el CI en verde (lo que rompa se arregla ahí), se
 archiva y se mergea a `main`. El orquestador dice en cada brief qué corre cada uno y por qué.
+**Excepción local**: si la historia agrega una migración o una tabla de sólo agregar, el constructor
+corre además, en su máquina, los tests que bajan o restauran migraciones (`rg -l
+"downgrade|\.migrar\(|alembic.*(up|down)grade|pg_restore" backend/tests/integracion`, unos 9 minutos) y
+revisa `infra/ci/ensayo-roles.sh`: es lo que el CI encontró tarde en H-004 (L-064). Mientras Juani
+trabaje solo en el repo, no hace falta traer `main` a la rama en cada historia.
 
 **Verificación real con un servicio externo de identidad** (desde el 2b `login-y-usuarios`,
 22/10/2026): cuando una historia integra un proveedor externo de autenticación (Clerk y lo que venga
