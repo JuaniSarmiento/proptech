@@ -47,6 +47,10 @@
   GREEN: traducir `InvalidOperation` del `quantize` a `MontoInvalido`. Mutante: quitar la traducción
   vuelve a dar rojo. Consumidores: el cálculo de interés (4.1) y el reparto existente
   (`test_reparto.py`, `test_reparto_propiedades.py` siguen verdes).
+  - RED (15:42, `cd backend && uv run pytest tests/unitarios/test_reparto.py -k enorme -q`): `3 failed,
+    41 deselected`; los tres casos (`1E+30`, `-1E+30`, `1E+40`) terminan en `reparto.py:18`
+    `valor.quantize(...)` con `decimal.InvalidOperation` dentro del `pytest.raises(MontoInvalido)`: el
+    defecto es el esperado, no un error de import ni de setup.
 - [ ] 1.2 **RF-01, una sola lectura final de todas las cuentas.** Archivo:
   `backend/tests/integracion/test_cc_anulacion_candado.py` (test nuevo, nueva y replay). Escenarios:
   libro-de-movimientos "Una sola lectura al publicar una emisión nueva" y "...al repetir una emisión".
