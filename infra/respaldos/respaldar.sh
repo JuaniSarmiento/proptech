@@ -145,20 +145,29 @@ aplicar_retencion() {
   total=0
   if [ -n "$listado" ]; then
     total="$(printf '%s\n' "$listado" | wc -l)"
+  fi
 
-    # H-003 B2, D-151: si algún backup tiene un mtime posterior a ESTE momento,
-    # el reloj del host retrocedió y el orden por mtime ya no dice cuál es el
-    # más nuevo: este ciclo no borra nada (el costo es que el disco crece
-    # hasta que el reloj se ponga al día) y lo avisa UNA vez. El último del
-    # listado ordenado es el de mayor mtime.
-    local ultimo_mtime ultimo_nombre ahora
-    ultimo_mtime="$(printf '%s\n' "$listado" | tail -n 1 | cut -d' ' -f2)"
-    ultimo_nombre="$(printf '%s\n' "$listado" | tail -n 1 | cut -d' ' -f4)"
-    ahora="$(date -u +%s)"
-    if (( ultimo_mtime > ahora )); then
-      logear warning reloj_atrasado "archivo=${ultimo_nombre}" "mtime=${ultimo_mtime}"
-      return 0
+  # H-003 B2, D-151: si algún backup tiene un mtime posterior a ESTE momento,
+  # el reloj del host retrocedió y el orden por mtime ya no dice cuál es el
+  # más nuevo: este ciclo no borra nada (el costo es que el disco crece
+  # hasta que el reloj se ponga al día) y lo avisa UNA vez. La detección mira
+  # TAMBIÉN el archivo del ciclo en curso (vuelta 4): si es el único con mtime
+  # futuro, igual congela; sólo queda fuera de los candidatos a borrar.
+  local futuro_mtime=0 futuro_nombre="" cand_nombre cand_mtime ahora candidato
+  ahora="$(date -u +%s)"
+  for candidato in "$CARPETA/${PREFIJO}-"*.dump; do
+    [ -e "$candidato" ] || continue
+    cand_nombre="$(basename -- "$candidato")"
+    [[ "$cand_nombre" =~ ^proptech-[0-9]{8}T[0-9]{6}Z\.dump$ ]] || continue
+    cand_mtime="$(stat -c %Y -- "$candidato")"
+    if (( cand_mtime > futuro_mtime )); then
+      futuro_mtime="$cand_mtime"
+      futuro_nombre="$cand_nombre"
     fi
+  done
+  if (( futuro_mtime > ahora )); then
+    logear warning reloj_atrasado "archivo=${futuro_nombre}" "mtime=${futuro_mtime}"
+    return 0
   fi
 
   permitidos=$(( RESPALDO_CONSERVAR - 1 ))

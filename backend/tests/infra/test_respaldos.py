@@ -1691,6 +1691,48 @@ class TestRelojDelHostRetrocedio:
         assert len(_archivos_dump(carpeta)) == 14
 
 
+class TestRelojRetrocedidoDuranteElDump:
+    """H-003 vuelta 4, B2: si el dump del ciclo en curso es el ÚNICO con mtime
+    futuro, la detección igual lo ve (sigue fuera de los candidatos a borrar)."""
+
+    def test_el_dump_nuevo_con_mtime_futuro_congela_la_retencion_y_avisa_una_vez(
+        self,
+        tmp_path: Path,
+        entorno_con_bin_falso: dict[str, str],
+        escribir_herramienta_falsa: Callable[[str, str], Path],
+    ) -> None:
+        futuro = int(time.time()) + 365 * 86400
+        escribir_herramienta_falsa(
+            "pg_dump", FAKE_PG_DUMP_OK.replace("exit 0", f'touch -d @{futuro} "$archivo"\nexit 0')
+        )
+        escribir_herramienta_falsa("pg_restore", FAKE_PG_RESTORE_OK)
+        carpeta = tmp_path / "respaldos"
+        carpeta.mkdir()
+        viejas = [f"proptech-202610{dia:02d}T000000Z.dump" for dia in (1, 2, 3)]
+        _crear_backups(carpeta, viejas)
+        hace_30_dias = time.time() - 30 * 86400
+        for nombre in viejas:
+            os.utime(carpeta / nombre, (hace_30_dias, hace_30_dias))
+
+        resultado = _correr(
+            tmp_path,
+            entorno_con_bin_falso,
+            carpeta=carpeta,
+            crear_carpeta=False,
+            overrides={"RESPALDO_CONSERVAR": "2", "RESPALDO_CONSERVAR_DIAS": "1"},
+        )
+
+        assert resultado.returncode == 0, resultado.stderr
+        assert len(_archivos_dump(carpeta)) == 4, _archivos_dump(carpeta)
+        avisos = [
+            linea
+            for linea in _lineas_json(resultado.stdout)
+            if linea.get("evento") == "reloj_atrasado"
+        ]
+        assert len(avisos) == 1, resultado.stdout
+        assert avisos[0]["mtime"] == str(futuro)
+
+
 class TestParcialesAjenosNoSeBorran:
     """H-003 B3 (L-006): sólo se borra un archivo REGULAR con el patrón
     completo del nombre propio; un ajeno (`proptech-notas.dump.parcial`) o un

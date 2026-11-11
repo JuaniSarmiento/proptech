@@ -1509,8 +1509,9 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 - **Arreglos de H-003 (11/11/2026), sobre los bloqueantes del rompedor**: B1, `conmutar.sh` compara la
   definición completa de cada política (comando, permisiva/restrictiva, roles por nombre escapado con
   `quote_ident` y ordenado, `PUBLIC` explícito, `USING` y
-  `WITH CHECK` con `pg_get_expr`); B2, F4 con el reloj atrasado de verdad (D-151): si algún backup tiene un mtime posterior al momento
-  actual, el reloj retrocedió y la retención de ese ciclo no borra nada y emite una línea
+  `WITH CHECK` con `pg_get_expr`), serializada como JSON (`jsonb_agg`, vuelta 4: un nombre de política
+  fabricado ya no confunde el resumen); B2, F4 con el reloj atrasado de verdad (D-151): si algún backup tiene un mtime posterior al momento
+  actual (el del ciclo en curso incluido en la detección, vuelta 4), el reloj retrocedió y la retención de ese ciclo no borra nada y emite una línea
   `reloj_atrasado` (el respaldo se genera igual; mismo `--salud`); el costo es que el disco crece
   hasta que el reloj se ponga al día; en la vuelta 1 se había probado un mtime monótono y se descartó
   porque rompía el piso por días de D-148; B3, sólo se borran archivos

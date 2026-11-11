@@ -187,3 +187,23 @@ class TestConmutarComparaLaDefinicionCompleta:
         resultado = _conmutar(pg, tmp_path)
         assert resultado.returncode != 0, resultado.stdout
         assert "seguridad de filas" in resultado.stderr
+
+    def test_nombre_de_politica_fabricado_no_oculta_una_restrictiva_faltante(
+        self, pg: PostgresContainer, tmp_path: Path
+    ) -> None:
+        # H-003 vuelta 4, B1: un nombre con los separadores del resumen no puede
+        # hacer pasar una base con una restrictiva menos por la original.
+        _base(
+            pg,
+            "proptech_original",
+            "CREATE POLICY p ON datos AS RESTRICTIVE USING (false);"
+            "CREATE POLICY q ON datos USING (true);",
+        )
+        _base(
+            pg,
+            "proptech_destino",
+            'CREATE POLICY "p|*|false|PUBLIC|false|;q" ON datos USING (true);',
+        )
+        resultado = _conmutar(pg, tmp_path)
+        assert resultado.returncode != 0, resultado.stdout
+        assert "seguridad de filas" in resultado.stderr
