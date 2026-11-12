@@ -99,6 +99,34 @@ describe("PantallaImportar", () => {
     await sinViolaciones(region.ownerDocument.body);
   });
 
+  it("aceptada con filas de saldo: lleva a la comparación; sin filas, no", async () => {
+    const conSaldos = { ...ACEPTADA, filas_de_saldo: 7 };
+    const { unmount } = render(
+      pantalla(
+        vi
+          .fn()
+          .mockResolvedValue({ erroresPorCampo: {}, erroresDesconocidos: [], aceptada: conSaldos }),
+      ),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Importar" }));
+    const region = await screen.findByRole("region", { name: "Importación aceptada" });
+    const enlace = within(region).queryByRole("link", { name: "Ver la comparación de saldos" });
+    expect(enlace?.getAttribute("href")).toBe("/edificios/e1/importar/comparacion");
+    unmount();
+    render(
+      pantalla(
+        vi
+          .fn()
+          .mockResolvedValue({ erroresPorCampo: {}, erroresDesconocidos: [], aceptada: ACEPTADA }),
+      ),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Importar" }));
+    const sinSaldos = await screen.findByRole("region", { name: "Importación aceptada" });
+    expect(
+      within(sinSaldos).queryByRole("link", { name: "Ver la comparación de saldos" }),
+    ).toBeNull();
+  });
+
   it("rechazada: No se cargó nada y la tabla con una fila por error, en el orden que llega", async () => {
     const rechazo = [
       { hoja: "Unidades", fila: 9, columna: "Piso", motivo: "Piso inválido" },

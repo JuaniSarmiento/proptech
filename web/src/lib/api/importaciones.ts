@@ -83,15 +83,47 @@ export type ComparacionDelBorrador = {
   aceptacion: AceptacionDeDiferencias | null;
 };
 
-export async function comparacionDelBorrador(
-  _id: string,
-): Promise<ResultadoApi<ComparacionDelBorrador>> {
-  return { estado: "fallo" };
+const _MONTO = /^-?[0-9]+\.[0-9]{2}$/;
+
+function esMonto(valor: unknown): boolean {
+  return typeof valor === "string" && _MONTO.test(valor);
 }
 
+/** La comparación del borrador vigente (D6): los montos son texto con dos decimales; si alguno
+ * no lo es, el resultado es `fallo` en vez de un `ok` que la pantalla no sabría mostrar. Un 404 es
+ * "no hay borrador" (o el edificio no existe: la pantalla lo distingue con el edificio). */
+export async function comparacionDelBorrador(
+  id: string,
+): Promise<ResultadoApi<ComparacionDelBorrador>> {
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<ComparacionDelBorrador>(
+    `/api/complejos/${encodeURIComponent(id)}/importaciones/comparacion`,
+    { camposDePlata: ["total_borrador", "total_control"] },
+  );
+  if (resultado.estado !== "ok") {
+    return resultado;
+  }
+  const { unidades } = resultado.datos;
+  const bien =
+    Array.isArray(unidades) &&
+    unidades.every((u) => esMonto(u.borrador) && esMonto(u.control) && esMonto(u.diferencia)) &&
+    esMonto(resultado.datos.total_borrador) &&
+    esMonto(resultado.datos.total_control);
+  return bien ? resultado : { estado: "fallo" };
+}
+
+/** Sólo `importacion_id` viaja a la API. Un id que no es UUID es "no existe", sin pedido. */
 export async function aceptarDiferencias(
-  _id: string,
-  _importacionId: string,
+  id: string,
+  importacionId: string,
 ): Promise<ResultadoApi<AceptacionDeDiferencias>> {
-  return { estado: "fallo" };
+  if (!esIdValido(id) || !esIdValido(importacionId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<AceptacionDeDiferencias>(
+    `/api/complejos/${encodeURIComponent(id)}/importaciones/aceptacion-de-diferencias`,
+    { metodo: "POST", cuerpo: { importacion_id: importacionId } },
+  );
 }

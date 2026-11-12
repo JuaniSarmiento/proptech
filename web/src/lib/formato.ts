@@ -12,6 +12,8 @@
  */
 
 const _TEXTO_SIN_SIGNO = /^[0-9]+\.[0-9]+$/;
+const _INSTANTE_ISO =
+  /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]+)?)?(Z|[+-][0-9]{2}:[0-9]{2})$/;
 const _COEFICIENTE_SIN_SIGNO = /^[0-9]+\.[0-9]{6}$/;
 const _COEFICIENTE_CON_SIGNO = /^-?[0-9]+\.[0-9]{6}$/;
 
@@ -97,16 +99,37 @@ export function diferenciaComoPorcentaje(texto: string): string {
   return `${esFalta ? "falta" : "sobra"} ${sumaComoPorcentaje(magnitud)}`;
 }
 
-/** Plata con signo y dos decimales: `"-10000.00"` -> `"-10.000,00"`. */
+/** Plata con signo y dos decimales: `"-10000.00"` -> `"-10.000,00"`. Un texto que no es plata
+ * con dos decimales no se muestra: falla (el cliente de la API ya lo filtra antes). */
 export function dinero(texto: string): string {
-  return texto;
+  const negativo = texto.startsWith("-");
+  return `${negativo ? "-" : ""}${conDecimales(negativo ? texto.slice(1) : texto, 2)}`;
 }
 
 /** Un instante ISO con zona de la API como `"12/11/2026 12:00"` en la hora de Mendoza (UTC-3, sin
  * horario de verano), siempre la misma sin importar la zona del servidor o del navegador. Lo que
  * no es un instante vuelve tal cual. */
 export function fechaYHora(texto: string): string {
-  return texto;
+  if (!_INSTANTE_ISO.test(texto)) {
+    return texto;
+  }
+  const instante = new Date(texto);
+  if (Number.isNaN(instante.getTime())) {
+    return texto;
+  }
+  // Las partes por separado: el orden y los separadores de una fecha localizada cambian con la
+  // versión de ICU; esto siempre da "dd/mm/aaaa hh:mm".
+  const partes = new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Mendoza",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instante);
+  const de = (tipo: string) => partes.find((parte) => parte.type === tipo)?.value ?? "";
+  return `${de("day")}/${de("month")}/${de("year")} ${de("hour")}:${de("minute")}`;
 }
 
 /** Una fecha ISO de la API (`"2026-10-20"`) como día/mes/año argentino

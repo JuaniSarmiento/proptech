@@ -143,6 +143,11 @@ function ResumenAceptado({ id, aceptada }: { id: string; aceptada: ImportacionAc
         </div>
       ) : null}
       <p>
+        {aceptada.filas_de_saldo > 0 ? (
+          <a className="boton-enlace" href={`/edificios/${id}/importar/comparacion`}>
+            Ver la comparación de saldos
+          </a>
+        ) : null}{" "}
         <a className="boton-enlace" href={`/edificios/${id}/unidades`}>
           Ver las unidades
         </a>

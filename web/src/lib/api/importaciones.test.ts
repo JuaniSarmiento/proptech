@@ -230,7 +230,8 @@ describe("comparacionDelBorrador / aceptarDiferencias", () => {
     );
     expect(opciones?.method).toBe("POST");
     expect(JSON.parse(String(opciones?.body))).toEqual({ importacion_id: IMPORTACION });
-    expect((opciones?.headers as Headers).get("Content-Type")).toBe("application/json");
+    const cabeceras = opciones?.headers as Headers;
+    expect(cabeceras.get("Content-Type")).toBe("application/json");
     expect(resultado).toEqual({ estado: "ok", datos: aceptada });
   });
 

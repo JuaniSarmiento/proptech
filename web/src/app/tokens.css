@@ -1837,6 +1837,25 @@ h2 {
   }
 }
 
+/* Comparación de saldos (change 5, H-008): la unidad con diferencia se lee por el peso del
+ * número (y por el signo), nunca sólo por color (The Never Color Alone Rule). La cantidad de
+ * unidades con diferencia va aparte de los totales: pueden coincidir y haber diferencias. */
+.comparacion__fila--con-diferencia td {
+  font-weight: 600;
+}
+
+.comparacion__cantidad {
+  margin: 1rem 0 0;
+  font-size: var(--tipo-cuerpo);
+  font-weight: 600;
+}
+
+/* Recibe el foco al aceptar (para anunciar la región nueva): sin contorno propio, el foco lo
+ * lleva el panel que contiene. */
+.comparacion__aceptadas:focus {
+  outline: none;
+}
+
 /* Personal (7.3): a diferencia del padrón de unidades, cada celda lleva
  * texto de largo variable (nombre + email, perfiles con su edificio); sin
  * esto, `white-space: nowrap` (heredado) obligaba a todo en una línea y la

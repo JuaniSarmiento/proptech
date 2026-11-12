@@ -1,25 +1,33 @@
-"""Importación del padrón desde Excel (change 5, H-007): subir la plantilla y descargarla.
+"""Importación del padrón y de los saldos desde Excel (change 5): subir la plantilla y descargarla
+(H-007), leer la comparación del borrador y aceptar sus diferencias (H-008).
 
-El caso de uso `importar` autoriza solo (404 sin alcance, 403 sin permiso, D7) y abre su
-transacción; la ruta sólo lee el archivo con su tope de bytes, parsea la fecha, mapea las
-excepciones a HTTP y confirma.
+Cada caso de uso (`importar`, `comparar_borrador`, `aceptar_diferencias`) autoriza solo (404 sin
+alcance, 403 sin permiso, D7) y abre su transacción; la ruta sólo lee el archivo con su tope de
+bytes y parsea la fecha (subir), mapea las excepciones a HTTP y confirma. `NoEncontrado` y
+`Conflicto` los traduce el manejador de `complejos` (404 y 409 con su `campo`).
 """
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_tenant
 from proptech_api.complejos import _edificio_autorizado
+from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel, plantilla_vacia
+from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
+from proptech_core.importacion.aplicacion.borrador import AceptacionRegistrada
+from proptech_core.importacion.aplicacion.comparar import comparar_borrador
 from proptech_core.importacion.aplicacion.errores import ArchivoYaImportado, SinPermiso
 from proptech_core.importacion.aplicacion.importar import importar
 from proptech_core.importacion.dominio.padron import PadronInvalido
@@ -125,3 +133,78 @@ def descargar_plantilla(
         media_type=XLSX,
         headers={"Content-Disposition": 'attachment; filename="plantilla-padron.xlsx"'},
     )
+
+
+def _aceptacion_como_json(aceptacion: AceptacionRegistrada) -> dict[str, object]:
+    return {
+        "aceptacion_id": str(aceptacion.aceptacion_id),
+        "diferencias": [
+            {
+                "unidad": d.unidad,
+                "borrador": d.borrador,
+                "control": d.control,
+                "diferencia": d.diferencia,
+            }
+            for d in aceptacion.diferencias
+        ],
+        "aceptada_por": str(aceptacion.aceptada_por),
+        "aceptada_en": aceptacion.aceptada_en.isoformat(),
+    }
+
+
+@router.get("/complejos/{complejo_id}/importaciones/comparacion")
+def leer_comparacion(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, object]:
+    """El borrador vigente del edificio contra el control, unidad por unidad (D6, E13)."""
+    comparacion = comparar_borrador(sesion, identidad, complejo_id=complejo_id)
+    return {
+        "importacion_id": str(comparacion.importacion_id),
+        "unidades": [
+            {
+                "unidad": u.unidad,
+                "unidad_id": str(u.unidad_id),
+                "borrador": u.borrador.a_texto(),
+                "control": u.control.a_texto(),
+                "diferencia": u.diferencia.a_texto(),
+                "aviso": u.aviso,
+            }
+            for u in comparacion.unidades
+        ],
+        "total_borrador": comparacion.total_borrador.a_texto(),
+        "total_control": comparacion.total_control.a_texto(),
+        "unidades_con_diferencia": comparacion.unidades_con_diferencia,
+        "requiere_aceptacion": comparacion.requiere_aceptacion,
+        "aceptacion": (
+            None
+            if comparacion.aceptacion is None
+            else _aceptacion_como_json(comparacion.aceptacion)
+        ),
+    }
+
+
+class CuerpoAceptacion(CuerpoDeAlta):
+    #: Una referencia al borrador que se mira, no un alta: el id lo elige el servidor al aceptar.
+    importacion_id: Annotated[UUID, Field(strict=False)]
+
+
+@router.post("/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias", status_code=201)
+def aceptar_las_diferencias(
+    complejo_id: UUID,
+    cuerpo: CuerpoAceptacion,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, object]:
+    """Acepta las diferencias del borrador vigente (E6, E8); 404, 403 y 409 son del caso de uso."""
+    aceptacion = aceptar_diferencias(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        importacion_id=cuerpo.importacion_id,
+        reloj=lambda: datetime.now(UTC),
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return _aceptacion_como_json(aceptacion)

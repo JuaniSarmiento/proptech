@@ -16,7 +16,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
-import { esEdificioDeImportacion, responderImportacion } from "./escenarios-importacion";
+import {
+  esEdificioDeComparacion,
+  esEdificioDeImportacion,
+  responderComparacion,
+  responderImportacion,
+} from "./escenarios-importacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -58,6 +63,7 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "configurar_padron",
     "ver_configuracion_del_edificio",
     "importar_padron_y_saldos",
+    "aceptar_diferencias_de_saldos",
   ],
   por_edificio: {},
 };
@@ -960,6 +966,19 @@ export function crearServidor(
       esEdificioDeImportacion(id)
     ) {
       responderImportacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+
+    // change 5 (H-008): la comparación de saldos y aceptar sus diferencias, en los tres edificios
+    // de su contrato (801 a 803), sin pisar los de H-007.
+    if (
+      (resto === "importaciones/comparacion" ||
+        resto === "importaciones/aceptacion-de-diferencias") &&
+      esEdificioDeComparacion(id)
+    ) {
+      responderComparacion(pedido, respuesta, id, resto, (escritura) => {
         _ultimaEscritura = escritura;
       });
       return;

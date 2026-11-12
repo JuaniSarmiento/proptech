@@ -109,8 +109,7 @@ function ahi(elemento: HTMLElement | null): HTMLElement {
 const tabla = () => ahi(screen.queryByRole("table", { name: "Comparación por unidad" }));
 const botonAceptar = () => ahi(screen.queryByRole("button", { name: "Aceptar diferencias" }));
 const confirmacion = () => ahi(screen.queryByRole("dialog"));
-const botonConfirmar = () =>
-  ahi(within(confirmacion()).queryByRole("button", { name: "Aceptar", exact: true }));
+const botonConfirmar = () => ahi(within(confirmacion()).queryByRole("button", { name: "Aceptar" }));
 
 function pantalla(comparacion = CON_DIFERENCIAS, accion = vi.fn().mockResolvedValue(null)) {
   return (
@@ -159,6 +158,16 @@ describe("PantallaComparacion", () => {
     expect(screen.queryByText("Total de control")).not.toBeNull();
     expect(screen.queryAllByText("326.000,00")).toHaveLength(2);
     expect(screen.queryByText("2 unidades con diferencia")).not.toBeNull();
+  });
+
+  it("cada total va con su rótulo cuando los dos son distintos", () => {
+    render(
+      pantalla({ ...CON_DIFERENCIAS, total_borrador: "326000.00", total_control: "300500.50" }),
+    );
+    const valorDe = (rotulo: string) =>
+      ahi(screen.queryByText(rotulo)).parentElement?.querySelector("dd")?.textContent;
+    expect(valorDe("Total del borrador")).toBe("326.000,00");
+    expect(valorDe("Total de control")).toBe("300.500,50");
   });
 
   it("cero y una diferencia se dicen bien", () => {
