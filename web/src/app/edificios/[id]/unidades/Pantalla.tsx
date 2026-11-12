@@ -124,6 +124,10 @@ export function PantallaPadron({
   const puedeInvitar = permite(sesion, "invitar_usuarios_y_asignar_edificios");
   const puedeAjustar =
     estadoMigracion === "confirmada" && permite(sesion, "ajustar_saldo_inicial", id);
+  // Con la migración pendiente, el padrón ofrece el importador (antes sólo se llegaba desde el
+  // paso 7 del resumen). Sin dato del resumen no se ofrece.
+  const puedeImportar =
+    estadoMigracion === "pendiente" && permite(sesion, "importar_padron_y_saldos", id);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
   const agregarRef = useRef<HTMLButtonElement>(null);
@@ -184,7 +188,18 @@ export function PantallaPadron({
       <EncabezadoDePantalla
         titulo="Padrón de unidades"
         ayuda={<Ayuda {...AYUDA_PADRON} />}
-        accionPrincipal={botonAgregar}
+        accionPrincipal={
+          puedeImportar || botonAgregar ? (
+            <>
+              {puedeImportar ? (
+                <a className="boton-secundario" href={`/edificios/${id}/importar`}>
+                  Importar desde Excel
+                </a>
+              ) : null}
+              {botonAgregar}
+            </>
+          ) : undefined
+        }
       />
 
       <div className="disposicion">
