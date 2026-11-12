@@ -861,3 +861,31 @@ def test_importacion_nombra_una_tabla_ajena(copia_core: Path) -> None:
     archivo = copia_core / "importacion" / "aplicacion" / "mutante.py"
     archivo.write_text('SQL = "INSERT INTO unidad (id) VALUES (1)"')
     assert "importacion/aplicacion/mutante.py: unidad" in _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+
+
+# --- importacion-desde-excel, tarea 1.5: el caso de uso `importar` orquesta `acceso` y
+# `complejos` por su `aplicacion`, y `complejos` sigue sin conocer a `cuenta_corriente` ---
+
+
+def test_complejos_no_importa_cuenta_corriente() -> None:
+    assert _archivos_que_importan("complejos", "cuenta_corriente") == []
+
+
+def test_complejos_importando_cuenta_corriente_da_ciclo_con_el_caso_de_uso(
+    copia_core: Path,
+) -> None:
+    """`cuenta_corriente` ya importa `complejos`: que `complejos` importe `cuenta_corriente` cierra
+    un ciclo (por eso `importar` vive en `importacion`, que importa a los dos)."""
+    (copia_core / "complejos" / "mutante.py").write_text(
+        "import proptech_core.cuenta_corriente.aplicacion\n"
+    )
+    assert "complejos → cuenta_corriente → complejos" in _ciclos(copia_core)
+
+
+def test_importar_usa_acceso_y_complejos_por_su_aplicacion() -> None:
+    archivo = RAIZ_SRC / "importacion" / "aplicacion" / "importar.py"
+    assert archivo.is_file(), "falta importacion/aplicacion/importar.py"
+    destinos = {tuple(d[:3]) for _, d in _destinos(archivo, RAIZ_SRC)}
+    assert ("proptech_core", "complejos", "aplicacion") in destinos
+    assert ("proptech_core", "acceso", "aplicacion") in destinos
+    assert not [o for o in _entre_modulos(RAIZ_SRC) if "importacion/" in o]

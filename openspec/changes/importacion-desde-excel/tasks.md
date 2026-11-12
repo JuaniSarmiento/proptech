@@ -114,11 +114,34 @@ mutante, en un commit anterior al de producción (L-061). -->
   `complejo` y `persona`, único parcial de un `borrador` por edificio, único de huella por edificio; las
   acciones `importar_padron_y_saldos` en `Accion`, en la matriz (E6) y en `accion_de_auditoria`. Tests de
   esquema, de aislamiento y de cabeza (L-082: el test prueba la `0036`, no "la última").
+  - **RED 1.4** (11/11/2026, antes de escribir la migración y el vocabulario): `cd backend && uv run pytest
+    tests/integracion/test_migracion_0036_importacion.py tests/unitarios/acceso/test_permisos.py -q`. La
+    migración: `14 failed, 1 passed` (el verde es `test_no_es_de_solo_agregar`, cierto antes y después). Por
+    causa: `AssertionError: falta la tabla importacion (0036)` / `assert [(False,)] == [(True,)]` x8, `falta la
+    migración 0036` x1, `assert [] == [columnas...]` x1 y `assert [] == [('importar_padron_y_saldos',)]` x2
+    (vocabulario). Permisos: `test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario` falla por aserción
+    (la fila nueva de la tabla a mano no está en `Accion`) y 19 celdas de la matriz fallan con `ValueError:
+    'importar_padron_y_saldos' is not a valid Accion` (el miembro que falta es justo lo que se prueba).
 - [ ] 1.5 **Caso de uso `importar` (padrón).** Permiso, tenant, `FOR UPDATE` del complejo, estado
   `pendiente`, validación completa antes de escribir, una sola lectura del padrón, `crear_unidad` por
   fila, grupo general, propietarios sin invitar (E3), padrón existente (E7), misma huella → conflicto,
   auditoría. Integración contra PostgreSQL real. Mutantes: escribir antes de validar todo; invitar al
   propietario; no bloquear el complejo.
+  - **Decisión de la tanda 2** (el relevo de 1.3 la dejó abierta): un email repetido en dos filas con otro
+    nombre es la misma persona; se conserva el nombre de la primera fila y la segunda suma una advertencia
+    (hoja `Unidades`, su fila, columna `Propietario`; el motivo nombra la fila anterior y no repite el
+    email). No es error: el contrato dice que el mismo email es la misma persona.
+  - **RED 1.5** (11/11/2026, contra `importar` y `agrupar_propietarios` provisorios que no escriben nada y
+    devuelven un resultado en cero; `ArchivoYaImportado` y `SinPermiso` son reales): `cd backend && uv run
+    pytest tests/unitarios/test_importacion_propietarios.py tests/unitarios/test_fronteras_de_modulos.py
+    tests/integracion/test_importar_padron.py -q`. Unitarios: 3 de 4 de propietarios fallan por aserción
+    (`assert {} == {'uno@...': 'Persona Ficticia Uno'}`) y 1 de fronteras (`importar.py` todavía no importa
+    `complejos.aplicacion` ni `acceso.aplicacion`). Integración: `36 failed` de 36. Por causa: `assert 0 ==
+    12` x7 (el resultado en cero), `Failed: DID NOT RAISE` (SinPermiso x3, PadronInvalido x3, NoEncontrado
+    x2, EntradaInvalida x2, Conflicto x2, ArchivoYaImportado x1, ArchivoInvalido x1), `assert (0, 0) == (9, 1)`
+    y `(2, 0) == (1, 1)` (la carrera: las dos "ganan"), `el padrón se leyó 0 veces`, y los que miran la tabla
+    `importacion` (`UndefinedTable` x8: la tabla es lo que falta; el mundo ya se sembró y el caso de uso ya
+    corrió, así que no es un error de armado del test).
 - [ ] 1.6 **Ruta y pantalla.** `POST /api/complejos/{id}/importaciones` (multipart: archivo y fecha de
   migración) con 422 `{"detail": [{hoja, fila, columna, motivo}]}`, en `_RUTAS_CUBIERTAS`; descarga de la
   plantilla; pantalla `edificios/[id]/importar` (D11) con sus estados y e2e de Playwright (archivo válido,
