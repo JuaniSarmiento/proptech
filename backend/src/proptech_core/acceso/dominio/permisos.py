@@ -72,6 +72,10 @@ class Accion(StrEnum):
     #: saldos contra el control del administrador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el
     #: administrador por edificio no.
     ACEPTAR_DIFERENCIAS_DE_SALDOS = "aceptar_diferencias_de_saldos"
+    #: importacion-desde-excel (E6, migración `0038`): confirmar el borrador de saldos, que carga el
+    #: saldo inicial en el libro y cierra el importador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el
+    #: administrador por edificio no.
+    CONFIRMAR_SALDOS_INICIALES = "confirmar_saldos_iniciales"
     VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
 
 
@@ -149,6 +153,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE}),
     Accion.IMPORTAR_PADRON_Y_SALDOS: frozenset({_SA, _AP, _AE}),
     Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: frozenset({_SA, _AP}),
+    Accion.CONFIRMAR_SALDOS_INICIALES: frozenset({_SA, _AP}),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
 }
 

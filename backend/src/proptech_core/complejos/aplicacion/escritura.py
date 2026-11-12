@@ -346,6 +346,28 @@ def confirmar_sin_saldos_previos(
     return complejo_id
 
 
+def confirmar_saldos_iniciales_del_edificio(sesion: Session, *, complejo_id: UUID) -> None:
+    """Pasa el edificio de `pendiente` a `confirmada` (R09, importacion-desde-excel H-009).
+
+    Lo llama quien cargó el saldo inicial en el libro (el caso de uso `confirmar` de `importacion`),
+    dentro de **su** transacción: no autoriza ni audita, lo hace el llamador, que además ya tomó el
+    candado del complejo. Se vuelve a tomar acá (`FOR UPDATE`, E8) para que esta función sola nunca
+    pise a un "sin saldos previos" que ganó la carrera: otro estado que `pendiente` es
+    `Conflicto("estado_migracion")` y no escribe nada."""
+    estado = sesion.execute(
+        text("SELECT estado_migracion FROM complejo WHERE id=:id FOR UPDATE"),
+        {"id": complejo_id},
+    ).scalar_one_or_none()
+    if estado is None:
+        raise NoEncontrado()
+    if estado != "pendiente":
+        raise Conflicto("estado_migracion")
+    sesion.execute(
+        text("UPDATE complejo SET estado_migracion='confirmada' WHERE id=:id"),
+        {"id": complejo_id},
+    )
+
+
 class _EdicionEdificio(BaseModel):
     """D3/D2 (tareas 3.5-3.7): los mismos campos editables de `complejo`,
     todos nullable (`None` es "sin completar", igual que en el alta) — el

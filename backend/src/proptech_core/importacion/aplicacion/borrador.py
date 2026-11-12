@@ -30,6 +30,8 @@ from proptech_core.importacion.dominio.saldos import BorradorValidado
 class BorradorVigente:
     importacion_id: UUID
     fecha_de_migracion: date
+    #: El nombre del archivo subido (lo que la carga del libro guarda como su origen).
+    archivo: str
 
 
 @dataclass(frozen=True)
@@ -113,12 +115,12 @@ def borrador_vigente(sesion: Session, complejo_id: UUID) -> BorradorVigente | No
     """El único borrador del edificio (el de la última subida), o `None`."""
     fila = sesion.execute(
         text(
-            "SELECT id, fecha_de_migracion FROM importacion "
+            "SELECT id, fecha_de_migracion, archivo FROM importacion "
             "WHERE complejo_id = :complejo AND estado = 'borrador'"
         ),
         {"complejo": complejo_id},
     ).one_or_none()
-    return None if fila is None else BorradorVigente(UUID(str(fila[0])), fila[1])
+    return None if fila is None else BorradorVigente(UUID(str(fila[0])), fila[1], str(fila[2]))
 
 
 def comparar_importacion(sesion: Session, complejo_id: UUID, importacion_id: UUID) -> Comparacion:

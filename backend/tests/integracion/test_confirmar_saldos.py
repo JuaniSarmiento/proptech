@@ -7,12 +7,16 @@ Datos inventados."""
 
 from __future__ import annotations
 
+import threading
 from datetime import date
+from typing import Any
 from uuid import UUID, uuid4
 
+import psycopg
 import pytest
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
 from proptech_core.complejos.aplicacion.errores import Conflicto, NoEncontrado
 from proptech_core.cuenta_corriente.aplicacion.errores import EntradaInvalida
@@ -299,3 +303,89 @@ def test_el_alcance_gana_al_permiso_y_el_permiso_al_estado(mundo: Mundo, sesion:
     _rechaza(sesion, SinPermiso, lambda: _confirmar(sesion, mundo, importacion, mundo.de_la_torre))
     error = _rechaza(sesion, Conflicto, lambda: _confirmar(sesion, mundo, importacion))
     assert isinstance(error, Conflicto) and error.campo == "estado_migracion"
+
+
+# --- El candado del complejo (E8), con dos conexiones reales -------------------------------------
+
+
+def _en_otro_hilo(
+    mundo: Mundo, base: BaseDeEdificio, importacion: UUID
+) -> tuple[threading.Thread, list[Any]]:
+    """Confirma en otra conexión y otra transacción; el resultado (o el error) queda en la lista."""
+    resultado: list[Any] = []
+
+    def conectar() -> psycopg.Connection:
+        conexion = base.conectar_app()
+        conexion.autocommit = False
+        return conexion
+
+    def correr() -> None:
+        motor = create_engine("postgresql+psycopg://", creator=conectar, poolclass=NullPool)
+        try:
+            with Session(motor) as otra:
+                con_tenant(otra, mundo.admin)
+                try:
+                    resultado.append(_confirmar(otra, mundo, importacion))
+                    otra.commit()
+                except Exception as error:
+                    otra.rollback()
+                    resultado.append(error)
+        finally:
+            motor.dispose()
+
+    return threading.Thread(target=correr), resultado
+
+
+def _cargas(mundo: Mundo) -> int:
+    with mundo.conectar() as c:
+        (cantidad,) = c.execute("SELECT count(*) FROM carga_de_saldo_inicial").fetchone()
+        c.rollback()
+    return int(cantidad)
+
+
+def test_la_segunda_confirmacion_espera_a_la_primera_y_da_conflicto(
+    mundo: Mundo, base_del_edificio: BaseDeEdificio, sesion: Session
+) -> None:
+    importacion = subir(sesion, mundo.super_admin, mundo.torre, archivo()).importacion_id
+    sesion.commit()
+    con_tenant(sesion, mundo.admin)
+    _confirmar(sesion, mundo, importacion)  # la primera, todavía sin confirmar la transacción
+    hilo, resultado = _en_otro_hilo(mundo, base_del_edificio, importacion)
+    hilo.start()
+    hilo.join(timeout=2)
+    assert hilo.is_alive(), "la segunda confirmación no esperó el candado del complejo"
+    sesion.commit()
+    hilo.join(timeout=30)
+    assert len(resultado) == 1 and isinstance(resultado[0], Conflicto), resultado
+    assert resultado[0].campo == "estado_migracion"
+    assert _cargas(mundo) == 1, "una sola carga en el libro"
+
+
+def test_confirmar_pierde_contra_un_sin_saldos_previos_que_ya_tenia_el_candado(
+    mundo: Mundo, base_del_edificio: BaseDeEdificio, sesion: Session
+) -> None:
+    importacion = subir(sesion, mundo.super_admin, mundo.torre, archivo()).importacion_id
+    sesion.commit()
+    with mundo.conectar() as otra:
+        otra.execute("SELECT id FROM complejo WHERE id = %s FOR UPDATE", (mundo.torre,))
+        hilo, resultado = _en_otro_hilo(mundo, base_del_edificio, importacion)
+        hilo.start()
+        hilo.join(timeout=2)
+        assert hilo.is_alive(), "confirmar no esperó el candado que ya tenía otra transacción"
+        otra.execute(
+            "UPDATE complejo SET estado_migracion = 'sin_saldos_previos' WHERE id = %s",
+            (mundo.torre,),
+        )
+        otra.commit()
+    hilo.join(timeout=30)
+    assert len(resultado) == 1 and isinstance(resultado[0], Conflicto), resultado
+    assert resultado[0].campo == "estado_migracion"
+    assert _cargas(mundo) == 0, "con sin saldos previos no hay carga en el libro"
+    with mundo.conectar() as c:
+        assert c.execute(
+            "SELECT estado FROM importacion WHERE id = %s", (importacion,)
+        ).fetchone() == ("borrador",)
+        assert c.execute(
+            "SELECT estado_migracion FROM complejo WHERE id = %s", (mundo.torre,)
+        ).fetchone() == ("sin_saldos_previos",)
+        c.rollback()

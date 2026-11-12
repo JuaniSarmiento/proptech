@@ -219,6 +219,13 @@ class _DetalleAceptarDiferencias(_DetalleAsignarEdificio):
     unidades_con_diferencia: int
 
 
+class _DetalleConfirmarSaldos(_DetalleAsignarEdificio):
+    #: El id de la importación es la `entidad_id` de la fila; acá la carga del libro que formó. Sólo
+    #: ids (nunca montos ni nombres, D9): los totales viven en la carga.
+    importacion_id: UUID
+    carga_id: UUID
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -240,6 +247,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
     Accion.IMPORTAR_PADRON_Y_SALDOS: _DetalleImportarPadron,
     Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: _DetalleAceptarDiferencias,
+    Accion.CONFIRMAR_SALDOS_INICIALES: _DetalleConfirmarSaldos,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

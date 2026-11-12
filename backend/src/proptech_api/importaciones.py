@@ -1,10 +1,12 @@
 """Importación del padrón y de los saldos desde Excel (change 5): subir la plantilla y descargarla
-(H-007), leer la comparación del borrador y aceptar sus diferencias (H-008).
+(H-007), leer la comparación del borrador y aceptar sus diferencias (H-008) y confirmar los saldos
+(H-009).
 
-Cada caso de uso (`importar`, `comparar_borrador`, `aceptar_diferencias`) autoriza solo (404 sin
-alcance, 403 sin permiso, D7) y abre su transacción; la ruta sólo lee el archivo con su tope de
-bytes y parsea la fecha (subir), mapea las excepciones a HTTP y confirma. `NoEncontrado` y
-`Conflicto` los traduce el manejador de `complejos` (404 y 409 con su `campo`).
+Cada caso de uso (`importar`, `comparar_borrador`, `aceptar_diferencias`, `confirmar`) autoriza
+solo (404 sin alcance, 403 sin permiso, D7) y abre su transacción; la ruta sólo lee el archivo con
+su tope de bytes y parsea la fecha (subir), mapea las excepciones a HTTP y confirma. `NoEncontrado`
+y `Conflicto` los traduce el manejador de `complejos` (404 y 409 con su `campo`); los del libro (el
+422 de `fecha_de_migracion` y los 409 de la carga), el del libro.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel, 
 from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
 from proptech_core.importacion.aplicacion.borrador import AceptacionRegistrada
 from proptech_core.importacion.aplicacion.comparar import comparar_borrador
+from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.errores import ArchivoYaImportado, SinPermiso
 from proptech_core.importacion.aplicacion.importar import importar
 from proptech_core.importacion.dominio.padron import PadronInvalido
@@ -208,3 +211,37 @@ def aceptar_las_diferencias(
     )
     sesion.commit()
     return _aceptacion_como_json(aceptacion)
+
+
+@router.post("/complejos/{complejo_id}/importaciones/confirmacion", status_code=201)
+def confirmar_los_saldos(
+    complejo_id: UUID,
+    cuerpo: CuerpoAceptacion,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, object]:
+    """Confirma el borrador vigente: carga el saldo inicial en el libro, pasa el edificio a
+    `confirmada` y cierra el importador (E6, E8, E10, E15). 404, 403, 409 y el 422 de la fecha de
+    migración son del caso de uso. El cuerpo es la misma referencia al borrador que el de aceptar.
+    """
+    confirmada = confirmar(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        importacion_id=cuerpo.importacion_id,
+        reloj=lambda: datetime.now(UTC),
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {
+        "importacion_id": str(confirmada.importacion_id),
+        "carga_id": str(confirmada.carga_id),
+        "estado_migracion": confirmada.estado_migracion,
+        "totales": {
+            "capital": confirmada.totales.capital.a_texto(),
+            "interes_importado": confirmada.totales.interes_importado.a_texto(),
+            "credito": confirmada.totales.credito.a_texto(),
+        },
+        "confirmada_por": str(confirmada.confirmada_por),
+        "confirmada_en": confirmada.confirmada_en.isoformat(),
+    }
