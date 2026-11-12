@@ -453,6 +453,10 @@ mutante, en un commit anterior al de producción (L-061). -->
     `acciones.ts` y un `ajustarSaldoInicial` provisorios que no hacen nada: `32 failed | 74 passed` (`Pantalla.test.tsx` 8, `acciones.test.ts` 20, `importaciones.test.ts` 3, `Pantalla.ajuste.test.tsx` 1;
     los 4 del padrón que pasan son los controles de "no ofrece ajustar"); todos caen en `expect` (`expected null not to be null`, `expected [] to deeply equal ['importe']`, `expected undefined to be ...`).
     Un caso del rojo de la ruta estaba mal armado (pedía 404 a un rol sin permiso sobre una unidad inexistente de su propio edificio: el orden es 404 > 403 > unidad) y se corrigió con el verde.
+  - **Aceptación de H-010 contra `585e1d9`** (`aceptar.py --codigo HEAD`, aceptación `4c3525e`, primera corrida con ruta y pantalla): `56 ejecutados, 55 pasados, 1 falla`; e2e `4 ejecutados, 4 pasados`; C01 a C11,
+    C13, C15 y C16 en PASA; **C12** cae en `test_c12_otra_administracion` (`409 == 404`: B ajusta una unidad de A desde su edificio, que todavía está pendiente, y el estado ganaba a la unidad) y **C14**
+    en `test_toda_ruta_post_tiene_cuerpo_de_prueba` (la ruta nueva faltaba en `_CUERPOS_DE_PRUEBA` de `test_altas_sin_id_del_cliente.py`: mi barrido local de la ruta sólo había corrido `test_rutas_protegidas.py`).
+    Rojo del arreglo: `test_la_unidad_que_no_es_del_edificio_gana_al_estado_de_la_migracion` (2 casos) cae con `se esperaba NoEncontrado, llegó Conflicto('conflicto')`; el orden queda alcance > permiso > unidad (404) > estado (409) > entrada (422).
 
 ## 5. Cierre
 

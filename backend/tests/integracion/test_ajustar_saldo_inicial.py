@@ -480,3 +480,32 @@ def test_otra_administracion_no_existe(confirmado: Mundo, sesion: Session) -> No
             reloj=RELOJ,
         ),
     )
+
+
+@pytest.mark.parametrize("estado", ["pendiente", "sin_saldos_previos"])
+def test_la_unidad_que_no_es_del_edificio_gana_al_estado_de_la_migracion(
+    confirmado: Mundo, sesion: Session, estado: str
+) -> None:
+    """Orden del contrato: alcance y unidad (404) antes que el estado (409). La unidad es de otro
+    edificio, y el edificio no está confirmado: sigue siendo un 404, nunca un 409."""
+    from proptech_core.cuenta_corriente.aplicacion.errores import NoEncontrado
+
+    ajena = UUID(
+        str(
+            sesion.execute(
+                text("SELECT id FROM unidad WHERE complejo_id = :c"), {"c": confirmado.con_padron}
+            ).scalar_one()
+        )
+    )
+    sesion.execute(
+        text("UPDATE complejo SET estado_migracion = :e WHERE id = :c"),
+        {"e": estado, "c": confirmado.torre},
+    )
+    antes = _escrito(sesion)
+    try:
+        _ajustar(sesion, confirmado, unidad_id=ajena)
+        resultado: object = None
+    except Exception as error:
+        resultado = error
+    assert isinstance(resultado, NoEncontrado), f"se esperaba NoEncontrado, llegó {resultado!r}"
+    assert _escrito(sesion) == antes

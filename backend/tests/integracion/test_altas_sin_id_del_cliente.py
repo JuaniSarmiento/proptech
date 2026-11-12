@@ -176,6 +176,17 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
     ): lambda mundo: {
         "importacion_id": str(uuid.uuid4()),
     },
+    # (H-010): el ajuste lleva el `operacion_id` del cliente (idempotencia, como una corrección);
+    # cualquier otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial",
+        "POST",
+    ): lambda mundo: {
+        "operacion_id": str(uuid.uuid4()),
+        "importe": "5000.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba ficticia del barrido de altas",
+    },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),
         "concepto": "Cargo ficticio",
