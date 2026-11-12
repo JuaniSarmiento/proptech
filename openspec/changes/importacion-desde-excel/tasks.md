@@ -311,7 +311,7 @@ mutante, en un commit anterior al de producción (L-061). -->
     C05 a C11 y C15 (comparación y aceptar) y la parte de C16 que aceptar; C12 y los e2e no corrieron (`--sin-navegador`); C17 (la KB) queda
     para el cierre del change; C18 cae con C05 a C10.
 
-- [ ] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el
+- [x] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el
   total coincida, aceptar, aviso de mes entero).
   - **RED 2.5** (11/11/2026 23:10; la ruta `GET .../importaciones/comparacion` y la `POST .../aceptacion-de-diferencias` todavía no
     existen, así que el rojo es un `404 Not Found` de FastAPI contra lo que cada test espera; en la web, stubs que compilan y
@@ -332,6 +332,39 @@ mutante, en un commit anterior al de producción (L-061). -->
       '169.000,00'`). Dos primeros intentos fallaban por un error de acceso (`SyntaxError: Unexpected end of JSON input` al leer el cuerpo de un 404 y
       `TestingLibraryElementError` de `getByRole`): se reescribieron con `expect` sobre el estado y sobre `queryBy` antes de dar el rojo por bueno.
       Los 26 que pasan son los tests que ya existían en `formato.test.ts` e `importaciones.test.ts` y los pocos nuevos que coinciden con un stub (`fechaYHora` de un texto que no es fecha, 404 del edificio fuera del contrato en la API falsa): no cuentan como RED.
+  - **Verde 2.5** (`fdcb3b4`, `99eb6be`): `cd backend && uv run pytest tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py
+    tests/integracion/test_importaciones_comparacion_api.py tests/integracion/test_identidad_antes_del_cuerpo.py
+    tests/integracion/test_regresiones_de_aislamiento_y_grupos_vacios.py tests/integracion/test_borrador_de_saldos.py
+    tests/integracion/test_comparacion_de_saldos.py tests/integracion/test_aceptar_diferencias.py -q` -> `767 passed`. `ruff check`, `ruff format --check` y `mypy src`
+    limpios. Web: `npx vitest run "src/app/edificios/[id]/importar" src/lib e2e` -> `35 files, 358 passed` (antes de la región enfocable; `Pantalla.test.tsx` de la
+    comparación quedó en 16), `biome ci` sin errores, `tsc --noEmit` limpio. Playwright en un clon temporal del commit (`next build`, API falsa, `next start`): los 4
+    e2e congelados de la aceptación (`aceptacion-h008-comparacion.spec.ts`, C12 y C15) y mi `comparacion-de-saldos.spec.ts` (axe en navegador real, sin desborde y
+    teclado de la confirmación, a 320 y 1280 px) -> `10 passed`. La primera corrida de mi spec dio rojo de verdad: a 320 px axe encontró `scrollable-region-focusable` en la
+    caja de la tabla (sin controles adentro, el teclado no llega a su desplazamiento) -> la caja es ahora una región enfocable (`99eb6be`, con su test de jsdom); y el
+    test del teclado asumía que el foco no sale del diálogo, pero el `PanelLateral` incluye el "?" de la ayuda a propósito en su trampa de foco (corregido en el spec).
+  - **Hallazgo fuera de la 2.5** (arreglado): `test_regresiones_de_aislamiento_y_grupos_vacios::test_super_admin_de_otra_administracion_no_alcanza_nada_de_a` estaba
+    rojo desde H-007 (la ruta multipart de subir recibía un JSON y daba 422 en lugar del 404 del aislamiento) y las dos rutas nuevas lo habrían roto igual: se le sumó el cuerpo
+    de aceptar y la rama multipart de subir. Ningún id de test cambió.
+  - **Mutantes 2.5** (copia previa, uno a la vez, restaurado, con `PYTHONDONTWRITEBYTECODE`): backend (`test_importaciones_comparacion_api.py`): `requiere_aceptacion` fijo en
+    `True` -> `test_despues_de_aceptar_la_comparacion_muestra_la_aceptacion_y_ya_no_pide_aceptar`; aceptar con 200 -> `test_aceptar_da_201_con_la_lista_y_deja_una_fila_y_una_auditoria`;
+    cuerpo sin `extra="forbid"` -> `test_aceptar_con_un_campo_de_mas_es_422_nombrandolo`; borrador y control intercambiados -> `test_la_comparacion_da_las_unidades_los_totales_y_lo_que_falta_aceptar`;
+    sin devolver la aceptación vigente -> el mismo de "después de aceptar". **Sobrevive: aceptar sin `sesion.commit()` en la ruta** (19 pasan): `aceptar_diferencias` ya cierra su
+    transacción con `begin()` (la sesión de la ruta no tiene una abierta), así que el `commit` de la ruta es redundante; se dejó por consistencia con las demás rutas. Web: sin el
+    gate del permiso -> `sin el permiso de aceptar no hay botón...`; cancelar sin devolver el foco -> `aceptar abre una confirmación...`; sin columna de avisos -> `el aviso de mes
+    entero va dentro de la fila...`; la confirmación abierta tras aceptar -> `confirmar manda el importacion_id...`; `importacion_id` fijo -> el mismo; sin mostrar la aceptación que ya venía
+    -> `una aceptación que ya venía...`; siempre plural -> `cero y una diferencia...`; sin `tabIndex` en la caja de la tabla -> `la tabla se desplaza dentro de una región...`; la acción sin
+    `revalidatePath`, el 403 como error genérico y el 409 de aceptación sin su texto -> `acciones.test.ts`; sin validar los montos de las unidades, mandando más campos, sin validar el
+    id de importación -> `importaciones.test.ts`; `dinero` sin signo y `fechaYHora` en UTC -> `formato.test.ts`; la API falsa con el 803 aceptando y el 802 con diferencias ->
+    `api-falsa.comparacion.test.ts`; el resumen de importar sin el enlace -> `Pantalla.test.tsx` de importar. **Sobrevivió y se arregló el test**: el total de control mostrado como el del borrador
+    (la fixture tenía los dos totales iguales, justo el caso de H-008): se sumó `cada total va con su rótulo cuando los dos son distintos`, y entonces dio rojo.
+  - **Mutante que faltaba de la tanda 1 (el borrador escribe en el libro)** (copia previa de `borrador.py`, uno a la vez, en `guardar_borrador`, restaurado): insertar una `cuenta` ->
+    `test_el_borrador_no_toca_el_libro` rojo por aserción (`assert (1, 0, 0) == (0, 0, 0)`); una `cuenta` con una `obligacion` válida -> `(1, 1, 0) == (0, 0, 0)`; una `cuenta` con un
+    `movimiento` válido (`saldo_inicial`) -> `(1, 0, 1) == (0, 0, 0)`. Los primeros intentos con una `obligacion` o un `movimiento` sueltos cayeron por restricciones de la base
+    (`CheckViolation`, `ForeignKeyViolation`), no por la aserción: se rehicieron con su cuenta y los campos que las restricciones piden hasta que el rojo fue el del test. No se mutó
+    `carga_de_saldo_inicial` (tabla de H-009), que el test también cuenta.
+  - **Aceptación de H-008 contra `HEAD`** (`python3 aceptacion/H-008/aceptar.py --codigo HEAD`, `99eb6be`, aceptación `4c3525e`): `58 ejecutados, 58 pasados, 0 fallas,
+    0 errores, 0 skips` de backend y `4 ejecutados, 4 pasados` de navegador (C12 y C15); C01 a C18 en PASA (C16 con la regresión de H-004 a H-007, el ensayo de roles y el barrido de
+    migraciones; C17 con la KB que dejó el orquestador); `rojos (0); que no son por aserción (0)`.
 
 ## 3. H-009 · Confirmar
 
