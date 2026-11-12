@@ -530,7 +530,7 @@ Cierre:
 
 ## Importación desde Excel (5, C-08)
 
-Propuesta, diseño, specs y tareas en `openspec/changes/importacion-desde-excel/`. **Firma CRITICAL por
+Propuesta, diseño, specs y tareas en `openspec/changes/archive/2026-11-12-importacion-desde-excel/`. **Firma CRITICAL por
 adelantado de Juani** (`04ebf1e`, 11/11/2026, opción 1): aprueba las elecciones E1 a E15 de `design.md`
 en la recomendación del orquestador; lo que no le cierre en la demo vuelve a En proceso. **Los criterios de
 H-007 a H-010 los escribió el orquestador por delegación de Juani, bajo esa firma.** Rama

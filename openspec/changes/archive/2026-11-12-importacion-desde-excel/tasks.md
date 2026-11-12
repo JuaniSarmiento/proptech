@@ -474,5 +474,8 @@ mutante, en un commit anterior al de producción (L-061). -->
 
 ## 5. Cierre
 
-- [ ] 5.1 **Fronteras, calidad y suite completa** en el CI de GitHub del PR del change (D-154), con
+- [x] 5.1 **Fronteras, calidad y suite completa** en el CI de GitHub del PR del change (D-154), con
   conteo propio; KB al día (Knowledge Base Impact de `proposal.md`).
+  Evidencia: PR #21, run 43258277732 sobre `4bbc654`, los seis trabajos en verde (backend 13m24s, web,
+  humo, ensayo de roles, secretos, shellcheck). Dos vueltas antes: mypy de tres ayudas del H-008
+  (`a5fccbf`) y el barrido de aislamiento sin cuerpo para la ruta del ajuste (`4bbc654`); L-084.

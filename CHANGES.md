@@ -49,7 +49,7 @@ gates están en el árbol de abajo.
    ⏳ 4d cambio de titular (va después del 7)
 
 5. CARGAR Y LIQUIDAR
-   ⏳ 5 importar desde Excel       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
+   ✅ 5 importar desde Excel (archivado 12/11/2026, D-155/D-156, PR #21)       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
    ⏳ 6c pantallas de gastos (Juan Cruz, D-144)
    ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
 
@@ -71,7 +71,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
-- **Orden obligado (camino crítico):** 5 → 7 → 8 → 10a → 10b → 13 → 15 (4a, 4b y 4c ya archivados).
+- **Orden obligado (camino crítico):** 7 → 8 → 10a → 10b → 13 → 15 (4a, 4b, 4c y 5 ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
 - **En paralelo, no frenan a nadie:** los siete de
   deuda adelantada (D-138); 4d, 6b, 6c, 9, 11, 12 y 14.
@@ -110,7 +110,7 @@ C-01 infraestructura-base (1a)
                                             │
                                             └── C-07c intereses-saldo-inicial-y-moroso (4c)  ← archivado 11/11/2026 (H-004 a H-006)
                                                   │
-                                                  └── C-08 importacion-desde-excel (5)
+                                                  └── C-08 importacion-desde-excel (5)  ← archivado 12/11/2026 (H-007 a H-010)
                                                         │
                                       (C-07b + C-07c + C-08 + C-09)
                                                         ▼
@@ -613,7 +613,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-08] `importacion-desde-excel` · 5
-- **Estado**: `[ ]` pendiente (CRITICAL, D-077)
+- **Estado**: `[x]` archivado (12/11/2026, CRITICAL, D-155 y D-156). Construido con Rein en cuatro
+  historias (H-007 a H-010, Terminadas por Juani), PR #21 con el CI verde. Migraciones `0036` a `0039`.
+  Deuda en la ficha 5 de `knowledge-base/12_fichas_de_changes.md`
 - **Scope**: plantilla de Excel con hoja opcional de saldos por período, validación fila por fila,
   carga atómica, detección de reimportación, saldos en borrador comparados unidad por unidad
 - **Dependencias**: C-06a, C-07c (el caso de uso de saldo inicial)
