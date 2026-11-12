@@ -4,8 +4,8 @@
  * (edificio, resumen) las contesta la API falsa como a cualquier edificio con la migración
  * `pendiente`. La API falsa no lee el Excel: lo que decide el resultado es el id del edificio.
  *
- * H-008 suma los de la comparación (801 a 803). Los de H-009 y H-010 (confirmación, ajuste) los
- * suman esas historias.
+ * H-008 suma los de la comparación (801 a 803) y H-009 los de la confirmación (901 a 904). Los de
+ * H-010 (ajuste) los suma esa historia.
  */
 
 import { readFileSync } from "node:fs";
@@ -106,6 +106,122 @@ const _COMPARACION_SIN_DIFERENCIAS = {
   requiere_aceptacion: false,
   aceptacion: null,
 };
+
+// H-009: los cuatro edificios de la confirmación (`importaciones/confirmacion` y, para llegar a ella,
+// `importaciones/comparacion`). El 902 tiene la migración `confirmada` (el resumen lo dice): no
+// recibe pedidos de importación.
+export const CONFIRMACION_PENDIENTE = "00000000-0000-0000-0000-000000000901";
+export const CONFIRMACION_CONFIRMADO = "00000000-0000-0000-0000-000000000902";
+export const CONFIRMACION_CON_DIFERENCIAS = "00000000-0000-0000-0000-000000000903";
+export const CONFIRMACION_SIN_PERMISO = "00000000-0000-0000-0000-000000000904";
+const _IMPORTACION_A_CONFIRMAR = "00000000-0000-0000-0000-000000009901";
+
+const _IDS_DE_CONFIRMACION = new Set([
+  CONFIRMACION_PENDIENTE,
+  CONFIRMACION_CONFIRMADO,
+  CONFIRMACION_CON_DIFERENCIAS,
+  CONFIRMACION_SIN_PERMISO,
+]);
+
+export function esEdificioDeConfirmacion(id: string): boolean {
+  return _IDS_DE_CONFIRMACION.has(id);
+}
+
+/** El 902 es el único con la migración `confirmada`: su resumen cambia el estado y el paso 7. */
+export function esEdificioConfirmado(id: string): boolean {
+  return id === CONFIRMACION_CONFIRMADO;
+}
+
+const _COMPARACION_A_CONFIRMAR = {
+  ..._COMPARACION_SIN_DIFERENCIAS,
+  importacion_id: _IMPORTACION_A_CONFIRMAR,
+};
+
+const _COMPARACION_CON_UNA_DIFERENCIA = {
+  importacion_id: _IMPORTACION_A_CONFIRMAR,
+  unidades: [
+    {
+      unidad: "1A",
+      unidad_id: "00000000-0000-0000-0000-00000000081a",
+      borrador: "169000.00",
+      control: "159000.00",
+      diferencia: "10000.00",
+      aviso: null,
+    },
+  ],
+  total_borrador: "169000.00",
+  total_control: "159000.00",
+  unidades_con_diferencia: 1,
+  requiere_aceptacion: true,
+  aceptacion: null,
+};
+
+/** Contesta `importaciones/comparacion` (GET) y `importaciones/confirmacion` (POST) de los cuatro
+ * edificios del contrato de H-009. El `POST` deja su cuerpo crudo en `guardar`. */
+export function responderConfirmacion(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  id: string,
+  resto: string,
+  guardar: (escritura: EscrituraRecibida) => void,
+): void {
+  const metodo = pedido.method ?? "GET";
+  if (resto === "importaciones/comparacion") {
+    if (metodo !== "GET") {
+      respuesta.writeHead(405).end();
+      return;
+    }
+    json(
+      respuesta,
+      200,
+      id === CONFIRMACION_CON_DIFERENCIAS
+        ? _COMPARACION_CON_UNA_DIFERENCIA
+        : _COMPARACION_A_CONFIRMAR,
+    );
+    return;
+  }
+  if (metodo !== "POST") {
+    respuesta.writeHead(405).end();
+    return;
+  }
+  const trozos: Buffer[] = [];
+  pedido.on("data", (trozo: Buffer) => {
+    trozos.push(trozo);
+  });
+  pedido.on("end", () => {
+    guardar({
+      metodo,
+      url: pedido.url ?? "",
+      contentType: String(pedido.headers["content-type"] ?? ""),
+      cuerpo: Buffer.concat(trozos).toString("utf8"),
+    });
+    if (id === CONFIRMACION_SIN_PERMISO) {
+      json(respuesta, 403, {
+        detail: {
+          codigo: "sin_permiso",
+          detalle: "sin_permiso",
+          permiso_faltante: "confirmar_saldos_iniciales",
+        },
+      });
+      return;
+    }
+    if (id === CONFIRMACION_CONFIRMADO || id === CONFIRMACION_CON_DIFERENCIAS) {
+      json(respuesta, 409, {
+        detail: "conflicto",
+        campo: id === CONFIRMACION_CONFIRMADO ? "estado_migracion" : "diferencias",
+      });
+      return;
+    }
+    json(respuesta, 201, {
+      importacion_id: _IMPORTACION_A_CONFIRMAR,
+      carga_id: "00000000-0000-0000-0000-000000009a01",
+      estado_migracion: "confirmada",
+      totales: { capital: "320000.00", interes_importado: "6000.00", credito: "6000.00" },
+      confirmada_por: "00000000-0000-0000-0000-000000000101",
+      confirmada_en: "2026-11-12T15:00:00+00:00",
+    });
+  });
+}
 
 /** Contesta `importaciones/comparacion` (GET) y `importaciones/aceptacion-de-diferencias` (POST)
  * de los tres edificios del contrato de H-008. El `POST` deja su cuerpo crudo en `guardar`. */

@@ -8,10 +8,14 @@
  * `PanelLateral` que usa Personal para "Quitar": `role="dialog"`, `Esc`, foco devuelto) que nombra
  * la cantidad; al confirmar, "Diferencias aceptadas" deja la lista y quién y cuándo. Los totales
  * pueden coincidir y haber diferencias por unidad: por eso la cantidad se dice aparte.
+ *
+ * H-009: "Confirmar saldos" (habilitado sólo sin diferencias o con ellas aceptadas, y sólo con el
+ * permiso) abre una segunda confirmación que dice que no se deshace; al confirmar, la región "Saldos
+ * iniciales confirmados" deja cuándo y los totales que cargó el libro, y las dos acciones se van.
  */
 
 import { CircleCheck } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { type RefObject, useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Ayuda } from "../../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../../componentes/EncabezadoDePantalla";
@@ -141,16 +145,70 @@ function DiferenciasAceptadas({ aceptacion }: { aceptacion: AceptacionDeDiferenc
   );
 }
 
-export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAceptar }: Props) {
-  const puedeAceptar = permite(useSesionDePantalla(), "aceptar_diferencias_de_saldos", id);
+function BotonDeLaConfirmacion() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="boton-principal" disabled={pending} aria-busy={pending}>
+      {pending ? "Confirmando…" : "Confirmar"}
+    </button>
+  );
+}
+
+function SaldosConfirmados({
+  confirmacion,
+  regionRef,
+}: {
+  confirmacion: ConfirmacionDeSaldos;
+  regionRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div ref={regionRef} tabIndex={-1} className="comparacion__aceptadas">
+      <Panel
+        titulo="Saldos iniciales confirmados"
+        descripcion={`Quedaron cargados el ${fechaYHora(confirmacion.confirmada_en)}. Este paso no se deshace.`}
+      >
+        <dl className="renglones">
+          <div className="renglones__fila">
+            <dt>Capital</dt>
+            <dd className="numero-tabular">{dinero(confirmacion.totales.capital)}</dd>
+          </div>
+          <div className="renglones__fila">
+            <dt>Interés importado</dt>
+            <dd className="numero-tabular">{dinero(confirmacion.totales.interes_importado)}</dd>
+          </div>
+          <div className="renglones__fila">
+            <dt>Crédito a favor</dt>
+            <dd className="numero-tabular">{dinero(confirmacion.totales.credito)}</dd>
+          </div>
+        </dl>
+      </Panel>
+    </div>
+  );
+}
+
+export function PantallaComparacion({
+  id,
+  nombreEdificio,
+  comparacion,
+  accionAceptar,
+  accionConfirmar,
+}: Props) {
+  const sesion = useSesionDePantalla();
+  const puedeAceptar = permite(sesion, "aceptar_diferencias_de_saldos", id);
+  const puedeConfirmar = permite(sesion, "confirmar_saldos_iniciales", id);
   const [estado, enviar] = useActionState(accionAceptar, null);
+  const [estadoConfirmar, enviarConfirmar] = useActionState(accionConfirmar, null);
   const [abierta, setAbierta] = useState(false);
+  const [abiertaConfirmar, setAbiertaConfirmar] = useState(false);
   const botonRef = useRef<HTMLButtonElement>(null);
+  const botonConfirmarRef = useRef<HTMLButtonElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
+  const regionConfirmadaRef = useRef<HTMLDivElement>(null);
 
   const aceptacion = estado?.aceptada ?? comparacion.aceptacion;
   const quedaPorAceptar = comparacion.requiere_aceptacion && !estado?.aceptada;
   const hayAceptada = estado?.aceptada !== undefined;
+  const confirmada = estadoConfirmar?.confirmada;
 
   // Al aceptar, el botón desaparece: la confirmación se cierra (ya, sin esperar un efecto) y el
   // foco va a lo que apareció.
@@ -160,9 +218,22 @@ export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAce
     }
   }, [hayAceptada]);
 
+  // Al confirmar, los botones desaparecen: el foco va a la región que apareció.
+  const hayConfirmada = confirmada !== undefined;
+  useEffect(() => {
+    if (hayConfirmada) {
+      regionConfirmadaRef.current?.focus();
+    }
+  }, [hayConfirmada]);
+
   function cancelar() {
     setAbierta(false);
     botonRef.current?.focus();
+  }
+
+  function cancelarConfirmar() {
+    setAbiertaConfirmar(false);
+    botonConfirmarRef.current?.focus();
   }
 
   const diferenciasPorAceptar = comparacion.unidades.filter(
@@ -175,16 +246,31 @@ export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAce
         titulo="Comparación de saldos"
         ayuda={<Ayuda {...AYUDA_COMPARACION} />}
         accionPrincipal={
-          quedaPorAceptar && puedeAceptar ? (
-            <button
-              ref={botonRef}
-              type="button"
-              className="boton-principal"
-              onClick={() => setAbierta(true)}
-            >
-              Aceptar diferencias
-            </button>
-          ) : null
+          confirmada ? null : (
+            <>
+              {quedaPorAceptar && puedeAceptar ? (
+                <button
+                  ref={botonRef}
+                  type="button"
+                  className="boton-principal"
+                  onClick={() => setAbierta(true)}
+                >
+                  Aceptar diferencias
+                </button>
+              ) : null}
+              {puedeConfirmar ? (
+                <button
+                  ref={botonConfirmarRef}
+                  type="button"
+                  className={quedaPorAceptar ? "boton-secundario" : "boton-principal"}
+                  disabled={quedaPorAceptar}
+                  onClick={() => setAbiertaConfirmar(true)}
+                >
+                  Confirmar saldos
+                </button>
+              ) : null}
+            </>
+          )
         }
       />
 
@@ -200,6 +286,9 @@ export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAce
               <p>El archivo no trae saldos ni controles.</p>
             )}
           </Panel>
+          {confirmada ? (
+            <SaldosConfirmados confirmacion={confirmada} regionRef={regionConfirmadaRef} />
+          ) : null}
           {aceptacion ? (
             <div ref={regionRef} tabIndex={-1} className="comparacion__aceptadas">
               <DiferenciasAceptadas aceptacion={aceptacion} />
@@ -227,6 +316,15 @@ export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAce
                 No tenés permiso para aceptar diferencias en este edificio. Lo hace el administrador
                 principal.
               </p>
+            ) : null}
+            {!confirmada && !puedeConfirmar ? (
+              <p className="texto-secundario">
+                No tenés permiso para confirmar saldos en este edificio. Lo hace el administrador
+                principal.
+              </p>
+            ) : null}
+            {!confirmada && quedaPorAceptar && puedeConfirmar ? (
+              <p className="texto-secundario">Para confirmar, primero aceptá las diferencias.</p>
             ) : null}
           </Panel>
         </div>
@@ -269,6 +367,35 @@ export function PantallaComparacion({ id, nombreEdificio, comparacion, accionAce
           ) : null}
         </div>
       </PanelLateral>
+
+      <PanelLateral
+        abierto={abiertaConfirmar && !hayConfirmada}
+        titulo="Confirmar saldos"
+        alCerrar={() => setAbiertaConfirmar(false)}
+        devolverFocoA={botonConfirmarRef}
+      >
+        <div className="panel-lateral__seccion">
+          <p>
+            Esta confirmación no se deshace. Los saldos del borrador quedan cargados en la cuenta de
+            cada unidad y el edificio pasa a tener sus saldos iniciales confirmados: no se puede
+            subir otro archivo después.
+          </p>
+          <form action={enviarConfirmar}>
+            <input type="hidden" name="importacion_id" value={comparacion.importacion_id} />
+            <div className="panel-lateral__acciones">
+              <button type="button" className="boton-secundario" onClick={cancelarConfirmar}>
+                Cancelar
+              </button>
+              <BotonDeLaConfirmacion />
+            </div>
+          </form>
+          {estadoConfirmar?.error ? (
+            <p role="alert" className="campo__error">
+              {estadoConfirmar.error}
+            </p>
+          ) : null}
+        </div>
+      </PanelLateral>
     </ArmazonDelEdificio>
   );
 }
@@ -300,7 +427,26 @@ export function PantallaSinBorrador({
   );
 }
 
-/** PROVISORIO (RED de la tarea 3.3). */
-export function PantallaConfirmada(_: { id: string; nombreEdificio: string }) {
-  return null;
+/**
+ * Los saldos ya están confirmados y la comparación dejó de existir (el borrador pasó a
+ * `confirmada`): se dice y se lleva al resumen. Es lo que se ve al volver a esta dirección después
+ * de confirmar.
+ */
+export function PantallaConfirmada({ id, nombreEdificio }: { id: string; nombreEdificio: string }) {
+  return (
+    <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="importar">
+      <EncabezadoDePantalla
+        titulo="Comparación de saldos"
+        ayuda={<Ayuda {...AYUDA_COMPARACION} />}
+      />
+      <Panel
+        titulo="Saldos iniciales confirmados"
+        descripcion="El saldo inicial de este edificio ya está cargado en las cuentas de sus unidades. Este paso no se deshace."
+      >
+        <a className="boton-enlace" href={`/edificios/${id}`}>
+          Volver al resumen del edificio
+        </a>
+      </Panel>
+    </ArmazonDelEdificio>
+  );
 }

@@ -17,9 +17,12 @@ import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
 import {
+  esEdificioConfirmado,
   esEdificioDeComparacion,
+  esEdificioDeConfirmacion,
   esEdificioDeImportacion,
   responderComparacion,
+  responderConfirmacion,
   responderImportacion,
 } from "./escenarios-importacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
@@ -64,6 +67,7 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "ver_configuracion_del_edificio",
     "importar_padron_y_saldos",
     "aceptar_diferencias_de_saldos",
+    "confirmar_saldos_iniciales",
   ],
   por_edificio: {},
 };
@@ -984,6 +988,18 @@ export function crearServidor(
       return;
     }
 
+    // change 5 (H-009): la confirmación de saldos, en los cuatro edificios de su contrato (901 a
+    // 904). La comparación que ven es la del contrato (no la de H-008).
+    if (
+      (resto === "importaciones/comparacion" || resto === "importaciones/confirmacion") &&
+      esEdificioDeConfirmacion(id)
+    ) {
+      responderConfirmacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+
     const nombreFixture = _RUTAS[resto];
     if (!nombreFixture) {
       respuesta.writeHead(404).end();
@@ -1006,6 +1022,14 @@ export function crearServidor(
           informe: unidad
             ? informeConEstado("ok", "0.000000", "1.000000")
             : informeConEstado("fuera_de_tolerancia", "-1.000000", "0.000000"),
+        };
+      }
+      if (nombreFixture === "resumen" && esEdificioConfirmado(id)) {
+        // La migración `confirmada` cuenta el paso 7 como hecho (`resumen_edificio`, lectura.py).
+        mutado = {
+          ...mutado,
+          estado_migracion: "confirmada",
+          pasos: { ...mutado.pasos, saldos_previos: "hecho" },
         };
       }
       respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));

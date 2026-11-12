@@ -9,5 +9,8 @@ export function textoEstadoDeMigracion(valor: string): string {
   if (valor === "sin_saldos_previos") {
     return "Confirmado: arranca sin saldos previos";
   }
+  if (valor === "confirmada") {
+    return "Saldos iniciales confirmados";
+  }
   return "Estado de migración desconocido";
 }

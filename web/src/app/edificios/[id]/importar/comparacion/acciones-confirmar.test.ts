@@ -60,9 +60,14 @@ describe("confirmarSaldosAction", () => {
     ],
     [{ estado: "no_existe" }, "Este edificio ya no existe o no tenés acceso."],
     [
-      { estado: "invalido", errores: [] },
+      { estado: "invalido", errores: [{ campo: "fecha_de_migracion", motivo: "value_error" }] },
       "La fecha de migración no es válida. Subí el archivo de nuevo con otra fecha.",
     ],
+    [
+      { estado: "invalido", errores: [{ campo: "vencimiento", motivo: "value_error" }] },
+      "El libro no acepta algún dato del archivo. Subí el archivo de nuevo.",
+    ],
+    [{ estado: "sin_sesion" }, "Tu sesión expiró. Iniciá sesión de nuevo."],
     [{ estado: "fallo" }, "No pudimos confirmar los saldos. Probá de nuevo."],
   ])(
     "%j se explica en castellano simple y no devuelve una confirmación",

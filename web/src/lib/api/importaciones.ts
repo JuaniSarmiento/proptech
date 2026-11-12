@@ -144,10 +144,29 @@ export type ConfirmacionDeSaldos = {
   confirmada_en: string;
 };
 
-/** PROVISORIO (RED de la tarea 3.3). */
+/** Sólo `importacion_id` viaja a la API. Los totales son texto con dos decimales: si alguno no lo
+ * es, el resultado es `fallo` en vez de un `ok` que la pantalla no sabría mostrar. Un id que no es
+ * UUID es "no existe", sin pedido. */
 export async function confirmarSaldos(
-  _id: string,
-  _importacionId: string,
+  id: string,
+  importacionId: string,
 ): Promise<ResultadoApi<ConfirmacionDeSaldos>> {
-  return { estado: "fallo" };
+  if (!esIdValido(id) || !esIdValido(importacionId)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<ConfirmacionDeSaldos>(
+    `/api/complejos/${encodeURIComponent(id)}/importaciones/confirmacion`,
+    { metodo: "POST", cuerpo: { importacion_id: importacionId } },
+  );
+  if (resultado.estado !== "ok") {
+    return resultado;
+  }
+  const { totales } = resultado.datos;
+  const bien =
+    typeof totales === "object" &&
+    totales !== null &&
+    esMonto(totales.capital) &&
+    esMonto(totales.interes_importado) &&
+    esMonto(totales.credito);
+  return bien ? resultado : { estado: "fallo" };
 }

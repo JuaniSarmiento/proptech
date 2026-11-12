@@ -1,7 +1,7 @@
 /**
  * Comparación de saldos del borrador (change 5, H-008, D11): lee el edificio (para el nombre del
- * menú) y la comparación del borrador vigente en paralelo; la acción de aceptar se liga al
- * `complejoId` acá. Sin borrador vigente (404 de la comparación con el edificio visible) se dice y
+ * menú) y la comparación del borrador vigente en paralelo; las acciones de aceptar y de confirmar se
+ * ligan al `complejoId` acá. Sin borrador vigente (404 de la comparación con el edificio visible) se dice y
  * se manda a importar.
  */
 
@@ -9,8 +9,9 @@ import { ErrorDePantalla } from "../../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../../componentes/Estados";
 import { edificioPorId } from "../../../../../lib/api/edificios";
 import { comparacionDelBorrador } from "../../../../../lib/api/importaciones";
+import { resumenDelEdificio } from "../../../../../lib/api/resumen";
 import { aceptarDiferenciasAction, confirmarSaldosAction } from "./acciones";
-import { PantallaComparacion, PantallaSinBorrador } from "./Pantalla";
+import { PantallaComparacion, PantallaConfirmada, PantallaSinBorrador } from "./Pantalla";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -51,6 +52,11 @@ export default async function PaginaComparacion({ params }: Props) {
   const nombreEdificio = edificio.estado === "ok" ? edificio.datos.nombre : "Edificio";
 
   if (comparacion.estado === "no_existe") {
+    // Confirmado el borrador deja de ser vigente: sin él, el edificio dice si ya está confirmado.
+    const resumen = await resumenDelEdificio(id);
+    if (resumen.estado === "ok" && resumen.datos.estado_migracion === "confirmada") {
+      return <PantallaConfirmada id={id} nombreEdificio={nombreEdificio} />;
+    }
     return <PantallaSinBorrador id={id} nombreEdificio={nombreEdificio} />;
   }
   if (comparacion.estado !== "ok") {
