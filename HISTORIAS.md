@@ -18,7 +18,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
-| H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Pendiente |
+| H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Lista |
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Pendiente |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Pendiente |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Pendiente |
@@ -610,6 +610,18 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 - Demo: subir `padron-torre-ficticia.xlsx` en el navegador, ver el resumen; subir una copia con tres
   errores y ver la tabla; subir el mismo archivo otra vez y ver el rechazo.
 - Aceptación: **congelada en `d183ff611d87b69f061f8a0947ffd52ea92973d1`** (firma por adelantado de Juani, revisión técnica del orquestador): 87 tests de backend y 4 en navegador (Playwright), 91 rojos por aserción sobre `15f30bd`, 0 errores; cierre, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-007/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
+- Construcción (Sonnet, tres tandas verificadas): t1 módulo `importacion`, lector de la plantilla (nunca
+  `float`, coma decimal, fórmulas por su valor en caché, D1 y D2 del 6 cerrados) y validación del padrón
+  (252 tests, 20 mutantes); t2 `0036_importacion` y el caso de uso `importar` (36 tests de integración, 9
+  mutantes, barrido de migraciones 1.330 en verde); t3 la ruta, la plantilla descargable y la pantalla
+  "Importar desde Excel". Decisiones del constructor aceptadas: el mismo email con otro nombre en el
+  archivo es la misma persona, con advertencia; la ruta de la plantilla exige el permiso de importar.
+  Desvío declarado: los tests de la web se escribieron junto al código (los cubren los mutantes y el rojo
+  de los e2e). **La skill impeccable no está instalada**: la pantalla siguió los patrones del 3b y el 3c.
+- Evidencia (11/11/2026): `python3 aceptacion/H-007/aceptar.py --codigo 12add68 --sin-regresion` desde
+  `4c3525e`: **87/87 de backend y 4/4 en navegador**, C01 a C17 y C20 PASA; C18 (regresión H-004 a
+  H-006 y barrido, 1.352) PASA en la corrida completa del constructor sobre `1258ca3`; C19 PASA sobre
+  `eb2db50`.
 
 ### H-008 · Borrador de saldos y comparación
 
