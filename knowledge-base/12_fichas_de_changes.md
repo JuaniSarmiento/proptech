@@ -929,6 +929,9 @@ D-153).
   desde Excel". Deuda: la pantalla no pasó por la skill impeccable (no está instalada en el entorno);
   `crear_unidad` carga el complejo una vez por fila; Starlette guarda el cuerpo multipart en disco antes
   del tope de 2 MiB.
+- **H-008** (aceptación `4c3525e`): validación de `Saldos` y `Control`, `0037_borrador_de_saldos`, el
+  borrador, la comparación con el aviso de E13 y aceptar diferencias con candado. Leer la comparación
+  exige el permiso de importar; una importación inexistente o de otro edificio da 409 `importacion_id`.
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 

@@ -15,6 +15,10 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
+- **Borrador de saldos**: los saldos de la hoja `Saldos` guardados aparte del libro hasta que se
+  confirman; se comparan unidad por unidad con el control (R09, H-008).
+- **Control**: la hoja de la plantilla con el saldo de cada unidad según el listado del administrador;
+  contra ella se calcula la diferencia de cada unidad (D-068).
 - **Plantilla**: el Excel del importador (5) con las hojas `Unidades`, `Saldos` y `Control`; se
   descarga desde la pantalla "Importar desde Excel".
 

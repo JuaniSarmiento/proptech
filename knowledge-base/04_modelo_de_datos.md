@@ -122,7 +122,11 @@ interés importado que formó, siempre de la misma cuenta por FK compuesta, con 
 referencia). Las dos son de sólo agregar, con RLS forzada. Desde H-007 (5, migración `0036_importacion`)
 existe `importacion`: cada archivo subido a un edificio, con su huella SHA-256, nombre, fecha de
 migración, estado (`borrador`, `descartada` y los del cierre), quién y cuándo; mutable por la app con RLS
-forzada, y un único de huella por edificio que excluye las descartadas.
+forzada, y un único de huella por edificio que excluye las descartadas. Desde H-008 (`0037_borrador_de_saldos`)
+la importación tiene su borrador: `fila_de_saldo_importada` (cada fila de `Saldos`: detalle, total o
+crédito) y `control_de_saldo` (el saldo de cada unidad según la hoja `Control`), mutables con RLS
+forzada, y `aceptacion_de_diferencias` (una por importación, con las diferencias aceptadas en JSONB,
+quién y cuándo), de sólo agregar.
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 

@@ -384,6 +384,13 @@ del 3c, D-128)
   borrador). Todo o nada, con un error por hoja, fila y columna; números desde texto con coma decimal,
   nunca redondeados; 2 MiB y 2.000 filas por hoja; el mismo archivo dos veces se rechaza por su huella;
   la fecha de migración se elige al subir. Los propietarios se cargan sin invitarlos (E3).
+- **Borrador y comparación en el importador** (5, H-008, E7, E8, E13): las hojas `Saldos` y `Control`
+  quedan en un borrador que no toca el libro; la comparación muestra, unidad por unidad, el saldo del
+  borrador, el del control y la diferencia (borrador − control), aunque el total coincida. Con
+  diferencias, el super admin o el administrador principal las acepta una sola vez por importación y la
+  aceptación queda registrada (quién, cuándo, cuáles); otro archivo descarta el borrador anterior. Si
+  rige "mes entero", la comparación avisa que el primer interés del sistema cubre el mes de la migración
+  (E18 del 4c).
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
   cuenta corriente. El sistema lo compara **unidad por unidad** contra el saldo de cada unidad según
   el administrador, y muestra cada diferencia con su unidad. El total se compara también, como
