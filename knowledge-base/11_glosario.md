@@ -15,6 +15,9 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
+- **Plantilla**: el Excel del importador (5) con las hojas `Unidades`, `Saldos` y `Control`; se
+  descarga desde la pantalla "Importar desde Excel".
+
 - **Administración**: el cliente que paga PropTech: una empresa o persona que administra uno o varios complejos. Es el **tenant**: todo dato pertenece a una administración y ninguna ve los datos de otra (R10, D-076).
 - **Complejo**: la comunidad que se administra, siempre dentro de una administración. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). Es un **alcance**: cada persona ve los complejos que le permite su perfil (D-076, D-106). Un barrio con torres o sectores es un solo consorcio; sus sectores son grupos de reparto (D-106). En el modelo de datos de la especificación se llamaba `consorcios`.
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.

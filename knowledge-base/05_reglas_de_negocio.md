@@ -54,7 +54,9 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Validación** (D-082, a validar con un administrador): los coeficientes de "Generales" y los de
   cada grupo con coeficientes propios suman 1 con una tolerancia de ±0,0001, con el borde incluido
   (0,9999 y 1,0001 están dentro). **La carga no se rechaza** (E5 del 3a): cargar el padrón de a una
-  unidad pasa necesariamente por sumas parciales que no dan 1. **Se informa siempre la suma, la
+  unidad pasa necesariamente por sumas parciales que no dan 1. **La importación desde Excel sí rechaza**
+  (5, E4): un archivo cuya suma de coeficientes queda fuera de la tolerancia no carga nada; dentro de la
+  tolerancia pero distinta de 1 carga con una advertencia. **Se informa siempre la suma, la
   diferencia y su estado**: "ok" si es exactamente 1, "advertencia" dentro de la tolerancia y "fuera de
   tolerancia" si se aparta más. **La emisión se bloquea**: un grupo fuera de tolerancia dispara el
   control duro "Coeficientes fuera de tolerancia" de R34 (cambio 7). Dentro de la tolerancia, el
@@ -376,6 +378,12 @@ del 3c, D-128)
   (pendiente, confirmada o sin saldos previos, D-083).
 - **Crédito a favor**: entra como crédito y se compensa en la primera liquidación.
 - **Trazabilidad**: cada saldo inicial guarda el archivo y la fila de origen.
+- **Plantilla del importador** (5, H-007, E1 a E9, E14, E15): hojas `Unidades` (Unidad, Tipo, Piso,
+  Coeficiente, Superficie m2, Propietario, Email), `Saldos` (el detalle por período o el total) y la
+  hoja `Control` (el saldo de cada unidad según el administrador, contra el que se compara el
+  borrador). Todo o nada, con un error por hoja, fila y columna; números desde texto con coma decimal,
+  nunca redondeados; 2 MiB y 2.000 filas por hoja; el mismo archivo dos veces se rechaza por su huella;
+  la fecha de migración se elige al subir. Los propietarios se cargan sin invitarlos (E3).
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
   cuenta corriente. El sistema lo compara **unidad por unidad** contra el saldo de cada unidad según
   el administrador, y muestra cada diferencia con su unidad. El total se compara también, como

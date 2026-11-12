@@ -922,6 +922,13 @@ D-153).
   muestra aunque el total coincida.
 
 - **Recibe del 6** (D-142): D1 (límite de bytes y filas del Excel, una consulta al padrón por fila), D2 (el comentario falso sobre fórmulas con caché) y D5 (el guardia de F2-1 sólo con dobles), en la ficha 6.
+- **Con Rein (11/11/2026, firma por adelantado de Juani)**: partido en H-007 plantilla y padrón, H-008
+  borrador y comparación, H-009 confirmar y H-010 ajuste de saldo inicial (D-155, E11), sin rompedor
+  (D-152). **H-007** (aceptación `4c3525e`): módulo `importacion`, lector de la plantilla (D1 y D2 del 6
+  cerrados), validación del padrón, `0036_importacion`, caso de uso `importar` y la pantalla "Importar
+  desde Excel". Deuda: la pantalla no pasó por la skill impeccable (no está instalada en el entorno);
+  `crear_unidad` carga el complejo una vez por fila; Starlette guarda el cuerpo multipart en disco antes
+  del tope de 2 MiB.
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 

@@ -164,6 +164,10 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   de arranque; vocabulario cerrado en `accion_de_auditoria` (sumar una acción exige una migración). Ver
   `04_modelo_de_datos.md` para el detalle de columnas. Desde el 4a se auditan también los siete
   cambios del padrón que deciden el reparto, en la misma transacción (D-114.2, D-114.3).
+- **Módulo `importacion`** (5, H-007): lee la plantilla (`adaptadores/excel.py`, `openpyxl`, valores
+  desde texto), valida el padrón en el dominio y orquesta el alta por `complejos.aplicacion` y
+  `acceso.aplicacion` (y, desde H-009, el saldo inicial por `cuenta_corriente.aplicacion`). Su tabla
+  `importacion` es mutable por la app, con RLS forzada.
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, y desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; su bajada de migración
