@@ -300,13 +300,17 @@ def test_el_alcance_gana_al_permiso_y_el_permiso_al_estado(mundo: Mundo, sesion:
 
 
 def test_aceptar_toma_el_candado_del_complejo(mundo: Mundo, sesion: Session) -> None:
+    """`FOR NO KEY UPDATE` no choca con el `KEY SHARE` que toma la clave foránea de la aceptación:
+    sólo el `FOR UPDATE` explícito de aceptar lo frena."""
     importacion = subir(sesion, mundo.super_admin, mundo.torre, con_diferencias()).importacion_id
     sesion.commit()  # la subida ya soltó su propio candado: lo que se mira es el de aceptar
     con_tenant(sesion, mundo.admin)
     _aceptar(sesion, mundo, importacion)
     with mundo.conectar() as otra:
         with pytest.raises(psycopg.errors.LockNotAvailable):
-            otra.execute("SELECT id FROM complejo WHERE id = %s FOR UPDATE NOWAIT", (mundo.torre,))
+            otra.execute(
+                "SELECT id FROM complejo WHERE id = %s FOR NO KEY UPDATE NOWAIT", (mundo.torre,)
+            )
         otra.rollback()
 
 
