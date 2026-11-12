@@ -447,7 +447,7 @@ mutante, en un commit anterior al de producción (L-061). -->
     de la aceptación copiados a `tests/integracion/` por un rato): sin el trigger de TRUNCATE y sin RLS forzada caen en el paso de roles del arranque (`la protección de ajuste_de_saldo_inicial no se pudo
     confirmar`), antes de llegar a los tests; sin el CHECK del motivo -> `test_c13_el_check_frena_un_motivo_invalido` x3 (`DID NOT RAISE CheckViolation`). La FK a la obligación sin la cuenta no es un mutante
     válido: PostgreSQL rechaza la FK sin la unicidad que la respalda.
-- [ ] 4.3 **Ruta y pantalla** (D11) con e2e de Playwright.
+- [x] 4.3 **Ruta y pantalla** (D11) con e2e de Playwright.
   - **Rojo 4.3** (`113d85d` la ruta, `92d581c` la pantalla, 12/11/2026): `test_ajuste_de_saldo_inicial_api.py` (24 casos) contra la app sin la ruta: `24 failed`, todos por aserción
     (`assert 404 == 201/403/409/422`, `{'detail': 'Not Found'} == {'detail': 'no encontrado'}`); la ruta se sumó a `_RUTAS_CUBIERTAS` y a su despachador. Web, contra una `Pantalla.tsx`, una
     `acciones.ts` y un `ajustarSaldoInicial` provisorios que no hacen nada: `32 failed | 74 passed` (`Pantalla.test.tsx` 8, `acciones.test.ts` 20, `importaciones.test.ts` 3, `Pantalla.ajuste.test.tsx` 1;
@@ -457,6 +457,20 @@ mutante, en un commit anterior al de producción (L-061). -->
     C13, C15 y C16 en PASA; **C12** cae en `test_c12_otra_administracion` (`409 == 404`: B ajusta una unidad de A desde su edificio, que todavía está pendiente, y el estado ganaba a la unidad) y **C14**
     en `test_toda_ruta_post_tiene_cuerpo_de_prueba` (la ruta nueva faltaba en `_CUERPOS_DE_PRUEBA` de `test_altas_sin_id_del_cliente.py`: mi barrido local de la ruta sólo había corrido `test_rutas_protegidas.py`).
     Rojo del arreglo: `test_la_unidad_que_no_es_del_edificio_gana_al_estado_de_la_migracion` (2 casos) cae con `se esperaba NoEncontrado, llegó Conflicto('conflicto')`; el orden queda alcance > permiso > unidad (404) > estado (409) > entrada (422).
+  - **Verde 4.3** (`143821e` la ruta, `585e1d9` la pantalla, `ccb356d` el arreglo del orden, 12/11/2026): `POST /api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial` en `proptech_api/importaciones.py`
+    (`CuerpoAjuste` con `extra="forbid"`; `importe` positivo con dos decimales, `componente` `ordinaria|fondo_de_reserva|extraordinaria`, `motivo` de 1 a 500 recortado; 201 también para el replay; los errores de `complejos`,
+    del libro y de `importacion` los traducen los tres manejadores que ya había), y en `ajustar_saldo_inicial` la unidad se chequea (404) antes que el estado (409). Web: `unidades/[unidadId]/ajuste-de-saldo-inicial/`
+    (`page`, `Pantalla`, `acciones`, `validacion`, `ayuda`, `loading`), la columna "Saldo inicial" con el link "Ajustar saldo inicial de {identificador}" en el padrón (migración `confirmada` y permiso
+    `ajustar_saldo_inicial`), `ajustarSaldoInicial` en `lib/api/importaciones.ts`, y la API falsa con los edificios 1001 a 1003. `test_ajuste_de_saldo_inicial_api.py` + `test_ajustar_saldo_inicial.py` + barridos
+    (`test_rutas_protegidas`, `test_altas_sin_id_del_cliente`, fronteras): `818 passed`; web `vitest` de `src/app/edificios/[id]` + `src/lib` + `e2e`: `463 passed` y `118 passed`; `tsc`, ruff y mypy limpios; biome sin
+    hallazgos nuevos (los que quedan son de `sesion.test.ts` y `edificios/page.tsx`, que no toqué).
+  - **Aceptación de H-010 contra `ccb356d`** (`python3 aceptacion/H-010/aceptar.py --codigo HEAD`, aceptación `4c3525e`): tests `56 ejecutados, 56 pasados`, navegador `4 ejecutados, 4 pasados`; C01 a C16 en PASA
+    (C14 con el ensayo de roles, H-004 a H-009 y el barrido de migraciones; C15 con la KB que ya estaba); `rojos (0); que no son por aserción (0)`.
+  - **Mutantes 4.3** (copia previa, uno a la vez, restaurado con `diff` vacío). Ruta: sin `extra="forbid"` -> `test_un_cuerpo_invalido_es_422...[extra-extra]`; sin el chequeo de la unidad antes del estado ->
+    los 2 casos de `test_la_unidad_que_no_es_del_edificio_gana_al_estado...`. **Sobrevivieron** (defensa en profundidad, el libro repite la regla con el mismo `loc`): motivo vacío, importe positivo y concepto libre
+    en el cuerpo de la ruta; el `commit` de la ruta (el caso de uso ya cierra su transacción). Web: operación nueva en cada reintento -> `un reintento con los mismos datos reusa la operación`; importe sin pasar a
+    punto -> 9 rojos de `acciones.test.ts`; sin confirmación -> 4 de `Pantalla.test.tsx`; padrón con la migración pendiente -> 2; padrón sin el permiso -> 1; el 403 como error genérico -> 1; `ok` sin el ajuste -> 1;
+    la lib que manda campos de más -> 1.
 
 ## 5. Cierre
 
