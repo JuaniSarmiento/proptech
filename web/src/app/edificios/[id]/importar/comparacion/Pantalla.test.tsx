@@ -139,6 +139,15 @@ describe("PantallaComparacion", () => {
     expect(filas[2]?.textContent).toContain("-10.000,00");
   });
 
+  it("la tabla se desplaza dentro de una región que el teclado alcanza (a 320 px axe lo exige)", () => {
+    render(pantalla());
+    const region = ahi(
+      screen.queryByRole("region", { name: "Unidades comparadas, con desplazamiento horizontal" }),
+    );
+    expect(region.getAttribute("tabindex")).toBe("0");
+    expect(region.contains(tabla())).toBe(true);
+  });
+
   it("el aviso de mes entero va dentro de la fila de cada unidad que lo tiene, y sólo ahí", () => {
     render(pantalla());
     const filas = within(tabla()).getAllByRole("row").slice(1);

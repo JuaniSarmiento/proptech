@@ -61,7 +61,14 @@ function BotonConfirmar() {
 function TablaDeComparacion({ comparacion }: { comparacion: ComparacionDelBorrador }) {
   const hayAvisos = comparacion.unidades.some((unidad) => unidad.aviso !== null);
   return (
-    <div className="padron-de-unidades__scroll">
+    // A 320 px la tabla se desplaza dentro de su caja; sin ningún control adentro, el teclado no
+    // llegaría a ese desplazamiento (axe: scrollable-region-focusable), así que la caja se enfoca.
+    <section
+      className="padron-de-unidades__scroll"
+      aria-label="Unidades comparadas, con desplazamiento horizontal"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: región con desplazamiento, sin controles.
+      tabIndex={0}
+    >
       <table className="padron-de-unidades padron-de-unidades--envuelto">
         <caption className="sr-only">Comparación por unidad</caption>
         <thead>
@@ -96,7 +103,7 @@ function TablaDeComparacion({ comparacion }: { comparacion: ComparacionDelBorrad
           ))}
         </tbody>
       </table>
-    </div>
+    </section>
   );
 }
 

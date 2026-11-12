@@ -52,11 +52,15 @@ for (const ancho of ANCHOS) {
     await page.keyboard.press("Enter");
     const confirmacion = page.getByRole("dialog", { name: "Aceptar diferencias" });
     await expect(confirmacion).toBeVisible();
-    // El foco entra a la confirmación y `Tab` no se escapa de ella.
+    // El foco entra a la confirmación y `Tab` no se escapa de ella (ni de la ayuda "?", que el
+    // `PanelLateral` incluye a propósito en su alcance de teclado).
     for (let paso = 0; paso < 6; paso += 1) {
       const adentro = await page.evaluate(() => {
         const dialogo = document.querySelector('[role="dialog"]');
-        return Boolean(dialogo?.contains(document.activeElement));
+        const ayuda = document.querySelector(".ayuda");
+        return Boolean(
+          dialogo?.contains(document.activeElement) || ayuda?.contains(document.activeElement),
+        );
       });
       expect(adentro, `el foco salió de la confirmación en el Tab ${paso}`).toBe(true);
       await page.keyboard.press("Tab");
