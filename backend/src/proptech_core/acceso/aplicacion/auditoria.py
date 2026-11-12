@@ -226,6 +226,14 @@ class _DetalleConfirmarSaldos(_DetalleAsignarEdificio):
     carga_id: UUID
 
 
+class _DetalleAjustarSaldoInicial(_DetalleAsignarEdificio):
+    #: El id del ajuste es la `entidad_id` de la fila. Sólo ids y el componente (nunca el importe ni
+    #: el motivo, D9): el motivo y el capital viven en `ajuste_de_saldo_inicial` y la obligación.
+    unidad_id: UUID
+    obligacion_id: UUID
+    componente: Literal["ordinaria", "fondo_de_reserva", "extraordinaria"]
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -248,6 +256,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.IMPORTAR_PADRON_Y_SALDOS: _DetalleImportarPadron,
     Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: _DetalleAceptarDiferencias,
     Accion.CONFIRMAR_SALDOS_INICIALES: _DetalleConfirmarSaldos,
+    Accion.AJUSTAR_SALDO_INICIAL: _DetalleAjustarSaldoInicial,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

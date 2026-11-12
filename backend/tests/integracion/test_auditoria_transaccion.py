@@ -35,6 +35,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
 from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
@@ -49,6 +50,7 @@ from proptech_core.gastos.aplicacion import (
 from proptech_core.gastos.puertos import FilaCargoImportada
 from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel
 from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
+from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.importar import importar
 
@@ -592,9 +594,10 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             request_id=uuid.uuid4(),
         ).aceptacion_id
 
-    def invocar_confirmacion(sesion: Session) -> UUID:
+    def confirmar_un_edificio(sesion: Session) -> tuple[UUID, UUID]:
         """Confirmar necesita un borrador de saldos sin diferencias: se sube el padrón con sus
-        saldos y su control (que coincide) y la misma persona (super admin) lo confirma."""
+        saldos y su control (que coincide) y la misma persona (super admin) lo confirma. Devuelve
+        el edificio y la importación."""
         from ._saldos_importados import archivo
 
         sesion.execute(
@@ -629,14 +632,39 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),
         ).importacion_id
-        return confirmar(
+        confirmar(
             sesion,
             identidad,
             complejo_id=edificio,
             importacion_id=importacion,
             reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
             request_id=uuid.uuid4(),
-        ).importacion_id
+        )
+        return edificio, importacion
+
+    def invocar_confirmacion(sesion: Session) -> UUID:
+        return confirmar_un_edificio(sesion)[1]
+
+    def invocar_ajuste(sesion: Session) -> UUID:
+        """Ajustar necesita la migración confirmada: se confirma el edificio y se ajusta `1A`, que
+        ya tiene cuenta por su saldo inicial."""
+        edificio, _ = confirmar_un_edificio(sesion)
+        unidad = sesion.execute(
+            text("SELECT id FROM unidad WHERE complejo_id = :c AND identificador = '1A'"),
+            {"c": edificio},
+        ).scalar_one()
+        return ajustar_saldo_inicial(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            unidad_id=UUID(str(unidad)),
+            operacion_id=uuid.uuid4(),
+            importe=Dinero("5000.00"),
+            componente="ordinaria",
+            motivo="Faltó la expensa extraordinaria de julio",
+            request_id=uuid.uuid4(),
+            reloj=lambda: datetime(2026, 11, 5, 15, tzinfo=UTC),
+        ).ajuste_id
 
     _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
@@ -662,6 +690,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         Accion.IMPORTAR_PADRON_Y_SALDOS: invocar_importacion,
         Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: invocar_aceptacion,
         Accion.CONFIRMAR_SALDOS_INICIALES: invocar_confirmacion,
+        Accion.AJUSTAR_SALDO_INICIAL: invocar_ajuste,
         Accion.CREAR_EDIFICIO: lambda sesion: escritura.crear_edificio(
             sesion,
             identidad,

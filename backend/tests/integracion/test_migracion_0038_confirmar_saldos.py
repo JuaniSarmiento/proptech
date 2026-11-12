@@ -45,8 +45,9 @@ def test_la_0038_carga_la_accion_en_el_vocabulario(base_del_edificio: BaseDeEdif
 def test_baja_y_sube_dejando_la_0037_intacta(base_del_edificio: BaseDeEdificio) -> None:
     base = base_del_edificio
     assert list(_VERSIONES.glob("0038_*.py")), "falta la migración 0038 (confirmar saldos)"
-    tablas = _tablas(base)
     base.devolver_tablas_protegidas()
+    base.migrar("downgrade", "0038")  # la 0039 baja antes: las tablas se comparan sin la suya
+    tablas = _tablas(base)
     base.migrar("downgrade", "0037")
     assert _version(base) == ("0037",)
     assert _vocabulario(base) == [], "bajar la 0038 no sacó la acción"
@@ -57,3 +58,6 @@ def test_baja_y_sube_dejando_la_0037_intacta(base_del_edificio: BaseDeEdificio) 
     assert _version(base) == ("0038",), "la subida a la 0038 no quedó aplicada"
     assert _vocabulario(base) == [(ACCION,)]
     assert _tablas(base) == tablas
+    base.roles("antes")
+    base.migrar("upgrade", "head")  # de nuevo en la cabeza para el resto del módulo
+    base.roles("despues")

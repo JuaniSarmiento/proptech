@@ -65,6 +65,10 @@ def confirmado(mundo: Mundo, sesion: Session) -> Mundo:
         reloj=RELOJ,
         request_id=uuid4(),
     )
+    # El ajuste es otra transacción (otra petición): el candado por cuenta exige un orden dentro de
+    # una misma transacción, y confirmar ya tomó las cuentas del saldo inicial.
+    sesion.commit()
+    con_tenant(sesion, mundo.admin)
     return mundo
 
 
@@ -428,7 +432,7 @@ def test_sin_el_permiso_es_403(confirmado: Mundo, sesion: Session, quien: str) -
         SinPermiso,
         lambda: _ajustar(sesion, confirmado, quien=getattr(confirmado, quien)),
     )
-    assert ACCION in str(error)
+    assert error.permiso_faltante == ACCION  # type: ignore[attr-defined]
 
 
 def test_el_administrador_de_otro_edificio_no_lo_ve(confirmado: Mundo, sesion: Session) -> None:

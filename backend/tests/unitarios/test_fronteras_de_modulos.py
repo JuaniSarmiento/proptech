@@ -500,6 +500,7 @@ _DUENO_DE_TABLA = {
             "tramo_de_interes",
             "carga_de_saldo_inicial",
             "origen_de_saldo_inicial",
+            "ajuste_de_saldo_inicial",
         ),
         "cuenta_corriente",
     ),
