@@ -110,7 +110,7 @@ mutante, en un commit anterior al de producción (L-061). -->
     con `-x`: `assert ('Unidades', None, 'Coeficiente') == ('Unidades', 9, 'Piso')`).
   - Linters al cierre: `uv run ruff check .` (All checks passed), `uv run ruff format --check .`,
     `uv run mypy` (`Success: no issues found in 411 source files`).
-- [ ] 1.4 **Migración `0036_importacion`.** Tabla `importacion` (D5) con RLS forzada, FK compuestas a
+- [x] 1.4 **Migración `0036_importacion`.** Tabla `importacion` (D5) con RLS forzada, FK compuestas a
   `complejo` y `persona`, único parcial de un `borrador` por edificio, único de huella por edificio; las
   acciones `importar_padron_y_saldos` en `Accion`, en la matriz (E6) y en `accion_de_auditoria`. Tests de
   esquema, de aislamiento y de cabeza (L-082: el test prueba la `0036`, no "la última").
@@ -122,7 +122,7 @@ mutante, en un commit anterior al de producción (L-061). -->
     (vocabulario). Permisos: `test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario` falla por aserción
     (la fila nueva de la tabla a mano no está en `Accion`) y 19 celdas de la matriz fallan con `ValueError:
     'importar_padron_y_saldos' is not a valid Accion` (el miembro que falta es justo lo que se prueba).
-- [ ] 1.5 **Caso de uso `importar` (padrón).** Permiso, tenant, `FOR UPDATE` del complejo, estado
+- [x] 1.5 **Caso de uso `importar` (padrón).** Permiso, tenant, `FOR UPDATE` del complejo, estado
   `pendiente`, validación completa antes de escribir, una sola lectura del padrón, `crear_unidad` por
   fila, grupo general, propietarios sin invitar (E3), padrón existente (E7), misma huella → conflicto,
   auditoría. Integración contra PostgreSQL real. Mutantes: escribir antes de validar todo; invitar al
@@ -142,6 +142,24 @@ mutante, en un commit anterior al de producción (L-061). -->
     y `(2, 0) == (1, 1)` (la carrera: las dos "ganan"), `el padrón se leyó 0 veces`, y los que miran la tabla
     `importacion` (`UndefinedTable` x8: la tabla es lo que falta; el mundo ya se sembró y el caso de uso ya
     corrió, así que no es un error de armado del test).
+  - **Verde 1.4 y 1.5** (`2627ed8`): migración 15/15; `test_importar_padron.py` 36/36; propietarios, permisos y
+    fronteras `1221 passed` (unitarios enfocados); `test_auditoria_transaccion.py` (barrido de casos sensibles con
+    el invocador nuevo), `test_vocabulario_configuracion.py`, `tests/infra/test_ensayo_login.py`,
+    `test_libro_rollback.py` y `test_conmutar_politicas_reales.py` (cabeza `0036`): `28 passed` + `3 passed`.
+    **Barrido local de migraciones** (D-154, L-083; `uv run pytest -q $(rg -l "downgrade|\.migrar\(|alembic.*(up|down)grade|pg_restore" tests/integracion)`):
+    `1330 passed in 575s`. `ruff check`, `ruff format --check` y `mypy` limpios.
+  - **Mutantes 1.5** (sobre `2627ed8`, uno a la vez, restaurado con `git status` limpio; rojo donde se esperaba):
+    (1) sin savepoint y registrando la importación antes de validar → `test_doce_unidades...` `assert (2 - 0) == 1`
+    (la importación se escribió dos veces); (3) sin `FOR UPDATE` → `test_dos_importaciones_simultaneas...` (las dos
+    "ganan"); (4) leer el padrón por fila → `test_el_padron_se_lee_una_sola_vez` (13 lecturas); (5) sin permiso →
+    `DID NOT RAISE SinPermiso`; (6) sin chequeo de huella → `test_el_mismo_archivo_dos_veces...`; (7) no descartar el
+    borrador → `uq_importacion_un_borrador`; (8) sin chequeo de estado → `DID NOT RAISE Conflicto`; (9) `reusadas`
+    cuenta emails repetidos → `assert (9, 1) == (9, 0)`; (10) insertar una invitación por propietario →
+    `AssertionError: importar no invita (E3)`. (Los primeros intentos de 6, 7 y 10 eran mutantes mal armados, error de
+    sintaxis o de columna, y se descartaron: no cuentan.)
+  - **Aceptación de H-007 contra `HEAD`** (`aceptar.py --codigo HEAD --sin-regresion --sin-navegador`): `87 ejecutados,
+    3 pasados, 84 fallas, 0 errores, 0 skips`. Los 84 son `404 Not Found` de la ruta, que es de 1.6; pasan los 3 que no
+    la necesitan (ciclo de la `0036`, RLS forzada, acción y matriz de E6). C19 (KB) queda para el cierre del change.
 - [ ] 1.6 **Ruta y pantalla.** `POST /api/complejos/{id}/importaciones` (multipart: archivo y fecha de
   migración) con 422 `{"detail": [{hoja, fila, columna, motivo}]}`, en `_RUTAS_CUBIERTAS`; descarga de la
   plantilla; pantalla `edificios/[id]/importar` (D11) con sus estados y e2e de Playwright (archivo válido,
