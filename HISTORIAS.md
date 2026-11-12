@@ -18,8 +18,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-004 | C-07c 4c, parte 1 | Al emitir, la deuda vencida genera su interés simple al centavo, con corte y tramos | Alta / CRITICAL | Terminada |
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
-| H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Lista |
-| H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Lista |
+| H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Terminada |
+| H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | En proceso |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Pendiente |
 
@@ -622,6 +622,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   `4c3525e`: **87/87 de backend y 4/4 en navegador**, C01 a C17 y C20 PASA; C18 (regresión H-004 a
   H-006 y barrido, 1.352) PASA en la corrida completa del constructor sobre `1258ca3`; C19 PASA sobre
   `eb2db50`.
+- Demo (12/11/2026, API y PostgreSQL reales, clon en `2c70c4d`): archivo con 3 errores, 422 con hoja, fila, columna y motivo y nada escrito; padrón válido, 12 unidades y 10 propietarios sin invitación; el mismo archivo otra vez, 409 en `archivo`. **Terminada por Juani el 12/11/2026** ("sip").
 
 ### H-008 · Borrador de saldos y comparación
 
@@ -687,6 +688,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 - Evidencia (11/11/2026): `python3 aceptacion/H-008/aceptar.py --codigo 99eb6be` desde `4c3525e`:
   **58/58 de backend y 4/4 en navegador**, C01 a C18 PASA, con la regresión H-004 a H-007, el barrido de
   migraciones y la KB.
+- Demo (12/11/2026, API y PostgreSQL reales, clon en `2c70c4d`): dos diferencias de signo opuesto con totales iguales ($320.000), la comparación las muestra; el contador recibe 403; el administrador principal acepta con su registro y su auditoría; el libro sigue vacío. **Terminada por Juani el 12/11/2026** ("sip").
 
 ### H-009 · Confirmar
 
