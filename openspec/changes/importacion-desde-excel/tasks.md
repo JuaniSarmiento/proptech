@@ -417,10 +417,10 @@ mutante, en un commit anterior al de producción (L-061). -->
 
 ## 4. H-010 · Ajuste de saldo inicial
 
-- [ ] 4.1 **Migración `0039_ajuste_de_saldo_inicial`.** Tabla de sólo agregar (FK compuesta a la
+- [x] 4.1 **Migración `0039_ajuste_de_saldo_inicial`.** Tabla de sólo agregar (FK compuesta a la
   obligación de su misma cuenta, motivo 1 a 500 no en blanco, `operacion_id` único por administración),
   acción `ajustar_saldo_inicial`. Matriz de mutantes de protección, ensayo de roles y barrido local.
-- [ ] 4.2 **Caso de uso `ajustar_saldo_inicial`** (en `importacion.aplicacion` o `cuenta_corriente.
+- [x] 4.2 **Caso de uso `ajustar_saldo_inicial`** (en `importacion.aplicacion` o `cuenta_corriente.
   aplicacion`, el que respete las fronteras; la obligación la crea `cuenta_corriente`). Obligación sin
   emisión (E11), cuenta creada si falta, `bloquear_cuentas`, `imputar_pendientes`, registro y auditoría,
   replay por `operacion_id`. Interés desde el día siguiente contra la emisión real. Mutantes: vencimiento
@@ -429,6 +429,24 @@ mutante, en un commit anterior al de producción (L-061). -->
     no escribe ni valida nada: `38 failed, 4 passed` (los 4 son controles: los dos roles que pueden ajustar, el motivo de 500 y la acción de un super admin). Todos caen por aserción:
     `DID NOT RAISE` (Conflicto 14, EntradaInvalida 18, NoEncontrado 8, SinPermiso 6, AssertionError 2), `la 0039 no creó ajuste_de_saldo_inicial`, `falta la tabla ... (0039)`,
     la obligación nueva que no aparece, el vencimiento y el crédito que no se imputa.
+  - **Verde 4.1 y 4.2** (`1eca595`, 12/11/2026): migración `0039` (tabla de sólo agregar con CHECK de motivo 1 a 500 no en blanco, único `(administracion_id, operacion_id)`, FK compuesta a la obligación de su
+    misma cuenta, FK a complejo y persona, tres triggers, RLS forzada, bajada que se niega con filas; sin `ALTER` sobre tablas protegidas), `Accion.AJUSTAR_SALDO_INICIAL` (super admin y administrador principal),
+    detalle de auditoría `{complejo_id, unidad_id, obligacion_id, componente}` (sin importe ni motivo), `cuenta_corriente.aplicacion.ajustes.registrar_ajuste_de_saldo_inicial` (la obligación sin emisión, la
+    cuenta si falta, `bloquear_cuentas`, `imputar_pendientes`, el replay antes de escribir y de nuevo con la cuenta bloqueada) e `importacion.aplicacion.ajuste.ajustar_saldo_inicial` (404 > 403 > 409
+    `estado_migracion` > 422 > escritura; audita una vez, el replay no). `ajuste_de_saldo_inicial` es del libro en `_DUENO_DE_TABLA`. Tabla en `TABLAS_DE_SOLO_AGREGAR`, en `ensayo-roles.sh` y en los helpers de
+    devolución de los tests (L-083). Tests viejos tocados (ningún id cambió): `test_auditoria_transaccion` (invocador), `test_libro_rollback` (cabeza y lista), `test_conmutar_politicas_reales` (cabeza),
+    `test_migracion_0038_confirmar_saldos` (compara las tablas sin la de la `0039` y vuelve a la cabeza), vocabulario, matriz de permisos, catálogo de RLS y fronteras. `test_ajustar_saldo_inicial.py` +
+    `test_migracion_0039_...`: `42 passed`; barrido local de migraciones + ensayo de login: `1406 passed` (10 min); con fronteras, vocabulario, catálogo, permisos y auditoría: `1534 passed`; ruff y format limpios,
+    mypy limpio salvo 3 errores que ya estaban en `test_importaciones_comparacion_api.py` (no tocado).
+  - **Aceptación de H-010 contra `1eca595`** (`aceptar.py --codigo HEAD --sin-regresion --sin-navegador`, aceptación `4c3525e`): `56 ejecutados, 19 pasados, 37 fallas, 0 errores`; sin la ruta (4.3) pasan C02, C03,
+    C04, C05, C06 y C13; C01, C07 a C12 caen en `llegó 404: {"detail":"Not Found"}` (la ruta no existe) y C08 es de navegador; C14 y C15 quedan fuera de este corte (regresión no corrida; KB del orquestador);
+    `rojos (37); que no son por aserción (0)`.
+  - **Mutantes 4.2** (copia previa, uno a la vez, restaurado con `diff` vacío; `test_ajustar_saldo_inicial.py`): vencimiento retroactivo (la fecha de migración) -> 4 rojos
+    (`test_el_vencimiento_es_el_dia_del_ajuste_nunca_la_migracion`, `..._sin_emision`, replay); sin normalizar el motivo -> 6; migración pendiente permitida -> 3 (`test_solo_con_la_migracion_confirmada`);
+    sin auditar -> 2; el replay audita de nuevo -> 1; sin imputar el crédito -> 1; replay sin comparar los datos -> 4; importe siempre en ordinaria -> 2. **Mutantes 4.1** (migración mutada, con los tests de C13
+    de la aceptación copiados a `tests/integracion/` por un rato): sin el trigger de TRUNCATE y sin RLS forzada caen en el paso de roles del arranque (`la protección de ajuste_de_saldo_inicial no se pudo
+    confirmar`), antes de llegar a los tests; sin el CHECK del motivo -> `test_c13_el_check_frena_un_motivo_invalido` x3 (`DID NOT RAISE CheckViolation`). La FK a la obligación sin la cuenta no es un mutante
+    válido: PostgreSQL rechaza la FK sin la unicidad que la respalda.
 - [ ] 4.3 **Ruta y pantalla** (D11) con e2e de Playwright.
 
 ## 5. Cierre
