@@ -369,7 +369,8 @@ def test_solo_con_la_migracion_confirmada(confirmado: Mundo, sesion: Session, es
 
 
 def test_un_edificio_pendiente_sin_carga(mundo: Mundo, sesion: Session) -> None:
-    """La torre sembrada sin importar nada (pendiente, sin carga): no hay nada que ajustar."""
+    """La torre con el padrón importado y sin confirmar (pendiente, sin carga): nada que ajustar."""
+    subir(sesion, mundo.super_admin, mundo.torre, archivo())  # el padrón sí está; la carga no
     error = _rechaza(
         sesion,
         ConflictoDeEdificio,
@@ -377,7 +378,7 @@ def test_un_edificio_pendiente_sin_carga(mundo: Mundo, sesion: Session) -> None:
             sesion,
             mundo.principal,
             complejo_id=mundo.torre,
-            unidad_id=uuid4(),
+            unidad_id=unidad_de_la_torre(sesion, mundo, "1A"),
             operacion_id=uuid4(),
             importe=Dinero("1.00"),
             componente="ordinaria",

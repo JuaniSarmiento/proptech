@@ -1,10 +1,10 @@
 """Ajuste de saldo inicial (design D8, E6, E11; D-155): corregir, ya confirmada la migración, un
 saldo cargado de menos con una obligación nueva y su motivo.
 
-Orden de chequeo (D7 del 2a): alcance (404) -> permiso (403) -> estado de la migración (409,
-`estado_migracion`) -> la entrada (422) y el replay por `operacion_id` (en el libro, que escribe
-la obligación). Se audita una vez, con ids y sin montos ni motivo; un replay no vuelve a auditar.
-No commitea: lo hace el llamador.
+Orden de chequeo (D7 del 2a): alcance (404) -> permiso (403) -> la unidad es de este edificio (404)
+-> estado de la migración (409, `estado_migracion`) -> la entrada (422) y el replay por
+`operacion_id` (en el libro, que escribe la obligación). Se audita una vez, con ids y sin montos ni
+motivo; un replay no vuelve a auditar. No commitea: lo hace el llamador.
 """
 
 from __future__ import annotations
@@ -20,10 +20,12 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.complejos.aplicacion.errores import Conflicto, transaccion
+from proptech_core.complejos.aplicacion.lectura import cargar_unidad
 from proptech_core.cuenta_corriente.aplicacion.ajustes import (
     AjusteRegistrado,
     registrar_ajuste_de_saldo_inicial,
 )
+from proptech_core.cuenta_corriente.aplicacion.errores import NoEncontrado
 from proptech_core.importacion.aplicacion.edificio import edificio_autorizado
 
 __all__ = ["AjusteRegistrado", "ajustar_saldo_inicial"]
@@ -45,6 +47,9 @@ def ajustar_saldo_inicial(
 ) -> AjusteRegistrado:
     with transaccion(sesion, {}):
         edificio = edificio_autorizado(sesion, identidad, complejo_id, Accion.AJUSTAR_SALDO_INICIAL)
+        unidad = cargar_unidad(sesion, unidad_id)
+        if unidad is None or unidad.complejo_id != complejo_id:
+            raise NoEncontrado  # inexistente, de otro edificio o de otra administración (RLS)
         if edificio.estado_migracion != "confirmada":
             raise Conflicto("estado_migracion")
         ajuste = registrar_ajuste_de_saldo_inicial(
