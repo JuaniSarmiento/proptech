@@ -170,3 +170,34 @@ export async function confirmarSaldos(
     esMonto(totales.credito);
   return bien ? resultado : { estado: "fallo" };
 }
+
+export type AjusteDeSaldoInicial = {
+  ajuste_id: string;
+  operacion_id: string;
+  obligacion_id: string;
+  cuenta_id: string;
+  unidad_id: string;
+  importe: string;
+  componente: string;
+  periodo: string;
+  vencimiento: string;
+  motivo: string;
+  registrado_por: string;
+  registrado_en: string;
+};
+
+export type PedidoDeAjuste = {
+  operacion_id: string;
+  importe: string;
+  componente: string;
+  motivo: string;
+};
+
+/** Provisorio del rojo de la tarea 4.3. */
+export async function ajustarSaldoInicial(
+  _id: string,
+  _unidadId: string,
+  _pedido: PedidoDeAjuste,
+): Promise<ResultadoApi<AjusteDeSaldoInicial>> {
+  return { estado: "fallo" };
+}

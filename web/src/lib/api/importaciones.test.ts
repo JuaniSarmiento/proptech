@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   aceptarDiferencias,
+  ajustarSaldoInicial,
   comparacionDelBorrador,
   confirmarSaldos,
   importarPadron,
@@ -342,5 +343,82 @@ describe("confirmarSaldos", () => {
     expect(await confirmarSaldos("1", IMPORTACION)).toEqual({ estado: "no_existe" });
     expect(await confirmarSaldos(EDIFICIO, "../otra")).toEqual({ estado: "no_existe" });
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+});
+
+describe("ajustarSaldoInicial (H-010)", () => {
+  const UNIDAD = "22222222-2222-2222-2222-222222222222";
+  const PEDIDO = {
+    operacion_id: "33333333-3333-3333-3333-333333333333",
+    importe: "5000.00",
+    componente: "ordinaria",
+    motivo: "Faltó la expensa extraordinaria de julio",
+  };
+  const AJUSTE = {
+    ajuste_id: "a",
+    operacion_id: PEDIDO.operacion_id,
+    obligacion_id: "o",
+    cuenta_id: "c",
+    unidad_id: UNIDAD,
+    importe: "5000.00",
+    componente: "ordinaria",
+    periodo: "2026-10-01",
+    vencimiento: "2026-11-12",
+    motivo: PEDIDO.motivo,
+    registrado_por: "p",
+    registrado_en: "2026-11-12T15:00:00+00:00",
+  };
+
+  beforeEach(() => {
+    process.env.PROPTECH_URL_API_INTERNA = "http://api-interna:8000";
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.PROPTECH_URL_API_INTERNA;
+  });
+
+  it("manda un POST JSON a la ruta de la unidad con sólo los cuatro campos del pedido", async () => {
+    const fetchFalso = mockFetch({ status: 201, cuerpo: AJUSTE });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await ajustarSaldoInicial(EDIFICIO, UNIDAD, PEDIDO);
+    const [url, opciones] = fetchFalso.mock.calls[0] ?? [];
+    expect(url).toBe(
+      `http://api-interna:8000/api/complejos/${EDIFICIO}/unidades/${UNIDAD}/ajustes-de-saldo-inicial`,
+    );
+    expect(opciones?.method).toBe("POST");
+    expect(JSON.parse(String(opciones?.body))).toEqual(PEDIDO);
+    expect(resultado).toEqual({ estado: "ok", datos: AJUSTE });
+  });
+
+  it("un importe que no es plata con dos decimales no es un ok", async () => {
+    vi.stubGlobal("fetch", mockFetch({ status: 201, cuerpo: { ...AJUSTE, importe: "5000" } }));
+    expect(await ajustarSaldoInicial(EDIFICIO, UNIDAD, PEDIDO)).toEqual({ estado: "fallo" });
+  });
+
+  it("un id que no es UUID es no_existe y no hace ningún pedido", async () => {
+    const fetchFalso = mockFetch({ status: 201, cuerpo: AJUSTE });
+    vi.stubGlobal("fetch", fetchFalso);
+    expect(await ajustarSaldoInicial("no", UNIDAD, PEDIDO)).toEqual({ estado: "no_existe" });
+    expect(await ajustarSaldoInicial(EDIFICIO, "no", PEDIDO)).toEqual({ estado: "no_existe" });
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  it("el 422 llega con el campo, el 409 con su campo y el 403 con el permiso", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 422, cuerpo: { detail: [{ type: "x", loc: ["body", "importe"] }] } }),
+    );
+    expect(await ajustarSaldoInicial(EDIFICIO, UNIDAD, PEDIDO)).toMatchObject({
+      estado: "invalido",
+      errores: [{ campo: "importe" }],
+    });
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 409, cuerpo: { detail: "conflicto", campo: "operacion_id" } }),
+    );
+    expect(await ajustarSaldoInicial(EDIFICIO, UNIDAD, PEDIDO)).toEqual({
+      estado: "conflicto",
+      campo: "operacion_id",
+    });
   });
 });
