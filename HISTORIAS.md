@@ -19,7 +19,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-005 | C-07c 4c, parte 2 | Un edificio carga una sola vez la deuda que trae y genera interés desde la migración | Alta / CRITICAL | Terminada |
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
 | H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Lista |
-| H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Pendiente |
+| H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Lista |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Pendiente |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Pendiente |
 
@@ -676,6 +676,17 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C18** cada escenario de la spec `borrador-de-saldos` tiene su test en verde.
 - Demo: subir saldos con una diferencia de signo opuesto, ver la comparación y aceptar.
 - Aceptación: **congelada en `f214893eb656d466043716aff3a085d9e0a482ec`** (firma por adelantado de Juani, revisión técnica del orquestador): 58 tests de backend y 4 en navegador, 62 rojos por aserción sobre `ca57c88`, 0 errores; regresión H-004 a H-007, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-008/CONTRATO.md`. Decisión del orquestador: aceptar dos veces da 409 `aceptacion`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
+- Construcción (Sonnet, dos tandas verificadas): t1 validación de `Saldos` y `Control`,
+  `0037_borrador_de_saldos`, borrador, comparación y aceptar diferencias con candado (más de 40
+  mutantes, barrido 2.843 en verde); t2 rutas y pantalla de comparación, más el mutante "el borrador
+  escribe en el libro" (rojo por aserción en sus tres formas) y un test de totales distintos. Arregló un
+  test de aislamiento que H-007 había dejado rojo (la ruta multipart). Suposiciones del constructor
+  aceptadas por el orquestador: leer la comparación exige el permiso de importar; una importación
+  inexistente da 409; el administrador por edificio ve la comparación pero no acepta. La pantalla no pasó
+  por impeccable (no instalada).
+- Evidencia (11/11/2026): `python3 aceptacion/H-008/aceptar.py --codigo 99eb6be` desde `4c3525e`:
+  **58/58 de backend y 4/4 en navegador**, C01 a C18 PASA, con la regresión H-004 a H-007, el barrido de
+  migraciones y la KB.
 
 ### H-009 · Confirmar
 
