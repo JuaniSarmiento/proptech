@@ -14,6 +14,7 @@ from proptech_api import (
     cuenta_corriente,
     gastos,
     georef,
+    importaciones,
     invitaciones,
     personal,
     salud,
@@ -43,6 +44,9 @@ from proptech_core.complejos.aplicacion.errores import Conflicto, EntradaInvalid
 from proptech_core.cuenta_corriente.aplicacion import errores as errores_del_libro
 from proptech_core.gastos.adaptadores.excel import PlanillaInvalida
 from proptech_core.gastos.aplicacion import errores as errores_de_gastos
+from proptech_core.importacion.aplicacion.errores import ArchivoYaImportado, SinPermiso
+from proptech_core.importacion.dominio.padron import PadronInvalido
+from proptech_core.importacion.dominio.plantilla import ArchivoInvalido
 
 _logger = logging.getLogger("proptech_api.app")
 
@@ -169,6 +173,7 @@ def crear_app() -> FastAPI:
     app.include_router(invitaciones.router_de_token)
     app.include_router(personal.router)
     app.include_router(gastos.router)
+    app.include_router(importaciones.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
@@ -190,4 +195,6 @@ def crear_app() -> FastAPI:
     ):
         app.add_exception_handler(tipo_de_gastos, gastos.manejar_error_de_gastos)
     app.add_exception_handler(PlanillaInvalida, gastos.manejar_error_de_gastos)
+    for tipo_de_importacion in (SinPermiso, ArchivoYaImportado, ArchivoInvalido, PadronInvalido):
+        app.add_exception_handler(tipo_de_importacion, importaciones.manejar_error_de_importacion)
     return app

@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
+import { esEdificioDeImportacion, responderImportacion } from "./escenarios-importacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -56,6 +57,7 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "confirmar_sin_saldos_previos",
     "configurar_padron",
     "ver_configuracion_del_edificio",
+    "importar_padron_y_saldos",
   ],
   por_edificio: {},
 };
@@ -951,6 +953,17 @@ export function crearServidor(
           return false;
       }
     };
+
+    // change 5 (H-007): los tres edificios del contrato contestan la subida y la plantilla.
+    if (
+      (resto === "importaciones" || resto === "importaciones/plantilla") &&
+      esEdificioDeImportacion(id)
+    ) {
+      responderImportacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
 
     const nombreFixture = _RUTAS[resto];
     if (!nombreFixture) {

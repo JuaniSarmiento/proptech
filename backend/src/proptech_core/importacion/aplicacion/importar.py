@@ -206,15 +206,17 @@ def importar(
     complejo_id: UUID,
     contenido: bytes,
     nombre_del_archivo: str | None,
-    fecha_de_migracion: date,
+    fecha_de_migracion: date | None,
     lector: LectorDePlantilla,
     reloj: Callable[[], datetime],
     request_id: UUID,
 ) -> ResultadoDeImportacion:
     with transaccion(sesion, {}):
         _edificio_autorizado(sesion, identidad, complejo_id)
-        if fecha_de_migracion > hoy_en_mendoza(reloj):
-            raise EntradaInvalida("fecha_de_migracion", "no puede ser posterior a hoy")
+        # `None`: la ruta no pudo leerla (falta o mal escrita). Se rechaza recién acá para que el
+        # 404 y el 403 (D7) ganen siempre.
+        if fecha_de_migracion is None or fecha_de_migracion > hoy_en_mendoza(reloj):
+            raise EntradaInvalida("fecha_de_migracion", "falta, es inválida o es posterior a hoy")
         # E8: el candado va antes de leer el estado, y el estado se lee ya con él puesto.
         edificio = cargar_complejo(sesion, complejo_id, bloquear=True)
         if edificio is None:

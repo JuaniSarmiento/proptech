@@ -22,7 +22,7 @@ import io
 from decimal import Decimal
 from typing import Any
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from proptech_core.importacion.dominio.plantilla import (
     ENCABEZADOS_POR_HOJA,
@@ -148,3 +148,14 @@ class LectorDePlantillaExcel:
                 if libro is not None:
                     libro.close()
         return PlantillaLeida(hojas=hojas)
+
+
+def plantilla_vacia() -> bytes:
+    """La plantilla descargable: las tres hojas con sus encabezados en la fila 1 y sin datos."""
+    libro = Workbook()
+    libro.remove(libro.active)  # type: ignore[arg-type]
+    for nombre, encabezados in ENCABEZADOS_POR_HOJA.items():
+        libro.create_sheet(nombre).append(list(encabezados))
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
