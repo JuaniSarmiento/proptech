@@ -609,7 +609,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C20** cada escenario de la spec `importacion-de-padron` tiene su test en verde.
 - Demo: subir `padron-torre-ficticia.xlsx` en el navegador, ver el resumen; subir una copia con tres
   errores y ver la tabla; subir el mismo archivo otra vez y ver el rechazo.
-- Aceptación: **congelada en `d183ff611d87b69f061f8a0947ffd52ea92973d1`** (firma por adelantado de Juani, revisión técnica del orquestador): 87 tests de backend y 4 en navegador (Playwright), 91 rojos por aserción sobre `15f30bd`, 0 errores; cierre, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-007/CONTRATO.md`.
+- Aceptación: **congelada en `d183ff611d87b69f061f8a0947ffd52ea92973d1`** (firma por adelantado de Juani, revisión técnica del orquestador): 87 tests de backend y 4 en navegador (Playwright), 91 rojos por aserción sobre `15f30bd`, 0 errores; cierre, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-007/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
 
 ### H-008 · Borrador de saldos y comparación
 
@@ -663,7 +663,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
     saldos, control), ficha 5.
   - **C18** cada escenario de la spec `borrador-de-saldos` tiene su test en verde.
 - Demo: subir saldos con una diferencia de signo opuesto, ver la comparación y aceptar.
-- Aceptación: **congelada en `f214893eb656d466043716aff3a085d9e0a482ec`** (firma por adelantado de Juani, revisión técnica del orquestador): 58 tests de backend y 4 en navegador, 62 rojos por aserción sobre `ca57c88`, 0 errores; regresión H-004 a H-007, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-008/CONTRATO.md`. Decisión del orquestador: aceptar dos veces da 409 `aceptacion`.
+- Aceptación: **congelada en `f214893eb656d466043716aff3a085d9e0a482ec`** (firma por adelantado de Juani, revisión técnica del orquestador): 58 tests de backend y 4 en navegador, 62 rojos por aserción sobre `ca57c88`, 0 errores; regresión H-004 a H-007, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-008/CONTRATO.md`. Decisión del orquestador: aceptar dos veces da 409 `aceptacion`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
 
 ### H-009 · Confirmar
 
@@ -706,7 +706,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C14** KB: R09 (confirmar y cerrar), `03`, `07`, ficha 5, `CHANGES.md` cuando cierre el change.
   - **C15** cada escenario de la spec `confirmacion-de-saldos` tiene su test en verde.
 - Demo: confirmar en el navegador y ver el libro de `1A` y el resumen.
-- Aceptación: **congelada en `4c783e7ba04d394a2ea377dbec3abe36fb027148`** (firma por adelantado de Juani, revisión técnica del orquestador): 32 tests de backend y 5 en navegador, 37 rojos por aserción sobre `8c74866`, 0 errores; regresión H-004 a H-008, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-009/CONTRATO.md`.
+- Aceptación: **congelada en `4c783e7ba04d394a2ea377dbec3abe36fb027148`** (firma por adelantado de Juani, revisión técnica del orquestador): 32 tests de backend y 5 en navegador, 37 rojos por aserción sobre `8c74866`, 0 errores; regresión H-004 a H-008, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-009/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
 
 ### H-010 · Ajuste de saldo inicial
 
@@ -747,7 +747,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
     registra E11 sobre D-155, ficha 5.
   - **C16** cada escenario de la spec `ajuste-de-saldo-inicial` tiene su test en verde.
 - Demo: ajustar `1A` en el navegador y emitir diciembre para ver el interés de $125,00.
-- Aceptación: **congelada en `8c67e94a93acb71eee37353f8e248ac0704d4bf4`** (firma por adelantado de Juani, revisión técnica del orquestador): 56 tests de backend y 4 en navegador, 60 rojos por aserción sobre `a8a40f0`, 0 errores; regresión H-004 a H-009, KB (incluida una D posterior a D-155 que registre E11) y cobertura en `aceptar.py`. Contrato en `aceptacion/H-010/CONTRATO.md`.
+- Aceptación: **congelada en `8c67e94a93acb71eee37353f8e248ac0704d4bf4`** (firma por adelantado de Juani, revisión técnica del orquestador): 56 tests de backend y 4 en navegador, 60 rojos por aserción sobre `a8a40f0`, 0 errores; regresión H-004 a H-009, KB (incluida una D posterior a D-155 que registre E11) y cobertura en `aceptar.py`. Contrato en `aceptacion/H-010/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
 
 ## Plantilla de historia
 
