@@ -368,15 +368,15 @@ mutante, en un commit anterior al de producción (L-061). -->
 
 ## 3. H-009 · Confirmar
 
-- [ ] 3.1 **Migración `0038_confirmar_saldos`.** Acción `confirmar_saldos_iniciales` en `Accion`, matriz
+- [x] 3.1 **Migración `0038_confirmar_saldos`.** Acción `confirmar_saldos_iniciales` en `Accion`, matriz
   y `accion_de_auditoria`.
-- [ ] 3.2 **Caso de uso `confirmar`.** Permiso, `FOR UPDATE` del complejo, estado `pendiente`, borrador
+- [x] 3.2 **Caso de uso `confirmar`.** Permiso, `FOR UPDATE` del complejo, estado `pendiente`, borrador
   vigente, diferencias aceptadas, traducción a los tipos del 4c, `registrar_saldo_inicial` con
   `operacion_id` = importación, estado `confirmada` del edificio (por un caso de uso de
   `complejos.aplicacion`), importación `confirmada`, auditoría, todo en una transacción. Concurrencia
   contra otra confirmación y contra "sin saldos previos" con dos conexiones reales. Mutantes: confirmar
   sin bloquear el complejo; confirmar con diferencias sin aceptar; no pasar el estado a `confirmada`.
-- [ ] 3.3 **Web.** `textoDeEstados.ts` (`confirmada`), el paso 7 del resumen (E12), botón "Confirmar
+- [x] 3.3 **Web.** `textoDeEstados.ts` (`confirmada`), el paso 7 del resumen (E12), botón "Confirmar
   saldos" y su estado; e2e de Playwright.
 
   - **RED 3.1 a 3.3** (12/11/2026, commit `702fa7f`, contra un `confirmar` provisorio que no escribe nada, sin la
@@ -396,6 +396,24 @@ mutante, en un commit anterior al de producción (L-061). -->
     aceptación `4c3525e`): `32 ejecutados, 1 pasados, 31 fallas, 0 errores, 0 skips`; `rojos (31); que no son por aserción (0)`; C01 a C05,
     C07 a C12 caen en `llegó 404: {"detail":"Not Found"}` (la ruta no existe) y C13 en `falta confirmar_saldos_iniciales en
     accion_de_auditoria (0038)`.
+  - **Verde 3.1 a 3.3** (`2492581` backend, `35e5fb6` web): migración `0038` (sólo la acción en `accion_de_auditoria`), `Accion.CONFIRMAR_SALDOS_INICIALES`
+    (super admin y administrador principal), `importacion.aplicacion.confirmar`, `complejos.aplicacion.escritura.confirmar_saldos_iniciales_del_edificio` (pasa a
+    `confirmada`, con su propio `FOR UPDATE` y reverificación), `POST .../importaciones/confirmacion`, `BorradorVigente.archivo`; web: `confirmarSaldos`,
+    `confirmarSaldosAction` (revalida el resumen, no la comparación), "Confirmar saldos" con su confirmación "no se deshace", región "Saldos iniciales confirmados",
+    `PantallaConfirmada` (la comparación deja de existir al confirmar; `page.tsx` consulta el resumen), paso 7 con dos links, `confirmada` en `textoDeEstados`, API falsa
+    901 a 904 y `e2e/confirmar-saldos.spec.ts` (axe y teclado a 320 y 1280 px; **no lo corrí en navegador**, sólo corrió el de la aceptación). Tests viejos tocados (ningún id
+    cambió): `test_auditoria_transaccion` (invocador de la acción nueva), cabezas `0038` en `test_libro_rollback` y `test_conmutar_politicas_reales`, vocabulario, matriz, rutas.
+    Barrido local de migraciones + ensayo de login + fronteras + vocabulario + rutas + auditoría + confirmar + permisos: `2755 passed`. Web: vitest de lo tocado `227 passed`, `tsc`, `biome ci` y ruff/mypy limpios.
+  - **Mutantes 3.2** (copia previa, uno a la vez, restaurado con `diff` vacío; suite de `test_confirmar_saldos.py` + la aceptación copiada): sin chequear diferencias aceptadas -> `test_diferencias_sin_aceptar`,
+    `test_c07_diferencias_sin_aceptar`; sin pasar el edificio a `confirmada` -> `test_confirmar_devuelve_la_carga...`, `test_c01_confirmar_sin_diferencias`; sin cerrar la importación -> las mismas;
+    sin auditar -> `test_confirmar_audita_una_vez...`, `test_c01...`; importación que no es la vigente -> `test_c07_la_importacion_no_es_el_borrador_vigente`; `operacion_id` nuevo ->
+    `test_c01...`; crédito como deuda -> 7 rojos; sin el chequeo de saldos (E10) -> `test_c07_una_importacion_sin_hoja_de_saldos`; origen con otro archivo -> `test_c01`, `test_c04`.
+    **Sin candado del complejo: sobrevivió** (54 passed) mientras quedaran el `FOR UPDATE` de `confirmar_saldos_iniciales_del_edificio` y la FK `KEY SHARE` de `cuenta` (que
+    también esperan a otra transacción con el candado y releen el estado): defensa triple. Se sumaron dos tests de dos conexiones reales (`test_la_segunda_confirmacion_espera_a_la_primera_y_da_conflicto`,
+    `test_confirmar_pierde_contra_un_sin_saldos_previos_que_ya_tenia_el_candado`), y el mutante **sin candado ni relectura del estado** cae en ambos y en `test_c11_dos_confirmaciones_simultaneas`.
+    El C11 por HTTP de la aceptación no alcanzó solo para matar el mutante sin candado.
+  - **Aceptación de H-009 contra `35e5fb6`** (`python3 aceptacion/H-009/aceptar.py --codigo HEAD`, aceptación `4c3525e`): tests `32 ejecutados, 32 pasados`, navegador `5 ejecutados, 5 pasados`; C01 a C13 y C15 en PASA
+    (C13 con H-004 a H-008, el ensayo de roles y el barrido); C14 en FALLA sólo por la KB, que es del orquestador; `rojos (0); que no son por aserción (0)`.
 
 ## 4. H-010 · Ajuste de saldo inicial
 
