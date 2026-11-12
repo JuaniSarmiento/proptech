@@ -1,8 +1,8 @@
 """Importación desde Excel: la tabla `importacion` y el vocabulario de `importar` (design D5, D10).
 
-Una fila por subida aceptada. La app la cambia de estado (`borrador` → `descartada` o `confirmada`):
-no es de sólo agregar y no entra en `TABLAS_DE_SOLO_AGREGAR`. Las tablas del borrador de saldos (H-008)
-cuelgan de la clave `(administracion_id, complejo_id, id)` y van en la `0037`.
+Una fila por subida aceptada. La app la cambia de estado (`borrador` → `descartada` o
+`confirmada`): no es de sólo agregar y no entra en `TABLAS_DE_SOLO_AGREGAR`. Las tablas del
+borrador de saldos (H-008) cuelgan de `(administracion_id, complejo_id, id)` y van en la `0037`.
 
 Revision ID: 0036
 Revises: 0035
