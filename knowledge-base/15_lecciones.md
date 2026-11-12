@@ -1250,3 +1250,16 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   backend/tests/integracion`) y suma la tabla a `infra/ci/ensayo-roles.sh` antes de darse por lista
   (D-154).
 
+
+## L-084 · Una ruta nueva entra en todos los barridos de rutas, y mypy corre entero
+
+- **Origen**: cierre del 5 (`importacion-desde-excel`), 12/11/2026.
+- **Qué pasó**: el CI del PR #21 cayó dos veces con las cuatro historias en verde. Primero, mypy sobre todo
+  el backend: tres ayudas sin tipo de retorno que dejó H-008 y que un constructor posterior vio y anotó
+  como "previas" sin corregir. Después, el barrido de aislamiento (`test_regresiones_de_aislamiento_y_grupos_vacios.py`)
+  recorre `_RUTAS_CUBIERTAS` con un cuerpo por ruta: la ruta nueva de H-010 no tenía el suyo y daba 422 en
+  vez de 404. Ni la aceptación ni los tests de la historia corren esos barridos.
+- **Regla**: una historia que agrega una ruta busca todos los barridos que recorren `_RUTAS_CUBIERTAS`
+  (`rg -l "_RUTAS_CUBIERTAS" backend/tests`) y los corre en local; antes de abrir el PR, el orquestador
+  corre `uv run mypy` y `uv run ruff check` enteros. Un error "previo" se corrige en el mismo change, no
+  se anota.
