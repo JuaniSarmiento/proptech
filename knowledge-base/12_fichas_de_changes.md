@@ -940,6 +940,9 @@ D-153).
   en `importacion` (se devuelve el reloj); el mutante "sin candado del complejo" sobrevive porque hay
   otras dos defensas (el `FOR UPDATE` de `complejos` y la FK de `cuenta`), cubiertas con dos tests de
   dos conexiones; la pantalla no pasó por impeccable.
+- **H-010** (aceptación `4c3525e`): `0039_ajuste_de_saldo_inicial` y el caso de uso
+  `ajustar_saldo_inicial` como obligación nueva (E11, D-156), con la tabla en `cuenta_corriente`; la ruta y
+  la pantalla "Ajustar saldo inicial" desde el padrón. Deuda: la pantalla no pasó por impeccable.
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 

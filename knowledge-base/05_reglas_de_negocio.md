@@ -404,7 +404,13 @@ del 3c, D-128)
   administrador las corrige o las acepta igual, y la aceptación queda registrada (quién, cuándo y qué
   diferencias).
 - **Después de confirmar**: el importador se cierra para ese edificio. Un saldo inicial mal cargado
-  se corrige con un ajuste con motivo (R08), nunca reabriendo la migración.
+  se corrige con un ajuste con motivo (R08), nunca reabriendo la migración. Cargado de menos: un
+  **ajuste de saldo inicial** (5, H-010, E11, D-156), `ajustar_saldo_inicial`, sólo super admin y
+  administrador principal, con la migración confirmada: una obligación nueva sin emisión con el importe
+  en el componente elegido, período en el mes de la migración y vencimiento el día del ajuste (el
+  interés de R03 corre desde el día siguiente, nunca retroactivo), motivo de 1 a 500 caracteres en
+  `ajuste_de_saldo_inicial`, auditoría y replay por `operacion_id`; un crédito a favor se le imputa
+  (R04). Cargado de más: las correcciones del 4b.
 - **Tests mínimos**: el interés acumulado que trae el administrador entra tal cual y no genera
   interés; el interés corre sólo desde la fecha de migración; saldo con detalle genera sus obligaciones; total único genera una sola;
   crédito negativo entra como crédito; la suma importada coincide con el archivo de origen; dos

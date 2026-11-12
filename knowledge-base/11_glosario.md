@@ -15,6 +15,8 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
+- **Ajuste de saldo inicial**: la deuda nueva, con motivo, que corrige un saldo inicial cargado de menos
+  después de confirmar; no edita lo cargado ni reabre la migración (R09, E11, D-156, H-010).
 - **Borrador de saldos**: los saldos de la hoja `Saldos` guardados aparte del libro hasta que se
   confirman; se comparan unidad por unidad con el control (R09, H-008).
 - **Control**: la hoja de la plantilla con el saldo de cada unidad según el listado del administrador;

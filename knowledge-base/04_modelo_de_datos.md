@@ -126,7 +126,9 @@ forzada, y un único de huella por edificio que excluye las descartadas. Desde H
 la importación tiene su borrador: `fila_de_saldo_importada` (cada fila de `Saldos`: detalle, total o
 crédito) y `control_de_saldo` (el saldo de cada unidad según la hoja `Control`), mutables con RLS
 forzada, y `aceptacion_de_diferencias` (una por importación, con las diferencias aceptadas en JSONB,
-quién y cuándo), de sólo agregar.
+quién y cuándo), de sólo agregar. Desde H-010 (`0039_ajuste_de_saldo_inicial`), `ajuste_de_saldo_inicial`
+(del libro: la obligación nueva del ajuste, su motivo, quién, cuándo y su `operacion_id`), de sólo agregar
+con RLS forzada (E11, D-156).
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 

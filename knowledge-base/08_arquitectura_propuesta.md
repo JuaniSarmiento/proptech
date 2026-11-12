@@ -169,7 +169,9 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   `acceso.aplicacion` (y, desde H-009, el saldo inicial por `cuenta_corriente.aplicacion`). Su tabla
   `importacion` es mutable por la app, con RLS forzada; el borrador de H-008 suma `fila_de_saldo_importada`
   y `control_de_saldo` (mutables) y `aceptacion_de_diferencias` (de sólo agregar, en la lista protegida y
-  en el ensayo de roles).
+  en el ensayo de roles). El ajuste de saldo inicial (H-010) vive en `cuenta_corriente` (tabla
+  `ajuste_de_saldo_inicial`, de sólo agregar y protegida), porque su replay cruza `obligacion` y `cuenta`;
+  `importacion` lo invoca por `cuenta_corriente.aplicacion`.
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, y desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; su bajada de migración
