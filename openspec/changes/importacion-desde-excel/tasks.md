@@ -182,7 +182,7 @@ mutante, en un commit anterior al de producción (L-061). -->
 
 ## 2. H-008 · Borrador de saldos y comparación
 
-- [ ] 2.1 **Validación de `Saldos` y `Control` (dominio).** Contrato del saldo inicial (E11 y E16 del 4c),
+- [x] 2.1 **Validación de `Saldos` y `Control` (dominio).** Contrato del saldo inicial (E11 y E16 del 4c),
   números, mezcla de detalle y total, unidad inexistente, vencimientos, crédito. Escenarios de
   borrador-de-saldos. Mutantes: aceptar un vencimiento posterior a la migración; aceptar dos vencimientos
   en un período.
@@ -193,7 +193,22 @@ mutante, en un commit anterior al de producción (L-061). -->
     borrador vacío` x19 (todos los de aceptación). Los 2 verdes (`sin saldos ni Control` y `las hojas de la plantilla
     descargada sin filas`) coinciden con el provisorio, que no devuelve nada: no valen como RED; los cubre el mutante
     "hojas vacías cuentan como borrador".
-- [ ] 2.2 **Migración `0037_borrador_de_saldos`.** `fila_de_saldo_importada`, `control_de_saldo`,
+  - **Verde 2.1** (`dae84b6`): `uv run pytest tests/unitarios/test_importacion_saldos.py -q` -> `71 passed` (el último, la mezcla
+    marcada una sola vez, se sumó después del RED para matar el mutante 12).
+  - **Mutantes 2.1** (copia previa, uno a la vez, restaurado con `diff` vacío; rojo donde se esperaba): (1) vencimiento
+    posterior a la migración aceptado -> `[vencimiento_posterior_a_la_migracion]` (`un archivo con errores no devuelve
+    borrador`); (2) dos vencimientos en un período aceptados -> `test_dos_vencimientos_en_el_mismo_periodo_error_en_la_segunda_fila`;
+    (3) sólo el primer error -> `test_importe_o_control_que_no_entran_en_numeric_14_2` (y `todos_los_errores_juntos`); (4) sin el
+    chequeo de capital 0 -> `test_periodo_con_capital_cero_y_solo_interes`; (5) capital 0 medido por fila y no por período ->
+    `test_periodo_con_capital_cero_se_suma_por_periodo_no_por_fila`; (6) sin el chequeo de mezcla -> `test_unidad_que_mezcla_detalle_y_total`;
+    (7) el crédito cuenta en la mezcla de modos -> `test_el_credito_no_cuenta_en_la_mezcla_de_modos`; (8) hojas vacías devuelven
+    un borrador vacío -> `test_las_hojas_de_la_plantilla_descargada_sin_filas_no_son_un_borrador`; (9) crédito guardado negativo ->
+    `test_un_archivo_valido_devuelve_sus_filas_ya_tipadas` (`el crédito se guarda positivo`); (10) período posterior al mes de la
+    migración aceptado -> `[periodo_posterior_al_mes_de_migracion]`; (11) unidad repetida en `Control` aceptada ->
+    `test_control_con_unidad_repetida_nombra_la_otra_fila`; (12) la mezcla se marca en todas las filas que difieren, no sólo en la
+    primera -> sobrevivió a los 70 tests de la primera tanda; se sumó `test_la_mezcla_se_marca_una_sola_vez_por_unidad` y ahora
+    cae en `assert {('Saldos', 3, 'Período'), ('Saldos', 4, 'Período')} == {('Saldos', 3, 'Período')}`.
+- [x] 2.2 **Migración `0037_borrador_de_saldos`.** `fila_de_saldo_importada`, `control_de_saldo`,
   `aceptacion_de_diferencias` (de sólo agregar, en `TABLAS_DE_SOLO_AGREGAR`) y la acción
   `aceptar_diferencias_de_saldos`. Matriz de mutantes de protección como la `0034`; ensayo de roles y
   barrido local de migraciones (L-083).
@@ -207,7 +222,32 @@ mutante, en un commit anterior al de producción (L-061). -->
     `20 failed, 1136 passed`: `test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario` falla por aserción (la fila nueva
     de la matriz a mano no está en `Accion`) y 19 celdas con `ValueError: 'aceptar_diferencias_de_saldos' is not a valid
     Accion` (el miembro que falta es justo lo que se prueba).
-- [ ] 2.3 **Borrador y comparación (aplicación).** Guardar el borrador en la misma subida, descartar el
+  - **Verde 2.2** (`7725804`; la FK a `complejo` que pide el guardián del catálogo, en el mismo commit): `uv run pytest
+    tests/integracion/test_migracion_0037_borrador_de_saldos.py tests/integracion/test_migracion_0037_baja_y_sube.py
+    tests/integracion/test_catalogo_rls.py tests/unitarios/acceso/test_permisos.py -q` -> todo verde (89 de migración y catálogo, 1.195 de permisos). Tests
+    viejos que fijaban la cabeza o no devolvían la tabla protegida nueva (L-064, L-082, L-083; ningún id cambia de nombre):
+    `test_libro_rollback` (cabeza `0037` y `POSTERIORES_AL_LIBRO`), `test_conmutar_politicas_reales` (la cabeza del `alembic heads`
+    falso), `test_catalogo_rls` (`_SONDA_SIN_FILA`), `test_vocabulario_configuracion` (la 0037 no importa `Accion` y la acción sale del
+    vocabulario al bajar a la `0004`), `test_migracion_0036_importacion` (`devolver_tablas_protegidas()` antes de bajar, porque ahora
+    la `0037` baja primero) y `infra/ci/ensayo-roles.sh` (la tabla en la lista de filas y su `OWNER TO`).
+    **Primer barrido** (`uv run pytest -q $(rg -l "downgrade|\.migrar\(|alembic.*(up|down)grade|pg_restore" tests/integracion)` +
+    ensayo de login, fronteras y vocabulario): `1442 passed, 2 failed` en `test_catalogo_rls` (el guardián pedía la FK compuesta
+    `(administracion_id, complejo_id) -> complejo` en las tres tablas: no la tenían, sólo la de `importacion`); se agregó en la `0037`
+    y el test de FK quedó con `complejo` en su lista.
+  - **Mutantes 2.2** (copia previa, restaurado; rojo donde se esperaba): `control_de_saldo` sin `FORCE ROW LEVEL SECURITY` ->
+    `test_rls_forzada_con_su_politica[control_de_saldo]`; FK de la unidad sin el edificio -> `test_las_claves_foraneas_son_compuestas...`;
+    sin el único de una aceptación por importación -> `test_hay_una_sola_aceptacion_por_importacion`; sin el CHECK de forma ->
+    `[credito_con_periodo]`; sin el CHECK de crédito sin interés -> `[credito_con_interes]`; sin el CHECK de diferencias no vacías ->
+    `[[]]`; sin la acción en el vocabulario -> `test_la_accion_esta_en_el_vocabulario_de_auditoria`; bajada que no mira
+    `fila_de_saldo_importada`, `control_de_saldo` o `aceptacion_de_diferencias` (tres mutantes) -> `test_no_baja_con_filas` (`DID NOT
+    RAISE AssertionError`); `aceptacion_de_diferencias` fuera de `TABLAS_DE_SOLO_AGREGAR` -> `test_permisos_de_la_app` (la app
+    conserva `UPDATE`/`DELETE`); matriz con el administrador por edificio -> `test_matriz_entera_con_cada_celda_distinta_en_el_mensaje`
+    (`aceptar_diferencias_de_saldos/AE: True != False`). **Triggers**: sacar uno de los tres de la aceptación **no cae en
+    `test_trigger_por_fila_...` ni `test_trigger_por_sentencia_sin_filas`** sino antes, en el paso `roles despues`, que sondea por
+    el efecto y lo rechaza (`la protección de aceptacion_de_diferencias no se pudo confirmar: admite TRUNCATE`; con el trigger de fila,
+    tras sacarlo también de la declaración, cae en `test_solo_la_aceptacion_esta_declarada_de_solo_agregar`). Defensa doble: los
+    tests de triggers quedan de segunda línea; no se demostró que caigan solos porque el guardián los tapa.
+- [x] 2.3 **Borrador y comparación (aplicación).** Guardar el borrador en la misma subida, descartar el
   anterior, sin tocar el libro; comparación por unidad con totales, signo opuesto, aviso de mes entero
   (E13). Mutantes: comparar sólo totales; sumar el crédito en vez de restarlo.
   - **RED 2.3 y 2.4** (11/11/2026 22:30, contra `comparar_saldos`, `aviso_de_mes_entero`, `comparar_borrador` y
@@ -232,10 +272,46 @@ mutante, en un commit anterior al de producción (L-061). -->
     `test_sin_version_de_configuracion_no_avisa`, `test_vale_la_version_vigente_a_la_fecha_de_migracion_no_la_de_hoy`,
     `test_los_que_pueden_aceptar[super_admin|principal]` y `test_la_hora_de_la_aceptacion_es_la_del_reloj_con_zona`; los cubren los
     mutantes de la implementación (ver más abajo).
-- [ ] 2.4 **Aceptar diferencias.** Permiso (E6), registro exacto de las diferencias, auditoría, la
+  - **Verde 2.3** (`e02474c`): `uv run pytest tests/unitarios/test_importacion_comparacion.py tests/unitarios/test_importacion_saldos.py
+    tests/unitarios/test_fronteras_de_modulos.py tests/integracion/test_borrador_de_saldos.py tests/integracion/test_comparacion_de_saldos.py
+    tests/integracion/test_aceptar_diferencias.py tests/integracion/test_auditoria_transaccion.py tests/integracion/test_importar_padron.py -q`
+    -> `264 passed`. `importar` (H-007) valida `Unidades`, `Saldos` y `Control` y rechaza todo junto (un `PadronInvalido` con los errores de
+    las tres hojas, en orden de hoja y fila) antes de escribir nada; guarda el borrador con `executemany`; `comparar_borrador` exige el
+    permiso de importar (supuesto, ver relevo).
+  - **Mutantes 2.3** (copia previa, restaurado; con `PYTHONDONTWRITEBYTECODE` y sin `.pyc` del archivo mutado: un par de mutantes del
+    mismo tamaño dejó un `.pyc` viejo y dio una salida repetida, se rehicieron): comparar sólo totales (`unidades_con_diferencia` por
+    totales) -> `test_dos_errores_de_signo_opuesto_coinciden_en_el_total_pero_no_por_unidad`; sumar el crédito en vez de restarlo ->
+    `test_borrador_es_capital_mas_interes_menos_credito`; ignorar el control sin saldo -> `test_una_unidad_con_control_y_sin_saldo_y_al_reves`;
+    no sumar el interés importado -> el mismo; deuda por interés -> `test_con_deuda_es_capital_mayor_que_cero_no_interes_ni_credito`;
+    mes corrido -> `test_el_aviso_nombra_el_mes_de_la_migracion_en_minuscula`; diferencia invertida -> `test_dos_errores_de_signo_opuesto...`;
+    total de control mal sumado -> `test_totales_y_cantidad_de_diferencias`; aviso sin mirar la forma de cálculo -> `test_proporcional_por_dia_no_avisa`;
+    aviso a quien sólo tiene crédito -> `test_mes_entero_avisa_el_mes_de_la_migracion_a_las_unidades_con_deuda`; versión de otra fecha ->
+    `test_vale_la_version_vigente_a_la_fecha_de_migracion_no_la_de_hoy`; permiso de comparar distinto -> `test_el_administrador_del_edificio_puede_ver...`
+    y `test_sin_permiso_de_importar_no_ve_los_saldos[contador]`; guardar sin controles o sin filas -> `test_la_subida_guarda_las_filas_de_saldo_y_el_control`;
+    no rechazar los errores de `Saldos` -> `test_una_fila_de_saldos_mala_rechaza_todo_incluido_el_padron`; sólo el primer grupo de errores ->
+    `test_los_errores_del_padron_y_de_saldos_van_juntos`; sin `identificadores_declarados` -> el mismo y
+    `test_las_unidades_del_padron_con_error_igual_sirven_para_ubicar_los_saldos`. No se hizo mutante de "el borrador toca el libro": nada del
+    borrador escribe en `cuenta`, `obligacion` ni `movimiento` y `test_el_borrador_no_toca_el_libro` mira los conteos, pero no se lo vio
+    fallar.
+- [x] 2.4 **Aceptar diferencias.** Permiso (E6), registro exacto de las diferencias, auditoría, la
   aceptación deja de valer con un borrador nuevo. Mutante: aceptar sin guardar la lista.
 - [ ] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el
   total coincida, aceptar, aviso de mes entero).
+  - **Verde 2.4** (`e02474c`, `d47d068`): los mismos 264 + el candado medido con `FOR NO KEY UPDATE NOWAIT` (el `FOR UPDATE NOWAIT` no
+    distinguía: la FK de la aceptación toma un `KEY SHARE` que lo frena igual). **Barrido final** (el de las migraciones de arriba más
+    los tests de esta tanda y la matriz de permisos): `2843 passed in 590s`. `ruff check`, `ruff format --check` y `mypy` limpios.
+  - **Mutantes 2.4** (copia previa, restaurado): sólo la primera diferencia guardada -> `test_aceptar_registra_quien_cuando_y_la_lista_exacta`; sin chequeo
+    de estado -> `test_con_la_migracion_cerrada[confirmada]`; sin chequeo de borrador vigente -> `test_una_importacion_que_no_es_el_borrador_vigente`;
+    sin chequeo de aceptación previa -> `test_aceptar_dos_veces` (cae con `UniqueViolation` del único de la base, no con `Conflicto`); sin
+    `FOR UPDATE` -> `test_aceptar_toma_el_candado_del_complejo` y `test_dos_aceptaciones_simultaneas_una_gana` (`(1, 0) == (1, 1)`); permiso de
+    importar en vez del de aceptar -> `test_sin_el_permiso_de_aceptar[de_la_torre]`; sin auditoría -> `test_aceptar_audita_una_vez...` y el
+    barrido de auditoría; todas las unidades en la lista -> `test_solo_se_guardan_las_unidades_con_diferencia`; hora del servidor en vez del
+    reloj -> `test_aceptar_registra_quien_cuando_y_la_lista_exacta`.
+  - **Aceptación de H-008 contra `HEAD`** (`python3 aceptacion/H-008/aceptar.py --codigo HEAD --sin-regresion --sin-navegador`, `d47d068`): `58
+    ejecutados, 32 pasados, 26 fallas, 0 errores, 0 skips`; el propio script informa `que no son por aserción (0)`. Pasan C01 a C04 (el borrador y el
+    libro), C13 y C14 (rechazos) porque la ruta de subir ya existe. Fallan por `404 Not Found` de las dos rutas nuevas, que son de la tanda 2:
+    C05 a C11 y C15 (comparación y aceptar) y la parte de C16 que aceptar; C12 y los e2e no corrieron (`--sin-navegador`); C17 (la KB) queda
+    para el cierre del change; C18 cae con C05 a C10.
 
 ## 3. H-009 · Confirmar
 
