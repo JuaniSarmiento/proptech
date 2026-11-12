@@ -21,7 +21,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Terminada |
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Lista |
-| H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | En proceso |
+| H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -796,4 +796,14 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 - Brief y archivos relevantes:
 - Aceptación aprobada: SHA, comando y casos esperados:
 - Evidencia: aceptación del SHA aprobado, suite completa (CI o Juani), pendientes:
+- Construcción (Sonnet, dos tandas verificadas): t1 `0039_ajuste_de_saldo_inicial` y el caso de uso
+  `ajustar_saldo_inicial` como obligación nueva (E11, D-156), con la tabla en `cuenta_corriente` porque su
+  replay cruza `obligacion` y `cuenta`; t2 la ruta `POST .../unidades/{uid}/ajustes-de-saldo-inicial` y la
+  pantalla "Ajustar saldo inicial" con el link desde el padrón. Orden de chequeo: alcance, permiso, unidad
+  (404), estado (409), entrada (422). Mutantes de la ruta sobre la validación del cuerpo sobreviven porque
+  el libro repite la regla. La pantalla no pasó por impeccable; el layout a 320/1280 px con teclado sólo
+  se probó con los e2e de la aceptación.
+- Evidencia (12/11/2026): `python3 aceptacion/H-010/aceptar.py --codigo cf4667f` desde `4c3525e`: **56/56 de
+  backend y 4/4 en navegador**, C01 a C16 PASA, con la regresión H-004 a H-009, el ensayo de roles, el
+  barrido de migraciones y la KB (D-156). 0 rojos.
 - Demo y aprobación de Juani (fecha, o motivo del rechazo o la postergación):
