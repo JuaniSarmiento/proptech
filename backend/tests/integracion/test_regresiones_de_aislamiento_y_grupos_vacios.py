@@ -80,6 +80,13 @@ _CUERPOS = {
         "importacion_id": str(uuid4())
     },
     "/api/complejos/{complejo_id}/importaciones/confirmacion": {"importacion_id": str(uuid4())},
+    # H-010: un cuerpo válido, para que el 404 de aislamiento no quede tapado por el 422.
+    "/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial": {
+        "operacion_id": str(uuid4()),
+        "importe": "5000.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba de aislamiento",
+    },
 }
 
 
