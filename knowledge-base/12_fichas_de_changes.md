@@ -942,7 +942,10 @@ D-153).
   dos conexiones; la pantalla no pasó por impeccable.
 - **H-010** (aceptación `4c3525e`): `0039_ajuste_de_saldo_inicial` y el caso de uso
   `ajustar_saldo_inicial` como obligación nueva (E11, D-156), con la tabla en `cuenta_corriente`; la ruta y
-  la pantalla "Ajustar saldo inicial" desde el padrón. Deuda: la pantalla no pasó por impeccable.
+  la pantalla "Ajustar saldo inicial" desde el padrón. Deuda: la pantalla no pasó por impeccable; el panel de confirmación
+  muestra el importe sin separador de miles; sin permiso, la pantalla muestra el formulario y avisa recién al
+  enviar. En la demo, Juani pidió el botón "Importar desde Excel" en el padrón con la migración pendiente
+  (hecho por el orquestador; el menú lateral sigue sin la migración, D11 del 3b).
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 

@@ -20,8 +20,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
 | H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Terminada |
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
-| H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Lista |
-| H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Lista |
+| H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
+| H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -742,6 +742,12 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   backend y 5/5 en navegador**, C01 a C15 PASA, con la regresión H-004 a H-008, el barrido de migraciones y
   la KB. 0 rojos.
 
+- Demo (12/11/2026, API y PostgreSQL reales en `b1b8959`, y la web en Chrome con la API falsa): confirmar con
+  diferencias sin aceptar da 409, el contador 403; aceptadas, confirma, el edificio queda en "Saldos iniciales
+  confirmados" y el libro recibe capital, interés y crédito; confirmar o subir otra vez da 409. Pedido de Juani en
+  la demo: un botón "Importar desde Excel" en el padrón con la migración pendiente (`2132a0d`, `ac52b03`).
+  **Terminada por Juani el 12/11/2026.**
+
 ### H-010 · Ajuste de saldo inicial
 
 - Change: C-08 5. Reglas: R08, R09, R03, R04; D-155; elección E11 (refina D-155: obligación nueva, no
@@ -806,4 +812,8 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 - Evidencia (12/11/2026): `python3 aceptacion/H-010/aceptar.py --codigo cf4667f` desde `4c3525e`: **56/56 de
   backend y 4/4 en navegador**, C01 a C16 PASA, con la regresión H-004 a H-009, el ensayo de roles, el
   barrido de migraciones y la KB (D-156). 0 rojos.
-- Demo y aprobación de Juani (fecha, o motivo del rechazo o la postergación):
+- Demo y aprobación de Juani: 12/11/2026, API y PostgreSQL reales y la web en Chrome. El ajuste de $5.000 a `1A`
+  queda como deuda nueva (agosto intacto), vence el día del ajuste y cobra $90,00 en diciembre (18 días); el
+  administrador por edificio recibe 403. **Terminada por Juani el 12/11/2026, con E11 (D-156) aprobado.**
+  Deuda chica vista en la demo: el panel de confirmación muestra el importe sin separador de miles
+  ("5000,00"); sin permiso, la pantalla del ajuste muestra el formulario y recién avisa al enviar.
