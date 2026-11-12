@@ -1,13 +1,12 @@
 """Tarea 2.1 de `importacion-desde-excel`: la validación pura de las hojas `Saldos` y `Control`
-(design D1, D2, D3, E14; contrato del saldo inicial, E11 y E16 del 4c). Sin Excel y sin base: se arma
-la `PlantillaLeida` a mano, con los valores como los entrega el lector (fechas ISO, números en
+(design D1, D2, D3, E14; contrato del saldo inicial, E11 y E16 del 4c). Sin Excel y sin base: se
+arma la `PlantillaLeida` a mano, con los valores como los entrega el lector (fechas ISO, números en
 notación fija). Datos inventados."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date
-from typing import Any
 
 import pytest
 
@@ -47,6 +46,10 @@ def _s(
     )
 
 
+def _c(unidad: str | None, saldo: str | None) -> Fila:
+    return {"Unidad": unidad, "Saldo según el administrador": saldo}
+
+
 def _saldos_base() -> list[Fila]:
     """Las filas 2 a 8 de la base de la historia (H-008)."""
     return [
@@ -62,11 +65,11 @@ def _saldos_base() -> list[Fila]:
 
 def _control_base() -> list[Fila]:
     return [
-        {"Unidad": "1A", "Saldo según el administrador": "169000.00"},
-        {"Unidad": "1B", "Saldo según el administrador": "105000.00"},
-        {"Unidad": "2A", "Saldo según el administrador": "52000.00"},
-        {"Unidad": "2B", "Saldo según el administrador": "-3000.00"},
-        {"Unidad": "4D", "Saldo según el administrador": "-3000.00"},
+        _c("1A", "169000.00"),
+        _c("1B", "105000.00"),
+        _c("2A", "52000.00"),
+        _c("2B", "-3000.00"),
+        _c("4D", "-3000.00"),
     ]
 
 
@@ -262,7 +265,7 @@ def test_una_celda_numerica_no_es_ambigua() -> None:
     # 85.125 numérico tiene tres decimales: sigue siendo error, pero por decimales, no por ambiguo
     errores = _errores(plantilla)
     assert ("Saldos", 3, "Importe") in _donde(errores)
-    assert "ambiguo" not in [e for e in errores if e.fila == 3][0].motivo
+    assert "ambiguo" not in next(e for e in errores if e.fila == 3).motivo
 
 
 @pytest.mark.parametrize(
@@ -279,7 +282,7 @@ def test_importe_con_tres_decimales_ambiguo_o_no_numerico(importe: str, esperado
 
 def test_importe_o_control_que_no_entran_en_numeric_14_2() -> None:
     saldos = _con(_saldos_base(), 3, Importe="1000000000000.00")
-    control = [{"Unidad": "1A", "Saldo según el administrador": "-1000000000000,00"}]
+    control = [_c("1A", "-1000000000000,00")]
     donde = _donde(_errores(_plantilla(saldos, control)))
     assert {("Saldos", 3, "Importe"), ("Control", 2, "Saldo según el administrador")} <= donde
 
@@ -409,6 +412,15 @@ def test_la_mezcla_se_marca_en_la_primera_fila_que_difiere_de_la_primera_de_la_u
     assert _donde(_errores(_plantilla(saldos, []))) == {("Saldos", 3, "Período")}
 
 
+def test_la_mezcla_se_marca_una_sola_vez_por_unidad() -> None:
+    saldos = [
+        _s("1A", None, None, None, "1000.00"),
+        _s("1A", "2026-09", "2026-09-10", "Ordinaria", "85000.00"),
+        _s("1A", "2026-08", "2026-08-10", "Ordinaria", "85000.00"),
+    ]
+    assert _donde(_errores(_plantilla(saldos, []))) == {("Saldos", 3, "Período")}
+
+
 def test_un_error_de_importe_no_arrastra_errores_de_capital_cero() -> None:
     saldos = [_s("1A", "2026-07", "2026-07-10", "Ordinaria", "1.234", "500.00")]
     assert _donde(_errores(_plantilla(saldos, []))) == {("Saldos", 2, "Importe")}
@@ -418,7 +430,7 @@ def test_todos_los_errores_juntos_y_en_orden() -> None:
     saldos = _con(_saldos_base(), 2, Unidad="9Z")
     saldos = _con(saldos, 3, Concepto="Expensa")
     saldos = _con(saldos, 6, Importe="1.234")
-    control = [*_control_base(), {"Unidad": "9Z", "Saldo según el administrador": "100.00"}]
+    control = [*_control_base(), _c("9Z", "100.00")]
     errores = _errores(_plantilla(saldos, control))
     assert [(e.hoja, e.fila, e.columna) for e in errores] == [
         ("Saldos", 2, "Unidad"),
@@ -440,8 +452,8 @@ def test_el_motivo_no_repite_el_valor_de_la_celda() -> None:
 def test_control_con_unidad_inexistente_o_vacia() -> None:
     control = [
         *_control_base(),
-        {"Unidad": "9Z", "Saldo según el administrador": "100.00"},
-        {"Unidad": None, "Saldo según el administrador": "100.00"},
+        _c("9Z", "100.00"),
+        _c(None, "100.00"),
     ]
     assert _donde(_errores(_plantilla(None, control))) == {
         ("Control", 7, "Unidad"),
@@ -450,7 +462,7 @@ def test_control_con_unidad_inexistente_o_vacia() -> None:
 
 
 def test_control_con_unidad_repetida_nombra_la_otra_fila() -> None:
-    control = [*_control_base(), {"Unidad": "1A", "Saldo según el administrador": "169000.00"}]
+    control = [*_control_base(), _c("1A", "169000.00")]
     errores = _errores(_plantilla(None, control))
     assert [(e.hoja, e.fila, e.columna) for e in errores] == [("Control", 7, "Unidad")]
     assert "repetida, ya está en la fila 2" in errores[0].motivo
@@ -468,9 +480,9 @@ def test_control_con_saldo_vacio_o_ambiguo() -> None:
 
 def test_control_acepta_coma_y_celda_numerica_y_negativos() -> None:
     control = [
-        {"Unidad": "1A", "Saldo según el administrador": "85.000,00"},
-        {"Unidad": "1B", "Saldo según el administrador": "-1,50"},
-        {"Unidad": "2A", "Saldo según el administrador": "85000"},
+        _c("1A", "85.000,00"),
+        _c("1B", "-1,50"),
+        _c("2A", "85000"),
     ]
     plantilla = _plantilla(
         None, control, numericas_control={4: frozenset({"Saldo según el administrador"})}
@@ -481,7 +493,7 @@ def test_control_acepta_coma_y_celda_numerica_y_negativos() -> None:
 
 def test_una_unidad_con_saldo_y_sin_control_o_al_reves_es_valida() -> None:
     saldos = [*_saldos_base(), _s("5E", None, None, None, "1000.00")]
-    control = [*_control_base(), {"Unidad": "3C", "Saldo según el administrador": "5000.00"}]
+    control = [*_control_base(), _c("3C", "5000.00")]
     borrador = _valida(_plantilla(saldos, control))
     assert {c.unidad for c in borrador.controles} >= {"3C"}
 
@@ -516,7 +528,7 @@ def test_encabezado_faltante_en_saldos(falta: str) -> None:
     encabezados = tuple(c for c in SALDOS if c != falta)
     errores = _errores(_plantilla(enc_saldos=encabezados))
     assert (("Saldos", None, falta)) in _donde(errores)
-    assert falta in [e for e in errores if e.columna == falta][0].motivo
+    assert falta in next(e for e in errores if e.columna == falta).motivo
 
 
 @pytest.mark.parametrize("falta", CONTROL)
