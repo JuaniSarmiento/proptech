@@ -186,6 +186,13 @@ mutante, en un commit anterior al de producción (L-061). -->
   números, mezcla de detalle y total, unidad inexistente, vencimientos, crédito. Escenarios de
   borrador-de-saldos. Mutantes: aceptar un vencimiento posterior a la migración; aceptar dos vencimientos
   en un período.
+  - **RED 2.1** (11/11/2026 22:07, contra un `validar_saldos` provisorio que devuelve `(None, ())`, es decir "no hay
+    saldos"): `cd backend && uv run pytest tests/unitarios/test_importacion_saldos.py -q` -> `68 failed, 2 passed`. Cada
+    rojo cae en una aserción de los helpers del propio test (no en armado): `AssertionError: se esperaban errores y el
+    archivo se aceptó` x49 (todos los casos de rechazo) y `AssertionError: un archivo válido con saldos devolvió un
+    borrador vacío` x19 (todos los de aceptación). Los 2 verdes (`sin saldos ni Control` y `las hojas de la plantilla
+    descargada sin filas`) coinciden con el provisorio, que no devuelve nada: no valen como RED; los cubre el mutante
+    "hojas vacías cuentan como borrador".
 - [ ] 2.2 **Migración `0037_borrador_de_saldos`.** `fila_de_saldo_importada`, `control_de_saldo`,
   `aceptacion_de_diferencias` (de sólo agregar, en `TABLAS_DE_SOLO_AGREGAR`) y la acción
   `aceptar_diferencias_de_saldos`. Matriz de mutantes de protección como la `0034`; ensayo de roles y
