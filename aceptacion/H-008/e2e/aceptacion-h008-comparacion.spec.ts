@@ -100,7 +100,7 @@ test("C15 · sin permiso para aceptar muestra el aviso y no la aceptación", asy
   const confirmacion = page.getByRole("dialog").or(page.getByRole("alertdialog"));
   await expect(confirmacion).toBeVisible();
   await confirmacion.getByRole("button", { name: "Aceptar", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("alert").filter({ hasText: "No podés aceptar diferencias en este edificio." })).toContainText(
     "No podés aceptar diferencias en este edificio.",
   );
   await expect(page.getByRole("region", { name: "Diferencias aceptadas" })).toHaveCount(0);

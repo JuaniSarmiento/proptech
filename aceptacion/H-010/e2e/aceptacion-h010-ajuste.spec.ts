@@ -102,6 +102,6 @@ test("C12 · sin permiso para ajustar muestra el aviso y no el ajuste registrado
 }) => {
   await abrirAjuste(page, EDIFICIOS.sinPermiso, UNIDAD_1A.sinPermiso);
   await registrar(page);
-  await expect(page.getByRole("alert")).toContainText("No podés ajustar saldos en este edificio.");
+  await expect(page.getByRole("alert").filter({ hasText: "No podés ajustar saldos en este edificio." })).toContainText("No podés ajustar saldos en este edificio.");
   await expect(page.getByRole("region", { name: "Ajuste registrado" })).toHaveCount(0);
 });

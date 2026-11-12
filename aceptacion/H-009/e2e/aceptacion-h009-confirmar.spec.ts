@@ -91,7 +91,7 @@ test("C10 · sin permiso para confirmar muestra el aviso y no el estado confirma
   const confirmacion = page.getByRole("dialog").or(page.getByRole("alertdialog"));
   await expect(confirmacion).toBeVisible();
   await confirmacion.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("alert").filter({ hasText: "No podés confirmar saldos en este edificio." })).toContainText(
     "No podés confirmar saldos en este edificio.",
   );
   await expect(page.getByRole("region", { name: "Saldos iniciales confirmados" })).toHaveCount(0);

@@ -105,6 +105,6 @@ test("C08 · el botón descarga la plantilla", async ({ page }) => {
 test("C16 · sin permiso muestra el aviso y no el resumen", async ({ page }) => {
   await abrirImportar(page, EDIFICIOS.sinPermiso);
   await subir(page);
-  await expect(page.getByRole("alert")).toContainText("No podés importar en este edificio.");
+  await expect(page.getByRole("alert").filter({ hasText: "No podés importar en este edificio." })).toContainText("No podés importar en este edificio.");
   await expect(page.getByRole("region", { name: "Importación aceptada" })).toHaveCount(0);
 });
