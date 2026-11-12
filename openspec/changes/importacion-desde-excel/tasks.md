@@ -160,7 +160,7 @@ mutante, en un commit anterior al de producción (L-061). -->
   - **Aceptación de H-007 contra `HEAD`** (`aceptar.py --codigo HEAD --sin-regresion --sin-navegador`): `87 ejecutados,
     3 pasados, 84 fallas, 0 errores, 0 skips`. Los 84 son `404 Not Found` de la ruta, que es de 1.6; pasan los 3 que no
     la necesitan (ciclo de la `0036`, RLS forzada, acción y matriz de E6). C19 (KB) queda para el cierre del change.
-- [ ] 1.6 **Ruta y pantalla.** `POST /api/complejos/{id}/importaciones` (multipart: archivo y fecha de
+- [x] 1.6 **Ruta y pantalla.** `POST /api/complejos/{id}/importaciones` (multipart: archivo y fecha de
   migración) con 422 `{"detail": [{hoja, fila, columna, motivo}]}`, en `_RUTAS_CUBIERTAS`; descarga de la
   plantilla; pantalla `edificios/[id]/importar` (D11) con sus estados y e2e de Playwright (archivo válido,
   archivo con errores, sin permiso).
@@ -171,6 +171,14 @@ mutante, en un commit anterior al de producción (L-061). -->
     `que no son por aserción (0)`: los cuatro e2e fallan en el `expect` del encabezado `Importar desde Excel` (la
     pantalla no existe). Los tests de componente y de cliente de la web se escribieron junto con el código; se validan
     con mutantes (ver abajo), no con un rojo previo: lo anoto como desvío del método.
+  - **Verde 1.6** (`0270d62` y el test estructural siguiente): `aceptar.py --codigo HEAD` con regresión: TESTS 87/87, C01 a C15, C17 y
+    C20 PASAN; E2E 3 de 4: **C16 (e2e) FALLA por el contrato, no por la pantalla**: el spec usa `getByRole("alert")` sin acotar y
+    Next trae su propio `role="alert"` (`__next-route-announcer__`), así que Playwright da `strict mode violation: resolved to 2
+    elements` (el 1 es nuestro "Resumen de errores", con el texto exacto). Se propone acotar el locator (ver relevo) y re-congelar.
+    Tests de la web: vitest completo `617 passed` antes del route test (+`route.test.ts`), biome ci, tsc, ruff, format y mypy limpios;
+    `test_rutas_protegidas.py` 613 passed; `test_altas_sin_id_del_cliente.py` 15 passed (el barrido de migraciones lo había marcado).
+  - **Mutantes 1.6** (copia previa, restaurados): el 422 nunca es `rechazado` (`every(...)` -> `false`) y no mostrar los
+    propietarios reusados -> fallan `importaciones.test.ts` (422 de archivo) y `Pantalla.test.tsx` (aceptada), 2 de 25.
 
 ## 2. H-008 · Borrador de saldos y comparación
 
