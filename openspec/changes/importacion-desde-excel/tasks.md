@@ -448,6 +448,11 @@ mutante, en un commit anterior al de producción (L-061). -->
     confirmar`), antes de llegar a los tests; sin el CHECK del motivo -> `test_c13_el_check_frena_un_motivo_invalido` x3 (`DID NOT RAISE CheckViolation`). La FK a la obligación sin la cuenta no es un mutante
     válido: PostgreSQL rechaza la FK sin la unicidad que la respalda.
 - [ ] 4.3 **Ruta y pantalla** (D11) con e2e de Playwright.
+  - **Rojo 4.3** (`113d85d` la ruta, `92d581c` la pantalla, 12/11/2026): `test_ajuste_de_saldo_inicial_api.py` (24 casos) contra la app sin la ruta: `24 failed`, todos por aserción
+    (`assert 404 == 201/403/409/422`, `{'detail': 'Not Found'} == {'detail': 'no encontrado'}`); la ruta se sumó a `_RUTAS_CUBIERTAS` y a su despachador. Web, contra una `Pantalla.tsx`, una
+    `acciones.ts` y un `ajustarSaldoInicial` provisorios que no hacen nada: `32 failed | 74 passed` (`Pantalla.test.tsx` 8, `acciones.test.ts` 20, `importaciones.test.ts` 3, `Pantalla.ajuste.test.tsx` 1;
+    los 4 del padrón que pasan son los controles de "no ofrece ajustar"); todos caen en `expect` (`expected null not to be null`, `expected [] to deeply equal ['importe']`, `expected undefined to be ...`).
+    Un caso del rojo de la ruta estaba mal armado (pedía 404 a un rol sin permiso sobre una unidad inexistente de su propio edificio: el orden es 404 > 403 > unidad) y se corrigió con el verde.
 
 ## 5. Cierre
 
