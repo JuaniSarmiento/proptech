@@ -425,6 +425,10 @@ mutante, en un commit anterior al de producción (L-061). -->
   emisión (E11), cuenta creada si falta, `bloquear_cuentas`, `imputar_pendientes`, registro y auditoría,
   replay por `operacion_id`. Interés desde el día siguiente contra la emisión real. Mutantes: vencimiento
   retroactivo; sin motivo; permitir con la migración pendiente.
+  - **Rojo 4.1 y 4.2** (`ea65094`, 12/11/2026): `test_ajustar_saldo_inicial.py` (42 casos) y `test_migracion_0039_ajuste_de_saldo_inicial.py` (3) contra un `ajuste.py` provisorio que
+    no escribe ni valida nada: `38 failed, 4 passed` (los 4 son controles: los dos roles que pueden ajustar, el motivo de 500 y la acción de un super admin). Todos caen por aserción:
+    `DID NOT RAISE` (Conflicto 14, EntradaInvalida 18, NoEncontrado 8, SinPermiso 6, AssertionError 2), `la 0039 no creó ajuste_de_saldo_inicial`, `falta la tabla ... (0039)`,
+    la obligación nueva que no aparece, el vencimiento y el crédito que no se imputa.
 - [ ] 4.3 **Ruta y pantalla** (D11) con e2e de Playwright.
 
 ## 5. Cierre
