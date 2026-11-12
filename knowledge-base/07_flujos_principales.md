@@ -129,7 +129,9 @@ vez de inventar el comportamiento.
   6. Sin diferencias (o con las aceptadas), el administrador confirma los saldos: el importador genera
      las obligaciones (con detalle por período) o la obligación "saldo inicial" (si vino como total
      único) usando el caso de uso de saldo inicial del cambio 4 (R09), y se **cierra** para ese
-     edificio.
+     edificio: queda en "Saldos iniciales confirmados" (`confirmar_saldos_iniciales`, H-009). Todo en
+     una transacción con el candado del complejo; si algo falla no se escribe nada, y confirmar no se
+     deshace (un saldo mal cargado se corrige con un ajuste, H-010).
   7. Si el edificio no tiene saldos previos (es nuevo, como el de ejemplo), el super admin o el
      administrador principal confirma directamente "sin saldos previos", que cierra el importador con todas las unidades en cero
      (D-082); así el control duro de R34 no lo bloquea para siempre.

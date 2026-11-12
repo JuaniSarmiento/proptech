@@ -391,6 +391,12 @@ del 3c, D-128)
   aceptación queda registrada (quién, cuándo, cuáles); otro archivo descarta el borrador anterior. Si
   rige "mes entero", la comparación avisa que el primer interés del sistema cubre el mes de la migración
   (E18 del 4c).
+- **Confirmar el importador** (5, H-009, E6, E8, E10, E12): `confirmar_saldos_iniciales`, sólo
+  super admin y administrador principal, sobre el borrador vigente y con las diferencias aceptadas si
+  las hay. En una sola transacción, con el candado del complejo: carga el saldo inicial de cada unidad
+  con `registrar_saldo_inicial` del 4c (detalle por período, total único o crédito), deja el edificio
+  en "Saldos iniciales confirmados" (estado `confirmada`), audita y cierra el importador. Un rechazo no
+  escribe nada; confirmar no se deshace.
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
   cuenta corriente. El sistema lo compara **unidad por unidad** contra el saldo de cada unidad según
   el administrador, y muestra cada diferencia con su unidad. El total se compara también, como

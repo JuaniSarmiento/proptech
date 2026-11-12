@@ -932,6 +932,14 @@ D-153).
 - **H-008** (aceptación `4c3525e`): validación de `Saldos` y `Control`, `0037_borrador_de_saldos`, el
   borrador, la comparación con el aviso de E13 y aceptar diferencias con candado. Leer la comparación
   exige el permiso de importar; una importación inexistente o de otro edificio da 409 `importacion_id`.
+- **H-009** (aceptación `4c3525e`): `0038_confirmar_saldos` (vocabulario y matriz de
+  `confirmar_saldos_iniciales`), el caso de uso `confirmar` en una transacción (candado del complejo,
+  permiso, diferencias aceptadas, `registrar_saldo_inicial` del 4c, estado `confirmada`, auditoría y
+  cierre del importador), la ruta y la web (botón "Confirmar saldos" con "no se deshace", el paso 7 del
+  resumen pasa a "Cargar los saldos previos" con los dos caminos). Deuda: `confirmada_en` no se guarda
+  en `importacion` (se devuelve el reloj); el mutante "sin candado del complejo" sobrevive porque hay
+  otras dos defensas (el `FOR UPDATE` de `complejos` y la FK de `cuenta`), cubiertas con dos tests de
+  dos conexiones; la pantalla no pasó por impeccable.
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 
