@@ -4,8 +4,8 @@
  * (edificio, resumen) las contesta la API falsa como a cualquier edificio con la migración
  * `pendiente`. La API falsa no lee el Excel: lo que decide el resultado es el id del edificio.
  *
- * H-008 suma los de la comparación (801 a 803) y H-009 los de la confirmación (901 a 904). Los de
- * H-010 (ajuste) los suma esa historia.
+ * H-008 suma los de la comparación (801 a 803), H-009 los de la confirmación (901 a 904) y H-010 los
+ * del ajuste de saldo inicial (1001 a 1003).
  */
 
 import { readFileSync } from "node:fs";
@@ -127,9 +127,10 @@ export function esEdificioDeConfirmacion(id: string): boolean {
   return _IDS_DE_CONFIRMACION.has(id);
 }
 
-/** El 902 es el único con la migración `confirmada`: su resumen cambia el estado y el paso 7. */
+/** Con la migración `confirmada` (el resumen cambia el estado y el paso 7): el 902 y, del ajuste de
+ * H-010, el 1001 y el 1003. */
 export function esEdificioConfirmado(id: string): boolean {
-  return id === CONFIRMACION_CONFIRMADO;
+  return id === CONFIRMACION_CONFIRMADO || id === AJUSTE_CONFIRMADO || id === AJUSTE_SIN_PERMISO;
 }
 
 const _COMPARACION_A_CONFIRMAR = {
@@ -155,6 +156,104 @@ const _COMPARACION_CON_UNA_DIFERENCIA = {
   requiere_aceptacion: true,
   aceptacion: null,
 };
+
+// H-010: los tres edificios del ajuste de saldo inicial. El 1001 y el 1003 tienen la migración
+// `confirmada` (el 1003 rechaza el ajuste con 403); el 1002 la tiene pendiente y no recibe pedidos.
+// Cada uno trae una unidad `1A` con su id fijo, como la que nombra el contrato.
+export const AJUSTE_CONFIRMADO = "00000000-0000-0000-0000-000000001001";
+export const AJUSTE_PENDIENTE = "00000000-0000-0000-0000-000000001002";
+export const AJUSTE_SIN_PERMISO = "00000000-0000-0000-0000-000000001003";
+const _UNIDAD_1A_DE_AJUSTE: Record<string, string> = {
+  [AJUSTE_CONFIRMADO]: "00000000-0000-0000-0000-000000100101",
+  [AJUSTE_PENDIENTE]: "00000000-0000-0000-0000-000000100201",
+  [AJUSTE_SIN_PERMISO]: "00000000-0000-0000-0000-000000100301",
+};
+
+export function esEdificioDeAjuste(id: string): boolean {
+  return id in _UNIDAD_1A_DE_AJUSTE;
+}
+
+/** El padrón de los edificios del ajuste: una sola unidad, la `1A` del contrato. */
+export function padronDeAjuste(id: string): unknown {
+  return {
+    unidades: [
+      {
+        id: _UNIDAD_1A_DE_AJUSTE[id],
+        complejo_id: id,
+        identificador: "1A",
+        tipo: "departamento",
+        piso: "1",
+        coeficiente: "1.000000",
+        superficie_m2: "60.00",
+      },
+    ],
+    informe: { suma: "1.000000", diferencia: "0.000000", estado: "ok" },
+  };
+}
+
+/** Contesta `unidades/{unidad}/ajustes-de-saldo-inicial` (POST) de los tres edificios del contrato
+ * de H-010: 201 con el ajuste que se mandó (el importe y el motivo son los del cuerpo), salvo el
+ * 1003, que da 403. El `POST` deja su cuerpo crudo en `guardar`. */
+export function responderAjuste(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  id: string,
+  unidadId: string,
+  guardar: (escritura: EscrituraRecibida) => void,
+): void {
+  if ((pedido.method ?? "GET") !== "POST") {
+    respuesta.writeHead(405).end();
+    return;
+  }
+  const trozos: Buffer[] = [];
+  pedido.on("data", (trozo: Buffer) => {
+    trozos.push(trozo);
+  });
+  pedido.on("end", () => {
+    const cuerpo = Buffer.concat(trozos).toString("utf8");
+    guardar({
+      metodo: "POST",
+      url: pedido.url ?? "",
+      contentType: String(pedido.headers["content-type"] ?? ""),
+      cuerpo,
+    });
+    if (id === AJUSTE_SIN_PERMISO) {
+      json(respuesta, 403, {
+        detail: {
+          codigo: "sin_permiso",
+          detalle: "sin_permiso",
+          permiso_faltante: "ajustar_saldo_inicial",
+        },
+      });
+      return;
+    }
+    if (id === AJUSTE_PENDIENTE) {
+      json(respuesta, 409, { detail: "conflicto", campo: "estado_migracion" });
+      return;
+    }
+    let pedidoLeido: Record<string, unknown> = {};
+    try {
+      pedidoLeido = JSON.parse(cuerpo) as Record<string, unknown>;
+    } catch {
+      json(respuesta, 422, { detail: [{ type: "json_invalid", loc: ["body"] }] });
+      return;
+    }
+    json(respuesta, 201, {
+      ajuste_id: "00000000-0000-0000-0000-000000001a01",
+      operacion_id: pedidoLeido.operacion_id,
+      obligacion_id: "00000000-0000-0000-0000-000000001b01",
+      cuenta_id: "00000000-0000-0000-0000-000000001c01",
+      unidad_id: unidadId,
+      importe: pedidoLeido.importe,
+      componente: pedidoLeido.componente,
+      periodo: "2026-10-01",
+      vencimiento: "2026-11-12",
+      motivo: pedidoLeido.motivo,
+      registrado_por: "00000000-0000-0000-0000-000000000101",
+      registrado_en: "2026-11-12T15:00:00+00:00",
+    });
+  });
+}
 
 /** Contesta `importaciones/comparacion` (GET) y `importaciones/confirmacion` (POST) de los cuatro
  * edificios del contrato de H-009. El `POST` deja su cuerpo crudo en `guardar`. */

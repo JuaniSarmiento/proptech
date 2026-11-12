@@ -66,7 +66,6 @@ function pantalla(
     <PantallaAjuste
       id="1"
       nombreEdificio="Edificio"
-      unidadId="u1"
       identificadorDeUnidad="1A"
       estadoMigracion={estado}
       accionAjustar={accion}

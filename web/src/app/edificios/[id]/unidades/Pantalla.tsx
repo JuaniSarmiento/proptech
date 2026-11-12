@@ -78,6 +78,9 @@ type Props = {
    * ubicación — sin vocabulario propio, el piso se carga como texto. */
   pisosDelEdificio: number | null;
   subsuelosDelEdificio: number | null;
+  /** H-010: con la migración `confirmada` cada unidad ofrece ajustar su saldo inicial (con el
+   * permiso). Sin dato (la lectura del resumen falló) no se ofrece. */
+  estadoMigracion?: string | null;
   unidades: Unidad[];
   informe: InformeDeCoeficientes;
   accionCrear: AccionUnidad;
@@ -106,6 +109,7 @@ export function PantallaPadron({
   nombreEdificio,
   pisosDelEdificio,
   subsuelosDelEdificio,
+  estadoMigracion = null,
   unidades,
   informe,
   accionCrear,
@@ -118,6 +122,8 @@ export function PantallaPadron({
   const sesion = useSesionDePantalla();
   const puedeConfigurar = permite(sesion, "configurar_padron", id);
   const puedeInvitar = permite(sesion, "invitar_usuarios_y_asignar_edificios");
+  const puedeAjustar =
+    estadoMigracion === "confirmada" && permite(sesion, "ajustar_saldo_inicial", id);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [unidadEnEdicion, setUnidadEnEdicion] = useState<Unidad | null>(null);
   const agregarRef = useRef<HTMLButtonElement>(null);
@@ -215,6 +221,7 @@ export function PantallaPadron({
                     <th className="numero-tabular">Superficie (m²)</th>
                     <th className="numero-tabular">Coeficiente</th>
                     {vecinosPorUnidad ? <th>Vecinos</th> : null}
+                    {puedeAjustar ? <th>Saldo inicial</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -248,6 +255,17 @@ export function PantallaPadron({
                             {pendientes > 0
                               ? ` (${pendientes} pendiente${pendientes > 1 ? "s" : ""})`
                               : ""}
+                          </td>
+                        ) : null}
+                        {puedeAjustar ? (
+                          <td>
+                            <a
+                              className="boton-enlace"
+                              href={`/edificios/${id}/unidades/${unidad.id}/ajuste-de-saldo-inicial`}
+                              aria-label={`Ajustar saldo inicial de ${unidad.identificador}`}
+                            >
+                              Ajustar saldo inicial
+                            </a>
                           </td>
                         ) : null}
                       </tr>

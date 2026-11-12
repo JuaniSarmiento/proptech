@@ -7,6 +7,7 @@ import { ErrorDePantalla } from "../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../componentes/Estados";
 import { edificioPorId } from "../../../../lib/api/edificios";
 import { listarPersonal, vecinosPorUnidad } from "../../../../lib/api/personal";
+import { resumenDelEdificio } from "../../../../lib/api/resumen";
 import { padronDelEdificio } from "../../../../lib/api/unidades";
 import {
   altaVecinoAction,
@@ -23,10 +24,11 @@ type Props = {
 
 export default async function PaginaPadron({ params }: Props) {
   const { id } = await params;
-  const [edificio, padron, personal] = await Promise.all([
+  const [edificio, padron, personal, resumen] = await Promise.all([
     edificioPorId(id),
     padronDelEdificio(id),
     listarPersonal(),
+    resumenDelEdificio(id),
   ]);
   // 7.4: sin ruta de lectura por unidad (D5), se deriva de `/api/personal`
   // (super admin o principal, E11); una lectura exitosa no habilita
@@ -62,6 +64,7 @@ export default async function PaginaPadron({ params }: Props) {
       nombreEdificio={nombreEdificio}
       pisosDelEdificio={pisosDelEdificio}
       subsuelosDelEdificio={subsuelosDelEdificio}
+      estadoMigracion={resumen.estado === "ok" ? resumen.datos.estado_migracion : null}
       unidades={padron.datos.unidades}
       informe={padron.datos.informe}
       accionCrear={crearUnidadAction.bind(null, id)}

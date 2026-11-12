@@ -193,11 +193,28 @@ export type PedidoDeAjuste = {
   motivo: string;
 };
 
-/** Provisorio del rojo de la tarea 4.3. */
+/** Sólo los cuatro campos del pedido viajan a la API. El importe del ajuste es texto con dos
+ * decimales: si no lo es, el resultado es `fallo` en vez de un `ok` que la pantalla no sabría
+ * mostrar. Un id que no es UUID es "no existe", sin pedido. */
 export async function ajustarSaldoInicial(
-  _id: string,
-  _unidadId: string,
-  _pedido: PedidoDeAjuste,
+  id: string,
+  unidadId: string,
+  pedido: PedidoDeAjuste,
 ): Promise<ResultadoApi<AjusteDeSaldoInicial>> {
-  return { estado: "fallo" };
+  if (!esIdValido(id) || !esIdValido(unidadId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi<AjusteDeSaldoInicial>(
+    `/api/complejos/${encodeURIComponent(id)}/unidades/${encodeURIComponent(unidadId)}/ajustes-de-saldo-inicial`,
+    {
+      metodo: "POST",
+      cuerpo: {
+        operacion_id: pedido.operacion_id,
+        importe: pedido.importe,
+        componente: pedido.componente,
+        motivo: pedido.motivo,
+      },
+      camposDePlata: ["importe"],
+    },
+  );
 }

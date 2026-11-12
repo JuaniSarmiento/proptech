@@ -18,9 +18,12 @@ import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
 import {
   esEdificioConfirmado,
+  esEdificioDeAjuste,
   esEdificioDeComparacion,
   esEdificioDeConfirmacion,
   esEdificioDeImportacion,
+  padronDeAjuste,
+  responderAjuste,
   responderComparacion,
   responderConfirmacion,
   responderImportacion,
@@ -68,6 +71,7 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "importar_padron_y_saldos",
     "aceptar_diferencias_de_saldos",
     "confirmar_saldos_iniciales",
+    "ajustar_saldo_inicial",
   ],
   por_edificio: {},
 };
@@ -997,6 +1001,22 @@ export function crearServidor(
       responderConfirmacion(pedido, respuesta, id, resto, (escritura) => {
         _ultimaEscritura = escritura;
       });
+      return;
+    }
+
+    // change 5 (H-010): el ajuste de saldo inicial de una unidad, en los tres edificios de su contrato
+    // (1001 a 1003). Su padrón trae la `1A` del contrato, con el id que la pantalla enlaza.
+    const rutaDeAjuste = /^unidades\/([^/]+)\/ajustes-de-saldo-inicial$/.exec(resto);
+    if (rutaDeAjuste && esEdificioDeAjuste(id)) {
+      responderAjuste(pedido, respuesta, id, rutaDeAjuste[1] ?? "", (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+    if (resto === "unidades" && esEdificioDeAjuste(id) && (pedido.method ?? "GET") === "GET") {
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify(padronDeAjuste(id)));
       return;
     }
 
