@@ -212,6 +212,13 @@ class _DetalleImportarPadron(_DetalleAsignarEdificio):
     propietarios_reusados: int
 
 
+class _DetalleAceptarDiferencias(_DetalleAsignarEdificio):
+    #: El id de la aceptación es la `entidad_id` de la fila; la lista exacta de diferencias vive en
+    #: `aceptacion_de_diferencias`. Acá sólo la cantidad (nunca nombres ni montos, D9).
+    importacion_id: UUID
+    unidades_con_diferencia: int
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -232,6 +239,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
     Accion.IMPORTAR_PADRON_Y_SALDOS: _DetalleImportarPadron,
+    Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: _DetalleAceptarDiferencias,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

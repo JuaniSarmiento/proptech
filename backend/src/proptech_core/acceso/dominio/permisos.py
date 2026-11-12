@@ -68,6 +68,10 @@ class Accion(StrEnum):
     #: importacion-desde-excel (E6, migración `0036`): subir la plantilla de Excel con el padrón (y,
     #: desde H-008, los saldos). Como `CONFIGURAR_PADRON`: nadie más.
     IMPORTAR_PADRON_Y_SALDOS = "importar_padron_y_saldos"
+    #: importacion-desde-excel (E6, migración `0037`): aceptar las diferencias del borrador de saldos
+    #: contra el control del administrador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el administrador por
+    #: edificio no.
+    ACEPTAR_DIFERENCIAS_DE_SALDOS = "aceptar_diferencias_de_saldos"
     VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
 
 
@@ -144,6 +148,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({_SA, _AP}),
     Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE}),
     Accion.IMPORTAR_PADRON_Y_SALDOS: frozenset({_SA, _AP, _AE}),
+    Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: frozenset({_SA, _AP}),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
 }
 

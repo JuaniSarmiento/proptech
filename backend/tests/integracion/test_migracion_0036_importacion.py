@@ -196,6 +196,7 @@ def test_baja_y_sube_conservando_el_vocabulario(base_del_edificio: BaseDeEdifici
             ).fetchall()
 
     assert vocabulario() == [("importar_padron_y_saldos",)]
+    base.devolver_tablas_protegidas()  # la 0037 baja antes y su aceptación es de sólo agregar
     base.migrar("downgrade", "0035")
     assert version() == ("0035",)
     assert vocabulario() == []
@@ -213,6 +214,7 @@ def test_no_baja_con_filas(base_del_edificio: BaseDeEdificio) -> None:
     with c:
         _insertar(c, mundo)
         c.commit()
+    base.devolver_tablas_protegidas()  # la 0037 baja antes y su aceptación es de sólo agregar
     with pytest.raises(AssertionError, match="tiene filas"):
         base.migrar("downgrade", "0035")
     with base.conectar_app() as c2:

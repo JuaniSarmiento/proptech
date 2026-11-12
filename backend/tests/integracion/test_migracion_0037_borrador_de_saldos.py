@@ -293,9 +293,9 @@ def test_las_claves_foraneas_son_compuestas_con_la_administracion(
         tabla,
     )
     esperadas = {
-        FILA: ["importacion", "unidad"],
-        CONTROL: ["importacion", "unidad"],
-        ACEPTACION: ["importacion", "persona"],
+        FILA: ["complejo", "importacion", "unidad"],
+        CONTROL: ["complejo", "importacion", "unidad"],
+        ACEPTACION: ["complejo", "importacion", "persona"],
     }[tabla]
     assert [f[0] for f in filas] == esperadas
     assert all("administracion_id" in f[1] for f in filas)

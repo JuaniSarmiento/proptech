@@ -80,6 +80,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0022_eventos_del_padron.py",
         "0024_correccion_auditada.py",
         "0036_importacion.py",
+        "0037_borrador_de_saldos.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -101,6 +102,7 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
                 "corregir_movimiento",
                 "ver_personal",
                 "importar_padron_y_saldos",
+                "aceptar_diferencias_de_saldos",
             }
     finally:
         base_del_edificio.migrar("upgrade", "head")
