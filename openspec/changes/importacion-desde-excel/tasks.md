@@ -295,8 +295,6 @@ mutante, en un commit anterior al de producción (L-061). -->
     fallar.
 - [x] 2.4 **Aceptar diferencias.** Permiso (E6), registro exacto de las diferencias, auditoría, la
   aceptación deja de valer con un borrador nuevo. Mutante: aceptar sin guardar la lista.
-- [ ] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el
-  total coincida, aceptar, aviso de mes entero).
   - **Verde 2.4** (`e02474c`, `d47d068`): los mismos 264 + el candado medido con `FOR NO KEY UPDATE NOWAIT` (el `FOR UPDATE NOWAIT` no
     distinguía: la FK de la aceptación toma un `KEY SHARE` que lo frena igual). **Barrido final** (el de las migraciones de arriba más
     los tests de esta tanda y la matriz de permisos): `2843 passed in 590s`. `ruff check`, `ruff format --check` y `mypy` limpios.
@@ -312,6 +310,28 @@ mutante, en un commit anterior al de producción (L-061). -->
     libro), C13 y C14 (rechazos) porque la ruta de subir ya existe. Fallan por `404 Not Found` de las dos rutas nuevas, que son de la tanda 2:
     C05 a C11 y C15 (comparación y aceptar) y la parte de C16 que aceptar; C12 y los e2e no corrieron (`--sin-navegador`); C17 (la KB) queda
     para el cierre del change; C18 cae con C05 a C10.
+
+- [ ] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el
+  total coincida, aceptar, aviso de mes entero).
+  - **RED 2.5** (11/11/2026 23:10; la ruta `GET .../importaciones/comparacion` y la `POST .../aceptacion-de-diferencias` todavía no
+    existen, así que el rojo es un `404 Not Found` de FastAPI contra lo que cada test espera; en la web, stubs que compilan y
+    devuelven lo equivocado: `dinero` y `fechaYHora` devuelven el texto tal cual, `comparacionDelBorrador` y `aceptarDiferencias`
+    devuelven `fallo`, la pantalla no dibuja nada y la acción devuelve `null`):
+    - Backend: `cd backend && uv run pytest tests/integracion/test_rutas_protegidas.py tests/integracion/test_altas_sin_id_del_cliente.py
+      tests/integracion/test_importaciones_comparacion_api.py -q` -> `41 failed, 629 passed`. Por causa, todas aserciones: `assert 404 ==
+      200/201/403/409/422/401` (35 + 18 + 5 + 5), `AssertionError: {"detail":"Not Found"}` / `!= {"detail": "no encontrado"}` (el cuerpo
+      de las 404 de las rutas inexistentes no es el de `NoEncontrado`), y los barridos que exigen las rutas cubiertas (`cubiertas pero ya
+      no existen`, `no depende de identidad_actual`, `sin identidad da 401`). Un primer intento de
+      `test_despues_de_aceptar_la_comparacion_muestra_la_aceptacion_y_ya_no_pide_aceptar` fallaba con `KeyError: 'requiere_aceptacion'` (acceso
+      al cuerpo de un 404): se reescribió con el `assert status_code` antes de leer el cuerpo.
+      Nuevo `test_importaciones_comparacion_api.py` (19 tests, por HTTP con identidad inyectada y RLS real, subiendo el borrador por la ruta real
+      de H-007), las dos rutas sumadas a `_RUTAS_CUBIERTAS` (con su cuerpo en `_pedido`) y a `_CUERPOS_DE_PRUEBA` del barrido de altas sin id.
+    - Web: `npx vitest run src/lib/formato.test.ts src/lib/api/importaciones.test.ts "src/app/edificios/[id]/importar/comparacion"
+      e2e/api-falsa.comparacion.test.ts` -> `5 failed` archivos, `47 failed | 26 passed`; todo `AssertionError` (`expected null not to be null`
+      de la pantalla, `expected { estado: 'fallo' } to deeply equal ...`, `expected 404 to be 200` de la API falsa, `expected '169000.00' to be
+      '169.000,00'`). Dos primeros intentos fallaban por un error de acceso (`SyntaxError: Unexpected end of JSON input` al leer el cuerpo de un 404 y
+      `TestingLibraryElementError` de `getByRole`): se reescribieron con `expect` sobre el estado y sobre `queryBy` antes de dar el rojo por bueno.
+      Los 26 que pasan son los tests que ya existían en `formato.test.ts` e `importaciones.test.ts` y los pocos nuevos que coinciden con un stub (`fechaYHora` de un texto que no es fecha, 404 del edificio fuera del contrato en la API falsa): no cuentan como RED.
 
 ## 3. H-009 · Confirmar
 

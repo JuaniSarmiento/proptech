@@ -86,6 +86,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/correcciones", "POST"),
     ("/api/complejos/{complejo_id}/importaciones", "POST"),
     ("/api/complejos/{complejo_id}/importaciones/plantilla", "GET"),
+    ("/api/complejos/{complejo_id}/importaciones/comparacion", "GET"),
+    ("/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias", "POST"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/personal", "GET"),
@@ -460,6 +462,8 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     # --- Cambio 6 `gastos-y-cargos` (GET ya lo cubre el chequeo genérico de arriba) ---
     if ruta.endswith("/aprobar"):
         return cliente.post(ruta_resuelta)
+    if ruta.endswith("/aceptacion-de-diferencias"):
+        return cliente.post(ruta_resuelta, json={"importacion_id": str(uuid.uuid4())})
     if ruta.endswith("/importaciones") and metodo == "POST":
         return cliente.post(
             ruta_resuelta,

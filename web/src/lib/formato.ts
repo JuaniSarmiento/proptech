@@ -97,6 +97,18 @@ export function diferenciaComoPorcentaje(texto: string): string {
   return `${esFalta ? "falta" : "sobra"} ${sumaComoPorcentaje(magnitud)}`;
 }
 
+/** Plata con signo y dos decimales: `"-10000.00"` -> `"-10.000,00"`. */
+export function dinero(texto: string): string {
+  return texto;
+}
+
+/** Un instante ISO con zona de la API como `"12/11/2026 12:00"` en la hora de Mendoza (UTC-3, sin
+ * horario de verano), siempre la misma sin importar la zona del servidor o del navegador. Lo que
+ * no es un instante vuelve tal cual. */
+export function fechaYHora(texto: string): string {
+  return texto;
+}
+
 /** Una fecha ISO de la API (`"2026-10-20"`) como día/mes/año argentino
  * (`"20/10/2026"`), cortando el TEXTO: nunca pasa por `Date`, que la
  * interpreta en UTC y en Mendoza la corre un día para atrás. Lo que no es

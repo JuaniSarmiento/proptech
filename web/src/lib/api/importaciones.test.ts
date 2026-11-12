@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { importarPadron, plantillaDelPadron } from "./importaciones";
+import {
+  aceptarDiferencias,
+  comparacionDelBorrador,
+  importarPadron,
+  plantillaDelPadron,
+} from "./importaciones";
 
 const EDIFICIO = "11111111-1111-1111-1111-111111111111";
 
@@ -120,5 +125,134 @@ describe("importarPadron / plantillaDelPadron", () => {
       `http://api-interna:8000/api/complejos/${EDIFICIO}/importaciones/plantilla`,
     );
     expect(resultado).toEqual({ estado: "ok", datos: bytes });
+  });
+});
+
+const IMPORTACION = "22222222-2222-2222-2222-222222222222";
+
+const COMPARACION = {
+  importacion_id: IMPORTACION,
+  unidades: [
+    {
+      unidad: "1A",
+      unidad_id: "33333333-3333-3333-3333-333333333333",
+      borrador: "169000.00",
+      control: "159000.00",
+      diferencia: "10000.00",
+      aviso: "El primer interés del sistema cubre octubre de 2026",
+    },
+    {
+      unidad: "2A",
+      unidad_id: "44444444-4444-4444-4444-444444444444",
+      borrador: "52000.00",
+      control: "62000.00",
+      diferencia: "-10000.00",
+      aviso: null,
+    },
+  ],
+  total_borrador: "221000.00",
+  total_control: "221000.00",
+  unidades_con_diferencia: 2,
+  requiere_aceptacion: true,
+  aceptacion: null,
+};
+
+describe("comparacionDelBorrador / aceptarDiferencias", () => {
+  beforeEach(() => {
+    process.env.PROPTECH_URL_API_INTERNA = "http://api-interna:8000";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.PROPTECH_URL_API_INTERNA;
+  });
+
+  it("comparacionDelBorrador pide GET .../importaciones/comparacion y devuelve el cuerpo", async () => {
+    const fetchFalso = mockFetch({ status: 200, cuerpo: COMPARACION });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await comparacionDelBorrador(EDIFICIO);
+    const [url, opciones] = fetchFalso.mock.calls[0] ?? [];
+    expect(url).toBe(`http://api-interna:8000/api/complejos/${EDIFICIO}/importaciones/comparacion`);
+    expect(opciones?.method).toBe("GET");
+    expect(resultado).toEqual({ estado: "ok", datos: COMPARACION });
+  });
+
+  it("un monto que no es texto decimal con dos decimales es fallo, nunca un ok que la pantalla no sabría mostrar", async () => {
+    const primera = COMPARACION.unidades[0];
+    for (const mala of [
+      { ...COMPARACION, total_borrador: 221000 },
+      { ...COMPARACION, total_control: "221000" },
+      { ...COMPARACION, unidades: [{ ...primera, diferencia: "10000" }] },
+      { ...COMPARACION, unidades: [{ ...primera, borrador: 169000 }] },
+    ]) {
+      vi.stubGlobal("fetch", mockFetch({ status: 200, cuerpo: mala }));
+      expect(await comparacionDelBorrador(EDIFICIO)).toEqual({ estado: "fallo" });
+    }
+  });
+
+  it("un 404 (sin borrador o sin edificio) y un 403 llegan con su estado", async () => {
+    vi.stubGlobal("fetch", mockFetch({ status: 404, cuerpo: { detail: "no encontrado" } }));
+    expect(await comparacionDelBorrador(EDIFICIO)).toEqual({ estado: "no_existe" });
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        status: 403,
+        cuerpo: {
+          detail: {
+            codigo: "sin_permiso",
+            detalle: "sin_permiso",
+            permiso_faltante: "importar_padron_y_saldos",
+          },
+        },
+      }),
+    );
+    expect(await comparacionDelBorrador(EDIFICIO)).toEqual({
+      estado: "sin_permiso",
+      permiso: "importar_padron_y_saldos",
+    });
+  });
+
+  it("aceptarDiferencias manda un JSON con sólo importacion_id a .../aceptacion-de-diferencias", async () => {
+    const aceptada = {
+      aceptacion_id: "55555555-5555-5555-5555-555555555555",
+      diferencias: [
+        { unidad: "1A", borrador: "169000.00", control: "159000.00", diferencia: "10000.00" },
+      ],
+      aceptada_por: "66666666-6666-6666-6666-666666666666",
+      aceptada_en: "2026-11-12T15:00:00+00:00",
+    };
+    const fetchFalso = mockFetch({ status: 201, cuerpo: aceptada });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await aceptarDiferencias(EDIFICIO, IMPORTACION);
+    const [url, opciones] = fetchFalso.mock.calls[0] ?? [];
+    expect(url).toBe(
+      `http://api-interna:8000/api/complejos/${EDIFICIO}/importaciones/aceptacion-de-diferencias`,
+    );
+    expect(opciones?.method).toBe("POST");
+    expect(JSON.parse(String(opciones?.body))).toEqual({ importacion_id: IMPORTACION });
+    expect((opciones?.headers as Headers).get("Content-Type")).toBe("application/json");
+    expect(resultado).toEqual({ estado: "ok", datos: aceptada });
+  });
+
+  it.each([
+    [403, { detail: { codigo: "sin_permiso", permiso_faltante: "aceptar_diferencias_de_saldos" } }],
+    [409, { detail: "conflicto", campo: "aceptacion" }],
+  ])("aceptarDiferencias con %s da su estado", async (status, cuerpo) => {
+    vi.stubGlobal("fetch", mockFetch({ status, cuerpo }));
+    const resultado = await aceptarDiferencias(EDIFICIO, IMPORTACION);
+    expect(resultado).toEqual(
+      status === 403
+        ? { estado: "sin_permiso", permiso: "aceptar_diferencias_de_saldos" }
+        : { estado: "conflicto", campo: "aceptacion" },
+    );
+  });
+
+  it("R3C-2 · un id que no es UUID da no_existe, sin llamar a fetch", async () => {
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    expect(await comparacionDelBorrador("1")).toEqual({ estado: "no_existe" });
+    expect(await aceptarDiferencias("1", IMPORTACION)).toEqual({ estado: "no_existe" });
+    expect(await aceptarDiferencias(EDIFICIO, "../otra")).toEqual({ estado: "no_existe" });
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

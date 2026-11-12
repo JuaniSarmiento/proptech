@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   coeficiente,
   diferenciaComoPorcentaje,
+  dinero,
   fecha,
+  fechaYHora,
   porcentaje,
   sumaComoPorcentaje,
   superficie,
@@ -69,5 +71,35 @@ describe("fecha", () => {
 
   it("un texto que no es una fecha ISO se devuelve tal cual, nunca un 'Invalid Date'", () => {
     expect(fecha("mañana")).toBe("mañana");
+  });
+});
+
+describe("dinero", () => {
+  it.each([
+    ["169000.00", "169.000,00"],
+    ["0.00", "0,00"],
+    ["-10000.00", "-10.000,00"],
+    ["1234567.89", "1.234.567,89"],
+    ["5.05", "5,05"],
+  ])("%s -> %s", (entrada, esperado) => {
+    expect(dinero(entrada)).toBe(esperado);
+  });
+
+  it.each(["10", "10.5", "1,00", "-", "", "1.000,00", " 1.00", "1.00\n"])(
+    "un texto que no es plata con dos decimales (%j) se rechaza, nunca se muestra mal",
+    (entrada) => {
+      expect(() => dinero(entrada)).toThrow();
+    },
+  );
+});
+
+describe("fechaYHora", () => {
+  it("una hora con zona se muestra en Mendoza, sin depender de la zona de quien corre", () => {
+    expect(fechaYHora("2026-11-12T15:00:00+00:00")).toBe("12/11/2026 12:00");
+    expect(fechaYHora("2026-11-13T02:30:00+00:00")).toBe("12/11/2026 23:30");
+  });
+
+  it("lo que no es una fecha con hora vuelve tal cual", () => {
+    expect(fechaYHora("ayer")).toBe("ayer");
   });
 });

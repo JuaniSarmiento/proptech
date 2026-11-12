@@ -49,3 +49,49 @@ export async function plantillaDelPadron(id: string): Promise<ResultadoApi<Array
     alNoAutenticar: "devolver",
   });
 }
+
+export type UnidadComparada = {
+  unidad: string;
+  unidad_id: string;
+  borrador: string;
+  control: string;
+  diferencia: string;
+  aviso: string | null;
+};
+
+export type DiferenciaAceptada = {
+  unidad: string;
+  borrador: string;
+  control: string;
+  diferencia: string;
+};
+
+export type AceptacionDeDiferencias = {
+  aceptacion_id: string;
+  diferencias: DiferenciaAceptada[];
+  aceptada_por: string;
+  aceptada_en: string;
+};
+
+export type ComparacionDelBorrador = {
+  importacion_id: string;
+  unidades: UnidadComparada[];
+  total_borrador: string;
+  total_control: string;
+  unidades_con_diferencia: number;
+  requiere_aceptacion: boolean;
+  aceptacion: AceptacionDeDiferencias | null;
+};
+
+export async function comparacionDelBorrador(
+  _id: string,
+): Promise<ResultadoApi<ComparacionDelBorrador>> {
+  return { estado: "fallo" };
+}
+
+export async function aceptarDiferencias(
+  _id: string,
+  _importacionId: string,
+): Promise<ResultadoApi<AceptacionDeDiferencias>> {
+  return { estado: "fallo" };
+}

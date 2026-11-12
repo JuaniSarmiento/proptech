@@ -161,6 +161,14 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "tipo_de_comprobante": "nota_de_credito_a",
         "numero_de_comprobante": "00000001",
     },
+    # Change 5 `importacion-desde-excel` (H-008): el `importacion_id` lo manda el cliente (es una
+    # referencia al borrador, no un alta); cualquier otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias",
+        "POST",
+    ): lambda mundo: {
+        "importacion_id": str(uuid.uuid4()),
+    },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),
         "concepto": "Cargo ficticio",
