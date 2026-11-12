@@ -48,6 +48,7 @@ from proptech_core.gastos.aplicacion import (
 )
 from proptech_core.gastos.puertos import FilaCargoImportada
 from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel
+from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
 from proptech_core.importacion.aplicacion.importar import importar
 
 pytestmark = pytest.mark.integracion
@@ -542,6 +543,54 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             request_id=uuid.uuid4(),
         ).importacion_id
 
+    def invocar_aceptacion(sesion: Session) -> UUID:
+        """Aceptar diferencias necesita un borrador con una diferencia: se sube el padrón con sus
+        saldos y un control distinto, y la misma persona (super admin) las acepta."""
+        from ._saldos_importados import archivo, control_base
+
+        control = control_base()
+        control[0][1] = "159000.00"
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": identidad.administracion_id, "persona": identidad.persona_id},
+        )
+        edificio = escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Aceptado ficticio",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        importacion = importar(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            contenido=archivo(control=control),
+            nombre_del_archivo="saldos.xlsx",
+            fecha_de_migracion=date(2026, 10, 15),
+            lector=LectorDePlantillaExcel(),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).importacion_id
+        return aceptar_diferencias(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            importacion_id=importacion,
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).aceptacion_id
+
     _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
@@ -564,6 +613,7 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             request_id=uuid.uuid4(),
         ),
         Accion.IMPORTAR_PADRON_Y_SALDOS: invocar_importacion,
+        Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: invocar_aceptacion,
         Accion.CREAR_EDIFICIO: lambda sesion: escritura.crear_edificio(
             sesion,
             identidad,

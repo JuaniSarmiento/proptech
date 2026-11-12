@@ -210,6 +210,28 @@ mutante, en un commit anterior al de producción (L-061). -->
 - [ ] 2.3 **Borrador y comparación (aplicación).** Guardar el borrador en la misma subida, descartar el
   anterior, sin tocar el libro; comparación por unidad con totales, signo opuesto, aviso de mes entero
   (E13). Mutantes: comparar sólo totales; sumar el crédito en vez de restarlo.
+  - **RED 2.3 y 2.4** (11/11/2026 22:30, contra `comparar_saldos`, `aviso_de_mes_entero`, `comparar_borrador` y
+    `aceptar_diferencias` provisorios que devuelven una comparación vacía y una aceptación sin escribir nada, y contra el
+    `importar` de H-007 que todavía no guarda `Saldos` ni `Control`; `aceptar_diferencias` ya está marcado con
+    `@accion_sensible` para que el barrido de auditoría lo vea): `cd backend && uv run pytest
+    tests/unitarios/test_importacion_comparacion.py tests/integracion/test_borrador_de_saldos.py
+    tests/integracion/test_comparacion_de_saldos.py tests/integracion/test_aceptar_diferencias.py
+    tests/integracion/test_auditoria_transaccion.py -q` -> `59 failed, 19 passed` (los 19 son 6 del barrido de auditoría
+    ya existentes y 13 nuevos que coinciden con el provisorio, listados abajo). Por causa, todas aserciones del test: `Failed:
+    DID NOT RAISE` x21 (`NoEncontrado` x8, `SinPermiso` x5, `Conflicto` x5, `PadronInvalido` x3: ni autoriza ni rechaza),
+    `assert '' == 'El primer interés del sistema cubre ...'` x5 (el aviso), `assert {} == {...}`/`assert set() == {...}`
+    sobre las unidades y las diferencias de la comparación y de la aceptación (el cuerpo vacío), `assert ('0.00', '0.00') ==
+    ('320000.00', '320000.00')` (totales), `assert 0 == 7` (`filas_de_saldo`) y `assert 0 == 1` (la aceptación no escribe), y
+    `AssertionError: aceptar_diferencias_de_saldos: se esperaba 1 fila de auditoría, hay 0` (el barrido). Un primer intento de
+    estos tests fallaba con `KeyError`/`IndexError` sobre el resultado vacío (error de acceso, no de aserción): se reescribieron
+    con `.get` y comparaciones de listas antes de dar el rojo por bueno. Los 13 verdes que no cuentan como RED, porque el
+    provisorio o el `importar` actual ya los cumplen: `test_sin_filas_ni_control_la_comparacion_esta_vacia`,
+    `test_el_borrador_no_toca_el_libro`, `test_la_auditoria_de_importar_sigue_siendo_una_sola`, `test_un_archivo_sin_saldos_no_deja_borrador`,
+    `test_las_hojas_de_la_plantilla_descargada_sin_filas_no_son_un_borrador`, `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto`,
+    `test_las_unidades_del_padron_con_error_igual_sirven_para_ubicar_los_saldos`, `test_proporcional_por_dia_no_avisa`,
+    `test_sin_version_de_configuracion_no_avisa`, `test_vale_la_version_vigente_a_la_fecha_de_migracion_no_la_de_hoy`,
+    `test_los_que_pueden_aceptar[super_admin|principal]` y `test_la_hora_de_la_aceptacion_es_la_del_reloj_con_zona`; los cubren los
+    mutantes de la implementación (ver más abajo).
 - [ ] 2.4 **Aceptar diferencias.** Permiso (E6), registro exacto de las diferencias, auditoría, la
   aceptación deja de valer con un borrador nuevo. Mutante: aceptar sin guardar la lista.
 - [ ] 2.5 **Rutas y pantalla de comparación** (D11) con e2e de Playwright (diferencias visibles aunque el

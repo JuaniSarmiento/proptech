@@ -68,9 +68,9 @@ class Accion(StrEnum):
     #: importacion-desde-excel (E6, migración `0036`): subir la plantilla de Excel con el padrón (y,
     #: desde H-008, los saldos). Como `CONFIGURAR_PADRON`: nadie más.
     IMPORTAR_PADRON_Y_SALDOS = "importar_padron_y_saldos"
-    #: importacion-desde-excel (E6, migración `0037`): aceptar las diferencias del borrador de saldos
-    #: contra el control del administrador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el administrador por
-    #: edificio no.
+    #: importacion-desde-excel (E6, migración `0037`): aceptar las diferencias del borrador de
+    #: saldos contra el control del administrador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el
+    #: administrador por edificio no.
     ACEPTAR_DIFERENCIAS_DE_SALDOS = "aceptar_diferencias_de_saldos"
     VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
 
