@@ -216,6 +216,13 @@ def test_no_baja_con_filas(base_del_edificio: BaseDeEdificio) -> None:
     with pytest.raises(AssertionError, match="tiene filas"):
         base.migrar("downgrade", "0035")
     with base.conectar_app() as c2:
+        c2.autocommit = False
         fijar_tenant(c2, mundo.admin)
-        assert c2.execute("SELECT count(*) FROM importacion").fetchone() == (1,)
+        assert c2.execute("SELECT count(*) FROM importacion").fetchone() == (1,), (
+            "el downgrade rechazado se llevó la fila"
+        )
+        assert c2.execute(
+            "SELECT relforcerowsecurity FROM pg_class WHERE relname = 'importacion'"
+        ).fetchone() == (True,), "el downgrade rechazado dejó la RLS sin forzar"
         c2.execute("DELETE FROM importacion WHERE administracion_id = %s", (mundo.admin,))
+        c2.commit()

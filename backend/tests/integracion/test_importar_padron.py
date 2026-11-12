@@ -400,7 +400,7 @@ def test_un_edificio_con_padron_rechaza_filas_de_unidades(mundo: Mundo, sesion: 
 def test_otro_archivo_reemplaza_el_borrador_anterior(mundo: Mundo, sesion: Session) -> None:
     primera = _importar(sesion, mundo.super_admin, mundo.con_padron, libro({"Notas": [["a"]]}))
     segunda = _importar(sesion, mundo.super_admin, mundo.con_padron, libro({"Notas": [["b"]]}))
-    estados = dict(
+    estados: dict[UUID, str] = dict(
         sesion.execute(
             text("SELECT id, estado FROM importacion WHERE complejo_id = :c"),
             {"c": mundo.con_padron},
@@ -446,7 +446,7 @@ def test_un_edificio_inexistente_o_de_otra_administracion_no_existe(
         _no_escribe(
             sesion,
             NoEncontrado,
-            lambda c=complejo: _importar(sesion, mundo.super_admin, c, padron()),  # type: ignore[misc]
+            lambda c=complejo: _importar(sesion, mundo.super_admin, c, padron()),
         )
 
 

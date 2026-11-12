@@ -204,6 +204,14 @@ class _DetalleImportarCargosParticulares(_DetalleAsignarEdificio):
     cantidad: int
 
 
+class _DetalleImportarPadron(_DetalleAsignarEdificio):
+    #: Sólo cantidades (nunca nombres ni emails de los propietarios, D9). El id de la importación es
+    #: la `entidad_id` de la fila.
+    unidades: int
+    propietarios_creados: int
+    propietarios_reusados: int
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -223,6 +231,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.CORREGIR_MOVIMIENTO: _DetalleCorreccion,
     Accion.CREAR_VERSION_DE_CONFIGURACION: _DetalleConfiguracion,
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: _DetalleAsignarEdificio,
+    Accion.IMPORTAR_PADRON_Y_SALDOS: _DetalleImportarPadron,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,
