@@ -75,6 +75,9 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # Cambio 6 `gastos-y-cargos`: multipart (`UploadFile`), no JSON — el
     # contrato de R11 para esta ruta se prueba en `test_cargos_particulares.py`.
     ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
+    # Change 5 `importacion-desde-excel`: multipart también; el único id que hay en la respuesta
+    # (`importacion_id`) lo genera el servidor y el formulario no tiene campos de id.
+    ("/api/complejos/{complejo_id}/importaciones", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
