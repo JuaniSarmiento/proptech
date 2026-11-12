@@ -164,6 +164,13 @@ mutante, en un commit anterior al de producción (L-061). -->
   migración) con 422 `{"detail": [{hoja, fila, columna, motivo}]}`, en `_RUTAS_CUBIERTAS`; descarga de la
   plantilla; pantalla `edificios/[id]/importar` (D11) con sus estados y e2e de Playwright (archivo válido,
   archivo con errores, sin permiso).
+  - **RED 1.6** (11/11/2026, `python3 aceptacion/H-007/aceptar.py --codigo HEAD --sin-regresion`, HEAD `fdaf4e4`, sin la
+    ruta ni la pantalla): `H-007.TESTS FALLA 87 ejecutados, 3 pasados, 84 fallas, 0 errores, 0 skips` (los 84 son
+    `AssertionError: se esperaba 201/422/409/403, llegó 404 {"detail":"Not Found"}` o `la plantilla no se descarga: 404`)
+    y `H-007.E2E FALLA 4 esperados; 4 ejecutados, 0 pasados, 4 fallas, 0 errores`; el propio `aceptar.py` informa
+    `que no son por aserción (0)`: los cuatro e2e fallan en el `expect` del encabezado `Importar desde Excel` (la
+    pantalla no existe). Los tests de componente y de cliente de la web se escribieron junto con el código; se validan
+    con mutantes (ver abajo), no con un rojo previo: lo anoto como desvío del método.
 
 ## 2. H-008 · Borrador de saldos y comparación
 
