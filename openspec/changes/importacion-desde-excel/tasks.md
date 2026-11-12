@@ -197,6 +197,16 @@ mutante, en un commit anterior al de producción (L-061). -->
   `aceptacion_de_diferencias` (de sólo agregar, en `TABLAS_DE_SOLO_AGREGAR`) y la acción
   `aceptar_diferencias_de_saldos`. Matriz de mutantes de protección como la `0034`; ensayo de roles y
   barrido local de migraciones (L-083).
+  - **RED 2.2** (11/11/2026, antes de escribir la migración, el `Accion` nuevo y la tabla protegida):
+    `cd backend && uv run pytest tests/integracion/test_migracion_0037_borrador_de_saldos.py
+    tests/integracion/test_migracion_0037_baja_y_sube.py -q` -> `64 failed, 0 passed`. Cada rojo es una aserción del propio
+    test, ninguno de setup (la comprobación de que las tablas existen vive en cada test, no en el fixture): `AssertionError:
+    falta la tabla <tabla> (0037)` x60 (`assert [(False,)] == [(True,)]`), `falta la migración 0037` x1, y las del
+    vocabulario `la 0037 no cargó la acción en el vocabulario` x1 y `Right contains one more item:
+    ('aceptar_diferencias_de_saldos',)` x2. Permisos: `uv run pytest tests/unitarios/acceso/test_permisos.py -q` ->
+    `20 failed, 1136 passed`: `test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario` falla por aserción (la fila nueva
+    de la matriz a mano no está en `Accion`) y 19 celdas con `ValueError: 'aceptar_diferencias_de_saldos' is not a valid
+    Accion` (el miembro que falta es justo lo que se prueba).
 - [ ] 2.3 **Borrador y comparación (aplicación).** Guardar el borrador en la misma subida, descartar el
   anterior, sin tocar el libro; comparación por unidad con totales, signo opuesto, aviso de mes entero
   (E13). Mutantes: comparar sólo totales; sumar el crédito en vez de restarlo.

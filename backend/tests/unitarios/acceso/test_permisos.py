@@ -75,6 +75,9 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "configurar_padron": (True, True, True, False, False, False, False, False, False),
     # importacion-desde-excel E6: como `configurar_padron`, nadie más.
     "importar_padron_y_saldos": (True, True, True, False, False, False, False, False, False),
+    # E6: aceptar las diferencias del borrador de saldos es de quien confirma (como
+    # `confirmar_sin_saldos_previos`): el administrador por edificio no.
+    "aceptar_diferencias_de_saldos": (True, True, False, False, False, False, False, False, False),
     "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
 }
 _PERFILES = [
