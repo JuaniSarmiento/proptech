@@ -18,6 +18,9 @@ vi.mock("../../../../lib/api/edificios", () => ({
     datos: { nombre: "Edificio", pisos: 4, subsuelos: 1 },
   }),
 }));
+vi.mock("../../../../lib/api/resumen", () => ({
+  resumenDelEdificio: async () => ({ estado: "ok", datos: { estado_migracion: "pendiente" } }),
+}));
 vi.mock("../../../../lib/api/unidades", () => ({
   padronDelEdificio: async () => ({
     estado: "ok",

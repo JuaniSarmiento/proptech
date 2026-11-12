@@ -54,7 +54,9 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 - **Validación** (D-082, a validar con un administrador): los coeficientes de "Generales" y los de
   cada grupo con coeficientes propios suman 1 con una tolerancia de ±0,0001, con el borde incluido
   (0,9999 y 1,0001 están dentro). **La carga no se rechaza** (E5 del 3a): cargar el padrón de a una
-  unidad pasa necesariamente por sumas parciales que no dan 1. **Se informa siempre la suma, la
+  unidad pasa necesariamente por sumas parciales que no dan 1. **La importación desde Excel sí rechaza**
+  (5, E4): un archivo cuya suma de coeficientes queda fuera de la tolerancia no carga nada; dentro de la
+  tolerancia pero distinta de 1 carga con una advertencia. **Se informa siempre la suma, la
   diferencia y su estado**: "ok" si es exactamente 1, "advertencia" dentro de la tolerancia y "fuera de
   tolerancia" si se aparta más. **La emisión se bloquea**: un grupo fuera de tolerancia dispara el
   control duro "Coeficientes fuera de tolerancia" de R34 (cambio 7). Dentro de la tolerancia, el
@@ -376,6 +378,25 @@ del 3c, D-128)
   (pendiente, confirmada o sin saldos previos, D-083).
 - **Crédito a favor**: entra como crédito y se compensa en la primera liquidación.
 - **Trazabilidad**: cada saldo inicial guarda el archivo y la fila de origen.
+- **Plantilla del importador** (5, H-007, E1 a E9, E14, E15): hojas `Unidades` (Unidad, Tipo, Piso,
+  Coeficiente, Superficie m2, Propietario, Email), `Saldos` (el detalle por período o el total) y la
+  hoja `Control` (el saldo de cada unidad según el administrador, contra el que se compara el
+  borrador). Todo o nada, con un error por hoja, fila y columna; números desde texto con coma decimal,
+  nunca redondeados; 2 MiB y 2.000 filas por hoja; el mismo archivo dos veces se rechaza por su huella;
+  la fecha de migración se elige al subir. Los propietarios se cargan sin invitarlos (E3).
+- **Borrador y comparación en el importador** (5, H-008, E7, E8, E13): las hojas `Saldos` y `Control`
+  quedan en un borrador que no toca el libro; la comparación muestra, unidad por unidad, el saldo del
+  borrador, el del control y la diferencia (borrador − control), aunque el total coincida. Con
+  diferencias, el super admin o el administrador principal las acepta una sola vez por importación y la
+  aceptación queda registrada (quién, cuándo, cuáles); otro archivo descarta el borrador anterior. Si
+  rige "mes entero", la comparación avisa que el primer interés del sistema cubre el mes de la migración
+  (E18 del 4c).
+- **Confirmar el importador** (5, H-009, E6, E8, E10, E12): `confirmar_saldos_iniciales`, sólo
+  super admin y administrador principal, sobre el borrador vigente y con las diferencias aceptadas si
+  las hay. En una sola transacción, con el candado del complejo: carga el saldo inicial de cada unidad
+  con `registrar_saldo_inicial` del 4c (detalle por período, total único o crédito), deja el edificio
+  en "Saldos iniciales confirmados" (estado `confirmada`), audita y cierra el importador. Un rechazo no
+  escribe nada; confirmar no se deshace.
 - **Comparación por unidad** (D-068): lo importado queda primero en un **borrador** que no toca la
   cuenta corriente. El sistema lo compara **unidad por unidad** contra el saldo de cada unidad según
   el administrador, y muestra cada diferencia con su unidad. El total se compara también, como
@@ -383,7 +404,13 @@ del 3c, D-128)
   administrador las corrige o las acepta igual, y la aceptación queda registrada (quién, cuándo y qué
   diferencias).
 - **Después de confirmar**: el importador se cierra para ese edificio. Un saldo inicial mal cargado
-  se corrige con un ajuste con motivo (R08), nunca reabriendo la migración.
+  se corrige con un ajuste con motivo (R08), nunca reabriendo la migración. Cargado de menos: un
+  **ajuste de saldo inicial** (5, H-010, E11, D-156), `ajustar_saldo_inicial`, sólo super admin y
+  administrador principal, con la migración confirmada: una obligación nueva sin emisión con el importe
+  en el componente elegido, período en el mes de la migración y vencimiento el día del ajuste (el
+  interés de R03 corre desde el día siguiente, nunca retroactivo), motivo de 1 a 500 caracteres en
+  `ajuste_de_saldo_inicial`, auditoría y replay por `operacion_id`; un crédito a favor se le imputa
+  (R04). Cargado de más: las correcciones del 4b.
 - **Tests mínimos**: el interés acumulado que trae el administrador entra tal cual y no genera
   interés; el interés corre sólo desde la fecha de migración; saldo con detalle genera sus obligaciones; total único genera una sola;
   crédito negativo entra como crédito; la suma importada coincide con el archivo de origen; dos

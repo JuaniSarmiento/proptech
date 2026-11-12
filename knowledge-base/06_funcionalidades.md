@@ -108,6 +108,9 @@ por período con su vencimiento) para no tipearlo a mano.
   cada unidad que no coincide con su diferencia, aunque el total dé igual (R09).
 - Dadas diferencias, cuando las acepto igual, entonces la aceptación queda registrada y recién ahí
   puedo confirmar los saldos.
+- **Plantilla** (5, H-007, E1 a E3): la hoja `Unidades` trae Unidad, Tipo, Piso, Coeficiente,
+  `Superficie m2` (obligatoria, mayor que cero), Propietario y Email (opcional). Un propietario por
+  fila, sin invitación: invitar sigue siendo la acción aparte del padrón.
 - **Qué acepta la columna "piso" (3c, borde fijado para el importador del cambio 5, D3, D-128)**: el
   3c **no construye** el importador, pero fija el contrato que su columna "piso" va a tener que
   respetar: exactamente el vocabulario del edificio destino (`SS1`…`SS<subsuelos>`, `PB`,

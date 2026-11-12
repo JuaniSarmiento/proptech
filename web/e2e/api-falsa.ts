@@ -16,6 +16,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
+import {
+  esEdificioConfirmado,
+  esEdificioDeAjuste,
+  esEdificioDeComparacion,
+  esEdificioDeConfirmacion,
+  esEdificioDeImportacion,
+  padronDeAjuste,
+  responderAjuste,
+  responderComparacion,
+  responderConfirmacion,
+  responderImportacion,
+} from "./escenarios-importacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -56,6 +68,10 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "confirmar_sin_saldos_previos",
     "configurar_padron",
     "ver_configuracion_del_edificio",
+    "importar_padron_y_saldos",
+    "aceptar_diferencias_de_saldos",
+    "confirmar_saldos_iniciales",
+    "ajustar_saldo_inicial",
   ],
   por_edificio: {},
 };
@@ -952,6 +968,58 @@ export function crearServidor(
       }
     };
 
+    // change 5 (H-007): los tres edificios del contrato contestan la subida y la plantilla.
+    if (
+      (resto === "importaciones" || resto === "importaciones/plantilla") &&
+      esEdificioDeImportacion(id)
+    ) {
+      responderImportacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+
+    // change 5 (H-008): la comparación de saldos y aceptar sus diferencias, en los tres edificios
+    // de su contrato (801 a 803), sin pisar los de H-007.
+    if (
+      (resto === "importaciones/comparacion" ||
+        resto === "importaciones/aceptacion-de-diferencias") &&
+      esEdificioDeComparacion(id)
+    ) {
+      responderComparacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+
+    // change 5 (H-009): la confirmación de saldos, en los cuatro edificios de su contrato (901 a
+    // 904). La comparación que ven es la del contrato (no la de H-008).
+    if (
+      (resto === "importaciones/comparacion" || resto === "importaciones/confirmacion") &&
+      esEdificioDeConfirmacion(id)
+    ) {
+      responderConfirmacion(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+
+    // change 5 (H-010): el ajuste de saldo inicial de una unidad, en los tres edificios de su contrato
+    // (1001 a 1003). Su padrón trae la `1A` del contrato, con el id que la pantalla enlaza.
+    const rutaDeAjuste = /^unidades\/([^/]+)\/ajustes-de-saldo-inicial$/.exec(resto);
+    if (rutaDeAjuste && esEdificioDeAjuste(id)) {
+      responderAjuste(pedido, respuesta, id, rutaDeAjuste[1] ?? "", (escritura) => {
+        _ultimaEscritura = escritura;
+      });
+      return;
+    }
+    if (resto === "unidades" && esEdificioDeAjuste(id) && (pedido.method ?? "GET") === "GET") {
+      respuesta
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify(padronDeAjuste(id)));
+      return;
+    }
+
     const nombreFixture = _RUTAS[resto];
     if (!nombreFixture) {
       respuesta.writeHead(404).end();
@@ -974,6 +1042,14 @@ export function crearServidor(
           informe: unidad
             ? informeConEstado("ok", "0.000000", "1.000000")
             : informeConEstado("fuera_de_tolerancia", "-1.000000", "0.000000"),
+        };
+      }
+      if (nombreFixture === "resumen" && esEdificioConfirmado(id)) {
+        // La migración `confirmada` cuenta el paso 7 como hecho (`resumen_edificio`, lectura.py).
+        mutado = {
+          ...mutado,
+          estado_migracion: "confirmada",
+          pasos: { ...mutado.pasos, saldos_previos: "hecho" },
         };
       }
       respuesta.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mutado));

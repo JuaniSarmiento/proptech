@@ -500,12 +500,22 @@ _DUENO_DE_TABLA = {
             "tramo_de_interes",
             "carga_de_saldo_inicial",
             "origen_de_saldo_inicial",
+            "ajuste_de_saldo_inicial",
         ),
         "cuenta_corriente",
     ),
     **dict.fromkeys(
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",
+    ),
+    **dict.fromkeys(
+        (
+            "importacion",
+            "fila_de_saldo_importada",
+            "control_de_saldo",
+            "aceptacion_de_diferencias",
+        ),
+        "importacion",
     ),
 }
 _EXCEPCIONES_SQL = {
@@ -802,3 +812,89 @@ def test_mutantes_vinculacion_fuera_del_ejemplo(
     ofensor = str(mutado.relative_to(raiz.parent))
     assert ofensor in importadores
     assert importadores != [_IMPORTADOR_DEL_EJEMPLO]
+
+
+# --- importacion-desde-excel, tarea 1.1: el módulo `importacion` (design D0)
+# importa a los demás por `aplicacion` y nadie lo importa a él (sin ciclos).
+# Copias temporales, nunca el árbol real (L-013). ---
+
+_MODULOS_QUE_NO_IMPORTAN_IMPORTACION = ("acceso", "complejos", "cuenta_corriente", "gastos")
+
+
+def test_importacion_figura_entre_los_modulos_recorridos_y_nadie_lo_importa() -> None:
+    assert "importacion" in _modulos(RAIZ_SRC)
+    ofensores = {
+        origen: archivos
+        for origen in _MODULOS_QUE_NO_IMPORTAN_IMPORTACION
+        if (archivos := _archivos_que_importan(origen, "importacion"))
+    }
+    assert ofensores == {}, ofensores
+
+
+def test_importacion_es_dueno_de_su_tabla() -> None:
+    assert _DUENO_DE_TABLA.get("importacion") == "importacion"
+
+
+@pytest.mark.parametrize("origen", _MODULOS_QUE_NO_IMPORTAN_IMPORTACION)
+def test_un_modulo_que_importa_importacion_cierra_un_ciclo(copia_core: Path, origen: str) -> None:
+    """Mutante de la tarea 1.1: `<origen>` importando `importacion` mientras
+    `importacion` importa `<origen>` por su `aplicacion` (el sentido que D0
+    permite) tiene que dar un ciclo."""
+    assert (copia_core / "importacion").is_dir(), "falta el módulo importacion"
+    (copia_core / origen / "mutante.py").write_text("import proptech_core.importacion.aplicacion\n")
+    (copia_core / "importacion" / "mutante.py").write_text(
+        f"import proptech_core.{origen}.aplicacion\n"
+    )
+    primero, segundo = sorted([origen, "importacion"])
+    esperado = f"{primero} → {segundo} → {primero}"
+    assert esperado in _ciclos(copia_core), _ciclos(copia_core)
+
+
+@pytest.mark.parametrize("destino", ["complejos", "acceso", "cuenta_corriente"])
+def test_importacion_importa_por_aplicacion_y_no_por_dominio(
+    copia_core: Path, destino: str
+) -> None:
+    assert (copia_core / "importacion").is_dir(), "falta el módulo importacion"
+    archivo = copia_core / "importacion" / "aplicacion" / "mutante.py"
+    archivo.write_text(f"import proptech_core.{destino}.dominio.algo\n")
+    assert any(
+        "importacion/aplicacion/mutante.py" in o and f"{destino}.dominio" in o
+        for o in _entre_modulos(copia_core)
+    )
+    archivo.write_text(f"import proptech_core.{destino}.aplicacion\n")
+    assert not any("importacion/aplicacion/mutante.py" in o for o in _entre_modulos(copia_core))
+
+
+def test_importacion_nombra_una_tabla_ajena(copia_core: Path) -> None:
+    assert (copia_core / "importacion").is_dir(), "falta el módulo importacion"
+    archivo = copia_core / "importacion" / "aplicacion" / "mutante.py"
+    archivo.write_text('SQL = "INSERT INTO unidad (id) VALUES (1)"')
+    assert "importacion/aplicacion/mutante.py: unidad" in _sql_ajeno(copia_core, _EXCEPCIONES_SQL)
+
+
+# --- importacion-desde-excel, tarea 1.5: el caso de uso `importar` orquesta `acceso` y
+# `complejos` por su `aplicacion`, y `complejos` sigue sin conocer a `cuenta_corriente` ---
+
+
+def test_complejos_no_importa_cuenta_corriente() -> None:
+    assert _archivos_que_importan("complejos", "cuenta_corriente") == []
+
+
+def test_complejos_importando_cuenta_corriente_da_ciclo_con_el_caso_de_uso(
+    copia_core: Path,
+) -> None:
+    """`cuenta_corriente` ya importa `complejos`: que `complejos` importe `cuenta_corriente` cierra
+    un ciclo (por eso `importar` vive en `importacion`, que importa a los dos)."""
+    (copia_core / "complejos" / "mutante.py").write_text(
+        "import proptech_core.cuenta_corriente.aplicacion\n"
+    )
+    assert "complejos → cuenta_corriente → complejos" in _ciclos(copia_core)
+
+
+def test_importar_usa_acceso_y_complejos_por_su_aplicacion() -> None:
+    archivo = RAIZ_SRC / "importacion" / "aplicacion" / "importar.py"
+    assert archivo.is_file(), "falta importacion/aplicacion/importar.py"
+    destinos = {tuple(d[:3]) for _, d in _destinos(archivo, RAIZ_SRC)}
+    assert ("proptech_core", "complejos", "aplicacion") in destinos
+    assert ("proptech_core", "acceso", "aplicacion") in destinos
+    assert not [o for o in _entre_modulos(RAIZ_SRC) if "importacion/" in o]

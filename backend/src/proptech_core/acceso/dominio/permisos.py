@@ -65,6 +65,21 @@ class Accion(StrEnum):
     CREAR_VERSION_DE_CONFIGURACION = "crear_version_de_configuracion"
     CONFIRMAR_SIN_SALDOS_PREVIOS = "confirmar_sin_saldos_previos"
     CONFIGURAR_PADRON = "configurar_padron"
+    #: importacion-desde-excel (E6, migración `0036`): subir la plantilla de Excel con el padrón (y,
+    #: desde H-008, los saldos). Como `CONFIGURAR_PADRON`: nadie más.
+    IMPORTAR_PADRON_Y_SALDOS = "importar_padron_y_saldos"
+    #: importacion-desde-excel (E6, migración `0037`): aceptar las diferencias del borrador de
+    #: saldos contra el control del administrador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el
+    #: administrador por edificio no.
+    ACEPTAR_DIFERENCIAS_DE_SALDOS = "aceptar_diferencias_de_saldos"
+    #: importacion-desde-excel (E6, migración `0038`): confirmar el borrador de saldos, que carga el
+    #: saldo inicial en el libro y cierra el importador. Como `CONFIRMAR_SIN_SALDOS_PREVIOS`: el
+    #: administrador por edificio no.
+    CONFIRMAR_SALDOS_INICIALES = "confirmar_saldos_iniciales"
+    #: importacion-desde-excel (E6, E11, migración `0039`): corregir un saldo inicial cargado de
+    #: menos con una obligación nueva y su motivo. Como `CORREGIR_MOVIMIENTO`: el administrador por
+    #: edificio no.
+    AJUSTAR_SALDO_INICIAL = "ajustar_saldo_inicial"
     VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
 
 
@@ -140,6 +155,10 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.CREAR_VERSION_DE_CONFIGURACION: frozenset({_SA, _AP, _AE}),
     Accion.CONFIRMAR_SIN_SALDOS_PREVIOS: frozenset({_SA, _AP}),
     Accion.CONFIGURAR_PADRON: frozenset({_SA, _AP, _AE}),
+    Accion.IMPORTAR_PADRON_Y_SALDOS: frozenset({_SA, _AP, _AE}),
+    Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: frozenset({_SA, _AP}),
+    Accion.CONFIRMAR_SALDOS_INICIALES: frozenset({_SA, _AP}),
+    Accion.AJUSTAR_SALDO_INICIAL: frozenset({_SA, _AP}),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
 }
 

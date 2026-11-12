@@ -61,9 +61,15 @@ _COLUMNAS_COMPLEJO = (
 )
 
 
-def cargar_complejo(sesion: Session, complejo_id: UUID) -> ComplejoLeido | None:
+def cargar_complejo(
+    sesion: Session, complejo_id: UUID, *, bloquear: bool = False
+) -> ComplejoLeido | None:
+    """`bloquear=True` toma `FOR UPDATE` sobre la fila (E8 de la importación): quien lo pide
+    serializa con "sin saldos previos", con otra importación y con la confirmación, y lee el estado
+    de migración ya con el candado puesto."""
+    bloqueo = " FOR UPDATE" if bloquear else ""
     fila = sesion.execute(
-        text(f"SELECT {_COLUMNAS_COMPLEJO} FROM complejo WHERE id = :id"),  # noqa: S608
+        text(f"SELECT {_COLUMNAS_COMPLEJO} FROM complejo WHERE id = :id{bloqueo}"),  # noqa: S608
         {"id": str(complejo_id)},
     ).first()
     if fila is None:

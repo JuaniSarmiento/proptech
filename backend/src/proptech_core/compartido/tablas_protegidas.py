@@ -109,6 +109,26 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 }
             ),
         ),
+        "aceptacion_de_diferencias": TablaProtegida(
+            "aceptacion_de_diferencias no admite",
+            frozenset(
+                {
+                    "trg_aceptacion_de_diferencias_sin_update_delete",
+                    "trg_aceptacion_de_diferencias_sin_truncate",
+                    "trg_aceptacion_de_diferencias_sin_update_delete_por_sentencia",
+                }
+            ),
+        ),
+        "ajuste_de_saldo_inicial": TablaProtegida(
+            "ajuste_de_saldo_inicial no admite",
+            frozenset(
+                {
+                    "trg_ajuste_de_saldo_inicial_sin_update_delete",
+                    "trg_ajuste_de_saldo_inicial_sin_truncate",
+                    "trg_ajuste_de_saldo_inicial_sin_update_delete_por_sentencia",
+                }
+            ),
+        ),
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(

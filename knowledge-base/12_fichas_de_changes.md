@@ -922,6 +922,30 @@ D-153).
   muestra aunque el total coincida.
 
 - **Recibe del 6** (D-142): D1 (límite de bytes y filas del Excel, una consulta al padrón por fila), D2 (el comentario falso sobre fórmulas con caché) y D5 (el guardia de F2-1 sólo con dobles), en la ficha 6.
+- **Con Rein (11/11/2026, firma por adelantado de Juani)**: partido en H-007 plantilla y padrón, H-008
+  borrador y comparación, H-009 confirmar y H-010 ajuste de saldo inicial (D-155, E11), sin rompedor
+  (D-152). **H-007** (aceptación `4c3525e`): módulo `importacion`, lector de la plantilla (D1 y D2 del 6
+  cerrados), validación del padrón, `0036_importacion`, caso de uso `importar` y la pantalla "Importar
+  desde Excel". Deuda: la pantalla no pasó por la skill impeccable (no está instalada en el entorno);
+  `crear_unidad` carga el complejo una vez por fila; Starlette guarda el cuerpo multipart en disco antes
+  del tope de 2 MiB.
+- **H-008** (aceptación `4c3525e`): validación de `Saldos` y `Control`, `0037_borrador_de_saldos`, el
+  borrador, la comparación con el aviso de E13 y aceptar diferencias con candado. Leer la comparación
+  exige el permiso de importar; una importación inexistente o de otro edificio da 409 `importacion_id`.
+- **H-009** (aceptación `4c3525e`): `0038_confirmar_saldos` (vocabulario y matriz de
+  `confirmar_saldos_iniciales`), el caso de uso `confirmar` en una transacción (candado del complejo,
+  permiso, diferencias aceptadas, `registrar_saldo_inicial` del 4c, estado `confirmada`, auditoría y
+  cierre del importador), la ruta y la web (botón "Confirmar saldos" con "no se deshace", el paso 7 del
+  resumen pasa a "Cargar los saldos previos" con los dos caminos). Deuda: `confirmada_en` no se guarda
+  en `importacion` (se devuelve el reloj); el mutante "sin candado del complejo" sobrevive porque hay
+  otras dos defensas (el `FOR UPDATE` de `complejos` y la FK de `cuenta`), cubiertas con dos tests de
+  dos conexiones; la pantalla no pasó por impeccable.
+- **H-010** (aceptación `4c3525e`): `0039_ajuste_de_saldo_inicial` y el caso de uso
+  `ajustar_saldo_inicial` como obligación nueva (E11, D-156), con la tabla en `cuenta_corriente`; la ruta y
+  la pantalla "Ajustar saldo inicial" desde el padrón. Deuda: la pantalla no pasó por impeccable; el panel de confirmación
+  muestra el importe sin separador de miles; sin permiso, la pantalla muestra el formulario y avisa recién al
+  enviar. En la demo, Juani pidió el botón "Importar desde Excel" en el padrón con la migración pendiente
+  (hecho por el orquestador; el menú lateral sigue sin la migración, D11 del 3b).
 
 ### 6 · `gastos-y-cargos` · MEDIUM · archivado (30/10/2026, D-140 a D-142) · C-09
 

@@ -108,7 +108,9 @@ vez de inventar el comportamiento.
 - **Disparador**: el administrador sube la planilla del edificio real (unidades y, opcionalmente,
   saldos por período).
 - **Actor**: super admin (antes, administrador titular); confirmar "sin saldos previos" también
-  corresponde al administrador principal (D-106). Los permisos de importación se precisan en el 5.
+  corresponde al administrador principal (D-106). Importar es `importar_padron_y_saldos` (super admin,
+  administrador principal y administrador por edificio); aceptar diferencias y confirmar, sólo super
+  admin y administrador principal (5, E6).
 - **Cambio**: 5 `importacion-desde-excel` (R09, HU-A2). El cambio pide la aprobación escrita de Juani,
   Alberto o Emiliano (D-077, D-094, D-111).
 - **Pasos**:
@@ -127,7 +129,9 @@ vez de inventar el comportamiento.
   6. Sin diferencias (o con las aceptadas), el administrador confirma los saldos: el importador genera
      las obligaciones (con detalle por período) o la obligación "saldo inicial" (si vino como total
      único) usando el caso de uso de saldo inicial del cambio 4 (R09), y se **cierra** para ese
-     edificio.
+     edificio: queda en "Saldos iniciales confirmados" (`confirmar_saldos_iniciales`, H-009). Todo en
+     una transacción con el candado del complejo; si algo falla no se escribe nada, y confirmar no se
+     deshace (un saldo mal cargado se corrige con un ajuste, H-010).
   7. Si el edificio no tiene saldos previos (es nuevo, como el de ejemplo), el super admin o el
      administrador principal confirma directamente "sin saldos previos", que cierra el importador con todas las unidades en cero
      (D-082); así el control duro de R34 no lo bloquea para siempre.

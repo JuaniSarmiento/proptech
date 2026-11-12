@@ -79,6 +79,10 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0020_invitaciones.py",
         "0022_eventos_del_padron.py",
         "0024_correccion_auditada.py",
+        "0036_importacion.py",
+        "0037_borrador_de_saldos.py",
+        "0038_confirmar_saldos.py",
+        "0039_ajuste_de_saldo_inicial.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -96,7 +100,14 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
         with base_del_edificio.conectar_app() as app:
             assert {
                 f[0] for f in app.execute("SELECT nombre FROM accion_de_auditoria").fetchall()
-            } == {a.value for a in Accion} - _NUEVAS - {"corregir_movimiento", "ver_personal"}
+            } == {a.value for a in Accion} - _NUEVAS - {
+                "corregir_movimiento",
+                "ver_personal",
+                "importar_padron_y_saldos",
+                "aceptar_diferencias_de_saldos",
+                "confirmar_saldos_iniciales",
+                "ajustar_saldo_inicial",
+            }
     finally:
         base_del_edificio.migrar("upgrade", "head")
     with base_del_edificio.conectar_app() as app:

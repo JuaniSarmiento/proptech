@@ -75,6 +75,18 @@ _CUERPOS = {
         "motivo": "x",
     },
     "/api/cargos-particulares/{cargo_id}": {},
+    # Change 5 `importacion-desde-excel` (H-008): el 404 de aislamiento llega antes que el 409.
+    "/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias": {
+        "importacion_id": str(uuid4())
+    },
+    "/api/complejos/{complejo_id}/importaciones/confirmacion": {"importacion_id": str(uuid4())},
+    # H-010: un cuerpo válido, para que el 404 de aislamiento no quede tapado por el 422.
+    "/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial": {
+        "operacion_id": str(uuid4()),
+        "importe": "5000.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba de aislamiento",
+    },
 }
 
 
@@ -162,6 +174,13 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             respuesta = api.cliente.post(
                 resuelta,
                 params={"periodo": "2026-10-01"},
+                files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
+            )
+        elif ruta == "/api/complejos/{complejo_id}/importaciones":
+            # Change 5: multipart (archivo y fecha), no JSON — el 404 va antes de leer el archivo.
+            respuesta = api.cliente.post(
+                resuelta,
+                data={"fecha_de_migracion": "2026-10-15"},
                 files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
             )
         else:

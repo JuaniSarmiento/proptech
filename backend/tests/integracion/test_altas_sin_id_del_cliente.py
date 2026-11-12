@@ -75,6 +75,9 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # Cambio 6 `gastos-y-cargos`: multipart (`UploadFile`), no JSON — el
     # contrato de R11 para esta ruta se prueba en `test_cargos_particulares.py`.
     ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
+    # Change 5 `importacion-desde-excel`: multipart también; el único id que hay en la respuesta
+    # (`importacion_id`) lo genera el servidor y el formulario no tiene campos de id.
+    ("/api/complejos/{complejo_id}/importaciones", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
@@ -157,6 +160,32 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "punto_de_venta": "0001",
         "tipo_de_comprobante": "nota_de_credito_a",
         "numero_de_comprobante": "00000001",
+    },
+    # Change 5 `importacion-desde-excel` (H-008): el `importacion_id` lo manda el cliente (es una
+    # referencia al borrador, no un alta); cualquier otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias",
+        "POST",
+    ): lambda mundo: {
+        "importacion_id": str(uuid.uuid4()),
+    },
+    # (H-009): confirmar es otra referencia al borrador, con las mismas reglas.
+    (
+        "/api/complejos/{complejo_id}/importaciones/confirmacion",
+        "POST",
+    ): lambda mundo: {
+        "importacion_id": str(uuid.uuid4()),
+    },
+    # (H-010): el ajuste lleva el `operacion_id` del cliente (idempotencia, como una corrección);
+    # cualquier otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial",
+        "POST",
+    ): lambda mundo: {
+        "operacion_id": str(uuid.uuid4()),
+        "importe": "5000.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba ficticia del barrido de altas",
     },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),

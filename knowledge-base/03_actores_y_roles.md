@@ -89,6 +89,13 @@ queda abierta (`10_preguntas_abiertas.md`, P71).
 propia transacción (acción `corregir_movimiento`, `04_modelo_de_datos.md`). Administrador por edificio
 no corrige, igual que no anula una liquidación.
 
+**Importación desde Excel** (5, E6, H-007 a H-010): importar el padrón y los saldos, y descartar un
+borrador, es la acción `importar_padron_y_saldos` (super admin, administrador principal y administrador
+por edificio, como configurar el padrón). Aceptar diferencias (`aceptar_diferencias_de_saldos`),
+confirmar los saldos iniciales (`confirmar_saldos_iniciales`) y ajustar un saldo inicial cargado de
+menos (`ajustar_saldo_inicial`) son sólo de super admin y administrador principal, como "sin saldos
+previos" y corregir un movimiento.
+
 Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
 7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó
 el vínculo y el dominio; los cambios 6, 7 y 11 deben aplicar ese filtro.

@@ -73,6 +73,15 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "crear_version_de_configuracion": (True, True, True, False, False, False, False, False, False),
     "confirmar_sin_saldos_previos": (True, True, False, False, False, False, False, False, False),
     "configurar_padron": (True, True, True, False, False, False, False, False, False),
+    # importacion-desde-excel E6: como `configurar_padron`, nadie más.
+    "importar_padron_y_saldos": (True, True, True, False, False, False, False, False, False),
+    # E6: aceptar las diferencias del borrador de saldos es de quien confirma (como
+    # `confirmar_sin_saldos_previos`): el administrador por edificio no.
+    "aceptar_diferencias_de_saldos": (True, True, False, False, False, False, False, False, False),
+    # E6: confirmar los saldos iniciales también es de quien confirma "sin saldos previos".
+    "confirmar_saldos_iniciales": (True, True, False, False, False, False, False, False, False),
+    # E6: ajustar un saldo inicial es de quien corrige el libro (como `corregir_movimiento`).
+    "ajustar_saldo_inicial": (True, True, False, False, False, False, False, False, False),
     "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
 }
 _PERFILES = [

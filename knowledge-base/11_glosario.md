@@ -15,6 +15,15 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
+- **Ajuste de saldo inicial**: la deuda nueva, con motivo, que corrige un saldo inicial cargado de menos
+  después de confirmar; no edita lo cargado ni reabre la migración (R09, E11, D-156, H-010).
+- **Borrador de saldos**: los saldos de la hoja `Saldos` guardados aparte del libro hasta que se
+  confirman; se comparan unidad por unidad con el control (R09, H-008).
+- **Control**: la hoja de la plantilla con el saldo de cada unidad según el listado del administrador;
+  contra ella se calcula la diferencia de cada unidad (D-068).
+- **Plantilla**: el Excel del importador (5) con las hojas `Unidades`, `Saldos` y `Control`; se
+  descarga desde la pantalla "Importar desde Excel".
+
 - **Administración**: el cliente que paga PropTech: una empresa o persona que administra uno o varios complejos. Es el **tenant**: todo dato pertenece a una administración y ninguna ve los datos de otra (R10, D-076).
 - **Complejo**: la comunidad que se administra, siempre dentro de una administración. En el MVP es un **edificio** en propiedad horizontal; después también un **barrio privado** (o country). Es un **alcance**: cada persona ve los complejos que le permite su perfil (D-076, D-106). Un barrio con torres o sectores es un solo consorcio; sus sectores son grupos de reparto (D-106). En el modelo de datos de la especificación se llamaba `consorcios`.
 - **Consorcio**: en sentido legal, el conjunto de propietarios de un edificio en propiedad horizontal, con CUIT propio. En los barrios suele ser una asociación civil o similar.

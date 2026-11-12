@@ -119,7 +119,16 @@ existen `carga_de_saldo_inicial` (una por edificio y por operación: fecha de mi
 `importador` con archivo o `manual` con motivo, `firma_del_pedido` con forma `v1:` + 64 hexadecimales,
 quién y cuándo) y `origen_de_saldo_inicial` (cada fila del archivo ligada a la obligación, al crédito o al
 interés importado que formó, siempre de la misma cuenta por FK compuesta, con exactamente una
-referencia). Las dos son de sólo agregar, con RLS forzada.
+referencia). Las dos son de sólo agregar, con RLS forzada. Desde H-007 (5, migración `0036_importacion`)
+existe `importacion`: cada archivo subido a un edificio, con su huella SHA-256, nombre, fecha de
+migración, estado (`borrador`, `descartada` y los del cierre), quién y cuándo; mutable por la app con RLS
+forzada, y un único de huella por edificio que excluye las descartadas. Desde H-008 (`0037_borrador_de_saldos`)
+la importación tiene su borrador: `fila_de_saldo_importada` (cada fila de `Saldos`: detalle, total o
+crédito) y `control_de_saldo` (el saldo de cada unidad según la hoja `Control`), mutables con RLS
+forzada, y `aceptacion_de_diferencias` (una por importación, con las diferencias aceptadas en JSONB,
+quién y cuándo), de sólo agregar. Desde H-010 (`0039_ajuste_de_saldo_inicial`), `ajuste_de_saldo_inicial`
+(del libro: la obligación nueva del ajuste, su motivo, quién, cuándo y su `operacion_id`), de sólo agregar
+con RLS forzada (E11, D-156).
 
 ### Planificado, por cambio (ningún atributo es definitivo salvo el citado)
 

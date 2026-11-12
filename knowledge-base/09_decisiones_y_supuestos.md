@@ -3232,3 +3232,21 @@ registrado como tal en su momento.)*
   lleva.
 - **Quién**: Juani, 11/11/2026.
 
+## D-156 · El ajuste de saldo inicial es una obligación nueva, no un movimiento (12/11/2026, 5, E11 sobre D-155)
+
+- **Contexto**: D-155 dijo "un movimiento nuevo" (un débito) y dejó pendiente para el propose del 5 si
+  genera interés, desde cuándo y con qué vencimiento. Un débito colgado de una obligación existente exige
+  `ALTER` sobre `movimiento` (protegida) para guardar el motivo y no sirve para una unidad en cero o con
+  crédito, que no tiene obligación previa.
+- **Decisión** (E11 del diseño del 5): el ajuste es una **obligación nueva** sin emisión, con su
+  `operacion_id` (como las del saldo inicial), el importe en el componente que elige el administrador,
+  período en el mes de la migración y vencimiento el día del ajuste; el interés de R03 corre desde el día
+  siguiente, con la gracia vigente, y para R20 cuenta como una liquidación más. El motivo (1 a 500),
+  quién y cuándo quedan en `ajuste_de_saldo_inicial`, de sólo agregar (migración `0039`). No toca
+  `movimiento` ni suma un tipo de movimiento; un crédito a favor se imputa con R04. Refina la redacción
+  de D-155 sin cambiar su intención (no se edita, no se reabre la migración).
+- **Descartado**: el débito sobre una obligación existente (lo de arriba) y el vencimiento retroactivo
+  (cobraría interés por días que el sistema no conocía).
+- **Quién**: el orquestador, bajo la firma por adelantado de Juani del 5 (`04ebf1e`, la recomendación de
+  E1 a E15); Juani la revisa en la demo de H-010 y, si la rechaza, H-010 vuelve a En proceso con una
+  decisión nueva.

@@ -62,6 +62,8 @@ _SONDA_SIN_FILA = {
     "tramo_de_interes",
     "carga_de_saldo_inicial",
     "origen_de_saldo_inicial",
+    "aceptacion_de_diferencias",
+    "ajuste_de_saldo_inicial",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}

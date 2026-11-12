@@ -35,6 +35,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
 from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.georef import leer_georef
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.complejos.aplicacion import categorias, escritura, grupos, unidades
@@ -47,6 +48,11 @@ from proptech_core.gastos.aplicacion import (
     proveedores,
 )
 from proptech_core.gastos.puertos import FilaCargoImportada
+from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel
+from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
+from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
+from proptech_core.importacion.aplicacion.confirmar import confirmar
+from proptech_core.importacion.aplicacion.importar import importar
 
 pytestmark = pytest.mark.integracion
 
@@ -493,6 +499,173 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         )
         return edificio
 
+    def invocar_importacion(sesion: Session) -> UUID:
+        """`importar` autoriza por sí mismo: la persona necesita su asignación (se deshace con la
+        transacción del barrido) y un edificio con pisos para el piso del archivo."""
+        from ._importacion import padron
+
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": identidad.administracion_id, "persona": identidad.persona_id},
+        )
+        edificio = escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Importado ficticio",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        fila = {
+            "Unidad": "1A",
+            "Tipo": "departamento",
+            "Piso": "1",
+            "Coeficiente": "1.000000",
+            "Superficie m2": "50.00",
+            "Propietario": "Persona Ficticia",
+            "Email": "auditada@ficticio.test",
+        }
+        return importar(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            contenido=padron([fila]),
+            nombre_del_archivo="padron.xlsx",
+            fecha_de_migracion=date(2026, 10, 15),
+            lector=LectorDePlantillaExcel(),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).importacion_id
+
+    def invocar_aceptacion(sesion: Session) -> UUID:
+        """Aceptar diferencias necesita un borrador con una diferencia: se sube el padrón con sus
+        saldos y un control distinto, y la misma persona (super admin) las acepta."""
+        from ._saldos_importados import archivo, control_base
+
+        control = control_base()
+        control[0][1] = "159000.00"
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": identidad.administracion_id, "persona": identidad.persona_id},
+        )
+        edificio = escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Aceptado ficticio",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        importacion = importar(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            contenido=archivo(control=control),
+            nombre_del_archivo="saldos.xlsx",
+            fecha_de_migracion=date(2026, 10, 15),
+            lector=LectorDePlantillaExcel(),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).importacion_id
+        return aceptar_diferencias(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            importacion_id=importacion,
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).aceptacion_id
+
+    def confirmar_un_edificio(sesion: Session) -> tuple[UUID, UUID]:
+        """Confirmar necesita un borrador de saldos sin diferencias: se sube el padrón con sus
+        saldos y su control (que coincide) y la misma persona (super admin) lo confirma. Devuelve
+        el edificio y la importación."""
+        from ._saldos_importados import archivo
+
+        sesion.execute(
+            text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": identidad.administracion_id, "persona": identidad.persona_id},
+        )
+        edificio = escritura.crear_edificio(
+            sesion,
+            identidad,
+            nombre="Confirmado ficticio",
+            provincia_id="50",
+            departamento_id="50007",
+            localidad_id="50007010",
+            georef=_GEOREF,
+            pisos=4,
+            subsuelos=1,
+            parametros=leer_parametros(str(RAIZ_BACKEND.parent / "config/parametros.yaml")),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        importacion = importar(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            contenido=archivo(),
+            nombre_del_archivo="saldos.xlsx",
+            fecha_de_migracion=date(2026, 10, 15),
+            lector=LectorDePlantillaExcel(),
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        ).importacion_id
+        confirmar(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            importacion_id=importacion,
+            reloj=lambda: datetime(2026, 11, 1, tzinfo=UTC),
+            request_id=uuid.uuid4(),
+        )
+        return edificio, importacion
+
+    def invocar_confirmacion(sesion: Session) -> UUID:
+        return confirmar_un_edificio(sesion)[1]
+
+    def invocar_ajuste(sesion: Session) -> UUID:
+        """Ajustar necesita la migración confirmada: se confirma el edificio y se ajusta `1A`, que
+        ya tiene cuenta por su saldo inicial."""
+        edificio, _ = confirmar_un_edificio(sesion)
+        unidad = sesion.execute(
+            text("SELECT id FROM unidad WHERE complejo_id = :c AND identificador = '1A'"),
+            {"c": edificio},
+        ).scalar_one()
+        return ajustar_saldo_inicial(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            unidad_id=UUID(str(unidad)),
+            operacion_id=uuid.uuid4(),
+            importe=Dinero("5000.00"),
+            componente="ordinaria",
+            motivo="Faltó la expensa extraordinaria de julio",
+            request_id=uuid.uuid4(),
+            reloj=lambda: datetime(2026, 11, 5, 15, tzinfo=UTC),
+        ).ajuste_id
+
     _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
@@ -514,6 +687,10 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             complejo_id=datos["complejo_id"],
             request_id=uuid.uuid4(),
         ),
+        Accion.IMPORTAR_PADRON_Y_SALDOS: invocar_importacion,
+        Accion.ACEPTAR_DIFERENCIAS_DE_SALDOS: invocar_aceptacion,
+        Accion.CONFIRMAR_SALDOS_INICIALES: invocar_confirmacion,
+        Accion.AJUSTAR_SALDO_INICIAL: invocar_ajuste,
         Accion.CREAR_EDIFICIO: lambda sesion: escritura.crear_edificio(
             sesion,
             identidad,

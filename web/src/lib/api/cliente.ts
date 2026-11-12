@@ -20,7 +20,18 @@ export type ResultadoApi<T> =
   | { estado: "no_existe" }
   | { estado: "conflicto"; campo: string }
   | { estado: "invalido"; errores: ErrorDeCampo[] }
+  | { estado: "rechazado"; errores: ErrorDeArchivo[] }
   | { estado: "fallo" };
+
+/** Un error de un archivo subido (importación desde Excel, change 5): lo escribe la API en
+ * castellano para el administrador (hoja, fila del Excel, columna y motivo); `null` donde no
+ * aplica. A diferencia de un 422 de campo, su `motivo` SÍ se muestra tal cual (D11). */
+export type ErrorDeArchivo = {
+  hoja: string | null;
+  fila: number | null;
+  columna: string | null;
+  motivo: string;
+};
 
 const _TEXTO_DECIMAL_ASCII = /^-?[0-9]+\.[0-9]+$/;
 
@@ -77,6 +88,11 @@ type OpcionesDePedido = {
   alNoAutenticar?: "redirigir" | "devolver";
   metodo?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   cuerpo?: unknown;
+  /** Un `multipart/form-data` (subir un archivo): se manda tal cual, sin `Content-Type` propio
+   * (`fetch` pone el límite entre partes). Excluyente con `cuerpo`. */
+  cuerpoMultipart?: FormData;
+  /** La respuesta 2xx es un archivo, no JSON: `datos` es su `ArrayBuffer`. */
+  respuestaBinaria?: boolean;
   cabeceras?: Headers;
   /** Caminos (`"informe.suma"`) dentro de la respuesta 2xx que tienen que
    * ser texto decimal ASCII; si alguno no lo es, el resultado es `fallo`
@@ -120,7 +136,9 @@ export async function pedirApi<T>(
       method: opciones.metodo ?? "GET",
       cache: "no-store",
       headers: cabeceras,
-      body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+      body:
+        opciones.cuerpoMultipart ??
+        (opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo)),
     });
   } catch {
     return { estado: "fallo" };
@@ -155,6 +173,20 @@ export async function pedirApi<T>(
     if (!Array.isArray(detalle)) {
       return { estado: "fallo" };
     }
+    if (detalle.length > 0 && detalle.every((item) => "hoja" in comoRegistro(item))) {
+      return {
+        estado: "rechazado",
+        errores: detalle.map((item: unknown) => {
+          const registro = comoRegistro(item);
+          return {
+            hoja: typeof registro.hoja === "string" ? registro.hoja : null,
+            fila: typeof registro.fila === "number" ? registro.fila : null,
+            columna: typeof registro.columna === "string" ? registro.columna : null,
+            motivo: textoSeguro(registro.motivo, "El archivo no es válido."),
+          };
+        }),
+      };
+    }
     const errores: ErrorDeCampo[] = detalle.map((item: unknown) => {
       const registro = comoRegistro(item);
       const loc = Array.isArray(registro.loc) ? registro.loc : [];
@@ -179,6 +211,13 @@ export async function pedirApi<T>(
     return { estado: "invalido", errores };
   }
   if (respuesta.status >= 200 && respuesta.status < 300) {
+    if (opciones.respuestaBinaria) {
+      try {
+        return { estado: "ok", datos: (await respuesta.arrayBuffer()) as T };
+      } catch {
+        return { estado: "fallo" };
+      }
+    }
     const leido = await leerJson(respuesta);
     if (leido.parseo === "fallo") {
       return { estado: "fallo" };

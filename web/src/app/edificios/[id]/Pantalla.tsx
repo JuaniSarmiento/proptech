@@ -103,9 +103,10 @@ const _PASOS: Paso[] = [
   {
     clave: "saldos_previos",
     numero: 7,
-    etiqueta: "Confirmar que el edificio arranca sin saldos previos",
-    explicacion: "Un único paso, que no se deshace: el edificio empieza sin deudas de antes.",
-    href: "/saldos-previos",
+    etiqueta: "Cargar los saldos previos",
+    explicacion:
+      "Importá el Excel con las deudas de antes o confirmá que el edificio empieza sin saldos previos. Confirmar no se deshace.",
+    href: "/importar",
     icono: FileCheck2,
   },
 ];
@@ -164,7 +165,19 @@ export function PantallaResumen({ id, resumen, vigente, accionEditar }: Props) {
             {_PASOS.map((paso) => {
               const hecho = estaHecho(paso);
               const titulo =
-                paso.clave === "ubicacion" && !hecho ? (
+                paso.clave === "saldos_previos" ? (
+                  hecho ? (
+                    // Resuelto (confirmada o sin saldos previos): se dice cómo, sin ofrecer nada.
+                    <span>{textoEstadoDeMigracion(resumen.estado_migracion)}</span>
+                  ) : (
+                    <span className="resumen__saldos">
+                      <span>{paso.etiqueta}:</span>{" "}
+                      <a href={`/edificios/${id}/importar`}>Importar desde Excel</a>
+                      {" · "}
+                      <a href={`/edificios/${id}/saldos-previos`}>Confirmar sin saldos previos</a>
+                    </span>
+                  )
+                ) : paso.clave === "ubicacion" && !hecho ? (
                   <button type="button" className="boton-enlace" onClick={abrirEdicion}>
                     {paso.etiqueta}
                   </button>
