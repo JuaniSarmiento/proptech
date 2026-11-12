@@ -20,7 +20,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-006 | C-07c 4c, parte 3 | Cada cuenta y cada edificio dicen si están al día, con deuda de intereses o morosos críticos | Media / CRITICAL | Terminada |
 | H-007 | C-08 5, parte 1 | Un edificio carga su padrón desde la plantilla de Excel, todo o nada, con un informe por fila | Alta / CRITICAL | Terminada |
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
-| H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | En proceso |
+| H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Lista |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -732,6 +732,15 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C15** cada escenario de la spec `confirmacion-de-saldos` tiene su test en verde.
 - Demo: confirmar en el navegador y ver el libro de `1A` y el resumen.
 - Aceptación: **congelada en `4c783e7ba04d394a2ea377dbec3abe36fb027148`** (firma por adelantado de Juani, revisión técnica del orquestador): 32 tests de backend y 5 en navegador, 37 rojos por aserción sobre `8c74866`, 0 errores; regresión H-004 a H-008, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-009/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
+- Construcción (Sonnet, una tanda verificada): `0038_confirmar_saldos`, el caso de uso `confirmar` en una
+  transacción con candado, la ruta y la web (botón "Confirmar saldos", paso 7 "Cargar los saldos previos" con
+  los dos caminos). Mutantes: murieron nueve; "sin candado del complejo" sobrevive por dos defensas más
+  (cubiertas con dos tests de dos conexiones), anotado como deuda en la ficha 5. Supuestos aceptados por el
+  orquestador: el botón se ve deshabilitado con diferencias sin aceptar; `confirmada_en` no se guarda (se
+  devuelve el reloj). La pantalla no pasó por impeccable (no instalada).
+- Evidencia (12/11/2026): `python3 aceptacion/H-009/aceptar.py --codigo f774ce4` desde `4c3525e`: **32/32 de
+  backend y 5/5 en navegador**, C01 a C15 PASA, con la regresión H-004 a H-008, el barrido de migraciones y
+  la KB. 0 rojos.
 
 ### H-010 · Ajuste de saldo inicial
 
