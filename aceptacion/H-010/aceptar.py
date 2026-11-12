@@ -55,7 +55,7 @@ from pathlib import Path
 RAMA = "change/importacion-desde-excel"
 CAMBIO = "importacion-desde-excel"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "8c67e94a93acb71eee37353f8e248ac0704d4bf4"
 CARPETA = "aceptacion/H-010/tests"
 CARPETA_E2E = "aceptacion/H-010/e2e"
 DESTINO = "backend/tests/integracion/aceptacion_h010"

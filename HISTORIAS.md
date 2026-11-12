@@ -747,6 +747,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
     registra E11 sobre D-155, ficha 5.
   - **C16** cada escenario de la spec `ajuste-de-saldo-inicial` tiene su test en verde.
 - Demo: ajustar `1A` en el navegador y emitir diciembre para ver el interés de $125,00.
+- Aceptación: **congelada en `8c67e94a93acb71eee37353f8e248ac0704d4bf4`** (firma por adelantado de Juani, revisión técnica del orquestador): 56 tests de backend y 4 en navegador, 60 rojos por aserción sobre `a8a40f0`, 0 errores; regresión H-004 a H-009, KB (incluida una D posterior a D-155 que registre E11) y cobertura en `aceptar.py`. Contrato en `aceptacion/H-010/CONTRATO.md`.
 
 ## Plantilla de historia
 
