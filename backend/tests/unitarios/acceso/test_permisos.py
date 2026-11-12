@@ -78,6 +78,8 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     # E6: aceptar las diferencias del borrador de saldos es de quien confirma (como
     # `confirmar_sin_saldos_previos`): el administrador por edificio no.
     "aceptar_diferencias_de_saldos": (True, True, False, False, False, False, False, False, False),
+    # E6: confirmar los saldos iniciales también es de quien confirma "sin saldos previos".
+    "confirmar_saldos_iniciales": (True, True, False, False, False, False, False, False, False),
     "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
 }
 _PERFILES = [

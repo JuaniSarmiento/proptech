@@ -9,7 +9,11 @@ describe("textoEstadoDeMigracion", () => {
     );
   });
 
-  it("da un texto genérico si el valor no es ninguno de los dos conocidos", () => {
+  it("confirmada es Saldos iniciales confirmados, nunca el texto de desconocido (E12)", () => {
+    expect(textoEstadoDeMigracion("confirmada")).toBe("Saldos iniciales confirmados");
+  });
+
+  it("da un texto genérico si el valor no es ninguno de los conocidos", () => {
     expect(textoEstadoDeMigracion("algo_nuevo")).toBe("Estado de migración desconocido");
   });
 });

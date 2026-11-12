@@ -143,6 +143,50 @@ describe("PantallaResumen", () => {
     );
   });
 
+  it("con la migración pendiente el paso 7 ofrece Importar desde Excel y Confirmar sin saldos previos (E12)", () => {
+    render(
+      <PantallaResumen
+        id="42"
+        resumen={RESUMEN_EDIFICIO_NUEVO}
+        vigente={null}
+        accionEditar={accionNula}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Importar desde Excel" }).getAttribute("href")).toBe(
+      "/edificios/42/importar",
+    );
+    expect(
+      screen.getByRole("link", { name: "Confirmar sin saldos previos" }).getAttribute("href"),
+    ).toBe("/edificios/42/saldos-previos");
+  });
+
+  it.each([
+    ["confirmada", "Saldos iniciales confirmados"],
+    ["sin_saldos_previos", "Confirmado: arranca sin saldos previos"],
+  ])(
+    "con la migración %s el paso 7 lo dice y no ofrece importar ni confirmar (E12)",
+    (estado, texto) => {
+      render(
+        <PantallaResumen
+          id="42"
+          resumen={{
+            ...RESUMEN_EDIFICIO_NUEVO,
+            estado_migracion: estado,
+            pasos: { ...RESUMEN_EDIFICIO_NUEVO.pasos, saldos_previos: "hecho" },
+          }}
+          vigente={null}
+          accionEditar={accionNula}
+        />,
+      );
+      const paso = screen.getByRole("list", {
+        name: "Puesta a punto del edificio",
+      }).lastElementChild;
+      expect(paso?.textContent).toContain(texto);
+      expect(screen.queryByRole("link", { name: "Importar desde Excel" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Confirmar sin saldos previos" })).toBeNull();
+    },
+  );
+
   it('barra de progreso "N de 7 pasos" contando lo que marcó la API, y "Tu próximo paso" lleva al primero que falta', () => {
     render(
       <PantallaResumen

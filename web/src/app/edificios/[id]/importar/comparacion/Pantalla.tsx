@@ -23,6 +23,7 @@ import { permite, useSesionDePantalla } from "../../../../../componentes/SesionD
 import type {
   AceptacionDeDiferencias,
   ComparacionDelBorrador,
+  ConfirmacionDeSaldos,
 } from "../../../../../lib/api/importaciones";
 import { dinero, fechaYHora } from "../../../../../lib/formato";
 import { ArmazonDelEdificio } from "../../Armazon";
@@ -32,6 +33,16 @@ export type EstadoAceptacion = {
   error?: string;
   aceptada?: AceptacionDeDiferencias;
 } | null;
+
+export type EstadoConfirmacion = {
+  error?: string;
+  confirmada?: ConfirmacionDeSaldos;
+} | null;
+
+type AccionConfirmar = (
+  estadoPrevio: EstadoConfirmacion,
+  formData: FormData,
+) => Promise<EstadoConfirmacion>;
 
 type AccionAceptar = (
   estadoPrevio: EstadoAceptacion,
@@ -43,6 +54,7 @@ type Props = {
   nombreEdificio: string;
   comparacion: ComparacionDelBorrador;
   accionAceptar: AccionAceptar;
+  accionConfirmar: AccionConfirmar;
 };
 
 function conDiferencia(cantidad: number): string {
@@ -286,4 +298,9 @@ export function PantallaSinBorrador({
       />
     </ArmazonDelEdificio>
   );
+}
+
+/** PROVISORIO (RED de la tarea 3.3). */
+export function PantallaConfirmada(_: { id: string; nombreEdificio: string }) {
+  return null;
 }

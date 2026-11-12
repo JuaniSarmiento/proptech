@@ -127,3 +127,27 @@ export async function aceptarDiferencias(
     { metodo: "POST", cuerpo: { importacion_id: importacionId } },
   );
 }
+
+/** Los totales del edificio que cargó la confirmación (montos como texto con dos decimales). */
+export type TotalesDeLaConfirmacion = {
+  capital: string;
+  interes_importado: string;
+  credito: string;
+};
+
+export type ConfirmacionDeSaldos = {
+  importacion_id: string;
+  carga_id: string;
+  estado_migracion: string;
+  totales: TotalesDeLaConfirmacion;
+  confirmada_por: string;
+  confirmada_en: string;
+};
+
+/** PROVISORIO (RED de la tarea 3.3). */
+export async function confirmarSaldos(
+  _id: string,
+  _importacionId: string,
+): Promise<ResultadoApi<ConfirmacionDeSaldos>> {
+  return { estado: "fallo" };
+}

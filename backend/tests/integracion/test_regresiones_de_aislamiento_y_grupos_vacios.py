@@ -79,6 +79,7 @@ _CUERPOS = {
     "/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias": {
         "importacion_id": str(uuid4())
     },
+    "/api/complejos/{complejo_id}/importaciones/confirmacion": {"importacion_id": str(uuid4())},
 }
 
 

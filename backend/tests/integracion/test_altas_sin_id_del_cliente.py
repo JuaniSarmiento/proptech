@@ -169,6 +169,13 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
     ): lambda mundo: {
         "importacion_id": str(uuid.uuid4()),
     },
+    # (H-009): confirmar es otra referencia al borrador, con las mismas reglas.
+    (
+        "/api/complejos/{complejo_id}/importaciones/confirmacion",
+        "POST",
+    ): lambda mundo: {
+        "importacion_id": str(uuid.uuid4()),
+    },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),
         "concepto": "Cargo ficticio",

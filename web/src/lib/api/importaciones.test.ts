@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   aceptarDiferencias,
   comparacionDelBorrador,
+  confirmarSaldos,
   importarPadron,
   plantillaDelPadron,
 } from "./importaciones";
@@ -254,6 +255,92 @@ describe("comparacionDelBorrador / aceptarDiferencias", () => {
     expect(await comparacionDelBorrador("1")).toEqual({ estado: "no_existe" });
     expect(await aceptarDiferencias("1", IMPORTACION)).toEqual({ estado: "no_existe" });
     expect(await aceptarDiferencias(EDIFICIO, "../otra")).toEqual({ estado: "no_existe" });
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+});
+
+const CONFIRMADA = {
+  importacion_id: "22222222-2222-2222-2222-222222222222",
+  carga_id: "77777777-7777-7777-7777-777777777777",
+  estado_migracion: "confirmada",
+  totales: { capital: "320000.00", interes_importado: "6000.00", credito: "6000.00" },
+  confirmada_por: "66666666-6666-6666-6666-666666666666",
+  confirmada_en: "2026-11-12T15:00:00+00:00",
+};
+
+describe("confirmarSaldos", () => {
+  beforeEach(() => {
+    process.env.PROPTECH_URL_API_INTERNA = "http://api-interna:8000";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.PROPTECH_URL_API_INTERNA;
+  });
+
+  it("manda un JSON con sólo importacion_id a .../importaciones/confirmacion y devuelve el cuerpo", async () => {
+    const fetchFalso = mockFetch({ status: 201, cuerpo: CONFIRMADA });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await confirmarSaldos(EDIFICIO, IMPORTACION);
+    const [url, opciones] = fetchFalso.mock.calls[0] ?? [];
+    expect(url).toBe(
+      `http://api-interna:8000/api/complejos/${EDIFICIO}/importaciones/confirmacion`,
+    );
+    expect(opciones?.method).toBe("POST");
+    expect(JSON.parse(String(opciones?.body))).toEqual({ importacion_id: IMPORTACION });
+    const cabeceras = opciones?.headers as Headers;
+    expect(cabeceras.get("Content-Type")).toBe("application/json");
+    expect(resultado).toEqual({ estado: "ok", datos: CONFIRMADA });
+  });
+
+  it.each([
+    [403, { detail: { codigo: "sin_permiso", permiso_faltante: "confirmar_saldos_iniciales" } }],
+    [409, { detail: "conflicto", campo: "diferencias" }],
+    [404, { detail: "no encontrado" }],
+  ])("con %s da su estado", async (status, cuerpo) => {
+    vi.stubGlobal("fetch", mockFetch({ status, cuerpo }));
+    const resultado = await confirmarSaldos(EDIFICIO, IMPORTACION);
+    expect(resultado).toEqual(
+      status === 403
+        ? { estado: "sin_permiso", permiso: "confirmar_saldos_iniciales" }
+        : status === 409
+          ? { estado: "conflicto", campo: "diferencias" }
+          : { estado: "no_existe" },
+    );
+  });
+
+  it("un 422 de la fecha de migración es un rechazo, no un ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        status: 422,
+        cuerpo: {
+          detail: [
+            { loc: ["body", "fecha_de_migracion"], msg: "valor inválido", type: "value_error" },
+          ],
+        },
+      }),
+    );
+    expect((await confirmarSaldos(EDIFICIO, IMPORTACION)).estado).toBe("invalido");
+  });
+
+  it("un total que no es texto decimal con dos decimales es fallo, nunca un ok que la pantalla no sabría mostrar", async () => {
+    for (const mala of [
+      { ...CONFIRMADA, totales: { ...CONFIRMADA.totales, capital: 320000 } },
+      { ...CONFIRMADA, totales: { ...CONFIRMADA.totales, credito: "6000" } },
+      { ...CONFIRMADA, totales: { capital: "1.00", interes_importado: "1.00" } },
+      { ...CONFIRMADA, totales: null },
+    ]) {
+      vi.stubGlobal("fetch", mockFetch({ status: 201, cuerpo: mala }));
+      expect(await confirmarSaldos(EDIFICIO, IMPORTACION)).toEqual({ estado: "fallo" });
+    }
+  });
+
+  it("un id que no es UUID da no_existe, sin llamar a fetch", async () => {
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    expect(await confirmarSaldos("1", IMPORTACION)).toEqual({ estado: "no_existe" });
+    expect(await confirmarSaldos(EDIFICIO, "../otra")).toEqual({ estado: "no_existe" });
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

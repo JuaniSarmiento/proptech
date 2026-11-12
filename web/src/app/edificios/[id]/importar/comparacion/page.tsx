@@ -9,7 +9,7 @@ import { ErrorDePantalla } from "../../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../../componentes/Estados";
 import { edificioPorId } from "../../../../../lib/api/edificios";
 import { comparacionDelBorrador } from "../../../../../lib/api/importaciones";
-import { aceptarDiferenciasAction } from "./acciones";
+import { aceptarDiferenciasAction, confirmarSaldosAction } from "./acciones";
 import { PantallaComparacion, PantallaSinBorrador } from "./Pantalla";
 
 type Props = {
@@ -63,6 +63,7 @@ export default async function PaginaComparacion({ params }: Props) {
       nombreEdificio={nombreEdificio}
       comparacion={comparacion.datos}
       accionAceptar={aceptarDiferenciasAction.bind(null, id)}
+      accionConfirmar={confirmarSaldosAction.bind(null, id)}
     />
   );
 }

@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SesionDePantalla } from "../../../../../componentes/SesionDePantalla";
 import type { ComparacionDelBorrador } from "../../../../../lib/api/importaciones";
 import { sinViolaciones } from "../../../../../lib/test/accesibilidad";
-import { PantallaComparacion, PantallaSinBorrador } from "./Pantalla";
+import { PantallaComparacion, PantallaConfirmada, PantallaSinBorrador } from "./Pantalla";
 
 afterEach(cleanup);
 
@@ -111,13 +111,18 @@ const botonAceptar = () => ahi(screen.queryByRole("button", { name: "Aceptar dif
 const confirmacion = () => ahi(screen.queryByRole("dialog"));
 const botonConfirmar = () => ahi(within(confirmacion()).queryByRole("button", { name: "Aceptar" }));
 
-function pantalla(comparacion = CON_DIFERENCIAS, accion = vi.fn().mockResolvedValue(null)) {
+function pantalla(
+  comparacion = CON_DIFERENCIAS,
+  accion = vi.fn().mockResolvedValue(null),
+  accionConfirmar = vi.fn().mockResolvedValue(null),
+) {
   return (
     <PantallaComparacion
       id="e1"
       nombreEdificio="Edificio API"
       comparacion={comparacion}
       accionAceptar={accion}
+      accionConfirmar={accionConfirmar}
     />
   );
 }
@@ -264,6 +269,121 @@ describe("PantallaComparacion", () => {
     cleanup();
     const otra = render(pantalla(SIN_DIFERENCIAS));
     await sinViolaciones(otra.container);
+  });
+});
+
+const PUEDE_TODO = ["aceptar_diferencias_de_saldos", "confirmar_saldos_iniciales"];
+
+const CONFIRMADA = {
+  importacion_id: "i2",
+  carga_id: "c1",
+  estado_migracion: "confirmada",
+  totales: { capital: "320000.00", interes_importado: "6000.00", credito: "6000.00" },
+  confirmada_por: "p1",
+  confirmada_en: "2026-11-12T15:00:00+00:00",
+};
+
+const botonConfirmarSaldos = () => ahi(screen.queryByRole("button", { name: "Confirmar saldos" }));
+const botonDeLaConfirmacion = () =>
+  ahi(within(confirmacion()).queryByRole("button", { name: "Confirmar" }));
+
+describe("PantallaComparacion · confirmar saldos", () => {
+  it("sin diferencias el botón está habilitado", () => {
+    render(pantalla(SIN_DIFERENCIAS), PUEDE_TODO);
+    expect((botonConfirmarSaldos() as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("con diferencias sin aceptar el botón está deshabilitado, junto al de aceptar", () => {
+    render(pantalla(CON_DIFERENCIAS), PUEDE_TODO);
+    expect((botonConfirmarSaldos() as HTMLButtonElement).disabled).toBe(true);
+    botonAceptar();
+  });
+
+  it("con las diferencias ya aceptadas el botón está habilitado", () => {
+    render(
+      pantalla({ ...CON_DIFERENCIAS, requiere_aceptacion: false, aceptacion: ACEPTADA }),
+      PUEDE_TODO,
+    );
+    expect((botonConfirmarSaldos() as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("sin el permiso de confirmar no hay botón y se explica, sin alert", () => {
+    render(pantalla(SIN_DIFERENCIAS), ["aceptar_diferencias_de_saldos"]);
+    expect(screen.queryByRole("button", { name: "Confirmar saldos" })).toBeNull();
+    expect(screen.queryByText(/No tenés permiso para confirmar saldos/)).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("confirmar abre una confirmación que dice que no se deshace, y cancelar no manda nada", async () => {
+    const accionConfirmar = vi.fn().mockResolvedValue(null);
+    render(pantalla(SIN_DIFERENCIAS, undefined, accionConfirmar), PUEDE_TODO);
+    const boton = botonConfirmarSaldos();
+    await userEvent.click(boton);
+    expect(within(confirmacion()).queryByText(/no se deshace/)).not.toBeNull();
+    await userEvent.click(ahi(within(confirmacion()).queryByRole("button", { name: "Cancelar" })));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(accionConfirmar).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(boton);
+  });
+
+  it("Esc cierra la confirmación y devuelve el foco al botón", async () => {
+    render(pantalla(SIN_DIFERENCIAS), PUEDE_TODO);
+    const boton = botonConfirmarSaldos();
+    await userEvent.click(boton);
+    expect(screen.queryByRole("dialog")).not.toBeNull();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(boton);
+  });
+
+  it("confirmar manda el importacion_id y muestra la región con quién, cuándo y los totales", async () => {
+    const accionConfirmar = vi.fn().mockResolvedValue({ confirmada: CONFIRMADA });
+    render(pantalla(SIN_DIFERENCIAS, undefined, accionConfirmar), PUEDE_TODO);
+    await userEvent.click(botonConfirmarSaldos());
+    await userEvent.click(botonDeLaConfirmacion());
+    const region = await screen.findByRole("region", { name: "Saldos iniciales confirmados" });
+    expect(accionConfirmar).toHaveBeenCalledTimes(1);
+    const datos = accionConfirmar.mock.calls[0]?.[1] as FormData;
+    expect(datos.get("importacion_id")).toBe("i2");
+    for (const texto of ["320.000,00", "6.000,00", "12/11/2026"]) {
+      expect(region.textContent).toContain(texto);
+    }
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirmar saldos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Aceptar diferencias" })).toBeNull();
+    await sinViolaciones(region.ownerDocument.body);
+  });
+
+  it("el rechazo de la API se dice en un alert y no hay región de confirmados", async () => {
+    const accionConfirmar = vi
+      .fn()
+      .mockResolvedValue({ error: "No podés confirmar saldos en este edificio." });
+    render(pantalla(SIN_DIFERENCIAS, undefined, accionConfirmar), PUEDE_TODO);
+    await userEvent.click(botonConfirmarSaldos());
+    await userEvent.click(botonDeLaConfirmacion());
+    const alerta = await screen.findByRole("alert");
+    expect(alerta.textContent).toContain("No podés confirmar saldos en este edificio.");
+    expect(screen.queryByRole("region", { name: "Saldos iniciales confirmados" })).toBeNull();
+  });
+
+  it("sin violaciones de accesibilidad con el botón y con la confirmación abierta", async () => {
+    const { container } = render(pantalla(SIN_DIFERENCIAS), PUEDE_TODO);
+    await sinViolaciones(container);
+    await userEvent.click(botonConfirmarSaldos());
+    await sinViolaciones(container);
+  });
+});
+
+describe("PantallaConfirmada", () => {
+  it("dice que los saldos ya están confirmados y lleva al resumen, sin violaciones", async () => {
+    const { container } = render(<PantallaConfirmada id="e1" nombreEdificio="Edificio API" />);
+    expect(
+      screen.queryByRole("heading", { name: "Comparación de saldos", level: 1 }),
+    ).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Saldos iniciales confirmados" })).not.toBeNull();
+    const enlace = ahi(screen.queryByRole("link", { name: "Volver al resumen del edificio" }));
+    expect(enlace.getAttribute("href")).toBe("/edificios/e1");
+    await sinViolaciones(container);
   });
 });
 

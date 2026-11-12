@@ -9,7 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { aceptarDiferencias } from "../../../../../lib/api/importaciones";
 import { MENSAJE_SIN_SESION } from "../../../../../lib/api/mensajes";
-import type { EstadoAceptacion } from "./Pantalla";
+import type { EstadoAceptacion, EstadoConfirmacion } from "./Pantalla";
 
 const _CONFLICTOS: Record<string, string> = {
   aceptacion: "Estas diferencias ya fueron aceptadas. Volvé a cargar la pantalla.",
@@ -58,4 +58,13 @@ export async function aceptarDiferenciasAction(
     return fallo("No pudimos leer el pedido. Probá de nuevo.");
   }
   return fallo("No pudimos aceptar las diferencias. Probá de nuevo.");
+}
+
+/** PROVISORIO (RED de la tarea 3.3). */
+export async function confirmarSaldosAction(
+  _complejoId: string,
+  _estadoPrevio: EstadoConfirmacion,
+  _formData: FormData,
+): Promise<EstadoConfirmacion> {
+  return null;
 }
