@@ -706,6 +706,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C14** KB: R09 (confirmar y cerrar), `03`, `07`, ficha 5, `CHANGES.md` cuando cierre el change.
   - **C15** cada escenario de la spec `confirmacion-de-saldos` tiene su test en verde.
 - Demo: confirmar en el navegador y ver el libro de `1A` y el resumen.
+- Aceptación: **congelada en `4c783e7ba04d394a2ea377dbec3abe36fb027148`** (firma por adelantado de Juani, revisión técnica del orquestador): 32 tests de backend y 5 en navegador, 37 rojos por aserción sobre `8c74866`, 0 errores; regresión H-004 a H-008, KB y cobertura en `aceptar.py`. Contrato en `aceptacion/H-009/CONTRATO.md`.
 
 ### H-010 · Ajuste de saldo inicial
 
