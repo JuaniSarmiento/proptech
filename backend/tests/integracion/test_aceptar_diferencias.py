@@ -197,7 +197,13 @@ def test_una_importacion_que_no_es_el_borrador_vigente(mundo: Mundo, sesion: Ses
     control = control_base()
     control[0][1] = "159000.00"
     control[1][1] = "100000.00"  # otro contenido
-    subir(sesion, mundo.super_admin, mundo.torre, archivo(control=control), nombre="otro.xlsx")
+    subir(
+        sesion,
+        mundo.super_admin,
+        mundo.torre,
+        archivo(control=control, con_unidades=False),
+        nombre="otro.xlsx",
+    )
     error = _rechaza(sesion, Conflicto, lambda: _aceptar(sesion, mundo, primero))
     assert isinstance(error, Conflicto) and error.campo == "importacion_id"
 
@@ -238,7 +244,11 @@ def test_un_borrador_nuevo_deja_sin_valor_la_aceptacion_anterior(
     control[2][1] = "62000.00"
     control[1][1] = "104000.00"
     segundo = subir(
-        sesion, mundo.super_admin, mundo.torre, archivo(control=control), nombre="otro.xlsx"
+        sesion,
+        mundo.super_admin,
+        mundo.torre,
+        archivo(control=control, con_unidades=False),
+        nombre="otro.xlsx",
     ).importacion_id
     c = comparar_borrador(sesion, mundo.super_admin, complejo_id=mundo.torre)
     assert c.importacion_id == segundo

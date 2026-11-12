@@ -203,6 +203,19 @@ def _faltan_los_encabezados(plantilla: PlantillaLeida) -> list[ErrorDeImportacio
     ]
 
 
+def identificadores_declarados(plantilla: PlantillaLeida) -> frozenset[str]:
+    """Los identificadores que la hoja `Unidades` declara (sin recortar de más ni validar): sirven
+    para ubicar los saldos aunque alguna fila de la hoja traiga otro error."""
+    hoja = plantilla.hojas.get(HOJA_UNIDADES)
+    if hoja is None:
+        return frozenset()
+    return frozenset(
+        valor.strip()
+        for fila in hoja.filas
+        if (valor := fila.valores.get("Unidad")) is not None and valor.strip()
+    )
+
+
 def validar_padron(plantilla: PlantillaLeida, contexto: ContextoDelEdificio) -> PadronValidado:
     """Devuelve el padrón válido (con su advertencia de coeficientes, si hay) o levanta
     `PadronInvalido` con **todos** los errores."""

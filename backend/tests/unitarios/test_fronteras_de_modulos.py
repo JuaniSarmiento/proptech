@@ -507,7 +507,15 @@ _DUENO_DE_TABLA = {
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",
     ),
-    "importacion": "importacion",
+    **dict.fromkeys(
+        (
+            "importacion",
+            "fila_de_saldo_importada",
+            "control_de_saldo",
+            "aceptacion_de_diferencias",
+        ),
+        "importacion",
+    ),
 }
 _EXCEPCIONES_SQL = {
     (

@@ -185,10 +185,10 @@ def test_una_fila_de_saldos_mala_rechaza_todo_incluido_el_padron(
     mundo: Mundo, sesion: Session
 ) -> None:
     saldos = saldos_base()
-    saldos[0][0] = "9Z"  # fila 2: unidad que no existe
+    saldos[0][0] = "9Z"  # fila 2: unidad que no existe (en la torre; `_rechazo` mira que no se cree
+    # ni una unidad del padrón ni nada de lo demás)
     error = _rechazo(sesion, mundo, archivo(saldos))
     assert [(e.hoja, e.fila, e.columna) for e in error.errores] == [("Saldos", 2, "Unidad")]
-    assert conteos_del_borrador(sesion)["unidad"] == 0, "no se creó ni una unidad del padrón"
 
 
 def test_los_errores_del_padron_y_de_saldos_van_juntos(mundo: Mundo, sesion: Session) -> None:
