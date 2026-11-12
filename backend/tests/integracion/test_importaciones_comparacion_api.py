@@ -32,7 +32,9 @@ def _archivo(control: list[list[str]]) -> bytes:
     return libro({"Saldos": [SALDOS, *_SALDOS], "Control": [CONTROL, *control]})
 
 
-def _subir(api: ApiEdificio, control: list[list[str]] = _CONTROL, edificio: UUID | None = None):
+def _subir(
+    api: ApiEdificio, control: list[list[str]] = _CONTROL, edificio: UUID | None = None
+) -> Any:
     return api.cliente.post(
         f"/api/complejos/{edificio or api.edificio}/importaciones",
         data={"fecha_de_migracion": "2026-10-15"},
@@ -40,11 +42,11 @@ def _subir(api: ApiEdificio, control: list[list[str]] = _CONTROL, edificio: UUID
     )
 
 
-def _comparacion(api: ApiEdificio, edificio: UUID | None = None):
+def _comparacion(api: ApiEdificio, edificio: UUID | None = None) -> Any:
     return api.cliente.get(f"/api/complejos/{edificio or api.edificio}/importaciones/comparacion")
 
 
-def _aceptar(api: ApiEdificio, importacion_id: Any, edificio: UUID | None = None):
+def _aceptar(api: ApiEdificio, importacion_id: Any, edificio: UUID | None = None) -> Any:
     return api.cliente.post(
         f"/api/complejos/{edificio or api.edificio}/importaciones/aceptacion-de-diferencias",
         json={"importacion_id": str(importacion_id)},
