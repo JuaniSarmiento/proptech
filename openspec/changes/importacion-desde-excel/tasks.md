@@ -379,6 +379,24 @@ mutante, en un commit anterior al de producción (L-061). -->
 - [ ] 3.3 **Web.** `textoDeEstados.ts` (`confirmada`), el paso 7 del resumen (E12), botón "Confirmar
   saldos" y su estado; e2e de Playwright.
 
+  - **RED 3.1 a 3.3** (12/11/2026, commit `702fa7f`, contra un `confirmar` provisorio que no escribe nada, sin la
+    migración `0038`, sin la acción `confirmar_saldos_iniciales`, sin la ruta, y contra `confirmarSaldos`, `confirmarSaldosAction`
+    y `PantallaConfirmada` provisorios que no hacen nada). Backend: `cd backend && uv run pytest
+    tests/unitarios/acceso/test_permisos.py tests/integracion/test_confirmar_saldos.py
+    tests/integracion/test_migracion_0038_confirmar_saldos.py tests/integracion/test_vocabulario_configuracion.py
+    tests/integracion/test_rutas_protegidas.py -q` -> `52 failed, 1832 passed`: 20 de permisos (`ValueError: 'confirmar_saldos_iniciales'
+    is not a valid Accion` en las celdas y `test_la_matriz_de_prueba_cubre_exactamente_el_vocabulario` por aserción), 19 de
+    `test_confirmar_saldos.py` (`DID NOT RAISE Conflicto/NoEncontrado/SinPermiso/EntradaInvalida`, `assert 'pendiente' == 'confirmada'`,
+    `assert '0.00' == '320000.00'`, la auditoría vacía), 2 de la `0038` (`la 0038 no cargó la acción`, `falta la migración 0038`), 1 de
+    vocabulario (`0038_confirmar_saldos.py` no existe) y 10 de rutas (la ruta cubierta ya no existe: 404). Web: `corepack pnpm exec
+    vitest run textoDeEstados importaciones comparacion Pantalla.test acciones-confirmar api-falsa.confirmacion` -> 36 rojos, todos por
+    `expect` (botón o región que no está, `estado: "fallo"` en vez del estado de la API, `revalidatePath` sin llamar, la API falsa que
+    da 404 en 901 a 904 y `pendiente` en el 902).
+    **Aceptación de H-009 contra `702fa7f`** (`python3 aceptacion/H-009/aceptar.py --codigo HEAD --sin-regresion --sin-navegador`,
+    aceptación `4c3525e`): `32 ejecutados, 1 pasados, 31 fallas, 0 errores, 0 skips`; `rojos (31); que no son por aserción (0)`; C01 a C05,
+    C07 a C12 caen en `llegó 404: {"detail":"Not Found"}` (la ruta no existe) y C13 en `falta confirmar_saldos_iniciales en
+    accion_de_auditoria (0038)`.
+
 ## 4. H-010 · Ajuste de saldo inicial
 
 - [ ] 4.1 **Migración `0039_ajuste_de_saldo_inicial`.** Tabla de sólo agregar (FK compuesta a la
