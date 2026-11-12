@@ -58,7 +58,7 @@ def _ajustar(
     cuerpo: dict[str, Any] | None = None,
     edificio: UUID | None = None,
     unidad: UUID | None = None,
-):
+) -> Any:
     return api.cliente.post(
         f"/api/complejos/{edificio or api.edificio}/unidades/{unidad or api.unidad}"
         "/ajustes-de-saldo-inicial",
@@ -137,14 +137,20 @@ def test_con_la_migracion_sin_confirmar_es_409_estado(api_edificio: ApiEdificio)
 def test_fuera_de_alcance_o_unidad_ajena_es_404_antes_que_403(api_edificio: ApiEdificio) -> None:
     api = api_edificio
     _confirmar(api)
-    api.como("editar")
     antes = _escrito(api)
+    # El administrador de un edificio no ve otro (404 antes que 403); con permiso, una unidad que
+    # no es del edificio tampoco existe.
+    api.como("editar")
+    for edificio, unidad in ((api.otro, api.unidad), (api.ajeno, api.unidad_ajena)):
+        respuesta = _ajustar(api, edificio=edificio, unidad=unidad)
+        assert respuesta.status_code == 404, (edificio, unidad, respuesta.text)
+    api.como("super_admin")
     for edificio, unidad in (
-        (api.otro, api.unidad),
         (api.ajeno, api.unidad_ajena),
         (uuid4(), api.unidad),
         (api.edificio, uuid4()),
         (api.edificio, api.unidad_ajena),
+        (api.edificio, api.otra_unidad),
     ):
         respuesta = _ajustar(api, edificio=edificio, unidad=unidad)
         assert respuesta.status_code == 404, (edificio, unidad, respuesta.text)

@@ -1,23 +1,24 @@
 """Importación del padrón y de los saldos desde Excel (change 5): subir la plantilla y descargarla
 (H-007), leer la comparación del borrador y aceptar sus diferencias (H-008) y confirmar los saldos
-(H-009).
+(H-009) y ajustar el saldo inicial de una unidad ya confirmada (H-010).
 
 Cada caso de uso (`importar`, `comparar_borrador`, `aceptar_diferencias`, `confirmar`) autoriza
 solo (404 sin alcance, 403 sin permiso, D7) y abre su transacción; la ruta sólo lee el archivo con
 su tope de bytes y parsea la fecha (subir), mapea las excepciones a HTTP y confirma. `NoEncontrado`
 y `Conflicto` los traduce el manejador de `complejos` (404 y 409 con su `campo`); los del libro (el
-422 de `fecha_de_migracion` y los 409 de la carga), el del libro.
+422 de `fecha_de_migracion` y los 409 de la carga), el del libro; el 422 del cuerpo del ajuste
+es de Pydantic.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
-from pydantic import Field
+from pydantic import AfterValidator, Field, field_validator
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_tenant
@@ -25,9 +26,12 @@ from proptech_api.complejos import _edificio_autorizado
 from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
+from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.importacion.adaptadores.excel import LectorDePlantillaExcel, plantilla_vacia
 from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
+from proptech_core.importacion.aplicacion.ajuste import AjusteRegistrado, ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.borrador import AceptacionRegistrada
 from proptech_core.importacion.aplicacion.comparar import comparar_borrador
 from proptech_core.importacion.aplicacion.confirmar import confirmar
@@ -245,3 +249,72 @@ def confirmar_los_saldos(
         "confirmada_por": str(confirmada.confirmada_por),
         "confirmada_en": confirmada.confirmada_en.isoformat(),
     }
+
+
+def _importe_positivo(importe: Dinero) -> Dinero:
+    if importe <= Dinero("0.00"):
+        raise ValueError("el importe debe ser positivo")
+    return importe
+
+
+class CuerpoAjuste(CuerpoDeAlta):
+    operacion_id: Annotated[UUID, Field(strict=False)]
+    importe: Annotated[Dinero, AfterValidator(_importe_positivo)]
+    #: `interes` no se ajusta: el interés lo calcula la emisión (R03).
+    componente: Literal["ordinaria", "fondo_de_reserva", "extraordinaria"]
+    motivo: str
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_valido(cls, motivo: str) -> str:
+        motivo = recortado_sin_control(motivo)
+        if not 1 <= len(motivo) <= 500:
+            raise ValueError("el motivo debe tener de 1 a 500 caracteres")
+        return motivo
+
+
+def _ajuste_como_json(ajuste: AjusteRegistrado) -> dict[str, object]:
+    return {
+        "ajuste_id": str(ajuste.ajuste_id),
+        "operacion_id": str(ajuste.operacion_id),
+        "obligacion_id": str(ajuste.obligacion_id),
+        "cuenta_id": str(ajuste.cuenta_id),
+        "unidad_id": str(ajuste.unidad_id),
+        "importe": ajuste.importe.a_texto(),
+        "componente": ajuste.componente,
+        "periodo": ajuste.periodo.isoformat(),
+        "vencimiento": ajuste.vencimiento.isoformat(),
+        "motivo": ajuste.motivo,
+        "registrado_por": str(ajuste.registrado_por),
+        "registrado_en": ajuste.registrado_en.isoformat(),
+    }
+
+
+@router.post(
+    "/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial", status_code=201
+)
+def ajustar_el_saldo_inicial(
+    complejo_id: UUID,
+    unidad_id: UUID,
+    cuerpo: CuerpoAjuste,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, object]:
+    """Corrige con una obligación nueva un saldo cargado de menos (E6, E11). 404, 403, 409
+    (`estado_migracion`, `operacion_id`) y el 422 del libro son del caso de uso; el replay da el
+    mismo cuerpo con 201 y no escribe nada.
+    """
+    ajuste = ajustar_saldo_inicial(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        unidad_id=unidad_id,
+        operacion_id=cuerpo.operacion_id,
+        importe=cuerpo.importe,
+        componente=cuerpo.componente,
+        motivo=cuerpo.motivo,
+        request_id=UUID(request_id_actual.get() or ""),
+        reloj=lambda: datetime.now(UTC),
+    )
+    sesion.commit()
+    return _ajuste_como_json(ajuste)
