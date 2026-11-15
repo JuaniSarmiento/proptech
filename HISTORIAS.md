@@ -878,6 +878,10 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Aceptación aprobada: `dd9e1fb` (por el orquestador bajo la firma por adelantado de Juani del
   15/11/2026). Comando: `python3 aceptacion/H-011/aceptar.py`. Esperados: 41 de backend y 7 en navegador;
   antes de construir, 48 rojos, todos por aserción (ruta inexistente, índice faltante, KB).
+  **Vuelta 2** (`72cd09e`, 15/11/2026): dos locators del e2e estaban mal escritos (la región "Ordinaria"
+  también tomaba "Extraordinaria" y el `role="alert"` chocaba con el anunciador de rutas de Next); se
+  corrigieron con `exact: true` y un filtro por texto, sin cambiar lo que se prueba. El contrato suma dos 409
+  que el constructor necesitó (configuración sin definir, grupo sin base de reparto). Lección L-085.
 - Evidencia: pendiente.
 
 ### H-012 · Controles antes de emitir
