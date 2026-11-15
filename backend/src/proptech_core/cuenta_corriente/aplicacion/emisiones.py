@@ -1,6 +1,6 @@
 """Emisión y anulación (D4, E3, R17). Lo llama el 7, que autoriza y audita."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -146,6 +146,48 @@ def _intereses_de(
     return por_cuenta
 
 
+def calcular_intereses_del_corte(
+    sesion: Session,
+    complejo_id: UUID,
+    corte: date,
+    actuales: Mapping[UUID, FotoDeCuenta],
+) -> tuple[dict[str, Any] | None, dict[UUID, list[InteresCalculado]]]:
+    """D1, E2, E10: lo que se cobra de interés en `corte` por cada cuenta de `actuales`, con la
+    versión de configuración vigente a ese corte. No escribe ni bloquea: la usan la emisión (bajo
+    los candados de las cuentas) y la preliquidación (sin candados, E4: una sola forma de
+    calcular). Devuelve la versión usada (`None` si ninguna obligación venció antes del corte: no
+    hace falta ninguna) y el interés por cuenta."""
+    if not any(
+        o.vencimiento < corte and o.id in a.estado.obligaciones_que_cuentan
+        for a in actuales.values()
+        for o in a.estado.obligaciones
+    ):
+        return None, {}
+    version = configuracion_vigente(sesion, complejo_id, corte)
+    if version is None:
+        raise Conflicto("configuracion")
+    configuracion = ConfiguracionDeInteres(
+        Porcentaje(version["tasa_mensual"]),
+        int(version["dias_de_gracia"]),
+        _forma(version["forma_de_calculo"]),
+    )
+    calculados: dict[UUID, list[InteresCalculado]] = {}
+    for cuenta in sorted(actuales):
+        actual = actuales[cuenta]
+        try:
+            # Todos los movimientos, también los anulados o contra-asentados: sin ellos no se
+            # aplica E1 y se choca con `uq_mov_interes`.
+            calculados[cuenta] = list(
+                calcular_intereses(actual.estado, actual.movimientos.values(), corte, configuracion)
+            )
+        except EntradaInvalidaDeDominio:
+            # Mes entero con días de un mes que no son un bloque contiguo: no hay interés coherente
+            # que cobrar. Se rechaza la emisión entera (lo registrado vuelve con el SAVEPOINT) en
+            # vez de saltear la obligación: callar un interés es perder plata sin aviso.
+            raise Conflicto("interes") from None
+    return version, calculados
+
+
 def _registrar_intereses(
     sesion: Session,
     identidad: Identidad,
@@ -161,43 +203,18 @@ def _registrar_intereses(
     """D1, E2, E10: calcula y registra el interés de las cuentas de unidad ya bloqueadas, con el
     corte de la emisión. Devuelve las cuentas que recibieron alguno."""
     actuales = fotos(sesion, cuentas)
-    if not any(
-        o.vencimiento < corte and o.id in a.estado.obligaciones_que_cuentan
-        for a in actuales.values()
-        for o in a.estado.obligaciones
-    ):
-        return set()
-    version = configuracion_vigente(sesion, complejo_id, corte)
-    if version is None:
-        raise Conflicto("configuracion")
-    configuracion = ConfiguracionDeInteres(
-        Porcentaje(version["tasa_mensual"]),
-        int(version["dias_de_gracia"]),
-        _forma(version["forma_de_calculo"]),
-    )
+    version, calculados = calcular_intereses_del_corte(sesion, complejo_id, corte, actuales)
     recibieron: set[UUID] = set()
-    for cuenta in sorted(actuales):
-        actual = actuales[cuenta]
-        try:
-            # Todos los movimientos, también los anulados o contra-asentados: sin ellos no se
-            # aplica E1 y se choca con `uq_mov_interes`.
-            calculados = calcular_intereses(
-                actual.estado, actual.movimientos.values(), corte, configuracion
-            )
-        except EntradaInvalidaDeDominio:
-            # Mes entero con días de un mes que no son un bloque contiguo: no hay interés coherente
-            # que cobrar. Se rechaza la emisión entera (lo registrado vuelve con el SAVEPOINT) en
-            # vez de saltear la obligación: callar un interés es perder plata sin aviso.
-            raise Conflicto("interes") from None
-        for interes in calculados:
+    for cuenta in sorted(calculados):
+        for interes in calculados[cuenta]:
             _insertar_interes(
                 sesion,
                 identidad,
                 administracion=administracion,
-                actual=actual,
+                actual=actuales[cuenta],
                 emision_id=emision_id,
                 interes=interes,
-                version=version,
+                version=version or {},
                 request_id=request_id,
                 instante=instante,
             )

@@ -464,6 +464,33 @@ def gastos_aprobados_del_periodo(
     }
 
 
+def lineas_del_periodo(sesion: Session, complejo_id: UUID, periodo: date) -> list[dict[str, Any]]:
+    """Los mismos gastos y notas de crédito que `gastos_aprobados_del_periodo` netea, pero por
+    separado y con su importe bruto, para quien necesita mostrar los gastos y las notas por su
+    lado (la preliquidación, 7). Una sola sentencia, así que ve un solo snapshot. Cada fila trae
+    `grupo_id`, `categoria_id`, `tipo`, `importe` (texto, siempre positivo) y `es_nota_de_credito`.
+    Mismas reglas que D10/R22: gastos `aprobado` con ese período de imputación; notas de un gasto
+    `aprobado` cuyo propio `periodo` es el consultado."""
+    filas = (
+        sesion.execute(
+            text(
+                "SELECT grupo_id, categoria_id, tipo, importe::text AS importe, "
+                "false AS es_nota_de_credito FROM gasto "
+                "WHERE complejo_id=:complejo AND periodo_de_imputacion=:periodo "
+                "AND estado='aprobado' "
+                "UNION ALL "
+                "SELECT g.grupo_id, g.categoria_id, g.tipo, n.importe::text, true "
+                "FROM nota_de_credito n JOIN gasto g ON g.id = n.gasto_id "
+                "WHERE n.complejo_id=:complejo AND n.periodo=:periodo AND g.estado='aprobado'"
+            ),
+            {"complejo": complejo_id, "periodo": periodo},
+        )
+        .mappings()
+        .all()
+    )
+    return [dict(f) for f in filas]
+
+
 def obligatorios_faltantes(sesion: Session, complejo_id: UUID, periodo: date) -> dict[str, Any]:
     """D7/D-141: qué categorías de gasto mensual obligatorio no tienen un
     gasto aprobado en este período. Sólo lectura, nunca bloquea nada (D10:
