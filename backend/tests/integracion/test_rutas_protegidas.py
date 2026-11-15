@@ -138,6 +138,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/cargos-particulares/{cargo_id}", "GET"),
     ("/api/cargos-particulares/{cargo_id}", "PATCH"),
     ("/api/cargos-particulares/{cargo_id}/aprobar", "POST"),
+    # --- Cambio 7 `liquidacion-y-emision` (H-011) ---
+    ("/api/complejos/{complejo_id}/periodos/{periodo}/preliquidacion", "GET"),
     ("/api/complejos/{complejo_id}/periodos/{periodo}/cargos-aprobados", "GET"),
     ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
 }
