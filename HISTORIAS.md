@@ -801,7 +801,9 @@ D8 retenido, P26 no, P38 fecha de la transferencia, P39 no, P27 y P28 al 8, R40 
 bloque negativo frenan con un control duro. **Firma CRITICAL por adelantado de Juani** (15/11/2026) en
 `proposal.md`: aprueba E1 a E16 en la recomendación del orquestador; lo que no le cierre en la demo vuelve a
 En proceso (D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
-Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). Los
+Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). **Juani levantó el
+límite de dos historias en Lista para todo el 7** (15/11/2026: "sin pasar por mí, terminalo"): las
+historias se construyen una detrás de otra y las demos se hacen juntas al final. Los
 criterios los escribe el orquestador bajo esa firma, historia por historia.
 
 **Base de los ejemplos** (datos inventados): edificio "Torre Ficticia", sin saldos previos confirmado,
@@ -932,6 +934,12 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
     activos a la vez).
   - **N04** existe un control `factura_duplicada` o `ingresos_mayores_que_los_gastos` (D-157); y una
     segunda factura con la misma clave entra en la base (la rechaza `uq_gasto_factura`).
+- Constructor: Claude Sonnet (`rein-constructor`), el mismo que eligió Juani para el 7.
+- Aceptación aprobada: `478705f` (por el orquestador bajo la firma por adelantado de Juani). Comando:
+  `python3 aceptacion/H-012/aceptar.py --sin-regresion` por historia (la regresión, C09, al cierre).
+  Esperados: 18 de backend y 4 en navegador; antes de construir, 21 rojos por aserción y un verde que ya
+  existía (`test_n04_la_factura_duplicada_la_rechaza_la_base`, en `NACEN_VERDES`).
+- Evidencia: pendiente.
 
 ### H-013 · Emitir lo revisado
 
