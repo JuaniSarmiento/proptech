@@ -22,7 +22,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
-| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | En proceso |
+| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Lista |
 | H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Pendiente |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Pendiente |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
@@ -882,7 +882,17 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   también tomaba "Extraordinaria" y el `role="alert"` chocaba con el anunciador de rutas de Next); se
   corrigieron con `exact: true` y un filtro por texto, sin cambiar lo que se prueba. El contrato suma dos 409
   que el constructor necesitó (configuración sin definir, grupo sin base de reparto). Lección L-085.
-- Evidencia: pendiente.
+- Construcción (Sonnet, una tanda): `039cb96` dominio puro (reparto, fondo, huella), `662bc9e` ruta, interés
+  a cobrar sin candados (`calcular_intereses_del_corte`, extraído de `_registrar_intereses` para que la
+  emisión y la preliquidación usen la misma función) y orden de períodos, `934fceb` barridos de rutas y
+  test de la `0040`, `b0ab175` pantalla y API falsa, `b8d6bd9` KB. Ruff, mypy entero, lint, typecheck y
+  vitest limpios según el constructor. La pantalla no pasó por impeccable (no instalada); `por_grupo`
+  viaja en la API pero la pantalla no lo dibuja.
+- Evidencia (15/11/2026): `python3 aceptacion/H-011/aceptar.py --sin-regresion` desde `72cd09e` sobre el
+  código `9b92893`: **41/41 de backend y 7/7 en navegador**, C01 a C12, N01 a N04, C14 y C15 PASA, 0 rojos.
+  C13 queda para el cierre del change (regresión de H-004 a H-010 y barrido de migraciones, por decisión
+  de Juani del 15/11: la regresión larga corre una vez al cerrar).
+- Demo: pendiente, con Juani.
 
 ### H-012 · Controles antes de emitir
 

@@ -1263,3 +1263,15 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   (`rg -l "_RUTAS_CUBIERTAS" backend/tests`) y los corre en local; antes de abrir el PR, el orquestador
   corre `uv run mypy` y `uv run ruff check` enteros. Un error "previo" se corrige en el mismo change, no
   se anota.
+
+## L-085 · Un locator de Playwright por nombre parcial o por un rol que Next ya usa no prueba nada propio
+
+- **Origen**: H-011 del 7 (`liquidacion-y-emision`), 15/11/2026.
+- **Qué pasó**: la aceptación de H-011 se volvió a congelar porque dos tests del e2e estaban mal escritos,
+  no la pantalla. `getByRole("region", { name: "Ordinaria" })` compara por subcadena sin mayúsculas y
+  también agarraba la región "Extraordinaria" (strict mode). `getByRole("alert")` chocaba con el
+  `role="alert"` vacío que Next agrega siempre como anunciador de rutas.
+- **Regla**: en una aceptación, un locator por nombre accesible lleva `exact: true` cuando otro nombre de la
+  pantalla lo contiene; un `role="alert"` se filtra por su texto. Antes de congelar, el orquestador corre el
+  e2e contra una pantalla mínima que lo pase, no sólo contra la pantalla ausente: un rojo por "no existe"
+  no dice si el locator está bien escrito.
