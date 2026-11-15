@@ -798,10 +798,11 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 
 Propuesta y diseño en `openspec/changes/liquidacion-y-emision/`. Acuerdo previo D-157 (Juani, 15/11/2026):
 D8 retenido, P26 no, P38 fecha de la transferencia, P39 no, P27 y P28 al 8, R40 adentro, doble vencimiento y
-bloque negativo frenan con un control duro. **Nada se construye sin la firma CRITICAL** en `proposal.md`
-(D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
+bloque negativo frenan con un control duro. **Firma CRITICAL por adelantado de Juani** (15/11/2026) en
+`proposal.md`: aprueba E1 a E16 en la recomendación del orquestador; lo que no le cierre en la demo vuelve a
+En proceso (D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
 Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). Los
-criterios de cada historia se escriben después de la firma.
+criterios los escribe el orquestador bajo esa firma, historia por historia.
 
 ## Plantilla de historia
 

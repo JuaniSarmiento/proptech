@@ -108,4 +108,4 @@ Ningún agente la escribe.
 
 | Firmante (Juani, Alberto o Emiliano) | Fecha | Alcance aprobado |
 |---|---|---|
-| | | |
+| Juani Sarmiento | 15/11/2026 | Por adelantado (en el chat: "sisi dale"): la propuesta completa del 7 y sus elecciones E1 a E16 con la recomendación del orquestador, sobre el acuerdo D-157, partida en H-011 a H-015 sin rompedor (D-152); los criterios los escribe el orquestador bajo esta firma y lo que no me cierre en la demo vuelve a En proceso |
