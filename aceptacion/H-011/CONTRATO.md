@@ -19,6 +19,10 @@ recomendación), la spec `preliquidacion` y D-157.
   `cargar_gastos_y_preparar_liquidacion` → **403** con el cuerpo de siempre (`"permiso_faltante":
   "cargar_gastos_y_preparar_liquidacion"`); sin sesión → **401**; período inválido → 422; orden de
   períodos → 409.
+- **409** sin configuración vigente el primer día del período: `{"detail": "conflicto", "campo":
+  "configuracion", "motivo": "configuracion_sin_definir"}`; un grupo con gastos del período y sin base de
+  reparto (sin miembros o superficie cero): `{"detail": "conflicto", "campo": "grupo", "motivo":
+  "grupo_sin_base_de_reparto"}` (agregados en la vuelta 2, 15/11/2026; la aceptación no los prueba).
 - **409** `{"detail": "conflicto", "campo": "periodo", "motivo": "<motivo>"}` con `motivo`:
   - `periodo_emitido`: el período tiene una emisión sin anular.
   - `periodo_anterior_sin_emitir`: hay al menos una emisión sin anular en el edificio y el mes anterior al

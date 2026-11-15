@@ -55,13 +55,13 @@ test("C12 · la tabla por unidad muestra los importes de la base con punto de mi
 
 test("C12 · los bloques muestran las categorías con importe y porcentaje", async ({ page }) => {
   await abrir(page, EDIFICIOS.base);
-  const ordinaria = page.getByRole("region", { name: "Ordinaria" });
+  const ordinaria = page.getByRole("region", { name: "Ordinaria", exact: true });
   await expect(ordinaria).toBeVisible();
   await expect(ordinaria).toContainText("Limpieza");
   await expect(ordinaria).toContainText("90.000,00");
   await expect(ordinaria).toContainText("69,23");
   await expect(ordinaria).toContainText("130.000,00");
-  const extraordinaria = page.getByRole("region", { name: "Extraordinaria" });
+  const extraordinaria = page.getByRole("region", { name: "Extraordinaria", exact: true });
   await expect(extraordinaria).toContainText("Pintura");
   await expect(extraordinaria).toContainText("50.000,00");
 });
@@ -77,7 +77,8 @@ test("C12 · con fondo 0% no está la columna del fondo", async ({ page }) => {
 
 test("C12 · sin el período anterior emitido, avisa y no muestra la tabla", async ({ page }) => {
   await page.goto(`/edificios/${EDIFICIOS.sinAnterior}/liquidaciones/2026-11`);
-  await expect(page.getByRole("alert")).toContainText(/período anterior/i);
+  // Next agrega siempre un `role="alert"` vacío (el anunciador de rutas): se filtra por el texto.
+  await expect(page.getByRole("alert").filter({ hasText: /período anterior/i })).toHaveCount(1);
   await expect(page.getByRole("table")).toHaveCount(0);
 });
 
