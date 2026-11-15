@@ -22,6 +22,11 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
+| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Pendiente |
+| H-012 | C-10 7, parte 2 | Los controles de R34 sobre la preliquidación y la aceptación registrada de alertas | Media / CRITICAL | Pendiente |
+| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, en una transacción, con todo lo usado guardado | Alta / CRITICAL | Pendiente |
+| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
+| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -259,7 +264,7 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 
 ## Changes por partir en historias
 
-- Ninguno: el 4c quedó partido en H-004, H-005 y H-006 (11/11/2026).
+- Ninguno: el 7 quedó partido en H-011 a H-015 (15/11/2026, D-157).
 
 ## Interés, saldo inicial y moroso (4c, C-07c)
 
@@ -788,6 +793,15 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C16** cada escenario de la spec `ajuste-de-saldo-inicial` tiene su test en verde.
 - Demo: ajustar `1A` en el navegador y emitir diciembre para ver el interés de $125,00.
 - Aceptación: **congelada en `8c67e94a93acb71eee37353f8e248ac0704d4bf4`** (firma por adelantado de Juani, revisión técnica del orquestador): 56 tests de backend y 4 en navegador, 60 rojos por aserción sobre `a8a40f0`, 0 errores; regresión H-004 a H-009, KB (incluida una D posterior a D-155 que registre E11) y cobertura en `aceptar.py`. Contrato en `aceptacion/H-010/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
+
+## Liquidación y emisión (7, C-10)
+
+Propuesta y diseño en `openspec/changes/liquidacion-y-emision/`. Acuerdo previo D-157 (Juani, 15/11/2026):
+D8 retenido, P26 no, P38 fecha de la transferencia, P39 no, P27 y P28 al 8, R40 adentro, doble vencimiento y
+bloque negativo frenan con un control duro. **Nada se construye sin la firma CRITICAL** en `proposal.md`
+(D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
+Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). Los
+criterios de cada historia se escriben después de la firma.
 
 ## Plantilla de historia
 

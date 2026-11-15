@@ -3250,3 +3250,37 @@ registrado como tal en su momento.)*
 - **Quién**: el orquestador, bajo la firma por adelantado de Juani del 5 (`04ebf1e`, la recomendación de
   E1 a E15); Juani la revisa en la demo de H-010 y, si la rechaza, H-010 vuelve a En proceso con una
   decisión nueva.
+
+## D-157 · Lo que bloqueaba al 7 y cómo se parte (15/11/2026, acuerdo del 7, antes del propose)
+
+- **Contexto**: la ficha del 7 lo daba por bloqueado por D8 (D-123), P26, P27, P28, P38, P39, la
+  normativa de Mendoza (D-060) y F2c (C-25). El análisis del orquestador del 15/11/2026, contra el código
+  de `main` (`52755d5`), encontró además huecos que la ficha no nombraba.
+- **Decisión** (Juani, 15/11/2026: "vamos con tus recomendaciones"):
+  - **D8 (D-123)**: el crédito de corrección imputado a una obligación de una emisión anulada queda
+    **retenido** (opción a, como la bonificación de E16 del 4b): no vuelve como crédito a favor libre. La
+    re-emisión suele corregir el mismo error; dejarlo a favor lo corregiría dos veces. Se reaplica, si
+    hace falta, con una corrección nueva.
+  - **P26**: no se anula un período con el siguiente ya emitido (sin anular); primero se anula el
+    siguiente.
+  - **P38**: el crédito que vuelve tras una anulación conserva la fecha de la transferencia (su
+    `fecha_valor`). Es lo que ya hace el libro (`dominio/intereses.py`): se ratifica.
+  - **P39**: el consejo no ve una liquidación emitida y no distribuida, y su vista nunca distribuye.
+  - **P27 y P28** pasan al 8: R37 es propuesta y la bonificación nace al confirmar un pago.
+  - **Fuera del 7**: R14 recurrente, R35, R37 y R38 (propuestas sin validar). **Adentro**: R40 (los
+    períodos se liquidan en orden), validada por Juani en este acuerdo.
+  - **Doble vencimiento**: con la configuración en "doble", la emisión se frena con un control duro de
+    R34 hasta que Alberto defina R26 (cómo se cobra el recargo).
+  - **P25 (nota de crédito mayor que los gastos)**: mientras siga abierta, un bloque que da negativo
+    frena la emisión con un control duro.
+  - **Unidad en $0**: no recibe obligación; su interés se registra igual.
+  - **Factura duplicada**: no es un control del 7; la garantiza `uq_gasto_factura` (0029) y un test la
+    deja fija.
+  - **Lo que se emite es lo que se revisó**: la emisión lleva la huella de la preliquidación revisada y se
+    rechaza si cambió; emitir y aprobar un gasto del período comparten un candado.
+  - **Partición en historias**: H-011 preliquidación, H-012 controles y alertas, H-013 emitir, H-014
+    distribuir y anular (con el cargo cobrado de menos), H-015 PDF y links firmados (espera D-060 y F2c).
+- **Descartado**: D8 a favor como un pago (doble corrección); permitir anular con el siguiente emitido
+  (su interés y su saldo anterior quedarían calculados sobre lo anulado); inventar el recargo del doble
+  vencimiento.
+- **Quién**: Juani, sobre el análisis del orquestador del 15/11/2026.
