@@ -155,3 +155,30 @@ export function decimalParaCampo(texto: string | null | undefined): string {
 export function decimalParaApi(texto: string): string {
   return /^-?[0-9]+,[0-9]+$/.test(texto) ? texto.replace(",", ".") : texto;
 }
+
+const _MESES: Record<string, string> = {
+  "01": "enero",
+  "02": "febrero",
+  "03": "marzo",
+  "04": "abril",
+  "05": "mayo",
+  "06": "junio",
+  "07": "julio",
+  "08": "agosto",
+  "09": "septiembre",
+  "10": "octubre",
+  "11": "noviembre",
+  "12": "diciembre",
+};
+
+/** Un período `AAAA-MM` (o una fecha ISO que empieza así) en palabras: `"2026-11"` ->
+ * `"noviembre de 2026"`. Corta el TEXTO, nunca pasa por `Date`. Lo que no es un período vuelve
+ * `null`: quien llama decide qué mostrar. */
+export function periodoEnPalabras(texto: string): string | null {
+  const partes = /^([0-9]{4})-(0[1-9]|1[0-2])(-[0-9]{2})?$/.exec(texto);
+  if (!partes) {
+    return null;
+  }
+  const [, anio, mes] = partes;
+  return `${_MESES[mes ?? ""]} de ${anio}`;
+}

@@ -28,6 +28,7 @@ import {
   responderConfirmacion,
   responderImportacion,
 } from "./escenarios-importacion";
+import { esEdificioDePreliquidacion, responderPreliquidacion } from "./escenarios-liquidacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -1017,6 +1018,14 @@ export function crearServidor(
       respuesta
         .writeHead(200, { "content-type": "application/json" })
         .end(JSON.stringify(padronDeAjuste(id)));
+      return;
+    }
+
+    // change 7 (H-011): la preliquidación de un período, en los tres edificios de su contrato (1101
+    // a 1103).
+    const rutaDePreliquidacion = /^periodos\/([^/]+)\/preliquidacion$/.exec(resto);
+    if (rutaDePreliquidacion && esEdificioDePreliquidacion(id)) {
+      responderPreliquidacion(pedido, respuesta, id, rutaDePreliquidacion[1] ?? "");
       return;
     }
 

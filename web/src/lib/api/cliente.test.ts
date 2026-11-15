@@ -129,6 +129,26 @@ describe("pedirApi", () => {
     });
   });
 
+  it("409 con motivo: lo conserva como código; sin motivo o con otro tipo, no lo agrega", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        status: 409,
+        cuerpo: { detail: MARCADOR, campo: "periodo", motivo: "periodo_emitido" },
+      }),
+    );
+    expect(await pedirApi("/api/p")).toEqual({
+      estado: "conflicto",
+      campo: "periodo",
+      motivo: "periodo_emitido",
+    });
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 409, cuerpo: { detail: MARCADOR, campo: "periodo", motivo: 7 } }),
+    );
+    expect(await pedirApi("/api/p")).toEqual({ estado: "conflicto", campo: "periodo" });
+  });
+
   it("422 con loc de un campo", async () => {
     vi.stubGlobal(
       "fetch",

@@ -5,6 +5,7 @@ import {
   dinero,
   fecha,
   fechaYHora,
+  periodoEnPalabras,
   porcentaje,
   sumaComoPorcentaje,
   superficie,
@@ -101,5 +102,20 @@ describe("fechaYHora", () => {
 
   it("lo que no es una fecha con hora vuelve tal cual", () => {
     expect(fechaYHora("ayer")).toBe("ayer");
+  });
+});
+
+describe("periodoEnPalabras", () => {
+  it("un período o su fecha del día 1, en palabras", () => {
+    expect(periodoEnPalabras("2026-11")).toBe("noviembre de 2026");
+    expect(periodoEnPalabras("2026-11-01")).toBe("noviembre de 2026");
+    expect(periodoEnPalabras("2027-01")).toBe("enero de 2027");
+    expect(periodoEnPalabras("2026-09")).toBe("septiembre de 2026");
+  });
+
+  it("lo que no es un período es null, nunca un mes inventado", () => {
+    for (const texto of ["", "noviembre", "2026-13", "2026-00", "26-11", "2026-1", "2026-11-1"]) {
+      expect(periodoEnPalabras(texto)).toBeNull();
+    }
   });
 });
