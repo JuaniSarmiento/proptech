@@ -39,6 +39,9 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 ## R01 · Prorrateo de gastos · Vigente (D-013) · a validar (P42)
 
+- **Dónde vive** (7, H-011): el reparto por grupo y por método, en `liquidacion/dominio/reparto.py`, con
+  `compartido/reparto.py` (mayor resto, orden natural); lo arma `liquidacion/aplicacion/preliquidacion.py`.
+
 - **Grupos de reparto**: cada complejo define sus grupos (por ejemplo "Generales", "Pileta",
   "Obra calle 5"). Cada grupo tiene:
   - las unidades que participan;
@@ -92,6 +95,10 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   emitir no modifica esa liquidación.
 
 ## R15 · Fondo de reserva · Vigente (D-031)
+
+- **Dónde vive** (7, H-011): `liquidacion/dominio/fondo.py`: el porcentaje de la configuración vigente el
+  primer día del período sobre la suma de las ordinarias prorrateadas, redondeado medio hacia arriba y
+  repartido en proporción a la ordinaria de cada unidad con `repartir`.
 
 - **Configurable por edificio**: un porcentaje sobre la **ordinaria prorrateada** del período (R13). Default: 0%
   (sin fondo de reserva).
@@ -515,6 +522,9 @@ lectura automática (la columna existe, D-075, pero nada la escribe todavía).
 
 ## R13 · Expensa ordinaria y extraordinaria · Vigente (D-024)
 
+- **Dónde vive** (7, H-011): el reparto de cada bloque (ordinario, extraordinario) por grupo, en el módulo
+  `liquidacion` (`GET /api/complejos/{id}/periodos/{AAAA-MM-01}/preliquidacion`, sin efectos).
+
 **Construido (cambio 6, 29/10/2026)**: la marca ordinario/extraordinario en `gasto` y la lectura
 agregada por grupo con subtotal de cada bloque (D10, `GET .../periodos/{periodo}/gastos-aprobados`),
 pensada para que el cambio 7 la consuma. El reparto en sí (la obligación por unidad) sigue siendo del
@@ -742,11 +752,13 @@ número no se marcan duplicadas entre sí.
   vencimiento en un feriado seguido de fin de semana pasa al siguiente día hábil; un día hábil normal
   no se mueve.
 
-## R40 · Los períodos se liquidan en orden · Propuesta (D-071)
+## R40 · Los períodos se liquidan en orden · Vigente (D-157)
 
 - **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
   intereses.
-- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido o
+- **Vigente (7, H-011, D-157)**: la preliquidación ya lo aplica (409 `periodo_emitido` y
+  `periodo_anterior_sin_emitir`; "emitido" se lee del libro: una `emision` sin evento `anulada`). Emitir lo
+  aplicará H-013. No se puede preliquidar ni emitir un período si el anterior no está emitido o
   distribuido (una liquidación anulada no cuenta). Única
   excepción: el primer período después de la migración (R09), que arranca desde los saldos
   iniciales confirmados.

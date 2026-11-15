@@ -1082,6 +1082,9 @@ D-153).
   expensas; el inquilino sólo ordinarias, también en su PDF y links de descarga. Probar que el filtro
   no dependa del navegador ni exponga extraordinarias por descarga directa.
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
+- **Construido con Rein**: H-011 `preliquidación sin efectos` (módulo `liquidacion`, la ruta
+  `.../preliquidacion`, el interés a cobrar sin candados extraído de la emisión, la migración `0040` con el
+  índice de `grupo_unidad` por edificio y la pantalla `liquidaciones/[AAAA-MM]`). Faltan H-012 a H-015.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).

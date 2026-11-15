@@ -146,38 +146,36 @@ function BloqueDelPeriodo({
       {bloque.categorias.length === 0 ? (
         <p className="texto-secundario">No hay gastos de este tipo en el período.</p>
       ) : (
-        <CajaConDesplazamiento etiqueta={`Categorías del bloque ${titulo.toLowerCase()}`}>
-          <table className="padron-de-unidades padron-de-unidades--envuelto">
-            <caption className="sr-only">Gastos por categoría</caption>
-            <thead>
-              <tr>
-                <th scope="col">Categoría</th>
-                <th scope="col" className="numero-tabular">
-                  Importe
-                </th>
-                <th scope="col" className="numero-tabular">
-                  Porcentaje
-                </th>
+        <table className="padron-de-unidades padron-de-unidades--envuelto">
+          <caption className="sr-only">Gastos por categoría</caption>
+          <thead>
+            <tr>
+              <th scope="col">Categoría</th>
+              <th scope="col" className="numero-tabular">
+                Importe
+              </th>
+              <th scope="col" className="numero-tabular">
+                Porcentaje
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {bloque.categorias.map((categoria) => (
+              <tr key={categoria.categoria_id}>
+                <td>{categoria.nombre}</td>
+                <td className="numero-tabular">{dinero(categoria.importe)}</td>
+                <td className="numero-tabular">{porcentaje(categoria.porcentaje)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {bloque.categorias.map((categoria) => (
-                <tr key={categoria.categoria_id}>
-                  <td>{categoria.nombre}</td>
-                  <td className="numero-tabular">{dinero(categoria.importe)}</td>
-                  <td className="numero-tabular">{porcentaje(categoria.porcentaje)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row">Subtotal</th>
-                <td className="numero-tabular">{dinero(bloque.subtotal)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        </CajaConDesplazamiento>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Subtotal</th>
+              <td className="numero-tabular">{dinero(bloque.subtotal)}</td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
       )}
     </Panel>
   );

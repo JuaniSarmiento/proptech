@@ -15,6 +15,11 @@ administradores, significa lo que dice acá. **Se reescribe** cuando un término
 
 ## El complejo y sus partes
 
+- **Preliquidación**: lo que paga cada unidad en un período, calculado antes de emitir y sin escribir nada
+  en ninguna tabla; se recalcula en cada pedido (7, H-011, HU-A4).
+- **Huella**: el SHA-256 de la forma canónica de una preliquidación (importes, unidades, grupos, categorías,
+  porcentaje, vencimiento y versión de configuración); cambia si cambia cualquiera de ellos y permite emitir
+  exactamente lo revisado (7, E3).
 - **Ajuste de saldo inicial**: la deuda nueva, con motivo, que corrige un saldo inicial cargado de menos
   después de confirmar; no edita lo cargado ni reabre la migración (R09, E11, D-156, H-010).
 - **Borrador de saldos**: los saldos de la hoja `Saldos` guardados aparte del libro hasta que se
