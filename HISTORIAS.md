@@ -23,8 +23,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
 | H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | En proceso |
-| H-012 | C-10 7, parte 2 | Los controles de R34 sobre la preliquidación y la aceptación registrada de alertas | Media / CRITICAL | Pendiente |
-| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, en una transacción, con todo lo usado guardado | Alta / CRITICAL | Pendiente |
+| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Pendiente |
+| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Pendiente |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
 
@@ -825,8 +825,9 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   emite.
 - Alcance: módulo `liquidacion` (dominio puro del reparto, el fondo y la huella), la lectura de interés
   sin candado en `cuenta_corriente.aplicacion` con la misma función que la emisión, la ruta
-  `GET /api/complejos/{id}/periodos/{AAAA-MM}/preliquidacion`, el índice de DBA-2 y la pantalla
-  `edificios/[id]/liquidaciones/[periodo]`. Exclusiones: controles (H-012), emitir (H-013), distribuir y
+  `GET /api/complejos/{id}/periodos/{AAAA-MM-01}/preliquidacion` (el período como fecha, igual que
+  las rutas de gastos del 6), el índice de DBA-2 y la pantalla
+  `edificios/[id]/liquidaciones/[AAAA-MM]`. Exclusiones: controles (H-012), emitir (H-013), distribuir y
   anular (H-014), PDF (H-015), pantallas de gastos (6c).
 - Dificultad y riesgo: alta / CRITICAL.
 - Tienen que pasar:
@@ -858,20 +859,198 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **C11** permisos: super admin, administrador principal y administrador del edificio, 200; contador,
     consejo y auxiliar, 403; administrador de otro edificio u otra administración, 404; sin sesión, 401.
   - **C12** pantalla en navegador real: la tabla por unidad con los importes de C01 con separador de miles
-    (`$ 43.350,00`), los bloques por categoría y los totales; a 320 px y 1280 px, con teclado y sin
+    (`43.350,00`), los bloques por categoría y los totales; a 320 px y 1280 px, con teclado y sin
     errores de axe.
   - **C13** regresión: las aceptaciones de H-004 a H-010 desde sus SHA, los tests estructurales del repo,
     el barrido de migraciones y el ensayo de roles siguen en verde.
+  - **C14** la base de conocimiento: R40 vigente (D-157), R01, R13 y R15 dicen dónde vive el reparto
+    (`liquidacion`), `08` nombra el módulo `liquidacion`, el glosario define preliquidación y huella, y la
+    ficha 7 registra H-011.
+  - **C15** cada escenario de la spec `preliquidacion` tiene un test que corrió y pasó.
 - Tienen que fallar (y la aceptación lo prueba):
   - **N01** la preliquidación escribe algo: el conteo de filas de **todas** las tablas del esquema es el
     mismo antes y después de pedirla (también `auditoria`).
   - **N02** entra un gasto que no es aprobado del período y del edificio, o un cargo en borrador (la base
     de los ejemplos).
-  - **N03** un período mal escrito (`2026-13`, `2026-11-05`, `noviembre`) da 422, no 500.
+  - **N03** un período mal escrito (`2026-13-01`, `2026-11-05`, `noviembre`) da 422, no 500.
   - **N04** la suma de las unidades se aparta un centavo del total (cada caso de C01 a C08 lo verifica).
 - Constructor: a elegir por Juani.
 - Aceptación aprobada: pendiente.
 - Evidencia: pendiente.
+
+### H-012 · Controles antes de emitir
+
+- Change: C-10 7, parte 2. Reglas: R01, R09, R24, R34, D-075, D-141, D-157; elección E6 de `design.md`.
+- Resultado para Juani: la preliquidación lista los problemas antes de emitir, cada uno con su nivel
+  (duro, bloqueante o advertencia), qué pasa y dónde; nada se escribe por mostrarlos.
+- Alcance: la lista `controles` de la preliquidación (cada uno con `codigo`, `nivel`, `mensaje` y
+  `detalle`) y su bloque en la pantalla. Exclusiones: aceptar alertas y frenar la emisión (H-013); los
+  controles de pagos, extracto y contactos (8, 9 y 13).
+- Dificultad y riesgo: media / CRITICAL.
+- Tienen que pasar:
+  - **C01** `saldos_iniciales_sin_validar` (duro) con la migración `pendiente`; no aparece con
+    `confirmada` ni con `sin_saldos_previos`.
+  - **C02** `coeficientes_fuera_de_tolerancia` (duro): Generales que suma 0,9998 lo dispara nombrando el
+    grupo, la suma y la diferencia; un grupo con coeficientes propios que suma 0,8 lo dispara nombrando
+    ese grupo.
+  - **C03** `bloque_negativo` (duro): con $50.000,00 de gastos ordinarios de Generales en noviembre, una nota
+    de crédito de noviembre de $60.000,00 sobre una factura de octubre de $80.000,00 deja ese bloque en
+    −$10.000,00; el control nombra el grupo y el bloque, y la
+    preliquidación responde 200 (no 500).
+  - **C04** `doble_vencimiento_sin_regla` (duro) con la configuración en "doble".
+  - **C05** `gastos_en_revision` (bloqueante) con la cantidad y los ids; `gastos_sin_ia` (advertencia)
+    con el texto "hay N facturas sin cargar" y N correcto. Ninguno de los dos entra en el cálculo.
+  - **C06** `gasto_mensual_obligatorio_faltante` (advertencia) nombra la categoría; desaparece cuando se
+    aprueba un gasto de esa categoría en el período.
+  - **C07** orden fijo (duros, después bloqueantes, después advertencias) y la huella cambia cuando cambia
+    el conjunto de controles.
+  - **C08** pantalla en navegador real: cada control con su nivel en texto (no sólo color), los duros
+    dicen "no se puede aceptar"; sin errores de axe, a 320 px y con teclado.
+  - **C09** regresión: H-004 a H-011 desde sus SHA y los estructurales en verde.
+  - **C10** la KB: R34 con los controles del 7 y los dos nuevos (bloque negativo, doble vencimiento), y la
+    ficha 7 con H-012.
+- Tienen que fallar:
+  - **N01** un padrón que suma 0,9999 dispara un duro (está dentro de la tolerancia: no aparece).
+  - **N02** un gasto en revisión o sin IA de **otro** edificio dispara un control de este.
+  - **N03** mostrar los controles escribe algo (el conteo de todas las tablas, con todos los controles
+    activos a la vez).
+  - **N04** existe un control `factura_duplicada` o `ingresos_mayores_que_los_gastos` (D-157); y una
+    segunda factura con la misma clave entra en la base (la rechaza `uq_gasto_factura`).
+
+### H-013 · Emitir lo revisado
+
+- Change: C-10 7, parte 3. Reglas: R03, R06, R13, R15, R16, R17, R34, P36, D-069, D-100, D-141, D-157;
+  elecciones E2, E3, E5, E7, E8, E15 de `design.md`.
+- Resultado para Juani: el administrador emite la preliquidación que revisó: cada unidad queda con su
+  obligación en el libro, todo lo usado queda guardado y nada de lo que cambie después lo altera.
+- Alcance: `POST /api/complejos/{id}/periodos/{AAAA-MM-01}/emision` con `emision_id`, `huella`,
+  `alertas_aceptadas` y, opcional, el vencimiento corrido con su motivo; las tablas de E2 (migración
+  nueva); el candado de E5 compartido con aprobar un gasto; el adaptador real de `es_periodo_emitido`; la
+  auditoría; el botón "Emitir" con su confirmación en la pantalla. Exclusiones: distribuir y anular
+  (H-014), PDF (H-015).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** emitir la base: 201; `1A`, `1B`, `2A` y `2B` con una obligación cada una, vencimiento
+    10/11/2026, y `1B` con ordinaria $32.000,00 (prorrateada más la multa), fondo $1.350,00 y
+    extraordinaria $15.000,00.
+  - **C02** lo emitido es lo preliquidado: obligaciones e intereses iguales, al centavo, a la
+    preliquidación con la misma huella (también con la deuda de septiembre de H-011.C08).
+  - **C03** queda guardado: la liquidación con su huella, versión de configuración, porcentaje y
+    vencimiento; las líneas por unidad con el nombre de la categoría; renombrar la categoría o cambiar el
+    fondo después no cambia nada de lo emitido.
+  - **C04** la composición de cada grupo con el coeficiente efectivo usado (Ascensor: 0,625 y 0,375).
+  - **C05** la foto del saldo anterior: una unidad con deuda de octubre la ve guardada, y cobrarle después
+    no cambia la foto.
+  - **C06** vencimiento corrido al 12/11/2026 con motivo: las obligaciones vencen ese día; queda la fecha
+    original, la nueva, quién, cuándo y el motivo; la configuración del edificio no cambia.
+  - **C07** alertas: con `gastos_en_revision` activo, emitir aceptándolo con el administrador principal da
+    201 y deja en `alerta_aceptada` el código, quién y cuándo; con una advertencia activa se emite sin
+    aceptar nada.
+  - **C08** un gasto de noviembre aprobado después de emitir noviembre pasa a diciembre
+    (`periodo_de_imputacion`, P36).
+  - **C09** idempotencia: repetir el pedido con el mismo `emision_id` y el mismo cuerpo devuelve lo mismo
+    sin duplicar nada.
+  - **C10** permisos: super admin, principal y administrador del edificio 201; contador, consejo y
+    auxiliar 403; otro edificio u otra administración 404; sin sesión 401. Una auditoría por emisión.
+  - **C11** pantalla en navegador real: "Emitir" pide confirmación, ofrece aceptar los bloqueantes
+    aceptables y no ofrece aceptar un duro; sin errores de axe.
+  - **C12** regresión: H-004 a H-012 desde sus SHA, el ensayo de roles con las tablas nuevas, el barrido
+    de migraciones y los estructurales.
+  - **C13** la KB: R13, R15, R16, R17 y R34 con lo construido, `04` y `08` con las tablas nuevas, HU-A5
+    y la ficha 7 con H-013.
+- Tienen que fallar:
+  - **N01** emitir con una huella vieja (un gasto aprobado en el medio): 409 `preliquidacion_cambio` y
+    nada escrito.
+  - **N02** emitir con un duro activo, aunque venga en `alertas_aceptadas`: 422 y nada escrito.
+  - **N03** aceptar de menos (falta un bloqueante activo) o de más (un código que no está activo): 409 y
+    nada escrito.
+  - **N04** el administrador del edificio acepta un bloqueante: 403 y nada escrito.
+  - **N05** emitir otra vez el mismo período con otro `emision_id`: 409 `periodo_emitido`.
+  - **N06** dos emisiones del mismo período en paralelo: una 201, la otra 409, una sola obligación por
+    unidad.
+  - **N07** aprobar un gasto del período y emitir en paralelo: el gasto nunca queda en un período emitido
+    sin estar liquidado (o entra en la liquidación o su período de imputación pasa a diciembre).
+  - **N08** vencimiento corrido sin motivo o a una fecha anterior al período: 422.
+  - **N09** una unidad con `sin_obligacion` recibe una obligación en $0,00.
+
+### H-014 · Distribuir, anular y cargo cobrado de menos
+
+- Change: C-10 7, parte 4. Reglas: R08, R17, P26, P38, P39, D-073, D-074, D-079, D-081, D-123 (D8),
+  D-124, D-157; elecciones E9, E10, E11, E14 de `design.md`.
+- Resultado para Juani: una liquidación emitida se distribuye y desde ahí no se anula; mientras no esté
+  distribuida se puede anular con motivo y la deuda vuelve a como estaba; un cargo cobrado de menos se
+  corrige con una deuda nueva con motivo.
+- Alcance: el evento `distribuida` (migración), el puerto `registrar_distribucion`, las rutas de
+  distribuir, anular y cargo cobrado de menos, la lectura de liquidaciones por rol, D8 en el estado de la
+  cuenta y sus pantallas. Exclusiones: distribuir por email (13) o por el portal (11), que sólo llaman al
+  puerto.
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** distribuir una emitida: queda distribuida con origen `manual`, quién y cuándo, y se audita.
+  - **C02** el puerto es idempotente: llamarlo desde `portal` y después desde `email` deja un solo evento,
+    con el origen del primero.
+  - **C03** anular una emitida con motivo: queda anulada con motivo y responsable; el saldo de cada unidad
+    es igual al de antes de emitir; ninguna fila de `movimiento`, `obligacion` ni `imputacion` cambia ni
+    se borra.
+  - **C04** anular y volver a emitir el período no cobra dos veces ni la expensa ni el interés.
+  - **C05** un pago imputado a la emisión anulada vuelve como crédito a favor con su fecha de
+    transferencia, y la re-emisión lo imputa sin cobrar interés por los días en que estaba pagado (P38).
+  - **C06** D8: un crédito de corrección imputado a una obligación de la emisión anulada queda retenido:
+    no figura como crédito a favor ni se imputa en la re-emisión.
+  - **C07** cargo cobrado de menos de $1.500,00 sobre la obligación de noviembre de `1A`: obligación nueva
+    con su motivo y su vínculo a la de origen, interés desde el día siguiente a su vencimiento, auditado.
+  - **C08** permisos: anular, super admin y principal (administrador del edificio 403); distribuir,
+    super admin, principal y administrador del edificio; el consejo ve las distribuidas y no ve una
+    emitida sin distribuir (P39); el contador ve las dos.
+  - **C09** pantalla en navegador real: "Distribuir" y "Anular" con confirmación, el motivo obligatorio y
+    el estado de la liquidación en texto; sin errores de axe.
+  - **C10** regresión: H-004 a H-013 desde sus SHA, las aceptaciones del 4b y el 4c que tocan el estado de
+    la cuenta, el ensayo de roles y el barrido de migraciones.
+  - **C11** la KB: R17 con distribuida, P26 y D8; R08 con el cargo cobrado de menos; P26, P38 y P39
+    resueltas en `10`; la ficha 7 con H-014.
+- Tienen que fallar:
+  - **N01** anular una distribuida: 409 y nada escrito.
+  - **N02** anular sin motivo o con motivo en blanco: 422.
+  - **N03** anular una ya anulada: 409.
+  - **N04** anular octubre con noviembre emitido sin anular: 409 (P26).
+  - **N05** distribuir una anulada, o distribuir dos veces a mano: 409.
+  - **N06** anular y distribuir en paralelo: queda una sola de las dos, nunca las dos.
+  - **N07** cargo cobrado de menos con importe 0 o negativo (422), sin motivo (422), o con una obligación
+    de origen de otra unidad o de otro edificio (404).
+
+### H-015 · PDF de la expensa y links firmados
+
+- Change: C-10 7, parte 5. Reglas: R19, D-047 (punto 7), D-060, D-070, D-106; CCyC art. 2067 inc. i
+  (archivo de las liquidaciones); elecciones E12 y E13 de `design.md`. **Bloqueada por F2c (C-25)**:
+  no se construye hasta que el worker tenga corte del lado de la base.
+- Resultado para Juani: cada unidad tiene el PDF de su expensa, generado por el worker aunque Redis falle
+  al emitir, guardado sin cambios, y se descarga sólo con un link firmado que vence.
+- Alcance: `documento_de_expensa` con su estado, el encolado después del commit, el barrido que reencola,
+  la tarea del worker, la plantilla (con impeccable, sobre el modelo de la Ley 941 de CABA sin presentarlo
+  como exigencia en Mendoza), el reproceso y los links firmados. Exclusiones: el envío por email (13), el
+  portal (11).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** al emitir, un documento por unidad con obligación, en `pendiente`; el worker lo pasa a
+    `generado`.
+  - **C02** el PDF trae el edificio, la unidad y su código corto (R19), el período, el vencimiento, la
+    ordinaria y la extraordinaria por categoría, el fondo, los cargos, el interés, el saldo anterior de la
+    foto y el total, iguales a la liquidación.
+  - **C03** con Redis caído al emitir, la emisión queda confirmada con los documentos en `pendiente`, y el
+    barrido los reencola cuando Redis vuelve.
+  - **C04** una generación que falla queda `fallido` con su motivo; reprocesar la deja `generado`.
+  - **C05** un link firmado descarga el PDF; vencido, da 410; alterado, 403.
+  - **C06** el inquilino recibe la variante sin extraordinaria y el propietario la completa.
+  - **C07** un PDF `generado` no cambia: reprocesar o cambiar después la configuración no lo reescribe.
+  - **C08** pantalla en navegador real: el estado de cada documento, el reproceso y la descarga.
+  - **C09** regresión: H-004 a H-014 y los tests del worker.
+  - **C10** la KB: D-060 con lo investigado (decisión nueva), R19 y `08` con los links firmados, y la ficha
+    7 con H-015.
+- Tienen que fallar:
+  - **N01** el PDF tiene una dirección pública o se descarga sin link firmado.
+  - **N02** el inquilino obtiene la variante completa cambiando el link o pidiéndola directo.
+  - **N03** un documento queda generado dos veces, o con dos versiones distintas, por un reencolado.
+  - **N04** un link de otra administración o de otra unidad descarga algo.
 
 ## Plantilla de historia
 
