@@ -22,7 +22,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
-| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Pendiente |
+| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | En proceso |
 | H-012 | C-10 7, parte 2 | Los controles de R34 sobre la preliquidación y la aceptación registrada de alertas | Media / CRITICAL | Pendiente |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, en una transacción, con todo lo usado guardado | Alta / CRITICAL | Pendiente |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
@@ -803,6 +803,75 @@ bloque negativo frenan con un control duro. **Firma CRITICAL por adelantado de J
 En proceso (D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
 Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). Los
 criterios los escribe el orquestador bajo esa firma, historia por historia.
+
+**Base de los ejemplos** (datos inventados): edificio "Torre Ficticia", sin saldos previos confirmado,
+configuración vigente desde el 01/10/2026 con fondo de reserva 5%, vencimiento día 10, único, 3% mensual
+proporcional, gracia 0. Unidades y coeficientes: `1A` 0,30, `1B` 0,30, `2A` 0,25, `2B` 0,15. Grupos:
+"Generales" (las cuatro) y "Ascensor" (`2A` y `2B`, renormalizado: 0,625 y 0,375). Período noviembre de
+2026 (`2026-11`). Gastos aprobados con período de imputación `2026-11`: Limpieza ordinario Generales
+$100.000,00, Abono del ascensor ordinario Ascensor $40.000,00, Pintura extraordinario Generales
+$50.000,00; una nota de crédito de $10.000,00 sobre Limpieza cargada en `2026-11`; un cargo particular
+aprobado de $5.000,00 a `1B` ("Multa"). Además, que **no** entran: un gasto en `borrador` ($999,00), uno
+`sin_ia` ($777,00), uno `en_revision` ($555,00), un gasto aprobado de `2026-10`, uno aprobado de otro
+edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
+
+### H-011 · Preliquidación sin efectos
+
+- Change: C-10 7, parte 1. Reglas: R01, R03, R07, R13, R14, R15, R16, R22, R40; HU-A4; elecciones E1, E2
+  (la preliquidación no se guarda), E3, E4, E15 y E16 de `design.md`.
+- Resultado para Juani: el administrador abre la preliquidación de un período y ve, unidad por unidad, lo
+  que va a pagar (ordinaria por grupo, fondo, extraordinaria, cargos particulares e interés) y los gastos
+  por bloque y categoría; nada de eso escribe en la base, y lo que muestra es lo mismo que después se
+  emite.
+- Alcance: módulo `liquidacion` (dominio puro del reparto, el fondo y la huella), la lectura de interés
+  sin candado en `cuenta_corriente.aplicacion` con la misma función que la emisión, la ruta
+  `GET /api/complejos/{id}/periodos/{AAAA-MM}/preliquidacion`, el índice de DBA-2 y la pantalla
+  `edificios/[id]/liquidaciones/[periodo]`. Exclusiones: controles (H-012), emitir (H-013), distribuir y
+  anular (H-014), PDF (H-015), pantallas de gastos (6c).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** la base: `1A` ordinaria $27.000,00, fondo $1.350,00, extraordinaria $15.000,00, total
+    $43.350,00; `1B` $27.000,00, $1.350,00, $15.000,00, cargo "Multa" $5.000,00, total $48.350,00; `2A`
+    $47.500,00 ($22.500,00 de Generales y $25.000,00 de Ascensor), $2.375,00, $12.500,00, total
+    $62.375,00; `2B` $28.500,00 ($13.500,00 y $15.000,00), $1.425,00, $7.500,00, total $37.425,00.
+  - **C02** los totales: gastos $190.000,00 menos notas de crédito $10.000,00 más fondo $6.500,00 da lo
+    prorrateado, $186.500,00; más cargos $5.000,00 e intereses $0,00 da el total, $191.500,00, igual a la
+    suma de las unidades.
+  - **C03** mayor resto: un único gasto ordinario Generales de $333,33 (fondo 0%) da `1A` $100,00, `1B`
+    $100,00, `2A` $83,33, `2B` $50,00 (el empate de `1A` y `1B` se resuelve por orden natural).
+  - **C04** grupo parcial: el abono del ascensor no toca a `1A` ni a `1B`; un período con sólo ese gasto
+    deja a `1A` y `1B` en $0,00 con `sin_obligacion: true` y a las otras dos con `false`.
+  - **C05** grupos por superficie y en partes iguales reparten según su método y suman exacto.
+  - **C06** fondo: sobre la ordinaria prorrateada, sin cargos ni intereses (la multa de `1B` no sube su
+    fondo); con 0% el fondo es $0,00 en cada unidad y la pantalla no muestra la fila.
+  - **C07** categorías: dentro de cada bloque, los subtotales por categoría (neto de notas de crédito:
+    Limpieza $90.000,00) suman el bloque, cada uno con su porcentaje y el nombre vigente.
+  - **C08** interés: con una obligación de septiembre de $100.000,00 de `1A` vencida el 10/09 e impaga, la
+    preliquidación de octubre muestra $2.000,00 de interés en `1A`, y en cada caso de esta aceptación el
+    interés por unidad es igual, al centavo, al que registra `registrar_emision` del mismo período justo
+    después.
+  - **C09** la huella: 64 hexadecimales; pedirla dos veces sin cambios da la misma; aprobar un gasto,
+    cargar una nota de crédito o cambiar el fondo la cambia.
+  - **C10** orden (R40): el primer período del edificio se preliquida; con octubre emitido, noviembre sí y
+    diciembre no (409 `periodo_anterior_sin_emitir`); un período ya emitido sin anular da 409
+    `periodo_emitido`; con octubre anulado, octubre se vuelve a preliquidar.
+  - **C11** permisos: super admin, administrador principal y administrador del edificio, 200; contador,
+    consejo y auxiliar, 403; administrador de otro edificio u otra administración, 404; sin sesión, 401.
+  - **C12** pantalla en navegador real: la tabla por unidad con los importes de C01 con separador de miles
+    (`$ 43.350,00`), los bloques por categoría y los totales; a 320 px y 1280 px, con teclado y sin
+    errores de axe.
+  - **C13** regresión: las aceptaciones de H-004 a H-010 desde sus SHA, los tests estructurales del repo,
+    el barrido de migraciones y el ensayo de roles siguen en verde.
+- Tienen que fallar (y la aceptación lo prueba):
+  - **N01** la preliquidación escribe algo: el conteo de filas de **todas** las tablas del esquema es el
+    mismo antes y después de pedirla (también `auditoria`).
+  - **N02** entra un gasto que no es aprobado del período y del edificio, o un cargo en borrador (la base
+    de los ejemplos).
+  - **N03** un período mal escrito (`2026-13`, `2026-11-05`, `noviembre`) da 422, no 500.
+  - **N04** la suma de las unidades se aparta un centavo del total (cada caso de C01 a C08 lo verifica).
+- Constructor: a elegir por Juani.
+- Aceptación aprobada: pendiente.
+- Evidencia: pendiente.
 
 ## Plantilla de historia
 
