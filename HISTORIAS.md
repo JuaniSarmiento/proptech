@@ -875,7 +875,9 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N03** un período mal escrito (`2026-13-01`, `2026-11-05`, `noviembre`) da 422, no 500.
   - **N04** la suma de las unidades se aparta un centavo del total (cada caso de C01 a C08 lo verifica).
 - Constructor: a elegir por Juani.
-- Aceptación aprobada: pendiente.
+- Aceptación aprobada: `dd9e1fb` (por el orquestador bajo la firma por adelantado de Juani del
+  15/11/2026). Comando: `python3 aceptacion/H-011/aceptar.py`. Esperados: 41 de backend y 7 en navegador;
+  antes de construir, 48 rojos, todos por aserción (ruta inexistente, índice faltante, KB).
 - Evidencia: pendiente.
 
 ### H-012 · Controles antes de emitir
