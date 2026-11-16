@@ -29,7 +29,7 @@ from pathlib import Path
 RAMA = "change/liquidacion-y-emision"
 CAMBIO = "liquidacion-y-emision"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = "21b1e361d9550063acb8ee4ce4f91434697f45aa"
+ACEPTACION_SHA = "f17906640a21cdcd4a66c5335501b126458932d7"
 CARPETA = "aceptacion/H-015/tests"
 CARPETA_E2E = "aceptacion/H-015/e2e"
 DESTINO = "backend/tests/integracion/aceptacion_h015"
