@@ -28,7 +28,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Lista |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Lista |
-| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | En proceso |
+| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1223,7 +1223,12 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Aceptación aprobada: `22c7364`. Contrato en `aceptacion/H-017/CONTRATO.md`. Comando:
   `python3 aceptacion/H-017/aceptar.py`. Esperados: 5 de backend y 8 en navegador; antes de construir, 13 rojos
   por aserción.
-- Evidencia: pendiente.
+- Construcción (Sonnet): `84c9090` y `1c2a759` (nombre del PDF puro y testeado, `obligacion_id` leído por
+  `cuenta_corriente.obligaciones_de_la_emision`, menú por `ver_liquidaciones`, lista, tabla y diálogo del
+  cargo, API falsa con acciones por edificio). Sin impeccable.
+- Evidencia (16/11/2026): `python3 aceptacion/H-017/aceptar.py --codigo 1c2a759` desde `22c7364`: **5/5 de
+  backend y 8/8 en navegador**, C01 a C07, N01 a N03 y KB PASA, 0 rojos.
+- Demo: pendiente, con Juani.
 
 ## Plantilla de historia
 
