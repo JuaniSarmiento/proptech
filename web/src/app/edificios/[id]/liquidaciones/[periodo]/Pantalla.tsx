@@ -24,6 +24,8 @@ import type {
   BloqueDeGastos,
   ControlAntesDeEmitir,
   EmisionRegistrada,
+  EstadoDeLaLiquidacion,
+  LiquidacionDeLaLista,
   NivelDeControl,
   Preliquidacion,
   UnidadPreliquidada,
@@ -35,6 +37,11 @@ import { AYUDA_PRELIQUIDACION } from "./ayuda";
 export type EstadoEmision = { error?: string; emitida?: EmisionRegistrada } | null;
 
 type AccionEmitir = (estadoPrevio: EstadoEmision, formData: FormData) => Promise<EstadoEmision>;
+
+/** Lo que devuelve distribuir o anular (H-014): el error ya dicho para la pantalla, o lo que quedó. */
+export type EstadoCiclo = { error?: string; hecho?: "distribuida" | "anulada" } | null;
+
+type AccionDelCiclo = (estadoPrevio: EstadoCiclo, formData: FormData) => Promise<EstadoCiclo>;
 
 const MOTIVO_MAXIMO = 500;
 
@@ -653,6 +660,206 @@ export function PantallaSinPreliquidar({
           </a>
         ) : null}
       </Panel>
+    </ArmazonDelEdificio>
+  );
+}
+
+const ESTADOS: Record<EstadoDeLaLiquidacion, string> = {
+  emitida: "Emitida",
+  distribuida: "Distribuida",
+  anulada: "Anulada",
+};
+
+function ConfirmarCiclo({
+  deshabilitado,
+  texto,
+  enCurso,
+}: {
+  deshabilitado: boolean;
+  texto: string;
+  enCurso: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      className="boton-principal"
+      disabled={deshabilitado || pending}
+      aria-busy={pending}
+    >
+      {pending ? enCurso : texto}
+    </button>
+  );
+}
+
+/** El período ya emitido (H-014): la liquidación con su estado en texto y su total. Una emitida se
+ * distribuye o se anula; una distribuida ya no ofrece ninguna de las dos (desde ahí no se anula).
+ * Las dos piden confirmación, y anular pide además el motivo. */
+export function PantallaLiquidacionEmitida({
+  id,
+  nombreEdificio,
+  periodoEnPalabras,
+  liquidacion,
+  accionDistribuir,
+  accionAnular,
+}: PropsComunes & {
+  liquidacion: LiquidacionDeLaLista;
+  accionDistribuir?: AccionDelCiclo;
+  accionAnular?: AccionDelCiclo;
+}) {
+  const sesion = useSesionDePantalla();
+  const esEmitida = liquidacion.estado === "emitida";
+  const puedeDistribuir =
+    esEmitida &&
+    accionDistribuir !== undefined &&
+    permite(sesion, "emitir_y_distribuir_liquidacion", id);
+  const puedeAnular =
+    esEmitida && accionAnular !== undefined && permite(sesion, "anular_liquidacion", id);
+  const [estadoDistribuir, distribuir] = useActionState(
+    accionDistribuir ?? (async () => null),
+    null,
+  );
+  const [estadoAnular, anular] = useActionState(accionAnular ?? (async () => null), null);
+  const [modo, setModo] = useState<"distribuir" | "anular" | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const ultimoBoton = useRef<HTMLElement | null>(null);
+  const hecho = estadoDistribuir?.hecho ?? estadoAnular?.hecho;
+  const error = modo === "distribuir" ? estadoDistribuir?.error : estadoAnular?.error;
+
+  function abrir(nuevo: "distribuir" | "anular", boton: HTMLElement) {
+    ultimoBoton.current = boton;
+    setMotivo("");
+    setModo(nuevo);
+  }
+
+  const acciones =
+    puedeDistribuir || puedeAnular ? (
+      <>
+        {puedeDistribuir ? (
+          <button
+            type="button"
+            className="boton-principal"
+            onClick={(e) => abrir("distribuir", e.currentTarget)}
+          >
+            Distribuir
+          </button>
+        ) : null}
+        {puedeAnular ? (
+          <button
+            type="button"
+            className="boton-secundario"
+            onClick={(e) => abrir("anular", e.currentTarget)}
+          >
+            Anular
+          </button>
+        ) : null}
+      </>
+    ) : null;
+
+  return (
+    <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="liquidaciones">
+      <EncabezadoDePantalla
+        titulo={`Liquidación de ${periodoEnPalabras}`}
+        ayuda={<Ayuda {...AYUDA_PRELIQUIDACION} />}
+        accionPrincipal={acciones}
+      />
+      <Panel
+        titulo="Liquidación emitida"
+        descripcion={
+          esEmitida
+            ? "Está emitida y todavía no se distribuyó: mientras tanto se puede anular con su motivo."
+            : liquidacion.estado === "distribuida"
+              ? "Ya se distribuyó: desde ahí no se anula."
+              : "Está anulada: la deuda de cada unidad volvió a la de antes de emitirla."
+        }
+      >
+        <dl className="renglones">
+          <Renglon etiqueta="Período" valor={periodoEnPalabras} />
+          <Renglon etiqueta="Estado" valor={ESTADOS[liquidacion.estado]} />
+          <Renglon etiqueta="Total de la liquidación" valor={dinero(liquidacion.total)} fuerte />
+        </dl>
+        {hecho ? (
+          <p role="status">
+            {hecho === "distribuida"
+              ? "La liquidación quedó distribuida."
+              : "La liquidación quedó anulada."}
+          </p>
+        ) : null}
+      </Panel>
+      {puedeDistribuir || puedeAnular ? (
+        <PanelLateral
+          abierto={modo !== null && !hecho}
+          titulo={modo === "anular" ? "Anular liquidación" : "Distribuir liquidación"}
+          alCerrar={() => setModo(null)}
+          devolverFocoA={ultimoBoton}
+        >
+          <div className="panel-lateral__seccion">
+            {modo === "anular" ? (
+              <>
+                <p>
+                  Vas a anular la liquidación de {periodoEnPalabras} por {dinero(liquidacion.total)}
+                  . La deuda de cada unidad vuelve a la de antes de emitirla; el libro conserva todo
+                  lo registrado. Si ya se distribuyó, no se puede anular.
+                </p>
+                <form action={anular}>
+                  <Campo
+                    nombre="motivo"
+                    etiqueta="Motivo"
+                    name="motivo"
+                    autoComplete="off"
+                    maxLength={MOTIVO_MAXIMO}
+                    required
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                  />
+                  <div className="panel-lateral__acciones">
+                    <button
+                      type="button"
+                      className="boton-secundario"
+                      onClick={() => setModo(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <ConfirmarCiclo
+                      deshabilitado={motivo.trim() === ""}
+                      texto="Confirmar"
+                      enCurso="Anulando…"
+                    />
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <p>
+                  Vas a distribuir la liquidación de {periodoEnPalabras} por{" "}
+                  {dinero(liquidacion.total)}. Una vez distribuida, ya no se puede anular.
+                </p>
+                <form action={distribuir}>
+                  <div className="panel-lateral__acciones">
+                    <button
+                      type="button"
+                      className="boton-secundario"
+                      onClick={() => setModo(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <ConfirmarCiclo
+                      deshabilitado={false}
+                      texto="Confirmar"
+                      enCurso="Distribuyendo…"
+                    />
+                  </div>
+                </form>
+              </>
+            )}
+            {error ? (
+              <p role="alert" className="campo__error">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        </PanelLateral>
+      ) : null}
     </ArmazonDelEdificio>
   );
 }

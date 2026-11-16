@@ -29,7 +29,9 @@ import {
   responderImportacion,
 } from "./escenarios-importacion";
 import {
+  esEdificioDeCiclo,
   esEdificioDePreliquidacion,
+  responderCiclo,
   responderEmision,
   responderPreliquidacion,
 } from "./escenarios-liquidacion";
@@ -1023,6 +1025,16 @@ export function crearServidor(
       respuesta
         .writeHead(200, { "content-type": "application/json" })
         .end(JSON.stringify(padronDeAjuste(id)));
+      return;
+    }
+
+    // change 7 (H-014): distribuir y anular, en los dos edificios de su contrato (1401 y 1402).
+    if (
+      esEdificioDeCiclo(id) &&
+      responderCiclo(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      })
+    ) {
       return;
     }
 

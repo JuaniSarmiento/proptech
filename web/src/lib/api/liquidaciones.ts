@@ -212,3 +212,71 @@ export async function emitirLiquidacion(
     );
   return bien ? resultado : { estado: "fallo" };
 }
+
+export type EstadoDeLaLiquidacion = "emitida" | "distribuida" | "anulada";
+
+/** Una fila de `GET .../liquidaciones` (H-014): de la más nueva a la más vieja. */
+export type LiquidacionDeLaLista = {
+  liquidacion_id: string;
+  periodo: string;
+  estado: EstadoDeLaLiquidacion;
+  total: string;
+  emitida_en: string;
+};
+
+const _ESTADOS = new Set<string>(["emitida", "distribuida", "anulada"]);
+
+/**
+ * Las liquidaciones emitidas del edificio (H-014). El consejo sólo recibe las distribuidas (P39):
+ * lo decide la API. Un total que no es texto con dos decimales, o un estado que la pantalla no
+ * conoce, es `fallo` en vez de un `ok` que no sabría mostrar. Un id que no es UUID es "no existe".
+ */
+export async function liquidacionesDelEdificio(
+  id: string,
+): Promise<ResultadoApi<LiquidacionDeLaLista[]>> {
+  if (!esIdValido(id)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<LiquidacionDeLaLista[]>(
+    `/api/complejos/${encodeURIComponent(id)}/liquidaciones`,
+  );
+  if (resultado.estado !== "ok") {
+    return resultado;
+  }
+  const lista = resultado.datos;
+  const bien =
+    Array.isArray(lista) &&
+    lista.every((l) => esMonto(l.total) && _ESTADOS.has(l.estado) && esIdValido(l.liquidacion_id));
+  return bien ? resultado : { estado: "fallo" };
+}
+
+/** Distribuye a mano una liquidación emitida (E9). Un 409 trae `estado` y su `motivo`
+ * (`ya_distribuida`, `anulada`). */
+export async function distribuirLiquidacion(
+  id: string,
+  liquidacionId: string,
+): Promise<ResultadoApi<{ estado: EstadoDeLaLiquidacion }>> {
+  if (!esIdValido(id) || !esIdValido(liquidacionId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi(
+    `/api/complejos/${encodeURIComponent(id)}/liquidaciones/${encodeURIComponent(liquidacionId)}/distribucion`,
+    { metodo: "POST" },
+  );
+}
+
+/** Anula una liquidación emitida con su motivo (E10). Un 409 trae `campo` y `motivo`
+ * (`ya_distribuida`, `anulada`, `periodo_siguiente_emitido`). */
+export async function anularLiquidacion(
+  id: string,
+  liquidacionId: string,
+  motivo: string,
+): Promise<ResultadoApi<{ estado: EstadoDeLaLiquidacion }>> {
+  if (!esIdValido(id) || !esIdValido(liquidacionId)) {
+    return { estado: "no_existe" };
+  }
+  return pedirApi(
+    `/api/complejos/${encodeURIComponent(id)}/liquidaciones/${encodeURIComponent(liquidacionId)}/anulacion`,
+    { metodo: "POST", cuerpo: { motivo } },
+  );
+}

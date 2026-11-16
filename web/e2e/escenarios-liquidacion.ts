@@ -12,6 +12,10 @@
  * - 1201 (H-012, `aceptacion/H-012/CONTRATO.md`): la base con tres controles, uno de cada nivel.
  * - 1301 (H-013, `aceptacion/H-013/CONTRATO.md`): la base con `gastos_en_revision` (bloqueante) y
  *   `gastos_sin_ia` (advertencia); además contesta `POST .../emision` con 201. 1101 también.
+ * - 1401 y 1402 (H-014, `aceptacion/H-014/CONTRATO.md`): noviembre ya emitido (total 191.500,00),
+ *   `emitida` en 1401 y `distribuida` en 1402; la preliquidación da 409 `periodo_emitido`, la lista de
+ *   liquidaciones trae la suya y `POST .../distribucion` y `.../anulacion` contestan 200 y guardan la
+ *   última escritura.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -382,4 +386,91 @@ export function responderEmision(
       obligaciones: obligaciones(vencimiento),
     });
   });
+}
+
+// --- Distribuir y anular (H-014) -----------------------------------------------------------------
+
+export const CICLO_EMITIDA = "00000000-0000-0000-0000-000000001401";
+export const CICLO_DISTRIBUIDA = "00000000-0000-0000-0000-000000001402";
+const _LIQUIDACION_EMITIDA = "00000000-0000-0000-0000-000000014011";
+const _LIQUIDACION_DISTRIBUIDA = "00000000-0000-0000-0000-000000014021";
+
+export function esEdificioDeCiclo(id: string): boolean {
+  return id === CICLO_EMITIDA || id === CICLO_DISTRIBUIDA;
+}
+
+function liquidacionDelCiclo(id: string) {
+  return {
+    liquidacion_id: id === CICLO_EMITIDA ? _LIQUIDACION_EMITIDA : _LIQUIDACION_DISTRIBUIDA,
+    periodo: "2026-11-01",
+    estado: id === CICLO_EMITIDA ? "emitida" : "distribuida",
+    total: "191500.00",
+    emitida_en: "2026-11-02T15:00:00+00:00",
+  };
+}
+
+/**
+ * Contesta lo del ciclo en 1401 y 1402: `GET periodos/2026-11-01/preliquidacion` (409
+ * `periodo_emitido`), `GET liquidaciones` (la de noviembre) y `POST liquidaciones/{id}/distribucion`
+ * y `.../anulacion` (200, y el cuerpo crudo a `guardar`). Devuelve `false` si no es de su incumbencia
+ * (la API falsa sigue con el resto, como el detalle del edificio).
+ */
+export function responderCiclo(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  id: string,
+  resto: string,
+  guardar: (escritura: {
+    metodo: string;
+    url: string;
+    contentType: string;
+    cuerpo: string;
+  }) => void,
+): boolean {
+  const metodo = pedido.method ?? "GET";
+  if (metodo === "GET" && resto === "periodos/2026-11-01/preliquidacion") {
+    json(respuesta, 409, { detail: "conflicto", campo: "periodo", motivo: "periodo_emitido" });
+    return true;
+  }
+  if (metodo === "GET" && resto === "liquidaciones") {
+    json(respuesta, 200, [liquidacionDelCiclo(id)]);
+    return true;
+  }
+  const accion = /^liquidaciones\/([^/]+)\/(distribucion|anulacion)$/.exec(resto);
+  if (metodo === "POST" && accion) {
+    const trozos: Buffer[] = [];
+    pedido.on("data", (trozo: Buffer) => {
+      trozos.push(trozo);
+    });
+    pedido.on("end", () => {
+      const cuerpo = Buffer.concat(trozos).toString("utf8");
+      guardar({
+        metodo: "POST",
+        url: pedido.url ?? "",
+        contentType: String(pedido.headers["content-type"] ?? ""),
+        cuerpo,
+      });
+      if (accion[1] !== liquidacionDelCiclo(id).liquidacion_id) {
+        respuesta.writeHead(404).end();
+        return;
+      }
+      if (accion[2] === "anulacion") {
+        let motivo: unknown;
+        try {
+          motivo = (JSON.parse(cuerpo) as { motivo?: unknown }).motivo;
+        } catch {
+          motivo = undefined;
+        }
+        if (typeof motivo !== "string" || motivo.trim() === "") {
+          json(respuesta, 422, { detail: [{ type: "value_error", loc: ["body", "motivo"] }] });
+          return;
+        }
+        json(respuesta, 200, { estado: "anulada" });
+        return;
+      }
+      json(respuesta, 200, { estado: "distribuida" });
+    });
+    return true;
+  }
+  return false;
 }
