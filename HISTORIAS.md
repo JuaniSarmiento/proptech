@@ -28,6 +28,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Lista |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Lista |
+| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1186,6 +1187,41 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   regla de permisos impide editarlo: lo tiene que hacer Juani); el enlace de una liquidación anulada no se
   bloquea y la emisión de un enlace no se audita (al 11, el portal, que es quien los va a pedir).
 - Demo: pendiente, con Juani.
+
+### H-017 · Pulido de las pantallas de la liquidación
+
+- Change: C-10 7. Origen: los hallazgos de la demo del 16/11/2026 con la base real (Juani eligió hacerlos
+  historia antes de archivar). Nivel M: pantallas y una cabecera, sin plata nueva; la base no cambia.
+- Resultado para Juani: el administrador llega a la liquidación desde el menú, ve la lista de períodos con su
+  estado (también las anuladas) y entra a preparar el próximo; la liquidación emitida muestra lo que paga cada
+  unidad; cada PDF baja con un nombre que dice período, unidad y variante; y el cargo cobrado de menos se
+  registra desde la pantalla.
+- Alcance: el link "Liquidaciones" en el menú del edificio, la página `edificios/[id]/liquidaciones`, la tabla
+  por unidad en la emitida (con `obligacion_id` en la lectura de H-013), el `Content-Disposition` de la
+  descarga y el diálogo del cargo cobrado de menos. Exclusiones: la skill impeccable (C-26), el portal del
+  vecino (11).
+- Tienen que pasar:
+  - **C01** el menú del edificio tiene "Liquidaciones" y lleva a `edificios/[id]/liquidaciones`, que lista
+    cada liquidación con su período en palabras, su estado en texto y su total, con un link al período.
+  - **C02** la lista ofrece "Preparar la liquidación de <mes siguiente al último emitido sin anular>" (o del
+    mes actual si no hay ninguna), que lleva a la preliquidación de ese período.
+  - **C03** la liquidación emitida muestra la tabla de lo que paga cada unidad (lo guardado: ordinaria, fondo,
+    extraordinaria, cargos, intereses, saldo anterior y total), y la lectura `GET .../liquidaciones/{id}`
+    trae el `obligacion_id` de cada unidad con obligación.
+  - **C04** la descarga del PDF trae `Content-Disposition: attachment; filename="expensa-2026-11-1B-completa.pdf"`
+    (período, unidad y variante).
+  - **C05** en la emitida, cada unidad con obligación tiene "Cargo cobrado de menos" que abre un diálogo con
+    importe, concepto y motivo y manda el `POST` de H-014 con su `obligacion_origen_id`.
+  - **C06** la lista muestra las anuladas con "Anulada" y sin link a distribuir ni anular.
+  - **C07** sin errores de axe y sin scroll horizontal a 320 px en la lista; la ficha 7 registra H-017.
+- Tienen que fallar:
+  - **N01** el link "Liquidaciones" aparece para quien no tiene `ver_liquidaciones`.
+  - **N02** "Cargo cobrado de menos" aparece para quien no tiene `corregir_movimiento`.
+  - **N03** el nombre del archivo lleva datos personales (el nombre del propietario) o caracteres fuera de
+    `[a-z0-9-.]`.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: pendiente.
+- Evidencia: pendiente.
 
 ## Plantilla de historia
 
