@@ -1,23 +1,17 @@
-# Spec Delta
+# comprobante-de-expensa Specification
 
 ## Purpose
-
 El comprobante de la expensa de cada unidad: un PDF por variante, generado por el worker a partir de lo
 emitido, archivado sin cambios (CCyC art. 2067 inc. i) y descargable sólo con un enlace firmado que vence
 (R19, D-060, D-070, D-106, D-158).
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Un PDF archivado por unidad y variante
 
 Al emitir SHALL crearse un documento por unidad con obligación y por variante; el worker SHALL generarlo
 desde lo guardado en la liquidación, a través del corte de H-016; un documento generado MUST NOT
 reescribirse. Si la cola falla, la emisión SHALL salir igual y los documentos quedar pendientes.
-
-### Requirement: Descarga sólo con enlace firmado
-
-El PDF MUST NOT tener una dirección pública: se descarga con un enlace firmado que vence a los 15 minutos;
-el inquilino sólo SHALL recibir la variante sin extraordinaria.
 
 #### Scenario: Documentos de una emisión
 
@@ -44,6 +38,16 @@ el inquilino sólo SHALL recibir la variante sin extraordinaria.
 - **WHEN** el PDF de `1A` no se puede generar
 - **THEN** queda fallido con su motivo y el reproceso lo deja generado
 
+#### Scenario: El PDF archivado no se reescribe
+
+- **WHEN** después de generarlo se renombra una categoría, cambia el fondo y se reprocesa
+- **THEN** el PDF es el mismo byte por byte
+
+### Requirement: Descarga sólo con enlace firmado
+
+El PDF MUST NOT tener una dirección pública: se descarga con un enlace firmado que vence a los 15 minutos;
+el inquilino sólo SHALL recibir la variante sin extraordinaria.
+
 #### Scenario: Enlace firmado
 
 - **WHEN** se pide un enlace
@@ -53,8 +57,3 @@ el inquilino sólo SHALL recibir la variante sin extraordinaria.
 
 - **WHEN** propietario e inquilino de `1B` piden enlaces
 - **THEN** el propietario recibe las dos variantes y el inquilino sólo la sin extraordinaria
-
-#### Scenario: El PDF archivado no se reescribe
-
-- **WHEN** después de generarlo se renombra una categoría, cambia el fondo y se reprocesa
-- **THEN** el PDF es el mismo byte por byte

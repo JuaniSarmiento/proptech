@@ -798,7 +798,7 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
 
 ## Liquidación y emisión (7, C-10)
 
-Propuesta y diseño en `openspec/changes/liquidacion-y-emision/`. Acuerdo previo D-157 (Juani, 15/11/2026):
+Propuesta y diseño en `openspec/changes/archive/2026-11-16-liquidacion-y-emision/`. Acuerdo previo D-157 (Juani, 15/11/2026):
 D8 retenido, P26 no, P38 fecha de la transferencia, P39 no, P27 y P28 al 8, R40 adentro, doble vencimiento y
 bloque negativo frenan con un control duro. **Firma CRITICAL por adelantado de Juani** (15/11/2026) en
 `proposal.md`: aprueba E1 a E16 en la recomendación del orquestador; lo que no le cierre en la demo vuelve a
