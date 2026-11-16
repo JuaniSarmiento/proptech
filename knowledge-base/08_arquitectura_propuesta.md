@@ -172,9 +172,21 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   en el ensayo de roles). El ajuste de saldo inicial (H-010) vive en `cuenta_corriente` (tabla
   `ajuste_de_saldo_inicial`, de sólo agregar y protegida), porque su replay cruza `obligacion` y `cuenta`;
   `importacion` lo invoca por `cuenta_corriente.aplicacion`.
+- **Emitir y lo emitido** (7, H-013): `liquidacion/aplicacion/emision.py` hace todo en una transacción
+  (SAVEPOINT, sin commit propio): el candado del período (`FOR UPDATE` sobre `complejo`, antes que los
+  candados de cuentas del libro, E5), el replay por `emision_id`, la preliquidación recalculada y su
+  huella, controles duros y alertas aceptadas, y recién ahí `registrar_emision` del libro, las seis
+  tablas de la `0041` (`liquidacion`, `categoria_de_liquidacion`, `grupo_de_liquidacion`,
+  `composicion_de_grupo`, `linea_de_liquidacion`, `alerta_aceptada`, de sólo agregar y protegidas) y la
+  auditoría. Si el interés que registró el libro difiere del preliquidado (un pago entre medio), vuelve
+  todo con 409 `preliquidacion_cambio`. `aprobar_gasto` toma el mismo candado y recibe, **inyectado desde
+  `proptech_api`**, el adaptador real de `es_periodo_emitido` (`liquidacion/aplicacion/periodos.py`, que
+  lee el libro): `gastos` no importa `liquidacion`. Rutas en `proptech_api/liquidaciones.py`: `POST
+  /api/complejos/{id}/periodos/{periodo}/emision` (201, o 200 si es el mismo pedido) y `GET
+  /api/complejos/{id}/liquidaciones/{liquidacion_id}` (permiso `ver_liquidaciones`).
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
-  (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, y desde H-005
-  `carga_de_saldo_inicial` y `origen_de_saldo_inicial`; su bajada de migración
+  (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
+  `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración
   necesita devolver la propiedad como las del libro). `cuenta_corriente.aplicacion` lee la
   configuración vigente de `complejos.aplicacion.lectura` (D-116: sólo `aplicacion`, sin ciclo).
   `roles despues` las transfiere al rol de arranque y verifica la protección por el efecto (`UPDATE` y

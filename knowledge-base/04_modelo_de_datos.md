@@ -175,10 +175,11 @@ Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
   liquidación a través de `EMISION`, que comparte id con ella (ver "Entidades hoy, dominio
   `cuenta_corriente`"). El detalle completo de las ocho tablas, sus columnas, FK y únicos vive en esa
   sección; este diagrama simplificado no reemplaza esa lista.
-- **`LIQUIDACION`** es, hasta el cambio 7, sólo su "contrato mínimo" (identificador, período, edificio y
-  estado, D-086) — y ese identificador **es el mismo id que `emision`** del libro, construido en el 4b;
-  el cambio 7 agrega preliquidación, controles (R34) y la máquina de estados de distribución (D-073,
-  D-074).
+- **`LIQUIDACION`** era, hasta el cambio 7, sólo su "contrato mínimo" (D-086: la fila de `emision` del
+  libro, 4b). Desde H-013 (`0041`) es además una **tabla propia**, `liquidacion`, con id propio y
+  `emision_id` único que la une a la emisión del libro: guarda todo lo usado al emitir (ver "Entidades
+  hoy, dominio `liquidacion`"). La preliquidación no se guarda: se calcula cada vez. H-014 suma la máquina
+  de estados de distribución (D-073, D-074).
 - **`REGLA_VERSIONADA`** (el motor de GoRules ZEN, cambio 6b) queda **fuera del camino crítico a M1**:
   ninguna regla vigente pasa todavía por el motor (D-089); hasta el 6b no hay puerto: intereses, fondo
   de reserva y cargo por estado son menús de configuración (D-080), y R14 y R37, si se validan, van
@@ -669,6 +670,34 @@ agregar mientras no está aprobada).
   compensaban ese interés) sin borrar ningún movimiento (D-073, D-079, D-085, D-123 para el crédito de
   corrección sobre una emisión anulada).
 
+### Entidades hoy, dominio `liquidacion` (migración `0041`, cambio 7, H-013, E2)
+
+Seis tablas, todas **de sólo agregar** (tres triggers cada una, en la lista protegida de
+`compartido/tablas_protegidas.py` y en el ensayo de roles), con `administracion_id NOT NULL` y RLS forzada
+por administración. Lo que se guardó al emitir **nunca se recalcula** al leerlo. Montos `NUMERIC(14,2)`.
+
+- **`liquidacion`**: `id`, `administracion_id`, `complejo_id`, `emision_id` (único; FK compuesta a
+  `emision` con el período), `periodo`, `huella` (la de la preliquidación revisada, E3),
+  `version_de_configuracion_id` y `porcentaje_fondo` (lo usado), `vencimiento` y, si se corrió,
+  `vencimiento_original` con `motivo_del_vencimiento` (1 a 500, ambos o ninguno), los siete totales
+  (`total_gastos`, `total_notas_de_credito`, `total_fondo_de_reserva`, `total_prorrateado`,
+  `total_cargos_particulares`, `total_intereses`, `total`), `emitida_por`, `request_id`, `emitida_en`.
+- **`categoria_de_liquidacion`**: por bloque (`ordinario` o `extraordinario`), la categoría con **su
+  nombre al emitir** (R16), su importe, su porcentaje y su orden.
+- **`grupo_de_liquidacion`** y **`composicion_de_grupo`**: cada grupo con gastos en el período (nombre,
+  método, ordinario y extraordinario) y, por cada unidad que participó, el **coeficiente efectivo usado**
+  con seis decimales (el peso de la unidad sobre la suma de los pesos del grupo, R01).
+- **`linea_de_liquidacion`**: una por unidad, con sus importes (ordinaria, fondo, extraordinaria,
+  intereses, total, `sin_obligacion`), el **saldo anterior** (la foto de `EmisionRegistrada.saldo_anterior`
+  tomada bajo los candados al emitir, `0.00` si la unidad no tiene cuenta, R06) y, en JSONB, sus cargos
+  particulares y su reparto por grupo.
+- **`alerta_aceptada`**: código, mensaje y detalle del control bloqueante aceptado, quién y cuándo (R34).
+- **Vocabulario**: la acción `ver_liquidaciones` (`accion_de_auditoria`, `0041`). Emitir audita
+  `emitir_y_distribuir_liquidacion` y, si se aceptó algún bloqueante, `aceptar_alertas_bloqueantes`, con
+  la liquidación como entidad y sólo ids y códigos en el detalle.
+- **Bajada**: la `0041` baja devolviendo antes las tablas al migrador (como las del libro) y se niega si
+  alguna tiene filas.
+
 ### Entidades hoy, dominio `cuenta_corriente` (migraciones `0023` y `0024`, cambio 4b, D1 del design archivado)
 
 El libro de movimientos: ocho tablas, seis de sólo agregar. Todas con `administracion_id NOT NULL` y
@@ -706,7 +735,8 @@ que un consumidor de otro módulo necesita.
 - **Constraints**: `uq_emision_intento` — una emisión por `(administracion, complejo, periodo,
   intento)`; combinado con "el intento activo más alto rechaza un intento nuevo si no está anulado"
   (E3), da **una emisión vigente por período salvo que la anterior esté anulada**.
-- **Es el mismo id que `liquidacion`** (ver más arriba): el 7 no crea una tabla nueva, completa ésta.
+- **`liquidacion` (H-013) la referencia por `emision_id`** (único): no comparten id; la liquidación
+  guardada es una tabla propia que apunta a esta fila (ver "Entidades hoy, dominio `liquidacion`").
 
 #### `evento_de_emision` · existe
 

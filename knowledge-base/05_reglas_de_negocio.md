@@ -642,6 +642,16 @@ número no se marcan duplicadas entre sí.
   (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
   el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
   puerto.
+- **Emitir** (7, H-013): se emite **lo revisado**. El pedido trae la **huella** de la preliquidación que
+  vio el administrador (SHA-256 de su forma canónica: líneas por unidad, controles, versión de
+  configuración y vencimiento); bajo el candado del período (`FOR UPDATE` sobre la fila de `complejo`,
+  antes que los candados de cuentas) la emisión la recalcula y, si cambió (un gasto aprobado, una nota de
+  crédito, un pago), responde 409 `preliquidacion_cambio` sin escribir nada. Un período sólo tiene una
+  emisión sin anular: otra da 409 `periodo_emitido`; el mismo `emision_id` con el mismo pedido devuelve lo
+  mismo sin duplicar. Todo queda guardado tal como se usó (la liquidación con su huella, versión de
+  configuración, porcentaje de fondo y vencimiento; las categorías con su nombre al emitir; la composición
+  de cada grupo con el coeficiente efectivo; una línea por unidad con la foto del saldo anterior y las
+  alertas aceptadas) y lo emitido nunca se recalcula al leerlo.
 - **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
   error se corrige con un movimiento nuevo (ajuste).
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
@@ -734,7 +744,18 @@ número no se marcan duplicadas entre sí.
   doble vencimiento y R26 todavía no define cómo calcularlo). Los calcula `liquidacion` leyendo por la
   `aplicacion` de cada dueño, no escriben nada y entran en la huella. **Factura duplicada** no es un
   control del 7: la garantiza la base con `uq_gasto_factura` (R12), y **ingresos mayores que los
-  gastos** no se construyó (D-157). Frenar la emisión y aceptar alertas es de H-013.
+  gastos** no se construyó (D-157).
+
+  **Emitir con alertas aceptadas** (H-013): el pedido de emitir trae `alertas_aceptadas`, obligatoria (puede
+  ser `[]`), con los códigos de los controles **bloqueantes** que el administrador acepta. Se valida
+  después de la huella y en este orden: un control **duro** activo frena siempre, aunque venga en la lista
+  (422 `control_duro` con sus códigos); la lista tiene que ser **exactamente** el conjunto de bloqueantes
+  activos (falta uno, sobra uno, viene repetido o trae una advertencia o un código que no está activo: 409
+  `alertas_distintas`); aceptar al menos uno exige `aceptar_alertas_bloqueantes` (403 para el administrador
+  del edificio). Una advertencia no se acepta: sólo se muestra. Cada aceptación queda en `alerta_aceptada`
+  (código, mensaje, detalle, quién y cuándo) y la emisión en la auditoría (`emitir_y_distribuir_liquidacion`
+  y, si se aceptó alguno, `aceptar_alertas_bloqueantes`). Un rechazo no escribe nada.
+
   Las filas marcadas como propuesta entran sólo si se valida la regla que revisan.
   La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
   contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no

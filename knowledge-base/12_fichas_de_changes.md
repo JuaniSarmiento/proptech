@@ -1088,7 +1088,11 @@ D-153).
   emitir` (la lista `controles` de la preliquidación con los siete controles de R34 del 7, cada uno con
   nivel, mensaje y detalle, calculados en `liquidacion/dominio/controles.py` con lecturas de `complejos` y
   `gastos`, sin escribir, y su región en la pantalla; `bloque_negativo` y `doble_vencimiento_sin_regla` son
-  los dos nuevos, factura duplicada la garantiza `uq_gasto_factura`). Faltan H-013 a H-015.
+  los dos nuevos, factura duplicada la garantiza `uq_gasto_factura`). H-013 `emitir lo revisado` (`POST .../periodos/{AAAA-MM-01}/emision` con `emision_id`, `huella`,
+  `alertas_aceptadas` y, opcional, el vencimiento corrido con su motivo; la migración `0041` con las seis
+  tablas de lo emitido y la acción `ver_liquidaciones`; el candado del período compartido con aprobar un
+  gasto y el adaptador real de `es_periodo_emitido`; `GET .../liquidaciones/{id}` con lo guardado; el botón
+  "Emitir liquidación" con su confirmación en la pantalla). Faltan H-014 y H-015.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).

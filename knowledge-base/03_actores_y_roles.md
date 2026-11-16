@@ -96,6 +96,14 @@ confirmar los saldos iniciales (`confirmar_saldos_iniciales`) y ajustar un saldo
 menos (`ajustar_saldo_inicial`) son sólo de super admin y administrador principal, como "sin saldos
 previos" y corregir un movimiento.
 
+**Emitir y leer lo emitido** (7, H-013): emitir una liquidación es `emitir_y_distribuir_liquidacion`
+(super admin, administrador principal y administrador del edificio); si al emitir se acepta un bloqueante,
+además hace falta `aceptar_alertas_bloqueantes` (sólo super admin y administrador principal: el
+administrador del edificio recibe 403 con ese permiso faltante). Leer una liquidación ya emitida es la
+acción `ver_liquidaciones` (migración `0041`): super admin, administrador principal y de edificio,
+contador principal y de edificio, y consejo; el auxiliar y los vecinos no. El consejo ve sólo las
+liquidaciones distribuidas (P39): ese filtro lo construye H-014; hasta entonces la matriz ya lo incluye.
+
 Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
 7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó
 el vínculo y el dominio; los cambios 6, 7 y 11 deben aplicar ese filtro.
