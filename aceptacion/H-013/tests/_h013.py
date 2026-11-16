@@ -341,7 +341,7 @@ def cargar_base(m: Mundo, *, con_lo_que_no_entra: bool = True) -> dict[str, UUID
     if con_lo_que_no_entra:
         ids["borrador"] = gasto(m, "999.00", estado="borrador")
         gasto(m, "777.00", estado="sin_ia")
-        gasto(m, "555.00", estado="en_revision")
+        # Sin el gasto `en_revision` de H-011: desde H-012 es un bloqueante y emitir la base lo pediría.
         gasto(m, "12345.00", periodo=OCT)
         gasto(m, "54321.00", complejo=m.otro)
         cargo(m, "2A", "3000.00", estado="borrador")
