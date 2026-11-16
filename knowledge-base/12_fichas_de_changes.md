@@ -1221,6 +1221,7 @@ D-153).
 | `doble_vencimiento_sin_regla` y `bloque_negativo` frenan la emisión con un control duro | R26 (Alberto) y P25 siguen abiertas (D-157) | Alberto (R26) y Juani (P25) |
 | El test de M1 con la última liquidación del piloto al centavo | Faltan los datos del piloto (P1); se corrió con la base de ejemplo | **15** / M1 |
 | `infra/ci/ensayo-roles.sh` con las tablas de la `0041` a la `0043` sin correr en local | Ningún agente corre `infra/ci/*.sh` | El CI del cierre (D-154) |
+| Lo visto en la demo del 16/11: el diálogo de emitir denso; la lista muestra "noviembre anulada" y "noviembre distribuida" sin decir que una reemplaza a la otra; la emitida no muestra que el vencimiento se corrió ni por qué; la tabla no se probó con más de cuatro unidades | Pulido, no rompe nada; Juani lo mandó afuera del 7 | **C-26** `pulido-web-3`, junto con la pasada de impeccable |
 
 ## M2 · Cobra
 

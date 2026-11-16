@@ -22,13 +22,13 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
-| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Lista |
-| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
-| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Lista |
-| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
-| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Lista |
-| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Lista |
-| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Lista |
+| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Terminada |
+| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Terminada |
+| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Terminada |
+| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Terminada |
+| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
+| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
+| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -903,7 +903,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   código `9b92893`: **41/41 de backend y 7/7 en navegador**, C01 a C12, N01 a N04, C14 y C15 PASA, 0 rojos.
   C13 queda para el cierre del change (regresión de H-004 a H-010 y barrido de migraciones, por decisión
   de Juani del 15/11: la regresión larga corre una vez al cerrar).
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-012 · Controles antes de emitir
 
@@ -955,7 +956,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Evidencia (15/11/2026): `python3 aceptacion/H-012/aceptar.py --codigo 2621c51 --sin-regresion` desde
   `478705f`: **18/18 de backend y 4/4 en navegador**, C01 a C08, N01 a N04, C10 y SPEC PASA, 0 rojos. C09
   (regresión) queda para el cierre del change.
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-013 · Emitir lo revisado
 
@@ -1033,7 +1035,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Evidencia (15/11/2026): `python3 aceptacion/H-013/aceptar.py --codigo 95f5379 --sin-regresion` desde
   `af84436`: **36/36 de backend y 5/5 en navegador**, C01 a C11, N01 a N09, C13 y SPEC PASA, 0 rojos. C12
   (regresión) queda para el cierre del change.
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-014 · Distribuir, anular y cargo cobrado de menos
 
@@ -1096,7 +1099,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   `6a7280b`: **24/24 de backend y 4/4 en navegador**, C01 a C09, N01 a N07, C11 y SPEC PASA, 0 rojos. C10
   (regresión) queda para el cierre. **Para la demo**: D-161 (préstamo de propiedad) es seguridad de la
   base y lo revisa Juani.
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-016 · Corte del lado de la base para las tareas del worker (F2c)
 
@@ -1130,7 +1134,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   de ser `xfail` (F2c resuelta); `5644b2f` fichas 1f y 7 y C-25 en `CHANGES.md`.
 - Evidencia (15/11/2026): `python3 aceptacion/H-016/aceptar.py --codigo 5644b2f --sin-navegador` desde
   `b7b526a`: **5/5**, C01 a C05, N01 y N02 PASA, 0 rojos.
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-015 · PDF de la expensa y links firmados
 
@@ -1186,7 +1191,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Deuda que deja (a la ficha 7): `infra/.env.example` sin las líneas de `PROPTECH_CLAVE_DE_ENLACES` (una
   regla de permisos impide editarlo: lo tiene que hacer Juani); el enlace de una liquidación anulada no se
   bloquea y la emisión de un enlace no se audita (al 11, el portal, que es quien los va a pedir).
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ### H-017 · Pulido de las pantallas de la liquidación
 
@@ -1228,7 +1234,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   cargo, API falsa con acciones por edificio). Sin impeccable.
 - Evidencia (16/11/2026): `python3 aceptacion/H-017/aceptar.py --codigo 1c2a759` desde `22c7364`: **5/5 de
   backend y 8/8 en navegador**, C01 a C07, N01 a N03 y KB PASA, 0 rojos.
-- Demo: pendiente, con Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ## Plantilla de historia
 
