@@ -26,7 +26,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Lista |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
-| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Pendiente |
+| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Lista |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -1116,7 +1116,13 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 - Constructor: Claude Sonnet (`rein-constructor`).
 - Aceptación aprobada: `b7b526a`. Comando: `python3 aceptacion/H-016/aceptar.py --sin-navegador`. Esperados: 5
   de backend; antes de construir, 5 rojos por aserción (falta `proptech_worker.corte`) y C05 sin la KB.
-- Evidencia: pendiente.
+- Construcción (Sonnet, una tanda): `62eb6d4` `proptech_worker/corte.py` (`ejecutar_con_corte` con los tres
+  timeouts locales por `set_config(..., true)`, el plazo verificado antes de confirmar y `CorteDeLaBase`), la
+  tarea de prueba por el corte con `COTA_TAREA_DE_PRUEBA_S`; `test_zz_rompedor_v3_agotada_con_efecto.py` deja
+  de ser `xfail` (F2c resuelta); `5644b2f` fichas 1f y 7 y C-25 en `CHANGES.md`.
+- Evidencia (15/11/2026): `python3 aceptacion/H-016/aceptar.py --codigo 5644b2f --sin-navegador` desde
+  `b7b526a`: **5/5**, C01 a C05, N01 y N02 PASA, 0 rojos.
+- Demo: pendiente, con Juani.
 
 ### H-015 · PDF de la expensa y links firmados
 
