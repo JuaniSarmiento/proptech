@@ -25,7 +25,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Lista |
 | H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Lista |
-| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
+| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Pendiente |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
 
@@ -1076,7 +1076,19 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   `registrar_distribucion`, la lista de liquidaciones por rol, el cargo cobrado de menos y la migración
   `0042`). Comando: `python3 aceptacion/H-014/aceptar.py --sin-regresion`. Esperados: 24 de backend y 4 en
   navegador; antes de construir, 27 rojos por aserción (sobre el código con H-013).
-- Evidencia: pendiente.
+- **Vuelta 2** (`6a7280b`): C04 contaba obligaciones con una ayuda que exige una por unidad, y dos e2e de C09
+  leían la última escritura sin esperarla (carrera). Lo que se prueba no cambia. Lecciones L-087 y L-088.
+- Construcción (Sonnet, una tanda): `b83ca00` el préstamo de propiedad de D-115.3 (D-161), `ce0bafe` a
+  `2ed0a36` la `0042` (`distribuida` con origen, índice único parcial que impide anulada y distribuida a la
+  vez, tabla `cargo_cobrado_de_menos`), D8 en una línea del paso 5 de `estado.py`, distribuir, anular, la
+  lista y la lectura por rol, el cargo cobrado de menos, los barridos de rutas, la web y la KB. Además el
+  orquestador exceptuó el nivel de un control del test de vocabulario (`ea93de2`). `ensayo-roles.sh` queda
+  sin correr hasta el CI. La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-014/aceptar.py --codigo 2ed0a36 --sin-regresion` desde
+  `6a7280b`: **24/24 de backend y 4/4 en navegador**, C01 a C09, N01 a N07, C11 y SPEC PASA, 0 rojos. C10
+  (regresión) queda para el cierre. **Para la demo**: D-161 (préstamo de propiedad) es seguridad de la
+  base y lo revisa Juani.
+- Demo: pendiente, con Juani.
 
 ### H-016 · Corte del lado de la base para las tareas del worker (F2c)
 
