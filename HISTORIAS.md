@@ -1220,7 +1220,9 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N03** el nombre del archivo lleva datos personales (el nombre del propietario) o caracteres fuera de
     `[a-z0-9-.]`.
 - Constructor: Claude Sonnet (`rein-constructor`).
-- Aceptación aprobada: pendiente.
+- Aceptación aprobada: `22c7364`. Contrato en `aceptacion/H-017/CONTRATO.md`. Comando:
+  `python3 aceptacion/H-017/aceptar.py`. Esperados: 5 de backend y 8 en navegador; antes de construir, 13 rojos
+  por aserción.
 - Evidencia: pendiente.
 
 ## Plantilla de historia
