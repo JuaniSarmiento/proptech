@@ -18,47 +18,29 @@ from proptech_core.acceso.adaptadores.clerk_http import ClerkNoDisponible, Clerk
 from proptech_core.acceso.puertos import ClienteDeClerk
 from proptech_core.compartido.base_de_datos import abrir_sesion
 from proptech_core.compartido.cola import ResultadoEncolado
-from proptech_core.compartido.idempotencia import ejecutar_una_vez
 from proptech_core.compartido.reintentos import ErrorPasajero, reintentable
 from proptech_core.compartido.seguimiento import con_seguimiento_de_tarea
+from proptech_worker.corte import ejecutar_con_corte
 
 _logger_invitaciones = logging.getLogger("proptech_worker.tareas.invitaciones")
 
 #: Nombre de la tarea tal como queda registrada en ARQ y en `trabajos_hechos`.
 NOMBRE_TAREA_DE_PRUEBA = "tarea_de_prueba"
 
-#: Cota propia de la operación de base que corre en el hilo (D18, F2b vuelta
-#: 3): mismo patrón que `PLAZO_VERIFICACION_S` de `proptech_api.salud`. Nace
-#: **adentro** de `reintentable` (el decorador exterior), así un
-#: `TimeoutError` (ya pasajero, D3) se reintenta o agota con su evento en vez
-#: de que ARQ dé el trabajo por fallado desde afuera cuando vence
-#: `job_timeout`. Tiene que ser menor que cualquier `job_timeout` configurado
-#: (120 s en producción, D2) con margen; una operación sana (un INSERT) tarda
-#: milisegundos.
-#:
-#: **LIMITACIÓN CONOCIDA (F2c, vuelta 3 del auditor)**: `asyncio.wait_for`
-#: corta la ESPERA del event loop, no el hilo: no hay forma de matar un hilo
-#: de Python desde afuera. Si la base queda congelada más tiempo que TODOS
-#: los reintentos (`intentos_maximos` de `PoliticaReintentos`), ARQ ya marcó
-#: el trabajo `tarea_agotada` cuando el hilo del PRIMER intento, que sigue
-#: corriendo en segundo plano, puede confirmar igual: `ejecutar_una_vez`
-#: deja la fila en `trabajos_hechos` para un trabajo que el log ya dio por
-#: agotado. Acá no importa porque el efecto es vacío (`lambda _sesion:
-#: None`): la fila es sólo evidencia de que el intento corrió, no un efecto
-#: real que alguien más dependa de que haya pasado o no.
-#:
-#: **Este patrón NO se copia para una tarea con efecto real** (mandar un
-#: email, mover plata, confirmar una reserva): ahí una confirmación tardía
-#: después de `tarea_agotada` es un efecto que nadie esperaba y que nadie va
-#: a reintentar ni a revisar. El cambio 7 (la primera tarea con efecto real)
-#: tiene que resolver esto del lado de la BASE antes de registrar esa tarea:
-#: `statement_timeout`/`lock_timeout` de PostgreSQL (o el `connect_args` de
-#: libpq que corresponda) para que la sentencia se corte sola del lado del
-#: servidor, más una cota propia POR TAREA (no una constante genérica como
-#: ésta) acorde al efecto que hace. No alcanza con acotar la espera del lado
-#: del cliente: el hilo tiene que dejar de existir, o la sentencia tiene que
-#: morir en el servidor, antes de confirmar nada.
-COTA_OPERACION_S = 1.5
+#: Cota propia de `tarea_de_prueba` (D18, F2b vuelta 3; F2c cerrada por H-016, D-158). Cada tarea
+#: declara la suya, acorde a su efecto: ya no hay una constante genérica. La cota se aplica del lado
+#: de la base (`proptech_worker.corte.ejecutar_con_corte`: `statement_timeout`, `lock_timeout` e
+#: `idle_in_transaction_session_timeout` con `SET LOCAL`, más el plazo verificado antes de
+#: confirmar),
+#: así una sentencia colgada muere en el servidor y una confirmación tardía nunca ocurre: la tarea
+#: queda agotada o confirma dentro de su cota, no después. Tiene que ser menor que cualquier
+#: `job_timeout` configurado (120 s en producción, D2). Una tarea con efecto real (el PDF de la
+#: expensa, el email) declara su cota y pasa por `ejecutar_con_corte`.
+COTA_TAREA_DE_PRUEBA_S = 1.5
+
+#: Margen del `asyncio.wait_for` exterior sobre la cota de la tarea: la base corta primero, y el
+#: `wait_for` sólo acota la espera del event loop si algo del hilo no responde.
+MARGEN_DE_ESPERA_S = 1.0
 
 
 class Cola(Protocol):
@@ -110,14 +92,15 @@ def _registrar_en_un_hilo(fabrica: Any, *, clave: str, request_id: str) -> bool:
     conexión del pool cuya base se congeló, L-001) y, si eso pasara en el
     propio event loop, frenaría TODO el worker: ni `job_timeout` ni el
     health check de ARQ podrían correr mientras tanto."""
-    with fabrica() as sesion:
-        return ejecutar_una_vez(
-            sesion,
-            clave=clave,
-            tarea=NOMBRE_TAREA_DE_PRUEBA,
-            request_id=request_id,
-            efecto=lambda _sesion: None,
-        )
+    return ejecutar_con_corte(
+        fabrica,
+        administracion_id=None,
+        cota_s=COTA_TAREA_DE_PRUEBA_S,
+        clave=clave,
+        tarea=NOMBRE_TAREA_DE_PRUEBA,
+        request_id=request_id,
+        efecto=lambda _sesion: None,
+    )
 
 
 @con_seguimiento_de_tarea
@@ -137,31 +120,22 @@ async def tarea_de_prueba(
     if ctx["job_try"] <= validado:
         raise ErrorPasajero("fallo simulado de la tarea de prueba")
     fabrica = ctx["fabrica_de_sesiones"]
-    # `asyncio.to_thread` copia el `contextvars.Context` actual al hilo (D2):
-    # así el `request_id` que fijó `con_seguimiento_de_tarea` en la
-    # `ContextVar` llega al evento `after_begin` de la sesión, que corre
-    # dentro de ese mismo hilo. `asyncio.wait_for` acota la ESPERA del event
-    # loop (D18, F2b): si la base está congelada, acá adentro ya se levanta
-    # `TimeoutError` (pasajero por naturaleza, D3) antes de que `job_timeout`
-    # venza afuera de `reintentable`.
-    #
-    # LIMITACIÓN CONOCIDA (F2c, ver el comentario de `COTA_OPERACION_S`):
-    # esto corta la espera, NUNCA el hilo. El hilo sigue corriendo colgado
-    # en segundo plano y, si la base vuelve después de agotados todos los
-    # reintentos, puede confirmar su `INSERT` con el trabajo ya marcado
-    # `tarea_agotada`. Tolerable acá porque el efecto es vacío; el cambio 7
-    # no puede heredar este patrón para una tarea con efecto real sin
-    # resolverlo primero con un corte del lado de la base.
+    # `asyncio.to_thread` copia el `contextvars.Context` actual al hilo (D2): así el `request_id`
+    # que fijó `con_seguimiento_de_tarea` en la `ContextVar` llega al evento `after_begin` de la
+    # sesión, que corre dentro de ese mismo hilo. El corte real es del lado de la base (H-016,
+    # F2c): la sentencia muere en el servidor y la transacción no confirma después de
+    # `COTA_TAREA_DE_PRUEBA_S`; `asyncio.wait_for` sólo acota la espera del event loop (cota más
+    # un margen) y levanta `TimeoutError` (pasajero, D3) si el hilo no responde.
     return await asyncio.wait_for(
         asyncio.to_thread(_registrar_en_un_hilo, fabrica, clave=clave, request_id=request_id),
-        timeout=COTA_OPERACION_S,
+        timeout=COTA_TAREA_DE_PRUEBA_S + MARGEN_DE_ESPERA_S,
     )
 
 
 # --- 2b, tarea 5.4: el worker habla con Clerk (D7) ------------------------
 #
 # `enviar_invitacion` y `revocar_invitacion_en_clerk` son las primeras
-# tareas con un efecto real (D7, nota de `COTA_OPERACION_S` arriba): la
+# tareas con un efecto real (D7, F2c, cerrada por H-016 con `ejecutar_con_corte`): la
 # idempotencia no es la de `ejecutar_una_vez` (una clave en
 # `trabajos_hechos`), sino la del propio estado de `invitacion` (D3, D7):
 # sólo se llama a Clerk si la fila sigue `pendiente`, y el `UPDATE` que la
