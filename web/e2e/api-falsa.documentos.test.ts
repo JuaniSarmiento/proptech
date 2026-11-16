@@ -39,6 +39,11 @@ const escribir = (ruta: string, cuerpo?: unknown) =>
   });
 
 describe("api-falsa · los documentos de la expensa", () => {
+  it("antes de toda escritura la depuración da una escritura vacía, nunca null", async () => {
+    const ultima = await (await leer("/api/__debug/ultima-escritura")).json();
+    expect(ultima).toEqual({ metodo: "", url: "", contentType: "", cuerpo: "" });
+  });
+
   it("noviembre emitido es 409 periodo_emitido y la lista trae su liquidación emitida", async () => {
     const r = await leer(`/api/complejos/${EDIFICIO}/periodos/2026-11-01/preliquidacion`);
     expect(r.status).toBe(409);

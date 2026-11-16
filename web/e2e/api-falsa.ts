@@ -244,6 +244,10 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
  * la web viajaba como `text/plain` y nadie lo notó). */
 type EscrituraRecibida = { metodo: string; url: string; contentType: string; cuerpo: string };
 let _ultimaEscritura: EscrituraRecibida | null = null;
+/** Antes de la primera escritura la depuración da esta, no `null`: un e2e que espera la escritura con
+ * `expect.poll(... .url)` (L-087) reintenta sobre una URL vacía en vez de romper con un `TypeError`
+ * porque su primer sondeo llegó antes que el servidor de Next. */
+const ESCRITURA_VACIA: EscrituraRecibida = { metodo: "", url: "", contentType: "", cuerpo: "" };
 
 /** Personal de prueba (7.3): un `super_admin` ya vinculado, un `contador`
  * con invitación `fallida` (worker, sin "Reintentar") y un `auxiliar` con
@@ -842,7 +846,7 @@ export function crearServidor(
     if (partes[0] === "api" && partes[1] === "__debug" && partes[2] === "ultima-escritura") {
       respuesta
         .writeHead(200, { "content-type": "application/json" })
-        .end(JSON.stringify(_ultimaEscritura));
+        .end(JSON.stringify(_ultimaEscritura ?? ESCRITURA_VACIA));
       return;
     }
 
