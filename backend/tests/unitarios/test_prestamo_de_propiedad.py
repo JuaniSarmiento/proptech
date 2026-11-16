@@ -10,10 +10,11 @@ import pytest
 from proptech_core.compartido.roles import tablas_a_prestar
 
 
-def _migracion(carpeta: Path, nombre: str, revision: str, anterior: str | None, presta: str) -> None:
+def _migracion(
+    carpeta: Path, nombre: str, revision: str, anterior: str | None, presta: str
+) -> None:
     (carpeta / nombre).write_text(
-        f'revision: str = "{revision}"\n'
-        f"down_revision: str | None = {anterior!r}\n{presta}\n",
+        f'revision: str = "{revision}"\ndown_revision: str | None = {anterior!r}\n{presta}\n',
         encoding="utf-8",
     )
 
@@ -22,7 +23,11 @@ def _migracion(carpeta: Path, nombre: str, revision: str, anterior: str | None, 
 def versiones(tmp_path: Path) -> Path:
     _migracion(tmp_path, "0001_a.py", "0001", None, "")
     _migracion(
-        tmp_path, "0002_b.py", "0002", "0001", 'PRESTA_PROPIEDAD: tuple[str, ...] = ("evento_de_emision",)'
+        tmp_path,
+        "0002_b.py",
+        "0002",
+        "0001",
+        'PRESTA_PROPIEDAD: tuple[str, ...] = ("evento_de_emision",)',
     )
     _migracion(tmp_path, "0003_c.py", "0003", "0002", "")
     _migracion(

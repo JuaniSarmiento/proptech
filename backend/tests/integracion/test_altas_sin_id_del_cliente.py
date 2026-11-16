@@ -72,6 +72,8 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     ("/api/invitaciones/{invitacion_id}/revocar", "POST"),
     ("/api/gastos/{gasto_id}/aprobar", "POST"),
     ("/api/cargos-particulares/{cargo_id}/aprobar", "POST"),
+    # Cambio 7 (H-014): distribuir a mano no lleva cuerpo.
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/distribucion", "POST"),
     # Cambio 6 `gastos-y-cargos`: multipart (`UploadFile`), no JSON — el
     # contrato de R11 para esta ruta se prueba en `test_cargos_particulares.py`.
     ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
@@ -183,6 +185,28 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "POST",
     ): lambda mundo: {
         "operacion_id": str(uuid.uuid4()),
+        "importe": "5000.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba ficticia del barrido de altas",
+    },
+    # Cambio 7 (H-013): emitir lleva el `emision_id` del cliente (idempotencia) y la huella
+    # revisada; cualquier otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/periodos/{periodo}/emision",
+        "POST",
+    ): lambda mundo: {"emision_id": str(uuid.uuid4()), "huella": "x", "alertas_aceptadas": []},
+    # Cambio 7 (H-014): el cliente manda su `operacion_id` (idempotencia, como el ajuste); cualquier
+    # otro campo, `id` incluido, es 422.
+    (
+        "/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion",
+        "POST",
+    ): lambda mundo: {"motivo": "Prueba ficticia del barrido de altas"},
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos",
+        "POST",
+    ): lambda mundo: {
+        "operacion_id": str(uuid.uuid4()),
+        "obligacion_origen_id": str(uuid.uuid4()),
         "importe": "5000.00",
         "componente": "ordinaria",
         "motivo": "Prueba ficticia del barrido de altas",
@@ -323,6 +347,8 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "super_admin": super_admin_id,
         "unidad_id": unidad_id,
         "destinatario": destinatario_id,
+        "liquidacion_id": uuid.uuid4(),
+        "periodo": "2026-10-01",
     }
 
 

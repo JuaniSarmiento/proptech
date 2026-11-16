@@ -5,13 +5,23 @@ fondo o se le cobra a una unidad, la respuesta no cambia.
 """
 
 import json
+from collections.abc import Sequence
+from datetime import date
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.acceso.dominio.permisos import Accion, Asignacion, Perfil, puede
 from proptech_core.compartido.dinero import Dinero, sumar
+from proptech_core.cuenta_corriente.aplicacion.liquidar import CierreDeEmision, cierres_de_emisiones
+from proptech_core.liquidacion.dominio.ciclo import (
+    ANULADA,
+    DISTRIBUIDA,
+    EMITIDA,
+    visible_para_el_consejo,
+)
 
 _BLOQUES = ("ordinario", "extraordinario")
 
@@ -22,6 +32,11 @@ def _uuid(valor: Any) -> str:
 
 def _json(valor: Any) -> Any:
     return json.loads(valor) if isinstance(valor, str) else valor
+
+
+def estado_del_cierre(cierre: CierreDeEmision | None) -> str:
+    """`emitida` mientras no haya evento de cierre; si no, `distribuida` o `anulada` (E9, E10)."""
+    return EMITIDA if cierre is None else cierre.tipo
 
 
 def liquidacion_de_la_emision(sesion: Session, emision_id: UUID) -> UUID | None:
@@ -164,11 +179,28 @@ def leer_liquidacion(
         .all()
     ]
     original = cabecera["vencimiento_original"]
+    cierre = cierres_de_emisiones(sesion, [UUID(str(cabecera["emision_id"]))]).get(
+        UUID(str(cabecera["emision_id"]))
+    )
     return {
         "liquidacion_id": _uuid(cabecera["id"]),
         "emision_id": _uuid(cabecera["emision_id"]),
         "periodo": cabecera["periodo"].isoformat(),
-        "estado": "emitida",
+        "estado": estado_del_cierre(cierre),
+        "distribucion": (
+            None
+            if cierre is None or cierre.tipo != DISTRIBUIDA
+            else {"origen": cierre.origen, "en": cierre.en.isoformat()}
+        ),
+        "anulacion": (
+            None
+            if cierre is None or cierre.tipo != ANULADA
+            else {
+                "motivo": cierre.motivo,
+                "por": None if cierre.persona_id is None else _uuid(cierre.persona_id),
+                "en": cierre.en.isoformat(),
+            }
+        ),
         "huella": cabecera["huella"],
         "version_de_configuracion_id": _uuid(cabecera["version_de_configuracion_id"]),
         "porcentaje_fondo": cabecera["porcentaje_fondo"],
@@ -214,3 +246,64 @@ def obligaciones_emitidas(liquidada: dict[str, Any]) -> list[dict[str, str]]:
         for u in liquidada["unidades"]
         if not u["sin_obligacion"]
     ]
+
+
+def emision_de_la_liquidacion(
+    sesion: Session, *, complejo_id: UUID, liquidacion_id: UUID
+) -> tuple[UUID, date] | None:
+    """`(emision_id, periodo)` de una liquidación del edificio, o `None` si no existe, es de otro
+    edificio o de otra administración (RLS)."""
+    fila = sesion.execute(
+        text("SELECT emision_id, periodo FROM liquidacion WHERE id = :id AND complejo_id = :c"),
+        {"id": liquidacion_id, "c": complejo_id},
+    ).one_or_none()
+    return None if fila is None else (UUID(str(fila.emision_id)), fila.periodo)
+
+
+def ve_lo_no_distribuido(asignaciones: Sequence[Asignacion], complejo_id: UUID) -> bool:
+    """P39: lo emitido sin distribuir lo ven todos los que leen liquidaciones menos quien sólo las
+    lee como consejo del edificio. Cuenta una asignación que da `ver_liquidaciones` en este edificio
+    y no es de consejo (otra asignación, como vecino, no le suma nada)."""
+    return any(
+        a.perfil is not Perfil.CONSEJO and puede([a], Accion.VER_LIQUIDACIONES, complejo_id)
+        for a in asignaciones
+    )
+
+
+def estado_de_la_emision(sesion: Session, emision_id: UUID) -> str:
+    return estado_del_cierre(cierres_de_emisiones(sesion, [emision_id]).get(emision_id))
+
+
+def listar_liquidaciones(
+    sesion: Session, *, complejo_id: UUID, solo_distribuidas: bool = False
+) -> list[dict[str, Any]]:
+    """Las liquidaciones del edificio, de la más nueva a la más vieja (por período y, dentro de uno,
+    por cuándo se emitió: una anulada y su re-emisión comparten período). Con `solo_distribuidas`
+    (el consejo, P39) no figura lo emitido sin distribuir ni lo anulado."""
+    filas = (
+        sesion.execute(
+            text(
+                "SELECT id, emision_id, periodo, total::text AS total, emitida_en FROM liquidacion "
+                "WHERE complejo_id = :c ORDER BY periodo DESC, emitida_en DESC, id DESC"
+            ),
+            {"c": complejo_id},
+        )
+        .mappings()
+        .all()
+    )
+    cierres = cierres_de_emisiones(sesion, [UUID(str(f["emision_id"])) for f in filas])
+    resultado = []
+    for f in filas:
+        estado = estado_del_cierre(cierres.get(UUID(str(f["emision_id"]))))
+        if solo_distribuidas and not visible_para_el_consejo(estado):
+            continue
+        resultado.append(
+            {
+                "liquidacion_id": _uuid(f["id"]),
+                "periodo": f["periodo"].isoformat(),
+                "estado": estado,
+                "total": f["total"],
+                "emitida_en": f["emitida_en"].isoformat(),
+            }
+        )
+    return resultado

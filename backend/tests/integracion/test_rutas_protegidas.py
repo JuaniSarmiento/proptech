@@ -145,6 +145,11 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 7 `liquidacion-y-emision` (H-013) ---
     ("/api/complejos/{complejo_id}/periodos/{periodo}/emision", "POST"),
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}", "GET"),
+    # --- Cambio 7 `liquidacion-y-emision` (H-014) ---
+    ("/api/complejos/{complejo_id}/liquidaciones", "GET"),
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/distribucion", "POST"),
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion", "POST"),
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos", "POST"),
 }
 
 
@@ -475,6 +480,22 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
         return cliente.post(
             ruta_resuelta,
             json={"emision_id": str(uuid.uuid4()), "huella": "x", "alertas_aceptadas": []},
+        )
+    if ruta.endswith("/anulacion"):
+        # Cambio 7 (H-014): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
+        return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
+    if ruta.endswith("/distribucion"):
+        return cliente.post(ruta_resuelta)
+    if ruta.endswith("/cargos-cobrados-de-menos"):
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "operacion_id": str(uuid.uuid4()),
+                "obligacion_origen_id": str(uuid.uuid4()),
+                "importe": "10.00",
+                "componente": "ordinaria",
+                "motivo": "Prueba del candado",
+            },
         )
     if ruta.endswith("/ajustes-de-saldo-inicial"):
         return cliente.post(

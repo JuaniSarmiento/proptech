@@ -7,7 +7,7 @@ bloqueante, `aceptar_alertas_bloqueantes`); leer lo emitido, `ver_liquidaciones`
 """
 
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -21,7 +21,7 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
-from proptech_core.liquidacion.aplicacion import emision, preliquidacion
+from proptech_core.liquidacion.aplicacion import cargos, ciclo, emision, preliquidacion
 from proptech_core.liquidacion.aplicacion.errores import (
     Conflicto,
     ControlDuro,
@@ -29,7 +29,16 @@ from proptech_core.liquidacion.aplicacion.errores import (
     NoEncontrado,
     SinPermiso,
 )
-from proptech_core.liquidacion.aplicacion.lectura import leer_liquidacion
+from proptech_core.liquidacion.aplicacion.lectura import (
+    leer_liquidacion,
+    listar_liquidaciones,
+    ve_lo_no_distribuido,
+)
+from proptech_core.liquidacion.dominio.ciclo import (
+    PedidoInvalido,
+    pedido_de_cargo,
+    visible_para_el_consejo,
+)
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 
@@ -126,6 +135,18 @@ def emitir_la_liquidacion(
     return hecha.respuesta
 
 
+@router.get("/complejos/{complejo_id}/liquidaciones")
+def liquidaciones_del_edificio(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, Any]]:
+    """De la más nueva a la más vieja. El consejo no ve lo emitido sin distribuir (P39, D-157)."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
+    completa = ve_lo_no_distribuido(cargar_asignaciones(sesion, identidad.persona_id), complejo_id)
+    return listar_liquidaciones(sesion, complejo_id=complejo_id, solo_distribuidas=not completa)
+
+
 @router.get("/complejos/{complejo_id}/liquidaciones/{liquidacion_id}")
 def liquidacion_emitida(
     complejo_id: UUID,
@@ -133,10 +154,100 @@ def liquidacion_emitida(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, Any]:
-    """Lo guardado al emitir, nunca recalculado (E2). El consejo sólo verá las distribuidas (P39,
-    H-014)."""
+    """Lo guardado al emitir, nunca recalculado (E2), con su estado. Al consejo, una liquidación
+    emitida sin distribuir le da 404 (P39, D-157)."""
     _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
     emitida = leer_liquidacion(sesion, complejo_id=complejo_id, liquidacion_id=liquidacion_id)
     if emitida is None:
         raise NoEncontrado
+    completa = ve_lo_no_distribuido(cargar_asignaciones(sesion, identidad.persona_id), complejo_id)
+    if not completa and not visible_para_el_consejo(emitida["estado"]):
+        raise NoEncontrado
     return emitida
+
+
+@router.post("/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/distribucion")
+def distribuir_la_liquidacion(
+    complejo_id: UUID,
+    liquidacion_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    """La distribución manual (E9): 409 si ya estaba distribuida o está anulada."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
+    hecha = ciclo.distribuir_liquidacion(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        liquidacion_id=liquidacion_id,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return hecha
+
+
+@router.post("/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion")
+def anular_la_liquidacion(
+    complejo_id: UUID,
+    liquidacion_id: UUID,
+    cuerpo: Annotated[dict[str, Any], Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    """Anula con motivo (E10): 409 si está distribuida, ya anulada o con el período siguiente
+    emitido (P26). El cuerpo se valida a mano, después del 404 y del 403 (D7)."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.ANULAR_LIQUIDACION)
+    hecha = ciclo.anular_liquidacion(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        liquidacion_id=liquidacion_id,
+        cuerpo=cuerpo,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return hecha
+
+
+@router.post(
+    "/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos", status_code=201
+)
+def registrar_un_cargo_cobrado_de_menos(
+    complejo_id: UUID,
+    unidad_id: UUID,
+    cuerpo: Annotated[dict[str, Any], Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    """Corrige con una obligación nueva un cargo cobrado de menos (E11). El replay por
+    `operacion_id` da el mismo cuerpo con 201 y no escribe nada."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CORREGIR_MOVIMIENTO)
+    try:
+        pedido = pedido_de_cargo(cuerpo)
+    except PedidoInvalido as error:
+        raise EntradaInvalida(error.campo, donde="body") from None
+    cargo = cargos.registrar_cargo_cobrado_de_menos(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        unidad_id=unidad_id,
+        obligacion_origen_id=pedido.obligacion_origen_id,
+        operacion_id=pedido.operacion_id,
+        importe=pedido.importe,
+        componente=pedido.componente,
+        motivo=pedido.motivo,
+        request_id=UUID(request_id_actual.get() or ""),
+        reloj=lambda: datetime.now(UTC),
+    )
+    sesion.commit()
+    return {
+        "cargo_id": str(cargo.cargo_id),
+        "obligacion_id": str(cargo.obligacion_id),
+        "obligacion_origen_id": str(cargo.obligacion_origen_id),
+        "importe": cargo.importe.a_texto(),
+        "componente": cargo.componente,
+        "vencimiento": cargo.vencimiento.isoformat(),
+        "motivo": cargo.motivo,
+        "registrado_por": str(cargo.registrado_por),
+        "registrado_en": cargo.registrado_en.isoformat(),
+    }

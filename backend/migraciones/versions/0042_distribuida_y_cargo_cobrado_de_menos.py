@@ -9,6 +9,9 @@
    emisión, con su `operacion_id`), quién y cuándo. De sólo agregar, con el patrón del libro
    (`0035`, `0039`) y RLS forzada por administración.
 
+El `CHECK` de la forma se llama `ck_evento_tipo_forma`: PostgreSQL los prueba por orden de nombre y el
+del vocabulario (`ck_evento_tipo`) tiene que fallar primero ante un tipo desconocido.
+
 Esta migración hace `ALTER` sobre una tabla protegida (`evento_de_emision`): lo declara en
 `PRESTA_PROPIEDAD` y `roles antes` se la presta al migrador sólo mientras esta migración está
 pendiente (D-115.3); `roles despues` la devuelve y la verifica. No importa `Accion`: el vocabulario
@@ -46,7 +49,7 @@ def upgrade() -> None:
         (tipo IN ('anulada','distribuida'));
         ALTER TABLE evento_de_emision ADD CONSTRAINT ck_evento_motivo CHECK
         (motivo IS NULL OR (length(motivo) BETWEEN 1 AND 500 AND btrim(motivo)<>''));
-        ALTER TABLE evento_de_emision ADD CONSTRAINT ck_evento_forma CHECK (
+        ALTER TABLE evento_de_emision ADD CONSTRAINT ck_evento_tipo_forma CHECK (
             (tipo='anulada' AND origen IS NULL AND motivo IS NOT NULL AND persona_id IS NOT NULL)
             OR (tipo='distribuida' AND motivo IS NULL AND (
                 (origen='manual' AND persona_id IS NOT NULL) OR origen IN ('email','portal'))));
@@ -112,7 +115,7 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION fn_cargo_cobrado_de_menos_bloqueada()")
     op.execute("""
         DROP INDEX uq_evento_emision_cierre;
-        ALTER TABLE evento_de_emision DROP CONSTRAINT ck_evento_forma;
+        ALTER TABLE evento_de_emision DROP CONSTRAINT ck_evento_tipo_forma;
         ALTER TABLE evento_de_emision DROP CONSTRAINT ck_evento_motivo;
         ALTER TABLE evento_de_emision DROP CONSTRAINT ck_evento_tipo;
         ALTER TABLE evento_de_emision ADD CONSTRAINT ck_evento_tipo CHECK (tipo='anulada');

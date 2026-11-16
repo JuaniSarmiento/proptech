@@ -62,7 +62,9 @@ class _DetalleAsignacion(_DetalleAsignarEdificio):
 
 
 class _DetalleCorreccion(_DetalleAsignarEdificio):
-    forma: Literal["contra_asiento", "credito"]
+    #: `cargo_cobrado_de_menos` (7, H-014): `corrige` es la obligación de origen y la `entidad_id`
+    #: de la fila, el cargo.
+    forma: Literal["contra_asiento", "credito", "cargo_cobrado_de_menos"]
     corrige: UUID
 
 
@@ -239,6 +241,14 @@ class _DetalleEmitirLiquidacion(_DetalleAsignarEdificio):
     #: ni el motivo del vencimiento, D9): lo emitido vive en las tablas de la liquidación.
     periodo: date
     emision_id: UUID
+    #: Sólo al distribuir a mano (H-014); emitir no lo lleva.
+    origen: Literal["manual", "email", "portal"] | None = None
+
+
+class _DetalleAnularLiquidacion(_DetalleAsignarEdificio):
+    #: La liquidación es la `entidad_id`. Sin el motivo: vive en el evento `anulada` del libro.
+    periodo: date
+    emision_id: UUID
 
 
 class _DetalleAceptarAlertas(_DetalleAsignarEdificio):
@@ -271,6 +281,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.AJUSTAR_SALDO_INICIAL: _DetalleAjustarSaldoInicial,
     Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: _DetalleEmitirLiquidacion,
     Accion.ACEPTAR_ALERTAS_BLOQUEANTES: _DetalleAceptarAlertas,
+    Accion.ANULAR_LIQUIDACION: _DetalleAnularLiquidacion,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

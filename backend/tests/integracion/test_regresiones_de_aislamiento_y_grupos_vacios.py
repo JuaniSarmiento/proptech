@@ -93,6 +93,17 @@ _CUERPOS = {
         "huella": "x",
         "alertas_aceptadas": [],
     },
+    # H-014 (7): cuerpos válidos, para que el 404 de aislamiento no quede tapado por un 422.
+    "/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion": {
+        "motivo": "Prueba de aislamiento"
+    },
+    "/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos": {
+        "operacion_id": str(uuid4()),
+        "obligacion_origen_id": str(uuid4()),
+        "importe": "10.00",
+        "componente": "ordinaria",
+        "motivo": "Prueba de aislamiento",
+    },
 }
 
 

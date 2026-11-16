@@ -84,10 +84,10 @@ def _migracion_declarada(archivo: Path) -> tuple[str, str | None, tuple[str, ...
 
 
 def tablas_a_prestar(carpeta: Path, version_actual: str | None) -> set[str]:
-    """D-115.3: las tablas protegidas que declaran (`PRESTA_PROPIEDAD`) las migraciones **pendientes**,
-    las posteriores a `version_actual` (`None`: la base todavía no tiene versión, todas). Sin carpeta
-    de migraciones no hay nada que prestar. Una tabla declarada que no es protegida es un error: el
-    préstamo no es un permiso general para tocar tablas del migrador."""
+    """D-115.3: las tablas protegidas que declaran (`PRESTA_PROPIEDAD`) las migraciones
+    **pendientes**, las posteriores a `version_actual` (`None`: la base todavía no tiene versión,
+    todas). Sin carpeta de migraciones no hay nada que prestar. Una tabla declarada que no es
+    protegida es un error: el préstamo no es un permiso general para tocar tablas del migrador."""
     if not carpeta.is_dir():
         return set()
     por_anterior: dict[str | None, tuple[str, tuple[str, ...]]] = {}
@@ -104,7 +104,8 @@ def tablas_a_prestar(carpeta: Path, version_actual: str | None) -> set[str]:
     ajenas = prestadas - _TABLAS_DE_SOLO_AGREGAR
     if ajenas:
         raise ValueError(
-            "PRESTA_PROPIEDAD nombra tablas que no son de sólo agregar: " + ", ".join(sorted(ajenas))
+            "PRESTA_PROPIEDAD nombra tablas que no son de sólo agregar: "
+            + ", ".join(sorted(ajenas))
         )
     return prestadas
 
@@ -112,7 +113,8 @@ def tablas_a_prestar(carpeta: Path, version_actual: str | None) -> set[str]:
 def _prestar_al_migrador(cur: psycopg.Cursor, migrador: str) -> None:
     """D-115.3: le presta al migrador la propiedad de las tablas protegidas que una migración
     pendiente declara en `PRESTA_PROPIEDAD`; `despues()` las devuelve y las verifica. Se busca la
-    carpeta `migraciones/versions` junto a `alembic.ini` (el directorio de trabajo, como Alembic)."""
+    carpeta `migraciones/versions` junto a `alembic.ini` (el directorio de trabajo, como Alembic).
+    """
     version: str | None = None
     if _existe_tabla(cur, "alembic_version"):
         cur.execute("SELECT version_num FROM alembic_version")
