@@ -37,7 +37,7 @@ test("C08 · reprocesar manda el pedido a la API", async ({ page, request }) => 
   const region = await abrir(page);
   await region.getByRole("button", { name: "Reprocesar", exact: true }).click();
   await expect
-    .poll(async () => (await ultimaEscritura(request)).url)
+    .poll(async () => (await ultimaEscritura(request))?.url)
     .toBe(`/api/complejos/${EDIFICIO}/liquidaciones/${LIQUIDACION}/documentos/reproceso`);
 });
 
@@ -48,6 +48,6 @@ test("C08 · un documento generado se descarga con su enlace y sin errores de ax
   await sinViolacionesEnElNavegador(page);
   await boton.click();
   await expect
-    .poll(async () => (await ultimaEscritura(request)).url)
+    .poll(async () => (await ultimaEscritura(request))?.url)
     .toBe(`/api/complejos/${EDIFICIO}/documentos/00000000-0000-0000-0000-000000015101/enlace`);
 });
