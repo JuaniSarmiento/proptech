@@ -996,6 +996,13 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
     sin estar liquidado (o entra en la liquidación o su período de imputación pasa a diciembre).
   - **N08** vencimiento corrido sin motivo o a una fecha anterior al período: 422.
   - **N09** una unidad con `sin_obligacion` recibe una obligación en $0,00.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `68729fc` (por el orquestador bajo la firma por adelantado de Juani). Contrato en
+  `aceptacion/H-013/CONTRATO.md`: la ruta `POST .../periodos/{AAAA-MM-01}/emision`, la lectura
+  `GET .../liquidaciones/{id}` con el permiso nuevo `ver_liquidaciones` y la migración `0041`. Comando:
+  `python3 aceptacion/H-013/aceptar.py --sin-regresion`. Esperados: 36 de backend y 5 en navegador; antes de
+  construir, 41 rojos por aserción.
+- Evidencia: pendiente.
 
 ### H-014 · Distribuir, anular y cargo cobrado de menos
 
