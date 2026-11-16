@@ -296,6 +296,51 @@ def test_bonificacion_de_emision_anulada_queda_retenida() -> None:
     assert [x.obligacion_id for x in e.deudas()] == [diciembre.id]
 
 
+def test_credito_de_correccion_de_emision_anulada_queda_retenido() -> None:
+    """D8 (D-157): una corrección de $1.000 sobre noviembre; al anular noviembre queda retenida,
+    nunca a favor aplicable, y diciembre sigue debiendo lo suyo."""
+    lb = Libro()
+    nov_emision = uuid4()
+    noviembre = obligacion(date(2026, 11, 1), "40000.00", emision=nov_emision)
+    diciembre = obligacion(date(2026, 12, 1), "40000.00", emision=uuid4())
+    corr = credito("1000.00", "correccion", obligacion_id=noviembre.id)
+    lb.obligaciones, lb.movimientos = [noviembre, diciembre], [corr]
+    lb.imputa(corr, noviembre, ORD, "1000.00")
+    lb.anuladas = {nov_emision}
+    e = lb.estado()
+    assert e.deuda == d("40000.00")
+    assert (e.credito_a_favor, e.credito_a_favor_aplicable, e.credito_a_favor_retenido) == (
+        d("1000.00"),
+        CERO,
+        d("1000.00"),
+    )
+
+
+def test_credito_de_correccion_sin_anular_no_se_retiene() -> None:
+    """Control de D8: con la emisión viva el crédito se imputó y no sobra nada."""
+    lb = Libro()
+    noviembre = obligacion(date(2026, 11, 1), "40000.00", emision=uuid4())
+    corr = credito("1000.00", "correccion", obligacion_id=noviembre.id)
+    lb.obligaciones, lb.movimientos = [noviembre], [corr]
+    lb.imputa(corr, noviembre, ORD, "1000.00")
+    e = lb.estado()
+    assert (e.credito_a_favor, e.credito_a_favor_retenido) == (CERO, CERO)
+    assert e.deuda == d("39000.00")
+
+
+def test_pago_imputado_a_emision_anulada_vuelve_aplicable() -> None:
+    """P38: el pago no es un crédito de destino: vuelve como crédito a favor aplicable."""
+    lb = Libro()
+    nov_emision = uuid4()
+    noviembre = obligacion(date(2026, 11, 1), "40000.00", emision=nov_emision)
+    pago = credito("40000.00")
+    lb.obligaciones, lb.movimientos = [noviembre], [pago]
+    lb.imputa(pago, noviembre, ORD, "40000.00")
+    lb.anuladas = {nov_emision}
+    e = lb.estado()
+    assert (e.credito_a_favor_aplicable, e.credito_a_favor_retenido) == (d("40000.00"), CERO)
+
+
 def test_condonacion_cuyo_interes_se_contra_asienta_queda_retenida() -> None:
     """RC2-06: destino que ya no tiene residual: retenido, no aplicable."""
     lb = Libro()

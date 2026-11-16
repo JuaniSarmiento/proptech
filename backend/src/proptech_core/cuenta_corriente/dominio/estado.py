@@ -232,6 +232,16 @@ def calcular_estado(
             destino = (m.obligacion_id, m.componente)
             if destino not in residual or not residual[destino] > _CERO:
                 retenidos.add(m.id)
+        # D8 (D-157): un crédito de corrección sobre una obligación cuya emisión se anuló no
+        # vuelve como crédito a favor libre (la re-emisión suele corregir el mismo error: se
+        # corregiría dos veces). Se reaplica, si hace falta, con una corrección nueva.
+        elif (
+            m.tipo == "correccion"
+            and m.obligacion_id is not None
+            and m.obligacion_id not in obligaciones_que_cuentan
+            and a_favor[m.id] > _CERO
+        ):
+            retenidos.add(m.id)
     total_a_favor = _sumar(a_favor.values())
     retenido = _sumar(a_favor[i] for i in retenidos)
     return EstadoDeCuenta(
