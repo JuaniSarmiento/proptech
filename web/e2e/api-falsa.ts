@@ -29,12 +29,15 @@ import {
   responderImportacion,
 } from "./escenarios-importacion";
 import {
+  ACCIONES_POR_EDIFICIO,
   esEdificioDeCiclo,
   esEdificioDeDocumentos,
   esEdificioDePreliquidacion,
+  LISTA_DE_LIQUIDACIONES,
   responderCiclo,
   responderDocumentos,
   responderEmision,
+  responderLista,
   responderPreliquidacion,
 } from "./escenarios-liquidacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
@@ -68,7 +71,6 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "anular_liquidacion",
     "confirmar_pago_informado",
     "revertir_o_reimputar_pago",
-    "corregir_movimiento",
     "condonar_intereses",
     "dar_de_baja_deuda",
     "aceptar_alertas_no_bloqueantes",
@@ -81,9 +83,10 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "aceptar_diferencias_de_saldos",
     "confirmar_saldos_iniciales",
     "ajustar_saldo_inicial",
-    "ver_liquidaciones",
   ],
-  por_edificio: {},
+  // H-017: `ver_liquidaciones` y `corregir_movimiento` se dan por edificio (los escenarios de
+  // `escenarios-liquidacion.ts`), para poder probar que sin ellas no se ofrece nada.
+  por_edificio: ACCIONES_POR_EDIFICIO,
 };
 
 const _RUTAS: Record<string, string> = {
@@ -1041,6 +1044,11 @@ export function crearServidor(
         _ultimaEscritura = escritura;
       })
     ) {
+      return;
+    }
+
+    // change 7 (H-017): la lista de liquidaciones, en el edificio de su contrato (1701).
+    if (id === LISTA_DE_LIQUIDACIONES && responderLista(pedido, respuesta, resto)) {
       return;
     }
 

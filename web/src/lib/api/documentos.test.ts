@@ -21,9 +21,17 @@ const DOCUMENTO_BIEN = {
   motivo: null,
 };
 
-function mockFetch(respuesta: { status: number; cuerpo?: unknown; bytes?: ArrayBuffer }) {
+function mockFetch(respuesta: {
+  status: number;
+  cuerpo?: unknown;
+  bytes?: ArrayBuffer;
+  disposicion?: string;
+}) {
   return vi.fn().mockResolvedValue({
     status: respuesta.status,
+    headers: new Headers(
+      respuesta.disposicion ? { "content-disposition": respuesta.disposicion } : {},
+    ),
     json: async () => respuesta.cuerpo,
     arrayBuffer: async () => respuesta.bytes ?? new ArrayBuffer(0),
   } as unknown as Response);
@@ -162,7 +170,33 @@ describe("descargarDocumento", () => {
     const [url, opciones] = fetchFalso.mock.calls[0] ?? [];
     expect(url).toBe(`http://api-interna:8000/api/documentos/descarga?token=${TOKEN}`);
     expect(opciones?.headers).toBeUndefined();
-    expect(resultado).toEqual({ estado: "ok", datos: bytes });
+    expect(resultado).toEqual({ estado: "ok", datos: bytes, nombre: "expensa.pdf" });
+  });
+
+  it("conserva el nombre que manda la API", async () => {
+    const bytes = new TextEncoder().encode("%PDF-1.7").buffer as ArrayBuffer;
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        status: 200,
+        bytes,
+        disposicion: 'attachment; filename="expensa-2026-11-1b-completa.pdf"',
+      }),
+    );
+    expect(await descargarDocumento(TOKEN)).toEqual({
+      estado: "ok",
+      datos: bytes,
+      nombre: "expensa-2026-11-1b-completa.pdf",
+    });
+  });
+
+  it("un nombre con otra forma no pasa: vuelve a expensa.pdf", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ status: 200, disposicion: 'attachment; filename="../x.pdf"' }),
+    );
+    const resultado = await descargarDocumento(TOKEN);
+    expect(resultado).toMatchObject({ estado: "ok", nombre: "expensa.pdf" });
   });
 
   it.each([

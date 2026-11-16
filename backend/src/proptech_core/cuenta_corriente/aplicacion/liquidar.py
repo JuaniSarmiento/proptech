@@ -95,3 +95,17 @@ def cierres_de_emisiones(
         )
         for f in filas
     }
+
+
+def obligaciones_de_la_emision(sesion: Session, emision_id: UUID) -> dict[UUID, UUID]:
+    """La obligación que el libro registró al emitir, por unidad (H-017). Una unidad sin
+    obligación no figura. Las obligaciones de un cargo cobrado de menos no llevan `emision_id`."""
+    filas = sesion.execute(
+        text(
+            "SELECT DISTINCT ON (c.unidad_id) c.unidad_id, o.id FROM obligacion o "
+            "JOIN cuenta c ON c.id = o.cuenta_id WHERE o.emision_id = :e "
+            "AND c.unidad_id IS NOT NULL ORDER BY c.unidad_id, o.registrada_en DESC"
+        ),
+        {"e": emision_id},
+    )
+    return {UUID(str(f.unidad_id)): UUID(str(f.id)) for f in filas}

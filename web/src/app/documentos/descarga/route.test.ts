@@ -14,11 +14,17 @@ describe("GET /documentos/descarga", () => {
 
   it("entrega el PDF como archivo, sin guardarlo en ninguna caché", async () => {
     const bytes = new TextEncoder().encode("%PDF-1.7").buffer;
-    descargarDocumento.mockResolvedValue({ estado: "ok", datos: bytes });
+    descargarDocumento.mockResolvedValue({
+      estado: "ok",
+      datos: bytes,
+      nombre: "expensa-2026-11-1b-completa.pdf",
+    });
     const respuesta = await GET(new Request(`http://web/documentos/descarga?token=${TOKEN}`));
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("content-type")).toBe("application/pdf");
-    expect(respuesta.headers.get("content-disposition")).toBe('attachment; filename="expensa.pdf"');
+    expect(respuesta.headers.get("content-disposition")).toBe(
+      'attachment; filename="expensa-2026-11-1b-completa.pdf"',
+    );
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     expect(new Uint8Array(await respuesta.arrayBuffer())).toEqual(new Uint8Array(bytes));
     expect(descargarDocumento).toHaveBeenCalledWith(TOKEN);

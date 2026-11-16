@@ -37,6 +37,7 @@ from proptech_core.liquidacion.dominio.documento import (
     VARIANTES,
     html_de_la_expensa,
 )
+from proptech_core.liquidacion.dominio.nombre_de_archivo import nombre_del_pdf
 from proptech_core.liquidacion.puertos import ColaDeDocumentos
 
 _logger = logging.getLogger("proptech_core.liquidacion.aplicacion.documentos")
@@ -331,14 +332,20 @@ def puede_pedir_el_enlace(
         raise SinPermiso(Accion.VER_LIQUIDACIONES.value)
 
 
-def leer_pdf(sesion: Session, *, documento_id: UUID, variante: str) -> bytes | None:
-    """Los bytes archivados de un documento `generado` de esa variante, o `None`."""
+def leer_pdf(sesion: Session, *, documento_id: UUID, variante: str) -> tuple[bytes, str] | None:
+    """Los bytes archivados de un documento `generado` de esa variante y el nombre con el que baja
+    (H-017: período, unidad y variante), o `None`."""
     fila = sesion.execute(
         text(
-            "SELECT p.contenido FROM pdf_de_expensa p JOIN documento_de_expensa d "
-            "ON d.id = p.documento_id WHERE d.id = :id AND d.variante = :v "
-            "AND d.estado = 'generado'"
+            "SELECT p.contenido, l.periodo, i.identificador FROM pdf_de_expensa p "
+            "JOIN documento_de_expensa d ON d.id = p.documento_id "
+            "JOIN liquidacion l ON l.id = d.liquidacion_id "
+            "JOIN linea_de_liquidacion i ON i.liquidacion_id = d.liquidacion_id "
+            "AND i.unidad_id = d.unidad_id "
+            "WHERE d.id = :id AND d.variante = :v AND d.estado = 'generado'"
         ),
         {"id": documento_id, "v": variante},
     ).first()
-    return None if fila is None else bytes(fila[0])
+    if fila is None:
+        return None
+    return bytes(fila[0]), nombre_del_pdf(fila[1], fila[2], variante)

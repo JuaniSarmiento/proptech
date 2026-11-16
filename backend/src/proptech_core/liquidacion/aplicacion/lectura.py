@@ -15,7 +15,11 @@ from sqlalchemy.orm import Session
 
 from proptech_core.acceso.dominio.permisos import Accion, Asignacion, Perfil, puede
 from proptech_core.compartido.dinero import Dinero, sumar
-from proptech_core.cuenta_corriente.aplicacion.liquidar import CierreDeEmision, cierres_de_emisiones
+from proptech_core.cuenta_corriente.aplicacion.liquidar import (
+    CierreDeEmision,
+    cierres_de_emisiones,
+    obligaciones_de_la_emision,
+)
 from proptech_core.liquidacion.dominio.ciclo import (
     ANULADA,
     DISTRIBUIDA,
@@ -134,6 +138,7 @@ def leer_liquidacion(
         .mappings()
         .all()
     ]
+    obligaciones = obligaciones_de_la_emision(sesion, UUID(str(cabecera["emision_id"])))
     unidades = [
         {
             "unidad_id": _uuid(u["unidad_id"]),
@@ -147,6 +152,11 @@ def leer_liquidacion(
             "sin_obligacion": bool(u["sin_obligacion"]),
             "por_grupo": _json(u["por_grupo"]),
             "saldo_anterior": u["saldo_anterior"],
+            "obligacion_id": (
+                None
+                if UUID(str(u["unidad_id"])) not in obligaciones
+                else _uuid(obligaciones[UUID(str(u["unidad_id"]))])
+            ),
         }
         for u in sesion.execute(
             text(

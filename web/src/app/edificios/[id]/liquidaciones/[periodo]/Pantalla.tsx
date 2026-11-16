@@ -12,28 +12,38 @@
  * se dice con un mensaje propio, traducido de su código; nunca un texto de la API (L-007).
  */
 
-import { type ReactNode, useActionState, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import { Ayuda } from "../../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../../componentes/EncabezadoDePantalla";
-import { Campo } from "../../../../../componentes/Formulario";
+import { Campo, CampoDeLista } from "../../../../../componentes/Formulario";
 import { Panel } from "../../../../../componentes/Panel";
 import { PanelLateral } from "../../../../../componentes/PanelLateral";
 import { permite, useSesionDePantalla } from "../../../../../componentes/SesionDePantalla";
 import type { DocumentoDeExpensa } from "../../../../../lib/api/documentos";
 import type {
   BloqueDeGastos,
+  CargoDeLaUnidad,
   ControlAntesDeEmitir,
   EmisionRegistrada,
   EstadoDeLaLiquidacion,
   LiquidacionDeLaLista,
   NivelDeControl,
   Preliquidacion,
-  UnidadPreliquidada,
+  UnidadLiquidada,
 } from "../../../../../lib/api/liquidaciones";
 import { dinero, fecha, porcentaje } from "../../../../../lib/formato";
 import { ArmazonDelEdificio } from "../../Armazon";
 import { AYUDA_PRELIQUIDACION } from "./ayuda";
+import { CONCEPTOS_DEL_CARGO } from "./cargo";
 import { Documentos, type EstadoDeDescarga, type EstadoDeReproceso } from "./Documentos";
 
 export type EstadoEmision = { error?: string; emitida?: EmisionRegistrada } | null;
@@ -42,6 +52,16 @@ type AccionEmitir = (estadoPrevio: EstadoEmision, formData: FormData) => Promise
 
 /** Lo que devuelve distribuir o anular (H-014): el error ya dicho para la pantalla, o lo que quedó. */
 export type EstadoCiclo = { error?: string; hecho?: "distribuida" | "anulada" } | null;
+
+/** Lo que devuelve registrar un cargo cobrado de menos (H-017): el error ya dicho, los errores por
+ * campo o lo que quedó registrado. */
+export type EstadoDelCargo = {
+  error?: string;
+  erroresPorCampo?: Record<string, string>;
+  hecho?: { importe: string; motivo: string };
+} | null;
+
+type AccionDelCargo = (estadoPrevio: EstadoDelCargo, formData: FormData) => Promise<EstadoDelCargo>;
 
 type AccionDelCiclo = (estadoPrevio: EstadoCiclo, formData: FormData) => Promise<EstadoCiclo>;
 
@@ -112,7 +132,7 @@ function CajaConDesplazamiento({ etiqueta, children }: { etiqueta: string; child
   );
 }
 
-function CeldaDeCargos({ unidad }: { unidad: UnidadPreliquidada }) {
+function CeldaDeCargos({ unidad }: { unidad: { cargos_particulares: CargoDeLaUnidad[] } }) {
   if (unidad.cargos_particulares.length === 0) {
     return <>{dinero("0.00")}</>;
   }
@@ -672,6 +692,200 @@ const ESTADOS: Record<EstadoDeLaLiquidacion, string> = {
   anulada: "Anulada",
 };
 
+/** Lo que paga cada unidad en la liquidación emitida, tal como quedó guardado (H-017): también el
+ * saldo anterior. Con `alCargo`, cada unidad con obligación ofrece registrar un cargo cobrado de
+ * menos. Sólo formatea: no suma ni compara montos (R07, D-046). */
+function TablaDeLoQuePagaCadaUnidad({
+  unidades,
+  alCargo,
+}: {
+  unidades: UnidadLiquidada[];
+  alCargo?: (unidad: UnidadLiquidada, boton: HTMLElement) => void;
+}) {
+  return (
+    <Panel
+      titulo="Lo que paga cada unidad"
+      descripcion="Los importes quedaron guardados al emitir: si después cambia un gasto o una categoría, esto no cambia."
+    >
+      <CajaConDesplazamiento etiqueta="Lo que paga cada unidad, con desplazamiento horizontal">
+        <table className="padron-de-unidades padron-de-unidades--envuelto">
+          <caption className="sr-only">Lo que paga cada unidad</caption>
+          <thead>
+            <tr>
+              <th scope="col">Unidad</th>
+              <th scope="col" className="numero-tabular">
+                Ordinaria
+              </th>
+              <th scope="col" className="numero-tabular">
+                Fondo de reserva
+              </th>
+              <th scope="col" className="numero-tabular">
+                Extraordinaria
+              </th>
+              <th scope="col" className="numero-tabular">
+                Cargos particulares
+              </th>
+              <th scope="col" className="numero-tabular">
+                Intereses
+              </th>
+              <th scope="col" className="numero-tabular">
+                Saldo anterior
+              </th>
+              <th scope="col" className="numero-tabular">
+                Total
+              </th>
+              {alCargo ? <th scope="col">Acciones</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {unidades.map((unidad) => (
+              <tr key={unidad.unidad_id}>
+                <td>{unidad.identificador}</td>
+                <td className="numero-tabular">{dinero(unidad.ordinaria)}</td>
+                <td className="numero-tabular">{dinero(unidad.fondo_de_reserva)}</td>
+                <td className="numero-tabular">{dinero(unidad.extraordinaria)}</td>
+                <td className="numero-tabular">
+                  <CeldaDeCargos unidad={unidad} />
+                </td>
+                <td className="numero-tabular">{dinero(unidad.intereses)}</td>
+                <td className="numero-tabular">{dinero(unidad.saldo_anterior)}</td>
+                <td className="numero-tabular">
+                  {dinero(unidad.total)}
+                  {unidad.sin_obligacion ? (
+                    <div className="texto-secundario">Sin obligación este período</div>
+                  ) : null}
+                </td>
+                {alCargo ? (
+                  <td>
+                    {unidad.obligacion_id !== null ? (
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={(e) => alCargo(unidad, e.currentTarget)}
+                      >
+                        Cargo cobrado de menos{" "}
+                        <span className="sr-only">de {unidad.identificador}</span>
+                      </button>
+                    ) : null}
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CajaConDesplazamiento>
+    </Panel>
+  );
+}
+
+/** El diálogo del cargo cobrado de menos (H-017): importe, concepto y motivo de una unidad. Manda el
+ * `POST` de H-014 con la obligación de esa unidad; el importe se convierte por texto en la acción. */
+function DialogoDelCargo({
+  unidad,
+  estado,
+  enviar,
+  alCerrar,
+  devolverFocoA,
+}: {
+  unidad: UnidadLiquidada | null;
+  estado: EstadoDelCargo;
+  enviar: (formData: FormData) => void;
+  alCerrar: () => void;
+  devolverFocoA: RefObject<HTMLElement | null>;
+}) {
+  const [importe, setImporte] = useState("");
+  const [componente, setComponente] = useState("ordinaria");
+  const [motivo, setMotivo] = useState("");
+  const unidadId = unidad?.unidad_id;
+  // Una operación por intento: se reusa mientras los datos no cambian (un reenvío no duplica).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: la clave son justo los datos del intento.
+  const operacionId = useMemo(
+    () => crypto.randomUUID(),
+    [unidadId, importe.trim(), componente, motivo.trim()],
+  );
+
+  // Cada apertura empieza vacía.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: se limpia al cambiar de unidad.
+  useEffect(() => {
+    setImporte("");
+    setComponente("ordinaria");
+    setMotivo("");
+  }, [unidadId]);
+
+  const errores = estado?.erroresPorCampo ?? {};
+  return (
+    <PanelLateral
+      abierto={unidad !== null}
+      titulo={`Cargo cobrado de menos de ${unidad?.identificador ?? ""}`}
+      alCerrar={alCerrar}
+      devolverFocoA={devolverFocoA}
+    >
+      <div className="panel-lateral__seccion">
+        <p>
+          Si a la unidad {unidad?.identificador} le cobraron de menos, se le suma una deuda nueva
+          por la diferencia. Queda registrado con su motivo y no se deshace.
+        </p>
+        <form action={enviar}>
+          <input type="hidden" name="operacion_id" value={operacionId} />
+          <input type="hidden" name="unidad_id" value={unidad?.unidad_id ?? ""} />
+          <input type="hidden" name="obligacion_origen_id" value={unidad?.obligacion_id ?? ""} />
+          <Campo
+            nombre="importe"
+            etiqueta="Importe"
+            name="importe"
+            inputMode="decimal"
+            autoComplete="off"
+            required
+            value={importe}
+            error={errores.importe}
+            onChange={(e) => setImporte(e.target.value)}
+          />
+          <CampoDeLista
+            nombre="componente"
+            etiqueta="Concepto"
+            name="componente"
+            value={componente}
+            error={errores.componente}
+            onChange={(e) => setComponente(e.target.value)}
+          >
+            {CONCEPTOS_DEL_CARGO.map((concepto) => (
+              <option key={concepto.valor} value={concepto.valor}>
+                {concepto.texto}
+              </option>
+            ))}
+          </CampoDeLista>
+          <Campo
+            nombre="motivo"
+            etiqueta="Motivo"
+            name="motivo"
+            autoComplete="off"
+            maxLength={MOTIVO_MAXIMO}
+            required
+            value={motivo}
+            error={errores.motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+          <div className="panel-lateral__acciones">
+            <button type="button" className="boton-secundario" onClick={alCerrar}>
+              Cancelar
+            </button>
+            <ConfirmarCiclo
+              deshabilitado={importe.trim() === "" || motivo.trim() === ""}
+              texto="Confirmar"
+              enCurso="Registrando…"
+            />
+          </div>
+        </form>
+        {estado?.error ? (
+          <p role="alert" className="campo__error">
+            {estado.error}
+          </p>
+        ) : null}
+      </div>
+    </PanelLateral>
+  );
+}
+
 function ConfirmarCiclo({
   deshabilitado,
   texto,
@@ -707,8 +921,14 @@ export function PantallaLiquidacionEmitida({
   documentos,
   accionReprocesar,
   accionDescargar,
+  unidades,
+  accionCargo,
 }: PropsComunes & {
   liquidacion: LiquidacionDeLaLista;
+  /** Lo que paga cada unidad, tal como se guardó (H-017); `null` o ausente si no se pudo leer. */
+  unidades?: UnidadLiquidada[] | null;
+  /** Registrar un cargo cobrado de menos (H-017); sin ella, el botón no se ofrece. */
+  accionCargo?: AccionDelCargo;
   accionDistribuir?: AccionDelCiclo;
   accionAnular?: AccionDelCiclo;
   /** Los documentos de la liquidación (H-015); `null` si no se pudieron leer, `undefined` si la
@@ -730,6 +950,26 @@ export function PantallaLiquidacionEmitida({
     null,
   );
   const [estadoAnular, anular] = useActionState(accionAnular ?? (async () => null), null);
+  const puedeCorregir = accionCargo !== undefined && permite(sesion, "corregir_movimiento", id);
+  const [estadoCargo, registrarCargo] = useActionState(accionCargo ?? (async () => null), null);
+  const [unidadDelCargo, setUnidadDelCargo] = useState<UnidadLiquidada | null>(null);
+  const [cargoRegistrado, setCargoRegistrado] = useState<{
+    unidad: string;
+    importe: string;
+  } | null>(null);
+  const botonDelCargo = useRef<HTMLElement | null>(null);
+
+  // Un cargo registrado cierra el diálogo y se dice en la pantalla.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sólo reacciona a un resultado nuevo.
+  useEffect(() => {
+    if (estadoCargo?.hecho) {
+      setCargoRegistrado({
+        unidad: unidadDelCargo?.identificador ?? "",
+        importe: estadoCargo.hecho.importe,
+      });
+      setUnidadDelCargo(null);
+    }
+  }, [estadoCargo]);
   const [modo, setModo] = useState<"distribuir" | "anular" | null>(null);
   const [motivo, setMotivo] = useState("");
   const ultimoBoton = useRef<HTMLElement | null>(null);
@@ -796,6 +1036,35 @@ export function PantallaLiquidacionEmitida({
           </p>
         ) : null}
       </Panel>
+      {unidades ? (
+        <TablaDeLoQuePagaCadaUnidad
+          unidades={unidades}
+          alCargo={
+            puedeCorregir
+              ? (unidad, boton) => {
+                  botonDelCargo.current = boton;
+                  setCargoRegistrado(null);
+                  setUnidadDelCargo(unidad);
+                }
+              : undefined
+          }
+        />
+      ) : null}
+      {cargoRegistrado ? (
+        <p role="status">
+          Se registró un cargo de {dinero(cargoRegistrado.importe)} a la unidad{" "}
+          {cargoRegistrado.unidad}.
+        </p>
+      ) : null}
+      {puedeCorregir ? (
+        <DialogoDelCargo
+          unidad={unidadDelCargo}
+          estado={estadoCargo}
+          enviar={registrarCargo}
+          alCerrar={() => setUnidadDelCargo(null)}
+          devolverFocoA={botonDelCargo}
+        />
+      ) : null}
       {documentos !== undefined ? (
         <Documentos
           id={id}

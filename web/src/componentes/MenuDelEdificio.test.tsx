@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { sinViolaciones } from "../lib/test/accesibilidad";
 import { Ayuda } from "./Ayuda";
 import { MenuDelEdificio, type SeccionDelEdificio } from "./MenuDelEdificio";
+import { SesionDePantalla, type SesionVisible } from "./SesionDePantalla";
 
 afterEach(cleanup);
 
@@ -119,5 +120,65 @@ describe("MenuDelEdificio", () => {
     await sinViolaciones(container);
     await usuario.click(screen.getByRole("button", { name: "Secciones" }));
     await sinViolaciones(container);
+  });
+});
+
+describe("MenuDelEdificio · secciones por permiso (H-017)", () => {
+  const conLiquidaciones: SeccionDelEdificio[] = [
+    ...secciones,
+    {
+      clave: "liquidaciones",
+      etiqueta: "Liquidaciones",
+      href: "/edificios/1/liquidaciones",
+      grupo: "Liquidación",
+      icono: "liquidaciones",
+      accion: "ver_liquidaciones",
+      complejoId: "1",
+    },
+  ];
+
+  function sesionCon(porEdificio: Record<string, string[]>): SesionVisible {
+    return {
+      datos: {
+        persona: { nombre: "Alguien" },
+        administraciones: [
+          {
+            id: "a",
+            nombre: "A",
+            acciones: { administracion: [], todos_los_edificios: [], por_edificio: porEdificio },
+          },
+        ],
+      },
+      administracionId: "a",
+    };
+  }
+
+  function pintar(sesion: SesionVisible | null) {
+    render(
+      <SesionDePantalla value={sesion}>
+        <MenuDelEdificio seccionActual="resumen" secciones={conLiquidaciones} />
+      </SesionDePantalla>,
+    );
+  }
+
+  it("con el permiso en ese edificio, el link está", () => {
+    pintar(sesionCon({ "1": ["ver_liquidaciones"] }));
+    expect(screen.getByRole("link", { name: "Liquidaciones" }).getAttribute("href")).toBe(
+      "/edificios/1/liquidaciones",
+    );
+  });
+
+  it("sin el permiso, o con el de otro edificio, o sin sesión, no está", () => {
+    for (const sesion of [sesionCon({}), sesionCon({ "2": ["ver_liquidaciones"] }), null]) {
+      cleanup();
+      pintar(sesion);
+      expect(screen.queryByRole("link", { name: "Liquidaciones" })).toBeNull();
+      expect(screen.getByRole("link", { name: /Resumen/ })).toBeTruthy();
+    }
+  });
+
+  it("sin el link no queda el título vacío del grupo", () => {
+    pintar(sesionCon({}));
+    expect(screen.queryByText("Liquidación")).toBeNull();
   });
 });

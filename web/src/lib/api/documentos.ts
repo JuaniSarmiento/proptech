@@ -102,13 +102,16 @@ export function tokenDelEnlace(url: string): string | null {
 }
 
 export type DescargaDelDocumento =
-  | { estado: "ok"; datos: ArrayBuffer }
+  | { estado: "ok"; datos: ArrayBuffer; nombre: string }
   | { estado: "vencido" }
   | { estado: "invalido" }
   | { estado: "fallo" };
 
+const _NOMBRE_DEL_PDF = /^attachment; filename="(expensa-[a-z0-9.-]+\.pdf)"$/;
+
 /** Baja el PDF con el token firmado. Sin sesión: el token es la autorización (E13), así que no se
- * manda ninguna credencial. */
+ * manda ninguna credencial. El nombre del archivo es el que decide la API (H-017: período, unidad y
+ * variante); si no viene con esa forma, `expensa.pdf`. */
 export async function descargarDocumento(token: string): Promise<DescargaDelDocumento> {
   if (!_TOKEN.test(token)) {
     return { estado: "invalido" };
@@ -129,7 +132,8 @@ export async function descargarDocumento(token: string): Promise<DescargaDelDocu
   if (respuesta.status === 403) return { estado: "invalido" };
   if (respuesta.status !== 200) return { estado: "fallo" };
   try {
-    return { estado: "ok", datos: await respuesta.arrayBuffer() };
+    const nombre = _NOMBRE_DEL_PDF.exec(respuesta.headers.get("content-disposition") ?? "")?.[1];
+    return { estado: "ok", datos: await respuesta.arrayBuffer(), nombre: nombre ?? "expensa.pdf" };
   } catch {
     return { estado: "fallo" };
   }

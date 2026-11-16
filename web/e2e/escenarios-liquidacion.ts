@@ -16,6 +16,10 @@
  *   `emitida` en 1401 y `distribuida` en 1402; la preliquidación da 409 `periodo_emitido`, la lista de
  *   liquidaciones trae la suya y `POST .../distribucion` y `.../anulacion` contestan 200 y guardan la
  *   última escritura.
+ * - 1401 ahora trae además `GET liquidaciones/{id}` con `unidades` (H-017, `aceptacion/H-017/CONTRATO.md`);
+ *   1701 la lista con noviembre distribuida y octubre anulada; 1702 y 1703 como 1401 pero sin
+ *   `ver_liquidaciones` y `corregir_movimiento` (1702) o sólo sin `corregir_movimiento` (1703); las
+ *   acciones por edificio salen de `ACCIONES_POR_EDIFICIO`.
  * - 1501 (H-015, `aceptacion/H-015/CONTRATO.md`): noviembre emitido con dos documentos de `1A`, la
  *   completa `generado` y la sin extraordinaria `fallido` ("sin fuentes"); `POST .../reproceso`
  *   contesta 202 y `POST .../enlace` 201, y las dos guardan la última escritura.
@@ -395,21 +399,106 @@ export function responderEmision(
 
 export const CICLO_EMITIDA = "00000000-0000-0000-0000-000000001401";
 export const CICLO_DISTRIBUIDA = "00000000-0000-0000-0000-000000001402";
+/** H-017: la lista con una distribuida y una anulada. */
+export const LISTA_DE_LIQUIDACIONES = "00000000-0000-0000-0000-000000001701";
+/** H-017: como 1401 sin `ver_liquidaciones` ni `corregir_movimiento`. */
+export const EMITIDA_SIN_VER = "00000000-0000-0000-0000-000000001702";
+/** H-017: como 1401 con `ver_liquidaciones` y sin `corregir_movimiento`. */
+export const EMITIDA_SIN_CORREGIR = "00000000-0000-0000-0000-000000001703";
 const _LIQUIDACION_EMITIDA = "00000000-0000-0000-0000-000000014011";
 const _LIQUIDACION_DISTRIBUIDA = "00000000-0000-0000-0000-000000014021";
+const _LIQUIDACION_SIN_VER = "00000000-0000-0000-0000-000000017021";
+const _LIQUIDACION_SIN_CORREGIR = "00000000-0000-0000-0000-000000017031";
+const _LIQUIDACION_DE_LA_LISTA = "00000000-0000-0000-0000-000000017011";
+const _LIQUIDACION_ANULADA = "00000000-0000-0000-0000-000000017012";
+
+const _EMITIDAS = new Set([CICLO_EMITIDA, EMITIDA_SIN_VER, EMITIDA_SIN_CORREGIR]);
 
 export function esEdificioDeCiclo(id: string): boolean {
-  return id === CICLO_EMITIDA || id === CICLO_DISTRIBUIDA;
+  return _EMITIDAS.has(id) || id === CICLO_DISTRIBUIDA;
 }
 
+/** H-017: las acciones que el edificio suma a la sesión (`por_edificio`). Un edificio que no está
+ * acá no suma ninguna: la sesión de la API falsa las trae de a una para poder probar su ausencia. */
+const _VER = "ver_liquidaciones";
+const _CORREGIR = "corregir_movimiento";
+export const ACCIONES_POR_EDIFICIO: Record<string, string[]> = {
+  [PRELIQUIDACION_BASE]: [_VER, _CORREGIR],
+  [PRELIQUIDACION_FONDO_CERO]: [_VER, _CORREGIR],
+  [PRELIQUIDACION_SIN_ANTERIOR]: [_VER, _CORREGIR],
+  [PRELIQUIDACION_CON_CONTROLES]: [_VER, _CORREGIR],
+  [PRELIQUIDACION_CON_BLOQUEANTE]: [_VER, _CORREGIR],
+  [CICLO_EMITIDA]: [_VER, _CORREGIR],
+  [CICLO_DISTRIBUIDA]: [_VER, _CORREGIR],
+  [LISTA_DE_LIQUIDACIONES]: [_VER, _CORREGIR],
+  [EMITIDA_SIN_CORREGIR]: [_VER],
+};
+
 function liquidacionDelCiclo(id: string) {
+  const ids: Record<string, string> = {
+    [CICLO_EMITIDA]: _LIQUIDACION_EMITIDA,
+    [EMITIDA_SIN_VER]: _LIQUIDACION_SIN_VER,
+    [EMITIDA_SIN_CORREGIR]: _LIQUIDACION_SIN_CORREGIR,
+  };
   return {
-    liquidacion_id: id === CICLO_EMITIDA ? _LIQUIDACION_EMITIDA : _LIQUIDACION_DISTRIBUIDA,
+    liquidacion_id: ids[id] ?? _LIQUIDACION_DISTRIBUIDA,
     periodo: "2026-11-01",
-    estado: id === CICLO_EMITIDA ? "emitida" : "distribuida",
+    estado: _EMITIDAS.has(id) ? "emitida" : "distribuida",
     total: "191500.00",
     emitida_en: "2026-11-02T15:00:00+00:00",
   };
+}
+
+/** Lo que paga cada unidad en la emitida (H-017): los importes de la base de H-011, saldo anterior
+ * `0.00`, y la obligación del libro de cada una (`1A`: `...140101`, con la unidad `...140111`). */
+function unidadesDeLaEmitida() {
+  return _UNIDADES.map((u, i) => ({
+    unidad_id: `00000000-0000-0000-0000-00000014011${i + 1}`,
+    identificador: u.identificador,
+    ordinaria: u.ordinaria,
+    fondo_de_reserva: u.fondo_de_reserva,
+    extraordinaria: u.extraordinaria,
+    cargos_particulares: u.cargos_particulares,
+    intereses: u.intereses,
+    saldo_anterior: "0.00",
+    total: u.total,
+    sin_obligacion: false,
+    por_grupo: u.por_grupo,
+    obligacion_id: `00000000-0000-0000-0000-00000014010${i + 1}`,
+  }));
+}
+
+/** `GET liquidaciones` de 1701 (H-017): noviembre distribuida y octubre anulada. */
+function listaDeLaLista() {
+  return [
+    {
+      liquidacion_id: _LIQUIDACION_DE_LA_LISTA,
+      periodo: "2026-11-01",
+      estado: "distribuida",
+      total: "191500.00",
+      emitida_en: "2026-11-02T15:00:00+00:00",
+    },
+    {
+      liquidacion_id: _LIQUIDACION_ANULADA,
+      periodo: "2026-10-01",
+      estado: "anulada",
+      total: "180000.00",
+      emitida_en: "2026-10-02T15:00:00+00:00",
+    },
+  ];
+}
+
+/** Contesta `GET liquidaciones` en 1701 (H-017). `false` si no es de su incumbencia. */
+export function responderLista(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  resto: string,
+): boolean {
+  if ((pedido.method ?? "GET") === "GET" && resto === "liquidaciones") {
+    json(respuesta, 200, listaDeLaLista());
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -437,6 +526,10 @@ export function responderCiclo(
   }
   if (metodo === "GET" && resto === "liquidaciones") {
     json(respuesta, 200, [liquidacionDelCiclo(id)]);
+    return true;
+  }
+  if (metodo === "GET" && resto === `liquidaciones/${liquidacionDelCiclo(id).liquidacion_id}`) {
+    json(respuesta, 200, { ...liquidacionDelCiclo(id), unidades: unidadesDeLaEmitida() });
     return true;
   }
   const accion = /^liquidaciones\/([^/]+)\/(distribucion|anulacion)$/.exec(resto);

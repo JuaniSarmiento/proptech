@@ -280,3 +280,99 @@ export async function anularLiquidacion(
     { metodo: "POST", cuerpo: { motivo } },
   );
 }
+
+/** Una unidad de la liquidación emitida, tal como quedó guardada (H-017). `obligacion_id` es la
+ * obligación que el libro registró al emitir; `null` si la unidad no tuvo obligación. */
+export type UnidadLiquidada = {
+  unidad_id: string;
+  identificador: string;
+  ordinaria: string;
+  fondo_de_reserva: string;
+  extraordinaria: string;
+  cargos_particulares: CargoDeLaUnidad[];
+  intereses: string;
+  saldo_anterior: string;
+  total: string;
+  sin_obligacion: boolean;
+  obligacion_id: string | null;
+};
+
+export type LiquidacionLeida = {
+  liquidacion_id: string;
+  periodo: string;
+  estado: EstadoDeLaLiquidacion;
+  unidades: UnidadLiquidada[];
+};
+
+function unidadLiquidadaValida(u: UnidadLiquidada): boolean {
+  return (
+    esMonto(u.ordinaria) &&
+    esMonto(u.fondo_de_reserva) &&
+    esMonto(u.extraordinaria) &&
+    esMonto(u.intereses) &&
+    esMonto(u.saldo_anterior) &&
+    esMonto(u.total) &&
+    Array.isArray(u.cargos_particulares) &&
+    u.cargos_particulares.every((c) => esMonto(c.importe)) &&
+    (u.obligacion_id === null || esIdValido(u.obligacion_id))
+  );
+}
+
+/**
+ * Una liquidación emitida con lo que paga cada unidad, tal como se guardó (H-017). Un importe que
+ * no es texto con dos decimales es `fallo`. Un id que no es UUID es "no existe", sin pedido.
+ */
+export async function liquidacionEmitida(
+  id: string,
+  liquidacionId: string,
+): Promise<ResultadoApi<LiquidacionLeida>> {
+  if (!esIdValido(id) || !esIdValido(liquidacionId)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<LiquidacionLeida>(
+    `/api/complejos/${encodeURIComponent(id)}/liquidaciones/${encodeURIComponent(liquidacionId)}`,
+  );
+  if (resultado.estado !== "ok") {
+    return resultado;
+  }
+  const { unidades } = resultado.datos;
+  return Array.isArray(unidades) && unidades.every(unidadLiquidadaValida)
+    ? resultado
+    : { estado: "fallo" };
+}
+
+/** Lo que viaja al registrar un cargo cobrado de menos (H-014, E11): el `operacion_id` que eligió la
+ * pantalla, la obligación de origen, el importe como texto con punto decimal, el concepto y el
+ * motivo. */
+export type PedidoDeCargoCobradoDeMenos = {
+  operacion_id: string;
+  obligacion_origen_id: string;
+  importe: string;
+  componente: string;
+  motivo: string;
+};
+
+export type CargoRegistrado = {
+  cargo_id: string;
+  obligacion_id: string;
+  importe: string;
+  componente: string;
+  motivo: string;
+};
+
+/** Registra un cargo cobrado de menos de una unidad con una obligación nueva (H-014). Un 409 o un
+ * 422 llegan como `conflicto` e `invalido`; un id que no es UUID es "no existe", sin pedido. */
+export async function registrarCargoCobradoDeMenos(
+  id: string,
+  unidadId: string,
+  pedido: PedidoDeCargoCobradoDeMenos,
+): Promise<ResultadoApi<CargoRegistrado>> {
+  if (!esIdValido(id) || !esIdValido(unidadId)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<CargoRegistrado>(
+    `/api/complejos/${encodeURIComponent(id)}/unidades/${encodeURIComponent(unidadId)}/cargos-cobrados-de-menos`,
+    { metodo: "POST", cuerpo: pedido, camposDePlata: ["importe"] },
+  );
+  return resultado;
+}

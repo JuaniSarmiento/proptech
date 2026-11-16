@@ -1111,7 +1111,16 @@ D-153).
   `generar_pdf_de_expensa` por `ejecutar_con_corte` y su barrido (`cron_jobs`, cada cinco minutos);
   `GET .../documentos`, el reproceso (202 o 503), el enlace firmado de 15 minutos con
   `PROPTECH_CLAVE_DE_ENLACES` y la descarga pública por token; el código para la transferencia de R19 y
-  la región "Documentos" de la pantalla del período emitido).
+  la región "Documentos" de la pantalla del período emitido). H-017 `pulido de las pantallas de la
+  liquidación` (sin migraciones, salida de la demo con la base real del 16/11/2026: el link
+  "Liquidaciones" del menú del edificio según `ver_liquidaciones`; la página
+  `edificios/[id]/liquidaciones` con la lista de períodos, sus estados en texto y las anuladas sin links, y
+  "Preparar la liquidación de <mes>" con el mes siguiente al último no anulado, o el actual en Mendoza; en la
+  emitida, la tabla "Lo que paga cada unidad" con lo guardado, saldo anterior incluido, y el diálogo "Cargo
+  cobrado de menos de <unidad>" según `corregir_movimiento` sobre el `POST` de H-014; `obligacion_id` por
+  unidad en `GET .../liquidaciones/{id}`, que sale de `cuenta_corriente` por su `aplicacion`; y la descarga
+  del PDF con `Content-Disposition: attachment; filename="expensa-AAAA-MM-<unidad>-<variante>.pdf"`, sin
+  datos personales, que la ruta de Next conserva).
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
@@ -1207,6 +1216,8 @@ D-153).
 | El enlace de una liquidación **anulada** no se bloquea, y pedir un enlace no se audita | Fuera del contrato de H-015; quien va a pedir enlaces a escala es el portal | **11** (portal del vecino) |
 | Las pantallas del 7 (preliquidación, controles, emitir, ciclo y documentos) no pasaron por la skill impeccable | La skill no está instalada en la máquina | Juani instala la skill; la pasada va al **C-26** `pulido-web-3` |
 | La pantalla de la preliquidación no dibuja `por_grupo` (viaja en la API) | No lo pedía ningún criterio | **C-26** |
+| Las pantallas de H-017 (la lista de liquidaciones y el diálogo del cargo cobrado de menos) siguen los componentes existentes y tampoco pasaron por impeccable | La skill no está instalada; el layout a 320 px sólo se probó en la lista, con axe | **C-26** |
+| La API falsa de e2e da `ver_liquidaciones` y `corregir_movimiento` sólo a los edificios de los escenarios del 7 (`ACCIONES_POR_EDIFICIO`), no a todos | Para poder probar su ausencia sin un segundo usuario falso | **C-26** (cuando haya identidades por rol en la API falsa) |
 | `doble_vencimiento_sin_regla` y `bloque_negativo` frenan la emisión con un control duro | R26 (Alberto) y P25 siguen abiertas (D-157) | Alberto (R26) y Juani (P25) |
 | El test de M1 con la última liquidación del piloto al centavo | Faltan los datos del piloto (P1); se corrió con la base de ejemplo | **15** / M1 |
 | `infra/ci/ensayo-roles.sh` con las tablas de la `0041` a la `0043` sin correr en local | Ningún agente corre `infra/ci/*.sh` | El CI del cierre (D-154) |

@@ -456,20 +456,21 @@ def descargar_el_documento(request: Request, token: Annotated[str, Query()]) -> 
         raise HTTPException(status_code=403, detail="enlace_invalido") from None
     sesion = abrir_sesion(request.app.state.fabrica_de_sesiones, enlace.administracion_id)
     try:
-        contenido = documentos.leer_pdf(
+        archivado = documentos.leer_pdf(
             sesion, documento_id=enlace.documento_id, variante=enlace.variante
         )
         sesion.rollback()
     finally:
         sesion.close()
-    if contenido is None:
+    if archivado is None:
         raise HTTPException(status_code=403, detail="enlace_invalido")
+    contenido, nombre = archivado
     return Response(
         content=contenido,
         media_type="application/pdf",
         headers={
             "Cache-Control": "no-store",
-            "Content-Disposition": 'inline; filename="expensa.pdf"',
+            "Content-Disposition": f'attachment; filename="{nombre}"',
             "X-Content-Type-Options": "nosniff",
         },
     )

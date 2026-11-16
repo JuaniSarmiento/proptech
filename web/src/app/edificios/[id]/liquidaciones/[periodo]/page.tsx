@@ -12,11 +12,13 @@ import { Estados } from "../../../../../componentes/Estados";
 import { documentosDeLaLiquidacion } from "../../../../../lib/api/documentos";
 import { edificioPorId } from "../../../../../lib/api/edificios";
 import {
+  liquidacionEmitida,
   liquidacionesDelEdificio,
   preliquidacionDelPeriodo,
 } from "../../../../../lib/api/liquidaciones";
 import { periodoEnPalabras } from "../../../../../lib/formato";
 import { emitirLiquidacionAction } from "./acciones";
+import { cargoCobradoDeMenosAction } from "./cargos";
 import { anularLiquidacionAction, distribuirLiquidacionAction } from "./ciclo";
 import { descargarDocumentoAction, reprocesarDocumentosAction } from "./documentos";
 import {
@@ -87,6 +89,12 @@ export default async function PaginaPreliquidacion({ params }: Props) {
       if (documentos.estado === "sin_sesion") {
         return <Estados tipo="sinSesion" />;
       }
+      // H-017: lo que paga cada unidad, tal como se guardó; si no se puede leer, la pantalla sigue
+      // sin la tabla.
+      const leida = await liquidacionEmitida(id, vigente.liquidacion_id);
+      if (leida.estado === "sin_sesion") {
+        return <Estados tipo="sinSesion" />;
+      }
       return (
         <PantallaLiquidacionEmitida
           id={id}
@@ -98,6 +106,8 @@ export default async function PaginaPreliquidacion({ params }: Props) {
           documentos={documentos.estado === "ok" ? documentos.datos : null}
           accionReprocesar={reprocesarDocumentosAction.bind(null, id, vigente.liquidacion_id)}
           accionDescargar={descargarDocumentoAction.bind(null, id)}
+          unidades={leida.estado === "ok" ? leida.datos.unidades : null}
+          accionCargo={cargoCobradoDeMenosAction.bind(null, id)}
         />
       );
     }

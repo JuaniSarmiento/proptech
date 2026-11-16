@@ -15,7 +15,7 @@ export async function GET(pedido: Request): Promise<Response> {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="expensa.pdf"',
+        "Content-Disposition": `attachment; filename="${resultado.nombre}"`,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
       },
