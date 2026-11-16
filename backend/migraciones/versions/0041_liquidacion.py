@@ -146,6 +146,16 @@ ALTER TABLE alerta_aceptada ADD CONSTRAINT fk_alerta_aceptada_liquidacion FOREIG
 (administracion_id,complejo_id,id);
 ALTER TABLE alerta_aceptada ADD CONSTRAINT fk_alerta_aceptada_persona FOREIGN KEY
 (administracion_id,aceptada_por) REFERENCES persona (administracion_id,id);
+ALTER TABLE categoria_de_liquidacion ADD CONSTRAINT fk_categoria_de_liquidacion_complejo
+FOREIGN KEY (administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
+ALTER TABLE grupo_de_liquidacion ADD CONSTRAINT fk_grupo_de_liquidacion_complejo
+FOREIGN KEY (administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
+ALTER TABLE composicion_de_grupo ADD CONSTRAINT fk_composicion_de_grupo_complejo
+FOREIGN KEY (administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
+ALTER TABLE linea_de_liquidacion ADD CONSTRAINT fk_linea_de_liquidacion_complejo
+FOREIGN KEY (administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
+ALTER TABLE alerta_aceptada ADD CONSTRAINT fk_alerta_aceptada_complejo
+FOREIGN KEY (administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
 """
 
 
