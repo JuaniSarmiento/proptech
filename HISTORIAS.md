@@ -1208,7 +1208,7 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **C03** la liquidación emitida muestra la tabla de lo que paga cada unidad (lo guardado: ordinaria, fondo,
     extraordinaria, cargos, intereses, saldo anterior y total), y la lectura `GET .../liquidaciones/{id}`
     trae el `obligacion_id` de cada unidad con obligación.
-  - **C04** la descarga del PDF trae `Content-Disposition: attachment; filename="expensa-2026-11-1B-completa.pdf"`
+  - **C04** la descarga del PDF trae `Content-Disposition: attachment; filename="expensa-2026-11-1b-completa.pdf"`
     (período, unidad y variante).
   - **C05** en la emitida, cada unidad con obligación tiene "Cargo cobrado de menos" que abre un diálogo con
     importe, concepto y motivo y manda el `POST` de H-014 con su `obligacion_origen_id`.
