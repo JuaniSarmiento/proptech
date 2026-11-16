@@ -491,6 +491,26 @@ def lineas_del_periodo(sesion: Session, complejo_id: UUID, periodo: date) -> lis
     return [dict(f) for f in filas]
 
 
+def gastos_por_resolver_del_periodo(
+    sesion: Session, complejo_id: UUID, periodo: date
+) -> dict[str, list[str]]:
+    """Los ids de los gastos del edificio que todavía no entran en la liquidación del período
+    (`periodo_de_imputacion`, como D10): `en_revision` y `sin_ia`, para los controles de R34 (7).
+    Sólo lectura."""
+    filas = sesion.execute(
+        text(
+            "SELECT estado, id FROM gasto WHERE complejo_id=:complejo "
+            "AND periodo_de_imputacion=:periodo AND estado IN ('en_revision', 'sin_ia') "
+            "ORDER BY id"
+        ),
+        {"complejo": complejo_id, "periodo": periodo},
+    ).all()
+    resultado: dict[str, list[str]] = {"en_revision": [], "sin_ia": []}
+    for estado, gasto_id in filas:
+        resultado[str(estado)].append(str(gasto_id))
+    return resultado
+
+
 def obligatorios_faltantes(sesion: Session, complejo_id: UUID, periodo: date) -> dict[str, Any]:
     """D7/D-141: qué categorías de gasto mensual obligatorio no tienen un
     gasto aprobado en este período. Sólo lectura, nunca bloquea nada (D10:

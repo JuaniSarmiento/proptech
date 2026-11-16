@@ -15,11 +15,16 @@ from sqlalchemy.orm import Session
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.porcentaje import Porcentaje
 from proptech_core.complejos.aplicacion import categorias, grupos, unidades
-from proptech_core.complejos.aplicacion.lectura import configuracion_vigente
+from proptech_core.complejos.aplicacion.lectura import cargar_complejo, configuracion_vigente
 from proptech_core.cuenta_corriente.aplicacion.liquidar import intereses_a_cobrar, periodos_emitidos
 from proptech_core.gastos.aplicacion.cargos_particulares import cargos_aprobados_del_periodo
-from proptech_core.gastos.aplicacion.gastos import lineas_del_periodo
+from proptech_core.gastos.aplicacion.gastos import (
+    gastos_por_resolver_del_periodo,
+    lineas_del_periodo,
+    obligatorios_faltantes,
+)
 from proptech_core.liquidacion.aplicacion.errores import Conflicto, EntradaInvalida
+from proptech_core.liquidacion.dominio.controles import ContextoDeControles, InformeDeGrupo
 from proptech_core.liquidacion.dominio.periodos import motivo_de_rechazo
 from proptech_core.liquidacion.dominio.preliquidacion import (
     CargoParticular,
@@ -77,6 +82,37 @@ def _grupos(sesion: Session, complejo_id: UUID) -> list[GrupoDelEdificio]:
     ]
 
 
+def _contexto_de_controles(
+    sesion: Session, complejo_id: UUID, periodo: date, version: dict[str, Any]
+) -> ContextoDeControles:
+    """Lo que necesitan los controles de R34, leído por la `aplicacion` de cada dueño. Sólo
+    cuentan Generales y los grupos activos con coeficientes propios (D-100)."""
+    complejo = cargar_complejo(sesion, complejo_id)
+    if complejo is None:  # pragma: no cover - el router ya lo cargó
+        raise Conflicto("complejo", "no_encontrado")
+    informes = tuple(
+        InformeDeGrupo(
+            str(g["id"]),
+            g["nombre"],
+            g["informe"]["suma"],
+            g["informe"]["diferencia"],
+            g["informe"]["estado"],
+        )
+        for g in grupos.listar_grupos(sesion, complejo_id, solo_activos=True)
+        if g["informe"] is not None
+    )
+    por_resolver = gastos_por_resolver_del_periodo(sesion, complejo_id, periodo)
+    faltantes = obligatorios_faltantes(sesion, complejo_id, periodo)["faltantes"]
+    return ContextoDeControles(
+        estado_migracion=complejo.estado_migracion,
+        informes=informes,
+        modalidad_de_vencimiento=str(version["modalidad_de_vencimiento"]),
+        gastos_en_revision=tuple(por_resolver["en_revision"]),
+        gastos_sin_ia=tuple(por_resolver["sin_ia"]),
+        categorias_faltantes=tuple((str(c["id"]), str(c["nombre"])) for c in faltantes),
+    )
+
+
 def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) -> dict[str, Any]:
     """El cuerpo de la preliquidación de `periodo` (día 1). Rechaza con `Conflicto` si el período
     ya está emitido o si el anterior no lo está (R40), o si el edificio no tiene configuración
@@ -122,6 +158,7 @@ def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) ->
         lineas=lineas,
         cargos=cargos,
         intereses=intereses_a_cobrar(sesion, complejo_id=complejo_id, periodo=periodo),
+        contexto_de_controles=_contexto_de_controles(sesion, complejo_id, periodo, version),
     )
     try:
         return preliquidar(datos)
