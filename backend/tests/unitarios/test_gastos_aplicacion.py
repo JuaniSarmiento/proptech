@@ -49,7 +49,10 @@ def sesion_gasto(monkeypatch: pytest.MonkeyPatch, fila: dict[str, Any]) -> Magic
     resultado = MagicMock()
     resultado.mappings.return_value.first.return_value = fila
     resultado.scalar_one.return_value = "60.00"
+    resultado.scalar_one_or_none.return_value = fila["complejo_id"]
     sesion.execute.return_value = resultado
+    # E5 (7, H-013): aprobar toma el candado del período; acá el edificio existe y se bloquea.
+    monkeypatch.setattr(gastos, "cargar_complejo", lambda *_, **__: MagicMock())
     monkeypatch.setattr(gastos, "_validar_pertenencia", lambda *_: None)
     monkeypatch.setattr(gastos, "registrar", lambda *_, **__: None)
     return sesion

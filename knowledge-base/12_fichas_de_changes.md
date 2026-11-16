@@ -1078,10 +1078,49 @@ D-153).
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
 - **Permisos y lecturas (D-106)**: emite y distribuye el super admin y todo administrador del edificio;
   anular o aceptar alertas bloqueantes requiere super admin o administrador principal. Contador y
-  consejo leen dentro de su alcance, sin escribir (P39 sigue abierta). El propietario ve ambas
+  consejo leen dentro de su alcance, sin escribir (P39, resuelta en D-157: el consejo no ve lo emitido sin
+  distribuir). El propietario ve ambas
   expensas; el inquilino sólo ordinarias, también en su PDF y links de descarga. Probar que el filtro
   no dependa del navegador ni exponga extraordinarias por descarga directa.
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
+- **Construido con Rein**: H-011 `preliquidación sin efectos` (módulo `liquidacion`, la ruta
+  `.../preliquidacion`, el interés a cobrar sin candados extraído de la emisión, la migración `0040` con el
+  índice de `grupo_unidad` por edificio y la pantalla `liquidaciones/[AAAA-MM]`); H-012 `controles antes de
+  emitir` (la lista `controles` de la preliquidación con los siete controles de R34 del 7, cada uno con
+  nivel, mensaje y detalle, calculados en `liquidacion/dominio/controles.py` con lecturas de `complejos` y
+  `gastos`, sin escribir, y su región en la pantalla; `bloque_negativo` y `doble_vencimiento_sin_regla` son
+  los dos nuevos, factura duplicada la garantiza `uq_gasto_factura`). H-013 `emitir lo revisado` (`POST .../periodos/{AAAA-MM-01}/emision` con `emision_id`, `huella`,
+  `alertas_aceptadas` y, opcional, el vencimiento corrido con su motivo; la migración `0041` con las seis
+  tablas de lo emitido y la acción `ver_liquidaciones`; el candado del período compartido con aprobar un
+  gasto y el adaptador real de `es_periodo_emitido`; `GET .../liquidaciones/{id}` con lo guardado; el botón
+  "Emitir liquidación" con su confirmación en la pantalla). H-014 `distribuir, anular y cargo cobrado de
+  menos` (la migración `0042`: el evento `distribuida` con su origen y la tabla `cargo_cobrado_de_menos`,
+  y con ella el préstamo de propiedad de D-115.3 para poder alterar `evento_de_emision`; el puerto
+  `registrar_distribucion`; `GET .../liquidaciones` con el estado real y sin lo no distribuido para el
+  consejo; `POST .../distribucion`; `POST .../anulacion` con motivo, su 409 por período siguiente emitido
+  (P26) y D8 en el estado de la cuenta; `POST .../cargos-cobrados-de-menos`; y "Distribuir" y "Anular" en la
+  pantalla del período emitido). H-016 `corte del lado de la base para las tareas del worker`
+  (cierra F2c, D-158: `proptech_worker.corte.ejecutar_con_corte` fija `statement_timeout`, `lock_timeout` e
+  `idle_in_transaction_session_timeout` con `SET LOCAL` y verifica el plazo antes de confirmar; un corte
+  revierte y se reintenta como `CorteDeLaBase`; `COTA_OPERACION_S` desaparece y cada tarea declara su
+  cota). H-015 `PDF de la expensa y links firmados` (la migración `0043`: `documento_de_expensa`, con su
+  estado, y `pdf_de_expensa`, de sólo agregar y con el PDF archivado, más la política del barrido; dos
+  documentos por unidad con obligación, `completa` y `sin_extraordinaria`, creados al emitir y encolados
+  **después** del commit, con la emisión en 201 aunque la cola falle; `generar_documento` arma el HTML
+  desde lo guardado, lo pasa a PDF con WeasyPrint y archiva bytes y SHA-256; la tarea
+  `generar_pdf_de_expensa` por `ejecutar_con_corte` y su barrido (`cron_jobs`, cada cinco minutos);
+  `GET .../documentos`, el reproceso (202 o 503), el enlace firmado de 15 minutos con
+  `PROPTECH_CLAVE_DE_ENLACES` y la descarga pública por token; el código para la transferencia de R19 y
+  la región "Documentos" de la pantalla del período emitido). H-017 `pulido de las pantallas de la
+  liquidación` (sin migraciones, salida de la demo con la base real del 16/11/2026: el link
+  "Liquidaciones" del menú del edificio según `ver_liquidaciones`; la página
+  `edificios/[id]/liquidaciones` con la lista de períodos, sus estados en texto y las anuladas sin links, y
+  "Preparar la liquidación de <mes>" con el mes siguiente al último no anulado, o el actual en Mendoza; en la
+  emitida, la tabla "Lo que paga cada unidad" con lo guardado, saldo anterior incluido, y el diálogo "Cargo
+  cobrado de menos de <unidad>" según `corregir_movimiento` sobre el `POST` de H-014; `obligacion_id` por
+  unidad en `GET .../liquidaciones/{id}`, que sale de `cuenta_corriente` por su `aplicacion`; y la descarga
+  del PDF con `Content-Disposition: attachment; filename="expensa-AAAA-MM-<unidad>-<variante>.pdf"`, sin
+  datos personales, que la ruta de Next conserva).
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
@@ -1140,7 +1179,7 @@ D-153).
   bloqueantes: F12b (el `sys.excepthook` del worker no cubre una excepción de terceros envuelta por
   otra capa) y que `repr(RedisSettings)` no muestre la contraseña (no se demostró que llegue a un log,
   pero tampoco está resuelto). **Actualización del 30/10/2026 (D-138)**: F2c y F12b pasan al **C-25
-  `worker-y-logs`** y `repr(RedisSettings)` al **C-29 `base-y-rls`**; F2c sigue siendo bloqueante del
+  `worker-y-logs`** (F2c, después, la cerró H-016 del 7, D-158) y `repr(RedisSettings)` al **C-29 `base-y-rls`**; F2c sigue siendo bloqueante del
   7 hasta que el C-25 lo cierre.
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
@@ -1168,6 +1207,21 @@ D-153).
   datos reales. Detalle en `openspec/exploraciones/2026-10-22-cimientos-antes-del-4.md`.
 
 ---
+
+### 7 · deuda del cierre (15/11/2026)
+
+| Deuda | Por qué queda | Dueño |
+|---|---|---|
+| `infra/.env.example` sin las líneas comentadas de `PROPTECH_CLAVE_DE_ENLACES` | Una regla de permisos impide que el agente edite ese archivo; la variable ya está en el compose, el README y `08` | Juani, antes de desplegar |
+| El enlace de una liquidación **anulada** no se bloquea, y pedir un enlace no se audita | Fuera del contrato de H-015; quien va a pedir enlaces a escala es el portal | **11** (portal del vecino) |
+| Las pantallas del 7 (preliquidación, controles, emitir, ciclo y documentos) no pasaron por la skill impeccable | La skill no está instalada en la máquina | Juani instala la skill; la pasada va al **C-26** `pulido-web-3` |
+| La pantalla de la preliquidación no dibuja `por_grupo` (viaja en la API) | No lo pedía ningún criterio | **C-26** |
+| Las pantallas de H-017 (la lista de liquidaciones y el diálogo del cargo cobrado de menos) siguen los componentes existentes y tampoco pasaron por impeccable | La skill no está instalada; el layout a 320 px sólo se probó en la lista, con axe | **C-26** |
+| La API falsa de e2e da `ver_liquidaciones` y `corregir_movimiento` sólo a los edificios de los escenarios del 7 (`ACCIONES_POR_EDIFICIO`), no a todos | Para poder probar su ausencia sin un segundo usuario falso | **C-26** (cuando haya identidades por rol en la API falsa) |
+| `doble_vencimiento_sin_regla` y `bloque_negativo` frenan la emisión con un control duro | R26 (Alberto) y P25 siguen abiertas (D-157) | Alberto (R26) y Juani (P25) |
+| El test de M1 con la última liquidación del piloto al centavo | Faltan los datos del piloto (P1); se corrió con la base de ejemplo | **15** / M1 |
+| `infra/ci/ensayo-roles.sh` con las tablas de la `0041` a la `0043` sin correr en local | Ningún agente corre `infra/ci/*.sh` | El CI del cierre (D-154) |
+| Lo visto en la demo del 16/11: el diálogo de emitir denso; la lista muestra "noviembre anulada" y "noviembre distribuida" sin decir que una reemplaza a la otra; la emitida no muestra que el vencimiento se corrió ni por qué; la tabla no se probó con más de cuatro unidades | Pulido, no rompe nada; Juani lo mandó afuera del 7 | **C-26** `pulido-web-3`, junto con la pasada de impeccable |
 
 ## M2 · Cobra
 
@@ -1602,7 +1656,8 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 - **Objetivo**: que el worker no confirme efectos tarde ni esconda errores de terceros, y que los logs
   digan lo que pasó, antes de que el 7 registre su primera tarea con efecto.
 - **Entra**:
-  - F2c (1c): un trabajo agotado por base congelada confirma su efecto cuando la base vuelve
+  - ~~F2c (1c)~~ **cerrada por H-016 del 7 (D-158)**, ya no es de este change: un trabajo agotado por
+    base congelada confirmaba su efecto cuando la base volvía
     (`backend/src/proptech_worker/tareas.py:39-59`, sin `statement_timeout` ni `lock_timeout` en
     `backend/src`). Hoy el patrón sólo lo usa `tarea_de_prueba` (las tareas del 2b usan
     `asyncio.to_thread` y son idempotentes por estado), pero bloquea al 7.
@@ -1617,11 +1672,9 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
     `proptech_api/seguimiento.py:40,50`; `fastapi>=0.143.0,<0.144.0`).
 - **No entra**: `repr(RedisSettings)` con la contraseña: expone un secreto, es CRITICAL y va al C-29
   `base-y-rls`.
-- **Depende de**: 1c y 2b (archivados). **Habilita**: que el 7 registre su primera tarea real sin
-  heredar F2c.
+- **Depende de**: 1c y 2b (archivados). **Habilita**: F2c ya no bloquea al 7 (la cerró H-016, D-158).
 - **Gobernanza**: MEDIUM: worker y logs, sin plata, sin autenticación ni datos de usuario.
-- **Terminado cuando**: F2c tiene un corte del lado de la base y un test que muestra que un trabajo
-  agotado no confirma después; F12b tiene un test por cada forma envuelta; `test_salud_cola_real.py`
+- **Terminado cuando**: (F2c ya cerrada por H-016 del 7, D-158); F12b tiene un test por cada forma envuelta; `test_salud_cola_real.py`
   pasa corrido solo; un log de httpx dice a qué URL y qué respondió; F3b no depende de un atributo
   interno o tiene un test que lo detecte al subir FastAPI.
 
@@ -1821,7 +1874,7 @@ suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 (bloqueante antes de registrar su primera tarea real) |
+| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | **Cerrada por H-016 del 7 (D-158)**: corte del lado de la base en `proptech_worker/corte.py`; antes C-25 `worker-y-logs` (D-138) y, antes, el 7 (bloqueante antes de su primera tarea real) |
 | F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 |
 | `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 7 |
 | F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | resuelto en 1d |

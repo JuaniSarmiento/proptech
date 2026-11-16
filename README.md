@@ -281,6 +281,7 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `CLERK_EMISOR` | API | Obligatoria con clave JWT | sin valor | URL exacta de la instancia de Clerk, sin rutas extra |
 | `CLERK_SECRET_KEY` | Worker, web | Necesaria para enviar invitaciones y para el SDK de Next; nunca en la API | sin valor | Secreto de Clerk, protegido con `SecretStr` en el backend |
 | `INVITACIONES_CLAVE_CIFRADO` | Sólo API | Obligatoria al invitar | sin valor | Clave propia de 32 bytes en base64, `SecretStr`; nunca worker ni web |
+| `PROPTECH_CLAVE_DE_ENLACES` | Sólo API | Obligatoria para descargar los PDF de las expensas | sin valor | Clave propia de 32 caracteres o más (`SecretStr`) con la que la API firma, con HMAC-SHA256, los enlaces de descarga que vencen a los 15 minutos (D-070); sin ella la API arranca igual y no firma enlaces (503); nunca worker ni web |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Web al construir | Necesaria para configurar Clerk en la web | sin valor | Clave publicable; Juani carga la de su instancia |
 | `PROPTECH_URL_PUBLICA` | Worker, web | Necesaria para los enlaces de invitación | sin valor | Base pública de la dirección de regreso |
 

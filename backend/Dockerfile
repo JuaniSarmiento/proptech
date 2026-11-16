@@ -13,6 +13,10 @@ RUN uv sync --locked --no-dev
 
 FROM python:3.14.8-slim-trixie AS final
 WORKDIR /app
+# WeasyPrint (el PDF de la expensa, 7 H-015) dibuja con Pango y necesita una tipografía del sistema.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system proptech && useradd --system --gid proptech --create-home proptech
 COPY --from=build --chown=proptech:proptech /app /app
 ENV PATH="/app/.venv/bin:$PATH"

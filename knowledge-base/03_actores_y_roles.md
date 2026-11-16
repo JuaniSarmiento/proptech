@@ -96,6 +96,18 @@ confirmar los saldos iniciales (`confirmar_saldos_iniciales`) y ajustar un saldo
 menos (`ajustar_saldo_inicial`) son sólo de super admin y administrador principal, como "sin saldos
 previos" y corregir un movimiento.
 
+**Emitir y leer lo emitido** (7, H-013): emitir una liquidación es `emitir_y_distribuir_liquidacion`
+(super admin, administrador principal y administrador del edificio); si al emitir se acepta un bloqueante,
+además hace falta `aceptar_alertas_bloqueantes` (sólo super admin y administrador principal: el
+administrador del edificio recibe 403 con ese permiso faltante). Leer una liquidación ya emitida es la
+acción `ver_liquidaciones` (migración `0041`): super admin, administrador principal y de edificio,
+contador principal y de edificio, y consejo; el auxiliar y los vecinos no. El consejo ve sólo las
+liquidaciones distribuidas (P39, construido en H-014): no ve una emitida sin distribuir, ni en la lista ni
+por id (404); el contador y los administradores ven todas. Anular es `anular_liquidacion` (sólo super
+admin y administrador principal; el administrador del edificio recibe 403); distribuir a mano, la misma
+acción de emitir (`emitir_y_distribuir_liquidacion`); registrar un cargo cobrado de menos, `corregir_movimiento`
+(super admin y administrador principal).
+
 Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
 7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó
 el vínculo y el dominio; los cambios 6, 7 y 11 deben aplicar ese filtro.
@@ -116,6 +128,14 @@ unidad:
 
 Estas dos rutas **no son una decisión de negocio sobre qué queda público**: son endpoints técnicos
 que no tienen por qué pasar por el login, igual que cualquier healthcheck de Compose.
+
+**Una tercera, desde H-015 del 7 (D-070, E13)**: `GET /api/documentos/descarga?token=` (y su par en la
+web, `GET /documentos/descarga`) entrega el PDF archivado de una expensa **sin sesión**, porque el token
+firmado que lleva es la autorización: HMAC-SHA256 con `PROPTECH_CLAVE_DE_ENLACES` sobre administración,
+documento, variante y vencimiento, de 15 minutos. Alterado da 403, vencido 410 y nunca abre una sesión
+de base antes de verificar la firma. Quien lo emite (`POST .../documentos/{id}/enlace`) sí exige
+identidad y decide del lado del servidor quién recibe qué: el propietario las dos variantes del PDF y el
+inquilino sólo la `sin_extraordinaria` (D-106).
 
 **Desde el cierre del 2a (15/10/2026)** existen, entre otras, estas rutas de dominio
 (`backend/src/proptech_api/complejos.py`), y las tres **exigen identidad** (`Depends(identidad_actual)`)
@@ -149,7 +169,8 @@ resuelve la persona real por el token de Clerk** (ya no inyectada salvo en tests
   la administración elegida; `X-Proptech-Administracion` se valida después del token y del vínculo,
   nunca antes.
 - Los **links firmados de D-070** (PDF, comprobantes, facturas) no entraron en el 2b; el design deja
-  escrito que no reemplazan la sesión. Los arma el cambio 7.
+  escrito que no reemplazan la sesión. Los armó el cambio 7 para el PDF de la expensa (H-015, ver
+  "Rutas públicas").
 
 Ya no queda condicionado por P18 (una cuenta por administración, D-096): el vínculo con Clerk es
 único **por administración**, así que la misma persona de Clerk puede tener cuenta en dos

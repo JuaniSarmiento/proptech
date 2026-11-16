@@ -83,6 +83,8 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     # E6: ajustar un saldo inicial es de quien corrige el libro (como `corregir_movimiento`).
     "ajustar_saldo_inicial": (True, True, False, False, False, False, False, False, False),
     "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
+    # liquidacion-y-emision E14: leer lo emitido; el auxiliar y los vecinos no.
+    "ver_liquidaciones": (True, True, True, True, True, False, True, False, False),
 }
 _PERFILES = [
     Asignacion(Rol.SUPER_ADMIN, None),

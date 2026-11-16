@@ -83,12 +83,14 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P25 · Nota de crédito mayor que los gastos del período** en que se carga (factura ya
   liquidada): qué pasa si el reparto daría negativo, y en qué bloque cae si la factura era
   extraordinaria. Antes del cambio 6.
-- [ ] **P26 · Anular un período con el siguiente ya emitido**: si se permite y qué pasa con el
-  siguiente. Antes del cambio 7.
+- [x] **P26 · Anular un período con el siguiente ya emitido**: resuelta por D-157 (15/11/2026) y
+  construida en H-014 del 7: no se anula un período con el siguiente ya emitido (sin anular); 409
+  `periodo_siguiente_emitido`, y primero se anula el siguiente.
 - [ ] **P27 · La bonificación después de anular y volver a emitir**: si el pago que la había ganado la
-  recupera en la nueva emisión. Antes de los cambios 7 y 8.
+  recupera en la nueva emisión. **Pasa al cambio 8** (D-157: la bonificación nace al confirmar un pago).
 - [ ] **P28 · Bonificación y fondo de reserva**: si el descuento también achica el fondo, que se calcula
-  sobre la misma base. Antes del cambio 7.
+  sobre la misma base. **Pasa al cambio 8** (D-157: R37 es propuesta y la bonificación nace al
+  confirmar un pago).
 - [ ] **P29 · Interés sobre un pago revertido o reimputado**: si corre desde el vencimiento original.
   Antes del cambio 8.
 - [ ] **P30 · Un mismo CBU que paga varias unidades** de la misma persona: qué unidad se sugiere. Antes
@@ -111,10 +113,12 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   aprobado, sin reabrir un emitido (D-141; ratificada por Juani en D-142).
 - [x] **P37 · Dónde y quién marca un "gasto mensual obligatorio"**: en la categoría de gasto, no en el
   proveedor ni en el gasto — es la única de las tres que existe antes de que haya gastos (D-141; ratificada por Juani en D-142).
-- [ ] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): la de la
-  transferencia o la de la nueva emisión. Antes del cambio 7.
-- [ ] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye.
-  Antes del cambio 7.
+- [x] **P38 · Con qué fecha se imputa el crédito que vuelve tras una anulación** (R17): resuelta por
+  D-157 (15/11/2026) y verificada en H-014: conserva la fecha de la transferencia (su `fecha_valor`),
+  como ya hacía el libro; la re-emisión no cobra interés por los días en que estaba pagado.
+- [x] **P39 · Si el consejo ve una liquidación emitida y no distribuida**, y si esa vista la distribuye:
+  resuelta por D-157 (15/11/2026) y construida en H-014: no la ve (ni en la lista ni por id: 404) y su
+  vista nunca distribuye; el contador y los administradores ven todas.
 - [ ] **P40 · Número de operación único por complejo**: si la clave incluye el banco, porque dos bancos
   pueden repetir número (R11). Antes del cambio 8.
 - [ ] **P41 · Aviso de mora a un vecino con un pago informado y sin confirmar**. Antes del cambio 13.

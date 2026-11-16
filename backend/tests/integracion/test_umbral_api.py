@@ -1,6 +1,8 @@
 """D-114.1: herencia por fecha y contrato de alta/versiones."""
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -8,6 +10,13 @@ from ._api_edificios import ApiEdificio
 from .test_configuracion_api import CONFIGURACION
 
 pytestmark = pytest.mark.integracion
+
+
+def _en_dias(dias: int) -> str:
+    """Una fecha relativa a hoy en Mendoza: la configuración inicial del alta vigente desde hoy,
+    así el test no choca con ella ningún día que corra."""
+    hoy = datetime.now(UTC).astimezone(ZoneInfo("America/Argentina/Mendoza")).date()
+    return str(hoy + timedelta(days=dias))
 
 
 def test_herencia_inmediatamente_anterior(api_edificio: ApiEdificio) -> None:
@@ -26,16 +35,17 @@ def test_herencia_inmediatamente_anterior(api_edificio: ApiEdificio) -> None:
     )
     assert alta.status_code == 201, alta.text
     ruta = f"/api/complejos/{alta.json()['id']}/configuracion/versiones"
+    f1, f2, f3, f4, f5 = (_en_dias(d) for d in (16, 47, 1, 78, 106))
     casos = [
-        ("2026-12-01", "700.00", "700.00"),
-        ("2027-01-01", None, "700.00"),
-        ("2026-11-15", None, "300.00"),
-        ("2027-02-01", "0.00", "0.00"),
-        ("2027-03-01", "750.00", "750.00"),
+        (f1, "700.00", "700.00"),
+        (f2, None, "700.00"),
+        (f3, None, "300.00"),
+        (f4, "0.00", "0.00"),
+        (f5, "750.00", "750.00"),
     ]
     for fecha, umbral, esperado in casos:
         cuerpo = {**CONFIGURACION, "vigente_desde": fecha}
-        if umbral is not None or fecha == "2027-01-01":
+        if umbral is not None or fecha == f2:
             cuerpo["umbral_saldo_chico"] = umbral
         r = api.cliente.post(ruta, json=cuerpo)
         assert r.status_code == 201, r.text
@@ -60,7 +70,7 @@ def test_umbral_invalido_no_escribe(api_edificio: ApiEdificio, umbral: Any, alta
             "configuracion_inicial": config,
         }
         if alta
-        else {**config, "vigente_desde": "2027-01-01"}
+        else {**config, "vigente_desde": _en_dias(47)}
     )
     ruta = "/api/complejos" if alta else api.ruta("/configuracion/versiones")
     r = api.cliente.post(ruta, json=cuerpo)

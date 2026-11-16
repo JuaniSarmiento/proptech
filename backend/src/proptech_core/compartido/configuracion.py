@@ -54,6 +54,9 @@ _PATRON_ENTERO_ASCII = re.compile(r"[0-9]+", flags=re.ASCII)
 #: no admite dígitos de ningún tipo (ni ASCII ni de otro script, L-008): un nombre
 #: con un dígito queda rechazado por el patrón mismo, sin necesidad de un chequeo
 #: aparte.
+#: Largo mínimo de `PROPTECH_CLAVE_DE_ENLACES` (7, H-015): una clave HMAC de 32 caracteres o más.
+_LARGO_MINIMO_DE_LA_CLAVE_DE_ENLACES = 32
+
 _PATRON_NOMBRE_DE_ROL = re.compile(r"proptech_[a-z_]{1,40}", flags=re.ASCII)
 
 
@@ -211,6 +214,9 @@ class _LectorDeApp(_LectorPostgresComun):
     clerk_secret_key: SecretStr | None = None
     invitaciones_clave_cifrado: SecretStr | None = None
     proptech_url_publica: str | None = None
+    #: 7, H-015 (D-070): firma los enlaces de descarga del PDF de la expensa. Ausente, la API
+    #: arranca igual y no firma enlaces (503); el worker no la necesita.
+    proptech_clave_de_enlaces: SecretStr | None = None
 
     @field_validator("clerk_jwt_key")
     @classmethod
@@ -257,6 +263,15 @@ class _LectorDeApp(_LectorPostgresComun):
                 raise ValueError("se requiere base64 de 32 bytes") from None
             if len(datos) != 32:
                 raise ValueError("se requiere base64 de 32 bytes")
+        return valor
+
+    @field_validator("proptech_clave_de_enlaces")
+    @classmethod
+    def _clave_de_enlaces(cls, valor: SecretStr | None) -> SecretStr | None:
+        if valor is not None:
+            texto = _recortado_sin_cambios(valor.get_secret_value())
+            if len(texto) < _LARGO_MINIMO_DE_LA_CLAVE_DE_ENLACES:
+                raise ValueError("se requieren al menos 32 caracteres")
         return valor
 
     @field_validator("postgres_user")
@@ -482,6 +497,7 @@ class Configuracion(_ConfiguracionPostgresBase):
     clerk_secret_key: SecretStr | None
     invitaciones_clave_cifrado: SecretStr | None
     proptech_url_publica: str | None
+    proptech_clave_de_enlaces: SecretStr | None
 
     def __init__(self) -> None:
         try:
@@ -514,9 +530,16 @@ class Configuracion(_ConfiguracionPostgresBase):
         self.clerk_secret_key = base.clerk_secret_key
         self.invitaciones_clave_cifrado = base.invitaciones_clave_cifrado
         self.proptech_url_publica = base.proptech_url_publica
+        self.proptech_clave_de_enlaces = base.proptech_clave_de_enlaces
 
     def clave_para_invitar(self) -> SecretStr:
         """Exige la clave propia al habilitar invitaciones, sin exigirla al worker (D6)."""
         if self.invitaciones_clave_cifrado is None:
             raise ConfiguracionInvalida("Falta configurar: INVITACIONES_CLAVE_CIFRADO")
         return self.invitaciones_clave_cifrado
+
+    def clave_de_enlaces(self) -> str:
+        """Exige la clave al firmar o verificar un enlace, sin exigirla al arrancar ni al worker."""
+        if self.proptech_clave_de_enlaces is None:
+            raise ConfiguracionInvalida("Falta configurar: PROPTECH_CLAVE_DE_ENLACES")
+        return self.proptech_clave_de_enlaces.get_secret_value()

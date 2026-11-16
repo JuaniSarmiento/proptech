@@ -195,6 +195,13 @@ Como administrador, quiero emitir la liquidación del mes y que cada unidad reci
 **Criterios de aceptación**:
 - Dada una preliquidación revisada, cuando emito, entonces se genera una obligación por unidad y
   período, con su PDF. El aviso por email llega con HU-V6 (cambio 13).
+- Dada la huella de la preliquidación que revisé, cuando emito, entonces se emite exactamente esa
+  preliquidación: si entre la revisión y la emisión cambió algo (un gasto aprobado, un pago), el sistema
+  no emite y me pide revisarla de nuevo (409); lo emitido queda guardado con todo lo que se usó y no
+  cambia si después se renombra una categoría o se cambia el fondo (H-013, R17).
+- Dada una emisión, cuando corro el vencimiento con un motivo, entonces las obligaciones vencen ese día y
+  queda registrada la fecha original, quién, cuándo y por qué; la configuración del edificio no cambia
+  (E8).
 - Dada una liquidación emitida, cuando la distribuyo, entonces queda distribuida y ya no se puede
   anular (D-074).
 - Dado un período ya emitido, cuando intento emitirlo otra vez, entonces el sistema lo impide, salvo que

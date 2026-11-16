@@ -79,5 +79,7 @@ def test_activo_nace_true_sin_backfill_en_mas_de_una_administracion(
             ).fetchall()
             assert filas == [("generales", True), ("parcial", True)]
     finally:
+        # Como el deploy: `antes` presta `evento_de_emision` a la `0042` (D-115.3).
+        base_del_edificio.roles("antes")
         base_del_edificio.migrar("upgrade", "head")
         base_del_edificio.roles("despues")

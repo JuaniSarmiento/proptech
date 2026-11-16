@@ -39,6 +39,9 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
 
 ## R01 · Prorrateo de gastos · Vigente (D-013) · a validar (P42)
 
+- **Dónde vive** (7, H-011): el reparto por grupo y por método, en `liquidacion/dominio/reparto.py`, con
+  `compartido/reparto.py` (mayor resto, orden natural); lo arma `liquidacion/aplicacion/preliquidacion.py`.
+
 - **Grupos de reparto**: cada complejo define sus grupos (por ejemplo "Generales", "Pileta",
   "Obra calle 5"). Cada grupo tiene:
   - las unidades que participan;
@@ -92,6 +95,10 @@ dentro del dominio donde vive hoy. Un mismo número de regla no se repite entre 
   emitir no modifica esa liquidación.
 
 ## R15 · Fondo de reserva · Vigente (D-031)
+
+- **Dónde vive** (7, H-011): `liquidacion/dominio/fondo.py`: el porcentaje de la configuración vigente el
+  primer día del período sobre la suma de las ordinarias prorrateadas, redondeado medio hacia arriba y
+  repartido en proporción a la ordinaria de cada unidad con `repartir`.
 
 - **Configurable por edificio**: un porcentaje sobre la **ordinaria prorrateada** del período (R13). Default: 0%
   (sin fondo de reserva).
@@ -353,8 +360,15 @@ del 3c, D-128)
 - **Qué valida la aplicación, no la base**: blanco corregible (un crédito, no un débito de
   corrección) y sentido opuesto se validan bajo candado y con test; la base no distingue esos casos
   (E6, a validar P42/A-4).
-- **Cargo cobrado de menos**: queda nombrado para el 7 (cargo complementario con motivo y vínculo al
-  origen), no se resuelve en el 4b.
+- **Cargo cobrado de menos** (7, H-014, E11, D-157): se corrige con una **obligación nueva** sin
+  emisión (con su `operacion_id`, como el ajuste de saldo inicial), en el período de la obligación de
+  origen, con el componente que elige el administrador (ordinaria, fondo de reserva o extraordinaria) y
+  vencimiento el día del registro en Mendoza; su interés corre desde el día siguiente (R03). Guarda
+  motivo, vínculo a la obligación de origen, quién y cuándo en `cargo_cobrado_de_menos` (de sólo
+  agregar, migración `0042`). Nunca toca una fila existente. Por `POST
+  /api/complejos/{id}/unidades/{unidad_id}/cargos-cobrados-de-menos`, con el permiso
+  `corregir_movimiento` (super admin y administrador principal), auditado y idempotente por
+  `operacion_id`; un origen de otra unidad o de otro edificio es 404.
 - **Tests mínimos**: un UPDATE o un DELETE sobre un movimiento rebota en la base, también por SQL
   directo; una corrección sin motivo se rechaza; una corrección referencia al movimiento que corrige y
   los dos quedan visibles; el saldo después de una corrección es el correcto; un crédito de corrección
@@ -515,6 +529,9 @@ lectura automática (la columna existe, D-075, pero nada la escribe todavía).
 
 ## R13 · Expensa ordinaria y extraordinaria · Vigente (D-024)
 
+- **Dónde vive** (7, H-011): el reparto de cada bloque (ordinario, extraordinario) por grupo, en el módulo
+  `liquidacion` (`GET /api/complejos/{id}/periodos/{AAAA-MM-01}/preliquidacion`, sin efectos).
+
 **Construido (cambio 6, 29/10/2026)**: la marca ordinario/extraordinario en `gasto` y la lectura
 agregada por grupo con subtotal de cada bloque (D10, `GET .../periodos/{periodo}/gastos-aprobados`),
 pensada para que el cambio 7 la consuma. El reparto en sí (la obligación por unidad) sigue siendo del
@@ -632,8 +649,36 @@ número no se marcan duplicadas entre sí.
   (acción manual del cambio 7), cuando sale el primer email (cambio 13) o cuando un vecino la abre en
   el portal (cambio 11), lo que pase primero. Los tres caminos registran el mismo evento por un único
   puerto.
+- **Emitir** (7, H-013): se emite **lo revisado**. El pedido trae la **huella** de la preliquidación que
+  vio el administrador (SHA-256 de su forma canónica: líneas por unidad, controles, versión de
+  configuración y vencimiento); bajo el candado del período (`FOR UPDATE` sobre la fila de `complejo`,
+  antes que los candados de cuentas) la emisión la recalcula y, si cambió (un gasto aprobado, una nota de
+  crédito, un pago), responde 409 `preliquidacion_cambio` sin escribir nada. Un período sólo tiene una
+  emisión sin anular: otra da 409 `periodo_emitido`; el mismo `emision_id` con el mismo pedido devuelve lo
+  mismo sin duplicar. Todo queda guardado tal como se usó (la liquidación con su huella, versión de
+  configuración, porcentaje de fondo y vencimiento; las categorías con su nombre al emitir; la composición
+  de cada grupo con el coeficiente efectivo; una línea por unidad con la foto del saldo anterior y las
+  alertas aceptadas) y lo emitido nunca se recalcula al leerlo.
 - **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
   error se corrige con un movimiento nuevo (ajuste).
+- **Distribuir y anular** (7, H-014, E9, E10, D-157). El estado de una liquidación sale de un evento de
+  cierre del libro (`evento_de_emision`): sin evento es `emitida`; `distribuida` (con su origen
+  `manual`, `email` o `portal`, una por emisión) o `anulada` (con motivo y responsable), nunca las dos
+  (un índice parcial único de la `0042` lo garantiza en la base). La **distribuida** la registra el
+  puerto único `registrar_distribucion`, idempotente: gana el primero y su origen queda; sobre una
+  anulada da conflicto. La ruta manual (`POST .../liquidaciones/{id}/distribucion`) la pide a quien
+  emite (super admin, administrador principal y de edificio) y responde 409 `ya_distribuida` o
+  `anulada`. **Anular** (`POST .../liquidaciones/{id}/anulacion`, `anular_liquidacion`: sólo super admin
+  y administrador principal) toma el candado del período antes que las cuentas, así que anular y
+  distribuir a la vez dejan una sola de las dos y la otra da 409 (**P26**: no se anula con un período
+  posterior emitido sin anular, 409 `periodo_siguiente_emitido`; primero se anula el siguiente).
+  **D8** (D-157): un crédito de corrección imputado a una obligación de la emisión anulada queda
+  **retenido**: figura como crédito a favor retenido, nunca aplicable, y la re-emisión no lo imputa (la
+  re-emisión suele corregir el mismo error; se reaplica, si hace falta, con una corrección nueva). Un
+  **pago** que estaba imputado vuelve como crédito aplicable con su `fecha_valor` (P38) y la re-emisión
+  lo imputa sin cobrar interés por los días en que estaba pagado. **P39**: el consejo no ve una
+  liquidación emitida sin distribuir (ni en la lista ni por id, 404); el contador y los administradores
+  ven todas.
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
   emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
   anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una
@@ -713,6 +758,29 @@ número no se marcan duplicadas entre sí.
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
   | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos **ordinarios** del período | Bloqueante (duro) | 7 (el 6 expone la consulta) |
 
+  **Lo que construyó el 7 (H-012, D-157)**: siete controles, en este orden fijo y con su nivel:
+  `saldos_iniciales_sin_validar`, `coeficientes_fuera_de_tolerancia`, `bloque_negativo` y
+  `doble_vencimiento_sin_regla` (duros), `gastos_en_revision` (bloqueante), `gastos_sin_ia` y
+  `gasto_mensual_obligatorio_faltante` (advertencias). Dos son nuevos y no están en la tabla de arriba:
+  **`bloque_negativo`** (duro: el neto ordinario o extraordinario de un grupo en el período da menos
+  que cero, p. ej. una nota de crédito de noviembre sobre una factura de octubre; la preliquidación
+  responde 200 igual, y la regla de qué hacer con ese saldo es la P25, abierta) y
+  **`doble_vencimiento_sin_regla`** (duro: la configuración vigente el primer día del período tiene
+  doble vencimiento y R26 todavía no define cómo calcularlo). Los calcula `liquidacion` leyendo por la
+  `aplicacion` de cada dueño, no escriben nada y entran en la huella. **Factura duplicada** no es un
+  control del 7: la garantiza la base con `uq_gasto_factura` (R12), y **ingresos mayores que los
+  gastos** no se construyó (D-157).
+
+  **Emitir con alertas aceptadas** (H-013): el pedido de emitir trae `alertas_aceptadas`, obligatoria (puede
+  ser `[]`), con los códigos de los controles **bloqueantes** que el administrador acepta. Se valida
+  después de la huella y en este orden: un control **duro** activo frena siempre, aunque venga en la lista
+  (422 `control_duro` con sus códigos); la lista tiene que ser **exactamente** el conjunto de bloqueantes
+  activos (falta uno, sobra uno, viene repetido o trae una advertencia o un código que no está activo: 409
+  `alertas_distintas`); aceptar al menos uno exige `aceptar_alertas_bloqueantes` (403 para el administrador
+  del edificio). Una advertencia no se acepta: sólo se muestra. Cada aceptación queda en `alerta_aceptada`
+  (código, mensaje, detalle, quién y cuándo) y la emisión en la auditoría (`emitir_y_distribuir_liquidacion`
+  y, si se aceptó alguno, `aceptar_alertas_bloqueantes`). Un rechazo no escribe nada.
+
   Las filas marcadas como propuesta entran sólo si se valida la regla que revisan.
   La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
   contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no
@@ -742,11 +810,13 @@ número no se marcan duplicadas entre sí.
   vencimiento en un feriado seguido de fin de semana pasa al siguiente día hábil; un día hábil normal
   no se mueve.
 
-## R40 · Los períodos se liquidan en orden · Propuesta (D-071)
+## R40 · Los períodos se liquidan en orden · Vigente (D-157)
 
 - **Qué resuelve**: preliquidar mayo con abril sin emitir rompe los saldos arrastrados (R06) y los
   intereses.
-- **Propuesta**: no se puede preliquidar ni emitir un período si el anterior no está emitido o
+- **Vigente (7, H-011, D-157)**: la preliquidación ya lo aplica (409 `periodo_emitido` y
+  `periodo_anterior_sin_emitir`; "emitido" se lee del libro: una `emision` sin evento `anulada`). Emitir lo
+  aplicará H-013. No se puede preliquidar ni emitir un período si el anterior no está emitido o
   distribuido (una liquidación anulada no cuenta). Única
   excepción: el primer período después de la migración (R09), que arranca desde los saldos
   iniciales confirmados.
@@ -815,7 +885,10 @@ número no se marcan duplicadas entre sí.
 
 - **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
   en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
-  vecino lo use.
+  vecino lo use. **Cómo se arma (7, H-015)**: las **iniciales en mayúscula de las palabras del nombre
+  del edificio** (sin tildes: `Álamos` da `A`; los números también cuentan), un guion y el
+  identificador de la unidad: `Torre Ficticia` y `1B` dan `TF-1B`. Sale en el PDF de la expensa
+  (`liquidacion/dominio/documento.py`), siempre del nombre del edificio al generarlo.
 - **CBU histórico**: cuando el administrador confirma un pago y el CBU de origen se conoce (porque lo
   trae el comprobante o porque el pago se cruzó con el extracto), el sistema lo guarda asociado a esa
   unidad (cambio 8). La sugerencia por CBU aparece al cruzar el extracto (cambio 9): un movimiento del

@@ -22,6 +22,13 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-008 | C-08 5, parte 2 | Los saldos previos quedan en un borrador comparado unidad por unidad, con las diferencias aceptadas | Alta / CRITICAL | Terminada |
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
+| H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Terminada |
+| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Terminada |
+| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Terminada |
+| H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Terminada |
+| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
+| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
+| H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -259,7 +266,7 @@ Criterios comunes a H-001, H-002 y H-003 (cada historia los lleva con su prefijo
 
 ## Changes por partir en historias
 
-- Ninguno: el 4c quedó partido en H-004, H-005 y H-006 (11/11/2026).
+- Ninguno: el 7 quedó partido en H-011 a H-015 (15/11/2026, D-157).
 
 ## Interés, saldo inicial y moroso (4c, C-07c)
 
@@ -788,6 +795,447 @@ suman 1. Los criterios de interfaz se prueban en navegador real con Playwright (
   - **C16** cada escenario de la spec `ajuste-de-saldo-inicial` tiene su test en verde.
 - Demo: ajustar `1A` en el navegador y emitir diciembre para ver el interés de $125,00.
 - Aceptación: **congelada en `8c67e94a93acb71eee37353f8e248ac0704d4bf4`** (firma por adelantado de Juani, revisión técnica del orquestador): 56 tests de backend y 4 en navegador, 60 rojos por aserción sobre `a8a40f0`, 0 errores; regresión H-004 a H-009, KB (incluida una D posterior a D-155 que registre E11) y cobertura en `aceptar.py`. Contrato en `aceptacion/H-010/CONTRATO.md`. **Recongelada en `4c3525e1288837f81e87bb07ea04722956f60e59`** (11/11/2026, por el orquestador): el test de navegador del aviso 403 buscaba `getByRole("alert")` sin acotar y chocaba con el anunciador de rutas de Next (`role="alert"`); ahora se acota por su texto. Lo encontró la tanda 3 de H-007. Ningún otro test cambió.
+
+## Liquidación y emisión (7, C-10)
+
+Propuesta y diseño en `openspec/changes/archive/2026-11-16-liquidacion-y-emision/`. Acuerdo previo D-157 (Juani, 15/11/2026):
+D8 retenido, P26 no, P38 fecha de la transferencia, P39 no, P27 y P28 al 8, R40 adentro, doble vencimiento y
+bloque negativo frenan con un control duro. **Firma CRITICAL por adelantado de Juani** (15/11/2026) en
+`proposal.md`: aprueba E1 a E16 en la recomendación del orquestador; lo que no le cierre en la demo vuelve a
+En proceso (D-094, D-111). Rama `change/liquidacion-y-emision`; sin rompedor (D-152); CI una vez al cerrar (D-154).
+Orden: H-011 → H-012 → H-013 → H-014; H-015 espera la normativa de Mendoza (D-060) y F2c (C-25). **Juani levantó el
+límite de dos historias en Lista para todo el 7** (15/11/2026: "sin pasar por mí, terminalo"): las
+historias se construyen una detrás de otra y las demos se hacen juntas al final. Los
+criterios los escribe el orquestador bajo esa firma, historia por historia.
+
+**Cierre del change (15/11/2026)**: regresión completa una sola vez desde la aceptación de H-015 sobre
+`c448953`: estructurales, aceptaciones de H-004 a H-014 y H-016 desde sus SHA y barrido de migraciones en
+verde. CI del PR #22: la primera corrida (run 43790658588) dio 3 rojos de 3.053 en `backend` (un test de
+acciones por perfil viejo, una fecha fija en `test_umbral_api`, el margen del worker de H-016 por encima del
+`job_timeout`; L-090), arreglados en `62aab4f`; la segunda (run 43792064854) dio los seis jobs en verde.
+Quedan las demos de H-011 a H-016 con Juani, archivar y mergear.
+
+**Base de los ejemplos** (datos inventados): edificio "Torre Ficticia", sin saldos previos confirmado,
+configuración vigente desde el 01/10/2026 con fondo de reserva 5%, vencimiento día 10, único, 3% mensual
+proporcional, gracia 0. Unidades y coeficientes: `1A` 0,30, `1B` 0,30, `2A` 0,25, `2B` 0,15. Grupos:
+"Generales" (las cuatro) y "Ascensor" (`2A` y `2B`, renormalizado: 0,625 y 0,375). Período noviembre de
+2026 (`2026-11`). Gastos aprobados con período de imputación `2026-11`: Limpieza ordinario Generales
+$100.000,00, Abono del ascensor ordinario Ascensor $40.000,00, Pintura extraordinario Generales
+$50.000,00; una nota de crédito de $10.000,00 sobre Limpieza cargada en `2026-11`; un cargo particular
+aprobado de $5.000,00 a `1B` ("Multa"). Además, que **no** entran: un gasto en `borrador` ($999,00), uno
+`sin_ia` ($777,00), uno `en_revision` ($555,00), un gasto aprobado de `2026-10`, uno aprobado de otro
+edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
+
+### H-011 · Preliquidación sin efectos
+
+- Change: C-10 7, parte 1. Reglas: R01, R03, R07, R13, R14, R15, R16, R22, R40; HU-A4; elecciones E1, E2
+  (la preliquidación no se guarda), E3, E4, E15 y E16 de `design.md`.
+- Resultado para Juani: el administrador abre la preliquidación de un período y ve, unidad por unidad, lo
+  que va a pagar (ordinaria por grupo, fondo, extraordinaria, cargos particulares e interés) y los gastos
+  por bloque y categoría; nada de eso escribe en la base, y lo que muestra es lo mismo que después se
+  emite.
+- Alcance: módulo `liquidacion` (dominio puro del reparto, el fondo y la huella), la lectura de interés
+  sin candado en `cuenta_corriente.aplicacion` con la misma función que la emisión, la ruta
+  `GET /api/complejos/{id}/periodos/{AAAA-MM-01}/preliquidacion` (el período como fecha, igual que
+  las rutas de gastos del 6), el índice de DBA-2 y la pantalla
+  `edificios/[id]/liquidaciones/[AAAA-MM]`. Exclusiones: controles (H-012), emitir (H-013), distribuir y
+  anular (H-014), PDF (H-015), pantallas de gastos (6c).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** la base: `1A` ordinaria $27.000,00, fondo $1.350,00, extraordinaria $15.000,00, total
+    $43.350,00; `1B` $27.000,00, $1.350,00, $15.000,00, cargo "Multa" $5.000,00, total $48.350,00; `2A`
+    $47.500,00 ($22.500,00 de Generales y $25.000,00 de Ascensor), $2.375,00, $12.500,00, total
+    $62.375,00; `2B` $28.500,00 ($13.500,00 y $15.000,00), $1.425,00, $7.500,00, total $37.425,00.
+  - **C02** los totales: gastos $190.000,00 menos notas de crédito $10.000,00 más fondo $6.500,00 da lo
+    prorrateado, $186.500,00; más cargos $5.000,00 e intereses $0,00 da el total, $191.500,00, igual a la
+    suma de las unidades.
+  - **C03** mayor resto: un único gasto ordinario Generales de $333,33 (fondo 0%) da `1A` $100,00, `1B`
+    $100,00, `2A` $83,33, `2B` $50,00 (el empate de `1A` y `1B` se resuelve por orden natural).
+  - **C04** grupo parcial: el abono del ascensor no toca a `1A` ni a `1B`; un período con sólo ese gasto
+    deja a `1A` y `1B` en $0,00 con `sin_obligacion: true` y a las otras dos con `false`.
+  - **C05** grupos por superficie y en partes iguales reparten según su método y suman exacto.
+  - **C06** fondo: sobre la ordinaria prorrateada, sin cargos ni intereses (la multa de `1B` no sube su
+    fondo); con 0% el fondo es $0,00 en cada unidad y la pantalla no muestra la fila.
+  - **C07** categorías: dentro de cada bloque, los subtotales por categoría (neto de notas de crédito:
+    Limpieza $90.000,00) suman el bloque, cada uno con su porcentaje y el nombre vigente.
+  - **C08** interés: con una obligación de septiembre de $100.000,00 de `1A` vencida el 10/09 e impaga, la
+    preliquidación de octubre muestra $2.000,00 de interés en `1A`, y en cada caso de esta aceptación el
+    interés por unidad es igual, al centavo, al que registra `registrar_emision` del mismo período justo
+    después.
+  - **C09** la huella: 64 hexadecimales; pedirla dos veces sin cambios da la misma; aprobar un gasto,
+    cargar una nota de crédito o cambiar el fondo la cambia.
+  - **C10** orden (R40): el primer período del edificio se preliquida; con octubre emitido, noviembre sí y
+    diciembre no (409 `periodo_anterior_sin_emitir`); un período ya emitido sin anular da 409
+    `periodo_emitido`; con octubre anulado, octubre se vuelve a preliquidar.
+  - **C11** permisos: super admin, administrador principal y administrador del edificio, 200; contador,
+    consejo y auxiliar, 403; administrador de otro edificio u otra administración, 404; sin sesión, 401.
+  - **C12** pantalla en navegador real: la tabla por unidad con los importes de C01 con separador de miles
+    (`43.350,00`), los bloques por categoría y los totales; a 320 px y 1280 px, con teclado y sin
+    errores de axe.
+  - **C13** regresión: las aceptaciones de H-004 a H-010 desde sus SHA, los tests estructurales del repo,
+    el barrido de migraciones y el ensayo de roles siguen en verde.
+  - **C14** la base de conocimiento: R40 vigente (D-157), R01, R13 y R15 dicen dónde vive el reparto
+    (`liquidacion`), `08` nombra el módulo `liquidacion`, el glosario define preliquidación y huella, y la
+    ficha 7 registra H-011.
+  - **C15** cada escenario de la spec `preliquidacion` tiene un test que corrió y pasó.
+- Tienen que fallar (y la aceptación lo prueba):
+  - **N01** la preliquidación escribe algo: el conteo de filas de **todas** las tablas del esquema es el
+    mismo antes y después de pedirla (también `auditoria`).
+  - **N02** entra un gasto que no es aprobado del período y del edificio, o un cargo en borrador (la base
+    de los ejemplos).
+  - **N03** un período mal escrito (`2026-13-01`, `2026-11-05`, `noviembre`) da 422, no 500.
+  - **N04** la suma de las unidades se aparta un centavo del total (cada caso de C01 a C08 lo verifica).
+- Constructor: Claude Sonnet (`rein-constructor`), elegido por Juani el 15/11/2026.
+- Aceptación aprobada: `dd9e1fb` (por el orquestador bajo la firma por adelantado de Juani del
+  15/11/2026). Comando: `python3 aceptacion/H-011/aceptar.py`. Esperados: 41 de backend y 7 en navegador;
+  antes de construir, 48 rojos, todos por aserción (ruta inexistente, índice faltante, KB).
+  **Vuelta 2** (`72cd09e`, 15/11/2026): dos locators del e2e estaban mal escritos (la región "Ordinaria"
+  también tomaba "Extraordinaria" y el `role="alert"` chocaba con el anunciador de rutas de Next); se
+  corrigieron con `exact: true` y un filtro por texto, sin cambiar lo que se prueba. El contrato suma dos 409
+  que el constructor necesitó (configuración sin definir, grupo sin base de reparto). Lección L-085.
+- Construcción (Sonnet, una tanda): `039cb96` dominio puro (reparto, fondo, huella), `662bc9e` ruta, interés
+  a cobrar sin candados (`calcular_intereses_del_corte`, extraído de `_registrar_intereses` para que la
+  emisión y la preliquidación usen la misma función) y orden de períodos, `934fceb` barridos de rutas y
+  test de la `0040`, `b0ab175` pantalla y API falsa, `b8d6bd9` KB. Ruff, mypy entero, lint, typecheck y
+  vitest limpios según el constructor. La pantalla no pasó por impeccable (no instalada); `por_grupo`
+  viaja en la API pero la pantalla no lo dibuja.
+- Evidencia (15/11/2026): `python3 aceptacion/H-011/aceptar.py --sin-regresion` desde `72cd09e` sobre el
+  código `9b92893`: **41/41 de backend y 7/7 en navegador**, C01 a C12, N01 a N04, C14 y C15 PASA, 0 rojos.
+  C13 queda para el cierre del change (regresión de H-004 a H-010 y barrido de migraciones, por decisión
+  de Juani del 15/11: la regresión larga corre una vez al cerrar).
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-012 · Controles antes de emitir
+
+- Change: C-10 7, parte 2. Reglas: R01, R09, R24, R34, D-075, D-141, D-157; elección E6 de `design.md`.
+- Resultado para Juani: la preliquidación lista los problemas antes de emitir, cada uno con su nivel
+  (duro, bloqueante o advertencia), qué pasa y dónde; nada se escribe por mostrarlos.
+- Alcance: la lista `controles` de la preliquidación (cada uno con `codigo`, `nivel`, `mensaje` y
+  `detalle`) y su bloque en la pantalla. Exclusiones: aceptar alertas y frenar la emisión (H-013); los
+  controles de pagos, extracto y contactos (8, 9 y 13).
+- Dificultad y riesgo: media / CRITICAL.
+- Tienen que pasar:
+  - **C01** `saldos_iniciales_sin_validar` (duro) con la migración `pendiente`; no aparece con
+    `confirmada` ni con `sin_saldos_previos`.
+  - **C02** `coeficientes_fuera_de_tolerancia` (duro): Generales que suma 0,9998 lo dispara nombrando el
+    grupo, la suma y la diferencia; un grupo con coeficientes propios que suma 0,8 lo dispara nombrando
+    ese grupo.
+  - **C03** `bloque_negativo` (duro): con $50.000,00 de gastos ordinarios de Generales en noviembre, una nota
+    de crédito de noviembre de $60.000,00 sobre una factura de octubre de $80.000,00 deja ese bloque en
+    −$10.000,00; el control nombra el grupo y el bloque, y la
+    preliquidación responde 200 (no 500).
+  - **C04** `doble_vencimiento_sin_regla` (duro) con la configuración en "doble".
+  - **C05** `gastos_en_revision` (bloqueante) con la cantidad y los ids; `gastos_sin_ia` (advertencia)
+    con el texto "hay N facturas sin cargar" y N correcto. Ninguno de los dos entra en el cálculo.
+  - **C06** `gasto_mensual_obligatorio_faltante` (advertencia) nombra la categoría; desaparece cuando se
+    aprueba un gasto de esa categoría en el período.
+  - **C07** orden fijo (duros, después bloqueantes, después advertencias) y la huella cambia cuando cambia
+    el conjunto de controles.
+  - **C08** pantalla en navegador real: cada control con su nivel en texto (no sólo color), los duros
+    dicen "no se puede aceptar"; sin errores de axe, a 320 px y con teclado.
+  - **C09** regresión: H-004 a H-011 desde sus SHA y los estructurales en verde.
+  - **C10** la KB: R34 con los controles del 7 y los dos nuevos (bloque negativo, doble vencimiento), y la
+    ficha 7 con H-012.
+- Tienen que fallar:
+  - **N01** un padrón que suma 0,9999 dispara un duro (está dentro de la tolerancia: no aparece).
+  - **N02** un gasto en revisión o sin IA de **otro** edificio dispara un control de este.
+  - **N03** mostrar los controles escribe algo (el conteo de todas las tablas, con todos los controles
+    activos a la vez).
+  - **N04** existe un control `factura_duplicada` o `ingresos_mayores_que_los_gastos` (D-157); y una
+    segunda factura con la misma clave entra en la base (la rechaza `uq_gasto_factura`).
+- Constructor: Claude Sonnet (`rein-constructor`), el mismo que eligió Juani para el 7.
+- Aceptación aprobada: `478705f` (por el orquestador bajo la firma por adelantado de Juani). Comando:
+  `python3 aceptacion/H-012/aceptar.py --sin-regresion` por historia (la regresión, C09, al cierre).
+  Esperados: 18 de backend y 4 en navegador; antes de construir, 21 rojos por aserción y un verde que ya
+  existía (`test_n04_la_factura_duplicada_la_rechaza_la_base`, en `NACEN_VERDES`).
+- Construcción (Sonnet, una tanda): `4b102ac` los siete controles en el dominio (`liquidacion/dominio/
+  controles.py`, puro), `a6248af` las lecturas por la `aplicacion` de cada dueño (`gastos_por_resolver_del_periodo`
+  nueva en gastos), `5ab87b6` la región "Controles antes de emitir" y el escenario 1201, `2621c51` KB. La
+  pantalla no pasó por impeccable. `gastos_sin_ia` usa el singular con N = 1.
+- Evidencia (15/11/2026): `python3 aceptacion/H-012/aceptar.py --codigo 2621c51 --sin-regresion` desde
+  `478705f`: **18/18 de backend y 4/4 en navegador**, C01 a C08, N01 a N04, C10 y SPEC PASA, 0 rojos. C09
+  (regresión) queda para el cierre del change.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-013 · Emitir lo revisado
+
+- Change: C-10 7, parte 3. Reglas: R03, R06, R13, R15, R16, R17, R34, P36, D-069, D-100, D-141, D-157;
+  elecciones E2, E3, E5, E7, E8, E15 de `design.md`.
+- Resultado para Juani: el administrador emite la preliquidación que revisó: cada unidad queda con su
+  obligación en el libro, todo lo usado queda guardado y nada de lo que cambie después lo altera.
+- Alcance: `POST /api/complejos/{id}/periodos/{AAAA-MM-01}/emision` con `emision_id`, `huella`,
+  `alertas_aceptadas` y, opcional, el vencimiento corrido con su motivo; las tablas de E2 (migración
+  nueva); el candado de E5 compartido con aprobar un gasto; el adaptador real de `es_periodo_emitido`; la
+  auditoría; el botón "Emitir" con su confirmación en la pantalla. Exclusiones: distribuir y anular
+  (H-014), PDF (H-015).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** emitir la base: 201; `1A`, `1B`, `2A` y `2B` con una obligación cada una, vencimiento
+    10/11/2026, y `1B` con ordinaria $32.000,00 (prorrateada más la multa), fondo $1.350,00 y
+    extraordinaria $15.000,00.
+  - **C02** lo emitido es lo preliquidado: obligaciones e intereses iguales, al centavo, a la
+    preliquidación con la misma huella (también con la deuda de septiembre de H-011.C08).
+  - **C03** queda guardado: la liquidación con su huella, versión de configuración, porcentaje y
+    vencimiento; las líneas por unidad con el nombre de la categoría; renombrar la categoría o cambiar el
+    fondo después no cambia nada de lo emitido.
+  - **C04** la composición de cada grupo con el coeficiente efectivo usado (Ascensor: 0,625 y 0,375).
+  - **C05** la foto del saldo anterior: una unidad con deuda de octubre la ve guardada, y cobrarle después
+    no cambia la foto.
+  - **C06** vencimiento corrido al 12/11/2026 con motivo: las obligaciones vencen ese día; queda la fecha
+    original, la nueva, quién, cuándo y el motivo; la configuración del edificio no cambia.
+  - **C07** alertas: con `gastos_en_revision` activo, emitir aceptándolo con el administrador principal da
+    201 y deja en `alerta_aceptada` el código, quién y cuándo; con una advertencia activa se emite sin
+    aceptar nada.
+  - **C08** un gasto de noviembre aprobado después de emitir noviembre pasa a diciembre
+    (`periodo_de_imputacion`, P36).
+  - **C09** idempotencia: repetir el pedido con el mismo `emision_id` y el mismo cuerpo devuelve lo mismo
+    sin duplicar nada.
+  - **C10** permisos: super admin, principal y administrador del edificio 201; contador, consejo y
+    auxiliar 403; otro edificio u otra administración 404; sin sesión 401. Una auditoría por emisión.
+  - **C11** pantalla en navegador real: "Emitir" pide confirmación, ofrece aceptar los bloqueantes
+    aceptables y no ofrece aceptar un duro; sin errores de axe.
+  - **C12** regresión: H-004 a H-012 desde sus SHA, el ensayo de roles con las tablas nuevas, el barrido
+    de migraciones y los estructurales.
+  - **C13** la KB: R13, R15, R16, R17 y R34 con lo construido, `04` y `08` con las tablas nuevas, HU-A5
+    y la ficha 7 con H-013.
+- Tienen que fallar:
+  - **N01** emitir con una huella vieja (un gasto aprobado en el medio): 409 `preliquidacion_cambio` y
+    nada escrito.
+  - **N02** emitir con un duro activo, aunque venga en `alertas_aceptadas`: 422 y nada escrito.
+  - **N03** aceptar de menos (falta un bloqueante activo) o de más (un código que no está activo): 409 y
+    nada escrito.
+  - **N04** el administrador del edificio acepta un bloqueante: 403 y nada escrito.
+  - **N05** emitir otra vez el mismo período con otro `emision_id`: 409 `periodo_emitido`.
+  - **N06** dos emisiones del mismo período en paralelo: una 201, la otra 409, una sola obligación por
+    unidad.
+  - **N07** aprobar un gasto del período y emitir en paralelo: el gasto nunca queda en un período emitido
+    sin estar liquidado (o entra en la liquidación o su período de imputación pasa a diciembre).
+  - **N08** vencimiento corrido sin motivo o a una fecha anterior al período: 422.
+  - **N09** una unidad con `sin_obligacion` recibe una obligación en $0,00.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `68729fc` (por el orquestador bajo la firma por adelantado de Juani). Contrato en
+  `aceptacion/H-013/CONTRATO.md`: la ruta `POST .../periodos/{AAAA-MM-01}/emision`, la lectura
+  `GET .../liquidaciones/{id}` con el permiso nuevo `ver_liquidaciones` y la migración `0041`. Comando:
+  `python3 aceptacion/H-013/aceptar.py --sin-regresion`. Esperados: 36 de backend y 5 en navegador; antes de
+  construir, 41 rojos por aserción.
+- **Vuelta 2** (`af84436`, 15/11/2026): la base de ejemplos heredada de H-011 traía un gasto en revisión
+  que desde H-012 es un bloqueante (los tests que emiten la base sin aceptar nada no podían pasar junto con
+  N03), y el ciclo de la `0041` compartía la base de migraciones de su módulo. Se sacó el gasto de la base y
+  el ciclo pasó a `test_h013_migracion.py`; lo que se prueba no cambia. Lección L-086. Los detectó el
+  constructor y los pidió corregir sin tocar `aceptacion/`.
+- Construcción (Sonnet, una tanda): `f05d22e` dominio puro de emitir, `28a9394` permiso `ver_liquidaciones`,
+  `be48ac0` migración `0041` (seis tablas protegidas, D-159), `f218494` emitir y leer, `5fbdc5f` web,
+  `0975ca5` KB, `fd17bff` y `95f5379` FKs de las tablas hijas a `complejo`. `aprobar_gasto` toma el candado
+  del `complejo` y recibe el `es_periodo_emitido` real desde `proptech_api`. Fuera del contrato: el replay
+  responde 200, el mismo `emision_id` con otro cuerpo da 409 `emision_id_repetido`, y si el interés del libro
+  difiere del preliquidado vuelve todo con 409 `preliquidacion_cambio`. `emitir_liquidacion` no lleva
+  `@accion_sensible` (la aceptación verifica las filas de auditoría). La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-013/aceptar.py --codigo 95f5379 --sin-regresion` desde
+  `af84436`: **36/36 de backend y 5/5 en navegador**, C01 a C11, N01 a N09, C13 y SPEC PASA, 0 rojos. C12
+  (regresión) queda para el cierre del change.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-014 · Distribuir, anular y cargo cobrado de menos
+
+- Change: C-10 7, parte 4. Reglas: R08, R17, P26, P38, P39, D-073, D-074, D-079, D-081, D-123 (D8),
+  D-124, D-157; elecciones E9, E10, E11, E14 de `design.md`.
+- Resultado para Juani: una liquidación emitida se distribuye y desde ahí no se anula; mientras no esté
+  distribuida se puede anular con motivo y la deuda vuelve a como estaba; un cargo cobrado de menos se
+  corrige con una deuda nueva con motivo.
+- Alcance: el evento `distribuida` (migración), el puerto `registrar_distribucion`, las rutas de
+  distribuir, anular y cargo cobrado de menos, la lectura de liquidaciones por rol, D8 en el estado de la
+  cuenta y sus pantallas. Exclusiones: distribuir por email (13) o por el portal (11), que sólo llaman al
+  puerto.
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** distribuir una emitida: queda distribuida con origen `manual`, quién y cuándo, y se audita.
+  - **C02** el puerto es idempotente: llamarlo desde `portal` y después desde `email` deja un solo evento,
+    con el origen del primero.
+  - **C03** anular una emitida con motivo: queda anulada con motivo y responsable; el saldo de cada unidad
+    es igual al de antes de emitir; ninguna fila de `movimiento`, `obligacion` ni `imputacion` cambia ni
+    se borra.
+  - **C04** anular y volver a emitir el período no cobra dos veces ni la expensa ni el interés.
+  - **C05** un pago imputado a la emisión anulada vuelve como crédito a favor con su fecha de
+    transferencia, y la re-emisión lo imputa sin cobrar interés por los días en que estaba pagado (P38).
+  - **C06** D8: un crédito de corrección imputado a una obligación de la emisión anulada queda retenido:
+    no figura como crédito a favor ni se imputa en la re-emisión.
+  - **C07** cargo cobrado de menos de $1.500,00 sobre la obligación de noviembre de `1A`: obligación nueva
+    con su motivo y su vínculo a la de origen, interés desde el día siguiente a su vencimiento, auditado.
+  - **C08** permisos: anular, super admin y principal (administrador del edificio 403); distribuir,
+    super admin, principal y administrador del edificio; el consejo ve las distribuidas y no ve una
+    emitida sin distribuir (P39); el contador ve las dos.
+  - **C09** pantalla en navegador real: "Distribuir" y "Anular" con confirmación, el motivo obligatorio y
+    el estado de la liquidación en texto; sin errores de axe.
+  - **C10** regresión: H-004 a H-013 desde sus SHA, las aceptaciones del 4b y el 4c que tocan el estado de
+    la cuenta, el ensayo de roles y el barrido de migraciones.
+  - **C11** la KB: R17 con distribuida, P26 y D8; R08 con el cargo cobrado de menos; P26, P38 y P39
+    resueltas en `10`; la ficha 7 con H-014.
+- Tienen que fallar:
+  - **N01** anular una distribuida: 409 y nada escrito.
+  - **N02** anular sin motivo o con motivo en blanco: 422.
+  - **N03** anular una ya anulada: 409.
+  - **N04** anular octubre con noviembre emitido sin anular: 409 (P26).
+  - **N05** distribuir una anulada, o distribuir dos veces a mano: 409.
+  - **N06** anular y distribuir en paralelo: queda una sola de las dos, nunca las dos.
+  - **N07** cargo cobrado de menos con importe 0 o negativo (422), sin motivo (422), o con una obligación
+    de origen de otra unidad o de otro edificio (404).
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `280417d`. Contrato en `aceptacion/H-014/CONTRATO.md` (distribuir, anular, el puerto
+  `registrar_distribucion`, la lista de liquidaciones por rol, el cargo cobrado de menos y la migración
+  `0042`). Comando: `python3 aceptacion/H-014/aceptar.py --sin-regresion`. Esperados: 24 de backend y 4 en
+  navegador; antes de construir, 27 rojos por aserción (sobre el código con H-013).
+- **Vuelta 2** (`6a7280b`): C04 contaba obligaciones con una ayuda que exige una por unidad, y dos e2e de C09
+  leían la última escritura sin esperarla (carrera). Lo que se prueba no cambia. Lecciones L-087 y L-088.
+- Construcción (Sonnet, una tanda): `b83ca00` el préstamo de propiedad de D-115.3 (D-161), `ce0bafe` a
+  `2ed0a36` la `0042` (`distribuida` con origen, índice único parcial que impide anulada y distribuida a la
+  vez, tabla `cargo_cobrado_de_menos`), D8 en una línea del paso 5 de `estado.py`, distribuir, anular, la
+  lista y la lectura por rol, el cargo cobrado de menos, los barridos de rutas, la web y la KB. Además el
+  orquestador exceptuó el nivel de un control del test de vocabulario (`ea93de2`). `ensayo-roles.sh` queda
+  sin correr hasta el CI. La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-014/aceptar.py --codigo 2ed0a36 --sin-regresion` desde
+  `6a7280b`: **24/24 de backend y 4/4 en navegador**, C01 a C09, N01 a N07, C11 y SPEC PASA, 0 rojos. C10
+  (regresión) queda para el cierre. **Para la demo**: D-161 (préstamo de propiedad) es seguridad de la
+  base y lo revisa Juani.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-016 · Corte del lado de la base para las tareas del worker (F2c)
+
+- Change: C-10 7 (D-158, F2c del 1c, antes en el C-25). Va antes de H-015.
+- Resultado para Juani: una tarea del worker que toca la base (la primera real es el PDF) tiene su propio
+  límite de tiempo **en la base**: si la base se traba, la tarea se corta y no confirma nada, ni siquiera
+  cuando la base vuelve; un reintento posterior la hace una sola vez.
+- Alcance: `proptech_worker/corte.py` con `ejecutar_con_corte` (sesión con `statement_timeout`,
+  `lock_timeout` e `idle_in_transaction_session_timeout` locales a la transacción, una cota por tarea y un
+  chequeo del plazo antes de confirmar), la tarea de prueba pasando por ahí, sin `COTA_OPERACION_S`.
+  Exclusiones: F12b, los logs y F3b (siguen en el C-25).
+- Dificultad y riesgo: media / HIGH (el worker va a mover documentos de plata).
+- Tienen que pasar:
+  - **C01** dentro del efecto, `statement_timeout`, `lock_timeout` e `idle_in_transaction_session_timeout`
+    valen la cota de la tarea (500 ms para una cota de 0,5 s), y fuera de la transacción vuelven a su valor.
+  - **C02** con la clave tomada por otra transacción sin confirmar, la tarea se corta en menos de 3 s con
+    `CorteDeLaBase` (un `ErrorPasajero`) y, liberada la clave, no quedó ninguna fila suya.
+  - **C03** un reintento después del corte confirma el efecto una sola vez, y otro más devuelve `False`.
+  - **C04** la tarea de prueba usa `ejecutar_con_corte` y `COTA_OPERACION_S` ya no existe.
+  - **C05** la KB: la ficha 1f dice que F2c lo cerró H-016 del 7 (D-158) y la ficha 7 registra H-016.
+- Tienen que fallar:
+  - **N01** un efecto lento (`pg_sleep` del triple de la cota) confirma: tiene que cortarse sin fila.
+  - **N02** un efecto que termina en Python después del plazo (sin sentencia lenta) confirma: tiene que
+    revertirse sin fila.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `b7b526a`. Comando: `python3 aceptacion/H-016/aceptar.py --sin-navegador`. Esperados: 5
+  de backend; antes de construir, 5 rojos por aserción (falta `proptech_worker.corte`) y C05 sin la KB.
+- Construcción (Sonnet, una tanda): `62eb6d4` `proptech_worker/corte.py` (`ejecutar_con_corte` con los tres
+  timeouts locales por `set_config(..., true)`, el plazo verificado antes de confirmar y `CorteDeLaBase`), la
+  tarea de prueba por el corte con `COTA_TAREA_DE_PRUEBA_S`; `test_zz_rompedor_v3_agotada_con_efecto.py` deja
+  de ser `xfail` (F2c resuelta); `5644b2f` fichas 1f y 7 y C-25 en `CHANGES.md`.
+- Evidencia (15/11/2026): `python3 aceptacion/H-016/aceptar.py --codigo 5644b2f --sin-navegador` desde
+  `b7b526a`: **5/5**, C01 a C05, N01 y N02 PASA, 0 rojos.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-015 · PDF de la expensa y links firmados
+
+- Change: C-10 7, parte 5. Reglas: R19, D-047 (punto 7), D-060, D-070, D-106; CCyC art. 2067 inc. i
+  (archivo de las liquidaciones); elecciones E12 y E13 de `design.md`. **Después de H-016** (F2c, D-158): el worker ya tiene corte del lado de la base.
+- Resultado para Juani: cada unidad tiene el PDF de su expensa, generado por el worker aunque Redis falle
+  al emitir, guardado sin cambios, y se descarga sólo con un link firmado que vence.
+- Alcance: `documento_de_expensa` con su estado, el encolado después del commit, el barrido que reencola,
+  la tarea del worker, la plantilla (con impeccable, sobre el modelo de la Ley 941 de CABA sin presentarlo
+  como exigencia en Mendoza), el reproceso y los links firmados. Exclusiones: el envío por email (13), el
+  portal (11).
+- Dificultad y riesgo: alta / CRITICAL.
+- Tienen que pasar:
+  - **C01** al emitir, un documento por unidad con obligación, en `pendiente`; el worker lo pasa a
+    `generado`.
+  - **C02** el PDF trae el edificio, la unidad y su código corto (R19), el período, el vencimiento, la
+    ordinaria y la extraordinaria por categoría, el fondo, los cargos, el interés, el saldo anterior de la
+    foto y el total, iguales a la liquidación.
+  - **C03** con Redis caído al emitir, la emisión queda confirmada con los documentos en `pendiente`, y el
+    barrido los reencola cuando Redis vuelve.
+  - **C04** una generación que falla queda `fallido` con su motivo; reprocesar la deja `generado`.
+  - **C05** un link firmado descarga el PDF; vencido, da 410; alterado, 403.
+  - **C06** el inquilino recibe la variante sin extraordinaria y el propietario la completa.
+  - **C07** un PDF `generado` no cambia: reprocesar o cambiar después la configuración no lo reescribe.
+  - **C08** pantalla en navegador real: el estado de cada documento, el reproceso y la descarga.
+  - **C09** regresión: H-004 a H-014 y los tests del worker.
+  - **C10** la KB: D-060 con lo investigado (decisión nueva), R19 y `08` con los links firmados, y la ficha
+    7 con H-015.
+- Tienen que fallar:
+  - **N01** el PDF tiene una dirección pública o se descarga sin link firmado.
+  - **N02** el inquilino obtiene la variante completa cambiando el link o pidiéndola directo.
+  - **N03** un documento queda generado dos veces, o con dos versiones distintas, por un reencolado.
+  - **N04** un link de otra administración o de otra unidad descarga algo.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `21b1e36`. Contrato en `aceptacion/H-015/CONTRATO.md` (dos variantes por unidad, la
+  tarea `generar_pdf_de_expensa` por `ejecutar_con_corte`, el barrido, `generar_documento`, el reproceso, los
+  enlaces firmados con `PROPTECH_CLAVE_DE_ENLACES` y la descarga, el código `TF-1B`). D-160 cierra D-060.
+  Comando: `python3 aceptacion/H-015/aceptar.py --sin-regresion`. Esperados: 16 de backend y 3 en navegador;
+  antes de construir, 19 rojos por aserción (un test que importaba el worker y fallaba por configuración se
+  cambió por una lectura del código antes de congelar).
+- **Vuelta 2** (`f179066`): un sondeo del e2e leía `.url` sin `?.` y fallaba si todavía no había ninguna
+  escritura (mismo patrón que L-087). Lo que se prueba no cambia.
+- Construcción (Sonnet, una tanda): `88badfd` WeasyPrint 70.0 y pypdf 7.1.0 (Pango y fuentes en
+  `backend/Dockerfile` y en `ci.yml`), `b3b63eb` la `0043` (`documento_de_expensa` con trigger y
+  `pdf_de_expensa` de sólo agregar), `0e156d8` dominio, enlaces firmados y `generar_documento`, `5c67005` API,
+  tarea `generar_pdf_de_expensa` por `ejecutar_con_corte`, barrido cada 5 minutos, compose y README,
+  `737c2b9` web (la descarga pasa por la ruta de Next `/documentos/descarga`, Caddy no publica `/api/*`),
+  `b552b50` KB, `9b39986` la API falsa devuelve una escritura vacía en vez de `null`. Decisiones de base en
+  D-162 (política del barrido, `REFERENCES` del migrador) y L-089. La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-015/aceptar.py --codigo 9b39986 --sin-regresion` desde
+  `f179066`: **16/16 de backend y 3/3 en navegador**, C01 a C08, N01 a N04, C10 y SPEC PASA, 0 rojos. C09
+  (regresión) queda para el cierre. **Para la demo**: D-162 es seguridad de la base y lo revisa Juani.
+- Deuda que deja (a la ficha 7): `infra/.env.example` sin las líneas de `PROPTECH_CLAVE_DE_ENLACES` (una
+  regla de permisos impide editarlo: lo tiene que hacer Juani); el enlace de una liquidación anulada no se
+  bloquea y la emisión de un enlace no se audita (al 11, el portal, que es quien los va a pedir).
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+### H-017 · Pulido de las pantallas de la liquidación
+
+- Change: C-10 7. Origen: los hallazgos de la demo del 16/11/2026 con la base real (Juani eligió hacerlos
+  historia antes de archivar). Nivel M: pantallas y una cabecera, sin plata nueva; la base no cambia.
+- Resultado para Juani: el administrador llega a la liquidación desde el menú, ve la lista de períodos con su
+  estado (también las anuladas) y entra a preparar el próximo; la liquidación emitida muestra lo que paga cada
+  unidad; cada PDF baja con un nombre que dice período, unidad y variante; y el cargo cobrado de menos se
+  registra desde la pantalla.
+- Alcance: el link "Liquidaciones" en el menú del edificio, la página `edificios/[id]/liquidaciones`, la tabla
+  por unidad en la emitida (con `obligacion_id` en la lectura de H-013), el `Content-Disposition` de la
+  descarga y el diálogo del cargo cobrado de menos. Exclusiones: la skill impeccable (C-26), el portal del
+  vecino (11).
+- Tienen que pasar:
+  - **C01** el menú del edificio tiene "Liquidaciones" y lleva a `edificios/[id]/liquidaciones`, que lista
+    cada liquidación con su período en palabras, su estado en texto y su total, con un link al período.
+  - **C02** la lista ofrece "Preparar la liquidación de <mes siguiente al último emitido sin anular>" (o del
+    mes actual si no hay ninguna), que lleva a la preliquidación de ese período.
+  - **C03** la liquidación emitida muestra la tabla de lo que paga cada unidad (lo guardado: ordinaria, fondo,
+    extraordinaria, cargos, intereses, saldo anterior y total), y la lectura `GET .../liquidaciones/{id}`
+    trae el `obligacion_id` de cada unidad con obligación.
+  - **C04** la descarga del PDF trae `Content-Disposition: attachment; filename="expensa-2026-11-1b-completa.pdf"`
+    (período, unidad y variante).
+  - **C05** en la emitida, cada unidad con obligación tiene "Cargo cobrado de menos" que abre un diálogo con
+    importe, concepto y motivo y manda el `POST` de H-014 con su `obligacion_origen_id`.
+  - **C06** la lista muestra las anuladas con "Anulada" y sin link a distribuir ni anular.
+  - **C07** sin errores de axe y sin scroll horizontal a 320 px en la lista; la ficha 7 registra H-017.
+- Tienen que fallar:
+  - **N01** el link "Liquidaciones" aparece para quien no tiene `ver_liquidaciones`.
+  - **N02** "Cargo cobrado de menos" aparece para quien no tiene `corregir_movimiento`.
+  - **N03** el nombre del archivo lleva datos personales (el nombre del propietario) o caracteres fuera de
+    `[a-z0-9-.]`.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `22c7364`. Contrato en `aceptacion/H-017/CONTRATO.md`. Comando:
+  `python3 aceptacion/H-017/aceptar.py`. Esperados: 5 de backend y 8 en navegador; antes de construir, 13 rojos
+  por aserción.
+- Construcción (Sonnet): `84c9090` y `1c2a759` (nombre del PDF puro y testeado, `obligacion_id` leído por
+  `cuenta_corriente.obligaciones_de_la_emision`, menú por `ver_liquidaciones`, lista, tabla y diálogo del
+  cargo, API falsa con acciones por edificio). Sin impeccable.
+- Evidencia (16/11/2026): `python3 aceptacion/H-017/aceptar.py --codigo 1c2a759` desde `22c7364`: **5/5 de
+  backend y 8/8 en navegador**, C01 a C07, N01 a N03 y KB PASA, 0 rojos.
+- Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
+  el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
 
 ## Plantilla de historia
 

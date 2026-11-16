@@ -350,6 +350,14 @@ def aprobar_gasto(
     es_periodo_emitido: PeriodoEmitidoFn = _nada_esta_emitido_todavia,
 ) -> None:
     with transaccion(sesion, {}):
+        # E5 (7, H-013): el mismo candado del período que toma emitir, `FOR UPDATE` sobre la fila de
+        # `complejo` y antes que la del gasto: un gasto no se aprueba mientras se emite, y lo que se
+        # lee del libro después es lo confirmado.
+        propio = sesion.execute(
+            text("SELECT complejo_id FROM gasto WHERE id=:id"), {"id": gasto_id}
+        ).scalar_one_or_none()
+        if propio is None or cargar_complejo(sesion, propio, bloquear=True) is None:
+            raise NoEncontrado()
         fila = (
             sesion.execute(
                 text("SELECT complejo_id, periodo, estado FROM gasto WHERE id=:id FOR UPDATE"),
@@ -462,6 +470,53 @@ def gastos_aprobados_del_periodo(
         "total": total_general.a_texto(),
         "grupos": resultado_grupos,
     }
+
+
+def lineas_del_periodo(sesion: Session, complejo_id: UUID, periodo: date) -> list[dict[str, Any]]:
+    """Los mismos gastos y notas de crédito que `gastos_aprobados_del_periodo` netea, pero por
+    separado y con su importe bruto, para quien necesita mostrar los gastos y las notas por su
+    lado (la preliquidación, 7). Una sola sentencia, así que ve un solo snapshot. Cada fila trae
+    `grupo_id`, `categoria_id`, `tipo`, `importe` (texto, siempre positivo) y `es_nota_de_credito`.
+    Mismas reglas que D10/R22: gastos `aprobado` con ese período de imputación; notas de un gasto
+    `aprobado` cuyo propio `periodo` es el consultado."""
+    filas = (
+        sesion.execute(
+            text(
+                "SELECT grupo_id, categoria_id, tipo, importe::text AS importe, "
+                "false AS es_nota_de_credito FROM gasto "
+                "WHERE complejo_id=:complejo AND periodo_de_imputacion=:periodo "
+                "AND estado='aprobado' "
+                "UNION ALL "
+                "SELECT g.grupo_id, g.categoria_id, g.tipo, n.importe::text, true "
+                "FROM nota_de_credito n JOIN gasto g ON g.id = n.gasto_id "
+                "WHERE n.complejo_id=:complejo AND n.periodo=:periodo AND g.estado='aprobado'"
+            ),
+            {"complejo": complejo_id, "periodo": periodo},
+        )
+        .mappings()
+        .all()
+    )
+    return [dict(f) for f in filas]
+
+
+def gastos_por_resolver_del_periodo(
+    sesion: Session, complejo_id: UUID, periodo: date
+) -> dict[str, list[str]]:
+    """Los ids de los gastos del edificio que todavía no entran en la liquidación del período
+    (`periodo_de_imputacion`, como D10): `en_revision` y `sin_ia`, para los controles de R34 (7).
+    Sólo lectura."""
+    filas = sesion.execute(
+        text(
+            "SELECT estado, id FROM gasto WHERE complejo_id=:complejo "
+            "AND periodo_de_imputacion=:periodo AND estado IN ('en_revision', 'sin_ia') "
+            "ORDER BY id"
+        ),
+        {"complejo": complejo_id, "periodo": periodo},
+    ).all()
+    resultado: dict[str, list[str]] = {"en_revision": [], "sin_ia": []}
+    for estado, gasto_id in filas:
+        resultado[str(estado)].append(str(gasto_id))
+    return resultado
 
 
 def obligatorios_faltantes(sesion: Session, complejo_id: UUID, periodo: date) -> dict[str, Any]:

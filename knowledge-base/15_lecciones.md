@@ -1263,3 +1263,72 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   (`rg -l "_RUTAS_CUBIERTAS" backend/tests`) y los corre en local; antes de abrir el PR, el orquestador
   corre `uv run mypy` y `uv run ruff check` enteros. Un error "previo" se corrige en el mismo change, no
   se anota.
+
+## L-085 · Un locator de Playwright por nombre parcial o por un rol que Next ya usa no prueba nada propio
+
+- **Origen**: H-011 del 7 (`liquidacion-y-emision`), 15/11/2026.
+- **Qué pasó**: la aceptación de H-011 se volvió a congelar porque dos tests del e2e estaban mal escritos,
+  no la pantalla. `getByRole("region", { name: "Ordinaria" })` compara por subcadena sin mayúsculas y
+  también agarraba la región "Extraordinaria" (strict mode). `getByRole("alert")` chocaba con el
+  `role="alert"` vacío que Next agrega siempre como anunciador de rutas.
+- **Regla**: en una aceptación, un locator por nombre accesible lleva `exact: true` cuando otro nombre de la
+  pantalla lo contiene; un `role="alert"` se filtra por su texto. Antes de congelar, el orquestador corre el
+  e2e contra una pantalla mínima que lo pase, no sólo contra la pantalla ausente: un rojo por "no existe"
+  no dice si el locator está bien escrito.
+
+## L-086 · Una base de ejemplo compartida envejece con las historias, y un ciclo de migración va en su módulo
+
+- **Origen**: H-013 del 7 (`liquidacion-y-emision`), 15/11/2026.
+- **Qué pasó**: la aceptación de H-013 se volvió a congelar por dos defectos. La base de ejemplos de H-011
+  traía un gasto `en_revision` para probar que no entraba en el cálculo; H-012 lo convirtió en un control
+  bloqueante, y H-013 heredó la base y esperaba emitirla sin aceptar nada: ninguna implementación pasaba
+  eso y N03 a la vez. Además el test del ciclo de la `0041` estaba al final de un módulo cuya base de
+  migraciones ya estaba en la `0041`, con filas.
+- **Regla**: al copiar las ayudas de una historia a la siguiente, el orquestador relee la base de ejemplos
+  contra las reglas que agregaron las historias del medio (un dato "que no entra" puede volverse un control).
+  Un test de ciclo de migración vive en un módulo propio, porque la base de migraciones es por módulo.
+
+## L-087 · Un e2e que lee la última escritura tiene que esperarla
+
+- **Origen**: H-014 del 7, 15/11/2026.
+- **Qué pasó**: la aceptación de H-014 se volvió a congelar porque dos e2e leían
+  `/api/__debug/ultima-escritura` justo después del `click()`, que no espera la acción del servidor de Next:
+  pasaban o fallaban según la carrera (2 de 4 corridas con `--repeat-each=4`). Además C04 contaba las
+  obligaciones con una ayuda que exige una por unidad, justo cuando la historia deja dos (la anulada y la
+  nueva).
+- **Regla**: después de una acción, el e2e espera algo observable (un `role="status"` o
+  `expect.poll` sobre la escritura) antes de leerla. Y antes de congelar, el orquestador relee qué asume cada
+  ayuda que reusa: una ayuda escrita para "una obligación por unidad" no sirve para contar anuladas.
+
+## L-088 · Una migración que altera una tabla protegida necesita el préstamo de propiedad
+
+- **Origen**: H-014 del 7 (`0042` sobre `evento_de_emision`), 15/11/2026.
+- **Qué pasó**: las tablas de sólo agregar son del rol de arranque (D-115); el migrador no puede alterarlas.
+  El préstamo de D-115.3 estaba escrito y sin construir hasta que hubiera un caso real; la `0042` fue el
+  primero y falló con `must be owner of table evento_de_emision`.
+- **Regla**: una migración que altera una tabla protegida declara `PRESTA_PROPIEDAD` con esas tablas
+  (D-161); `roles antes` se las presta al migrador y `roles despues` las devuelve. Una tabla nueva no lo
+  necesita.
+
+## L-089 · Una migración se prueba también sobre una base ya desplegada
+
+- **Origen**: H-015 del 7 (`0043`), 15/11/2026.
+- **Qué pasó**: los tests de migración arman la base de una sola vez (`upgrade head` con los privilegios de
+  la corrida) y no vieron que, en una base ya desplegada, después de `roles despues` el migrador no tenía
+  `REFERENCES` sobre `liquidacion`: la `0043` no subía. Lo encontró el constructor con
+  `test_la_0043_sube_sobre_una_base_ya_desplegada` y un mutante.
+- **Regla**: una migración que crea una FK hacia una tabla de una migración anterior se prueba también
+  subiendo sobre una base ya migrada y con los roles devueltos (`roles despues`), no sólo en el ciclo
+  limpio.
+
+## L-090 · Una fecha fija en un test es una bomba de tiempo, y una cota del worker se mide contra `job_timeout`
+
+- **Origen**: CI de cierre del 7 (PR #22, run 43790658588), 15/11/2026.
+- **Qué pasó**: la suite completa dio 3 rojos que ninguna historia corría. `test_umbral_api` usaba
+  `2026-11-15` fijo y el alta crea la configuración con vigencia "hoy": el CI corrió justo ese día en Mendoza
+  (y con `2027-01-01` iba a fallar en enero). El margen de 1 s que H-016 le sumó al `wait_for` de la tarea de
+  prueba lo hacía vencer después del `job_timeout` de ARQ, que cortaba primero sin pasar por `reintentable`.
+  Y un test de acciones por perfil quedó viejo al sumar `ver_liquidaciones`.
+- **Regla**: un test de fechas las calcula relativas a hoy en Mendoza; una cota de tarea más su margen queda
+  por debajo de su `job_timeout`; al sumar una acción a la matriz, buscar los tests que enumeran acciones
+  por perfil.

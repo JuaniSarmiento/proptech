@@ -51,7 +51,7 @@ gates están en el árbol de abajo.
 5. CARGAR Y LIQUIDAR
    ✅ 5 importar desde Excel (archivado 12/11/2026, D-155/D-156, PR #21)       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
    ⏳ 6c pantallas de gastos (Juan Cruz, D-144)
-   ⏳ 7 liquidación y emisión  ← el más grande; con esto se llega a M1
+   ✅ 7 liquidación y emisión (archivado 16/11/2026, D-157 a D-162, PR #22; M1 espera los datos del piloto)
 
 6. COBRAR Y SEGUIR
    ⏳ 8 pagos informados · 9 extracto bancario · 6b motor de reglas
@@ -71,7 +71,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
-- **Orden obligado (camino crítico):** 7 → 8 → 10a → 10b → 13 → 15 (4a, 4b, 4c y 5 ya archivados).
+- **Orden obligado (camino crítico):** 8 → 10a → 10b → 13 → 15 (4a, 4b, 4c, 5 y 7 ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
 - **En paralelo, no frenan a nadie:** los siete de
   deuda adelantada (D-138); 4d, 6b, 6c, 9, 11, 12 y 14.
@@ -114,7 +114,7 @@ C-01 infraestructura-base (1a)
                                                         │
                                       (C-07b + C-07c + C-08 + C-09)
                                                         ▼
-                                      C-10 liquidacion-y-emision (7)   ← el change más grande del MVP
+                                      C-10 liquidacion-y-emision (7)   ← archivado 16/11/2026 (H-011 a H-017)
                                             │
                         ┌───────────────────┼──────────────────────┬────────────────────────┐
                         ▼                   ▼                      ▼                        ▼
@@ -663,7 +663,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-10] `liquidacion-y-emision` · 7
-- **Estado**: `[ ]` pendiente (CRITICAL, explore propio; el change más grande del MVP)
+- **Estado**: `[x]` archivado (16/11/2026, CRITICAL, D-157 a D-162, PR #22): construido con Rein en H-011 a
+  H-017, Terminadas por Juani; migraciones `0040` a `0043`; deuda en la ficha 7. El test de M1 con los datos
+  del piloto sigue pendiente (P1)
 - **Scope**: preliquidación sin efectos, emisión con efectos en una sola transacción, estados de la
   liquidación (borrador, emitida, distribuida, anulada), controles antes de emitir con alertas
   aceptadas, links de descarga firmados, plantilla del PDF (skill impeccable). **D8** (crédito de
@@ -880,7 +882,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ### [C-25] `worker-y-logs` · 1f
 - **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Neyen.
-- **Scope**: F2c (bloquea al 7 antes de su primera tarea real), F12b, `test_salud_cola_real` que falla
+- **Scope**: F12b (F2c la cerró H-016 del 7, D-158), `test_salud_cola_real` que falla
   corrido aislado, logs de worker y httpx sin interpolar, F3b. `repr(RedisSettings)` no entra: expone
   un secreto y va a C-29.
 - **Dependencias**: C-03 (archivado).

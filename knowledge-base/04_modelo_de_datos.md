@@ -175,9 +175,11 @@ Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
   liquidación a través de `EMISION`, que comparte id con ella (ver "Entidades hoy, dominio
   `cuenta_corriente`"). El detalle completo de las ocho tablas, sus columnas, FK y únicos vive en esa
   sección; este diagrama simplificado no reemplaza esa lista.
-- **`LIQUIDACION`** es, hasta el cambio 7, sólo su "contrato mínimo" (identificador, período, edificio y
-  estado, D-086) — y ese identificador **es el mismo id que `emision`** del libro, construido en el 4b;
-  el cambio 7 agrega preliquidación, controles (R34) y la máquina de estados de distribución (D-073,
+- **`LIQUIDACION`** era, hasta el cambio 7, sólo su "contrato mínimo" (D-086: la fila de `emision` del
+  libro, 4b). Desde H-013 (`0041`) es además una **tabla propia**, `liquidacion`, con id propio y
+  `emision_id` único que la une a la emisión del libro: guarda todo lo usado al emitir (ver "Entidades
+  hoy, dominio `liquidacion`"). La preliquidación no se guarda: se calcula cada vez. H-014 (`0042`) suma el
+  estado de la liquidación, que sale del evento de cierre de la emisión (`distribuida` o `anulada`, D-073,
   D-074).
 - **`REGLA_VERSIONADA`** (el motor de GoRules ZEN, cambio 6b) queda **fuera del camino crítico a M1**:
   ninguna regla vigente pasa todavía por el motor (D-089); hasta el 6b no hay puerto: intereses, fondo
@@ -547,8 +549,9 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
   que lo saltee.
 - **Toda tabla nueva del conjunto** nace con trigger por fila de `UPDATE` y `DELETE`, `BEFORE TRUNCATE`
   y el trigger por sentencia, los tres con la misma función. Un `ALTER` posterior sobre la **tabla**
-  sigue fallando con `must be owner` hasta que exista el préstamo de propiedad para tablas, escrito en
-  D-115 y sin construir.
+  falla con `must be owner` salvo que su migración declare la tabla en `PRESTA_PROPIEDAD`: el préstamo de
+  propiedad de D-115.3 se construyó con la `0042` (H-014); `roles antes` la presta sólo mientras esa
+  migración está pendiente y `roles despues` la devuelve.
 - **Dueño de las funciones durante una migración (3c, E11 y su Enmienda, D-129)**: restaurar un
   respaldo deja toda función de `public` a nombre del rol de arranque, y una migración a veces
   necesita reemplazar una función de trigger (`CREATE OR REPLACE FUNCTION`). `roles antes` le
@@ -669,6 +672,59 @@ agregar mientras no está aprobada).
   compensaban ese interés) sin borrar ningún movimiento (D-073, D-079, D-085, D-123 para el crédito de
   corrección sobre una emisión anulada).
 
+### Entidades hoy, dominio `liquidacion` (migración `0041`, cambio 7, H-013, E2)
+
+Seis tablas, todas **de sólo agregar** (tres triggers cada una, en la lista protegida de
+`compartido/tablas_protegidas.py` y en el ensayo de roles), con `administracion_id NOT NULL` y RLS forzada
+por administración. Lo que se guardó al emitir **nunca se recalcula** al leerlo. Montos `NUMERIC(14,2)`.
+
+- **`liquidacion`**: `id`, `administracion_id`, `complejo_id`, `emision_id` (único; FK compuesta a
+  `emision` con el período), `periodo`, `huella` (la de la preliquidación revisada, E3),
+  `version_de_configuracion_id` y `porcentaje_fondo` (lo usado), `vencimiento` y, si se corrió,
+  `vencimiento_original` con `motivo_del_vencimiento` (1 a 500, ambos o ninguno), los siete totales
+  (`total_gastos`, `total_notas_de_credito`, `total_fondo_de_reserva`, `total_prorrateado`,
+  `total_cargos_particulares`, `total_intereses`, `total`), `emitida_por`, `request_id`, `emitida_en`.
+- **`categoria_de_liquidacion`**: por bloque (`ordinario` o `extraordinario`), la categoría con **su
+  nombre al emitir** (R16), su importe, su porcentaje y su orden.
+- **`grupo_de_liquidacion`** y **`composicion_de_grupo`**: cada grupo con gastos en el período (nombre,
+  método, ordinario y extraordinario) y, por cada unidad que participó, el **coeficiente efectivo usado**
+  con seis decimales (el peso de la unidad sobre la suma de los pesos del grupo, R01).
+- **`linea_de_liquidacion`**: una por unidad, con sus importes (ordinaria, fondo, extraordinaria,
+  intereses, total, `sin_obligacion`), el **saldo anterior** (la foto de `EmisionRegistrada.saldo_anterior`
+  tomada bajo los candados al emitir, `0.00` si la unidad no tiene cuenta, R06) y, en JSONB, sus cargos
+  particulares y su reparto por grupo.
+- **`alerta_aceptada`**: código, mensaje y detalle del control bloqueante aceptado, quién y cuándo (R34).
+- **`documento_de_expensa`** y **`pdf_de_expensa`** (H-015, migración `0043`, E12): se separa lo que cambia
+  de lo que se agrega (D-115). `documento_de_expensa` es una fila por unidad con obligación y por variante
+  (`completa` y `sin_extraordinaria`; único por liquidación, unidad y variante) con su `estado`
+  (`pendiente`, `generado`, `fallido`) y el `motivo` del fallo (sólo si `fallido`); cambia de estado, así
+  que **no** es de sólo agregar, pero un trigger impide borrarla, cambiar su identidad y tocar un
+  documento ya `generado`, y pasar a `generado` exige el PDF archivado. `pdf_de_expensa` guarda los bytes
+  (`contenido`), su `sha256` y `generado_en`, **de sólo agregar y protegida** (tres triggers, del rol de
+  arranque), único por documento: el PDF archivado no se reescribe nunca (CCyC art. 2067 inc. i). La
+  política `documento_pendiente_del_barrido` (sólo lectura y sólo de `pendiente`, con la marca
+  `app.barrido_de_documentos` y sin tenant) deja al barrido del worker reencolar lo pendiente de todas las
+  administraciones; la de `pdf_de_expensa` es sólo la de siempre, por administración. La `0043` baja
+  devolviendo antes `pdf_de_expensa` al migrador y se niega si hay documentos; y desde ella `roles despues`
+  también le da `REFERENCES` sobre `liquidacion` al migrador.
+- **Vocabulario**: la acción `ver_liquidaciones` (`accion_de_auditoria`, `0041`). Emitir audita
+  `emitir_y_distribuir_liquidacion` y, si se aceptó algún bloqueante, `aceptar_alertas_bloqueantes`, con
+  la liquidación como entidad y sólo ids y códigos en el detalle.
+- **Bajada**: la `0041` baja devolviendo antes las tablas al migrador (como las del libro) y se niega si
+  alguna tiene filas.
+- **Distribuida y cargo cobrado de menos** (H-014, migración `0042`, E9, E11): `evento_de_emision`
+  admite `tipo = 'distribuida'` con su `origen` (`manual`, `email` o `portal`, columna nueva); una
+  distribuida no lleva motivo y su persona es obligatoria sólo si es manual (`motivo` y `persona_id` pasan
+  a admitir `NULL`, y `ck_evento_tipo_forma` exige la forma de cada tipo). El índice parcial único
+  `uq_evento_emision_cierre` deja a lo sumo **un cierre por emisión**: nunca anulada y distribuida. La
+  tabla **`cargo_cobrado_de_menos`** (de sólo agregar y protegida, en `cuenta_corriente`): `obligacion_id`
+  (la obligación nueva, sin emisión, con su `operacion_id`), `obligacion_origen_id` (de la **misma cuenta**,
+  por la FK compuesta), `motivo`, quién y cuándo; único por `operacion_id` y por obligación. Sin acciones
+  de auditoría nuevas: el cargo audita `corregir_movimiento` (forma `cargo_cobrado_de_menos`) y anular,
+  `anular_liquidacion`. La `0042` es la primera que hace `ALTER` sobre una tabla protegida
+  (`evento_de_emision`): lo declara en `PRESTA_PROPIEDAD` y `roles antes` se la presta al migrador sólo
+  mientras está pendiente (D-115.3).
+
 ### Entidades hoy, dominio `cuenta_corriente` (migraciones `0023` y `0024`, cambio 4b, D1 del design archivado)
 
 El libro de movimientos: ocho tablas, seis de sólo agregar. Todas con `administracion_id NOT NULL` y
@@ -706,7 +762,8 @@ que un consumidor de otro módulo necesita.
 - **Constraints**: `uq_emision_intento` — una emisión por `(administracion, complejo, periodo,
   intento)`; combinado con "el intento activo más alto rechaza un intento nuevo si no está anulado"
   (E3), da **una emisión vigente por período salvo que la anterior esté anulada**.
-- **Es el mismo id que `liquidacion`** (ver más arriba): el 7 no crea una tabla nueva, completa ésta.
+- **`liquidacion` (H-013) la referencia por `emision_id`** (único): no comparten id; la liquidación
+  guardada es una tabla propia que apunta a esta fila (ver "Entidades hoy, dominio `liquidacion`").
 
 #### `evento_de_emision` · existe
 

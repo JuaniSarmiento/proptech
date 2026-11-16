@@ -28,6 +28,18 @@ import {
   responderConfirmacion,
   responderImportacion,
 } from "./escenarios-importacion";
+import {
+  ACCIONES_POR_EDIFICIO,
+  esEdificioDeCiclo,
+  esEdificioDeDocumentos,
+  esEdificioDePreliquidacion,
+  LISTA_DE_LIQUIDACIONES,
+  responderCiclo,
+  responderDocumentos,
+  responderEmision,
+  responderLista,
+  responderPreliquidacion,
+} from "./escenarios-liquidacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -59,7 +71,6 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "anular_liquidacion",
     "confirmar_pago_informado",
     "revertir_o_reimputar_pago",
-    "corregir_movimiento",
     "condonar_intereses",
     "dar_de_baja_deuda",
     "aceptar_alertas_no_bloqueantes",
@@ -73,7 +84,9 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "confirmar_saldos_iniciales",
     "ajustar_saldo_inicial",
   ],
-  por_edificio: {},
+  // H-017: `ver_liquidaciones` y `corregir_movimiento` se dan por edificio (los escenarios de
+  // `escenarios-liquidacion.ts`), para poder probar que sin ellas no se ofrece nada.
+  por_edificio: ACCIONES_POR_EDIFICIO,
 };
 
 const _RUTAS: Record<string, string> = {
@@ -234,6 +247,10 @@ function mutarParaElEscenario(claveEscenario: string, nombreFixture: string, dat
  * la web viajaba como `text/plain` y nadie lo notó). */
 type EscrituraRecibida = { metodo: string; url: string; contentType: string; cuerpo: string };
 let _ultimaEscritura: EscrituraRecibida | null = null;
+/** Antes de la primera escritura la depuración da esta, no `null`: un e2e que espera la escritura con
+ * `expect.poll(... .url)` (L-087) reintenta sobre una URL vacía en vez de romper con un `TypeError`
+ * porque su primer sondeo llegó antes que el servidor de Next. */
+const ESCRITURA_VACIA: EscrituraRecibida = { metodo: "", url: "", contentType: "", cuerpo: "" };
 
 /** Personal de prueba (7.3): un `super_admin` ya vinculado, un `contador`
  * con invitación `fallida` (worker, sin "Reintentar") y un `auxiliar` con
@@ -832,7 +849,7 @@ export function crearServidor(
     if (partes[0] === "api" && partes[1] === "__debug" && partes[2] === "ultima-escritura") {
       respuesta
         .writeHead(200, { "content-type": "application/json" })
-        .end(JSON.stringify(_ultimaEscritura));
+        .end(JSON.stringify(_ultimaEscritura ?? ESCRITURA_VACIA));
       return;
     }
 
@@ -1017,6 +1034,49 @@ export function crearServidor(
       respuesta
         .writeHead(200, { "content-type": "application/json" })
         .end(JSON.stringify(padronDeAjuste(id)));
+      return;
+    }
+
+    // change 7 (H-014): distribuir y anular, en los dos edificios de su contrato (1401 y 1402).
+    if (
+      esEdificioDeCiclo(id) &&
+      responderCiclo(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      })
+    ) {
+      return;
+    }
+
+    // change 7 (H-017): la lista de liquidaciones, en el edificio de su contrato (1701).
+    if (id === LISTA_DE_LIQUIDACIONES && responderLista(pedido, respuesta, resto)) {
+      return;
+    }
+
+    // change 7 (H-015): los documentos de la expensa, en el edificio de su contrato (1501).
+    if (
+      esEdificioDeDocumentos(id) &&
+      responderDocumentos(pedido, respuesta, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      })
+    ) {
+      return;
+    }
+
+    // change 7 (H-011): la preliquidación de un período, en los tres edificios de su contrato (1101
+    // a 1103).
+    const rutaDePreliquidacion = /^periodos\/([^/]+)\/preliquidacion$/.exec(resto);
+    if (rutaDePreliquidacion && esEdificioDePreliquidacion(id)) {
+      responderPreliquidacion(pedido, respuesta, id, rutaDePreliquidacion[1] ?? "");
+      return;
+    }
+
+    // change 7 (H-013): emitir lo revisado, en los mismos edificios (1101 y 1301 emiten; 1201 tiene un
+    // duro).
+    const rutaDeEmision = /^periodos\/([^/]+)\/emision$/.exec(resto);
+    if (rutaDeEmision && esEdificioDePreliquidacion(id)) {
+      responderEmision(pedido, respuesta, id, rutaDeEmision[1] ?? "", (escritura) => {
+        _ultimaEscritura = escritura;
+      });
       return;
     }
 

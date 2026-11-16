@@ -12,6 +12,20 @@ class TablaProtegida:
     verificacion_con_fila: bool = False
 
 
+def _con_tres_triggers(tabla: str) -> TablaProtegida:
+    """El patrón del libro desde `0035`: un trigger por fila, por TRUNCATE y por sentencia."""
+    return TablaProtegida(
+        f"{tabla} no admite",
+        frozenset(
+            {
+                f"trg_{tabla}_sin_update_delete",
+                f"trg_{tabla}_sin_truncate",
+                f"trg_{tabla}_sin_update_delete_por_sentencia",
+            }
+        ),
+    )
+
+
 TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
     {
         "auditoria": TablaProtegida(
@@ -129,6 +143,23 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 }
             ),
         ),
+        # 7, H-013 (`0041`): lo emitido, guardado tal como se usó.
+        **{
+            tabla: _con_tres_triggers(tabla)
+            for tabla in (
+                "liquidacion",
+                "categoria_de_liquidacion",
+                "grupo_de_liquidacion",
+                "composicion_de_grupo",
+                "linea_de_liquidacion",
+                "alerta_aceptada",
+            )
+        },
+        # 7, H-014 (`0042`): el cargo cobrado de menos, con su motivo y su origen.
+        "cargo_cobrado_de_menos": _con_tres_triggers("cargo_cobrado_de_menos"),
+        # 7, H-015 (`0043`): el PDF archivado de la expensa. Su documento cambia de estado y no es
+        # de sólo agregar; los bytes sí, y no se reescriben nunca (CCyC art. 2067 inc. i).
+        "pdf_de_expensa": _con_tres_triggers("pdf_de_expensa"),
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(

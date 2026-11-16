@@ -4,16 +4,9 @@ congelada más que todos los reintentos, el trabajo queda `tarea_agotada`; al
 volver la base, el hilo del primer intento confirma: efecto aplicado con el
 trabajo marcado agotado.
 
-Marcado `xfail(strict=True)` a propósito (cierre de la vuelta 3, veredicto del
-auditor + decisión de Juani): es una LIMITACIÓN CONOCIDA del cambio 1c,
-documentada en `proptech_worker/tareas.py` (comentario de `COTA_OPERACION_S` y
-el de `tarea_de_prueba`), no un defecto que se arregle acá. Tolerable en 1c
-porque el efecto de `tarea_de_prueba` es vacío; el cambio 7 (primera tarea con
-efecto real) tiene que resolverlo con un corte del lado de la base
-(`statement_timeout`/`lock_timeout`) y una cota propia por tarea antes de
-registrar esa tarea. Si este test empieza a pasar solo, algo cambió el
-comportamiento y hay que revisar si la limitación se cerró de verdad o si el
-`xfail` quedó obsoleto por otro motivo.
+Era un `xfail(strict=True)` por la limitación F2c del cambio 1c. H-016 del cambio 7 (D-158) la
+cerró del lado de la base (`proptech_worker.corte.ejecutar_con_corte`): ahora el test pasa y
+protege que un trabajo agotado nunca confirme su efecto al volver la base.
 """
 
 import io
@@ -51,14 +44,6 @@ _logger = logging.getLogger(__name__)
 
 
 @pytest.mark.anyio
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "F2c: deuda del cambio 7 (documentada en tareas.py) — el hilo del primer "
-        "intento puede confirmar su efecto después de que ARQ ya marcó el trabajo "
-        "tarea_agotada, porque asyncio.wait_for corta la espera, no el hilo."
-    ),
-)
 async def test_trabajo_agotado_por_base_congelada_no_deja_efecto_despues(
     ajustes_del_worker: Any,
     contenedor_propio: PostgresContainer,  # noqa: F811

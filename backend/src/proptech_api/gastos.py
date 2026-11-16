@@ -39,6 +39,7 @@ from proptech_core.gastos.aplicacion.errores import (
     ImportacionInvalida,
     NoEncontrado,
 )
+from proptech_core.liquidacion.aplicacion.periodos import es_periodo_emitido
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 
@@ -318,7 +319,12 @@ def aprobar_gasto(
 ) -> dict[str, str]:
     _autorizar_gasto(sesion, identidad, gasto_id)
     gastos.aprobar_gasto(
-        sesion, identidad, gasto_id=gasto_id, request_id=UUID(request_id_actual.get() or "")
+        sesion,
+        identidad,
+        gasto_id=gasto_id,
+        request_id=UUID(request_id_actual.get() or ""),
+        # P36, D-141: el período emitido lo dice el libro; `gastos` no importa `liquidacion`.
+        es_periodo_emitido=es_periodo_emitido,
     )
     sesion.commit()
     return {"id": str(gasto_id)}

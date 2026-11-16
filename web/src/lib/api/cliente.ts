@@ -18,7 +18,7 @@ export type ResultadoApi<T> =
   | { estado: "sin_sesion" }
   | { estado: "sin_permiso"; permiso: string }
   | { estado: "no_existe" }
-  | { estado: "conflicto"; campo: string }
+  | { estado: "conflicto"; campo: string; motivo?: string }
   | { estado: "invalido"; errores: ErrorDeCampo[] }
   | { estado: "rechazado"; errores: ErrorDeArchivo[] }
   | { estado: "fallo" };
@@ -165,7 +165,13 @@ export async function pedirApi<T>(
   if (respuesta.status === 409) {
     const leido = await leerJson(respuesta);
     const cuerpo = leido.parseo === "ok" ? comoRegistro(leido.valor) : {};
-    return { estado: "conflicto", campo: textoSeguro(cuerpo.campo, "desconocido") };
+    // `motivo` (liquidación, change 7): un código estable de la API, nunca un texto para mostrar;
+    // la pantalla lo traduce a su propio mensaje y descarta el que no conoce (L-007).
+    return {
+      estado: "conflicto",
+      campo: textoSeguro(cuerpo.campo, "desconocido"),
+      ...(typeof cuerpo.motivo === "string" ? { motivo: cuerpo.motivo } : {}),
+    };
   }
   if (respuesta.status === 422) {
     const leido = await leerJson(respuesta);

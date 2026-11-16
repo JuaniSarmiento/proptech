@@ -19,13 +19,22 @@ POSTERIORES_AL_LIBRO = (
     "origen_de_saldo_inicial",
     "aceptacion_de_diferencias",
     "ajuste_de_saldo_inicial",
+    "liquidacion",
+    "categoria_de_liquidacion",
+    "grupo_de_liquidacion",
+    "composicion_de_grupo",
+    "linea_de_liquidacion",
+    "alerta_aceptada",
+    "cargo_cobrado_de_menos",
+    "pdf_de_expensa",
 )
 
 
 def devolver_tramos(base: BaseDeEdificio) -> None:
     """La `0035` y la `0034` bajan antes que la `0024`: sus tablas vuelven al migrador como las
-    del libro."""
+    del libro. La `0042` además altera `evento_de_emision` al bajar (D-115.3)."""
     with arranque(base) as c:
+        c.execute("ALTER TABLE evento_de_emision OWNER TO proptech_migrador")
         for tabla in POSTERIORES_AL_LIBRO:
             for objeto in (f"TABLE {tabla}", f"FUNCTION fn_{tabla}_bloqueada()"):
                 c.execute(f"ALTER {objeto} OWNER TO proptech_migrador")
@@ -75,7 +84,7 @@ def test_ciclo_0022_0024_0022_conserva_esquema(
     base.migrar("upgrade", "head")
     base.roles("despues")
     with base.conectar_app() as c:
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0039",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0043",)
         for tabla in LIBRO:
             assert c.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
@@ -101,7 +110,7 @@ def test_downgrade_con_fila_conserva_el_libro(base_para_migraciones: BaseDeEdifi
             "el downgrade borró el libro con filas, invisible al dueño por FORCE sin tenant"
         )
         assert c.execute("SELECT count(*) FROM cuenta WHERE id=%s", (cuenta,)).fetchone() == (1,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0039",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0043",)
     assert rechazo is not None and "tiene filas" in rechazo
     base.roles("despues")
 
@@ -146,7 +155,7 @@ def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio)
         with pytest.raises(psycopg.errors.ForeignKeyViolation) as error_fk:
             c.execute("DELETE FROM accion_de_auditoria WHERE nombre='corregir_movimiento'")
         assert error_fk.value.sqlstate == "23503"
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0039",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0043",)
     with sesion_app(base, datos.admin) as s:
         from sqlalchemy import text
 

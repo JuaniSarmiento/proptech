@@ -68,6 +68,8 @@ _CONFLICTOS = {
     "emision_pkey": "emision_id",
     "uq_obligacion_emision": "emision_id",
     "uq_evento_emision_tipo": "emision_id",
+    "uq_evento_emision_cierre": "emision_id",
+    "uq_cargo_operacion": "operacion_id",
     "uq_cuenta_unidad": "unidad_id",
     "uq_cuenta_persona": "persona_id",
 }

@@ -3250,3 +3250,116 @@ registrado como tal en su momento.)*
 - **Quién**: el orquestador, bajo la firma por adelantado de Juani del 5 (`04ebf1e`, la recomendación de
   E1 a E15); Juani la revisa en la demo de H-010 y, si la rechaza, H-010 vuelve a En proceso con una
   decisión nueva.
+
+## D-157 · Lo que bloqueaba al 7 y cómo se parte (15/11/2026, acuerdo del 7, antes del propose)
+
+- **Contexto**: la ficha del 7 lo daba por bloqueado por D8 (D-123), P26, P27, P28, P38, P39, la
+  normativa de Mendoza (D-060) y F2c (C-25). El análisis del orquestador del 15/11/2026, contra el código
+  de `main` (`52755d5`), encontró además huecos que la ficha no nombraba.
+- **Decisión** (Juani, 15/11/2026: "vamos con tus recomendaciones"):
+  - **D8 (D-123)**: el crédito de corrección imputado a una obligación de una emisión anulada queda
+    **retenido** (opción a, como la bonificación de E16 del 4b): no vuelve como crédito a favor libre. La
+    re-emisión suele corregir el mismo error; dejarlo a favor lo corregiría dos veces. Se reaplica, si
+    hace falta, con una corrección nueva.
+  - **P26**: no se anula un período con el siguiente ya emitido (sin anular); primero se anula el
+    siguiente.
+  - **P38**: el crédito que vuelve tras una anulación conserva la fecha de la transferencia (su
+    `fecha_valor`). Es lo que ya hace el libro (`dominio/intereses.py`): se ratifica.
+  - **P39**: el consejo no ve una liquidación emitida y no distribuida, y su vista nunca distribuye.
+  - **P27 y P28** pasan al 8: R37 es propuesta y la bonificación nace al confirmar un pago.
+  - **Fuera del 7**: R14 recurrente, R35, R37 y R38 (propuestas sin validar). **Adentro**: R40 (los
+    períodos se liquidan en orden), validada por Juani en este acuerdo.
+  - **Doble vencimiento**: con la configuración en "doble", la emisión se frena con un control duro de
+    R34 hasta que Alberto defina R26 (cómo se cobra el recargo).
+  - **P25 (nota de crédito mayor que los gastos)**: mientras siga abierta, un bloque que da negativo
+    frena la emisión con un control duro.
+  - **Unidad en $0**: no recibe obligación; su interés se registra igual.
+  - **Factura duplicada**: no es un control del 7; la garantiza `uq_gasto_factura` (0029) y un test la
+    deja fija.
+  - **Lo que se emite es lo que se revisó**: la emisión lleva la huella de la preliquidación revisada y se
+    rechaza si cambió; emitir y aprobar un gasto del período comparten un candado.
+  - **Partición en historias**: H-011 preliquidación, H-012 controles y alertas, H-013 emitir, H-014
+    distribuir y anular (con el cargo cobrado de menos), H-015 PDF y links firmados (espera D-060 y F2c).
+- **Descartado**: D8 a favor como un pago (doble corrección); permitir anular con el siguiente emitido
+  (su interés y su saldo anterior quedarían calculados sobre lo anulado); inventar el recargo del doble
+  vencimiento.
+- **Quién**: Juani, sobre el análisis del orquestador del 15/11/2026.
+
+## D-158 · F2c entra al 7 como H-016, antes del PDF (15/11/2026, 7, deuda a historia)
+
+- **Contexto**: F2c (1c) bloquea la primera tarea del worker con efecto real, que es el PDF de la expensa
+  (H-015). D-138 la había pasado al C-25 `worker-y-logs` (Neyen), que el 15/11/2026 seguía sin proponer.
+  Juani pidió terminar el 7 entero sin esperar y que la deuda que lo frene se haga historia o pase a un
+  change posterior ("se crean hu de la deuda que quede si no la largamos a changes superiores").
+- **Decisión**: F2c se construye en el 7 como **H-016** (corte del lado de la base para las tareas con
+  efecto), antes de H-015. El resto del C-25 (F12b, `test_salud_cola_real.py`, los logs sin interpolar y
+  F3b) sigue en el C-25.
+- **Descartado**: esperar al C-25 (deja el 7 sin cerrar por una sola pieza) y registrar el PDF sin el corte
+  (un trabajo agotado podría confirmar un documento tarde, sin que nadie lo revise).
+- **Quién**: el orquestador, por la delegación de Juani del 15/11/2026 de terminar el change sin consultarle.
+
+## D-159 · El 7 completa la emisión con una `liquidacion` propia, uno a uno con `emision` (15/11/2026, H-013)
+
+- **Contexto**: D-086 dejó en el 4 un contrato mínimo de emisión que "el 7 completa". Al construir H-013
+  hubo que elegir dónde guardar lo que se usó para calcular (huella, configuración, fondo, vencimiento,
+  líneas, composición, alertas aceptadas, foto del saldo anterior).
+- **Decisión**: el libro no cambia: `emision` sigue siendo la del 4b. El 7 agrega `liquidacion` (id propio,
+  `emision_id` único) y sus tablas hijas en la migración `0041`, todas de sólo agregar y protegidas. La API
+  devuelve los dos ids. El saldo anterior de la foto vive en la línea de cada unidad.
+- **Descartado**: agregar columnas a `emision` (tabla protegida del libro, con su propio ciclo de dueño y
+  RLS) y usar el mismo id para las dos (ataba el replay del libro a la liquidación).
+- **Quién**: el constructor de H-013 propuso la forma y el orquestador la aceptó al verificar, bajo la
+  delegación de Juani del 15/11/2026.
+
+## D-160 · Lo que exige la expensa en Mendoza (15/11/2026, cierra la investigación de D-060)
+
+- **Contexto**: D-060 pidió investigar los requisitos legales de la liquidación en Mendoza antes de cerrar
+  el PDF del 7. Se investigó el 15/11/2026 (fuentes oficiales y secundarias, sin acceso a InfoLeg ese día).
+- **Hallazgo**: no se encontró ninguna norma provincial ni municipal de Mendoza sobre el contenido de la
+  liquidación de expensas. Lo obligatorio sale del Código Civil y Comercial: el prorrateo según el
+  reglamento con ordinarias y extraordinarias por separado (arts. 2046, 2048 y 2056), el **archivo
+  cronológico de las liquidaciones** (art. 2067 inc. i) y la rendición de cuentas (art. 2067 inc. e). El
+  certificado de deuda es otro documento (art. 2067 inc. l; 10b). Hay un proyecto del Senado provincial
+  (2023) para un registro de administradores que no se encontró aprobado; una "Ley 8.969" citada por un
+  sitio comercial no se pudo verificar.
+- **Decisión**: el PDF del 7 (H-015) separa ordinaria y extraordinaria y se archiva sin reescribirse nunca.
+  Toma como **modelo de contenido** la Ley 941 de CABA (datos del edificio y la unidad, período,
+  vencimiento, gastos por categoría, fondo, estado de cuenta con saldo anterior), sin presentarla como
+  exigencia legal en Mendoza. Antes de citar artículos en el producto se cotejan con el texto oficial.
+- **Pendiente**: vigilar el proyecto del registro de administradores (si se aprueba, puede fijar
+  contenido); cotejar el art. 2067 en InfoLeg.
+- **Quién**: el orquestador, sobre la investigación del 15/11/2026, bajo la delegación de Juani.
+
+## D-161 · Se construye el préstamo de propiedad de D-115.3 (15/11/2026, H-014)
+
+- **Contexto**: D-115.3 dejó escrito el préstamo de propiedad para una migración que altere una tabla
+  protegida, y descartó construirlo "sin un caso real que lo ejercite". La `0042` (H-014) agrega
+  `distribuida` a `evento_de_emision`, una tabla protegida del libro: es el primer caso real.
+- **Decisión**: se construye como lo describía D-115.3: la migración declara `PRESTA_PROPIEDAD` con las
+  tablas protegidas que toca; `proptech_core.compartido.roles` en `antes` lee las migraciones pendientes y le
+  presta al migrador sólo esas tablas, y en `despues` las devuelve. Construido por el constructor de H-014 en
+  `b83ca00`, aislado para poder revertirlo.
+- **Descartado**: dar al migrador la propiedad permanente (rompe D-115) y recrear la tabla con otra
+  restricción (pierde el historial del libro).
+- **Quién**: el orquestador lo aceptó al verificar H-014, bajo la firma por adelantado del 7 y la delegación
+  de Juani del 15/11/2026. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-014; si lo
+  rechaza, H-014 vuelve a En proceso.
+
+## D-162 · El barrido de documentos pendientes y el `REFERENCES` del migrador (15/11/2026, H-015)
+
+- **Contexto**: el barrido del worker que reencola los PDF `pendiente` corre sin tenant y la RLS no deja
+  listar documentos de todas las administraciones. Además la `0043` no subía sobre una base ya desplegada:
+  después de `roles despues`, el migrador no tenía `REFERENCES` sobre `liquidacion` para crear la FK.
+- **Decisión**:
+  - Una política de **sólo lectura** `documento_pendiente_del_barrido` sobre `documento_de_expensa` que exige
+    la marca de sesión `app.barrido_de_documentos` y sólo ve filas `pendiente`; gemela de
+    `invitacion_por_token` (D6 del 2b), con su excepción en el guardián de `test_catalogo_rls`. La generación
+    de cada documento corre después con el tenant del documento.
+  - `roles despues` le da al migrador `REFERENCES` sobre `liquidacion`, como ya hacía con las tablas del
+    libro que reciben FK de tablas nuevas.
+  - `documento_de_expensa` cambia de estado y no es de sólo agregar; un trigger impide borrarla, cambiar su
+    identidad o tocar un documento `generado`. Los bytes van en `pdf_de_expensa`, de sólo agregar (D-115).
+- **Descartado**: correr el barrido con un rol que salte la RLS (rompe D-076) y una tarea por
+  administración (no hay lista de administraciones visible sin tenant).
+- **Quién**: el constructor de H-015 lo propuso y el orquestador lo aceptó al verificar, bajo la firma por
+  adelantado del 7. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-015.

@@ -28,13 +28,19 @@ from proptech_core.compartido.base_de_datos import (
     verificar_rol_de_aplicacion_seguro,
     verificar_tablas_de_solo_agregar,
 )
-from proptech_core.compartido.cola import deserializar_job, serializar_job
+from proptech_core.compartido.cola import AdaptadorColaArq, deserializar_job, serializar_job
 from proptech_core.compartido.conexion_redis import ajustes_redis_arq
 from proptech_core.compartido.configuracion import Configuracion, ConfiguracionInvalida
 from proptech_core.compartido.logs import FormateadorJSON, configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.compartido.reintentos import PoliticaReintentos
-from proptech_worker.tareas import enviar_invitacion, revocar_invitacion_en_clerk, tarea_de_prueba
+from proptech_worker.tareas import (
+    barrido_de_documentos_pendientes,
+    enviar_invitacion,
+    generar_pdf_de_expensa,
+    revocar_invitacion_en_clerk,
+    tarea_de_prueba,
+)
 
 _logger = logging.getLogger("proptech_worker.ajustes")
 
@@ -232,6 +238,8 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     )
     ctx["configuracion_app"] = _configuracion
     ctx["parametros"] = _PARAMETROS
+    # 7, H-015: el barrido de documentos reencola con la misma cola que usa la API.
+    ctx["cola"] = AdaptadorColaArq(ajustes_redis_arq(_configuracion))
 
 
 async def on_shutdown(ctx: dict[str, Any]) -> None:
@@ -260,6 +268,19 @@ class AjustesDelWorker:
         # `tarea_de_prueba`, de ahí abajo, sin pasar por `arq.func`).
         arq.func(enviar_invitacion, timeout=30, keep_result=0),  # type: ignore[arg-type]
         arq.func(revocar_invitacion_en_clerk, timeout=30, keep_result=0),  # type: ignore[arg-type]
+        # 7, H-015: el PDF de la expensa, a través de `ejecutar_con_corte` (H-016). El `timeout` es
+        # mayor que su cota (`COTA_GENERAR_PDF_S`, 30 s).
+        arq.func(generar_pdf_de_expensa, timeout=60, keep_result=0),  # type: ignore[arg-type]
+    )
+    #: 7, H-015 (E12): cada cinco minutos reencola los documentos que quedaron `pendiente` (Redis
+    #: caído al emitir, una generación agotada). Corre también al arrancar.
+    cron_jobs = (
+        arq.cron(
+            barrido_de_documentos_pendientes,
+            minute=set(range(0, 60, 5)),
+            run_at_startup=True,
+            timeout=60,
+        ),
     )
     #: El worker reintenta más que la API al conectar a Redis (D4): un
     #: reinicio de Redis no tiene por qué tirar abajo los trabajos ya

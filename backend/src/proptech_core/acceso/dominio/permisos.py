@@ -81,6 +81,9 @@ class Accion(StrEnum):
     #: edificio no.
     AJUSTAR_SALDO_INICIAL = "ajustar_saldo_inicial"
     VER_CONFIGURACION_DEL_EDIFICIO = "ver_configuracion_del_edificio"
+    #: liquidacion-y-emision (E14, migración `0041`): leer una liquidación emitida. El consejo sólo
+    #: ve las distribuidas (P39): ese filtro lo construye H-014; la matriz ya lo incluye.
+    VER_LIQUIDACIONES = "ver_liquidaciones"
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.CONFIRMAR_SALDOS_INICIALES: frozenset({_SA, _AP}),
     Accion.AJUSTAR_SALDO_INICIAL: frozenset({_SA, _AP}),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
+    Accion.VER_LIQUIDACIONES: frozenset({_SA, _AP, _AE, _CP, _CE, _CO}),
 }
 
 

@@ -130,6 +130,14 @@ def abrir_sesion_por_token_de_invitacion(
     return fabrica(info={"invitacion_token": resumen_hex})
 
 
+def abrir_sesion_del_barrido_de_documentos(fabrica: sessionmaker[Session]) -> Session:
+    """7, H-015 (E12): el barrido del worker lee los documentos de expensa `pendiente` de **todas**
+    las administraciones para reencolarlos. Sin tenant: la política
+    `documento_pendiente_del_barrido` (migración `0043`) sólo deja leer lo `pendiente`, y sólo con
+    esta marca; nada se escribe con esta sesión y ninguna otra tabla se ve distinto."""
+    return fabrica(info={"barrido_de_documentos": True})
+
+
 def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
     """Registra en `fabrica` un evento `after_begin` (D4) que, al abrir cada
     transacción, fija `app.administracion_id` a partir de
@@ -164,6 +172,8 @@ def registrar_tenant_por_administracion(fabrica: sessionmaker[Session]) -> None:
                 text("SELECT set_config('app.invitacion_token', :valor, true)"),
                 {"valor": invitacion_token},
             )
+        if session.info.get("barrido_de_documentos") is True:
+            connection.execute(text("SELECT set_config('app.barrido_de_documentos', 'si', true)"))
         administracion_id = session.info.get("administracion_id")
         if administracion_id is None:
             return
@@ -236,6 +246,7 @@ def registrar_reset_del_tenant_al_devolver(engine: Engine) -> None:
                 cursor.execute("RESET app.administracion_id")
                 cursor.execute("RESET app.identidad_clerk")
                 cursor.execute("RESET app.invitacion_token")
+                cursor.execute("RESET app.barrido_de_documentos")
                 dbapi_connection.commit()
             finally:
                 cursor.close()

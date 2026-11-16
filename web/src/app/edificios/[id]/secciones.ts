@@ -1,7 +1,8 @@
 /**
- * Las cinco secciones del menú lateral fijo dentro de un edificio (D10,
+ * Las secciones del menú lateral fijo dentro de un edificio (D10,
  * tarea 4.2), agrupadas como pide la enmienda del 20/10/2026: "El edificio"
- * (Resumen, Unidades, Grupos) y "Configuración" (Categorías, Intereses y
+ * (Resumen, Unidades, Grupos), "Liquidación" (Liquidaciones, H-017: sólo con
+ * `ver_liquidaciones`) y "Configuración" (Categorías, Intereses y
  * vencimiento). "Confirmar sin saldos previos" NO va acá (D11): se llega
  * desde el resumen, nunca desde el menú.
  *
@@ -34,6 +35,15 @@ export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
       href: `/edificios/${id}/grupos`,
       grupo: "El edificio",
       icono: "grupos",
+    },
+    {
+      clave: "liquidaciones",
+      etiqueta: "Liquidaciones",
+      href: `/edificios/${id}/liquidaciones`,
+      grupo: "Liquidación",
+      icono: "liquidaciones",
+      accion: "ver_liquidaciones",
+      complejoId: id,
     },
     {
       clave: "categorias",

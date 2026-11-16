@@ -580,6 +580,17 @@ a.boton-secundario:hover {
   gap: 0.5rem;
 }
 
+/* Un link principal en el encabezado (la lista de liquidaciones, H-017): el texto es largo
+   ("Preparar la liquidación de diciembre de 2026"), así que a 320 px baja de renglón en vez de
+   ensanchar la página. */
+.encabezado-de-pantalla__accion a.boton-principal {
+  max-width: 100%;
+  min-width: 0;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: normal;
+}
+
 .ayuda__boton {
   display: inline-flex;
   flex: none;

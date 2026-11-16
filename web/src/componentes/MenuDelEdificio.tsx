@@ -18,6 +18,7 @@ import {
   House,
   Layers,
   type LucideIcon,
+  Receipt,
   Tags,
   Building2 as Unidades,
   Users,
@@ -25,6 +26,7 @@ import {
 import { useId, useRef, useState } from "react";
 
 import { useCerrarConEscape } from "../lib/teclado/useCerrarConEscape";
+import { permite, useSesionDePantalla } from "./SesionDePantalla";
 
 export type IconoDeSeccion =
   | "resumen"
@@ -32,6 +34,7 @@ export type IconoDeSeccion =
   | "grupos"
   | "categorias"
   | "configuracion"
+  | "liquidaciones"
   | "personal";
 
 export type SeccionDelEdificio = {
@@ -40,6 +43,10 @@ export type SeccionDelEdificio = {
   href: string;
   grupo: string;
   icono: IconoDeSeccion;
+  /** Si trae `accion`, la sección sólo se muestra a quien la sesión le permite (H-017): una de
+   * edificio se pide con su `complejoId`. Sin sesión, se oculta; la API frena igual. */
+  accion?: string;
+  complejoId?: string;
 };
 
 const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
@@ -48,6 +55,7 @@ const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
   grupos: Layers,
   categorias: Tags,
   configuracion: CalendarClock,
+  liquidaciones: Receipt,
   personal: Users,
 };
 
@@ -75,6 +83,11 @@ export function MenuDelEdificio({
   nombreAccesible = "Secciones del edificio",
 }: Props) {
   const [abierto, setAbierto] = useState(false);
+  const sesion = useSesionDePantalla();
+  const visibles = secciones.filter(
+    (seccion) =>
+      seccion.accion === undefined || permite(sesion, seccion.accion, seccion.complejoId),
+  );
   const idDelMenu = useId();
   const botonRef = useRef<HTMLButtonElement>(null);
 
@@ -96,7 +109,7 @@ export function MenuDelEdificio({
         Secciones
       </button>
       <div id={idDelMenu} className="menu-del-edificio__lista" data-abierto={abierto}>
-        {agrupar(secciones).map(([grupo, delGrupo], indice) => (
+        {agrupar(visibles).map(([grupo, delGrupo], indice) => (
           <div key={grupo} className="menu-del-edificio__grupo">
             <p className="menu-del-edificio__titulo-grupo" id={`${idDelMenu}-grupo-${indice}`}>
               {grupo}
