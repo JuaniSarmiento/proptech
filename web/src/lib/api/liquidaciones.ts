@@ -50,6 +50,17 @@ export type TotalesDeLaPreliquidacion = {
   total: string;
 };
 
+export type NivelDeControl = "duro" | "bloqueante" | "advertencia";
+
+/** Un control antes de emitir (R34, H-012). El `detalle` es para quien lo necesite; la pantalla
+ * muestra el nivel y el mensaje. */
+export type ControlAntesDeEmitir = {
+  codigo: string;
+  nivel: NivelDeControl;
+  mensaje: string;
+  detalle: Record<string, unknown>;
+};
+
 export type Preliquidacion = {
   complejo_id: string;
   periodo: string;
@@ -60,7 +71,7 @@ export type Preliquidacion = {
   bloques: { ordinario: BloqueDeGastos; extraordinario: BloqueDeGastos };
   grupos: GrupoPreliquidado[];
   unidades: UnidadPreliquidada[];
-  controles: unknown[];
+  controles: ControlAntesDeEmitir[];
 };
 
 const _MONTO = /^-?[0-9]+\.[0-9]{2}$/;

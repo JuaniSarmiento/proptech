@@ -9,6 +9,7 @@
  * - 1102: la misma base con fondo 0%: sin fondo en ninguna unidad, los otros importes de la ordinaria
  *   y de la extraordinaria no cambian.
  * - 1103: 409 `periodo_anterior_sin_emitir`.
+ * - 1201 (H-012, `aceptacion/H-012/CONTRATO.md`): la base con tres controles, uno de cada nivel.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -17,7 +18,38 @@ export const PRELIQUIDACION_BASE = "00000000-0000-0000-0000-000000001101";
 export const PRELIQUIDACION_FONDO_CERO = "00000000-0000-0000-0000-000000001102";
 export const PRELIQUIDACION_SIN_ANTERIOR = "00000000-0000-0000-0000-000000001103";
 
-const _IDS = new Set([PRELIQUIDACION_BASE, PRELIQUIDACION_FONDO_CERO, PRELIQUIDACION_SIN_ANTERIOR]);
+export const PRELIQUIDACION_CON_CONTROLES = "00000000-0000-0000-0000-000000001201";
+
+const _IDS = new Set([
+  PRELIQUIDACION_BASE,
+  PRELIQUIDACION_FONDO_CERO,
+  PRELIQUIDACION_SIN_ANTERIOR,
+  PRELIQUIDACION_CON_CONTROLES,
+]);
+
+const _CONTROLES = [
+  {
+    codigo: "saldos_iniciales_sin_validar",
+    nivel: "duro",
+    mensaje: "Faltan validar los saldos iniciales del edificio",
+    detalle: { estado_migracion: "pendiente" },
+  },
+  {
+    codigo: "gastos_en_revision",
+    nivel: "bloqueante",
+    mensaje: "Hay 1 factura leída con alertas",
+    detalle: { cantidad: 1, gastos: ["00000000-0000-0000-0000-00000000d101"] },
+  },
+  {
+    codigo: "gastos_sin_ia",
+    nivel: "advertencia",
+    mensaje: "Hay 2 facturas sin cargar",
+    detalle: {
+      cantidad: 2,
+      gastos: ["00000000-0000-0000-0000-00000000d102", "00000000-0000-0000-0000-00000000d103"],
+    },
+  },
+];
 
 const _GENERALES = "00000000-0000-0000-0000-00000000a101";
 const _ASCENSOR = "00000000-0000-0000-0000-00000000a102";
@@ -210,6 +242,10 @@ export function responderPreliquidacion(
       campo: "periodo",
       motivo: "periodo_anterior_sin_emitir",
     });
+    return;
+  }
+  if (id === PRELIQUIDACION_CON_CONTROLES) {
+    json(respuesta, 200, { ...cuerpoDeLaBase(id), controles: _CONTROLES });
     return;
   }
   json(respuesta, 200, id === PRELIQUIDACION_FONDO_CERO ? cuerpoSinFondo(id) : cuerpoDeLaBase(id));

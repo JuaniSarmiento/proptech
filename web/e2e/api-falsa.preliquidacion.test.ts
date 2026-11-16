@@ -68,6 +68,22 @@ describe("api-falsa · preliquidación", () => {
     expect(cuerpo.controles).toEqual([]);
   });
 
+  it("1201: la base con los tres controles del contrato de H-012, uno de cada nivel", async () => {
+    const cuerpo = await (await preliquidacionDe("00000000-0000-0000-0000-000000001201")).json();
+    expect(cuerpo.totales.total).toBe("191500.00");
+    expect(
+      cuerpo.controles.map((c: { codigo: string; nivel: string; mensaje: string }) => [
+        c.codigo,
+        c.nivel,
+        c.mensaje,
+      ]),
+    ).toEqual([
+      ["saldos_iniciales_sin_validar", "duro", "Faltan validar los saldos iniciales del edificio"],
+      ["gastos_en_revision", "bloqueante", "Hay 1 factura leída con alertas"],
+      ["gastos_sin_ia", "advertencia", "Hay 2 facturas sin cargar"],
+    ]);
+  });
+
   for (const [nombre, id] of [
     ["1101", BASE],
     ["1102", FONDO_CERO],

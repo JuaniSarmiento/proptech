@@ -18,6 +18,8 @@ import { EncabezadoDePantalla } from "../../../../../componentes/EncabezadoDePan
 import { Panel } from "../../../../../componentes/Panel";
 import type {
   BloqueDeGastos,
+  ControlAntesDeEmitir,
+  NivelDeControl,
   Preliquidacion,
   UnidadPreliquidada,
 } from "../../../../../lib/api/liquidaciones";
@@ -36,6 +38,40 @@ const METODOS: Record<string, string> = {
   superficie: "Por superficie",
   partes_iguales: "En partes iguales",
 };
+
+const NIVELES: Record<NivelDeControl, string> = {
+  duro: "Duro",
+  bloqueante: "Bloqueante",
+  advertencia: "Advertencia",
+};
+
+/** Los controles de R34 (H-012), en el orden de la API. El nivel va en texto, nunca sólo en color;
+ * un control duro dice además que no se puede aceptar. Mostrarlos no escribe nada. */
+function ControlesAntesDeEmitir({ controles }: { controles: ControlAntesDeEmitir[] }) {
+  return (
+    <Panel
+      titulo="Controles antes de emitir"
+      descripcion="Lo que hay que revisar antes de emitir este período."
+    >
+      {controles.length === 0 ? (
+        <p className="texto-secundario">No hay controles pendientes.</p>
+      ) : (
+        <ul className="lista-de-filas">
+          {controles.map((control) => (
+            <li key={control.codigo}>
+              <strong>{NIVELES[control.nivel] ?? "Control"}</strong>
+              {": "}
+              {control.mensaje}
+              {control.nivel === "duro" ? (
+                <span className="texto-secundario"> Este control no se puede aceptar.</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
 
 function tieneFondo(preliquidacion: Preliquidacion): boolean {
   return preliquidacion.porcentaje_fondo !== "0.00";
@@ -263,6 +299,7 @@ export function PantallaPreliquidacion({
       />
       <div className="disposicion">
         <div>
+          <ControlesAntesDeEmitir controles={preliquidacion.controles} />
           <Panel
             titulo="Lo que paga cada unidad"
             descripcion={

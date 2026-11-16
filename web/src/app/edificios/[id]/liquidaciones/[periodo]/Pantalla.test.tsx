@@ -24,6 +24,46 @@ function fila(identificador: string): HTMLElement {
   return laFila;
 }
 
+describe("PantallaPreliquidacion · controles antes de emitir (H-012)", () => {
+  const CON_CONTROLES: typeof PRELIQUIDACION = {
+    ...PRELIQUIDACION,
+    controles: [
+      { codigo: "a", nivel: "duro", mensaje: "Un duro", detalle: {} },
+      { codigo: "b", nivel: "bloqueante", mensaje: "Un bloqueante", detalle: {} },
+      { codigo: "c", nivel: "advertencia", mensaje: "Una advertencia", detalle: {} },
+    ],
+  };
+
+  it("un renglón por control, en orden, con el nivel en texto y su mensaje", () => {
+    render(<PantallaPreliquidacion {...PROPS} preliquidacion={CON_CONTROLES} />);
+    const region = screen.getByRole("region", { name: "Controles antes de emitir" });
+    const items = within(region).getAllByRole("listitem");
+    expect(items.map((i) => i.textContent)).toEqual([
+      expect.stringContaining("Duro"),
+      expect.stringContaining("Bloqueante"),
+      expect.stringContaining("Advertencia"),
+    ]);
+    expect(items[0]?.textContent).toContain("Un duro");
+  });
+
+  it("sólo el duro dice que no se puede aceptar", () => {
+    render(<PantallaPreliquidacion {...PROPS} preliquidacion={CON_CONTROLES} />);
+    const items = within(
+      screen.getByRole("region", { name: "Controles antes de emitir" }),
+    ).getAllByRole("listitem");
+    expect(items[0]?.textContent).toMatch(/no se puede aceptar/i);
+    expect(items[1]?.textContent).not.toMatch(/no se puede aceptar/i);
+    expect(items[2]?.textContent).not.toMatch(/no se puede aceptar/i);
+  });
+
+  it("sin controles dice que no hay pendientes", () => {
+    render(<PantallaPreliquidacion {...PROPS} preliquidacion={PRELIQUIDACION} />);
+    const region = screen.getByRole("region", { name: "Controles antes de emitir" });
+    expect(within(region).queryAllByRole("listitem")).toHaveLength(0);
+    expect(region.textContent).toMatch(/no hay controles pendientes/i);
+  });
+});
+
 describe("PantallaPreliquidacion", () => {
   it("el título dice el período en palabras", () => {
     render(<PantallaPreliquidacion {...PROPS} preliquidacion={PRELIQUIDACION} />);
