@@ -1199,6 +1199,18 @@ D-153).
 
 ---
 
+### 7 · deuda del cierre (15/11/2026)
+
+| Deuda | Por qué queda | Dueño |
+|---|---|---|
+| `infra/.env.example` sin las líneas comentadas de `PROPTECH_CLAVE_DE_ENLACES` | Una regla de permisos impide que el agente edite ese archivo; la variable ya está en el compose, el README y `08` | Juani, antes de desplegar |
+| El enlace de una liquidación **anulada** no se bloquea, y pedir un enlace no se audita | Fuera del contrato de H-015; quien va a pedir enlaces a escala es el portal | **11** (portal del vecino) |
+| Las pantallas del 7 (preliquidación, controles, emitir, ciclo y documentos) no pasaron por la skill impeccable | La skill no está instalada en la máquina | Juani instala la skill; la pasada va al **C-26** `pulido-web-3` |
+| La pantalla de la preliquidación no dibuja `por_grupo` (viaja en la API) | No lo pedía ningún criterio | **C-26** |
+| `doble_vencimiento_sin_regla` y `bloque_negativo` frenan la emisión con un control duro | R26 (Alberto) y P25 siguen abiertas (D-157) | Alberto (R26) y Juani (P25) |
+| El test de M1 con la última liquidación del piloto al centavo | Faltan los datos del piloto (P1); se corrió con la base de ejemplo | **15** / M1 |
+| `infra/ci/ensayo-roles.sh` con las tablas de la `0041` a la `0043` sin correr en local | Ningún agente corre `infra/ci/*.sh` | El CI del cierre (D-154) |
+
 ## M2 · Cobra
 
 ### 8 · `pagos-informados` · crítico
