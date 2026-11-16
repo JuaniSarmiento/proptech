@@ -1071,6 +1071,12 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N06** anular y distribuir en paralelo: queda una sola de las dos, nunca las dos.
   - **N07** cargo cobrado de menos con importe 0 o negativo (422), sin motivo (422), o con una obligación
     de origen de otra unidad o de otro edificio (404).
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `280417d`. Contrato en `aceptacion/H-014/CONTRATO.md` (distribuir, anular, el puerto
+  `registrar_distribucion`, la lista de liquidaciones por rol, el cargo cobrado de menos y la migración
+  `0042`). Comando: `python3 aceptacion/H-014/aceptar.py --sin-regresion`. Esperados: 24 de backend y 4 en
+  navegador; antes de construir, 27 rojos por aserción (sobre el código con H-013).
+- Evidencia: pendiente.
 
 ### H-016 · Corte del lado de la base para las tareas del worker (F2c)
 
