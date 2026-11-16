@@ -155,6 +155,8 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 "alerta_aceptada",
             )
         },
+        # 7, H-014 (`0042`): el cargo cobrado de menos, con su motivo y su origen.
+        "cargo_cobrado_de_menos": _con_tres_triggers("cargo_cobrado_de_menos"),
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(
