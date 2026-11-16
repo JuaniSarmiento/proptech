@@ -3310,3 +3310,22 @@ registrado como tal en su momento.)*
   RLS) y usar el mismo id para las dos (ataba el replay del libro a la liquidación).
 - **Quién**: el constructor de H-013 propuso la forma y el orquestador la aceptó al verificar, bajo la
   delegación de Juani del 15/11/2026.
+
+## D-160 · Lo que exige la expensa en Mendoza (15/11/2026, cierra la investigación de D-060)
+
+- **Contexto**: D-060 pidió investigar los requisitos legales de la liquidación en Mendoza antes de cerrar
+  el PDF del 7. Se investigó el 15/11/2026 (fuentes oficiales y secundarias, sin acceso a InfoLeg ese día).
+- **Hallazgo**: no se encontró ninguna norma provincial ni municipal de Mendoza sobre el contenido de la
+  liquidación de expensas. Lo obligatorio sale del Código Civil y Comercial: el prorrateo según el
+  reglamento con ordinarias y extraordinarias por separado (arts. 2046, 2048 y 2056), el **archivo
+  cronológico de las liquidaciones** (art. 2067 inc. i) y la rendición de cuentas (art. 2067 inc. e). El
+  certificado de deuda es otro documento (art. 2067 inc. l; 10b). Hay un proyecto del Senado provincial
+  (2023) para un registro de administradores que no se encontró aprobado; una "Ley 8.969" citada por un
+  sitio comercial no se pudo verificar.
+- **Decisión**: el PDF del 7 (H-015) separa ordinaria y extraordinaria y se archiva sin reescribirse nunca.
+  Toma como **modelo de contenido** la Ley 941 de CABA (datos del edificio y la unidad, período,
+  vencimiento, gastos por categoría, fondo, estado de cuenta con saldo anterior), sin presentarla como
+  exigencia legal en Mendoza. Antes de citar artículos en el producto se cotejan con el texto oficial.
+- **Pendiente**: vigilar el proyecto del registro de administradores (si se aprueba, puede fijar
+  contenido); cotejar el art. 2067 en InfoLeg.
+- **Quién**: el orquestador, sobre la investigación del 15/11/2026, bajo la delegación de Juani.
