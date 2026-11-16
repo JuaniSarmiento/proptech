@@ -23,7 +23,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-009 | C-08 5, parte 3 | Confirmar carga el saldo inicial en el libro, cierra la migración y el importador | Alta / CRITICAL | Terminada |
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
 | H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Lista |
-| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Pendiente |
+| H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Pendiente |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
@@ -939,7 +939,14 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   `python3 aceptacion/H-012/aceptar.py --sin-regresion` por historia (la regresión, C09, al cierre).
   Esperados: 18 de backend y 4 en navegador; antes de construir, 21 rojos por aserción y un verde que ya
   existía (`test_n04_la_factura_duplicada_la_rechaza_la_base`, en `NACEN_VERDES`).
-- Evidencia: pendiente.
+- Construcción (Sonnet, una tanda): `4b102ac` los siete controles en el dominio (`liquidacion/dominio/
+  controles.py`, puro), `a6248af` las lecturas por la `aplicacion` de cada dueño (`gastos_por_resolver_del_periodo`
+  nueva en gastos), `5ab87b6` la región "Controles antes de emitir" y el escenario 1201, `2621c51` KB. La
+  pantalla no pasó por impeccable. `gastos_sin_ia` usa el singular con N = 1.
+- Evidencia (15/11/2026): `python3 aceptacion/H-012/aceptar.py --codigo 2621c51 --sin-regresion` desde
+  `478705f`: **18/18 de backend y 4/4 en navegador**, C01 a C08, N01 a N04, C10 y SPEC PASA, 0 rojos. C09
+  (regresión) queda para el cierre del change.
+- Demo: pendiente, con Juani.
 
 ### H-013 · Emitir lo revisado
 
