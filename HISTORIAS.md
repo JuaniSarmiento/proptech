@@ -1081,7 +1081,8 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N02** un efecto que termina en Python después del plazo (sin sentencia lenta) confirma: tiene que
     revertirse sin fila.
 - Constructor: Claude Sonnet (`rein-constructor`).
-- Aceptación aprobada: pendiente.
+- Aceptación aprobada: `b7b526a`. Comando: `python3 aceptacion/H-016/aceptar.py --sin-navegador`. Esperados: 5
+  de backend; antes de construir, 5 rojos por aserción (falta `proptech_worker.corte`) y C05 sin la KB.
 - Evidencia: pendiente.
 
 ### H-015 · PDF de la expensa y links firmados
