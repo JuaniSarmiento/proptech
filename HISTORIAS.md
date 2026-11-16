@@ -1010,6 +1010,11 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   `GET .../liquidaciones/{id}` con el permiso nuevo `ver_liquidaciones` y la migración `0041`. Comando:
   `python3 aceptacion/H-013/aceptar.py --sin-regresion`. Esperados: 36 de backend y 5 en navegador; antes de
   construir, 41 rojos por aserción.
+- **Vuelta 2** (`af84436`, 15/11/2026): la base de ejemplos heredada de H-011 traía un gasto en revisión
+  que desde H-012 es un bloqueante (los tests que emiten la base sin aceptar nada no podían pasar junto con
+  N03), y el ciclo de la `0041` compartía la base de migraciones de su módulo. Se sacó el gasto de la base y
+  el ciclo pasó a `test_h013_migracion.py`; lo que se prueba no cambia. Lección L-086. Los detectó el
+  constructor y los pidió corregir sin tocar `aceptacion/`.
 - Evidencia: pendiente.
 
 ### H-014 · Distribuir, anular y cargo cobrado de menos

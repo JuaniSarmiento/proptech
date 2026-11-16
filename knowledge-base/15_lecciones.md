@@ -1275,3 +1275,15 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   pantalla lo contiene; un `role="alert"` se filtra por su texto. Antes de congelar, el orquestador corre el
   e2e contra una pantalla mínima que lo pase, no sólo contra la pantalla ausente: un rojo por "no existe"
   no dice si el locator está bien escrito.
+
+## L-086 · Una base de ejemplo compartida envejece con las historias, y un ciclo de migración va en su módulo
+
+- **Origen**: H-013 del 7 (`liquidacion-y-emision`), 15/11/2026.
+- **Qué pasó**: la aceptación de H-013 se volvió a congelar por dos defectos. La base de ejemplos de H-011
+  traía un gasto `en_revision` para probar que no entraba en el cálculo; H-012 lo convirtió en un control
+  bloqueante, y H-013 heredó la base y esperaba emitirla sin aceptar nada: ninguna implementación pasaba
+  eso y N03 a la vez. Además el test del ciclo de la `0041` estaba al final de un módulo cuya base de
+  migraciones ya estaba en la `0041`, con filas.
+- **Regla**: al copiar las ayudas de una historia a la siguiente, el orquestador relee la base de ejemplos
+  contra las reglas que agregaron las historias del medio (un dato "que no entra" puede volverse un control).
+  Un test de ciclo de migración vive en un módulo propio, porque la base de migraciones es por módulo.
