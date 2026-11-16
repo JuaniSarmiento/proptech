@@ -3297,3 +3297,16 @@ registrado como tal en su momento.)*
 - **Descartado**: esperar al C-25 (deja el 7 sin cerrar por una sola pieza) y registrar el PDF sin el corte
   (un trabajo agotado podría confirmar un documento tarde, sin que nadie lo revise).
 - **Quién**: el orquestador, por la delegación de Juani del 15/11/2026 de terminar el change sin consultarle.
+
+## D-159 · El 7 completa la emisión con una `liquidacion` propia, uno a uno con `emision` (15/11/2026, H-013)
+
+- **Contexto**: D-086 dejó en el 4 un contrato mínimo de emisión que "el 7 completa". Al construir H-013
+  hubo que elegir dónde guardar lo que se usó para calcular (huella, configuración, fondo, vencimiento,
+  líneas, composición, alertas aceptadas, foto del saldo anterior).
+- **Decisión**: el libro no cambia: `emision` sigue siendo la del 4b. El 7 agrega `liquidacion` (id propio,
+  `emision_id` único) y sus tablas hijas en la migración `0041`, todas de sólo agregar y protegidas. La API
+  devuelve los dos ids. El saldo anterior de la foto vive en la línea de cada unidad.
+- **Descartado**: agregar columnas a `emision` (tabla protegida del libro, con su propio ciclo de dueño y
+  RLS) y usar el mismo id para las dos (ataba el replay del libro a la liquidación).
+- **Quién**: el constructor de H-013 propuso la forma y el orquestador la aceptó al verificar, bajo la
+  delegación de Juani del 15/11/2026.

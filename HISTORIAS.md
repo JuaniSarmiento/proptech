@@ -24,7 +24,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-010 | C-08 5, parte 4 | Un saldo inicial cargado de menos se corrige con un ajuste con motivo | Media / CRITICAL | Terminada |
 | H-011 | C-10 7, parte 1 | El administrador ve lo que paga cada unidad, sin efectos, igual al centavo a lo que se emite | Alta / CRITICAL | Lista |
 | H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
-| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Pendiente |
+| H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Lista |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Pendiente |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
@@ -1015,7 +1015,17 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   N03), y el ciclo de la `0041` compartía la base de migraciones de su módulo. Se sacó el gasto de la base y
   el ciclo pasó a `test_h013_migracion.py`; lo que se prueba no cambia. Lección L-086. Los detectó el
   constructor y los pidió corregir sin tocar `aceptacion/`.
-- Evidencia: pendiente.
+- Construcción (Sonnet, una tanda): `f05d22e` dominio puro de emitir, `28a9394` permiso `ver_liquidaciones`,
+  `be48ac0` migración `0041` (seis tablas protegidas, D-159), `f218494` emitir y leer, `5fbdc5f` web,
+  `0975ca5` KB, `fd17bff` y `95f5379` FKs de las tablas hijas a `complejo`. `aprobar_gasto` toma el candado
+  del `complejo` y recibe el `es_periodo_emitido` real desde `proptech_api`. Fuera del contrato: el replay
+  responde 200, el mismo `emision_id` con otro cuerpo da 409 `emision_id_repetido`, y si el interés del libro
+  difiere del preliquidado vuelve todo con 409 `preliquidacion_cambio`. `emitir_liquidacion` no lleva
+  `@accion_sensible` (la aceptación verifica las filas de auditoría). La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-013/aceptar.py --codigo 95f5379 --sin-regresion` desde
+  `af84436`: **36/36 de backend y 5/5 en navegador**, C01 a C11, N01 a N09, C13 y SPEC PASA, 0 rojos. C12
+  (regresión) queda para el cierre del change.
+- Demo: pendiente, con Juani.
 
 ### H-014 · Distribuir, anular y cargo cobrado de menos
 
