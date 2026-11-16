@@ -663,7 +663,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-10] `liquidacion-y-emision` · 7
-- **Estado**: `[ ]` pendiente (CRITICAL, explore propio; el change más grande del MVP)
+- **Estado**: `[~]` construido con Rein en H-011 a H-016, las seis en Lista (15/11/2026, CRITICAL, D-157 a
+  D-162, migraciones `0040` a `0043`); faltan las demos con Juani, el CI del PR y archivar
 - **Scope**: preliquidación sin efectos, emisión con efectos en una sola transacción, estados de la
   liquidación (borrador, emitida, distribuida, anulada), controles antes de emitir con alertas
   aceptadas, links de descarga firmados, plantilla del PDF (skill impeccable). **D8** (crédito de
