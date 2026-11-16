@@ -1099,7 +1099,11 @@ D-153).
   `registrar_distribucion`; `GET .../liquidaciones` con el estado real y sin lo no distribuido para el
   consejo; `POST .../distribucion`; `POST .../anulacion` con motivo, su 409 por período siguiente emitido
   (P26) y D8 en el estado de la cuenta; `POST .../cargos-cobrados-de-menos`; y "Distribuir" y "Anular" en la
-  pantalla del período emitido). Falta H-015.
+  pantalla del período emitido). H-016 `corte del lado de la base para las tareas del worker`
+  (cierra F2c, D-158: `proptech_worker.corte.ejecutar_con_corte` fija `statement_timeout`, `lock_timeout` e
+  `idle_in_transaction_session_timeout` con `SET LOCAL` y verifica el plazo antes de confirmar; un corte
+  revierte y se reintenta como `CorteDeLaBase`; `COTA_OPERACION_S` desaparece y cada tarea declara su
+  cota). Falta H-015.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
@@ -1158,7 +1162,7 @@ D-153).
   bloqueantes: F12b (el `sys.excepthook` del worker no cubre una excepción de terceros envuelta por
   otra capa) y que `repr(RedisSettings)` no muestre la contraseña (no se demostró que llegue a un log,
   pero tampoco está resuelto). **Actualización del 30/10/2026 (D-138)**: F2c y F12b pasan al **C-25
-  `worker-y-logs`** y `repr(RedisSettings)` al **C-29 `base-y-rls`**; F2c sigue siendo bloqueante del
+  `worker-y-logs`** (F2c, después, la cerró H-016 del 7, D-158) y `repr(RedisSettings)` al **C-29 `base-y-rls`**; F2c sigue siendo bloqueante del
   7 hasta que el C-25 lo cierre.
 - **Prerrequisito**: investigar qué exige la normativa de Mendoza para una expensa antes de cerrar
   el PDF (ProTecc H4, Q12 de Alberto, D-060); Alberto cita la Ley 941 de CABA sólo como ejemplo, no aplica acá.
@@ -1620,7 +1624,8 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
 - **Objetivo**: que el worker no confirme efectos tarde ni esconda errores de terceros, y que los logs
   digan lo que pasó, antes de que el 7 registre su primera tarea con efecto.
 - **Entra**:
-  - F2c (1c): un trabajo agotado por base congelada confirma su efecto cuando la base vuelve
+  - ~~F2c (1c)~~ **cerrada por H-016 del 7 (D-158)**, ya no es de este change: un trabajo agotado por
+    base congelada confirmaba su efecto cuando la base volvía
     (`backend/src/proptech_worker/tareas.py:39-59`, sin `statement_timeout` ni `lock_timeout` en
     `backend/src`). Hoy el patrón sólo lo usa `tarea_de_prueba` (las tareas del 2b usan
     `asyncio.to_thread` y son idempotentes por estado), pero bloquea al 7.
@@ -1635,11 +1640,9 @@ sobre el rebase (WSL, 31/10/2026): unitarios 2631 pasan, integración 2192 pasan
     `proptech_api/seguimiento.py:40,50`; `fastapi>=0.143.0,<0.144.0`).
 - **No entra**: `repr(RedisSettings)` con la contraseña: expone un secreto, es CRITICAL y va al C-29
   `base-y-rls`.
-- **Depende de**: 1c y 2b (archivados). **Habilita**: que el 7 registre su primera tarea real sin
-  heredar F2c.
+- **Depende de**: 1c y 2b (archivados). **Habilita**: F2c ya no bloquea al 7 (la cerró H-016, D-158).
 - **Gobernanza**: MEDIUM: worker y logs, sin plata, sin autenticación ni datos de usuario.
-- **Terminado cuando**: F2c tiene un corte del lado de la base y un test que muestra que un trabajo
-  agotado no confirma después; F12b tiene un test por cada forma envuelta; `test_salud_cola_real.py`
+- **Terminado cuando**: (F2c ya cerrada por H-016 del 7, D-158); F12b tiene un test por cada forma envuelta; `test_salud_cola_real.py`
   pasa corrido solo; un log de httpx dice a qué URL y qué respondió; F3b no depende de un atributo
   interno o tiene un test que lo detecte al subir FastAPI.
 
@@ -1839,7 +1842,7 @@ suena más obvio.
 
 | Deuda | Por qué no bloquea | Cambio |
 |---|---|---|
-| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 (bloqueante antes de registrar su primera tarea real) |
+| F2c: un trabajo agotado por base congelada confirma su efecto cuando la base vuelve (el hilo del primer intento, abandonado por `wait_for`, confirma tarde) | Hoy el efecto es vacío y la idempotencia frena el reencolado | **Cerrada por H-016 del 7 (D-158)**: corte del lado de la base en `proptech_worker/corte.py`; antes C-25 `worker-y-logs` (D-138) y, antes, el 7 (bloqueante antes de su primera tarea real) |
 | F12b: el `sys.excepthook` del worker no ve excepciones de terceros envueltas (cadena, `ExceptionGroup`, `OSError`) | Sin camino real hoy | **C-25 `worker-y-logs`** (D-138, 30/10/2026); antes: 7 |
 | `repr(RedisSettings)` muestra la contraseña | No se demostró que llegue a un log | **C-29 `base-y-rls`** (D-138, 30/10/2026); antes: 7 |
 | F13: `/salud-web` informa `sin_conexion` cuando una dependencia está congelada en vez de lenta | Cumple la letra de la spec y nadie lo consume aún | resuelto en 1d |

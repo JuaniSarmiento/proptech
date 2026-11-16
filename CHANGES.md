@@ -880,7 +880,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 
 ### [C-25] `worker-y-logs` · 1f
 - **Estado**: `[ ]` pendiente, no propuesto. MEDIUM. Neyen.
-- **Scope**: F2c (bloquea al 7 antes de su primera tarea real), F12b, `test_salud_cola_real` que falla
+- **Scope**: F12b (F2c la cerró H-016 del 7, D-158), `test_salud_cola_real` que falla
   corrido aislado, logs de worker y httpx sin interpolar, F3b. `repr(RedisSettings)` no entra: expone
   un secreto y va a C-29.
 - **Dependencias**: C-03 (archivado).
