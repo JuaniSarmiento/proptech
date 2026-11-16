@@ -1078,7 +1078,8 @@ D-153).
 - **Objetivo**: convertir los gastos del mes en la expensa de cada unidad, revisable antes de emitir.
 - **Permisos y lecturas (D-106)**: emite y distribuye el super admin y todo administrador del edificio;
   anular o aceptar alertas bloqueantes requiere super admin o administrador principal. Contador y
-  consejo leen dentro de su alcance, sin escribir (P39 sigue abierta). El propietario ve ambas
+  consejo leen dentro de su alcance, sin escribir (P39, resuelta en D-157: el consejo no ve lo emitido sin
+  distribuir). El propietario ve ambas
   expensas; el inquilino sólo ordinarias, también en su PDF y links de descarga. Probar que el filtro
   no dependa del navegador ni exponga extraordinarias por descarga directa.
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
@@ -1092,7 +1093,13 @@ D-153).
   `alertas_aceptadas` y, opcional, el vencimiento corrido con su motivo; la migración `0041` con las seis
   tablas de lo emitido y la acción `ver_liquidaciones`; el candado del período compartido con aprobar un
   gasto y el adaptador real de `es_periodo_emitido`; `GET .../liquidaciones/{id}` con lo guardado; el botón
-  "Emitir liquidación" con su confirmación en la pantalla). Faltan H-014 y H-015.
+  "Emitir liquidación" con su confirmación en la pantalla). H-014 `distribuir, anular y cargo cobrado de
+  menos` (la migración `0042`: el evento `distribuida` con su origen y la tabla `cargo_cobrado_de_menos`,
+  y con ella el préstamo de propiedad de D-115.3 para poder alterar `evento_de_emision`; el puerto
+  `registrar_distribucion`; `GET .../liquidaciones` con el estado real y sin lo no distribuido para el
+  consejo; `POST .../distribucion`; `POST .../anulacion` con motivo, su 409 por período siguiente emitido
+  (P26) y D8 en el estado de la cuenta; `POST .../cargos-cobrados-de-menos`; y "Distribuir" y "Anular" en la
+  pantalla del período emitido). Falta H-015.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).

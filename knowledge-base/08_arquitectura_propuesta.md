@@ -184,6 +184,21 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   lee el libro): `gastos` no importa `liquidacion`. Rutas en `proptech_api/liquidaciones.py`: `POST
   /api/complejos/{id}/periodos/{periodo}/emision` (201, o 200 si es el mismo pedido) y `GET
   /api/complejos/{id}/liquidaciones/{liquidacion_id}` (permiso `ver_liquidaciones`).
+- **Distribuir, anular y el cargo cobrado de menos** (7, H-014): `liquidacion/aplicacion/ciclo.py` toma el
+  candado del período (E5) y decide con `liquidacion/dominio/ciclo.py` (puro: sólo una emitida se
+  distribuye o se anula, y no se anula con el período siguiente emitido, P26). El estado de una
+  liquidación se lee de `evento_de_emision` por `cuenta_corriente.aplicacion.liquidar`
+  (`cierres_de_emisiones`); el evento `distribuida` lo escribe `cuenta_corriente.aplicacion.emisiones`
+  (`distribuir_emision`) y el 11 y el 13 llegan a él por el puerto `liquidacion.aplicacion.distribucion.
+  registrar_distribucion` (idempotente). Anular llama a `anular_emision` del libro y audita en la misma
+  transacción. D8 vive en `cuenta_corriente/dominio/estado.py` (paso 5): un crédito de corrección sobre
+  una obligación que no cuenta queda retenido. El cargo cobrado de menos lo escribe
+  `cuenta_corriente.aplicacion.cargos_de_menos` (obligación nueva sin emisión, como el ajuste de saldo
+  inicial) y lo expone `liquidacion.aplicacion.cargos` con la auditoría. Rutas en
+  `proptech_api/liquidaciones.py`: `GET .../liquidaciones` (lista, de la más nueva a la más vieja; el
+  consejo sólo ve las distribuidas), `POST .../liquidaciones/{id}/distribucion`, `POST
+  .../liquidaciones/{id}/anulacion` y `POST .../unidades/{unidad_id}/cargos-cobrados-de-menos`; los
+  cuerpos se validan a mano después del 404 y del 403 (D7).
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración
@@ -194,8 +209,11 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   salvo `auditoria`, que conserva su sonda con fila. **Chequeo de arranque**: la API, el worker,
   `alta_inicial` y `ejemplo` no arrancan si una tabla de la lista falta o su dueño no es superusuario
   (`TablasDeSoloAgregarDesprotegidas`, log `arranque_fallido` en la API y el worker); ninguna variable
-  lo saltea. Un `ALTER` sobre una tabla protegida sigue fallando con `must be owner` hasta que exista
-  el préstamo de propiedad **para tablas**, escrito en D-115 y sin construir.
+  lo saltea. Un `ALTER` sobre una tabla protegida falla con `must be owner` salvo que su migración la
+  declare en `PRESTA_PROPIEDAD` (D-115.3, construido con la `0042` de H-014): `roles antes` lee con `ast`
+  las migraciones pendientes (las posteriores a `alembic_version`) y le presta al migrador sólo esas
+  tablas; `roles despues` las devuelve y las verifica. Quien suba una migración así tiene que correr
+  `roles antes` antes de `alembic upgrade`, como el despliegue.
   - **El mismo problema, resuelto para funciones (3c, E11 y su Enmienda, D-129)**: una migración a
     veces necesita reemplazar la función de un trigger protegido (`CREATE OR REPLACE FUNCTION`), y
     `pg_restore --no-owner` deja toda función de `public` a nombre del rol de arranque. `roles antes`

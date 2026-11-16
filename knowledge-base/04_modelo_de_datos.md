@@ -178,8 +178,9 @@ Notas de lectura (ninguna reemplaza el *design* del cambio que corresponde):
 - **`LIQUIDACION`** era, hasta el cambio 7, sólo su "contrato mínimo" (D-086: la fila de `emision` del
   libro, 4b). Desde H-013 (`0041`) es además una **tabla propia**, `liquidacion`, con id propio y
   `emision_id` único que la une a la emisión del libro: guarda todo lo usado al emitir (ver "Entidades
-  hoy, dominio `liquidacion`"). La preliquidación no se guarda: se calcula cada vez. H-014 suma la máquina
-  de estados de distribución (D-073, D-074).
+  hoy, dominio `liquidacion`"). La preliquidación no se guarda: se calcula cada vez. H-014 (`0042`) suma el
+  estado de la liquidación, que sale del evento de cierre de la emisión (`distribuida` o `anulada`, D-073,
+  D-074).
 - **`REGLA_VERSIONADA`** (el motor de GoRules ZEN, cambio 6b) queda **fuera del camino crítico a M1**:
   ninguna regla vigente pasa todavía por el motor (D-089); hasta el 6b no hay puerto: intereses, fondo
   de reserva y cargo por estado son menús de configuración (D-080), y R14 y R37, si se validan, van
@@ -548,8 +549,9 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
   que lo saltee.
 - **Toda tabla nueva del conjunto** nace con trigger por fila de `UPDATE` y `DELETE`, `BEFORE TRUNCATE`
   y el trigger por sentencia, los tres con la misma función. Un `ALTER` posterior sobre la **tabla**
-  sigue fallando con `must be owner` hasta que exista el préstamo de propiedad para tablas, escrito en
-  D-115 y sin construir.
+  falla con `must be owner` salvo que su migración declare la tabla en `PRESTA_PROPIEDAD`: el préstamo de
+  propiedad de D-115.3 se construyó con la `0042` (H-014); `roles antes` la presta sólo mientras esa
+  migración está pendiente y `roles despues` la devuelve.
 - **Dueño de las funciones durante una migración (3c, E11 y su Enmienda, D-129)**: restaurar un
   respaldo deja toda función de `public` a nombre del rol de arranque, y una migración a veces
   necesita reemplazar una función de trigger (`CREATE OR REPLACE FUNCTION`). `roles antes` le
@@ -697,6 +699,18 @@ por administración. Lo que se guardó al emitir **nunca se recalcula** al leerl
   la liquidación como entidad y sólo ids y códigos en el detalle.
 - **Bajada**: la `0041` baja devolviendo antes las tablas al migrador (como las del libro) y se niega si
   alguna tiene filas.
+- **Distribuida y cargo cobrado de menos** (H-014, migración `0042`, E9, E11): `evento_de_emision`
+  admite `tipo = 'distribuida'` con su `origen` (`manual`, `email` o `portal`, columna nueva); una
+  distribuida no lleva motivo y su persona es obligatoria sólo si es manual (`motivo` y `persona_id` pasan
+  a admitir `NULL`, y `ck_evento_tipo_forma` exige la forma de cada tipo). El índice parcial único
+  `uq_evento_emision_cierre` deja a lo sumo **un cierre por emisión**: nunca anulada y distribuida. La
+  tabla **`cargo_cobrado_de_menos`** (de sólo agregar y protegida, en `cuenta_corriente`): `obligacion_id`
+  (la obligación nueva, sin emisión, con su `operacion_id`), `obligacion_origen_id` (de la **misma cuenta**,
+  por la FK compuesta), `motivo`, quién y cuándo; único por `operacion_id` y por obligación. Sin acciones
+  de auditoría nuevas: el cargo audita `corregir_movimiento` (forma `cargo_cobrado_de_menos`) y anular,
+  `anular_liquidacion`. La `0042` es la primera que hace `ALTER` sobre una tabla protegida
+  (`evento_de_emision`): lo declara en `PRESTA_PROPIEDAD` y `roles antes` se la presta al migrador sólo
+  mientras está pendiente (D-115.3).
 
 ### Entidades hoy, dominio `cuenta_corriente` (migraciones `0023` y `0024`, cambio 4b, D1 del design archivado)
 

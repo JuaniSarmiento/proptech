@@ -360,8 +360,15 @@ del 3c, D-128)
 - **Qué valida la aplicación, no la base**: blanco corregible (un crédito, no un débito de
   corrección) y sentido opuesto se validan bajo candado y con test; la base no distingue esos casos
   (E6, a validar P42/A-4).
-- **Cargo cobrado de menos**: queda nombrado para el 7 (cargo complementario con motivo y vínculo al
-  origen), no se resuelve en el 4b.
+- **Cargo cobrado de menos** (7, H-014, E11, D-157): se corrige con una **obligación nueva** sin
+  emisión (con su `operacion_id`, como el ajuste de saldo inicial), en el período de la obligación de
+  origen, con el componente que elige el administrador (ordinaria, fondo de reserva o extraordinaria) y
+  vencimiento el día del registro en Mendoza; su interés corre desde el día siguiente (R03). Guarda
+  motivo, vínculo a la obligación de origen, quién y cuándo en `cargo_cobrado_de_menos` (de sólo
+  agregar, migración `0042`). Nunca toca una fila existente. Por `POST
+  /api/complejos/{id}/unidades/{unidad_id}/cargos-cobrados-de-menos`, con el permiso
+  `corregir_movimiento` (super admin y administrador principal), auditado y idempotente por
+  `operacion_id`; un origen de otra unidad o de otro edificio es 404.
 - **Tests mínimos**: un UPDATE o un DELETE sobre un movimiento rebota en la base, también por SQL
   directo; una corrección sin motivo se rechaza; una corrección referencia al movimiento que corrige y
   los dos quedan visibles; el saldo después de una corrección es el correcto; un crédito de corrección
@@ -654,6 +661,24 @@ número no se marcan duplicadas entre sí.
   alertas aceptadas) y lo emitido nunca se recalcula al leerlo.
 - **Después de distribuida**: rige R08 sin excepciones. Ningún movimiento se edita ni se borra; todo
   error se corrige con un movimiento nuevo (ajuste).
+- **Distribuir y anular** (7, H-014, E9, E10, D-157). El estado de una liquidación sale de un evento de
+  cierre del libro (`evento_de_emision`): sin evento es `emitida`; `distribuida` (con su origen
+  `manual`, `email` o `portal`, una por emisión) o `anulada` (con motivo y responsable), nunca las dos
+  (un índice parcial único de la `0042` lo garantiza en la base). La **distribuida** la registra el
+  puerto único `registrar_distribucion`, idempotente: gana el primero y su origen queda; sobre una
+  anulada da conflicto. La ruta manual (`POST .../liquidaciones/{id}/distribucion`) la pide a quien
+  emite (super admin, administrador principal y de edificio) y responde 409 `ya_distribuida` o
+  `anulada`. **Anular** (`POST .../liquidaciones/{id}/anulacion`, `anular_liquidacion`: sólo super admin
+  y administrador principal) toma el candado del período antes que las cuentas, así que anular y
+  distribuir a la vez dejan una sola de las dos y la otra da 409 (**P26**: no se anula con un período
+  posterior emitido sin anular, 409 `periodo_siguiente_emitido`; primero se anula el siguiente).
+  **D8** (D-157): un crédito de corrección imputado a una obligación de la emisión anulada queda
+  **retenido**: figura como crédito a favor retenido, nunca aplicable, y la re-emisión no lo imputa (la
+  re-emisión suele corregir el mismo error; se reaplica, si hace falta, con una corrección nueva). Un
+  **pago** que estaba imputado vuelve como crédito aplicable con su `fecha_valor` (P38) y la re-emisión
+  lo imputa sin cobrar interés por los días en que estaba pagado. **P39**: el consejo no ve una
+  liquidación emitida sin distribuir (ni en la lista ni por id, 404); el contador y los administradores
+  ven todas.
 - **Tests mínimos**: anular una liquidación emitida deja el saldo de cada unidad igual al de antes de
   emitir, sin modificar ni borrar ningún movimiento, y registra la anulación con motivo y responsable;
   anular y volver a emitir no cobra dos veces el interés de la deuda vieja; un pago imputado a una

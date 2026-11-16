@@ -102,7 +102,11 @@ además hace falta `aceptar_alertas_bloqueantes` (sólo super admin y administra
 administrador del edificio recibe 403 con ese permiso faltante). Leer una liquidación ya emitida es la
 acción `ver_liquidaciones` (migración `0041`): super admin, administrador principal y de edificio,
 contador principal y de edificio, y consejo; el auxiliar y los vecinos no. El consejo ve sólo las
-liquidaciones distribuidas (P39): ese filtro lo construye H-014; hasta entonces la matriz ya lo incluye.
+liquidaciones distribuidas (P39, construido en H-014): no ve una emitida sin distribuir, ni en la lista ni
+por id (404); el contador y los administradores ven todas. Anular es `anular_liquidacion` (sólo super
+admin y administrador principal; el administrador del edificio recibe 403); distribuir a mano, la misma
+acción de emitir (`emitir_y_distribuir_liquidacion`); registrar un cargo cobrado de menos, `corregir_movimiento`
+(super admin y administrador principal).
 
 Contador, auxiliar y consejo no escriben. Las lecturas contables se construyen con sus módulos (6,
 7, 10a y 12). El inquilino sólo ve ordinarias, también al descargar comprobantes: el 2.2a construyó
