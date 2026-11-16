@@ -71,6 +71,7 @@ _SONDA_SIN_FILA = {
     "linea_de_liquidacion",
     "alerta_aceptada",
     "cargo_cobrado_de_menos",
+    "pdf_de_expensa",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}
@@ -88,6 +89,17 @@ _EXCEPCIONES_DE_LECTURA = {
         "((clerk_usuario_id = "
         "NULLIF(current_setting('app.identidad_clerk'::text, true), ''::text)) "
         "AND (NULLIF(current_setting('app.administracion_id'::text, true), ''::text) IS NULL))",
+        None,
+    ),
+    # 7, H-015 (`0043`): el barrido del worker lee lo `pendiente` de cualquier administración, sólo
+    # con la marca `app.barrido_de_documentos` y sin tenant. Sólo lectura, sólo `pendiente`.
+    ("public", "documento_de_expensa", "documento_pendiente_del_barrido"): (
+        "SELECT",
+        "PERMISSIVE",
+        ("public",),
+        "((estado = 'pendiente'::text) AND "
+        "(NULLIF(current_setting('app.administracion_id'::text, true), ''::text) IS NULL) AND "
+        "(current_setting('app.barrido_de_documentos'::text, true) = 'si'::text))",
         None,
     ),
     ("public", "invitacion", "invitacion_por_token"): (

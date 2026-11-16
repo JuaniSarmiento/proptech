@@ -996,7 +996,8 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                             sql.Identifier(tabla), sql.Identifier(app.postgres_user)
                         )
                     )
-                    # E15: REFERENCES sólo en las seis tablas del libro; sin propiedad ni DML.
+                    # E15: REFERENCES sólo en las seis tablas del libro y en `liquidacion` (la
+                    # referencia `documento_de_expensa`, 7 H-015, `0043`); sin propiedad ni DML.
                     if tabla in {
                         "cuenta",
                         "emision",
@@ -1004,6 +1005,7 @@ def despues(configuracion: ConfiguracionDeArranque) -> None:
                         "obligacion",
                         "movimiento",
                         "imputacion",
+                        "liquidacion",
                     }:
                         cur.execute(
                             sql.SQL("GRANT REFERENCES ON {} TO {}").format(

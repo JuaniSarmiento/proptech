@@ -517,6 +517,8 @@ _DUENO_DE_TABLA = {
     ),
     # El cargo cobrado de menos crea una obligación del libro: lo escribe `cuenta_corriente`.
     "cargo_cobrado_de_menos": "cuenta_corriente",
+    # 7, H-015: el documento de la expensa y su PDF archivado los escribe `liquidacion`.
+    **dict.fromkeys(("documento_de_expensa", "pdf_de_expensa"), "liquidacion"),
     **dict.fromkeys(
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",

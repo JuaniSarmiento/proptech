@@ -157,6 +157,9 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
         },
         # 7, H-014 (`0042`): el cargo cobrado de menos, con su motivo y su origen.
         "cargo_cobrado_de_menos": _con_tres_triggers("cargo_cobrado_de_menos"),
+        # 7, H-015 (`0043`): el PDF archivado de la expensa. Su documento cambia de estado y no es
+        # de sólo agregar; los bytes sí, y no se reescriben nunca (CCyC art. 2067 inc. i).
+        "pdf_de_expensa": _con_tres_triggers("pdf_de_expensa"),
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(
