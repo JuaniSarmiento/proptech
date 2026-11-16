@@ -694,6 +694,19 @@ por administración. Lo que se guardó al emitir **nunca se recalcula** al leerl
   tomada bajo los candados al emitir, `0.00` si la unidad no tiene cuenta, R06) y, en JSONB, sus cargos
   particulares y su reparto por grupo.
 - **`alerta_aceptada`**: código, mensaje y detalle del control bloqueante aceptado, quién y cuándo (R34).
+- **`documento_de_expensa`** y **`pdf_de_expensa`** (H-015, migración `0043`, E12): se separa lo que cambia
+  de lo que se agrega (D-115). `documento_de_expensa` es una fila por unidad con obligación y por variante
+  (`completa` y `sin_extraordinaria`; único por liquidación, unidad y variante) con su `estado`
+  (`pendiente`, `generado`, `fallido`) y el `motivo` del fallo (sólo si `fallido`); cambia de estado, así
+  que **no** es de sólo agregar, pero un trigger impide borrarla, cambiar su identidad y tocar un
+  documento ya `generado`, y pasar a `generado` exige el PDF archivado. `pdf_de_expensa` guarda los bytes
+  (`contenido`), su `sha256` y `generado_en`, **de sólo agregar y protegida** (tres triggers, del rol de
+  arranque), único por documento: el PDF archivado no se reescribe nunca (CCyC art. 2067 inc. i). La
+  política `documento_pendiente_del_barrido` (sólo lectura y sólo de `pendiente`, con la marca
+  `app.barrido_de_documentos` y sin tenant) deja al barrido del worker reencolar lo pendiente de todas las
+  administraciones; la de `pdf_de_expensa` es sólo la de siempre, por administración. La `0043` baja
+  devolviendo antes `pdf_de_expensa` al migrador y se niega si hay documentos; y desde ella `roles despues`
+  también le da `REFERENCES` sobre `liquidacion` al migrador.
 - **Vocabulario**: la acción `ver_liquidaciones` (`accion_de_auditoria`, `0041`). Emitir audita
   `emitir_y_distribuir_liquidacion` y, si se aceptó algún bloqueante, `aceptar_alertas_bloqueantes`, con
   la liquidación como entidad y sólo ids y códigos en el detalle.

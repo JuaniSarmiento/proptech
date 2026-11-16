@@ -131,6 +131,20 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
     **la API nunca**.
   - **Caddy deja de publicar `/api/*`** salvo `/api/salud` (`infra/Caddyfile`): toda la API queda
     interna a la red de Compose.
+- **El PDF de la expensa y los enlaces firmados (7, H-015, D-070, D-160, E12, E13)**: el PDF de cada
+  unidad (dos variantes: `completa` y `sin_extraordinaria`, la del inquilino, D-106) lo genera el
+  worker con WeasyPrint desde lo **guardado** al emitir y se archiva sin cambios (CCyC art. 2067 inc. i):
+  `pdf_de_expensa` es de sólo agregar y no se reescribe nunca. **No tiene dirección pública**: se baja
+  con un enlace firmado (`POST /api/complejos/{id}/documentos/{id}/enlace`) que vence a los 15 minutos
+  y es un HMAC-SHA256 sobre administración, documento, variante y vencimiento, con la clave
+  **`PROPTECH_CLAVE_DE_ENLACES`** (32 caracteres o más, `SecretStr`, sólo la API; sin ella la API arranca
+  y no firma enlaces, 503). El token nunca lleva datos personales. La descarga
+  (`GET /api/documentos/descarga?token=`) es la **única ruta pública de la API además de `/api/salud`**:
+  el token firmado es la autorización (403 alterado, 410 vencido) y el tenant sale del token ya
+  verificado. Como Caddy no publica `/api/*`, el navegador baja el PDF por la ruta `/documentos/descarga`
+  del servidor de Next, que lo pide a la API sin credenciales. Quién pide qué lo decide el servidor
+  (propietario las dos variantes, inquilino sólo la sin extraordinaria).
+  La imagen del backend lleva las librerías de sistema de WeasyPrint (Pango, HarfBuzz y una tipografía).
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
   tres roles con `roles.py antes`/`despues`, y es el dueño de **toda tabla de sólo agregar**: `auditoria`

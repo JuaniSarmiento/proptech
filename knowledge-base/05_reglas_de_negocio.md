@@ -885,7 +885,10 @@ número no se marcan duplicadas entre sí.
 
 - **Código de unidad**: la boleta incluye un código corto de la unidad para que el vecino lo escriba
   en el concepto de la transferencia. Sólo cambia la plantilla de la boleta; no es obligatorio que el
-  vecino lo use.
+  vecino lo use. **Cómo se arma (7, H-015)**: las **iniciales en mayúscula de las palabras del nombre
+  del edificio** (sin tildes: `Álamos` da `A`; los números también cuentan), un guion y el
+  identificador de la unidad: `Torre Ficticia` y `1B` dan `TF-1B`. Sale en el PDF de la expensa
+  (`liquidacion/dominio/documento.py`), siempre del nombre del edificio al generarlo.
 - **CBU histórico**: cuando el administrador confirma un pago y el CBU de origen se conoce (porque lo
   trae el comprobante o porque el pago se cruzó con el extracto), el sistema lo guarda asociado a esa
   unidad (cambio 8). La sugerencia por CBU aparece al cruzar el extracto (cambio 9): un movimiento del

@@ -1103,7 +1103,15 @@ D-153).
   (cierra F2c, D-158: `proptech_worker.corte.ejecutar_con_corte` fija `statement_timeout`, `lock_timeout` e
   `idle_in_transaction_session_timeout` con `SET LOCAL` y verifica el plazo antes de confirmar; un corte
   revierte y se reintenta como `CorteDeLaBase`; `COTA_OPERACION_S` desaparece y cada tarea declara su
-  cota). Falta H-015.
+  cota). H-015 `PDF de la expensa y links firmados` (la migración `0043`: `documento_de_expensa`, con su
+  estado, y `pdf_de_expensa`, de sólo agregar y con el PDF archivado, más la política del barrido; dos
+  documentos por unidad con obligación, `completa` y `sin_extraordinaria`, creados al emitir y encolados
+  **después** del commit, con la emisión en 201 aunque la cola falle; `generar_documento` arma el HTML
+  desde lo guardado, lo pasa a PDF con WeasyPrint y archiva bytes y SHA-256; la tarea
+  `generar_pdf_de_expensa` por `ejecutar_con_corte` y su barrido (`cron_jobs`, cada cinco minutos);
+  `GET .../documentos`, el reproceso (202 o 503), el enlace firmado de 15 minutos con
+  `PROPTECH_CLAVE_DE_ENLACES` y la descarga pública por token; el código para la transferencia de R19 y
+  la región "Documentos" de la pantalla del período emitido).
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
