@@ -3284,3 +3284,16 @@ registrado como tal en su momento.)*
   (su interés y su saldo anterior quedarían calculados sobre lo anulado); inventar el recargo del doble
   vencimiento.
 - **Quién**: Juani, sobre el análisis del orquestador del 15/11/2026.
+
+## D-158 · F2c entra al 7 como H-016, antes del PDF (15/11/2026, 7, deuda a historia)
+
+- **Contexto**: F2c (1c) bloquea la primera tarea del worker con efecto real, que es el PDF de la expensa
+  (H-015). D-138 la había pasado al C-25 `worker-y-logs` (Neyen), que el 15/11/2026 seguía sin proponer.
+  Juani pidió terminar el 7 entero sin esperar y que la deuda que lo frene se haga historia o pase a un
+  change posterior ("se crean hu de la deuda que quede si no la largamos a changes superiores").
+- **Decisión**: F2c se construye en el 7 como **H-016** (corte del lado de la base para las tareas con
+  efecto), antes de H-015. El resto del C-25 (F12b, `test_salud_cola_real.py`, los logs sin interpolar y
+  F3b) sigue en el C-25.
+- **Descartado**: esperar al C-25 (deja el 7 sin cerrar por una sola pieza) y registrar el PDF sin el corte
+  (un trabajo agotado podría confirmar un documento tarde, sin que nadie lo revise).
+- **Quién**: el orquestador, por la delegación de Juani del 15/11/2026 de terminar el change sin consultarle.

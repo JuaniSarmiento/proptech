@@ -26,6 +26,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-012 | C-10 7, parte 2 | Los controles de R34 en la preliquidación, cada uno con su nivel, sin escribir nada | Media / CRITICAL | Lista |
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Pendiente |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Pendiente |
+| H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Pendiente |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -1055,6 +1056,33 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N06** anular y distribuir en paralelo: queda una sola de las dos, nunca las dos.
   - **N07** cargo cobrado de menos con importe 0 o negativo (422), sin motivo (422), o con una obligación
     de origen de otra unidad o de otro edificio (404).
+
+### H-016 · Corte del lado de la base para las tareas del worker (F2c)
+
+- Change: C-10 7 (D-158, F2c del 1c, antes en el C-25). Va antes de H-015.
+- Resultado para Juani: una tarea del worker que toca la base (la primera real es el PDF) tiene su propio
+  límite de tiempo **en la base**: si la base se traba, la tarea se corta y no confirma nada, ni siquiera
+  cuando la base vuelve; un reintento posterior la hace una sola vez.
+- Alcance: `proptech_worker/corte.py` con `ejecutar_con_corte` (sesión con `statement_timeout`,
+  `lock_timeout` e `idle_in_transaction_session_timeout` locales a la transacción, una cota por tarea y un
+  chequeo del plazo antes de confirmar), la tarea de prueba pasando por ahí, sin `COTA_OPERACION_S`.
+  Exclusiones: F12b, los logs y F3b (siguen en el C-25).
+- Dificultad y riesgo: media / HIGH (el worker va a mover documentos de plata).
+- Tienen que pasar:
+  - **C01** dentro del efecto, `statement_timeout`, `lock_timeout` e `idle_in_transaction_session_timeout`
+    valen la cota de la tarea (500 ms para una cota de 0,5 s), y fuera de la transacción vuelven a su valor.
+  - **C02** con la clave tomada por otra transacción sin confirmar, la tarea se corta en menos de 3 s con
+    `CorteDeLaBase` (un `ErrorPasajero`) y, liberada la clave, no quedó ninguna fila suya.
+  - **C03** un reintento después del corte confirma el efecto una sola vez, y otro más devuelve `False`.
+  - **C04** la tarea de prueba usa `ejecutar_con_corte` y `COTA_OPERACION_S` ya no existe.
+  - **C05** la KB: la ficha 1f dice que F2c lo cerró H-016 del 7 (D-158) y la ficha 7 registra H-016.
+- Tienen que fallar:
+  - **N01** un efecto lento (`pg_sleep` del triple de la cota) confirma: tiene que cortarse sin fila.
+  - **N02** un efecto que termina en Python después del plazo (sin sentencia lenta) confirma: tiene que
+    revertirse sin fila.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: pendiente.
+- Evidencia: pendiente.
 
 ### H-015 · PDF de la expensa y links firmados
 
