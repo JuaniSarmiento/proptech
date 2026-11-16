@@ -10,6 +10,8 @@
  *   y de la extraordinaria no cambian.
  * - 1103: 409 `periodo_anterior_sin_emitir`.
  * - 1201 (H-012, `aceptacion/H-012/CONTRATO.md`): la base con tres controles, uno de cada nivel.
+ * - 1301 (H-013, `aceptacion/H-013/CONTRATO.md`): la base con `gastos_en_revision` (bloqueante) y
+ *   `gastos_sin_ia` (advertencia); además contesta `POST .../emision` con 201. 1101 también.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -19,12 +21,14 @@ export const PRELIQUIDACION_FONDO_CERO = "00000000-0000-0000-0000-000000001102";
 export const PRELIQUIDACION_SIN_ANTERIOR = "00000000-0000-0000-0000-000000001103";
 
 export const PRELIQUIDACION_CON_CONTROLES = "00000000-0000-0000-0000-000000001201";
+export const PRELIQUIDACION_CON_BLOQUEANTE = "00000000-0000-0000-0000-000000001301";
 
 const _IDS = new Set([
   PRELIQUIDACION_BASE,
   PRELIQUIDACION_FONDO_CERO,
   PRELIQUIDACION_SIN_ANTERIOR,
   PRELIQUIDACION_CON_CONTROLES,
+  PRELIQUIDACION_CON_BLOQUEANTE,
 ]);
 
 const _CONTROLES = [
@@ -48,6 +52,16 @@ const _CONTROLES = [
       cantidad: 2,
       gastos: ["00000000-0000-0000-0000-00000000d102", "00000000-0000-0000-0000-00000000d103"],
     },
+  },
+];
+
+const _CONTROLES_DE_1301 = [
+  _CONTROLES[1],
+  {
+    codigo: "gastos_sin_ia",
+    nivel: "advertencia",
+    mensaje: "Hay 1 factura sin cargar",
+    detalle: { cantidad: 1, gastos: ["00000000-0000-0000-0000-00000000d102"] },
   },
 ];
 
@@ -248,5 +262,124 @@ export function responderPreliquidacion(
     json(respuesta, 200, { ...cuerpoDeLaBase(id), controles: _CONTROLES });
     return;
   }
+  if (id === PRELIQUIDACION_CON_BLOQUEANTE) {
+    json(respuesta, 200, { ...cuerpoDeLaBase(id), controles: _CONTROLES_DE_1301 });
+    return;
+  }
   json(respuesta, 200, id === PRELIQUIDACION_FONDO_CERO ? cuerpoSinFondo(id) : cuerpoDeLaBase(id));
+}
+
+const _UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Lo que recibió el libro de cada unidad: la ordinaria más los cargos particulares (E15). */
+function obligaciones(vencimiento: string) {
+  return _UNIDADES.map((u) => ({
+    unidad_id: u.unidad_id,
+    identificador: u.identificador,
+    ordinaria: u.identificador === "1B" ? "32000.00" : u.ordinaria,
+    fondo_de_reserva: u.fondo_de_reserva,
+    extraordinaria: u.extraordinaria,
+    vencimiento,
+  }));
+}
+
+/** Contesta `periodos/2026-11-01/emision` (POST) de 1101 y 1301 con 201, como la API real: el
+ * pedido se valida (JSON, `emision_id` UUID, la huella de la preliquidación mostrada, las alertas
+ * aceptadas exactamente las de los bloqueantes del escenario y el vencimiento corrido con su fecha y
+ * su motivo). 1201 tiene un duro: 422 `control_duro`, aunque la pantalla no deja llegar. El cuerpo
+ * crudo queda en `guardar` (`/api/__debug/ultima-escritura`). */
+export function responderEmision(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  id: string,
+  periodo: string,
+  guardar: (escritura: {
+    metodo: string;
+    url: string;
+    contentType: string;
+    cuerpo: string;
+  }) => void,
+): void {
+  if ((pedido.method ?? "GET") !== "POST") {
+    respuesta.writeHead(405).end();
+    return;
+  }
+  const trozos: Buffer[] = [];
+  pedido.on("data", (trozo: Buffer) => {
+    trozos.push(trozo);
+  });
+  pedido.on("end", () => {
+    const cuerpo = Buffer.concat(trozos).toString("utf8");
+    guardar({
+      metodo: "POST",
+      url: pedido.url ?? "",
+      contentType: String(pedido.headers["content-type"] ?? ""),
+      cuerpo,
+    });
+    if (periodo !== "2026-11-01") {
+      respuesta.writeHead(404).end();
+      return;
+    }
+    if (!/^application\/json/.test(String(pedido.headers["content-type"] ?? ""))) {
+      json(respuesta, 422, { detail: [{ type: "json_invalid", loc: ["body"] }] });
+      return;
+    }
+    let leido: Record<string, unknown>;
+    try {
+      leido = JSON.parse(cuerpo) as Record<string, unknown>;
+    } catch {
+      json(respuesta, 422, { detail: [{ type: "json_invalid", loc: ["body"] }] });
+      return;
+    }
+    const alertas = leido.alertas_aceptadas;
+    const corrida = leido.vencimiento as { fecha?: unknown; motivo?: unknown } | undefined | null;
+    const motivoValido =
+      corrida === undefined ||
+      corrida === null ||
+      (typeof corrida.fecha === "string" &&
+        corrida.fecha >= "2026-11-01" &&
+        typeof corrida.motivo === "string" &&
+        corrida.motivo.trim().length >= 1 &&
+        corrida.motivo.trim().length <= 500);
+    if (
+      typeof leido.emision_id !== "string" ||
+      !_UUID.test(leido.emision_id) ||
+      typeof leido.huella !== "string" ||
+      !Array.isArray(alertas) ||
+      !motivoValido
+    ) {
+      json(respuesta, 422, { detail: [{ type: "value_error", loc: ["body"] }] });
+      return;
+    }
+    if (id === PRELIQUIDACION_CON_CONTROLES) {
+      json(respuesta, 422, { detail: "control_duro", controles: ["saldos_iniciales_sin_validar"] });
+      return;
+    }
+    const esperadas = id === PRELIQUIDACION_CON_BLOQUEANTE ? ["gastos_en_revision"] : [];
+    if (leido.huella !== _HUELLA) {
+      json(respuesta, 409, {
+        detail: "conflicto",
+        campo: "huella",
+        motivo: "preliquidacion_cambio",
+      });
+      return;
+    }
+    if (JSON.stringify([...alertas].sort()) !== JSON.stringify(esperadas)) {
+      json(respuesta, 409, {
+        detail: "conflicto",
+        campo: "alertas_aceptadas",
+        motivo: "alertas_distintas",
+      });
+      return;
+    }
+    const vencimiento = corrida ? String(corrida.fecha) : "2026-11-10";
+    json(respuesta, 201, {
+      liquidacion_id: "00000000-0000-0000-0000-00000000e101",
+      emision_id: leido.emision_id,
+      periodo: "2026-11-01",
+      vencimiento,
+      huella: leido.huella,
+      obligaciones: obligaciones(vencimiento),
+    });
+  });
 }

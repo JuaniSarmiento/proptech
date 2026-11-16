@@ -143,3 +143,72 @@ export async function preliquidacionDelPeriodo(
   }
   return cuerpoValido(resultado.datos) ? resultado : { estado: "fallo" };
 }
+
+/** El vencimiento corrido al emitir (E8): la fecha nueva y su motivo (1 a 500 caracteres). */
+export type VencimientoCorrido = { fecha: string; motivo: string };
+
+/** Lo que viaja al emitir (H-013): el `emision_id` que eligió la pantalla, la huella de la
+ * preliquidación revisada y los códigos de los bloqueantes aceptados. */
+export type PedidoDeEmision = {
+  emision_id: string;
+  huella: string;
+  alertas_aceptadas: string[];
+  vencimiento?: VencimientoCorrido;
+};
+
+export type ObligacionEmitida = {
+  unidad_id: string;
+  identificador: string;
+  ordinaria: string;
+  fondo_de_reserva: string;
+  extraordinaria: string;
+  vencimiento: string;
+};
+
+export type EmisionRegistrada = {
+  liquidacion_id: string;
+  emision_id: string;
+  periodo: string;
+  vencimiento: string;
+  huella: string;
+  obligaciones: ObligacionEmitida[];
+};
+
+/**
+ * Emite la preliquidación revisada (`AAAA-MM-01`). Un 409 trae su `campo` y `motivo`
+ * (`preliquidacion_cambio`, `alertas_distintas`, `periodo_emitido`, `periodo_anterior_sin_emitir`);
+ * un 422 `control_duro` llega como `fallo` (la pantalla no deja emitir con un duro activo). Los
+ * importes son texto con dos decimales: si no lo son, el resultado es `fallo`. Un id que no es UUID,
+ * o un período mal escrito, es "no existe", sin pedido.
+ */
+export async function emitirLiquidacion(
+  id: string,
+  periodo: string,
+  pedido: PedidoDeEmision,
+): Promise<ResultadoApi<EmisionRegistrada>> {
+  if (!esIdValido(id) || !_PERIODO.test(periodo)) {
+    return { estado: "no_existe" };
+  }
+  const resultado = await pedirApi<EmisionRegistrada>(
+    `/api/complejos/${encodeURIComponent(id)}/periodos/${periodo}/emision`,
+    {
+      metodo: "POST",
+      cuerpo: {
+        emision_id: pedido.emision_id,
+        huella: pedido.huella,
+        alertas_aceptadas: pedido.alertas_aceptadas,
+        ...(pedido.vencimiento ? { vencimiento: pedido.vencimiento } : {}),
+      },
+    },
+  );
+  if (resultado.estado !== "ok") {
+    return resultado;
+  }
+  const { obligaciones } = resultado.datos;
+  const bien =
+    Array.isArray(obligaciones) &&
+    obligaciones.every(
+      (o) => esMonto(o.ordinaria) && esMonto(o.fondo_de_reserva) && esMonto(o.extraordinaria),
+    );
+  return bien ? resultado : { estado: "fallo" };
+}

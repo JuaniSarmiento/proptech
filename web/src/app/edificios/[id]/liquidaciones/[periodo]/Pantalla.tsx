@@ -12,13 +12,18 @@
  * se dice con un mensaje propio, traducido de su código; nunca un texto de la API (L-007).
  */
 
-import type { ReactNode } from "react";
+import { type ReactNode, useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Ayuda } from "../../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../../componentes/EncabezadoDePantalla";
+import { Campo } from "../../../../../componentes/Formulario";
 import { Panel } from "../../../../../componentes/Panel";
+import { PanelLateral } from "../../../../../componentes/PanelLateral";
+import { permite, useSesionDePantalla } from "../../../../../componentes/SesionDePantalla";
 import type {
   BloqueDeGastos,
   ControlAntesDeEmitir,
+  EmisionRegistrada,
   NivelDeControl,
   Preliquidacion,
   UnidadPreliquidada,
@@ -26,6 +31,12 @@ import type {
 import { dinero, fecha, porcentaje } from "../../../../../lib/formato";
 import { ArmazonDelEdificio } from "../../Armazon";
 import { AYUDA_PRELIQUIDACION } from "./ayuda";
+
+export type EstadoEmision = { error?: string; emitida?: EmisionRegistrada } | null;
+
+type AccionEmitir = (estadoPrevio: EstadoEmision, formData: FormData) => Promise<EstadoEmision>;
+
+const MOTIVO_MAXIMO = 500;
 
 type PropsComunes = {
   id: string;
@@ -285,20 +296,242 @@ function TotalesDeLaLiquidacion({ preliquidacion }: { preliquidacion: Preliquida
   );
 }
 
+function LiquidacionEmitida({
+  periodoEnPalabras,
+  emision,
+  total,
+  regionRef,
+}: {
+  periodoEnPalabras: string;
+  emision: EmisionRegistrada;
+  total: string;
+  regionRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div ref={regionRef} tabIndex={-1} className="comparacion__aceptadas">
+      <Panel
+        titulo="Liquidación emitida"
+        descripcion={`Quedó emitida la liquidación de ${periodoEnPalabras}. Este paso no se deshace.`}
+      >
+        <dl className="renglones">
+          <Renglon etiqueta="Período" valor={periodoEnPalabras} />
+          <Renglon etiqueta="Total de la liquidación" valor={dinero(total)} fuerte />
+          <Renglon etiqueta="Vence el" valor={fecha(emision.vencimiento)} />
+          <Renglon etiqueta="Unidades con obligación" valor={String(emision.obligaciones.length)} />
+        </dl>
+      </Panel>
+    </div>
+  );
+}
+
+/** La confirmación de emitir: dice que no se deshace, con el período y el total; cada bloqueante
+ * activo se acepta con su casilla (un duro no tiene casilla: con uno activo ni se abre) y el
+ * vencimiento se puede correr con su motivo. "Confirmar" espera a que estén todas marcadas. */
+function ConfirmarEmision({
+  periodo,
+  periodoEnPalabras,
+  preliquidacion,
+  emisionId,
+  puedeAceptar,
+  accion,
+  alCancelar,
+  error,
+}: {
+  periodo: string;
+  periodoEnPalabras: string;
+  preliquidacion: Preliquidacion;
+  emisionId: string;
+  puedeAceptar: boolean;
+  accion: (formData: FormData) => void;
+  alCancelar: () => void;
+  error: string | undefined;
+}) {
+  const bloqueantes = preliquidacion.controles.filter((c) => c.nivel === "bloqueante");
+  const advertencias = preliquidacion.controles.filter((c) => c.nivel === "advertencia");
+  const [aceptados, setAceptados] = useState<Set<string>>(new Set());
+  const [corrida, setCorrida] = useState(false);
+  const faltan = bloqueantes.some((c) => !aceptados.has(c.codigo));
+
+  function marcar(codigo: string, marcado: boolean) {
+    setAceptados((previos) => {
+      const siguientes = new Set(previos);
+      if (marcado) siguientes.add(codigo);
+      else siguientes.delete(codigo);
+      return siguientes;
+    });
+  }
+
+  return (
+    <div className="panel-lateral__seccion">
+      <p>
+        Vas a emitir la liquidación de {periodoEnPalabras} por{" "}
+        {dinero(preliquidacion.totales.total)}. Esta emisión no se deshace: cada unidad queda con su
+        deuda en la cuenta corriente y lo que cambie después no modifica lo emitido.
+      </p>
+      <form action={accion}>
+        <input type="hidden" name="emision_id" value={emisionId} />
+        <input type="hidden" name="huella" value={preliquidacion.huella} />
+        {bloqueantes.length > 0 ? (
+          <fieldset className="emision__alertas">
+            <legend>Alertas que hay que aceptar</legend>
+            {bloqueantes.map((control) => (
+              <Campo
+                key={control.codigo}
+                nombre={`aceptar_${control.codigo}`}
+                etiqueta={`Acepto: ${control.mensaje}`}
+                type="checkbox"
+                name="alerta"
+                value={control.codigo}
+                checked={aceptados.has(control.codigo)}
+                disabled={!puedeAceptar}
+                onChange={(e) => marcar(control.codigo, e.target.checked)}
+              />
+            ))}
+            {!puedeAceptar ? (
+              <p className="texto-secundario">
+                No tenés permiso para aceptar alertas en este edificio. Lo hace el administrador
+                principal.
+              </p>
+            ) : null}
+          </fieldset>
+        ) : null}
+        {advertencias.length > 0 ? (
+          <ul className="lista-de-filas lista-de-filas--compacta" aria-label="Advertencias">
+            {advertencias.map((control) => (
+              <li key={control.codigo}>
+                <strong>{NIVELES[control.nivel]}</strong>
+                {": "}
+                {control.mensaje}
+                <span className="texto-secundario"> No hace falta aceptarla.</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <Campo
+          nombre="correr_vencimiento"
+          etiqueta="Correr el vencimiento"
+          type="checkbox"
+          name="correr_vencimiento"
+          checked={corrida}
+          onChange={(e) => setCorrida(e.target.checked)}
+        />
+        {corrida ? (
+          <>
+            <Campo
+              nombre="vencimiento_fecha"
+              etiqueta="Nuevo vencimiento"
+              type="date"
+              name="vencimiento_fecha"
+              min={periodo}
+              required
+            />
+            <Campo
+              nombre="motivo_del_vencimiento"
+              etiqueta="Motivo"
+              name="motivo_del_vencimiento"
+              autoComplete="off"
+              maxLength={MOTIVO_MAXIMO}
+              required
+            />
+          </>
+        ) : (
+          <p className="texto-secundario">
+            Vence el {fecha(preliquidacion.vencimiento)}, el día de la configuración del edificio.
+          </p>
+        )}
+        <div className="panel-lateral__acciones">
+          <button type="button" className="boton-secundario" onClick={alCancelar}>
+            Cancelar
+          </button>
+          <ConfirmarConEspera deshabilitado={faltan || (bloqueantes.length > 0 && !puedeAceptar)} />
+        </div>
+      </form>
+      {error ? (
+        <p role="alert" className="campo__error">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ConfirmarConEspera({ deshabilitado }: { deshabilitado: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      className="boton-principal"
+      disabled={deshabilitado || pending}
+      aria-busy={pending}
+    >
+      {pending ? "Emitiendo…" : "Confirmar"}
+    </button>
+  );
+}
+
 export function PantallaPreliquidacion({
   id,
   nombreEdificio,
   periodoEnPalabras,
   preliquidacion,
-}: PropsComunes & { preliquidacion: Preliquidacion }) {
+  accionEmitir,
+}: PropsComunes & { preliquidacion: Preliquidacion; accionEmitir?: AccionEmitir }) {
+  const sesion = useSesionDePantalla();
+  const puedeEmitir =
+    accionEmitir !== undefined && permite(sesion, "emitir_y_distribuir_liquidacion", id);
+  const puedeAceptar = permite(sesion, "aceptar_alertas_bloqueantes", id);
+  const hayDuro = preliquidacion.controles.some((c) => c.nivel === "duro");
+  const [estado, enviar] = useActionState(accionEmitir ?? (async () => null), null);
+  const [abierta, setAbierta] = useState(false);
+  const [emisionId, setEmisionId] = useState("");
+  const botonRef = useRef<HTMLButtonElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const emitida = estado?.emitida;
+
+  // Al emitir, el botón desaparece: el foco va a la región que apareció.
+  const hayEmitida = emitida !== undefined;
+  useEffect(() => {
+    if (hayEmitida) {
+      regionRef.current?.focus();
+    }
+  }, [hayEmitida]);
+
+  function abrir() {
+    // Un `emision_id` por cada vez que se abre la confirmación: si el pedido se repite, la API
+    // contesta lo mismo en vez de emitir dos veces.
+    setEmisionId(crypto.randomUUID());
+    setAbierta(true);
+  }
+
   return (
     <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="liquidaciones">
       <EncabezadoDePantalla
         titulo={`Preliquidación de ${periodoEnPalabras}`}
         ayuda={<Ayuda {...AYUDA_PRELIQUIDACION} />}
+        accionPrincipal={
+          puedeEmitir && !emitida ? (
+            <button
+              ref={botonRef}
+              type="button"
+              className="boton-principal"
+              disabled={hayDuro}
+              onClick={abrir}
+            >
+              Emitir liquidación
+            </button>
+          ) : null
+        }
       />
       <div className="disposicion">
         <div>
+          {emitida ? (
+            <LiquidacionEmitida
+              periodoEnPalabras={periodoEnPalabras}
+              emision={emitida}
+              total={preliquidacion.totales.total}
+              regionRef={regionRef}
+            />
+          ) : null}
           <ControlesAntesDeEmitir controles={preliquidacion.controles} />
           <Panel
             titulo="Lo que paga cada unidad"
@@ -333,6 +566,25 @@ export function PantallaPreliquidacion({
           <TotalesDeLaLiquidacion preliquidacion={preliquidacion} />
         </div>
       </div>
+      {puedeEmitir ? (
+        <PanelLateral
+          abierto={abierta && !hayEmitida}
+          titulo="Emitir liquidación"
+          alCerrar={() => setAbierta(false)}
+          devolverFocoA={botonRef}
+        >
+          <ConfirmarEmision
+            periodo={preliquidacion.periodo}
+            periodoEnPalabras={periodoEnPalabras}
+            preliquidacion={preliquidacion}
+            emisionId={emisionId}
+            puedeAceptar={puedeAceptar}
+            accion={enviar}
+            alCancelar={() => setAbierta(false)}
+            error={estado?.error}
+          />
+        </PanelLateral>
+      ) : null}
     </ArmazonDelEdificio>
   );
 }

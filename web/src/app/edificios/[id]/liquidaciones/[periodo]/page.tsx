@@ -1,6 +1,6 @@
 /**
  * Preliquidación de un período (change 7, H-011): lee el edificio (para el nombre del menú) y la
- * preliquidación en paralelo. El segmento de la dirección es `AAAA-MM` (`2026-11`); a la API se le
+ * preliquidación en paralelo; la acción de emitir (H-013) se liga al edificio y al período acá. El segmento de la dirección es `AAAA-MM` (`2026-11`); a la API se le
  * pide el día 1 (`2026-11-01`). No escribe nada: abrir la pantalla es sólo mirar.
  */
 
@@ -10,6 +10,7 @@ import { Estados } from "../../../../../componentes/Estados";
 import { edificioPorId } from "../../../../../lib/api/edificios";
 import { preliquidacionDelPeriodo } from "../../../../../lib/api/liquidaciones";
 import { periodoEnPalabras } from "../../../../../lib/formato";
+import { emitirLiquidacionAction } from "./acciones";
 import { PantallaPreliquidacion, PantallaSinPreliquidar } from "./Pantalla";
 
 type Props = {
@@ -78,6 +79,7 @@ export default async function PaginaPreliquidacion({ params }: Props) {
       nombreEdificio={nombreEdificio}
       periodoEnPalabras={enPalabras}
       preliquidacion={preliquidacion.datos}
+      accionEmitir={emitirLiquidacionAction.bind(null, id, `${periodo}-01`)}
     />
   );
 }

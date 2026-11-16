@@ -28,7 +28,11 @@ import {
   responderConfirmacion,
   responderImportacion,
 } from "./escenarios-importacion";
-import { esEdificioDePreliquidacion, responderPreliquidacion } from "./escenarios-liquidacion";
+import {
+  esEdificioDePreliquidacion,
+  responderEmision,
+  responderPreliquidacion,
+} from "./escenarios-liquidacion";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -73,6 +77,7 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "aceptar_diferencias_de_saldos",
     "confirmar_saldos_iniciales",
     "ajustar_saldo_inicial",
+    "ver_liquidaciones",
   ],
   por_edificio: {},
 };
@@ -1026,6 +1031,16 @@ export function crearServidor(
     const rutaDePreliquidacion = /^periodos\/([^/]+)\/preliquidacion$/.exec(resto);
     if (rutaDePreliquidacion && esEdificioDePreliquidacion(id)) {
       responderPreliquidacion(pedido, respuesta, id, rutaDePreliquidacion[1] ?? "");
+      return;
+    }
+
+    // change 7 (H-013): emitir lo revisado, en los mismos edificios (1101 y 1301 emiten; 1201 tiene un
+    // duro).
+    const rutaDeEmision = /^periodos\/([^/]+)\/emision$/.exec(resto);
+    if (rutaDeEmision && esEdificioDePreliquidacion(id)) {
+      responderEmision(pedido, respuesta, id, rutaDeEmision[1] ?? "", (escritura) => {
+        _ultimaEscritura = escritura;
+      });
       return;
     }
 
