@@ -27,7 +27,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-013 | C-10 7, parte 3 | Emitir exactamente lo revisado, con las alertas aceptadas y todo lo usado guardado | Alta / CRITICAL | Lista |
 | H-014 | C-10 7, parte 4 | Distribuir, anular con sus límites (P26, D8) y el cargo cobrado de menos | Alta / CRITICAL | Lista |
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Lista |
-| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen (espera D-060 y F2c) | Alta / CRITICAL | Pendiente |
+| H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1163,7 +1163,22 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   Comando: `python3 aceptacion/H-015/aceptar.py --sin-regresion`. Esperados: 16 de backend y 3 en navegador;
   antes de construir, 19 rojos por aserción (un test que importaba el worker y fallaba por configuración se
   cambió por una lectura del código antes de congelar).
-- Evidencia: pendiente.
+- **Vuelta 2** (`f179066`): un sondeo del e2e leía `.url` sin `?.` y fallaba si todavía no había ninguna
+  escritura (mismo patrón que L-087). Lo que se prueba no cambia.
+- Construcción (Sonnet, una tanda): `88badfd` WeasyPrint 70.0 y pypdf 7.1.0 (Pango y fuentes en
+  `backend/Dockerfile` y en `ci.yml`), `b3b63eb` la `0043` (`documento_de_expensa` con trigger y
+  `pdf_de_expensa` de sólo agregar), `0e156d8` dominio, enlaces firmados y `generar_documento`, `5c67005` API,
+  tarea `generar_pdf_de_expensa` por `ejecutar_con_corte`, barrido cada 5 minutos, compose y README,
+  `737c2b9` web (la descarga pasa por la ruta de Next `/documentos/descarga`, Caddy no publica `/api/*`),
+  `b552b50` KB, `9b39986` la API falsa devuelve una escritura vacía en vez de `null`. Decisiones de base en
+  D-162 (política del barrido, `REFERENCES` del migrador) y L-089. La pantalla no pasó por impeccable.
+- Evidencia (15/11/2026): `python3 aceptacion/H-015/aceptar.py --codigo 9b39986 --sin-regresion` desde
+  `f179066`: **16/16 de backend y 3/3 en navegador**, C01 a C08, N01 a N04, C10 y SPEC PASA, 0 rojos. C09
+  (regresión) queda para el cierre. **Para la demo**: D-162 es seguridad de la base y lo revisa Juani.
+- Deuda que deja (a la ficha 7): `infra/.env.example` sin las líneas de `PROPTECH_CLAVE_DE_ENLACES` (una
+  regla de permisos impide editarlo: lo tiene que hacer Juani); el enlace de una liquidación anulada no se
+  bloquea y la emisión de un enlace no se audita (al 11, el portal, que es quien los va a pedir).
+- Demo: pendiente, con Juani.
 
 ## Plantilla de historia
 

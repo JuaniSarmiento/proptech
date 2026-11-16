@@ -1309,3 +1309,14 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: una migración que altera una tabla protegida declara `PRESTA_PROPIEDAD` con esas tablas
   (D-161); `roles antes` se las presta al migrador y `roles despues` las devuelve. Una tabla nueva no lo
   necesita.
+
+## L-089 · Una migración se prueba también sobre una base ya desplegada
+
+- **Origen**: H-015 del 7 (`0043`), 15/11/2026.
+- **Qué pasó**: los tests de migración arman la base de una sola vez (`upgrade head` con los privilegios de
+  la corrida) y no vieron que, en una base ya desplegada, después de `roles despues` el migrador no tenía
+  `REFERENCES` sobre `liquidacion`: la `0043` no subía. Lo encontró el constructor con
+  `test_la_0043_sube_sobre_una_base_ya_desplegada` y un mutante.
+- **Regla**: una migración que crea una FK hacia una tabla de una migración anterior se prueba también
+  subiendo sobre una base ya migrada y con los roles devueltos (`roles despues`), no sólo en el ciclo
+  limpio.

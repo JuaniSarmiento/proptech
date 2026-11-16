@@ -3344,3 +3344,22 @@ registrado como tal en su momento.)*
 - **Quién**: el orquestador lo aceptó al verificar H-014, bajo la firma por adelantado del 7 y la delegación
   de Juani del 15/11/2026. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-014; si lo
   rechaza, H-014 vuelve a En proceso.
+
+## D-162 · El barrido de documentos pendientes y el `REFERENCES` del migrador (15/11/2026, H-015)
+
+- **Contexto**: el barrido del worker que reencola los PDF `pendiente` corre sin tenant y la RLS no deja
+  listar documentos de todas las administraciones. Además la `0043` no subía sobre una base ya desplegada:
+  después de `roles despues`, el migrador no tenía `REFERENCES` sobre `liquidacion` para crear la FK.
+- **Decisión**:
+  - Una política de **sólo lectura** `documento_pendiente_del_barrido` sobre `documento_de_expensa` que exige
+    la marca de sesión `app.barrido_de_documentos` y sólo ve filas `pendiente`; gemela de
+    `invitacion_por_token` (D6 del 2b), con su excepción en el guardián de `test_catalogo_rls`. La generación
+    de cada documento corre después con el tenant del documento.
+  - `roles despues` le da al migrador `REFERENCES` sobre `liquidacion`, como ya hacía con las tablas del
+    libro que reciben FK de tablas nuevas.
+  - `documento_de_expensa` cambia de estado y no es de sólo agregar; un trigger impide borrarla, cambiar su
+    identidad o tocar un documento `generado`. Los bytes van en `pdf_de_expensa`, de sólo agregar (D-115).
+- **Descartado**: correr el barrido con un rol que salte la RLS (rompe D-076) y una tarea por
+  administración (no hay lista de administraciones visible sin tenant).
+- **Quién**: el constructor de H-015 lo propuso y el orquestador lo aceptó al verificar, bajo la firma por
+  adelantado del 7. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-015.
