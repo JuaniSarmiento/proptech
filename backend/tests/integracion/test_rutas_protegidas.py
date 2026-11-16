@@ -58,6 +58,10 @@ RESPALDO_PASSWORD = "clave-respaldo-no-real"
 #: Pública a propósito: no pasa por identidad ni por tenant (D11).
 _RUTAS_PUBLICAS = {
     ("/api/salud", "GET"),
+    # 7, H-015 (E13): el PDF de la expensa. Pública por diseño: el token firmado con HMAC (que
+    # vence a los 15 minutos y lleva administración, documento y variante) es la autorización; sin
+    # token válido da 403 o 410 sin abrir una sesión de base. Lo prueba la aceptación de H-015.
+    ("/api/documentos/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -150,6 +154,10 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/distribucion", "POST"),
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos", "POST"),
+    # --- Cambio 7 `liquidacion-y-emision` (H-015) ---
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos", "GET"),
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos/reproceso", "POST"),
+    ("/api/complejos/{complejo_id}/documentos/{documento_id}/enlace", "POST"),
 }
 
 
@@ -307,6 +315,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "nota_id": uuid.uuid4(),
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
+        "documento_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -484,8 +493,11 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     if ruta.endswith("/anulacion"):
         # Cambio 7 (H-014): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
         return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
-    if ruta.endswith("/distribucion"):
+    if ruta.endswith("/distribucion") or ruta.endswith("/documentos/reproceso"):
         return cliente.post(ruta_resuelta)
+    if ruta.endswith("/enlace"):
+        # Cambio 7 (H-015): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
+        return cliente.post(ruta_resuelta, json={"variante": "completa"})
     if ruta.endswith("/cargos-cobrados-de-menos"):
         return cliente.post(
             ruta_resuelta,
@@ -753,7 +765,7 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         and not _depende_de(app_real, r.path, m, identidad_actual)
     }
     assert reales == _RUTAS_CON_TOKEN
-    assert _RUTAS_PUBLICAS == {("/api/salud", "GET")}
+    assert _RUTAS_PUBLICAS == {("/api/salud", "GET"), ("/api/documentos/descarga", "GET")}
 
 
 @pytest.mark.parametrize("ruta_y_metodo", sorted(_RUTAS_CUBIERTAS))
@@ -821,6 +833,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "nota_id": uuid.uuid4(),
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
+        "documento_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []

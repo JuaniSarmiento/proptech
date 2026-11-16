@@ -97,6 +97,8 @@ _CUERPOS = {
     "/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/anulacion": {
         "motivo": "Prueba de aislamiento"
     },
+    # H-015 (7): el enlace lleva la variante; el reproceso no lleva cuerpo.
+    "/api/complejos/{complejo_id}/documentos/{documento_id}/enlace": {"variante": "completa"},
     "/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos": {
         "operacion_id": str(uuid4()),
         "obligacion_origen_id": str(uuid4()),
@@ -174,6 +176,7 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             nota_id=uuid4(),
             cargo_id=uuid4(),
             liquidacion_id=uuid4(),
+            documento_id=uuid4(),
             periodo="2026-10-01",
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})

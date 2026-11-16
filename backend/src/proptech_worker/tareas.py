@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+import uuid
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -20,6 +22,7 @@ from proptech_core.compartido.base_de_datos import abrir_sesion
 from proptech_core.compartido.cola import ResultadoEncolado
 from proptech_core.compartido.reintentos import ErrorPasajero, reintentable
 from proptech_core.compartido.seguimiento import con_seguimiento_de_tarea
+from proptech_core.compartido.tenant_de_tarea import con_administracion_de_tarea
 from proptech_worker.corte import ejecutar_con_corte
 
 _logger_invitaciones = logging.getLogger("proptech_worker.tareas.invitaciones")
@@ -444,3 +447,137 @@ async def revocar_invitacion_en_clerk(
     except ClerkNoDisponible as error:
         raise ErrorPasajero("clerk no disponible") from error
     return True
+
+
+# --- 7, H-015: el PDF de la expensa (E12) ----------------------------------
+#
+# La primera tarea con un efecto de plata sobre la base que pasa por `ejecutar_con_corte` (H-016,
+# F2c, D-158). La idempotencia es la del propio documento: `generar_documento` no hace nada sobre un
+# `generado` y toma la fila con `FOR UPDATE`, así que un reencolado (el barrido, un reproceso, un
+# reintento) nunca archiva dos versiones. La `clave` de `trabajos_hechos` lleva el origen del
+# encolado (`pdf:<documento>:<origen>`): un reproceso trae una nueva y no choca con la de un intento
+# anterior que dejó el documento `fallido`.
+
+#: Cota propia de la generación del PDF: WeasyPrint arma una página en menos de dos segundos; la
+#: cota la corta en la base (la transacción está abierta mientras se dibuja) y es menor que el
+#: `job_timeout` de la tarea (60 s en `AjustesDelWorker`).
+COTA_GENERAR_PDF_S = 30.0
+
+#: Una pasada del barrido reencola hasta esto, de a poco (el resto, en la siguiente).
+LIMITE_DEL_BARRIDO = 200
+#: Un documento recién creado tiene su encolado de la emisión en camino: el barrido espera a que
+#: tenga esta antigüedad (segundos) antes de reencolarlo.
+ANTIGUEDAD_DEL_BARRIDO_S = 120
+#: Ancho (segundos) del origen `b<n>` de las claves del barrido: dos pasadas dentro del mismo tramo
+#: se deduplican en ARQ.
+TRAMO_DEL_BARRIDO_S = 300
+
+
+class _ArgumentosGenerarPdf(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    administracion_id: UUID
+    documento_id: UUID
+
+    _ids_desde_texto = field_validator("documento_id", mode="before")(_uuid_desde_texto)
+
+
+def _generar_en_un_hilo(
+    fabrica: Any, *, administracion_id: UUID, documento_id: UUID, clave: str, request_id: str
+) -> bool:
+    from proptech_core.liquidacion.aplicacion.documentos import generar_documento
+
+    return ejecutar_con_corte(
+        fabrica,
+        administracion_id=administracion_id,
+        cota_s=COTA_GENERAR_PDF_S,
+        clave=clave,
+        tarea=NOMBRE_TAREA_DEL_PDF,
+        request_id=request_id,
+        efecto=lambda sesion: generar_documento(sesion, documento_id=documento_id),
+    )
+
+
+NOMBRE_TAREA_DEL_PDF = "generar_pdf_de_expensa"
+
+
+@con_seguimiento_de_tarea
+@con_administracion_de_tarea
+@reintentable
+async def generar_pdf_de_expensa(
+    ctx: dict[str, Any],
+    *,
+    request_id: str,
+    clave: str,
+    administracion_id: UUID,
+    documento_id: Any,
+    **datos: Any,
+) -> bool:
+    """`generar_pdf_de_expensa(administracion_id, documento_id)`: genera y archiva el PDF de un
+    documento a través de `ejecutar_con_corte`, con el tenant de la administración. Devuelve `False`
+    si esa `clave` ya estaba hecha. Un documento que no se puede armar queda `fallido` con su motivo
+    (sin reintentar a ciegas: lo reprocesa una persona); un corte de la base es pasajero."""
+    try:
+        argumentos = _ArgumentosGenerarPdf(
+            administracion_id=administracion_id, documento_id=documento_id
+        )
+    except ValidationError as error:
+        campo = error.errors()[0]["loc"][0]
+        raise ArgumentoDeTareaInvalido(f"generar_pdf_de_expensa: {campo}") from None
+    return await asyncio.wait_for(
+        asyncio.to_thread(
+            _generar_en_un_hilo,
+            ctx["fabrica_de_sesiones"],
+            administracion_id=argumentos.administracion_id,
+            documento_id=argumentos.documento_id,
+            clave=clave,
+            request_id=request_id,
+        ),
+        timeout=COTA_GENERAR_PDF_S + MARGEN_DE_ESPERA_S,
+    )
+
+
+def _pendientes_de_todas_las_administraciones(fabrica: Any) -> dict[UUID, list[UUID]]:
+    from proptech_core.compartido.base_de_datos import abrir_sesion_del_barrido_de_documentos
+    from proptech_core.liquidacion.aplicacion.documentos import pendientes_del_barrido
+
+    with abrir_sesion_del_barrido_de_documentos(fabrica) as sesion:
+        pendientes = pendientes_del_barrido(
+            sesion, antiguedad_s=ANTIGUEDAD_DEL_BARRIDO_S, limite=LIMITE_DEL_BARRIDO
+        )
+        sesion.rollback()
+    por_administracion: dict[UUID, list[UUID]] = {}
+    for administracion, documento in pendientes:
+        por_administracion.setdefault(administracion, []).append(documento)
+    return por_administracion
+
+
+@con_seguimiento_de_tarea
+async def _barrer_documentos_pendientes(
+    ctx: dict[str, Any], *, request_id: str, ahora_s: float
+) -> int:
+    from proptech_core.liquidacion.aplicacion.documentos import encolar_generacion
+
+    por_administracion = await asyncio.to_thread(
+        _pendientes_de_todas_las_administraciones, ctx["fabrica_de_sesiones"]
+    )
+    origen = f"b{int(ahora_s // TRAMO_DEL_BARRIDO_S)}"
+    encolados = 0
+    for administracion, documentos in por_administracion.items():
+        encolados += await encolar_generacion(
+            ctx["cola"],
+            administracion_id=administracion,
+            documentos=documentos,
+            request_id=UUID(request_id),
+            origen=origen,
+        )
+    return encolados
+
+
+async def barrido_de_documentos_pendientes(ctx: dict[str, Any]) -> int:
+    """El barrido periódico (`cron_jobs` de ARQ, E12): reencola los documentos `pendiente` de todas
+    las administraciones, los que quedaron así porque Redis no estaba al emitir o porque la
+    generación se agotó. Generar dos veces un documento es inofensivo."""
+    return await _barrer_documentos_pendientes(
+        ctx, request_id=str(uuid.uuid4()), ahora_s=time.time()
+    )

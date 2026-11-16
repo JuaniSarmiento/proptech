@@ -177,6 +177,7 @@ def crear_app() -> FastAPI:
     app.include_router(gastos.router)
     app.include_router(importaciones.router)
     app.include_router(liquidaciones.router)
+    app.include_router(liquidaciones.router_de_descarga)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
