@@ -29,7 +29,6 @@ from ._h014 import (
     gasto,
     leer_liquidacion,
     obligacion_del_periodo,
-    obligaciones_del_libro,
     ok,
     pagar,
     preliquidacion,
@@ -110,7 +109,11 @@ def test_c04_anular_y_volver_a_emitir_no_cobra_dos_veces(mundo: Mundo) -> None:
     assert estado_de(mundo, "1A").deuda.a_texto() == "143350.00", (
         "octubre más la expensa de noviembre una sola vez (el interés anulado pasa al corte siguiente)"
     )
-    assert len(obligaciones_del_libro(mundo)) == 8, "las 4 anuladas quedan en el libro sin contar"
+    filas = mundo.uno(
+        "SELECT count(*) FROM obligacion WHERE complejo_id = %s AND periodo = %s AND emision_id IS NOT NULL",
+        (mundo.edificio, NOV),
+    )
+    assert filas == 8, f"las 4 anuladas quedan en el libro sin contar, más las 4 nuevas: {filas}"
 
 
 def test_c05_el_pago_vuelve_con_su_fecha(mundo: Mundo) -> None:

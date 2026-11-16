@@ -36,9 +36,11 @@ test("C09 · una emitida muestra su estado y se distribuye con confirmación", a
   const dialogo = confirmacion(page);
   await expect(dialogo).toBeVisible();
   await dialogo.getByRole("button", { name: "Confirmar", exact: true }).click();
-  const escritura = await ultimaEscritura(request);
-  expect(escritura.metodo).toBe("POST");
-  expect(escritura.url).toBe(`/api/complejos/${EMITIDA}/liquidaciones/${LIQUIDACION_EMITIDA}/distribucion`);
+  // El click no espera la escritura (L-087): se espera a que llegue a la API falsa.
+  await expect
+    .poll(async () => (await ultimaEscritura(request))?.url)
+    .toBe(`/api/complejos/${EMITIDA}/liquidaciones/${LIQUIDACION_EMITIDA}/distribucion`);
+  expect((await ultimaEscritura(request)).metodo).toBe("POST");
 });
 
 test("C09 · anular pide el motivo antes de confirmar y lo manda", async ({ page, request }) => {
@@ -51,9 +53,10 @@ test("C09 · anular pide el motivo antes de confirmar y lo manda", async ({ page
   await dialogo.getByLabel("Motivo", { exact: true }).fill("Se cargó mal una factura");
   await expect(confirmar).toBeEnabled();
   await confirmar.click();
-  const escritura = await ultimaEscritura(request);
-  expect(escritura.url).toBe(`/api/complejos/${EMITIDA}/liquidaciones/${LIQUIDACION_EMITIDA}/anulacion`);
-  expect(JSON.parse(escritura.cuerpo)).toEqual({ motivo: "Se cargó mal una factura" });
+  await expect
+    .poll(async () => (await ultimaEscritura(request))?.url)
+    .toBe(`/api/complejos/${EMITIDA}/liquidaciones/${LIQUIDACION_EMITIDA}/anulacion`);
+  expect(JSON.parse((await ultimaEscritura(request)).cuerpo)).toEqual({ motivo: "Se cargó mal una factura" });
 });
 
 test("C09 · una distribuida no ofrece distribuir ni anular", async ({ page }) => {
