@@ -24,8 +24,8 @@ _LOGS = {
 }
 
 
-#: El nivel de un control antes de emitir (duro, bloqueante o advertencia, R34, H-012 del 7): otro
-#: sentido de la palabra, no un perfil.
+#: La gravedad de un control antes de emitir (duro, bloqueante o advertencia, R34, H-012 del 7):
+#: esos archivos usan la palabra con otro sentido, no como un perfil.
 _CONTROLES = {
     "backend/src/proptech_core/liquidacion/dominio/controles.py",
     "backend/src/proptech_core/liquidacion/dominio/emision.py",
