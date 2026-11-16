@@ -36,6 +36,7 @@ from proptech_core.cuenta_corriente.aplicacion.emisiones import (
     registrar_emision,
 )
 from proptech_core.cuenta_corriente.aplicacion.lecturas import fotos_del_edificio
+from proptech_core.liquidacion.aplicacion.documentos import crear_documentos
 from proptech_core.liquidacion.aplicacion.errores import (
     Conflicto,
     ControlDuro,
@@ -72,6 +73,8 @@ class EmisionHecha:
     #: `False` cuando el mismo pedido ya estaba emitido: el replay no escribe nada.
     nueva: bool
     respuesta: dict[str, Any]
+    #: Los documentos de expensa recién creados (H-015): la API los encola **después** del commit.
+    documentos: tuple[UUID, ...] = ()
 
 
 def _respuesta(sesion: Session, complejo_id: UUID, liquidacion_id: UUID) -> dict[str, Any]:
@@ -407,6 +410,16 @@ def emitir_liquidacion(
             request_id=request_id,
             instante=instante,
         )
+        # H-015: dos documentos `pendiente` por unidad con obligación, en la misma transacción.
+        documentos = crear_documentos(
+            sesion,
+            administracion_id=identidad.administracion_id,
+            complejo_id=complejo_id,
+            liquidacion_id=liquidacion_id,
+            unidades_con_obligacion=[
+                UUID(u["unidad_id"]) for u in unidades if not u["sin_obligacion"]
+            ],
+        )
         registrar(
             sesion,
             identidad,
@@ -430,4 +443,4 @@ def emitir_liquidacion(
                 request_id=request_id,
                 detalle={"complejo_id": str(complejo_id), "codigos": list(aceptadas)},
             )
-    return EmisionHecha(True, _respuesta(sesion, complejo_id, liquidacion_id))
+    return EmisionHecha(True, _respuesta(sesion, complejo_id, liquidacion_id), tuple(documentos))
