@@ -20,6 +20,7 @@ import { Campo } from "../../../../../componentes/Formulario";
 import { Panel } from "../../../../../componentes/Panel";
 import { PanelLateral } from "../../../../../componentes/PanelLateral";
 import { permite, useSesionDePantalla } from "../../../../../componentes/SesionDePantalla";
+import type { DocumentoDeExpensa } from "../../../../../lib/api/documentos";
 import type {
   BloqueDeGastos,
   ControlAntesDeEmitir,
@@ -33,6 +34,7 @@ import type {
 import { dinero, fecha, porcentaje } from "../../../../../lib/formato";
 import { ArmazonDelEdificio } from "../../Armazon";
 import { AYUDA_PRELIQUIDACION } from "./ayuda";
+import { Documentos, type EstadoDeDescarga, type EstadoDeReproceso } from "./Documentos";
 
 export type EstadoEmision = { error?: string; emitida?: EmisionRegistrada } | null;
 
@@ -702,10 +704,18 @@ export function PantallaLiquidacionEmitida({
   liquidacion,
   accionDistribuir,
   accionAnular,
+  documentos,
+  accionReprocesar,
+  accionDescargar,
 }: PropsComunes & {
   liquidacion: LiquidacionDeLaLista;
   accionDistribuir?: AccionDelCiclo;
   accionAnular?: AccionDelCiclo;
+  /** Los documentos de la liquidación (H-015); `null` si no se pudieron leer, `undefined` si la
+   * pantalla no los pide (los tests de H-014). */
+  documentos?: DocumentoDeExpensa[] | null;
+  accionReprocesar?: (e: EstadoDeReproceso, f: FormData) => Promise<EstadoDeReproceso>;
+  accionDescargar?: (e: EstadoDeDescarga, f: FormData) => Promise<EstadoDeDescarga>;
 }) {
   const sesion = useSesionDePantalla();
   const esEmitida = liquidacion.estado === "emitida";
@@ -786,6 +796,14 @@ export function PantallaLiquidacionEmitida({
           </p>
         ) : null}
       </Panel>
+      {documentos !== undefined ? (
+        <Documentos
+          id={id}
+          documentos={documentos}
+          accionReprocesar={accionReprocesar}
+          accionDescargar={accionDescargar}
+        />
+      ) : null}
       {puedeDistribuir || puedeAnular ? (
         <PanelLateral
           abierto={modo !== null && !hecho}

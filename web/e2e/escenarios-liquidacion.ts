@@ -16,6 +16,9 @@
  *   `emitida` en 1401 y `distribuida` en 1402; la preliquidación da 409 `periodo_emitido`, la lista de
  *   liquidaciones trae la suya y `POST .../distribucion` y `.../anulacion` contestan 200 y guardan la
  *   última escritura.
+ * - 1501 (H-015, `aceptacion/H-015/CONTRATO.md`): noviembre emitido con dos documentos de `1A`, la
+ *   completa `generado` y la sin extraordinaria `fallido` ("sin fuentes"); `POST .../reproceso`
+ *   contesta 202 y `POST .../enlace` 201, y las dos guardan la última escritura.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -469,6 +472,108 @@ export function responderCiclo(
         return;
       }
       json(respuesta, 200, { estado: "distribuida" });
+    });
+    return true;
+  }
+  return false;
+}
+
+// --- Documentos de la expensa (H-015) ------------------------------------------------------------
+
+export const DOCUMENTOS_DE_EXPENSA = "00000000-0000-0000-0000-000000001501";
+const _LIQUIDACION_CON_DOCUMENTOS = "00000000-0000-0000-0000-000000015011";
+const _DOCUMENTO_GENERADO = "00000000-0000-0000-0000-000000015101";
+const _DOCUMENTO_FALLIDO = "00000000-0000-0000-0000-000000015102";
+
+/** Un token con la forma de uno firmado (dos tramos, el segundo de 64 caracteres hexadecimales). */
+export const TOKEN_DE_PRUEBA = `eyJhIjoicHJ1ZWJhIn0.${"ab".repeat(32)}`;
+
+export function esEdificioDeDocumentos(id: string): boolean {
+  return id === DOCUMENTOS_DE_EXPENSA;
+}
+
+/**
+ * Contesta lo de los documentos en 1501: `GET periodos/2026-11-01/preliquidacion` (409
+ * `periodo_emitido`), `GET liquidaciones` (la de noviembre, emitida), `GET liquidaciones/{id}/documentos`
+ * (los dos de `1A`), `POST liquidaciones/{id}/documentos/reproceso` (202 `{"encolados": 1}`) y
+ * `POST documentos/{id}/enlace` (201 con una dirección de descarga de prueba). Las dos escrituras
+ * llegan crudas a `guardar` (la última gana). Devuelve `false` si no es de su incumbencia.
+ */
+export function responderDocumentos(
+  pedido: IncomingMessage,
+  respuesta: ServerResponse,
+  resto: string,
+  guardar: (escritura: {
+    metodo: string;
+    url: string;
+    contentType: string;
+    cuerpo: string;
+  }) => void,
+): boolean {
+  const metodo = pedido.method ?? "GET";
+  if (metodo === "GET" && resto === "periodos/2026-11-01/preliquidacion") {
+    json(respuesta, 409, { detail: "conflicto", campo: "periodo", motivo: "periodo_emitido" });
+    return true;
+  }
+  if (metodo === "GET" && resto === "liquidaciones") {
+    json(respuesta, 200, [
+      {
+        liquidacion_id: _LIQUIDACION_CON_DOCUMENTOS,
+        periodo: "2026-11-01",
+        estado: "emitida",
+        total: "191500.00",
+        emitida_en: "2026-11-02T15:00:00+00:00",
+      },
+    ]);
+    return true;
+  }
+  if (metodo === "GET" && resto === `liquidaciones/${_LIQUIDACION_CON_DOCUMENTOS}/documentos`) {
+    json(respuesta, 200, [
+      {
+        documento_id: _DOCUMENTO_GENERADO,
+        unidad_id: "00000000-0000-0000-0000-000000015201",
+        identificador: "1A",
+        variante: "completa",
+        estado: "generado",
+        motivo: null,
+      },
+      {
+        documento_id: _DOCUMENTO_FALLIDO,
+        unidad_id: "00000000-0000-0000-0000-000000015201",
+        identificador: "1A",
+        variante: "sin_extraordinaria",
+        estado: "fallido",
+        motivo: "sin fuentes",
+      },
+    ]);
+    return true;
+  }
+  const reproceso = resto === `liquidaciones/${_LIQUIDACION_CON_DOCUMENTOS}/documentos/reproceso`;
+  const enlace = /^documentos\/([^/]+)\/enlace$/.exec(resto);
+  if (metodo === "POST" && (reproceso || enlace)) {
+    const trozos: Buffer[] = [];
+    pedido.on("data", (trozo: Buffer) => {
+      trozos.push(trozo);
+    });
+    pedido.on("end", () => {
+      guardar({
+        metodo: "POST",
+        url: pedido.url ?? "",
+        contentType: String(pedido.headers["content-type"] ?? ""),
+        cuerpo: Buffer.concat(trozos).toString("utf8"),
+      });
+      if (reproceso) {
+        json(respuesta, 202, { encolados: 1 });
+        return;
+      }
+      if (enlace?.[1] !== _DOCUMENTO_GENERADO) {
+        respuesta.writeHead(404).end();
+        return;
+      }
+      json(respuesta, 201, {
+        url: `/api/documentos/descarga?token=${TOKEN_DE_PRUEBA}`,
+        vence_en: "2026-11-02T15:15:00+00:00",
+      });
     });
     return true;
   }

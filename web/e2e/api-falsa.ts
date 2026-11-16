@@ -30,8 +30,10 @@ import {
 } from "./escenarios-importacion";
 import {
   esEdificioDeCiclo,
+  esEdificioDeDocumentos,
   esEdificioDePreliquidacion,
   responderCiclo,
+  responderDocumentos,
   responderEmision,
   responderPreliquidacion,
 } from "./escenarios-liquidacion";
@@ -1032,6 +1034,16 @@ export function crearServidor(
     if (
       esEdificioDeCiclo(id) &&
       responderCiclo(pedido, respuesta, id, resto, (escritura) => {
+        _ultimaEscritura = escritura;
+      })
+    ) {
+      return;
+    }
+
+    // change 7 (H-015): los documentos de la expensa, en el edificio de su contrato (1501).
+    if (
+      esEdificioDeDocumentos(id) &&
+      responderDocumentos(pedido, respuesta, resto, (escritura) => {
         _ultimaEscritura = escritura;
       })
     ) {

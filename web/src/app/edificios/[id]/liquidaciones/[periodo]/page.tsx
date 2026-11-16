@@ -9,6 +9,7 @@
 import { notFound } from "next/navigation";
 import { ErrorDePantalla } from "../../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../../componentes/Estados";
+import { documentosDeLaLiquidacion } from "../../../../../lib/api/documentos";
 import { edificioPorId } from "../../../../../lib/api/edificios";
 import {
   liquidacionesDelEdificio,
@@ -17,6 +18,7 @@ import {
 import { periodoEnPalabras } from "../../../../../lib/formato";
 import { emitirLiquidacionAction } from "./acciones";
 import { anularLiquidacionAction, distribuirLiquidacionAction } from "./ciclo";
+import { descargarDocumentoAction, reprocesarDocumentosAction } from "./documentos";
 import {
   PantallaLiquidacionEmitida,
   PantallaPreliquidacion,
@@ -81,6 +83,10 @@ export default async function PaginaPreliquidacion({ params }: Props) {
         ? lista.datos.find((l) => l.periodo === `${periodo}-01` && l.estado !== "anulada")
         : undefined;
     if (vigente !== undefined) {
+      const documentos = await documentosDeLaLiquidacion(id, vigente.liquidacion_id);
+      if (documentos.estado === "sin_sesion") {
+        return <Estados tipo="sinSesion" />;
+      }
       return (
         <PantallaLiquidacionEmitida
           id={id}
@@ -89,6 +95,9 @@ export default async function PaginaPreliquidacion({ params }: Props) {
           liquidacion={vigente}
           accionDistribuir={distribuirLiquidacionAction.bind(null, id, vigente.liquidacion_id)}
           accionAnular={anularLiquidacionAction.bind(null, id, vigente.liquidacion_id)}
+          documentos={documentos.estado === "ok" ? documentos.datos : null}
+          accionReprocesar={reprocesarDocumentosAction.bind(null, id, vigente.liquidacion_id)}
+          accionDescargar={descargarDocumentoAction.bind(null, id)}
         />
       );
     }
