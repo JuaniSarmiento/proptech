@@ -9,8 +9,10 @@ CLI: python -m proptech_core.compartido.roles antes|despues.
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
+from pathlib import Path
 
 import psycopg
 from psycopg import sql
@@ -49,6 +51,80 @@ _TABLAS_DE_SOLO_LECTURA_PARA_LA_APP = frozenset({"alembic_version", "tipo_de_mov
 #: E2 (DB-11): la app bloquea y crea el candado, nunca lo borra. `antes()` no le
 #: devuelve DELETE en un segundo deploy (F1-06).
 _PERMISOS_ANGOSTOS_DE_LA_APP = {"candado_de_cuenta": "SELECT, INSERT, UPDATE"}
+
+
+def _migracion_declarada(archivo: Path) -> tuple[str, str | None, tuple[str, ...]] | None:
+    """`(revision, down_revision, PRESTA_PROPIEDAD)` leídos con `ast`, sin importar la migración
+    (importarla correría `alembic.op`). `None` si el archivo no es una migración."""
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    valores: dict[str, object] = {}
+    for nodo in arbol.body:
+        if isinstance(nodo, ast.AnnAssign) and isinstance(nodo.target, ast.Name):
+            nombre, valor = nodo.target.id, nodo.value
+        elif (
+            isinstance(nodo, ast.Assign)
+            and len(nodo.targets) == 1
+            and isinstance(nodo.targets[0], ast.Name)
+        ):
+            nombre, valor = nodo.targets[0].id, nodo.value
+        else:
+            continue
+        if nombre in ("revision", "down_revision", "PRESTA_PROPIEDAD") and valor is not None:
+            valores[nombre] = ast.literal_eval(valor)
+    revision = valores.get("revision")
+    if not isinstance(revision, str):
+        return None
+    anterior = valores.get("down_revision")
+    presta = valores.get("PRESTA_PROPIEDAD", ())
+    return (
+        revision,
+        anterior if isinstance(anterior, str) else None,
+        tuple(str(t) for t in presta) if isinstance(presta, tuple) else (),
+    )
+
+
+def tablas_a_prestar(carpeta: Path, version_actual: str | None) -> set[str]:
+    """D-115.3: las tablas protegidas que declaran (`PRESTA_PROPIEDAD`) las migraciones **pendientes**,
+    las posteriores a `version_actual` (`None`: la base todavía no tiene versión, todas). Sin carpeta
+    de migraciones no hay nada que prestar. Una tabla declarada que no es protegida es un error: el
+    préstamo no es un permiso general para tocar tablas del migrador."""
+    if not carpeta.is_dir():
+        return set()
+    por_anterior: dict[str | None, tuple[str, tuple[str, ...]]] = {}
+    for archivo in carpeta.glob("*.py"):
+        declarada = _migracion_declarada(archivo)
+        if declarada is not None:
+            revision, anterior, presta = declarada
+            por_anterior[anterior] = (revision, presta)
+    prestadas: set[str] = set()
+    cabeza = version_actual
+    while cabeza in por_anterior:
+        cabeza, presta = por_anterior[cabeza]
+        prestadas.update(presta)
+    ajenas = prestadas - _TABLAS_DE_SOLO_AGREGAR
+    if ajenas:
+        raise ValueError(
+            "PRESTA_PROPIEDAD nombra tablas que no son de sólo agregar: " + ", ".join(sorted(ajenas))
+        )
+    return prestadas
+
+
+def _prestar_al_migrador(cur: psycopg.Cursor, migrador: str) -> None:
+    """D-115.3: le presta al migrador la propiedad de las tablas protegidas que una migración
+    pendiente declara en `PRESTA_PROPIEDAD`; `despues()` las devuelve y las verifica. Se busca la
+    carpeta `migraciones/versions` junto a `alembic.ini` (el directorio de trabajo, como Alembic)."""
+    version: str | None = None
+    if _existe_tabla(cur, "alembic_version"):
+        cur.execute("SELECT version_num FROM alembic_version")
+        fila = cur.fetchone()
+        version = None if fila is None else str(fila[0])
+    for tabla in sorted(tablas_a_prestar(Path("migraciones") / "versions", version)):
+        if _existe_tabla(cur, tabla):
+            cur.execute(
+                sql.SQL("ALTER TABLE {tabla} OWNER TO {migrador};").format(
+                    tabla=sql.Identifier(tabla), migrador=sql.Identifier(migrador)
+                )
+            )
 
 
 def _conectar(configuracion: ConfiguracionDeArranque) -> psycopg.Connection:
@@ -396,6 +472,7 @@ def antes(configuracion: ConfiguracionDeArranque) -> None:
             _reasignar_duenio_de_lo_existente(
                 cur, configuracion.postgres_user, migrador.postgres_user
             )
+            _prestar_al_migrador(cur, migrador.postgres_user)
 
             # Paso 5: permisos explícitos de la app sobre lo que ya existe.
             _otorgar_permisos_explicitos_a_la_app(cur, app.postgres_user)
