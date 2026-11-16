@@ -24,6 +24,16 @@ _LOGS = {
 }
 
 
+#: El nivel de un control antes de emitir (duro, bloqueante o advertencia, R34, H-012 del 7): otro
+#: sentido de la palabra, no un perfil.
+_CONTROLES = {
+    "backend/src/proptech_core/liquidacion/dominio/controles.py",
+    "backend/src/proptech_core/liquidacion/dominio/emision.py",
+    "backend/tests/unitarios/test_liquidacion_controles.py",
+    "backend/tests/unitarios/test_liquidacion_emision.py",
+}
+
+
 def _justificada(ruta: str, linea: str) -> bool:
     if ruta in _HISTORIA:
         return True  # Conversión y vuelta atrás sobre 0016, deliberadamente.
@@ -37,6 +47,8 @@ def _justificada(ruta: str, linea: str) -> bool:
             and texto.startswith('for rol in ("super_admin", "vecino",')
         )  # Datos que deben rechazarse, nunca perfiles vigentes.
     if ruta in _LOGS:
+        return True
+    if ruta in _CONTROLES:
         return True
     if ruta == "backend/tests/integracion/test_asignacion_validacion.py":
         return '"ni' + 'vel"' in texto  # Campo que debe dar 422.
