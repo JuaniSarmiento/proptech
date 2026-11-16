@@ -42,8 +42,10 @@ NOMBRE_TAREA_DE_PRUEBA = "tarea_de_prueba"
 COTA_TAREA_DE_PRUEBA_S = 1.5
 
 #: Margen del `asyncio.wait_for` exterior sobre la cota de la tarea: la base corta primero, y el
-#: `wait_for` sólo acota la espera del event loop si algo del hilo no responde.
-MARGEN_DE_ESPERA_S = 1.0
+#: `wait_for` sólo acota la espera del event loop si algo del hilo no responde. Nace adentro de
+#: `reintentable` y tiene que vencer antes que el `job_timeout` de ARQ (2 s en los tests, 120 s en
+#: producción): si no, ARQ da la tarea por fallada sin pasar por el reintento ni `tarea_agotada`.
+MARGEN_DE_ESPERA_S = 0.25
 
 
 class Cola(Protocol):
