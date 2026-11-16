@@ -1320,3 +1320,15 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: una migración que crea una FK hacia una tabla de una migración anterior se prueba también
   subiendo sobre una base ya migrada y con los roles devueltos (`roles despues`), no sólo en el ciclo
   limpio.
+
+## L-090 · Una fecha fija en un test es una bomba de tiempo, y una cota del worker se mide contra `job_timeout`
+
+- **Origen**: CI de cierre del 7 (PR #22, run 43790658588), 15/11/2026.
+- **Qué pasó**: la suite completa dio 3 rojos que ninguna historia corría. `test_umbral_api` usaba
+  `2026-11-15` fijo y el alta crea la configuración con vigencia "hoy": el CI corrió justo ese día en Mendoza
+  (y con `2027-01-01` iba a fallar en enero). El margen de 1 s que H-016 le sumó al `wait_for` de la tarea de
+  prueba lo hacía vencer después del `job_timeout` de ARQ, que cortaba primero sin pasar por `reintentable`.
+  Y un test de acciones por perfil quedó viejo al sumar `ver_liquidaciones`.
+- **Regla**: un test de fechas las calcula relativas a hoy en Mendoza; una cota de tarea más su margen queda
+  por debajo de su `job_timeout`; al sumar una acción a la matriz, buscar los tests que enumeran acciones
+  por perfil.

@@ -807,6 +807,13 @@ límite de dos historias en Lista para todo el 7** (15/11/2026: "sin pasar por m
 historias se construyen una detrás de otra y las demos se hacen juntas al final. Los
 criterios los escribe el orquestador bajo esa firma, historia por historia.
 
+**Cierre del change (15/11/2026)**: regresión completa una sola vez desde la aceptación de H-015 sobre
+`c448953`: estructurales, aceptaciones de H-004 a H-014 y H-016 desde sus SHA y barrido de migraciones en
+verde. CI del PR #22: la primera corrida (run 43790658588) dio 3 rojos de 3.053 en `backend` (un test de
+acciones por perfil viejo, una fecha fija en `test_umbral_api`, el margen del worker de H-016 por encima del
+`job_timeout`; L-090), arreglados en `62aab4f`; la segunda (run 43792064854) dio los seis jobs en verde.
+Quedan las demos de H-011 a H-016 con Juani, archivar y mergear.
+
 **Base de los ejemplos** (datos inventados): edificio "Torre Ficticia", sin saldos previos confirmado,
 configuración vigente desde el 01/10/2026 con fondo de reserva 5%, vencimiento día 10, único, 3% mensual
 proporcional, gracia 0. Unidades y coeficientes: `1A` 0,30, `1B` 0,30, `2A` 0,25, `2B` 0,15. Grupos:
