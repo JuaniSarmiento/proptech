@@ -142,6 +142,9 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/periodos/{periodo}/preliquidacion", "GET"),
     ("/api/complejos/{complejo_id}/periodos/{periodo}/cargos-aprobados", "GET"),
     ("/api/complejos/{complejo_id}/cargos-particulares/importar", "POST"),
+    # --- Cambio 7 `liquidacion-y-emision` (H-013) ---
+    ("/api/complejos/{complejo_id}/periodos/{periodo}/emision", "POST"),
+    ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}", "GET"),
 }
 
 
@@ -298,6 +301,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "gasto_id": uuid.uuid4(),
         "nota_id": uuid.uuid4(),
         "cargo_id": uuid.uuid4(),
+        "liquidacion_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -466,6 +470,12 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     # --- Cambio 6 `gastos-y-cargos` (GET ya lo cubre el chequeo genérico de arriba) ---
     if ruta.endswith("/aprobar"):
         return cliente.post(ruta_resuelta)
+    if ruta.endswith("/emision"):
+        # Cambio 7 (H-013): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
+        return cliente.post(
+            ruta_resuelta,
+            json={"emision_id": str(uuid.uuid4()), "huella": "x", "alertas_aceptadas": []},
+        )
     if ruta.endswith("/ajustes-de-saldo-inicial"):
         return cliente.post(
             ruta_resuelta,
@@ -789,6 +799,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "gasto_id": uuid.uuid4(),
         "nota_id": uuid.uuid4(),
         "cargo_id": uuid.uuid4(),
+        "liquidacion_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []

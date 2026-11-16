@@ -1,16 +1,17 @@
 """Liquidación y emisión de las expensas (change 7, D-157): la preliquidación sin efectos (H-011).
 
 Mismo orden de D7 que `gastos.py`: cargar el edificio → 404 si no existe o no alcanza → 403 si no
-puede → el pedido mismo (422) → el estado del edificio (409). La lectura pide la acción
-`cargar_gastos_y_preparar_liquidacion`; no se agrega ninguna a la matriz de D-106.
+puede → el pedido mismo (422) → el estado del edificio (409). La preliquidación pide la acción
+`cargar_gastos_y_preparar_liquidacion`; emitir, `emitir_y_distribuir_liquidacion` (y, si acepta un
+bloqueante, `aceptar_alertas_bloqueantes`); leer lo emitido, `ver_liquidaciones` (H-013).
 """
 
 import re
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -18,9 +19,17 @@ from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_t
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, alcanza, puede
+from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
-from proptech_core.liquidacion.aplicacion import preliquidacion
-from proptech_core.liquidacion.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
+from proptech_core.liquidacion.aplicacion import emision, preliquidacion
+from proptech_core.liquidacion.aplicacion.errores import (
+    Conflicto,
+    ControlDuro,
+    EntradaInvalida,
+    NoEncontrado,
+    SinPermiso,
+)
+from proptech_core.liquidacion.aplicacion.lectura import leer_liquidacion
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 
@@ -36,9 +45,20 @@ async def manejar_error_de_liquidacion(_request: Request, error: Exception) -> J
             content={"detail": "conflicto", "campo": error.campo, "motivo": error.motivo},
         )
     if isinstance(error, EntradaInvalida):
-        item = {"loc": ["path", error.campo], "msg": error.motivo, "type": "value_error"}
+        item = {"loc": [error.donde, error.campo], "msg": error.motivo, "type": "value_error"}
         return JSONResponse(status_code=422, content={"detail": [item]})
+    if isinstance(error, ControlDuro):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "control_duro", "controles": list(error.codigos)},
+        )
+    if isinstance(error, SinPermiso):
+        return JSONResponse(status_code=403, content={"detail": _sin_permiso(error.accion)})
     raise TypeError("error de liquidación inesperado")
+
+
+def _sin_permiso(accion: str) -> dict[str, str]:
+    return {"codigo": "sin_permiso", "detalle": "sin_permiso", "permiso_faltante": accion}
 
 
 def _edificio_autorizado(
@@ -49,14 +69,7 @@ def _edificio_autorizado(
     if edificio is None or not alcanza(asignaciones, complejo_id):
         raise HTTPException(status_code=404, detail="no encontrado")
     if not puede(asignaciones, accion, complejo_id):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "codigo": "sin_permiso",
-                "detalle": "sin_permiso",
-                "permiso_faltante": accion.value,
-            },
-        )
+        raise HTTPException(status_code=403, detail=_sin_permiso(accion.value))
 
 
 def _periodo(texto: str) -> date:
@@ -86,3 +99,44 @@ def preliquidacion_del_periodo(
     return preliquidacion.preliquidar_periodo(
         sesion, complejo_id=complejo_id, periodo=_periodo(periodo)
     )
+
+
+@router.post("/complejos/{complejo_id}/periodos/{periodo}/emision")
+def emitir_la_liquidacion(
+    complejo_id: UUID,
+    periodo: str,
+    response: Response,
+    cuerpo: Annotated[dict[str, Any], Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """Emite exactamente la preliquidación revisada (la huella). El cuerpo se valida a mano, después
+    del 404 y del 403 (D7), no por FastAPI. 201 emitida; 200 si es el mismo pedido otra vez."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
+    hecha = emision.emitir_liquidacion(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        periodo=_periodo(periodo),
+        cuerpo=cuerpo,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    response.status_code = 201 if hecha.nueva else 200
+    return hecha.respuesta
+
+
+@router.get("/complejos/{complejo_id}/liquidaciones/{liquidacion_id}")
+def liquidacion_emitida(
+    complejo_id: UUID,
+    liquidacion_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """Lo guardado al emitir, nunca recalculado (E2). El consejo sólo verá las distribuidas (P39,
+    H-014)."""
+    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
+    emitida = leer_liquidacion(sesion, complejo_id=complejo_id, liquidacion_id=liquidacion_id)
+    if emitida is None:
+        raise NoEncontrado
+    return emitida

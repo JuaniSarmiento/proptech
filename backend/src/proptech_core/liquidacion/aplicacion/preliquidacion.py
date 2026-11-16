@@ -113,10 +113,13 @@ def _contexto_de_controles(
     )
 
 
-def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) -> dict[str, Any]:
-    """El cuerpo de la preliquidación de `periodo` (día 1). Rechaza con `Conflicto` si el período
-    ya está emitido o si el anterior no lo está (R40), o si el edificio no tiene configuración
-    vigente el primer día del período."""
+def datos_de_la_preliquidacion(
+    sesion: Session, *, complejo_id: UUID, periodo: date
+) -> DatosDeLaPreliquidacion:
+    """Lo que lee la preliquidación de `periodo` (día 1), sin calcular nada. Rechaza con
+    `Conflicto` si el período ya está emitido o si el anterior no lo está (R40), o si el edificio
+    no tiene configuración vigente el primer día del período. La emisión lo vuelve a leer bajo el
+    candado del período (E3, E5)."""
     if periodo.day != 1:
         raise EntradaInvalida("periodo")
     motivo = motivo_de_rechazo(periodo, periodos_emitidos(sesion, complejo_id=complejo_id))
@@ -143,7 +146,7 @@ def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) ->
         ].items()
         for c in de_la_unidad["cargos"]
     ]
-    datos = DatosDeLaPreliquidacion(
+    return DatosDeLaPreliquidacion(
         complejo_id=complejo_id,
         periodo=periodo,
         vencimiento=periodo.replace(day=int(version["dia_de_vencimiento"])),
@@ -160,7 +163,18 @@ def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) ->
         intereses=intereses_a_cobrar(sesion, complejo_id=complejo_id, periodo=periodo),
         contexto_de_controles=_contexto_de_controles(sesion, complejo_id, periodo, version),
     )
+
+
+def preliquidar_datos(datos: DatosDeLaPreliquidacion) -> dict[str, Any]:
+    """El cuerpo de la preliquidación; un grupo sin base de reparto es un conflicto del edificio."""
     try:
         return preliquidar(datos)
     except SinBaseDeReparto:
         raise Conflicto("grupo", "grupo_sin_base_de_reparto") from None
+
+
+def preliquidar_periodo(sesion: Session, *, complejo_id: UUID, periodo: date) -> dict[str, Any]:
+    """El cuerpo de la preliquidación de `periodo` (día 1), sin efectos."""
+    return preliquidar_datos(
+        datos_de_la_preliquidacion(sesion, complejo_id=complejo_id, periodo=periodo)
+    )

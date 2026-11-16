@@ -350,6 +350,14 @@ def aprobar_gasto(
     es_periodo_emitido: PeriodoEmitidoFn = _nada_esta_emitido_todavia,
 ) -> None:
     with transaccion(sesion, {}):
+        # E5 (7, H-013): el mismo candado del período que toma emitir, `FOR UPDATE` sobre la fila de
+        # `complejo` y antes que la del gasto: un gasto no se aprueba mientras se emite, y lo que se
+        # lee del libro después es lo confirmado.
+        propio = sesion.execute(
+            text("SELECT complejo_id FROM gasto WHERE id=:id"), {"id": gasto_id}
+        ).scalar_one_or_none()
+        if propio is None or cargar_complejo(sesion, propio, bloquear=True) is None:
+            raise NoEncontrado()
         fila = (
             sesion.execute(
                 text("SELECT complejo_id, periodo, estado FROM gasto WHERE id=:id FOR UPDATE"),

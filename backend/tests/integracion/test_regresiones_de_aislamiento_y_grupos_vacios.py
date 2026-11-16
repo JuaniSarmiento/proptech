@@ -87,6 +87,12 @@ _CUERPOS = {
         "componente": "ordinaria",
         "motivo": "Prueba de aislamiento",
     },
+    # H-013 (7): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
+    "/api/complejos/{complejo_id}/periodos/{periodo}/emision": {
+        "emision_id": str(uuid4()),
+        "huella": "x",
+        "alertas_aceptadas": [],
+    },
 }
 
 
@@ -156,6 +162,7 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             gasto_id=uuid4(),
             nota_id=uuid4(),
             cargo_id=uuid4(),
+            liquidacion_id=uuid4(),
             periodo="2026-10-01",
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})

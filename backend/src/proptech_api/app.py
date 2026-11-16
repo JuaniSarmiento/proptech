@@ -202,6 +202,8 @@ def crear_app() -> FastAPI:
         errores_de_liquidacion.NoEncontrado,
         errores_de_liquidacion.Conflicto,
         errores_de_liquidacion.EntradaInvalida,
+        errores_de_liquidacion.ControlDuro,
+        errores_de_liquidacion.SinPermiso,
     ):
         app.add_exception_handler(tipo_de_liquidacion, liquidaciones.manejar_error_de_liquidacion)
     for tipo_de_importacion in (SinPermiso, ArchivoYaImportado, ArchivoInvalido, PadronInvalido):
