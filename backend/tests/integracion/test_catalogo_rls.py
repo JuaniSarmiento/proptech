@@ -64,6 +64,12 @@ _SONDA_SIN_FILA = {
     "origen_de_saldo_inicial",
     "aceptacion_de_diferencias",
     "ajuste_de_saldo_inicial",
+    "liquidacion",
+    "categoria_de_liquidacion",
+    "grupo_de_liquidacion",
+    "composicion_de_grupo",
+    "linea_de_liquidacion",
+    "alerta_aceptada",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}

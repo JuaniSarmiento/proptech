@@ -62,7 +62,7 @@ devolver_al_migrador() {
     -v migrador="$MIGRADOR" <<'SQL'
 -- Paso 1 del rollback: el arranque ve todas las filas, sin filtrado por RLS.
 DO $$ DECLARE tabla text; tiene_filas boolean; BEGIN
-    FOREACH tabla IN ARRAY ARRAY['cuenta','emision','evento_de_emision','obligacion','movimiento','imputacion','tramo_de_interes','carga_de_saldo_inicial','origen_de_saldo_inicial','aceptacion_de_diferencias','ajuste_de_saldo_inicial'] LOOP
+    FOREACH tabla IN ARRAY ARRAY['cuenta','emision','evento_de_emision','obligacion','movimiento','imputacion','tramo_de_interes','carga_de_saldo_inicial','origen_de_saldo_inicial','aceptacion_de_diferencias','ajuste_de_saldo_inicial','liquidacion','categoria_de_liquidacion','grupo_de_liquidacion','composicion_de_grupo','linea_de_liquidacion','alerta_aceptada'] LOOP
         IF to_regclass(format('public.%I',tabla)) IS NOT NULL THEN
             EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I)',tabla) INTO tiene_filas;
             IF tiene_filas THEN RAISE EXCEPTION 'el libro tiene filas en %',tabla; END IF;
@@ -123,6 +123,36 @@ SELECT to_regclass('public.ajuste_de_saldo_inicial') IS NOT NULL AS existe \gset
 \if :existe
 ALTER TABLE ajuste_de_saldo_inicial OWNER TO :"migrador";
 ALTER FUNCTION fn_ajuste_de_saldo_inicial_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.liquidacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE liquidacion OWNER TO :"migrador";
+ALTER FUNCTION fn_liquidacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.categoria_de_liquidacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE categoria_de_liquidacion OWNER TO :"migrador";
+ALTER FUNCTION fn_categoria_de_liquidacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.grupo_de_liquidacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE grupo_de_liquidacion OWNER TO :"migrador";
+ALTER FUNCTION fn_grupo_de_liquidacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.composicion_de_grupo') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE composicion_de_grupo OWNER TO :"migrador";
+ALTER FUNCTION fn_composicion_de_grupo_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.linea_de_liquidacion') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE linea_de_liquidacion OWNER TO :"migrador";
+ALTER FUNCTION fn_linea_de_liquidacion_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.alerta_aceptada') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE alerta_aceptada OWNER TO :"migrador";
+ALTER FUNCTION fn_alerta_aceptada_bloqueada() OWNER TO :"migrador";
 \endif
 SELECT to_regclass('public.configuracion_versionada') IS NOT NULL AS existe \gset
 \if :existe

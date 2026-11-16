@@ -505,6 +505,17 @@ _DUENO_DE_TABLA = {
         "cuenta_corriente",
     ),
     **dict.fromkeys(
+        (
+            "liquidacion",
+            "categoria_de_liquidacion",
+            "grupo_de_liquidacion",
+            "composicion_de_grupo",
+            "linea_de_liquidacion",
+            "alerta_aceptada",
+        ),
+        "liquidacion",
+    ),
+    **dict.fromkeys(
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",
     ),
