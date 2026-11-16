@@ -25,6 +25,7 @@ from proptech_core.cuenta_corriente.aplicacion.cuentas import (
     bloquear_cuentas,
     crear_cuentas_de_unidades,
     exigir_identidad,
+    tenant,
 )
 from proptech_core.cuenta_corriente.aplicacion.errores import (
     Conflicto,
@@ -513,3 +514,61 @@ def anular_emision(
     ).scalar_one_or_none()
     if nuevo is None:
         raise Conflicto("emision_id")
+
+
+#: E9: quién distribuyó. El portal (11) y el email (13) llaman al puerto del 7 con el suyo.
+ORIGENES_DE_DISTRIBUCION = ("manual", "email", "portal")
+
+
+def distribuir_emision(
+    sesion: Session,
+    *,
+    emision_id: UUID,
+    origen: str,
+    persona_id: UUID | None,
+    request_id: UUID,
+    reloj: Reloj = ahora_utc,
+) -> bool:
+    """Agrega el evento `distribuida` (E9) y nada más: una por emisión, idempotente (gana el
+    primero). `True` si lo registró; `False` si ya estaba distribuida, sin escribir. Una emisión
+    anulada no se distribuye (`Conflicto`). No audita ni toma candados: el 7 lo llama bajo el
+    candado del período (E5), que serializa distribuir con anular. Un índice parcial único de la
+    `0042` deja a lo sumo un cierre por emisión aunque algún llamador se saltee ese candado.
+    """
+    exigir_transaccion(sesion)
+    administracion = tenant(sesion)
+    if origen not in ORIGENES_DE_DISTRIBUCION:
+        raise EntradaInvalida("origen")
+    if origen == "manual" and persona_id is None:
+        raise EntradaInvalida("persona_id")
+    fila = sesion.execute(
+        text("SELECT complejo_id FROM emision WHERE id = :id"), {"id": emision_id}
+    ).one_or_none()
+    if fila is None:
+        raise NoEncontrado
+    anulada = sesion.execute(
+        text("SELECT 1 FROM evento_de_emision WHERE emision_id = :e AND tipo = 'anulada'"),
+        {"e": emision_id},
+    ).one_or_none()
+    if anulada is not None:
+        raise Conflicto("emision_id")
+    with traducir(sesion, {}):
+        nuevo = sesion.execute(
+            text(
+                "INSERT INTO evento_de_emision (id, administracion_id, complejo_id, emision_id, "
+                "tipo, origen, persona_id, request_id, registrado_en) VALUES (:id, :adm, :c, :e, "
+                "'distribuida', :origen, :persona, :req, :en) "
+                "ON CONFLICT (administracion_id, emision_id, tipo) DO NOTHING RETURNING id"
+            ),
+            {
+                "id": uuid4(),
+                "adm": administracion,
+                "c": fila.complejo_id,
+                "e": emision_id,
+                "origen": origen,
+                "persona": persona_id,
+                "req": request_id,
+                "en": reloj(),
+            },
+        ).scalar_one_or_none()
+    return nuevo is not None

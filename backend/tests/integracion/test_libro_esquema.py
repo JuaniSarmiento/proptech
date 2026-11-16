@@ -30,6 +30,21 @@ CASOS_CHECK = [
     ("evento_de_emision", "ck_evento_tipo", {"tipo": "otra"}),
     ("evento_de_emision", "ck_evento_motivo", {"motivo": "   "}),
     ("evento_de_emision", "ck_evento_motivo", {"motivo": "x" * 501}),
+    # 7, H-014 (`0042`): la forma de cada tipo de evento.
+    ("evento_de_emision", "ck_evento_tipo_forma", {"motivo": None}),
+    ("evento_de_emision", "ck_evento_tipo_forma", {"origen": "manual"}),
+    ("evento_de_emision", "ck_evento_tipo_forma", {"persona_id": None}),
+    ("evento_de_emision", "ck_evento_tipo_forma", {"tipo": "distribuida", "origen": "portal"}),
+    (
+        "evento_de_emision",
+        "ck_evento_tipo_forma",
+        {"tipo": "distribuida", "motivo": None, "origen": "otro"},
+    ),
+    (
+        "evento_de_emision",
+        "ck_evento_tipo_forma",
+        {"tipo": "distribuida", "motivo": None, "origen": "manual", "persona_id": None},
+    ),
     ("obligacion", "ck_obligacion_origen", {"operacion_id": None}),
     ("obligacion", "ck_obligacion_origen", {"emision_id": "$emision"}),
     ("obligacion", "ck_obligacion_periodo", {"periodo": date(2026, 10, 15)}),
@@ -255,7 +270,6 @@ def test_fk(libro: Libro, tabla: str, restriccion: str, cambios: dict[str, Any])
 @pytest.mark.parametrize(
     "tabla,columna",
     [
-        ("evento_de_emision", "motivo"),
         ("imputacion", "sentido_del_movimiento"),
         ("obligacion", "vencimiento"),
         ("movimiento", "registrado_por"),
@@ -320,6 +334,24 @@ def test_unicos(libro: Libro, tabla: str, columna: str) -> None:
     with pytest.raises(errors.UniqueViolation) as e, libro.conexion.transaction():
         libro.agregar(tabla, **cambios)
     assert e.value.sqlstate == "23505"
+
+
+@pytest.mark.parametrize(
+    "primero,segundo",
+    [
+        ({}, {"tipo": "distribuida", "motivo": None, "origen": "manual"}),
+        ({"tipo": "distribuida", "motivo": None, "origen": "portal"}, {}),
+    ],
+    ids=["anulada_y_despues_distribuida", "distribuida_y_despues_anulada"],
+)
+def test_una_emision_no_se_cierra_dos_veces(
+    libro: Libro, primero: dict[str, Any], segundo: dict[str, Any]
+) -> None:
+    """7, H-014: anulada y distribuida son excluyentes también en la base (la `0042`)."""
+    libro.agregar("evento_de_emision", **primero)
+    with pytest.raises(errors.UniqueViolation) as e, libro.conexion.transaction():
+        libro.agregar("evento_de_emision", **segundo)
+    assert e.value.diag.constraint_name == "uq_evento_emision_cierre"
 
 
 @pytest.mark.parametrize(

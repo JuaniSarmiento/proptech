@@ -5,10 +5,13 @@ la emisión recalcula bajo candado (E3 detecta cualquier diferencia con la huell
 """
 
 from collections.abc import Sequence
-from datetime import date, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Session
 
 from proptech_core.compartido.dinero import Dinero, sumar
@@ -49,3 +52,46 @@ def periodos_emitidos(sesion: Session, *, complejo_id: UUID) -> Sequence[date]:
         {"c": complejo_id},
     ).scalars()
     return [p if isinstance(p, date) else date.fromisoformat(str(p)) for p in filas]
+
+
+def hay_emision_posterior(sesion: Session, *, complejo_id: UUID, periodo: date) -> bool:
+    """P26: el edificio tiene una emisión sin anular de un período posterior a `periodo`."""
+    return any(p > periodo for p in periodos_emitidos(sesion, complejo_id=complejo_id))
+
+
+@dataclass(frozen=True)
+class CierreDeEmision:
+    """Cómo se cerró una emisión (E9, E10): distribuida (con su origen) o anulada (motivo)."""
+
+    tipo: str
+    origen: str | None
+    motivo: str | None
+    persona_id: UUID | None
+    en: datetime
+
+
+def cierres_de_emisiones(
+    sesion: Session, emision_ids: Sequence[UUID]
+) -> dict[UUID, CierreDeEmision]:
+    """El evento de cierre de cada emisión que lo tenga; una emisión sin evento sigue emitida. A lo
+    sumo uno por emisión (el índice parcial único de la `0042`)."""
+    if not emision_ids:
+        return {}
+    filas = sesion.execute(
+        text(
+            "SELECT emision_id, tipo, origen, motivo, persona_id, registrado_en "
+            "FROM evento_de_emision WHERE emision_id = ANY(:ids) "
+            "AND tipo IN ('anulada', 'distribuida')"
+        ).bindparams(bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))),
+        {"ids": list(emision_ids)},
+    )
+    return {
+        UUID(str(f.emision_id)): CierreDeEmision(
+            f.tipo,
+            f.origen,
+            f.motivo,
+            None if f.persona_id is None else UUID(str(f.persona_id)),
+            f.registrado_en,
+        )
+        for f in filas
+    }
