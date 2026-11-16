@@ -723,6 +723,18 @@ número no se marcan duplicadas entre sí.
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
   | Ingresos mayores que los gastos *(propuesta, R38)* | Los ingresos de un grupo superan sus gastos **ordinarios** del período | Bloqueante (duro) | 7 (el 6 expone la consulta) |
 
+  **Lo que construyó el 7 (H-012, D-157)**: siete controles, en este orden fijo y con su nivel:
+  `saldos_iniciales_sin_validar`, `coeficientes_fuera_de_tolerancia`, `bloque_negativo` y
+  `doble_vencimiento_sin_regla` (duros), `gastos_en_revision` (bloqueante), `gastos_sin_ia` y
+  `gasto_mensual_obligatorio_faltante` (advertencias). Dos son nuevos y no están en la tabla de arriba:
+  **`bloque_negativo`** (duro: el neto ordinario o extraordinario de un grupo en el período da menos
+  que cero, p. ej. una nota de crédito de noviembre sobre una factura de octubre; la preliquidación
+  responde 200 igual, y la regla de qué hacer con ese saldo es la P25, abierta) y
+  **`doble_vencimiento_sin_regla`** (duro: la configuración vigente el primer día del período tiene
+  doble vencimiento y R26 todavía no define cómo calcularlo). Los calcula `liquidacion` leyendo por la
+  `aplicacion` de cada dueño, no escriben nada y entran en la huella. **Factura duplicada** no es un
+  control del 7: la garantiza la base con `uq_gasto_factura` (R12), y **ingresos mayores que los
+  gastos** no se construyó (D-157). Frenar la emisión y aceptar alertas es de H-013.
   Las filas marcadas como propuesta entran sólo si se valida la regla que revisan.
   La lista y los controles sobre los gastos nacen en el cambio 7; los que revisan pagos, extractos o
   contactos los suma el cambio que construye eso (8, 9 y 13). El extracto es advertencia y no

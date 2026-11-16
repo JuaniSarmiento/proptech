@@ -1084,7 +1084,11 @@ D-153).
 - **Historias**: HU-A4, HU-A5. **Reglas**: R01, R03, R06, R07, R13, R15, R16, R17, R19, R24, R34.
 - **Construido con Rein**: H-011 `preliquidación sin efectos` (módulo `liquidacion`, la ruta
   `.../preliquidacion`, el interés a cobrar sin candados extraído de la emisión, la migración `0040` con el
-  índice de `grupo_unidad` por edificio y la pantalla `liquidaciones/[AAAA-MM]`). Faltan H-012 a H-015.
+  índice de `grupo_unidad` por edificio y la pantalla `liquidaciones/[AAAA-MM]`); H-012 `controles antes de
+  emitir` (la lista `controles` de la preliquidación con los siete controles de R34 del 7, cada uno con
+  nivel, mensaje y detalle, calculados en `liquidacion/dominio/controles.py` con lecturas de `complejos` y
+  `gastos`, sin escribir, y su región en la pantalla; `bloque_negativo` y `doble_vencimiento_sin_regla` son
+  los dos nuevos, factura duplicada la garantiza `uq_gasto_factura`). Faltan H-013 a H-015.
 - **Propuestas** (entran si se validan, como código simple; el motor llega en el 6b, D-089): R14
   (cargo recurrente), R35 (vencimiento corrido en el PDF), R37 (los dos importes en el PDF), R38 (bloque de ingresos en la expensa), R40 (períodos en
   orden).
