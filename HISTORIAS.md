@@ -1121,8 +1121,7 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
 ### H-015 · PDF de la expensa y links firmados
 
 - Change: C-10 7, parte 5. Reglas: R19, D-047 (punto 7), D-060, D-070, D-106; CCyC art. 2067 inc. i
-  (archivo de las liquidaciones); elecciones E12 y E13 de `design.md`. **Bloqueada por F2c (C-25)**:
-  no se construye hasta que el worker tenga corte del lado de la base.
+  (archivo de las liquidaciones); elecciones E12 y E13 de `design.md`. **Después de H-016** (F2c, D-158): el worker ya tiene corte del lado de la base.
 - Resultado para Juani: cada unidad tiene el PDF de su expensa, generado por el worker aunque Redis falle
   al emitir, guardado sin cambios, y se descarga sólo con un link firmado que vence.
 - Alcance: `documento_de_expensa` con su estado, el encolado después del commit, el barrido que reencola,
@@ -1151,6 +1150,14 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   - **N02** el inquilino obtiene la variante completa cambiando el link o pidiéndola directo.
   - **N03** un documento queda generado dos veces, o con dos versiones distintas, por un reencolado.
   - **N04** un link de otra administración o de otra unidad descarga algo.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `21b1e36`. Contrato en `aceptacion/H-015/CONTRATO.md` (dos variantes por unidad, la
+  tarea `generar_pdf_de_expensa` por `ejecutar_con_corte`, el barrido, `generar_documento`, el reproceso, los
+  enlaces firmados con `PROPTECH_CLAVE_DE_ENLACES` y la descarga, el código `TF-1B`). D-160 cierra D-060.
+  Comando: `python3 aceptacion/H-015/aceptar.py --sin-regresion`. Esperados: 16 de backend y 3 en navegador;
+  antes de construir, 19 rojos por aserción (un test que importaba el worker y fallaba por configuración se
+  cambió por una lectura del código antes de congelar).
+- Evidencia: pendiente.
 
 ## Plantilla de historia
 
