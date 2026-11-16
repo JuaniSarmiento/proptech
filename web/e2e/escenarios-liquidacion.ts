@@ -532,6 +532,42 @@ export function responderCiclo(
     json(respuesta, 200, { ...liquidacionDelCiclo(id), unidades: unidadesDeLaEmitida() });
     return true;
   }
+  // H-017: el cargo cobrado de menos de una unidad (201 con la forma de la API real; el cuerpo
+  // crudo a `guardar`).
+  if (metodo === "POST" && /^unidades\/[^/]+\/cargos-cobrados-de-menos$/.test(resto)) {
+    const trozos: Buffer[] = [];
+    pedido.on("data", (trozo: Buffer) => {
+      trozos.push(trozo);
+    });
+    pedido.on("end", () => {
+      const cuerpo = Buffer.concat(trozos).toString("utf8");
+      guardar({
+        metodo: "POST",
+        url: pedido.url ?? "",
+        contentType: String(pedido.headers["content-type"] ?? ""),
+        cuerpo,
+      });
+      let leido: Record<string, unknown> = {};
+      try {
+        leido = JSON.parse(cuerpo) as Record<string, unknown>;
+      } catch {
+        json(respuesta, 422, { detail: [{ type: "value_error", loc: ["body", "importe"] }] });
+        return;
+      }
+      json(respuesta, 201, {
+        cargo_id: "00000000-0000-0000-0000-00000014f101",
+        obligacion_id: "00000000-0000-0000-0000-00000014f102",
+        obligacion_origen_id: leido.obligacion_origen_id,
+        importe: leido.importe,
+        componente: leido.componente,
+        vencimiento: "2026-11-10",
+        motivo: leido.motivo,
+        registrado_por: "00000000-0000-0000-0000-00000014f103",
+        registrado_en: "2026-11-16T15:00:00+00:00",
+      });
+    });
+    return true;
+  }
   const accion = /^liquidaciones\/([^/]+)\/(distribucion|anulacion)$/.exec(resto);
   if (metodo === "POST" && accion) {
     const trozos: Buffer[] = [];
