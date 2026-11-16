@@ -11,6 +11,11 @@ from uuid import UUID
 from proptech_core.compartido.dinero import Dinero, sumar
 from proptech_core.compartido.porcentaje import Porcentaje
 from proptech_core.compartido.reparto import clave_de_orden_natural, redondear_al_centavo
+from proptech_core.liquidacion.dominio.controles import (
+    BloqueDeGrupo,
+    ContextoDeControles,
+    controles_de,
+)
 from proptech_core.liquidacion.dominio.fondo import fondo_de_reserva
 from proptech_core.liquidacion.dominio.huella import huella_de
 from proptech_core.liquidacion.dominio.reparto import (
@@ -65,6 +70,8 @@ class DatosDeLaPreliquidacion:
     lineas: Sequence[LineaDeGasto]
     cargos: Sequence[CargoParticular] = field(default_factory=tuple)
     intereses: Mapping[UUID, Dinero] = field(default_factory=dict)
+    #: Lo que ya leyeron los módulos dueños para los controles de R34 (H-012).
+    contexto_de_controles: ContextoDeControles = field(default_factory=ContextoDeControles)
 
 
 def _con_signo(linea: LineaDeGasto) -> Dinero:
@@ -213,7 +220,14 @@ def preliquidar(datos: DatosDeLaPreliquidacion) -> dict[str, Any]:
             for g in con_gastos
         ],
         "unidades": unidades,
-        "controles": [],
+        "controles": controles_de(
+            datos.contexto_de_controles,
+            [
+                BloqueDeGrupo(str(g), grupos[g].nombre, bloque, netos[g][bloque])
+                for g in con_gastos
+                for bloque in _BLOQUES
+            ],
+        ),
     }
     cuerpo["huella"] = huella_de(cuerpo, datos.version_de_configuracion)
     return cuerpo
