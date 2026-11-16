@@ -3329,3 +3329,18 @@ registrado como tal en su momento.)*
 - **Pendiente**: vigilar el proyecto del registro de administradores (si se aprueba, puede fijar
   contenido); cotejar el art. 2067 en InfoLeg.
 - **Quién**: el orquestador, sobre la investigación del 15/11/2026, bajo la delegación de Juani.
+
+## D-161 · Se construye el préstamo de propiedad de D-115.3 (15/11/2026, H-014)
+
+- **Contexto**: D-115.3 dejó escrito el préstamo de propiedad para una migración que altere una tabla
+  protegida, y descartó construirlo "sin un caso real que lo ejercite". La `0042` (H-014) agrega
+  `distribuida` a `evento_de_emision`, una tabla protegida del libro: es el primer caso real.
+- **Decisión**: se construye como lo describía D-115.3: la migración declara `PRESTA_PROPIEDAD` con las
+  tablas protegidas que toca; `proptech_core.compartido.roles` en `antes` lee las migraciones pendientes y le
+  presta al migrador sólo esas tablas, y en `despues` las devuelve. Construido por el constructor de H-014 en
+  `b83ca00`, aislado para poder revertirlo.
+- **Descartado**: dar al migrador la propiedad permanente (rompe D-115) y recrear la tabla con otra
+  restricción (pierde el historial del libro).
+- **Quién**: el orquestador lo aceptó al verificar H-014, bajo la firma por adelantado del 7 y la delegación
+  de Juani del 15/11/2026. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-014; si lo
+  rechaza, H-014 vuelve a En proceso.

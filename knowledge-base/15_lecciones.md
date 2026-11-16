@@ -1287,3 +1287,25 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: al copiar las ayudas de una historia a la siguiente, el orquestador relee la base de ejemplos
   contra las reglas que agregaron las historias del medio (un dato "que no entra" puede volverse un control).
   Un test de ciclo de migración vive en un módulo propio, porque la base de migraciones es por módulo.
+
+## L-087 · Un e2e que lee la última escritura tiene que esperarla
+
+- **Origen**: H-014 del 7, 15/11/2026.
+- **Qué pasó**: la aceptación de H-014 se volvió a congelar porque dos e2e leían
+  `/api/__debug/ultima-escritura` justo después del `click()`, que no espera la acción del servidor de Next:
+  pasaban o fallaban según la carrera (2 de 4 corridas con `--repeat-each=4`). Además C04 contaba las
+  obligaciones con una ayuda que exige una por unidad, justo cuando la historia deja dos (la anulada y la
+  nueva).
+- **Regla**: después de una acción, el e2e espera algo observable (un `role="status"` o
+  `expect.poll` sobre la escritura) antes de leerla. Y antes de congelar, el orquestador relee qué asume cada
+  ayuda que reusa: una ayuda escrita para "una obligación por unidad" no sirve para contar anuladas.
+
+## L-088 · Una migración que altera una tabla protegida necesita el préstamo de propiedad
+
+- **Origen**: H-014 del 7 (`0042` sobre `evento_de_emision`), 15/11/2026.
+- **Qué pasó**: las tablas de sólo agregar son del rol de arranque (D-115); el migrador no puede alterarlas.
+  El préstamo de D-115.3 estaba escrito y sin construir hasta que hubiera un caso real; la `0042` fue el
+  primero y falló con `must be owner of table evento_de_emision`.
+- **Regla**: una migración que altera una tabla protegida declara `PRESTA_PROPIEDAD` con esas tablas
+  (D-161); `roles antes` se las presta al migrador y `roles despues` las devuelve. Una tabla nueva no lo
+  necesita.
