@@ -7,7 +7,8 @@ si se corrió, el original con su motivo), las categorías de cada bloque con **
 los grupos con la composición y el coeficiente efectivo, una línea por unidad (con la foto del saldo
 anterior) y las alertas aceptadas. Las seis son de sólo agregar, con el patrón del libro (`0035`,
 `0039`): tres triggers cada una y RLS forzada por administración. Sin `ALTER` sobre ninguna tabla
-protegida existente. No importa `Accion`: el vocabulario de una migración no cambia con el código vivo.
+protegida existente. No importa `Accion`: el vocabulario de una migración no cambia con el
+código vivo.
 
 Revision ID: 0041
 Revises: 0040
@@ -184,7 +185,7 @@ def downgrade() -> None:
             IF EXISTS (SELECT 1 FROM "{tabla}") THEN
                 RAISE EXCEPTION 'la liquidación tiene filas: la migración no puede bajarse';
             END IF;
-        END $$"""
+        END $$"""  # noqa: S608 - los nombres son literales de este archivo
         )
     for tabla in reversed(_TABLAS):
         op.execute(f'DROP TABLE "{tabla}"')
