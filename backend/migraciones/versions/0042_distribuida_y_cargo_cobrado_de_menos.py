@@ -1,4 +1,4 @@
-"""El evento `distribuida` y el cargo cobrado de menos (liquidacion-y-emision, H-014, design E9, E11).
+"""El evento `distribuida` y el cargo cobrado de menos (liquidacion-y-emision, H-014, E9, E11).
 
 1. `evento_de_emision` admite `tipo = 'distribuida'`, una por emisión (E9), con su `origen`
    (`manual`, `email` o `portal`). Una distribuida no lleva motivo, y la persona sólo es obligatoria
@@ -9,8 +9,8 @@
    emisión, con su `operacion_id`), quién y cuándo. De sólo agregar, con el patrón del libro
    (`0035`, `0039`) y RLS forzada por administración.
 
-El `CHECK` de la forma se llama `ck_evento_tipo_forma`: PostgreSQL los prueba por orden de nombre y el
-del vocabulario (`ck_evento_tipo`) tiene que fallar primero ante un tipo desconocido.
+El `CHECK` de la forma se llama `ck_evento_tipo_forma`: PostgreSQL los prueba por orden de nombre y
+el del vocabulario (`ck_evento_tipo`) tiene que fallar primero ante un tipo desconocido.
 
 Esta migración hace `ALTER` sobre una tabla protegida (`evento_de_emision`): lo declara en
 `PRESTA_PROPIEDAD` y `roles antes` se la presta al migrador sólo mientras esta migración está
@@ -59,9 +59,10 @@ def upgrade() -> None:
     op.execute("""
         CREATE TABLE cargo_cobrado_de_menos (
             id UUID PRIMARY KEY, administracion_id UUID NOT NULL, complejo_id UUID NOT NULL,
-            cuenta_id UUID NOT NULL, obligacion_id UUID NOT NULL, obligacion_origen_id UUID NOT NULL,
-            operacion_id UUID NOT NULL, motivo TEXT NOT NULL, registrado_por UUID NOT NULL,
-            request_id UUID NOT NULL, registrado_en TIMESTAMPTZ NOT NULL
+            cuenta_id UUID NOT NULL, obligacion_id UUID NOT NULL,
+            obligacion_origen_id UUID NOT NULL, operacion_id UUID NOT NULL, motivo TEXT NOT NULL,
+            registrado_por UUID NOT NULL, request_id UUID NOT NULL,
+            registrado_en TIMESTAMPTZ NOT NULL
         );
         ALTER TABLE cargo_cobrado_de_menos ADD CONSTRAINT ck_cargo_motivo CHECK
         (char_length(motivo) BETWEEN 1 AND 500 AND motivo ~ '\\S');
