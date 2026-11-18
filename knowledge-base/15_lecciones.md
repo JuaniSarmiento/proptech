@@ -1345,3 +1345,8 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: una función de base (de trigger o no) nombra sus tablas con `public.`. Un `CHECK` sobre una
   columna que admite `NULL` lleva `IS NOT NULL` explícito, y se prueba con el `NULL`, no sólo con el valor
   inválido.
+- **Y dos barridos más que la historia no corría** (los encontró el barrido de migraciones y el de rutas de
+  este mismo trabajo): una tabla protegida con una función de trigger **extra** (no `fn_<tabla>_bloqueada`)
+  rompe los ayudantes de rollback que sólo devuelven esa; usar `devolver_tabla_al_migrador`
+  (`tests/integracion/_edificios.py`) y sumarla al ensayo de roles. Y una ruta `POST` nueva entra en
+  `test_altas_sin_id_del_cliente.py` (R11: un `id`, `administracion_id` o `complejo_id` en el cuerpo es 422).
