@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from proptech_core.compartido.dinero import Dinero, sumar
 from proptech_core.complejos.aplicacion.lectura import identificadores_de_unidades
+from proptech_core.cuenta_corriente.aplicacion.ubicacion_de_pago import unidades_vigentes
 from proptech_core.pagos.dominio.estado import estado_del_pago
 
 _CON_MOTIVO = frozenset({"rechazado", "revertido"})
@@ -57,6 +58,26 @@ def _eventos(sesion: Session, pagos: Sequence[UUID]) -> dict[UUID, list[tuple[st
     return eventos
 
 
+def _vigentes_por_pago(sesion: Session, pagos: Sequence[UUID]) -> dict[tuple[UUID, UUID], UUID]:
+    """`{(pago, unidad de la parte): unidad donde está hoy su plata}`, según el libro (H-026).
+    Una parte que nunca se reimputó queda en su propia unidad."""
+    filas = sesion.execute(
+        text(
+            "SELECT pago_id, movimiento_id FROM movimiento_de_pago "
+            "WHERE pago_id = ANY(CAST(:ids AS uuid[])) AND papel IN ('pago', 'reimputacion')"
+        ),
+        {"ids": [str(p) for p in pagos]},
+    ).all()
+    por_pago: dict[UUID, list[UUID]] = defaultdict(list)
+    for fila in filas:
+        por_pago[UUID(str(fila.pago_id))].append(UUID(str(fila.movimiento_id)))
+    return {
+        (pago, origen): vigente
+        for pago, movimientos in por_pago.items()
+        for origen, vigente in unidades_vigentes(sesion, movimientos).items()
+    }
+
+
 def _partes(
     sesion: Session, pagos: Sequence[UUID], unidades: frozenset[UUID] | None
 ) -> dict[UUID, list[dict[str, str]]]:
@@ -68,12 +89,31 @@ def _partes(
         {"ids": [str(p) for p in pagos]},
     ).all()
     visibles = [f for f in filas if unidades is None or UUID(str(f.unidad_id)) in unidades]
-    nombres = identificadores_de_unidades(sesion, [UUID(str(f.unidad_id)) for f in visibles])
+    vigentes = _vigentes_por_pago(sesion, pagos)
+    nombres = identificadores_de_unidades(
+        sesion,
+        [
+            *(UUID(str(f.unidad_id)) for f in visibles),
+            *(
+                vigente
+                for fila in visibles
+                if (vigente := vigentes.get((UUID(str(fila.pago_id)), UUID(str(fila.unidad_id)))))
+            ),
+        ],
+    )
     partes: dict[UUID, list[dict[str, str]]] = defaultdict(list)
     for fila in visibles:
         unidad = UUID(str(fila.unidad_id))
-        partes[UUID(str(fila.pago_id))].append(
-            {"unidad_id": str(unidad), "identificador": nombres[unidad], "importe": fila.importe}
+        pago = UUID(str(fila.pago_id))
+        vigente = vigentes.get((pago, unidad), unidad)
+        partes[pago].append(
+            {
+                "unidad_id": str(unidad),
+                "identificador": nombres[unidad],
+                "importe": fila.importe,
+                "unidad_vigente_id": str(vigente),
+                "identificador_vigente": nombres[vigente],
+            }
         )
     for lista in partes.values():
         lista.sort(key=lambda parte: parte["identificador"])
