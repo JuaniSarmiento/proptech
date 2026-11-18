@@ -35,7 +35,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
-| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | En proceso |
+| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -1583,6 +1583,13 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   la descarga, la firma compartida con tipo, `firmar_enlace_del_comprobante`, el control con su `detalle`). Comando:
   `python3 aceptacion/H-024/aceptar.py --sin-regresion` (corre siempre H-012 y H-015 del 7, C04). Esperados: 13 de backend;
   sobre el código de H-022, 12 rojos por aserción y `test_c03_sin_pagos_no_aparece` verde (queda como regresión).
+- Construcción (Sonnet, una tanda): `673c722` la firma HMAC en `compartido/enlaces.py` con el tipo dentro del cuerpo firmado
+  (la expensa queda como capa fina con su contrato de H-015), `5b5772f` el enlace y la descarga del comprobante y el control
+  `pagos_sin_confirmar` (`liquidacion` lee `pagos.aplicacion.lectura`), `4fb7b11` R34, `08`, ficha 8 y L-098. Riesgo anotado:
+  el control entra en la huella de la preliquidación; confirmar o rechazar un pago entre preliquidar y emitir pide volver a
+  revisar (coherente con H-013; lo mira la regresión del cierre). La ruta de Next para bajar el comprobante es de H-025.
+- Evidencia (18/11/2026): `python3 aceptacion/H-024/aceptar.py --codigo 4fb7b11 --sin-regresion` desde `1e6e461`: **13/13**, C01
+  a C05 (C04: H-012 y H-015 en verde desde sus SHA), N01 a N03, EST y SPEC (2 escenarios) PASA, 0 rojos.
 
 ### H-025 · Las pantallas de pagos
 
