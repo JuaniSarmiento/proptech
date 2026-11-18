@@ -1435,3 +1435,17 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   créditos vigentes en esa cuenta: reimputar "desde esa unidad" mueve todos, porque sus ajustes de interés no
   se distinguen por parte. Para la aceptación: se corre sobre un **commit**, así que se commitea antes de
   correrla (L-095).
+
+## L-098 · Una firma compartida lleva el tipo adentro de lo firmado, y un control nuevo mueve la huella de la preliquidación
+
+- **Origen**: H-024 del 8 (comprobante con enlace firmado y control `pagos_sin_confirmar`), 18/11/2026.
+- **Qué pasó**: el comprobante reusa la firma HMAC de los enlaces de la expensa. Con la misma clave y sin más, un
+  token de una expensa verificaría como uno de comprobante (los dos son `<cuerpo>.<firma>` sobre identificadores).
+  La firma se movió a `compartido/enlaces.py` con el **tipo** dentro del cuerpo firmado y se verifica contra el
+  tipo esperado después de la firma y antes del vencimiento; `liquidacion.aplicacion.enlaces` quedó como una
+  capa fina con su contrato de H-015 intacto. El control nuevo lo lee `liquidacion` de `pagos.aplicacion.lectura`
+  (nunca SQL ajeno ni `pagos` importando `liquidacion`). Como cambia la lista de `controles`, la huella de la
+  preliquidación (H-013) incluye el control cuando hay pagos informados.
+- **Regla**: lo que distingue a dos clases de token tiene que estar dentro de lo firmado, no en la ruta que lo
+  recibe. Y sumar un control a una lista que entra en la huella obliga a mirar la emisión (H-013) en la misma
+  historia, porque quien tenga un pago informado ve una huella distinta a la de antes.

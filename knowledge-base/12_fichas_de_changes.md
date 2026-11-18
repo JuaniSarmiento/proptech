@@ -1271,6 +1271,11 @@ D-153).
   transferencia, con R04 y su ajuste de interés, como confirmar, enlazado al débito; evento `reimputado` y
   auditoría `reimputar_pago_informado`, todo en una transacción; migración `0047`: `reimputacion` con
   `corrige_a` y motivo en el débito y `enlazado_a` en el crédito, y el préstamo de propiedad de `movimiento`).
+- **Construido con Rein**: H-024 `el comprobante con link firmado y el control de pagos sin confirmar`
+  (`POST .../pagos/{pago_id}/comprobante/enlace` y `GET /api/comprobantes/descarga?token=`, 15 minutos, sin sesión;
+  la firma pasa a `proptech_core.compartido.enlaces` con un tipo dentro del cuerpo firmado, así un token de expensa
+  no baja un comprobante ni al revés; el control `pagos_sin_confirmar` de R34, advertencia y último de la lista,
+  con `{cantidad, total}`; `liquidacion` importa `pagos.aplicacion.lectura`, nunca al revés; sin migraciones).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

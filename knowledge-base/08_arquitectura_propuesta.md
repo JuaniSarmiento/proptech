@@ -145,6 +145,14 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   del servidor de Next, que lo pide a la API sin credenciales. Quién pide qué lo decide el servidor
   (propietario las dos variantes, inquilino sólo la sin extraordinaria).
   La imagen del backend lleva las librerías de sistema de WeasyPrint (Pango, HarfBuzz y una tipografía).
+- **El comprobante de un pago y la firma compartida (8, H-024, D-070, E1, E11)**: la firma HMAC-SHA256 de los
+  enlaces vive en `proptech_core.compartido.enlaces` y lleva un **tipo** (`expensa` o `comprobante`) dentro del
+  cuerpo firmado: un token de una expensa no baja un comprobante ni al revés (403). El comprobante tampoco tiene
+  dirección pública: `POST /api/complejos/{id}/pagos/{pago_id}/comprobante/enlace` (quien puede ver el pago: 404 si
+  no, 403 sin permiso) devuelve `{url, vence_en}` a 15 minutos, y `GET /api/comprobantes/descarga?token=` es la
+  **segunda ruta pública de la API** (además de `/api/salud` y `/api/documentos/descarga`): sin sesión, 200 con los
+  bytes subidos y el tipo detectado, 410 vencido, 403 alterado, de otro tipo o de otra administración; el tenant
+  sale del token verificado. Misma clave `PROPTECH_CLAVE_DE_ENLACES`. El token lleva sólo identificadores.
 - **Lectura del comprobante con IA** (change 8, H-019, D-164): el puerto `LectorDeComprobantes`
   (`proptech_core.pagos.puertos`) se implementa con OpenRouter (`adaptadores/openrouter.py`, `httpx`): el pedido
   exige proveedores sin retención (`provider: {zdr: true, data_collection: "deny", require_parameters: true}`),

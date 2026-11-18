@@ -755,7 +755,7 @@ número no se marcan duplicadas entre sí.
   | Coeficientes fuera de tolerancia | "Generales" o un grupo con coeficientes propios suma fuera de 1 ± 0,0001 (R01, D-082, D-100), según el mismo informe que da la API del cambio 3a | Bloqueante (duro) | 7 |
   | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
   | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
-  | Pagos sin confirmar | Hay pagos informados todavía sin confirmar: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
+  | Pagos sin confirmar (`pagos_sin_confirmar`) | Hay pagos informados todavía sin confirmar (ni confirmados ni rechazados): si se emite así, esos vecinos figuran morosos. Es el último de la lista y su `detalle` trae `{cantidad, total}` (H-024) | Advertencia | 8 |
   | Unidades sin contacto válido *(propuesta, R28)* | Alguna unidad no tiene un email válido | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
