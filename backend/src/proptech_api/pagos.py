@@ -19,10 +19,12 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
+from proptech_core.pagos.adaptadores.openrouter import LectorOpenRouter
 from proptech_core.pagos.aplicacion import comprobantes, informar, lectura
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.pagos.aplicacion.permisos import puede_informar_o_ver, unidades_del_alcance
 from proptech_core.pagos.dominio.comprobante import TAMANO_MAXIMO
+from proptech_core.pagos.puertos import LectorDeComprobantes
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 
@@ -30,6 +32,26 @@ router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 def hoy() -> date:
     """La fecha de hoy en Mendoza. Es una dependencia para que la aceptación la fije (L-090)."""
     return hoy_en_mendoza(lambda: datetime.now(UTC))
+
+
+def lector(request: Request) -> LectorDeComprobantes | None:
+    """El lector de comprobantes con IA (OpenRouter), o `None` sin clave o sin modelo (`sin_ia`).
+    Es una dependencia para que la aceptación ponga un lector falso."""
+    configuracion = request.app.state.configuracion
+    if (
+        configuracion.proptech_openrouter_api_key is None
+        or not configuracion.proptech_openrouter_modelo
+    ):
+        return None
+    return LectorOpenRouter(
+        configuracion.proptech_openrouter_api_key.get_secret_value(),
+        configuracion.proptech_openrouter_modelo,
+    )
+
+
+def tope_de_lectura() -> float:
+    """Los segundos que se espera a la IA antes de dar la lectura por fallida."""
+    return comprobantes.TOPE_DE_LECTURA_S
 
 
 async def manejar_error_de_pagos(_request: Request, error: Exception) -> JSONResponse:
@@ -71,15 +93,25 @@ def _edificio_autorizado(
 def subir_comprobante(
     complejo_id: UUID,
     archivo: Annotated[UploadFile, File()],
+    fecha_de_hoy: date = Depends(hoy),
+    el_lector: LectorDeComprobantes | None = Depends(lector),
+    tope: float = Depends(tope_de_lectura),
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, Any]:
-    """Guarda el comprobante (JPEG, PNG o PDF de hasta 10 MB, por sus primeros bytes). Se lee un
-    byte de más del tope para saber que se pasó sin cargar un archivo enorme en memoria."""
+    """Guarda el comprobante (JPEG, PNG o PDF de hasta 10 MB, por sus primeros bytes) y lo lee
+    con IA si hay lector (H-019); la lectura fallida no es un error. Se lee un byte de más del
+    tope para saber que se pasó sin cargar un archivo enorme en memoria."""
     _edificio_autorizado(sesion, identidad, complejo_id)
     contenido = archivo.file.read(TAMANO_MAXIMO + 1)
     guardado = comprobantes.guardar_comprobante(
-        sesion, identidad, complejo_id=complejo_id, contenido=contenido
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        contenido=contenido,
+        lector=el_lector,
+        tope=tope,
+        hoy=fecha_de_hoy,
     )
     sesion.commit()
     return guardado
