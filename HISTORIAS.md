@@ -1401,11 +1401,12 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   también a H-022), el ajuste registrado antes del pago al confirmar, enlazado al interés y al pago.
 - Dificultad y riesgo: alta / CRITICAL. Nivel L.
 - Tienen que pasar:
-  - **C01** `1A` debe la expensa de octubre ($100.000, vencida el 10/10), transfiere el 05/11; la emisión de
-    diciembre registra interés del 11/10 al 30/11; se confirma el 03/12: un `ajuste_de_interes` por el interés
-    del 06/11 al 30/11, al centavo, con destino ese interés y `enlazado_a` él.
-  - **C02** después del ajuste, el interés que cuenta de la obligación de octubre es el del 11/10 al 05/11, y
-    la cuenta queda igual al centavo que la de una unidad que confirmó el 05/11.
+  - **C01** `1A` debe la expensa de octubre ($100.000, vencida el 10/10) y transfiere $100.000 el 05/11; la
+    emisión de noviembre cobra octubre ($2.100) y la de diciembre cobra noviembre entero sobre $100.000 ($3.000);
+    se confirma después: un `ajuste_de_interes` de $2.447,50 (con el pago imputado el 05/11, R04 primero al
+    interés de octubre, correspondían $552,50), con destino ese interés y `enlazado_a` él.
+  - **C02** después del ajuste, la cuenta queda igual al centavo que la de `1B`, que confirmó el mismo pago
+    antes de la emisión de diciembre.
   - **C03** con mes entero en vez de proporcional, el ajuste usa la forma, la tasa y la gracia guardadas en
     los tramos de ese interés.
   - **C04** un pago confirmado antes de la emisión siguiente no genera ajuste.
@@ -1420,7 +1421,7 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
 - Tienen que fallar:
   - **N01** el ajuste se calcula con la configuración vigente hoy y no con la de los tramos.
   - **N02** el pago se imputa antes que el ajuste y paga el interés que se está compensando.
-  - **N03** se ajusta un interés registrado antes de la transferencia.
+  - **N03** se ajusta un interés de una emisión con período hasta la fecha de la transferencia (D-166).
   - **N04** confirmar dos veces registra dos ajustes.
   - **N05** queda una obligación con residual de interés negativo.
 - Constructor: Claude Sonnet (`rein-constructor`).

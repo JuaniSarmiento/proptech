@@ -62,10 +62,10 @@ en su interés vuelve en la respuesta como `ajuste_sin_destino`.
 
 #### Scenario: Pago confirmado después de una emisión que cobró interés
 
-- **WHEN** `1A` transfiere el 05/11 lo que debía de octubre, la emisión de diciembre registra interés del
-  11/10 al 30/11, y el pago se confirma el 03/12
-- **THEN** se registra un ajuste exacto por el interés del 06/11 al 30/11, y el interés que cuenta de esa
-  obligación es el del 11/10 al 05/11
+- **WHEN** `1A` debe $100.000 de octubre, transfiere $100.000 el 05/11, la emisión de diciembre le cobra noviembre
+  entero sobre los $100.000 y el pago se confirma después
+- **THEN** se registra un ajuste de $2.447,50 (lo cobrado, $3.000, menos lo que corresponde con el pago imputado el
+  05/11, $552,50), y la cuenta queda igual al centavo que la de una unidad que confirmó el mismo pago el 05/11
 
 #### Scenario: El ajuste sigue a su interés
 
