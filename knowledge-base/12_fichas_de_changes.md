@@ -1287,6 +1287,17 @@ D-153).
   (Caddy no publica `/api/*`); el menú muestra "Mis pagos" con `informar_pago` y "Pagos" con
   `confirmar_pago_informado`, ambos en el grupo "Liquidación"; `serverActions.bodySizeLimit` en 11 MB para que una
   foto de celular entre por la server action; sin migraciones).
+- **Construido con Rein**: H-026 `los hallazgos de la demo del 18/11/2026` (sin movimientos nuevos en el libro):
+  el menú del edificio pide `ver_configuracion_del_edificio` para Resumen, Unidades, Grupos, Categorías e
+  Intereses y vencimiento (la vecina ve sólo "Mis pagos"); el monto y los importes de "Informar un pago" se
+  escriben como en Argentina (`43.350,5`) y la pantalla sólo cambia el formato a `43350.50` (nunca redondea:
+  `43350,123` se manda tal cual y se ve el 422); el motivo de un rechazo o una reversión va en su renglón;
+  `GET .../pagos` y `GET .../pagos/{id}` suman a cada parte `unidad_vigente_id` e `identificador_vigente`, que
+  el libro resuelve en `cuenta_corriente/aplicacion/ubicacion_de_pago.py` siguiendo la cadena
+  débito `reimputacion` (`corrige_a`) a crédito enlazado (`enlazado_a`) hasta el último crédito, sin que `pagos`
+  lea `movimiento`; la bandeja dice "Ahora en <unidad>" y reimputa desde la unidad vigente; y "Informar un pago"
+  desde la bandeja (`/edificios/{id}/pagos/informar`, con todas las unidades, vuelve a la bandeja). Una vecina
+  ve el identificador de la unidad vigente aunque no sea suya (dato de ubicación, no de saldo). Sin migraciones.
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) y la bandeja del administrador
   (HU-A6) se construyeron en H-025 y pasan por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

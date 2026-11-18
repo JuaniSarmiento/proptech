@@ -1478,3 +1478,16 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: al agregar una ruta `POST`, se la registra en `_RUTAS_SIN_CUERPO` o `_CUERPOS_DE_PRUEBA` en la misma
   historia, y se corre ese archivo. Un campo que no es del pedido es un error de forma: 422 antes de cualquier
   lectura de la base; el resto del orden (404 del edificio, 403, 404 del recurso, 422 de valor, 409) no cambia.
+
+## L-101 · Un componente compartido entre dos pantallas muestra lo de las dos, y el menú se filtra por la acción que protege la pantalla
+
+- **Origen**: H-026, demo en vivo del 18/11/2026.
+- **Qué pasó**: el menú del edificio mostraba "Resumen", "Unidades" y el resto a una vecina que sólo tenía
+  `informar_pago`: esas secciones no declaraban ninguna acción, así que se veían para cualquiera. Y la lista de
+  pagos, compartida por "Mis pagos" y la bandeja, pegaba la unidad y el motivo en el mismo renglón porque eran
+  `span` en línea. Ninguno se vio en la aceptación de H-025 porque sus identidades de prueba eran todas
+  super admin.
+- **Regla**: toda sección del menú declara la acción que pide su pantalla, y una identidad con una sola acción
+  (la vecina) entra en los e2e de cada menú nuevo. Cada dato de una fila de lista que se lee aparte va en su propio
+  bloque (`display: block`), no en `span` en línea. Un monto que se escribe como en Argentina se pasa al formato de
+  la API con una función pura de `lib/formato.ts` que sólo cambia el formato: nada de redondear en la pantalla.

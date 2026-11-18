@@ -239,6 +239,8 @@ confirmarlos o rechazarlos, y que al confirmar se imputen solos.
   favor (R05).
 - Dado un vecino con un departamento y una cochera, cuando informa un pago, entonces elige a qué
   unidad corresponde o lo reparte entre ellas.
+- Dado un pago reimputado, entonces la bandeja dice en qué unidad está ahora y reimputa desde ahí; el
+  administrador también puede informar un pago por un vecino desde la bandeja (H-026).
 - Dado un pago confirmado que el banco devuelve (cheque rechazado, contracargo), cuando lo marco
   como revertido con un motivo, entonces se registra un contra-movimiento que vuelve a subir la
   deuda; si ahora tiene dos o más liquidaciones vencidas, pasa a ser moroso crítico (R18, R20,
@@ -441,7 +443,9 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
 motivo de un rechazo o una reversión; "Informar un pago" (`.../mis-pagos/informar`) sube el comprobante, muestra
 lo que leyó la IA (banco, número de operación, fecha, monto, CBU) para corregirlo, deja elegir cuánto es de cada
 unidad (sólo las suyas) y envía; si no se pudo leer, se carga a mano. La pantalla no suma: si las partes no suman
-el monto, muestra el error de la API.
+el monto, muestra el error de la API. Desde H-026 el monto y los importes se escriben como en Argentina
+(`43.350,00`, `43350,5`): la pantalla sólo cambia el formato y nunca redondea; el menú del vecino muestra sólo
+"Mis pagos".
 
 **Reglas relacionadas**: R11, R18.
 
