@@ -24,7 +24,9 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID, uuid4, uuid5
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Session
 
 from proptech_core.acceso.dominio.identidad import Identidad
@@ -37,7 +39,7 @@ from proptech_core.cuenta_corriente.aplicacion.creditos import (
     imputar_pendientes,
     normalizar_motivo,
 )
-from proptech_core.cuenta_corriente.aplicacion.cuentas import exigir_identidad
+from proptech_core.cuenta_corriente.aplicacion.cuentas import bloquear_cuentas, exigir_identidad
 from proptech_core.cuenta_corriente.aplicacion.errores import (
     NoEncontrado,
     exigir_transaccion,
@@ -51,18 +53,11 @@ from proptech_core.cuenta_corriente.dominio.intereses import (
 )
 
 _CERO = Dinero("0.00")
+_IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
 #: Fijo: de él sale el `operacion_id` de cada movimiento de la reversión (repetir no duplica).
 _ESPACIO_DE_REVERSIONES = UUID("e7a2c9d4-1f3b-4d68-8a5e-4b9c0d2f6a17")
 
 Papel = Literal["reversion_de_pago", "interes_por_reversion"]
-
-
-@dataclass(frozen=True)
-class MovimientoDelPago:
-    """Un movimiento que el pago dejó en el libro, tal como lo registra `movimiento_de_pago`."""
-
-    movimiento_id: UUID
-    cuenta_id: UUID
 
 
 @dataclass(frozen=True)
@@ -125,6 +120,18 @@ def _insertar(
             },
         )
     return nuevo
+
+
+def _cuentas_de(sesion: Session, movimiento_ids: Sequence[UUID]) -> dict[UUID, UUID]:
+    """movimiento → cuenta. Un id que la RLS esconde o que no existe es un 404."""
+    filas = sesion.execute(
+        text("SELECT id, cuenta_id FROM movimiento WHERE id = ANY(:ids)").bindparams(_IDS),
+        {"ids": list(movimiento_ids)},
+    ).all()
+    cuentas = {UUID(str(f.id)): UUID(str(f.cuenta_id)) for f in filas}
+    if set(cuentas) != set(movimiento_ids):
+        raise NoEncontrado
+    return cuentas
 
 
 def _sumar(montos: Sequence[Dinero]) -> Dinero:
@@ -212,8 +219,8 @@ def revertir_pago(
     identidad: Identidad,
     *,
     pago_id: UUID,
-    vigentes: Sequence[MovimientoDelPago],
-    ajustes: Sequence[MovimientoDelPago],
+    creditos: Sequence[UUID],
+    ajustes: Sequence[UUID],
     fecha_de_transferencia: date,
     motivo: str,
     request_id: UUID,
@@ -226,14 +233,17 @@ def revertir_pago(
     exigir_identidad(sesion, identidad)
     motivo = normalizar_motivo(motivo)
     instante = reloj()
+    cuentas = _cuentas_de(sesion, [*creditos, *ajustes])
+    bloquear_cuentas(sesion, list(cuentas.values()))  # todas, en orden, antes de escribir
     registrados: list[MovimientoDeReversion] = []
-    for cuenta_id in sorted({m.cuenta_id for m in (*vigentes, *ajustes)}):
+    for cuenta_id in sorted(set(cuentas.values())):
         imputar_pendientes(sesion, cuenta_id, uuid4(), instante)
         antes = foto(sesion, cuenta_id)
-        for vigente in (m for m in vigentes if m.cuenta_id == cuenta_id):
-            blanco = antes.movimientos.get(vigente.movimiento_id)
-            if blanco is None:
-                raise NoEncontrado
+        corregidos = {m.corrige_a for m in antes.movimientos.values() if m.corrige_a is not None}
+        for credito in (c for c in creditos if cuentas.get(c) == cuenta_id):
+            blanco = antes.movimientos[credito]
+            if blanco.id in corregidos or blanco.sentido != "credito":
+                continue  # ya corregido, o la mitad débito de una reimputación: no es el vigente
             nuevo = _insertar(
                 sesion,
                 identidad,
@@ -250,12 +260,10 @@ def revertir_pago(
                 tipo_corregido=blanco.tipo,
             )
             registrados.append(MovimientoDeReversion(nuevo, "reversion_de_pago"))
-        for ajuste in (m for m in ajustes if m.cuenta_id == cuenta_id):
-            blanco = antes.movimientos.get(ajuste.movimiento_id)
-            if blanco is None:
-                raise NoEncontrado
-            if blanco.id not in antes.estado.movimientos_que_cuentan:
-                continue  # ya no cuenta (su interés se anuló): no hay nada que restaurar
+        for ajuste in (a for a in ajustes if cuentas.get(a) == cuenta_id):
+            blanco = antes.movimientos[ajuste]
+            if blanco.id in corregidos or blanco.id not in antes.estado.movimientos_que_cuentan:
+                continue  # ya corregido, o ya no cuenta (su interés se anuló): nada que restaurar
             nuevo = _insertar(
                 sesion,
                 identidad,

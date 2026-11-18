@@ -537,10 +537,7 @@ def test_una_reversion_de_pago_no_se_contra_asienta(
 ) -> None:
     """H-022: revertir un pago deja el par fuera del estado y esa reversión no se deshace por la
     corrección manual (el pago vuelve con un pago nuevo): 409 `movimiento_id`."""
-    from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import (
-        MovimientoDelPago,
-        revertir_pago,
-    )
+    from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import revertir_pago
 
     with sesion_app(base_del_edificio, mundo.admin) as s:
         _, cuenta, _ = emitir(s, mundo, 7, "1000.00")
@@ -550,7 +547,7 @@ def test_una_reversion_de_pago_no_se_contra_asienta(
             s,
             mundo.identidad,
             pago_id=uuid4(),
-            vigentes=[MovimientoDelPago(pago, cuenta)],
+            creditos=[pago],
             ajustes=[],
             fecha_de_transferencia=date(2026, 10, 5),
             motivo="Cheque rechazado",

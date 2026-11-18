@@ -31,10 +31,7 @@ from proptech_core.cuenta_corriente.aplicacion.cuentas import (
     bloquear_cuentas,
     crear_cuentas_de_unidades,
 )
-from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import (
-    MovimientoDelPago,
-    revertir_pago,
-)
+from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import revertir_pago
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.pagos.dominio.estado import INFORMADO, estado_del_pago
 
@@ -297,28 +294,20 @@ def rechazar_pago(
     return RECHAZADO
 
 
-def _movimientos_vigentes(
-    sesion: Session, pago_id: UUID
-) -> tuple[list[MovimientoDelPago], list[MovimientoDelPago]]:
-    """Lo que el pago dejó en el libro y todavía no se corrigió: por parte, el crédito vigente (el
-    `pago`, o el `reimputacion` crédito si se reimputó) y, aparte, sus ajustes de interés."""
+def _movimientos_del_pago(sesion: Session, pago_id: UUID) -> tuple[list[UUID], list[UUID]]:
+    """Lo que el pago dejó en el libro, según `movimiento_de_pago`: los créditos de sus partes (el
+    `pago` o el `reimputacion`) y, aparte, sus ajustes de interés. Cuáles siguen vigentes lo decide
+    el libro, bajo el candado de cada cuenta."""
     filas = sesion.execute(
         text(
-            "SELECT mp.movimiento_id, mp.papel, m.cuenta_id FROM movimiento_de_pago mp "
-            "JOIN movimiento m ON m.administracion_id = mp.administracion_id "
-            "AND m.id = mp.movimiento_id WHERE mp.pago_id = :pago AND m.sentido = 'credito' "
-            "AND mp.papel IN ('pago', 'reimputacion', 'ajuste_de_interes') "
-            "AND NOT EXISTS (SELECT 1 FROM movimiento c WHERE c.corrige_a = m.id) "
-            "ORDER BY m.cuenta_id, m.registrado_en, m.id"
+            "SELECT movimiento_id, papel FROM movimiento_de_pago WHERE pago_id = :pago "
+            "AND papel IN ('pago', 'reimputacion', 'ajuste_de_interes') ORDER BY id"
         ),
         {"pago": pago_id},
     ).all()
-    vigentes: list[MovimientoDelPago] = []
-    ajustes: list[MovimientoDelPago] = []
-    for f in filas:
-        movimiento = MovimientoDelPago(UUID(str(f.movimiento_id)), UUID(str(f.cuenta_id)))
-        (ajustes if f.papel == "ajuste_de_interes" else vigentes).append(movimiento)
-    return vigentes, ajustes
+    partes = [UUID(str(f.movimiento_id)) for f in filas if f.papel != "ajuste_de_interes"]
+    ajustes = [UUID(str(f.movimiento_id)) for f in filas if f.papel == "ajuste_de_interes"]
+    return partes, ajustes
 
 
 def revertir_pago_confirmado(
@@ -330,23 +319,22 @@ def revertir_pago_confirmado(
     cuerpo: Any,
     request_id: UUID,
 ) -> str:
-    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado (409). Con las
-    cuentas de todas sus partes bloqueadas, escribe en el libro las reversiones (`reversion_de_pago`
-    por parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una
-    con su fila en `movimiento_de_pago`, el evento `revertido` con su motivo y la auditoría. Todo
-    en la transacción del llamador: si falla un paso no queda ninguno."""
+    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado
+    (409). El libro bloquea las cuentas de todas las partes y escribe las reversiones (`reversion_de_pago` por
+    parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una con
+    su fila en `movimiento_de_pago`; después, el evento `revertido` con su motivo y la auditoría.
+    Todo en la transacción del llamador: si falla un paso no queda ninguno."""
     pago = _cargar(sesion, complejo_id, pago_id)
     motivo = _motivo(cuerpo)
     _tomar_el_pago(sesion, identidad, pago_id)
     if _estado(sesion, pago_id) != CONFIRMADO:
         raise Conflicto("pago", "estado")
-    vigentes, ajustes = _movimientos_vigentes(sesion, pago_id)
-    bloquear_cuentas(sesion, [m.cuenta_id for m in (*vigentes, *ajustes)])
+    partes, ajustes = _movimientos_del_pago(sesion, pago_id)
     for reversion in revertir_pago(
         sesion,
         identidad,
         pago_id=pago_id,
-        vigentes=vigentes,
+        creditos=partes,
         ajustes=ajustes,
         fecha_de_transferencia=pago.fecha_de_transferencia,
         motivo=motivo,
