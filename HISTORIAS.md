@@ -1365,7 +1365,8 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `96cc168` el puerto, `LectorOpenRouter` con ZDR y la configuración (`PROPTECH_OPENROUTER_API_KEY` y
   `PROPTECH_OPENROUTER_MODELO`, también pasadas a la API en `infra/compose.yaml`), `c9c8cc1` la lectura en un hilo con
   tope (20 s; el `httpx` corta a los 15 s), `0a20b77` y `0a951f4` README, `08`, ficha 8 y L-093. El PDF va como parte
-  `file` de OpenRouter: **sólo probado con transportes falsos**, se prueba con la clave de Juani en la demo. La
+  `file` de OpenRouter: **sólo probado con transportes falsos**. Juani decidió el 18/11/2026 no probarlo con su clave
+  antes de cerrar el 8: la lectura contra el servicio real (imagen y PDF) queda como deuda del cierre del 8. La
   instrucción fija le dice a la IA que ignore órdenes escritas en la imagen (defensa extra; el contrato no depende de
   eso). Sin migración nueva.
 - Evidencia (18/11/2026): `python3 aceptacion/H-019/aceptar.py --codigo b18ca89 --sin-regresion` desde `b847213`:
