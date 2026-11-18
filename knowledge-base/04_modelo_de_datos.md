@@ -392,6 +392,10 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 - **Acciones que suma el 3a** (`0010_acciones_de_configuracion.py`, literales e independientes del enum,
   D14): `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`,
   `configurar_padron`, `ver_configuracion_del_edificio`.
+- **Rechazar un pago que suma el 8** (`0045_rechazar_pago_informado.py`, enum `EventoDelPago` de
+  `acceso/dominio/eventos.py`, H-020): `rechazar_pago_informado`. `confirmar_pago_informado` ya estaba
+  desde la `0004` (es una `Accion`). El detalle de los dos lleva sólo `complejo_id`; el motivo vive en
+  `evento_de_pago`. Bajar la `0045` choca con la FK si ya se auditó un rechazo.
 - **Eventos del padrón que suma el 4a** (`0022_eventos_del_padron.py`, enum `EventoDelPadron` de
   `acceso/dominio/eventos.py`; D-016, D-114.2, D-114.3): `crear_unidad`, `editar_unidad`,
   `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria`, `reordenar_categorias`. El
@@ -869,10 +873,10 @@ eventos, `informado`; `reimputado` sigue `confirmado`).
   `motivo` (1 a 500 y no en blanco, salvo en `confirmado`, que puede no llevarlo), `registrado_por` y
   `registrado_en`. Índices únicos parciales: **un solo `confirmado` o `rechazado` por pago** y un solo
   `revertido`, así que un doble clic no confirma dos veces. Un rechazo es un INSERT: libera el número.
-- **`movimiento_de_pago`** (H-020 en adelante; hoy vacía): `pago_id`, `movimiento_id` (del libro) y `papel`
+- **`movimiento_de_pago`** (la llena H-020, un `pago` por parte; los demás papeles, H-021 en adelante): `pago_id`, `movimiento_id` (del libro) y `papel`
   (`pago`, `ajuste_de_interes`, `reversion_de_pago`, `interes_por_reversion`, `reimputacion`), para revertir
   todo lo enlazado sin buscar por motivo (D-082, D-083).
-- **`cbu_de_unidad`** (H-020 en adelante; hoy vacía): `unidad_id`, `cbu` (22 dígitos) y `pago_id` de origen
+- **`cbu_de_unidad`** (la llena H-020 al confirmar un pago con `cbu_origen`, una fila por unidad de las partes): `unidad_id`, `cbu` (22 dígitos) y `pago_id` de origen
   (R19).
 - **Bajada**: la `0044` baja devolviendo antes las seis tablas al migrador (`devolver_tablas_protegidas`) y
   se niega si alguna tiene filas. La función del trigger del número nombra las tablas con `public.`: corre
@@ -880,7 +884,7 @@ eventos, `informado`; `reimputado` sigue `confirmado`).
 
 ### Planificado, dominio `pagos`
 
-#### `cbu_historico` · hoy `cbu_de_unidad` (cambio 8, R19; tabla creada en la `0044`, la llena H-020)
+#### `cbu_historico` · hoy `cbu_de_unidad` (cambio 8, R19; tabla creada en la `0044`, la llena H-020 al confirmar)
 
 - **Qué es**: el CBU de origen de cada pago confirmado, cuando se conoce; alimenta una sugerencia de
   confianza alta al cruzar el extracto (cambio 9), nunca asigna sola (principio 3 de Alberto).

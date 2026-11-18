@@ -261,6 +261,9 @@ del 3c, D-128)
 - **Regla**: cada imputación se registra; el residual de cada obligación se calcula a partir
   de sus imputaciones, nunca con una marca de "pagada" (análisis H04). El excedente queda como
   crédito a favor y se compensa en la siguiente liquidación (H07).
+- **El excedente de un pago confirmado** (8, H-020, D-166): lo que sobra después de las dos fases de R04
+  (la deuda de la fecha de la transferencia y la deuda real) queda como crédito a favor **aplicable** de
+  la unidad de esa parte, sin destino fijo; `imputar_pendientes` lo aplica a la próxima deuda.
 - **Destino fijo sin sobrante libre** (E16 del 4b): si el destino fijo de un crédito no absorbe todo
   el importe, se rechaza el pedido entero (422, campo `destino`), sin registro parcial; no hay
   "lo que sobra va como crédito libre" para estos créditos (distinto del excedente de un **pago**,
@@ -845,8 +848,16 @@ número no se marcan duplicadas entre sí.
   **rechazado** libera su número para que el vecino lo vuelva a informar bien. Lo garantiza la base,
   también ante dos pedidos simultáneos (D-165).
 - **Confirmación**: sólo el administrador lo pasa a **confirmado**. Nunca es automático. Al
-  confirmarse se imputa con R04.
-- **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
+  confirmarse se imputa con R04 **a la fecha de la transferencia** (D-166): un movimiento `pago` por
+  parte, con `fecha_valor` igual a esa fecha aunque se confirme días después. Fase 1: R04 sobre la deuda
+  como si no existieran las emisiones con **período posterior** a la fecha (ni sus obligaciones ni sus
+  intereses; las obligaciones de saldo inicial existen siempre); fase 2: lo que sobra, R04 sobre la
+  deuda real que queda; lo que sobra después es crédito a favor (R05). Confirmar dos veces devuelve lo
+  mismo sin duplicar (el `operacion_id` de cada parte sale del pago y la parte), y una falla a mitad no
+  deja nada (una sola transacción, con las cuentas de todas las partes bloqueadas en orden).
+- **Rechazo**: el administrador puede rechazarlo con un motivo (de 3 a 500 caracteres); el vecino lo ve.
+  No escribe en el libro. Confirmar un pago rechazado o revertido, o rechazar uno ya resuelto, es un 409
+  de estado. Los dos quedan en la auditoría (`confirmar_pago_informado`, `rechazar_pago_informado`).
 - **Fecha del pago**: la fecha real de la transferencia (del comprobante, validada contra el
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
@@ -872,6 +883,11 @@ número no se marcan duplicadas entre sí.
   (`comprobante_de_pago`, `pago_informado`, `parte_de_pago`, `evento_de_pago`, `movimiento_de_pago`,
   `cbu_de_unidad`, migración `0044`) están en `04_modelo_de_datos.md`; el número único por edificio, banco
   y número lo frena un trigger de la base (D-163, D-165).
+- **Dónde vive la confirmación** (8, H-020): `pagos/aplicacion/resolver.py` (`confirmar_pago`, `rechazar_pago`;
+  `registrar_en_el_libro` es el lugar donde H-021 suma el ajuste de interés) y, en el libro,
+  `cuenta_corriente/aplicacion/pagos.py` (`registrar_pago`, una vez por parte) con `dominio/pago.py` (las
+  dos fases de R04). Rutas `POST /api/complejos/{id}/pagos/{pago_id}/confirmacion` y `.../rechazo`, con el
+  permiso `confirmar_pago_informado`; migración `0045` (vocabulario de auditoría).
 - **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
   confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
   tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una

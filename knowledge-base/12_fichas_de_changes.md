@@ -1251,6 +1251,10 @@ D-153).
 - **Construido con Rein**: H-019 `leer el comprobante con IA` (el puerto `LectorDeComprobantes`, el adaptador
   `LectorOpenRouter` con ZDR, la validación de la propuesta campo por campo en `dominio/propuesta.py`, tope de 20 s
   en un hilo, `ok`, `fallida` o `sin_ia` guardados en el comprobante, sin 5xx por la IA; D-164).
+- **Construido con Rein**: H-020 `confirmar y rechazar` (`POST .../pagos/{pago_id}/confirmacion` y `.../rechazo`; un
+  movimiento `pago` por parte con la fecha de la transferencia y R04 en dos fases, D-166; confirmar dos veces no
+  duplica y una falla a mitad no deja nada; auditoría de las dos acciones, migración `0045`). Sin el ajuste de
+  interés: es H-021.
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

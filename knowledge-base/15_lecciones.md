@@ -1374,3 +1374,18 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: validar un dato de una fuente no confiable con `re.fullmatch` sobre `[0-9]` y el formato exacto antes
   de convertir; un tope sobre una llamada externa se acompaña del timeout propio del cliente; y la salida de la IA
   nunca decide: sólo propone, y el humano informa.
+
+## L-094 · Una falla inyectada en la API da 500, no una excepción en el test, y dos fases de R04 se arman con las mismas piezas del libro
+
+- **Origen**: H-020 del 8 (confirmar un pago), 18/11/2026.
+- **Qué pasó**: la aceptación de la falla a mitad de camino (N06) esperaba que `TestClient` relanzara el
+  `RuntimeError` inyectado (`pytest.raises`), pero el middleware de seguimiento (`seguimiento.py`) atrapa
+  todo error no manejado y responde 500 `{"error": "interno"}`: la excepción nunca llega al test. Lo que
+  importa de N06 (nada quedó escrito) se comprueba igual, pero con el 500. Y para imputar "a la fecha de la
+  transferencia" no hizo falta una lectura nueva del libro: bastó que `FotoDeCuenta` guarde los insumos de
+  `calcular_estado` (imputaciones y emisiones anuladas) y recalcular el estado sumando a las anuladas las
+  emisiones de período posterior, que además saca sus intereses y lo enlazado a ellos.
+- **Regla**: un test de falla inyectada por la API afirma el 500 (y que la base quedó igual), nunca
+  `pytest.raises`; y antes de escribir "como si no existiera X" en una regla del libro, buscar si
+  `calcular_estado` ya lo expresa con un conjunto de exclusión. Dos resoluciones del mismo pago se
+  serializan con un candado de transacción por pago antes de bloquear las cuentas (el mismo orden siempre).
