@@ -96,6 +96,10 @@ class FotoDeCuenta:
     unidad_id: UUID | None
     estado: EstadoDeCuenta
     movimientos: dict[UUID, Movimiento]
+    #: Los insumos de `calcular_estado` tal como se leyeron: para recalcular el estado de la misma
+    #: foto con otras emisiones anuladas (R04 a la fecha de la transferencia, D-166).
+    imputaciones: tuple[ImputacionRegistrada, ...] = ()
+    anuladas: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -169,6 +173,8 @@ def _foto(fila: Any) -> FotoDeCuenta:
         _uuid(fila.unidad_id),
         calcular_estado(obligaciones, movimientos, imputaciones, anuladas),
         {m.id: m for m in movimientos},
+        tuple(imputaciones),
+        frozenset(anuladas),
     )
 
 
