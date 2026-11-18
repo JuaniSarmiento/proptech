@@ -277,8 +277,9 @@ def test_n06_falla_a_mitad_no_deja_nada(mundo: Mundo, monkeypatch: pytest.Monkey
         return original(*args, **kwargs)
 
     monkeypatch.setattr(libro, "registrar_pago", falla_en_la_segunda)
-    with pytest.raises(RuntimeError, match="falla inyectada"):
-        confirmar(mundo, pago)
+    # El middleware de seguimiento convierte un error no manejado en 500 (L-095): el TestClient no ve la excepción.
+    r = confirmar(mundo, pago)
+    assert r.status_code == 500, f"la falla inyectada tiene que llegar como 500, llegó {r.status_code}: {r.text[:200]}"
     assert len(llamadas) == 2, f"registrar_pago tiene que llamarse una vez por parte: {len(llamadas)} llamadas"
     assert pagos_del_libro(mundo, "1A") == [] and pagos_del_libro(mundo, "2B") == [], "quedó una parte imputada"
     assert eventos(mundo, pago) == [], "quedó el evento"
