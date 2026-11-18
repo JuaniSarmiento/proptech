@@ -257,6 +257,20 @@ def confirmar_pago(
     return Confirmacion(CONFIRMADO, en_el_libro.ajuste_sin_destino)
 
 
+def _sin_campos_ajenos(cuerpo: Any, permitidos: frozenset[str]) -> None:
+    """Un campo que no es del pedido es un error de forma: 422 que nombra el campo (nunca su
+    valor), antes de buscar el pago. Un cuerpo que no es un objeto lo rechaza cada campo propio."""
+    if not isinstance(cuerpo, dict):
+        return
+    for campo in cuerpo:
+        if campo not in permitidos:
+            raise EntradaInvalida(str(campo))
+
+
+_CAMPOS_DEL_MOTIVO = frozenset({"motivo"})
+_CAMPOS_DE_LA_REIMPUTACION = frozenset({"desde_unidad_id", "hacia_unidad_id", "motivo"})
+
+
 def _motivo(cuerpo: Any) -> str:
     """3 a 500 caracteres sin contar los espacios de los bordes."""
     bruto = cuerpo.get("motivo") if isinstance(cuerpo, dict) else None
@@ -281,6 +295,7 @@ def rechazar_pago(
     request_id: UUID,
 ) -> str:
     """Deja el evento `rechazado` con su motivo, que el vecino ve; no escribe en el libro."""
+    _sin_campos_ajenos(cuerpo, _CAMPOS_DEL_MOTIVO)
     _cargar(sesion, complejo_id, pago_id)
     motivo = _motivo(cuerpo)
     _tomar_el_pago(sesion, identidad, pago_id)
@@ -324,12 +339,15 @@ def revertir_pago_confirmado(
     cuerpo: Any,
     request_id: UUID,
 ) -> str:
-    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado (409).
+    """Revierte un pago confirmado (H-022).
+
+    Orden: campos ajenos (422), pago (404), motivo (422), estado (409).
 
     El libro bloquea las cuentas de todas las partes y escribe las reversiones (`reversion_de_pago`
     por parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una
     con su fila en `movimiento_de_pago`; después, el evento `revertido` con su motivo y la
     auditoría. Todo en la transacción del llamador: si falla un paso no queda ninguno."""
+    _sin_campos_ajenos(cuerpo, _CAMPOS_DEL_MOTIVO)
     pago = _cargar(sesion, complejo_id, pago_id)
     motivo = _motivo(cuerpo)
     _tomar_el_pago(sesion, identidad, pago_id)
@@ -381,12 +399,13 @@ def reimputar_pago_confirmado(
 ) -> str:
     """Reimputa lo que un pago confirmado tiene en una unidad a otra del edificio (H-023, R25).
 
-    Orden: el pago (404), el motivo (422), la unidad de destino (404), la misma unidad (422), el
-    estado (409) y que `desde_unidad_id` tenga algo vigente del pago (422). En la transacción del
-    llamador y bajo el candado del pago: el origen se deshace como al revertir (H-022) y el destino
-    se acredita como al confirmar (D-166): `reimputacion` crédito a la fecha de la transferencia,
-    con R04 y con su ajuste de interés (H-021), enlazado al débito del origen. Si falla un paso no
-    queda ninguno."""
+    Orden: los campos ajenos (422), el pago (404), el motivo (422), la unidad de destino (404), la
+    misma unidad (422), el estado (409) y que `desde_unidad_id` tenga algo vigente del pago (422).
+    En la transacción del llamador y bajo el candado del pago: el origen se deshace como al revertir
+    (H-022) y el destino se acredita como al confirmar (D-166): `reimputacion` crédito a la fecha de
+    la transferencia, con R04 y con su ajuste de interés (H-021), enlazado al débito del origen. Si
+    falla un paso no queda ninguno."""
+    _sin_campos_ajenos(cuerpo, _CAMPOS_DE_LA_REIMPUTACION)
     pago = _cargar(sesion, complejo_id, pago_id)
     motivo = _motivo(cuerpo)
     desde = _unidad_del_cuerpo(cuerpo, "desde_unidad_id")
