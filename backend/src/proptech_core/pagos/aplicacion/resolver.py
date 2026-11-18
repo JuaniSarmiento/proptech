@@ -25,13 +25,17 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.texto import recortado_sin_control
+from proptech_core.complejos.aplicacion.lectura import cargar_unidad
 from proptech_core.cuenta_corriente.aplicacion import pagos as libro_de_pagos
 from proptech_core.cuenta_corriente.aplicacion.ajuste_de_interes import ajustar_el_interes
 from proptech_core.cuenta_corriente.aplicacion.cuentas import (
     bloquear_cuentas,
     crear_cuentas_de_unidades,
 )
-from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import revertir_pago
+from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import (
+    reimputar_desde,
+    revertir_pago,
+)
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.pagos.dominio.estado import INFORMADO, estado_del_pago
 
@@ -41,6 +45,7 @@ _ESPACIO_DE_OPERACIONES = UUID("5d1c3a9e-0b7f-4c52-9a4e-8e2f6b1d7c30")
 CONFIRMADO = "confirmado"
 RECHAZADO = "rechazado"
 REVERTIDO = "revertido"
+REIMPUTADO = "reimputado"
 
 
 @dataclass(frozen=True)
@@ -353,3 +358,105 @@ def revertir_pago_confirmado(
         detalle={"complejo_id": complejo_id},
     )
     return REVERTIDO
+
+
+def _unidad_del_cuerpo(cuerpo: Any, campo: str) -> UUID:
+    bruto = cuerpo.get(campo) if isinstance(cuerpo, dict) else None
+    if not isinstance(bruto, str):
+        raise EntradaInvalida(campo)
+    try:
+        return UUID(bruto)
+    except ValueError:
+        raise EntradaInvalida(campo) from None
+
+
+def reimputar_pago_confirmado(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    complejo_id: UUID,
+    pago_id: UUID,
+    cuerpo: Any,
+    request_id: UUID,
+) -> str:
+    """Reimputa lo que un pago confirmado tiene en una unidad a otra del edificio (H-023, R25).
+
+    Orden: el pago (404), el motivo (422), la unidad de destino (404), la misma unidad (422), el
+    estado (409) y que `desde_unidad_id` tenga algo vigente del pago (422). En la transacción del
+    llamador y bajo el candado del pago: el origen se deshace como al revertir (H-022) y el destino
+    se acredita como al confirmar (D-166): `reimputacion` crédito a la fecha de la transferencia,
+    con R04 y con su ajuste de interés (H-021), enlazado al débito del origen. Si falla un paso no
+    queda ninguno."""
+    pago = _cargar(sesion, complejo_id, pago_id)
+    motivo = _motivo(cuerpo)
+    desde = _unidad_del_cuerpo(cuerpo, "desde_unidad_id")
+    hacia = _unidad_del_cuerpo(cuerpo, "hacia_unidad_id")
+    destino = cargar_unidad(sesion, hacia)
+    if destino is None or destino.complejo_id != complejo_id:
+        raise NoEncontrado
+    if desde == hacia:
+        raise EntradaInvalida("hacia_unidad_id")
+    _tomar_el_pago(sesion, identidad, pago_id)
+    if _estado(sesion, pago_id) != CONFIRMADO:
+        raise Conflicto("pago", "estado")
+    cuenta_destino = crear_cuentas_de_unidades(sesion, complejo_id=complejo_id, unidad_ids=[hacia])[
+        hacia
+    ]
+    partes, ajustes = _movimientos_del_pago(sesion, pago_id)
+    escritos = reimputar_desde(
+        sesion,
+        identidad,
+        pago_id=pago_id,
+        creditos=partes,
+        ajustes=ajustes,
+        desde_unidad_id=desde,
+        cuenta_destino=cuenta_destino,
+        fecha_de_transferencia=pago.fecha_de_transferencia,
+        motivo=motivo,
+        request_id=request_id,
+    )
+    debitos = [e for e in escritos if e.papel == "reimputacion"]
+    if not debitos:
+        raise EntradaInvalida("desde_unidad_id")
+    for escrito in escritos:
+        _fila_del_pago(sesion, identidad, pago_id, escrito.movimiento_id, escrito.papel)
+    for debito in debitos:
+        importe = debito.importe or Dinero("0.00")
+        operacion = uuid5(_ESPACIO_DE_OPERACIONES, f"{pago_id}|{debito.movimiento_id}")
+        ajuste = ajustar_el_interes(
+            sesion,
+            identidad,
+            cuenta_id=cuenta_destino,
+            importe=importe,
+            fecha_valor=pago.fecha_de_transferencia,
+            operacion_base=operacion,
+            request_id=request_id,
+        )
+        for registrado in ajuste.registrados:
+            _fila_del_pago(
+                sesion, identidad, pago_id, registrado.movimiento_id, "ajuste_de_interes"
+            )
+        credito = libro_de_pagos.registrar_pago(
+            sesion,
+            identidad,
+            cuenta_id=cuenta_destino,
+            importe=importe,
+            fecha_valor=pago.fecha_de_transferencia,
+            operacion_id=operacion,
+            request_id=request_id,
+            tipo="reimputacion",
+            enlazado_a=debito.movimiento_id,
+            motivo=motivo,
+        )
+        _fila_del_pago(sesion, identidad, pago_id, credito, "reimputacion")
+    _evento(sesion, identidad, pago_id, REIMPUTADO, motivo)
+    registrar(
+        sesion,
+        identidad,
+        EventoDelPago.REIMPUTAR_PAGO_INFORMADO,
+        entidad="pago_informado",
+        entidad_id=pago_id,
+        request_id=request_id,
+        detalle={"complejo_id": complejo_id},
+    )
+    return CONFIRMADO

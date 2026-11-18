@@ -72,12 +72,16 @@ def registrar_pago(
     operacion_id: UUID,
     request_id: UUID,
     reloj: Reloj = ahora_utc,
+    tipo: str = "pago",
+    enlazado_a: UUID | None = None,
+    motivo: str | None = None,
 ) -> UUID:
     """Devuelve el id del movimiento `pago`. Repetir el mismo `operacion_id` devuelve el mismo
-    movimiento sin escribir nada (confirmar dos veces no duplica)."""
+    movimiento sin escribir nada (confirmar dos veces no duplica). Reimputar (H-023, R25) registra
+    el destino con el mismo camino y `tipo="reimputacion"`, enlazado al débito del origen."""
     exigir_transaccion(sesion)
     exigir_identidad(sesion, identidad)
-    pedido = _Pedido(cuenta_id, "pago", importe, fecha_valor, None, None)
+    pedido = _Pedido(cuenta_id, tipo, importe, fecha_valor, None, None, enlazado_a)
     previo = _replay(sesion, operacion_id, pedido, None)
     if previo is not None:
         return previo
@@ -96,8 +100,8 @@ def registrar_pago(
             text(
                 "INSERT INTO movimiento (id, administracion_id, complejo_id, cuenta_id, tipo, "
                 "sentido, importe, fecha_valor, registrado_por, request_id, registrado_en, "
-                "operacion_id) VALUES (:id, :adm, :complejo, :cuenta, 'pago', 'credito', "
-                ":importe, :fecha, :por, :req, :en, :op) "
+                "operacion_id, enlazado_a, motivo) VALUES (:id, :adm, :complejo, :cuenta, :tipo, "
+                "'credito', :importe, :fecha, :por, :req, :en, :op, :enlace, :motivo) "
                 "ON CONFLICT (administracion_id, operacion_id) WHERE operacion_id IS NOT NULL "
                 "DO NOTHING RETURNING id"
             ),
@@ -112,6 +116,9 @@ def registrar_pago(
                 "req": request_id,
                 "en": instante,
                 "op": operacion_id,
+                "tipo": tipo,
+                "enlace": enlazado_a,
+                "motivo": motivo,
             },
         ).scalar_one_or_none()
     if nuevo is None:  # perdió la carrera contra el mismo operacion_id

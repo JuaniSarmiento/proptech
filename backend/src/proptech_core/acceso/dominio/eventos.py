@@ -46,9 +46,11 @@ class EventoDelGasto(StrEnum):
 class EventoDelPago(StrEnum):
     """D9 ampliado por `pagos-informados` (H-020): lo que el administrador resuelve de un pago.
     Confirmar usa `Accion.CONFIRMAR_PAGO_INFORMADO`, que ya estaba en el vocabulario; rechazar no
-    es un permiso aparte, es un evento. Revertir (H-022) también: el permiso es
-    `revertir_o_reimputar_pago` y el evento `revertir_pago_informado`. El detalle MUST NOT llevar
+    es un permiso aparte, es un evento. Revertir (H-022) y reimputar (H-023) también: el permiso es
+    `revertir_o_reimputar_pago` y los eventos `revertir_pago_informado` y
+    `reimputar_pago_informado`. El detalle MUST NOT llevar
     el monto ni el motivo: viven en el pago y en su evento."""
 
     RECHAZAR_PAGO_INFORMADO = "rechazar_pago_informado"
     REVERTIR_PAGO_INFORMADO = "revertir_pago_informado"
+    REIMPUTAR_PAGO_INFORMADO = "reimputar_pago_informado"

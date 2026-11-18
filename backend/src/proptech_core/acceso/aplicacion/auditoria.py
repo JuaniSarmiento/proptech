@@ -296,6 +296,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.CONFIRMAR_PAGO_INFORMADO: _DetalleConfirmarPago,
     EventoDelPago.RECHAZAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelPago.REVERTIR_PAGO_INFORMADO: _DetalleAsignarEdificio,
+    EventoDelPago.REIMPUTAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

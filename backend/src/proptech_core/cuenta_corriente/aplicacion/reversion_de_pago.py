@@ -14,6 +14,9 @@ cuenta del pago, con los candados ya tomados por el llamador y en su transacció
    diferencia es un `interes_por_reversion` enlazado a ese interés. La cuenta queda igual al
    centavo que la de quien nunca pagó.
 
+Reimputar (H-023, R25) usa el mismo trabajo por cuenta para el origen, con un `reimputacion` débito en
+vez del `reversion_de_pago` (`reimputar_desde`); el destino lo acredita el llamador.
+
 Un `interes_por_reversion` no genera interés (la base de capital nunca suma el componente interés,
 R03) y deja de contar si su interés deja de contar (D-085).
 """
@@ -57,13 +60,15 @@ _IDS = bindparam("ids", type_=ARRAY(PG_UUID(as_uuid=True)))
 #: Fijo: de él sale el `operacion_id` de cada movimiento de la reversión (repetir no duplica).
 _ESPACIO_DE_REVERSIONES = UUID("e7a2c9d4-1f3b-4d68-8a5e-4b9c0d2f6a17")
 
-Papel = Literal["reversion_de_pago", "interes_por_reversion"]
+Papel = Literal["reversion_de_pago", "interes_por_reversion", "reimputacion"]
 
 
 @dataclass(frozen=True)
 class MovimientoDeReversion:
     movimiento_id: UUID
     papel: Papel
+    #: El importe, para el `reimputacion` débito: lo que el destino recibe (H-023).
+    importe: Dinero | None = None
 
 
 def _insertar(
@@ -214,6 +219,88 @@ def _intereses_por_reversion(
     return registrados
 
 
+def _revertir_en_la_cuenta(
+    sesion: Session,
+    identidad: Identidad,
+    cuenta_id: UUID,
+    creditos: Sequence[UUID],
+    ajustes: Sequence[UUID],
+    *,
+    papel_del_debito: Literal["reversion_de_pago", "reimputacion"],
+    pago_id: UUID,
+    fecha_de_transferencia: date,
+    motivo: str,
+    request_id: UUID,
+    reloj: Reloj,
+    instante: datetime,
+) -> list[MovimientoDeReversion]:
+    """Lo de una cuenta, con su candado ya tomado: el débito que corrige cada crédito vigente (de
+    tipo `reversion_de_pago` o `reimputacion`), el contra-asiento de cada ajuste que cuenta y el
+    interés por reversión de P29. Al reimputar, sin ningún crédito vigente no escribe nada y
+    devuelve `[]`; al revertir sigue con los ajustes que queden."""
+    imputar_pendientes(sesion, cuenta_id, uuid4(), instante)
+    antes = foto(sesion, cuenta_id)
+    corregidos = {m.corrige_a for m in antes.movimientos.values() if m.corrige_a is not None}
+    vigentes = [
+        antes.movimientos[c]
+        for c in creditos
+        if c not in corregidos and antes.movimientos[c].sentido == "credito"
+    ]
+    if not vigentes and papel_del_debito == "reimputacion":
+        return []  # nada vigente que mover: reimputar lo traduce en un 422 (revertir sigue)
+    registrados: list[MovimientoDeReversion] = []
+    for blanco in vigentes:
+        nuevo = _insertar(
+            sesion,
+            identidad,
+            antes,
+            tipo=papel_del_debito,
+            sentido="debito",
+            importe=blanco.importe,
+            fecha_valor=hoy(reloj),
+            operacion_id=uuid5(_ESPACIO_DE_REVERSIONES, f"{pago_id}|{blanco.id}"),
+            motivo=motivo,
+            request_id=request_id,
+            instante=instante,
+            corrige_a=blanco.id,
+            tipo_corregido=blanco.tipo,
+        )
+        registrados.append(MovimientoDeReversion(nuevo, papel_del_debito, blanco.importe))
+    for ajuste in ajustes:
+        blanco = antes.movimientos[ajuste]
+        if blanco.id in corregidos or blanco.id not in antes.estado.movimientos_que_cuentan:
+            continue  # ya corregido, o ya no cuenta (su interés se anuló): nada que restaurar
+        nuevo = _insertar(
+            sesion,
+            identidad,
+            antes,
+            tipo="correccion",
+            sentido="debito",
+            importe=blanco.importe,
+            fecha_valor=hoy(reloj),
+            operacion_id=uuid5(_ESPACIO_DE_REVERSIONES, f"{pago_id}|{blanco.id}"),
+            motivo=motivo,
+            request_id=request_id,
+            instante=instante,
+            corrige_a=blanco.id,
+            tipo_corregido=blanco.tipo,
+        )
+        registrados.append(MovimientoDeReversion(nuevo, "reversion_de_pago"))
+    registrados.extend(
+        _intereses_por_reversion(
+            sesion,
+            identidad,
+            foto(sesion, cuenta_id),
+            pago_id=pago_id,
+            fecha_de_transferencia=fecha_de_transferencia,
+            motivo=motivo,
+            request_id=request_id,
+            instante=instante,
+        )
+    )
+    return registrados
+
+
 def revertir_pago(
     sesion: Session,
     identidad: Identidad,
@@ -237,59 +324,69 @@ def revertir_pago(
     bloquear_cuentas(sesion, list(cuentas.values()))  # todas, en orden, antes de escribir
     registrados: list[MovimientoDeReversion] = []
     for cuenta_id in sorted(set(cuentas.values())):
-        imputar_pendientes(sesion, cuenta_id, uuid4(), instante)
-        antes = foto(sesion, cuenta_id)
-        corregidos = {m.corrige_a for m in antes.movimientos.values() if m.corrige_a is not None}
-        for credito in (c for c in creditos if cuentas.get(c) == cuenta_id):
-            blanco = antes.movimientos[credito]
-            if blanco.id in corregidos or blanco.sentido != "credito":
-                continue  # ya corregido, o la mitad débito de una reimputación: no es el vigente
-            nuevo = _insertar(
-                sesion,
-                identidad,
-                antes,
-                tipo="reversion_de_pago",
-                sentido="debito",
-                importe=blanco.importe,
-                fecha_valor=hoy(reloj),
-                operacion_id=uuid5(_ESPACIO_DE_REVERSIONES, f"{pago_id}|{blanco.id}"),
-                motivo=motivo,
-                request_id=request_id,
-                instante=instante,
-                corrige_a=blanco.id,
-                tipo_corregido=blanco.tipo,
-            )
-            registrados.append(MovimientoDeReversion(nuevo, "reversion_de_pago"))
-        for ajuste in (a for a in ajustes if cuentas.get(a) == cuenta_id):
-            blanco = antes.movimientos[ajuste]
-            if blanco.id in corregidos or blanco.id not in antes.estado.movimientos_que_cuentan:
-                continue  # ya corregido, o ya no cuenta (su interés se anuló): nada que restaurar
-            nuevo = _insertar(
-                sesion,
-                identidad,
-                antes,
-                tipo="correccion",
-                sentido="debito",
-                importe=blanco.importe,
-                fecha_valor=hoy(reloj),
-                operacion_id=uuid5(_ESPACIO_DE_REVERSIONES, f"{pago_id}|{blanco.id}"),
-                motivo=motivo,
-                request_id=request_id,
-                instante=instante,
-                corrige_a=blanco.id,
-                tipo_corregido=blanco.tipo,
-            )
-            registrados.append(MovimientoDeReversion(nuevo, "reversion_de_pago"))
         registrados.extend(
-            _intereses_por_reversion(
+            _revertir_en_la_cuenta(
                 sesion,
                 identidad,
-                foto(sesion, cuenta_id),
+                cuenta_id,
+                [c for c in creditos if cuentas[c] == cuenta_id],
+                [a for a in ajustes if cuentas[a] == cuenta_id],
+                papel_del_debito="reversion_de_pago",
                 pago_id=pago_id,
                 fecha_de_transferencia=fecha_de_transferencia,
                 motivo=motivo,
                 request_id=request_id,
+                reloj=reloj,
                 instante=instante,
             )
         )
     return registrados
+
+
+def reimputar_desde(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    pago_id: UUID,
+    creditos: Sequence[UUID],
+    ajustes: Sequence[UUID],
+    desde_unidad_id: UUID,
+    cuenta_destino: UUID,
+    fecha_de_transferencia: date,
+    motivo: str,
+    request_id: UUID,
+    reloj: Reloj = ahora_utc,
+) -> list[MovimientoDeReversion]:
+    """El origen de reimputar (H-023, R25): lo que el pago tiene vigente en la cuenta de
+    `desde_unidad_id` se deshace como al revertir (el crédito vigente se corrige con un
+    `reimputacion` débito, sus ajustes se contra-asientan y P29 cobra el interés de los días ya
+    pagados con él), con el candado del origen y del destino tomado juntos y en orden. Devuelve el
+    `reimputacion` débito de cada crédito vigente con su importe, que el llamador acredita en el
+    destino, y el resto con su papel. Si el pago no tiene nada vigente en esa unidad, `[]`."""
+    exigir_transaccion(sesion)
+    exigir_identidad(sesion, identidad)
+    motivo = normalizar_motivo(motivo)
+    instante = reloj()
+    cuentas = _cuentas_de(sesion, [*creditos, *ajustes])
+    origen = sesion.execute(
+        text("SELECT id FROM cuenta WHERE id = ANY(:ids) AND unidad_id = :unidad").bindparams(_IDS),
+        {"ids": sorted(set(cuentas.values())), "unidad": desde_unidad_id},
+    ).scalar_one_or_none()
+    if origen is None:
+        return []
+    cuenta_origen = UUID(str(origen))
+    bloquear_cuentas(sesion, [cuenta_origen, cuenta_destino])
+    return _revertir_en_la_cuenta(
+        sesion,
+        identidad,
+        cuenta_origen,
+        [c for c in creditos if cuentas[c] == cuenta_origen],
+        [a for a in ajustes if cuentas[a] == cuenta_origen],
+        papel_del_debito="reimputacion",
+        pago_id=pago_id,
+        fecha_de_transferencia=fecha_de_transferencia,
+        motivo=motivo,
+        request_id=request_id,
+        reloj=reloj,
+        instante=instante,
+    )

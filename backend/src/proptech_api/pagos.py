@@ -5,8 +5,8 @@ Mismo orden que `liquidaciones.py`: cargar el edificio → 404 si no existe o no
 tiene `informar_pago` ni `confirmar_pago_informado` ahí → el pedido (422) → las unidades (404) →
 el número repetido (409). El cuerpo se valida a mano (después del 404 y del 403), no por FastAPI.
 Confirmar y rechazar piden `confirmar_pago_informado` (403 si no) → el pago del edificio (404) →
-el motivo (422) → el estado (409). Revertir (H-022) pide `revertir_o_reimputar_pago`, con el mismo
-orden.
+el motivo (422) → el estado (409). Revertir (H-022) y reimputar (H-023) piden
+`revertir_o_reimputar_pago`, con el mismo orden.
 """
 
 from datetime import UTC, date, datetime
@@ -265,6 +265,27 @@ def revertir_un_pago(
 ) -> dict[str, str]:
     _edificio_de_quien_revierte(sesion, identidad, complejo_id)
     estado = resolver.revertir_pago_confirmado(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        pago_id=pago_id,
+        cuerpo=cuerpo,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"pago_id": str(pago_id), "estado": estado}
+
+
+@router.post("/complejos/{complejo_id}/pagos/{pago_id}/reimputacion")
+def reimputar_un_pago(
+    complejo_id: UUID,
+    pago_id: UUID,
+    cuerpo: Annotated[Any, Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_de_quien_revierte(sesion, identidad, complejo_id)
+    estado = resolver.reimputar_pago_confirmado(
         sesion,
         identidad,
         complejo_id=complejo_id,

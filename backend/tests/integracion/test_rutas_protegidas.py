@@ -167,6 +167,7 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/rechazo", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"),
 }
 
 
@@ -534,6 +535,15 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
         return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
     if ruta.endswith("/pagos/{pago_id}/reversion"):
         return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
+    if ruta.endswith("/pagos/{pago_id}/reimputacion"):
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "desde_unidad_id": str(uuid.uuid4()),
+                "hacia_unidad_id": str(uuid.uuid4()),
+                "motivo": "Prueba del candado",
+            },
+        )
     if ruta.endswith("/cargos-cobrados-de-menos"):
         return cliente.post(
             ruta_resuelta,
