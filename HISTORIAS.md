@@ -37,6 +37,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Lista |
+| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1641,6 +1642,39 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `4f0b631`; re-corridos esos archivos y H-020 (27/27), H-022 (20/20) y H-023 (16/16) sobre `4f0b631`.
 - Evidencia (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 4f0b631 --sin-regresion` desde `0d5c6d3`: **5/5 de backend y
   13/13 en navegador** con Next 16.4.5, C01 a C08, N01 a N03 y C10 PASA, 0 rojos.
+
+### H-026 · Los hallazgos de la demo del 8
+
+- Change: C-11 8, parte 9. Origen: la demo en vivo del 18/11/2026 con la base, la API, el worker y la web reales (Juani:
+  "dale, se arregla como hu nueva"). Nivel M: pantallas y un dato más en la lista de pagos; ningún movimiento nuevo en
+  el libro. Constructor y subagentes con Sonnet.
+- Resultado para Juani: la vecina ve sólo lo suyo en el menú, escribe el monto como lo escribe cualquiera, la lista se
+  lee bien, un pago reimputado dice dónde está ahora, y el administrador puede informar un pago por un vecino.
+- Alcance: el menú del edificio por acción (las secciones de configuración piden `ver_configuracion_del_edificio`), el
+  formato de los montos en "Informar un pago" (sólo formato, nunca un cálculo), el motivo en su propio renglón, la
+  unidad vigente de cada parte en `GET .../pagos` y en la pantalla, y "Informar un pago" desde la bandeja.
+  Exclusiones: el resto del portal del vecino (11).
+- Tienen que pasar:
+  - **C01** la vecina ve en el menú del edificio sólo "Mis pagos" (ni "Resumen", ni "Unidades", ni "Grupos", ni
+    "Categorías", ni "Intereses y vencimiento").
+  - **C02** en "Informar un pago" el monto y los importes se escriben como en Argentina ("43350", "43.350", "43350,5",
+    "43.350,00") y la API recibe `"43350.00"` / `"43350.50"`.
+  - **C03** en las listas, la unidad y el motivo van en renglones separados (nunca "Unidad 2BMotivo:").
+  - **C04** `GET .../pagos` trae en cada parte la unidad vigente (`unidad_vigente_id`, `identificador_vigente`): la
+    misma unidad si no se reimputó, la de destino si sí.
+  - **C05** la bandeja muestra "Ahora en <identificador>" en una parte reimputada, y "Reimputar" parte de la unidad
+    vigente.
+  - **C06** la bandeja tiene "Informar un pago", que lleva a `/edificios/{id}/pagos/informar` con todas las unidades
+    del edificio; al enviar, vuelve a la bandeja.
+  - **C07** a 320 px sin scroll horizontal y sin errores de axe en las pantallas tocadas; H-025 sigue en verde; la
+    ficha 8 registra H-026.
+- Tienen que fallar:
+  - **N01** el administrador pierde del menú "Resumen", "Unidades", "Grupos", "Categorías" o "Intereses y
+    vencimiento".
+  - **N02** la pantalla redondea o calcula: "43350,123" se manda tal cual y se muestra el error de la API, nunca
+    "43350.12".
+  - **N03** una vecina ve "Informar un pago" de la bandeja, o la bandeja.
+- Constructor: Claude Sonnet (`rein-constructor`).
 
 ## Plantilla de historia
 
