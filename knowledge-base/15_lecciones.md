@@ -1350,3 +1350,16 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   rompe los ayudantes de rollback que sólo devuelven esa; usar `devolver_tabla_al_migrador`
   (`tests/integracion/_edificios.py`) y sumarla al ensayo de roles. Y una ruta `POST` nueva entra en
   `test_altas_sin_id_del_cliente.py` (R11: un `id`, `administracion_id` o `complejo_id` en el cuerpo es 422).
+
+## L-092 · En una base de alcance módulo, la aceptación cuenta sólo lo suyo
+
+- **Origen**: la aceptación de H-018 del 8, 18/11/2026 (vuelta 2, `221f619`).
+- **Qué pasó**: la aceptación contaba las filas de las tablas de pagos con el superusuario y sin filtro, y
+  `base_del_edificio` es de alcance módulo: con tablas de sólo agregar, las filas de un test quedaban para el
+  siguiente y 32 de 54 tests fallaban sobre una construcción correcta. Además el runner copiaba la carpeta
+  `e2e` de una historia sin pantalla y se caía antes de correr nada. Lo encontró el constructor y frenó en vez
+  de rodearlo.
+- **Regla**: un conteo en la aceptación filtra por la administración del `mundo` (cada test crea la suya) o
+  compara contra el conteo de antes del test, nunca un total global; y antes de congelar, el orquestador corre
+  la aceptación con `--codigo` contra un commit que no la tiene (no sólo `--local`), así el runner entero se
+  ejecuta como lo va a ejecutar la verificación.

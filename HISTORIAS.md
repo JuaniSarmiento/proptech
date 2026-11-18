@@ -29,7 +29,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
-| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | En proceso |
+| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Pendiente |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Pendiente |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
@@ -1308,6 +1308,21 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   validaciones, la `0044` con seis tablas protegidas y el estado por `evento_de_pago`). Comando:
   `python3 aceptacion/H-018/aceptar.py --sin-regresion`. Esperados: 54 de backend; antes de construir, 54 rojos
   por aserción, 0 por setup.
+- **Vuelta 2 de la aceptación** (`221f619`, congelada en `b51aef6`): el constructor frenó por dos defectos de la
+  aceptación, no del código: `filas_de` contaba todas las administraciones sobre una base de alcance módulo (32
+  falsos rojos) y el runner copiaba una carpeta `e2e` que la historia no tiene. Lo que se prueba no cambia
+  (L-092).
+- Construcción (Sonnet, una tanda): `df17700` dominio puro (normalización, tipo por los primeros bytes, pedido,
+  estado derivado), `b07955b` la `0044` con seis tablas protegidas y el número único por un trigger con candado
+  consultivo (D-165), `8da2bab` rutas, `ab8e833` el pedido rechaza campos ajenos (`test_altas_sin_id_del_cliente`),
+  `98473de` los ayudantes de rollback con funciones extra de trigger, `c3b9f37` y `f97e1b3` KB (R11, `04`, `08`,
+  ficha 8, D-165, L-091). Además del contrato: un vecino ve sólo las partes de sus unidades de un pago
+  repartido, y la lista trae `comprobante_id`, `informado_por` e `informado_en`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-018/aceptar.py --codigo b51aef6 --sin-regresion` desde `221f619`:
+  **54/54**, C01 a C09, N01 a N07, EST y SPEC (9 escenarios) PASA, 0 rojos. El constructor corrió además 70
+  unitarios del dominio, `test_pagos_base.py` (6, con la carrera de dos números iguales), el barrido de los 59
+  archivos que bajan migraciones y ruff, format y mypy enteros, en verde. La regresión de H-004 a H-017 queda
+  para el cierre (D-154).
 
 ### H-019 · Lectura del comprobante con IA
 
