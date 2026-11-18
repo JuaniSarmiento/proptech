@@ -36,7 +36,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
-| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
+| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1618,6 +1618,12 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N03** la pantalla calcula o redondea un monto: partes que no suman se mandan igual y el 422 de la API
     (`campo` `partes`) se muestra en el reparto, nunca una suma hecha en el navegador.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `0d5c6d3` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-025/CONTRATO.md` (la ruta nueva
+  `GET .../pagos/unidades`, las tres pantallas, el menú por acción, la ruta de Next del comprobante y los escenarios
+  `2501`/`2502` de la API falsa con la identidad `user_vecina`). Comando: `python3 aceptacion/H-025/aceptar.py` (sin
+  `--sin-regresion` corre la regresión del cierre: H-004 a H-024 y el barrido). Esperados: 5 de backend y 13 en navegador;
+  antes de construir, 18 rojos por aserción. El runner reintenta una vez el build de la web: Next.js 16.4.3 corta el
+  primer build de cada carpeta nueva con un aviso de seguridad (la actualización la decide Juani).
 
 ## Plantilla de historia
 
