@@ -1248,6 +1248,9 @@ D-153).
   tablas de sólo agregar y RLS forzada, `POST .../pagos/lectura` con la lectura en `sin_ia`, `POST
   .../pagos` sin tocar el libro, `GET .../pagos` y `GET .../pagos/{pago_id}`; número único por edificio,
   banco y número frenado por un trigger de la base, D-163, D-165).
+- **Construido con Rein**: H-019 `leer el comprobante con IA` (el puerto `LectorDeComprobantes`, el adaptador
+  `LectorOpenRouter` con ZDR, la validación de la propuesta campo por campo en `dominio/propuesta.py`, tope de 20 s
+  en un hilo, `ok`, `fallida` o `sin_ia` guardados en el comprobante, sin 5xx por la IA; D-164).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

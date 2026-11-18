@@ -1363,3 +1363,14 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   compara contra el conteo de antes del test, nunca un total global; y antes de congelar, el orquestador corre
   la aceptación con `--codigo` contra un commit que no la tiene (no sólo `--local`), así el runner entero se
   ejecuta como lo va a ejecutar la verificación.
+
+## L-093 · Lo que dice la imagen es dato no confiable, y las funciones "de validar" de Python son más flojas de lo que parecen
+
+- **Origen**: H-019 del 8 (lectura del comprobante con IA), 18/11/2026.
+- **Qué pasó**: al validar la propuesta de la IA, las herramientas obvias dejan pasar de más: `str.isdigit()`
+  acepta dígitos Unicode, `date.fromisoformat` acepta formatos que no son `AAAA-MM-DD` (`20261105`) y `$` en una
+  expresión regular acepta un salto de línea al final. Además un tope sobre un hilo no lo cancela: sólo deja de
+  esperarlo, y lo termina el timeout del cliente HTTP.
+- **Regla**: validar un dato de una fuente no confiable con `re.fullmatch` sobre `[0-9]` y el formato exacto antes
+  de convertir; un tope sobre una llamada externa se acompaña del timeout propio del cliente; y la salida de la IA
+  nunca decide: sólo propone, y el humano informa.
