@@ -1322,6 +1322,22 @@ D-153).
 - **Terminado cuando**: se cumplen HU-A6 y HU-V4; la fecha que cuenta para los intereses es la de la
   transferencia.
 
+### 8 · deuda del cierre (18/11/2026)
+
+| Deuda | Por qué queda | Dueño |
+|---|---|---|
+| La lectura del comprobante con OpenRouter (imagen y PDF como parte `file`) nunca se probó contra el servicio real | Sólo con transportes falsos; Juani decidió no probarlo con su clave antes de cerrar (18/11/2026) | Juani, con su clave, antes del piloto (**15**) |
+| `infra/.env.example` sin las líneas comentadas de `PROPTECH_OPENROUTER_API_KEY`, `PROPTECH_OPENROUTER_MODELO` y `PROPTECH_CLAVE_DE_ENLACES` | Una regla de permisos impide que el agente edite ese archivo; las variables están en el compose, el README y `08` | Juani, antes de desplegar |
+| El ajuste de interés (H-021) usa la fase 2 de R04 sobre el estado previo al ajuste: si el sobrante de un pago grande cae en capital de obligaciones posteriores, puede quedar levemente corto | Caso de borde sin test; no se vio en la demo | **10a** `morosidad` (o una HU propia antes del piloto) |
+| P29 compara contra el interés **neto** (con sus ajustes) al revertir: decisión del constructor sin un test que la fije | Coherente con la demo, pero no la congela ninguna aceptación | **10a** |
+| Reimputar una unidad que recibió dos partes del mismo pago mueve las dos; la pantalla ofrece reimputar sólo desde la primera parte | Fuera del contrato de H-023 y H-025 | **C-26** `pulido-web-3` (pantalla) y una HU del 10a (dominio) |
+| `registrar_pago` usa `_Pedido` y `_replay`, privados de `creditos.py` | Acoplamiento interno de `cuenta_corriente`, sin efecto visible | **C-28** `revisiones-independientes` |
+| La vecina ve el identificador de la unidad a la que se reimputó su pago (ningún saldo) | Aceptado en la demo; es dato del mismo edificio | **11** `portal-del-vecino` decide si se oculta |
+| `/edificios/{id}/pagos/informar` no chequea el permiso del lado del servidor de Next (lo hacen el menú y la API al enviar) | La API ya responde 403; la pantalla sólo queda accesible por URL | **C-26** |
+| La vecina no tiene "Ver comprobante" en "Mis pagos" | El contrato de H-025 no lo pedía | **11** |
+| `impeccable detect` no se corrió sobre las pantallas de pagos | Su script no está en el repo | **C-26**, junto con la pasada de impeccable del 7 |
+| Un saldo inicial importado sin tramos no recalcula el interés al revertir | Fuera del contrato de H-022 | **10a** |
+
 ### 6b · `motor-de-reglas` · explore propio
 
 - **Objetivo**: dejar andando la base del motor de reglas cuando haya reglas validadas que lo necesiten
