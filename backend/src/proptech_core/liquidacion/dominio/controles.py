@@ -34,6 +34,8 @@ class ContextoDeControles:
     gastos_en_revision: Sequence[str] = ()
     gastos_sin_ia: Sequence[str] = ()
     categorias_faltantes: Sequence[tuple[str, str]] = ()
+    pagos_sin_confirmar: int = 0
+    total_sin_confirmar: str = "0.00"
 
 
 _CERO = Dinero("0.00")
@@ -135,5 +137,13 @@ def controles_de(
                     for i, nombre in contexto.categorias_faltantes
                 ]
             },
+        )
+    if contexto.pagos_sin_confirmar:
+        n = contexto.pagos_sin_confirmar
+        agregar(
+            "pagos_sin_confirmar",
+            "advertencia",
+            _cantidad(n, "pago informado sin confirmar", "pagos informados sin confirmar"),
+            {"cantidad": n, "total": contexto.total_sin_confirmar},
         )
     return controles

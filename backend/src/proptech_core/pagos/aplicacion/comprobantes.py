@@ -25,7 +25,7 @@ LECTURA_SIN_IA = "sin_ia"
 LECTURA_OK = "ok"
 LECTURA_FALLIDA = "fallida"
 TOPE_DE_LECTURA_S = 20.0
-_TIPOS_MIME = {"jpeg": "image/jpeg", "png": "image/png", "pdf": "application/pdf"}
+TIPOS_MIME = {"jpeg": "image/jpeg", "png": "image/png", "pdf": "application/pdf"}
 #: Los hilos de la lectura: el tope los abandona pero el timeout del cliente HTTP los termina.
 _HILOS = ThreadPoolExecutor(max_workers=8, thread_name_prefix="lectura-de-comprobantes")
 
@@ -37,7 +37,7 @@ def _leer_con_ia(
     if lector is None:
         return LECTURA_SIN_IA, None
     try:
-        cruda = _HILOS.submit(lector.leer, contenido, _TIPOS_MIME[tipo]).result(timeout=tope)
+        cruda = _HILOS.submit(lector.leer, contenido, TIPOS_MIME[tipo]).result(timeout=tope)
     except Exception:
         return LECTURA_FALLIDA, None
     return LECTURA_OK, validar_propuesta(cruda, hoy)

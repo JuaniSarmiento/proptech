@@ -72,7 +72,7 @@ def verificar(token: str, *, tipo: str, clave: str, ahora: datetime) -> dict[str
         if not isinstance(datos, dict) or datos["t"] != tipo:
             raise EnlaceAlterado
         vence_en = datetime.fromtimestamp(int(datos["e"]), UTC)
-    except (binascii.Error, ValueError, KeyError, TypeError):
+    except binascii.Error, ValueError, KeyError, TypeError:
         raise EnlaceAlterado from None
     if ahora >= vence_en:
         raise EnlaceVencido

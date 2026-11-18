@@ -45,7 +45,12 @@ def test_vencido_y_alterado_son_fallos_distintos() -> None:
     with pytest.raises(EnlaceVencido):
         verificar(token, tipo="comprobante", clave=CLAVE, ahora=VENCE)
     with pytest.raises(EnlaceAlterado):
-        verificar(token[:-1] + ("0" if token[-1] != "0" else "1"), tipo="comprobante", clave=CLAVE, ahora=AHORA)
+        verificar(
+            token[:-1] + ("0" if token[-1] != "0" else "1"),
+            tipo="comprobante",
+            clave=CLAVE,
+            ahora=AHORA,
+        )
     with pytest.raises(EnlaceAlterado):
         verificar("basura", tipo="comprobante", clave=CLAVE, ahora=AHORA)
 

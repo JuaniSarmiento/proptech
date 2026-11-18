@@ -62,6 +62,9 @@ _RUTAS_PUBLICAS = {
     # vence a los 15 minutos y lleva administración, documento y variante) es la autorización; sin
     # token válido da 403 o 410 sin abrir una sesión de base. Lo prueba la aceptación de H-015.
     ("/api/documentos/descarga", "GET"),
+    # 8, H-024 (E11): el comprobante de un pago, con el mismo diseño: el token firmado (tipo
+    # `comprobante`, 15 minutos) es la autorización. Lo prueba la aceptación de H-024.
+    ("/api/comprobantes/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -168,6 +171,7 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/rechazo", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
 }
 
 
@@ -811,7 +815,11 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         and not _depende_de(app_real, r.path, m, identidad_actual)
     }
     assert reales == _RUTAS_CON_TOKEN
-    assert _RUTAS_PUBLICAS == {("/api/salud", "GET"), ("/api/documentos/descarga", "GET")}
+    assert _RUTAS_PUBLICAS == {
+        ("/api/salud", "GET"),
+        ("/api/documentos/descarga", "GET"),
+        ("/api/comprobantes/descarga", "GET"),
+    }
 
 
 @pytest.mark.parametrize("ruta_y_metodo", sorted(_RUTAS_CUBIERTAS))

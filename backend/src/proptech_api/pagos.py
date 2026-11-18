@@ -9,23 +9,26 @@ el motivo (422) → el estado (409). Revertir (H-022) y reimputar (H-023) piden
 `revertir_o_reimputar_pago`, con el mismo orden.
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_tenant
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza, puede
+from proptech_core.compartido.base_de_datos import abrir_sesion
+from proptech_core.compartido.configuracion import ConfiguracionInvalida
+from proptech_core.compartido.enlaces import EnlaceVencido
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.pagos.adaptadores.openrouter import LectorOpenRouter
-from proptech_core.pagos.aplicacion import comprobantes, informar, lectura, resolver
+from proptech_core.pagos.aplicacion import comprobantes, enlaces, informar, lectura, resolver
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.pagos.aplicacion.permisos import (
     es_personal_de_pagos,
@@ -36,6 +39,11 @@ from proptech_core.pagos.dominio.comprobante import TAMANO_MAXIMO
 from proptech_core.pagos.puertos import LectorDeComprobantes
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
+#: La descarga del comprobante (H-024): pública por diseño. El token firmado ES la autorización
+#: (E11), así que no pasa por identidad ni por tenant: el tenant sale del token verificado.
+router_de_descarga = APIRouter(prefix="/api")
+#: Cuánto dura un enlace de descarga del comprobante (D-070).
+VIGENCIA_DEL_ENLACE = timedelta(minutes=15)
 
 
 def hoy() -> date:
@@ -295,3 +303,69 @@ def reimputar_un_pago(
     )
     sesion.commit()
     return {"pago_id": str(pago_id), "estado": estado}
+
+
+@router.post("/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", status_code=201)
+def enlace_del_comprobante(
+    complejo_id: UUID,
+    pago_id: UUID,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    """Un enlace firmado que vence a los 15 minutos. Lo pide quien puede ver el pago (la regla de
+    `GET .../pagos/{id}`: 404 si no, 403 sin permiso en el edificio)."""
+    asignaciones = _edificio_autorizado(sesion, identidad, complejo_id)
+    pago = lectura.leer_pago(
+        sesion,
+        complejo_id=complejo_id,
+        pago_id=pago_id,
+        unidades=unidades_del_alcance(asignaciones, complejo_id),
+    )
+    if pago is None:
+        raise NoEncontrado
+    try:
+        clave = request.app.state.configuracion.clave_de_enlaces()
+    except ConfiguracionInvalida:
+        raise HTTPException(status_code=503, detail="enlaces_no_configurados") from None
+    vence_en = (datetime.now(UTC) + VIGENCIA_DEL_ENLACE).replace(microsecond=0)
+    token = enlaces.firmar_enlace_del_comprobante(
+        administracion_id=identidad.administracion_id,
+        pago_id=pago_id,
+        vence_en=vence_en,
+        clave=clave,
+    )
+    return {"url": f"/api/comprobantes/descarga?token={token}", "vence_en": vence_en.isoformat()}
+
+
+@router_de_descarga.get("/comprobantes/descarga")
+def descargar_el_comprobante(request: Request, token: Annotated[str, Query()]) -> Response:
+    """Sin sesión: el token firmado es la autorización. 200 con los bytes subidos y su tipo; 410
+    vencido; 403 alterado, de otro tipo, de otro pago o de otra administración. Nunca se abre una
+    sesión de base antes de verificar la firma, y el tenant sale del token verificado."""
+    try:
+        clave = request.app.state.configuracion.clave_de_enlaces()
+    except ConfiguracionInvalida:
+        raise HTTPException(status_code=503, detail="enlaces_no_configurados") from None
+    try:
+        enlace = enlaces.verificar_enlace_del_comprobante(
+            token, clave=clave, ahora=datetime.now(UTC)
+        )
+    except EnlaceVencido:
+        raise HTTPException(status_code=410, detail="enlace_vencido") from None
+    except enlaces.EnlaceAlterado:
+        raise HTTPException(status_code=403, detail="enlace_invalido") from None
+    sesion = abrir_sesion(request.app.state.fabrica_de_sesiones, enlace.administracion_id)
+    try:
+        archivado = lectura.comprobante_del_pago(sesion, pago_id=enlace.pago_id)
+        sesion.rollback()
+    finally:
+        sesion.close()
+    if archivado is None:
+        raise HTTPException(status_code=403, detail="enlace_invalido")
+    contenido, tipo = archivado
+    return Response(
+        content=contenido,
+        media_type=comprobantes.TIPOS_MIME[tipo],
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )

@@ -116,3 +116,16 @@ def test_obligatorio_faltante_nombra_las_categorias() -> None:
     assert control["nivel"] == "advertencia"
     assert control["detalle"] == {"categorias": [{"categoria_id": "c1", "nombre": "Seguridad"}]}
     assert "Seguridad" in control["mensaje"]
+
+
+def test_pagos_sin_confirmar_es_una_advertencia_al_final_y_sin_pagos_no_aparece() -> None:
+    from proptech_core.liquidacion.dominio.controles import ContextoDeControles, controles_de
+
+    assert [c["codigo"] for c in controles_de(ContextoDeControles(), [])] == []
+    contexto = ContextoDeControles(
+        gastos_sin_ia=("g1",), pagos_sin_confirmar=2, total_sin_confirmar="45000.00"
+    )
+    controles = controles_de(contexto, [])
+    assert [c["codigo"] for c in controles] == ["gastos_sin_ia", "pagos_sin_confirmar"]
+    assert controles[-1]["nivel"] == "advertencia"
+    assert controles[-1]["detalle"] == {"cantidad": 2, "total": "45000.00"}

@@ -72,5 +72,5 @@ def verificar_enlace(token: str, *, clave: str, ahora: datetime) -> EnlaceVerifi
             variante=variante,
             vence_en=datetime.fromtimestamp(int(datos["e"]), UTC),
         )
-    except (ValueError, KeyError, TypeError):
+    except ValueError, KeyError, TypeError:
         raise EnlaceAlterado from None

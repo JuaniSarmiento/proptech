@@ -13,6 +13,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from proptech_core.compartido.dinero import Dinero, sumar
 from proptech_core.complejos.aplicacion.lectura import identificadores_de_unidades
 from proptech_core.pagos.dominio.estado import estado_del_pago
 
@@ -124,3 +125,29 @@ def leer_pago(
     """`None` si no existe, es de otro edificio o administración (RLS) o de una unidad ajena."""
     encontrados = _pagos(sesion, complejo_id, unidades, pago_id)
     return encontrados[0] if encontrados else None
+
+
+def comprobante_del_pago(sesion: Session, *, pago_id: UUID) -> tuple[bytes, str] | None:
+    """Los bytes y el tipo del comprobante de un pago, o `None` si no existe en la administración
+    de la sesión (RLS). Quién puede pedirlo lo decide quien llama."""
+    fila = sesion.execute(
+        text(
+            "SELECT c.contenido, c.tipo FROM pago_informado p "
+            "JOIN comprobante_de_pago c ON c.id = p.comprobante_id WHERE p.id = :pago"
+        ),
+        {"pago": pago_id},
+    ).first()
+    return None if fila is None else (bytes(fila.contenido), str(fila.tipo))
+
+
+def pagos_sin_confirmar(sesion: Session, *, complejo_id: UUID) -> tuple[int, Dinero]:
+    """Cuántos pagos del edificio siguen `informado` (sin ningún evento: ni confirmados ni
+    rechazados) y su total (R34, H-024)."""
+    montos = sesion.execute(
+        text(
+            "SELECT p.monto::text AS monto FROM pago_informado p WHERE p.complejo_id = :c "
+            "AND NOT EXISTS (SELECT 1 FROM evento_de_pago e WHERE e.pago_id = p.id)"
+        ),
+        {"c": complejo_id},
+    ).all()
+    return len(montos), sumar(Dinero(str(m.monto)) for m in montos)
