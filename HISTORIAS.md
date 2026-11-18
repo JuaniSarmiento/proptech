@@ -29,7 +29,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
-| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Pendiente |
+| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | En proceso |
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Pendiente |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Pendiente |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
@@ -1303,6 +1303,11 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N06** alguien sin `informar_pago` ni `confirmar_pago_informado` (el consejo, el contador) informa: 403.
   - **N07** el rol de la aplicación puede hacer `UPDATE` o `DELETE` sobre las tablas nuevas.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `fdd1c4f` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-018/CONTRATO.md`
+  (la dependencia `proptech_api.pagos.hoy`, las dos rutas de escritura y las dos de lectura, el orden de las
+  validaciones, la `0044` con seis tablas protegidas y el estado por `evento_de_pago`). Comando:
+  `python3 aceptacion/H-018/aceptar.py --sin-regresion`. Esperados: 54 de backend; antes de construir, 54 rojos
+  por aserción, 0 por setup.
 
 ### H-019 · Lectura del comprobante con IA
 
