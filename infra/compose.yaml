@@ -38,7 +38,7 @@ volumes:
 services:
   db:
     <<: *logs
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     command: ["postgres", "-c", "log_line_prefix=%m [%p] %q%a "]
     restart: unless-stopped
     security_opt:
@@ -278,7 +278,7 @@ services:
 
   respaldos:
     <<: *logs
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     # La misma imagen que `db` (el pg_dump de la misma versión que el
     # servidor, D9). El usuario del HOST, no el uid 999 de la imagen: los
     # archivos del bind mount quedan del dueño real (PROPTECH_UID/GID).
