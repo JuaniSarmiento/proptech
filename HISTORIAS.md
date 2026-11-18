@@ -36,7 +36,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
-| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | En proceso |
+| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1624,6 +1624,23 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `--sin-regresion` corre la regresión del cierre: H-004 a H-024 y el barrido). Esperados: 5 de backend y 13 en navegador;
   antes de construir, 18 rojos por aserción. El runner reintenta una vez el build de la web: Next.js 16.4.3 corta el
   primer build de cada carpeta nueva con un aviso de seguridad (la actualización la decide Juani).
+- Construcción (Sonnet, una tanda, con la skill impeccable): `3711412` la ruta `GET .../pagos/unidades`, `03731a3` el cliente
+  de pagos y la ruta de Next `/comprobantes/descarga`, `3cf6078` "Pagos" y "Mis pagos" en el menú por acción, `487cd1d` la API
+  falsa de pagos con `user_vecina`, `2baea95` las tres pantallas, `36462fd` ficha 8, HU-V4, HU-A6, `08` y L-099.
+  `next.config.ts` sube el límite de las server actions a 11 MB (la foto de un comprobante pasa de 1 MB). **Para la demo**:
+  reimputar desde la pantalla sólo ofrece la primera parte de un pago repartido; la vecina no tiene "Ver comprobante" en
+  "Mis pagos" (el contrato no lo pedía); `impeccable detect` no se corrió; nadie vio las pantallas fuera de Playwright.
+- **Next.js 16.4.5** (`e8b6145`, decisión delegada por Juani el 18/11/2026: "como quieras"): 16.4.3 tenía GHSA-mfr8-8qww-v76h y
+  GHSA-vc7v-qv4w-wrv8 (moderadas, parche desde 16.4.5) y su build cortaba la primera corrida de cada carpeta nueva.
+  `pnpm audit --prod` sin vulnerabilidades después.
+- **Cierre del change, regresión una sola vez** (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 36462fd` desde
+  `0d5c6d3`: las aceptaciones congeladas de H-004 a H-024 en verde; el barrido de migraciones dio 2 de 1653 en rojo, los dos
+  de deuda del 8 que sólo ve el barrido (L-100): las rutas POST nuevas sin registrar en `test_altas_sin_id_del_cliente`
+  (y, para que su 422 llegue, un campo ajeno en rechazar, revertir y reimputar se rechaza antes de buscar el pago) y el
+  conteo de `tipo_de_movimiento` en `test_libro_proteccion` (15 con la `0046`). Arreglados en `12fc23c`, `23c182d` y
+  `4f0b631`; re-corridos esos archivos y H-020 (27/27), H-022 (20/20) y H-023 (16/16) sobre `4f0b631`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 4f0b631 --sin-regresion` desde `0d5c6d3`: **5/5 de backend y
+  13/13 en navegador** con Next 16.4.5, C01 a C08, N01 a N03 y C10 PASA, 0 rojos.
 
 ## Plantilla de historia
 
