@@ -1265,6 +1265,12 @@ D-153).
   pago adentro, así la unidad queda igual al centavo que una que nunca pagó; evento `revertido` y auditoría
   `revertir_pago_informado`, todo en una transacción; migración `0046`: el tipo nuevo, `reversion_de_pago` con
   `corrige_a` y motivo, y el préstamo de propiedad de `movimiento`, D-115.3).
+- **Construido con Rein**: H-023 `reimputar un pago` (`POST .../pagos/{pago_id}/reimputacion`, R25 vigente; en
+  el origen un `reimputacion` débito que corrige el movimiento vigente, la reversión de sus ajustes y el
+  `interes_por_reversion` de P29, como revertir; en el destino un `reimputacion` crédito a la fecha de la
+  transferencia, con R04 y su ajuste de interés, como confirmar, enlazado al débito; evento `reimputado` y
+  auditoría `reimputar_pago_informado`, todo en una transacción; migración `0047`: `reimputacion` con
+  `corrige_a` y motivo en el débito y `enlazado_a` en el crédito, y el préstamo de propiedad de `movimiento`).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

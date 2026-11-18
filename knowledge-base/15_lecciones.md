@@ -1419,3 +1419,19 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   `CHECK` de la tabla, no sólo contra el vocabulario. Y un movimiento que completa un interés se calcula como
   "lo que corresponde menos lo registrado neto", nunca como una diferencia entre bases sin mirar lo que ya
   se compensó. Lo que corrige un movimiento (la reversión de un pago) no se deshace por la corrección manual.
+
+## L-097 · Lo que se parece a revertir se arma con las mismas piezas, y la atomicidad se prueba haciendo fallar el último paso
+
+- **Origen**: H-023 del 8 (reimputar un pago), 18/11/2026.
+- **Qué pasó**: reimputar es "revertir en el origen y confirmar en el destino". En vez de duplicar, se extrajo de
+  `revertir_pago` el trabajo de una cuenta (`_revertir_en_la_cuenta`, que escribe el débito, el contra-asiento
+  de los ajustes y el interés por reversión de P29) y se le pasó el tipo del débito (`reversion_de_pago` o
+  `reimputacion`); el destino reutiliza `registrar_pago` con `tipo` y `enlazado_a`. La falla a mitad de camino
+  se prueba haciendo fallar **el destino**, que es lo último que se escribe: si el origen ya estaba escrito y
+  no queda, la transacción es una. La `0047` fue necesaria igual que la `0046`: el
+  `CHECK` de `corrige_a` no admitía `reimputacion` (L-096).
+- **Regla**: una operación compuesta se construye con las piezas de las simples y el camino de fallo se prueba
+  en el último paso. Una reimputación con la cuenta destino que ya tiene una parte del mismo pago deja dos
+  créditos vigentes en esa cuenta: reimputar "desde esa unidad" mueve todos, porque sus ajustes de interés no
+  se distinguen por parte. Para la aceptación: se corre sobre un **commit**, así que se commitea antes de
+  correrla (L-095).

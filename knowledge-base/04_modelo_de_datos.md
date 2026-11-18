@@ -800,7 +800,9 @@ que un consumidor de otro módulo necesita.
   `reversion_de_pago/debito`, `traslado/debito`, `traslado/credito` (E14; restituye `traslado`,
   omitido en el primer propose, AR-2), más `interes_por_reversion/debito` (migración `0046`, H-022: el
   interés de los días ya cobrados con un pago adentro que se revirtió, R18, P29; exige obligación, componente
-  `interes` y `enlazado_a` el interés que completa, `ck_mov_interes_por_reversion`).
+  `interes` y `enlazado_a` el interés que completa, `ck_mov_interes_por_reversion`). La `0047` (H-023) deja usar `reimputacion` con su forma real
+  (`ck_mov_reimputacion`): el débito corrige un movimiento y lleva motivo, el crédito se enlaza (`enlazado_a`) al
+  débito, que puede ser de otra cuenta.
 - **Constraints principales** (CHECK acotados por tipo conocido, no columnas duplicadas del
   vocabulario, D1): `interes` exige obligación, componente `interes` y `corte`, todos NOT NULL, con
   único `uq_mov_interes(obligacion_id, corte)`; `condonacion`/`ajuste_de_interes` exigen obligación y
@@ -808,7 +810,7 @@ que un consumidor de otro módulo necesita.
   de `interes` exige `operacion_id NOT NULL` (único `uq_mov_operacion`, idempotencia E4);
   `correccion` exige motivo normalizado; un débito de corrección exige `corrige_a`; un crédito de
   corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion` y, desde
-  la `0046` (H-022), en `reversion_de_pago`, que además exige motivo normalizado
+  la `0046` (H-022), en `reversion_de_pago` y, desde la `0047` (H-023), en el `reimputacion` débito; el primero además exige motivo normalizado
   (`ck_mov_reversion_de_pago`); misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
   movimiento, E6/D-122). **La base no distingue blanco corregible de no corregible ni sentido
   opuesto**: eso lo valida la aplicación, bajo candado, con test (E6).

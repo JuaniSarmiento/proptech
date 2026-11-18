@@ -972,7 +972,7 @@ número no se marcan duplicadas entre sí.
   los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
   genera sugerencia.
 
-## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
+## R25 · Asistente de reimputación entre unidades · Vigente (D-163, H-023) (ProTecc B2)
 
 - **Qué resuelve**: un pago confirmado en la unidad equivocada (el vecino de 7A cargó el pago a 7B).
 - **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
@@ -980,9 +980,23 @@ número no se marcan duplicadas entre sí.
   que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
   original. Después, cada una de las dos unidades puede pasar a cumplir o dejar de cumplir R20, que se
   calcula desde el libro (D-074).
+- **Construido (H-023, change 8)**: `POST /api/complejos/{id}/pagos/{pago_id}/reimputacion` con
+  `{desde_unidad_id, hacia_unidad_id, motivo}`, sólo super admin y administrador principal
+  (`revertir_o_reimputar_pago`). Orden: el pago (404), el motivo (422), el destino de otro edificio o
+  inexistente (404), la misma unidad (422 `hacia_unidad_id`), el estado (409) y que `desde_unidad_id` tenga
+  algo vigente del pago (422 `desde_unidad_id`). En una transacción y bajo el candado del pago y el de las
+  dos cuentas, en orden: **origen** = lo mismo que revertir (R18): un `reimputacion` débito que corrige el
+  crédito vigente de la parte (el `pago` o el `reimputacion` crédito de una reimputación anterior), el
+  contra-asiento de sus ajustes de interés y el `interes_por_reversion` de P29; **destino** = lo mismo que
+  confirmar (D-166): un `reimputacion` crédito con la **fecha de la transferencia**, enlazado al débito
+  (`enlazado_a`), imputado con R04 en dos fases y con su `ajuste_de_interes` si hubo una emisión posterior.
+  El evento `reimputado` (el pago sigue `confirmado`) y la auditoría `reimputar_pago_informado`. Si falla
+  un paso no queda ninguno. Después, revertir (R18) revierte el movimiento **vigente** de cada parte (el
+  crédito del destino), no el del origen. Si el origen tiene más de un crédito vigente del pago (una parte
+  reimputada a una unidad que ya tenía la suya), se reimputan todos los de esa unidad.
 - **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
   un paso, no se aplica ninguno; después de reimputar, la función de R20 da el resultado correcto
-  para las dos unidades.
+  para las dos unidades (`aceptacion/H-023`, C01 a C05 y N01 a N05).
 
 ## R37 · Condiciones de la bonificación por pronto pago · Propuesta (D-071)
 
