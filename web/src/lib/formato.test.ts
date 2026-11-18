@@ -5,6 +5,7 @@ import {
   dinero,
   fecha,
   fechaYHora,
+  montoArgentinoParaApi,
   periodoEnPalabras,
   porcentaje,
   sumaComoPorcentaje,
@@ -116,6 +117,37 @@ describe("periodoEnPalabras", () => {
   it("lo que no es un período es null, nunca un mes inventado", () => {
     for (const texto of ["", "noviembre", "2026-13", "2026-00", "26-11", "2026-1", "2026-11-1"]) {
       expect(periodoEnPalabras(texto)).toBeNull();
+    }
+  });
+});
+
+describe("montoArgentinoParaApi", () => {
+  it("el formato argentino pasa a dos decimales con punto, sin miles", () => {
+    expect(montoArgentinoParaApi("43350")).toBe("43350.00");
+    expect(montoArgentinoParaApi("43.350")).toBe("43350.00");
+    expect(montoArgentinoParaApi("43350,5")).toBe("43350.50");
+    expect(montoArgentinoParaApi("43.350,00")).toBe("43350.00");
+    expect(montoArgentinoParaApi("1.234.567,89")).toBe("1234567.89");
+    expect(montoArgentinoParaApi("0,5")).toBe("0.50");
+  });
+
+  it("lo que ya viene en el formato de la API queda igual", () => {
+    expect(montoArgentinoParaApi("43350.00")).toBe("43350.00");
+  });
+
+  it("sólo cambia el formato: nunca redondea ni inventa, lo que no encaja vuelve tal cual", () => {
+    for (const texto of [
+      "43350,123",
+      "43350.123",
+      "43.35",
+      "4.3350",
+      "1.2.3",
+      "abc",
+      "-5",
+      "",
+      "43350,",
+    ]) {
+      expect(montoArgentinoParaApi(texto)).toBe(texto);
     }
   });
 });

@@ -30,7 +30,15 @@ const PAGO_BIEN = {
   numero_de_operacion: "11110001",
   fecha_de_transferencia: "2026-11-05",
   monto: "43350.00",
-  partes: [{ unidad_id: UNIDAD, identificador: "1A", importe: "43350.00" }],
+  partes: [
+    {
+      unidad_id: UNIDAD,
+      identificador: "1A",
+      importe: "43350.00",
+      unidad_vigente_id: UNIDAD,
+      identificador_vigente: "1A",
+    },
+  ],
 };
 
 function mockFetch(respuesta: {

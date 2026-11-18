@@ -17,7 +17,15 @@ const pago = (numero: string, estado: PagoInformado["estado"], motivo: string | 
     numero_de_operacion: numero,
     fecha_de_transferencia: "2026-11-05",
     monto: "43350.00",
-    partes: [{ unidad_id: "u1", identificador: "1A", importe: "43350.00" }],
+    partes: [
+      {
+        unidad_id: "u1",
+        identificador: "1A",
+        importe: "43350.00",
+        unidad_vigente_id: "u1",
+        identificador_vigente: "1A",
+      },
+    ],
   }) satisfies PagoInformado;
 
 function pintar(pagos: PagoInformado[]) {

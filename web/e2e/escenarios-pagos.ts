@@ -8,7 +8,8 @@
  * - 2502: igual, pero la lectura da `fallida` con la propuesta vacía.
  *
  * `GET .../pagos/unidades`: para `user_vecina`, `1A` y `2B`; para el resto, las cuatro. `GET .../pagos`:
- * cuatro pagos, uno por estado. `POST .../pagos` da 201 si las partes suman el monto y 422 `partes` si no.
+ * cinco pagos, uno por estado y un quinto confirmado y reimputado de `1A` a `2A` (H-026); cada parte trae
+ * `unidad_vigente_id` e `identificador_vigente`. `POST .../pagos` da 201 si las partes suman el monto y 422 `partes` si no.
  * Confirmar, rechazar, revertir, reimputar y el enlace del comprobante responden como la API real
  * (409 `pago`/`estado` si el estado no lo admite). Todas las escrituras guardan la última escritura (de
  * la subida del comprobante sólo se guarda el método, la dirección y el tipo, nunca los bytes).
@@ -45,6 +46,7 @@ const _PAGO_INFORMADO = "00000000-0000-0000-0000-000000025001";
 const _PAGO_CONFIRMADO = "00000000-0000-0000-0000-000000025002";
 const _PAGO_RECHAZADO = "00000000-0000-0000-0000-000000025003";
 const _PAGO_REVERTIDO = "00000000-0000-0000-0000-000000025004";
+const _PAGO_REIMPUTADO = "00000000-0000-0000-0000-000000025005";
 
 function _pago(
   pagoId: string,
@@ -53,6 +55,7 @@ function _pago(
   numero: string,
   monto: string,
   unidad: keyof typeof _UNIDADES,
+  vigente: keyof typeof _UNIDADES = unidad,
 ) {
   return {
     pago_id: pagoId,
@@ -65,7 +68,15 @@ function _pago(
     comprobante_id: COMPROBANTE_LEIDO,
     informado_por: "00000000-0000-0000-0000-000000025800",
     informado_en: "2026-11-06T15:00:00+00:00",
-    partes: [{ unidad_id: _UNIDADES[unidad], identificador: unidad, importe: monto }],
+    partes: [
+      {
+        unidad_id: _UNIDADES[unidad],
+        identificador: unidad,
+        importe: monto,
+        unidad_vigente_id: _UNIDADES[vigente],
+        identificador_vigente: vigente,
+      },
+    ],
   };
 }
 
@@ -81,6 +92,8 @@ const _PAGOS = [
     "1A",
   ),
   _pago(_PAGO_REVERTIDO, "revertido", "Cheque rechazado", "11110004", "20000.00", "1B"),
+  // H-026: confirmado y reimputado de 1A a 2A (la plata está hoy en 2A).
+  _pago(_PAGO_REIMPUTADO, "confirmado", null, "11110005", "10000.00", "1A", "2A"),
 ];
 
 function json(respuesta: ServerResponse, estado: number, cuerpo: unknown): void {

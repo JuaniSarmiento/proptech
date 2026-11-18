@@ -9,7 +9,15 @@ import { esIdValido, pedirApi, type ResultadoApi } from "./cliente";
 
 export type EstadoDelPago = "informado" | "confirmado" | "rechazado" | "revertido";
 
-export type ParteDelPago = { unidad_id: string; identificador: string; importe: string };
+/** `unidad_vigente_id` e `identificador_vigente`: dónde está hoy la plata de la parte (H-026); la propia
+ * unidad si nunca se reimputó. */
+export type ParteDelPago = {
+  unidad_id: string;
+  identificador: string;
+  importe: string;
+  unidad_vigente_id: string;
+  identificador_vigente: string;
+};
 
 export type PagoInformado = {
   pago_id: string;
@@ -65,7 +73,9 @@ function esParte(valor: unknown): valor is ParteDelPago {
     esRegistro(valor) &&
     typeof valor.unidad_id === "string" &&
     typeof valor.identificador === "string" &&
-    typeof valor.importe === "string"
+    typeof valor.importe === "string" &&
+    typeof valor.unidad_vigente_id === "string" &&
+    typeof valor.identificador_vigente === "string"
   );
 }
 

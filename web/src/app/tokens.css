@@ -1941,6 +1941,11 @@ a.boton-secundario:hover {
   margin-top: 0.5rem;
 }
 
+/* Cada dato de la lista (unidades, dónde está hoy, motivo) en su propio renglón (H-026). */
+.fila-de-pago__renglon {
+  display: block;
+}
+
 .fila-de-pago__estado {
   font-weight: 600;
 }

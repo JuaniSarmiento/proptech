@@ -4,7 +4,7 @@
  * Informar un pago (change 8, H-025): las server actions suben el comprobante para su lectura y mandan
  * el pago. El navegador nunca habla con la API ni ve el token de sesión (D-036); se ligan al edificio con
  * `.bind` desde `page.tsx`. La pantalla no suma ni redondea ningún monto: lo que se manda es lo que la
- * persona escribió (sólo cambia la coma decimal por el punto) y si las partes no suman, lo dice la API.
+ * persona escribió (sólo cambia el formato: H-026) y si las partes no suman, lo dice la API.
  *
  * Un fallo se dice con un mensaje propio, traducido de su código; el texto de la API nunca llega a la
  * pantalla (L-007).
@@ -18,7 +18,7 @@ import {
   type PropuestaDeLectura,
   subirComprobante,
 } from "../../../../../lib/api/pagos";
-import { decimalParaApi } from "../../../../../lib/formato";
+import { montoArgentinoParaApi } from "../../../../../lib/formato";
 
 export type ResultadoDeLectura =
   | { comprobanteId: string; lectura: "ok" | "fallida" | "sin_ia"; propuesta: PropuestaDeLectura }
@@ -90,12 +90,32 @@ function falla(
   return { erroresPorCampo, erroresDesconocidos };
 }
 
+/** La vecina informa por sus unidades y vuelve a "Mis pagos". */
 export async function enviarPagoAction(
   complejoId: string,
   datos: DatosDelPago,
 ): Promise<ResultadoDelEnvio> {
+  return enviarPago(complejoId, datos, "mis-pagos");
+}
+
+/** El administrador informa por un vecino (H-026) y vuelve a la bandeja. */
+export async function enviarPagoDesdeLaBandejaAction(
+  complejoId: string,
+  datos: DatosDelPago,
+): Promise<ResultadoDelEnvio> {
+  return enviarPago(complejoId, datos, "pagos");
+}
+
+async function enviarPago(
+  complejoId: string,
+  datos: DatosDelPago,
+  vuelveA: "mis-pagos" | "pagos",
+): Promise<ResultadoDelEnvio> {
   const partes = datos.partes
-    .map((parte) => ({ unidad_id: parte.unidadId, importe: decimalParaApi(parte.importe.trim()) }))
+    .map((parte) => ({
+      unidad_id: parte.unidadId,
+      importe: montoArgentinoParaApi(parte.importe.trim()),
+    }))
     .filter((parte) => parte.importe !== "");
   if (partes.length === 0) {
     return falla({}, ["Escribí el importe de al menos una unidad."]);
@@ -107,14 +127,14 @@ export async function enviarPagoAction(
     banco: datos.banco.trim(),
     numero_de_operacion: datos.numeroDeOperacion.trim(),
     fecha_de_transferencia: datos.fechaDeTransferencia,
-    monto: decimalParaApi(datos.monto.trim()),
+    monto: montoArgentinoParaApi(datos.monto.trim()),
     ...(cbu === "" ? {} : { cbu_origen: cbu }),
     partes,
   });
 
   if (resultado.estado === "ok") {
     revalidatePath(`/edificios/${complejoId}`);
-    redirect(`/edificios/${complejoId}/mis-pagos`);
+    redirect(`/edificios/${complejoId}/${vuelveA}`);
   }
   if (resultado.estado === "invalido") {
     const porCampo: Record<string, string> = {};

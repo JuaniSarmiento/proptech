@@ -16,7 +16,12 @@ vi.mock("../../../../../lib/api/pagos", async (importar) => ({
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
 
-import { type DatosDelPago, enviarPagoAction, leerComprobanteAction } from "./acciones";
+import {
+  type DatosDelPago,
+  enviarPagoAction,
+  enviarPagoDesdeLaBandejaAction,
+  leerComprobanteAction,
+} from "./acciones";
 
 const ID = "11111111-1111-1111-1111-111111111111";
 const COMPROBANTE = "22222222-2222-2222-2222-222222222222";
@@ -101,6 +106,28 @@ describe("enviarPagoAction", () => {
       partes: [{ unidad_id: U1, importe: "43350.00" }],
     });
     expect(revalidatePath).toHaveBeenCalledWith(`/edificios/${ID}`);
+  });
+
+  it("el monto se escribe como en Argentina y sólo cambia el formato (H-026)", async () => {
+    informarPago.mockResolvedValue({ estado: "ok", datos: { pago_id: "p", estado: "informado" } });
+    await expect(
+      enviarPagoAction(ID, {
+        ...DATOS,
+        monto: "43.350,5",
+        partes: [{ unidadId: U1, importe: "43350,123" }],
+      }),
+    ).rejects.toThrow("REDIRECT");
+    expect(informarPago.mock.calls[0]?.[1]).toMatchObject({
+      monto: "43350.50",
+      partes: [{ unidad_id: U1, importe: "43350,123" }],
+    });
+  });
+
+  it("informar desde la bandeja vuelve a la bandeja (H-026)", async () => {
+    informarPago.mockResolvedValue({ estado: "ok", datos: { pago_id: "p", estado: "informado" } });
+    await expect(enviarPagoDesdeLaBandejaAction(ID, DATOS)).rejects.toThrow(
+      `REDIRECT:/edificios/${ID}/pagos`,
+    );
   });
 
   it("el CBU sólo viaja si se escribió", async () => {

@@ -7,7 +7,8 @@ export const AYUDA_PAGOS = {
   pasos: [
     "Tocá Ver comprobante para abrir lo que subió el vecino y compararlo con lo que informó.",
     "Confirmar acredita el pago en la cuenta de la unidad; Rechazar te pide el motivo y se lo muestra al vecino.",
-    "Un pago ya confirmado se puede Revertir (con motivo) o Reimputar a otra unidad si el vecino se equivocó.",
+    "Un pago ya confirmado se puede Revertir (con motivo) o Reimputar a otra unidad si el vecino se equivocó; si ya lo reimputaste, el renglón dice dónde está ahora.",
+    "Si un vecino te pasó el comprobante por otro lado, tocá Informar un pago y cargalo vos por él.",
   ],
   ejemplo:
     "Un vecino informó $43.350,00 para la 1A. Abrís el comprobante, el monto y el número de operación coinciden: tocás Confirmar y queda acreditado.",

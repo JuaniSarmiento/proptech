@@ -11,8 +11,10 @@
 import { useState, useTransition } from "react";
 import { Ayuda } from "../../../../../componentes/Ayuda";
 import { EncabezadoDePantalla } from "../../../../../componentes/EncabezadoDePantalla";
+import { Estados } from "../../../../../componentes/Estados";
 import { Campo, Formulario } from "../../../../../componentes/Formulario";
 import { Panel } from "../../../../../componentes/Panel";
+import { permite, useSesionDePantalla } from "../../../../../componentes/SesionDePantalla";
 import type { UnidadParaInformar } from "../../../../../lib/api/pagos";
 import { ArmazonDelEdificio } from "../../Armazon";
 import type { DatosDelPago, ResultadoDeLectura, ResultadoDelEnvio } from "./acciones";
@@ -22,6 +24,9 @@ type Props = {
   id: string;
   nombreEdificio: string;
   unidades: UnidadParaInformar[];
+  /** Desde dónde se informa: "Mis pagos" de la vecina (por defecto) o la bandeja del administrador
+   * (H-026), que pide `confirmar_pago_informado` y lista todas las unidades. */
+  desde?: "mis-pagos" | "pagos";
   accionLeer: (formData: FormData) => Promise<ResultadoDeLectura>;
   accionEnviar: (datos: DatosDelPago) => Promise<ResultadoDelEnvio>;
 };
@@ -32,9 +37,11 @@ export function PantallaInformarPago({
   id,
   nombreEdificio,
   unidades,
+  desde = "mis-pagos",
   accionLeer,
   accionEnviar,
 }: Props) {
+  const sesion = useSesionDePantalla();
   const [leyendo, leer] = useTransition();
   const [enviando, enviar] = useTransition();
   const [leido, setLeido] = useState<Leido | null>(null);
@@ -103,8 +110,12 @@ export function PantallaInformarPago({
     });
   }
 
+  if (desde === "pagos" && !permite(sesion, "confirmar_pago_informado", id)) {
+    return <Estados tipo="sinPermiso" queNoPuede="informar pagos por los vecinos" />;
+  }
+
   return (
-    <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="mis-pagos">
+    <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual={desde}>
       <EncabezadoDePantalla titulo="Informar un pago" ayuda={<Ayuda {...AYUDA_INFORMAR_PAGO} />} />
       {unidades.length === 0 ? (
         <Panel titulo="Tus unidades">

@@ -28,10 +28,21 @@ const ICONO_DEL_ESTADO: Record<EstadoDelPago, LucideIcon> = {
 type Props = {
   pago: PagoInformado;
   acciones?: ReactNode;
+  /** La bandeja dice dónde está hoy la plata de una parte reimputada (H-026). */
+  mostrarDondeEsta?: boolean;
 };
 
-export function FilaDePago({ pago, acciones }: Props) {
+/** Los identificadores donde está hoy la plata de las partes que ya no están en su unidad original. */
+export function dondeEstaHoy(pago: PagoInformado): string {
+  return pago.partes
+    .filter((parte) => parte.unidad_vigente_id !== parte.unidad_id)
+    .map((parte) => parte.identificador_vigente)
+    .join(", ");
+}
+
+export function FilaDePago({ pago, acciones, mostrarDondeEsta = false }: Props) {
   const unidades = pago.partes.map((parte) => parte.identificador).join(", ");
+  const ahoraEn = mostrarDondeEsta ? dondeEstaHoy(pago) : "";
   return (
     <FilaConIcono
       icono={ICONO_DEL_ESTADO[pago.estado]}
@@ -39,13 +50,18 @@ export function FilaDePago({ pago, acciones }: Props) {
       titulo={`Operación ${pago.numero_de_operacion}`}
       detalle={
         <>
-          <span>
+          <span className="fila-de-pago__renglon">
             {pago.banco} · {fecha(pago.fecha_de_transferencia)}
             {unidades === ""
               ? ""
               : ` · ${pago.partes.length === 1 ? "Unidad" : "Unidades"} ${unidades}`}
           </span>
-          {pago.motivo ? <span>Motivo: {pago.motivo}</span> : null}
+          {ahoraEn === "" ? null : (
+            <span className="fila-de-pago__renglon">Ahora en {ahoraEn}</span>
+          )}
+          {pago.motivo ? (
+            <span className="fila-de-pago__renglon">Motivo: {pago.motivo}</span>
+          ) : null}
           {acciones ? <span className="acciones-de-la-fila">{acciones}</span> : null}
         </>
       }

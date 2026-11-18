@@ -58,3 +58,15 @@ describe("seccionesDelEdificio", () => {
     });
   });
 });
+
+describe("seccionesDelEdificio, quién ve qué (H-026)", () => {
+  it("Resumen, Unidades, Grupos, Categorías e Intereses piden ver_configuracion_del_edificio, en ese edificio", () => {
+    const secciones = seccionesDelEdificio("abc");
+    for (const clave of ["resumen", "unidades", "grupos", "categorias", "configuracion"]) {
+      expect(secciones.find((s) => s.clave === clave)).toMatchObject({
+        accion: "ver_configuracion_del_edificio",
+        complejoId: "abc",
+      });
+    }
+  });
+});

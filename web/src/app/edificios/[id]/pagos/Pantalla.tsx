@@ -110,8 +110,9 @@ function DialogoDeDecision({
 
   const pide = accion !== undefined && accion !== "confirmacion";
   const reimputa = accion === "reimputacion";
-  // La unidad del pago (la de su primera parte) no es un destino posible.
-  const desde = decision?.pago.partes[0]?.unidad_id;
+  // Desde dónde está hoy la plata de la primera parte (H-026: la unidad vigente, no la original); esa
+  // unidad no es un destino posible.
+  const desde = decision?.pago.partes[0]?.unidad_vigente_id;
   const destinos = unidades.filter((u) => u.unidad_id !== desde);
   const falta = (pide && motivo.trim() === "") || (reimputa && destino === "");
   const [textoBoton, textoEnCurso] = accion ? BOTON[accion] : ["", ""];
@@ -246,7 +247,17 @@ export function PantallaPagos({
 
   return (
     <ArmazonDelEdificio id={id} nombreEdificio={nombreEdificio} seccionActual="pagos">
-      <EncabezadoDePantalla titulo="Pagos" ayuda={<Ayuda {...AYUDA_PAGOS} />} />
+      <EncabezadoDePantalla
+        titulo="Pagos"
+        ayuda={<Ayuda {...AYUDA_PAGOS} />}
+        accionPrincipal={
+          puedeResolver ? (
+            <a className="boton-principal" href={`/edificios/${id}/pagos/informar`}>
+              Informar un pago
+            </a>
+          ) : null
+        }
+      />
       <Panel
         titulo="Pagos informados"
         descripcion="Del más nuevo al más viejo. Revisá cada comprobante antes de confirmar."
@@ -269,6 +280,7 @@ export function PantallaPagos({
               <li key={pago.pago_id}>
                 <FilaDePago
                   pago={pago}
+                  mostrarDondeEsta
                   acciones={
                     <>
                       {pago.estado === "informado" && puedeResolver ? (

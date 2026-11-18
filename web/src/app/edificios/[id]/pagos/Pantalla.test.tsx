@@ -40,6 +40,7 @@ const pago = (
   numero: string,
   estado: PagoInformado["estado"],
   unidad = { id: "u-2b", nombre: "2B" },
+  vigente = unidad,
 ): PagoInformado => ({
   pago_id: `p-${numero}`,
   estado,
@@ -48,7 +49,15 @@ const pago = (
   numero_de_operacion: numero,
   fecha_de_transferencia: "2026-11-05",
   monto: "37425.00",
-  partes: [{ unidad_id: unidad.id, identificador: unidad.nombre, importe: "37425.00" }],
+  partes: [
+    {
+      unidad_id: unidad.id,
+      identificador: unidad.nombre,
+      importe: "37425.00",
+      unidad_vigente_id: vigente.id,
+      identificador_vigente: vigente.nombre,
+    },
+  ],
 });
 
 const UNIDADES: UnidadParaInformar[] = [
@@ -160,6 +169,44 @@ describe("PantallaPagos (H-025)", () => {
         desdeUnidadId: "u-2b",
         haciaUnidadId: "u-2a",
       }),
+    );
+  });
+
+  it("un pago reimputado dice dónde está ahora y reimputa desde ahí (H-026)", async () => {
+    const { resolver } = pintar([
+      pago("CCC3", "confirmado", { id: "u-1a", nombre: "1A" }, { id: "u-2a", nombre: "2A" }),
+    ]);
+    expect(fila("CCC3").textContent).toContain("Ahora en 2A");
+    await userEvent.click(within(fila("CCC3")).getByRole("button", { name: "Reimputar" }));
+    const dialogo = screen.getByRole("dialog");
+    const destino = within(dialogo).getByLabelText("Unidad de destino") as HTMLSelectElement;
+    expect([...destino.options].map((o) => o.textContent)).toEqual([
+      "Elegí una unidad",
+      "1A",
+      "2B",
+    ]);
+    await userEvent.selectOptions(destino, "2B");
+    await userEvent.type(within(dialogo).getByLabelText("Motivo"), "Era de 2B");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Reimputar" }));
+    await waitFor(() =>
+      expect(resolver).toHaveBeenCalledWith("p-CCC3", {
+        accion: "reimputacion",
+        motivo: "Era de 2B",
+        desdeUnidadId: "u-2a",
+        haciaUnidadId: "u-2b",
+      }),
+    );
+  });
+
+  it("un pago que no se reimputó no dice 'Ahora en'", () => {
+    pintar([pago("BBB2", "confirmado")]);
+    expect(fila("BBB2").textContent).not.toContain("Ahora en");
+  });
+
+  it("la bandeja ofrece Informar un pago, que lleva a /pagos/informar (H-026)", () => {
+    pintar([]);
+    expect(screen.getByRole("link", { name: "Informar un pago" }).getAttribute("href")).toBe(
+      "/edificios/e1/pagos/informar",
     );
   });
 
