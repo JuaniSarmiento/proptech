@@ -1,6 +1,7 @@
 """3.5 · `corregir` contra PostgreSQL real (D7, E6, E7, RC-04, RC-12, BE-2, BE-5.1, AN-08)."""
 
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -101,7 +102,7 @@ def pagar(
     importe: str,
     fecha_valor: date,
     dia: int,
-    **extra: object,
+    **extra: Any,
 ) -> UUID:
     return creditos.registrar_credito(
         s,
@@ -530,3 +531,32 @@ def test_fecha_de_la_correccion_es_hoy_en_mendoza(
             text("SELECT fecha_valor FROM movimiento WHERE id = :c"), {"c": c}
         ).scalar_one_or_none()
         assert fecha == date(2026, 10, 20)
+
+
+def test_una_reversion_de_pago_no_se_contra_asienta(
+    base_del_edificio: BaseDeEdificio, mundo: Mundo
+) -> None:
+    """H-022: revertir un pago deja el par fuera del estado y esa reversión no se deshace por la
+    corrección manual (el pago vuelve con un pago nuevo): 409 `movimiento_id`."""
+    from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import revertir_pago
+
+    with sesion_app(base_del_edificio, mundo.admin) as s:
+        _, cuenta, _ = emitir(s, mundo, 7, "1000.00")
+        pago = pagar(s, mundo, cuenta, "1000.00", date(2026, 10, 5), 5)
+        assert lecturas.estado_de_cuenta(s, cuenta_id=cuenta).deuda == d("0.00")
+        (reversion,) = revertir_pago(
+            s,
+            mundo.identidad,
+            pago_id=uuid4(),
+            creditos=[pago],
+            ajustes=[],
+            fecha_de_transferencia=date(2026, 10, 5),
+            motivo="Cheque rechazado",
+            request_id=uuid4(),
+            reloj=lambda: reloj(20),
+        )
+        assert reversion.papel == "reversion_de_pago"
+        assert lecturas.estado_de_cuenta(s, cuenta_id=cuenta).deuda == d("1000.00")
+        with pytest.raises(Conflicto) as e:
+            contra(s, mundo, reversion.movimiento_id)
+        assert e.value.campo == "movimiento_id"

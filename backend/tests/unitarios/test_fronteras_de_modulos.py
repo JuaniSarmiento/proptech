@@ -519,6 +519,18 @@ _DUENO_DE_TABLA = {
     "cargo_cobrado_de_menos": "cuenta_corriente",
     # 7, H-015: el documento de la expensa y su PDF archivado los escribe `liquidacion`.
     **dict.fromkeys(("documento_de_expensa", "pdf_de_expensa"), "liquidacion"),
+    # 8, H-018: lo que el vecino informa lo escribe `pagos`.
+    **dict.fromkeys(
+        (
+            "comprobante_de_pago",
+            "pago_informado",
+            "parte_de_pago",
+            "evento_de_pago",
+            "movimiento_de_pago",
+            "cbu_de_unidad",
+        ),
+        "pagos",
+    ),
     **dict.fromkeys(
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",

@@ -1332,3 +1332,162 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: un test de fechas las calcula relativas a hoy en Mendoza; una cota de tarea más su margen queda
   por debajo de su `job_timeout`; al sumar una acción a la matriz, buscar los tests que enumeran acciones
   por perfil.
+
+## L-091 · Una función de trigger no ve `public`, y un `CHECK` con `NULL` pasa sin avisar
+
+- **Origen**: H-018 del 8 (`0044`), 18/11/2026.
+- **Qué pasó**: dos defectos que ninguna lectura del código mostró y que cayeron al ver correr un test. (1) El
+  trigger del número de operación leía `pago_informado` sin calificar y dio `relation "pago_informado" does not
+  exist`: la función corre con el `search_path` de la sesión de la app, que no incluye `public` (las funciones
+  del repo quedan con `SET search_path TO ''`). (2) El `CHECK` del motivo de `evento_de_pago`, escrito como
+  `char_length(motivo) BETWEEN 1 AND 500`, aceptaba un rechazo sin motivo: con `NULL` la expresión da `NULL` y
+  un `CHECK` sólo rechaza el `FALSE`.
+- **Regla**: una función de base (de trigger o no) nombra sus tablas con `public.`. Un `CHECK` sobre una
+  columna que admite `NULL` lleva `IS NOT NULL` explícito, y se prueba con el `NULL`, no sólo con el valor
+  inválido.
+- **Y dos barridos más que la historia no corría** (los encontró el barrido de migraciones y el de rutas de
+  este mismo trabajo): una tabla protegida con una función de trigger **extra** (no `fn_<tabla>_bloqueada`)
+  rompe los ayudantes de rollback que sólo devuelven esa; usar `devolver_tabla_al_migrador`
+  (`tests/integracion/_edificios.py`) y sumarla al ensayo de roles. Y una ruta `POST` nueva entra en
+  `test_altas_sin_id_del_cliente.py` (R11: un `id`, `administracion_id` o `complejo_id` en el cuerpo es 422).
+
+## L-092 · En una base de alcance módulo, la aceptación cuenta sólo lo suyo
+
+- **Origen**: la aceptación de H-018 del 8, 18/11/2026 (vuelta 2, `221f619`).
+- **Qué pasó**: la aceptación contaba las filas de las tablas de pagos con el superusuario y sin filtro, y
+  `base_del_edificio` es de alcance módulo: con tablas de sólo agregar, las filas de un test quedaban para el
+  siguiente y 32 de 54 tests fallaban sobre una construcción correcta. Además el runner copiaba la carpeta
+  `e2e` de una historia sin pantalla y se caía antes de correr nada. Lo encontró el constructor y frenó en vez
+  de rodearlo.
+- **Regla**: un conteo en la aceptación filtra por la administración del `mundo` (cada test crea la suya) o
+  compara contra el conteo de antes del test, nunca un total global; y antes de congelar, el orquestador corre
+  la aceptación con `--codigo` contra un commit que no la tiene (no sólo `--local`), así el runner entero se
+  ejecuta como lo va a ejecutar la verificación.
+
+## L-093 · Lo que dice la imagen es dato no confiable, y las funciones "de validar" de Python son más flojas de lo que parecen
+
+- **Origen**: H-019 del 8 (lectura del comprobante con IA), 18/11/2026.
+- **Qué pasó**: al validar la propuesta de la IA, las herramientas obvias dejan pasar de más: `str.isdigit()`
+  acepta dígitos Unicode, `date.fromisoformat` acepta formatos que no son `AAAA-MM-DD` (`20261105`) y `$` en una
+  expresión regular acepta un salto de línea al final. Además un tope sobre un hilo no lo cancela: sólo deja de
+  esperarlo, y lo termina el timeout del cliente HTTP.
+- **Regla**: validar un dato de una fuente no confiable con `re.fullmatch` sobre `[0-9]` y el formato exacto antes
+  de convertir; un tope sobre una llamada externa se acompaña del timeout propio del cliente; y la salida de la IA
+  nunca decide: sólo propone, y el humano informa.
+
+## L-094 · Una falla inyectada en la API da 500, no una excepción en el test, y dos fases de R04 se arman con las mismas piezas del libro
+
+- **Origen**: H-020 del 8 (confirmar un pago), 18/11/2026.
+- **Qué pasó**: la aceptación de la falla a mitad de camino (N06) esperaba que `TestClient` relanzara el
+  `RuntimeError` inyectado (`pytest.raises`), pero el middleware de seguimiento (`seguimiento.py`) atrapa
+  todo error no manejado y responde 500 `{"error": "interno"}`: la excepción nunca llega al test. Lo que
+  importa de N06 (nada quedó escrito) se comprueba igual, pero con el 500. Y para imputar "a la fecha de la
+  transferencia" no hizo falta una lectura nueva del libro: bastó que `FotoDeCuenta` guarde los insumos de
+  `calcular_estado` (imputaciones y emisiones anuladas) y recalcular el estado sumando a las anuladas las
+  emisiones de período posterior, que además saca sus intereses y lo enlazado a ellos.
+- **Regla**: un test de falla inyectada por la API afirma el 500 (y que la base quedó igual), nunca
+  `pytest.raises`; y antes de escribir "como si no existiera X" en una regla del libro, buscar si
+  `calcular_estado` ya lo expresa con un conjunto de exclusión. Dos resoluciones del mismo pago se
+  serializan con un candado de transacción por pago antes de bloquear las cuentas (el mismo orden siempre).
+
+## L-095 · Antes de crear un módulo, buscá si el nombre ya existe; y un `pkill -f` mata también a tu shell
+
+- **Origen**: H-021 del 8 (el ajuste del interés), 18/11/2026.
+- **Qué pasó**: el módulo nuevo del ajuste se llamó `ajustes.py`, y ese archivo ya existía (el ajuste de saldo
+  inicial de H-010): `Write` lo pisó sin avisar y sólo `mypy` lo mostró (`no attribute COMPONENTES_DEL_AJUSTE`).
+  Se recuperó con `git checkout` porque estaba versionado. Además, `pkill -f aceptar.py` desde el mismo comando
+  que lo nombraba mató al propio shell (la línea de comandos contiene el patrón). Y el runner de aceptación
+  corre el **commit** que se le pasa: con `--codigo HEAD` y cambios sin commitear prueba el código viejo.
+- **Regla**: antes de `Write` sobre un archivo nuevo, `fd` por su nombre; commitear antes de correr una
+  aceptación; y matar un proceso por su PID, no por un patrón que aparece en el comando propio. El
+  recálculo del interés de un pago necesita la base "con el pago": se arma sumando al estado un crédito y sus
+  imputaciones virtuales y se pasa a `calcular_estado`, sin una lectura nueva; la misma función de la
+  diferencia sirve para "sin el pago" (E9).
+
+## L-096 · Un tipo sembrado en el vocabulario no es un tipo que el esquema deje usar, y "lo que corresponde cobrar" se compara con lo registrado neto
+
+- **Origen**: H-022 del 8 (revertir un pago), 18/11/2026.
+- **Qué pasó**: `reversion_de_pago` estaba sembrado en `tipo_de_movimiento` desde la `0023`, pero el contrato de
+  H-022 lo quería con `corrige_a` y `ck_mov_corrige_tipo` sólo admitía `corrige_a` en `correccion`: el INSERT
+  habría rebotado. Hizo falta una migración que alterara la tabla protegida `movimiento` (préstamo de
+  propiedad, L-088) y que ajustara tres tests estructurales atados al estado anterior (el préstamo de
+  `movimiento`, el rollback con `0046` en la cabeza y el catálogo de tipos anticipados, que ahora exige
+  `corrige_a` y motivo). Para el `interes_por_reversion`, comparar lo recalculado sin el pago con el interés
+  bruto habría cobrado de más cuando hay otro pago con su ajuste sobre el mismo interés: se compara con lo
+  registrado **neto** (el interés más sus complementos menos sus ajustes que cuentan).
+- **Regla**: antes de prometer un uso de un tipo anticipado, probar un INSERT con la forma real contra los
+  `CHECK` de la tabla, no sólo contra el vocabulario. Y un movimiento que completa un interés se calcula como
+  "lo que corresponde menos lo registrado neto", nunca como una diferencia entre bases sin mirar lo que ya
+  se compensó. Lo que corrige un movimiento (la reversión de un pago) no se deshace por la corrección manual.
+
+## L-097 · Lo que se parece a revertir se arma con las mismas piezas, y la atomicidad se prueba haciendo fallar el último paso
+
+- **Origen**: H-023 del 8 (reimputar un pago), 18/11/2026.
+- **Qué pasó**: reimputar es "revertir en el origen y confirmar en el destino". En vez de duplicar, se extrajo de
+  `revertir_pago` el trabajo de una cuenta (`_revertir_en_la_cuenta`, que escribe el débito, el contra-asiento
+  de los ajustes y el interés por reversión de P29) y se le pasó el tipo del débito (`reversion_de_pago` o
+  `reimputacion`); el destino reutiliza `registrar_pago` con `tipo` y `enlazado_a`. La falla a mitad de camino
+  se prueba haciendo fallar **el destino**, que es lo último que se escribe: si el origen ya estaba escrito y
+  no queda, la transacción es una. La `0047` fue necesaria igual que la `0046`: el
+  `CHECK` de `corrige_a` no admitía `reimputacion` (L-096).
+- **Regla**: una operación compuesta se construye con las piezas de las simples y el camino de fallo se prueba
+  en el último paso. Una reimputación con la cuenta destino que ya tiene una parte del mismo pago deja dos
+  créditos vigentes en esa cuenta: reimputar "desde esa unidad" mueve todos, porque sus ajustes de interés no
+  se distinguen por parte. Para la aceptación: se corre sobre un **commit**, así que se commitea antes de
+  correrla (L-095).
+
+## L-098 · Una firma compartida lleva el tipo adentro de lo firmado, y un control nuevo mueve la huella de la preliquidación
+
+- **Origen**: H-024 del 8 (comprobante con enlace firmado y control `pagos_sin_confirmar`), 18/11/2026.
+- **Qué pasó**: el comprobante reusa la firma HMAC de los enlaces de la expensa. Con la misma clave y sin más, un
+  token de una expensa verificaría como uno de comprobante (los dos son `<cuerpo>.<firma>` sobre identificadores).
+  La firma se movió a `compartido/enlaces.py` con el **tipo** dentro del cuerpo firmado y se verifica contra el
+  tipo esperado después de la firma y antes del vencimiento; `liquidacion.aplicacion.enlaces` quedó como una
+  capa fina con su contrato de H-015 intacto. El control nuevo lo lee `liquidacion` de `pagos.aplicacion.lectura`
+  (nunca SQL ajeno ni `pagos` importando `liquidacion`). Como cambia la lista de `controles`, la huella de la
+  preliquidación (H-013) incluye el control cuando hay pagos informados.
+- **Regla**: lo que distingue a dos clases de token tiene que estar dentro de lo firmado, no en la ruta que lo
+  recibe. Y sumar un control a una lista que entra en la huella obliga a mirar la emisión (H-013) en la misma
+  historia, porque quien tenga un pago informado ve una huella distinta a la de antes.
+
+## L-099 · Una subida por server action tiene un tope de 1 MB, una ruta fija va antes de la de `{id}` y un panel con el nombre del campo se come el locator
+
+- **Origen**: H-025 del 8 (las pantallas de pagos), 18/11/2026.
+- **Qué pasó**: (1) el comprobante (hasta 10 MB para la API) viaja por una server action, y Next corta en 1 MB por
+  defecto: casi toda foto de celular habría fallado; se subió `experimental.serverActions.bodySizeLimit` a 11 MB.
+  (2) `GET .../pagos/unidades` se declaró antes de `GET .../pagos/{pago_id}`: al revés, `unidades` se lee como un
+  UUID y da 422. (3) Un `Panel` titulado como un campo ("Comprobante") es una región con ese nombre y
+  `getByLabel("Comprobante", { exact: true })` encuentra dos elementos; los paneles se llaman distinto que sus
+  campos. (4) Abrir el comprobante en otra pestaña después de pedir el enlace a la API pierde el gesto del toque y el
+  navegador la bloquea: la pestaña se abre en el click (`window.open("", "_blank")`) y se le pone la dirección
+  cuando llega; si no se pudo abrir, se navega en la misma pestaña. (5) Un campo controlado dentro de un
+  `<form action={fn}>` se resetea al terminar la acción: la pantalla de informar usa `onSubmit` y llama a la
+  acción con un objeto, así lo escrito se conserva ante un 422.
+- **Regla**: toda subida por server action declara su tope en `next.config`; las rutas fijas van antes de las de
+  parámetro; el panel y el campo no comparten nombre; y lo que se abre después de una llamada asíncrona se abre
+  antes, con el gesto.
+
+## L-100 · Las rutas POST nuevas del change sólo las ve el barrido del cierre, y un campo ajeno es un error de forma que se rechaza antes de buscar el pago
+
+- **Origen**: cierre del 8, 18/11/2026.
+- **Qué pasó**: `test_altas_sin_id_del_cliente.py` exige un cuerpo de prueba por cada ruta `POST` y que un cuerpo con
+  `id`, `administracion_id` y `complejo_id` de más dé 422. Las rutas de H-020 a H-023 (confirmación, rechazo,
+  reversión, reimputación y el enlace del comprobante) no se registraron ahí: ese archivo está en el barrido de
+  migraciones, que sólo corre al cerrar el change, y no en el test de cada historia. Además rechazo, reversión y
+  reimputación buscaban el pago antes de mirar el cuerpo y respondían 404 donde el contrato de las altas pide 422.
+- **Regla**: al agregar una ruta `POST`, se la registra en `_RUTAS_SIN_CUERPO` o `_CUERPOS_DE_PRUEBA` en la misma
+  historia, y se corre ese archivo. Un campo que no es del pedido es un error de forma: 422 antes de cualquier
+  lectura de la base; el resto del orden (404 del edificio, 403, 404 del recurso, 422 de valor, 409) no cambia.
+
+## L-101 · Un componente compartido entre dos pantallas muestra lo de las dos, y el menú se filtra por la acción que protege la pantalla
+
+- **Origen**: H-026, demo en vivo del 18/11/2026.
+- **Qué pasó**: el menú del edificio mostraba "Resumen", "Unidades" y el resto a una vecina que sólo tenía
+  `informar_pago`: esas secciones no declaraban ninguna acción, así que se veían para cualquiera. Y la lista de
+  pagos, compartida por "Mis pagos" y la bandeja, pegaba la unidad y el motivo en el mismo renglón porque eran
+  `span` en línea. Ninguno se vio en la aceptación de H-025 porque sus identidades de prueba eran todas
+  super admin.
+- **Regla**: toda sección del menú declara la acción que pide su pantalla, y una identidad con una sola acción
+  (la vecina) entra en los e2e de cada menú nuevo. Cada dato de una fila de lista que se lee aparte va en su propio
+  bloque (`display: block`), no en `span` en línea. Un monto que se escribe como en Argentina se pasa al formato de
+  la API con una función pura de `lib/formato.ts` que sólo cambia el formato: nada de redondear en la pantalla.

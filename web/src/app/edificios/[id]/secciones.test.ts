@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { seccionesDelEdificio } from "./secciones";
 
 describe("seccionesDelEdificio", () => {
-  it("arma las seis secciones del menú con el id del edificio en cada href", () => {
+  it("arma las ocho secciones del menú con el id del edificio en cada href", () => {
     const secciones = seccionesDelEdificio("abc");
     expect(secciones.map((s) => s.clave)).toEqual([
       "resumen",
       "unidades",
       "grupos",
       "liquidaciones",
+      "pagos",
+      "mis-pagos",
       "categorias",
       "configuracion",
     ]);
@@ -23,10 +25,12 @@ describe("seccionesDelEdificio", () => {
       ["unidades", "El edificio"],
       ["grupos", "El edificio"],
       ["liquidaciones", "Liquidación"],
+      ["pagos", "Liquidación"],
+      ["mis-pagos", "Liquidación"],
       ["categorias", "Configuración"],
       ["configuracion", "Configuración"],
     ]);
-    expect(new Set(secciones.map((s) => s.icono)).size).toBe(6);
+    expect(new Set(secciones.map((s) => s.icono)).size).toBe(8);
   });
 
   it("Liquidaciones lleva a la lista y sólo se pide con ver_liquidaciones, en ese edificio (H-017)", () => {
@@ -36,5 +40,33 @@ describe("seccionesDelEdificio", () => {
       accion: "ver_liquidaciones",
       complejoId: "abc",
     });
+  });
+
+  it('"Pagos" se pide con confirmar_pago_informado y "Mis pagos" con informar_pago, cada uno en ese edificio (H-025, D-131)', () => {
+    const secciones = seccionesDelEdificio("abc");
+    expect(secciones.find((s) => s.clave === "pagos")).toMatchObject({
+      etiqueta: "Pagos",
+      href: "/edificios/abc/pagos",
+      accion: "confirmar_pago_informado",
+      complejoId: "abc",
+    });
+    expect(secciones.find((s) => s.clave === "mis-pagos")).toMatchObject({
+      etiqueta: "Mis pagos",
+      href: "/edificios/abc/mis-pagos",
+      accion: "informar_pago",
+      complejoId: "abc",
+    });
+  });
+});
+
+describe("seccionesDelEdificio, quién ve qué (H-026)", () => {
+  it("Resumen, Unidades, Grupos, Categorías e Intereses piden ver_configuracion_del_edificio, en ese edificio", () => {
+    const secciones = seccionesDelEdificio("abc");
+    for (const clave of ["resumen", "unidades", "grupos", "categorias", "configuracion"]) {
+      expect(secciones.find((s) => s.clave === clave)).toMatchObject({
+        accion: "ver_configuracion_del_edificio",
+        complejoId: "abc",
+      });
+    }
   });
 });

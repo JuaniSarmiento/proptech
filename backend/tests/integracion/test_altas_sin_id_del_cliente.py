@@ -82,11 +82,31 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # Change 5 `importacion-desde-excel`: multipart también; el único id que hay en la respuesta
     # (`importacion_id`) lo genera el servidor y el formulario no tiene campos de id.
     ("/api/complejos/{complejo_id}/importaciones", "POST"),
+    # Cambio 8 `pagos-informados` (H-018): multipart también; el `comprobante_id` lo genera el
+    # servidor.
+    ("/api/complejos/{complejo_id}/pagos/lectura", "POST"),
+    # Cambio 8 (H-020, H-022): confirmar el pago y pedir el enlace de su comprobante no llevan
+    # cuerpo; el pago sale de la ruta.
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
 #: que no agregue su entrada acá hace fallar `test_toda_ruta_post_tiene_cuerpo_de_prueba`.
 _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
+    # Cambio 8 (H-020, H-022, H-023): un campo que no es del pedido es un error de forma y da 422
+    # antes de buscar el pago, así que con un `pago_id` inventado alcanza.
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/rechazo", "POST"): lambda mundo: {
+        "motivo": "Prueba ficticia del barrido de altas"
+    },
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"): lambda mundo: {
+        "motivo": "Prueba ficticia del barrido de altas"
+    },
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"): lambda mundo: {
+        "desde_unidad_id": str(uuid.uuid4()),
+        "hacia_unidad_id": str(uuid.uuid4()),
+        "motivo": "Prueba ficticia del barrido de altas",
+    },
     ("/api/complejos/{complejo_id}/correcciones", "POST"): lambda mundo: {
         "forma": "contra_asiento",
         "operacion_id": str(uuid.uuid4()),
@@ -216,6 +236,17 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
     # Cambio 7 (H-015): el cuerpo del enlace es sólo la variante; el documento va en la ruta.
     ("/api/complejos/{complejo_id}/documentos/{documento_id}/enlace", "POST"): lambda mundo: {
         "variante": "completa"
+    },
+    # Cambio 8 (H-018): el cliente manda el comprobante que subió; cualquier campo que no sea del
+    # pedido, `id` incluido, es 422.
+    ("/api/complejos/{complejo_id}/pagos", "POST"): lambda mundo: {
+        "comprobante_id": str(uuid.uuid4()),
+        "banco": "Banco Ficticio",
+        "numero_de_operacion": "1",
+        "fecha_de_transferencia": "2026-10-05",
+        "monto": "10.00",
+        "cbu_origen": None,
+        "partes": [{"unidad_id": str(mundo["unidad_id"]), "importe": "10.00"}],
     },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),
@@ -354,6 +385,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "unidad_id": unidad_id,
         "destinatario": destinatario_id,
         "liquidacion_id": uuid.uuid4(),
+        "pago_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }

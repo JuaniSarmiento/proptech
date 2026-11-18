@@ -62,6 +62,9 @@ _RUTAS_PUBLICAS = {
     # vence a los 15 minutos y lleva administración, documento y variante) es la autorización; sin
     # token válido da 403 o 410 sin abrir una sesión de base. Lo prueba la aceptación de H-015.
     ("/api/documentos/descarga", "GET"),
+    # 8, H-024 (E11): el comprobante de un pago, con el mismo diseño: el token firmado (tipo
+    # `comprobante`, 15 minutos) es la autorización. Lo prueba la aceptación de H-024.
+    ("/api/comprobantes/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -158,6 +161,19 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos", "GET"),
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos/reproceso", "POST"),
     ("/api/complejos/{complejo_id}/documentos/{documento_id}/enlace", "POST"),
+    # --- Cambio 8 `pagos-informados` (H-018) ---
+    ("/api/complejos/{complejo_id}/pagos/lectura", "POST"),
+    ("/api/complejos/{complejo_id}/pagos", "POST"),
+    ("/api/complejos/{complejo_id}/pagos", "GET"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}", "GET"),
+    # --- Cambio 8 `pagos-informados` (H-020) ---
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/rechazo", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
+    # --- Cambio 8 `pagos-informados` (H-025) ---
+    ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
 }
 
 
@@ -316,6 +332,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
+        "pago_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -498,6 +515,41 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     if ruta.endswith("/enlace"):
         # Cambio 7 (H-015): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
         return cliente.post(ruta_resuelta, json={"variante": "completa"})
+    if ruta.endswith("/pagos/lectura"):
+        # Cambio 8 (H-018): multipart; el 404 y el 403 van antes de leer el archivo.
+        return cliente.post(
+            ruta_resuelta, files={"archivo": ("c.png", b"contenido-de-prueba", "image/png")}
+        )
+    if ruta.endswith("/pagos") and metodo == "POST":
+        # Cambio 8 (H-018): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "comprobante_id": str(uuid.uuid4()),
+                "banco": "Banco Ficticio",
+                "numero_de_operacion": "1",
+                "fecha_de_transferencia": "2026-10-05",
+                "monto": "10.00",
+                "cbu_origen": None,
+                "partes": [{"unidad_id": str(uuid.uuid4()), "importe": "10.00"}],
+            },
+        )
+    if ruta.endswith("/pagos/{pago_id}/confirmacion"):
+        # Cambio 8 (H-020): el 404 y el 403 van antes de mirar el pago.
+        return cliente.post(ruta_resuelta, json={})
+    if ruta.endswith("/pagos/{pago_id}/rechazo"):
+        return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
+    if ruta.endswith("/pagos/{pago_id}/reversion"):
+        return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
+    if ruta.endswith("/pagos/{pago_id}/reimputacion"):
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "desde_unidad_id": str(uuid.uuid4()),
+                "hacia_unidad_id": str(uuid.uuid4()),
+                "motivo": "Prueba del candado",
+            },
+        )
     if ruta.endswith("/cargos-cobrados-de-menos"):
         return cliente.post(
             ruta_resuelta,
@@ -765,7 +817,11 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         and not _depende_de(app_real, r.path, m, identidad_actual)
     }
     assert reales == _RUTAS_CON_TOKEN
-    assert _RUTAS_PUBLICAS == {("/api/salud", "GET"), ("/api/documentos/descarga", "GET")}
+    assert _RUTAS_PUBLICAS == {
+        ("/api/salud", "GET"),
+        ("/api/documentos/descarga", "GET"),
+        ("/api/comprobantes/descarga", "GET"),
+    }
 
 
 @pytest.mark.parametrize("ruta_y_metodo", sorted(_RUTAS_CUBIERTAS))
@@ -834,6 +890,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
+        "pago_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []

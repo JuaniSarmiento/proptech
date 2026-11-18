@@ -162,7 +162,8 @@ def test_vocabulario_solo_select_y_ciclo_repetido(base_del_edificio: BaseDeEdifi
             base.migrar("upgrade", "head")
             base.roles("despues")
         with base.conectar_app() as c:
-            assert c.execute("SELECT count(*) FROM tipo_de_movimiento").fetchone() == (14,)
+            # 14 de la 0023 y 4b, más `interes_por_reversion` de la 0046 (8, H-022).
+            assert c.execute("SELECT count(*) FROM tipo_de_movimiento").fetchone() == (15,)
             for consulta in (
                 "INSERT INTO tipo_de_movimiento VALUES ('prohibido','credito')",
                 "UPDATE tipo_de_movimiento SET tipo=tipo WHERE false",

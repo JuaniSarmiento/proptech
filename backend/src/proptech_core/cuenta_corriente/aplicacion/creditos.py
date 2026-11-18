@@ -129,6 +129,8 @@ class _Pedido:
     fecha_valor: date
     obligacion_id: UUID | None
     componente: str | None
+    #: El movimiento que el crédito compensa (el `ajuste_de_interes` apunta a su interés, D-085).
+    enlazado_a: UUID | None = None
 
 
 def _replay(
@@ -137,7 +139,7 @@ def _replay(
     fila = sesion.execute(
         text(
             "SELECT id, cuenta_id, complejo_id, tipo, sentido, importe::text AS importe, "
-            "fecha_valor, obligacion_id, componente FROM movimiento "
+            "fecha_valor, obligacion_id, componente, enlazado_a FROM movimiento "
             "WHERE operacion_id = :op AND administracion_id = "
             "nullif(current_setting('app.administracion_id', true), '')::uuid"
         ),
@@ -153,6 +155,7 @@ def _replay(
         and fila.fecha_valor == pedido.fecha_valor
         and fila.obligacion_id == pedido.obligacion_id
         and fila.componente == pedido.componente
+        and fila.enlazado_a == pedido.enlazado_a
         and (complejo_id is None or fila.complejo_id == complejo_id)
     )
     if not iguales:
@@ -172,6 +175,7 @@ def registrar_credito(
     destino: Destino | None,
     request_id: UUID,
     reloj: Reloj = ahora_utc,
+    enlazado_a: UUID | None = None,
 ) -> UUID:
     exigir_transaccion(sesion)
     exigir_identidad(sesion, identidad)
@@ -182,6 +186,7 @@ def registrar_credito(
         fecha_valor,
         destino.obligacion_id if destino else None,
         destino.componente.value if destino else None,
+        enlazado_a,
     )
     # D5: primero el replay, antes de validar o imputar pendientes.
     previo = _replay(sesion, operacion_id, pedido, None)
@@ -209,8 +214,9 @@ def registrar_credito(
             text(
                 "INSERT INTO movimiento (id, administracion_id, complejo_id, cuenta_id, tipo, "
                 "sentido, importe, fecha_valor, registrado_por, request_id, registrado_en, "
-                "operacion_id, obligacion_id, componente) VALUES (:id, :adm, :complejo, :cuenta, "
-                ":tipo, 'credito', :importe, :fecha, :por, :req, :en, :op, :obl, :comp) "
+                "operacion_id, obligacion_id, componente, enlazado_a) VALUES (:id, :adm, "
+                ":complejo, :cuenta, :tipo, 'credito', :importe, :fecha, :por, :req, :en, :op, "
+                ":obl, :comp, :enlace) "
                 "ON CONFLICT (administracion_id, operacion_id) WHERE operacion_id IS NOT NULL "
                 "DO NOTHING RETURNING id"
             ),
@@ -228,6 +234,7 @@ def registrar_credito(
                 "op": operacion_id,
                 "obl": pedido.obligacion_id,
                 "comp": pedido.componente,
+                "enlace": enlazado_a,
             },
         ).scalar_one_or_none()
     if nuevo is None:  # perdió la carrera contra el mismo operacion_id

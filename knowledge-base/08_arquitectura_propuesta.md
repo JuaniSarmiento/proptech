@@ -145,6 +145,23 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   del servidor de Next, que lo pide a la API sin credenciales. Quién pide qué lo decide el servidor
   (propietario las dos variantes, inquilino sólo la sin extraordinaria).
   La imagen del backend lleva las librerías de sistema de WeasyPrint (Pango, HarfBuzz y una tipografía).
+- **El comprobante de un pago y la firma compartida (8, H-024, D-070, E1, E11)**: la firma HMAC-SHA256 de los
+  enlaces vive en `proptech_core.compartido.enlaces` y lleva un **tipo** (`expensa` o `comprobante`) dentro del
+  cuerpo firmado: un token de una expensa no baja un comprobante ni al revés (403). El comprobante tampoco tiene
+  dirección pública: `POST /api/complejos/{id}/pagos/{pago_id}/comprobante/enlace` (quien puede ver el pago: 404 si
+  no, 403 sin permiso) devuelve `{url, vence_en}` a 15 minutos, y `GET /api/comprobantes/descarga?token=` es la
+  **segunda ruta pública de la API** (además de `/api/salud` y `/api/documentos/descarga`): sin sesión, 200 con los
+  bytes subidos y el tipo detectado, 410 vencido, 403 alterado, de otro tipo o de otra administración; el tenant
+  sale del token verificado. Misma clave `PROPTECH_CLAVE_DE_ENLACES`. El token lleva sólo identificadores.
+- **Lectura del comprobante con IA** (change 8, H-019, D-164): el puerto `LectorDeComprobantes`
+  (`proptech_core.pagos.puertos`) se implementa con OpenRouter (`adaptadores/openrouter.py`, `httpx`): el pedido
+  exige proveedores sin retención (`provider: {zdr: true, data_collection: "deny", require_parameters: true}`),
+  salida `json_schema` estricta con cinco campos, sin herramientas, y sólo lleva el comprobante como URL de datos
+  y una instrucción fija (nunca la persona, la unidad ni el edificio). Se configura con
+  **`PROPTECH_OPENROUTER_API_KEY`** (`SecretStr`, sólo la API) y **`PROPTECH_OPENROUTER_MODELO`**, ambas
+  opcionales: sin ellas la lectura queda `sin_ia`, sin red. La llamada tiene un tope (20 s); si falla o se pasa,
+  la lectura es `fallida` y responde 201 igual. La propuesta se valida campo por campo (`dominio/propuesta.py`) y
+  la imagen nunca crea un pago.
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
   tres roles con `roles.py antes`/`despues`, y es el dueño de **toda tabla de sólo agregar**: `auditoria`
@@ -213,6 +230,25 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   consejo sólo ve las distribuidas), `POST .../liquidaciones/{id}/distribucion`, `POST
   .../liquidaciones/{id}/anulacion` y `POST .../unidades/{unidad_id}/cargos-cobrados-de-menos`; los
   cuerpos se validan a mano después del 404 y del 403 (D7).
+- **Pagos informados** (8, H-018): el módulo `pagos/` (`dominio/` con `normalizacion`, `comprobante`,
+  `pedido` y `estado`, puros; `aplicacion/` con `comprobantes`, `informar`, `lectura` y `permisos`; sin
+  `puertos.py` ni `adaptadores/` hasta que H-019 sume el lector de IA) importa `acceso` y `complejos` sólo
+  por `aplicacion` (las unidades las lee con `complejos.aplicacion.lectura`, sin SQL sobre `unidad`) y
+  nadie lo importa todavía; desde H-020 importará `cuenta_corriente`. Rutas en `proptech_api/pagos.py`:
+  `POST /api/complejos/{id}/pagos/lectura` (multipart `archivo`), `POST .../pagos`, `GET .../pagos` y
+  `GET .../pagos/{pago_id}`, con el mismo orden 404, 403, 422, 404 de unidad y 409; el 404 y el 403 los
+  decide `puede_informar_o_ver` (`informar_pago` o `confirmar_pago_informado` en el edificio) y el cuerpo
+  se valida a mano. La fecha de hoy entra por la dependencia `proptech_api.pagos.hoy` (Mendoza), que los
+  tests reemplazan. El número de operación único lo frena la base (D-165), no la aplicación.
+  Desde H-025, `GET .../pagos/unidades` (declarada antes de `.../pagos/{pago_id}`, para que `unidades` no se
+  lea como un id) da las unidades para informar en orden natural, con `complejos.aplicacion.lectura.
+  listar_unidades_para_informar`. En la web (`web/src/app/edificios/[id]/`): `mis-pagos` y `mis-pagos/informar`
+  (el vecino) y `pagos` (la bandeja); cada pantalla es un componente de servidor que pide sus datos con
+  `web/src/lib/api/pagos.ts` y le liga a un componente de cliente sus server actions, así el navegador nunca habla
+  con la API. El comprobante no tiene dirección pública: "Ver comprobante" pide el enlace firmado y abre la ruta de
+  Next `/comprobantes/descarga?token=` (sin sesión, el token es la autorización), que lo pide a la API por la red
+  interna. La subida del comprobante pasa por una server action y `next.config.ts` sube
+  `serverActions.bodySizeLimit` a 11 MB (el tope de la API es 10 MB).
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración

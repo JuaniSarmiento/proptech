@@ -1931,3 +1931,21 @@ a.boton-secundario:hover {
 .fila-de-asignacion__accion {
   flex: none;
 }
+
+/* Pagos informados (change 8, H-025): los botones de un renglón de la bandeja, uno al lado del otro y
+   envueltos en pantallas angostas; el monto y el estado a la derecha del renglón. */
+.acciones-de-la-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Cada dato de la lista (unidades, dónde está hoy, motivo) en su propio renglón (H-026). */
+.fila-de-pago__renglon {
+  display: block;
+}
+
+.fila-de-pago__estado {
+  font-weight: 600;
+}

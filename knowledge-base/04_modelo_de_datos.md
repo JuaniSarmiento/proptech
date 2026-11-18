@@ -392,6 +392,10 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 - **Acciones que suma el 3a** (`0010_acciones_de_configuracion.py`, literales e independientes del enum,
   D14): `crear_edificio`, `crear_version_de_configuracion`, `confirmar_sin_saldos_previos`,
   `configurar_padron`, `ver_configuracion_del_edificio`.
+- **Rechazar un pago que suma el 8** (`0045_rechazar_pago_informado.py`, enum `EventoDelPago` de
+  `acceso/dominio/eventos.py`, H-020): `rechazar_pago_informado`. `confirmar_pago_informado` ya estaba
+  desde la `0004` (es una `Accion`). El detalle de los dos lleva sólo `complejo_id`; el motivo vive en
+  `evento_de_pago`. Bajar la `0045` choca con la FK si ya se auditó un rechazo.
 - **Eventos del padrón que suma el 4a** (`0022_eventos_del_padron.py`, enum `EventoDelPadron` de
   `acceso/dominio/eventos.py`; D-016, D-114.2, D-114.3): `crear_unidad`, `editar_unidad`,
   `crear_grupo`, `editar_grupo`, `fijar_unidades`, `editar_categoria`, `reordenar_categorias`. El
@@ -794,15 +798,20 @@ que un consumidor de otro módulo necesita.
   `condonacion/credito`, `ajuste_de_interes/credito`, `bonificacion/credito`, `reimputacion/debito`,
   `reimputacion/credito`, `baja_de_deuda/credito`, `saldo_inicial/credito`,
   `reversion_de_pago/debito`, `traslado/debito`, `traslado/credito` (E14; restituye `traslado`,
-  omitido en el primer propose, AR-2).
+  omitido en el primer propose, AR-2), más `interes_por_reversion/debito` (migración `0046`, H-022: el
+  interés de los días ya cobrados con un pago adentro que se revirtió, R18, P29; exige obligación, componente
+  `interes` y `enlazado_a` el interés que completa, `ck_mov_interes_por_reversion`). La `0047` (H-023) deja usar `reimputacion` con su forma real
+  (`ck_mov_reimputacion`): el débito corrige un movimiento y lleva motivo, el crédito se enlaza (`enlazado_a`) al
+  débito, que puede ser de otra cuenta.
 - **Constraints principales** (CHECK acotados por tipo conocido, no columnas duplicadas del
   vocabulario, D1): `interes` exige obligación, componente `interes` y `corte`, todos NOT NULL, con
   único `uq_mov_interes(obligacion_id, corte)`; `condonacion`/`ajuste_de_interes` exigen obligación y
   componente `interes`; `bonificacion` exige obligación y componente `ordinaria`; todo tipo distinto
   de `interes` exige `operacion_id NOT NULL` (único `uq_mov_operacion`, idempotencia E4);
   `correccion` exige motivo normalizado; un débito de corrección exige `corrige_a`; un crédito de
-  corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion`,
-  misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
+  corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion` y, desde
+  la `0046` (H-022), en `reversion_de_pago` y, desde la `0047` (H-023), en el `reimputacion` débito; el primero además exige motivo normalizado
+  (`ck_mov_reversion_de_pago`); misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
   movimiento, E6/D-122). **La base no distingue blanco corregible de no corregible ni sentido
   opuesto**: eso lo valida la aplicación, bajo candado, con test (E6).
 - **`UPDATE`/`DELETE` rebota también por SQL directo** (tabla protegida); ninguna obligación queda con
@@ -845,18 +854,44 @@ R20 se calcula siempre desde las imputaciones del libro, nunca desde una marca g
 que reevaluar". El libro que lee ya está construido (4b); la función en sí y su efecto sobre R20 son
 del cambio 4c, y el 10a sólo la lista, exporta y presenta.
 
+### Entidades hoy, dominio `pagos` (migración `0044`, cambio 8, H-018, E2, E3, D-163, D-165)
+
+Seis tablas, todas **de sólo agregar** (tres triggers cada una, en la lista protegida de
+`compartido/tablas_protegidas.py` y en el ensayo de roles), con `administracion_id NOT NULL` y RLS forzada
+por administración. Nada se edita ni se borra: **el estado de un pago se deriva de sus eventos** (sin
+eventos, `informado`; `reimputado` sigue `confirmado`).
+
+- **`comprobante_de_pago`**: `id`, `complejo_id`, `contenido` (los bytes), `sha256`, `tipo` (`jpeg`, `png`
+  o `pdf`, decidido por los primeros bytes), `tamano` (1 byte a 10 MB), `subido_por`, `subido_en`, y lo que
+  leyó la IA: `lectura` (`sin_ia`, `ok` o `fallida`) y `propuesta` (JSONB, `NULL` mientras no haya lector;
+  lo llena H-019). Único por (administración, edificio, id) para la FK compuesta del pago.
+- **`pago_informado`**: `id`, `complejo_id`, `comprobante_id` (**único**: un comprobante es de un solo
+  pago), `banco` y `numero_de_operacion` tal como se cargaron (hasta 100, no vacíos), `banco_normalizado` y
+  `numero_normalizado` (sin espacios, guiones ni puntos, en minúscula y sin tildes; no vacíos),
+  `fecha_de_transferencia`, `monto` (`NUMERIC(14,2)`, mayor que cero), `cbu_origen` (nulo o 22 dígitos),
+  `informado_por` (el vecino o el personal que lo cargó por él) e `informado_en`. **Número único por
+  edificio, banco y número entre los pagos sin evento `rechazado`**: lo frena un trigger `BEFORE INSERT`
+  con candado de transacción por clave (D-165), no un índice.
+- **`parte_de_pago`**: una por unidad (`pago_id`, `unidad_id`, `importe` mayor que cero; única por pago y
+  unidad). La FK compuesta con el edificio impide una unidad de otro edificio, también por SQL.
+- **`evento_de_pago`**: `pago_id`, `tipo` (`confirmado`, `rechazado`, `revertido`, `reimputado`),
+  `motivo` (1 a 500 y no en blanco, salvo en `confirmado`, que puede no llevarlo), `registrado_por` y
+  `registrado_en`. Índices únicos parciales: **un solo `confirmado` o `rechazado` por pago** y un solo
+  `revertido`, así que un doble clic no confirma dos veces. Un rechazo es un INSERT: libera el número.
+- **`movimiento_de_pago`** (la llena H-020, un `pago` por parte; H-021 el `ajuste_de_interes`; H-022 el
+  `reversion_de_pago`, que también cubre el contra-asiento de cada ajuste, y el `interes_por_reversion`; la
+  `reimputacion`, H-023): `pago_id`, `movimiento_id` (del libro) y `papel`
+  (`pago`, `ajuste_de_interes`, `reversion_de_pago`, `interes_por_reversion`, `reimputacion`), para revertir
+  todo lo enlazado sin buscar por motivo (D-082, D-083).
+- **`cbu_de_unidad`** (la llena H-020 al confirmar un pago con `cbu_origen`, una fila por unidad de las partes): `unidad_id`, `cbu` (22 dígitos) y `pago_id` de origen
+  (R19).
+- **Bajada**: la `0044` baja devolviendo antes las seis tablas al migrador (`devolver_tablas_protegidas`) y
+  se niega si alguna tiene filas. La función del trigger del número nombra las tablas con `public.`: corre
+  con el `search_path` de la sesión de la app, que no lo incluye.
+
 ### Planificado, dominio `pagos`
 
-#### `pago` · planificada (cambio 8, R11)
-
-- **Atributos conocidos**: unidad (o varias, si se reparte entre las de una misma persona), comprobante,
-  monto, fecha de la transferencia (distinta de la de confirmación), número de operación.
-- **Estados**: informado → confirmado (o rechazado, con motivo) → revertido (R18, si el banco lo
-  devuelve después de confirmado).
-- **Constraints**: `numero_operacion` no se repite dentro del complejo (R11); un pago informado no
-  afecta la deuda hasta que el administrador lo confirma.
-
-#### `cbu_historico` · planificada (cambio 8, R19)
+#### `cbu_historico` · hoy `cbu_de_unidad` (cambio 8, R19; tabla creada en la `0044`, la llena H-020 al confirmar)
 
 - **Qué es**: el CBU de origen de cada pago confirmado, cuando se conoce; alimenta una sugerencia de
   confianza alta al cruzar el extracto (cambio 9), nunca asigna sola (principio 3 de Alberto).

@@ -29,6 +29,15 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
+| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Terminada |
+| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Terminada |
+| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Terminada |
+| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Terminada |
+| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Terminada |
+| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Terminada |
+| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Terminada |
+| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Terminada |
+| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1236,6 +1245,477 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   backend y 8/8 en navegador**, C01 a C07, N01 a N03 y KB PASA, 0 rojos.
 - Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
   el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+## Pagos informados (8, C-11)
+
+Propuesta y diseño en `openspec/changes/pagos-informados/` (E1 a E14). Acuerdo previo D-163 y D-164 (Juani,
+18/11/2026): P12 frena el despliegue y no la construcción, P40 con el banco, P29 desde el vencimiento
+original, R37 con P27 y P28 al 6b, R25 adentro, OpenRouter detrás de un puerto. **Firma CRITICAL por
+adelantado de Juani** (18/11/2026) en `proposal.md`: aprueba E1 a E14 en la recomendación del orquestador;
+lo que no le cierre en la demo vuelve a En proceso (D-094, D-111). Rama `8-pagos-informados`; sin rompedor
+(D-152); CI y regresión una vez al cerrar (D-154). Juani delegó el change entero ("te podes hacer cargo del
+change"): como en el 7, las historias se construyen una detrás de otra y las demos se hacen juntas al final.
+**Juani levantó el límite de dos historias en Lista para todo el 8** (18/11/2026, con H-018 a H-020 en Lista: "levanta
+el limite testeamos todo al final").
+Constructor y todo subagente con Claude Sonnet (Juani, 18/11/2026). Orden: H-018 → H-019 → H-020 → H-021 →
+H-022 → H-023 → H-024 → H-025.
+
+**Base de los ejemplos** (datos inventados): la "Torre Ficticia" de los ejemplos del 7, con la liquidación de
+noviembre de 2026 emitida (vencimiento 10/11/2026; totales `1A` $43.350,00, `1B` $48.350,00, `2A` $62.375,00,
+`2B` $37.425,00), 3% mensual proporcional y gracia 0. Personas: "Ana Prueba", propietaria de `1A` y de `2B`;
+"Beto Prueba", inquilino de `1B`; un administrador principal. Comprobantes de prueba: imágenes PNG y un PDF
+generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pago" y números inventados.
+
+### H-018 · Informar un pago
+
+- Change: C-11 8, parte 1. Reglas: R10, R11; D-163 (P40); E1 a E4 de `design.md`.
+- Resultado para Juani: un vecino sube el comprobante de su transferencia y lo informa para su unidad (o lo
+  reparte entre sus unidades); el pago queda "informado", sin tocar la deuda, y el mismo comprobante no se
+  puede informar dos veces.
+- Alcance: el módulo `pagos`, la migración de sus tablas (comprobante, pago, partes, eventos, enlace con el
+  libro, CBU), `POST .../pagos/lectura` guardando el comprobante con la lectura en `sin_ia` (el adaptador de
+  IA es H-019), `POST .../pagos`, la lista del vecino y la del edificio. Exclusiones: confirmar (H-020), la
+  IA real (H-019), las pantallas (H-025).
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** Ana informa $43.350,00 del 05/11/2026 para `1A` con su comprobante: 201, estado `informado`; la
+    deuda de `1A`, su crédito a favor y su `situacion_de_cuenta` son iguales a los de antes.
+  - **C02** Ana reparte $80.775,00 en `1A` $43.350,00 y `2B` $37.425,00: el pago tiene dos partes.
+  - **C03** el administrador informa por Beto un pago de `1B`: 201, con quién lo informó.
+  - **C04** el mismo banco y número, escritos distinto (`Banco Nación` / `banco nacion`, `12-345.678` /
+    `12345678`), dan 409 `numero_de_operacion` `repetido`, también para otra unidad; otro banco con el mismo
+    número entra.
+  - **C05** un pago rechazado libera su número: se puede volver a informar (el rechazo se siembra directo en
+    la base, porque rechazar es H-020).
+  - **C06** el vecino lista los pagos de sus unidades (Ana ve los de `1A` y `2B`, Beto los de `1B`) con su
+    estado; el administrador ve la lista del edificio.
+  - **C07** subir un comprobante JPEG, PNG o PDF de hasta 10 MB devuelve `comprobante_id` y `lectura`
+    `sin_ia` con la propuesta vacía.
+  - **C08** la migración sube sobre una base ya desplegada y baja limpia; las tablas nuevas tienen RLS, están
+    protegidas (sólo agregar) y entran en el catálogo, el ensayo de roles y el barrido (L-064, L-089).
+  - **C09** la KB: R11 con dónde vive, el modelo de datos y la ficha 8 con H-018.
+- Tienen que fallar:
+  - **N01** Ana informa para `1B` (no es suya): 404, sin nada creado.
+  - **N02** partes que no suman el monto, una unidad repetida, monto cero o negativo, monto con tres
+    decimales, fecha futura o de hace más de un año: 422 con su campo, sin nada creado.
+  - **N03** un comprobante que no es imagen ni PDF (un ejecutable renombrado `.png`) o de más de 10 MB: 422
+    `archivo`, sin nada guardado.
+  - **N04** el mismo comprobante usado en dos pagos, o un comprobante de otro edificio u otra
+    administración: 422 o 404.
+  - **N05** un vecino ve un pago de una unidad ajena o de otra administración, por lista o por id: 404.
+  - **N06** alguien sin `informar_pago` ni `confirmar_pago_informado` (el consejo, el contador) informa: 403.
+  - **N07** el rol de la aplicación puede hacer `UPDATE` o `DELETE` sobre las tablas nuevas.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `fdd1c4f` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-018/CONTRATO.md`
+  (la dependencia `proptech_api.pagos.hoy`, las dos rutas de escritura y las dos de lectura, el orden de las
+  validaciones, la `0044` con seis tablas protegidas y el estado por `evento_de_pago`). Comando:
+  `python3 aceptacion/H-018/aceptar.py --sin-regresion`. Esperados: 54 de backend; antes de construir, 54 rojos
+  por aserción, 0 por setup.
+- **Vuelta 2 de la aceptación** (`221f619`, congelada en `b51aef6`): el constructor frenó por dos defectos de la
+  aceptación, no del código: `filas_de` contaba todas las administraciones sobre una base de alcance módulo (32
+  falsos rojos) y el runner copiaba una carpeta `e2e` que la historia no tiene. Lo que se prueba no cambia
+  (L-092).
+- Construcción (Sonnet, una tanda): `df17700` dominio puro (normalización, tipo por los primeros bytes, pedido,
+  estado derivado), `b07955b` la `0044` con seis tablas protegidas y el número único por un trigger con candado
+  consultivo (D-165), `8da2bab` rutas, `ab8e833` el pedido rechaza campos ajenos (`test_altas_sin_id_del_cliente`),
+  `98473de` los ayudantes de rollback con funciones extra de trigger, `c3b9f37` y `f97e1b3` KB (R11, `04`, `08`,
+  ficha 8, D-165, L-091). Además del contrato: un vecino ve sólo las partes de sus unidades de un pago
+  repartido, y la lista trae `comprobante_id`, `informado_por` e `informado_en`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-018/aceptar.py --codigo b51aef6 --sin-regresion` desde `221f619`:
+  **54/54**, C01 a C09, N01 a N07, EST y SPEC (9 escenarios) PASA, 0 rojos. El constructor corrió además 70
+  unitarios del dominio, `test_pagos_base.py` (6, con la carrera de dos números iguales), el barrido de los 59
+  archivos que bajan migraciones y ruff, format y mypy enteros, en verde. La regresión de H-004 a H-017 queda
+  para el cierre (D-154).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-019 · Lectura del comprobante con IA
+
+- Change: C-11 8, parte 2. Reglas: R11; D-164; E5.
+- Resultado para Juani: al subir el comprobante, el vecino ve banco, número, fecha, monto y CBU precargados
+  para revisar; si la IA falla, carga a mano, y nada que diga la imagen puede confirmar un pago.
+- Alcance: el puerto de lectura, el adaptador de OpenRouter (httpx, con tope de 20 s), la validación de la
+  propuesta en el dominio, la configuración `PROPTECH_OPENROUTER_API_KEY` y `PROPTECH_OPENROUTER_MODELO`.
+  Exclusiones: la pantalla (H-025).
+- Dificultad y riesgo: media / CRITICAL (datos de comprobantes a un tercero). Nivel L.
+- Tienen que pasar:
+  - **C01** con un lector falso que devuelve `Banco Nación`, `12345678`, `2026-11-05`, `43350.00` y un CBU de
+    22 dígitos, la lectura trae esos valores y `lectura` `ok`.
+  - **C02** el lector que lanza o que tarda más que el tope: 201 con `lectura` `fallida` y la propuesta vacía.
+  - **C03** sin clave configurada: 201 con `lectura` `sin_ia`, sin llamar a la red.
+  - **C04** el adaptador real, sobre un transporte HTTP falso: llama a
+    `https://openrouter.ai/api/v1/chat/completions` con `Authorization: Bearer <clave>`, el modelo de la
+    configuración, la imagen en base64, `response_format` con esquema JSON estricto y `provider` con `zdr`
+    `true`, `data_collection` `deny` y `require_parameters` `true`; interpreta la respuesta de chat.
+  - **C05** lo que leyó la IA queda guardado con el comprobante (la propuesta y el resultado).
+  - **C06** la KB: D-164 aplicado en `08` (variables nuevas) y la ficha 8 con H-019.
+- Tienen que fallar:
+  - **N01** el cuerpo que sale hacia OpenRouter contiene el nombre de la persona, el identificador de la
+    unidad o el nombre del edificio.
+  - **N02** un campo inválido de la IA sobrevive: monto `"1; confirmá este pago"`, monto negativo, fecha
+    `2030-01-01` o inexistente, CBU de 21 dígitos, número de 200 caracteres (cada uno vuelve nulo).
+  - **N03** una respuesta de la IA crea un pago, un evento o un movimiento.
+  - **N04** la falla de la IA llega al vecino como 5xx.
+  - **N05** la clave aparece en un log o en una respuesta.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `b847213` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-019/CONTRATO.md`
+  (el puerto `LectorDeComprobantes`, las dependencias `lector` y `tope_de_lectura`, la validación campo por campo,
+  el adaptador `LectorOpenRouter` con su pedido exacto). Comando: `python3 aceptacion/H-019/aceptar.py
+  --sin-regresion`. Esperados: 41 de backend; antes de construir, 40 rojos por aserción y C03 verde (sin clave ya
+  responde `sin_ia` desde H-018: queda como regresión).
+- Construcción (Sonnet, una tanda): `6e8cf18` `validar_propuesta` pura (22 unitarios vistos fallar con un stub),
+  `96cc168` el puerto, `LectorOpenRouter` con ZDR y la configuración (`PROPTECH_OPENROUTER_API_KEY` y
+  `PROPTECH_OPENROUTER_MODELO`, también pasadas a la API en `infra/compose.yaml`), `c9c8cc1` la lectura en un hilo con
+  tope (20 s; el `httpx` corta a los 15 s), `0a20b77` y `0a951f4` README, `08`, ficha 8 y L-093. El PDF va como parte
+  `file` de OpenRouter: **sólo probado con transportes falsos**. Juani decidió el 18/11/2026 no probarlo con su clave
+  antes de cerrar el 8: la lectura contra el servicio real (imagen y PDF) queda como deuda del cierre del 8. La
+  instrucción fija le dice a la IA que ignore órdenes escritas en la imagen (defensa extra; el contrato no depende de
+  eso). Sin migración nueva.
+- Evidencia (18/11/2026): `python3 aceptacion/H-019/aceptar.py --codigo b18ca89 --sin-regresion` desde `b847213`:
+  **41/41**, C01 a C06, N01 a N05, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 sobre
+  `0a951f4`: 54/54. Para `infra/.env.example` (lo agrega Juani): las dos variables comentadas como opcionales.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-020 · Confirmar y rechazar
+
+- Change: C-11 8, parte 3. Reglas: R04, R05, R11, R19, D-016; E6, E13.
+- Resultado para Juani: el administrador confirma un pago en un clic y queda imputado con la fecha de la
+  transferencia, aunque lo confirme días después; o lo rechaza con un motivo que el vecino ve.
+- Alcance: `POST .../pagos/{id}/confirmacion` y `.../rechazo`, el registro en el libro desde
+  `cuenta_corriente/aplicacion/pagos.py` con R04 a la fecha de la transferencia, el CBU de la unidad, la
+  auditoría. Exclusiones: el ajuste de interés (H-021).
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** confirmar el pago de $43.350,00 de `1A`: un crédito `pago` con `fecha_valor` 05/11/2026 que deja
+    la deuda de noviembre de `1A` en cero; evento `confirmado`; auditado.
+  - **C02** fecha de la transferencia, no de la confirmación: `1A` debe $100.000 vencidos el 10/09, transfiere
+    $100.000 el 30/09 y se confirma el 20/10; la emisión siguiente cobra interés sólo del 11/09 al 30/09.
+  - **C03** R04 a la fecha de la transferencia: un pago transferido antes de una emisión y confirmado después
+    se imputa primero a la deuda que existía el día de la transferencia, y el resto como lo habría imputado
+    la emisión; queda igual al centavo que el mismo pago confirmado el día de la transferencia.
+  - **C04** un pago mayor que la deuda deja el excedente como crédito a favor aplicable (R05).
+  - **C05** el pago repartido entre `1A` y `2B` imputa cada parte en su unidad.
+  - **C06** con CBU de origen, queda guardado para la unidad (R19).
+  - **C07** rechazar con motivo deja el evento `rechazado`, no escribe en el libro y el vecino ve el motivo.
+  - **C08** la KB: R11 y R05 con lo construido, D nueva si sale, la ficha 8 con H-020.
+- Tienen que fallar:
+  - **N01** dos confirmaciones del mismo pago (seguidas o en carrera): más de un crédito por parte o más de un
+    evento; la segunda responde 200 con el mismo resultado.
+  - **N02** confirmar un pago rechazado o revertido, o rechazar uno confirmado: algo distinto de 409
+    `estado`.
+  - **N03** rechazar sin motivo o con uno de 2 caracteres: algo distinto de 422.
+  - **N04** el vecino, el consejo o el contador confirman o rechazan: algo distinto de 403.
+  - **N05** confirmar un pago de otro edificio u otra administración: algo distinto de 404.
+  - **N06** la confirmación falla a mitad (una parte) y queda alguna parte imputada o el evento escrito.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `da62e96` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-020/CONTRATO.md`
+  (las dos rutas, R04 a la fecha de la transferencia por D-166, `cuenta_corriente.aplicacion.pagos.registrar_pago`
+  una vez por parte, auditoría `confirmar_pago_informado` y `rechazar_pago_informado`). Comando:
+  `python3 aceptacion/H-020/aceptar.py --sin-regresion`. Esperados: 27 de backend; antes de construir, 27 rojos por
+  aserción.
+- **Vuelta 2 de la aceptación** (`4196b3c`, congelada en `af941d7`): N06 esperaba la excepción inyectada, pero el
+  middleware de seguimiento la convierte en 500; el constructor lo vio y frenó. Ahora espera el 500; lo que se prueba
+  (nada escrito después de la falla) no cambia. El comentario del test cita L-095 y la lección quedó como L-094.
+- Construcción (Sonnet, una tanda): `a7e1d3c` R04 en dos fases puro (`cuenta_corriente/dominio/pago.py`, 7 unitarios),
+  `2c27b57` `registrar_pago` con la deuda de ese día (`calcular_estado` con las emisiones posteriores como anuladas),
+  `1443c00` la `0045` (`rechazar_pago_informado` en el vocabulario de auditoría), `c282e08` confirmar y rechazar
+  (candado por pago y después las cuentas en orden), `c45435e` R11 con D-166, R05, `04`, ficha 8 y L-094.
+  `FotoDeCuenta` suma `imputaciones` y `anuladas` con valor por defecto. Riesgo anotado: `registrar_pago` usa
+  `_Pedido` y `_replay` privados de `creditos.py`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-020/aceptar.py --codigo af941d7 --sin-regresion` desde `4196b3c`:
+  **27/27**, C01 a C08, N01 a N06, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 (54/54)
+  y H-019 (41/41) sobre `c45435e`.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-021 · El ajuste del interés cobrado de más
+
+- Change: C-11 8, parte 4. Reglas: R03, R11, R05 (destino fijo); D-082, D-084, D-085; E7.
+- Resultado para Juani: si el administrador confirma tarde un pago y en el medio una emisión le cobró
+  interés al vecino por días en que ya había pagado, el sistema le devuelve exacto ese interés.
+- Alcance: la función pura de la diferencia de interés en `cuenta_corriente/dominio/intereses.py` (sirve
+  también a H-022), el ajuste registrado antes del pago al confirmar, enlazado al interés y al pago.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** `1A` debe la expensa de octubre ($100.000, vencida el 10/10) y transfiere $100.000 el 05/11; la
+    emisión de noviembre cobra octubre ($2.100) y la de diciembre cobra noviembre entero sobre $100.000 ($3.000);
+    se confirma después: un `ajuste_de_interes` de $2.447,50 (con el pago imputado el 05/11, R04 primero al
+    interés de octubre, correspondían $552,50), con destino ese interés y `enlazado_a` él.
+  - **C02** después del ajuste, la cuenta queda igual al centavo que la de `1B`, que confirmó el mismo pago
+    antes de la emisión de diciembre.
+  - **C03** con mes entero en vez de proporcional, el ajuste usa la forma, la tasa y la gracia guardadas en
+    los tramos de ese interés.
+  - **C04** un pago confirmado antes de la emisión siguiente no genera ajuste.
+  - **C05** anular la emisión de diciembre deja fuera el ajuste junto con su interés, sin contra-movimiento
+    (D-085).
+  - **C06** un pago parcial ajusta sólo el interés de la parte pagada.
+  - **C07** un ajuste que no entra en su interés (ya pagado por otro crédito) se registra hasta lo que entra y
+    el resto vuelve como `ajuste_sin_destino` en la respuesta, auditado.
+  - **C08** la función de la diferencia tiene tests puros con `hypothesis`: nunca negativa para un pago que
+    entra, cero sin días cubiertos después de la transferencia.
+  - **C09** la KB: R11 (el ajuste construido) y la ficha 8 con H-021.
+- Tienen que fallar:
+  - **N01** el ajuste se calcula con la configuración vigente hoy y no con la de los tramos.
+  - **N02** el pago se imputa antes que el ajuste y paga el interés que se está compensando.
+  - **N03** se ajusta un interés de una emisión con período hasta la fecha de la transferencia (D-166).
+  - **N04** confirmar dos veces registra dos ajustes.
+  - **N05** queda una obligación con residual de interés negativo.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `dc5fbfc` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-021/CONTRATO.md` (el
+  ajuste antes del pago, sobre los tramos guardados, la vista de la fase 1 sin los ajustes de emisiones posteriores,
+  `ajuste_sin_destino` en la respuesta, `diferencia_de_interes` y `TramoGuardado` puros). Comando:
+  `python3 aceptacion/H-021/aceptar.py --sin-regresion`. Esperados: 13 de backend; sobre el código de H-020, 11 rojos por
+  aserción y C04 y N05 verdes (no ajustar cuando no corresponde ya se cumple: quedan como regresión).
+- Construcción (Sonnet, una tanda): `002c994` `diferencia_de_interes` y `TramoGuardado` puros (7 unitarios vistos
+  fallar con un stub en $0,00; reusan `_proporcional` y `_mes_entero`, así redondean como la emisión), `a595723` el
+  ajuste antes del pago (`cuenta_corriente/aplicacion/ajuste_de_interes.py`, con el pago simulado en las dos fases;
+  `registrar_credito` acepta `enlazado_a`), `066866f` R11, ficha 8 y L-095. Decisiones del constructor: la auditoría no
+  lleva el monto del ajuste sin destino (D9: el detalle nunca lleva montos); la `fecha_valor` del ajuste es la del corte
+  del interés que compensa. **Riesgo anotado (deuda)**: el ajuste se calcula con la fase 2 de R04 sobre el estado de
+  antes del ajuste; si el sobrante de un pago grande cae en capital de obligaciones posteriores, el ajuste puede quedar
+  levemente corto. Ningún test lo cubre.
+- Evidencia (18/11/2026): `python3 aceptacion/H-021/aceptar.py --codigo 066866f --sin-regresion` desde `dc5fbfc`: **13/13**,
+  C01 a C09, N01 a N05, EST y SPEC (3 escenarios) PASA, 0 rojos. El constructor corrió además H-020 (27/27).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-022 · Revertir un pago
+
+- Change: C-11 8, parte 5. Reglas: R03, R18, R20; D-074, D-083, D-163 (P29); E8, E9, E13.
+- Resultado para Juani: un pago que el banco devuelve se marca revertido con un motivo, la unidad vuelve a
+  deber todo lo que debía con el interés desde el vencimiento original, y si ahora es moroso crítico, lo
+  dice.
+- Alcance: `POST .../pagos/{id}/reversion`, el `reversion_de_pago` por parte, la reversión de los ajustes
+  enlazados, el tipo nuevo `interes_por_reversion` (migración) y su exclusión si su interés deja de contar.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** revertir el pago confirmado de `1A` con "cheque rechazado": un `reversion_de_pago` con
+    `corrige_a` el pago; la deuda de `1A` vuelve a la de antes del pago; el pago se ve `revertido`; auditado.
+  - **C02** P29: el pago del 05/11 se confirmó el 05/11, la emisión de diciembre cobró interés con él
+    adentro, el 10/12 se revierte: `interes_por_reversion` por la diferencia, y el interés de `1A` queda
+    igual al centavo al de una cuenta que nunca recibió ese pago.
+  - **C03** revertir un pago con ajuste de interés (H-021) revierte el ajuste con un contra-asiento.
+  - **C04** después de revertir, `situacion_de_cuenta` da a `1A` como moroso crítico si tiene dos
+    liquidaciones vencidas con capital impago.
+  - **C05** un pago repartido revierte todas sus partes.
+  - **C06** anular la emisión cuyo interés completó el `interes_por_reversion` lo deja fuera con él.
+  - **C07** la migración del tipo nuevo sube sobre una base desplegada y baja limpia; la KB: R18 y la ficha 8.
+- Tienen que fallar:
+  - **N01** revertir un pago `informado`, `rechazado` o ya `revertido`: algo distinto de 409 `estado`.
+  - **N02** revertir sin motivo: algo distinto de 422.
+  - **N03** el pago original se borra, cambia o deja de verse.
+  - **N04** el `interes_por_reversion` genera interés en un corte siguiente (interés sobre interés, R03).
+  - **N05** quien no tiene `revertir_o_reimputar_pago` revierte: algo distinto de 403.
+  - **N06** revertir dos veces en carrera deja dos reversiones.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `c5e08e3` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-022/CONTRATO.md` (la
+  reversión del movimiento vigente, el contra-asiento de los ajustes, `interes_por_reversion` con `diferencia_de_interes`
+  sin el pago, su exclusión como la del ajuste, auditoría `revertir_pago_informado`, sólo SA y AP). Comando:
+  `python3 aceptacion/H-022/aceptar.py --sin-regresion`. Esperados: 20 de backend; sobre el código de H-021, 20 rojos por
+  aserción (C07 buscaba la migración por el nombre del tipo y encontraba la `0044`, que lo admite como papel: antes de
+  congelar se afinó a la que lo siembra en `tipo_de_movimiento`).
+- Construcción (Sonnet, una tanda): `0b32899` la exclusión de `interes_por_reversion` como la del ajuste (2 unitarios
+  vistos fallar), `ef5d260` la `0046` (siembra el tipo y `revertir_pago_informado`, deja que `reversion_de_pago` lleve
+  `corrige_a` con dos `CHECK` nuevos, con `PRESTA_PROPIEDAD` sobre `movimiento`, L-088), `864f459` revertir con la reversión
+  del ajuste y el interés de P29 (`cuenta_corriente/aplicacion/reversion_de_pago.py`), `d0db10a` R18, `04`, ficha 8 y
+  L-096, `d688bb7` el libro decide qué movimiento del pago está vigente (frontera: `pagos` no lee `movimiento`),
+  `22834f9` estilo. Decisiones del constructor: P29 compara contra el interés **neto** (con sus ajustes y sus intereses
+  por reversión, para no cobrar dos veces si dos pagos tardíos tocan el mismo interés: **sin test**, deuda); un interés
+  importado sin tramos no se recalcula; una corrección manual no puede deshacer un `reversion_de_pago` (409, con test).
+- Evidencia (18/11/2026): `python3 aceptacion/H-022/aceptar.py --codigo 22834f9 --sin-regresion` desde `c5e08e3`: **20/20**, C01
+  a C07, N01 a N06, KB, EST y SPEC (4 escenarios) PASA, 0 rojos. El constructor corrió además H-021 (13/13) y H-020
+  (27/27).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-023 · Reimputar un pago a la unidad correcta
+
+- Change: C-11 8, parte 6. Reglas: R25 (vigente por D-163), R20; D-163 (P29); E10, E13.
+- Resultado para Juani: un pago confirmado en la unidad equivocada pasa a la correcta en una sola operación:
+  la equivocada vuelve a deber como antes y la correcta queda pagada con la fecha de la transferencia.
+- Alcance: `POST .../pagos/{id}/reimputacion`, los dos `reimputacion` enlazados, la reversión de ajustes y el
+  interés de la reversión en la de origen, el ajuste en la de destino.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** el pago de $43.350,00 confirmado en `1B` se reimputa a `1A`: en `1B` un `reimputacion` débito con
+    `corrige_a` el pago y `1B` vuelve a deber lo de antes; en `1A` un `reimputacion` crédito con `fecha_valor`
+    la de la transferencia, `enlazado_a` el débito, imputado con R04 a esa fecha; evento `reimputado`;
+    auditado.
+  - **C02** `situacion_de_cuenta` da bien a las dos unidades después.
+  - **C03** con una emisión de por medio, `1B` recibe su `interes_por_reversion` y `1A` su ajuste, al
+    centavo.
+  - **C04** reimputar de nuevo desde `1A` a `2A` corrige el `reimputacion` crédito de `1A`.
+  - **C05** revertir después un pago reimputado revierte el movimiento vigente (el de `1A`).
+  - **C06** la KB: R25 vigente y construida, la ficha 8 con H-023.
+- Tienen que fallar:
+  - **N01** un fallo en el paso de destino (inyectado) deja algún movimiento en cualquiera de las dos cuentas.
+  - **N02** reimputar a la misma unidad (422), a una de otro edificio (404), una parte que no está en esa
+    unidad (422), un pago no confirmado (409).
+  - **N03** reimputar sin motivo: 422.
+  - **N04** dos reimputaciones en carrera de la misma parte dejan dos movimientos.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `3c3bb8d` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-023/CONTRATO.md` (el orden
+  de validaciones, la unidad vigente de cada parte, el destino por `registrar_pago` para poder hacerlo fallar, la
+  auditoría `reimputar_pago_informado`). Comando: `python3 aceptacion/H-023/aceptar.py --sin-regresion`. Esperados: 16 de
+  backend; sobre el código de H-022, 16 rojos por aserción.
+- Construcción (Sonnet, una tanda): `208b1b1` reimputar con la `0047` (`corrige_a` en el débito, `enlazado_a` en el crédito,
+  `reimputar_pago_informado`, `PRESTA_PROPIEDAD` sobre `movimiento`), el origen como la reversión
+  (`_revertir_en_la_cuenta` compartido) y el destino por `registrar_pago` con `tipo`, `enlazado_a` y `motivo`; `624ff56`
+  R25 vigente, ficha 8, `04` y L-097; `0c90d68` estilo. **Deuda para la demo**: si una parte se reimputa a una unidad que
+  ya tenía otra parte del mismo pago, reimputar después "desde esa unidad" mueve las dos (los ajustes no se distinguen
+  por parte); sin test, documentado en R25. El 422 de `desde_unidad_id` se detecta después de escribir el origen y lo
+  deshace el rollback (no queda nada).
+- Evidencia (18/11/2026): `python3 aceptacion/H-023/aceptar.py --codigo 0c90d68 --sin-regresion` desde `3c3bb8d`: **16/16**, C01
+  a C05, N01 a N05, KB, EST y SPEC (2 escenarios) PASA, 0 rojos. El constructor corrió además H-022 (20/20) y H-021
+  (13/13).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-024 · El comprobante con link firmado y el control de pagos sin confirmar
+
+- Change: C-11 8, parte 7. Reglas: R34; D-070; E1 (firma compartida), E11, E12.
+- Resultado para Juani: el comprobante de un pago se abre sólo con un link que vence en 15 minutos, y al
+  preparar la liquidación se ve cuántos pagos faltan confirmar.
+- Alcance: la firma HMAC en `compartido/enlaces.py` con tipo, la fachada de la expensa intacta, el enlace y la
+  descarga del comprobante, la ruta de Next para bajarlo, el control `pagos_sin_confirmar`.
+- Dificultad y riesgo: media / CRITICAL. Nivel M.
+- Tienen que pasar:
+  - **C01** el administrador pide el enlace del comprobante y descarga los mismos bytes con su tipo.
+  - **C02** Ana pide el enlace de un pago de `1A` y lo descarga; vencido da 410; alterado, 403.
+  - **C03** dos pagos informados ($30.000 y $15.000) hacen aparecer `pagos_sin_confirmar`, advertencia, al
+    final de la lista, con 2 y `45000.00`; confirmados o rechazados, no aparece; no frena la emisión.
+  - **C04** las aceptaciones de H-012 (controles) y H-015 (enlaces de la expensa) siguen en verde.
+  - **C05** la KB: R34 y `08` con lo construido, la ficha 8 con H-024.
+- Tienen que fallar:
+  - **N01** un token de expensa sirve para un comprobante, o al revés: algo distinto de 403.
+  - **N02** Beto (inquilino de `1B`) o un vecino de otra administración piden el enlace de un pago de `1A`:
+    algo distinto de 404.
+  - **N03** el comprobante tiene una dirección pública o se baja sin token.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `1e6e461` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-024/CONTRATO.md` (el enlace y
+  la descarga, la firma compartida con tipo, `firmar_enlace_del_comprobante`, el control con su `detalle`). Comando:
+  `python3 aceptacion/H-024/aceptar.py --sin-regresion` (corre siempre H-012 y H-015 del 7, C04). Esperados: 13 de backend;
+  sobre el código de H-022, 12 rojos por aserción y `test_c03_sin_pagos_no_aparece` verde (queda como regresión).
+- Construcción (Sonnet, una tanda): `673c722` la firma HMAC en `compartido/enlaces.py` con el tipo dentro del cuerpo firmado
+  (la expensa queda como capa fina con su contrato de H-015), `5b5772f` el enlace y la descarga del comprobante y el control
+  `pagos_sin_confirmar` (`liquidacion` lee `pagos.aplicacion.lectura`), `4fb7b11` R34, `08`, ficha 8 y L-098. Riesgo anotado:
+  el control entra en la huella de la preliquidación; confirmar o rechazar un pago entre preliquidar y emitir pide volver a
+  revisar (coherente con H-013; lo mira la regresión del cierre). La ruta de Next para bajar el comprobante es de H-025.
+- Evidencia (18/11/2026): `python3 aceptacion/H-024/aceptar.py --codigo 4fb7b11 --sin-regresion` desde `1e6e461`: **13/13**, C01
+  a C05 (C04: H-012 y H-015 en verde desde sus SHA), N01 a N03, EST y SPEC (2 escenarios) PASA, 0 rojos.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-025 · Las pantallas de pagos
+
+- Change: C-11 8, parte 8. Reglas: HU-V4, HU-A6; D-131 (menú por rol); E14. Skill **impeccable**.
+- Resultado para Juani: el vecino entra, sube su comprobante, revisa lo que leyó la IA, elige la unidad y
+  envía, y después ve el estado; el administrador abre "Pagos" del edificio y confirma, rechaza, revierte o
+  reimputa desde ahí.
+- Alcance: "Mis pagos" e "Informar un pago" del vecino, "Pagos" del edificio, el menú por rol, los escenarios
+  de la API falsa. Exclusiones: el resto del portal (11).
+- Dificultad y riesgo: media / CRITICAL (pantallas que escriben en el libro). Nivel M.
+- Tienen que pasar (en navegador real, contra la API falsa):
+  - **C01** el vecino sube el comprobante, ve la propuesta precargada, corrige un campo, elige la unidad y
+    envía; la última escritura es el `POST .../pagos` con lo corregido.
+  - **C02** con dos unidades, reparte el pago en dos partes; el envío manda las dos.
+  - **C03** si la lectura volvió `fallida`, los campos están vacíos con un aviso y se puede enviar a mano.
+  - **C04** "Mis pagos" muestra cada pago con su estado en texto y el motivo de un rechazo.
+  - **C05** la bandeja del administrador lista los informados; "Confirmar" pide confirmación y manda el
+    `POST`; "Rechazar" exige motivo.
+  - **C06** en un confirmado, "Revertir" (con motivo) y "Reimputar" (unidad de destino y motivo) mandan sus
+    `POST`.
+  - **C07** "Ver comprobante" pide el enlace y abre la URL.
+  - **C08** a 320 px sin scroll horizontal y sin errores de axe en las tres pantallas; la ficha 8 con H-025.
+- Tienen que fallar:
+  - **N01** el menú del vecino muestra "Pagos" del edificio o el del administrador no lo muestra.
+  - **N02** el vecino ve, para elegir, una unidad que no es suya.
+  - **N03** la pantalla calcula o redondea un monto: partes que no suman se mandan igual y el 422 de la API
+    (`campo` `partes`) se muestra en el reparto, nunca una suma hecha en el navegador.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `0d5c6d3` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-025/CONTRATO.md` (la ruta nueva
+  `GET .../pagos/unidades`, las tres pantallas, el menú por acción, la ruta de Next del comprobante y los escenarios
+  `2501`/`2502` de la API falsa con la identidad `user_vecina`). Comando: `python3 aceptacion/H-025/aceptar.py` (sin
+  `--sin-regresion` corre la regresión del cierre: H-004 a H-024 y el barrido). Esperados: 5 de backend y 13 en navegador;
+  antes de construir, 18 rojos por aserción. El runner reintenta una vez el build de la web: Next.js 16.4.3 corta el
+  primer build de cada carpeta nueva con un aviso de seguridad (la actualización la decide Juani).
+- Construcción (Sonnet, una tanda, con la skill impeccable): `3711412` la ruta `GET .../pagos/unidades`, `03731a3` el cliente
+  de pagos y la ruta de Next `/comprobantes/descarga`, `3cf6078` "Pagos" y "Mis pagos" en el menú por acción, `487cd1d` la API
+  falsa de pagos con `user_vecina`, `2baea95` las tres pantallas, `36462fd` ficha 8, HU-V4, HU-A6, `08` y L-099.
+  `next.config.ts` sube el límite de las server actions a 11 MB (la foto de un comprobante pasa de 1 MB). **Para la demo**:
+  reimputar desde la pantalla sólo ofrece la primera parte de un pago repartido; la vecina no tiene "Ver comprobante" en
+  "Mis pagos" (el contrato no lo pedía); `impeccable detect` no se corrió; nadie vio las pantallas fuera de Playwright.
+- **Next.js 16.4.5** (`e8b6145`, decisión delegada por Juani el 18/11/2026: "como quieras"): 16.4.3 tenía GHSA-mfr8-8qww-v76h y
+  GHSA-vc7v-qv4w-wrv8 (moderadas, parche desde 16.4.5) y su build cortaba la primera corrida de cada carpeta nueva.
+  `pnpm audit --prod` sin vulnerabilidades después.
+- **Cierre del change, regresión una sola vez** (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 36462fd` desde
+  `0d5c6d3`: las aceptaciones congeladas de H-004 a H-024 en verde; el barrido de migraciones dio 2 de 1653 en rojo, los dos
+  de deuda del 8 que sólo ve el barrido (L-100): las rutas POST nuevas sin registrar en `test_altas_sin_id_del_cliente`
+  (y, para que su 422 llegue, un campo ajeno en rechazar, revertir y reimputar se rechaza antes de buscar el pago) y el
+  conteo de `tipo_de_movimiento` en `test_libro_proteccion` (15 con la `0046`). Arreglados en `12fc23c`, `23c182d` y
+  `4f0b631`; re-corridos esos archivos y H-020 (27/27), H-022 (20/20) y H-023 (16/16) sobre `4f0b631`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 4f0b631 --sin-regresion` desde `0d5c6d3`: **5/5 de backend y
+  13/13 en navegador** con Next 16.4.5, C01 a C08, N01 a N03 y C10 PASA, 0 rojos.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
+
+### H-026 · Los hallazgos de la demo del 8
+
+- Change: C-11 8, parte 9. Origen: la demo en vivo del 18/11/2026 con la base, la API, el worker y la web reales (Juani:
+  "dale, se arregla como hu nueva"). Nivel M: pantallas y un dato más en la lista de pagos; ningún movimiento nuevo en
+  el libro. Constructor y subagentes con Sonnet.
+- Resultado para Juani: la vecina ve sólo lo suyo en el menú, escribe el monto como lo escribe cualquiera, la lista se
+  lee bien, un pago reimputado dice dónde está ahora, y el administrador puede informar un pago por un vecino.
+- Alcance: el menú del edificio por acción (las secciones de configuración piden `ver_configuracion_del_edificio`), el
+  formato de los montos en "Informar un pago" (sólo formato, nunca un cálculo), el motivo en su propio renglón, la
+  unidad vigente de cada parte en `GET .../pagos` y en la pantalla, y "Informar un pago" desde la bandeja.
+  Exclusiones: el resto del portal del vecino (11).
+- Tienen que pasar:
+  - **C01** la vecina ve en el menú del edificio sólo "Mis pagos" (ni "Resumen", ni "Unidades", ni "Grupos", ni
+    "Categorías", ni "Intereses y vencimiento").
+  - **C02** en "Informar un pago" el monto y los importes se escriben como en Argentina ("43350", "43.350", "43350,5",
+    "43.350,00") y la API recibe `"43350.00"` / `"43350.50"`.
+  - **C03** en las listas, la unidad y el motivo van en renglones separados (nunca "Unidad 2BMotivo:").
+  - **C04** `GET .../pagos` trae en cada parte la unidad vigente (`unidad_vigente_id`, `identificador_vigente`): la
+    misma unidad si no se reimputó, la de destino si sí.
+  - **C05** la bandeja muestra "Ahora en <identificador>" en una parte reimputada, y "Reimputar" parte de la unidad
+    vigente.
+  - **C06** la bandeja tiene "Informar un pago", que lleva a `/edificios/{id}/pagos/informar` con todas las unidades
+    del edificio; al enviar, vuelve a la bandeja.
+  - **C07** a 320 px sin scroll horizontal y sin errores de axe en las pantallas tocadas; H-025 sigue en verde; la
+    ficha 8 registra H-026.
+- Tienen que fallar:
+  - **N01** el administrador pierde del menú "Resumen", "Unidades", "Grupos", "Categorías" o "Intereses y
+    vencimiento".
+  - **N02** la pantalla redondea o calcula: "43350,123" se manda tal cual y se muestra el error de la API, nunca
+    "43350.12".
+  - **N03** una vecina ve "Informar un pago" de la bandeja, o la bandeja.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `ed8276f`. Contrato en `aceptacion/H-026/CONTRATO.md`. Comando: `python3 aceptacion/H-026/aceptar.py
+  --sin-regresion`. Esperados: 3 de backend y 12 en navegador; antes de construir, 12 rojos por aserción y N01 a N03 verdes
+  (guardas de regresión). Antes de congelar, C03 se cambió a medir posiciones (con `innerText` pasaba sin reproducir el
+  defecto de la demo) y C06 a esperar el link antes de hacer clic (fallaba por timeout).
+- Construcción (Sonnet, una tanda, sin migraciones): `380d1b6` la unidad vigente de cada parte
+  (`cuenta_corriente/aplicacion/ubicacion_de_pago.py`, sigue la cadena de reimputaciones; `pagos` la pide por `aplicacion`),
+  `7e4fe30` el menú por `ver_configuracion_del_edificio`, `montoArgentinoParaApi` (sólo formato), el motivo en su renglón,
+  "Ahora en X" y reimputar desde la vigente, "Informar un pago" desde la bandeja (`pagos/informar`), `7076882` ficha 8,
+  HU-V4, HU-A6 y L-101. **Para la demo**: la vecina ve el identificador de la unidad a la que se reimputó su pago (sólo
+  dónde quedó, ningún saldo); `/pagos/informar` no tiene chequeo de permiso del servidor (lo hace la pantalla y la API al
+  enviar); `impeccable detect` no se pudo correr (su script no está en el repo).
+- Evidencia (18/11/2026): `python3 aceptacion/H-026/aceptar.py --codigo 7076882 --sin-regresion` desde `ed8276f`: **3/3 de
+  backend y 12/12 en navegador**, C01 a C07, N01 a N03 y C10 PASA, 0 rojos. El constructor corrió además H-025 (5/5 y 13/13).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ## Plantilla de historia
 

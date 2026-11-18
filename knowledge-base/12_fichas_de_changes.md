@@ -1244,8 +1244,62 @@ D-153).
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
   propuesta: entra si se valida, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
   (D-070); el control "pagos sin confirmar" en la lista antes de emitir, como advertencia (R34).
-- **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
-  pasa por la skill impeccable; el resto del portal es del cambio 11.
+- **Construido con Rein**: H-018 `informar un pago` (el módulo `pagos`, la migración `0044` con las seis
+  tablas de sólo agregar y RLS forzada, `POST .../pagos/lectura` con la lectura en `sin_ia`, `POST
+  .../pagos` sin tocar el libro, `GET .../pagos` y `GET .../pagos/{pago_id}`; número único por edificio,
+  banco y número frenado por un trigger de la base, D-163, D-165).
+- **Construido con Rein**: H-019 `leer el comprobante con IA` (el puerto `LectorDeComprobantes`, el adaptador
+  `LectorOpenRouter` con ZDR, la validación de la propuesta campo por campo en `dominio/propuesta.py`, tope de 20 s
+  en un hilo, `ok`, `fallida` o `sin_ia` guardados en el comprobante, sin 5xx por la IA; D-164).
+- **Construido con Rein**: H-020 `confirmar y rechazar` (`POST .../pagos/{pago_id}/confirmacion` y `.../rechazo`; un
+  movimiento `pago` por parte con la fecha de la transferencia y R04 en dos fases, D-166; confirmar dos veces no
+  duplica y una falla a mitad no deja nada; auditoría de las dos acciones, migración `0045`). Sin el ajuste de
+  interés: es H-021.
+- **Construido con Rein**: H-021 `el ajuste del interés` (al confirmar, antes del pago y en la misma transacción,
+  un `ajuste_de_interes` exacto por cada interés de una emisión posterior a la transferencia, recalculado sobre
+  sus tramos guardados con `diferencia_de_interes`; la cuenta queda igual que la de quien pagó a tiempo; lo que
+  no entra en el interés vuelve como `ajuste_sin_destino`; sin migraciones, D-166).
+- **Construido con Rein**: H-022 `revertir un pago` (`POST .../pagos/{pago_id}/reversion`, sólo super admin y
+  administrador principal; un `reversion_de_pago` por parte que corrige el movimiento vigente, el contra-asiento
+  de cada ajuste enlazado y el `interes_por_reversion` de P29 por la diferencia de los días ya cobrados con el
+  pago adentro, así la unidad queda igual al centavo que una que nunca pagó; evento `revertido` y auditoría
+  `revertir_pago_informado`, todo en una transacción; migración `0046`: el tipo nuevo, `reversion_de_pago` con
+  `corrige_a` y motivo, y el préstamo de propiedad de `movimiento`, D-115.3).
+- **Construido con Rein**: H-023 `reimputar un pago` (`POST .../pagos/{pago_id}/reimputacion`, R25 vigente; en
+  el origen un `reimputacion` débito que corrige el movimiento vigente, la reversión de sus ajustes y el
+  `interes_por_reversion` de P29, como revertir; en el destino un `reimputacion` crédito a la fecha de la
+  transferencia, con R04 y su ajuste de interés, como confirmar, enlazado al débito; evento `reimputado` y
+  auditoría `reimputar_pago_informado`, todo en una transacción; migración `0047`: `reimputacion` con
+  `corrige_a` y motivo en el débito y `enlazado_a` en el crédito, y el préstamo de propiedad de `movimiento`).
+- **Construido con Rein**: H-024 `el comprobante con link firmado y el control de pagos sin confirmar`
+  (`POST .../pagos/{pago_id}/comprobante/enlace` y `GET /api/comprobantes/descarga?token=`, 15 minutos, sin sesión;
+  la firma pasa a `proptech_core.compartido.enlaces` con un tipo dentro del cuerpo firmado, así un token de expensa
+  no baja un comprobante ni al revés; el control `pagos_sin_confirmar` de R34, advertencia y último de la lista,
+  con `{cantidad, total}`; `liquidacion` importa `pagos.aplicacion.lectura`, nunca al revés; sin migraciones).
+- **Construido con Rein**: H-025 `las pantallas de pagos` (la ruta `GET /api/complejos/{id}/pagos/unidades`, las
+  unidades por las que la persona puede informar en orden natural: las suyas si es vecina, todas si es personal de
+  pagos, 403 sin `informar_pago` ni `confirmar_pago_informado`, 404 fuera del alcance; las tres pantallas de
+  `web/src/app/edificios/[id]/`: `mis-pagos` (la lista de pagos con su estado en texto y el motivo),
+  `mis-pagos/informar` (sube el comprobante, la IA lo lee al elegirlo, se corrige, se reparte entre unidades y se
+  envía; la pantalla no suma: si las partes no suman, la API dice 422 `partes`) y `pagos` (la bandeja del
+  administrador: confirmar, rechazar, revertir y reimputar, cada uno con su confirmación en el panel lateral, y
+  "Ver comprobante" por el enlace firmado); el comprobante se baja por la ruta de Next `/comprobantes/descarga`
+  (Caddy no publica `/api/*`); el menú muestra "Mis pagos" con `informar_pago` y "Pagos" con
+  `confirmar_pago_informado`, ambos en el grupo "Liquidación"; `serverActions.bodySizeLimit` en 11 MB para que una
+  foto de celular entre por la server action; sin migraciones).
+- **Construido con Rein**: H-026 `los hallazgos de la demo del 18/11/2026` (sin movimientos nuevos en el libro):
+  el menú del edificio pide `ver_configuracion_del_edificio` para Resumen, Unidades, Grupos, Categorías e
+  Intereses y vencimiento (la vecina ve sólo "Mis pagos"); el monto y los importes de "Informar un pago" se
+  escriben como en Argentina (`43.350,5`) y la pantalla sólo cambia el formato a `43350.50` (nunca redondea:
+  `43350,123` se manda tal cual y se ve el 422); el motivo de un rechazo o una reversión va en su renglón;
+  `GET .../pagos` y `GET .../pagos/{id}` suman a cada parte `unidad_vigente_id` e `identificador_vigente`, que
+  el libro resuelve en `cuenta_corriente/aplicacion/ubicacion_de_pago.py` siguiendo la cadena
+  débito `reimputacion` (`corrige_a`) a crédito enlazado (`enlazado_a`) hasta el último crédito, sin que `pagos`
+  lea `movimiento`; la bandeja dice "Ahora en <unidad>" y reimputa desde la unidad vigente; y "Informar un pago"
+  desde la bandeja (`/edificios/{id}/pagos/informar`, con todas las unidades, vuelve a la bandeja). Una vecina
+  ve el identificador de la unidad vigente aunque no sea suya (dato de ubicación, no de saldo). Sin migraciones.
+- **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) y la bandeja del administrador
+  (HU-A6) se construyeron en H-025 y pasan por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):
   - **Reversión de una bonificación retenida (R37, E16 del 4b)**: cuando se anula la emisión de una
     obligación que ya tenía una bonificación imputada, ese crédito queda **retenido** en vez de
@@ -1267,6 +1321,22 @@ D-153).
   comprobante de otra unidad con un link modificado o vencido.
 - **Terminado cuando**: se cumplen HU-A6 y HU-V4; la fecha que cuenta para los intereses es la de la
   transferencia.
+
+### 8 · deuda del cierre (18/11/2026)
+
+| Deuda | Por qué queda | Dueño |
+|---|---|---|
+| La lectura del comprobante con OpenRouter (imagen y PDF como parte `file`) nunca se probó contra el servicio real | Sólo con transportes falsos; Juani decidió no probarlo con su clave antes de cerrar (18/11/2026) | Juani, con su clave, antes del piloto (**15**) |
+| `infra/.env.example` sin las líneas comentadas de `PROPTECH_OPENROUTER_API_KEY`, `PROPTECH_OPENROUTER_MODELO` y `PROPTECH_CLAVE_DE_ENLACES` | Una regla de permisos impide que el agente edite ese archivo; las variables están en el compose, el README y `08` | Juani, antes de desplegar |
+| El ajuste de interés (H-021) usa la fase 2 de R04 sobre el estado previo al ajuste: si el sobrante de un pago grande cae en capital de obligaciones posteriores, puede quedar levemente corto | Caso de borde sin test; no se vio en la demo | **10a** `morosidad` (o una HU propia antes del piloto) |
+| P29 compara contra el interés **neto** (con sus ajustes) al revertir: decisión del constructor sin un test que la fije | Coherente con la demo, pero no la congela ninguna aceptación | **10a** |
+| Reimputar una unidad que recibió dos partes del mismo pago mueve las dos; la pantalla ofrece reimputar sólo desde la primera parte | Fuera del contrato de H-023 y H-025 | **C-26** `pulido-web-3` (pantalla) y una HU del 10a (dominio) |
+| `registrar_pago` usa `_Pedido` y `_replay`, privados de `creditos.py` | Acoplamiento interno de `cuenta_corriente`, sin efecto visible | **C-28** `revisiones-independientes` |
+| La vecina ve el identificador de la unidad a la que se reimputó su pago (ningún saldo) | Aceptado en la demo; es dato del mismo edificio | **11** `portal-del-vecino` decide si se oculta |
+| `/edificios/{id}/pagos/informar` no chequea el permiso del lado del servidor de Next (lo hacen el menú y la API al enviar) | La API ya responde 403; la pantalla sólo queda accesible por URL | **C-26** |
+| La vecina no tiene "Ver comprobante" en "Mis pagos" | El contrato de H-025 no lo pedía | **11** |
+| `impeccable detect` no se corrió sobre las pantallas de pagos | Su script no está en el repo | **C-26**, junto con la pasada de impeccable del 7 |
+| Un saldo inicial importado sin tramos no recalcula el interés al revertir | Fuera del contrato de H-022 | **10a** |
 
 ### 6b · `motor-de-reglas` · explore propio
 

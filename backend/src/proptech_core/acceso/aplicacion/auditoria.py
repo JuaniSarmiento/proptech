@@ -28,12 +28,17 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso, EventoDelGasto, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import (
+    EventoDeAcceso,
+    EventoDelGasto,
+    EventoDelPadron,
+    EventoDelPago,
+)
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 
 #: Alias corto para el vocabulario completo auditable (D9 + `gastos-y-cargos`).
-_Accionable = Accion | EventoDeAcceso | EventoDelPadron | EventoDelGasto
+_Accionable = Accion | EventoDeAcceso | EventoDelPadron | EventoDelGasto | EventoDelPago
 
 
 class RegistroFueraDeTransaccion(Exception):
@@ -256,6 +261,12 @@ class _DetalleAceptarAlertas(_DetalleAsignarEdificio):
     codigos: list[str]
 
 
+class _DetalleConfirmarPago(_DetalleAsignarEdificio):
+    #: H-021, E7: marca que parte del ajuste de interés no entró en su destino (el importe, que D9
+    #: no deja guardar, sale de la respuesta de la confirmación). Sólo está si hubo.
+    ajuste_sin_destino: Literal[True] | None = None
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -282,6 +293,10 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: _DetalleEmitirLiquidacion,
     Accion.ACEPTAR_ALERTAS_BLOQUEANTES: _DetalleAceptarAlertas,
     Accion.ANULAR_LIQUIDACION: _DetalleAnularLiquidacion,
+    Accion.CONFIRMAR_PAGO_INFORMADO: _DetalleConfirmarPago,
+    EventoDelPago.RECHAZAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
+    EventoDelPago.REVERTIR_PAGO_INFORMADO: _DetalleAsignarEdificio,
+    EventoDelPago.REIMPUTAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,

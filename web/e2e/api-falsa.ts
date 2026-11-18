@@ -39,7 +39,9 @@ import {
   responderEmision,
   responderLista,
   responderPreliquidacion,
+  TOKEN_DE_PRUEBA,
 } from "./escenarios-liquidacion";
+import { ACCIONES_DE_LA_VECINA, esEdificioDePagos, responderPagos } from "./escenarios-pagos";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -88,6 +90,22 @@ const _ACCIONES_DE_SUPER_ADMIN = {
   // `escenarios-liquidacion.ts`), para poder probar que sin ellas no se ofrece nada.
   por_edificio: ACCIONES_POR_EDIFICIO,
 };
+
+/**
+ * H-025: `user_vecina` trae sólo `informar_pago`, en los dos edificios de pagos (ninguna acción de la
+ * administración ni de todos los edificios): sin esto no se prueba que el menú y las pantallas le
+ * muestran a cada uno lo suyo.
+ */
+const _ACCIONES_DE_LA_VECINA = {
+  administracion: [],
+  todos_los_edificios: [],
+  por_edificio: ACCIONES_DE_LA_VECINA,
+};
+
+const _PNG_DE_UN_PIXEL = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=",
+  "base64",
+);
 
 const _RUTAS: Record<string, string> = {
   "": "edificio",
@@ -536,6 +554,7 @@ export function crearServidor(
             "user_sin_persona",
             "user_api_rechaza",
             "user_prueba",
+            "user_vecina",
             "user_varias",
             "user_sin_permiso",
             "user_personal_vacio",
@@ -549,6 +568,22 @@ export function crearServidor(
     const esSesion = url.pathname === "/api/sesion";
     const selector = pedido.headers["x-proptech-administracion"];
     const esAceptar = url.pathname === "/api/invitaciones/aceptar";
+    // H-025: la descarga del comprobante es pública (el token firmado es la autorización, como en la
+    // API real) y no pasa por la sesión: un PNG de un píxel para el token de prueba, 403 para otro.
+    if (url.pathname === "/api/comprobantes/descarga") {
+      if (pedido.method !== "GET") {
+        respuesta.writeHead(405).end();
+        return;
+      }
+      if (url.searchParams.get("token") !== TOKEN_DE_PRUEBA) {
+        respuesta
+          .writeHead(403, { "content-type": "application/json" })
+          .end(JSON.stringify({ detail: "enlace_invalido" }));
+        return;
+      }
+      respuesta.writeHead(200, { "content-type": "image/png" }).end(_PNG_DE_UN_PIXEL);
+      return;
+    }
     // 2d: sin acceso prevalece sobre cualquier selector; aceptar invitación
     // sigue dependiendo sólo del token, como en la API real.
     if (valido && identidad === "user_api_rechaza") {
@@ -584,7 +619,8 @@ export function crearServidor(
             {
               id: ADMINISTRACION,
               nombre: "Administración de prueba",
-              acciones: _ACCIONES_DE_SUPER_ADMIN,
+              acciones:
+                identidad === "user_vecina" ? _ACCIONES_DE_LA_VECINA : _ACCIONES_DE_SUPER_ADMIN,
             },
             ...(identidad === "user_varias"
               ? [
@@ -984,6 +1020,16 @@ export function crearServidor(
           return false;
       }
     };
+
+    // change 8 (H-025): los pagos informados, en los dos edificios de su contrato (2501 y 2502).
+    if (
+      esEdificioDePagos(id) &&
+      responderPagos(pedido, respuesta, id, resto, identidad, (escritura) => {
+        _ultimaEscritura = escritura;
+      })
+    ) {
+      return;
+    }
 
     // change 5 (H-007): los tres edificios del contrato contestan la subida y la plantilla.
     if (

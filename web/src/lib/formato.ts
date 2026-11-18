@@ -156,6 +156,19 @@ export function decimalParaApi(texto: string): string {
   return /^-?[0-9]+,[0-9]+$/.test(texto) ? texto.replace(",", ".") : texto;
 }
 
+/**
+ * El monto como se escribe en la Argentina (punto de miles opcional, coma decimal opcional, hasta dos
+ * decimales) al formato de la API, `^[0-9]+\.[0-9]{2}$`. SÓLO FORMATO (H-026): saca los puntos de miles,
+ * cambia la coma por punto y completa con ceros; nunca redondea ni calcula. Lo que no encaja (tres
+ * decimales, letras, signo) vuelve tal cual y lo rechaza la API en su campo.
+ */
+export function montoArgentinoParaApi(texto: string): string {
+  const m = /^([0-9]{1,3}(?:\.[0-9]{3})+|[0-9]+)(?:,([0-9]{1,2}))?$/.exec(texto);
+  if (!m) return texto;
+  const entero = (m[1] ?? "").replaceAll(".", "");
+  return `${entero}.${(m[2] ?? "").padEnd(2, "0")}`;
+}
+
 const _MESES: Record<string, string> = {
   "01": "enero",
   "02": "febrero",

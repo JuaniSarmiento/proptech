@@ -12,7 +12,7 @@ frena). Mostrarlos no escribe nada (R34, R01, R09, R24, D-075, D-141, D-157).
 La preliquidación SHALL traer `controles`, una lista de objetos con `codigo`, `nivel` (`duro`,
 `bloqueante` o `advertencia`), `mensaje` y `detalle`, en este orden fijo: `saldos_iniciales_sin_validar`,
 `coeficientes_fuera_de_tolerancia`, `bloque_negativo`, `doble_vencimiento_sin_regla` (duros);
-`gastos_en_revision` (bloqueante); `gastos_sin_ia`, `gasto_mensual_obligatorio_faltante` (advertencias).
+`gastos_en_revision` (bloqueante); `gastos_sin_ia`, `gasto_mensual_obligatorio_faltante`, `pagos_sin_confirmar` (advertencias).
 Sólo mira el edificio pedido. No MUST existir un control de factura duplicada (lo garantiza
 `uq_gasto_factura`) ni de ingresos mayores que los gastos (R38 no existe).
 
@@ -55,3 +55,9 @@ Sólo mira el edificio pedido. No MUST existir un control de factura duplicada (
 - **WHEN** la categoría Seguridad es obligatoria mensual y no tiene un gasto aprobado en el período
 - **THEN** aparece `gasto_mensual_obligatorio_faltante`, advertencia, con la categoría; desaparece al
   aprobar un gasto de Seguridad
+
+#### Scenario: Pagos sin confirmar
+
+- **WHEN** el edificio tiene dos pagos informados sin confirmar ni rechazar, por $30.000 y $15.000
+- **THEN** aparece `pagos_sin_confirmar`, advertencia, al final de la lista, con la cantidad 2 y el total
+  `45000.00`; no frena la emisión, y con los dos confirmados o rechazados no aparece

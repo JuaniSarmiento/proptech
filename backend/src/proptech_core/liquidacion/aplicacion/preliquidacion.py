@@ -39,6 +39,7 @@ from proptech_core.liquidacion.dominio.reparto import (
     SinBaseDeReparto,
     UnidadDelPadron,
 )
+from proptech_core.pagos.aplicacion.lectura import pagos_sin_confirmar
 
 _CERO = Decimal("0")
 
@@ -103,6 +104,7 @@ def _contexto_de_controles(
     )
     por_resolver = gastos_por_resolver_del_periodo(sesion, complejo_id, periodo)
     faltantes = obligatorios_faltantes(sesion, complejo_id, periodo)["faltantes"]
+    sin_confirmar, total_sin_confirmar = pagos_sin_confirmar(sesion, complejo_id=complejo_id)
     return ContextoDeControles(
         estado_migracion=complejo.estado_migracion,
         informes=informes,
@@ -110,6 +112,8 @@ def _contexto_de_controles(
         gastos_en_revision=tuple(por_resolver["en_revision"]),
         gastos_sin_ia=tuple(por_resolver["sin_ia"]),
         categorias_faltantes=tuple((str(c["id"]), str(c["nombre"])) for c in faltantes),
+        pagos_sin_confirmar=sin_confirmar,
+        total_sin_confirmar=total_sin_confirmar.a_texto(),
     )
 
 

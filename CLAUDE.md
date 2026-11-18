@@ -202,8 +202,17 @@ mercado de arranque es **Mendoza**.
   (D-160, D-162). H-017: las pantallas que se encuentran desde el menú. Migraciones `0040` a `0043`. PR #22
   con el CI verde. El test de M1 con los datos del piloto sigue pendiente (P1). Deuda en la ficha 7 de
   `knowledge-base/12_fichas_de_changes.md`.
-- **Próximo**: el **8** `pagos-informados` en el camino crítico (recibe P27 y P28, D-157); los de deuda
-  adelantada en paralelo; 4d `cambio-de-titular` ya puede ir (va después del 7).
+- **Cambio 8 `pagos-informados` archivado** (18/11/2026, CRITICAL, D-163 a D-166): construido con Rein en nueve
+  historias. H-018: el vecino informa su pago con el comprobante, sin tocar la deuda, con banco y número de
+  operación únicos por edificio (trigger con candado, D-165). H-019: OpenRouter lee el comprobante detrás de un
+  puerto y sólo propone (D-164). H-020: confirmar imputa con la fecha de la transferencia (D-166); rechazar no
+  toca el libro. H-021: el ajuste del interés cobrado de más. H-022: revertir (P29). H-023: reimputar (R25).
+  H-024: el comprobante con link firmado y el control de pagos sin confirmar en la emisión. H-025 y H-026: las
+  pantallas del vecino y la bandeja del administrador. Migraciones `0044` a `0047`. PR #27 con el CI verde. La
+  lectura con OpenRouter nunca se probó contra el servicio real. Deuda en la ficha 8 de
+  `knowledge-base/12_fichas_de_changes.md`.
+- **Próximo**: el **10a** `morosidad` en el camino crítico; el 9 `extracto-bancario` y el 4d
+  `cambio-de-titular` ya pueden ir; los de deuda adelantada en paralelo.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
@@ -331,13 +340,13 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   PR #6, sin migraciones) y 4c `intereses-saldo-inicial-y-moroso` (11/11/2026, D-152 a D-154, PR #20,
   migraciones `0034` y `0035`), 5 `importacion-desde-excel` (12/11/2026, D-155 y D-156, PR #21,
   migraciones `0036` a `0039`) y 7 `liquidacion-y-emision` (16/11/2026, D-157 a D-162, PR #22, migraciones
-  `0040` a `0043`).
+  `0040` a `0043`) y 8 `pagos-informados` (18/11/2026, D-163 a D-166, PR #27, migraciones `0044` a `0047`).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
 - **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23, C-24 y
   C-27 (archivados), uno por desarrollador; tabla en `CHANGES.md`.
-- **Sigue**: el 8.
+- **Sigue**: el 10a `morosidad`.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.

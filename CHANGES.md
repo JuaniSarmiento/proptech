@@ -54,7 +54,8 @@ gates están en el árbol de abajo.
    ✅ 7 liquidación y emisión (archivado 16/11/2026, D-157 a D-162, PR #22; M1 espera los datos del piloto)
 
 6. COBRAR Y SEGUIR
-   ⏳ 8 pagos informados · 9 extracto bancario · 6b motor de reglas
+   ✅ 8 pagos informados (archivado 18/11/2026, D-163 a D-166, PR #27)
+   ⏳ 9 extracto bancario · 6b motor de reglas
    ⏳ 10a morosidad · 10b condonación y libre deuda
    ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
    ⏳ 14 lectura de facturas
@@ -689,7 +690,9 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 > vez (`knowledge-base/14_forma_de_trabajo.md`).
 
 ### [C-11] `pagos-informados` · 8
-- **Estado**: `[ ]` pendiente (CRITICAL)
+- **Estado**: `[x]` archivado (18/11/2026, CRITICAL, D-163 a D-166, PR #27): construido con Rein en H-018 a
+  H-026, Terminadas por Juani; migraciones `0044` a `0047`; deuda en la ficha 8 (entre ella, la lectura con
+  OpenRouter nunca probada contra el servicio real)
 - **Scope**: subir comprobante, lectura con IA, número de operación único, bandeja de confirmación y
   rechazo, imputación con la fecha de la transferencia, reparto de un pago entre unidades, estado
   revertido, asistente de reimputación

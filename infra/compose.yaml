@@ -197,6 +197,11 @@ services:
       # 7, H-015 (D-070): firma los enlaces de descarga del PDF de la expensa. Sin configurar, se
       # omite y la API no firma enlaces (503); el worker no la necesita.
       PROPTECH_CLAVE_DE_ENLACES:
+      # 8, H-019 (D-164): la lectura del comprobante con IA (OpenRouter, sólo proveedores sin
+      # retención). Sin la clave o sin el modelo se omite y la lectura queda `sin_ia`; el worker no
+      # las necesita.
+      PROPTECH_OPENROUTER_API_KEY:
+      PROPTECH_OPENROUTER_MODELO:
       # D18/M14, tarea 7.1: opcionales con default en `Configuracion`
       # (`configuracion.py`); se pasan explícitas acá (con el MISMO default
       # que el código, vía `${VAR:-default}`) para que una sola tabla de

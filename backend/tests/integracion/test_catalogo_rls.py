@@ -72,6 +72,12 @@ _SONDA_SIN_FILA = {
     "alerta_aceptada",
     "cargo_cobrado_de_menos",
     "pdf_de_expensa",
+    "comprobante_de_pago",
+    "pago_informado",
+    "parte_de_pago",
+    "evento_de_pago",
+    "movimiento_de_pago",
+    "cbu_de_unidad",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}

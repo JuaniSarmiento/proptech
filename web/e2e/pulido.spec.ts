@@ -35,7 +35,8 @@ test.describe("pulido 3b a 1280 px", () => {
         .map((n) => n.getBoundingClientRect())
         .map((r) => ({ top: r.top, bottom: r.bottom, left: r.left })),
     );
-    expect(cajas.length).toBe(5);
+    // 8 (H-025): "Pagos" se suma para quien tiene `confirmar_pago_informado` (el super admin de la API falsa).
+    expect(cajas.length).toBe(6);
     for (let i = 1; i < cajas.length; i += 1) {
       expect(cajas[i]?.top ?? 0).toBeGreaterThanOrEqual((cajas[i - 1]?.bottom ?? 0) - 1);
       expect(cajas[i]?.left).toBe(cajas[0]?.left);

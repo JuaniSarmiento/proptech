@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron, EventoDelPago
 from proptech_core.acceso.dominio.permisos import Accion
 
 from ..conftest import APP_PASSWORD_DE_SESION, APP_USER_DE_SESION
@@ -47,6 +47,7 @@ def test_base_vacia_con_upgrade_head_y_arranque_real(
             | _EVENTOS_DEL_2B
             | {e.value for e in EventoDelPadron}
             | {e.value for e in EventoDelGasto}
+            | {e.value for e in EventoDelPago}
         )
         assert (
             app.execute(
@@ -86,6 +87,10 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0041_liquidacion.py",
         "0042_distribuida_y_cargo_cobrado_de_menos.py",
         "0043_documentos_de_expensa.py",
+        "0044_pagos_informados.py",
+        "0045_rechazar_pago_informado.py",
+        "0046_reversion_de_un_pago.py",
+        "0047_reimputacion_de_un_pago.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -120,4 +125,5 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
             | _EVENTOS_DEL_2B
             | {e.value for e in EventoDelPadron}
             | {e.value for e in EventoDelGasto}
+            | {e.value for e in EventoDelPago}
         )

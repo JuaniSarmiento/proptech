@@ -261,6 +261,9 @@ del 3c, D-128)
 - **Regla**: cada imputación se registra; el residual de cada obligación se calcula a partir
   de sus imputaciones, nunca con una marca de "pagada" (análisis H04). El excedente queda como
   crédito a favor y se compensa en la siguiente liquidación (H07).
+- **El excedente de un pago confirmado** (8, H-020, D-166): lo que sobra después de las dos fases de R04
+  (la deuda de la fecha de la transferencia y la deuda real) queda como crédito a favor **aplicable** de
+  la unidad de esa parte, sin destino fijo; `imputar_pendientes` lo aplica a la próxima deuda.
 - **Destino fijo sin sobrante libre** (E16 del 4b): si el destino fijo de un crédito no absorbe todo
   el importe, se rechaza el pedido entero (422, campo `destino`), sin registro parcial; no hay
   "lo que sobra va como crédito libre" para estos créditos (distinto del excedente de un **pago**,
@@ -752,7 +755,7 @@ número no se marcan duplicadas entre sí.
   | Coeficientes fuera de tolerancia | "Generales" o un grupo con coeficientes propios suma fuera de 1 ± 0,0001 (R01, D-082, D-100), según el mismo informe que da la API del cambio 3a | Bloqueante (duro) | 7 |
   | Facturas leídas por IA con alertas | Hay gastos **en revisión** por alertas de la lectura automática (D-075) | Bloqueante | 7 |
   | Facturas sin cargar | Hay gastos **sin IA**: la lectura falló y esperan carga manual (D-075, R24) | Advertencia | 7 |
-  | Pagos sin confirmar | Hay pagos informados todavía sin confirmar: si se emite así, esos vecinos figuran morosos | Advertencia | 8 |
+  | Pagos sin confirmar (`pagos_sin_confirmar`) | Hay pagos informados todavía sin confirmar (ni confirmados ni rechazados): si se emite así, esos vecinos figuran morosos. Es el último de la lista y su `detalle` trae `{cantidad, total}` (H-024) | Advertencia | 8 |
   | Unidades sin contacto válido *(propuesta, R28)* | Alguna unidad no tiene un email válido | Advertencia | 13 |
   | Extracto incompleto | El extracto procesado no llega a la fecha de cierre | Advertencia | 9 |
   | Gasto mensual obligatorio faltante *(propuesta, D-071)* | Falta este mes un gasto marcado como mensual obligatorio (abono del ascensor, seguro, sueldo del encargado) | Advertencia | 7 (el 6 expone la consulta) |
@@ -839,15 +842,40 @@ número no se marcan duplicadas entre sí.
 - **Lectura**: cada banco o billetera tiene su formato y no traen QR. La IA lee el comprobante y
   precarga monto, fecha y hora, y número de operación; el vecino revisa y confirma esos datos.
 - **Número de operación único**: no puede repetirse dentro del complejo. Un comprobante subido dos
-  veces, o para dos unidades, se frena al subirlo.
+  veces, o para dos unidades, se frena al subirlo. Se compara el **banco y el número** del complejo,
+  normalizados (sin espacios, guiones ni puntos, en minúscula y sin tildes): `Banco Nación` / `12-345.678`
+  y `banco nacion` / `12345678` son el mismo, y el mismo número en otro banco no choca (D-163). Un pago
+  **rechazado** libera su número para que el vecino lo vuelva a informar bien. Lo garantiza la base,
+  también ante dos pedidos simultáneos (D-165).
 - **Confirmación**: sólo el administrador lo pasa a **confirmado**. Nunca es automático. Al
-  confirmarse se imputa con R04.
-- **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
+  confirmarse se imputa con R04 **a la fecha de la transferencia** (D-166): un movimiento `pago` por
+  parte, con `fecha_valor` igual a esa fecha aunque se confirme días después. Fase 1: R04 sobre la deuda
+  como si no existieran las emisiones con **período posterior** a la fecha (ni sus obligaciones ni sus
+  intereses; las obligaciones de saldo inicial existen siempre); fase 2: lo que sobra, R04 sobre la
+  deuda real que queda; lo que sobra después es crédito a favor (R05). Confirmar dos veces devuelve lo
+  mismo sin duplicar (el `operacion_id` de cada parte sale del pago y la parte), y una falla a mitad no
+  deja nada (una sola transacción, con las cuentas de todas las partes bloqueadas en orden).
+- **Rechazo**: el administrador puede rechazarlo con un motivo (de 3 a 500 caracteres); el vecino lo ve.
+  No escribe en el libro. Confirmar un pago rechazado o revertido, o rechazar uno ya resuelto, es un 409
+  de estado. Los dos quedan en la auditoría (`confirmar_pago_informado`, `rechazar_pago_informado`).
 - **Fecha del pago**: la fecha real de la transferencia (del comprobante, validada contra el
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
+  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**.
+  **Cómo se calcula** (H-021, E7): al confirmar, por cada parte y **antes** de registrar el pago (para que
+  R04 no use el pago en un interés que se compensa) y en la misma transacción, cada interés que cuenta y
+  que es de una emisión con período posterior a la fecha de la transferencia (D-166) se recalcula sobre
+  **sus mismos tramos** (`tramo_de_interes`, con la tasa, la forma y la gracia guardadas con ese interés,
+  nunca la configuración de hoy) con la base que habría tenido con el pago imputado como en la
+  confirmación: es la función pura `diferencia_de_interes(tramos, base_antes, base_despues)` de
+  `cuenta_corriente/dominio/intereses.py`, que redondea una sola vez cada total como la emisión. Si la
+  diferencia es positiva se registra un `ajuste_de_interes` con destino ese interés (`enlazado_a` él, fila
+  en `movimiento_de_pago` con papel `ajuste_de_interes`). Si el interés ya no tiene residual que lo
+  absorba (otro crédito lo pagó), se registra hasta lo que entra y la respuesta suma
+  `"ajuste_sin_destino": "<importe>"` (sólo si hay) con el resto, para corregirlo con R08. Un pago
+  confirmado antes de la emisión siguiente no genera ajuste. La cuenta queda igual al centavo que la de
+  una unidad que confirmó el mismo pago a tiempo. El ajuste sigue al interés
   (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
   contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
   se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).
@@ -858,6 +886,21 @@ número no se marcan duplicadas entre sí.
 - **Duplicados**: un mismo movimiento del banco no puede confirmar dos pagos.
 - **Datos de prueba**: comprobantes de ejemplo con datos inventados, en los formatos reales de
   BNA+ y Mercado Pago. Nunca comprobantes reales con datos personales en el repositorio.
+- **Dónde vive** (8, H-018): el módulo `proptech_core/pagos/` (`dominio/` con la normalización, el tipo del
+  comprobante por sus primeros bytes, el pedido y el estado derivado; `aplicacion/` con subir el
+  comprobante, informar y leer) y sus rutas en `proptech_api/pagos.py`: `POST
+  /api/complejos/{id}/pagos/lectura` (sube el comprobante: JPEG, PNG o PDF de hasta 10 MB, `lectura`
+  `sin_ia` hasta H-019), `POST /api/complejos/{id}/pagos` (informa; no escribe en el libro), `GET
+  /api/complejos/{id}/pagos` y `GET .../pagos/{pago_id}`. El vecino informa y ve sólo lo de sus unidades;
+  el personal con `confirmar_pago_informado` informa por cualquier unidad y ve el edificio. Las tablas
+  (`comprobante_de_pago`, `pago_informado`, `parte_de_pago`, `evento_de_pago`, `movimiento_de_pago`,
+  `cbu_de_unidad`, migración `0044`) están en `04_modelo_de_datos.md`; el número único por edificio, banco
+  y número lo frena un trigger de la base (D-163, D-165).
+- **Dónde vive la confirmación** (8, H-020): `pagos/aplicacion/resolver.py` (`confirmar_pago`, `rechazar_pago`;
+  `registrar_en_el_libro` es el lugar donde H-021 suma el ajuste de interés) y, en el libro,
+  `cuenta_corriente/aplicacion/pagos.py` (`registrar_pago`, una vez por parte) con `dominio/pago.py` (las
+  dos fases de R04). Rutas `POST /api/complejos/{id}/pagos/{pago_id}/confirmacion` y `.../rechazo`, con el
+  permiso `confirmar_pago_informado`; migración `0045` (vocabulario de auditoría).
 - **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
   confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
   tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
@@ -880,6 +923,34 @@ número no se marcan duplicadas entre sí.
   después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
   vencidas con saldo; revertir un pago con bonificación o ajuste de interés enlazados revierte también
   esos movimientos.
+- **Construido (8, H-022, D-163 P29)**: `POST /api/complejos/{id}/pagos/{pago_id}/reversion` con
+  `{"motivo": ...}` (3 a 500 caracteres), sólo para quien tiene `revertir_o_reimputar_pago` (el super admin y
+  el administrador principal); orden 404 del edificio, 403, 422 por un campo que no es del pedido (antes de buscar el pago, como en toda alta, L-100), 404 del pago, 422 y 409 `estado` (sólo un pago
+  `confirmado` se revierte; la segunda reversión, seguida o en carrera, es 409). En **una transacción**, con
+  los candados de las cuentas de todas las partes: (1) por cada parte, un `reversion_de_pago` (débito, mismo
+  importe, con el motivo) cuyo `corrige_a` es el movimiento **vigente** de la parte (el `pago`, o el
+  `reimputacion` crédito si se reimputó): el par deja de contar y la unidad vuelve a deber lo que debía sin
+  ese pago; (2) un contra-asiento (`correccion` débito) por cada `ajuste_de_interes` enlazado al pago (R11),
+  que devuelve el interés que compensaba; (3) **P29**: el interés de los días ya cobrados con el pago
+  adentro. Cada interés de una emisión con período posterior a la fecha de la transferencia (D-166) se
+  recalcula sobre sus mismos tramos guardados, con la base que queda **sin** el pago; si lo recalculado supera
+  lo que la cuenta registra neto de ese interés (el interés más sus `interes_por_reversion` menos sus ajustes
+  que cuentan), la diferencia es un movimiento nuevo **`interes_por_reversion`** (débito, componente
+  `interes`, la misma obligación, `enlazado_a` ese interés). La unidad queda **igual al centavo** que una que
+  nunca pagó. (4) El evento `revertido` con su motivo y la auditoría `revertir_pago_informado`. Cada
+  movimiento queda en `movimiento_de_pago` con su papel (`reversion_de_pago` para las reversiones y los
+  contra-asientos de ajustes, `interes_por_reversion`). El pago original no se borra ni cambia: sigue en
+  `GET .../pagos` como `revertido` con su motivo.
+- **`interes_por_reversion`** (migración `0046`): suma al interés debido de su obligación; **no genera
+  interés** (la base de capital nunca suma el componente interés, R03: sin interés sobre interés); y deja de
+  contar si deja de contar el interés al que está enlazado (interés contra-asentado o emisión anulada), como el
+  ajuste (D-085), sin contra-movimiento. Un `reversion_de_pago` no se deshace por la corrección manual (409):
+  el pago vuelve con un pago nuevo.
+- **Tests mínimos (H-022)**: el cheque rechazado devuelve la deuda y deja el pago `revertido`; el ejemplo de
+  P29 (el pago del 05/11 confirmado antes de la emisión de diciembre, que le cobró $552,50 en lugar de
+  $3.000, se revierte y el `interes_por_reversion` es de $2.447,50); el ajuste se revierte con el pago; el
+  moroso crítico según el libro; un pago repartido revierte todas sus partes; anular la emisión deja afuera al
+  `interes_por_reversion`; revertir uno no confirmado, sin motivo, sin permiso o dos veces en carrera.
 
 ## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
 
@@ -901,7 +972,7 @@ número no se marcan duplicadas entre sí.
   los dos confirma un pago sin que el administrador haga el clic; un CBU nuevo sin otra señal no
   genera sugerencia.
 
-## R25 · Asistente de reimputación entre unidades · Propuesta (ProTecc B2)
+## R25 · Asistente de reimputación entre unidades · Vigente (D-163, H-023) (ProTecc B2)
 
 - **Qué resuelve**: un pago confirmado en la unidad equivocada (el vecino de 7A cargó el pago a 7B).
 - **Propuesta**: el pago original no se edita. Se generan, en una sola transacción, dos movimientos
@@ -909,9 +980,23 @@ número no se marcan duplicadas entre sí.
   que suma como crédito en la unidad correcta, los dos con motivo obligatorio y referencia al pago
   original. Después, cada una de las dos unidades puede pasar a cumplir o dejar de cumplir R20, que se
   calcula desde el libro (D-074).
+- **Construido (H-023, change 8)**: `POST /api/complejos/{id}/pagos/{pago_id}/reimputacion` con
+  `{desde_unidad_id, hacia_unidad_id, motivo}`, sólo super admin y administrador principal
+  (`revertir_o_reimputar_pago`). Orden: el pago (404), el motivo (422), el destino de otro edificio o
+  inexistente (404), la misma unidad (422 `hacia_unidad_id`), el estado (409) y que `desde_unidad_id` tenga
+  algo vigente del pago (422 `desde_unidad_id`). En una transacción y bajo el candado del pago y el de las
+  dos cuentas, en orden: **origen** = lo mismo que revertir (R18): un `reimputacion` débito que corrige el
+  crédito vigente de la parte (el `pago` o el `reimputacion` crédito de una reimputación anterior), el
+  contra-asiento de sus ajustes de interés y el `interes_por_reversion` de P29; **destino** = lo mismo que
+  confirmar (D-166): un `reimputacion` crédito con la **fecha de la transferencia**, enlazado al débito
+  (`enlazado_a`), imputado con R04 en dos fases y con su `ajuste_de_interes` si hubo una emisión posterior.
+  El evento `reimputado` (el pago sigue `confirmado`) y la auditoría `reimputar_pago_informado`. Si falla
+  un paso no queda ninguno. Después, revertir (R18) revierte el movimiento **vigente** de cada parte (el
+  crédito del destino), no el del origen. Si el origen tiene más de un crédito vigente del pago (una parte
+  reimputada a una unidad que ya tenía la suya), se reimputan todos los de esa unidad.
 - **Tests mínimos**: reimputar genera los dos movimientos enlazados en una sola transacción; si falla
   un paso, no se aplica ninguno; después de reimputar, la función de R20 da el resultado correcto
-  para las dos unidades.
+  para las dos unidades (`aceptacion/H-023`, C01 a C05 y N01 a N05).
 
 ## R37 · Condiciones de la bonificación por pronto pago · Propuesta (D-071)
 

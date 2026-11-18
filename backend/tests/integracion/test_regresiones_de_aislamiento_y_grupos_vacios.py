@@ -99,6 +99,16 @@ _CUERPOS = {
     },
     # H-015 (7): el enlace lleva la variante; el reproceso no lleva cuerpo.
     "/api/complejos/{complejo_id}/documentos/{documento_id}/enlace": {"variante": "completa"},
+    # H-018 (8): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
+    "/api/complejos/{complejo_id}/pagos": {
+        "comprobante_id": str(uuid4()),
+        "banco": "Banco Ficticio",
+        "numero_de_operacion": "1",
+        "fecha_de_transferencia": "2026-10-05",
+        "monto": "10.00",
+        "cbu_origen": None,
+        "partes": [{"unidad_id": str(uuid4()), "importe": "10.00"}],
+    },
     "/api/complejos/{complejo_id}/unidades/{unidad_id}/cargos-cobrados-de-menos": {
         "operacion_id": str(uuid4()),
         "obligacion_origen_id": str(uuid4()),
@@ -177,6 +187,7 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             cargo_id=uuid4(),
             liquidacion_id=uuid4(),
             documento_id=uuid4(),
+            pago_id=uuid4(),
             periodo="2026-10-01",
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
@@ -197,6 +208,9 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
                 params={"periodo": "2026-10-01"},
                 files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
             )
+        elif ruta == "/api/complejos/{complejo_id}/pagos/lectura":
+            # Change 8: multipart (el comprobante), no JSON — el 404 va antes de leer el archivo.
+            respuesta = api.cliente.post(resuelta, files={"archivo": ("c.png", b"x", "image/png")})
         elif ruta == "/api/complejos/{complejo_id}/importaciones":
             # Change 5: multipart (archivo y fecha), no JSON — el 404 va antes de leer el archivo.
             respuesta = api.cliente.post(

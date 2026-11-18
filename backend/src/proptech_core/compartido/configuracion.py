@@ -217,6 +217,10 @@ class _LectorDeApp(_LectorPostgresComun):
     #: 7, H-015 (D-070): firma los enlaces de descarga del PDF de la expensa. Ausente, la API
     #: arranca igual y no firma enlaces (503); el worker no la necesita.
     proptech_clave_de_enlaces: SecretStr | None = None
+    #: 8, H-019 (D-164): la lectura del comprobante con IA (OpenRouter). Sin la clave o sin el
+    #: modelo no hay lectura (`sin_ia`) y no se sale a la red; el worker no las necesita.
+    proptech_openrouter_api_key: SecretStr | None = None
+    proptech_openrouter_modelo: str | None = None
 
     @field_validator("clerk_jwt_key")
     @classmethod
@@ -498,6 +502,8 @@ class Configuracion(_ConfiguracionPostgresBase):
     invitaciones_clave_cifrado: SecretStr | None
     proptech_url_publica: str | None
     proptech_clave_de_enlaces: SecretStr | None
+    proptech_openrouter_api_key: SecretStr | None
+    proptech_openrouter_modelo: str | None
 
     def __init__(self) -> None:
         try:
@@ -531,12 +537,23 @@ class Configuracion(_ConfiguracionPostgresBase):
         self.invitaciones_clave_cifrado = base.invitaciones_clave_cifrado
         self.proptech_url_publica = base.proptech_url_publica
         self.proptech_clave_de_enlaces = base.proptech_clave_de_enlaces
+        self.proptech_openrouter_api_key = base.proptech_openrouter_api_key
+        modelo = (base.proptech_openrouter_modelo or "").strip()
+        self.proptech_openrouter_modelo = modelo or None
 
     def clave_para_invitar(self) -> SecretStr:
         """Exige la clave propia al habilitar invitaciones, sin exigirla al worker (D6)."""
         if self.invitaciones_clave_cifrado is None:
             raise ConfiguracionInvalida("Falta configurar: INVITACIONES_CLAVE_CIFRADO")
         return self.invitaciones_clave_cifrado
+
+    def clave_de_openrouter(self) -> str | None:
+        """La clave de OpenRouter para leer comprobantes (8, H-019, D-164), o `None` sin
+        configurar: la lectura queda `sin_ia`. El secreto sólo se abre acá (lo vigila
+        `test_configuracion_secreta`)."""
+        if self.proptech_openrouter_api_key is None:
+            return None
+        return self.proptech_openrouter_api_key.get_secret_value()
 
     def clave_de_enlaces(self) -> str:
         """Exige la clave al firmar o verificar un enlace, sin exigirla al arrancar ni al worker."""

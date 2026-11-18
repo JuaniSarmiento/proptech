@@ -160,6 +160,19 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
         # 7, H-015 (`0043`): el PDF archivado de la expensa. Su documento cambia de estado y no es
         # de sólo agregar; los bytes sí, y no se reescriben nunca (CCyC art. 2067 inc. i).
         "pdf_de_expensa": _con_tres_triggers("pdf_de_expensa"),
+        # 8, H-018 (`0044`): lo que el vecino informa. El estado de un pago se deriva de sus eventos
+        # y nada se edita ni se borra (R08, D-115).
+        **{
+            tabla: _con_tres_triggers(tabla)
+            for tabla in (
+                "comprobante_de_pago",
+                "pago_informado",
+                "parte_de_pago",
+                "evento_de_pago",
+                "movimiento_de_pago",
+                "cbu_de_unidad",
+            )
+        },
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(

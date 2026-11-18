@@ -124,6 +124,36 @@ CASOS_CHECK = [
     ("movimiento", "ck_mov_corrige_tipo", {"corrige_a": "$pago", "tipo_corregido": "pago"}),
     (
         "movimiento",
+        "ck_mov_reversion_de_pago",
+        {
+            "tipo": "reversion_de_pago",
+            "sentido": "debito",
+            "corrige_a": "$pago",
+            "tipo_corregido": "pago",
+        },
+    ),
+    (
+        "movimiento",
+        "ck_mov_reimputacion",
+        {
+            "tipo": "reimputacion",
+            "sentido": "debito",
+            "corrige_a": "$pago",
+            "tipo_corregido": "pago",
+        },
+    ),
+    (
+        "movimiento",
+        "ck_mov_interes_por_reversion",
+        {
+            "tipo": "interes_por_reversion",
+            "sentido": "debito",
+            "obligacion_id": "$obligacion",
+            "componente": "interes",
+        },
+    ),
+    (
+        "movimiento",
         "ck_mov_corrige_par",
         {
             "tipo": "correccion",
@@ -391,6 +421,15 @@ def test_tipos_anticipados(libro: Libro, tipo: str, sentido: str) -> None:
             campos.update(corrige_a=libro.pago, tipo_corregido="pago")
     if tipo == "ajuste_de_interes":
         campos["enlazado_a"] = libro.interes
+    if tipo == "reversion_de_pago":  # H-022: corrige un movimiento y lleva su motivo (`0046`)
+        campos.update(corrige_a=libro.pago, tipo_corregido="pago", motivo="Prueba")
+    if (
+        tipo == "reimputacion"
+    ):  # H-023: el débito corrige y lleva motivo, el crédito se enlaza (`0047`)
+        if sentido == "debito":
+            campos.update(corrige_a=libro.pago, tipo_corregido="pago", motivo="Prueba")
+        else:
+            campos["enlazado_a"] = libro.interes
     f = None
     try:
         with libro.conexion.transaction():

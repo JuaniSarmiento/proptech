@@ -3363,3 +3363,95 @@ registrado como tal en su momento.)*
   administración (no hay lista de administraciones visible sin tenant).
 - **Quién**: el constructor de H-015 lo propuso y el orquestador lo aceptó al verificar, bajo la firma por
   adelantado del 7. Es seguridad de la base (CRITICAL): Juani lo revisa en la demo de H-015.
+
+## D-163 · Lo que bloqueaba al 8 y cómo se parte (18/11/2026, acuerdo del 8, antes del propose)
+
+- **Contexto**: la ficha del 8 lo daba por bloqueado por P12, P27, P29, P40 y la elección del proveedor de
+  IA, y le sumaba R37 y R25 como propuestas que "entran si se validan". El análisis del orquestador del
+  18/11/2026 contra `main` (`8b12ed8`) encontró que el libro ya registra un pago (`registrar_credito` con
+  tipo `pago`, R04 y R05), que el vocabulario de `reversion_de_pago`, `reimputacion`, `ajuste_de_interes` y
+  `enlazado_a` está sembrado desde el 4b, y que existen los permisos `informar_pago`,
+  `confirmar_pago_informado` y `revertir_o_reimputar_pago`; no hay módulo `pagos` ni pantalla de vecino.
+- **Decisión** (Juani, 18/11/2026: "dale sisi"):
+  - **P12** (inscripción ante la AAIP): no frena la construcción, que usa sólo datos inventados; frena el
+    despliegue con datos reales, como el aviso de `/privacidad` (D-130).
+  - **P40**: el número de operación es único por **edificio, banco y número**. La IA precarga el banco y
+    el vecino lo confirma.
+  - **P29**: al revertir un pago o al sacarlo de una unidad por reimputación, el interés de esa unidad
+    corre desde el vencimiento original, como si el pago nunca hubiera entrado ahí. En la unidad que lo
+    recibe, la reimputación vale con la fecha de la transferencia.
+  - **R37** (bonificación por pronto pago), **P27**, **P28** y la reversión de la bonificación retenida
+    (E16 del 4b) **salen del 8 y pasan al 6b**: R37 es propuesta, sus montos están sin validar (P42) y
+    hoy no hay ninguna bonificación registrada que revertir.
+  - **R25** (reimputación entre unidades) **entra** al 8 y pasa a vigente.
+  - **Partición**: H-018 informar un pago, H-019 lectura con IA, H-020 confirmar y rechazar, H-021 el
+    ajuste de interés de R11, H-022 revertir, H-023 reimputar, H-024 comprobantes con links firmados y el
+    control "pagos sin confirmar", H-025 las pantallas. El ajuste quedó como historia propia al escribir el
+    diseño (es la parte de plata más delicada); Juani había visto siete.
+- **Descartado**: esperar la inscripción ante la AAIP para construir (frena el camino crítico por un
+  trámite que no cambia el código); el número de operación único sin el banco (frena un pago verdadero
+  cuando dos bancos repiten número); construir la bonificación como código simple sin validar sus montos.
+- **Quién**: Juani, sobre el análisis del orquestador del 18/11/2026.
+
+## D-164 · OpenRouter lee los comprobantes, detrás de un puerto (18/11/2026, acuerdo del 8)
+
+- **Contexto**: la ficha del 8 pedía decidir en el design el proveedor de IA que lee los comprobantes, que
+  traen CBU y CUIT (P12).
+- **Decisión** (Juani, 18/11/2026: "vamos a usar openrouter de proveedor de ia"):
+  - La lectura pasa por un **puerto** del módulo `pagos`; el adaptador real llama a la API de chat de
+    OpenRouter (`https://openrouter.ai/api/v1/chat/completions`) con la imagen y una salida JSON con
+    esquema (`response_format` `json_schema`), y los tests usan un adaptador falso.
+  - El **modelo** es configuración, no código. La **clave** va en `PROPTECH_OPENROUTER_API_KEY` (nunca en
+    el repositorio).
+  - Cada pedido manda `provider: {"zdr": true, "data_collection": "deny", "require_parameters": true}`:
+    sólo proveedores sin retención de datos (verificado en la documentación de OpenRouter el
+    18/11/2026). Al proveedor se le manda sólo la imagen, nunca el nombre del vecino ni su unidad.
+  - Lo que devuelve la IA es una **propuesta**: el vecino la revisa y confirma, y si la IA falla o tarda,
+    el vecino carga los datos a mano. Nunca confirma un pago ni decide la unidad.
+- **Descartado**: llamar a un proveedor de modelo directo (Juani eligió OpenRouter, que deja cambiar de
+  modelo sin cambiar de contrato).
+- **Quién**: Juani.
+
+## D-165 · El número de operación único lo frena un trigger con candado, no un índice (18/11/2026, H-018)
+
+- **Contexto**: D-163 pide que banco y número de operación (normalizados) sean únicos por edificio entre los
+  pagos **no rechazados**, y que un rechazo libere el número. "No rechazado" se sabe en `evento_de_pago`, otra
+  tabla que se escribe después y de sólo agregar: un índice único parcial no puede mirar otra tabla, y no hay
+  `UPDATE` con que marcar el pago como liberado.
+- **Decisión**: un trigger `BEFORE INSERT` sobre `pago_informado` (`fn_pago_informado_numero_unico`, `0044`)
+  toma `pg_advisory_xact_lock` sobre la clave (administración, edificio, banco normalizado, número
+  normalizado) y busca otro pago de esa clave sin evento `rechazado`; si lo hay, levanta `unique_violation`
+  con la restricción `uq_pago_numero_por_edificio`, que la API traduce a 409 `numero_de_operacion` `repetido`.
+  Dos INSERT simultáneos de la misma clave se serializan: el segundo espera, ve la fila ya confirmada del
+  primero y falla. Un rechazo es el INSERT de su evento y libera el número sin tocar ninguna fila. La función
+  nombra las tablas con `public.` porque corre con el `search_path` de la sesión de la app. La normalización
+  (sin espacios, guiones ni puntos, minúscula, sin tildes por NFKD) la hace el dominio en Python y la base
+  compara las dos columnas normalizadas que recibe.
+- **Descartado**: (1) una tabla de "números ocupados" a la que el rechazo agregue una fila de liberación
+  (una séptima tabla, y la unicidad pasaría a depender de que dos escrituras salgan juntas); (2) verificar
+  en la aplicación antes de insertar (no frena la carrera: dos pedidos que llegan a la vez pasan los dos);
+  (3) un índice único sobre (edificio, banco, número) a secas (un rechazo no liberaría el número).
+- **Riesgo asumido**: la unicidad vive en un trigger y no en un índice, así que el catálogo no la ve como
+  restricción; la prueban `test_pagos_base.py` (con dos conexiones a la vez y un mutante sin el trigger) y la
+  aceptación de H-018. Un rechazo concurrente con un nuevo informe puede dar 409 aunque el rechazo confirme
+  un instante después: el vecino reintenta y entra.
+- **Quién**: el constructor de H-018, por pedido del orquestador (CRITICAL, bajo la firma por adelantado del
+  8); Juani lo revisa en la demo de H-018.
+
+## D-166 · "Lo que existía el día de la transferencia" se mide por el período de la emisión (18/11/2026, 8)
+
+- **Contexto**: E6 y E7 del diseño del 8 imputan un pago con R04 **a la fecha de la transferencia** (primero la
+  deuda que existía ese día) y ajustan el interés que se registró después. Escritas con "registrado hasta esa
+  fecha", dependían del reloj: una emisión cargada con atraso, o la de un test, tiene un `registrado_en` que no
+  dice desde cuándo existe esa deuda.
+- **Decisión**: una obligación y los intereses de una emisión **existen desde el primer día del período de esa
+  emisión**. Al confirmar un pago con fecha de transferencia `d`:
+  - **Fase 1**: R04 sobre la deuda calculada como si las emisiones con período posterior a `d` no existieran
+    (ni sus obligaciones ni sus intereses).
+  - **Fase 2**: lo que sobra, R04 sobre la deuda real que queda; lo que sobra después, crédito a favor (R05).
+  - El **ajuste** de E7 recalcula los intereses de las emisiones con período posterior a `d`.
+  Las obligaciones de saldo inicial (sin emisión) existen siempre.
+- **Descartado**: `registrado_en` (depende de cuándo se cargó, no de cuándo se debía) y la fecha de vencimiento
+  (una expensa emitida y no vencida ya es deuda que un pago puede cubrir).
+- **Quién**: el orquestador, al escribir la aceptación de H-020, bajo la firma por adelantado del 8 (E6 y E7 con
+  la recomendación del orquestador). Juani la revisa en la demo.
