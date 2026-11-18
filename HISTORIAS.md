@@ -29,15 +29,15 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
-| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
-| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Lista |
-| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Lista |
-| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
-| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
-| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
-| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
-| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Lista |
-| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Lista |
+| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Terminada |
+| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Terminada |
+| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Terminada |
+| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Terminada |
+| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Terminada |
+| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Terminada |
+| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Terminada |
+| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Terminada |
+| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Terminada |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1326,6 +1326,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   unitarios del dominio, `test_pagos_base.py` (6, con la carrera de dos números iguales), el barrido de los 59
   archivos que bajan migraciones y ruff, format y mypy enteros, en verde. La regresión de H-004 a H-017 queda
   para el cierre (D-154).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-019 · Lectura del comprobante con IA
 
@@ -1372,6 +1375,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
 - Evidencia (18/11/2026): `python3 aceptacion/H-019/aceptar.py --codigo b18ca89 --sin-regresion` desde `b847213`:
   **41/41**, C01 a C06, N01 a N05, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 sobre
   `0a951f4`: 54/54. Para `infra/.env.example` (lo agrega Juani): las dos variables comentadas como opcionales.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-020 · Confirmar y rechazar
 
@@ -1422,6 +1428,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
 - Evidencia (18/11/2026): `python3 aceptacion/H-020/aceptar.py --codigo af941d7 --sin-regresion` desde `4196b3c`:
   **27/27**, C01 a C08, N01 a N06, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 (54/54)
   y H-019 (41/41) sobre `c45435e`.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-021 · El ajuste del interés cobrado de más
 
@@ -1471,6 +1480,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   levemente corto. Ningún test lo cubre.
 - Evidencia (18/11/2026): `python3 aceptacion/H-021/aceptar.py --codigo 066866f --sin-regresion` desde `dc5fbfc`: **13/13**,
   C01 a C09, N01 a N05, EST y SPEC (3 escenarios) PASA, 0 rojos. El constructor corrió además H-020 (27/27).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-022 · Revertir un pago
 
@@ -1518,6 +1530,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
 - Evidencia (18/11/2026): `python3 aceptacion/H-022/aceptar.py --codigo 22834f9 --sin-regresion` desde `c5e08e3`: **20/20**, C01
   a C07, N01 a N06, KB, EST y SPEC (4 escenarios) PASA, 0 rojos. El constructor corrió además H-021 (13/13) y H-020
   (27/27).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-023 · Reimputar un pago a la unidad correcta
 
@@ -1559,6 +1574,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
 - Evidencia (18/11/2026): `python3 aceptacion/H-023/aceptar.py --codigo 0c90d68 --sin-regresion` desde `3c3bb8d`: **16/16**, C01
   a C05, N01 a N05, KB, EST y SPEC (2 escenarios) PASA, 0 rojos. El constructor corrió además H-022 (20/20) y H-021
   (13/13).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-024 · El comprobante con link firmado y el control de pagos sin confirmar
 
@@ -1592,6 +1610,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   revisar (coherente con H-013; lo mira la regresión del cierre). La ruta de Next para bajar el comprobante es de H-025.
 - Evidencia (18/11/2026): `python3 aceptacion/H-024/aceptar.py --codigo 4fb7b11 --sin-regresion` desde `1e6e461`: **13/13**, C01
   a C05 (C04: H-012 y H-015 en verde desde sus SHA), N01 a N03, EST y SPEC (2 escenarios) PASA, 0 rojos.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-025 · Las pantallas de pagos
 
@@ -1643,6 +1664,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `4f0b631`; re-corridos esos archivos y H-020 (27/27), H-022 (20/20) y H-023 (16/16) sobre `4f0b631`.
 - Evidencia (18/11/2026): `python3 aceptacion/H-025/aceptar.py --codigo 4f0b631 --sin-regresion` desde `0d5c6d3`: **5/5 de backend y
   13/13 en navegador** con Next 16.4.5, C01 a C08, N01 a N03 y C10 PASA, 0 rojos.
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ### H-026 · Los hallazgos de la demo del 8
 
@@ -1689,6 +1713,9 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   enviar); `impeccable detect` no se pudo correr (su script no está en el repo).
 - Evidencia (18/11/2026): `python3 aceptacion/H-026/aceptar.py --codigo 7076882 --sin-regresion` desde `ed8276f`: **3/3 de
   backend y 12/12 en navegador**, C01 a C07, N01 a N03 y C10 PASA, 0 rojos. El constructor corrió además H-025 (5/5 y 13/13).
+- Demo y aprobación de Juani: 18/11/2026, dos recorridas del orquestador con la base, la API, el worker y la web
+  reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
+  del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
 ## Plantilla de historia
 
