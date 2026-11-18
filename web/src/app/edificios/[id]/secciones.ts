@@ -2,7 +2,8 @@
  * Las secciones del menú lateral fijo dentro de un edificio (D10,
  * tarea 4.2), agrupadas como pide la enmienda del 20/10/2026: "El edificio"
  * (Resumen, Unidades, Grupos), "Liquidación" (Liquidaciones, H-017: sólo con
- * `ver_liquidaciones`) y "Configuración" (Categorías, Intereses y
+ * `ver_liquidaciones`; Pagos y Mis pagos, H-025: sólo con `confirmar_pago_informado` o
+ * `informar_pago`) y "Configuración" (Categorías, Intereses y
  * vencimiento). "Confirmar sin saldos previos" NO va acá (D11): se llega
  * desde el resumen, nunca desde el menú.
  *
@@ -43,6 +44,24 @@ export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
       grupo: "Liquidación",
       icono: "liquidaciones",
       accion: "ver_liquidaciones",
+      complejoId: id,
+    },
+    {
+      clave: "pagos",
+      etiqueta: "Pagos",
+      href: `/edificios/${id}/pagos`,
+      grupo: "Liquidación",
+      icono: "pagos",
+      accion: "confirmar_pago_informado",
+      complejoId: id,
+    },
+    {
+      clave: "mis-pagos",
+      etiqueta: "Mis pagos",
+      href: `/edificios/${id}/mis-pagos`,
+      grupo: "Liquidación",
+      icono: "mis_pagos",
+      accion: "informar_pago",
       complejoId: id,
     },
     {
