@@ -29,6 +29,14 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-016 | C-10 7, parte 5a (D-158) | Una tarea del worker con efecto se corta en la base y nunca confirma después de agotada | Media / HIGH | Terminada |
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
+| H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Pendiente |
+| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Pendiente |
+| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Pendiente |
+| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
+| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
+| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Pendiente |
+| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Pendiente |
+| H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1236,6 +1244,268 @@ edificio y un cargo particular en `borrador` de $3.000,00 a `2A`.
   backend y 8/8 en navegador**, C01 a C07, N01 a N03 y KB PASA, 0 rojos.
 - Demo y aprobación de Juani: 16/11/2026, recorrida por el orquestador desde el usuario con la base, la API,
   el worker y la web reales en Chrome. **Terminada por Juani el 16/11/2026** ("paso las 7 a terminada").
+
+## Pagos informados (8, C-11)
+
+Propuesta y diseño en `openspec/changes/pagos-informados/` (E1 a E14). Acuerdo previo D-163 y D-164 (Juani,
+18/11/2026): P12 frena el despliegue y no la construcción, P40 con el banco, P29 desde el vencimiento
+original, R37 con P27 y P28 al 6b, R25 adentro, OpenRouter detrás de un puerto. **Firma CRITICAL por
+adelantado de Juani** (18/11/2026) en `proposal.md`: aprueba E1 a E14 en la recomendación del orquestador;
+lo que no le cierre en la demo vuelve a En proceso (D-094, D-111). Rama `8-pagos-informados`; sin rompedor
+(D-152); CI y regresión una vez al cerrar (D-154). Juani delegó el change entero ("te podes hacer cargo del
+change"): como en el 7, las historias se construyen una detrás de otra y las demos se hacen juntas al final.
+Constructor y todo subagente con Claude Sonnet (Juani, 18/11/2026). Orden: H-018 → H-019 → H-020 → H-021 →
+H-022 → H-023 → H-024 → H-025.
+
+**Base de los ejemplos** (datos inventados): la "Torre Ficticia" de los ejemplos del 7, con la liquidación de
+noviembre de 2026 emitida (vencimiento 10/11/2026; totales `1A` $43.350,00, `1B` $48.350,00, `2A` $62.375,00,
+`2B` $37.425,00), 3% mensual proporcional y gracia 0. Personas: "Ana Prueba", propietaria de `1A` y de `2B`;
+"Beto Prueba", inquilino de `1B`; un administrador principal. Comprobantes de prueba: imágenes PNG y un PDF
+generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pago" y números inventados.
+
+### H-018 · Informar un pago
+
+- Change: C-11 8, parte 1. Reglas: R10, R11; D-163 (P40); E1 a E4 de `design.md`.
+- Resultado para Juani: un vecino sube el comprobante de su transferencia y lo informa para su unidad (o lo
+  reparte entre sus unidades); el pago queda "informado", sin tocar la deuda, y el mismo comprobante no se
+  puede informar dos veces.
+- Alcance: el módulo `pagos`, la migración de sus tablas (comprobante, pago, partes, eventos, enlace con el
+  libro, CBU), `POST .../pagos/lectura` guardando el comprobante con la lectura en `sin_ia` (el adaptador de
+  IA es H-019), `POST .../pagos`, la lista del vecino y la del edificio. Exclusiones: confirmar (H-020), la
+  IA real (H-019), las pantallas (H-025).
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** Ana informa $43.350,00 del 05/11/2026 para `1A` con su comprobante: 201, estado `informado`; la
+    deuda de `1A`, su crédito a favor y su `situacion_de_cuenta` son iguales a los de antes.
+  - **C02** Ana reparte $80.775,00 en `1A` $43.350,00 y `2B` $37.425,00: el pago tiene dos partes.
+  - **C03** el administrador informa por Beto un pago de `1B`: 201, con quién lo informó.
+  - **C04** el mismo banco y número, escritos distinto (`Banco Nación` / `banco nacion`, `12-345.678` /
+    `12345678`), dan 409 `numero_de_operacion` `repetido`, también para otra unidad; otro banco con el mismo
+    número entra.
+  - **C05** un pago rechazado libera su número: se puede volver a informar (el rechazo se siembra directo en
+    la base, porque rechazar es H-020).
+  - **C06** el vecino lista los pagos de sus unidades (Ana ve los de `1A` y `2B`, Beto los de `1B`) con su
+    estado; el administrador ve la lista del edificio.
+  - **C07** subir un comprobante JPEG, PNG o PDF de hasta 10 MB devuelve `comprobante_id` y `lectura`
+    `sin_ia` con la propuesta vacía.
+  - **C08** la migración sube sobre una base ya desplegada y baja limpia; las tablas nuevas tienen RLS, están
+    protegidas (sólo agregar) y entran en el catálogo, el ensayo de roles y el barrido (L-064, L-089).
+  - **C09** la KB: R11 con dónde vive, el modelo de datos y la ficha 8 con H-018.
+- Tienen que fallar:
+  - **N01** Ana informa para `1B` (no es suya): 404, sin nada creado.
+  - **N02** partes que no suman el monto, una unidad repetida, monto cero o negativo, monto con tres
+    decimales, fecha futura o de hace más de un año: 422 con su campo, sin nada creado.
+  - **N03** un comprobante que no es imagen ni PDF (un ejecutable renombrado `.png`) o de más de 10 MB: 422
+    `archivo`, sin nada guardado.
+  - **N04** el mismo comprobante usado en dos pagos, o un comprobante de otro edificio u otra
+    administración: 422 o 404.
+  - **N05** un vecino ve un pago de una unidad ajena o de otra administración, por lista o por id: 404.
+  - **N06** alguien sin `informar_pago` ni `confirmar_pago_informado` (el consejo, el contador) informa: 403.
+  - **N07** el rol de la aplicación puede hacer `UPDATE` o `DELETE` sobre las tablas nuevas.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-019 · Lectura del comprobante con IA
+
+- Change: C-11 8, parte 2. Reglas: R11; D-164; E5.
+- Resultado para Juani: al subir el comprobante, el vecino ve banco, número, fecha, monto y CBU precargados
+  para revisar; si la IA falla, carga a mano, y nada que diga la imagen puede confirmar un pago.
+- Alcance: el puerto de lectura, el adaptador de OpenRouter (httpx, con tope de 20 s), la validación de la
+  propuesta en el dominio, la configuración `PROPTECH_OPENROUTER_API_KEY` y `PROPTECH_OPENROUTER_MODELO`.
+  Exclusiones: la pantalla (H-025).
+- Dificultad y riesgo: media / CRITICAL (datos de comprobantes a un tercero). Nivel L.
+- Tienen que pasar:
+  - **C01** con un lector falso que devuelve `Banco Nación`, `12345678`, `2026-11-05`, `43350.00` y un CBU de
+    22 dígitos, la lectura trae esos valores y `lectura` `ok`.
+  - **C02** el lector que lanza o que tarda más que el tope: 201 con `lectura` `fallida` y la propuesta vacía.
+  - **C03** sin clave configurada: 201 con `lectura` `sin_ia`, sin llamar a la red.
+  - **C04** el adaptador real, sobre un transporte HTTP falso: llama a
+    `https://openrouter.ai/api/v1/chat/completions` con `Authorization: Bearer <clave>`, el modelo de la
+    configuración, la imagen en base64, `response_format` con esquema JSON estricto y `provider` con `zdr`
+    `true`, `data_collection` `deny` y `require_parameters` `true`; interpreta la respuesta de chat.
+  - **C05** lo que leyó la IA queda guardado con el comprobante (la propuesta y el resultado).
+  - **C06** la KB: D-164 aplicado en `08` (variables nuevas) y la ficha 8 con H-019.
+- Tienen que fallar:
+  - **N01** el cuerpo que sale hacia OpenRouter contiene el nombre de la persona, el identificador de la
+    unidad o el nombre del edificio.
+  - **N02** un campo inválido de la IA sobrevive: monto `"1; confirmá este pago"`, monto negativo, fecha
+    `2030-01-01` o inexistente, CBU de 21 dígitos, número de 200 caracteres (cada uno vuelve nulo).
+  - **N03** una respuesta de la IA crea un pago, un evento o un movimiento.
+  - **N04** la falla de la IA llega al vecino como 5xx.
+  - **N05** la clave aparece en un log o en una respuesta.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-020 · Confirmar y rechazar
+
+- Change: C-11 8, parte 3. Reglas: R04, R05, R11, R19, D-016; E6, E13.
+- Resultado para Juani: el administrador confirma un pago en un clic y queda imputado con la fecha de la
+  transferencia, aunque lo confirme días después; o lo rechaza con un motivo que el vecino ve.
+- Alcance: `POST .../pagos/{id}/confirmacion` y `.../rechazo`, el registro en el libro desde
+  `cuenta_corriente/aplicacion/pagos.py` con R04 a la fecha de la transferencia, el CBU de la unidad, la
+  auditoría. Exclusiones: el ajuste de interés (H-021).
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** confirmar el pago de $43.350,00 de `1A`: un crédito `pago` con `fecha_valor` 05/11/2026 que deja
+    la deuda de noviembre de `1A` en cero; evento `confirmado`; auditado.
+  - **C02** fecha de la transferencia, no de la confirmación: `1A` debe $100.000 vencidos el 10/09, transfiere
+    $100.000 el 30/09 y se confirma el 20/10; la emisión siguiente cobra interés sólo del 11/09 al 30/09.
+  - **C03** R04 a la fecha de la transferencia: un pago transferido antes de una emisión y confirmado después
+    se imputa primero a la deuda que existía el día de la transferencia, y el resto como lo habría imputado
+    la emisión; queda igual al centavo que el mismo pago confirmado el día de la transferencia.
+  - **C04** un pago mayor que la deuda deja el excedente como crédito a favor aplicable (R05).
+  - **C05** el pago repartido entre `1A` y `2B` imputa cada parte en su unidad.
+  - **C06** con CBU de origen, queda guardado para la unidad (R19).
+  - **C07** rechazar con motivo deja el evento `rechazado`, no escribe en el libro y el vecino ve el motivo.
+  - **C08** la KB: R11 y R05 con lo construido, D nueva si sale, la ficha 8 con H-020.
+- Tienen que fallar:
+  - **N01** dos confirmaciones del mismo pago (seguidas o en carrera): más de un crédito por parte o más de un
+    evento; la segunda responde 200 con el mismo resultado.
+  - **N02** confirmar un pago rechazado o revertido, o rechazar uno confirmado: algo distinto de 409
+    `estado`.
+  - **N03** rechazar sin motivo o con uno de 2 caracteres: algo distinto de 422.
+  - **N04** el vecino, el consejo o el contador confirman o rechazan: algo distinto de 403.
+  - **N05** confirmar un pago de otro edificio u otra administración: algo distinto de 404.
+  - **N06** la confirmación falla a mitad (una parte) y queda alguna parte imputada o el evento escrito.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-021 · El ajuste del interés cobrado de más
+
+- Change: C-11 8, parte 4. Reglas: R03, R11, R05 (destino fijo); D-082, D-084, D-085; E7.
+- Resultado para Juani: si el administrador confirma tarde un pago y en el medio una emisión le cobró
+  interés al vecino por días en que ya había pagado, el sistema le devuelve exacto ese interés.
+- Alcance: la función pura de la diferencia de interés en `cuenta_corriente/dominio/intereses.py` (sirve
+  también a H-022), el ajuste registrado antes del pago al confirmar, enlazado al interés y al pago.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** `1A` debe la expensa de octubre ($100.000, vencida el 10/10), transfiere el 05/11; la emisión de
+    diciembre registra interés del 11/10 al 30/11; se confirma el 03/12: un `ajuste_de_interes` por el interés
+    del 06/11 al 30/11, al centavo, con destino ese interés y `enlazado_a` él.
+  - **C02** después del ajuste, el interés que cuenta de la obligación de octubre es el del 11/10 al 05/11, y
+    la cuenta queda igual al centavo que la de una unidad que confirmó el 05/11.
+  - **C03** con mes entero en vez de proporcional, el ajuste usa la forma, la tasa y la gracia guardadas en
+    los tramos de ese interés.
+  - **C04** un pago confirmado antes de la emisión siguiente no genera ajuste.
+  - **C05** anular la emisión de diciembre deja fuera el ajuste junto con su interés, sin contra-movimiento
+    (D-085).
+  - **C06** un pago parcial ajusta sólo el interés de la parte pagada.
+  - **C07** un ajuste que no entra en su interés (ya pagado por otro crédito) se registra hasta lo que entra y
+    el resto vuelve como `ajuste_sin_destino` en la respuesta, auditado.
+  - **C08** la función de la diferencia tiene tests puros con `hypothesis`: nunca negativa para un pago que
+    entra, cero sin días cubiertos después de la transferencia.
+  - **C09** la KB: R11 (el ajuste construido) y la ficha 8 con H-021.
+- Tienen que fallar:
+  - **N01** el ajuste se calcula con la configuración vigente hoy y no con la de los tramos.
+  - **N02** el pago se imputa antes que el ajuste y paga el interés que se está compensando.
+  - **N03** se ajusta un interés registrado antes de la transferencia.
+  - **N04** confirmar dos veces registra dos ajustes.
+  - **N05** queda una obligación con residual de interés negativo.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-022 · Revertir un pago
+
+- Change: C-11 8, parte 5. Reglas: R03, R18, R20; D-074, D-083, D-163 (P29); E8, E9, E13.
+- Resultado para Juani: un pago que el banco devuelve se marca revertido con un motivo, la unidad vuelve a
+  deber todo lo que debía con el interés desde el vencimiento original, y si ahora es moroso crítico, lo
+  dice.
+- Alcance: `POST .../pagos/{id}/reversion`, el `reversion_de_pago` por parte, la reversión de los ajustes
+  enlazados, el tipo nuevo `interes_por_reversion` (migración) y su exclusión si su interés deja de contar.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** revertir el pago confirmado de `1A` con "cheque rechazado": un `reversion_de_pago` con
+    `corrige_a` el pago; la deuda de `1A` vuelve a la de antes del pago; el pago se ve `revertido`; auditado.
+  - **C02** P29: el pago del 05/11 se confirmó el 05/11, la emisión de diciembre cobró interés con él
+    adentro, el 10/12 se revierte: `interes_por_reversion` por la diferencia, y el interés de `1A` queda
+    igual al centavo al de una cuenta que nunca recibió ese pago.
+  - **C03** revertir un pago con ajuste de interés (H-021) revierte el ajuste con un contra-asiento.
+  - **C04** después de revertir, `situacion_de_cuenta` da a `1A` como moroso crítico si tiene dos
+    liquidaciones vencidas con capital impago.
+  - **C05** un pago repartido revierte todas sus partes.
+  - **C06** anular la emisión cuyo interés completó el `interes_por_reversion` lo deja fuera con él.
+  - **C07** la migración del tipo nuevo sube sobre una base desplegada y baja limpia; la KB: R18 y la ficha 8.
+- Tienen que fallar:
+  - **N01** revertir un pago `informado`, `rechazado` o ya `revertido`: algo distinto de 409 `estado`.
+  - **N02** revertir sin motivo: algo distinto de 422.
+  - **N03** el pago original se borra, cambia o deja de verse.
+  - **N04** el `interes_por_reversion` genera interés en un corte siguiente (interés sobre interés, R03).
+  - **N05** quien no tiene `revertir_o_reimputar_pago` revierte: algo distinto de 403.
+  - **N06** revertir dos veces en carrera deja dos reversiones.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-023 · Reimputar un pago a la unidad correcta
+
+- Change: C-11 8, parte 6. Reglas: R25 (vigente por D-163), R20; D-163 (P29); E10, E13.
+- Resultado para Juani: un pago confirmado en la unidad equivocada pasa a la correcta en una sola operación:
+  la equivocada vuelve a deber como antes y la correcta queda pagada con la fecha de la transferencia.
+- Alcance: `POST .../pagos/{id}/reimputacion`, los dos `reimputacion` enlazados, la reversión de ajustes y el
+  interés de la reversión en la de origen, el ajuste en la de destino.
+- Dificultad y riesgo: alta / CRITICAL. Nivel L.
+- Tienen que pasar:
+  - **C01** el pago de $43.350,00 confirmado en `1B` se reimputa a `1A`: en `1B` un `reimputacion` débito con
+    `corrige_a` el pago y `1B` vuelve a deber lo de antes; en `1A` un `reimputacion` crédito con `fecha_valor`
+    la de la transferencia, `enlazado_a` el débito, imputado con R04 a esa fecha; evento `reimputado`;
+    auditado.
+  - **C02** `situacion_de_cuenta` da bien a las dos unidades después.
+  - **C03** con una emisión de por medio, `1B` recibe su `interes_por_reversion` y `1A` su ajuste, al
+    centavo.
+  - **C04** reimputar de nuevo desde `1A` a `2A` corrige el `reimputacion` crédito de `1A`.
+  - **C05** revertir después un pago reimputado revierte el movimiento vigente (el de `1A`).
+  - **C06** la KB: R25 vigente y construida, la ficha 8 con H-023.
+- Tienen que fallar:
+  - **N01** un fallo en el paso de destino (inyectado) deja algún movimiento en cualquiera de las dos cuentas.
+  - **N02** reimputar a la misma unidad (422), a una de otro edificio (404), una parte que no está en esa
+    unidad (422), un pago no confirmado (409).
+  - **N03** reimputar sin motivo: 422.
+  - **N04** dos reimputaciones en carrera de la misma parte dejan dos movimientos.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-024 · El comprobante con link firmado y el control de pagos sin confirmar
+
+- Change: C-11 8, parte 7. Reglas: R34; D-070; E1 (firma compartida), E11, E12.
+- Resultado para Juani: el comprobante de un pago se abre sólo con un link que vence en 15 minutos, y al
+  preparar la liquidación se ve cuántos pagos faltan confirmar.
+- Alcance: la firma HMAC en `compartido/enlaces.py` con tipo, la fachada de la expensa intacta, el enlace y la
+  descarga del comprobante, la ruta de Next para bajarlo, el control `pagos_sin_confirmar`.
+- Dificultad y riesgo: media / CRITICAL. Nivel M.
+- Tienen que pasar:
+  - **C01** el administrador pide el enlace del comprobante y descarga los mismos bytes con su tipo.
+  - **C02** Ana pide el enlace de un pago de `1A` y lo descarga; vencido da 410; alterado, 403.
+  - **C03** dos pagos informados ($30.000 y $15.000) hacen aparecer `pagos_sin_confirmar`, advertencia, al
+    final de la lista, con 2 y `45000.00`; confirmados o rechazados, no aparece; no frena la emisión.
+  - **C04** las aceptaciones de H-012 (controles) y H-015 (enlaces de la expensa) siguen en verde.
+  - **C05** la KB: R34 y `08` con lo construido, la ficha 8 con H-024.
+- Tienen que fallar:
+  - **N01** un token de expensa sirve para un comprobante, o al revés: algo distinto de 403.
+  - **N02** Beto (inquilino de `1B`) o un vecino de otra administración piden el enlace de un pago de `1A`:
+    algo distinto de 404.
+  - **N03** el comprobante tiene una dirección pública o se baja sin token.
+- Constructor: Claude Sonnet (`rein-constructor`).
+
+### H-025 · Las pantallas de pagos
+
+- Change: C-11 8, parte 8. Reglas: HU-V4, HU-A6; D-131 (menú por rol); E14. Skill **impeccable**.
+- Resultado para Juani: el vecino entra, sube su comprobante, revisa lo que leyó la IA, elige la unidad y
+  envía, y después ve el estado; el administrador abre "Pagos" del edificio y confirma, rechaza, revierte o
+  reimputa desde ahí.
+- Alcance: "Mis pagos" e "Informar un pago" del vecino, "Pagos" del edificio, el menú por rol, los escenarios
+  de la API falsa. Exclusiones: el resto del portal (11).
+- Dificultad y riesgo: media / CRITICAL (pantallas que escriben en el libro). Nivel M.
+- Tienen que pasar (en navegador real, contra la API falsa):
+  - **C01** el vecino sube el comprobante, ve la propuesta precargada, corrige un campo, elige la unidad y
+    envía; la última escritura es el `POST .../pagos` con lo corregido.
+  - **C02** con dos unidades, reparte el pago en dos partes; el envío manda las dos.
+  - **C03** si la lectura volvió `fallida`, los campos están vacíos con un aviso y se puede enviar a mano.
+  - **C04** "Mis pagos" muestra cada pago con su estado en texto y el motivo de un rechazo.
+  - **C05** la bandeja del administrador lista los informados; "Confirmar" pide confirmación y manda el
+    `POST`; "Rechazar" exige motivo.
+  - **C06** en un confirmado, "Revertir" (con motivo) y "Reimputar" (unidad de destino y motivo) mandan sus
+    `POST`.
+  - **C07** "Ver comprobante" pide el enlace y abre la URL.
+  - **C08** a 320 px sin scroll horizontal y sin errores de axe en las tres pantallas; la ficha 8 con H-025.
+- Tienen que fallar:
+  - **N01** el menú del vecino muestra "Pagos" del edificio o el del administrador no lo muestra.
+  - **N02** el vecino ve, para elegir, una unidad que no es suya.
+  - **N03** la pantalla calcula o redondea un monto: partes que no suman se mandan igual y el 422 de la API
+    (`campo` `partes`) se muestra en el reparto, nunca una suma hecha en el navegador.
+- Constructor: Claude Sonnet (`rein-constructor`).
 
 ## Plantilla de historia
 
