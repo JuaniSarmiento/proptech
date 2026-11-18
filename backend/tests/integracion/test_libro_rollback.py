@@ -82,7 +82,7 @@ def test_ciclo_0022_0024_0022_conserva_esquema(
     base.migrar("upgrade", "head")
     base.roles("despues")
     with base.conectar_app() as c:
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0044",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0045",)
         for tabla in LIBRO:
             assert c.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
@@ -108,7 +108,7 @@ def test_downgrade_con_fila_conserva_el_libro(base_para_migraciones: BaseDeEdifi
             "el downgrade borró el libro con filas, invisible al dueño por FORCE sin tenant"
         )
         assert c.execute("SELECT count(*) FROM cuenta WHERE id=%s", (cuenta,)).fetchone() == (1,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0044",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0045",)
     assert rechazo is not None and "tiene filas" in rechazo
     base.roles("despues")
 
@@ -153,7 +153,7 @@ def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio)
         with pytest.raises(psycopg.errors.ForeignKeyViolation) as error_fk:
             c.execute("DELETE FROM accion_de_auditoria WHERE nombre='corregir_movimiento'")
         assert error_fk.value.sqlstate == "23503"
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0044",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0045",)
     with sesion_app(base, datos.admin) as s:
         from sqlalchemy import text
 

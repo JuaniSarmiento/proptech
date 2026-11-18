@@ -41,3 +41,12 @@ class EventoDelGasto(StrEnum):
     EDITAR_CARGO_PARTICULAR = "editar_cargo_particular"
     APROBAR_CARGO_PARTICULAR = "aprobar_cargo_particular"
     IMPORTAR_CARGOS_PARTICULARES = "importar_cargos_particulares"
+
+
+class EventoDelPago(StrEnum):
+    """D9 ampliado por `pagos-informados` (H-020): lo que el administrador resuelve de un pago.
+    Confirmar usa `Accion.CONFIRMAR_PAGO_INFORMADO`, que ya estaba en el vocabulario; rechazar no
+    es un permiso aparte, es un evento. El detalle MUST NOT llevar el monto ni el motivo del
+    rechazo: viven en el pago y en su evento."""
+
+    RECHAZAR_PAGO_INFORMADO = "rechazar_pago_informado"

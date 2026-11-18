@@ -31,7 +31,7 @@ import psycopg
 import pytest
 from testcontainers.community.postgres import PostgresContainer
 
-from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron, EventoDelPago
 from proptech_core.acceso.dominio.permisos import Accion
 
 from ._edificios import devolver_tabla_al_migrador
@@ -564,6 +564,7 @@ def test_accion_de_auditoria_coincide_con_accion(
         | _EVENTOS_DEL_2B
         | {evento.value for evento in EventoDelPadron}
         | {evento.value for evento in EventoDelGasto}
+        | {evento.value for evento in EventoDelPago}
     )
 
 

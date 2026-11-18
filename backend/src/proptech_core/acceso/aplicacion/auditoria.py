@@ -28,12 +28,17 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from proptech_core.acceso.dominio.eventos import EventoDeAcceso, EventoDelGasto, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import (
+    EventoDeAcceso,
+    EventoDelGasto,
+    EventoDelPadron,
+    EventoDelPago,
+)
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 
 #: Alias corto para el vocabulario completo auditable (D9 + `gastos-y-cargos`).
-_Accionable = Accion | EventoDeAcceso | EventoDelPadron | EventoDelGasto
+_Accionable = Accion | EventoDeAcceso | EventoDelPadron | EventoDelGasto | EventoDelPago
 
 
 class RegistroFueraDeTransaccion(Exception):
@@ -282,6 +287,8 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION: _DetalleEmitirLiquidacion,
     Accion.ACEPTAR_ALERTAS_BLOQUEANTES: _DetalleAceptarAlertas,
     Accion.ANULAR_LIQUIDACION: _DetalleAnularLiquidacion,
+    Accion.CONFIRMAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
+    EventoDelPago.RECHAZAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelGasto.CREAR_PROVEEDOR: _DetalleCrearProveedor,
     EventoDelGasto.EDITAR_PROVEEDOR: _DetalleEditarProveedor,
     EventoDelGasto.CREAR_GASTO: _DetalleCrearGasto,
