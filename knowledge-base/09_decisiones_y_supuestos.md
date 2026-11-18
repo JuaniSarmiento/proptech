@@ -3411,3 +3411,29 @@ registrado como tal en su momento.)*
 - **Descartado**: llamar a un proveedor de modelo directo (Juani eligió OpenRouter, que deja cambiar de
   modelo sin cambiar de contrato).
 - **Quién**: Juani.
+
+## D-165 · El número de operación único lo frena un trigger con candado, no un índice (18/11/2026, H-018)
+
+- **Contexto**: D-163 pide que banco y número de operación (normalizados) sean únicos por edificio entre los
+  pagos **no rechazados**, y que un rechazo libere el número. "No rechazado" se sabe en `evento_de_pago`, otra
+  tabla que se escribe después y de sólo agregar: un índice único parcial no puede mirar otra tabla, y no hay
+  `UPDATE` con que marcar el pago como liberado.
+- **Decisión**: un trigger `BEFORE INSERT` sobre `pago_informado` (`fn_pago_informado_numero_unico`, `0044`)
+  toma `pg_advisory_xact_lock` sobre la clave (administración, edificio, banco normalizado, número
+  normalizado) y busca otro pago de esa clave sin evento `rechazado`; si lo hay, levanta `unique_violation`
+  con la restricción `uq_pago_numero_por_edificio`, que la API traduce a 409 `numero_de_operacion` `repetido`.
+  Dos INSERT simultáneos de la misma clave se serializan: el segundo espera, ve la fila ya confirmada del
+  primero y falla. Un rechazo es el INSERT de su evento y libera el número sin tocar ninguna fila. La función
+  nombra las tablas con `public.` porque corre con el `search_path` de la sesión de la app. La normalización
+  (sin espacios, guiones ni puntos, minúscula, sin tildes por NFKD) la hace el dominio en Python y la base
+  compara las dos columnas normalizadas que recibe.
+- **Descartado**: (1) una tabla de "números ocupados" a la que el rechazo agregue una fila de liberación
+  (una séptima tabla, y la unicidad pasaría a depender de que dos escrituras salgan juntas); (2) verificar
+  en la aplicación antes de insertar (no frena la carrera: dos pedidos que llegan a la vez pasan los dos);
+  (3) un índice único sobre (edificio, banco, número) a secas (un rechazo no liberaría el número).
+- **Riesgo asumido**: la unicidad vive en un trigger y no en un índice, así que el catálogo no la ve como
+  restricción; la prueban `test_pagos_base.py` (con dos conexiones a la vez y un mutante sin el trigger) y la
+  aceptación de H-018. Un rechazo concurrente con un nuevo informe puede dar 409 aunque el rechazo confirme
+  un instante después: el vecino reintenta y entra.
+- **Quién**: el constructor de H-018, por pedido del orquestador (CRITICAL, bajo la firma por adelantado del
+  8); Juani lo revisa en la demo de H-018.

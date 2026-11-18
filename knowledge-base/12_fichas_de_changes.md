@@ -1244,6 +1244,10 @@ D-153).
   reimputación entre dos unidades, con los dos movimientos enlazados en una sola transacción (R25,
   propuesta: entra si se valida, ProTecc B2); los comprobantes se descargan con links firmados y con vencimiento
   (D-070); el control "pagos sin confirmar" en la lista antes de emitir, como advertencia (R34).
+- **Construido con Rein**: H-018 `informar un pago` (el módulo `pagos`, la migración `0044` con las seis
+  tablas de sólo agregar y RLS forzada, `POST .../pagos/lectura` con la lectura en `sin_ia`, `POST
+  .../pagos` sin tocar el libro, `GET .../pagos` y `GET .../pagos/{pago_id}`; número único por edificio,
+  banco y número frenado por un trigger de la base, D-163, D-165).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

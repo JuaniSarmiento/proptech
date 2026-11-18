@@ -1332,3 +1332,16 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: un test de fechas las calcula relativas a hoy en Mendoza; una cota de tarea más su margen queda
   por debajo de su `job_timeout`; al sumar una acción a la matriz, buscar los tests que enumeran acciones
   por perfil.
+
+## L-091 · Una función de trigger no ve `public`, y un `CHECK` con `NULL` pasa sin avisar
+
+- **Origen**: H-018 del 8 (`0044`), 18/11/2026.
+- **Qué pasó**: dos defectos que ninguna lectura del código mostró y que cayeron al ver correr un test. (1) El
+  trigger del número de operación leía `pago_informado` sin calificar y dio `relation "pago_informado" does not
+  exist`: la función corre con el `search_path` de la sesión de la app, que no incluye `public` (las funciones
+  del repo quedan con `SET search_path TO ''`). (2) El `CHECK` del motivo de `evento_de_pago`, escrito como
+  `char_length(motivo) BETWEEN 1 AND 500`, aceptaba un rechazo sin motivo: con `NULL` la expresión da `NULL` y
+  un `CHECK` sólo rechaza el `FALSE`.
+- **Regla**: una función de base (de trigger o no) nombra sus tablas con `public.`. Un `CHECK` sobre una
+  columna que admite `NULL` lleva `IS NOT NULL` explícito, y se prueba con el `NULL`, no sólo con el valor
+  inválido.

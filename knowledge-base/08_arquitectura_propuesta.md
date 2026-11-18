@@ -213,6 +213,16 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   consejo sólo ve las distribuidas), `POST .../liquidaciones/{id}/distribucion`, `POST
   .../liquidaciones/{id}/anulacion` y `POST .../unidades/{unidad_id}/cargos-cobrados-de-menos`; los
   cuerpos se validan a mano después del 404 y del 403 (D7).
+- **Pagos informados** (8, H-018): el módulo `pagos/` (`dominio/` con `normalizacion`, `comprobante`,
+  `pedido` y `estado`, puros; `aplicacion/` con `comprobantes`, `informar`, `lectura` y `permisos`; sin
+  `puertos.py` ni `adaptadores/` hasta que H-019 sume el lector de IA) importa `acceso` y `complejos` sólo
+  por `aplicacion` (las unidades las lee con `complejos.aplicacion.lectura`, sin SQL sobre `unidad`) y
+  nadie lo importa todavía; desde H-020 importará `cuenta_corriente`. Rutas en `proptech_api/pagos.py`:
+  `POST /api/complejos/{id}/pagos/lectura` (multipart `archivo`), `POST .../pagos`, `GET .../pagos` y
+  `GET .../pagos/{pago_id}`, con el mismo orden 404, 403, 422, 404 de unidad y 409; el 404 y el 403 los
+  decide `puede_informar_o_ver` (`informar_pago` o `confirmar_pago_informado` en el edificio) y el cuerpo
+  se valida a mano. La fecha de hoy entra por la dependencia `proptech_api.pagos.hoy` (Mendoza), que los
+  tests reemplazan. El número de operación único lo frena la base (D-165), no la aplicación.
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración

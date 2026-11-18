@@ -845,18 +845,42 @@ R20 se calcula siempre desde las imputaciones del libro, nunca desde una marca g
 que reevaluar". El libro que lee ya está construido (4b); la función en sí y su efecto sobre R20 son
 del cambio 4c, y el 10a sólo la lista, exporta y presenta.
 
+### Entidades hoy, dominio `pagos` (migración `0044`, cambio 8, H-018, E2, E3, D-163, D-165)
+
+Seis tablas, todas **de sólo agregar** (tres triggers cada una, en la lista protegida de
+`compartido/tablas_protegidas.py` y en el ensayo de roles), con `administracion_id NOT NULL` y RLS forzada
+por administración. Nada se edita ni se borra: **el estado de un pago se deriva de sus eventos** (sin
+eventos, `informado`; `reimputado` sigue `confirmado`).
+
+- **`comprobante_de_pago`**: `id`, `complejo_id`, `contenido` (los bytes), `sha256`, `tipo` (`jpeg`, `png`
+  o `pdf`, decidido por los primeros bytes), `tamano` (1 byte a 10 MB), `subido_por`, `subido_en`, y lo que
+  leyó la IA: `lectura` (`sin_ia`, `ok` o `fallida`) y `propuesta` (JSONB, `NULL` mientras no haya lector;
+  lo llena H-019). Único por (administración, edificio, id) para la FK compuesta del pago.
+- **`pago_informado`**: `id`, `complejo_id`, `comprobante_id` (**único**: un comprobante es de un solo
+  pago), `banco` y `numero_de_operacion` tal como se cargaron (hasta 100, no vacíos), `banco_normalizado` y
+  `numero_normalizado` (sin espacios, guiones ni puntos, en minúscula y sin tildes; no vacíos),
+  `fecha_de_transferencia`, `monto` (`NUMERIC(14,2)`, mayor que cero), `cbu_origen` (nulo o 22 dígitos),
+  `informado_por` (el vecino o el personal que lo cargó por él) e `informado_en`. **Número único por
+  edificio, banco y número entre los pagos sin evento `rechazado`**: lo frena un trigger `BEFORE INSERT`
+  con candado de transacción por clave (D-165), no un índice.
+- **`parte_de_pago`**: una por unidad (`pago_id`, `unidad_id`, `importe` mayor que cero; única por pago y
+  unidad). La FK compuesta con el edificio impide una unidad de otro edificio, también por SQL.
+- **`evento_de_pago`**: `pago_id`, `tipo` (`confirmado`, `rechazado`, `revertido`, `reimputado`),
+  `motivo` (1 a 500 y no en blanco, salvo en `confirmado`, que puede no llevarlo), `registrado_por` y
+  `registrado_en`. Índices únicos parciales: **un solo `confirmado` o `rechazado` por pago** y un solo
+  `revertido`, así que un doble clic no confirma dos veces. Un rechazo es un INSERT: libera el número.
+- **`movimiento_de_pago`** (H-020 en adelante; hoy vacía): `pago_id`, `movimiento_id` (del libro) y `papel`
+  (`pago`, `ajuste_de_interes`, `reversion_de_pago`, `interes_por_reversion`, `reimputacion`), para revertir
+  todo lo enlazado sin buscar por motivo (D-082, D-083).
+- **`cbu_de_unidad`** (H-020 en adelante; hoy vacía): `unidad_id`, `cbu` (22 dígitos) y `pago_id` de origen
+  (R19).
+- **Bajada**: la `0044` baja devolviendo antes las seis tablas al migrador (`devolver_tablas_protegidas`) y
+  se niega si alguna tiene filas. La función del trigger del número nombra las tablas con `public.`: corre
+  con el `search_path` de la sesión de la app, que no lo incluye.
+
 ### Planificado, dominio `pagos`
 
-#### `pago` · planificada (cambio 8, R11)
-
-- **Atributos conocidos**: unidad (o varias, si se reparte entre las de una misma persona), comprobante,
-  monto, fecha de la transferencia (distinta de la de confirmación), número de operación.
-- **Estados**: informado → confirmado (o rechazado, con motivo) → revertido (R18, si el banco lo
-  devuelve después de confirmado).
-- **Constraints**: `numero_operacion` no se repite dentro del complejo (R11); un pago informado no
-  afecta la deuda hasta que el administrador lo confirma.
-
-#### `cbu_historico` · planificada (cambio 8, R19)
+#### `cbu_historico` · hoy `cbu_de_unidad` (cambio 8, R19; tabla creada en la `0044`, la llena H-020)
 
 - **Qué es**: el CBU de origen de cada pago confirmado, cuando se conoce; alimenta una sugerencia de
   confianza alta al cruzar el extracto (cambio 9), nunca asigna sola (principio 3 de Alberto).

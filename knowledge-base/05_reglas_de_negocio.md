@@ -839,7 +839,11 @@ número no se marcan duplicadas entre sí.
 - **Lectura**: cada banco o billetera tiene su formato y no traen QR. La IA lee el comprobante y
   precarga monto, fecha y hora, y número de operación; el vecino revisa y confirma esos datos.
 - **Número de operación único**: no puede repetirse dentro del complejo. Un comprobante subido dos
-  veces, o para dos unidades, se frena al subirlo.
+  veces, o para dos unidades, se frena al subirlo. Se compara el **banco y el número** del complejo,
+  normalizados (sin espacios, guiones ni puntos, en minúscula y sin tildes): `Banco Nación` / `12-345.678`
+  y `banco nacion` / `12345678` son el mismo, y el mismo número en otro banco no choca (D-163). Un pago
+  **rechazado** libera su número para que el vecino lo vuelva a informar bien. Lo garantiza la base,
+  también ante dos pedidos simultáneos (D-165).
 - **Confirmación**: sólo el administrador lo pasa a **confirmado**. Nunca es automático. Al
   confirmarse se imputa con R04.
 - **Rechazo**: el administrador puede rechazarlo con un motivo; el vecino lo ve.
@@ -858,6 +862,16 @@ número no se marcan duplicadas entre sí.
 - **Duplicados**: un mismo movimiento del banco no puede confirmar dos pagos.
 - **Datos de prueba**: comprobantes de ejemplo con datos inventados, en los formatos reales de
   BNA+ y Mercado Pago. Nunca comprobantes reales con datos personales en el repositorio.
+- **Dónde vive** (8, H-018): el módulo `proptech_core/pagos/` (`dominio/` con la normalización, el tipo del
+  comprobante por sus primeros bytes, el pedido y el estado derivado; `aplicacion/` con subir el
+  comprobante, informar y leer) y sus rutas en `proptech_api/pagos.py`: `POST
+  /api/complejos/{id}/pagos/lectura` (sube el comprobante: JPEG, PNG o PDF de hasta 10 MB, `lectura`
+  `sin_ia` hasta H-019), `POST /api/complejos/{id}/pagos` (informa; no escribe en el libro), `GET
+  /api/complejos/{id}/pagos` y `GET .../pagos/{pago_id}`. El vecino informa y ve sólo lo de sus unidades;
+  el personal con `confirmar_pago_informado` informa por cualquier unidad y ve el edificio. Las tablas
+  (`comprobante_de_pago`, `pago_informado`, `parte_de_pago`, `evento_de_pago`, `movimiento_de_pago`,
+  `cbu_de_unidad`, migración `0044`) están en `04_modelo_de_datos.md`; el número único por edificio, banco
+  y número lo frena un trigger de la base (D-163, D-165).
 - **Tests mínimos**: número de operación repetido se rechaza; pago informado no cambia la deuda;
   confirmado imputa con la fecha del comprobante; rechazado no imputa; un movimiento bancario no confirma dos pagos; pago confirmado
   tarde no genera intereses por los días de demora del administrador; un pago confirmado después de una
