@@ -505,3 +505,76 @@ def test_la_obligacion_inicia_su_interes_el_dia_siguiente_al_vencimiento() -> No
         interes_desde=date(2026, 10, 16),
     )
     assert migrada.interes_desde == date(2026, 10, 16)
+
+
+# --- H-022 · la reversión de un pago y el interés por reversión (P29, D-085) ----------------------
+
+
+def _interes_por_reversion(o: Obligacion, importe: str, enlazado_a: UUID) -> Movimiento:
+    return Movimiento(
+        uuid4(),
+        "interes_por_reversion",
+        "debito",
+        d(importe),
+        date(2026, 10, 1),
+        HOY,
+        o.id,
+        INT,
+        enlazado_a=enlazado_a,
+    )
+
+
+def test_el_interes_por_reversion_suma_al_interes_debido_de_su_obligacion() -> None:
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "1000.00")
+    i = interes(o, "100.00")
+    extra = _interes_por_reversion(o, "50.00", i.id)
+    lb.obligaciones, lb.movimientos = [o], [i, extra]
+    e = lb.estado()
+    assert extra.id in e.movimientos_que_cuentan
+    assert e.debido[(o.id, INT)] == d("150.00")
+    assert e.deuda == d("1150.00")
+
+
+def test_el_interes_por_reversion_de_un_interes_contra_asentado_no_cuenta() -> None:
+    """H-022 C06: si el interés que completaba deja de contar, el complemento tampoco."""
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "1000.00")
+    i = interes(o, "100.00")
+    extra = _interes_por_reversion(o, "50.00", i.id)
+    lb.obligaciones, lb.movimientos = [o], [i, extra, contra(i)]
+    e = lb.estado()
+    assert i.id not in e.movimientos_que_cuentan
+    assert extra.id not in e.movimientos_que_cuentan
+    assert e.deuda == d("1000.00")
+
+
+def test_el_interes_por_reversion_enlazado_fuera_de_la_cuenta_no_cuenta() -> None:
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "1000.00")
+    extra = _interes_por_reversion(o, "50.00", uuid4())
+    lb.obligaciones, lb.movimientos = [o], [extra]
+    e = lb.estado()
+    assert extra.id not in e.movimientos_que_cuentan
+    assert e.deuda == d("1000.00")
+
+
+def test_la_reversion_de_pago_saca_el_par_y_la_deuda_vuelve() -> None:
+    lb = Libro()
+    o = obligacion(date(2026, 10, 1), "1000.00")
+    pago = credito("1000.00")
+    reversion = Movimiento(
+        uuid4(),
+        "reversion_de_pago",
+        "debito",
+        d("1000.00"),
+        date(2026, 10, 20),
+        HOY,
+        corrige_a=pago.id,
+    )
+    lb.obligaciones, lb.movimientos = [o], [pago, reversion]
+    lb.imputa(pago, o, ORD, "1000.00")
+    e = lb.estado()
+    assert pago.id not in e.movimientos_que_cuentan
+    assert reversion.id not in e.movimientos_que_cuentan
+    assert e.deuda == d("1000.00") and e.credito_a_favor == CERO

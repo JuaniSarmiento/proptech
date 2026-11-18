@@ -17,6 +17,9 @@ _CERO = Dinero("0.00")
 #: D-086: los créditos que van a un destino fijo; los demás, con R04.
 TIPOS_DE_DESTINO_FIJO = frozenset({"condonacion", "ajuste_de_interes", "bonificacion"})
 
+#: D-085 y H-022: cuentan sólo mientras cuenta el interés al que están enlazados.
+TIPOS_ENLAZADOS_A_UN_INTERES = frozenset({"ajuste_de_interes", "interes_por_reversion"})
+
 Clave = tuple[UUID, Componente]
 
 
@@ -153,10 +156,11 @@ def _excluidos(
             and m.obligacion_id not in obligaciones_que_cuentan
         ):
             excluidos.add(m.id)
-    # D-085: el ajuste que compensaba un interés que no cuenta tampoco cuenta.
+    # D-085: el ajuste que compensaba un interés que no cuenta tampoco cuenta. Igual el
+    # `interes_por_reversion` (H-022, P29): completaba un interés, y sin él no tiene qué completar.
     for m in movimientos.values():
         if (
-            m.tipo == "ajuste_de_interes"
+            m.tipo in TIPOS_ENLAZADOS_A_UN_INTERES
             and m.enlazado_a is not None
             and (m.enlazado_a in excluidos or m.enlazado_a not in movimientos)
         ):
