@@ -31,7 +31,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 | H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | En proceso |
-| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Pendiente |
+| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | En proceso |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Pendiente |
@@ -1391,6 +1391,11 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N05** confirmar un pago de otro edificio u otra administración: algo distinto de 404.
   - **N06** la confirmación falla a mitad (una parte) y queda alguna parte imputada o el evento escrito.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `da62e96` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-020/CONTRATO.md`
+  (las dos rutas, R04 a la fecha de la transferencia por D-166, `cuenta_corriente.aplicacion.pagos.registrar_pago`
+  una vez por parte, auditoría `confirmar_pago_informado` y `rechazar_pago_informado`). Comando:
+  `python3 aceptacion/H-020/aceptar.py --sin-regresion`. Esperados: 27 de backend; antes de construir, 27 rojos por
+  aserción.
 
 ### H-021 · El ajuste del interés cobrado de más
 
