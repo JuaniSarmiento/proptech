@@ -86,6 +86,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0041_liquidacion.py",
         "0042_distribuida_y_cargo_cobrado_de_menos.py",
         "0043_documentos_de_expensa.py",
+        "0044_pagos_informados.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
