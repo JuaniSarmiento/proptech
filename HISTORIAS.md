@@ -1254,6 +1254,8 @@ adelantado de Juani** (18/11/2026) en `proposal.md`: aprueba E1 a E14 en la reco
 lo que no le cierre en la demo vuelve a En proceso (D-094, D-111). Rama `8-pagos-informados`; sin rompedor
 (D-152); CI y regresión una vez al cerrar (D-154). Juani delegó el change entero ("te podes hacer cargo del
 change"): como en el 7, las historias se construyen una detrás de otra y las demos se hacen juntas al final.
+**Juani levantó el límite de dos historias en Lista para todo el 8** (18/11/2026, con H-018 a H-020 en Lista: "levanta
+el limite testeamos todo al final").
 Constructor y todo subagente con Claude Sonnet (Juani, 18/11/2026). Orden: H-018 → H-019 → H-020 → H-021 →
 H-022 → H-023 → H-024 → H-025.
 
