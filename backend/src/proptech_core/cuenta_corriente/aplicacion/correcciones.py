@@ -185,6 +185,9 @@ def _contra_asiento(
     # Bajo el candado (RC-12): la base no distingue el blanco; la aplicación sí.
     if blanco.tipo == "correccion" and blanco.sentido == "debito":
         raise Conflicto("movimiento_id")
+    # H-022: una reversión de pago no se deshace por acá; el pago vuelve con un pago nuevo.
+    if blanco.tipo == "reversion_de_pago":
+        raise Conflicto("movimiento_id")
     if _anulada(sesion, blanco.emision_id) or _anulada(sesion, blanco.emision_de_la_obligacion):
         raise Conflicto("movimiento_id")
     ya = sesion.execute(

@@ -236,7 +236,7 @@ class TramoGuardado:
     forma_de_calculo: FormaDeCalculo
 
 
-def _interes_de_los_tramos(
+def interes_de_los_tramos(
     tramos: Sequence[TramoGuardado], base: Callable[[date], Decimal]
 ) -> Dinero:
     """El interés de los tramos guardados con una base dada: la suma exacta de todos, redondeada
@@ -263,4 +263,4 @@ def diferencia_de_interes(
     Los tramos traen su tasa y su forma, guardadas con el interés que se registró: nunca la
     configuración de hoy. Cada total se redondea una sola vez. Es negativa si la base sube.
     """
-    return _interes_de_los_tramos(tramos, base_antes) - _interes_de_los_tramos(tramos, base_despues)
+    return interes_de_los_tramos(tramos, base_antes) - interes_de_los_tramos(tramos, base_despues)

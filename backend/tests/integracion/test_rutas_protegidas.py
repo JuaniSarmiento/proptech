@@ -166,6 +166,7 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 8 `pagos-informados` (H-020) ---
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/rechazo", "POST"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
 }
 
 
@@ -530,6 +531,8 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
         # Cambio 8 (H-020): el 404 y el 403 van antes de mirar el pago.
         return cliente.post(ruta_resuelta, json={})
     if ruta.endswith("/pagos/{pago_id}/rechazo"):
+        return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
+    if ruta.endswith("/pagos/{pago_id}/reversion"):
         return cliente.post(ruta_resuelta, json={"motivo": "Prueba del candado"})
     if ruta.endswith("/cargos-cobrados-de-menos"):
         return cliente.post(

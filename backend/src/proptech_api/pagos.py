@@ -5,7 +5,8 @@ Mismo orden que `liquidaciones.py`: cargar el edificio → 404 si no existe o no
 tiene `informar_pago` ni `confirmar_pago_informado` ahí → el pedido (422) → las unidades (404) →
 el número repetido (409). El cuerpo se valida a mano (después del 404 y del 403), no por FastAPI.
 Confirmar y rechazar piden `confirmar_pago_informado` (403 si no) → el pago del edificio (404) →
-el motivo (422) → el estado (409).
+el motivo (422) → el estado (409). Revertir (H-022) pide `revertir_o_reimputar_pago`, con el mismo
+orden.
 """
 
 from datetime import UTC, date, datetime
@@ -19,7 +20,7 @@ from sqlalchemy.orm import Session
 from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_tenant
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
-from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza
+from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza, puede
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
@@ -110,6 +111,23 @@ def _edificio_de_quien_confirma(sesion: Session, identidad: Identidad, complejo_
                 "codigo": "sin_permiso",
                 "detalle": "sin_permiso",
                 "permiso_faltante": Accion.CONFIRMAR_PAGO_INFORMADO.value,
+            },
+        )
+
+
+def _edificio_de_quien_revierte(sesion: Session, identidad: Identidad, complejo_id: UUID) -> None:
+    """404 si el edificio no existe o no alcanza; 403 sin `revertir_o_reimputar_pago` en él."""
+    edificio = cargar_complejo(sesion, complejo_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if edificio is None or not alcanza(asignaciones, complejo_id):
+        raise HTTPException(status_code=404, detail="no encontrado")
+    if not puede(asignaciones, Accion.REVERTIR_O_REIMPUTAR_PAGO, complejo_id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": Accion.REVERTIR_O_REIMPUTAR_PAGO.value,
             },
         )
 
@@ -226,6 +244,27 @@ def rechazar_un_pago(
 ) -> dict[str, str]:
     _edificio_de_quien_confirma(sesion, identidad, complejo_id)
     estado = resolver.rechazar_pago(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        pago_id=pago_id,
+        cuerpo=cuerpo,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"pago_id": str(pago_id), "estado": estado}
+
+
+@router.post("/complejos/{complejo_id}/pagos/{pago_id}/reversion")
+def revertir_un_pago(
+    complejo_id: UUID,
+    pago_id: UUID,
+    cuerpo: Annotated[Any, Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_de_quien_revierte(sesion, identidad, complejo_id)
+    estado = resolver.revertir_pago_confirmado(
         sesion,
         identidad,
         complejo_id=complejo_id,

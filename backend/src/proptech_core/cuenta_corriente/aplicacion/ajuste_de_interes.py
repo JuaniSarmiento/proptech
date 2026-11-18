@@ -81,7 +81,7 @@ def _forma(valor: str) -> FormaDeCalculo:
     return "mes_entero" if valor == "mes_entero" else "proporcional_por_dia"
 
 
-def _tramos_guardados(
+def tramos_guardados(
     sesion: Session, cuenta_id: UUID, interes_ids: Sequence[UUID]
 ) -> dict[UUID, tuple[list[TramoGuardado], int]]:
     """Los tramos de cada interés con su tasa y su forma, y los días de gracia con que se cobró."""
@@ -121,7 +121,7 @@ def diferencias_por_el_pago(
     )
     if not intereses:
         return []
-    tramos = _tramos_guardados(sesion, actual.cuenta_id, [m.id for m in intereses])
+    tramos = tramos_guardados(sesion, actual.cuenta_id, [m.id for m in intereses])
     # El pago como quedaría en el libro: su crédito y sus imputaciones, después de las que ya hay.
     imputaciones = imputaciones_del_pago(sesion, actual, fecha_valor, importe)
     pago = Movimiento(uuid4(), "pago", "credito", importe, fecha_valor, datetime.now(UTC))

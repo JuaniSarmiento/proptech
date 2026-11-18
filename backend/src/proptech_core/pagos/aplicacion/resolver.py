@@ -31,6 +31,10 @@ from proptech_core.cuenta_corriente.aplicacion.cuentas import (
     bloquear_cuentas,
     crear_cuentas_de_unidades,
 )
+from proptech_core.cuenta_corriente.aplicacion.reversion_de_pago import (
+    MovimientoDelPago,
+    revertir_pago,
+)
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
 from proptech_core.pagos.dominio.estado import INFORMADO, estado_del_pago
 
@@ -39,6 +43,7 @@ _ESPACIO_DE_OPERACIONES = UUID("5d1c3a9e-0b7f-4c52-9a4e-8e2f6b1d7c30")
 
 CONFIRMADO = "confirmado"
 RECHAZADO = "rechazado"
+REVERTIDO = "revertido"
 
 
 @dataclass(frozen=True)
@@ -290,3 +295,72 @@ def rechazar_pago(
         detalle={"complejo_id": complejo_id},
     )
     return RECHAZADO
+
+
+def _movimientos_vigentes(
+    sesion: Session, pago_id: UUID
+) -> tuple[list[MovimientoDelPago], list[MovimientoDelPago]]:
+    """Lo que el pago dejó en el libro y todavía no se corrigió: por parte, el crédito vigente (el
+    `pago`, o el `reimputacion` crédito si se reimputó) y, aparte, sus ajustes de interés."""
+    filas = sesion.execute(
+        text(
+            "SELECT mp.movimiento_id, mp.papel, m.cuenta_id FROM movimiento_de_pago mp "
+            "JOIN movimiento m ON m.administracion_id = mp.administracion_id "
+            "AND m.id = mp.movimiento_id WHERE mp.pago_id = :pago AND m.sentido = 'credito' "
+            "AND mp.papel IN ('pago', 'reimputacion', 'ajuste_de_interes') "
+            "AND NOT EXISTS (SELECT 1 FROM movimiento c WHERE c.corrige_a = m.id) "
+            "ORDER BY m.cuenta_id, m.registrado_en, m.id"
+        ),
+        {"pago": pago_id},
+    ).all()
+    vigentes: list[MovimientoDelPago] = []
+    ajustes: list[MovimientoDelPago] = []
+    for f in filas:
+        movimiento = MovimientoDelPago(UUID(str(f.movimiento_id)), UUID(str(f.cuenta_id)))
+        (ajustes if f.papel == "ajuste_de_interes" else vigentes).append(movimiento)
+    return vigentes, ajustes
+
+
+def revertir_pago_confirmado(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    complejo_id: UUID,
+    pago_id: UUID,
+    cuerpo: Any,
+    request_id: UUID,
+) -> str:
+    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado (409). Con las
+    cuentas de todas sus partes bloqueadas, escribe en el libro las reversiones (`reversion_de_pago`
+    por parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una
+    con su fila en `movimiento_de_pago`, el evento `revertido` con su motivo y la auditoría. Todo
+    en la transacción del llamador: si falla un paso no queda ninguno."""
+    pago = _cargar(sesion, complejo_id, pago_id)
+    motivo = _motivo(cuerpo)
+    _tomar_el_pago(sesion, identidad, pago_id)
+    if _estado(sesion, pago_id) != CONFIRMADO:
+        raise Conflicto("pago", "estado")
+    vigentes, ajustes = _movimientos_vigentes(sesion, pago_id)
+    bloquear_cuentas(sesion, [m.cuenta_id for m in (*vigentes, *ajustes)])
+    for reversion in revertir_pago(
+        sesion,
+        identidad,
+        pago_id=pago_id,
+        vigentes=vigentes,
+        ajustes=ajustes,
+        fecha_de_transferencia=pago.fecha_de_transferencia,
+        motivo=motivo,
+        request_id=request_id,
+    ):
+        _fila_del_pago(sesion, identidad, pago_id, reversion.movimiento_id, reversion.papel)
+    _evento(sesion, identidad, pago_id, REVERTIDO, motivo)
+    registrar(
+        sesion,
+        identidad,
+        EventoDelPago.REVERTIR_PAGO_INFORMADO,
+        entidad="pago_informado",
+        entidad_id=pago_id,
+        request_id=request_id,
+        detalle={"complejo_id": complejo_id},
+    )
+    return REVERTIDO
