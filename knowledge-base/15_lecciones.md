@@ -1466,3 +1466,15 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: toda subida por server action declara su tope en `next.config`; las rutas fijas van antes de las de
   parámetro; el panel y el campo no comparten nombre; y lo que se abre después de una llamada asíncrona se abre
   antes, con el gesto.
+
+## L-100 · Las rutas POST nuevas del change sólo las ve el barrido del cierre, y un campo ajeno es un error de forma que se rechaza antes de buscar el pago
+
+- **Origen**: cierre del 8, 18/11/2026.
+- **Qué pasó**: `test_altas_sin_id_del_cliente.py` exige un cuerpo de prueba por cada ruta `POST` y que un cuerpo con
+  `id`, `administracion_id` y `complejo_id` de más dé 422. Las rutas de H-020 a H-023 (confirmación, rechazo,
+  reversión, reimputación y el enlace del comprobante) no se registraron ahí: ese archivo está en el barrido de
+  migraciones, que sólo corre al cerrar el change, y no en el test de cada historia. Además rechazo, reversión y
+  reimputación buscaban el pago antes de mirar el cuerpo y respondían 404 donde el contrato de las altas pide 422.
+- **Regla**: al agregar una ruta `POST`, se la registra en `_RUTAS_SIN_CUERPO` o `_CUERPOS_DE_PRUEBA` en la misma
+  historia, y se corre ese archivo. Un campo que no es del pedido es un error de forma: 422 antes de cualquier
+  lectura de la base; el resto del orden (404 del edificio, 403, 404 del recurso, 422 de valor, 409) no cambia.

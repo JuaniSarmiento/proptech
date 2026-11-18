@@ -925,7 +925,7 @@ número no se marcan duplicadas entre sí.
   esos movimientos.
 - **Construido (8, H-022, D-163 P29)**: `POST /api/complejos/{id}/pagos/{pago_id}/reversion` con
   `{"motivo": ...}` (3 a 500 caracteres), sólo para quien tiene `revertir_o_reimputar_pago` (el super admin y
-  el administrador principal); orden 404 del edificio, 403, 404 del pago, 422 y 409 `estado` (sólo un pago
+  el administrador principal); orden 404 del edificio, 403, 422 por un campo que no es del pedido (antes de buscar el pago, como en toda alta, L-100), 404 del pago, 422 y 409 `estado` (sólo un pago
   `confirmado` se revierte; la segunda reversión, seguida o en carrera, es 409). En **una transacción**, con
   los candados de las cuentas de todas las partes: (1) por cada parte, un `reversion_de_pago` (débito, mismo
   importe, con el motivo) cuyo `corrige_a` es el movimiento **vigente** de la parte (el `pago`, o el
