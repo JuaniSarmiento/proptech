@@ -1,8 +1,11 @@
-"""Pagos informados (change 8, D-163): subir el comprobante, informar el pago y leerlos (H-018).
+"""Pagos informados (change 8, D-163): subir el comprobante, informar el pago y leerlos (H-018),
+confirmarlo o rechazarlo (H-020).
 
 Mismo orden que `liquidaciones.py`: cargar el edificio → 404 si no existe o no alcanza → 403 si no
 tiene `informar_pago` ni `confirmar_pago_informado` ahí → el pedido (422) → las unidades (404) →
 el número repetido (409). El cuerpo se valida a mano (después del 404 y del 403), no por FastAPI.
+Confirmar y rechazar piden `confirmar_pago_informado` (403 si no) → el pago del edificio (404) →
+el motivo (422) → el estado (409).
 """
 
 from datetime import UTC, date, datetime
@@ -17,12 +20,17 @@ from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_t
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza
+from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.pagos.adaptadores.openrouter import LectorOpenRouter
-from proptech_core.pagos.aplicacion import comprobantes, informar, lectura
+from proptech_core.pagos.aplicacion import comprobantes, informar, lectura, resolver
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
-from proptech_core.pagos.aplicacion.permisos import puede_informar_o_ver, unidades_del_alcance
+from proptech_core.pagos.aplicacion.permisos import (
+    es_personal_de_pagos,
+    puede_informar_o_ver,
+    unidades_del_alcance,
+)
 from proptech_core.pagos.dominio.comprobante import TAMANO_MAXIMO
 from proptech_core.pagos.puertos import LectorDeComprobantes
 
@@ -87,6 +95,23 @@ def _edificio_autorizado(
             },
         )
     return asignaciones
+
+
+def _edificio_de_quien_confirma(sesion: Session, identidad: Identidad, complejo_id: UUID) -> None:
+    """404 si el edificio no existe o no alcanza; 403 sin `confirmar_pago_informado` en él."""
+    edificio = cargar_complejo(sesion, complejo_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if edificio is None or not alcanza(asignaciones, complejo_id):
+        raise HTTPException(status_code=404, detail="no encontrado")
+    if not es_personal_de_pagos(asignaciones, complejo_id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "codigo": "sin_permiso",
+                "detalle": "sin_permiso",
+                "permiso_faltante": Accion.CONFIRMAR_PAGO_INFORMADO.value,
+            },
+        )
 
 
 @router.post("/complejos/{complejo_id}/pagos/lectura", status_code=201)
@@ -167,3 +192,43 @@ def pago_informado(
     if pago is None:
         raise NoEncontrado
     return pago
+
+
+@router.post("/complejos/{complejo_id}/pagos/{pago_id}/confirmacion")
+def confirmar_un_pago(
+    complejo_id: UUID,
+    pago_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_de_quien_confirma(sesion, identidad, complejo_id)
+    estado = resolver.confirmar_pago(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        pago_id=pago_id,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"pago_id": str(pago_id), "estado": estado}
+
+
+@router.post("/complejos/{complejo_id}/pagos/{pago_id}/rechazo")
+def rechazar_un_pago(
+    complejo_id: UUID,
+    pago_id: UUID,
+    cuerpo: Annotated[Any, Body()],
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    _edificio_de_quien_confirma(sesion, identidad, complejo_id)
+    estado = resolver.rechazar_pago(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        pago_id=pago_id,
+        cuerpo=cuerpo,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {"pago_id": str(pago_id), "estado": estado}
