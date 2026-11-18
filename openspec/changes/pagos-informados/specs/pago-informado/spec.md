@@ -46,10 +46,10 @@ inquilino); otra unidad da 404. Con varias unidades, una parte por unidad, sin r
 monto. El personal con `confirmar_pago_informado` puede informar por cualquier unidad del edificio. Sin
 `informar_pago` ni `confirmar_pago_informado`, 403.
 
-#### Scenario: Reparto entre departamento y cochera
+#### Scenario: Reparto entre dos unidades
 
-- **WHEN** la persona es propietaria de `1A` y de `C1` e informa $50.000,00 repartido en $40.000,00 y
-  $10.000,00
+- **WHEN** la persona es propietaria de `1A` y de `2B` e informa $80.775,00 repartido en $43.350,00 y
+  $37.425,00
 - **THEN** el pago queda con dos partes
 
 #### Scenario: Una unidad ajena

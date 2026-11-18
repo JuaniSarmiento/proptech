@@ -27,7 +27,7 @@ conoce y audita, todo en una transacción. Requiere `confirmar_pago_informado`.
 
 #### Scenario: Reparto
 
-- **WHEN** se confirma un pago repartido entre `1A` y `C1`
+- **WHEN** se confirma un pago repartido entre `1A` y `2B`
 - **THEN** cada parte se imputa en su unidad con R04
 
 ### Requirement: Confirmar dos veces no duplica
