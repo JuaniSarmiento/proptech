@@ -134,6 +134,16 @@ def _base_del_dia(
     return base
 
 
+def base_de_capital(
+    obligacion: Obligacion,
+    estado: EstadoDeCuenta,
+    movimientos: dict[UUID, Movimiento],
+    dias_de_gracia: int,
+) -> Callable[[date], Decimal]:
+    """La base de capital impago de cada día de una obligación, la de `calcular_intereses`."""
+    return _base_del_dia(obligacion, estado, movimientos, dias_de_gracia)
+
+
 def _proporcional(
     dias: list[date], base: Callable[[date], Decimal], tasa: Fraction
 ) -> tuple[list[TramoDeInteres], Fraction]:

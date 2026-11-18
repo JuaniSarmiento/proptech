@@ -202,7 +202,7 @@ def confirmar_un_pago(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, str]:
     _edificio_de_quien_confirma(sesion, identidad, complejo_id)
-    estado = resolver.confirmar_pago(
+    confirmacion = resolver.confirmar_pago(
         sesion,
         identidad,
         complejo_id=complejo_id,
@@ -210,7 +210,10 @@ def confirmar_un_pago(
         request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
-    return {"pago_id": str(pago_id), "estado": estado}
+    respuesta = {"pago_id": str(pago_id), "estado": confirmacion.estado}
+    if confirmacion.ajuste_sin_destino is not None:
+        respuesta["ajuste_sin_destino"] = confirmacion.ajuste_sin_destino.a_texto()
+    return respuesta
 
 
 @router.post("/complejos/{complejo_id}/pagos/{pago_id}/rechazo")

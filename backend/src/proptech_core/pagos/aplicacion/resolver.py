@@ -26,6 +26,7 @@ from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.compartido.texto import recortado_sin_control
 from proptech_core.cuenta_corriente.aplicacion import pagos as libro_de_pagos
+from proptech_core.cuenta_corriente.aplicacion.ajuste_de_interes import ajustar_el_interes
 from proptech_core.cuenta_corriente.aplicacion.cuentas import (
     bloquear_cuentas,
     crear_cuentas_de_unidades,
@@ -45,6 +46,20 @@ class ParteDelPago:
     id: UUID
     unidad_id: UUID
     importe: Dinero
+
+
+@dataclass(frozen=True)
+class PagoEnElLibro:
+    #: unidad → movimiento `pago`.
+    movimientos: dict[UUID, UUID]
+    #: Lo que correspondía ajustar de interés y no entró en su destino (E7); `None` si todo entró.
+    ajuste_sin_destino: Dinero | None
+
+
+@dataclass(frozen=True)
+class Confirmacion:
+    estado: str
+    ajuste_sin_destino: Dinero | None = None
 
 
 @dataclass(frozen=True)
@@ -118,35 +133,63 @@ def _evento(
     )
 
 
+def _fila_del_pago(
+    sesion: Session, identidad: Identidad, pago_id: UUID, movimiento_id: UUID, papel: str
+) -> None:
+    sesion.execute(
+        text(
+            "INSERT INTO movimiento_de_pago (administracion_id, pago_id, movimiento_id, "
+            "papel) VALUES (:adm, :pago, :movimiento, :papel)"
+        ),
+        {
+            "adm": identidad.administracion_id,
+            "pago": pago_id,
+            "movimiento": movimiento_id,
+            "papel": papel,
+        },
+    )
+
+
 def registrar_en_el_libro(
     sesion: Session, identidad: Identidad, pago: PagoParaResolver, request_id: UUID
-) -> dict[UUID, UUID]:
-    """Un movimiento `pago` por parte, con su fila en `movimiento_de_pago`. Devuelve unidad →
-    movimiento. Es el lugar donde H-021 suma el ajuste de interés, en la misma transacción."""
+) -> PagoEnElLibro:
+    """Por cada parte, primero el ajuste del interés que se cobró de más (E7) y después el
+    movimiento `pago`, cada uno con su fila en `movimiento_de_pago` y todos en la transacción del
+    llamador. Los ajustes van antes para que R04 no use el pago en un interés que se compensa."""
     cuentas = crear_cuentas_de_unidades(
         sesion, complejo_id=pago.complejo_id, unidad_ids=[p.unidad_id for p in pago.partes]
     )
     bloquear_cuentas(sesion, list(cuentas.values()))  # todas, en orden, antes de escribir
     movimientos: dict[UUID, UUID] = {}
+    sin_destino = Dinero("0.00")
     for parte in pago.partes:
+        operacion = uuid5(_ESPACIO_DE_OPERACIONES, f"{pago.id}|{parte.id}")
+        ajuste = ajustar_el_interes(
+            sesion,
+            identidad,
+            cuenta_id=cuentas[parte.unidad_id],
+            importe=parte.importe,
+            fecha_valor=pago.fecha_de_transferencia,
+            operacion_base=operacion,
+            request_id=request_id,
+        )
+        for registrado in ajuste.registrados:
+            _fila_del_pago(
+                sesion, identidad, pago.id, registrado.movimiento_id, "ajuste_de_interes"
+            )
+        sin_destino = sin_destino + ajuste.sin_destino
         movimiento_id = libro_de_pagos.registrar_pago(
             sesion,
             identidad,
             cuenta_id=cuentas[parte.unidad_id],
             importe=parte.importe,
             fecha_valor=pago.fecha_de_transferencia,
-            operacion_id=uuid5(_ESPACIO_DE_OPERACIONES, f"{pago.id}|{parte.id}"),
+            operacion_id=operacion,
             request_id=request_id,
         )
-        sesion.execute(
-            text(
-                "INSERT INTO movimiento_de_pago (administracion_id, pago_id, movimiento_id, "
-                "papel) VALUES (:adm, :pago, :movimiento, 'pago')"
-            ),
-            {"adm": identidad.administracion_id, "pago": pago.id, "movimiento": movimiento_id},
-        )
+        _fila_del_pago(sesion, identidad, pago.id, movimiento_id, "pago")
         movimientos[parte.unidad_id] = movimiento_id
-    return movimientos
+    return PagoEnElLibro(movimientos, sin_destino if sin_destino > Dinero("0.00") else None)
 
 
 def _recordar_el_cbu(sesion: Session, identidad: Identidad, pago: PagoParaResolver) -> None:
@@ -175,16 +218,17 @@ def confirmar_pago(
     complejo_id: UUID,
     pago_id: UUID,
     request_id: UUID,
-) -> str:
-    """Devuelve `confirmado`; un pago ya confirmado (o reimputado) lo devuelve sin escribir."""
+) -> Confirmacion:
+    """Devuelve `confirmado` (con lo que no entró del ajuste de interés, si hubo); un pago ya
+    confirmado (o reimputado) lo devuelve sin escribir."""
     pago = _cargar(sesion, complejo_id, pago_id)
     _tomar_el_pago(sesion, identidad, pago_id)
     estado = _estado(sesion, pago_id)
     if estado == CONFIRMADO:
-        return CONFIRMADO
+        return Confirmacion(CONFIRMADO)
     if estado != INFORMADO:
         raise Conflicto("pago", "estado")
-    registrar_en_el_libro(sesion, identidad, pago, request_id)
+    en_el_libro = registrar_en_el_libro(sesion, identidad, pago, request_id)
     _recordar_el_cbu(sesion, identidad, pago)
     _evento(sesion, identidad, pago_id, CONFIRMADO, None)
     registrar(
@@ -194,9 +238,16 @@ def confirmar_pago(
         entidad="pago_informado",
         entidad_id=pago_id,
         request_id=request_id,
-        detalle={"complejo_id": complejo_id},
+        detalle=(
+            {"complejo_id": complejo_id}
+            if en_el_libro.ajuste_sin_destino is None
+            else {
+                "complejo_id": complejo_id,
+                "ajuste_sin_destino": True,
+            }
+        ),
     )
-    return CONFIRMADO
+    return Confirmacion(CONFIRMADO, en_el_libro.ajuste_sin_destino)
 
 
 def _motivo(cuerpo: Any) -> str:

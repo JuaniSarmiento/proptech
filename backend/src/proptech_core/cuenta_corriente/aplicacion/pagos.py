@@ -31,12 +31,13 @@ from proptech_core.cuenta_corriente.aplicacion.errores import (
 )
 from proptech_core.cuenta_corriente.aplicacion.lecturas import FotoDeCuenta
 from proptech_core.cuenta_corriente.dominio.estado import calcular_estado
+from proptech_core.cuenta_corriente.dominio.imputacion import Imputacion
 from proptech_core.cuenta_corriente.dominio.pago import imputar_pago_a_la_fecha
 
 _CERO = Dinero("0.00")
 
 
-def _emisiones_posteriores(sesion: Session, actual: FotoDeCuenta, fecha: date) -> frozenset[UUID]:
+def emisiones_posteriores(sesion: Session, actual: FotoDeCuenta, fecha: date) -> frozenset[UUID]:
     """Las emisiones del edificio con período posterior a la fecha: para el pago todavía no
     existían (D-166). Las obligaciones de saldo inicial no tienen emisión y existen siempre."""
     filas = sesion.execute(
@@ -44,6 +45,21 @@ def _emisiones_posteriores(sesion: Session, actual: FotoDeCuenta, fecha: date) -
         {"c": actual.complejo_id, "fecha": fecha},
     ).scalars()
     return frozenset(UUID(str(f)) for f in filas)
+
+
+def imputaciones_del_pago(
+    sesion: Session, actual: FotoDeCuenta, fecha_valor: date, importe: Dinero
+) -> list[Imputacion]:
+    """Cómo se imputaría un pago de esa fecha en la cuenta tal como está (D-166, dos fases). No
+    escribe: lo usan el pago y el ajuste de interés que se calcula antes de registrarlo."""
+    al_dia = calcular_estado(
+        actual.estado.obligaciones,
+        actual.movimientos.values(),
+        actual.imputaciones,
+        actual.anuladas | emisiones_posteriores(sesion, actual, fecha_valor),
+    )
+    imputaciones, _ = imputar_pago_a_la_fecha(al_dia.deudas(), actual.estado.deudas(), importe)
+    return imputaciones
 
 
 def registrar_pago(
@@ -74,13 +90,7 @@ def registrar_pago(
     instante = reloj()
     corrida = uuid4()
     actual = imputar_pendientes(sesion, cuenta_id, corrida, instante)
-    al_dia = calcular_estado(
-        actual.estado.obligaciones,
-        actual.movimientos.values(),
-        actual.imputaciones,
-        actual.anuladas | _emisiones_posteriores(sesion, actual, fecha_valor),
-    )
-    imputaciones, _ = imputar_pago_a_la_fecha(al_dia.deudas(), actual.estado.deudas(), importe)
+    imputaciones = imputaciones_del_pago(sesion, actual, fecha_valor, importe)
     with traducir(sesion, {"uq_mov_operacion": "operacion_id"}):
         nuevo = sesion.execute(
             text(
