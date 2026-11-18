@@ -31,8 +31,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 | H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Lista |
-| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | En proceso |
-| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
+| H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Lista |
+| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | En proceso |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Pendiente |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Pendiente |
@@ -1406,6 +1406,18 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   una vez por parte, auditoría `confirmar_pago_informado` y `rechazar_pago_informado`). Comando:
   `python3 aceptacion/H-020/aceptar.py --sin-regresion`. Esperados: 27 de backend; antes de construir, 27 rojos por
   aserción.
+- **Vuelta 2 de la aceptación** (`4196b3c`, congelada en `af941d7`): N06 esperaba la excepción inyectada, pero el
+  middleware de seguimiento la convierte en 500; el constructor lo vio y frenó. Ahora espera el 500; lo que se prueba
+  (nada escrito después de la falla) no cambia. El comentario del test cita L-095 y la lección quedó como L-094.
+- Construcción (Sonnet, una tanda): `a7e1d3c` R04 en dos fases puro (`cuenta_corriente/dominio/pago.py`, 7 unitarios),
+  `2c27b57` `registrar_pago` con la deuda de ese día (`calcular_estado` con las emisiones posteriores como anuladas),
+  `1443c00` la `0045` (`rechazar_pago_informado` en el vocabulario de auditoría), `c282e08` confirmar y rechazar
+  (candado por pago y después las cuentas en orden), `c45435e` R11 con D-166, R05, `04`, ficha 8 y L-094.
+  `FotoDeCuenta` suma `imputaciones` y `anuladas` con valor por defecto. Riesgo anotado: `registrar_pago` usa
+  `_Pedido` y `_replay` privados de `creditos.py`.
+- Evidencia (18/11/2026): `python3 aceptacion/H-020/aceptar.py --codigo af941d7 --sin-regresion` desde `4196b3c`:
+  **27/27**, C01 a C08, N01 a N06, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 (54/54)
+  y H-019 (41/41) sobre `c45435e`.
 
 ### H-021 · El ajuste del interés cobrado de más
 
@@ -1440,6 +1452,11 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N04** confirmar dos veces registra dos ajustes.
   - **N05** queda una obligación con residual de interés negativo.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `dc5fbfc` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-021/CONTRATO.md` (el
+  ajuste antes del pago, sobre los tramos guardados, la vista de la fase 1 sin los ajustes de emisiones posteriores,
+  `ajuste_sin_destino` en la respuesta, `diferencia_de_interes` y `TramoGuardado` puros). Comando:
+  `python3 aceptacion/H-021/aceptar.py --sin-regresion`. Esperados: 13 de backend; sobre el código de H-020, 11 rojos por
+  aserción y C04 y N05 verdes (no ajustar cuando no corresponde ya se cumple: quedan como regresión).
 
 ### H-022 · Revertir un pago
 
