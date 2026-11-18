@@ -1276,8 +1276,19 @@ D-153).
   la firma pasa a `proptech_core.compartido.enlaces` con un tipo dentro del cuerpo firmado, así un token de expensa
   no baja un comprobante ni al revés; el control `pagos_sin_confirmar` de R34, advertencia y último de la lista,
   con `{cantidad, total}`; `liquidacion` importa `pagos.aplicacion.lectura`, nunca al revés; sin migraciones).
-- **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
-  pasa por la skill impeccable; el resto del portal es del cambio 11.
+- **Construido con Rein**: H-025 `las pantallas de pagos` (la ruta `GET /api/complejos/{id}/pagos/unidades`, las
+  unidades por las que la persona puede informar en orden natural: las suyas si es vecina, todas si es personal de
+  pagos, 403 sin `informar_pago` ni `confirmar_pago_informado`, 404 fuera del alcance; las tres pantallas de
+  `web/src/app/edificios/[id]/`: `mis-pagos` (la lista de pagos con su estado en texto y el motivo),
+  `mis-pagos/informar` (sube el comprobante, la IA lo lee al elegirlo, se corrige, se reparte entre unidades y se
+  envía; la pantalla no suma: si las partes no suman, la API dice 422 `partes`) y `pagos` (la bandeja del
+  administrador: confirmar, rechazar, revertir y reimputar, cada uno con su confirmación en el panel lateral, y
+  "Ver comprobante" por el enlace firmado); el comprobante se baja por la ruta de Next `/comprobantes/descarga`
+  (Caddy no publica `/api/*`); el menú muestra "Mis pagos" con `informar_pago` y "Pagos" con
+  `confirmar_pago_informado`, ambos en el grupo "Liquidación"; `serverActions.bodySizeLimit` en 11 MB para que una
+  foto de celular entre por la server action; sin migraciones).
+- **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) y la bandeja del administrador
+  (HU-A6) se construyeron en H-025 y pasan por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):
   - **Reversión de una bonificación retenida (R37, E16 del 4b)**: cuando se anula la emisión de una
     obligación que ya tenía una bonificación imputada, ese crédito queda **retenido** en vez de

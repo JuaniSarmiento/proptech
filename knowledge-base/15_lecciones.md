@@ -1449,3 +1449,20 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Regla**: lo que distingue a dos clases de token tiene que estar dentro de lo firmado, no en la ruta que lo
   recibe. Y sumar un control a una lista que entra en la huella obliga a mirar la emisión (H-013) en la misma
   historia, porque quien tenga un pago informado ve una huella distinta a la de antes.
+
+## L-099 · Una subida por server action tiene un tope de 1 MB, una ruta fija va antes de la de `{id}` y un panel con el nombre del campo se come el locator
+
+- **Origen**: H-025 del 8 (las pantallas de pagos), 18/11/2026.
+- **Qué pasó**: (1) el comprobante (hasta 10 MB para la API) viaja por una server action, y Next corta en 1 MB por
+  defecto: casi toda foto de celular habría fallado; se subió `experimental.serverActions.bodySizeLimit` a 11 MB.
+  (2) `GET .../pagos/unidades` se declaró antes de `GET .../pagos/{pago_id}`: al revés, `unidades` se lee como un
+  UUID y da 422. (3) Un `Panel` titulado como un campo ("Comprobante") es una región con ese nombre y
+  `getByLabel("Comprobante", { exact: true })` encuentra dos elementos; los paneles se llaman distinto que sus
+  campos. (4) Abrir el comprobante en otra pestaña después de pedir el enlace a la API pierde el gesto del toque y el
+  navegador la bloquea: la pestaña se abre en el click (`window.open("", "_blank")`) y se le pone la dirección
+  cuando llega; si no se pudo abrir, se navega en la misma pestaña. (5) Un campo controlado dentro de un
+  `<form action={fn}>` se resetea al terminar la acción: la pantalla de informar usa `onSubmit` y llama a la
+  acción con un objeto, así lo escrito se conserva ante un 422.
+- **Regla**: toda subida por server action declara su tope en `next.config`; las rutas fijas van antes de las de
+  parámetro; el panel y el campo no comparten nombre; y lo que se abre después de una llamada asíncrona se abre
+  antes, con el gesto.

@@ -243,6 +243,10 @@ confirmarlos o rechazarlos, y que al confirmar se imputen solos.
   como revertido con un motivo, entonces se registra un contra-movimiento que vuelve a subir la
   deuda; si ahora tiene dos o más liquidaciones vencidas, pasa a ser moroso crítico (R18, R20,
   ProTecc D4).
+
+**Pantalla (H-025)**: "Pagos" (`/edificios/{id}/pagos`) es la bandeja del edificio. Un pago informado se confirma
+o se rechaza (con motivo); uno confirmado se revierte (con motivo) o se reimputa a otra unidad (con motivo); de
+cualquiera se ve el comprobante por un enlace firmado que vence a los 15 minutos. Cada decisión pide confirmación.
 - Dado un pago confirmado en la unidad equivocada, cuando uso el asistente de reimputación hacia la
   unidad correcta, entonces se generan los dos movimientos enlazados en una sola operación y el
   moroso crítico de las dos unidades queda bien calculado (R25, R20, propuesta, ProTecc B2).
@@ -432,6 +436,12 @@ Como vecino, quiero subir el comprobante de mi transferencia y ver si el adminis
   sistema lo frena.
 - Dado un pago informado, entonces veo su estado: informado, confirmado, rechazado con motivo o
   revertido (R18).
+
+**Pantallas (H-025)**: "Mis pagos" (`/edificios/{id}/mis-pagos`) lista los pagos con su estado en texto y el
+motivo de un rechazo o una reversión; "Informar un pago" (`.../mis-pagos/informar`) sube el comprobante, muestra
+lo que leyó la IA (banco, número de operación, fecha, monto, CBU) para corregirlo, deja elegir cuánto es de cada
+unidad (sólo las suyas) y envía; si no se pudo leer, se carga a mano. La pantalla no suma: si las partes no suman
+el monto, muestra el error de la API.
 
 **Reglas relacionadas**: R11, R18.
 

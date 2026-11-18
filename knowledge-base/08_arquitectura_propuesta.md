@@ -240,6 +240,15 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   decide `puede_informar_o_ver` (`informar_pago` o `confirmar_pago_informado` en el edificio) y el cuerpo
   se valida a mano. La fecha de hoy entra por la dependencia `proptech_api.pagos.hoy` (Mendoza), que los
   tests reemplazan. El número de operación único lo frena la base (D-165), no la aplicación.
+  Desde H-025, `GET .../pagos/unidades` (declarada antes de `.../pagos/{pago_id}`, para que `unidades` no se
+  lea como un id) da las unidades para informar en orden natural, con `complejos.aplicacion.lectura.
+  listar_unidades_para_informar`. En la web (`web/src/app/edificios/[id]/`): `mis-pagos` y `mis-pagos/informar`
+  (el vecino) y `pagos` (la bandeja); cada pantalla es un componente de servidor que pide sus datos con
+  `web/src/lib/api/pagos.ts` y le liga a un componente de cliente sus server actions, así el navegador nunca habla
+  con la API. El comprobante no tiene dirección pública: "Ver comprobante" pide el enlace firmado y abre la ruta de
+  Next `/comprobantes/descarga?token=` (sin sesión, el token es la autorización), que lo pide a la API por la red
+  interna. La subida del comprobante pasa por una server action y `next.config.ts` sube
+  `serverActions.bodySizeLimit` a 11 MB (el tope de la API es 10 MB).
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración
