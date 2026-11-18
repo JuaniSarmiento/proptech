@@ -1,5 +1,7 @@
 """El cuerpo de `POST .../pagos` (E2, E4, D-163), validado a mano y sin base.
 
+Un campo que no es del pedido (`id`, `administracion_id`, `complejo_id`...) es 422 con su nombre: la
+administración y el edificio salen de la sesión y la ruta, nunca del cuerpo (R11).
 El 422 informa el **primer** campo que falla, en el orden del contrato: `monto`, `partes`,
 `fecha_de_transferencia`, `banco`, `numero_de_operacion`, `cbu_origen`; después que las partes sumen
 el monto y no repitan unidad (`partes`). El comprobante y las unidades los decide la base.
@@ -22,6 +24,19 @@ _MONTO = re.compile(r"[0-9]+\.[0-9]{2}", re.ASCII)
 _FECHA = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
 _CBU = re.compile(r"[0-9]{22}", re.ASCII)
 _TEXTO_MAXIMO = 100
+_CLAVE_RAZONABLE = re.compile(r"[a-z_]{1,40}", re.ASCII)
+_CLAVES_DEL_PEDIDO = frozenset(
+    {
+        "comprobante_id",
+        "banco",
+        "numero_de_operacion",
+        "fecha_de_transferencia",
+        "monto",
+        "cbu_origen",
+        "partes",
+    }
+)
+_CLAVES_DE_UNA_PARTE = frozenset({"unidad_id", "importe"})
 _DIAS_HACIA_ATRAS = 365
 
 
@@ -51,6 +66,15 @@ class PedidoDePago:
     partes: tuple[Parte, ...]
 
 
+def _clave_ajena(clave: object) -> str:
+    """El nombre de un campo que no existe lo elige el cliente: sólo se nombra si es razonable."""
+    return (
+        clave
+        if isinstance(clave, str) and _CLAVE_RAZONABLE.fullmatch(clave)
+        else "campo_no_permitido"
+    )
+
+
 def _importe(valor: object, campo: str) -> Dinero:
     """Texto con dos decimales exactos y mayor que cero; un número JSON no es texto."""
     if not isinstance(valor, str) or not _MONTO.fullmatch(valor):
@@ -65,7 +89,7 @@ def _importe(valor: object, campo: str) -> Dinero:
 
 
 def _parte(valor: object) -> Parte:
-    if not isinstance(valor, Mapping):
+    if not isinstance(valor, Mapping) or not valor.keys() <= _CLAVES_DE_UNA_PARTE:
         raise PedidoInvalido("partes")
     unidad = valor.get("unidad_id")
     try:
@@ -114,6 +138,9 @@ def _cbu(valor: object) -> str | None:
 def pedido_de_pago(cuerpo: Any, hoy: date) -> PedidoDePago:
     if not isinstance(cuerpo, Mapping):
         raise PedidoInvalido("monto")
+    for clave in cuerpo:
+        if clave not in _CLAVES_DEL_PEDIDO:
+            raise PedidoInvalido(_clave_ajena(clave))
     monto = _importe(cuerpo.get("monto"), "monto")
     crudas = cuerpo.get("partes")
     if not isinstance(crudas, list) or not crudas:

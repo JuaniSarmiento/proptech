@@ -152,6 +152,33 @@ def test_un_pedido_invalido_nombra_su_campo(cambios: dict[str, Any], campo: str)
     assert error.value.campo == campo
 
 
+@pytest.mark.parametrize("clave", ["id", "administracion_id", "complejo_id", "informado_por"])
+def test_un_campo_que_no_es_del_pedido_es_422_con_su_nombre(clave: str) -> None:
+    """R11: la administración, el edificio y los ids salen de la sesión y la ruta, no del cuerpo."""
+    with pytest.raises(PedidoInvalido) as error:
+        pedido_de_pago(_cuerpo(**{clave: "x"}), HOY)
+    assert error.value.campo == clave
+
+
+def test_un_campo_ajeno_gana_sobre_los_demas_errores() -> None:
+    with pytest.raises(PedidoInvalido) as error:
+        pedido_de_pago(_cuerpo(monto="x", id="x"), HOY)
+    assert error.value.campo == "id"
+
+
+def test_una_clave_ajena_rara_no_se_repite() -> None:
+    with pytest.raises(PedidoInvalido) as error:
+        pedido_de_pago(_cuerpo(**{"<script>": 1}), HOY)
+    assert error.value.campo == "campo_no_permitido"
+
+
+def test_una_parte_con_un_campo_ajeno_son_partes() -> None:
+    partes = [{"unidad_id": UNIDAD, "importe": "100.00", "id": "x"}]
+    with pytest.raises(PedidoInvalido) as error:
+        pedido_de_pago(_cuerpo(partes=partes), HOY)
+    assert error.value.campo == "partes"
+
+
 def test_los_bordes_de_la_fecha_entran() -> None:
     assert pedido_de_pago(_cuerpo(fecha_de_transferencia="2026-11-18"), HOY)
     assert pedido_de_pago(_cuerpo(fecha_de_transferencia="2025-11-18"), HOY)

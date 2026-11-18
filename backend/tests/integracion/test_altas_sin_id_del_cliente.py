@@ -82,6 +82,9 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # Change 5 `importacion-desde-excel`: multipart también; el único id que hay en la respuesta
     # (`importacion_id`) lo genera el servidor y el formulario no tiene campos de id.
     ("/api/complejos/{complejo_id}/importaciones", "POST"),
+    # Cambio 8 `pagos-informados` (H-018): multipart también; el `comprobante_id` lo genera el
+    # servidor.
+    ("/api/complejos/{complejo_id}/pagos/lectura", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
@@ -216,6 +219,17 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
     # Cambio 7 (H-015): el cuerpo del enlace es sólo la variante; el documento va en la ruta.
     ("/api/complejos/{complejo_id}/documentos/{documento_id}/enlace", "POST"): lambda mundo: {
         "variante": "completa"
+    },
+    # Cambio 8 (H-018): el cliente manda el comprobante que subió; cualquier campo que no sea del
+    # pedido, `id` incluido, es 422.
+    ("/api/complejos/{complejo_id}/pagos", "POST"): lambda mundo: {
+        "comprobante_id": str(uuid.uuid4()),
+        "banco": "Banco Ficticio",
+        "numero_de_operacion": "1",
+        "fecha_de_transferencia": "2026-10-05",
+        "monto": "10.00",
+        "cbu_origen": None,
+        "partes": [{"unidad_id": str(mundo["unidad_id"]), "importe": "10.00"}],
     },
     ("/api/complejos/{complejo_id}/cargos-particulares", "POST"): lambda mundo: {
         "unidad_id": str(mundo["unidad_id"]),
