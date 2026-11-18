@@ -115,7 +115,7 @@ services:
 
   redis:
     <<: *logs
-    image: redis:8.10.2-trixie
+    image: redis:8.10.3-trixie
     # Primer argumento "redis-server" (no "sh -c ..."): así el entrypoint de
     # la imagen baja a usuario redis (uid 999) con `setpriv`, no `gosu`
     # (hallazgo real, tarea 3.2: `docker-entrypoint.sh` de esta imagen usa
