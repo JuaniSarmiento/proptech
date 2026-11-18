@@ -81,14 +81,19 @@ describe("api-falsa · pagos informados", () => {
     expect(Object.values(acciones.por_edificio).flat()).not.toContain("informar_pago");
   });
 
-  it("la lista tiene cuatro pagos, uno por estado, con su motivo", async () => {
+  it("la lista tiene un pago por estado, con su motivo, y el reimputado de H-026", async () => {
     const lista = await (await leer(pagos())).json();
     expect(lista.map((p: { estado: string }) => p.estado)).toEqual([
       "informado",
       "confirmado",
       "rechazado",
       "revertido",
+      "confirmado",
     ]);
+    expect(lista[4]).toMatchObject({
+      numero_de_operacion: "11110005",
+      partes: [{ identificador: "1A", identificador_vigente: "2A" }],
+    });
     expect(lista[0]).toMatchObject({
       numero_de_operacion: "11110001",
       monto: "43350.00",
