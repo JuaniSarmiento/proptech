@@ -30,7 +30,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 | H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
-| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Pendiente |
+| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | En proceso |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Pendiente |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
@@ -1353,6 +1353,11 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N04** la falla de la IA llega al vecino como 5xx.
   - **N05** la clave aparece en un log o en una respuesta.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `b847213` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-019/CONTRATO.md`
+  (el puerto `LectorDeComprobantes`, las dependencias `lector` y `tope_de_lectura`, la validación campo por campo,
+  el adaptador `LectorOpenRouter` con su pedido exacto). Comando: `python3 aceptacion/H-019/aceptar.py
+  --sin-regresion`. Esperados: 41 de backend; antes de construir, 40 rojos por aserción y C03 verde (sin clave ya
+  responde `sin_ia` desde H-018: queda como regresión).
 
 ### H-020 · Confirmar y rechazar
 
