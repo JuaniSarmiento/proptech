@@ -547,6 +547,14 @@ class Configuracion(_ConfiguracionPostgresBase):
             raise ConfiguracionInvalida("Falta configurar: INVITACIONES_CLAVE_CIFRADO")
         return self.invitaciones_clave_cifrado
 
+    def clave_de_openrouter(self) -> str | None:
+        """La clave de OpenRouter para leer comprobantes (8, H-019, D-164), o `None` sin
+        configurar: la lectura queda `sin_ia`. El secreto sólo se abre acá (lo vigila
+        `test_configuracion_secreta`)."""
+        if self.proptech_openrouter_api_key is None:
+            return None
+        return self.proptech_openrouter_api_key.get_secret_value()
+
     def clave_de_enlaces(self) -> str:
         """Exige la clave al firmar o verificar un enlace, sin exigirla al arrancar ni al worker."""
         if self.proptech_clave_de_enlaces is None:

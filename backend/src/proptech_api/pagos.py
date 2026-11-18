@@ -58,15 +58,10 @@ def lector(request: Request) -> LectorDeComprobantes | None:
     """El lector de comprobantes con IA (OpenRouter), o `None` sin clave o sin modelo (`sin_ia`).
     Es una dependencia para que la aceptación ponga un lector falso."""
     configuracion = request.app.state.configuracion
-    if (
-        configuracion.proptech_openrouter_api_key is None
-        or not configuracion.proptech_openrouter_modelo
-    ):
+    clave = configuracion.clave_de_openrouter()
+    if clave is None or not configuracion.proptech_openrouter_modelo:
         return None
-    return LectorOpenRouter(
-        configuracion.proptech_openrouter_api_key.get_secret_value(),
-        configuracion.proptech_openrouter_modelo,
-    )
+    return LectorOpenRouter(clave, configuracion.proptech_openrouter_modelo)
 
 
 def tope_de_lectura() -> float:
