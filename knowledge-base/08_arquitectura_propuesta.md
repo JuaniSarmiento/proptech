@@ -145,6 +145,15 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   del servidor de Next, que lo pide a la API sin credenciales. Quién pide qué lo decide el servidor
   (propietario las dos variantes, inquilino sólo la sin extraordinaria).
   La imagen del backend lleva las librerías de sistema de WeasyPrint (Pango, HarfBuzz y una tipografía).
+- **Lectura del comprobante con IA** (change 8, H-019, D-164): el puerto `LectorDeComprobantes`
+  (`proptech_core.pagos.puertos`) se implementa con OpenRouter (`adaptadores/openrouter.py`, `httpx`): el pedido
+  exige proveedores sin retención (`provider: {zdr: true, data_collection: "deny", require_parameters: true}`),
+  salida `json_schema` estricta con cinco campos, sin herramientas, y sólo lleva el comprobante como URL de datos
+  y una instrucción fija (nunca la persona, la unidad ni el edificio). Se configura con
+  **`PROPTECH_OPENROUTER_API_KEY`** (`SecretStr`, sólo la API) y **`PROPTECH_OPENROUTER_MODELO`**, ambas
+  opcionales: sin ellas la lectura queda `sin_ia`, sin red. La llamada tiene un tope (20 s); si falla o se pasa,
+  la lectura es `fallida` y responde 201 igual. La propuesta se valida campo por campo (`dominio/propuesta.py`) y
+  la imagen nunca crea un pago.
 - **Cuatro roles de PostgreSQL, uno por responsabilidad** (cambio 2a, D-082, E5): el **rol de arranque**
   (`POSTGRES_USER`/`POSTGRES_PASSWORD`, el superusuario de la imagen oficial; crea y repara los otros
   tres roles con `roles.py antes`/`despues`, y es el dueño de **toda tabla de sólo agregar**: `auditoria`
