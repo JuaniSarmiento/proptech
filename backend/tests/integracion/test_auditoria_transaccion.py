@@ -54,6 +54,8 @@ from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.importar import importar
 
+from ._edificios import devolver_tabla_al_migrador
+
 pytestmark = pytest.mark.integracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
@@ -141,8 +143,7 @@ def _devolver_auditoria_al_migrador(contenedor: PostgresContainer) -> None:
                     continue
                 existe = cur.execute("SELECT to_regclass(%s)", (f"public.{tabla}",)).fetchone()
                 if existe is not None and existe[0] is not None:
-                    cur.execute(f"ALTER TABLE {tabla} OWNER TO {MIGRADOR_USER}")
-                    cur.execute(f"ALTER FUNCTION fn_{tabla}_bloqueada() OWNER TO {MIGRADOR_USER}")
+                    devolver_tabla_al_migrador(cur, tabla, MIGRADOR_USER)
             cur.execute("SELECT to_regclass('public.auditoria') IS NOT NULL")
             fila = cur.fetchone()
             if fila is not None and fila[0]:

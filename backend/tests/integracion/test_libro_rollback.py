@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from psycopg import sql
 
-from ._edificios import BaseDeEdificio
+from ._edificios import BaseDeEdificio, devolver_tabla_al_migrador
 from ._libro import LIBRO, sembrar_libro
 from .test_umbral_migracion import arranque
 
@@ -42,21 +42,13 @@ def devolver_tramos(base: BaseDeEdificio) -> None:
     with arranque(base) as c:
         c.execute("ALTER TABLE evento_de_emision OWNER TO proptech_migrador")
         for tabla in POSTERIORES_AL_LIBRO:
-            for objeto in (f"TABLE {tabla}", f"FUNCTION fn_{tabla}_bloqueada()"):
-                c.execute(f"ALTER {objeto} OWNER TO proptech_migrador")
+            devolver_tabla_al_migrador(c, tabla, "proptech_migrador")
 
 
 def devolver_libro(base: BaseDeEdificio) -> None:
     with arranque(base) as c:
         for tabla in (*LIBRO, *POSTERIORES_AL_LIBRO):
-            c.execute(
-                sql.SQL("ALTER TABLE {} OWNER TO proptech_migrador").format(sql.Identifier(tabla))
-            )
-            c.execute(
-                sql.SQL("ALTER FUNCTION {}() OWNER TO proptech_migrador").format(
-                    sql.Identifier(f"fn_{tabla}_bloqueada")
-                )
-            )
+            devolver_tabla_al_migrador(c, tabla, "proptech_migrador")
 
 
 def dump(base: BaseDeEdificio, destino: Path) -> str:

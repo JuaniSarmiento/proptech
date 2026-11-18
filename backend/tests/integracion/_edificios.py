@@ -191,3 +191,27 @@ def devolver_tablas_protegidas(contenedor: PostgresContainer, base: str, migrado
                         sql.Identifier("public", funcion[0]), sql.Identifier(migrador)
                     )
                 )
+
+
+def devolver_tabla_al_migrador(
+    ejecutor: psycopg.Connection | psycopg.Cursor, tabla: str, migrador: str
+) -> None:
+    """Como `devolver_tablas_protegidas`, para una tabla: la tabla y **todas** las funciones de sus
+    triggers, no sólo `fn_<tabla>_bloqueada` (la `0044` suma `fn_pago_informado_numero_unico`).
+    Sólo tests, con el rol de arranque."""
+    ejecutor.execute(
+        sql.SQL("ALTER TABLE {} OWNER TO {}").format(
+            sql.Identifier("public", tabla), sql.Identifier(migrador)
+        )
+    )
+    funciones = ejecutor.execute(
+        "SELECT DISTINCT p.proname FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid "
+        "WHERE t.tgrelid=to_regclass(%s) AND NOT t.tgisinternal",
+        (f"public.{tabla}",),
+    ).fetchall()
+    for funcion in funciones:
+        ejecutor.execute(
+            sql.SQL("ALTER FUNCTION {}() OWNER TO {}").format(
+                sql.Identifier("public", funcion[0]), sql.Identifier(migrador)
+            )
+        )
