@@ -1,6 +1,6 @@
 """Cálculo del interés por mora (R03, D2 del 4c), sin base."""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal, localcontext
@@ -216,3 +216,41 @@ def calcular_intereses(
             continue
         calculados.append(InteresCalculado(obligacion.id, corte, importe, tuple(tramos)))
     return tuple(calculados)
+
+
+@dataclass(frozen=True)
+class TramoGuardado:
+    desde: date
+    hasta: date
+    tasa_mensual: Porcentaje
+    forma_de_calculo: FormaDeCalculo
+
+
+def _interes_de_los_tramos(
+    tramos: Sequence[TramoGuardado], base: Callable[[date], Decimal]
+) -> Dinero:
+    """El interés de los tramos guardados con una base dada: la suma exacta de todos, redondeada
+    una sola vez (igual que `calcular_intereses`)."""
+    total = Fraction(0)
+    for tramo in tramos:
+        tasa = Fraction(tramo.tasa_mensual.decimal)
+        dias = _dias(tramo.desde, tramo.hasta)
+        if tramo.forma_de_calculo == "mes_entero":
+            _, parcial = _mes_entero(dias, base, tasa)
+        else:
+            _, parcial = _proporcional(dias, base, tasa)
+        total += parcial
+    return redondear_al_centavo(_a_decimal(total))
+
+
+def diferencia_de_interes(
+    tramos: Sequence[TramoGuardado],
+    base_antes: Callable[[date], Decimal],
+    base_despues: Callable[[date], Decimal],
+) -> Dinero:
+    """El interés de esos tramos con `base_antes` menos el de `base_despues` (E7, E9).
+
+    Los tramos traen su tasa y su forma, guardadas con el interés que se registró: nunca la
+    configuración de hoy. Cada total se redondea una sola vez. Es negativa si la base sube.
+    """
+    return _interes_de_los_tramos(tramos, base_antes) - _interes_de_los_tramos(tramos, base_despues)
