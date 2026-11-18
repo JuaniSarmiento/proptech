@@ -923,6 +923,34 @@ número no se marcan duplicadas entre sí.
   después de revertir, la función de R20 marca a la unidad si ahora tiene dos o más liquidaciones
   vencidas con saldo; revertir un pago con bonificación o ajuste de interés enlazados revierte también
   esos movimientos.
+- **Construido (8, H-022, D-163 P29)**: `POST /api/complejos/{id}/pagos/{pago_id}/reversion` con
+  `{"motivo": ...}` (3 a 500 caracteres), sólo para quien tiene `revertir_o_reimputar_pago` (el super admin y
+  el administrador principal); orden 404 del edificio, 403, 404 del pago, 422 y 409 `estado` (sólo un pago
+  `confirmado` se revierte; la segunda reversión, seguida o en carrera, es 409). En **una transacción**, con
+  los candados de las cuentas de todas las partes: (1) por cada parte, un `reversion_de_pago` (débito, mismo
+  importe, con el motivo) cuyo `corrige_a` es el movimiento **vigente** de la parte (el `pago`, o el
+  `reimputacion` crédito si se reimputó): el par deja de contar y la unidad vuelve a deber lo que debía sin
+  ese pago; (2) un contra-asiento (`correccion` débito) por cada `ajuste_de_interes` enlazado al pago (R11),
+  que devuelve el interés que compensaba; (3) **P29**: el interés de los días ya cobrados con el pago
+  adentro. Cada interés de una emisión con período posterior a la fecha de la transferencia (D-166) se
+  recalcula sobre sus mismos tramos guardados, con la base que queda **sin** el pago; si lo recalculado supera
+  lo que la cuenta registra neto de ese interés (el interés más sus `interes_por_reversion` menos sus ajustes
+  que cuentan), la diferencia es un movimiento nuevo **`interes_por_reversion`** (débito, componente
+  `interes`, la misma obligación, `enlazado_a` ese interés). La unidad queda **igual al centavo** que una que
+  nunca pagó. (4) El evento `revertido` con su motivo y la auditoría `revertir_pago_informado`. Cada
+  movimiento queda en `movimiento_de_pago` con su papel (`reversion_de_pago` para las reversiones y los
+  contra-asientos de ajustes, `interes_por_reversion`). El pago original no se borra ni cambia: sigue en
+  `GET .../pagos` como `revertido` con su motivo.
+- **`interes_por_reversion`** (migración `0046`): suma al interés debido de su obligación; **no genera
+  interés** (la base de capital nunca suma el componente interés, R03: sin interés sobre interés); y deja de
+  contar si deja de contar el interés al que está enlazado (interés contra-asentado o emisión anulada), como el
+  ajuste (D-085), sin contra-movimiento. Un `reversion_de_pago` no se deshace por la corrección manual (409):
+  el pago vuelve con un pago nuevo.
+- **Tests mínimos (H-022)**: el cheque rechazado devuelve la deuda y deja el pago `revertido`; el ejemplo de
+  P29 (el pago del 05/11 confirmado antes de la emisión de diciembre, que le cobró $552,50 en lugar de
+  $3.000, se revierte y el `interes_por_reversion` es de $2.447,50); el ajuste se revierte con el pago; el
+  moroso crítico según el libro; un pago repartido revierte todas sus partes; anular la emisión deja afuera al
+  `interes_por_reversion`; revertir uno no confirmado, sin motivo, sin permiso o dos veces en carrera.
 
 ## R19 · Identificación reforzada: código de unidad y CBU histórico · Vigente (D-057) · extiende R11
 

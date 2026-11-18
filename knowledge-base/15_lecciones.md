@@ -1403,3 +1403,19 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   recálculo del interés de un pago necesita la base "con el pago": se arma sumando al estado un crédito y sus
   imputaciones virtuales y se pasa a `calcular_estado`, sin una lectura nueva; la misma función de la
   diferencia sirve para "sin el pago" (E9).
+
+## L-096 · Un tipo sembrado en el vocabulario no es un tipo que el esquema deje usar, y "lo que corresponde cobrar" se compara con lo registrado neto
+
+- **Origen**: H-022 del 8 (revertir un pago), 18/11/2026.
+- **Qué pasó**: `reversion_de_pago` estaba sembrado en `tipo_de_movimiento` desde la `0023`, pero el contrato de
+  H-022 lo quería con `corrige_a` y `ck_mov_corrige_tipo` sólo admitía `corrige_a` en `correccion`: el INSERT
+  habría rebotado. Hizo falta una migración que alterara la tabla protegida `movimiento` (préstamo de
+  propiedad, L-088) y que ajustara tres tests estructurales atados al estado anterior (el préstamo de
+  `movimiento`, el rollback con `0046` en la cabeza y el catálogo de tipos anticipados, que ahora exige
+  `corrige_a` y motivo). Para el `interes_por_reversion`, comparar lo recalculado sin el pago con el interés
+  bruto habría cobrado de más cuando hay otro pago con su ajuste sobre el mismo interés: se compara con lo
+  registrado **neto** (el interés más sus complementos menos sus ajustes que cuentan).
+- **Regla**: antes de prometer un uso de un tipo anticipado, probar un INSERT con la forma real contra los
+  `CHECK` de la tabla, no sólo contra el vocabulario. Y un movimiento que completa un interés se calcula como
+  "lo que corresponde menos lo registrado neto", nunca como una diferencia entre bases sin mirar lo que ya
+  se compensó. Lo que corrige un movimiento (la reversión de un pago) no se deshace por la corrección manual.

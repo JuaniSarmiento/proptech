@@ -1259,6 +1259,12 @@ D-153).
   un `ajuste_de_interes` exacto por cada interés de una emisión posterior a la transferencia, recalculado sobre
   sus tramos guardados con `diferencia_de_interes`; la cuenta queda igual que la de quien pagó a tiempo; lo que
   no entra en el interés vuelve como `ajuste_sin_destino`; sin migraciones, D-166).
+- **Construido con Rein**: H-022 `revertir un pago` (`POST .../pagos/{pago_id}/reversion`, sólo super admin y
+  administrador principal; un `reversion_de_pago` por parte que corrige el movimiento vigente, el contra-asiento
+  de cada ajuste enlazado y el `interes_por_reversion` de P29 por la diferencia de los días ya cobrados con el
+  pago adentro, así la unidad queda igual al centavo que una que nunca pagó; evento `revertido` y auditoría
+  `revertir_pago_informado`, todo en una transacción; migración `0046`: el tipo nuevo, `reversion_de_pago` con
+  `corrige_a` y motivo, y el préstamo de propiedad de `movimiento`, D-115.3).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

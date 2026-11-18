@@ -798,15 +798,18 @@ que un consumidor de otro módulo necesita.
   `condonacion/credito`, `ajuste_de_interes/credito`, `bonificacion/credito`, `reimputacion/debito`,
   `reimputacion/credito`, `baja_de_deuda/credito`, `saldo_inicial/credito`,
   `reversion_de_pago/debito`, `traslado/debito`, `traslado/credito` (E14; restituye `traslado`,
-  omitido en el primer propose, AR-2).
+  omitido en el primer propose, AR-2), más `interes_por_reversion/debito` (migración `0046`, H-022: el
+  interés de los días ya cobrados con un pago adentro que se revirtió, R18, P29; exige obligación, componente
+  `interes` y `enlazado_a` el interés que completa, `ck_mov_interes_por_reversion`).
 - **Constraints principales** (CHECK acotados por tipo conocido, no columnas duplicadas del
   vocabulario, D1): `interes` exige obligación, componente `interes` y `corte`, todos NOT NULL, con
   único `uq_mov_interes(obligacion_id, corte)`; `condonacion`/`ajuste_de_interes` exigen obligación y
   componente `interes`; `bonificacion` exige obligación y componente `ordinaria`; todo tipo distinto
   de `interes` exige `operacion_id NOT NULL` (único `uq_mov_operacion`, idempotencia E4);
   `correccion` exige motivo normalizado; un débito de corrección exige `corrige_a`; un crédito de
-  corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion`,
-  misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
+  corrección sin `corrige_a` referencia una obligación existente. `corrige_a` sólo en `correccion` y, desde
+  la `0046` (H-022), en `reversion_de_pago`, que además exige motivo normalizado
+  (`ck_mov_reversion_de_pago`); misma cuenta e importe que el original (`uq_mov_corrige_a`, a lo sumo un contra-asiento por
   movimiento, E6/D-122). **La base no distingue blanco corregible de no corregible ni sentido
   opuesto**: eso lo valida la aplicación, bajo candado, con test (E6).
 - **`UPDATE`/`DELETE` rebota también por SQL directo** (tabla protegida); ninguna obligación queda con
@@ -873,7 +876,9 @@ eventos, `informado`; `reimputado` sigue `confirmado`).
   `motivo` (1 a 500 y no en blanco, salvo en `confirmado`, que puede no llevarlo), `registrado_por` y
   `registrado_en`. Índices únicos parciales: **un solo `confirmado` o `rechazado` por pago** y un solo
   `revertido`, así que un doble clic no confirma dos veces. Un rechazo es un INSERT: libera el número.
-- **`movimiento_de_pago`** (la llena H-020, un `pago` por parte; los demás papeles, H-021 en adelante): `pago_id`, `movimiento_id` (del libro) y `papel`
+- **`movimiento_de_pago`** (la llena H-020, un `pago` por parte; H-021 el `ajuste_de_interes`; H-022 el
+  `reversion_de_pago`, que también cubre el contra-asiento de cada ajuste, y el `interes_por_reversion`; la
+  `reimputacion`, H-023): `pago_id`, `movimiento_id` (del libro) y `papel`
   (`pago`, `ajuste_de_interes`, `reversion_de_pago`, `interes_por_reversion`, `reimputacion`), para revertir
   todo lo enlazado sin buscar por motivo (D-082, D-083).
 - **`cbu_de_unidad`** (la llena H-020 al confirmar un pago con `cbu_origen`, una fila por unidad de las partes): `unidad_id`, `cbu` (22 dígitos) y `pago_id` de origen
