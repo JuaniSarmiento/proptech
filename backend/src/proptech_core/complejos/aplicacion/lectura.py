@@ -7,6 +7,7 @@ otra administración (RLS ya lo filtró). El resto del dominio de complejos
 `acceso` (D-021, frontera verificada en `test_fronteras_de_modulos.py`).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -106,6 +107,19 @@ def cargar_unidad(sesion: Session, unidad_id: UUID) -> UnidadLeida | None:
         coeficiente=fila.coeficiente,
         superficie_m2=fila.superficie_m2,
     )
+
+
+def identificadores_de_unidades(sesion: Session, unidad_ids: Sequence[UUID]) -> dict[UUID, str]:
+    """El identificador (`1A`) de cada unidad pedida, en una consulta. Para `pagos`, que lista las
+    partes de un pago sin escribir SQL sobre `unidad` (frontera vigilada por
+    `test_fronteras_de_modulos.py`). Una unidad de otra administración no aparece (RLS)."""
+    if not unidad_ids:
+        return {}
+    filas = sesion.execute(
+        text("SELECT id, identificador FROM unidad WHERE id = ANY(CAST(:ids AS uuid[]))"),
+        {"ids": [str(u) for u in unidad_ids]},
+    )
+    return {UUID(str(fila.id)): str(fila.identificador) for fila in filas}
 
 
 def cargar_unidad_por_identificador(

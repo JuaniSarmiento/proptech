@@ -158,6 +158,11 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos", "GET"),
     ("/api/complejos/{complejo_id}/liquidaciones/{liquidacion_id}/documentos/reproceso", "POST"),
     ("/api/complejos/{complejo_id}/documentos/{documento_id}/enlace", "POST"),
+    # --- Cambio 8 `pagos-informados` (H-018) ---
+    ("/api/complejos/{complejo_id}/pagos/lectura", "POST"),
+    ("/api/complejos/{complejo_id}/pagos", "POST"),
+    ("/api/complejos/{complejo_id}/pagos", "GET"),
+    ("/api/complejos/{complejo_id}/pagos/{pago_id}", "GET"),
 }
 
 
@@ -316,6 +321,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
+        "pago_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -498,6 +504,25 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     if ruta.endswith("/enlace"):
         # Cambio 7 (H-015): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
         return cliente.post(ruta_resuelta, json={"variante": "completa"})
+    if ruta.endswith("/pagos/lectura"):
+        # Cambio 8 (H-018): multipart; el 404 y el 403 van antes de leer el archivo.
+        return cliente.post(
+            ruta_resuelta, files={"archivo": ("c.png", b"contenido-de-prueba", "image/png")}
+        )
+    if ruta.endswith("/pagos") and metodo == "POST":
+        # Cambio 8 (H-018): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "comprobante_id": str(uuid.uuid4()),
+                "banco": "Banco Ficticio",
+                "numero_de_operacion": "1",
+                "fecha_de_transferencia": "2026-10-05",
+                "monto": "10.00",
+                "cbu_origen": None,
+                "partes": [{"unidad_id": str(uuid.uuid4()), "importe": "10.00"}],
+            },
+        )
     if ruta.endswith("/cargos-cobrados-de-menos"):
         return cliente.post(
             ruta_resuelta,
@@ -834,6 +859,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "cargo_id": uuid.uuid4(),
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
+        "pago_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []

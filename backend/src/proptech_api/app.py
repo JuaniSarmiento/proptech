@@ -17,6 +17,7 @@ from proptech_api import (
     importaciones,
     invitaciones,
     liquidaciones,
+    pagos,
     personal,
     salud,
     sesion,
@@ -49,6 +50,7 @@ from proptech_core.importacion.aplicacion.errores import ArchivoYaImportado, Sin
 from proptech_core.importacion.dominio.padron import PadronInvalido
 from proptech_core.importacion.dominio.plantilla import ArchivoInvalido
 from proptech_core.liquidacion.aplicacion import errores as errores_de_liquidacion
+from proptech_core.pagos.aplicacion import errores as errores_de_pagos
 
 _logger = logging.getLogger("proptech_api.app")
 
@@ -178,6 +180,7 @@ def crear_app() -> FastAPI:
     app.include_router(importaciones.router)
     app.include_router(liquidaciones.router)
     app.include_router(liquidaciones.router_de_descarga)
+    app.include_router(pagos.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.
@@ -207,6 +210,12 @@ def crear_app() -> FastAPI:
         errores_de_liquidacion.SinPermiso,
     ):
         app.add_exception_handler(tipo_de_liquidacion, liquidaciones.manejar_error_de_liquidacion)
+    for tipo_de_pagos in (
+        errores_de_pagos.NoEncontrado,
+        errores_de_pagos.Conflicto,
+        errores_de_pagos.EntradaInvalida,
+    ):
+        app.add_exception_handler(tipo_de_pagos, pagos.manejar_error_de_pagos)
     for tipo_de_importacion in (SinPermiso, ArchivoYaImportado, ArchivoInvalido, PadronInvalido):
         app.add_exception_handler(tipo_de_importacion, importaciones.manejar_error_de_importacion)
     return app
