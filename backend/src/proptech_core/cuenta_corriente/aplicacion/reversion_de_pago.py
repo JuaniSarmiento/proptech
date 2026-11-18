@@ -14,8 +14,8 @@ cuenta del pago, con los candados ya tomados por el llamador y en su transacció
    diferencia es un `interes_por_reversion` enlazado a ese interés. La cuenta queda igual al
    centavo que la de quien nunca pagó.
 
-Reimputar (H-023, R25) usa el mismo trabajo por cuenta para el origen, con un `reimputacion` débito en
-vez del `reversion_de_pago` (`reimputar_desde`); el destino lo acredita el llamador.
+Reimputar (H-023, R25) usa el mismo trabajo por cuenta para el origen, con un `reimputacion`
+débito en vez del `reversion_de_pago` (`reimputar_desde`); el destino lo acredita el llamador.
 
 Un `interes_por_reversion` no genera interés (la base de capital nunca suma el componente interés,
 R03) y deja de contar si su interés deja de contar (D-085).
