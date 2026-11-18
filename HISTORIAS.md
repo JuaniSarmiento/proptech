@@ -37,7 +37,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Lista |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Lista |
-| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | En proceso |
+| H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1675,6 +1675,19 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
     "43350.12".
   - **N03** una vecina ve "Informar un pago" de la bandeja, o la bandeja.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `ed8276f`. Contrato en `aceptacion/H-026/CONTRATO.md`. Comando: `python3 aceptacion/H-026/aceptar.py
+  --sin-regresion`. Esperados: 3 de backend y 12 en navegador; antes de construir, 12 rojos por aserción y N01 a N03 verdes
+  (guardas de regresión). Antes de congelar, C03 se cambió a medir posiciones (con `innerText` pasaba sin reproducir el
+  defecto de la demo) y C06 a esperar el link antes de hacer clic (fallaba por timeout).
+- Construcción (Sonnet, una tanda, sin migraciones): `380d1b6` la unidad vigente de cada parte
+  (`cuenta_corriente/aplicacion/ubicacion_de_pago.py`, sigue la cadena de reimputaciones; `pagos` la pide por `aplicacion`),
+  `7e4fe30` el menú por `ver_configuracion_del_edificio`, `montoArgentinoParaApi` (sólo formato), el motivo en su renglón,
+  "Ahora en X" y reimputar desde la vigente, "Informar un pago" desde la bandeja (`pagos/informar`), `7076882` ficha 8,
+  HU-V4, HU-A6 y L-101. **Para la demo**: la vecina ve el identificador de la unidad a la que se reimputó su pago (sólo
+  dónde quedó, ningún saldo); `/pagos/informar` no tiene chequeo de permiso del servidor (lo hace la pantalla y la API al
+  enviar); `impeccable detect` no se pudo correr (su script no está en el repo).
+- Evidencia (18/11/2026): `python3 aceptacion/H-026/aceptar.py --codigo 7076882 --sin-regresion` desde `ed8276f`: **3/3 de
+  backend y 12/12 en navegador**, C01 a C07, N01 a N03 y C10 PASA, 0 rojos. El constructor corrió además H-025 (5/5 y 13/13).
 
 ## Plantilla de historia
 
