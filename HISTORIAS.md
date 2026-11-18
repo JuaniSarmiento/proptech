@@ -32,8 +32,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Lista |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Lista |
-| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | En proceso |
-| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
+| H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
+| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | En proceso |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Pendiente |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Pendiente |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
@@ -1459,6 +1459,16 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `ajuste_sin_destino` en la respuesta, `diferencia_de_interes` y `TramoGuardado` puros). Comando:
   `python3 aceptacion/H-021/aceptar.py --sin-regresion`. Esperados: 13 de backend; sobre el código de H-020, 11 rojos por
   aserción y C04 y N05 verdes (no ajustar cuando no corresponde ya se cumple: quedan como regresión).
+- Construcción (Sonnet, una tanda): `002c994` `diferencia_de_interes` y `TramoGuardado` puros (7 unitarios vistos
+  fallar con un stub en $0,00; reusan `_proporcional` y `_mes_entero`, así redondean como la emisión), `a595723` el
+  ajuste antes del pago (`cuenta_corriente/aplicacion/ajuste_de_interes.py`, con el pago simulado en las dos fases;
+  `registrar_credito` acepta `enlazado_a`), `066866f` R11, ficha 8 y L-095. Decisiones del constructor: la auditoría no
+  lleva el monto del ajuste sin destino (D9: el detalle nunca lleva montos); la `fecha_valor` del ajuste es la del corte
+  del interés que compensa. **Riesgo anotado (deuda)**: el ajuste se calcula con la fase 2 de R04 sobre el estado de
+  antes del ajuste; si el sobrante de un pago grande cae en capital de obligaciones posteriores, el ajuste puede quedar
+  levemente corto. Ningún test lo cubre.
+- Evidencia (18/11/2026): `python3 aceptacion/H-021/aceptar.py --codigo 066866f --sin-regresion` desde `dc5fbfc`: **13/13**,
+  C01 a C09, N01 a N05, EST y SPEC (3 escenarios) PASA, 0 rojos. El constructor corrió además H-020 (27/27).
 
 ### H-022 · Revertir un pago
 
@@ -1489,6 +1499,12 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N05** quien no tiene `revertir_o_reimputar_pago` revierte: algo distinto de 403.
   - **N06** revertir dos veces en carrera deja dos reversiones.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `c5e08e3` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-022/CONTRATO.md` (la
+  reversión del movimiento vigente, el contra-asiento de los ajustes, `interes_por_reversion` con `diferencia_de_interes`
+  sin el pago, su exclusión como la del ajuste, auditoría `revertir_pago_informado`, sólo SA y AP). Comando:
+  `python3 aceptacion/H-022/aceptar.py --sin-regresion`. Esperados: 20 de backend; sobre el código de H-021, 20 rojos por
+  aserción (C07 buscaba la migración por el nombre del tipo y encontraba la `0044`, que lo admite como papel: antes de
+  congelar se afinó a la que lo siembra en `tipo_de_movimiento`).
 
 ### H-023 · Reimputar un pago a la unidad correcta
 
