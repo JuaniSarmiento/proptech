@@ -35,7 +35,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
 | H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | En proceso |
-| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Pendiente |
+| H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | En proceso |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -1569,6 +1569,10 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
     algo distinto de 404.
   - **N03** el comprobante tiene una dirección pública o se baja sin token.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `1e6e461` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-024/CONTRATO.md` (el enlace y
+  la descarga, la firma compartida con tipo, `firmar_enlace_del_comprobante`, el control con su `detalle`). Comando:
+  `python3 aceptacion/H-024/aceptar.py --sin-regresion` (corre siempre H-012 y H-015 del 7, C04). Esperados: 13 de backend;
+  sobre el código de H-022, 12 rojos por aserción y `test_c03_sin_pagos_no_aparece` verde (queda como regresión).
 
 ### H-025 · Las pantallas de pagos
 
