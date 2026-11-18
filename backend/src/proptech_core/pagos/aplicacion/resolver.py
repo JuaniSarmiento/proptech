@@ -319,11 +319,12 @@ def revertir_pago_confirmado(
     cuerpo: Any,
     request_id: UUID,
 ) -> str:
-    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado
-    (409). El libro bloquea las cuentas de todas las partes y escribe las reversiones (`reversion_de_pago` por
-    parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una con
-    su fila en `movimiento_de_pago`; después, el evento `revertido` con su motivo y la auditoría.
-    Todo en la transacción del llamador: si falla un paso no queda ninguno."""
+    """Revierte un pago confirmado (H-022): el pago (404), el motivo (422), el estado (409).
+
+    El libro bloquea las cuentas de todas las partes y escribe las reversiones (`reversion_de_pago`
+    por parte, el contra-asiento de cada ajuste y, por P29, el `interes_por_reversion`), cada una
+    con su fila en `movimiento_de_pago`; después, el evento `revertido` con su motivo y la
+    auditoría. Todo en la transacción del llamador: si falla un paso no queda ninguno."""
     pago = _cargar(sesion, complejo_id, pago_id)
     motivo = _motivo(cuerpo)
     _tomar_el_pago(sesion, identidad, pago_id)
