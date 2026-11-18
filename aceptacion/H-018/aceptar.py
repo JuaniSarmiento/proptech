@@ -99,7 +99,8 @@ def copiar_tests(destino: Path, local: bool) -> None:
     if not ACEPTACION_SHA:
         sys.exit("ACEPTACION_SHA vacío: la aceptación no está congelada (usar --local para escribirla)")
     copiar_desde(ACEPTACION_SHA, CARPETA, destino / DESTINO)
-    copiar_desde(ACEPTACION_SHA, CARPETA_E2E, destino / DESTINO_E2E, (".spec.ts",))
+    if E2E_ESPERADOS:  # una historia sin pantalla no tiene carpeta e2e en su SHA
+        copiar_desde(ACEPTACION_SHA, CARPETA_E2E, destino / DESTINO_E2E, (".spec.ts",))
 
 
 def casos_de_junit(informe: Path) -> list[dict[str, str]]:

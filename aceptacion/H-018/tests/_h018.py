@@ -336,13 +336,17 @@ def del_libro(m: Mundo) -> dict[str, tuple[int, str]]:
 
 
 def filas_de(m: Mundo, tabla: str) -> int:
-    """Filas de una tabla de pagos, con el superusuario (0 si la tabla todavía no existe)."""
+    """Filas de una tabla de pagos **de la administración de este mundo**, con el superusuario (0 si la tabla
+    todavía no existe). La base es de alcance módulo y las tablas son de sólo agregar: contar todas las
+    administraciones arrastraría las filas de los tests anteriores."""
     c = m.base.contenedor
     with psycopg.connect(host=c.get_container_host_ip(), port=c.get_exposed_port(5432), dbname=m.base.nombre,
                          user=c.username, password=c.password, autocommit=True) as conexion:
         existe = conexion.execute("SELECT to_regclass(%s)", (f"public.{tabla}",)).fetchone()
         if existe is None or existe[0] is None:
             return 0
-        fila = conexion.execute(f"SELECT count(*) FROM public.{tabla}").fetchone()  # noqa: S608
+        fila = conexion.execute(
+            f"SELECT count(*) FROM public.{tabla} WHERE administracion_id = %s", (m.admin,)  # noqa: S608
+        ).fetchone()
         assert fila is not None
         return int(fila[0])
