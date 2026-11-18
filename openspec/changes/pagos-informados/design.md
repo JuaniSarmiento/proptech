@@ -121,7 +121,7 @@ entre dos pedidos se traduce a 409 `{"detail": "conflicto", "campo": "numero_de_
   registra un crédito `pago` con `fecha_valor` = fecha de la transferencia y un `operacion_id` derivado del
   pago y la parte (UUID v5), así que repetir la confirmación es un replay y no duplica.
 - **Orden de imputación**: el pago se imputa con R04 **a la fecha de la transferencia**: primero a la deuda
-  que existía ese día (obligaciones e intereses registrados hasta esa fecha) y lo que sobra, con R04 sobre
+  que existía ese día (la de las emisiones con período hasta esa fecha, D-166) y lo que sobra, con R04 sobre
   el resto, como lo habría imputado la emisión siguiente; lo que sobra después queda como crédito a favor
   (R05). Así un pago confirmado tarde termina imputado igual que si se hubiera confirmado el día de la
   transferencia.
@@ -132,8 +132,8 @@ entre dos pedidos se traduce a 409 `{"detail": "conflicto", "campo": "numero_de_
 
 ### E7 · El ajuste de interés (R11, D-082, D-084, D-085)
 
-- Al confirmar, por cada parte: cada interés que cuenta en la cuenta, **registrado después de la fecha de
-  la transferencia**, se recalcula sobre sus mismos tramos (la tasa, la forma y la gracia guardadas en
+- Al confirmar, por cada parte: cada interés que cuenta en la cuenta, **de una emisión con período
+  posterior a la fecha de la transferencia** (D-166), se recalcula sobre sus mismos tramos (la tasa, la forma y la gracia guardadas en
   `tramo_de_interes`) con la base que habría tenido con el pago imputado como dice E6. Si lo registrado
   supera lo recalculado, la diferencia es un `ajuste_de_interes` con destino fijo ese interés, `enlazado_a`
   ese movimiento de interés (si su emisión se anula, el ajuste deja de contar con él, D-085) y enlazado al
@@ -158,8 +158,8 @@ entre dos pedidos se traduce a 409 `{"detail": "conflicto", "campo": "numero_de_
 
 ### E9 · El interés de un pago revertido o reimputado (P29, D-163)
 
-Al sacar un pago de una unidad, cada interés que cuenta y que se calculó con ese pago adentro (registrado
-después de la fecha de la transferencia) se recalcula sin él sobre sus mismos tramos. La diferencia es un
+Al sacar un pago de una unidad, cada interés que cuenta y que se calculó con ese pago adentro (de una
+emisión con período posterior a la fecha de la transferencia, D-166) se recalcula sin él sobre sus mismos tramos. La diferencia es un
 movimiento nuevo **`interes_por_reversion`** (débito, componente interés, sobre la misma obligación,
 `enlazado_a` ese interés): si su emisión se anula, deja de contar con él, igual que el ajuste (D-085). El
 interés sigue siendo simple: la base de `_base_del_dia` nunca suma componentes de interés (R03). Es un tipo

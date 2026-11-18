@@ -12,7 +12,8 @@ D-082, D-084, D-085, E6, E7).
 
 `POST .../pagos/{id}/confirmacion` SHALL registrar por cada parte un crédito `pago` con `fecha_valor` igual a
 la fecha de la transferencia, imputado con R04 primero a la deuda que existía ese día y después al resto;
-el excedente queda como crédito a favor (R05). Deja el evento `confirmado`, guarda el CBU de origen si se
+el excedente queda como crédito a favor (R05). "La deuda que existía ese día" es la de las emisiones con
+período hasta esa fecha (D-166). Deja el evento `confirmado`, guarda el CBU de origen si se
 conoce y audita, todo en una transacción. Requiere `confirmar_pago_informado`.
 
 #### Scenario: Confirmado tarde, sin interés por la demora
@@ -53,7 +54,7 @@ escribir en el libro; el vecino ve el motivo. Rechazar uno confirmado da 409.
 
 ### Requirement: El ajuste del interés cobrado de más
 
-Al confirmar, cada interés que cuenta y que se registró después de la fecha de la transferencia SHALL
+Al confirmar, cada interés que cuenta, de una emisión con período posterior a la fecha de la transferencia (D-166), SHALL
 recalcularse sobre sus mismos tramos (con su tasa, forma y gracia guardadas) con la base que habría tenido
 con el pago; si lo registrado supera lo recalculado, la diferencia se registra antes que el pago como
 `ajuste_de_interes` con destino ese interés, `enlazado_a` ese interés y enlazado al pago. Lo que no entra

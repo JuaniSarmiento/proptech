@@ -3437,3 +3437,21 @@ registrado como tal en su momento.)*
   un instante después: el vecino reintenta y entra.
 - **Quién**: el constructor de H-018, por pedido del orquestador (CRITICAL, bajo la firma por adelantado del
   8); Juani lo revisa en la demo de H-018.
+
+## D-166 · "Lo que existía el día de la transferencia" se mide por el período de la emisión (18/11/2026, 8)
+
+- **Contexto**: E6 y E7 del diseño del 8 imputan un pago con R04 **a la fecha de la transferencia** (primero la
+  deuda que existía ese día) y ajustan el interés que se registró después. Escritas con "registrado hasta esa
+  fecha", dependían del reloj: una emisión cargada con atraso, o la de un test, tiene un `registrado_en` que no
+  dice desde cuándo existe esa deuda.
+- **Decisión**: una obligación y los intereses de una emisión **existen desde el primer día del período de esa
+  emisión**. Al confirmar un pago con fecha de transferencia `d`:
+  - **Fase 1**: R04 sobre la deuda calculada como si las emisiones con período posterior a `d` no existieran
+    (ni sus obligaciones ni sus intereses).
+  - **Fase 2**: lo que sobra, R04 sobre la deuda real que queda; lo que sobra después, crédito a favor (R05).
+  - El **ajuste** de E7 recalcula los intereses de las emisiones con período posterior a `d`.
+  Las obligaciones de saldo inicial (sin emisión) existen siempre.
+- **Descartado**: `registrado_en` (depende de cuándo se cargó, no de cuándo se debía) y la fecha de vencimiento
+  (una expensa emitida y no vencida ya es deuda que un pago puede cubrir).
+- **Quién**: el orquestador, al escribir la aceptación de H-020, bajo la firma por adelantado del 8 (E6 y E7 con
+  la recomendación del orquestador). Juani la revisa en la demo.
