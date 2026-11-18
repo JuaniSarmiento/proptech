@@ -1,6 +1,7 @@
 """3.5 · `corregir` contra PostgreSQL real (D7, E6, E7, RC-04, RC-12, BE-2, BE-5.1, AN-08)."""
 
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -101,7 +102,7 @@ def pagar(
     importe: str,
     fecha_valor: date,
     dia: int,
-    **extra: object,
+    **extra: Any,
 ) -> UUID:
     return creditos.registrar_credito(
         s,
