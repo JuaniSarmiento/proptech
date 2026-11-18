@@ -33,8 +33,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Lista |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Lista |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
-| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | En proceso |
-| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Pendiente |
+| H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
+| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | En proceso |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Pendiente |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
 
@@ -1505,6 +1505,17 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   `python3 aceptacion/H-022/aceptar.py --sin-regresion`. Esperados: 20 de backend; sobre el código de H-021, 20 rojos por
   aserción (C07 buscaba la migración por el nombre del tipo y encontraba la `0044`, que lo admite como papel: antes de
   congelar se afinó a la que lo siembra en `tipo_de_movimiento`).
+- Construcción (Sonnet, una tanda): `0b32899` la exclusión de `interes_por_reversion` como la del ajuste (2 unitarios
+  vistos fallar), `ef5d260` la `0046` (siembra el tipo y `revertir_pago_informado`, deja que `reversion_de_pago` lleve
+  `corrige_a` con dos `CHECK` nuevos, con `PRESTA_PROPIEDAD` sobre `movimiento`, L-088), `864f459` revertir con la reversión
+  del ajuste y el interés de P29 (`cuenta_corriente/aplicacion/reversion_de_pago.py`), `d0db10a` R18, `04`, ficha 8 y
+  L-096, `d688bb7` el libro decide qué movimiento del pago está vigente (frontera: `pagos` no lee `movimiento`),
+  `22834f9` estilo. Decisiones del constructor: P29 compara contra el interés **neto** (con sus ajustes y sus intereses
+  por reversión, para no cobrar dos veces si dos pagos tardíos tocan el mismo interés: **sin test**, deuda); un interés
+  importado sin tramos no se recalcula; una corrección manual no puede deshacer un `reversion_de_pago` (409, con test).
+- Evidencia (18/11/2026): `python3 aceptacion/H-022/aceptar.py --codigo 22834f9 --sin-regresion` desde `c5e08e3`: **20/20**, C01
+  a C07, N01 a N06, KB, EST y SPEC (4 escenarios) PASA, 0 rojos. El constructor corrió además H-021 (13/13) y H-020
+  (27/27).
 
 ### H-023 · Reimputar un pago a la unidad correcta
 
@@ -1532,6 +1543,10 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   - **N03** reimputar sin motivo: 422.
   - **N04** dos reimputaciones en carrera de la misma parte dejan dos movimientos.
 - Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `3c3bb8d` (bajo la firma por adelantado del 8). Contrato en `aceptacion/H-023/CONTRATO.md` (el orden
+  de validaciones, la unidad vigente de cada parte, el destino por `registrar_pago` para poder hacerlo fallar, la
+  auditoría `reimputar_pago_informado`). Comando: `python3 aceptacion/H-023/aceptar.py --sin-regresion`. Esperados: 16 de
+  backend; sobre el código de H-022, 16 rojos por aserción.
 
 ### H-024 · El comprobante con link firmado y el control de pagos sin confirmar
 
