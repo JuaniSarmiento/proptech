@@ -32,8 +32,8 @@ def test_antes_presta_la_tabla_mientras_la_migracion_esta_pendiente(
 
     base.roles("antes")
     assert _dueno(base, "evento_de_emision") == migrador, "con la 0042 pendiente, se presta"
-    assert _dueno(base, "movimiento") == base.contenedor.username, (
-        "sólo lo que la migración declara"
+    assert _dueno(base, "imputacion") == base.contenedor.username, (
+        "sólo lo que las migraciones pendientes declaran"
     )
     base.migrar("upgrade", "head")
     base.roles("despues")
