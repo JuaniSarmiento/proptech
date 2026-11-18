@@ -28,7 +28,7 @@ from pathlib import Path
 RAMA = "8-pagos-informados"
 CAMBIO = "pagos-informados"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "b84721366fbb7ac9f7a303de675da6ecb303c757"
 CARPETA = "aceptacion/H-019/tests"
 CARPETA_E2E = "aceptacion/H-019/e2e"
 DESTINO = "backend/tests/integracion/aceptacion_h019"
