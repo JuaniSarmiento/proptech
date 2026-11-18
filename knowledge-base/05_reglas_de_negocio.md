@@ -862,7 +862,20 @@ número no se marcan duplicadas entre sí.
   extracto si existe), no la de confirmación. Es la que cuenta para los intereses (R03). Si entre la
   transferencia y la confirmación hubo una emisión que ya registró interés por esos días, al confirmar
   se registra automáticamente un **ajuste** (crédito con motivo, R08) por el interés cobrado de más
-  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**. El ajuste sigue al interés
+  (D-082, a validar con un administrador), **enlazado a ese pago y a la emisión cuyo interés compensa**.
+  **Cómo se calcula** (H-021, E7): al confirmar, por cada parte y **antes** de registrar el pago (para que
+  R04 no use el pago en un interés que se compensa) y en la misma transacción, cada interés que cuenta y
+  que es de una emisión con período posterior a la fecha de la transferencia (D-166) se recalcula sobre
+  **sus mismos tramos** (`tramo_de_interes`, con la tasa, la forma y la gracia guardadas con ese interés,
+  nunca la configuración de hoy) con la base que habría tenido con el pago imputado como en la
+  confirmación: es la función pura `diferencia_de_interes(tramos, base_antes, base_despues)` de
+  `cuenta_corriente/dominio/intereses.py`, que redondea una sola vez cada total como la emisión. Si la
+  diferencia es positiva se registra un `ajuste_de_interes` con destino ese interés (`enlazado_a` él, fila
+  en `movimiento_de_pago` con papel `ajuste_de_interes`). Si el interés ya no tiene residual que lo
+  absorba (otro crédito lo pagó), se registra hasta lo que entra y la respuesta suma
+  `"ajuste_sin_destino": "<importe>"` (sólo si hay) con el resto, para corregirlo con R08. Un pago
+  confirmado antes de la emisión siguiente no genera ajuste. La cuenta queda igual al centavo que la de
+  una unidad que confirmó el mismo pago a tiempo. El ajuste sigue al interés
   (D-085): si se anula la emisión que registró ese interés, el ajuste queda excluido junto con él, sin
   contra-movimiento, aunque esa misma anulación también haga caer la imputación del pago; si el pago
   se revierte o se reimputa, el ajuste se revierte con un contra-movimiento (D-083).

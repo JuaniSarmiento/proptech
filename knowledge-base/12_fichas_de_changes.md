@@ -1255,6 +1255,10 @@ D-153).
   movimiento `pago` por parte con la fecha de la transferencia y R04 en dos fases, D-166; confirmar dos veces no
   duplica y una falla a mitad no deja nada; auditoría de las dos acciones, migración `0045`). Sin el ajuste de
   interés: es H-021.
+- **Construido con Rein**: H-021 `el ajuste del interés` (al confirmar, antes del pago y en la misma transacción,
+  un `ajuste_de_interes` exacto por cada interés de una emisión posterior a la transferencia, recalculado sobre
+  sus tramos guardados con `diferencia_de_interes`; la cuenta queda igual que la de quien pagó a tiempo; lo que
+  no entra en el interés vuelve como `ajuste_sin_destino`; sin migraciones, D-166).
 - **Pantalla**: la del vecino para subir el comprobante y ver su estado (HU-V4) se construye acá, y
   pasa por la skill impeccable; el resto del portal es del cambio 11.
 - **Construye también** (deuda explícita que el 4b dejó para este cambio):

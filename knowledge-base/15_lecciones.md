@@ -1389,3 +1389,17 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   `pytest.raises`; y antes de escribir "como si no existiera X" en una regla del libro, buscar si
   `calcular_estado` ya lo expresa con un conjunto de exclusión. Dos resoluciones del mismo pago se
   serializan con un candado de transacción por pago antes de bloquear las cuentas (el mismo orden siempre).
+
+## L-095 · Antes de crear un módulo, buscá si el nombre ya existe; y un `pkill -f` mata también a tu shell
+
+- **Origen**: H-021 del 8 (el ajuste del interés), 18/11/2026.
+- **Qué pasó**: el módulo nuevo del ajuste se llamó `ajustes.py`, y ese archivo ya existía (el ajuste de saldo
+  inicial de H-010): `Write` lo pisó sin avisar y sólo `mypy` lo mostró (`no attribute COMPONENTES_DEL_AJUSTE`).
+  Se recuperó con `git checkout` porque estaba versionado. Además, `pkill -f aceptar.py` desde el mismo comando
+  que lo nombraba mató al propio shell (la línea de comandos contiene el patrón). Y el runner de aceptación
+  corre el **commit** que se le pasa: con `--codigo HEAD` y cambios sin commitear prueba el código viejo.
+- **Regla**: antes de `Write` sobre un archivo nuevo, `fd` por su nombre; commitear antes de correr una
+  aceptación; y matar un proceso por su PID, no por un patrón que aparece en el comando propio. El
+  recálculo del interés de un pago necesita la base "con el pago": se arma sumando al estado un crédito y sus
+  imputaciones virtuales y se pasa a `calcular_estado`, sin una lectura nueva; la misma función de la
+  diferencia sirve para "sin el pago" (E9).
