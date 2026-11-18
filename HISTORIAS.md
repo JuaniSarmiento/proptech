@@ -30,7 +30,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-015 | C-10 7, parte 5 | El PDF de cada unidad con links firmados que vencen | Alta / CRITICAL | Terminada |
 | H-017 | C-10 7, parte 6 | Las pantallas de la liquidación se encuentran y se usan sin escribir URLs | Baja / MEDIUM | Terminada |
 | H-018 | C-11 8, parte 1 | El vecino informa su pago con el comprobante, sin cambiar la deuda, con número único | Alta / CRITICAL | Lista |
-| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | En proceso |
+| H-019 | C-11 8, parte 2 | La IA propone los datos del comprobante y nunca decide ni frena | Media / CRITICAL | Lista |
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | En proceso |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Pendiente |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Pendiente |
@@ -1358,6 +1358,16 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   el adaptador `LectorOpenRouter` con su pedido exacto). Comando: `python3 aceptacion/H-019/aceptar.py
   --sin-regresion`. Esperados: 41 de backend; antes de construir, 40 rojos por aserción y C03 verde (sin clave ya
   responde `sin_ia` desde H-018: queda como regresión).
+- Construcción (Sonnet, una tanda): `6e8cf18` `validar_propuesta` pura (22 unitarios vistos fallar con un stub),
+  `96cc168` el puerto, `LectorOpenRouter` con ZDR y la configuración (`PROPTECH_OPENROUTER_API_KEY` y
+  `PROPTECH_OPENROUTER_MODELO`, también pasadas a la API en `infra/compose.yaml`), `c9c8cc1` la lectura en un hilo con
+  tope (20 s; el `httpx` corta a los 15 s), `0a20b77` y `0a951f4` README, `08`, ficha 8 y L-093. El PDF va como parte
+  `file` de OpenRouter: **sólo probado con transportes falsos**, se prueba con la clave de Juani en la demo. La
+  instrucción fija le dice a la IA que ignore órdenes escritas en la imagen (defensa extra; el contrato no depende de
+  eso). Sin migración nueva.
+- Evidencia (18/11/2026): `python3 aceptacion/H-019/aceptar.py --codigo b18ca89 --sin-regresion` desde `b847213`:
+  **41/41**, C01 a C06, N01 a N05, EST y SPEC (5 escenarios) PASA, 0 rojos. El constructor corrió además H-018 sobre
+  `0a951f4`: 54/54. Para `infra/.env.example` (lo agrega Juani): las dos variables comentadas como opcionales.
 
 ### H-020 · Confirmar y rechazar
 
