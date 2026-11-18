@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from proptech_core.compartido.coeficientes import Coeficiente, informar_coeficientes
+from proptech_core.compartido.reparto import clave_de_orden_natural
 from proptech_core.complejos.aplicacion.errores import NoEncontrado
 
 
@@ -120,6 +121,23 @@ def identificadores_de_unidades(sesion: Session, unidad_ids: Sequence[UUID]) -> 
         {"ids": [str(u) for u in unidad_ids]},
     )
     return {UUID(str(fila.id)): str(fila.identificador) for fila in filas}
+
+
+def listar_unidades_para_informar(
+    sesion: Session, complejo_id: UUID, unidades: frozenset[UUID] | None
+) -> list[dict[str, str]]:
+    """Las unidades del edificio para elegir en un pago, en orden natural. `unidades=None`: todas;
+    si no, sólo esas (las del vecino). Para `pagos`, que no escribe SQL sobre `unidad`."""
+    filas = sesion.execute(
+        text("SELECT id, identificador FROM unidad WHERE complejo_id = :c"), {"c": complejo_id}
+    ).all()
+    elegidas = [
+        (UUID(str(f.id)), str(f.identificador))
+        for f in filas
+        if unidades is None or UUID(str(f.id)) in unidades
+    ]
+    elegidas.sort(key=lambda u: clave_de_orden_natural(u[1], u[0]))
+    return [{"unidad_id": str(i), "identificador": nombre} for i, nombre in elegidas]
 
 
 def cargar_unidad_por_identificador(

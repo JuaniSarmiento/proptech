@@ -26,7 +26,10 @@ from proptech_core.compartido.configuracion import ConfiguracionInvalida
 from proptech_core.compartido.enlaces import EnlaceVencido
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
-from proptech_core.complejos.aplicacion.lectura import cargar_complejo
+from proptech_core.complejos.aplicacion.lectura import (
+    cargar_complejo,
+    listar_unidades_para_informar,
+)
 from proptech_core.pagos.adaptadores.openrouter import LectorOpenRouter
 from proptech_core.pagos.aplicacion import comprobantes, enlaces, informar, lectura, resolver
 from proptech_core.pagos.aplicacion.errores import Conflicto, EntradaInvalida, NoEncontrado
@@ -198,6 +201,20 @@ def pagos_del_edificio(
     asignaciones = _edificio_autorizado(sesion, identidad, complejo_id)
     return lectura.listar_pagos(
         sesion, complejo_id=complejo_id, unidades=unidades_del_alcance(asignaciones, complejo_id)
+    )
+
+
+@router.get("/complejos/{complejo_id}/pagos/unidades")
+def unidades_para_informar(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, str]]:
+    """Las unidades por las que la persona puede informar un pago (las suyas, o todas si es
+    personal de pagos). Va antes de `.../pagos/{pago_id}` para que `unidades` no se lea como id."""
+    asignaciones = _edificio_autorizado(sesion, identidad, complejo_id)
+    return listar_unidades_para_informar(
+        sesion, complejo_id, unidades_del_alcance(asignaciones, complejo_id)
     )
 
 
