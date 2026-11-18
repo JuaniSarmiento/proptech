@@ -34,7 +34,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-020 | C-11 8, parte 3 | Confirmar imputa con la fecha de la transferencia; rechazar no toca el libro | Alta / CRITICAL | Lista |
 | H-021 | C-11 8, parte 4 | Un pago confirmado tarde devuelve exacto el interés que se cobró de más | Alta / CRITICAL | Lista |
 | H-022 | C-11 8, parte 5 | Revertir un pago devuelve la deuda y el interés como si nunca hubiera entrado | Alta / CRITICAL | Lista |
-| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | En proceso |
+| H-023 | C-11 8, parte 6 | Reimputar un pago a la unidad correcta en una sola operación | Alta / CRITICAL | Lista |
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | En proceso |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Pendiente |
 
@@ -1547,6 +1547,16 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   de validaciones, la unidad vigente de cada parte, el destino por `registrar_pago` para poder hacerlo fallar, la
   auditoría `reimputar_pago_informado`). Comando: `python3 aceptacion/H-023/aceptar.py --sin-regresion`. Esperados: 16 de
   backend; sobre el código de H-022, 16 rojos por aserción.
+- Construcción (Sonnet, una tanda): `208b1b1` reimputar con la `0047` (`corrige_a` en el débito, `enlazado_a` en el crédito,
+  `reimputar_pago_informado`, `PRESTA_PROPIEDAD` sobre `movimiento`), el origen como la reversión
+  (`_revertir_en_la_cuenta` compartido) y el destino por `registrar_pago` con `tipo`, `enlazado_a` y `motivo`; `624ff56`
+  R25 vigente, ficha 8, `04` y L-097; `0c90d68` estilo. **Deuda para la demo**: si una parte se reimputa a una unidad que
+  ya tenía otra parte del mismo pago, reimputar después "desde esa unidad" mueve las dos (los ajustes no se distinguen
+  por parte); sin test, documentado en R25. El 422 de `desde_unidad_id` se detecta después de escribir el origen y lo
+  deshace el rollback (no queda nada).
+- Evidencia (18/11/2026): `python3 aceptacion/H-023/aceptar.py --codigo 0c90d68 --sin-regresion` desde `3c3bb8d`: **16/16**, C01
+  a C05, N01 a N05, KB, EST y SPEC (2 escenarios) PASA, 0 rojos. El constructor corrió además H-022 (20/20) y H-021
+  (13/13).
 
 ### H-024 · El comprobante con link firmado y el control de pagos sin confirmar
 
