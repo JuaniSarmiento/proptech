@@ -295,6 +295,16 @@ lectura y una fila `Total`; los montos son números con formato de moneda, nunca
 email, teléfono ni documento. El archivo se llama `morosidad-<edificio>-<AAAA-MM-DD>.xlsx`. Ni leer ni exportar
 escribe en el libro ni en la auditoría.
 
+**La pantalla** (H-029): `/edificios/{id}/morosidad`, la sección "Morosidad" del grupo "Liquidación" del menú del
+edificio, que sólo ve quien tiene `ver_morosidad` en él (el consejo la ve; los vecinos, no: sin la acción la
+pantalla dice qué permiso falta). Arriba, el resumen (unidades que deben, morosos críticos, total vencido, y la
+fecha hasta la que hay intereses registrados); debajo, una fila por unidad en el orden de la API, con propietarios,
+situación en palabras, total vencido, capital, intereses, liquidaciones vencidas y desde cuándo. La pantalla no suma:
+cada monto y el total del resumen son los de la API. El botón "Exportar a Excel" es un link común a
+`/edificios/{id}/morosidad/excel` (ruta de Next que pide el archivo con el token del servidor, D-036, y reenvía el
+nombre que decidió la API) y sólo aparece con `exportar_morosidad` en ese edificio: el consejo ve la lista pero no
+el botón.
+
 **Reglas relacionadas**: R20.
 
 ### HU-A9 · Corregir un error

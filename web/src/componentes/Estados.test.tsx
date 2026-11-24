@@ -67,6 +67,20 @@ describe("Estados", () => {
     await sinViolaciones(container);
   });
 
+  it("sin permiso de ver_morosidad: nombra el permiso que falta y no manda al super admin", async () => {
+    const { container } = render(
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="ver la morosidad de este edificio"
+        permisoFaltante="ver_morosidad"
+      />,
+    );
+    expect(screen.getByText(/ver la morosidad de este edificio/)).toBeTruthy();
+    expect(screen.getByText(/permiso ver_morosidad/)).toBeTruthy();
+    expect(screen.queryByText("Esto lo puede hacer el super admin de la empresa.")).toBeNull();
+    await sinViolaciones(container);
+  });
+
   it('no existe: "No encontramos este edificio" con enlace a Mis edificios (Edificio de otra administración)', async () => {
     const { container } = render(<Estados tipo="noExiste" />);
     expect(screen.getByText("No encontramos este edificio")).toBeTruthy();

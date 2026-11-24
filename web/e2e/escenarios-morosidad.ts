@@ -141,6 +141,11 @@ export function responderMorosidad(
   resto: string,
   identidad: string,
 ): boolean {
+  // La aceptación abre `liquidaciones` para ver el menú: sin liquidaciones emitidas, una lista vacía.
+  if (resto === "liquidaciones" && pedido.method === "GET") {
+    json(respuesta, 200, []);
+    return true;
+  }
   if (resto !== "morosidad" && resto !== "morosidad/excel") {
     return false;
   }

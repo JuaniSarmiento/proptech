@@ -1395,7 +1395,7 @@ D-153).
 - **Terminado cuando**: se cumplen los criterios de HU-A8.
 - **Historias (Rein)**: H-027 (la lectura y su API: `GET /api/complejos/{id}/morosidad`, la acción
   `ver_morosidad` y la antigüedad y los intereses de D-167); H-028 (el Excel: `GET /api/complejos/{id}/morosidad/excel` y la
-  acción `exportar_morosidad`, migración `0049`); H-029 (la pantalla) sigue.
+  acción `exportar_morosidad`, migración `0049`); H-029 (la pantalla `/edificios/{id}/morosidad`, la sección del menú y la ruta de Next del Excel).
 
 ### 10b · `condonacion-judicial-y-libre-deuda` · crítico
 
