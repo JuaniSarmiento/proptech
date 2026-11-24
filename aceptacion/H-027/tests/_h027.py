@@ -185,8 +185,10 @@ def mundo(base_del_edificio: BaseDeEdificio, monkeypatch: pytest.MonkeyPatch) ->
 # --- El libro ------------------------------------------------------------------------------------------
 
 
-def emitir(m: Mundo, periodo: date, unidades: tuple[str, ...] = tuple(UNIDADES)) -> UUID:
-    """Una emisión del libro con la ordinaria de `MENSUAL`, vencimiento el día 10 del período."""
+def emitir(m: Mundo, periodo: date, unidades: tuple[str, ...] = tuple(UNIDADES),
+           importes: dict[str, str] | None = None) -> UUID:
+    """Una emisión del libro con la ordinaria de `MENSUAL` (o la de `importes`), vencimiento el día 10."""
+    mensual = {**MENSUAL, **(importes or {})}
     from proptech_core.compartido.dinero import Dinero
     from proptech_core.cuenta_corriente.aplicacion import emisiones
     from proptech_core.cuenta_corriente.aplicacion.emisiones import ObligacionAEmitir
@@ -195,7 +197,7 @@ def emitir(m: Mundo, periodo: date, unidades: tuple[str, ...] = tuple(UNIDADES))
     with sesion_app(m.base, m.admin) as s:
         emisiones.registrar_emision(
             s, m.identidad(), emision_id=emision_id, complejo_id=m.edificio, periodo=periodo,
-            obligaciones=[ObligacionAEmitir(m.unidades[u], periodo.replace(day=10), Dinero(MENSUAL[u]),
+            obligaciones=[ObligacionAEmitir(m.unidades[u], periodo.replace(day=10), Dinero(mensual[u]),
                                             Dinero("0.00"), Dinero("0.00")) for u in unidades],
             request_id=uuid4(),
         )

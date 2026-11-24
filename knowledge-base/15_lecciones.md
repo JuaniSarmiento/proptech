@@ -1491,3 +1491,17 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   (la vecina) entra en los e2e de cada menú nuevo. Cada dato de una fila de lista que se lee aparte va en su propio
   bloque (`display: block`), no en `span` en línea. Un monto que se escribe como en Argentina se pasa al formato de
   la API con una función pura de `lib/formato.ts` que sólo cambia el formato: nada de redondear en la pantalla.
+
+## L-102 · Un escenario de la aceptación que arma deuda con pagos se simula con R04 antes de congelarlo
+
+- **Origen**: H-027 (10a), 24/11/2026; la aceptación se recongeló una vez.
+- **Qué pasó**: N02 quería "dos meses vencidos pero bajo el umbral" y "una sola vencida". El orquestador los armó
+  con pagos parciales pensando que cada pago caía en su mes, pero R04 imputa primero al período más viejo (y el
+  interés antes que el capital): el pago de octubre cubrió septiembre y dejó una sola vencida en un caso y dos con
+  capital (moroso crítico real) en el otro. El constructor frenó, reprodujo la imputación y la API daba lo mismo
+  que `situacion_del_edificio`: el error era del escenario, no del código.
+- **Regla**: cuando un caso de la aceptación depende de qué quedó impago después de un pago, el orquestador hace la
+  cuenta de R04 a mano (período más viejo primero, interés antes que capital) y la escribe como comentario en el
+  test, o arma el escenario sin pagos parciales (montos chicos sin pagar). Para dejar capital impago en dos meses no
+  alcanza con un pago que "no cubre" el segundo: no hay que pagar ninguno. Un N que se recongela se ve fallar
+  contra un mutante dirigido antes de volver a congelarlo, porque el rojo de "la ruta no existe" no prueba nada.

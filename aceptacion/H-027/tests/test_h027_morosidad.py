@@ -159,13 +159,16 @@ def test_n01_un_edificio_de_otra_administracion_da_404(mundo: Mundo) -> None:
 
 
 def test_n02_una_sola_vencida_o_bajo_el_umbral_no_es_moroso_critico(mundo: Mundo) -> None:
-    # `2B` debe septiembre y octubre pero sólo $300 en total: bajo el umbral, no moroso crítico.
-    emitir(mundo, SEP, ("2B", "1B"))
-    pagar(mundo, "2B", "7850.00", date(2026, 9, 5))
-    emitir(mundo, OCT, ("2B", "1B"))
-    pagar(mundo, "1B", "40000.00", date(2026, 10, 5))  # `1B` paga un mes de dos: una sola vencida con capital
-    pagar(mundo, "2B", "7850.00", date(2026, 10, 5))
+    # R04 imputa primero al período más viejo: para dejar capital impago en dos meses hay que no pagar ninguno.
+    # `2B` debe septiembre y octubre de $200 cada uno (con el interés de septiembre, ≈ $404): bajo el umbral.
+    # `1B` paga septiembre antes del vencimiento y debe sólo octubre: una sola vencida.
+    chicos = {"2B": "200.00"}
+    emitir(mundo, SEP, ("2B", "1B"), chicos)
+    pagar(mundo, "1B", MENSUAL["1B"], date(2026, 9, 5))
+    emitir(mundo, OCT, ("2B", "1B"), chicos)
     por_unidad = filas(mundo)
+    assert Decimal(por_unidad["2B"]["total_vencido"]) < Decimal("500.00"), f"precondición: {por_unidad['2B']}"
+    assert por_unidad["1B"]["liquidaciones_vencidas"] == 1, por_unidad["1B"]
     assert por_unidad["2B"]["liquidaciones_vencidas"] == 2, por_unidad["2B"]
     assert por_unidad["2B"]["etiqueta"] == "bajo_umbral", por_unidad["2B"]
     assert por_unidad["1B"]["etiqueta"] != "moroso_critico", por_unidad["1B"]
