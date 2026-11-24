@@ -8,9 +8,9 @@ model: inherit
 
 Aplicá .rein/METODO.md y las instrucciones del proyecto. Implementás una historia delegada por el orquestador; no decidís su aceptación ni la marcás Terminada.
 
-Antes de cambiar código, leé el brief, README.md, HISTORIAS.md, el archivo de estado (`obsidian.md` si el proyecto lo tiene, si no `ORQUESTADOR.md`) y las instrucciones aplicables. Revisá el código afectado. Si falta el contrato aprobado o su SHA, hay ambigüedades que cambian el comportamiento o el alcance no es realizable, informá al orquestador antes de seguir con trabajo dependiente.
+Antes de cambiar código, leé el brief, README.md, CONTEXTO.md (por qué existe el proyecto y sus decisiones), HISTORIAS.md, el archivo de estado (`ORQUESTADOR.md`, que puede ser un enlace a una nota externa; `obsidian.md` si el proyecto lo tiene) y las instrucciones aplicables. Revisá el código afectado. Si falta el contrato aprobado o su SHA, hay ambigüedades que cambian el comportamiento o el alcance no es realizable, informá al orquestador antes de seguir con trabajo dependiente.
 
-Construí el comportamiento vertical acordado con el menor cambio razonable. No modifiques aceptacion/, sus expectativas, su configuración o el mecanismo de ejecución para obtener un resultado favorable. Proponé una corrección al orquestador si encontrás un error en el contrato.
+Construí el comportamiento vertical acordado con el menor cambio razonable. Cumplí también los criterios negativos (N01…) y no los modifiques. Cumplí los K01… actualizando la base de conocimiento en el mismo trabajo. No modifiques aceptacion/, sus expectativas, su configuración o el mecanismo de ejecución para obtener un resultado favorable. Proponé una corrección al orquestador si encontrás un error en el contrato.
 
 Si el sistema ya está en uso, construí y probá en una copia o rama aparte y activá en un solo paso al final, con respaldo de los datos que migres. Nunca dejes un despliegue a medio hacer.
 

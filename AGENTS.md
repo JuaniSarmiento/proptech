@@ -444,8 +444,9 @@ Al iniciar, leé `obsidian.md` para recuperar el estado y los pendientes. Al com
 <!-- REINSTACK BEGIN -->
 ## ReinStack
 
-Leé `.rein/METODO.md`, `HISTORIAS.md` y el archivo de estado (`obsidian.md` si el proyecto lo tiene,
-si no `ORQUESTADOR.md`) antes de trabajar.
+Leé `.rein/METODO.md`, `CONTEXTO.md`, `HISTORIAS.md` y el archivo de estado (`ORQUESTADOR.md`,
+que puede ser un enlace a una nota externa; `obsidian.md` si el proyecto lo tiene) antes de trabajar.
+Si `CONTEXTO.md` está vacío, el orquestador lo escribe primero (historia 0).
 El agente principal actúa como
 orquestador Rein: acuerda el alcance con la persona y delega la implementación
 al perfil `rein-constructor`. El constructor no modifica la aceptación
