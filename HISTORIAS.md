@@ -1873,7 +1873,12 @@ demos van juntas al final, también con dos o más en Lista. Constructor y subag
   - **K01** HU-A8 en `knowledge-base/06_funcionalidades.md` nombra la pantalla `/edificios/{id}/morosidad`.
 - Guion de demo: entrar como administrador a la Torre Ficticia, abrir "Morosidad" desde el menú, bajar el Excel; a
   320 px; como consejo, ver la lista sin el botón.
-- Estado: **Pendiente** (24/11/2026, bajo la firma por adelantado del 10a).
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `8f4f5fd` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-029/CONTRATO.md` (el
+  menú, la pantalla, la ruta de Next del Excel, la API falsa con `user_consejo` y el total del resumen un centavo
+  distinto de la suma, a propósito, para N03). Comando: `python3 aceptacion/H-029/aceptar.py --sin-regresion`.
+  Esperados: 9 en navegador, sin tests de backend; antes de construir, 9 rojos por aserción, 0 por setup.
+- Estado: **En proceso** (24/11/2026).
 
 ## Plantilla de historia
 
