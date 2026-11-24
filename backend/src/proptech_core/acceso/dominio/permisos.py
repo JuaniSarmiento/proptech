@@ -84,6 +84,9 @@ class Accion(StrEnum):
     #: liquidacion-y-emision (E14, migración `0041`): leer una liquidación emitida. El consejo sólo
     #: ve las distribuidas (P39): ese filtro lo construye H-014; la matriz ya lo incluye.
     VER_LIQUIDACIONES = "ver_liquidaciones"
+    #: morosidad (10a, E6, migración `0048`): leer la lista de unidades con deuda vencida (R20).
+    #: Todos los perfiles con alcance sobre el edificio; el vecino no. Leer no se audita.
+    VER_MOROSIDAD = "ver_morosidad"
 
 
 @dataclass(frozen=True)
@@ -164,6 +167,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.AJUSTAR_SALDO_INICIAL: frozenset({_SA, _AP}),
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
     Accion.VER_LIQUIDACIONES: frozenset({_SA, _AP, _AE, _CP, _CE, _CO}),
+    Accion.VER_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
 }
 
 

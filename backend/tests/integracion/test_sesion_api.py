@@ -215,8 +215,8 @@ def test_el_super_admin(clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdifici
 def test_un_contador_por_edificio(
     clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio
 ) -> None:
-    """D11: un contador por edificio sólo trae `ver_configuracion_del_edificio` y
-    `ver_liquidaciones` (H-013) en
+    """D11: un contador por edificio sólo trae `ver_configuracion_del_edificio`,
+    `ver_liquidaciones` (H-013) y `ver_morosidad` (H-027) en
     `por_edificio`, con `administracion` y `todos_los_edificios` vacíos."""
     contador = uuid4()
     api_edificio.filas(
@@ -237,7 +237,11 @@ def test_un_contador_por_edificio(
     assert acciones["todos_los_edificios"] == []
     assert acciones["por_edificio"] == {
         str(api_edificio.edificio): sorted(
-            [Accion.VER_CONFIGURACION_DEL_EDIFICIO.value, Accion.VER_LIQUIDACIONES.value]
+            [
+                Accion.VER_CONFIGURACION_DEL_EDIFICIO.value,
+                Accion.VER_LIQUIDACIONES.value,
+                Accion.VER_MOROSIDAD.value,
+            ]
         )
     }
 
