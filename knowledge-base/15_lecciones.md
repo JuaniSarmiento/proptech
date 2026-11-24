@@ -1515,3 +1515,17 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   aceptaciones de backend: ninguna corre los e2e del repo. Es L-064 del lado de la web.
 - **Regla**: una historia que suma una sección al menú busca los e2e que cuentan o enumeran sus links
   (`rg -n "Secciones del edificio" web/e2e`) y los actualiza en el mismo trabajo; el brief del constructor lo nombra.
+
+## L-104 · Con xdist, un test no puede contar con lo que sembró otro test del mismo módulo
+
+- **Origen**: CI del PR #28 (10a), 24/11/2026; el test es del 7 (H-015).
+- **Qué pasó**: `test_el_barrido_ve_lo_pendiente_de_todas_y_nada_mas` esperaba ver documentos pendientes de las dos
+  administraciones, pero el de la segunda lo creaba otro test (`test_una_administracion_no_ve_los_documentos_de_otra`).
+  El CI corre con `-n 4` y reparte los tests de un módulo entre workers, cada uno con su base: si caían en workers
+  distintos, el barrido veía una sola. Pasó meses en verde por azar; el 10a sumó tests, cambió el reparto y lo destapó
+  (dos corridas seguidas en rojo). Corrido solo falla siempre (`assert set() == {...}`).
+- **Regla**: lo que un test necesita sembrado va en una fixture (de módulo si es caro), nunca en el cuerpo de otro test.
+  Para ver si un test depende del orden, correrlo solo (`pytest archivo::test -p no:xdist`). En las mismas dos corridas
+  fallaron una vez cada uno `test_tenant_que_no_es_uuid_levanta_antes_de_ejecutar_sql` (contraseña de `proptech_app`
+  rechazada: los roles son del cluster y otro worker los recrea) y `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto`;
+  quedan como deuda del C-25/C-28 en la ficha 10a.
