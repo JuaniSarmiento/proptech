@@ -1878,7 +1878,19 @@ demos van juntas al final, también con dos o más en Lista. Constructor y subag
   menú, la pantalla, la ruta de Next del Excel, la API falsa con `user_consejo` y el total del resumen un centavo
   distinto de la suma, a propósito, para N03). Comando: `python3 aceptacion/H-029/aceptar.py --sin-regresion`.
   Esperados: 9 en navegador, sin tests de backend; antes de construir, 9 rojos por aserción, 0 por setup.
-- Estado: **En proceso** (24/11/2026).
+- Construcción (Sonnet, `0a01b59` y `06b39bb`): "Morosidad" en `secciones.ts` (grupo "Liquidación", `ver_morosidad`);
+  `morosidad/page.tsx` y `Pantalla.tsx` (cliente, el link de exportar por `permite(sesion, "exportar_morosidad", id)`),
+  cada dato en su `dl`; `morosidad/excel/route.ts` reenvía el `Content-Disposition` de la API sólo si es un nombre
+  seguro (si no, `morosidad.xlsx`); `lib/api/morosidad.ts` valida montos, etiquetas y forma; la API falsa en
+  `e2e/escenarios-morosidad.ts` con `user_consejo`. **Fuera del contrato, para la demo**: la API falsa contesta
+  `GET liquidaciones` con `[]` en 2701 y 2702 (C01 abre esa pantalla), y `Estados.tsx` suma la rama de `ver_morosidad`
+  como la de `informar_pago`. Rojo por aserción visto en `secciones.test.ts` y en el link de exportar; el resto de los
+  tests de apoyo se escribió con el código hecho. `biome ci`, `tsc` e `impeccable detect --changed` limpios (impeccable
+  avisa que el proyecto no tiene `PRODUCT.md` ni `DESIGN.md`).
+- Evidencia (24/11/2026): `python3 aceptacion/H-029/aceptar.py --sin-regresion` sobre `06b39bb` desde `8f4f5fd`: **9/9
+  en navegador**, C01 a C06, N01 a N03 y SPEC PASA, 0 rojos; C07 con K01 y la ficha en verde, sólo pendiente la
+  regresión del cierre.
+- Estado: **Lista** (24/11/2026).
 
 ## Plantilla de historia
 
