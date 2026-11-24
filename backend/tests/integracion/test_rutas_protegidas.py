@@ -174,6 +174,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
     # --- Cambio 8 `pagos-informados` (H-025) ---
     ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
+    # --- Cambio 10a `morosidad` (H-027) ---
+    ("/api/complejos/{complejo_id}/morosidad", "GET"),
 }
 
 
