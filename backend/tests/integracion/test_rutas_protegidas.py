@@ -176,6 +176,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
     # --- Cambio 10a `morosidad` (H-027) ---
     ("/api/complejos/{complejo_id}/morosidad", "GET"),
+    # --- Cambio 10a `morosidad` (H-028) ---
+    ("/api/complejos/{complejo_id}/morosidad/excel", "GET"),
 }
 
 

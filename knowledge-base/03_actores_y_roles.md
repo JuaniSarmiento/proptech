@@ -99,7 +99,10 @@ previos" y corregir un movimiento.
 **Ver la morosidad** (10a, H-027, D-167): la acción `ver_morosidad` (migración `0048`) la tienen super admin,
 administrador principal y de edificio, contador principal y de edificio, auxiliar y consejo, cada uno en su
 alcance; los vecinos no. Un edificio fuera del alcance da 404 y sin el permiso, 403. Leer no se audita.
-Exportar el Excel (H-028) queda para super admin, administrador y contador.
+**Exportar la morosidad** (H-028): la acción `exportar_morosidad` (migración `0049`) la tienen super admin,
+administrador principal y de edificio, contador principal y de edificio; el auxiliar, el consejo y los vecinos
+no (ven la lista, no la bajan). Mismo orden de chequeo: 404 fuera del alcance, 403 sin el permiso. Exportar no
+se audita.
 
 **Emitir y leer lo emitido** (7, H-013): emitir una liquidación es `emitir_y_distribuir_liquidacion`
 (super admin, administrador principal y administrador del edificio); si al emitir se acepta un bloqueante,

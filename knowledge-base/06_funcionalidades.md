@@ -286,6 +286,15 @@ Como administrador, quiero ver quién debe, cuánto y desde cuándo.
   están en el MVP.
 - Dada la lista, cuando la exporto, entonces obtengo un Excel con los mismos números.
 
+**Construido** (10a, D-167): la lectura es `GET /api/complejos/{id}/morosidad` (H-027), con la acción
+`ver_morosidad`: la ven super admin, administrador, contador, auxiliar y consejo en su alcance, no los vecinos.
+El Excel es `GET /api/complejos/{id}/morosidad/excel` (H-028), con la acción `exportar_morosidad`: lo bajan
+super admin, administrador y contador (principal o de edificio); auxiliar y consejo ven pero no exportan.
+El libro tiene una hoja `Morosidad` con el edificio y las fechas arriba, una fila por unidad en el orden de la
+lectura y una fila `Total`; los montos son números con formato de moneda, nunca texto ni fórmulas, y no lleva
+email, teléfono ni documento. El archivo se llama `morosidad-<edificio>-<AAAA-MM-DD>.xlsx`. Ni leer ni exportar
+escribe en el libro ni en la auditoría.
+
 **Reglas relacionadas**: R20.
 
 ### HU-A9 · Corregir un error

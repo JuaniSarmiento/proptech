@@ -87,6 +87,9 @@ class Accion(StrEnum):
     #: morosidad (10a, E6, migración `0048`): leer la lista de unidades con deuda vencida (R20).
     #: Todos los perfiles con alcance sobre el edificio; el vecino no. Leer no se audita.
     VER_MOROSIDAD = "ver_morosidad"
+    #: morosidad (10a, H-028, E8, migración `0049`): bajar la morosidad en `.xlsx`. Quien administra
+    #: o lleva la contabilidad; el auxiliar y el consejo ven pero no exportan. No se audita.
+    EXPORTAR_MOROSIDAD = "exportar_morosidad"
 
 
 @dataclass(frozen=True)
@@ -168,6 +171,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.VER_CONFIGURACION_DEL_EDIFICIO: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
     Accion.VER_LIQUIDACIONES: frozenset({_SA, _AP, _AE, _CP, _CE, _CO}),
     Accion.VER_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
+    Accion.EXPORTAR_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE}),
 }
 
 

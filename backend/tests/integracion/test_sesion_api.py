@@ -216,7 +216,7 @@ def test_un_contador_por_edificio(
     clerk_falso: rsa.RSAPrivateKey, api_edificio: ApiEdificio
 ) -> None:
     """D11: un contador por edificio sólo trae `ver_configuracion_del_edificio`,
-    `ver_liquidaciones` (H-013) y `ver_morosidad` (H-027) en
+    `ver_liquidaciones` (H-013), `ver_morosidad` (H-027) y `exportar_morosidad` (H-028) en
     `por_edificio`, con `administracion` y `todos_los_edificios` vacíos."""
     contador = uuid4()
     api_edificio.filas(
@@ -241,6 +241,7 @@ def test_un_contador_por_edificio(
                 Accion.VER_CONFIGURACION_DEL_EDIFICIO.value,
                 Accion.VER_LIQUIDACIONES.value,
                 Accion.VER_MOROSIDAD.value,
+                Accion.EXPORTAR_MOROSIDAD.value,
             ]
         )
     }
