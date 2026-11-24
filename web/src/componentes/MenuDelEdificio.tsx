@@ -16,6 +16,7 @@
 import {
   CalendarClock,
   HandCoins,
+  Hourglass,
   House,
   Landmark,
   Layers,
@@ -39,6 +40,7 @@ export type IconoDeSeccion =
   | "liquidaciones"
   | "pagos"
   | "mis_pagos"
+  | "morosidad"
   | "personal";
 
 export type SeccionDelEdificio = {
@@ -62,6 +64,7 @@ const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
   liquidaciones: Receipt,
   pagos: Landmark,
   mis_pagos: HandCoins,
+  morosidad: Hourglass,
   personal: Users,
 };
 

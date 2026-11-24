@@ -41,6 +41,11 @@ import {
   responderPreliquidacion,
   TOKEN_DE_PRUEBA,
 } from "./escenarios-liquidacion";
+import {
+  ACCIONES_DEL_CONSEJO,
+  esEdificioDeMorosidad,
+  responderMorosidad,
+} from "./escenarios-morosidad";
 import { ACCIONES_DE_LA_VECINA, esEdificioDePagos, responderPagos } from "./escenarios-pagos";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
@@ -85,6 +90,9 @@ const _ACCIONES_DE_SUPER_ADMIN = {
     "aceptar_diferencias_de_saldos",
     "confirmar_saldos_iniciales",
     "ajustar_saldo_inicial",
+    // H-029: la morosidad se ve y se exporta en todos los edificios.
+    "ver_morosidad",
+    "exportar_morosidad",
   ],
   // H-017: `ver_liquidaciones` y `corregir_movimiento` se dan por edificio (los escenarios de
   // `escenarios-liquidacion.ts`), para poder probar que sin ellas no se ofrece nada.
@@ -100,6 +108,17 @@ const _ACCIONES_DE_LA_VECINA = {
   administracion: [],
   todos_los_edificios: [],
   por_edificio: ACCIONES_DE_LA_VECINA,
+};
+
+/**
+ * H-029: `user_consejo` trae, en los dos edificios de la morosidad, sólo `ver_configuracion_del_edificio`,
+ * `ver_liquidaciones` y `ver_morosidad` (no `exportar_morosidad`): sin esto no se prueba que el consejo ve
+ * la lista pero no el botón de exportar.
+ */
+const _ACCIONES_DEL_CONSEJO = {
+  administracion: [],
+  todos_los_edificios: [],
+  por_edificio: ACCIONES_DEL_CONSEJO,
 };
 
 const _PNG_DE_UN_PIXEL = Buffer.from(
@@ -555,6 +574,7 @@ export function crearServidor(
             "user_api_rechaza",
             "user_prueba",
             "user_vecina",
+            "user_consejo",
             "user_varias",
             "user_sin_permiso",
             "user_personal_vacio",
@@ -620,7 +640,11 @@ export function crearServidor(
               id: ADMINISTRACION,
               nombre: "Administración de prueba",
               acciones:
-                identidad === "user_vecina" ? _ACCIONES_DE_LA_VECINA : _ACCIONES_DE_SUPER_ADMIN,
+                identidad === "user_vecina"
+                  ? _ACCIONES_DE_LA_VECINA
+                  : identidad === "user_consejo"
+                    ? _ACCIONES_DEL_CONSEJO
+                    : _ACCIONES_DE_SUPER_ADMIN,
             },
             ...(identidad === "user_varias"
               ? [
@@ -1020,6 +1044,11 @@ export function crearServidor(
           return false;
       }
     };
+
+    // change 10a (H-029): la morosidad y su Excel, en los dos edificios de su contrato (2701 y 2702).
+    if (esEdificioDeMorosidad(id) && responderMorosidad(pedido, respuesta, id, resto, identidad)) {
+      return;
+    }
 
     // change 8 (H-025): los pagos informados, en los dos edificios de su contrato (2501 y 2502).
     if (
