@@ -1778,7 +1778,52 @@ cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H
   (la dependencia `proptech_api.morosidad.hoy`, `ver_morosidad` con su migración, la forma exacta de la
   respuesta, el orden y `intereses_al`). Comando: `python3 aceptacion/H-027/aceptar.py --sin-regresion`. Esperados:
   25 de backend; antes de construir, 21 rojos por aserción, 0 por setup, y 4 guardas de 404 que nacen verdes.
-- Estado: **En proceso** (24/11/2026).
+- **Vuelta 2 de la aceptación** (`3265551`, congelada en `4948116`): el constructor frenó en N02 con evidencia: el
+  escenario armaba la deuda con pagos parciales sin hacer la cuenta de R04, que imputa primero al período más viejo,
+  y daba una sola vencida en `2B` y un moroso crítico real en `1B`. El error era del escenario, no del código. N02
+  pasa a armarse sin pagos parciales (`2B` con dos meses de $200 impagos); se vio fallar por aserción contra un
+  mutante que pone el moroso crítico antes del umbral (`'moroso_critico' == 'bajo_umbral'`) y pasar contra lo
+  construido. Lección L-102.
+- Construcción (Sonnet, una tanda): `d4fcb57` capital, interés y `vencida_desde` en `clasificar` (4 tests de apoyo, rojo
+  por `AttributeError` del campo inexistente, no por aserción de valor), `38d23d7` `ver_morosidad` y la `0048`, `978b115`
+  la lectura (`cuenta_corriente/aplicacion/morosidad.py`, con los propietarios desde `acceso/aplicacion/propietarios.py`
+  y los identificadores desde `complejos/aplicacion/unidades.py`) y la ruta, `0f221bb` KB (R20, D-167, `03`, ficha
+  10a). Estructurales actualizados: rutas protegidas, permisos, vocabulario, sesión y la cabeza en `test_libro_rollback`.
+  Ruff, format y mypy enteros en verde. **Deuda chica**: `proptech_api/morosidad.py` importa `_edificio_autorizado`,
+  privada de `liquidaciones.py`.
+- Evidencia (24/11/2026): `python3 aceptacion/H-027/aceptar.py --sin-regresion` sobre `4948116` desde `3265551`:
+  **25/25**, C01 a C06, N01 a N06 y SPEC (6 escenarios) PASA, 0 rojos; C07 con K01 a K03, la ficha y los estructurales
+  en verde, sólo pendiente la regresión del cierre (D-154).
+- Estado: **Lista** (24/11/2026).
+
+### H-028 · El Excel de la morosidad
+
+- Change: C-14 10a, parte 2. Reglas: R20; D-106, D-167; HU-A8 ("cuando la exporto, obtengo un Excel con los mismos
+  números"); E6 y E8 de `design.md`.
+- Resultado para Juani: el administrador o el contador baja la morosidad del edificio en un `.xlsx` con las mismas
+  filas y los mismos montos que la pantalla, como números con formato de pesos que se pueden sumar.
+- Alcance: `GET /api/complejos/{id}/morosidad/excel` sobre la lectura de H-027, la acción `exportar_morosidad` con su
+  migración. Exclusiones: el botón en la pantalla (H-029), otros formatos (CSV, PDF).
+- Dificultad y riesgo: baja / HIGH. Nivel L (datos personales que salen del sistema).
+- Tienen que pasar:
+  - **C01** responde un `.xlsx` (`content-type` de Excel, adjunto `morosidad-torre-ficticia-2026-11-18.xlsx`) con el
+    encabezado (edificio, fecha, intereses al), los títulos y una fila por unidad.
+  - **C02** celda por celda: las filas, el orden y cada monto son iguales al centavo a los de la API de H-027.
+  - **C03** la fila de totales suma el total vencido, el capital y los intereses, igual al resumen de la API.
+  - **C04** exportan super admin, administrador principal y por edificio, contador principal y por edificio.
+  - **C05** un edificio sin deuda vencida baja el Excel con los títulos y el total en cero.
+  - **C06** la KB queda al día según K01 y K02.
+- Tienen que fallar:
+  - **N01** auxiliar, consejo y vecino: 403 `exportar_morosidad`; fuera del alcance u otra administración: 404.
+  - **N02** ningún monto ni total va como texto ni como fórmula: son números con formato `#,##0.00`.
+  - **N03** el Excel no trae el email de nadie.
+  - **N04** bajar el Excel no escribe en el libro ni en la auditoría.
+- Cierre de la base:
+  - **K01** `exportar_morosidad` en `knowledge-base/03_actores_y_roles.md`.
+  - **K02** HU-A8 en `knowledge-base/06_funcionalidades.md` con lo construido (la ruta del Excel).
+- Guion de demo: como administrador, bajar el Excel de la Torre Ficticia, abrirlo y sumar una columna; como consejo,
+  ver que no puede bajarlo.
+- Estado: **Pendiente** (24/11/2026, bajo la firma por adelantado del 10a).
 
 ## Plantilla de historia
 
