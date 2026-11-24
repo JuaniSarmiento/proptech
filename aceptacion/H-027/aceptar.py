@@ -25,7 +25,7 @@ from pathlib import Path
 RAMA = "10a-morosidad"
 CAMBIO = "morosidad"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = "4a1ae4f5fe37b7afb1786368220c125b2706736e"
+ACEPTACION_SHA = "3265551dc584115cf5da838ba9df3c9087eceaf3"
 CARPETA = "aceptacion/H-027/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h027"
 TESTS_ESPERADOS = 25
