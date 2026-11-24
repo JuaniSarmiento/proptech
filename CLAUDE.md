@@ -211,7 +211,13 @@ mercado de arranque es **Mendoza**.
   pantallas del vecino y la bandeja del administrador. Migraciones `0044` a `0047`. PR #27 con el CI verde. La
   lectura con OpenRouter nunca se probó contra el servicio real. Deuda en la ficha 8 de
   `knowledge-base/12_fichas_de_changes.md`.
-- **Próximo**: el **10a** `morosidad` en el camino crítico; el 9 `extracto-bancario` y el 4d
+- **Cambio 10a `morosidad` archivado** (24/11/2026, HIGH, D-167): construido con Rein en tres historias. H-027: la
+  lectura de la morosidad por unidad (total, capital, intereses registrados, liquidaciones vencidas y antigüedad desde
+  la más vieja impaga), sólo las unidades con deuda y los morosos críticos primero, con `ver_morosidad`. H-028: el
+  Excel con montos numéricos, con `exportar_morosidad` (super admin, administrador y contador). H-029: la pantalla
+  desde el menú y el botón de exportar. Migraciones `0048` y `0049`. PR #28 con el CI verde. Deuda en la ficha 10a de
+  `knowledge-base/12_fichas_de_changes.md`.
+- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico; el 9 `extracto-bancario` y el 4d
   `cambio-de-titular` ya pueden ir; los de deuda adelantada en paralelo.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
@@ -340,13 +346,14 @@ en [knowledge-base/12_fichas_de_changes.md](knowledge-base/12_fichas_de_changes.
   PR #6, sin migraciones) y 4c `intereses-saldo-inicial-y-moroso` (11/11/2026, D-152 a D-154, PR #20,
   migraciones `0034` y `0035`), 5 `importacion-desde-excel` (12/11/2026, D-155 y D-156, PR #21,
   migraciones `0036` a `0039`) y 7 `liquidacion-y-emision` (16/11/2026, D-157 a D-162, PR #22, migraciones
-  `0040` a `0043`) y 8 `pagos-informados` (18/11/2026, D-163 a D-166, PR #27, migraciones `0044` a `0047`).
+  `0040` a `0043`) y 8 `pagos-informados` (18/11/2026, D-163 a D-166, PR #27, migraciones `0044` a `0047`) y 10a `morosidad`
+  (24/11/2026, D-167, PR #28, migraciones `0048` y `0049`).
   Las migraciones del 3c son `0025` a `0027`: van después de las del 4a (`0021`, `0022`) y de las del 4b
   (`0023`, `0024`), renumeradas al integrarlo sobre `main`. La numeración 3c y 4a a 4d no renumera los
   demás changes (precedente D-097).
 - **Deuda adelantada, pendientes de proponer** (D-138, 30/10/2026): C-23 a C-29 salvo C-23, C-24 y
   C-27 (archivados), uno por desarrollador; tabla en `CHANGES.md`.
-- **Sigue**: el 10a `morosidad`.
+- **Sigue**: el 10b `condonacion-judicial-y-libre-deuda`.
 
 **Antes de cualquier `/opsx:propose`**: leé `CHANGES.md`, identificá las dependencias del cambio y los
 archivos de "Leer antes" de su ficha en `knowledge-base/12_fichas_de_changes.md`.
