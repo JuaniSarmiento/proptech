@@ -1727,6 +1727,11 @@ Juani delegó el change entero (24/11/2026: "podes trabajar solo, te doy el perm
 directamente y despues hacemos la demo juntos"): como en el 8, las historias se construyen una detrás de otra y las
 demos van juntas al final, también con dos o más en Lista. Constructor y subagentes con Claude Sonnet.
 
+**Cierre (24/11/2026)**: regresión del cierre (H-004 a H-028, barrido de migraciones y estructurales) en verde sobre
+`c7ea831` con `python3 aceptacion/H-029/aceptar.py --sin-navegador`. CI del PR #28 en tres vueltas: la primera cayó en
+`web/e2e/pulido.spec.ts`, que contaba 6 links del menú (L-103, `39b4177`); la segunda, en un test del 7 que dependía del
+orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. Deuda en la ficha 10a.
+
 **Acuerdos de Juani del 24/11/2026** (van a una decisión nueva con H-027, K02):
 - **Ven** la morosidad super admin, administrador, contador, auxiliar y consejo, cada uno en su alcance (D-106);
   **exportan** el Excel sólo super admin, administrador y contador. Auxiliar y consejo sólo ven.
