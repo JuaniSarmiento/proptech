@@ -1717,6 +1717,64 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
   del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
+## Morosidad (10a, C-14)
+
+Riesgo **HIGH** (Juani, 24/11/2026): sólo lectura, sin escribir en el libro, pero muestra plata y datos
+personales y exporta. Lleva la firma de la propuesta en `openspec/changes/morosidad/` antes de construir (D-094,
+D-111). Historias en nivel L de Rein 1.5. Rama `10a-morosidad`; sin rompedor (D-152); CI y regresión una vez al
+cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H-029 (la pantalla).
+
+**Acuerdos de Juani del 24/11/2026** (van a una decisión nueva con H-027, K02):
+- **Ven** la morosidad super admin, administrador, contador, auxiliar y consejo, cada uno en su alcance (D-106);
+  **exportan** el Excel sólo super admin, administrador y contador. Auxiliar y consejo sólo ven.
+- **Intereses**: sólo el interés registrado en el libro e impago; no se estima el que corrió desde la última
+  emisión. La pantalla dice a qué fecha es.
+- **Antigüedad**: la liquidación vencida más vieja con algo impago (capital o interés); se muestran su fecha de
+  vencimiento y los días desde el vencimiento (no desde el fin de la gracia). Sin deuda vencida, vacía.
+- **Qué unidades aparecen**: sólo las que tienen deuda vencida, con su etiqueta de R20/R30; primero los morosos
+  críticos y, dentro de cada grupo, de mayor a menor deuda; arriba, cuántas deben, cuántas son morosos críticos y
+  el total vencido del edificio.
+- **Datos de la persona**: el identificador de la unidad y el nombre de sus propietarios; sin email, teléfono ni
+  DNI.
+
+### H-027 · La lectura de la morosidad
+
+- Change: C-14 10a, parte 1. Reglas: R20, R30; D-058, D-074, D-106, D-143; HU-A8.
+- Resultado para Juani: `GET .../complejos/{id}/morosidad` devuelve las unidades que deben, con su deuda vencida,
+  capital, intereses y antigüedad, y el resumen del edificio, para quien puede verlo.
+- Alcance: completar la lectura del 4c (capital e interés por separado y el vencimiento más viejo impago), el
+  permiso de ver la morosidad y la ruta de lectura. Exclusiones: el Excel (H-028), la pantalla (H-029), la gestión
+  judicial y su exclusión de R20 (10b).
+- Dificultad y riesgo: media / HIGH. Nivel L (plata y datos personales detrás de permisos).
+- Tienen que pasar:
+  - **C01** cada fila trae unidad, nombres de los propietarios, etiqueta, total vencido, capital, intereses,
+    liquidaciones vencidas, fecha del vencimiento más viejo y días; arriba, el resumen del edificio y la fecha de
+    los intereses (la de la última emisión).
+  - **C02** una deuda pagada en partes baja en la lista; pagada entera, la unidad desaparece.
+  - **C03** orden: morosos críticos primero y, dentro de cada grupo, de mayor a menor total vencido.
+  - **C04** la etiqueta de cada unidad es la misma que da `situacion_del_edificio` del 4c a la misma fecha.
+  - **C05** si de la liquidación más vieja sólo quedó el interés impago, la antigüedad sigue contando desde ella.
+  - **C06** super admin, administrador, contador, auxiliar y consejo con alcance sobre el edificio: 200.
+  - **C07** la KB queda al día según K01 a K03.
+- Tienen que fallar:
+  - **N01** el vecino pide la morosidad: 403; personal o consejo sin alcance sobre el edificio, u otra
+    administración: 404.
+  - **N02** una unidad con una sola liquidación vencida, o con total vencido menor a $500, no sale como moroso
+    crítico.
+  - **N03** la respuesta no trae email, teléfono ni DNI de nadie.
+  - **N04** pedir la morosidad no escribe: movimientos, imputaciones y auditoría quedan iguales.
+  - **N05** una unidad al día, o con sólo crédito a favor, no aparece; una obligación de una emisión anulada no
+    cuenta.
+  - **N06** el interés que corrió después de la última emisión no se suma a los intereses.
+- Cierre de la base:
+  - **K01** R20 en `knowledge-base/05_reglas_de_negocio.md`: dónde vive el listado y las definiciones de
+    antigüedad e intereses.
+  - **K02** una decisión nueva en `knowledge-base/09_decisiones_y_supuestos.md` con los acuerdos del 24/11/2026.
+  - **K03** el permiso de ver la morosidad en `knowledge-base/03_actores_y_roles.md`.
+- Guion de demo: con la Torre Ficticia de los ejemplos del 8, entrar como administrador y como consejo y ver la
+  lista con un moroso crítico, una unidad con deuda vencida, una bajo el umbral y una que pagó en partes.
+- Estado: **Pendiente** (acordada con Juani el 24/11/2026; falta la firma de la propuesta y la aceptación).
+
 ## Plantilla de historia
 
 ### H-xxx · título
