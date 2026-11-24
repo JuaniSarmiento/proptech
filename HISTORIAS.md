@@ -1832,7 +1832,48 @@ demos van juntas al final, también con dos o más en Lista. Constructor y subag
   `python3 aceptacion/H-028/aceptar.py --sin-regresion`. Esperados: 19 de backend; antes de construir, 16 rojos por
   aserción, 0 por setup, y 3 guardas de 404 que nacen verdes. Antes de congelar, N04 se endureció para exigir el 200
   de quien exporta (sin eso pasaba con la ruta ausente).
-- Estado: **En proceso** (24/11/2026).
+- Construcción (Sonnet, una tanda, `11432e9`): `exportar_morosidad` y la `0049`; el libro se arma en
+  `cuenta_corriente/adaptadores/excel_de_morosidad.py` desde `morosidad_del_edificio` (la misma lectura de H-027);
+  montos como número (`float` del `Decimal` exacto, la celda de Excel es de punto flotante) con formato `"$ "#,##0.00`,
+  totales sumados con `Dinero` en Python, sin fórmulas; fechas `dd/mm/yyyy`. Saldó la deuda chica de H-027:
+  `_edificio_autorizado` pasa a `edificio_autorizado`, pública. Tests de apoyo del nombre del archivo, con rojo por
+  aserción. Ruff, format y mypy enteros en verde. El `.xlsx` se leyó con `openpyxl`, no se abrió en Excel ni en
+  LibreOffice (queda para la demo).
+- Evidencia (24/11/2026): `python3 aceptacion/H-028/aceptar.py --sin-regresion` sobre `11432e9` desde `6acb3a4`:
+  **19/19**, C01 a C05, N01 a N04 y SPEC PASA, 0 rojos; C06 con K01, K02, la ficha y los estructurales en verde, sólo
+  pendiente la regresión del cierre. H-027 sigue en 25/25 sobre el mismo commit.
+- Estado: **Lista** (24/11/2026).
+
+### H-029 · La pantalla de la morosidad
+
+- Change: C-14 10a, parte 3. Reglas: R20; D-036, D-106, D-167; HU-A8; L-085, L-099, L-101.
+- Resultado para Juani: desde el menú del edificio, "Morosidad" muestra el resumen, la fecha de los intereses y la
+  lista de las unidades que deben, y quien puede baja el Excel con un botón.
+- Alcance: la sección del menú, la pantalla `/edificios/{id}/morosidad`, la ruta de Next que baja el Excel (el
+  navegador nunca ve el token, D-036), la API falsa de e2e. Pasa por la skill impeccable. Exclusiones: filtros,
+  búsqueda, el detalle de una unidad.
+- Dificultad y riesgo: media / HIGH. Nivel L (datos personales en pantalla, permisos por perfil).
+- Tienen que pasar:
+  - **C01** el super admin ve "Morosidad" en el menú, en el grupo "Liquidación", y lleva a la pantalla.
+  - **C02** la pantalla muestra el resumen (unidades que deben, morosos críticos y total vencido) y "Intereses al
+    31/10/2026".
+  - **C03** la lista "Unidades con deuda" trae una fila por unidad en el orden de la API, con la unidad, los
+    propietarios, la situación en palabras, los montos con punto de miles y coma decimal, las liquidaciones vencidas
+    y desde cuándo debe (fecha y días).
+  - **C04** "Exportar a Excel" baja `morosidad-torre-ficticia-2026-11-18.xlsx` con lo que devuelve la API.
+  - **C05** un edificio sin deuda muestra "No hay unidades con deuda vencida".
+  - **C06** a 320 px sin scroll horizontal y sin errores de axe.
+  - **C07** la KB queda al día según K01.
+- Tienen que fallar:
+  - **N01** el consejo ve la lista pero no "Exportar a Excel", y la ruta del Excel le da 403.
+  - **N02** la vecina no ve "Morosidad" en el menú, y si entra a la pantalla ve que no tiene permiso.
+  - **N03** la pantalla no suma ni redondea: el total del resumen es el de la API aunque no coincida con la suma de
+    las filas.
+- Cierre de la base:
+  - **K01** HU-A8 en `knowledge-base/06_funcionalidades.md` nombra la pantalla `/edificios/{id}/morosidad`.
+- Guion de demo: entrar como administrador a la Torre Ficticia, abrir "Morosidad" desde el menú, bajar el Excel; a
+  320 px; como consejo, ver la lista sin el botón.
+- Estado: **Pendiente** (24/11/2026, bajo la firma por adelantado del 10a).
 
 ## Plantilla de historia
 
