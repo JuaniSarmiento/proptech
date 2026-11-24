@@ -1505,3 +1505,13 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   test, o arma el escenario sin pagos parciales (montos chicos sin pagar). Para dejar capital impago en dos meses no
   alcanza con un pago que "no cubre" el segundo: no hay que pagar ninguno. Un N que se recongela se ve fallar
   contra un mutante dirigido antes de volver a congelarlo, porque el rojo de "la ruta no existe" no prueba nada.
+
+## L-103 · Una sección nueva del menú cambia el conteo de un e2e viejo
+
+- **Origen**: CI del PR #28 (10a, H-029), 24/11/2026.
+- **Qué pasó**: la aceptación de H-029 dio 9/9 y la regresión del cierre verde, pero el job `web` del CI cayó en
+  `web/e2e/pulido.spec.ts` ("el menú lateral apila sus secciones"), que espera una cantidad fija de links del menú
+  del super admin: 6, y con "Morosidad" son 7. La aceptación corre sólo sus e2e, y la regresión del cierre, sólo las
+  aceptaciones de backend: ninguna corre los e2e del repo. Es L-064 del lado de la web.
+- **Regla**: una historia que suma una sección al menú busca los e2e que cuentan o enumeran sus links
+  (`rg -n "Secciones del edificio" web/e2e`) y los actualiza en el mismo trabajo; el brief del constructor lo nombra.
