@@ -1802,7 +1802,13 @@ orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. D
 - Evidencia (24/11/2026): `python3 aceptacion/H-027/aceptar.py --sin-regresion` sobre `4948116` desde `3265551`:
   **25/25**, C01 a C06, N01 a N06 y SPEC (6 escenarios) PASA, 0 rojos; C07 con K01 a K03, la ficha y los estructurales
   en verde, sólo pendiente la regresión del cierre (D-154).
-- Estado: **Lista** (24/11/2026).
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
 
 ### H-028 · El Excel de la morosidad
 
@@ -1847,7 +1853,13 @@ orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. D
 - Evidencia (24/11/2026): `python3 aceptacion/H-028/aceptar.py --sin-regresion` sobre `11432e9` desde `6acb3a4`:
   **19/19**, C01 a C05, N01 a N04 y SPEC PASA, 0 rojos; C06 con K01, K02, la ficha y los estructurales en verde, sólo
   pendiente la regresión del cierre. H-027 sigue en 25/25 sobre el mismo commit.
-- Estado: **Lista** (24/11/2026).
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
 
 ### H-029 · La pantalla de la morosidad
 
@@ -1895,7 +1907,13 @@ orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. D
 - Evidencia (24/11/2026): `python3 aceptacion/H-029/aceptar.py --sin-regresion` sobre `06b39bb` desde `8f4f5fd`: **9/9
   en navegador**, C01 a C06, N01 a N03 y SPEC PASA, 0 rojos; C07 con K01 y la ficha en verde, sólo pendiente la
   regresión del cierre.
-- Estado: **Lista** (24/11/2026).
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
 
 ## Plantilla de historia
 

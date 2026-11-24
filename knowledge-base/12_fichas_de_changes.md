@@ -1401,10 +1401,12 @@ D-153).
     (contraseña de `proptech_app` rechazada: los roles son del cluster y otro worker los recrea) y
     `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto` fallaron una vez cada uno en el CI. El del barrido de
     documentos (dependía de otro test) quedó arreglado en `8c5b278`.
-  - **El Excel no se abrió en Excel ni en LibreOffice** fuera de la demo: la aceptación lo lee con `openpyxl`.
   - **Los otros chequeos de edificio privados** (`complejos.py`, `gastos.py`, `pagos.py`) siguen con su copia propia;
     sólo `edificio_autorizado` de `liquidaciones.py` pasó a pública (H-028).
   - **El interés corrido no se ve** hasta la próxima emisión (D-167): si el piloto lo pide, es una decisión nueva.
+  - **Sin administración elegida, la pantalla muestra la morosidad pero no el botón de exportar** (demo del 24/11,
+    dueño C-26): una sesión sin la cookie `proptech_administracion` lee los datos y no carga los permisos de la barra.
+    Es el comportamiento del selector desde el 2b, no del 10a; un usuario real siempre pasa por el selector.
 
 ### 10b · `condonacion-judicial-y-libre-deuda` · crítico
 
