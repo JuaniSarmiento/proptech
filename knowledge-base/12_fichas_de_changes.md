@@ -1393,6 +1393,8 @@ D-153).
   entre la pantalla y el Excel; una unidad con una sola liquidación vencida marcada como moroso
   crítico; una pantalla que muestra un moroso crítico distinto del que da la función del cambio 4.
 - **Terminado cuando**: se cumplen los criterios de HU-A8.
+- **Historias (Rein)**: H-027 (la lectura y su API: `GET /api/complejos/{id}/morosidad`, la acción
+  `ver_morosidad` y la antigüedad y los intereses de D-167); H-028 (el Excel) y H-029 (la pantalla) siguen.
 
 ### 10b · `condonacion-judicial-y-libre-deuda` · crítico
 

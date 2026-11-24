@@ -1044,6 +1044,18 @@ número no se marcan duplicadas entre sí.
   de un día pasado. Cada cuenta lleva una etiqueta única, con precedencia: sin deuda vencida, bajo el
   umbral, deuda de intereses, moroso crítico, con deuda vencida. Las cuentas de persona quedan fuera
   hasta el 4d. El cambio 10a se encarga del listado, la exportación y la presentación.
+- **El listado de morosidad** (10a, H-027, D-167): `GET /api/complejos/{id}/morosidad`, armado en
+  `cuenta_corriente/aplicacion/morosidad.py` sobre `situacion_del_edificio`: mismas etiquetas y mismo total
+  vencido, sólo las unidades con deuda vencida, los morosos críticos primero y, dentro de cada grupo, de mayor
+  a menor deuda (el empate, por identificador). Cada fila trae el identificador de la unidad, el nombre de sus
+  propietarios (nunca email, teléfono ni DNI), el capital y los intereses vencidos, y la antigüedad. Es de
+  sólo lectura y no se audita; lo ven los perfiles con `ver_morosidad`, cada uno en su alcance.
+- **Antigüedad** (D-167): `vencida_desde` es el vencimiento de la obligación vencida más vieja con algo
+  impago, capital **o** interés; `dias` son los días desde ese **vencimiento**, no desde el fin de la gracia.
+  Sin deuda vencida no hay fila, así que no hay antigüedad.
+- **Intereses** (D-167): sólo el interés **registrado en el libro e impago**. No se estima el que corrió desde
+  el último corte: la respuesta trae `intereses_al`, el corte más reciente de un movimiento de interés del
+  edificio (`null` si no hay ninguno), y la pantalla dice a qué fecha son.
 - **Saldo inicial** (D-080): la deuda traída al migrar cuenta. Si se cargó con detalle por período,
   cada período vencido cuenta como una liquidación vencida; si vino como un total único, cuenta como
   una sola.
