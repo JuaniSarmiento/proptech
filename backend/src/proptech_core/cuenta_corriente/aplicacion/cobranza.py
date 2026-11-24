@@ -67,12 +67,26 @@ def situacion_de_cuenta(sesion: Session, *, cuenta_id: UUID, fecha: date) -> Sit
     return _clasificar(f, _version(sesion, f.complejo_id, fecha), fecha)
 
 
+def fotos_y_situaciones_del_edificio(
+    sesion: Session, *, complejo_id: UUID, fecha: date
+) -> list[tuple[FotoDeCuenta, SituacionDeCobranza]]:
+    """Cada cuenta de unidad con su foto y su situación, en una sola lectura (10a: la morosidad
+    necesita además los movimientos de la foto, para la fecha de los intereses)."""
+    version = _version(sesion, complejo_id, fecha)
+    return [
+        (f, _clasificar(f, version, fecha))
+        for f in fotos_del_edificio(sesion, complejo_id, SENTENCIA_DE_COBRANZA)
+        if f.unidad_id is not None
+    ]
+
+
 def situacion_del_edificio(
     sesion: Session, *, complejo_id: UUID, fecha: date
 ) -> Sequence[SituacionDeCuenta]:
-    version = _version(sesion, complejo_id, fecha)
     return [
-        SituacionDeCuenta(f.cuenta_id, f.unidad_id, _clasificar(f, version, fecha))
-        for f in fotos_del_edificio(sesion, complejo_id, SENTENCIA_DE_COBRANZA)
+        SituacionDeCuenta(f.cuenta_id, f.unidad_id, situacion)
+        for f, situacion in fotos_y_situaciones_del_edificio(
+            sesion, complejo_id=complejo_id, fecha=fecha
+        )
         if f.unidad_id is not None
     ]

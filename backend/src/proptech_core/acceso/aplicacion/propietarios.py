@@ -80,3 +80,20 @@ def asignar_propietario(
             ).scalar_one()
         )
     )
+
+
+def nombres_de_propietarios(sesion: Session, complejo_id: UUID) -> dict[UUID, list[str]]:
+    """Unidad → nombres de sus propietarios (asignación de vecino con vínculo `propietario`), en
+    orden alfabético. Sólo el nombre: nunca inquilinos ni datos de contacto (10a, N03)."""
+    filas = sesion.execute(
+        text(
+            "SELECT a.unidad_id, p.nombre FROM asignacion_rol a "
+            "JOIN persona p ON p.id = a.persona_id "
+            "WHERE a.rol = 'vecino' AND a.vinculo = 'propietario' AND a.complejo_id = :complejo"
+        ),
+        {"complejo": complejo_id},
+    ).all()
+    nombres: dict[UUID, list[str]] = {}
+    for unidad_id, nombre in filas:
+        nombres.setdefault(UUID(str(unidad_id)), []).append(str(nombre))
+    return {unidad: sorted(lista) for unidad, lista in nombres.items()}

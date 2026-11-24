@@ -22,7 +22,9 @@ CON_DEUDA_VENCIDA = "con_deuda_vencida"
 @dataclass(frozen=True)
 class SituacionDeCobranza:
     """`total_vencido`: residual de capital e interés de las obligaciones vencidas, sin restar el
-    crédito a favor. `liquidaciones_vencidas`: las vencidas con capital residual (E7, E8)."""
+    crédito a favor. `liquidaciones_vencidas`: las vencidas con capital residual (E7, E8).
+    `capital_vencido` e `interes_vencido` son las dos partes de `total_vencido`; `vencida_desde`, el
+    vencimiento de la vencida más vieja con residual en cualquier componente (10a, E1)."""
 
     total_vencido: Dinero
     liquidaciones_vencidas: int
@@ -30,6 +32,9 @@ class SituacionDeCobranza:
     deuda_de_intereses: bool
     moroso_critico: bool
     etiqueta: str
+    capital_vencido: Dinero = _CERO
+    interes_vencido: Dinero = _CERO
+    vencida_desde: date | None = None
 
 
 def clasificar(
@@ -42,6 +47,7 @@ def clasificar(
     capital = _CERO
     interes = _CERO
     liquidaciones = 0
+    vencida_desde: date | None = None
     for o in estado.obligaciones:
         if o.id not in estado.obligaciones_que_cuentan or not fecha > o.vencimiento + gracia:
             continue
@@ -55,6 +61,10 @@ def clasificar(
         interes = interes + de_interes
         if de_capital > _CERO:
             liquidaciones += 1
+        if (de_capital > _CERO or de_interes > _CERO) and (
+            vencida_desde is None or o.vencimiento < vencida_desde
+        ):
+            vencida_desde = o.vencimiento
     total = capital + interes
     bajo = total > _CERO and total < umbral
     solo_interes = not bajo and total > _CERO and capital == _CERO
@@ -69,4 +79,6 @@ def clasificar(
         etiqueta = MOROSO_CRITICO
     else:
         etiqueta = CON_DEUDA_VENCIDA
-    return SituacionDeCobranza(total, liquidaciones, bajo, solo_interes, moroso, etiqueta)
+    return SituacionDeCobranza(
+        total, liquidaciones, bajo, solo_interes, moroso, etiqueta, capital, interes, vencida_desde
+    )

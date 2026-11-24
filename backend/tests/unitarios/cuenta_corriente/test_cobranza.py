@@ -195,3 +195,35 @@ def test_el_credito_a_favor_no_resta_del_total_vencido() -> None:
 def test_lo_no_vencido_no_suma_al_total() -> None:
     e = estado([obligacion(AGO, "80000.00"), obligacion(f(12, 10), "85000.00")])
     assert como_tupla(situacion(e)) == ("80000.00", 1, False, False, False, "con_deuda_vencida")
+
+
+def test_capital_interes_y_vencida_desde_salen_del_mismo_recorrido() -> None:
+    """H-027 (E1): el desglose y la vencida más vieja con algo impago; el total no cambia."""
+    ago, sep = obligacion(AGO, "80000.00"), obligacion(SEP, "85000.00")
+    s = situacion(estado([ago, sep], [interes(ago, "4000.00")]))
+    assert (s.capital_vencido.a_texto(), s.interes_vencido.a_texto()) == ("165000.00", "4000.00")
+    assert s.vencida_desde == AGO
+    assert s.total_vencido == s.capital_vencido + s.interes_vencido
+
+
+def test_vencida_desde_sigue_en_la_mas_vieja_si_de_ella_queda_solo_el_interes() -> None:
+    ago, sep = obligacion(AGO, "80000.00"), obligacion(SEP, "85000.00")
+    p = pago("80000.00")
+    e = estado([ago, sep], [interes(ago, "4000.00"), p], [imputa(p, ago, "80000.00", 1)])
+    s = situacion(e)
+    assert s.vencida_desde == AGO, "agosto conserva su interés impago"
+    assert (s.capital_vencido.a_texto(), s.interes_vencido.a_texto()) == ("85000.00", "4000.00")
+    assert s.liquidaciones_vencidas == 1
+
+
+def test_vencida_desde_salta_a_la_siguiente_si_la_mas_vieja_esta_paga() -> None:
+    ago, sep = obligacion(AGO, "80000.00"), obligacion(SEP, "85000.00")
+    p = pago("80000.00")
+    e = estado([ago, sep], [p], [imputa(p, ago, "80000.00", 1)])
+    assert situacion(e).vencida_desde == SEP
+
+
+def test_sin_deuda_vencida_no_tiene_vencida_desde() -> None:
+    s = situacion(estado([obligacion(f(12, 10), "85000.00")]))
+    assert s.vencida_desde is None
+    assert (s.capital_vencido, s.interes_vencido) == (d("0.00"), d("0.00"))

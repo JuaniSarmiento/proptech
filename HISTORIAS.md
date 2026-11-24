@@ -1717,6 +1717,204 @@ generados en el test, sin datos reales, con banco "Banco Nación" o "Mercado Pag
   reales en Chrome (la segunda, con los arreglos de H-026); regresión del cierre H-004 a H-024 y barrido en verde, CI
   del PR #27 verde en `de70b95`. **Terminada por Juani el 18/11/2026** ("si tengo ganas de, primero cerra este 8").
 
+## Morosidad (10a, C-14)
+
+Riesgo **HIGH** (Juani, 24/11/2026): sólo lectura, sin escribir en el libro, pero muestra plata y datos
+personales y exporta. Lleva la firma de la propuesta en `openspec/changes/morosidad/` antes de construir (D-094,
+D-111). Historias en nivel L de Rein 1.5. Rama `10a-morosidad`; sin rompedor (D-152); CI y regresión una vez al
+cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H-029 (la pantalla).
+Juani delegó el change entero (24/11/2026: "podes trabajar solo, te doy el permiso y armarte vos el change
+directamente y despues hacemos la demo juntos"): como en el 8, las historias se construyen una detrás de otra y las
+demos van juntas al final, también con dos o más en Lista. Constructor y subagentes con Claude Sonnet.
+
+**Cierre (24/11/2026)**: regresión del cierre (H-004 a H-028, barrido de migraciones y estructurales) en verde sobre
+`c7ea831` con `python3 aceptacion/H-029/aceptar.py --sin-navegador`. CI del PR #28 en tres vueltas: la primera cayó en
+`web/e2e/pulido.spec.ts`, que contaba 6 links del menú (L-103, `39b4177`); la segunda, en un test del 7 que dependía del
+orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. Deuda en la ficha 10a.
+
+**Acuerdos de Juani del 24/11/2026** (van a una decisión nueva con H-027, K02):
+- **Ven** la morosidad super admin, administrador, contador, auxiliar y consejo, cada uno en su alcance (D-106);
+  **exportan** el Excel sólo super admin, administrador y contador. Auxiliar y consejo sólo ven.
+- **Intereses**: sólo el interés registrado en el libro e impago; no se estima el que corrió desde la última
+  emisión. La pantalla dice a qué fecha es.
+- **Antigüedad**: la liquidación vencida más vieja con algo impago (capital o interés); se muestran su fecha de
+  vencimiento y los días desde el vencimiento (no desde el fin de la gracia). Sin deuda vencida, vacía.
+- **Qué unidades aparecen**: sólo las que tienen deuda vencida, con su etiqueta de R20/R30; primero los morosos
+  críticos y, dentro de cada grupo, de mayor a menor deuda; arriba, cuántas deben, cuántas son morosos críticos y
+  el total vencido del edificio.
+- **Datos de la persona**: el identificador de la unidad y el nombre de sus propietarios; sin email, teléfono ni
+  DNI.
+
+### H-027 · La lectura de la morosidad
+
+- Change: C-14 10a, parte 1. Reglas: R20, R30; D-058, D-074, D-106, D-143; HU-A8.
+- Resultado para Juani: `GET .../complejos/{id}/morosidad` devuelve las unidades que deben, con su deuda vencida,
+  capital, intereses y antigüedad, y el resumen del edificio, para quien puede verlo.
+- Alcance: completar la lectura del 4c (capital e interés por separado y el vencimiento más viejo impago), el
+  permiso de ver la morosidad y la ruta de lectura. Exclusiones: el Excel (H-028), la pantalla (H-029), la gestión
+  judicial y su exclusión de R20 (10b).
+- Dificultad y riesgo: media / HIGH. Nivel L (plata y datos personales detrás de permisos).
+- Tienen que pasar:
+  - **C01** cada fila trae unidad, nombres de los propietarios, etiqueta, total vencido, capital, intereses,
+    liquidaciones vencidas, fecha del vencimiento más viejo y días; arriba, el resumen del edificio y la fecha de
+    los intereses (la de la última emisión).
+  - **C02** una deuda pagada en partes baja en la lista; pagada entera, la unidad desaparece.
+  - **C03** orden: morosos críticos primero y, dentro de cada grupo, de mayor a menor total vencido.
+  - **C04** la etiqueta de cada unidad es la misma que da `situacion_del_edificio` del 4c a la misma fecha.
+  - **C05** si de la liquidación más vieja sólo quedó el interés impago, la antigüedad sigue contando desde ella.
+  - **C06** super admin, administrador, contador, auxiliar y consejo con alcance sobre el edificio: 200.
+  - **C07** la KB queda al día según K01 a K03.
+- Tienen que fallar:
+  - **N01** el vecino pide la morosidad: 403; personal o consejo sin alcance sobre el edificio, u otra
+    administración: 404.
+  - **N02** una unidad con una sola liquidación vencida, o con total vencido menor a $500, no sale como moroso
+    crítico.
+  - **N03** la respuesta no trae email, teléfono ni DNI de nadie.
+  - **N04** pedir la morosidad no escribe: movimientos, imputaciones y auditoría quedan iguales.
+  - **N05** una unidad al día, o con sólo crédito a favor, no aparece; una obligación de una emisión anulada no
+    cuenta.
+  - **N06** el interés que corrió después de la última emisión no se suma a los intereses.
+- Cierre de la base:
+  - **K01** R20 en `knowledge-base/05_reglas_de_negocio.md`: dónde vive el listado y las definiciones de
+    antigüedad e intereses.
+  - **K02** una decisión nueva en `knowledge-base/09_decisiones_y_supuestos.md` con los acuerdos del 24/11/2026.
+  - **K03** el permiso de ver la morosidad en `knowledge-base/03_actores_y_roles.md`.
+- Guion de demo: con la Torre Ficticia de los ejemplos del 8, entrar como administrador y como consejo y ver la
+  lista con un moroso crítico, una unidad con deuda vencida, una bajo el umbral y una que pagó en partes.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `4a1ae4f` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-027/CONTRATO.md`
+  (la dependencia `proptech_api.morosidad.hoy`, `ver_morosidad` con su migración, la forma exacta de la
+  respuesta, el orden y `intereses_al`). Comando: `python3 aceptacion/H-027/aceptar.py --sin-regresion`. Esperados:
+  25 de backend; antes de construir, 21 rojos por aserción, 0 por setup, y 4 guardas de 404 que nacen verdes.
+- **Vuelta 2 de la aceptación** (`3265551`, congelada en `4948116`): el constructor frenó en N02 con evidencia: el
+  escenario armaba la deuda con pagos parciales sin hacer la cuenta de R04, que imputa primero al período más viejo,
+  y daba una sola vencida en `2B` y un moroso crítico real en `1B`. El error era del escenario, no del código. N02
+  pasa a armarse sin pagos parciales (`2B` con dos meses de $200 impagos); se vio fallar por aserción contra un
+  mutante que pone el moroso crítico antes del umbral (`'moroso_critico' == 'bajo_umbral'`) y pasar contra lo
+  construido. Lección L-102.
+- Construcción (Sonnet, una tanda): `d4fcb57` capital, interés y `vencida_desde` en `clasificar` (4 tests de apoyo, rojo
+  por `AttributeError` del campo inexistente, no por aserción de valor), `38d23d7` `ver_morosidad` y la `0048`, `978b115`
+  la lectura (`cuenta_corriente/aplicacion/morosidad.py`, con los propietarios desde `acceso/aplicacion/propietarios.py`
+  y los identificadores desde `complejos/aplicacion/unidades.py`) y la ruta, `0f221bb` KB (R20, D-167, `03`, ficha
+  10a). Estructurales actualizados: rutas protegidas, permisos, vocabulario, sesión y la cabeza en `test_libro_rollback`.
+  Ruff, format y mypy enteros en verde. **Deuda chica**: `proptech_api/morosidad.py` importa `_edificio_autorizado`,
+  privada de `liquidaciones.py`.
+- Evidencia (24/11/2026): `python3 aceptacion/H-027/aceptar.py --sin-regresion` sobre `4948116` desde `3265551`:
+  **25/25**, C01 a C06, N01 a N06 y SPEC (6 escenarios) PASA, 0 rojos; C07 con K01 a K03, la ficha y los estructurales
+  en verde, sólo pendiente la regresión del cierre (D-154).
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
+
+### H-028 · El Excel de la morosidad
+
+- Change: C-14 10a, parte 2. Reglas: R20; D-106, D-167; HU-A8 ("cuando la exporto, obtengo un Excel con los mismos
+  números"); E6 y E8 de `design.md`.
+- Resultado para Juani: el administrador o el contador baja la morosidad del edificio en un `.xlsx` con las mismas
+  filas y los mismos montos que la pantalla, como números con formato de pesos que se pueden sumar.
+- Alcance: `GET /api/complejos/{id}/morosidad/excel` sobre la lectura de H-027, la acción `exportar_morosidad` con su
+  migración. Exclusiones: el botón en la pantalla (H-029), otros formatos (CSV, PDF).
+- Dificultad y riesgo: baja / HIGH. Nivel L (datos personales que salen del sistema).
+- Tienen que pasar:
+  - **C01** responde un `.xlsx` (`content-type` de Excel, adjunto `morosidad-torre-ficticia-2026-11-18.xlsx`) con el
+    encabezado (edificio, fecha, intereses al), los títulos y una fila por unidad.
+  - **C02** celda por celda: las filas, el orden y cada monto son iguales al centavo a los de la API de H-027.
+  - **C03** la fila de totales suma el total vencido, el capital y los intereses, igual al resumen de la API.
+  - **C04** exportan super admin, administrador principal y por edificio, contador principal y por edificio.
+  - **C05** un edificio sin deuda vencida baja el Excel con los títulos y el total en cero.
+  - **C06** la KB queda al día según K01 y K02.
+- Tienen que fallar:
+  - **N01** auxiliar, consejo y vecino: 403 `exportar_morosidad`; fuera del alcance u otra administración: 404.
+  - **N02** ningún monto ni total va como texto ni como fórmula: son números con formato `#,##0.00`.
+  - **N03** el Excel no trae el email de nadie.
+  - **N04** bajar el Excel no escribe en el libro ni en la auditoría.
+- Cierre de la base:
+  - **K01** `exportar_morosidad` en `knowledge-base/03_actores_y_roles.md`.
+  - **K02** HU-A8 en `knowledge-base/06_funcionalidades.md` con lo construido (la ruta del Excel).
+- Guion de demo: como administrador, bajar el Excel de la Torre Ficticia, abrirlo y sumar una columna; como consejo,
+  ver que no puede bajarlo.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `6acb3a4` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-028/CONTRATO.md`
+  (la hoja `Morosidad` celda por celda, el nombre del archivo, `exportar_morosidad` con su migración). Comando:
+  `python3 aceptacion/H-028/aceptar.py --sin-regresion`. Esperados: 19 de backend; antes de construir, 16 rojos por
+  aserción, 0 por setup, y 3 guardas de 404 que nacen verdes. Antes de congelar, N04 se endureció para exigir el 200
+  de quien exporta (sin eso pasaba con la ruta ausente).
+- Construcción (Sonnet, una tanda, `11432e9`): `exportar_morosidad` y la `0049`; el libro se arma en
+  `cuenta_corriente/adaptadores/excel_de_morosidad.py` desde `morosidad_del_edificio` (la misma lectura de H-027);
+  montos como número (`float` del `Decimal` exacto, la celda de Excel es de punto flotante) con formato `"$ "#,##0.00`,
+  totales sumados con `Dinero` en Python, sin fórmulas; fechas `dd/mm/yyyy`. Saldó la deuda chica de H-027:
+  `_edificio_autorizado` pasa a `edificio_autorizado`, pública. Tests de apoyo del nombre del archivo, con rojo por
+  aserción. Ruff, format y mypy enteros en verde. El `.xlsx` se leyó con `openpyxl`, no se abrió en Excel ni en
+  LibreOffice (queda para la demo).
+- Evidencia (24/11/2026): `python3 aceptacion/H-028/aceptar.py --sin-regresion` sobre `11432e9` desde `6acb3a4`:
+  **19/19**, C01 a C05, N01 a N04 y SPEC PASA, 0 rojos; C06 con K01, K02, la ficha y los estructurales en verde, sólo
+  pendiente la regresión del cierre. H-027 sigue en 25/25 sobre el mismo commit.
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
+
+### H-029 · La pantalla de la morosidad
+
+- Change: C-14 10a, parte 3. Reglas: R20; D-036, D-106, D-167; HU-A8; L-085, L-099, L-101.
+- Resultado para Juani: desde el menú del edificio, "Morosidad" muestra el resumen, la fecha de los intereses y la
+  lista de las unidades que deben, y quien puede baja el Excel con un botón.
+- Alcance: la sección del menú, la pantalla `/edificios/{id}/morosidad`, la ruta de Next que baja el Excel (el
+  navegador nunca ve el token, D-036), la API falsa de e2e. Pasa por la skill impeccable. Exclusiones: filtros,
+  búsqueda, el detalle de una unidad.
+- Dificultad y riesgo: media / HIGH. Nivel L (datos personales en pantalla, permisos por perfil).
+- Tienen que pasar:
+  - **C01** el super admin ve "Morosidad" en el menú, en el grupo "Liquidación", y lleva a la pantalla.
+  - **C02** la pantalla muestra el resumen (unidades que deben, morosos críticos y total vencido) y "Intereses al
+    31/10/2026".
+  - **C03** la lista "Unidades con deuda" trae una fila por unidad en el orden de la API, con la unidad, los
+    propietarios, la situación en palabras, los montos con punto de miles y coma decimal, las liquidaciones vencidas
+    y desde cuándo debe (fecha y días).
+  - **C04** "Exportar a Excel" baja `morosidad-torre-ficticia-2026-11-18.xlsx` con lo que devuelve la API.
+  - **C05** un edificio sin deuda muestra "No hay unidades con deuda vencida".
+  - **C06** a 320 px sin scroll horizontal y sin errores de axe.
+  - **C07** la KB queda al día según K01.
+- Tienen que fallar:
+  - **N01** el consejo ve la lista pero no "Exportar a Excel", y la ruta del Excel le da 403.
+  - **N02** la vecina no ve "Morosidad" en el menú, y si entra a la pantalla ve que no tiene permiso.
+  - **N03** la pantalla no suma ni redondea: el total del resumen es el de la API aunque no coincida con la suma de
+    las filas.
+- Cierre de la base:
+  - **K01** HU-A8 en `knowledge-base/06_funcionalidades.md` nombra la pantalla `/edificios/{id}/morosidad`.
+- Guion de demo: entrar como administrador a la Torre Ficticia, abrir "Morosidad" desde el menú, bajar el Excel; a
+  320 px; como consejo, ver la lista sin el botón.
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `8f4f5fd` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-029/CONTRATO.md` (el
+  menú, la pantalla, la ruta de Next del Excel, la API falsa con `user_consejo` y el total del resumen un centavo
+  distinto de la suma, a propósito, para N03). Comando: `python3 aceptacion/H-029/aceptar.py --sin-regresion`.
+  Esperados: 9 en navegador, sin tests de backend; antes de construir, 9 rojos por aserción, 0 por setup.
+- Construcción (Sonnet, `0a01b59` y `06b39bb`): "Morosidad" en `secciones.ts` (grupo "Liquidación", `ver_morosidad`);
+  `morosidad/page.tsx` y `Pantalla.tsx` (cliente, el link de exportar por `permite(sesion, "exportar_morosidad", id)`),
+  cada dato en su `dl`; `morosidad/excel/route.ts` reenvía el `Content-Disposition` de la API sólo si es un nombre
+  seguro (si no, `morosidad.xlsx`); `lib/api/morosidad.ts` valida montos, etiquetas y forma; la API falsa en
+  `e2e/escenarios-morosidad.ts` con `user_consejo`. **Fuera del contrato, para la demo**: la API falsa contesta
+  `GET liquidaciones` con `[]` en 2701 y 2702 (C01 abre esa pantalla), y `Estados.tsx` suma la rama de `ver_morosidad`
+  como la de `informar_pago`. Rojo por aserción visto en `secciones.test.ts` y en el link de exportar; el resto de los
+  tests de apoyo se escribió con el código hecho. `biome ci`, `tsc` e `impeccable detect --changed` limpios (impeccable
+  avisa que el proyecto no tiene `PRODUCT.md` ni `DESIGN.md`).
+- Evidencia (24/11/2026): `python3 aceptacion/H-029/aceptar.py --sin-regresion` sobre `06b39bb` desde `8f4f5fd`: **9/9
+  en navegador**, C01 a C06, N01 a N03 y SPEC PASA, 0 rojos; C07 con K01 y la ficha en verde, sólo pendiente la
+  regresión del cierre.
+- Demo y aprobación de Juani: 24/11/2026, recorrida del orquestador con PostgreSQL efímero (roles y migraciones
+  reales, la deuda cargada con `registrar_emision` y `registrar_credito`), la API y la web compilada en Chrome.
+  Administrador: resumen 4 / 1 / $79.020,00, 1A moroso crítico primero ($30.720, 75 días), 2A bajo el umbral al
+  final; Excel bajado desde el botón, abierto en LibreOffice, montos numéricos y total $79.020; consejo sin botón y
+  403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
+  como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
+- Estado: **Terminada** (24/11/2026).
+
 ## Plantilla de historia
 
 ### H-xxx · título

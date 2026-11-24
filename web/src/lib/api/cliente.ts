@@ -93,6 +93,9 @@ type OpcionesDePedido = {
   cuerpoMultipart?: FormData;
   /** La respuesta 2xx es un archivo, no JSON: `datos` es su `ArrayBuffer`. */
   respuestaBinaria?: boolean;
+  /** Con `respuestaBinaria`: `datos` es `{ bytes, disposicion }`, con el `Content-Disposition` que
+   * puso la API (el nombre del archivo lo decide ella). */
+  conDisposicion?: boolean;
   cabeceras?: Headers;
   /** Caminos (`"informe.suma"`) dentro de la respuesta 2xx que tienen que
    * ser texto decimal ASCII; si alguno no lo es, el resultado es `fallo`
@@ -219,7 +222,12 @@ export async function pedirApi<T>(
   if (respuesta.status >= 200 && respuesta.status < 300) {
     if (opciones.respuestaBinaria) {
       try {
-        return { estado: "ok", datos: (await respuesta.arrayBuffer()) as T };
+        const bytes = await respuesta.arrayBuffer();
+        if (opciones.conDisposicion) {
+          const disposicion = respuesta.headers.get("content-disposition");
+          return { estado: "ok", datos: { bytes, disposicion } as T };
+        }
+        return { estado: "ok", datos: bytes as T };
       } catch {
         return { estado: "fallo" };
       }

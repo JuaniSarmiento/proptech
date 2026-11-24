@@ -1393,6 +1393,20 @@ D-153).
   entre la pantalla y el Excel; una unidad con una sola liquidación vencida marcada como moroso
   crítico; una pantalla que muestra un moroso crítico distinto del que da la función del cambio 4.
 - **Terminado cuando**: se cumplen los criterios de HU-A8.
+- **Historias (Rein)**: H-027 (la lectura y su API: `GET /api/complejos/{id}/morosidad`, la acción
+  `ver_morosidad` y la antigüedad y los intereses de D-167); H-028 (el Excel: `GET /api/complejos/{id}/morosidad/excel` y la
+  acción `exportar_morosidad`, migración `0049`); H-029 (la pantalla `/edificios/{id}/morosidad`, la sección del menú y la ruta de Next del Excel).
+- **10a · deuda del cierre** (24/11/2026, CI del PR #28 verde en la tercera vuelta sobre `8c5b278`):
+  - **Tests inestables con xdist** (L-104, dueño C-25 o C-28): `test_tenant_que_no_es_uuid_levanta_antes_de_ejecutar_sql`
+    (contraseña de `proptech_app` rechazada: los roles son del cluster y otro worker los recrea) y
+    `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto` fallaron una vez cada uno en el CI. El del barrido de
+    documentos (dependía de otro test) quedó arreglado en `8c5b278`.
+  - **Los otros chequeos de edificio privados** (`complejos.py`, `gastos.py`, `pagos.py`) siguen con su copia propia;
+    sólo `edificio_autorizado` de `liquidaciones.py` pasó a pública (H-028).
+  - **El interés corrido no se ve** hasta la próxima emisión (D-167): si el piloto lo pide, es una decisión nueva.
+  - **Sin administración elegida, la pantalla muestra la morosidad pero no el botón de exportar** (demo del 24/11,
+    dueño C-26): una sesión sin la cookie `proptech_administracion` lee los datos y no carga los permisos de la barra.
+    Es el comportamiento del selector desde el 2b, no del 10a; un usuario real siempre pasa por el selector.
 
 ### 10b · `condonacion-judicial-y-libre-deuda` · crítico
 

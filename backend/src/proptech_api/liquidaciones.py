@@ -92,7 +92,7 @@ def _sin_permiso(accion: str) -> dict[str, str]:
     return {"codigo": "sin_permiso", "detalle": "sin_permiso", "permiso_faltante": accion}
 
 
-def _edificio_autorizado(
+def edificio_autorizado(
     sesion: Session, identidad: Identidad, complejo_id: UUID, accion: Accion
 ) -> None:
     edificio = cargar_complejo(sesion, complejo_id)
@@ -124,9 +124,7 @@ def preliquidacion_del_periodo(
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, Any]:
-    _edificio_autorizado(
-        sesion, identidad, complejo_id, Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION
-    )
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION)
     return preliquidacion.preliquidar_periodo(
         sesion, complejo_id=complejo_id, periodo=_periodo(periodo)
     )
@@ -165,7 +163,7 @@ def emitir_la_liquidacion(
 ) -> dict[str, Any]:
     """Emite exactamente la preliquidación revisada (la huella). El cuerpo se valida a mano, después
     del 404 y del 403 (D7), no por FastAPI. 201 emitida; 200 si es el mismo pedido otra vez."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
     hecha = emision.emitir_liquidacion(
         sesion,
         identidad,
@@ -188,7 +186,7 @@ def liquidaciones_del_edificio(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
     """De la más nueva a la más vieja. El consejo no ve lo emitido sin distribuir (P39, D-157)."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
     completa = ve_lo_no_distribuido(cargar_asignaciones(sesion, identidad.persona_id), complejo_id)
     return listar_liquidaciones(sesion, complejo_id=complejo_id, solo_distribuidas=not completa)
 
@@ -202,7 +200,7 @@ def liquidacion_emitida(
 ) -> dict[str, Any]:
     """Lo guardado al emitir, nunca recalculado (E2), con su estado. Al consejo, una liquidación
     emitida sin distribuir le da 404 (P39, D-157)."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
     emitida = leer_liquidacion(sesion, complejo_id=complejo_id, liquidacion_id=liquidacion_id)
     if emitida is None:
         raise NoEncontrado
@@ -220,7 +218,7 @@ def distribuir_la_liquidacion(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> dict[str, str]:
     """La distribución manual (E9): 409 si ya estaba distribuida o está anulada."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
     hecha = ciclo.distribuir_liquidacion(
         sesion,
         identidad,
@@ -242,7 +240,7 @@ def anular_la_liquidacion(
 ) -> dict[str, str]:
     """Anula con motivo (E10): 409 si está distribuida, ya anulada o con el período siguiente
     emitido (P26). El cuerpo se valida a mano, después del 404 y del 403 (D7)."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.ANULAR_LIQUIDACION)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.ANULAR_LIQUIDACION)
     hecha = ciclo.anular_liquidacion(
         sesion,
         identidad,
@@ -267,7 +265,7 @@ def registrar_un_cargo_cobrado_de_menos(
 ) -> dict[str, str]:
     """Corrige con una obligación nueva un cargo cobrado de menos (E11). El replay por
     `operacion_id` da el mismo cuerpo con 201 y no escribe nada."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.CORREGIR_MOVIMIENTO)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.CORREGIR_MOVIMIENTO)
     try:
         pedido = pedido_de_cargo(cuerpo)
     except PedidoInvalido as error:
@@ -325,7 +323,7 @@ def documentos_de_la_liquidacion(
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
     """Una fila por unidad y variante, con su estado en texto. Nunca los bytes del PDF."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.VER_LIQUIDACIONES)
     _liquidacion_visible(sesion, identidad, complejo_id, liquidacion_id)
     return documentos.listar_documentos(
         sesion, complejo_id=complejo_id, liquidacion_id=liquidacion_id
@@ -344,7 +342,7 @@ def reprocesar_los_documentos(
 ) -> dict[str, int]:
     """Pasa los `fallido` a `pendiente` y encola todos los `pendiente`. Un `generado` no se toca.
     Si la cola falla: 503, y los documentos quedan `pendiente` (el barrido los toma)."""
-    _edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
+    edificio_autorizado(sesion, identidad, complejo_id, Accion.EMITIR_Y_DISTRIBUIR_LIQUIDACION)
     if (
         emision_de_la_liquidacion(sesion, complejo_id=complejo_id, liquidacion_id=liquidacion_id)
         is None

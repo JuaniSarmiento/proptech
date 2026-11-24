@@ -3,7 +3,7 @@
  * tarea 4.2), agrupadas como pide la enmienda del 20/10/2026: "El edificio"
  * (Resumen, Unidades, Grupos), "Liquidación" (Liquidaciones, H-017: sólo con
  * `ver_liquidaciones`; Pagos y Mis pagos, H-025: sólo con `confirmar_pago_informado` o
- * `informar_pago`) y "Configuración" (Categorías, Intereses y
+ * `informar_pago`; Morosidad, H-029: sólo con `ver_morosidad`) y "Configuración" (Categorías, Intereses y
  * vencimiento). "Confirmar sin saldos previos" NO va acá (D11): se llega
  * desde el resumen, nunca desde el menú.
  *
@@ -71,6 +71,15 @@ export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
       grupo: "Liquidación",
       icono: "mis_pagos",
       accion: "informar_pago",
+      complejoId: id,
+    },
+    {
+      clave: "morosidad",
+      etiqueta: "Morosidad",
+      href: `/edificios/${id}/morosidad`,
+      grupo: "Liquidación",
+      icono: "morosidad",
+      accion: "ver_morosidad",
       complejoId: id,
     },
     {

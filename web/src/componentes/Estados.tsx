@@ -97,7 +97,9 @@ export function Estados(props: Props) {
           <p>
             {props.permisoFaltante === "informar_pago"
               ? "Esto lo puede hacer la persona propietaria o inquilina de la unidad."
-              : "Esto lo puede hacer el super admin de la empresa."}
+              : props.permisoFaltante === "ver_morosidad"
+                ? "Para verla hace falta el permiso ver_morosidad en este edificio: pedíselo al administrador."
+                : "Esto lo puede hacer el super admin de la empresa."}
           </p>
         </main>
       );

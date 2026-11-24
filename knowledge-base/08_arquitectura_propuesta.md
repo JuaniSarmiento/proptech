@@ -249,6 +249,16 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   Next `/comprobantes/descarga?token=` (sin sesión, el token es la autorización), que lo pide a la API por la red
   interna. La subida del comprobante pasa por una server action y `next.config.ts` sube
   `serverActions.bodySizeLimit` a 11 MB (el tope de la API es 10 MB).
+- **Morosidad** (10a, H-027 a H-029, D-167): sólo lectura, no escribe en el libro. La arma
+  `cuenta_corriente.aplicacion.morosidad.morosidad_del_edificio` desde la misma clasificación de R20 y R30
+  (`cobranza.fotos_y_situaciones_del_edificio`), con los identificadores de `complejos.aplicacion.unidades` y los
+  nombres de los propietarios de `acceso.aplicacion.propietarios` (sin email, teléfono ni DNI). Los intereses son
+  sólo los registrados, nunca estimados. El Excel lo arma `cuenta_corriente/adaptadores/excel_de_morosidad.py` con
+  `openpyxl` (montos numéricos, totales sumados con `Dinero`, sin fórmulas). Rutas en `proptech_api/morosidad.py`:
+  `GET /api/complejos/{id}/morosidad` (`ver_morosidad`) y `GET .../morosidad/excel` (`exportar_morosidad`), con el
+  orden 404 y 403 de D7; la fecha entra por la dependencia `proptech_api.morosidad.hoy`. En la web,
+  `web/src/app/edificios/[id]/morosidad/` (pantalla de servidor con `web/src/lib/api/morosidad.ts`) y la ruta de Next
+  `morosidad/excel`, que reenvía el archivo para que el navegador no vea el token.
 - **Tablas de sólo agregar** (4a, D-114.4, D-115): una sola lista en `compartido/tablas_protegidas.py`
   (desde H-004 incluye `tramo_de_interes`, el detalle del interés por mora, desde H-005
   `carga_de_saldo_inicial` y `origen_de_saldo_inicial` y desde H-013 las seis de la liquidación emitida; su bajada de migración

@@ -31,6 +31,22 @@ def liquidada_b(base_del_edificio: BaseDeEdificio, mundo: Mundo) -> Liquidada:
     return liquidar(base_del_edificio, mundo, de_b=True)
 
 
+@pytest.fixture(scope="module")
+def pendiente_de_b(base_del_edificio: BaseDeEdificio, mundo: Mundo, liquidada_b: Liquidada) -> UUID:
+    """El documento pendiente de la otra administración. Es fixture y no lo crea un test: con
+    xdist los tests de un módulo se reparten entre workers y el barrido no puede depender de que
+    otro test haya corrido antes en el suyo (L-104)."""
+    return documento(base_del_edificio, mundo, liquidada_b, "completa", de_b=True)
+
+
+@pytest.fixture(scope="module")
+def pendiente_de_a(base_del_edificio: BaseDeEdificio, mundo: Mundo, liquidada: Liquidada) -> UUID:
+    """Un pendiente de la primera administración que ningún otro test crea (segunda unidad, sin
+    extraordinaria): el barrido no depende del orden (L-104)."""
+    otra = Liquidada(liquidada.liquidacion_id, mundo.unidades[1])
+    return documento(base_del_edificio, mundo, otra, "sin_extraordinaria")
+
+
 def _archivar(c: psycopg.Connection, mundo: Mundo, doc: UUID, contenido: bytes = _PDF) -> None:
     c.execute(
         "INSERT INTO pdf_de_expensa (administracion_id, complejo_id, documento_id, contenido, "
@@ -128,9 +144,8 @@ def test_el_archivo_no_se_agrega_dos_veces_ni_se_trunca(
 
 
 def test_una_administracion_no_ve_los_documentos_de_otra(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo, liquidada_b: Liquidada
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, pendiente_de_b: UUID
 ) -> None:
-    documento(base_del_edificio, mundo, liquidada_b, "completa", de_b=True)
     with base_del_edificio.conectar_app() as c, c.transaction():
         fijar_tenant(c, mundo.admin_b)
         assert c.execute("SELECT count(*) FROM documento_de_expensa").fetchone() == (1,)
@@ -140,7 +155,7 @@ def test_una_administracion_no_ve_los_documentos_de_otra(
 
 
 def test_el_barrido_ve_lo_pendiente_de_todas_y_nada_mas(
-    base_del_edificio: BaseDeEdificio, mundo: Mundo
+    base_del_edificio: BaseDeEdificio, mundo: Mundo, pendiente_de_a: UUID, pendiente_de_b: UUID
 ) -> None:
     barrido = "SELECT set_config('app.barrido_de_documentos', 'si', true)"
     with base_del_edificio.conectar_app() as c, c.transaction():

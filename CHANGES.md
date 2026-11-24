@@ -56,7 +56,8 @@ gates están en el árbol de abajo.
 6. COBRAR Y SEGUIR
    ✅ 8 pagos informados (archivado 18/11/2026, D-163 a D-166, PR #27)
    ⏳ 9 extracto bancario · 6b motor de reglas
-   ⏳ 10a morosidad · 10b condonación y libre deuda
+   ✅ 10a morosidad (archivado 24/11/2026, D-167, PR #28)
+   ⏳ 10b condonación y libre deuda
    ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
    ⏳ 14 lectura de facturas
 
@@ -72,7 +73,7 @@ DEUDA ADELANTADA (D-138, 30/10/2026) · en paralelo, ninguno toca el camino crí
    ⏳ 2f base-y-rls (CRITICAL, sin asignar: un firmante de D-111)
 ```
 
-- **Orden obligado (camino crítico):** 8 → 10a → 10b → 13 → 15 (4a, 4b, 4c, 5 y 7 ya archivados).
+- **Orden obligado (camino crítico):** 10b → 13 → 15 (4a, 4b, 4c, 5, 7, 8 y 10a ya archivados).
   **2d se adelanta lo antes posible** dentro de ese orden: es la única deuda CRITICAL viva (D-130).
 - **En paralelo, no frenan a nadie:** los siete de
   deuda adelantada (D-138); 4d, 6b, 6c, 9, 11, 12 y 14.
@@ -735,7 +736,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-14] `morosidad` · 10a
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` archivado (24/11/2026, HIGH, D-167, PR #28): construido con Rein en H-027 a H-029, Terminadas
+  por Juani; migraciones `0048` y `0049` (sólo vocabulario de auditoría); deuda en la ficha 10a
 - **Scope**: listado por unidad desde las imputaciones, exportación a Excel, presentación del
   moroso crítico (sólo lectura, no escribe en la cuenta corriente)
 - **Dependencias**: C-11

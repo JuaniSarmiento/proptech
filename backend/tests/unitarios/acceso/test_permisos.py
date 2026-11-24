@@ -85,6 +85,10 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "ver_configuracion_del_edificio": (True, True, True, True, True, True, True, False, False),
     # liquidacion-y-emision E14: leer lo emitido; el auxiliar y los vecinos no.
     "ver_liquidaciones": (True, True, True, True, True, False, True, False, False),
+    # morosidad E6: todos los perfiles con alcance sobre el edificio; el vecino no.
+    "ver_morosidad": (True, True, True, True, True, True, True, False, False),
+    # morosidad E8: exporta quien administra o lleva la contabilidad; auxiliar y consejo no.
+    "exportar_morosidad": (True, True, True, True, True, False, False, False, False),
 }
 _PERFILES = [
     Asignacion(Rol.SUPER_ADMIN, None),

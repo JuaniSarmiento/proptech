@@ -3455,3 +3455,25 @@ registrado como tal en su momento.)*
   (una expensa emitida y no vencida ya es deuda que un pago puede cubrir).
 - **Quién**: el orquestador, al escribir la aceptación de H-020, bajo la firma por adelantado del 8 (E6 y E7 con
   la recomendación del orquestador). Juani la revisa en la demo.
+
+## D-167 · Morosidad: quién ve y exporta, intereses y antigüedad (24/11/2026)
+
+- **Contexto**: el cambio 10a `morosidad` (HU-A8, R20, R30) pide una lista de quién debe, cuánto y desde cuándo,
+  con un Excel. Antes de construirla había que fijar quién la ve y la exporta, qué intereses muestra, cómo se
+  cuenta la antigüedad y qué datos de la persona salen, porque son plata y datos personales detrás de permisos.
+- **Decisión**: (1) **ven** la morosidad super admin, administrador, contador, auxiliar y consejo, cada uno en
+  su alcance (D-106); **exportan** el Excel sólo super admin, administrador y contador; auxiliar y consejo sólo
+  ven. (2) **Intereses**: sólo el interés registrado en el libro e impago; no se estima el corrido desde la
+  última emisión; la respuesta lleva `intereses_al` y la pantalla dice a qué fecha es. (3) **Antigüedad**: la
+  liquidación vencida más vieja con algo impago (capital o interés); se muestran su vencimiento
+  (`vencida_desde`) y los días desde el vencimiento; sin deuda vencida, vacía. (4) **Qué unidades aparecen**:
+  sólo las que tienen deuda vencida, con su etiqueta de R20 y R30; primero los morosos críticos y, dentro de
+  cada grupo, de mayor a menor deuda; arriba, cuántas deben, cuántas son morosos críticos y el total vencido
+  del edificio. (5) **Datos de la persona**: el identificador de la unidad y el nombre de sus propietarios; sin
+  email, teléfono ni DNI. Además, el Excel lleva los montos como números con formato de pesos, no como texto.
+- **Descartado**: (1) estimar el interés al día de hoy (mezcla plata registrada con plata calculada y no
+  coincidiría con el libro ni con la próxima emisión); (2) contar los días desde el fin de la gracia (el
+  vencimiento es el dato que el administrador reconoce en la liquidación); (3) mostrar también las unidades al
+  día (la lista es de quien debe); (4) dar el Excel al consejo y al auxiliar (exporta quien administra la
+  cobranza).
+- **Quién**: Juani, 24/11/2026.

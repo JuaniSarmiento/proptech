@@ -85,6 +85,14 @@ def _datos(datos: dict[str, Any]) -> DatosUnidad:
         raise error_de_validacion(error) from None
 
 
+def identificadores_de_unidades(sesion: Session, complejo_id: UUID) -> dict[UUID, str]:
+    """Unidad → su identificador, para las lecturas de otros módulos (10a)."""
+    filas = sesion.execute(
+        text("SELECT id, identificador FROM unidad WHERE complejo_id = :id"), {"id": complejo_id}
+    ).all()
+    return {UUID(str(f[0])): str(f[1]) for f in filas}
+
+
 def listar_unidades(sesion: Session, complejo_id: UUID) -> Padron:
     if cargar_complejo(sesion, complejo_id) is None:
         raise NoEncontrado()
