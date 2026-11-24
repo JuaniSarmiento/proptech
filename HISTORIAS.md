@@ -1773,7 +1773,12 @@ cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H
   - **K03** el permiso de ver la morosidad en `knowledge-base/03_actores_y_roles.md`.
 - Guion de demo: con la Torre Ficticia de los ejemplos del 8, entrar como administrador y como consejo y ver la
   lista con un moroso crítico, una unidad con deuda vencida, una bajo el umbral y una que pagó en partes.
-- Estado: **Pendiente** (acordada con Juani el 24/11/2026; falta la firma de la propuesta y la aceptación).
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `4a1ae4f` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-027/CONTRATO.md`
+  (la dependencia `proptech_api.morosidad.hoy`, `ver_morosidad` con su migración, la forma exacta de la
+  respuesta, el orden y `intereses_al`). Comando: `python3 aceptacion/H-027/aceptar.py --sin-regresion`. Esperados:
+  25 de backend; antes de construir, 21 rojos por aserción, 0 por setup, y 4 guardas de 404 que nacen verdes.
+- Estado: **En proceso** (24/11/2026).
 
 ## Plantilla de historia
 
