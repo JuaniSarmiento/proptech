@@ -1723,6 +1723,9 @@ Riesgo **HIGH** (Juani, 24/11/2026): sólo lectura, sin escribir en el libro, pe
 personales y exporta. Lleva la firma de la propuesta en `openspec/changes/morosidad/` antes de construir (D-094,
 D-111). Historias en nivel L de Rein 1.5. Rama `10a-morosidad`; sin rompedor (D-152); CI y regresión una vez al
 cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H-029 (la pantalla).
+Juani delegó el change entero (24/11/2026: "podes trabajar solo, te doy el permiso y armarte vos el change
+directamente y despues hacemos la demo juntos"): como en el 8, las historias se construyen una detrás de otra y las
+demos van juntas al final, también con dos o más en Lista. Constructor y subagentes con Claude Sonnet.
 
 **Acuerdos de Juani del 24/11/2026** (van a una decisión nueva con H-027, K02):
 - **Ven** la morosidad super admin, administrador, contador, auxiliar y consejo, cada uno en su alcance (D-106);
@@ -1823,7 +1826,13 @@ cerrar (D-154). Tres historias: H-027 (la lectura y su API), H-028 (el Excel), H
   - **K02** HU-A8 en `knowledge-base/06_funcionalidades.md` con lo construido (la ruta del Excel).
 - Guion de demo: como administrador, bajar el Excel de la Torre Ficticia, abrirlo y sumar una columna; como consejo,
   ver que no puede bajarlo.
-- Estado: **Pendiente** (24/11/2026, bajo la firma por adelantado del 10a).
+- Constructor: Claude Sonnet (`rein-constructor`).
+- Aceptación aprobada: `6acb3a4` (bajo la firma por adelantado del 10a). Contrato en `aceptacion/H-028/CONTRATO.md`
+  (la hoja `Morosidad` celda por celda, el nombre del archivo, `exportar_morosidad` con su migración). Comando:
+  `python3 aceptacion/H-028/aceptar.py --sin-regresion`. Esperados: 19 de backend; antes de construir, 16 rojos por
+  aserción, 0 por setup, y 3 guardas de 404 que nacen verdes. Antes de congelar, N04 se endureció para exigir el 200
+  de quien exporta (sin eso pasaba con la ruta ausente).
+- Estado: **En proceso** (24/11/2026).
 
 ## Plantilla de historia
 
