@@ -41,7 +41,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-027 | C-14 10a, parte 1 | La lectura de la morosidad por unidad | Media / HIGH | Terminada |
 | H-028 | C-14 10a, parte 2 | El Excel de la morosidad | Baja / HIGH | Terminada |
 | H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
-| H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | En proceso |
+| H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Pendiente |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Pendiente |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
@@ -1964,14 +1964,57 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   padrón con el comprador y el registro en la lista.
 - Aceptación: `aceptacion/H-030/`, 40 casos vistos fallar por aserción (0 errores de setup), congelada en
   `abbc1e2` por el orquestador bajo D-168. El `GET` lo usan los mismos roles que registran.
-- Estado: En proceso.
+- Construcción (Sonnet): `b2ef21a`, `2fbd97d`, `8526a80`, `b61bd10`. Módulo nuevo `titularidad`, migración `0050`
+  con `cambio_de_titular` y `parte_de_cambio_de_titular` (una fila por persona y lado), la acción
+  `registrar_cambio_de_titular` es permiso y evento a la vez (como `ajustar_saldo_inicial`). Un comprador que ya
+  tiene otra asignación en la unidad da 422.
+- Evidencia (25/11/2026, orquestador): `python3 aceptacion/H-030/aceptar.py --sin-regresion` sobre `b61bd10` desde
+  `abbc1e2`: 40 esperados, 40 pasados, 0 fallas, 0 errores, 0 skips; C01 a N04 PASA; K01 sin regresión (se corre al
+  cerrar el change, D-154). `git diff abbc1e2 HEAD -- aceptacion/` sólo cambia la línea del SHA.
+- Demo (25/11/2026, por API, sin Juani): PostgreSQL efímero con roles y migraciones reales hasta `0050`, uvicorn
+  real con la identidad inyectada (no hay modo de desarrollo sin Clerk). Venta de la copropietaria de A: 201 con
+  `aviso.deuda` `"20200.00"` (igual a `/morosidad`); padrón con la otra propietaria, la compradora y el inquilino
+  intactos; huella del libro idéntica antes y después; B con `aviso` nulo; contador 403; fecha futura y vendedor
+  inquilino 422 sin cambiar nada; auditoría por cambio; `UPDATE`/`DELETE` negados a `proptech_app`.
+- **Deuda** (para otra historia): sin test de dos cambios simultáneos sobre la misma unidad (`FOR UPDATE`); los
+  tests de `0050` no se vieron fallar por aserción antes de la tabla; un vendedor con invitación abierta no la
+  pierde (sin revisar); los 422 dicen `"valor inválido"` sin motivo legible (lo necesita H-034); no hay ruta HTTP
+  del estado de cuenta de una unidad para el personal.
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
 
 ### H-031 · Deuda previa a nombre del vendedor
 
 - Objetivo: con `deuda_previa: "a_nombre_del_vendedor"`, lo impago de los períodos anteriores al mes del
   cambio (capital e interés registrado) pasa a la cuenta de persona del vendedor elegido, con traslados
   enlazados; la unidad queda en cero por ese concepto y esa deuda no genera interés nuevo (D-168.2).
-  Criterios: se escriben antes de construir.
+- Incluye: el traslado en el libro (caso de uso en `cuenta_corriente`, como la reimputación), la cuenta de
+  persona creada si no existe, la elección del vendedor deudor. No incluye: el cobro y la lectura de la
+  cuenta del vendedor (H-033), pantallas (H-034).
+- Nivel: **L**.
+- **C01**: el `POST` de H-030 acepta `deuda_previa: "a_nombre_del_vendedor"` y `vendedor_deudor` (id de uno
+  de los vendedores; si hay un solo vendedor puede omitirse) y responde 201 con `trasladado` (monto en
+  texto) y `cuenta_del_vendedor` (id de la cuenta de persona).
+- **C02**: lo impago de las obligaciones de períodos anteriores al mes de la fecha del cambio (cada
+  componente de capital y el interés registrado) queda en cero en la cuenta de la unidad y la cuenta de
+  persona del vendedor debe exactamente lo mismo, al centavo; la suma de las dos cuentas no cambia.
+- **C03**: en el libro quedan movimientos `traslado`: un crédito en la unidad por cada obligación
+  trasladada y su contraparte en la cuenta del vendedor, enlazados entre sí (`enlazado_a`), con el
+  `operacion_id` del cambio.
+- **C04**: la deuda del mes del cambio y de los posteriores queda en la unidad; lo ya pagado no se mueve.
+- **C05**: emitir el período siguiente no genera interés sobre la cuenta del vendedor; la unidad sólo
+  genera interés sobre lo que le quedó.
+- **C06**: si la cuenta de persona del vendedor ya existía en el edificio, se reutiliza.
+- **C07**: sin deuda previa, el cambio se registra igual, sin movimientos y con `trasladado` `"0.00"`.
+- **N01**: 422 si `vendedor_deudor` no está entre los vendedores, o si falta con más de un vendedor; nada
+  cambia.
+- **N02**: un pedido que falla no deja ni movimientos, ni cuenta nueva, ni fila, ni auditoría.
+- **N03**: la cuenta del vendedor no aparece en la morosidad ni en la situación del edificio (D-168.2b).
+- **N04**: un pago confirmado después sobre la unidad no se imputa a la deuda trasladada.
+- **N05**: un segundo cambio de la misma unidad no vuelve a trasladar lo que ya se trasladó.
+- **K01**: lección en `15_lecciones.md` sobre el traslado entre cuentas, o "nada, porque…".
+- Demo: unidad con dos meses vencidos e interés; cambio con deuda a nombre del vendedor; la unidad en cero
+  por esos meses, el vendedor debiendo lo mismo; emitir el mes siguiente y ver que el vendedor no suma
+  interés.
 - Estado: Pendiente.
 
 ### H-032 · Prorrateo por días de la expensa del mes del cambio
