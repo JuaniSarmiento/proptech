@@ -889,6 +889,20 @@ eventos, `informado`; `reimputado` sigue `confirmado`).
   se niega si alguna tiene filas. La función del trigger del número nombra las tablas con `public.`: corre
   con el `search_path` de la sesión de la app, que no lo incluye.
 
+### Existe hoy, dominio `titularidad` (cambio 4d, migración `0050`, H-030)
+
+Dos tablas de sólo agregar (tres triggers cada una, RLS forzada por administración, a cargo del rol de
+arranque con `roles despues`); la acción `registrar_cambio_de_titular` entra al vocabulario de auditoría.
+
+- **`cambio_de_titular`**: `id`, `administracion_id`, `complejo_id`, `unidad_id` (FK compuesta a `unidad`
+  del mismo edificio), `fecha`, `expensa_del_mes` (`entera` o `prorrateo`), `deuda_previa` (`en_la_unidad`
+  o `a_nombre_del_vendedor`; H-030 sólo escribe los primeros de cada par), `registrado_por` y
+  `registrado_en`.
+- **`parte_de_cambio_de_titular`**: una fila por persona de cada lado (`cambio_id`, `persona_id`, `rol`
+  `vendedor` o `comprador`, `orden`); del comprador guarda también el `nombre` y el `email` informados. Única
+por cambio y persona (la misma persona no está dos veces ni de los dos lados).
+- **Bajada**: la `0050` se niega si alguna tabla tiene filas.
+
 ### Planificado, dominio `pagos`
 
 #### `cbu_historico` · hoy `cbu_de_unidad` (cambio 8, R19; tabla creada en la `0044`, la llena H-020 al confirmar)

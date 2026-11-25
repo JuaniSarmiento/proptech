@@ -735,6 +735,13 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   por administración y edificio, P52) y el vocabulario `tipo_de_movimiento` ya tiene `traslado` (ambos
   sentidos) y `enlazado_a` sembrados (E14); el 4d usa ese traslado para mover el historial de deuda de
   la cuenta de la unidad a la cuenta de la persona vendedora, sin ALTER.
+- **4d · H-030 construida** (registro con los defaults): módulo `titularidad`, migración `0050` con
+  `cambio_de_titular` y `parte_de_cambio_de_titular` (de sólo agregar, RLS forzada; el nombre corto de la
+  tabla hija evita que Postgres trunque el trigger por sentencia a 63 caracteres), la acción
+  `registrar_cambio_de_titular`, `POST` y `GET` de `/complejos/{c}/unidades/{u}/cambios-de-titular`, el
+  reemplazo de los propietarios (`acceso.aplicacion.propietarios`) y el aviso de deuda con
+  `estado_de_cuenta`. Con los defaults no escribe en el libro; H-031 y H-032 habilitan las alternativas
+  (la API da 422 a cualquier otro valor mientras tanto).
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la

@@ -1116,7 +1116,12 @@ número no se marcan duplicadas entre sí.
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
   cálculos.
 
-## R32 · Cambio de titular a mitad de período · Vigente (D-109)
+## R32 · Cambio de titular a mitad de período · En construcción (D-109, D-168)
+
+> **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
+> default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
+> auditoría y el aviso de deuda; H-031 y H-032 construyen las alternativas (deuda a nombre del vendedor,
+> prorrateo por días). Hasta entonces la API sólo acepta los valores por defecto.
 
 - **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
   anterior.
