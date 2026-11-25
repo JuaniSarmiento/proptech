@@ -53,6 +53,10 @@ from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
 from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.importar import importar
+from proptech_core.titularidad.aplicacion.registrar import (
+    CompradorPedido,
+    registrar_cambio_de_titular,
+)
 
 from ._edificios import devolver_tabla_al_migrador
 
@@ -667,7 +671,33 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             reloj=lambda: datetime(2026, 11, 5, 15, tzinfo=UTC),
         ).ajuste_id
 
+    def invocar_cambio_de_titular(sesion: Session) -> UUID:
+        """Necesita un propietario: el padrón importado de `1A` lo trae."""
+        edificio, _ = confirmar_un_edificio(sesion)
+        unidad, vendedor = sesion.execute(
+            text(
+                "SELECT u.id, a.persona_id FROM unidad u "
+                "JOIN asignacion_rol a ON a.unidad_id = u.id WHERE u.complejo_id = :c "
+                "AND u.identificador = '1A' AND a.vinculo = 'propietario' LIMIT 1"
+            ),
+            {"c": edificio},
+        ).one()
+        return registrar_cambio_de_titular(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            unidad_id=UUID(str(unidad)),
+            fecha="2026-11-01",
+            vendedores=[UUID(str(vendedor))],
+            compradores=[CompradorPedido("Comprador Ficticio", None)],
+            expensa_del_mes="entera",
+            deuda_previa="en_la_unidad",
+            hoy=date(2026, 11, 18),
+            request_id=uuid.uuid4(),
+        ).id
+
     _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
+        Accion.REGISTRAR_CAMBIO_DE_TITULAR: invocar_cambio_de_titular,
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
                 sesion,
