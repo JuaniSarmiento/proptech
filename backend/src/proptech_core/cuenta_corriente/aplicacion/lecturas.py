@@ -190,6 +190,14 @@ def foto(sesion: Session, cuenta_id: UUID) -> FotoDeCuenta:
     return resultado[cuenta_id]
 
 
+def cuenta_de_unidad(sesion: Session, *, unidad_id: UUID) -> UUID | None:
+    """La cuenta de la unidad, o `None` si todavía no tiene (la crea la primera emisión o carga)."""
+    cuenta = sesion.execute(
+        text("SELECT id FROM cuenta WHERE unidad_id = :unidad"), {"unidad": unidad_id}
+    ).scalar_one_or_none()
+    return None if cuenta is None else UUID(str(cuenta))
+
+
 def estado_de_cuenta(sesion: Session, *, cuenta_id: UUID) -> EstadoDeCuenta:
     return foto(sesion, cuenta_id).estado
 

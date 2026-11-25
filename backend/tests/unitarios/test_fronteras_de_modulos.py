@@ -531,6 +531,8 @@ _DUENO_DE_TABLA = {
         ),
         "pagos",
     ),
+    # 4d, H-030: el cambio de titular y las personas de cada lado los escribe `titularidad`.
+    **dict.fromkeys(("cambio_de_titular", "parte_de_cambio_de_titular"), "titularidad"),
     **dict.fromkeys(
         ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
         "gastos",

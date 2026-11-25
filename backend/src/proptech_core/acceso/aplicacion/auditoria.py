@@ -267,6 +267,15 @@ class _DetalleConfirmarPago(_DetalleAsignarEdificio):
     ajuste_sin_destino: Literal[True] | None = None
 
 
+class _DetalleRegistrarCambioDeTitular(_DetalleBase):
+    #: La `entidad_id` de la fila es el cambio. Sin nombres ni emails de las personas (D9): viven en
+    #: `parte_de_cambio_de_titular`.
+    unidad_id: UUID
+    fecha: date
+    expensa_del_mes: Literal["entera", "prorrateo"]
+    deuda_previa: Literal["en_la_unidad", "a_nombre_del_vendedor"]
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -294,6 +303,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.ACEPTAR_ALERTAS_BLOQUEANTES: _DetalleAceptarAlertas,
     Accion.ANULAR_LIQUIDACION: _DetalleAnularLiquidacion,
     Accion.CONFIRMAR_PAGO_INFORMADO: _DetalleConfirmarPago,
+    Accion.REGISTRAR_CAMBIO_DE_TITULAR: _DetalleRegistrarCambioDeTitular,
     EventoDelPago.RECHAZAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelPago.REVERTIR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelPago.REIMPUTAR_PAGO_INFORMADO: _DetalleAsignarEdificio,

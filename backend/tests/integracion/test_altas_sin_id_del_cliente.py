@@ -211,6 +211,15 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "componente": "ordinaria",
         "motivo": "Prueba ficticia del barrido de altas",
     },
+    # Cambio 4d (H-030): el cambio de titular no lleva ningún id propio; `id` es 422.
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular",
+        "POST",
+    ): lambda mundo: {
+        "fecha": "2026-11-10",
+        "vendedores": [str(uuid.uuid4())],
+        "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
+    },
     # Cambio 7 (H-013): emitir lleva el `emision_id` del cliente (idempotencia) y la huella
     # revisada; cualquier otro campo, `id` incluido, es 422.
     (

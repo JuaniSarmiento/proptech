@@ -93,6 +93,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0047_reimputacion_de_un_pago.py",
         "0048_ver_morosidad.py",
         "0049_exportar_morosidad.py",
+        "0050_cambio_de_titular.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -120,6 +121,7 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
                 "ver_liquidaciones",
                 "ver_morosidad",
                 "exportar_morosidad",
+                "registrar_cambio_de_titular",
             }
     finally:
         base_del_edificio.migrar("upgrade", "head")

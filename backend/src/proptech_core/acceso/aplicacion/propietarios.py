@@ -8,6 +8,7 @@ importación audita una vez) y no renombran a quien ya existía.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -97,3 +98,30 @@ def nombres_de_propietarios(sesion: Session, complejo_id: UUID) -> dict[UUID, li
     for unidad_id, nombre in filas:
         nombres.setdefault(UUID(str(unidad_id)), []).append(str(nombre))
     return {unidad: sorted(lista) for unidad, lista in nombres.items()}
+
+
+def vecinos_de_unidad_bloqueados(sesion: Session, *, unidad_id: UUID) -> dict[UUID, str]:
+    """Persona → vínculo (`propietario` o `inquilino`) de cada asignación de vecino sobre la unidad,
+    con las filas bloqueadas (`FOR UPDATE`): dos cambios de titular simultáneos de la misma unidad
+    se serializan, y el segundo ve lo que dejó el primero (cambio de titular, H-030)."""
+    filas = sesion.execute(
+        text(
+            "SELECT persona_id, vinculo FROM asignacion_rol "
+            "WHERE rol = 'vecino' AND unidad_id = :unidad FOR UPDATE"
+        ),
+        {"unidad": unidad_id},
+    ).all()
+    return {UUID(str(persona)): str(vinculo) for persona, vinculo in filas}
+
+
+def quitar_propietarios(sesion: Session, *, personas: Iterable[UUID], unidad_id: UUID) -> None:
+    """Borra la asignación `vecino` / `propietario` de cada persona sobre la unidad. La persona, sus
+    otras unidades y los inquilinos de ésta no se tocan."""
+    for persona in personas:
+        sesion.execute(
+            text(
+                "DELETE FROM asignacion_rol WHERE rol = 'vecino' AND vinculo = 'propietario' "
+                "AND unidad_id = :unidad AND persona_id = :persona"
+            ),
+            {"unidad": unidad_id, "persona": persona},
+        )

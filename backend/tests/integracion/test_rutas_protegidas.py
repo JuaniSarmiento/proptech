@@ -97,6 +97,9 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias", "POST"),
     ("/api/complejos/{complejo_id}/importaciones/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial", "POST"),
+    # --- Cambio 4d `cambio-de-titular` (H-030) ---
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "POST"),
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "GET"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/personal", "GET"),
@@ -563,6 +566,15 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
                 "importe": "10.00",
                 "componente": "ordinaria",
                 "motivo": "Prueba del candado",
+            },
+        )
+    if ruta.endswith("/cambios-de-titular") and metodo == "POST":
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "fecha": "2026-11-10",
+                "vendedores": [str(uuid.uuid4())],
+                "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
             },
         )
     if ruta.endswith("/ajustes-de-saldo-inicial"):

@@ -173,6 +173,11 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 "cbu_de_unidad",
             )
         },
+        # 4d, H-030 (`0050`): el cambio de titular de una unidad y las personas de cada lado.
+        **{
+            tabla: _con_tres_triggers(tabla)
+            for tabla in ("cambio_de_titular", "parte_de_cambio_de_titular")
+        },
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(
