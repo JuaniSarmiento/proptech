@@ -1116,7 +1116,7 @@ número no se marcan duplicadas entre sí.
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
   cálculos.
 
-## R32 · Cambio de titular a mitad de período · En construcción (D-109, D-168)
+## R32 · Cambio de titular a mitad de período · Vigente (D-109), en construcción (D-168)
 
 > **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
 > default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
