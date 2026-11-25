@@ -25,7 +25,7 @@ from pathlib import Path
 RAMA = "change/cambio-de-titular"
 CAMBIO = "cambio-de-titular"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = "PENDIENTE"
+ACEPTACION_SHA = "abbc1e2"
 CARPETA = "aceptacion/H-030/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h030"
 TESTS_ESPERADOS = 40

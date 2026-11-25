@@ -1962,7 +1962,9 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - **K01**: D-168 entra a la base; R32 pasa a "en construcción" en `05_reglas_de_negocio.md`.
 - Demo: con el edificio de ejemplo, registrar la venta de una unidad con deuda por API, ver el aviso, el
   padrón con el comprador y el registro en la lista.
-- Estado: Pendiente.
+- Aceptación: `aceptacion/H-030/`, 40 casos vistos fallar por aserción (0 errores de setup), congelada en
+  `abbc1e2` por el orquestador bajo D-168. El `GET` lo usan los mismos roles que registran.
+- Estado: En proceso.
 
 ### H-031 · Deuda previa a nombre del vendedor
 
