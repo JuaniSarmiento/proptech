@@ -38,6 +38,14 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Terminada |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Terminada |
 | H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Terminada |
+| H-027 | C-14 10a, parte 1 | La lectura de la morosidad por unidad | Media / HIGH | Terminada |
+| H-028 | C-14 10a, parte 2 | El Excel de la morosidad | Baja / HIGH | Terminada |
+| H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
+| H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | En proceso |
+| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Pendiente |
+| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Pendiente |
+| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
+| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1914,6 +1922,75 @@ orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. D
   403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
   como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
 - Estado: **Terminada** (24/11/2026).
+
+## Cambio de titular (4d, C-07d)
+
+Firmado por el orquestador por delegación escrita de Juani (25/11/2026, D-168), que decide P51 y P52 y el
+diseño. Las historias quedan en **Lista** con su demo hecha; Terminada la marca Juani. Rama
+`change/cambio-de-titular`. Orden: H-030 → H-031 → H-032 → H-033 → H-034 (cada una usa el registro de la
+anterior). En el tablero de Jarvis van como `HU-H030`…
+
+### H-030 · Registrar el cambio de titular
+
+- Objetivo observable: el administrador registra que una unidad cambió de dueño, con fecha, vendedores y
+  compradores; los propietarios de la unidad se reemplazan, queda el registro auditado y, si la unidad
+  debe, se avisa sin bloquear. Las dos opciones de R32 quedan en su valor por defecto (expensa del mes
+  entera, deuda previa en la unidad); las alternativas son H-031 y H-032.
+- Incluye: tabla de sólo agregar `cambio_de_titular`, permiso y evento de auditoría
+  `registrar_cambio_de_titular`, `POST` y `GET` de los cambios de una unidad, reemplazo de las
+  asignaciones de propietario. No incluye: pantallas (H-034), traslados en el libro (H-031, H-032).
+- Nivel: **L** (cobros y cuenta corriente, datos de personas).
+- **C01**: `POST /complejos/{c}/unidades/{u}/cambios-de-titular` con `fecha`, `vendedores` (ids de persona
+  de los propietarios actuales) y `compradores` (nombre y email opcional) responde 201 con el registro:
+  id, fecha, vendedores, compradores, `expensa_del_mes: "entera"`, `deuda_previa: "en_la_unidad"`, quién
+  lo registró y cuándo.
+- **C02**: después, los vendedores ya no son propietarios de la unidad y los compradores sí; los inquilinos
+  siguen igual. Un comprador que ya existe como persona en la administración (mismo email) se reutiliza.
+- **C03**: queda una fila en `cambio_de_titular` y una auditoría `registrar_cambio_de_titular` con la
+  unidad, la fecha y las dos elecciones.
+- **C04**: si la unidad tiene deuda, la respuesta trae `aviso` con el monto adeudado como texto y el
+  cambio se registra igual; sin deuda, `aviso` es nulo.
+- **C05**: con las opciones por defecto el libro no cambia: el estado de cuenta de la unidad es idéntico
+  antes y después.
+- **C06**: `GET` de la misma ruta lista los cambios de la unidad, el más nuevo primero.
+- **N01**: contador, auxiliar, consejo y vecino reciben 403; una unidad de otra administración o fuera de
+  alcance, 404.
+- **N02**: 422 si un vendedor no es propietario actual de la unidad, si falta vendedor o comprador, si una
+  persona está de los dos lados o si la fecha es futura.
+- **N03**: un pedido que falla no deja nada: ni fila, ni asignaciones cambiadas, ni auditoría.
+- **N04**: `cambio_de_titular` no acepta `UPDATE` ni `DELETE`, y RLS impide verla desde otra administración.
+- **K01**: D-168 entra a la base; R32 pasa a "en construcción" en `05_reglas_de_negocio.md`.
+- Demo: con el edificio de ejemplo, registrar la venta de una unidad con deuda por API, ver el aviso, el
+  padrón con el comprador y el registro en la lista.
+- Estado: Pendiente.
+
+### H-031 · Deuda previa a nombre del vendedor
+
+- Objetivo: con `deuda_previa: "a_nombre_del_vendedor"`, lo impago de los períodos anteriores al mes del
+  cambio (capital e interés registrado) pasa a la cuenta de persona del vendedor elegido, con traslados
+  enlazados; la unidad queda en cero por ese concepto y esa deuda no genera interés nuevo (D-168.2).
+  Criterios: se escriben antes de construir.
+- Estado: Pendiente.
+
+### H-032 · Prorrateo por días de la expensa del mes del cambio
+
+- Objetivo: con `expensa_del_mes: "prorrateo"`, la parte del vendedor de la obligación del mes del cambio
+  (días anteriores a la fecha) pasa a su cuenta de persona, al registrar si el período ya se emitió o al
+  emitirlo si no (D-168.5). Criterios: se escriben antes de construir.
+- Estado: Pendiente.
+
+### H-033 · La cuenta del vendedor
+
+- Objetivo: el administrador ve el estado de la cuenta de persona del vendedor y registra su cobro, que se
+  imputa con R04 (D-168.2c). Criterios: se escriben antes de construir.
+- Estado: Pendiente.
+
+### H-034 · Pantallas del cambio de titular
+
+- Objetivo: desde el padrón, "Cambiar titular" con las dos opciones, el aviso de deuda, el historial de
+  cambios y la cuenta del vendedor con su cobro, con impeccable. Criterios: se escriben antes de
+  construir.
+- Estado: Pendiente.
 
 ## Plantilla de historia
 
