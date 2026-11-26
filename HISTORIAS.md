@@ -42,7 +42,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-028 | C-14 10a, parte 2 | El Excel de la morosidad | Baja / HIGH | Terminada |
 | H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
-| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | En proceso |
+| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Pendiente |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
@@ -2018,7 +2018,26 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Aceptación: `aceptacion/H-031/`, 27 casos vistos fallar por aserción (0 errores), congelada en `d4804ac`
   bajo D-168. Contrato: el `aviso` es lo que le queda a la unidad después del traslado; sin deuda previa,
   `trasladado` `"0.00"` y `cuenta_del_vendedor` nulo. Sólo se vio fallar la primera aserción de cada test.
-- Estado: En proceso.
+- **Recongelada** en `8601a7a` (25/11/2026): N03 pedía la situación de cuatro cuentas en un mundo que sólo crea la
+  de 1A (`IndexError`, error del orquestador, lo frenó el constructor con evidencia). Única diferencia en
+  `aceptacion/` desde `d4804ac`: esa aserción y la línea del SHA.
+- Construcción (Sonnet): `97dc6e3`, `329dd5a`, `8e16036`, `25feddd`. `trasladar_deuda` en
+  `cuenta_corriente/aplicacion/traslado_de_deuda.py`: un crédito `traslado` por obligación y componente en la
+  unidad, con `fecha_valor` en el vencimiento (si no, el interés del mes seguía corriendo), y su débito enlazado
+  en una obligación contenedora de la cuenta de persona; migración `0051` (`obligacion.de_traslado`, la única con
+  capital cero; `ck_mov_traslado`; `cambio_de_titular.vendedor_deudor_id`). L-105 en `15_lecciones.md`.
+- Evidencia (25/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `fd8d603` desde `8601a7a`: 27/27, 0
+  fallas, 0 errores, 0 skips; H-030 sigue 40/40.
+- Demo (25/11/2026, por API, sin Juani): A debía 27.689,20 (septiembre 7.200 + 279,20 tras un pago de 3.000 que
+  cubrió primero 200 de interés, octubre 10.000 + 210, noviembre 10.000). Cambio con deuda a nombre de Ana: 201,
+  `trasladado` `"17689.20"`, `aviso` `"10000.00"`; A con septiembre y octubre en cero y noviembre intacto; Ana debe
+  17.689,20; 8 traslados (4 y 4) que suman igual; `/morosidad` con A sólo en noviembre y sin Ana; al emitir
+  diciembre Ana no suma interés y A suma 200 sólo sobre noviembre (igual que la testigo B en ese mes); 422 con
+  deudor ajeno o inquilino sin cambiar nada.
+- **Deuda**: carrera de dos cambios que crean la misma cuenta de persona (puede quedar una cuenta sin
+  movimientos); de los tests propios del constructor sólo el primero se vio fallar; `vendedor_deudor` con
+  `en_la_unidad` da 422 (no estaba en el contrato).
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
 
 ### H-032 · Prorrateo por días de la expensa del mes del cambio
 
