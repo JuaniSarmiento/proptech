@@ -2505,7 +2505,28 @@ serie; demo única al cerrar.
 ### H-042 · Condonación y gestión judicial
 
 - Objetivo: condonar interés pendiente con motivo (R29) y marcar la gestión judicial por unidad, que la saca del moroso
-  crítico y la expone al 13 (R31). Criterios al terminar H-041.
+  crítico y la expone al 13 (R31). Criterios escritos desde el texto vigente de R29, R31 y R20 y sus tests mínimos (L-108).
+- Nivel: **L** (escribe en la cuenta corriente, CRITICAL).
+- **C01**: `POST .../unidades/{u}/condonaciones` con el interés a condonar (obligación y período), importe (total o parcial)
+  y motivo obligatorio crea un movimiento de crédito `condonacion` imputado a ese interés; el recargo original sigue en el
+  libro y el saldo baja exactamente el importe (R29).
+- **C02**: el motivo se ve en la lectura del vecino (H-038/H-039: sus movimientos o su expensa) y en la del consejo.
+- **C03**: después de condonar, la función de R20 da el resultado correcto para la unidad (por ejemplo, deja de ser "deuda
+  de intereses" si condonó todo el interés).
+- **C04**: condonan sólo el super admin y el administrador principal (D-171); cada condonación queda auditada.
+- **C05**: `POST`/`DELETE .../unidades/{u}/gestion-judicial` con motivo marca y desmarca la unidad, auditado, sólo super
+  admin y administrador principal; la marca se guarda con su historial (de sólo agregar).
+- **C06**: una unidad marcada no cuenta como moroso crítico en `situacion_de_cuenta`, `situacion_del_edificio` y la
+  morosidad del 10a aunque tenga dos o más liquidaciones vencidas; desmarcada, vuelve (R31).
+- **C07**: la consulta `unidades_en_gestion_judicial` del edificio queda en `aplicacion` para el 13 (los avisos de mora).
+- **C08**: la morosidad del 10a muestra la marca en la fila de la unidad; el certificado de H-041 lleva
+  `en_gestion_judicial: true` y la leyenda.
+- **N01**: condonar sin motivo, por más que el interés pendiente, sobre algo que no es interés o sobre interés ya cobrado
+  da 422 sin cambios.
+- **N02**: otro perfil, 403; unidad de otro edificio o administración, 404.
+- **N03**: la marca judicial nunca cambia el saldo ni escribe en el libro.
+- **N04**: marcar una unidad ya marcada o desmarcar una que no lo está da 409 sin cambios.
+- **K01**: R29 y R31 pasan a vigentes (construidas en el 10b) en `05`, HU-A11 en `06`, `04` y la ficha 10b con H-042.
 - Estado: Pendiente.
 
 ### H-043 · Pantallas del 10b
