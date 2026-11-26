@@ -2346,6 +2346,11 @@ que Juani pase H-036 y H-037 a Terminada; se mergea después del #32.
 Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), propuesta antes de construir. Rama
 `change/portal-del-vecino` sobre el 14 (las migraciones siguen a `0055`). Tres historias en serie; demo única al cerrar.
 
+**CI de cierre del 11** (26/11/2026, D-154): PR #34. La primera vuelta falló en un e2e viejo de H-009
+(`confirmar-saldos.spec.ts:75`, axe: "document-title"), con el título intacto en el layout; al relanzar el job pasó.
+**Verde** en los seis jobs. **Deuda**: ese e2e es inestable (axe corre mientras la página se vuelve a dibujar). Falta que
+Juani pase H-038 a H-040 a Terminada; se mergea después del #33.
+
 ### H-038 · Lo que debo y lo que pagué
 
 - Objetivo: lecturas HTTP del vecino para todas sus unidades, según su vínculo (D-106, D-170).
