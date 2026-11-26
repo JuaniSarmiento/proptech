@@ -85,8 +85,10 @@ _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST"
 #: D1 (tarea 2.5): datos públicos del país, nunca del edificio ni del rol —
 #: cualquier identidad autenticada, aunque no tenga ninguna fila en
 #: `asignacion_rol`, tiene que poder leerlas (200), a diferencia del resto
-#: de `_RUTAS_CUBIERTAS`.
+#: de `_RUTAS_CUBIERTAS`. H-038: `mis-unidades` también, porque su alcance son las
+#: asignaciones `vecino` de la propia persona: sin ninguna, 200 con la lista vacía.
 _RUTAS_SIN_ALCANCE = {
+    ("/api/mis-unidades", "GET"),
     ("/api/georef/provincias", "GET"),
     ("/api/georef/provincias/{provincia_id}/departamentos", "GET"),
     ("/api/georef/departamentos/{departamento_id}/localidades", "GET"),
@@ -195,6 +197,10 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/morosidad", "GET"),
     # --- Cambio 10a `morosidad` (H-028) ---
     ("/api/complejos/{complejo_id}/morosidad/excel", "GET"),
+    # --- Cambio 11 `portal-del-vecino` (H-038): por unidad, 404 sin vínculo vecino ---
+    ("/api/mis-unidades/{unidad_id}/pagos", "GET"),
+    ("/api/mis-unidades/{unidad_id}/documentos", "GET"),
+    ("/api/mis-unidades/{unidad_id}/cargos-particulares/{cargo_id}", "GET"),
 }
 
 
