@@ -2495,6 +2495,11 @@ serie; demo única al cerrar.
   escribe en el libro.
 - **N04**: el certificado nunca incluye estimaciones del período en curso ni gastos sin liquidar.
 - **K01**: R21 en `05`, HU-A10 en `06`, `04` con la tabla nueva y la ficha 10b con H-041.
+- Aceptación: `aceptacion/H-041/`, 44 casos vistos fallar por aserción (0 errores, `ruff --select F` limpio, montos contra un
+  oráculo con el cálculo real de interés), congelada en `5d2252f` bajo D-172. Contrato: `POST`/`GET .../libre-deuda`,
+  descarga en `/api/libre-deuda/descarga`, acción `emitir_libre_deuda` sólo super admin, tabla de sólo agregar
+  `certificado_de_libre_deuda`, el PDF guardado al emitir, `interes_corrido` aparte y dentro de la huella,
+  `en_gestion_judicial` en `false` hasta H-042.
 - Estado: En proceso.
 
 ### H-042 · Condonación y gestión judicial
