@@ -3538,3 +3538,21 @@ registrado como tal en su momento.)*
   construir una pantalla propia antes del 6c (la pisaría).
 - **Quién**: el orquestador, por la delegación escrita de Juani del 25/11/2026 (D-168). Riesgo **HIGH**: facturas con
   CUIT y montos que salen a un servicio externo de IA.
+
+## D-170 · El 11 `portal-del-vecino`: lo que ve cada vínculo, la comparación y la distribución (26/11/2026)
+
+- **Contexto**: el portal tiene que mostrar deuda, expensa y comprobantes de todas las unidades de una persona según su
+  vínculo (D-106). Quedaban abiertos D3 del 6, el detalle del inquilino, qué es "el mes anterior", la distribución al
+  abrir (D-074), el crédito retenido y el alcance de la app instalable.
+- **Decisión**: (1) el vecino ve su cargo particular de sólo lectura, acotado a su unidad (cierra D3 del 6). (2) El
+  inquilino ve lo mismo que la variante `sin_extraordinaria` del PDF del 7, en deuda, desglose y comprobantes; nunca
+  montos extraordinarios. (3) "El mes anterior" es la liquidación emitida inmediatamente anterior del mismo edificio,
+  rotulada con su período; sin anterior, no hay comparación. (4) La primera lectura de una liquidación emitida por un
+  vecino llama al puerto de distribución del 7 una sola vez (D-074). (5) Crédito aplicable y retenido en dos cifras
+  separadas; el retenido nunca descuenta la deuda. (6) App instalable con manifest e íconos y un service worker mínimo
+  que no guarda respuestas autenticadas ni montos; sin modo sin conexión. (7) Tres historias en serie: H-038 lecturas,
+  H-039 la expensa explicada, H-040 pantallas y app instalable.
+- **Supuesto a confirmar con Juani**: que el fondo de reserva y los intereses que muestra la variante `sin_extraordinaria`
+  le corresponden al inquilino (la práctica varía; hoy el PDF del 7 ya lo hace así).
+- **Quién**: el orquestador, por la delegación escrita de Juani (D-168). Riesgo **HIGH**: datos de plata de personas
+  detrás de su vínculo; no escribe en el libro salvo la distribución ya construida en el 7.
