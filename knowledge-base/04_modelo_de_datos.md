@@ -582,7 +582,8 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 
 ### Existe hoy, dominio `gastos`
 
-Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026): migraciones `0029` (`proveedor`,
+Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026) y `factura_de_gasto` (cambio 14, H-036,
+`0054`): migraciones `0029` (`proveedor`,
 `gasto`), `0030` (los diez eventos de auditoría del dominio), `0031` (`complejo.cuit`, tarea 3.10),
 `0032` (`nota_de_credito`, `cargo_particular`) y `0033` (`categoria_de_gasto.obligatorio_mensual`,
 D7/D-141). RLS forzada en las cuatro, dueño `proptech_migrador` (D9 del design: ninguna es de sólo
@@ -617,8 +618,24 @@ agregar mientras no está aprobada).
 - **Constraints**: `uq_gasto_factura` sobre la clave completa de factura, por edificio (R12; los
   `NULL` de un gasto sin factura no chocan entre sí, D5 del design). Editar importe/categoría/grupo/
   período/tipo/datos de factura de un gasto `aprobado` se rechaza.
-- **No construido en este cambio**: lectura de QR ni IA (cambio 14); control de monto atípico R23
-  (cambio 7).
+- **Cambio 14, H-036 (migración `0054`, D-169)**: `concepto`, `categoria_id`, `grupo_id`, `periodo`,
+  `periodo_de_imputacion` e `importe` pasan a ser **anulables** (un borrador leído de un QR no trae lo que
+  el QR no dice; uno sin QR no trae nada); las restricciones de arriba valen sólo con datos presentes y
+  `ck_gasto_aprobado_completo` exige los seis en un gasto `aprobado`. Columnas nuevas: `fecha_de_factura`
+  · fecha; `origen` · `manual` (los del 6, default) / `qr` / `sin_qr`; `motivo_sin_qr` · `no_hay_qr`,
+  `dominio_ajeno`, `version_desconocida`, `json_invalido`, `importe_invalido` o `datos_invalidos`
+  (`ck_gasto_origen`: un `sin_qr` siempre lleva su motivo, los demás nunca, y uno `qr` siempre su fecha).
+- **No construido en este cambio**: la lectura por IA (H-037); control de monto atípico R23 (cambio 7).
+
+#### `factura_de_gasto` · existe (migración `0054`, R12, H-036, D-169)
+
+- **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `gasto_id`; `contenido` · `BYTEA` (los
+  bytes tal como se subieron); `sha256`; `tipo` · `jpeg`/`png`/`pdf`; `tamano` (1 a 10 MiB); `subido_por`;
+  `subido_en`.
+- **Relaciones**: una por gasto (`uq_factura_gasto`), FK compuesto contra el edificio y la persona.
+- **Constraints**: de sólo agregar (tres triggers, D-115) y RLS forzada por administración, igual que
+  `comprobante_de_pago`. Sin `GET` autenticado: se baja sólo con el enlace firmado de tipo `factura`.
+  Los gastos cargados a mano del 6 no tienen fila acá.
 
 #### `nota_de_credito` · existe (migración `0032`, R22, D-061, D-082)
 

@@ -1601,6 +1601,24 @@ D-153).
   más grande o más chico que el historial del proveedor.
 - **Terminado cuando**: se cumple HU-A3 en su parte de factura; decodifica el ejemplo oficial.
 
+#### 14 · H-036 construida (la factura con QR de ARCA, D-169)
+
+- **Qué quedó**: `POST /api/complejos/{id}/facturas` lee el QR de ARCA de una imagen (PNG, JPEG) o de la
+  primera página de un PDF y deja el gasto en `borrador` con proveedor por CUIT, los cuatro datos de la
+  clave, fecha, receptor e importe en pesos (R12 en `05_reglas_de_negocio.md`). Sin QR legible queda
+  `sin_qr` con su motivo y sin datos. La factura se guarda (`factura_de_gasto`, sólo agregar) y se baja con
+  un enlace firmado de tipo `factura` de 15 minutos. Migración `0054`: seis columnas de `gasto` anulables,
+  `fecha_de_factura`, `origen`, `motivo_sin_qr` (`04_modelo_de_datos.md`).
+- **Dónde vive**: dominio puro en `gastos/dominio/factura_qr.py`; el lector (`zxing-cpp`, `pypdfium2`)
+  detrás del puerto `LectorDeQr` en `gastos/adaptadores/qr.py`; el caso de uso en
+  `gastos/aplicacion/facturas.py`. Un gasto con esos datos vacíos no se aprueba (422).
+- **Deuda**: el ejemplo oficial de ARCA de la aceptación se armó de memoria (cotejar con el PDF de la
+  especificación v1); el QR de una foto torcida o borrosa depende de `zxing-cpp` y no tiene corpus de fotos
+  reales; `PATCH` de un borrador incompleto exige mandar todos los datos requeridos juntos (la edición
+  parcial es de H-037 y 6c); el límite de tamaño y el tipo por firma están repetidos entre `pagos` y
+  `gastos` (las fronteras impiden importarlos) y podrían subir a `compartido`; el decodificado no tiene
+  tope de tiempo.
+
 ### 15 · `piloto-en-paralelo`
 
 - **Objetivo**: demostrar que PropTech reemplaza el método actual del edificio piloto.

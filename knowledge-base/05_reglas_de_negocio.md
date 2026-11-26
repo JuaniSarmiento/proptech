@@ -493,9 +493,33 @@ del 3c, D-128)
 
 **Construido (cambio 6, 29/10/2026)**: la parte manual — carga sin IA, los cuatro datos de factura
 como clave, el control de duplicado (incluido contra un `INSERT` SQL directo) y el aviso de receptor
-distinto cuando `complejo.cuit` está cargado. **Pendiente (cambio 14)**: el QR de ARCA y la lectura
-por IA — hoy todo gasto nace y se aprueba a mano, sin estados `sin_ia`/`en_revision` poblados por
-lectura automática (la columna existe, D-075, pero nada la escribe todavía).
+distinto cuando `complejo.cuit` está cargado.
+
+**Construido (cambio 14, H-036, D-169)**: el QR de ARCA. `POST /api/complejos/{id}/facturas` (multipart,
+JPEG, PNG o PDF de hasta 10 MB; el tipo sale de los primeros bytes) lee el QR con `zxing-cpp` (en un PDF,
+sólo la primera página, rasterizada con `pypdfium2`) y deja un gasto en `borrador` con `origen` `qr`:
+proveedor por CUIT dentro del edificio (creado como "CUIT <n>" si no existe, reusado sin tocar si ya lo
+cargó el 6), los cuatro datos de la clave, `fecha_de_factura`, `documento_receptor` e importe en pesos
+(`importe x ctz`, `Decimal`, redondeo medio hacia arriba). Concepto, categoría, grupo y período quedan
+**vacíos** (el QR no los trae; los completa la IA, H-037, o la persona) y un gasto así **no se aprueba**
+(422, y `ck_gasto_aprobado_completo` en la base). El QR se descarta entero, sin datos a medias, con
+`origen` `sin_qr` y un `motivo_sin_qr`, por el primero de esta tabla:
+
+| `motivo_sin_qr` | Cuándo |
+|---|---|
+| `no_hay_qr` | ningún QR decodificable (en un PDF, sólo la primera página) o el archivo no se puede abrir (roto, bomba de descompresión) |
+| `dominio_ajeno` | el texto no es `https://<host>/fe/qr/?p=...` con host exactamente `arca.gob.ar`, `www.arca.gob.ar`, `afip.gob.ar` o `www.afip.gob.ar` |
+| `version_desconocida` | el JSON no trae `ver` o no es el entero 1 |
+| `json_invalido` | `p` no es base64, no es JSON o no es un objeto |
+| `importe_invalido` | `importe` ausente, no numérico, <= 0 o con más de dos decimales; `ctz` ausente, no numérica o <= 0 |
+| `datos_invalidos` | CUIT sin verificador válido, `ptoVta`/`tipoCmp`/`nroCmp` ausentes o no enteros, o `fecha` inexistente |
+
+La factura duplicada (la clave de arriba, también contra un gasto cargado a mano y al revés) da 409 y no
+crea nada; un receptor distinto lleva el aviso del 6 y no bloquea. El archivo queda guardado
+(`factura_de_gasto`, de sólo agregar) y se baja sólo con un enlace firmado de 15 minutos (tipo `factura`,
+D-070): `GET /api/facturas/descarga?token=...` pública, `POST /api/gastos/{id}/factura/enlace` para uno
+nuevo. **Pendiente (H-037)**: la lectura por IA — los estados `sin_ia`/`en_revision` siguen sin
+poblarse (la columna existe, D-075).
 
 - **IVA** *(propuesta, D-071, P17)*: el gasto se registra por el **total de la factura, con el IVA
   incluido**, porque el consorcio en general no lo descuenta: para él es parte del costo. Si algún
@@ -526,7 +550,7 @@ lectura automática (la columna existe, D-075, pero nada la escribe todavía).
 - **Nunca aprobado sin confirmación**: ningún dato leído (por QR o por IA) entra en la liquidación sin
   que el administrador confirme el gasto. Según cómo salió la lectura, el gasto queda en borrador, sin
   IA o en revisión (D-075). La IA no inventa datos ausentes: los marca como faltantes.
-- **Tests mínimos**: decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
+- **Tests mínimos** (H-036: los de QR y duplicado están en `aceptacion/H-036/`): decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
   duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda en revisión con la nota "sin QR"; un QR corrupto o de versión desconocida
   deja el gasto en revisión con su aviso.
 
