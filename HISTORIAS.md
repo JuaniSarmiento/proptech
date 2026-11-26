@@ -2538,7 +2538,7 @@ serie; demo única al cerrar.
   `ver_condonaciones`); `gestion-judicial` con tabla de eventos `gestion_judicial_de_unidad`; marcada pasa de
   `moroso_critico` a `con_deuda_vencida`; `unidades_en_gestion_judicial` en `cuenta_corriente.aplicacion`. **Deuda para
   el 13**: el test mínimo de R31 "no recibe el aviso automático de mora" se escribe cuando existan los avisos.
-- Estado: En proceso.
+- Estado: En proceso (aceptación congelada; la construcción se cortó el 26/11 antes de cambiar código, a retomar).
 
 ### H-043 · Pantallas del 10b
 
