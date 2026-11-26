@@ -53,7 +53,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | Lista |
 | H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Lista |
 | H-041 | C-15 10b, parte 1 | El certificado de libre deuda a una fecha de corte, guardado, con PDF y enlace firmado | Alta / CRITICAL (L) | En proceso |
-| H-042 | C-15 10b, parte 2 | Condonar interés con motivo y marcar la gestión judicial, que saca del moroso crítico | Alta / CRITICAL (L) | Pendiente |
+| H-042 | C-15 10b, parte 2 | Condonar interés con motivo y marcar la gestión judicial, que saca del moroso crítico | Alta / CRITICAL (L) | En proceso |
 | H-043 | C-15 10b, parte 3 | Las pantallas del libre deuda, la condonación y la marca judicial | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -2500,7 +2500,12 @@ serie; demo única al cerrar.
   descarga en `/api/libre-deuda/descarga`, acción `emitir_libre_deuda` sólo super admin, tabla de sólo agregar
   `certificado_de_libre_deuda`, el PDF guardado al emitir, `interes_corrido` aparte y dentro de la huella,
   `en_gestion_judicial` en `false` hasta H-042.
-- Estado: En proceso.
+- Construcción (Sonnet): `9955b9d` y sus commits de KB y barridos, hasta `564ca43`. Módulo `libre_deuda`, migración `0056`
+  (tabla de sólo agregar con el PDF en `BYTEA`), deuda a la fecha en `cuenta_corriente` y pagos en revisión en `pagos`.
+- Evidencia (26/11/2026, orquestador): sobre `564ca43` desde `5d2252f`: 44/44, 0 fallas, 0 errores, 0 skips.
+- **Deuda**: el interés corrido de un corte pasado se calcula con el libro de hoy, no con el de esa fecha; un crédito
+  imputado después a una obligación posterior al corte cuenta con la imputación vigente.
+- Estado: En proceso (verificada; la demo va con la del change).
 
 ### H-042 · Condonación y gestión judicial
 
@@ -2527,7 +2532,7 @@ serie; demo única al cerrar.
 - **N03**: la marca judicial nunca cambia el saldo ni escribe en el libro.
 - **N04**: marcar una unidad ya marcada o desmarcar una que no lo está da 409 sin cambios.
 - **K01**: R29 y R31 pasan a vigentes (construidas en el 10b) en `05`, HU-A11 en `06`, `04` y la ficha 10b con H-042.
-- Estado: Pendiente.
+- Estado: En proceso.
 
 ### H-043 · Pantallas del 10b
 
