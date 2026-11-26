@@ -49,6 +49,9 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
 | H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | Lista |
 | H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Lista |
+| H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | En proceso |
+| H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | Pendiente |
+| H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2329,6 +2332,43 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
   `llamada_de_ia` (1.200/80 tokens, 0,001234 USD), sin aprobar y con el libro en cero; seis aprobados de 1.000 y una
   factura de 2.500 → `en_revision` `importe_atipico`; aprobar un borrador incompleto → 422 con los campos que faltan.
 - Estado: **Lista** (26/11/2026). Terminada la marca Juani.
+
+## Portal del vecino (11, C-16)
+
+Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), propuesta antes de construir. Rama
+`change/portal-del-vecino` sobre el 14 (las migraciones siguen a `0055`). Tres historias en serie; demo única al cerrar.
+
+### H-038 · Lo que debo y lo que pagué
+
+- Objetivo: lecturas HTTP del vecino para todas sus unidades, según su vínculo (D-106, D-170).
+- Nivel: **L** (plata y aislamiento entre vecinos).
+- **C01**: `GET /api/mis-unidades` devuelve todas las unidades de la persona, de uno o más edificios y administraciones
+  donde tenga sesión, con su vínculo y su edificio.
+- **C02**: por unidad, total a pagar, vencimiento, deuda anterior, intereses, crédito aplicable y crédito retenido, en
+  texto Decimal, iguales a `estado_de_cuenta` y `situacion_de_cuenta`; el conjunto lo suma la API.
+- **C03**: con $2.000 retenidos, $0 aplicables y $40.000 de deuda, ve $40.000 sin descuento.
+- **C04**: los pagos confirmados de cada unidad suya, con fecha e importe.
+- **C05**: la lista de PDFs de cada unidad trae sólo períodos emitidos y la variante de su vínculo, con el enlace firmado
+  del 7.
+- **C06**: su cargo particular se lee por id, acotado a su unidad (cierra D3 del 6).
+- **N01**: una unidad ajena, de otro edificio o de otra administración da 404 en todas las rutas.
+- **N02**: un inquilino nunca recibe montos extraordinarios, ni en totales, ni en pagos, ni en PDFs (D-170.2).
+- **N03**: los pagos informados sin confirmar o rechazados no aparecen como confirmados.
+- **N04**: ninguna lectura escribe en el libro; los números son iguales a los del administrador.
+- **K01**: HU-V2 y HU-V5 en `06`, D3 cerrada en la ficha 6, la ficha 11 con H-038.
+- Estado: En proceso.
+
+### H-039 · Entender mi expensa
+
+- Objetivo: la liquidación explicada para el vecino (R16), comparada con la anterior, con la distribución al abrir
+  (D-074). Criterios al terminar H-038.
+- Estado: Pendiente.
+
+### H-040 · Pantallas del portal y app instalable
+
+- Objetivo: el inicio con todas sus unidades, la expensa, los comprobantes y la app instalable (D-170.6), con impeccable
+  y navegador real. Criterios al terminar H-039.
+- Estado: Pendiente.
 
 ## Plantilla de historia
 
