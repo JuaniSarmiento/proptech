@@ -43,7 +43,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
-| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Pendiente |
+| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | En proceso |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
 
@@ -2078,7 +2078,10 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - **K01**: R32 con `prorrateo` en `05`, H-032 en la ficha del 4d y la deuda de N01 anotada.
 - Demo: vender el 11 de noviembre con prorrateo antes de emitir; emitir noviembre; ver el traslado de 10/30
   al vendedor al centavo y la suma exacta; intentar anular noviembre y ver el 409.
-- Estado: Pendiente.
+- Aceptación: `aceptacion/H-032/`, 23 casos vistos fallar por aserción (0 errores), congelada en `e451c6c` bajo
+  D-168. Contrato: C06 imputa lo ya pagado primero a los días del vendedor (`max(parte - pagado, 0)` por
+  componente); `parte_del_vendedor` es lo trasladado; N03 compara con una testigo con tolerancia de $0,05.
+- Estado: En proceso.
 
 ### H-033 · La cuenta del vendedor
 
