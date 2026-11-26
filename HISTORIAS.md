@@ -2167,6 +2167,9 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Aceptación: `aceptacion/H-035/`, 14 casos vistos fallar por aserción (0 errores), congelada en `4e864f8` bajo D-168,
   junto con L-107. Contrato: los nombres de los vendedores salen con `?con_nombres=true` en `vendedores_detalle`
   (sumarlos siempre rompería las aceptaciones congeladas de H-030 a H-032); los compradores ya traían `nombre`.
+- Construcción (Sonnet): `d249cac`, `fb7c86e`; lectura `acceso/aplicacion/lectura_de_personas.py` (sólo id y nombre).
+- Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `fb7c86e` desde `4e864f8`: 14/14, 0 skips.
+- Demo: junto con la de H-034 en Chrome (la pantalla es la que usa esta ruta).
 - Estado: En proceso.
 
 ### H-034 · Pantallas del cambio de titular
@@ -2214,7 +2217,10 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   compradores", porque el panel de vecinos del padrón también lee `/api/personal`.
 - **Deuda grande** (anterior al 4d, viene del 2d): el padrón no le muestra los vecinos al administrador principal
   (en la demo, "Vecinos 0" en unidades con dos propietarias). Va a otra historia.
-- Estado: En proceso.
+- Corrección (Sonnet): `305f4b0`, `deee10a`: los vendedores salen de la ruta de propietarios y los nombres de
+  `vendedores_detalle`; la pantalla ya no usa `/api/personal`.
+- Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `deee10a` desde `4e864f8`: 15/15 e2e, 0 skips.
+- Estado: En proceso (falta la demo en Chrome).
 
 ## Plantilla de historia
 
