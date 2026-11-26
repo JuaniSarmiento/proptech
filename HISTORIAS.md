@@ -2245,6 +2245,11 @@ Firmado por el orquestador por delegación escrita de Juani (D-169, D-168), con 
 Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-facturas`, sobre `change/cambio-de-titular`
 (las migraciones siguen a `0053`). Método rápido del 26/11: historias grandes, demo única al cerrar el change.
 
+**CI de cierre del 14** (26/11/2026, D-154): PR #33. Tres vueltas rojas por chequeos de estilo y tipos sobre tests
+(una línea larga, un helper sin tipo de retorno para mypy y un `uuid4()` dentro de un `parametrize`, que hace que los
+workers de xdist recolecten tests distintos), ningún bug del producto. Cuarta vuelta **verde** en los seis jobs. Falta
+que Juani pase H-036 y H-037 a Terminada; se mergea después del #32.
+
 ### H-036 · La factura con QR de ARCA
 
 - Objetivo: el administrador sube una factura (imagen o PDF) y el gasto queda en borrador con lo que trae el QR.
