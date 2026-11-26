@@ -2361,7 +2361,13 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
   `conjunto` y `unidades`; por unidad `pagos`, `documentos` y `cargos-particulares/{id}`; `total_a_pagar` es la deuda del
   libro sin descontar créditos; el inquilino sin la componente extraordinaria en total, pagos y PDFs; cargos en borrador
   dan 404; el personal sin vínculo recibe `unidades: []`; 404 `{"detail": "no encontrado"}` para todo lo ajeno.
-- Estado: En proceso.
+- Construcción (Sonnet): `a2b10c5`, `65de7aa`, `c47bedb` (y el merge del 14, `67a552b`). Router `proptech_api/vecino.py`;
+  lecturas de sólo lectura por módulo (`vision_del_vecino`, `pagos_confirmados_de_unidad`, `documentos_de_unidad`,
+  `ultima_emision_vigente`). Con propietario e inquilino sobre la misma unidad, vale propietario.
+- Evidencia (26/11/2026, orquestador): sobre `c47bedb` desde `098cc01`: 35/35, 0 fallas, 0 errores, 0 skips.
+- **Deuda**: **un pago reimputado a otra unidad sigue figurando en la unidad original** (el vecino ve un pago que ya no
+  es suyo: corregir antes del piloto); sin configuración vigente el interés sale 0,00 en vez de fallar.
+- Estado: En proceso (verificada; la demo va con la del change).
 
 ### H-039 · Entender mi expensa
 
