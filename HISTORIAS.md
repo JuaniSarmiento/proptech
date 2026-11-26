@@ -2425,7 +2425,15 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - Aceptación: `aceptacion/H-040/` (Playwright, `web/e2e/escenarios-portal.ts` comparado contra respuestas reales de H-038 y
   H-039 sin diferencias de forma), 20 e2e vistos fallar por aserción, congelada en `459ce6f` bajo D-170. Pantallas
   `/inicio`, `/mis-liquidaciones[/{unidad}[/{liquidacion}]]` y `/comprobantes`; la CSP necesita `worker-src 'self'`.
-- Estado: En proceso.
+- Construcción (Sonnet): `86baf7b`, `b169586`, `7235453`. Cliente `lib/api/vecino.ts`, pantallas en `app/inicio`,
+  `app/mis-liquidaciones` y `app/comprobantes`, menú "Portal del vecino", `manifest.webmanifest`, `sw.js` que no abre
+  cachés y borra las que haya, `worker-src 'self'` en `proxy.ts`. Con una sola unidad no muestra "Total del conjunto"
+  (el contrato lo pedía siempre; la aceptación prueba con dos unidades).
+- Evidencia (26/11/2026, orquestador): sobre `7235453` desde `459ce6f`: 20/20 e2e, 0 fallas, 0 errores, 0 skips.
+- **Deuda**: la instalación sólo se probó en Chromium, no en un iPhone real; en celular el menú plegado esconde los
+  enlaces tras "Secciones"; el aviso de iPhone no devuelve el foco; el enlace del PDF vence a los 15 minutos y da 410
+  hasta recargar; íconos provisorios.
+- Estado: En proceso (verificada; falta la demo del change en Chrome real).
 
 ## Plantilla de historia
 
