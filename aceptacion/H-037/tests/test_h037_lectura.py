@@ -11,7 +11,8 @@ from uuid import uuid4
 
 import pytest
 
-from ._h037 import (
+from ._h037 import (  # Recongelada (26/11/2026): faltaba importar `llamadas`.
+    llamadas,
     LectorDeIaFalso,
     Mundo,
     categoria_y_grupo,
