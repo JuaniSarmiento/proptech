@@ -463,6 +463,10 @@ Como vecino, quiero ver cuánto debo y cuándo vence.
   vencimiento, la deuda anterior y el crédito a favor si lo hay, y los números coinciden con los del
   administrador.
 
+**Construida (backend) en H-038** (`GET /api/mis-unidades`): total a pagar sin descontar el crédito, vencimiento,
+deuda anterior, intereses y crédito aplicable y retenido por unidad, y el conjunto; el inquilino ve la deuda sin lo
+extraordinario (D-170.2).
+
 **Reglas relacionadas**: R05, R06.
 
 ### HU-V3 · Entender mi expensa
@@ -511,6 +515,10 @@ Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos c
 - Dado un período todavía no emitido, entonces no aparece para descargar.
 - Dado que pido el detalle de pagos, entonces veo sólo los confirmados de mis unidades, nunca los de
   otra unidad ni los que siguen informados o fueron rechazados (R10, R11).
+
+**Construida (backend) en H-038** (`/api/mis-unidades/{unidad_id}/documentos` y `/pagos`): el PDF de la variante del
+vínculo con enlace firmado al listar, sólo de liquidaciones emitidas y no anuladas, y los pagos confirmados con su
+parte por unidad; el inquilino ve de cada pago sólo lo imputado a lo no extraordinario.
 
 **Reglas relacionadas**: R10, R11.
 

@@ -1107,7 +1107,7 @@ D-153).
 |---|---|---|
 | D1 | El importador de Excel no limita bytes ni filas y hace una consulta al padrón por fila | **5** `importacion-desde-excel` (C-08); a más tardar, las pantallas de gastos antes de exponer la ruta |
 | D2 | El comentario de `excel.py` dice que las fórmulas se leen como texto crudo; con `data_only=True` entra el valor en caché (L-066) | **5** (C-08) |
-| D3 | El vecino no ve por id su propio cargo particular (coherente con el listado) | **11** `portal-del-vecino` (C-16) |
+| D3 | El vecino no ve por id su propio cargo particular (coherente con el listado) | **Cerrada por H-038** del 11 `portal-del-vecino` (C-16): `GET /api/mis-unidades/{unidad_id}/cargos-particulares/{cargo_id}` lo da, sólo si está aprobado y es de esa unidad (si no, 404); la ruta del 6 no cambia |
 | D4 | `complejos/aplicacion/errores.py` (del 3a) pierde la explicación del 422, como F3 | C-26 `pulido-web-3` |
 | D5 | El guardia de F2-1 en `editar_gasto` sólo se prueba con dobles | **5** (C-08), o el primer consumidor que llame a `editar_gasto` sin HTTP |
 | D6 | Sin test de concurrencia entre editar el importe y cargar una nota | C-28 `revisiones-independientes` |
@@ -1533,6 +1533,18 @@ D-153).
 - **Terminado cuando**: se cumplen HU-V1, V2, V3 y V5.
 
 - **Recibe del 6** (D-142): D3, el vecino no ve por id su propio cargo particular; decidir si el portal lo muestra.
+
+- **11 · H-038 construida** (26/11/2026, backend, sin migraciones): lo que debo y lo que pagué. `proptech_api/vecino.py`
+  con cuatro lecturas bajo `/api/mis-unidades`: la lista de unidades con el total, el vencimiento, la deuda anterior,
+  los intereses y los dos créditos (más el conjunto, sumado por la API); los pagos confirmados de una unidad; sus PDFs
+  con el enlace firmado del 7 al listar; y el cargo particular aprobado (cierra D3 del 6). Las unidades de la persona
+  son sus asignaciones `vecino` (la identidad sale del login); toda ruta por unidad da 404 `no encontrado` si no es
+  suya. El inquilino ve la deuda, el vencimiento, los pagos (sólo lo imputado a interés, ordinaria y fondo) y el PDF
+  `sin_extraordinaria`, nunca un monto extraordinario (D-170.2). Casos de uso de sólo lectura:
+  `cuenta_corriente.aplicacion.vision_del_vecino`, `pagos.aplicacion.lectura.pagos_confirmados_de_unidad`,
+  `liquidacion.aplicacion.documentos.documentos_de_unidad` y `lectura.ultima_emision_vigente`. Deuda: un pago
+  reimputado a otra unidad sigue figurando en la unidad de su parte original; la comparación con el mes anterior, el
+  detalle por categoría y la distribución al abrir son de H-039, y las pantallas, de H-040.
 
 ### 12 · `vista-del-consejo` · HIGH (D-087)
 
