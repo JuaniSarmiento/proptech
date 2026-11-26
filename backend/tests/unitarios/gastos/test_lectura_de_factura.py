@@ -16,6 +16,7 @@ from proptech_core.compartido.dinero import Dinero
 from proptech_core.gastos.dominio.lectura_de_factura import (
     CAMPOS_DE_LA_PROPUESTA,
     FueraDeContrato,
+    PropuestaValidada,
     evaluar_importe,
     validar_propuesta,
 )
@@ -36,7 +37,7 @@ def buena(**cambios: Any) -> dict[str, Any]:
     return base
 
 
-def validar(propuesta: Any, completar: frozenset[str] = TODOS):
+def validar(propuesta: Any, completar: frozenset[str] = TODOS) -> PropuestaValidada:
     return validar_propuesta(propuesta, categorias={CATEGORIA}, grupos={GRUPO}, completar=completar)
 
 
