@@ -2306,7 +2306,17 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
   Contrato: el POST de H-036 encola `leer_factura_con_ia` (su 201 no cambia); `GET /api/gastos/{id}/lectura` da estado,
   `datos_de`, motivo y detalle; puerto nuevo `LectorDeFacturaConIa` que devuelve también el uso; tabla `llamada_de_ia`
   (`0055`); motivos `ia_no_configurada`, `ia_fallo`, `fuera_de_contrato`, `importe_atipico`; sin período no hay R23.
-- Estado: En proceso.
+- **Recongelada** en `c3cc3f0` (26/11/2026): a `test_h037_lectura.py` le faltaba importar `llamadas` (`NameError` en un
+  caso de C03). Tercera vez que un helper sin probar rompe una aceptación: L-106 no alcanzó, porque el caso estaba
+  detrás de la primera aserción. Lo frenó el constructor con evidencia.
+- Construcción (Sonnet): `4340748`. Tarea `leer_factura_con_ia` con corte de 60 s, adaptador de OpenRouter con ZDR y
+  esquema estricto, `llamada_de_ia` y `gasto.lectura_ia` (`0055`); el worker suma `PROPTECH_OPENROUTER_API_KEY` y
+  `_MODELO` en `infra/compose.yaml` (README y `08` al día).
+- Evidencia (26/11/2026, orquestador): sobre `a8b4c96` desde `c3cc3f0`: 82/82, 0 fallas, 0 errores, 0 skips; H-036 78/78.
+- **Deuda**: la llamada real a OpenRouter nunca se probó; un 503 deja `sin_ia` sin reintento ni forma de reprocesar;
+  umbral y ventana de R23 fijos; `datos_de` no refleja una edición posterior; la transacción queda abierta durante
+  la llamada a la IA.
+- Estado: En proceso (verificada; la demo va con la del change).
 
 ## Plantilla de historia
 
