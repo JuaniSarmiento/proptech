@@ -51,7 +51,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Lista |
 | H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | En proceso |
 | H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | En proceso |
-| H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Pendiente |
+| H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2396,13 +2396,33 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
   en `f9d6663` bajo D-170. Contrato: la lista con `periodo`, `vencimiento` y `total` según el vínculo; el detalle con los
   `bloques` del 7, `grupos`, los importes de la unidad y `comparacion`; la distribución se observa por el estado y
   `distribucion.origen == "portal"` del 7 y una sola fila `distribuida`; N04 con tres lecturas en hilos.
-- Estado: En proceso.
+- Construcción (Sonnet): `fe1ddb6`, `f7d94d6`. `liquidacion/aplicacion/expensa_del_vecino.py` reusa `leer_liquidacion` y
+  `registrar_distribucion` con origen "portal"; la concurrencia la cubren el candado del período y el `ON CONFLICT` del 7.
+  Una unidad dada de alta después de la liquidación no la ve (404).
+- Evidencia (26/11/2026, orquestador): sobre `f7d94d6` desde `f9d6663`: 31/31, 0 fallas, 0 errores, 0 skips.
+- **Deuda**: la distribución por el portal no deja auditoría (no hay acción para el vecino).
+- Estado: En proceso (verificada; la demo va con la del change).
 
 ### H-040 · Pantallas del portal y app instalable
 
 - Objetivo: el inicio con todas sus unidades, la expensa, los comprobantes y la app instalable (D-170.6), con impeccable
-  y navegador real. Criterios al terminar H-039.
-- Estado: Pendiente.
+  y navegador real.
+- Nivel: **M** (pantallas sobre una API ya probada). La API falsa de e2e imita las formas y los filtros reales de H-038 y
+  H-039 (L-107), y la demo va contra la API real.
+- **C01**: el inicio del vecino lista todas sus unidades con total, vencimiento y crédito aplicable y retenido por
+  separado, y el total del conjunto.
+- **C02**: el detalle de una unidad muestra sus liquidaciones; cada una abre la expensa por categoría y grupo, con la
+  comparación con la anterior.
+- **C03**: los comprobantes y los PDFs de su vínculo bajan por el enlace firmado; los pagos confirmados se listan.
+- **C04**: el menú del vecino suma "Inicio", "Mis liquidaciones" y "Comprobantes" junto a "Mis pagos".
+- **C05**: `manifest.webmanifest` con nombre, íconos y colores, y un service worker registrado; en iPhone, la primera vez,
+  un aviso explica cómo agregarlo a la pantalla de inicio y se puede cerrar.
+- **N01**: un inquilino nunca ve montos ni categorías extraordinarias en ninguna pantalla.
+- **N02**: la pantalla no calcula montos: muestra los de la API con formato argentino.
+- **N03**: el service worker no guarda respuestas de `/api` ni páginas con datos del vecino.
+- **N04**: a 320 px sin scroll horizontal, con teclado y sin violaciones de axe.
+- **K01**: HU-V1 en `06` (instalable), la ficha 11 con H-040 y el README con la app instalable.
+- Estado: En proceso.
 
 ## Plantilla de historia
 
