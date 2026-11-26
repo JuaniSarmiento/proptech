@@ -61,7 +61,7 @@ describe("cambiosDeUnaUnidad", () => {
     const f = mockFetch(200, [CAMBIO]);
     expect(await cambiosDeUnaUnidad(EDIFICIO, UNIDAD)).toEqual({ estado: "ok", datos: [CAMBIO] });
     expect(f.mock.calls[0]?.[0]).toBe(
-      `http://api-interna:8000/api/complejos/${EDIFICIO}/unidades/${UNIDAD}/cambios-de-titular`,
+      `http://api-interna:8000/api/complejos/${EDIFICIO}/unidades/${UNIDAD}/cambios-de-titular?con_nombres=true`,
     );
   });
 
