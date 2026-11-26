@@ -100,6 +100,10 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 4d `cambio-de-titular` (H-030) ---
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "GET"),
+    # --- Cambio 4d `cambio-de-titular` (H-033) ---
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores", "GET"),
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}", "GET"),
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros", "POST"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/personal", "GET"),
@@ -340,6 +344,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -568,6 +573,8 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
                 "motivo": "Prueba del candado",
             },
         )
+    if ruta.endswith("/cobros"):
+        return cliente.post(ruta_resuelta, json={"importe": "10.00", "fecha": "2026-11-10"})
     if ruta.endswith("/cambios-de-titular") and metodo == "POST":
         return cliente.post(
             ruta_resuelta,
@@ -907,6 +914,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []

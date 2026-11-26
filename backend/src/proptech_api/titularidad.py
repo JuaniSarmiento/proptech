@@ -1,4 +1,5 @@
-"""El cambio de titular de una unidad (4d, H-030, R32, D-168): registrarlo y listar los de ella.
+"""El cambio de titular de una unidad (4d, H-030, R32, D-168): registrarlo y listar los de ella; y
+la cuenta del vendedor (H-033): ver las del edificio, el detalle de una y registrar su cobro.
 
 Los dos casos de uso autorizan solos, en el orden de D7: el edificio que no existe o no alcanza, o
 la unidad que no es de él, da 404; sin `registrar_cambio_de_titular` (que también cubre leer), 403;
@@ -25,6 +26,13 @@ from proptech_api.morosidad import hoy
 from proptech_core.acceso.aplicacion.datos_de_usuario import email_valido, nombre_valido
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import (
+    CuentaDelVendedor,
+    DetalleDeLaCuenta,
+    cuenta_de_vendedor,
+    listar_cuentas_de_vendedores,
+    registrar_cobro_de_vendedor,
+)
 from proptech_core.titularidad.aplicacion.errores import SinPermiso
 from proptech_core.titularidad.aplicacion.lectura import CambioDeTitular, listar_cambios
 from proptech_core.titularidad.aplicacion.registrar import (
@@ -145,3 +153,96 @@ def listar(
 ) -> list[dict[str, Any]]:
     cambios = listar_cambios(sesion, identidad, complejo_id=complejo_id, unidad_id=unidad_id)
     return [_como_json(c, con_aviso=False) for c in cambios]
+
+
+class CuerpoCobro(CuerpoDeAlta):
+    #: Sin tipo: el caso de uso los lee, para que su 422 llegue después del 404 y del 403 (D7).
+    importe: Any
+    fecha: Any
+
+
+def _cuenta_como_json(cuenta: CuentaDelVendedor) -> dict[str, Any]:
+    return {
+        "cuenta_id": str(cuenta.cuenta_id),
+        "persona": {"id": str(cuenta.persona_id), "nombre": cuenta.nombre},
+        "deuda": cuenta.deuda.a_texto(),
+        "unidades": [{"id": str(u), "identificador": i} for u, i in cuenta.unidades],
+    }
+
+
+def _detalle_como_json(detalle: DetalleDeLaCuenta) -> dict[str, Any]:
+    return {
+        **_cuenta_como_json(detalle.cuenta),
+        "periodos": [
+            {
+                "periodo": p.periodo.isoformat(),
+                "componentes": {
+                    c.value: {
+                        "debe": t.debe.a_texto(),
+                        "cobrado": t.cobrado.a_texto(),
+                        "pendiente": t.pendiente.a_texto(),
+                    }
+                    for c, t in p.componentes.items()
+                },
+            }
+            for p in detalle.periodos
+        ],
+        "movimientos": [
+            {
+                "id": str(m.id),
+                "tipo": m.tipo,
+                "sentido": m.sentido,
+                "importe": m.importe.a_texto(),
+                "fecha": m.fecha.isoformat(),
+            }
+            for m in detalle.movimientos
+        ],
+    }
+
+
+@router.get("/complejos/{complejo_id}/cuentas-de-vendedores")
+def cuentas_de_vendedores(
+    complejo_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """Las cuentas de persona del edificio (la deuda que el cambio de titular les trasladó), la de
+    más deuda primero. Es una lectura: no se audita."""
+    cuentas = listar_cuentas_de_vendedores(sesion, identidad, complejo_id=complejo_id)
+    return {"cuentas": [_cuenta_como_json(c) for c in cuentas]}
+
+
+@router.get("/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}")
+def cuenta_del_vendedor(
+    complejo_id: UUID,
+    cuenta_id: str,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    detalle = cuenta_de_vendedor(sesion, identidad, complejo_id=complejo_id, cuenta_id=cuenta_id)
+    return _detalle_como_json(detalle)
+
+
+@router.post("/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros", status_code=201)
+def cobrar_al_vendedor(
+    complejo_id: UUID,
+    cuenta_id: str,
+    cuerpo: CuerpoCobro,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+    fecha_de_hoy: date = Depends(hoy),
+) -> dict[str, Any]:
+    """Registra el cobro (el importe en texto y la fecha de la transferencia) y responde con el
+    detalle de la cuenta ya actualizado."""
+    detalle = registrar_cobro_de_vendedor(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        cuenta_id=cuenta_id,
+        importe=cuerpo.importe,
+        fecha=cuerpo.fecha,
+        hoy=fecha_de_hoy,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return _detalle_como_json(detalle)

@@ -125,3 +125,16 @@ def quitar_propietarios(sesion: Session, *, personas: Iterable[UUID], unidad_id:
             ),
             {"unidad": unidad_id, "persona": persona},
         )
+
+
+def nombres_de_personas(sesion: Session, persona_ids: Iterable[UUID]) -> dict[UUID, str]:
+    """Persona → nombre, de las pedidas y sólo el nombre (cuenta del vendedor, H-033). Una persona
+    de otra administración no aparece (RLS)."""
+    ids = [str(p) for p in persona_ids]
+    if not ids:
+        return {}
+    filas = sesion.execute(
+        text("SELECT id, nombre FROM persona WHERE id = ANY(CAST(:ids AS uuid[]))"),
+        {"ids": ids},
+    )
+    return {UUID(str(fila.id)): str(fila.nombre) for fila in filas}

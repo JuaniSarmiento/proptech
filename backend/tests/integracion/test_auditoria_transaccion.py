@@ -32,7 +32,7 @@ from proptech_core.acceso.aplicacion.auditoria import (
     casos_sensibles_registrados,
     registrar,
 )
-from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron
+from proptech_core.acceso.dominio.eventos import EventoDelGasto, EventoDelPadron, EventoDelPago
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
@@ -53,6 +53,7 @@ from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
 from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.importar import importar
+from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import registrar_cobro_de_vendedor
 from proptech_core.titularidad.aplicacion.registrar import (
     CompradorPedido,
     registrar_cambio_de_titular,
@@ -696,8 +697,49 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             request_id=uuid.uuid4(),
         ).id
 
-    _INVOCADORES: dict[Accion | EventoDelPadron | EventoDelGasto, Callable[[Session], UUID]] = {
+    def invocar_cobro_de_vendedor(sesion: Session) -> UUID:
+        """Necesita deuda a nombre del vendedor: el saldo inicial de `1A` se traslada con un
+        cambio de titular y se le cobra una parte."""
+        edificio, _ = confirmar_un_edificio(sesion)
+        unidad, vendedor = sesion.execute(
+            text(
+                "SELECT u.id, a.persona_id FROM unidad u "
+                "JOIN asignacion_rol a ON a.unidad_id = u.id WHERE u.complejo_id = :c "
+                "AND u.identificador = '1A' AND a.vinculo = 'propietario' LIMIT 1"
+            ),
+            {"c": edificio},
+        ).one()
+        cambio = registrar_cambio_de_titular(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            unidad_id=UUID(str(unidad)),
+            fecha="2026-11-01",
+            vendedores=[UUID(str(vendedor))],
+            compradores=[CompradorPedido("Comprador Ficticio", None)],
+            expensa_del_mes="entera",
+            deuda_previa="a_nombre_del_vendedor",
+            hoy=date(2026, 11, 18),
+            request_id=uuid.uuid4(),
+        )
+        assert cambio.cuenta_del_vendedor is not None, "precondición: el saldo inicial se trasladó"
+        registrar_cobro_de_vendedor(
+            sesion,
+            identidad,
+            complejo_id=edificio,
+            cuenta_id=str(cambio.cuenta_del_vendedor),
+            importe="1.00",
+            fecha="2026-11-10",
+            hoy=date(2026, 11, 18),
+            request_id=uuid.uuid4(),
+        )
+        return cambio.cuenta_del_vendedor
+
+    _INVOCADORES: dict[
+        Accion | EventoDelPadron | EventoDelGasto | EventoDelPago, Callable[[Session], UUID]
+    ] = {
         Accion.REGISTRAR_CAMBIO_DE_TITULAR: invocar_cambio_de_titular,
+        EventoDelPago.REGISTRAR_COBRO_DE_VENDEDOR: invocar_cobro_de_vendedor,
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(
                 sesion,
