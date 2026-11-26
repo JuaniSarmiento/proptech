@@ -15,6 +15,11 @@ from .test_rutas_protegidas import _RUTAS_CUBIERTAS, _RUTAS_SIN_ALCANCE
 pytestmark = pytest.mark.integracion
 
 _CUERPOS = {
+    # Cambio 4d (H-034): el 404 llega tras validar la forma, así que el cuerpo va completo.
+    "/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros": {
+        "importe": "100.00",
+        "fecha": "2026-10-15",
+    },
     "/api/complejos/{complejo_id}/correcciones": {
         "forma": "contra_asiento",
         "operacion_id": str(uuid4()),
@@ -86,6 +91,12 @@ _CUERPOS = {
         "importe": "5000.00",
         "componente": "ordinaria",
         "motivo": "Prueba de aislamiento",
+    },
+    # H-030 (4d): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
+    "/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular": {
+        "fecha": "2026-11-10",
+        "vendedores": [str(uuid4())],
+        "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
     },
     # H-013 (7): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
     "/api/complejos/{complejo_id}/periodos/{periodo}/emision": {
@@ -189,6 +200,7 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             documento_id=uuid4(),
             pago_id=uuid4(),
             periodo="2026-10-01",
+            cuenta_id=uuid4(),
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
         if ruta == "/api/personal/invitaciones":
@@ -208,6 +220,9 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
                 params={"periodo": "2026-10-01"},
                 files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
             )
+        elif ruta == "/api/complejos/{complejo_id}/facturas":
+            # Change 14: multipart (la factura), no JSON — el 404 va antes de leer el archivo.
+            respuesta = api.cliente.post(resuelta, files={"archivo": ("f.png", b"x", "image/png")})
         elif ruta == "/api/complejos/{complejo_id}/pagos/lectura":
             # Change 8: multipart (el comprobante), no JSON — el 404 va antes de leer el archivo.
             respuesta = api.cliente.post(resuelta, files={"archivo": ("c.png", b"x", "image/png")})

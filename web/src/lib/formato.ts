@@ -195,3 +195,13 @@ export function periodoEnPalabras(texto: string): string | null {
   const [, anio, mes] = partes;
   return `${_MESES[mes ?? ""]} de ${anio}`;
 }
+
+/** Un período de la API (`"2025-08-01"`) como `"08/2025"`: corta el TEXTO, nunca pasa por `Date`. Lo
+ * que no es una fecha ISO vuelve tal cual. */
+export function mesYAnio(texto: string): string {
+  const partes = /^(\d{4})-(\d{2})(-\d{2})?$/.exec(texto);
+  if (!partes) {
+    return texto;
+  }
+  return `${partes[2]}/${partes[1]}`;
+}

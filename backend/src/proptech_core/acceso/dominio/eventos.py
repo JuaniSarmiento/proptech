@@ -49,8 +49,11 @@ class EventoDelPago(StrEnum):
     es un permiso aparte, es un evento. Revertir (H-022) y reimputar (H-023) también: el permiso es
     `revertir_o_reimputar_pago` y los eventos `revertir_pago_informado` y
     `reimputar_pago_informado`. El detalle MUST NOT llevar
-    el monto ni el motivo: viven en el pago y en su evento."""
+    el monto ni el motivo: viven en el pago y en su evento. Excepción: el cobro de la cuenta del
+    vendedor (4d, H-033), que no tiene pago informado donde vivir: su detalle lleva cuenta, importe
+    y fecha (D-168)."""
 
     RECHAZAR_PAGO_INFORMADO = "rechazar_pago_informado"
     REVERTIR_PAGO_INFORMADO = "revertir_pago_informado"
     REIMPUTAR_PAGO_INFORMADO = "reimputar_pago_informado"
+    REGISTRAR_COBRO_DE_VENDEDOR = "registrar_cobro_de_vendedor"

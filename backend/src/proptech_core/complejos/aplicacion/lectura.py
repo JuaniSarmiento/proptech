@@ -196,6 +196,30 @@ def cargar_categoria(sesion: Session, categoria_id: UUID) -> dict[str, Any] | No
     return None if fila is None else dict(fila)
 
 
+def listar_categorias_activas(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+    """H-037: el vocabulario de categorías que se le ofrece a la IA (sólo `id` y `nombre`)."""
+    filas = sesion.execute(
+        text(
+            "SELECT id, nombre FROM categoria_de_gasto WHERE complejo_id=:c AND activa "
+            "ORDER BY nombre, id"
+        ),
+        {"c": complejo_id},
+    ).mappings()
+    return [dict(f) for f in filas]
+
+
+def listar_grupos_activos(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
+    """H-037: los grupos de reparto que se le ofrecen a la IA (sólo `id` y `nombre`)."""
+    filas = sesion.execute(
+        text(
+            "SELECT id, nombre FROM grupo_de_reparto WHERE complejo_id=:c AND activo "
+            "ORDER BY nombre, id"
+        ),
+        {"c": complejo_id},
+    ).mappings()
+    return [dict(f) for f in filas]
+
+
 def listar_categorias_obligatorias(sesion: Session, complejo_id: UUID) -> list[dict[str, Any]]:
     """Puerto para `gastos` (bloque 6, D7/D-141): sólo lectura, nunca bloquea
     nada — `gastos` no escribe SQL directo sobre `categoria_de_gasto` (la

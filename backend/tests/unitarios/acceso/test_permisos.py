@@ -89,6 +89,8 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "ver_morosidad": (True, True, True, True, True, True, True, False, False),
     # morosidad E8: exporta quien administra o lleva la contabilidad; auxiliar y consejo no.
     "exportar_morosidad": (True, True, True, True, True, False, False, False, False),
+    # cambio-de-titular H-030: registrar (y leer) los cambios de titular es de quien administra.
+    "registrar_cambio_de_titular": (True, True, True, False, False, False, False, False, False),
 }
 _PERFILES = [
     Asignacion(Rol.SUPER_ADMIN, None),

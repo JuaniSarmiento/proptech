@@ -34,10 +34,12 @@ from proptech_core.compartido.configuracion import Configuracion, ConfiguracionI
 from proptech_core.compartido.logs import FormateadorJSON, configurar_logs
 from proptech_core.compartido.parametros import leer_parametros
 from proptech_core.compartido.reintentos import PoliticaReintentos
+from proptech_core.gastos.adaptadores.openrouter import LectorDeFacturaOpenRouter
 from proptech_worker.tareas import (
     barrido_de_documentos_pendientes,
     enviar_invitacion,
     generar_pdf_de_expensa,
+    leer_factura_con_ia,
     revocar_invitacion_en_clerk,
     tarea_de_prueba,
 )
@@ -240,6 +242,15 @@ async def on_startup(ctx: dict[str, Any]) -> None:
     ctx["parametros"] = _PARAMETROS
     # 7, H-015: el barrido de documentos reencola con la misma cola que usa la API.
     ctx["cola"] = AdaptadorColaArq(ajustes_redis_arq(_configuracion))
+    # 14, H-037 (D-169): el lector de facturas con IA. Sin la clave o sin el modelo (las mismas
+    # variables del 8, D-164) queda en `None` y las lecturas dejan el gasto `sin_ia`.
+    clave_de_ia = _configuracion.clave_de_openrouter()
+    modelo_de_ia = _configuracion.proptech_openrouter_modelo
+    ctx["lector_de_facturas"] = (
+        LectorDeFacturaOpenRouter(clave_de_ia, modelo_de_ia)
+        if clave_de_ia is not None and modelo_de_ia
+        else None
+    )
 
 
 async def on_shutdown(ctx: dict[str, Any]) -> None:
@@ -271,6 +282,8 @@ class AjustesDelWorker:
         # 7, H-015: el PDF de la expensa, a través de `ejecutar_con_corte` (H-016). El `timeout` es
         # mayor que su cota (`COTA_GENERAR_PDF_S`, 30 s).
         arq.func(generar_pdf_de_expensa, timeout=60, keep_result=0),  # type: ignore[arg-type]
+        # 14, H-037: la lectura de la factura con IA. `timeout` mayor que su cota (60 s).
+        arq.func(leer_factura_con_ia, timeout=90, keep_result=0),  # type: ignore[arg-type]
     )
     #: 7, H-015 (E12): cada cinco minutos reencola los documentos que quedaron `pendiente` (Redis
     #: caído al emitir, una generación agotada). Corre también al arrancar.

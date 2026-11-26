@@ -151,11 +151,11 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P50 · Borrar el usuario de Clerk cuando se le quita la última asignación**: hoy sólo se corta el
   acceso (la próxima vez que pida algo da 401); el usuario sigue existiendo en el panel de Clerk. Surge
   del design del 2b. Antes del 15 o de una decisión de Juani.
-- [ ] **P51 · El cambio de titular, entero o después** (P-1 de la exploración del 4, H-01): ¿se
+- [x] **P51 · El cambio de titular, entero o después** (resuelta en D-168: entero) (P-1 de la exploración del 4, H-01): ¿se
   construye entero (registro, las dos opciones y el aviso) en un sub-change propio después de la
   liquidación (4d), o sólo queda lista la cuenta de persona y el cambio de titular espera? Bloquea el
   4d, no el 4a a 4c.
-- [ ] **P52 · La deuda que queda a nombre del vendedor** (P-2, H-02): si queda a su nombre, ¿sigue
+- [x] **P52 · La deuda que queda a nombre del vendedor** (resuelta en D-168: sin interés nuevo, fuera de la morosidad, paga por el administrador) (P-2, H-02): si queda a su nombre, ¿sigue
   sumando intereses? ¿Puede aparecer como moroso? ¿Cómo paga, si ya no tiene la unidad en el sistema?
   Bloquea el 4d. El 4b (E1, AR-6) construyó la cuenta personal única por **administración y edificio**
   (`uq_cuenta_persona`), distinto del explore; modificar ese único después de roles requiere préstamo

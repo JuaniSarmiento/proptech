@@ -734,7 +734,83 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
 - **Lo que el 4d recibe hecho del 4b**: la `cuenta` ya nace polimórfica (de unidad o de persona, única
   por administración y edificio, P52) y el vocabulario `tipo_de_movimiento` ya tiene `traslado` (ambos
   sentidos) y `enlazado_a` sembrados (E14); el 4d usa ese traslado para mover el historial de deuda de
-  la cuenta de la unidad a la cuenta de la persona vendedora, sin ALTER.
+  la cuenta de la unidad a la cuenta de la persona vendedora (la `0051` de H-031 igual altera `obligacion`
+  y `movimiento`, ver abajo: el vocabulario alcanzaba, el esquema no).
+- **4d · H-030 construida** (registro con los defaults): módulo `titularidad`, migración `0050` con
+  `cambio_de_titular` y `parte_de_cambio_de_titular` (de sólo agregar, RLS forzada; el nombre corto de la
+  tabla hija evita que Postgres trunque el trigger por sentencia a 63 caracteres), la acción
+  `registrar_cambio_de_titular`, `POST` y `GET` de `/complejos/{c}/unidades/{u}/cambios-de-titular`, el
+  reemplazo de los propietarios (`acceso.aplicacion.propietarios`) y el aviso de deuda con
+  `estado_de_cuenta`. Con los defaults no escribe en el libro; H-031 y H-032 habilitan las alternativas
+  (la API da 422 a cualquier otro valor mientras tanto).
+- **4d · H-031 construida** (deuda previa a nombre del vendedor): caso de uso `trasladar_deuda` en
+  `cuenta_corriente/aplicacion/traslado_de_deuda.py`, armado como la reimputación (`reversion_de_pago`):
+  candado de la unidad y de la cuenta de persona en UNA llamada a `bloquear_cuentas`, un crédito `traslado`
+  por obligación y componente impago anterior al mes del cambio (imputado entero a su destino, con
+  `fecha_valor` el vencimiento de la obligación, que es lo que congela el interés) y su débito enlazado en la
+  cuenta del vendedor, sobre una obligación "contenedora" sin capital del mismo período. La cuenta de persona
+  se crea o se reutiliza. Migración `0051`: `obligacion.de_traslado` (sólo ella admite capital cero en `ck_obligacion_importes`, y sólo si no viene
+  de una emisión, `ck_obligacion_de_traslado`), `ck_mov_traslado` (obligación y
+  componente siempre, el débito enlazado) y `cambio_de_titular.vendedor_deudor_id`; declara
+  `PRESTA_PROPIEDAD` de `obligacion`, `movimiento` y `cambio_de_titular`. `registrar_emision` y las lecturas de
+  morosidad y situación no se tocaron: ya ignoraban las cuentas sin unidad.
+- **4d · H-032 construida** (prorrateo por días de la expensa del mes): cálculo puro en
+  `titularidad/dominio/prorrateo.py` (días del vendedor y del mes, parte por componente en enteros de
+  centavos con redondeo medio hacia arriba, `parte_a_trasladar` con lo ya pagado); `trasladar_parte_del_mes`
+  en `cuenta_corriente/aplicacion/traslado_de_deuda.py` comparte con `trasladar_deuda` todo el movimiento
+  (`_trasladar`) y sólo cambia qué partes elige (la obligación del mes, tres componentes, con la regla que le
+  pasa `titularidad`, porque `cuenta_corriente` no importa a `titularidad`);
+  `titularidad/aplicacion/prorrateo.py` pide el prorrateo, lo aplica y lo busca pendiente. Migración `0052`:
+  `prorrateo_de_cambio` (único por unidad y período) y `prorrateo_aplicado` (sólo agregar: pendiente es no
+  tener fila), sin `ALTER` sobre tablas protegidas. `emitir_liquidacion` llama a
+  `aplicar_prorrateos_pendientes` después de `registrar_emision` en la misma transacción y el registro de un
+  cambio que traslada toma el candado del edificio (el de la emisión). `anular_liquidacion` da 409
+  (`prorrateo_aplicado`) si el período tiene un prorrateo con parte mayor que cero.
+  **Deuda de H-032**: (1) anular la emisión de un período con prorrateo aplicado se rechaza con 409; falta
+  decidir y construir cómo se deshace (contra-asientos en la cuenta del vendedor y en la unidad); (2) los
+  cargos particulares entran sumados a la ordinaria de la obligación (E15 de H-013) y se prorratean con
+  ella; separarlos toca la emisión; (3) lo que se aplica al emitir no deja una acción de auditoría propia:
+  queda la de la emisión y el cambio registrado; (4) un prorrateo cuyo período se emitió sin obligación para
+  la unidad queda "aplicado" con `"0.00"`. Siguen H-033 (la cuenta del vendedor) y H-034 (las pantallas).
+- **4d · H-033 construida** (la cuenta del vendedor): tres rutas nuevas en `proptech_api/titularidad.py`,
+  `GET` y `GET /{cuenta_id}` de `/complejos/{c}/cuentas-de-vendedores` (permiso `ver_morosidad`) y `POST
+  .../{cuenta_id}/cobros` (`confirmar_pago_informado`), con el orden 404 edificio, 403, 404 cuenta, 422. La
+  lectura vive en `cuenta_corriente/aplicacion/cuentas_de_persona.py` (las cuentas con `persona_id` del
+  edificio, con su foto del libro) y el armado por período y componente en `cuenta_corriente/dominio/vista_de_cuenta.py`
+  (puro: `debe` es lo debido, `cobrado` lo imputado, `pendiente` el residual, juntando las contenedoras del
+  mismo período); `titularidad/aplicacion/cuenta_del_vendedor.py` autoriza, arma persona, deuda y unidades de
+  origen (de `cambio_de_titular.vendedor_deudor_id`) y registra el cobro. El cobro es `registrar_pago` del
+  libro (el mismo camino de confirmar un pago informado, R04 a la fecha de la transferencia, con su candado)
+  más la auditoría `registrar_cobro_de_vendedor` (entidad `cuenta`, detalle cuenta, importe y fecha), en una
+  transacción; el tope contra la deuda se lee con el candado tomado (`titularidad/dominio/cobro.py`, puro).
+  Migración `0053` (sólo el vocabulario de auditoría, como `0048` y `0049`); el evento es de `EventoDelPago`.
+  No toca cuentas de unidad, la bandeja de pagos informados ni la morosidad. Sin idempotencia: dos pedidos
+  iguales son dos cobros. **Deuda de H-033**: (1) las unidades de origen salen de `vendedor_deudor_id`, así
+  que un cambio con prorrateo todavía pendiente ya la lista aunque no haya trasladado nada; (2) el detalle
+  lee la foto de la cuenta entera (todos sus movimientos), sin paginar. Sigue H-034 (las pantallas).
+- **4d · H-034 construida** (las pantallas del cambio de titular y de las cuentas de vendedores): tres rutas
+  nuevas en `web/` sobre las de H-030 a H-033, sin tocar el backend. `.../unidades/{unidadId}/cambio-de-titular`
+  (formulario con los grupos Vendedores, Compradores, Expensa del mes y Deuda previa, cada opción con su línea
+  que la explica; resultado y historial en la misma pantalla), `.../cuentas-de-vendedores` (lista) y
+  `.../cuentas-de-vendedores/{cuentaId}` (deuda, deuda por período, movimientos y "Registrar cobro" con
+  diálogo de confirmación). El padrón suma una columna "Titular" con los enlaces "Cambiar titular de X" y "Ver
+  historial de cambios de titular de X" (con `registrar_cambio_de_titular`) y el menú del edificio suma
+  "Cuentas de vendedores" (con `ver_morosidad`). Cliente nuevo `web/src/lib/api/titularidad.ts`; las acciones
+  del servidor llevan el token (D-036); el 422 de la API ("valor inválido") se traduce por campo en la
+  pantalla (C05). Ningún monto se calcula: la deuda de la cuenta es la de la API, no la suma de los períodos.
+  **Deuda de H-034**: (1) el formulario lee los propietarios de `/api/personal`, que sólo ven el super admin y
+  el administrador principal: un administrador de un solo edificio con el permiso del cambio no puede usarlo
+  hasta que haya una lectura de propietarios por unidad; (2) el historial resuelve a los vendedores por nombre
+  desde `/api/personal` y, si una persona ya no está, dice "Propietario anterior"; (3) no hay confirmación
+  aparte del cambio de titular (un solo paso, como pide el contrato) ni forma de deshacerlo desde la pantalla.
+- **4d · H-035 construida** (los propietarios y los nombres del cambio de titular, backend): ruta nueva
+  `GET /api/complejos/{c}/unidades/{u}/propietarios` (`registrar_cambio_de_titular`, 404 antes que 403) con
+  `{"propietarios": [{persona_id, nombre}]}` por nombre, sin email ni asignaciones; el `POST` y el `GET` de
+  `cambios-de-titular` aceptan `?con_nombres=true` y suman `vendedores_detalle` en el orden de `vendedores`
+  (sin el parámetro, respuestas idénticas). Lecturas nuevas en
+  `acceso/aplicacion/lectura_de_personas.py` (`propietarios_de_unidad`, `nombres_de_personas`); la ruta se
+  suma a `test_rutas_protegidas.py`. Cierra la deuda 1 y 2 de H-034 del lado del backend; la pantalla pasa a
+  usarla en la historia que sigue. Lección L-107.
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la
@@ -1524,6 +1600,47 @@ D-153).
   una con instrucciones escondidas para la IA; la misma factura dos veces; un monto leído diez veces
   más grande o más chico que el historial del proveedor.
 - **Terminado cuando**: se cumple HU-A3 en su parte de factura; decodifica el ejemplo oficial.
+
+#### 14 · H-036 construida (la factura con QR de ARCA, D-169)
+
+- **Qué quedó**: `POST /api/complejos/{id}/facturas` lee el QR de ARCA de una imagen (PNG, JPEG) o de la
+  primera página de un PDF y deja el gasto en `borrador` con proveedor por CUIT, los cuatro datos de la
+  clave, fecha, receptor e importe en pesos (R12 en `05_reglas_de_negocio.md`). Sin QR legible queda
+  `sin_qr` con su motivo y sin datos. La factura se guarda (`factura_de_gasto`, sólo agregar) y se baja con
+  un enlace firmado de tipo `factura` de 15 minutos. Migración `0054`: seis columnas de `gasto` anulables,
+  `fecha_de_factura`, `origen`, `motivo_sin_qr` (`04_modelo_de_datos.md`).
+- **Dónde vive**: dominio puro en `gastos/dominio/factura_qr.py`; el lector (`zxing-cpp`, `pypdfium2`)
+  detrás del puerto `LectorDeQr` en `gastos/adaptadores/qr.py`; el caso de uso en
+  `gastos/aplicacion/facturas.py`. Un gasto con esos datos vacíos no se aprueba (422).
+- **Deuda**: el ejemplo oficial de ARCA de la aceptación se armó de memoria (cotejar con el PDF de la
+  especificación v1); el QR de una foto torcida o borrosa depende de `zxing-cpp` y no tiene corpus de fotos
+  reales; `PATCH` de un borrador incompleto exige mandar todos los datos requeridos juntos (la edición
+  parcial es de H-037 y 6c); el límite de tamaño y el tipo por firma están repetidos entre `pagos` y
+  `gastos` (las fronteras impiden importarlos) y podrían subir a `compartido`; el decodificado no tiene
+  tope de tiempo.
+
+#### 14 · H-037 construida (la IA completa la factura, D-169, D-164)
+
+- **Qué quedó**: la tarea del worker `leer_factura_con_ia` (encolada después del commit de la subida,
+  idempotente por `clave`), el puerto `LectorDeFacturaConIa` con su adaptador de OpenRouter, la validación de
+  la propuesta contra el vocabulario activo del edificio, los estados `sin_ia`/`en_revision` con sus motivos,
+  `GET /api/gastos/{id}/lectura` y la tabla de sólo agregar `llamada_de_ia` con el costo de cada llamada
+  (migración `0055`, `04_modelo_de_datos.md`). R12 en `05_reglas_de_negocio.md`.
+- **R23 construida**: el importe atípico (más del doble o menos de la mitad, estrictamente, del promedio de los
+  aprobados de ese proveedor en ese edificio en los 6 períodos anteriores al del gasto, con al menos uno)
+  deja el gasto `en_revision` con `promedio`, `muestras` e `importe`. Sin historial, sin proveedor (`sin_qr`)
+  o sin período no se marca. **Deuda**: el umbral y la ventana son fijos (R23 dice "configurable por
+  edificio, con vigencia"); el promedio no descuenta notas de crédito.
+- **Dónde vive**: dominio puro en `gastos/dominio/lectura_de_factura.py` (validación y R23); el caso de uso en
+  `gastos/aplicacion/lectura_de_factura.py`; el adaptador en `gastos/adaptadores/openrouter.py`; la tarea en
+  `proptech_worker/tareas.py`, armada en `ajustes.py` con `PROPTECH_OPENROUTER_API_KEY` y
+  `PROPTECH_OPENROUTER_MODELO`.
+- **Deuda**: la llamada real a OpenRouter nunca se probó (sólo el falso); la lectura no tiene evento de
+  auditoría propio (el registro es `llamada_de_ia`; un evento nuevo pide migrar el vocabulario); una falla
+  pasajera del proveedor (un 503) deja el gasto `sin_ia` sin reintentar, para no cobrar dos veces, y no hay
+  forma de reprocesar desde la API; `datos_de` no refleja una edición posterior de la persona; la
+  transacción queda abierta durante la llamada (cota de 60 s, llamada de 30 s); el precio del modelo y su
+  `cost` salen de `usage` de OpenRouter sin cotejar contra su factura.
 
 ### 15 · `piloto-en-paralelo`
 

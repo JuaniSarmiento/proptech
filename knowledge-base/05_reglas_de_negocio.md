@@ -493,9 +493,46 @@ del 3c, D-128)
 
 **Construido (cambio 6, 29/10/2026)**: la parte manual — carga sin IA, los cuatro datos de factura
 como clave, el control de duplicado (incluido contra un `INSERT` SQL directo) y el aviso de receptor
-distinto cuando `complejo.cuit` está cargado. **Pendiente (cambio 14)**: el QR de ARCA y la lectura
-por IA — hoy todo gasto nace y se aprueba a mano, sin estados `sin_ia`/`en_revision` poblados por
-lectura automática (la columna existe, D-075, pero nada la escribe todavía).
+distinto cuando `complejo.cuit` está cargado.
+
+**Construido (cambio 14, H-036, D-169)**: el QR de ARCA. `POST /api/complejos/{id}/facturas` (multipart,
+JPEG, PNG o PDF de hasta 10 MB; el tipo sale de los primeros bytes) lee el QR con `zxing-cpp` (en un PDF,
+sólo la primera página, rasterizada con `pypdfium2`) y deja un gasto en `borrador` con `origen` `qr`:
+proveedor por CUIT dentro del edificio (creado como "CUIT <n>" si no existe, reusado sin tocar si ya lo
+cargó el 6), los cuatro datos de la clave, `fecha_de_factura`, `documento_receptor` e importe en pesos
+(`importe x ctz`, `Decimal`, redondeo medio hacia arriba). Concepto, categoría, grupo y período quedan
+**vacíos** (el QR no los trae; los completa la IA, H-037, o la persona) y un gasto así **no se aprueba**
+(422, y `ck_gasto_aprobado_completo` en la base). El QR se descarta entero, sin datos a medias, con
+`origen` `sin_qr` y un `motivo_sin_qr`, por el primero de esta tabla:
+
+| `motivo_sin_qr` | Cuándo |
+|---|---|
+| `no_hay_qr` | ningún QR decodificable (en un PDF, sólo la primera página) o el archivo no se puede abrir (roto, bomba de descompresión) |
+| `dominio_ajeno` | el texto no es `https://<host>/fe/qr/?p=...` con host exactamente `arca.gob.ar`, `www.arca.gob.ar`, `afip.gob.ar` o `www.afip.gob.ar` |
+| `version_desconocida` | el JSON no trae `ver` o no es el entero 1 |
+| `json_invalido` | `p` no es base64, no es JSON o no es un objeto |
+| `importe_invalido` | `importe` ausente, no numérico, <= 0 o con más de dos decimales; `ctz` ausente, no numérica o <= 0 |
+| `datos_invalidos` | CUIT sin verificador válido, `ptoVta`/`tipoCmp`/`nroCmp` ausentes o no enteros, o `fecha` inexistente |
+
+La factura duplicada (la clave de arriba, también contra un gasto cargado a mano y al revés) da 409 y no
+crea nada; un receptor distinto lleva el aviso del 6 y no bloquea. El archivo queda guardado
+(`factura_de_gasto`, de sólo agregar) y se baja sólo con un enlace firmado de 15 minutos (tipo `factura`,
+D-070): `GET /api/facturas/descarga?token=...` pública, `POST /api/gastos/{id}/factura/enlace` para uno
+nuevo.
+
+**Construido (cambio 14, H-037, D-169, D-164)**: la lectura por IA. Después del commit de la subida, el POST
+encola la tarea `leer_factura_con_ia` (si la cola falla, el 201 sale igual y el gasto queda `borrador`); el
+worker llama al puerto `LectorDeFacturaConIa` (OpenRouter con las variables del 8, ZDR, salida estructurada,
+sin herramientas; sin clave o sin modelo, no hay IA). Al proveedor sólo le llegan el archivo y el `id` y el
+`nombre` de las categorías y los grupos **activos** del edificio. La IA sólo propone `concepto`, `periodo`,
+`categoria_id`, `grupo_id` e `importe` (éste sólo si el QR no lo trajo); cada campo se valida solo y el que no
+sirve queda vacío con su motivo (`invalido` o `fuera_del_vocabulario`). Nunca aprueba, no toca lo del QR ni lo
+que cargó una persona, ni el libro; el texto de la factura es un dato. Deja el gasto en `borrador` (lectura
+buena), `en_revision` (importe atípico, R23) o `sin_ia` con su motivo (`ia_no_configurada`, `ia_fallo`,
+`fuera_de_contrato`); en `sin_ia` no se aplica nada. Cada llamada deja una fila en `llamada_de_ia` (modelo,
+tokens y costo en dólares, de sólo agregar). `GET /api/gastos/{id}/lectura` dice de dónde sale cada dato
+(`qr`, `ia` o `null`), el estado, el motivo y el detalle. Un gasto aprobado, sin factura o ya leído no se lee
+de nuevo; la misma `clave` de la tarea no vuelve a llamar ni a cobrar.
 
 - **IVA** *(propuesta, D-071, P17)*: el gasto se registra por el **total de la factura, con el IVA
   incluido**, porque el consorcio en general no lo descuenta: para él es parte del costo. Si algún
@@ -526,7 +563,7 @@ lectura automática (la columna existe, D-075, pero nada la escribe todavía).
 - **Nunca aprobado sin confirmación**: ningún dato leído (por QR o por IA) entra en la liquidación sin
   que el administrador confirme el gasto. Según cómo salió la lectura, el gasto queda en borrador, sin
   IA o en revisión (D-075). La IA no inventa datos ausentes: los marca como faltantes.
-- **Tests mínimos**: decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
+- **Tests mínimos** (H-036: los de QR y duplicado están en `aceptacion/H-036/`): decodifica el ejemplo oficial de ARCA; acepta los dos dominios; rechaza un
   duplicado; avisa receptor distinto; moneda extranjera convierte con `ctz`; sin QR queda en revisión con la nota "sin QR"; un QR corrupto o de versión desconocida
   deja el gasto en revisión con su aviso.
 
@@ -1116,7 +1153,67 @@ número no se marcan duplicadas entre sí.
   crítico aunque tenga dos o más liquidaciones vencidas; desmarcarla la vuelve a incluir en ambos
   cálculos.
 
-## R32 · Cambio de titular a mitad de período · Vigente (D-109)
+## R32 · Cambio de titular a mitad de período · Vigente (D-109), en construcción (D-168)
+
+> **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
+> default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
+> auditoría y el aviso de deuda. **H-031 construye la deuda previa a nombre del vendedor** y **H-032 el
+> prorrateo por días de la expensa del mes** (los dos abajo). **H-033 construye la cuenta del vendedor**:
+> verla y cobrarle (`cuentas-de-vendedores`, abajo).
+
+- **Los propietarios y los nombres** (H-035): `GET /api/complejos/{c}/unidades/{u}/propietarios` devuelve los
+  `propietarios` actuales de la unidad (`persona_id` y `nombre`, por nombre) con el permiso
+  `registrar_cambio_de_titular`; es la lectura que usa la pantalla para elegir al vendedor, sin depender de
+  `/api/personal`. `?con_nombres=true` en el `POST` y el `GET` de `cambios-de-titular` suma
+  `vendedores_detalle` (`persona_id`, `nombre`), también de quien ya no es propietario.
+
+- **La cuenta del vendedor** (H-033, D-168.2c): `GET /api/complejos/{c}/cuentas-de-vendedores` lista las
+  cuentas de persona del edificio (persona, deuda, unidades de origen), también las que quedaron en cero, la
+  de más deuda primero; `GET .../{cuenta_id}` da el estado por período y componente (`debe`, `cobrado`,
+  `pendiente`) y los movimientos en el orden del libro; `POST .../{cuenta_id}/cobros` con `importe` (texto,
+  más de cero, a lo sumo dos decimales) y `fecha` (la de la transferencia, no futura) registra un `pago` del
+  libro imputado con R04 a esa fecha. **Un cobro mayor que la deuda da 422**: el vendedor no tiene expensas
+  futuras donde aplicar un crédito a favor, así que no hay crédito a favor; uno igual la deja en cero. Cada
+  cobro deja `registrar_cobro_de_vendedor`. El cobro no toca cuentas de unidad, la bandeja de pagos
+  informados ni la morosidad, y emitir el período siguiente no le suma interés (D-168.2a).
+
+- **Prorrateo por días** (H-032, D-168.5): con `expensa_del_mes: "prorrateo"`, el vendedor responde por los
+  días del mes **anteriores** a la fecha del cambio (vendió el 11 de noviembre: 10 de 30; el día del cambio es
+  del comprador; el día 1 son 0). Por cada componente de la obligación del mes (ordinaria, fondo de reserva y
+  extraordinaria; **nunca el interés**) la parte del vendedor es `componente x días del vendedor / días del
+  mes` redondeada medio hacia arriba al centavo y la unidad conserva el resto, así que la suma es exacta
+  (`parte_del_vendedor`, en `titularidad/dominio/prorrateo.py`, en enteros de centavos). Lo que la unidad ya
+  pagó de la obligación se entiende imputado primero a los días del vendedor: por componente se traslada
+  `max(parte - ya pagado, 0)`, y `parte_del_vendedor` de la respuesta es lo efectivamente trasladado. La
+  parte va a la cuenta de persona del `vendedor_deudor` (mismo campo y misma regla que la deuda previa: se
+  puede omitir con un solo vendedor, 422 con dos; también se acepta con la deuda en la unidad), con los
+  mismos traslados enlazados y el mismo crédito fechado al vencimiento (sin interés nuevo sobre lo
+  trasladado). **Si el período del mes ya está emitido** se aplica en la misma transacción del registro
+  (`prorrateo.estado: "aplicado"`); **si no, queda `"pendiente"`** y `emitir_liquidacion` lo aplica en la
+  misma transacción de la emisión, después de registrar las obligaciones (si el traslado falla, no hay
+  emisión; repetir el mismo pedido de emisión no escribe nada). Con deuda previa a nombre del vendedor y
+  prorrateo en el mismo cambio, `trasladado` es sólo la deuda previa y el prorrateo va aparte en
+  `prorrateo.parte_del_vendedor`, a la misma cuenta. Un segundo prorrateo de la misma unidad y período es 422
+  (único en la base). **Anular la emisión de un período con un prorrateo que movió plata da 409**
+  (`prorrateo_aplicado`) hasta que una historia posterior resuelva cómo deshacerlo (deuda de la ficha 4d).
+  Los cargos particulares entran sumados a la ordinaria de la obligación (E15 de H-013), así que hoy se
+  prorratean con ella (deuda de la ficha 4d).
+
+- **Deuda previa a nombre del vendedor** (H-031, D-168.2): con `deuda_previa: "a_nombre_del_vendedor"`
+  y `vendedor_deudor` (uno de los vendedores; se puede omitir con uno solo), todo lo impago de las
+  obligaciones con período **anterior al mes de la fecha del cambio** (cada componente de capital y el
+  interés ya registrado, ya imputado) se traslada, en la misma transacción que el registro, de la cuenta
+  de la unidad a la **cuenta de persona** del vendedor deudor (única por administración, edificio y
+  persona; se crea si falta y se reutiliza si existe). Por cada obligación y componente impago hay un
+  crédito `traslado` en la unidad, imputado entero a ese destino, y un débito `traslado` del mismo
+  importe en la cuenta del vendedor, enlazados (`enlazado_a`), cada uno con su `operacion_id` derivado
+  del cambio. La unidad queda en cero por esos períodos, el vendedor debe exactamente lo mismo y la suma
+  de las dos cuentas no cambia; lo del mes del cambio y lo posterior, y lo ya pagado, no se mueven. La
+  deuda trasladada **no genera interés nuevo** (viaja con el capital y el interés ya registrados) y la
+  cuenta del vendedor no entra en la morosidad ni en la situación de cobranza, que son por unidad. Un
+  segundo cambio de la misma unidad traslada sólo lo que quedó impago desde entonces. La respuesta suma
+  `trasladado` y `cuenta_del_vendedor`, y el `aviso` es la deuda que le queda a la unidad después del
+  traslado. Sin deuda previa no se escribe nada ni se crea la cuenta (`trasladado` `"0.00"`).
 
 - **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
   anterior.
@@ -1135,7 +1232,13 @@ número no se marcan duplicadas entre sí.
 - **Tests mínimos**: con el default, la expensa del mes de la venta queda entera a cargo de la unidad
   y la deuda previa pasa al comprador; con prorrateo por días, vendedor y comprador se dividen la
   expensa del mes exacto; con "deuda a nombre del vendedor", la deuda previa se mueve a una cuenta de
-  persona y la unidad queda en cero por ese concepto; todo cambio de titular deja un registro con
+  persona y la unidad queda en cero por ese concepto (H-031: un crédito `traslado` por obligación y
+  componente en la unidad, su débito enlazado en la cuenta del vendedor, sin interés nuevo sobre lo
+  trasladado, la cuenta del vendedor fuera de la morosidad y un pago posterior sobre la unidad que no se
+  imputa a lo trasladado); con prorrateo (H-032), la parte del vendedor al centavo por componente con
+  redondeo medio hacia arriba, los días anteriores a la fecha, lo pendiente que se aplica al emitir, lo ya
+  pagado que no se traslada, el interés que nunca se prorratea, la parte trasladada sin interés y el 409 de
+  anular; todo cambio de titular deja un registro con
   fecha, elección y responsable; una unidad con deuda que cambia de titular genera un aviso, nunca un
   bloqueo.
 

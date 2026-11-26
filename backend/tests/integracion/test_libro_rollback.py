@@ -12,6 +12,12 @@ from .test_umbral_migracion import arranque
 
 pytestmark = pytest.mark.integracion
 
+#: La cabeza de las migraciones, derivada de los archivos (L-084): no se edita en cada migración.
+CABEZA = max(
+    archivo.name[:4]
+    for archivo in (Path(__file__).resolve().parents[2] / "migraciones" / "versions").glob("0*.py")
+)
+
 
 POSTERIORES_AL_LIBRO = (
     "tramo_de_interes",
@@ -33,16 +39,23 @@ POSTERIORES_AL_LIBRO = (
     "evento_de_pago",
     "movimiento_de_pago",
     "cbu_de_unidad",
+    "cambio_de_titular",
+    "parte_de_cambio_de_titular",
+    "prorrateo_de_cambio",
+    "prorrateo_aplicado",
+    "factura_de_gasto",
+    "llamada_de_ia",
 )
 
 
 def devolver_tramos(base: BaseDeEdificio) -> None:
     """La `0035` y la `0034` bajan antes que la `0024`: sus tablas vuelven al migrador como las
-    del libro. La `0042` además altera `evento_de_emision` al bajar y la `0046` y la `0047` alteran
-    `movimiento` (D-115.3)."""
+    del libro. La `0042` además altera `evento_de_emision` al bajar, la `0046` y la `0047` alteran
+    `movimiento` y la `0051` también `obligacion` (D-115.3)."""
     with arranque(base) as c:
         c.execute("ALTER TABLE evento_de_emision OWNER TO proptech_migrador")
         c.execute("ALTER TABLE movimiento OWNER TO proptech_migrador")
+        c.execute("ALTER TABLE obligacion OWNER TO proptech_migrador")
         for tabla in POSTERIORES_AL_LIBRO:
             devolver_tabla_al_migrador(c, tabla, "proptech_migrador")
 
@@ -84,7 +97,7 @@ def test_ciclo_0022_0024_0022_conserva_esquema(
     base.migrar("upgrade", "head")
     base.roles("despues")
     with base.conectar_app() as c:
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0049",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == (CABEZA,)
         for tabla in LIBRO:
             assert c.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(tabla))
@@ -110,7 +123,7 @@ def test_downgrade_con_fila_conserva_el_libro(base_para_migraciones: BaseDeEdifi
             "el downgrade borró el libro con filas, invisible al dueño por FORCE sin tenant"
         )
         assert c.execute("SELECT count(*) FROM cuenta WHERE id=%s", (cuenta,)).fetchone() == (1,)
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0049",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == (CABEZA,)
     assert rechazo is not None and "tiene filas" in rechazo
     base.roles("despues")
 
@@ -155,7 +168,7 @@ def test_0024_con_correccion_auditada_no_baja(base_del_edificio: BaseDeEdificio)
         with pytest.raises(psycopg.errors.ForeignKeyViolation) as error_fk:
             c.execute("DELETE FROM accion_de_auditoria WHERE nombre='corregir_movimiento'")
         assert error_fk.value.sqlstate == "23503"
-        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0049",)
+        assert c.execute("SELECT version_num FROM alembic_version").fetchone() == (CABEZA,)
     with sesion_app(base, datos.admin) as s:
         from sqlalchemy import text
 
