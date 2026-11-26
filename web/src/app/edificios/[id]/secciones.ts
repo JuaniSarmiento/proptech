@@ -19,6 +19,35 @@ import type { SeccionDelEdificio } from "../../../componentes/MenuDelEdificio";
 
 export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
   return [
+    // H-040: quien informa pagos en el edificio (la vecina) ve también las tres pantallas del portal,
+    // que no son del edificio: salen de acá a `/inicio`, `/mis-liquidaciones` y `/comprobantes`.
+    {
+      clave: "inicio",
+      etiqueta: "Inicio",
+      href: "/inicio",
+      grupo: "Mi cuenta",
+      icono: "inicio",
+      accion: "informar_pago",
+      complejoId: id,
+    },
+    {
+      clave: "mis-liquidaciones",
+      etiqueta: "Mis liquidaciones",
+      href: "/mis-liquidaciones",
+      grupo: "Mi cuenta",
+      icono: "mis_liquidaciones",
+      accion: "informar_pago",
+      complejoId: id,
+    },
+    {
+      clave: "comprobantes",
+      etiqueta: "Comprobantes",
+      href: "/comprobantes",
+      grupo: "Mi cuenta",
+      icono: "comprobantes",
+      accion: "informar_pago",
+      complejoId: id,
+    },
     {
       clave: "resumen",
       etiqueta: "Resumen",

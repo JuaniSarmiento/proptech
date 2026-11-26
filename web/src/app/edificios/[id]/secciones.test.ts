@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { seccionesDelEdificio } from "./secciones";
 
 describe("seccionesDelEdificio", () => {
-  it("arma las diez secciones del menú con el id del edificio en cada href", () => {
+  it("arma las trece secciones del menú con el id del edificio en cada href", () => {
     const secciones = seccionesDelEdificio("abc");
     expect(secciones.map((s) => s.clave)).toEqual([
+      "inicio",
+      "mis-liquidaciones",
+      "comprobantes",
       "resumen",
       "unidades",
       "grupos",
@@ -16,13 +19,16 @@ describe("seccionesDelEdificio", () => {
       "categorias",
       "configuracion",
     ]);
-    expect(secciones[0]?.href).toBe("/edificios/abc");
-    expect(secciones[1]?.href).toBe("/edificios/abc/unidades");
+    expect(secciones[3]?.href).toBe("/edificios/abc");
+    expect(secciones[4]?.href).toBe("/edificios/abc/unidades");
   });
 
   it('agrupa en "El edificio" y "Configuración", cada sección con su ícono (enmienda 20/10)', () => {
     const secciones = seccionesDelEdificio("abc");
     expect(secciones.map((s) => [s.clave, s.grupo])).toEqual([
+      ["inicio", "Mi cuenta"],
+      ["mis-liquidaciones", "Mi cuenta"],
+      ["comprobantes", "Mi cuenta"],
       ["resumen", "El edificio"],
       ["unidades", "El edificio"],
       ["grupos", "El edificio"],
@@ -34,7 +40,15 @@ describe("seccionesDelEdificio", () => {
       ["categorias", "Configuración"],
       ["configuracion", "Configuración"],
     ]);
-    expect(new Set(secciones.map((s) => s.icono)).size).toBe(10);
+    expect(new Set(secciones.map((s) => s.icono)).size).toBe(13);
+  });
+
+  it("Inicio, Mis liquidaciones y Comprobantes llevan al portal y sólo se piden con informar_pago, en ese edificio (H-040)", () => {
+    const portal = seccionesDelEdificio("abc").filter((s) => s.grupo === "Mi cuenta");
+    expect(portal.map((s) => s.href)).toEqual(["/inicio", "/mis-liquidaciones", "/comprobantes"]);
+    for (const seccion of portal) {
+      expect(seccion).toMatchObject({ accion: "informar_pago", complejoId: "abc" });
+    }
   });
 
   it("Liquidaciones lleva a la lista y sólo se pide con ver_liquidaciones, en ese edificio (H-017)", () => {

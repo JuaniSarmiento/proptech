@@ -16,6 +16,8 @@
 import {
   ArrowLeftRight,
   CalendarClock,
+  FileCheck,
+  FileText,
   HandCoins,
   Hourglass,
   House,
@@ -25,6 +27,7 @@ import {
   Receipt,
   Tags,
   Building2 as Unidades,
+  UserRound,
   Users,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
@@ -43,7 +46,10 @@ export type IconoDeSeccion =
   | "mis_pagos"
   | "morosidad"
   | "cuentas_de_vendedores"
-  | "personal";
+  | "personal"
+  | "inicio"
+  | "mis_liquidaciones"
+  | "comprobantes";
 
 export type SeccionDelEdificio = {
   clave: string;
@@ -69,6 +75,9 @@ const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
   morosidad: Hourglass,
   cuentas_de_vendedores: ArrowLeftRight,
   personal: Users,
+  inicio: UserRound,
+  mis_liquidaciones: FileText,
+  comprobantes: FileCheck,
 };
 
 type Props = {

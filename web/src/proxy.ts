@@ -27,6 +27,9 @@ const middlewareDeClerk = clerkMiddleware(
         "base-uri": ["'self'"],
         "frame-ancestors": ["'none'"],
         "form-action": ["'self'"],
+        // H-040: sólo el service worker propio (`/sw.js`), que no guarda nada; sin esto la CSP
+        // estricta cae a `script-src` y bloquea su registro. No abre ninguna fuente nueva.
+        "worker-src": ["'self'"],
         "script-src": [`https://${apiDeClerk}`, "https://challenges.cloudflare.com"],
       },
     },
@@ -73,5 +76,5 @@ export default async function proxy(...argumentos: Parameters<typeof middlewareD
 }
 
 export const config = {
-  matcher: ["/((?!_next|[^?]*\\.(?:css|js|png|jpg|svg|ico|woff2?)).*)"],
+  matcher: ["/((?!_next|[^?]*\\.(?:css|js|png|jpg|svg|ico|webmanifest|woff2?)).*)"],
 };

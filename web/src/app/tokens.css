@@ -2153,3 +2153,322 @@ a.boton-secundario:hover {
   overflow-x: auto;
   max-width: 100%;
 }
+
+/* ------------------------------------------------------------------ */
+/* Portal del vecino (change 11, H-040): misma sans, mismos neutros y   */
+/* un solo acento; más aire y objetivos táctiles de 2,75rem, para el    */
+/* celular y para quien mira de cerca. Planos: renglones, no tarjetas.  */
+/* ------------------------------------------------------------------ */
+
+.portal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 52rem;
+  min-width: 0;
+}
+
+/* Rótulo y valor, uno al lado del otro en la grilla: el principal pesa más. */
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.875rem 1.5rem;
+  margin: 0;
+}
+
+.cifras__par {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.cifras dt {
+  color: var(--color-grafito);
+}
+
+.cifras dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.cifras__par[data-principal="true"] dd {
+  font-size: var(--tipo-titulo);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.lista-de-unidades,
+.lista-de-liquidaciones {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unidad-del-vecino,
+.liquidacion-del-vecino {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.unidad-del-vecino:first-child,
+.liquidacion-del-vecino:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.unidad-del-vecino:last-child,
+.liquidacion-del-vecino:last-child {
+  padding-bottom: 0;
+}
+
+.unidad-del-vecino {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.unidad-del-vecino__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.125rem 0.75rem;
+}
+
+.unidad-del-vecino__nombre {
+  font-size: var(--tipo-titulo);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.liquidacion-del-vecino {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.liquidacion-del-vecino__periodo {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.liquidacion-del-vecino .cifras {
+  grid-template-columns: auto;
+}
+
+.liquidacion-del-vecino__enlace {
+  grid-column: 1 / -1;
+}
+
+/* Un enlace que lleva a otra pantalla, con aspecto de botón secundario y un objetivo táctil grande.
+   A diferencia de `a.boton-secundario`, el texto largo baja de renglón en vez de ensanchar. */
+.unidad-del-vecino__enlace,
+.liquidacion-del-vecino__enlace,
+.comprobantes__descarga {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--color-grafito);
+  border-radius: 0.25rem;
+  background-color: var(--color-papel-claro);
+  color: var(--color-tinta);
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.unidad-del-vecino__enlace:hover,
+.liquidacion-del-vecino__enlace:hover,
+.comprobantes__descarga:hover {
+  background-color: var(--color-papel-hundido);
+}
+
+.comprobantes__descarga svg {
+  flex: none;
+  color: var(--color-terracota);
+}
+
+.enlace-de-vuelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  width: fit-content;
+  max-width: 100%;
+  font-weight: 600;
+}
+
+/* La expensa: un renglón por concepto, como un recibo. */
+.tabla-de-importes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-de-importes th,
+.tabla-de-importes td {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-linea);
+  vertical-align: baseline;
+}
+
+.tabla-de-importes th[scope="row"] {
+  font-weight: 400;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.tabla-de-importes td {
+  padding-left: 1rem;
+  white-space: nowrap;
+}
+
+.tabla-de-importes tfoot th,
+.tabla-de-importes tfoot td {
+  border-bottom: none;
+  border-top: 2px solid var(--color-tinta);
+  font-size: var(--tipo-titulo);
+  font-weight: 700;
+}
+
+.tabla-de-importes thead th {
+  padding-top: 0;
+  border-bottom: 1px solid var(--color-grafito);
+  color: var(--color-grafito);
+  font-size: var(--tipo-label);
+  font-weight: 600;
+  text-align: right;
+}
+
+.tabla-de-importes thead th:first-child {
+  text-align: left;
+}
+
+/* La comparación tiene cuatro columnas: en un celular angosto scrollea ella sola, nunca la página. */
+.tabla-con-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.tabla-de-importes--comparacion th,
+.tabla-de-importes--comparacion td {
+  padding-right: 0.5rem;
+}
+
+.lista-de-categorias {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-de-categorias li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.25rem 1rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--color-linea);
+}
+
+.lista-de-categorias__nombre {
+  overflow-wrap: anywhere;
+}
+
+.lista-de-categorias li > :last-child {
+  min-width: 4.5rem;
+}
+
+.grupo-de-la-expensa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}
+
+.grupo-de-la-expensa__nombre {
+  flex: 1 1 9rem;
+  font-weight: 600;
+}
+
+.comparacion__periodo,
+.comprobantes__bloque h3 {
+  margin: 0;
+  font-size: var(--tipo-cuerpo);
+  font-weight: 700;
+}
+
+.comprobantes__bloque {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.comprobantes__bloque + .comprobantes__bloque {
+  margin-top: 0.75rem;
+}
+
+.comprobantes__bloque .lista-de-filas > li,
+.pago-confirmado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.comprobantes__periodo,
+.pago-confirmado__fecha {
+  font-weight: 600;
+}
+
+.pago-confirmado__textos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pago-confirmado__importe {
+  font-weight: 600;
+}
+
+/* El aviso de instalar la app en iPhone: en el flujo, bajo el título, nunca flotando. */
+.aviso-de-instalacion {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-panel);
+  background-color: var(--color-terracota-tenue);
+}
+
+.aviso-de-instalacion h2 {
+  font-weight: 700;
+}
+
+.aviso-de-instalacion ol {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aviso-de-instalacion li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.aviso-de-instalacion li svg {
+  flex: none;
+  margin-top: 0.125rem;
+  color: var(--color-terracota);
+}
+
+.aviso-de-instalacion button {
+  width: fit-content;
+  min-height: 2.75rem;
+}

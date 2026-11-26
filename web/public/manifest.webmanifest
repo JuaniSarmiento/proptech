@@ -1,0 +1,22 @@
+{
+  "name": "PropTech: tus expensas",
+  "short_name": "PropTech",
+  "description": "Mirá cuánto debés, entendé tu expensa e informá tus pagos.",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "es-AR",
+  "theme_color": "#723222",
+  "background_color": "#f7f5f1",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
