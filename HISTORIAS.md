@@ -2356,6 +2356,11 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - **N03**: los pagos informados sin confirmar o rechazados no aparecen como confirmados.
 - **N04**: ninguna lectura escribe en el libro; los números son iguales a los del administrador.
 - **K01**: HU-V2 y HU-V5 en `06`, D3 cerrada en la ficha 6, la ficha 11 con H-038.
+- Aceptación: `aceptacion/H-038/`, 35 casos vistos fallar por aserción (0 errores; `ruff --select F` limpio y helpers
+  probados contra el código actual), congelada en `098cc01` bajo D-170. Contrato: `GET /api/mis-unidades` con `fecha`,
+  `conjunto` y `unidades`; por unidad `pagos`, `documentos` y `cargos-particulares/{id}`; `total_a_pagar` es la deuda del
+  libro sin descontar créditos; el inquilino sin la componente extraordinaria en total, pagos y PDFs; cargos en borrador
+  dan 404; el personal sin vínculo recibe `unidades: []`; 404 `{"detail": "no encontrado"}` para todo lo ajeno.
 - Estado: En proceso.
 
 ### H-039 · Entender mi expensa

@@ -26,7 +26,7 @@ from pathlib import Path
 RAMA = "change/portal-del-vecino"
 CAMBIO = "portal-del-vecino"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "098cc01ec19cec61e674e476157de9ccfc6498bd"
 CARPETA = "aceptacion/H-038/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h038"
 TESTS_ESPERADOS = 35
