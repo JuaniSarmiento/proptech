@@ -3518,3 +3518,23 @@ registrado como tal en su momento.)*
   partir la obligación dentro de `registrar_emision` (toca el núcleo de la emisión más de lo necesario).
 - **Supuesto**: SU-02 sigue sin verificar con abogado (el comprador hereda la deuda por defecto).
 - **Quién**: el orquestador, por delegación escrita de Juani del 25/11/2026. Juani la revisa en la demo.
+
+## D-169 · El 14 `lectura-de-facturas`: alcance, proveedor y lectura del QR (26/11/2026)
+
+- **Contexto**: el 14 figuraba bloqueado por P12, P21 y la elección del proveedor de IA. P12 frena el deploy y no
+  la construcción (D-163); P21 quedó resuelta en D-109 (gasto atípico: más del doble o menos de la mitad del
+  historial del proveedor); el proveedor del 8 es OpenRouter detrás de un puerto (D-164). Las pantallas de gastos
+  son del 6c (Juan Cruz) y no existen todavía.
+- **Decisión**: (1) el 14 es **sólo backend y API**, como el 6 (D-140); la pantalla de subir la factura entra con el
+  6c. (2) Dos historias: **H-036** sube una factura (imagen o PDF), lee el QR de ARCA (dominios `arca.gob.ar` y
+  `afip.gob.ar`, versión 1) y deja el gasto en borrador con esos datos, con el duplicado, el receptor y el link
+  firmado del 6 y el 7; **H-037** la IA completa concepto, período, categoría y grupo **sólo como propuesta**, con el
+  costo de cada llamada registrado y el control de monto atípico de R23, y el gasto queda `sin_ia` o `en_revision`
+  (D-075), nunca aprobado sin confirmación. (3) El QR se decodifica con `zxing-cpp` (wheel sin dependencias del
+  sistema, Apache 2.0) y un PDF se rasteriza con `pypdfium2` (Apache 2.0/BSD): sin licencias ni costo de uso (D-043).
+  (4) La IA reusa el puerto y el adaptador de OpenRouter del 8; lo que devuelve se valida contra el vocabulario del
+  edificio y nunca se ejecuta como instrucción.
+- **Descartado**: `pyzbar` (necesita `libzbar` en la imagen); leer el QR con la IA (no es confiable y cuesta por uso);
+  construir una pantalla propia antes del 6c (la pisaría).
+- **Quién**: el orquestador, por la delegación escrita de Juani del 25/11/2026 (D-168). Riesgo **HIGH**: facturas con
+  CUIT y montos que salen a un servicio externo de IA.

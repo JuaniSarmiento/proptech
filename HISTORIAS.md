@@ -47,6 +47,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Lista |
 | H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
+| H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | En proceso |
+| H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2227,6 +2229,40 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   "Cuentas de vendedores" con Ana en 21.022,53 (17.689,20 + 3.333,33); cobro de 5.000 con confirmación → 16.022,53,
   imputado 279,20 al interés de septiembre y 4.720,80 a su ordinaria (R04), y los movimientos en orden.
 - Estado: **Lista** (26/11/2026). Terminada la marca Juani.
+
+## Lectura de facturas (14, C-19)
+
+Firmado por el orquestador por delegación escrita de Juani (D-169, D-168), con la propuesta escrita antes de construir.
+Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-facturas`, sobre `change/cambio-de-titular`
+(las migraciones siguen a `0053`). Método rápido del 26/11: historias grandes, demo única al cerrar el change.
+
+### H-036 · La factura con QR de ARCA
+
+- Objetivo: el administrador sube una factura (imagen o PDF) y el gasto queda en borrador con lo que trae el QR.
+- Nivel: **L** (archivos subidos y datos fiscales).
+- **C01**: `POST /api/complejos/{c}/facturas` (multipart, imagen PNG/JPG o PDF) con el permiso de cargar gastos del 6
+  responde 201 con el gasto en borrador: proveedor (por CUIT, creado si no existe como en el 6), punto de venta, tipo,
+  número, fecha, importe en pesos (`importe × ctz`, Decimal, texto) y `origen: "qr"`.
+- **C02**: decodifica el QR de los dos dominios (`arca.gob.ar` y `afip.gob.ar`) y el ejemplo oficial de la
+  especificación v1; un PDF se lee desde su primera página.
+- **C03**: la factura queda guardada y se descarga sólo con un link firmado que vence (D-070), como los comprobantes
+  del 8.
+- **C04**: si el receptor del QR no es el CUIT del edificio, el gasto lleva el aviso del 6, sin bloquear.
+- **C05**: sin QR legible, el gasto queda en borrador sin datos del QR (`origen: "sin_qr"`), listo para la IA (H-037)
+  o la carga a mano.
+- **N01**: la misma factura dos veces (mismos cuatro datos) da el conflicto de duplicado del 6 y no crea nada.
+- **N02**: un QR con versión desconocida, JSON inválido, dominio ajeno o importe no numérico no crea datos del QR: el
+  gasto queda `sin_qr` con el motivo.
+- **N03**: un archivo que no es imagen ni PDF, o más grande que el límite de los comprobantes del 8, da 422.
+- **N04**: sin el permiso, 403; edificio de otra administración, 404; nunca se escribe en el libro.
+- **K01**: R12 con el QR construido y la ficha 14 con H-036.
+- Estado: En proceso.
+
+### H-037 · La IA completa la factura
+
+- Objetivo: la IA propone concepto, período, categoría y grupo; cada llamada registra su costo; R23 marca un monto
+  atípico; el gasto queda `sin_ia` o `en_revision`, nunca aprobado sin confirmación. Criterios al terminar H-036.
+- Estado: Pendiente.
 
 ## Plantilla de historia
 
