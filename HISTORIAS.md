@@ -45,8 +45,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
-| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | En proceso |
-| H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | En proceso |
+| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Lista |
+| H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2169,8 +2169,8 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   (sumarlos siempre rompería las aceptaciones congeladas de H-030 a H-032); los compradores ya traían `nombre`.
 - Construcción (Sonnet): `d249cac`, `fb7c86e`; lectura `acceso/aplicacion/lectura_de_personas.py` (sólo id y nombre).
 - Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `fb7c86e` desde `4e864f8`: 14/14, 0 skips.
-- Demo: junto con la de H-034 en Chrome (la pantalla es la que usa esta ruta).
-- Estado: En proceso.
+- Demo: la de H-034 (abajo), que usa esta ruta como administrador principal.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ### H-034 · Pantallas del cambio de titular
 
@@ -2220,7 +2220,13 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Corrección (Sonnet): `305f4b0`, `deee10a`: los vendedores salen de la ruta de propietarios y los nombres de
   `vendedores_detalle`; la pantalla ya no usa `/api/personal`.
 - Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `deee10a` desde `4e864f8`: 15/15 e2e, 0 skips.
-- Estado: En proceso (falta la demo en Chrome).
+- Demo (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales, Clerk en modo de verificación local,
+  como administrador principal): "Cambiar titular de A" lista a Ana y Dora; venta de Ana el 11/11 a Marta con
+  prorrateo y deuda a nombre de la vendedora → "Aplicado · parte del vendedor 3.333,33 · 10 de 30 días", deuda
+  pasada 17.689,20, aviso "la unidad queda con 6.666,67" (noviembre 10.000 − 3.333,33); historial con los nombres;
+  "Cuentas de vendedores" con Ana en 21.022,53 (17.689,20 + 3.333,33); cobro de 5.000 con confirmación → 16.022,53,
+  imputado 279,20 al interés de septiembre y 4.720,80 a su ordinaria (R04), y los movimientos en orden.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ## Plantilla de historia
 
