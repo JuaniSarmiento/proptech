@@ -46,6 +46,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | En proceso |
+| H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2147,6 +2148,24 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   detalle no pagina.
 - Estado: **Lista** (25/11/2026). Terminada la marca Juani.
 
+### H-035 · Los propietarios y los nombres del cambio de titular
+
+- Origen: la demo rechazada de H-034 (26/11/2026): `/api/personal` no trae vecinos al administrador principal.
+- Objetivo: quien puede registrar un cambio de titular lee los propietarios actuales de la unidad y los nombres de
+  vendedores y compradores del historial, sin depender de `/api/personal`.
+- Nivel: **M** (lectura de datos personales detrás de un permiso, sin escribir).
+- **C01**: `GET /api/complejos/{c}/unidades/{u}/propietarios` con `registrar_cambio_de_titular` responde 200 con
+  `propietarios`: `persona_id` y `nombre` de cada propietario actual de la unidad, ordenados por nombre; lo usan el
+  super admin, el administrador principal y el administrador del edificio.
+- **C02**: no trae inquilinos ni propietarios de otras unidades; después de un cambio, trae a los compradores y ya
+  no a los vendedores.
+- **C03**: la respuesta del `POST` y del `GET` de `cambios-de-titular` suma `nombre` a cada vendedor y comprador,
+  aunque ya no sean propietarios.
+- **N01**: sin el permiso, 403; unidad de otro edificio o administración, 404.
+- **N02**: la respuesta no trae email, teléfono ni documento: sólo id y nombre.
+- **K01**: lección sobre la API falsa de e2e que no imita los filtros reales de la API.
+- Estado: En proceso.
+
 ### H-034 · Pantallas del cambio de titular
 
 - Objetivo: desde el padrón, "Cambiar titular" con las dos opciones, el aviso de deuda, el historial de
@@ -2177,6 +2196,14 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Aceptación: `aceptacion/H-034/` (Playwright con la API falsa de e2e, `web/e2e/escenarios-cambio-de-titular.ts`),
   15 e2e vistos fallar por aserción (0 errores), congelada en `dc4ef16` bajo D-168. Rutas `/unidades/{u}/cambio-de-titular`
   (formulario, resultado e historial), `/cuentas-de-vendedores` y su detalle; textos y mensajes por campo en `CONTRATO.md`.
+- Construcción (Sonnet): `6445d3b`. Evidencia: 15/15 e2e desde `dc4ef16` sobre `6445d3b`.
+- **Demo rechazada** (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales con Clerk en modo de
+  verificación local): entrando como administrador principal, "Cambiar titular de A" dice "Sin propietarios
+  cargados" aunque A tiene dos propietarias. La pantalla saca los propietarios de `/api/personal`, que para el
+  administrador principal filtra a quienes están por debajo de él (D13 del 2d) y nunca trae vecinos; sólo el
+  super admin la podría usar. La API falsa de e2e devolvía los propietarios por esa ruta, por eso los 15 e2e
+  pasaron. Vuelve a **En proceso**: espera H-035 (una ruta propia de propietarios y los nombres en el historial)
+  y se recongela con la API falsa corregida.
 - Estado: En proceso.
 
 ## Plantilla de historia
