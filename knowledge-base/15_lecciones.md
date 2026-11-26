@@ -1574,3 +1574,12 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   tiene la real según el perfil de la identidad del test (leer el caso de uso, no el contrato de la pantalla) y que la
   falsa los repita; y que una ruta que la pantalla usa como fuente de datos de otro dominio (como `/api/personal` para
   propietarios) se cuestione. La demo contra la API real sigue siendo el control final (L-082).
+
+## L-108 · Los criterios salen del texto vigente de la regla, no de la ficha ni del borrador (26/11/2026)
+
+- **Qué pasó**: en el 14 el orquestador fijó R23 con "al menos tres gastos" y la regla vigente decía "últimos 6
+  períodos, sin historial no marca"; en el 10b el borrador del certificado dejó afuera el interés corrido que R21 (D-081)
+  pide en una línea aparte. Las dos se corrigieron antes de congelar, una por el aviso del subagente y otra por releer R21.
+- **Por qué**: los criterios se escribieron desde la ficha del change y desde un borrador, que resumen la regla.
+- **Cómo se aplica**: antes de escribir los criterios de una historia, leer en `05_reglas_de_negocio.md` el texto entero
+  de cada regla vigente que toca, incluidos sus "Tests mínimos", y que cada test mínimo tenga un criterio.
