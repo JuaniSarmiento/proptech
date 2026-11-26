@@ -43,7 +43,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
-| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | En proceso |
+| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
 
@@ -2081,7 +2081,24 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Aceptación: `aceptacion/H-032/`, 23 casos vistos fallar por aserción (0 errores), congelada en `e451c6c` bajo
   D-168. Contrato: C06 imputa lo ya pagado primero a los días del vendedor (`max(parte - pagado, 0)` por
   componente); `parte_del_vendedor` es lo trasladado; N03 compara con una testigo con tolerancia de $0,05.
-- Estado: En proceso.
+- Construcción (Sonnet): `fb6781c`, `a907887`, `1697465`. Dominio puro `titularidad/dominio/prorrateo.py`;
+  `trasladar_parte_del_mes` comparte el traslado de H-031; la emisión crea y bloquea las cuentas de los vendedores
+  junto con las del edificio (`tambien_bloquear`: bloquear una cuenta nueva después da `BloqueoFueraDeOrden`) y
+  aplica los pendientes en la misma transacción; migración `0052` (`prorrateo_de_cambio` único por unidad y
+  período, `prorrateo_aplicado`); anular da 409 sólo si el prorrateo trasladó más de cero.
+- Evidencia (25/11/2026, orquestador): sobre `1697465`, H-032 23/23 desde `e451c6c`, H-031 27/27 desde `8601a7a`,
+  H-030 40/40 desde `abbc1e2`; 0 fallas, 0 errores, 0 skips; en `aceptacion/` sólo cambió la línea del SHA.
+- Demo (25/11/2026, por API, sin Juani; noviembre emitido por `GET preliquidacion` + `POST emision` reales): 1A
+  vendida el 11/11 antes de emitir → `pendiente`, 10 de 30; al emitir, `aplicado` con `"15500.11"` (10.000,10 +
+  500,01 + 5.000,00 sobre 30.000,31 / 1.500,02 / 15.000,01; la unidad con el resto; 3 y 3 traslados enlazados; la
+  vendedora sin interés); 1B vendida el 16/11 con noviembre emitido → `aplicado` al momento, 15 de 30,
+  `"23250.17"`; anular noviembre → 409 `prorrateo_aplicado` con el libro idéntico; segundo prorrateo → 422.
+- **Deuda** (en la ficha 4d): anular con prorrateo aplicado da 409 hasta que una historia resuelva deshacerlo;
+  cargos particulares prorrateados con la ordinaria; lo aplicado al emitir no tiene acción de auditoría propia; un
+  período emitido sin obligación para la unidad queda `aplicado` en `"0.00"`; posible cuenta de persona vacía si un
+  crédito cubre toda la parte; el 422 del segundo prorrateo no dice el motivo; `ensayo-roles.sh` actualizado sin
+  ejecutar (corre en el CI de cierre).
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
 
 ### H-033 · La cuenta del vendedor
 
