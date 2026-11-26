@@ -2532,6 +2532,12 @@ serie; demo única al cerrar.
 - **N03**: la marca judicial nunca cambia el saldo ni escribe en el libro.
 - **N04**: marcar una unidad ya marcada o desmarcar una que no lo está da 409 sin cambios.
 - **K01**: R29 y R31 pasan a vigentes (construidas en el 10b) en `05`, HU-A11 en `06`, `04` y la ficha 10b con H-042.
+- Aceptación: `aceptacion/H-042/`, 52 casos vistos fallar por aserción (0 errores, `ruff --select F` limpio), congelada en
+  `1fbb7fb` bajo D-172. Contrato: `condonaciones` con `{obligacion_id, importe, motivo}` (el motivo en `movimiento.motivo`);
+  el vecino lo ve en `/api/mis-unidades/{u}/condonaciones` y el consejo en `/api/complejos/{c}/condonaciones` (acción
+  `ver_condonaciones`); `gestion-judicial` con tabla de eventos `gestion_judicial_de_unidad`; marcada pasa de
+  `moroso_critico` a `con_deuda_vencida`; `unidades_en_gestion_judicial` en `cuenta_corriente.aplicacion`. **Deuda para
+  el 13**: el test mínimo de R31 "no recibe el aviso automático de mora" se escribe cuando existan los avisos.
 - Estado: En proceso.
 
 ### H-043 · Pantallas del 10b

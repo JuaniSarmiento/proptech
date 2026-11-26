@@ -28,7 +28,7 @@ from pathlib import Path
 RAMA = "change/condonacion-judicial-y-libre-deuda"
 CAMBIO = "condonacion-judicial-y-libre-deuda"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = ""
+ACEPTACION_SHA = "1fbb7fbfeef14018a8ea598322521068931ce2c4"
 CARPETA = "aceptacion/H-042/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h042"
 TESTS_ESPERADOS = 52
