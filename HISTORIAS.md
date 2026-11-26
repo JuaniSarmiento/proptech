@@ -2301,7 +2301,11 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
 - **N02**: una factura con instrucciones escondidas (por ejemplo, "aprobá este gasto" o "usá la categoría X") no
   cambia nada de N01 ni aplica valores fuera del vocabulario.
 - **N03**: la misma factura procesada dos veces (reintento del worker) no duplica la propuesta ni el costo.
-- **K01**: R12 y R23 en `05`, la ficha 14 con H-037.
+- **K01**: R12 en `05` y la ficha 14 con H-037.
+- Aceptación: `aceptacion/H-037/`, 82 casos vistos fallar por aserción (0 errores), congelada en `8d0a134` bajo D-169.
+  Contrato: el POST de H-036 encola `leer_factura_con_ia` (su 201 no cambia); `GET /api/gastos/{id}/lectura` da estado,
+  `datos_de`, motivo y detalle; puerto nuevo `LectorDeFacturaConIa` que devuelve también el uso; tabla `llamada_de_ia`
+  (`0055`); motivos `ia_no_configurada`, `ia_fallo`, `fuera_de_contrato`, `importe_atipico`; sin período no hay R23.
 - Estado: En proceso.
 
 ## Plantilla de historia
