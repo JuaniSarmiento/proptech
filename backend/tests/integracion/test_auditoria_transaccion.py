@@ -710,7 +710,8 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
             {"c": edificio},
         ).one()
         # El barrido corre todo en una sola transacción; en la vida real confirmar el edificio y
-        # cambiar el titular son pedidos distintos. Se olvida lo que el candado tomó al confirmar:
+        # hacer el cambio de titular son pedidos distintos. Se olvida lo que el candado tomó
+        # al confirmar:
         # la cuenta nueva del vendedor puede tener un id menor y el libro lo rechazaría (orden).
         sesion.info.pop("cuenta_corriente.cuentas_bloqueadas", None)
         cambio = registrar_cambio_de_titular(

@@ -1,5 +1,5 @@
-"""Las cuentas de persona de un edificio (4d, H-033, R32): la que recibe la deuda que el cambio de
-titular le traslada al vendedor. Lecturas con las piezas del libro; no escriben."""
+"""Las cuentas de persona de un edificio (4d, H-033, R32): la que recibe la deuda que el
+cambio de titular le traslada al vendedor. Lecturas con las piezas del libro; no escriben."""
 
 from dataclasses import dataclass
 from datetime import date

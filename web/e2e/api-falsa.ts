@@ -764,18 +764,16 @@ export function crearServidor(
         return;
       }
       const responder = () => {
-        respuesta
-          .writeHead(200, { "content-type": "application/json" })
-          .end(
-            JSON.stringify(
-              identidad === "user_personal_vacio"
-                ? []
-                : IDENTIDADES_DE_TITULARIDAD.includes(identidad)
-                  ? // Como la real para el administrador principal (D13 del 2d): sin vecinos.
-                    _PERSONAL_DE_PRUEBA.filter((p) => p.asignaciones.every((a) => a.rol !== "vecino"))
-                  : _PERSONAL_DE_PRUEBA,
-            ),
-          );
+        respuesta.writeHead(200, { "content-type": "application/json" }).end(
+          JSON.stringify(
+            identidad === "user_personal_vacio"
+              ? []
+              : IDENTIDADES_DE_TITULARIDAD.includes(identidad)
+                ? // Como la real para el administrador principal (D13 del 2d): sin vecinos.
+                  _PERSONAL_DE_PRUEBA.filter((p) => p.asignaciones.every((a) => a.rol !== "vecino"))
+                : _PERSONAL_DE_PRUEBA,
+          ),
+        );
       };
       if (identidad === "user_personal_lento") {
         setTimeout(responder, 3000);

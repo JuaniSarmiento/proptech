@@ -728,7 +728,9 @@ export function responderTitularidad(
       return true;
     }
     if (metodo === "POST") {
-      leerCuerpo(pedido, (cuerpo) => registrar(respuesta, e, id, unidad, cuerpo, identidad, pideNombres(pedido)));
+      leerCuerpo(pedido, (cuerpo) =>
+        registrar(respuesta, e, id, unidad, cuerpo, identidad, pideNombres(pedido)),
+      );
       return true;
     }
     respuesta.writeHead(405).end();
