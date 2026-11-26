@@ -98,10 +98,11 @@ def test_no_baja_con_una_obligacion_de_traslado(base_del_edificio: BaseDeEdifici
         libro = sembrar_libro(c)
         _contenedora(libro, periodo=date(2026, 9, 1))
     base.devolver_tablas_protegidas()
+    antes = _version(base)  # la base es del módulo: otros tests pudieron dejarla en otra versión
     with pytest.raises(AssertionError, match="hay deuda trasladada"):
         base.migrar("downgrade", "0050")
-    # La bajada es una sola transacción: al rechazarla la 0051 vuelve también la 0052 ya bajada.
-    assert _version(base) == ("0052",), "la bajada rechazada movió la versión"
+    # La bajada es una sola transacción: al rechazarla, todo vuelve adonde estaba.
+    assert _version(base) == antes, "la bajada rechazada movió la versión"
     base.roles("despues")
     with base.conectar_migrador() as c:
         forzadas = c.execute(

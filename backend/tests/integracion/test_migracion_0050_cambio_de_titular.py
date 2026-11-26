@@ -165,10 +165,11 @@ def test_no_baja_con_cambios(base_del_edificio: BaseDeEdificio) -> None:
         m = _mundo(c)
         _cambio(c, m)
     base.devolver_tablas_protegidas()
+    antes = _version(base)  # la base es del módulo: otros tests pudieron dejarla en otra versión
     with pytest.raises(AssertionError, match="hay cambios de titular"):
         base.migrar("downgrade", "0049")
-    # La bajada es una sola transacción: al rechazarla la 0050, las posteriores vuelven a la cabeza.
-    assert _version(base) == ("0052",), "la bajada rechazada movió la versión"
+    # La bajada es una sola transacción: al rechazarla, todo vuelve adonde estaba.
+    assert _version(base) == antes, "la bajada rechazada movió la versión"
     base.roles("despues")
     with base.conectar_migrador() as c:
         assert c.execute(

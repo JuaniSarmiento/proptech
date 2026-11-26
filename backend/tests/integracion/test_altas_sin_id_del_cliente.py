@@ -220,6 +220,11 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "vendedores": [str(uuid.uuid4())],
         "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
     },
+    # Cambio 4d (H-033): el cobro de la cuenta del vendedor lleva sólo importe y fecha; `id` es 422.
+    (
+        "/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros",
+        "POST",
+    ): lambda mundo: {"importe": "10.00", "fecha": "2026-11-10"},
     # Cambio 7 (H-013): emitir lleva el `emision_id` del cliente (idempotencia) y la huella
     # revisada; cualquier otro campo, `id` incluido, es 422.
     (
@@ -395,6 +400,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "destinatario": destinatario_id,
         "liquidacion_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
