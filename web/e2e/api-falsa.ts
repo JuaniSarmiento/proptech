@@ -19,7 +19,6 @@ import {
   ACCIONES_DEL_LECTOR,
   esEdificioDeTitularidad,
   IDENTIDADES_DE_TITULARIDAD,
-  personalDeTitularidad,
   responderTitularidad,
 } from "./escenarios-cambio-de-titular";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
@@ -772,7 +771,8 @@ export function crearServidor(
               identidad === "user_personal_vacio"
                 ? []
                 : IDENTIDADES_DE_TITULARIDAD.includes(identidad)
-                  ? [..._PERSONAL_DE_PRUEBA, ...personalDeTitularidad()]
+                  ? // Como la real para el administrador principal (D13 del 2d): sin vecinos.
+                    _PERSONAL_DE_PRUEBA.filter((p) => p.asignaciones.every((a) => a.rol !== "vecino"))
                   : _PERSONAL_DE_PRUEBA,
             ),
           );

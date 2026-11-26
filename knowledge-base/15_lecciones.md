@@ -1559,3 +1559,18 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Cómo se aplica**: al escribir la aceptación, correr con el comportamiento por defecto (o con una ruta vieja
   que ya responde) los helpers de siembra y de lectura que usan las aserciones posteriores, y que cada helper
   devuelva el tipo real de la respuesta (lista o dict) sin convertirlo.
+
+## L-107 · Una API falsa que no imita los filtros de la real aprueba pantallas que no funcionan (4d, 26/11/2026)
+
+- **Qué pasó**: la pantalla del cambio de titular (H-034) leía los propietarios de `/api/personal`. La API falsa de e2e
+  devolvía ahí a todas las personas, vecinos incluidos, y los 15 e2e pasaron; la real, para el administrador
+  principal, filtra a quienes están por debajo de él (D13 del 2d) y nunca trae vecinos. En la demo con Chrome contra
+  la API real, "Cambiar titular" decía "Sin propietarios cargados". Hizo falta una historia nueva (H-035) con una ruta
+  propia de propietarios.
+- **Por qué**: la falsa se escribió desde el contrato de la ruta nueva y no desde lo que esa ruta responde a cada
+  perfil. Un e2e sólo prueba la pantalla contra lo que la falsa promete: si la falsa es más generosa que la real, el
+  e2e certifica una pantalla que la real no puede alimentar.
+- **Cómo se aplica**: al escribir la falsa, para cada ruta que la pantalla lee, anotar qué filtros, permisos y recortes
+  tiene la real según el perfil de la identidad del test (leer el caso de uso, no el contrato de la pantalla) y que la
+  falsa los repita; y que una ruta que la pantalla usa como fuente de datos de otro dominio (como `/api/personal` para
+  propietarios) se cuestione. La demo contra la API real sigue siendo el control final (L-082).

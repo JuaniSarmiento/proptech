@@ -269,14 +269,10 @@ test("C02 · la venta con la deuda a nombre del vendedor y el prorrateo pendient
   await expect(r).toContainText("11/2026");
   await expect(r).toContainText("9 de 30 días");
   await expect(r).not.toContainText("Aplicado");
-  // El padrón ya muestra a los compradores como los vecinos de la unidad.
+  // El enlace vuelve al padrón. (Los vecinos del padrón salen de `/api/personal`, que al administrador principal no
+  // le trae vecinos: ya no se afirma acá que el panel de la unidad los muestre, la API falsa imita a la real.)
   await r.getByRole("link", { name: "Volver al padrón", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${padron(VENTA_CON_TRASLADO)}$`));
-  await page.getByRole("button", { name: "1A", exact: true }).click();
-  const panel = page.getByRole("dialog", { name: "Editar unidad" });
-  await expect(panel.getByText("Carlos Comprador", { exact: false })).toBeVisible();
-  await expect(panel.getByText("Diana Compradora", { exact: false })).toBeVisible();
-  await expect(panel.getByText("Ana Prueba", { exact: false })).toHaveCount(0);
   // Y la cuenta del vendedor existe, con la deuda que se le pasó.
   await page.goto(cuentas(VENTA_CON_TRASLADO));
   const bruno = page
@@ -317,11 +313,7 @@ test("C02 · la venta con la deuda en la unidad avisa el monto y muestra el pror
   await expect(r).toContainText("9 de 30 días");
   await expect(r).not.toContainText("Pendiente");
   await r.getByRole("link", { name: "Volver al padrón", exact: true }).click();
-  await page.getByRole("button", { name: "1A", exact: true }).click();
-  const panel = page.getByRole("dialog", { name: "Editar unidad" });
-  await expect(panel.getByText("Carlos Comprador", { exact: false })).toBeVisible();
-  await expect(panel.getByText("Bruno Prueba", { exact: false })).toBeVisible();
-  await expect(panel.getByText("Ana Prueba", { exact: false })).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`${padron(VENTA_EN_LA_UNIDAD)}$`));
 });
 
 test("C03 · cada unidad muestra su historial de cambios de titular, el más nuevo primero", async ({

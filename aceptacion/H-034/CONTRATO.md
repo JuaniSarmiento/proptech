@@ -2,7 +2,7 @@
 
 Las pantallas del cambio de titular y de las cuentas de vendedores, en navegador real contra la API falsa
 (`web/e2e/api-falsa.ts` y `web/e2e/escenarios-cambio-de-titular.ts`, que escribe la aceptación). Siguen vigentes
-los contratos de H-030, H-031, H-032 (`POST` y `GET .../unidades/{u}/cambios-de-titular`) y H-033
+los contratos de H-035 (`GET .../unidades/{u}/propietarios` y `?con_nombres=true`), H-030, H-031, H-032 (`POST` y `GET .../unidades/{u}/cambios-de-titular`) y H-033
 (`.../cuentas-de-vendedores`): la API falsa contesta con esas formas exactas. Si el constructor necesita cambiar algo
 de esto, frena y lo pide. Locators exactos (L-085). No se toca la API falsa: la verificación la restaura del SHA
 aprobado. Las pantallas pasan por la skill **impeccable**. Los montos se formatean con `dinero` de `lib/formato.ts`
@@ -31,14 +31,16 @@ Con `registrar_cambio_de_titular`, cada fila suma dos enlaces (en una columna pr
 | Cambiar titular | `Cambiar titular de 1A` (con el identificador de la unidad) | `/edificios/{id}/unidades/{unidadId}/cambio-de-titular` |
 | Historial | `Ver historial de cambios de titular de 1A` | el mismo destino, con `#historial` |
 
-Después de un cambio, el padrón (al volver) ya muestra a los compradores: el panel "Editar unidad" de la unidad lista
-como vecinos a los compradores (y ya no a los vendedores).
+Los vecinos que muestra el panel "Editar unidad" salen de `/api/personal`, que para el administrador principal no trae
+vecinos (D13 del 2d): esta aceptación ya no afirma que el padrón los muestre (ver "API falsa").
 
 ## `/edificios/{id}/unidades/{unidadId}/cambio-de-titular`
 
-Lee `GET .../cambios-de-titular` y el padrón (`GET .../unidades`) y `/api/personal` desde el servidor de Next; los
-propietarios actuales y los nombres de las personas salen de ahí (propietario = asignación `vecino` con vínculo
-`propietario`; el inquilino no se ofrece). Dentro del edificio, con su menú lateral.
+Lee `GET .../cambios-de-titular?con_nombres=true` (H-035), el padrón (`GET .../unidades`) y
+`GET .../unidades/{unidadId}/propietarios` (H-035) desde el servidor de Next; **no lee `/api/personal`**, que no trae
+vecinos al administrador principal. Los propietarios actuales para marcar como vendedores salen de la ruta de
+propietarios (ya sin inquilinos) y los nombres de los vendedores del historial, de `vendedores_detalle`. Dentro del
+edificio, con su menú lateral.
 
 - Encabezado (`heading`) **"Cambiar titular de 1A"** y un enlace **"Volver al padrón"** (`/edificios/{id}/unidades`).
 - Un `form` con nombre accesible **"Cambiar titular de 1A"**, con:
@@ -73,8 +75,7 @@ propietarios actuales y los nombres de las personas salen de ahí (propietario =
   - el enlace **"Volver al padrón"**.
 - **Historial (C03).** Una lista (`role=list`) con nombre **"Historial de cambios de titular"**, en la misma pantalla
   (ancla `#historial`), un `listitem` por cambio **en el orden de la API** (el más nuevo primero), con: la fecha
-  `dd/mm/aaaa`; los vendedores y los compradores por nombre, separados por coma (los vendedores se resuelven por
-  `/api/personal`); la expensa ("Entera" o "Prorrateo por días"); la deuda previa ("Queda en la unidad" o "A nombre
+  `dd/mm/aaaa`; los vendedores (de `vendedores_detalle`) y los compradores por nombre, separados por coma; la expensa ("Entera" o "Prorrateo por días"); la deuda previa ("Queda en la unidad" o "A nombre
   del vendedor"); si trae `trasladado`, "Deuda pasada al vendedor" con el monto; si trae `prorrateo`, "Aplicado" con la
   parte ("3.500,00") y "10 de 30 días", o "Pendiente". Sin cambios: en lugar de la lista, un `role=status` con
   **"Esta unidad todavía no tuvo cambios de titular"**.
@@ -146,6 +147,12 @@ administrador, con `registrar_cambio_de_titular` además de lo de siempre) y `us
 | 3404 | La venta de `1A` con la deuda en la unidad (aviso 45.230,10) y el prorrateo **aplicado** (parte 8.333,33). |
 | 3405 | Los 422. `1A` ya tiene un prorrateo pendiente de noviembre de 2026. |
 | 3406 | El recorrido a 320 px (la venta y el cobro). |
+
+**Imita los filtros de la real (L-107, H-035):** `GET /api/personal` para `user_titular` y `user_lector` devuelve el
+personal sin vecinos (como la real para el administrador principal, D13 del 2d), nunca los propietarios del
+edificio; los propietarios salen sólo de `.../unidades/{u}/propietarios` (404 unidad ajena, 403 sin
+`registrar_cambio_de_titular`, por nombre, sólo `persona_id` y `nombre`), y `vendedores_detalle` aparece sólo con
+`?con_nombres=true` en el `POST` y el `GET` de `cambios-de-titular`.
 
 La API falsa valida como la real y en el mismo orden (404, 403, 422): fecha no posterior a hoy; vendedores
 propietarios actuales, sin repetir y no vacíos; compradores no vacíos y ninguno que (por email) sea también vendedor;

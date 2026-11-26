@@ -262,34 +262,6 @@ function estadoDe(id: string): Estado {
   return estado;
 }
 
-/** `/api/personal` para las identidades de esta aceptación: las personas de los seis edificios, con sus
- * asignaciones de vecino (el padrón arma de ahí los vecinos de cada unidad). */
-export function personalDeTitularidad(): unknown[] {
-  const lista: unknown[] = [];
-  for (const k of _EDIFICIOS) {
-    const e = estadoDe(edificio(k));
-    for (const p of e.personas) {
-      lista.push({
-        persona_id: p.id,
-        nombre: p.nombre,
-        email: p.email,
-        vinculado: false,
-        asignaciones: e.asignaciones
-          .filter((a) => a.personaId === p.id)
-          .map((a, i) => ({
-            asignacion_id: sub(2, k, 60 + i + e.asignaciones.indexOf(a)),
-            rol: "vecino",
-            complejo_id: null,
-            unidad_id: a.unidadId,
-            vinculo: a.vinculo,
-          })),
-        invitacion: null,
-      });
-    }
-  }
-  return lista;
-}
-
 function json(respuesta: ServerResponse, estado: number, cuerpo: unknown): void {
   respuesta.writeHead(estado, { "content-type": "application/json" }).end(JSON.stringify(cuerpo));
 }
@@ -402,6 +374,24 @@ function cambioParaLista(c: Cambio) {
   return resto;
 }
 
+/** Contrato de H-035: sólo con `?con_nombres=true`, el cambio suma `vendedores_detalle` (`persona_id` y `nombre`,
+ * sin email, en el orden de `vendedores`); sin el parámetro la respuesta es la de H-030 a H-033, intacta. */
+function conNombres<T extends Record<string, unknown>>(e: Estado, c: T, pedido: boolean): T {
+  if (!pedido) return c;
+  const ids = (c.vendedores as string[]) ?? [];
+  return {
+    ...c,
+    vendedores_detalle: ids.map((id) => ({
+      persona_id: id,
+      nombre: e.personas.find((p) => p.id === id)?.nombre ?? "",
+    })),
+  };
+}
+
+function pideNombres(pedido: IncomingMessage): boolean {
+  return new URL(pedido.url ?? "/", "http://falsa.test").searchParams.get("con_nombres") === "true";
+}
+
 function cobrar(c: Cuenta, importe: number): void {
   let falta = importe;
   const ordenados = [...c.periodos].sort((x, y) => x.periodo.localeCompare(y.periodo));
@@ -475,6 +465,7 @@ function registrar(
   unidad: Unidad,
   cuerpo: unknown,
   identidad: string,
+  detalle: boolean,
 ): void {
   if (!accionesDe(identidad).includes("registrar_cambio_de_titular")) {
     sinPermiso(respuesta, "registrar_cambio_de_titular");
@@ -666,7 +657,7 @@ function registrar(
   e.cambios.unshift(nuevo);
   void id;
   json(respuesta, 201, {
-    ...nuevo,
+    ...conNombres(e, nuevo, detalle),
     aviso: unidad.deuda > 0 ? { deuda: texto(unidad.deuda) } : null,
   });
 }
@@ -688,6 +679,32 @@ export function responderTitularidad(
     json(respuesta, 200, padron(e, id));
     return true;
   }
+  const dePropietarios = /^unidades\/([^/]+)\/propietarios$/.exec(resto);
+  if (dePropietarios) {
+    // H-035: los propietarios actuales de la unidad, por nombre y sin más datos que el id (la real los lee de
+    // `asignacion_rol` con el permiso `registrar_cambio_de_titular`; `/api/personal` no trae vecinos).
+    const unidad = e.unidades.find((u) => u.id === dePropietarios[1]);
+    if (!unidad) {
+      json(respuesta, 404, { detail: "no encontrado" });
+      return true;
+    }
+    if (!accionesDe(identidad).includes("registrar_cambio_de_titular")) {
+      sinPermiso(respuesta, "registrar_cambio_de_titular");
+      return true;
+    }
+    if (metodo !== "GET") {
+      respuesta.writeHead(405).end();
+      return true;
+    }
+    const propietarios = e.asignaciones
+      .filter((a) => a.unidadId === unidad.id && a.vinculo === "propietario")
+      .map((a) => e.personas.find((p) => p.id === a.personaId))
+      .filter((p): p is Persona => p !== undefined)
+      .sort((x, y) => x.nombre.localeCompare(y.nombre))
+      .map((p) => ({ persona_id: p.id, nombre: p.nombre }));
+    json(respuesta, 200, { propietarios });
+    return true;
+  }
   const deCambios = /^unidades\/([^/]+)\/cambios-de-titular$/.exec(resto);
   if (deCambios) {
     const unidad = e.unidades.find((u) => u.id === deCambios[1]);
@@ -700,11 +717,18 @@ export function responderTitularidad(
       return true;
     }
     if (metodo === "GET") {
-      json(respuesta, 200, e.cambios.filter((c) => c.unidad_id === unidad.id).map(cambioParaLista));
+      const conDetalle = pideNombres(pedido);
+      json(
+        respuesta,
+        200,
+        e.cambios
+          .filter((c) => c.unidad_id === unidad.id)
+          .map((c) => conNombres(e, cambioParaLista(c), conDetalle)),
+      );
       return true;
     }
     if (metodo === "POST") {
-      leerCuerpo(pedido, (cuerpo) => registrar(respuesta, e, id, unidad, cuerpo, identidad));
+      leerCuerpo(pedido, (cuerpo) => registrar(respuesta, e, id, unidad, cuerpo, identidad, pideNombres(pedido)));
       return true;
     }
     respuesta.writeHead(405).end();
