@@ -91,7 +91,7 @@ _MATRIZ_A_MANO: dict[str, tuple[bool, ...]] = {
     "exportar_morosidad": (True, True, True, True, True, False, False, False, False),
     # cambio-de-titular H-030: registrar (y leer) los cambios de titular es de quien administra.
     "registrar_cambio_de_titular": (True, True, True, False, False, False, False, False, False),
-    # 10b H-041 (D-172): emitir (y leer) el libre deuda es sólo del super admin; la P72 sigue abierta.
+    # 10b H-041 (D-172): emitir y leer el libre deuda es sólo del super admin (P72 abierta).
     "emitir_libre_deuda": (True, False, False, False, False, False, False, False, False),
 }
 _PERFILES = [

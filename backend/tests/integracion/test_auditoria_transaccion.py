@@ -748,6 +748,13 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         unidad_id = uuid.uuid4()
         sesion.execute(
             text(
+                "INSERT INTO asignacion_rol (administracion_id, persona_id, rol) "
+                "VALUES (:admin, :persona, 'super_admin')"
+            ),
+            {"admin": identidad.administracion_id, "persona": identidad.persona_id},
+        )
+        sesion.execute(
+            text(
                 "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, tipo, "
                 "piso, coeficiente, superficie_m2) VALUES (:id, :admin, :complejo, 'LD', "
                 "'departamento', '1', '1.0', '50')"
