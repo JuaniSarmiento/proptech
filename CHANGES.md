@@ -59,7 +59,7 @@ gates están en el árbol de abajo.
    ✅ 10a morosidad (archivado 24/11/2026, D-167, PR #28)
    ⏳ 10b condonación y libre deuda
    ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
-   ⏳ 14 lectura de facturas
+   🔶 14 lectura de facturas (construido 26/11/2026, D-169: H-036 y H-037 en Lista; sólo backend, la pantalla con el 6c)
 
 7. PILOTO
    ⏳ 15 un edificio real en paralelo  ← el final; bloqueado también por el contenido legal de
@@ -808,7 +808,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ## FASE 5 — M3 Piloto
 
 ### [C-19] `lectura-de-facturas` · 14
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` construido, H-036 y H-037 en Lista (HIGH, D-169, 26/11/2026; migraciones `0054` y `0055`, rama
+  `change/lectura-de-facturas` sobre el 4d); se archiva cuando Juani las pase a Terminada
 - **Scope**: lectura del QR de ARCA, IA completa concepto/período/categoría/grupo, factura
   duplicada frenada, control de monto atípico (propuesta)
 - **Dependencias**: C-09, C-10

@@ -224,8 +224,13 @@ mercado de arranque es **Mendoza**.
   pantallas. H-035: los propietarios y los nombres por ruta propia (la demo de H-034 mostró que `/api/personal` no
   trae vecinos al administrador principal, L-107). Deuda en la ficha 4 y en `HISTORIAS.md`, incluido el padrón que no
   muestra vecinos al administrador principal.
-- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico (espera P14, P20 y P32); el 9
-  `extracto-bancario` con un importador genérico de columnas; los de deuda adelantada en paralelo.
+- **Cambio 14 `lectura-de-facturas` construido** (26/11/2026, HIGH, D-169, firmado por delegación): sólo backend y API
+  (la pantalla entra con el 6c). H-036: subir una factura, leer el QR de ARCA (`zxing-cpp`, `pypdfium2`) y dejar el gasto
+  en borrador con link firmado (`0054`). H-037: la IA (OpenRouter, D-164) propone concepto, período, categoría y grupo
+  desde el worker, con su costo en `llamada_de_ia` y el control de monto atípico de R23 (`0055`). Las dos en **Lista**.
+  La llamada real a OpenRouter nunca se probó. Deuda en la ficha 14 y en `HISTORIAS.md`.
+- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico (espera P14, P20 y P32); el 11
+  `portal-del-vecino`; el 9 `extracto-bancario` con un importador genérico de columnas; los de deuda adelantada en paralelo.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción

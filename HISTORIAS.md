@@ -47,8 +47,8 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Lista |
 | H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
-| H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | En proceso |
-| H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | En proceso |
+| H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | Lista |
+| H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2277,7 +2277,13 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
 - **Deuda**: el tipo y el tope de 10 MiB del archivo repetidos en `gastos` (las fronteras impiden importar de
   `pagos`); sin corpus de fotos reales; el decodificado sin tope de tiempo; un `PATCH` de un borrador incompleto pide
   todos los datos juntos.
-- Estado: En proceso (verificada; la demo va con la del change, método del 26/11).
+- Demo del change 14 (26/11/2026, por API, uvicorn y PostgreSQL reales, lector de IA falso porque no hay clave de
+  OpenRouter): PNG con QR de `arca.gob.ar` → borrador con CUIT, número, fecha e importe "1500.50" y link firmado que baja
+  el mismo archivo (sha256 igual); PDF con QR de `afip.gob.ar` → "2300.00"; la misma factura → 409; imagen sin QR →
+  `sin_qr` `no_hay_qr`; la tarea completa concepto, período, categoría y grupo con `datos_de: ia`, una fila en
+  `llamada_de_ia` (1.200/80 tokens, 0,001234 USD), sin aprobar y con el libro en cero; seis aprobados de 1.000 y una
+  factura de 2.500 → `en_revision` `importe_atipico`; aprobar un borrador incompleto → 422 con los campos que faltan.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ### H-037 · La IA completa la factura
 
@@ -2316,7 +2322,13 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
 - **Deuda**: la llamada real a OpenRouter nunca se probó; un 503 deja `sin_ia` sin reintento ni forma de reprocesar;
   umbral y ventana de R23 fijos; `datos_de` no refleja una edición posterior; la transacción queda abierta durante
   la llamada a la IA.
-- Estado: En proceso (verificada; la demo va con la del change).
+- Demo del change 14 (26/11/2026, por API, uvicorn y PostgreSQL reales, lector de IA falso porque no hay clave de
+  OpenRouter): PNG con QR de `arca.gob.ar` → borrador con CUIT, número, fecha e importe "1500.50" y link firmado que baja
+  el mismo archivo (sha256 igual); PDF con QR de `afip.gob.ar` → "2300.00"; la misma factura → 409; imagen sin QR →
+  `sin_qr` `no_hay_qr`; la tarea completa concepto, período, categoría y grupo con `datos_de: ia`, una fila en
+  `llamada_de_ia` (1.200/80 tokens, 0,001234 USD), sin aprobar y con el libro en cero; seis aprobados de 1.000 y una
+  factura de 2.500 → `en_revision` `importe_atipico`; aprobar un borrador incompleto → 422 con los campos que faltan.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ## Plantilla de historia
 
