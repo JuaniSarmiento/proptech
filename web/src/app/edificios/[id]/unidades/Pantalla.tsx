@@ -122,6 +122,8 @@ export function PantallaPadron({
   const sesion = useSesionDePantalla();
   const puedeConfigurar = permite(sesion, "configurar_padron", id);
   const puedeInvitar = permite(sesion, "invitar_usuarios_y_asignar_edificios");
+  // H-034: el cambio de titular y su historial, sólo con el permiso del edificio.
+  const puedeCambiarTitular = permite(sesion, "registrar_cambio_de_titular", id);
   const puedeAjustar =
     estadoMigracion === "confirmada" && permite(sesion, "ajustar_saldo_inicial", id);
   // Con la migración pendiente, el padrón ofrece el importador (antes sólo se llegaba desde el
@@ -237,6 +239,7 @@ export function PantallaPadron({
                     <th className="numero-tabular">Coeficiente</th>
                     {vecinosPorUnidad ? <th>Vecinos</th> : null}
                     {puedeAjustar ? <th>Saldo inicial</th> : null}
+                    {puedeCambiarTitular ? <th>Cambio de titular</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -280,6 +283,25 @@ export function PantallaPadron({
                               aria-label={`Ajustar saldo inicial de ${unidad.identificador}`}
                             >
                               Ajustar saldo inicial
+                            </a>
+                          </td>
+                        ) : null}
+                        {puedeCambiarTitular ? (
+                          <td>
+                            <a
+                              className="boton-enlace"
+                              href={`/edificios/${id}/unidades/${unidad.id}/cambio-de-titular`}
+                              aria-label={`Cambiar titular de ${unidad.identificador}`}
+                            >
+                              Cambiar titular
+                            </a>
+                            {" · "}
+                            <a
+                              className="boton-enlace"
+                              href={`/edificios/${id}/unidades/${unidad.id}/cambio-de-titular#historial`}
+                              aria-label={`Ver historial de cambios de titular de ${unidad.identificador}`}
+                            >
+                              Ver historial
                             </a>
                           </td>
                         ) : null}

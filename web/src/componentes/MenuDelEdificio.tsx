@@ -14,6 +14,7 @@
  */
 
 import {
+  ArrowLeftRight,
   CalendarClock,
   HandCoins,
   Hourglass,
@@ -41,6 +42,7 @@ export type IconoDeSeccion =
   | "pagos"
   | "mis_pagos"
   | "morosidad"
+  | "cuentas_de_vendedores"
   | "personal";
 
 export type SeccionDelEdificio = {
@@ -65,6 +67,7 @@ const _ICONOS: Record<IconoDeSeccion, LucideIcon> = {
   pagos: Landmark,
   mis_pagos: HandCoins,
   morosidad: Hourglass,
+  cuentas_de_vendedores: ArrowLeftRight,
   personal: Users,
 };
 

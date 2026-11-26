@@ -788,6 +788,21 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   iguales son dos cobros. **Deuda de H-033**: (1) las unidades de origen salen de `vendedor_deudor_id`, así
   que un cambio con prorrateo todavía pendiente ya la lista aunque no haya trasladado nada; (2) el detalle
   lee la foto de la cuenta entera (todos sus movimientos), sin paginar. Sigue H-034 (las pantallas).
+- **4d · H-034 construida** (las pantallas del cambio de titular y de las cuentas de vendedores): tres rutas
+  nuevas en `web/` sobre las de H-030 a H-033, sin tocar el backend. `.../unidades/{unidadId}/cambio-de-titular`
+  (formulario con los grupos Vendedores, Compradores, Expensa del mes y Deuda previa, cada opción con su línea
+  que la explica; resultado y historial en la misma pantalla), `.../cuentas-de-vendedores` (lista) y
+  `.../cuentas-de-vendedores/{cuentaId}` (deuda, deuda por período, movimientos y "Registrar cobro" con
+  diálogo de confirmación). El padrón suma una columna "Titular" con los enlaces "Cambiar titular de X" y "Ver
+  historial de cambios de titular de X" (con `registrar_cambio_de_titular`) y el menú del edificio suma
+  "Cuentas de vendedores" (con `ver_morosidad`). Cliente nuevo `web/src/lib/api/titularidad.ts`; las acciones
+  del servidor llevan el token (D-036); el 422 de la API ("valor inválido") se traduce por campo en la
+  pantalla (C05). Ningún monto se calcula: la deuda de la cuenta es la de la API, no la suma de los períodos.
+  **Deuda de H-034**: (1) el formulario lee los propietarios de `/api/personal`, que sólo ven el super admin y
+  el administrador principal: un administrador de un solo edificio con el permiso del cambio no puede usarlo
+  hasta que haya una lectura de propietarios por unidad; (2) el historial resuelve a los vendedores por nombre
+  desde `/api/personal` y, si una persona ya no está, dice "Propietario anterior"; (3) no hay confirmación
+  aparte del cambio de titular (un solo paso, como pide el contrato) ni forma de deshacerlo desde la pantalla.
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la

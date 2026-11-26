@@ -81,6 +81,19 @@ describe("Estados", () => {
     await sinViolaciones(container);
   });
 
+  it("sin permiso de registrar_cambio_de_titular: nombra el permiso que falta (H-034)", async () => {
+    const { container } = render(
+      <Estados
+        tipo="sinPermiso"
+        queNoPuede="cambiar el titular de esta unidad"
+        permisoFaltante="registrar_cambio_de_titular"
+      />,
+    );
+    expect(screen.getByText(/permiso registrar_cambio_de_titular/)).toBeTruthy();
+    expect(screen.queryByText("Esto lo puede hacer el super admin de la empresa.")).toBeNull();
+    await sinViolaciones(container);
+  });
+
   it('no existe: "No encontramos este edificio" con enlace a Mis edificios (Edificio de otra administración)', async () => {
     const { container } = render(<Estados tipo="noExiste" />);
     expect(screen.getByText("No encontramos este edificio")).toBeTruthy();
