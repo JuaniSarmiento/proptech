@@ -50,7 +50,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | Lista |
 | H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Lista |
 | H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | En proceso |
-| H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | Pendiente |
+| H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | En proceso |
 | H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -2372,8 +2372,22 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 ### H-039 · Entender mi expensa
 
 - Objetivo: la liquidación explicada para el vecino (R16), comparada con la anterior, con la distribución al abrir
-  (D-074). Criterios al terminar H-038.
-- Estado: Pendiente.
+  (D-074).
+- Nivel: **L** (montos de la expensa por vínculo y una escritura: la distribución).
+- **C01**: `GET /api/mis-unidades/{u}/liquidaciones` lista las liquidaciones emitidas y no anuladas de su unidad, la más
+  nueva primero; `GET .../liquidaciones/{id}` da los gastos por categoría con subtotal, la parte de su unidad por grupo
+  de reparto, fondo de reserva, intereses y total, que cierran al centavo con lo emitido para esa unidad.
+- **C02**: el propietario ve ordinarias y extraordinarias; el inquilino lo de la variante `sin_extraordinaria` (D-170.2).
+- **C03**: la comparación con la liquidación emitida anterior del mismo edificio da la diferencia del total y por
+  categoría, rotulada con su período; sin anterior, no hay comparación.
+- **C04**: la primera lectura del detalle de una liquidación emitida no distribuida la distribuye (puerto del 7,
+  D-074); las siguientes no repiten el efecto.
+- **N01**: una liquidación de otra unidad, edificio o administración, anulada o no emitida da 404.
+- **N02**: el detalle nunca trae datos de otra unidad (ni su parte, ni su nombre).
+- **N03**: el inquilino nunca recibe una categoría extraordinaria ni su monto, ni en la comparación.
+- **N04**: dos lecturas simultáneas de la misma liquidación sin distribuir la distribuyen una sola vez.
+- **K01**: R16 y HU-V3 en `05` y `06`, la ficha 11 con H-039.
+- Estado: En proceso.
 
 ### H-040 · Pantallas del portal y app instalable
 
