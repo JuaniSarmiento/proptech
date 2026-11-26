@@ -1547,3 +1547,15 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   (nunca por R04, o el próximo pago de la unidad se lo come); y la `fecha_valor` de un crédito que congela interés
   es la que corta la base, no la del hecho que lo motivó. Un test del traslado toma el candado de las dos cuentas
   en una sola llamada (espía sobre `bloquear_cuentas`) y se prueba haciendo fallar el último paso.
+
+## L-106 · Una aceptación escrita sin código sólo prueba su primera aserción (4d, 25/11/2026)
+
+- **Qué pasó**: en H-031 y H-033 la aceptación nació "fallando por aserción" y aun así traía aserciones imposibles
+  más abajo: pedía la cuenta de una unidad que el mundo del test nunca sembraba (`IndexError`) y comparaba una lista
+  con un dict porque el helper `ok()` hacía `dict(r.json())`. Hubo que recongelar dos veces; las frenó el
+  constructor con evidencia, sin tocar la aceptación.
+- **Por qué**: sin la ruta, todo test cae en el primer `assert status == 201`; nada de lo que viene después se
+  ejecuta antes de congelar.
+- **Cómo se aplica**: al escribir la aceptación, correr con el comportamiento por defecto (o con una ruta vieja
+  que ya responde) los helpers de siembra y de lectura que usan las aserciones posteriores, y que cada helper
+  devuelva el tipo real de la respuesta (lista o dict) sin convertirlo.
