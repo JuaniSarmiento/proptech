@@ -44,7 +44,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
-| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | En proceso |
+| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -2128,7 +2128,24 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Aceptación: `aceptacion/H-033/`, 40 casos vistos fallar por aserción (0 errores), congelada en `c309f01` bajo
   D-168. Contrato: leen quienes tienen `ver_morosidad` (contador, auxiliar y consejo incluidos), cobran super admin
   y administrador; el 201 del cobro devuelve el detalle; dos cobros iguales son dos cobros (sin idempotencia).
-- Estado: En proceso.
+- **Recongelada** en `0167797` (25/11/2026): N01 pedía la cuenta de 1B, que el mundo no siembra (`IndexError`), y N03
+  comparaba la bandeja (una lista) pasada por `ok()`, que la volvía dict. Errores del orquestador, frenados por el
+  constructor con evidencia; lección L-106. Única diferencia en `aceptacion/` desde `c309f01`: esas dos aserciones y
+  el SHA.
+- Construcción (Sonnet): `bfffca4`, `6c2e99f`, `6df60ad`. Rutas `cuentas-de-vendedores` (lista, detalle, cobros);
+  lecturas del libro en `cuenta_corriente/aplicacion/cuentas_de_persona.py`; el cobro usa `registrar_pago` con
+  candado y tope leído con el candado tomado; evento `registrar_cobro_de_vendedor` en `EventoDelPago`, migración
+  `0053`.
+- Evidencia (25/11/2026, orquestador): sobre `87b0f04`, H-033 40/40 desde `0167797`, H-032 23/23, H-031 27/27 y H-030
+  40/40 desde sus SHA; 0 fallas, 0 errores, 0 skips.
+- Demo (25/11/2026, por API, sin Juani): Ana con 17.689,20 trasladados; lista y detalle por período; cobro de 5.000
+  → 12.689,20 (imputado 279,20 al interés de septiembre y 4.720,80 a su ordinaria, R04); cobro de 20.000 → 422 sin
+  cambios; cobro de 12.689,20 → 0,00; contador lee (200) y no cobra (403); una auditoría por cobro; `/morosidad` y
+  `/pagos` idénticos byte a byte.
+- **Deuda**: el 422 por superar la deuda dice "valor inválido" sin el motivo (H-034 lo traduce en pantalla); las
+  unidades de origen salen de `vendedor_deudor_id`, así que un prorrateo todavía pendiente ya lista la unidad; el
+  detalle no pagina.
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
 
 ### H-034 · Pantallas del cambio de titular
 
