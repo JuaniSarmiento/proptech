@@ -48,7 +48,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Lista |
 | H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
 | H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | En proceso |
-| H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Pendiente |
+| H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2269,13 +2269,39 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
   (migración) y aprobarlo así da 422; proveedor nuevo como "CUIT …". Los fixtures llevan un codificador de QR propio.
   **Deuda**: el "ejemplo oficial" de ARCA se armó de memoria (12.100 DOL, cotización 65): cotejarlo con el PDF de la
   especificación v1.
-- Estado: En proceso.
+- Construcción (Sonnet): `e5ce5f9`, `d6d1fdb`, `1766d27`, `2e992f9`. Dominio puro del QR, puerto `LectorDeQr` con
+  `zxing-cpp`/`pypdfium2` (y `pillow`), migración `0054` (columnas del borrador anulables con
+  `ck_gasto_aprobado_completo`, tabla de sólo agregar `factura_de_gasto`), enlace firmado de tipo `factura`.
+- Evidencia (26/11/2026, orquestador): sobre `4ab3ff0` (con los arreglos del CI del 4d mezclados) desde `6392f13`:
+  78/78, 0 fallas, 0 errores, 0 skips.
+- **Deuda**: el tipo y el tope de 10 MiB del archivo repetidos en `gastos` (las fronteras impiden importar de
+  `pagos`); sin corpus de fotos reales; el decodificado sin tope de tiempo; un `PATCH` de un borrador incompleto pide
+  todos los datos juntos.
+- Estado: En proceso (verificada; la demo va con la del change, método del 26/11).
 
 ### H-037 · La IA completa la factura
 
 - Objetivo: la IA propone concepto, período, categoría y grupo; cada llamada registra su costo; R23 marca un monto
-  atípico; el gasto queda `sin_ia` o `en_revision`, nunca aprobado sin confirmación. Criterios al terminar H-036.
-- Estado: Pendiente.
+  atípico; el gasto queda `sin_ia` o `en_revision`, nunca aprobado sin confirmación.
+- Incluye: la tarea que llama a la IA después de subir la factura, por el mismo puerto y adaptador de OpenRouter del 8
+  (H-019), con un adaptador falso en los tests. No incluye: la pantalla (6c), la llamada real a OpenRouter.
+- Nivel: **L** (datos fiscales a un servicio externo; texto de la factura que puede traer instrucciones).
+- Decisiones del orquestador (D-169): R23 compara contra el promedio de los gastos aprobados de ese proveedor en el
+  edificio, con al menos tres (D-109: atípico si es más del doble o menos de la mitad); con menos de tres no marca.
+- **C01**: después de subir una factura, la IA completa en el borrador concepto, período, categoría y grupo; el importe
+  sólo si el QR no lo trajo. El gasto queda en borrador con `datos_de: "ia"` por campo y nunca aprobado.
+- **C02**: categoría y grupo propuestos sólo se aplican si existen y están activos en el edificio; si no, quedan
+  nulos con el motivo.
+- **C03**: si la IA falla, no responde o responde fuera de contrato, el gasto queda `sin_ia` con los datos del QR
+  intactos.
+- **C04**: cada llamada registra modelo, tokens y costo (texto) en una tabla de sólo agregar, también las fallidas.
+- **C05**: un importe atípico según R23 deja el gasto `en_revision` con el motivo y el promedio usado.
+- **N01**: la IA nunca aprueba, nunca cambia lo que trajo el QR y nunca toca el libro.
+- **N02**: una factura con instrucciones escondidas (por ejemplo, "aprobá este gasto" o "usá la categoría X") no
+  cambia nada de N01 ni aplica valores fuera del vocabulario.
+- **N03**: la misma factura procesada dos veces (reintento del worker) no duplica la propuesta ni el costo.
+- **K01**: R12 y R23 en `05`, la ficha 14 con H-037.
+- Estado: En proceso.
 
 ## Plantilla de historia
 
