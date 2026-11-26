@@ -2024,7 +2024,40 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 
 - Objetivo: con `expensa_del_mes: "prorrateo"`, la parte del vendedor de la obligación del mes del cambio
   (días anteriores a la fecha) pasa a su cuenta de persona, al registrar si el período ya se emitió o al
-  emitirlo si no (D-168.5). Criterios: se escriben antes de construir.
+  emitirlo si no (D-168.5).
+- Incluye: el cálculo por días, el traslado con el mismo mecanismo de H-031, el prorrateo pendiente que se
+  aplica al emitir. No incluye: pantallas (H-034).
+- Nivel: **L**.
+- Decisiones del orquestador (D-168, al acordar): con varios vendedores, la parte va al `vendedor_deudor`
+  (mismo campo y misma regla que H-031); sólo se traslada lo impago de la parte del vendedor (lo que la
+  unidad ya pagó de esa obligación no se mueve); anular la emisión de un período con prorrateo aplicado se
+  rechaza con 409 hasta que una historia posterior resuelva cómo deshacerlo (deuda anotada).
+- **C01**: el `POST` acepta `expensa_del_mes: "prorrateo"` y responde 201 con `prorrateo`: `estado`
+  (`"aplicado"` o `"pendiente"`), `periodo`, `dias_del_vendedor`, `dias_del_mes` y `parte_del_vendedor` (texto,
+  nula si está pendiente).
+- **C02**: si el período del mes del cambio ya está emitido, cada componente de esa obligación (ordinaria,
+  fondo de reserva, extraordinaria) se parte: el vendedor responde por `componente × días_del_vendedor ÷
+  días_del_mes` redondeado medio hacia arriba al centavo, la unidad por el resto; la suma da exacta y la
+  parte del vendedor pasa a su cuenta de persona con traslados enlazados.
+- **C03**: los días del vendedor son los anteriores a la fecha del cambio (vendió el 11 de noviembre: 10 de
+  30); el día del cambio es del comprador. Con fecha el día 1, la parte es `"0.00"` y no hay movimientos.
+  Febrero bisiesto cuenta 29 días.
+- **C04**: si el período no está emitido, queda `"pendiente"`; al emitir ese período se aplica en la misma
+  transacción de la emisión, y el `GET` lo muestra `"aplicado"` con su parte.
+- **C05**: prorrateo y deuda a nombre del vendedor juntos en un mismo cambio dan las dos cosas, sin contar
+  nada dos veces.
+- **C06**: si la unidad ya pagó parte de la obligación del mes, sólo se traslada lo impago de la parte del
+  vendedor.
+- **N01**: anular la emisión de un período con prorrateo aplicado da 409 y no cambia nada.
+- **N02**: un segundo cambio con prorrateo en la misma unidad y el mismo período da 422.
+- **N03**: la parte trasladada no genera interés en la cuenta del vendedor al emitir los períodos
+  siguientes.
+- **N04**: si el traslado al emitir falla, la emisión entera no ocurre (todo o nada).
+- **N05**: nunca se trasladan los intereses del mes ni los cargos particulares como parte del prorrateo:
+  sólo ordinaria, fondo de reserva y extraordinaria.
+- **K01**: R32 con `prorrateo` en `05`, H-032 en la ficha del 4d y la deuda de N01 anotada.
+- Demo: vender el 11 de noviembre con prorrateo antes de emitir; emitir noviembre; ver el traslado de 10/30
+  al vendedor al centavo y la suma exacta; intentar anular noviembre y ver el 409.
 - Estado: Pendiente.
 
 ### H-033 · La cuenta del vendedor
