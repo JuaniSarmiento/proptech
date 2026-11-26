@@ -53,6 +53,12 @@ import {
   responderMorosidad,
 } from "./escenarios-morosidad";
 import { ACCIONES_DE_LA_VECINA, esEdificioDePagos, responderPagos } from "./escenarios-pagos";
+import {
+  ACCIONES_DEL_PORTAL,
+  IDENTIDADES_DEL_PORTAL,
+  responderDescargaDePdf,
+  responderPortal,
+} from "./escenarios-portal";
 import { ADMINISTRACION, EMISOR } from "./sesion-local";
 
 const _AQUI = dirname(fileURLToPath(import.meta.url));
@@ -606,6 +612,8 @@ export function crearServidor(
             "user_personal_lento",
             // H-034: el cambio de titular y las cuentas de vendedores.
             ...IDENTIDADES_DE_TITULARIDAD,
+            // H-040: el portal del vecino.
+            ...IDENTIDADES_DEL_PORTAL,
           ].includes(claims.sub);
       }
     } catch {
@@ -630,6 +638,8 @@ export function crearServidor(
       respuesta.writeHead(200, { "content-type": "image/png" }).end(_PNG_DE_UN_PIXEL);
       return;
     }
+    // H-040: la descarga del PDF de la expensa es pública (el token firmado es la autorización).
+    if (responderDescargaDePdf(pedido, respuesta, url)) return;
     // 2d: sin acceso prevalece sobre cualquier selector; aceptar invitación
     // sigue dependiendo sólo del token, como en la API real.
     if (valido && identidad === "user_api_rechaza") {
@@ -665,8 +675,13 @@ export function crearServidor(
             {
               id: ADMINISTRACION,
               nombre: "Administración de prueba",
-              acciones:
-                identidad === "user_vecina"
+              acciones: IDENTIDADES_DEL_PORTAL.includes(identidad)
+                ? {
+                    administracion: [],
+                    todos_los_edificios: [],
+                    por_edificio: ACCIONES_DEL_PORTAL[identidad],
+                  }
+                : identidad === "user_vecina"
                   ? _ACCIONES_DE_LA_VECINA
                   : identidad === "user_consejo"
                     ? _ACCIONES_DEL_CONSEJO
@@ -1033,6 +1048,9 @@ export function crearServidor(
       });
       return;
     }
+
+    // change 11 (H-040): el portal del vecino (`/api/mis-unidades...`, H-038 y H-039).
+    if (responderPortal(pedido, respuesta, url, identidad)) return;
 
     if (partes[0] !== "api" || partes[1] !== "complejos") {
       respuesta.writeHead(404).end();
