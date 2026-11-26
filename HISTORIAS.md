@@ -2086,7 +2086,28 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 ### H-033 · La cuenta del vendedor
 
 - Objetivo: el administrador ve el estado de la cuenta de persona del vendedor y registra su cobro, que se
-  imputa con R04 (D-168.2c). Criterios: se escriben antes de construir.
+  imputa con R04 (D-168.2c).
+- Incluye: lista y detalle de las cuentas de vendedores del edificio, registrar un cobro. No incluye: pantallas
+  (H-034), que el vendedor informe su pago desde el portal (no entra, D-168.2c).
+- Nivel: **L**.
+- Decisiones del orquestador (D-168, al acordar): ver usa el permiso existente `ver_morosidad`; cobrar, el
+  existente `confirmar_pago_informado`; un cobro mayor que la deuda se rechaza (el vendedor no tiene expensas
+  futuras donde aplicar un crédito a favor).
+- **C01**: `GET /api/complejos/{c}/cuentas-de-vendedores` lista las cuentas de persona del edificio con su
+  persona (nombre), deuda (texto) y las unidades de los cambios que la originaron, de mayor a menor deuda.
+- **C02**: `GET /api/complejos/{c}/cuentas-de-vendedores/{cuenta_id}` da el estado por período y componente,
+  el total y los movimientos (traslados y cobros) en orden.
+- **C03**: `POST .../cuentas-de-vendedores/{cuenta_id}/cobros` con `importe` (texto) y `fecha` (de la
+  transferencia) responde 201; el cobro se imputa con R04 (interés y lo más viejo primero) y la deuda baja
+  exactamente el importe.
+- **C04**: un cobro igual a la deuda deja la cuenta en cero; uno mayor da 422 sin cambiar nada.
+- **C05**: cada cobro queda auditado (`registrar_cobro_de_vendedor`, con cuenta, importe y fecha).
+- **N01**: sin el permiso, 403; una cuenta de otro edificio o administración, o una cuenta de unidad, 404.
+- **N02**: importe cero, negativo o con más de dos decimales, o fecha futura: 422 sin cambios.
+- **N03**: el cobro no toca ninguna cuenta de unidad, no aparece en la bandeja de pagos informados ni en la
+  morosidad, y no genera interés al emitir el período siguiente.
+- **K01**: R32 y la ficha 4d con H-033; la acción nueva de auditoría en `03_actores_y_roles.md`.
+- Demo: después de H-031, ver la cuenta de la vendedora, cobrarle una parte y después el resto hasta cero.
 - Estado: Pendiente.
 
 ### H-034 · Pantallas del cambio de titular
