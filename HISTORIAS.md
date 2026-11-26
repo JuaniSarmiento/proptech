@@ -2422,6 +2422,9 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - **N03**: el service worker no guarda respuestas de `/api` ni páginas con datos del vecino.
 - **N04**: a 320 px sin scroll horizontal, con teclado y sin violaciones de axe.
 - **K01**: HU-V1 en `06` (instalable), la ficha 11 con H-040 y el README con la app instalable.
+- Aceptación: `aceptacion/H-040/` (Playwright, `web/e2e/escenarios-portal.ts` comparado contra respuestas reales de H-038 y
+  H-039 sin diferencias de forma), 20 e2e vistos fallar por aserción, congelada en `459ce6f` bajo D-170. Pantallas
+  `/inicio`, `/mis-liquidaciones[/{unidad}[/{liquidacion}]]` y `/comprobantes`; la CSP necesita `worker-src 'self'`.
 - Estado: En proceso.
 
 ## Plantilla de historia
