@@ -23,6 +23,7 @@ from proptech_api import (
     salud,
     sesion,
     titularidad,
+    vecino,
 )
 from proptech_api.cuerpos import manejador_422
 from proptech_api.seguimiento import MiddlewareSeguimiento
@@ -188,6 +189,7 @@ def crear_app() -> FastAPI:
     app.include_router(gastos.router_de_descarga)
     app.include_router(pagos.router)
     app.include_router(titularidad.router)
+    app.include_router(vecino.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
     # de este router ni el de cualquier otro que se agregue después.

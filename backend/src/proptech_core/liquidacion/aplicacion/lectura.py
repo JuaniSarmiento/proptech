@@ -317,3 +317,21 @@ def listar_liquidaciones(
             }
         )
     return resultado
+
+
+def ultima_emision_vigente(sesion: Session, *, complejo_id: UUID) -> UUID | None:
+    """La emisión más reciente no anulada del edificio (por período y, dentro de uno, por cuándo se
+    emitió), o `None` si no hay (H-038: el saldo anterior de una unidad es la deuda sin ella)."""
+    filas = sesion.execute(
+        text(
+            "SELECT emision_id FROM liquidacion WHERE complejo_id = :c "
+            "ORDER BY periodo DESC, emitida_en DESC, id DESC"
+        ),
+        {"c": complejo_id},
+    ).all()
+    cierres = cierres_de_emisiones(sesion, [UUID(str(f.emision_id)) for f in filas])
+    for fila in filas:
+        emision = UUID(str(fila.emision_id))
+        if estado_del_cierre(cierres.get(emision)) != ANULADA:
+            return emision
+    return None

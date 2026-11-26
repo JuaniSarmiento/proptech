@@ -29,6 +29,7 @@ from proptech_core.acceso.dominio.permisos import (
 )
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.cuenta_corriente.aplicacion.creditos import ahora_utc
+from proptech_core.cuenta_corriente.aplicacion.liquidar import cierres_de_emisiones
 from proptech_core.liquidacion.aplicacion.errores import NoEncontrado, SinPermiso
 from proptech_core.liquidacion.aplicacion.lectura import leer_liquidacion, ve_lo_no_distribuido
 from proptech_core.liquidacion.dominio.documento import (
@@ -349,3 +350,35 @@ def leer_pdf(sesion: Session, *, documento_id: UUID, variante: str) -> tuple[byt
     if fila is None:
         return None
     return bytes(fila[0]), nombre_del_pdf(fila[1], fila[2], variante)
+
+
+def documentos_de_unidad(
+    sesion: Session, *, unidad_id: UUID, variante: str
+) -> list[dict[str, Any]]:
+    """Los PDFs `generados` de la unidad en esa variante, de las liquidaciones no anuladas, del
+    período más nuevo al más viejo (H-038). Nunca los bytes: el PDF sale por un enlace firmado."""
+    filas = (
+        sesion.execute(
+            text(
+                "SELECT d.id, d.liquidacion_id, d.complejo_id, l.periodo, l.emision_id, d.variante "
+                "FROM documento_de_expensa d JOIN liquidacion l ON l.id = d.liquidacion_id "
+                "WHERE d.unidad_id = :u AND d.variante = :v AND d.estado = 'generado' "
+                "ORDER BY l.periodo DESC, l.emitida_en DESC, d.id"
+            ),
+            {"u": unidad_id, "v": variante},
+        )
+        .mappings()
+        .all()
+    )
+    cierres = cierres_de_emisiones(sesion, [UUID(str(f["emision_id"])) for f in filas])
+    return [
+        {
+            "documento_id": str(f["id"]),
+            "liquidacion_id": str(f["liquidacion_id"]),
+            "complejo_id": str(f["complejo_id"]),
+            "periodo": f["periodo"].isoformat(),
+            "variante": f["variante"],
+        }
+        for f in filas
+        if (cierre := cierres.get(UUID(str(f["emision_id"])))) is None or cierre.tipo != "anulada"
+    ]
