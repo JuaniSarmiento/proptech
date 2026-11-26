@@ -2392,6 +2392,10 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - **N03**: el inquilino nunca recibe una categoría extraordinaria ni su monto, ni en la comparación.
 - **N04**: dos lecturas simultáneas de la misma liquidación sin distribuir la distribuyen una sola vez.
 - **K01**: R16 y HU-V3 en `05` y `06`, la ficha 11 con H-039.
+- Aceptación: `aceptacion/H-039/`, 31 casos vistos fallar por aserción (0 errores, `ruff --select F` limpio), congelada
+  en `f9d6663` bajo D-170. Contrato: la lista con `periodo`, `vencimiento` y `total` según el vínculo; el detalle con los
+  `bloques` del 7, `grupos`, los importes de la unidad y `comparacion`; la distribución se observa por el estado y
+  `distribucion.origen == "portal"` del 7 y una sola fila `distribuida`; N04 con tres lecturas en hilos.
 - Estado: En proceso.
 
 ### H-040 · Pantallas del portal y app instalable
