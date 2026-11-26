@@ -26,7 +26,7 @@ from pathlib import Path
 RAMA = "change/lectura-de-facturas"
 CAMBIO = "lectura-de-facturas"
 #: El commit que congela esta aceptación (lo aprueba Juani). Vacío mientras se escribe.
-ACEPTACION_SHA = "8d0a134a1568a3f07128502fcac6381c874e5aff"
+ACEPTACION_SHA = "c3cc3f0a53c1647bf57cccee8b66e8cfc5ef1eed"
 CARPETA = "aceptacion/H-037/tests"
 DESTINO = "backend/tests/integracion/aceptacion_h037"
 TESTS_ESPERADOS = 82
