@@ -49,9 +49,9 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
 | H-036 | C-19 14, parte 1 | Subir una factura, leer su QR de ARCA y dejar el gasto en borrador | Media / HIGH (L) | Lista |
 | H-037 | C-19 14, parte 2 | La IA propone lo que el QR no trae, con su costo y el control de monto atípico | Media / HIGH (L) | Lista |
-| H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | En proceso |
-| H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | En proceso |
-| H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | En proceso |
+| H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | Lista |
+| H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | Lista |
+| H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2372,7 +2372,14 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - Evidencia (26/11/2026, orquestador): sobre `c47bedb` desde `098cc01`: 35/35, 0 fallas, 0 errores, 0 skips.
 - **Deuda**: **un pago reimputado a otra unidad sigue figurando en la unidad original** (el vecino ve un pago que ya no
   es suyo: corregir antes del piloto); sin configuración vigente el interés sale 0,00 en vez de fallar.
-- Estado: En proceso (verificada; la demo va con la del change).
+- Demo del change 11 (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales, Clerk en modo de
+  verificación local, septiembre y octubre emitidos por las rutas del 7): Ana (propietaria de 1A y C1) ve sus dos
+  unidades y el conjunto 331.292,50 (250.225,00 + 81.067,50); la expensa de octubre de 1A da 112.500 + 5.625 +
+  45.000 + 2.100 = 165.225 (50 % de 225.000 ordinarios y de 90.000 de fachada), por categoría y grupo, y la
+  comparación con septiembre +60.225; Beto (inquilino de 1B) ve 78.750 + 3.937,50 + 1.470 = 84.157,50 sin ningún
+  bloque, monto ni categoría extraordinaria, comparación +10.657,50; Beto en la unidad de Ana → 404. **Deuda**: la 404
+  es la genérica de Next, en inglés y sin estilo.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ### H-039 · Entender mi expensa
 
@@ -2401,7 +2408,14 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
   Una unidad dada de alta después de la liquidación no la ve (404).
 - Evidencia (26/11/2026, orquestador): sobre `f7d94d6` desde `f9d6663`: 31/31, 0 fallas, 0 errores, 0 skips.
 - **Deuda**: la distribución por el portal no deja auditoría (no hay acción para el vecino).
-- Estado: En proceso (verificada; la demo va con la del change).
+- Demo del change 11 (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales, Clerk en modo de
+  verificación local, septiembre y octubre emitidos por las rutas del 7): Ana (propietaria de 1A y C1) ve sus dos
+  unidades y el conjunto 331.292,50 (250.225,00 + 81.067,50); la expensa de octubre de 1A da 112.500 + 5.625 +
+  45.000 + 2.100 = 165.225 (50 % de 225.000 ordinarios y de 90.000 de fachada), por categoría y grupo, y la
+  comparación con septiembre +60.225; Beto (inquilino de 1B) ve 78.750 + 3.937,50 + 1.470 = 84.157,50 sin ningún
+  bloque, monto ni categoría extraordinaria, comparación +10.657,50; Beto en la unidad de Ana → 404. **Deuda**: la 404
+  es la genérica de Next, en inglés y sin estilo.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ### H-040 · Pantallas del portal y app instalable
 
@@ -2433,7 +2447,14 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
 - **Deuda**: la instalación sólo se probó en Chromium, no en un iPhone real; en celular el menú plegado esconde los
   enlaces tras "Secciones"; el aviso de iPhone no devuelve el foco; el enlace del PDF vence a los 15 minutos y da 410
   hasta recargar; íconos provisorios.
-- Estado: En proceso (verificada; falta la demo del change en Chrome real).
+- Demo del change 11 (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales, Clerk en modo de
+  verificación local, septiembre y octubre emitidos por las rutas del 7): Ana (propietaria de 1A y C1) ve sus dos
+  unidades y el conjunto 331.292,50 (250.225,00 + 81.067,50); la expensa de octubre de 1A da 112.500 + 5.625 +
+  45.000 + 2.100 = 165.225 (50 % de 225.000 ordinarios y de 90.000 de fachada), por categoría y grupo, y la
+  comparación con septiembre +60.225; Beto (inquilino de 1B) ve 78.750 + 3.937,50 + 1.470 = 84.157,50 sin ningún
+  bloque, monto ni categoría extraordinaria, comparación +10.657,50; Beto en la unidad de Ana → 404. **Deuda**: la 404
+  es la genérica de Next, en inglés y sin estilo.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ## Plantilla de historia
 

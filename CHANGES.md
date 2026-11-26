@@ -58,7 +58,7 @@ gates están en el árbol de abajo.
    ⏳ 9 extracto bancario · 6b motor de reglas
    ✅ 10a morosidad (archivado 24/11/2026, D-167, PR #28)
    ⏳ 10b condonación y libre deuda
-   ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
+   🔶 11 portal del vecino (construido 26/11/2026, D-170: H-038 a H-040 en Lista) · ⏳ 12 vista del consejo · 13 avisos por email
    🔶 14 lectura de facturas (construido 26/11/2026, D-169: H-036 y H-037 en Lista; sólo backend, la pantalla con el 6c)
 
 7. PILOTO
@@ -765,7 +765,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-16] `portal-del-vecino` · 11
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` construido, H-038 a H-040 en Lista (HIGH, D-170, 26/11/2026; sin migraciones, rama
+  `change/portal-del-vecino` sobre el 14); se archiva cuando Juani las pase a Terminada
 - **Scope**: todas las unidades de la persona juntas, deuda y vencimiento, expensa por ordinaria y
   extraordinaria para propietarios y sólo ordinaria para inquilinos, comparación contra el mes
   anterior, descarga de PDFs según vínculo, app instalable (D-106)

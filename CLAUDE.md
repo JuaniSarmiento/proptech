@@ -229,8 +229,13 @@ mercado de arranque es **Mendoza**.
   en borrador con link firmado (`0054`). H-037: la IA (OpenRouter, D-164) propone concepto, período, categoría y grupo
   desde el worker, con su costo en `llamada_de_ia` y el control de monto atípico de R23 (`0055`). Las dos en **Lista**.
   La llamada real a OpenRouter nunca se probó. Deuda en la ficha 14 y en `HISTORIAS.md`.
-- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico (espera P14, P20 y P32); el 11
-  `portal-del-vecino`; el 9 `extracto-bancario` con un importador genérico de columnas; los de deuda adelantada en paralelo.
+- **Cambio 11 `portal-del-vecino` construido** (26/11/2026, HIGH, D-170, firmado por delegación): H-038 las lecturas del
+  vecino por vínculo (`GET /api/mis-unidades` y por unidad pagos, documentos y cargos), H-039 la expensa explicada con la
+  comparación y la distribución al abrir (D-074), H-040 las pantallas `/inicio`, `/mis-liquidaciones`, `/comprobantes` y la
+  app instalable sin caché de datos. Las tres en **Lista**. Deuda en la ficha 11 y en `HISTORIAS.md` (el pago reimputado
+  que sigue en la unidad original, el iPhone real sin probar).
+- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico (P14, P20 y P32 resueltas en D-171);
+  el 12 `vista-del-consejo` (espera P41); el 9 `extracto-bancario` con un importador genérico de columnas.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción
