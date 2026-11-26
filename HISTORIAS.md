@@ -44,7 +44,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
-| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
+| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | En proceso |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
@@ -2125,7 +2125,10 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   morosidad, y no genera interés al emitir el período siguiente.
 - **K01**: R32 y la ficha 4d con H-033; la acción nueva de auditoría en `03_actores_y_roles.md`.
 - Demo: después de H-031, ver la cuenta de la vendedora, cobrarle una parte y después el resto hasta cero.
-- Estado: Pendiente.
+- Aceptación: `aceptacion/H-033/`, 40 casos vistos fallar por aserción (0 errores), congelada en `c309f01` bajo
+  D-168. Contrato: leen quienes tienen `ver_morosidad` (contador, auxiliar y consejo incluidos), cobran super admin
+  y administrador; el 201 del cobro devuelve el detalle; dos cobros iguales son dos cobros (sin idempotencia).
+- Estado: En proceso.
 
 ### H-034 · Pantallas del cambio de titular
 
