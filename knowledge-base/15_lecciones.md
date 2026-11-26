@@ -1536,7 +1536,8 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
 - **Qué pasó**: el vocabulario de la `0023` ya tenía `traslado` en los dos sentidos, pero el esquema no alcanzaba:
   la cuenta de persona del vendedor no tiene obligaciones y `ck_mov_debito_destino` exige que todo débito caiga en
   una obligación y un componente de su propia cuenta, mientras `ck_obligacion_importes` exigía capital positivo.
-  Se resolvió con una obligación "contenedora" sin capital (permitida sólo si no viene de una emisión) y un débito
+  Se resolvió con una obligación "contenedora" sin capital (marcada con `de_traslado`; un `CHECK` que admitiera capital cero para cualquier obligación sin emisión rompía
+  el test del esquema y debilitaba al saldo inicial) y un débito
   `traslado` por componente enlazado al crédito de la unidad. Y para que la deuda trasladada no genere interés, el
   crédito de la unidad se fecha al **vencimiento** de la obligación: `_base_del_dia` baja la base de capital desde el
   día siguiente a la `fecha_valor` de cada imputación, así que fechar el crédito en la fecha del cambio habría

@@ -40,11 +40,12 @@ POSTERIORES_AL_LIBRO = (
 
 def devolver_tramos(base: BaseDeEdificio) -> None:
     """La `0035` y la `0034` bajan antes que la `0024`: sus tablas vuelven al migrador como las
-    del libro. La `0042` además altera `evento_de_emision` al bajar y la `0046` y la `0047` alteran
-    `movimiento` (D-115.3)."""
+    del libro. La `0042` además altera `evento_de_emision` al bajar, la `0046` y la `0047` alteran
+    `movimiento` y la `0051` también `obligacion` (D-115.3)."""
     with arranque(base) as c:
         c.execute("ALTER TABLE evento_de_emision OWNER TO proptech_migrador")
         c.execute("ALTER TABLE movimiento OWNER TO proptech_migrador")
+        c.execute("ALTER TABLE obligacion OWNER TO proptech_migrador")
         for tabla in POSTERIORES_AL_LIBRO:
             devolver_tabla_al_migrador(c, tabla, "proptech_migrador")
 

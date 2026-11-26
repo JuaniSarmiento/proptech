@@ -10,8 +10,8 @@ y por cada componente que tenga algo impago (capital o interés registrado):
    imputación directa (no pasa por R04: tiene destino y se imputa entero, así un pago posterior no
    se lo come ni queda a favor);
 2. en la cuenta de persona, una obligación "contenedora" del mismo período y vencimiento, sin
-   capital (`0051`), y un débito `traslado` del mismo importe sobre ella, enlazado al crédito
-   (`enlazado_a`).
+   capital (`0051`, `de_traslado`), y un débito `traslado` del mismo importe sobre ella, enlazado
+   al crédito (`enlazado_a`).
 
 La deuda trasladada **no genera interés** (D-168.2a): el crédito se fecha al vencimiento de la
 obligación, que es desde cuando el libro deja de contar la base de interés, y la emisión sólo
@@ -134,8 +134,9 @@ def _contenedora(
     sesion.execute(
         text(
             "INSERT INTO obligacion (id, administracion_id, complejo_id, cuenta_id, operacion_id, "
-            "periodo, vencimiento, ordinaria, fondo_de_reserva, extraordinaria, registrada_en) "
-            "VALUES (:id, :adm, :c, :cuenta, :op, :p, :v, '0.00', '0.00', '0.00', :en)"
+            "periodo, vencimiento, ordinaria, fondo_de_reserva, extraordinaria, registrada_en, "
+            "de_traslado) VALUES (:id, :adm, :c, :cuenta, :op, :p, :v, '0.00', '0.00', '0.00', "
+            ":en, true)"
         ),
         {
             "id": identificador,

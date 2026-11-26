@@ -1,10 +1,10 @@
 """El traslado de la deuda previa al vendedor (cambio-de-titular, H-031, R32, D-168.2).
 
-1. `obligacion` admite capital en cero: la obligación de la cuenta de persona del vendedor es el
-   "contenedor" de lo trasladado y su deuda vive en los débitos `traslado` (uno por componente, del
-   mismo importe que el crédito que los originó). Sólo la admite una obligación que no viene de una
-   emisión: `num_nonnulls(emision_id, operacion_id) = 1` ya la obliga a tener `operacion_id`, y la
-   emitida sigue exigiendo capital (`ck_obligacion_importes`).
+1. `obligacion` suma `de_traslado` (falso por defecto): la obligación de la cuenta de persona del
+   vendedor es el "contenedor" de lo trasladado y su deuda vive en los débitos `traslado` (uno por
+   componente, del mismo importe que el crédito que los originó). Sólo ella admite capital en cero
+   (`ck_obligacion_importes`) y sólo si no viene de una emisión (`ck_obligacion_de_traslado`); todas
+   las demás siguen exigiendo capital.
 2. `traslado` (sembrado desde la `0023`, débito y crédito) pasa a poder usarse con su forma real:
    siempre sobre una obligación y un componente, y el débito de la cuenta del vendedor enlazado
    (`enlazado_a`, de otra cuenta, E14 del 4b) al crédito de la unidad que lo originó
@@ -35,10 +35,13 @@ PRESTA_PROPIEDAD: tuple[str, ...] = ("obligacion", "movimiento", "cambio_de_titu
 
 def upgrade() -> None:
     op.execute("""
+        ALTER TABLE obligacion ADD COLUMN de_traslado BOOLEAN NOT NULL DEFAULT false;
         ALTER TABLE obligacion DROP CONSTRAINT ck_obligacion_importes;
         ALTER TABLE obligacion ADD CONSTRAINT ck_obligacion_importes CHECK (ordinaria>=0 AND
         fondo_de_reserva>=0 AND extraordinaria>=0 AND (ordinaria+fondo_de_reserva+extraordinaria>0
-        OR (emision_id IS NULL AND operacion_id IS NOT NULL)));
+        OR de_traslado));
+        ALTER TABLE obligacion ADD CONSTRAINT ck_obligacion_de_traslado CHECK
+        (NOT de_traslado OR (emision_id IS NULL AND operacion_id IS NOT NULL));
         ALTER TABLE movimiento ADD CONSTRAINT ck_mov_traslado CHECK
         (tipo<>'traslado' OR (obligacion_id IS NOT NULL AND componente IS NOT NULL
         AND (sentido='credito' OR enlazado_a IS NOT NULL)));
@@ -56,6 +59,7 @@ def downgrade() -> None:
     op.execute(
         """DO $$ BEGIN
         IF EXISTS (SELECT 1 FROM movimiento WHERE tipo = 'traslado')
+           OR EXISTS (SELECT 1 FROM obligacion WHERE de_traslado)
            OR EXISTS (SELECT 1 FROM cambio_de_titular WHERE vendedor_deudor_id IS NOT NULL) THEN
             RAISE EXCEPTION 'hay deuda trasladada al vendedor: la migración no puede bajarse';
         END IF;
@@ -65,9 +69,11 @@ def downgrade() -> None:
         ALTER TABLE cambio_de_titular DROP CONSTRAINT fk_cambio_vendedor_deudor;
         ALTER TABLE cambio_de_titular DROP COLUMN vendedor_deudor_id;
         ALTER TABLE movimiento DROP CONSTRAINT ck_mov_traslado;
+        ALTER TABLE obligacion DROP CONSTRAINT ck_obligacion_de_traslado;
         ALTER TABLE obligacion DROP CONSTRAINT ck_obligacion_importes;
         ALTER TABLE obligacion ADD CONSTRAINT ck_obligacion_importes CHECK (ordinaria>=0 AND
         fondo_de_reserva>=0 AND extraordinaria>=0 AND ordinaria+fondo_de_reserva+extraordinaria>0);
+        ALTER TABLE obligacion DROP COLUMN de_traslado;
         ALTER TABLE cambio_de_titular FORCE ROW LEVEL SECURITY;
         ALTER TABLE obligacion FORCE ROW LEVEL SECURITY;
         ALTER TABLE movimiento FORCE ROW LEVEL SECURITY;

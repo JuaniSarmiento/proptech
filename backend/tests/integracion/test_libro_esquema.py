@@ -56,6 +56,11 @@ CASOS_CHECK = [
         "ck_obligacion_importes",
         {"ordinaria": "0", "fondo_de_reserva": "0", "extraordinaria": "0"},
     ),
+    (
+        "obligacion",
+        "ck_obligacion_de_traslado",
+        {"emision_id": "$emision", "operacion_id": None, "de_traslado": True},
+    ),
     ("movimiento", "ck_mov_importe", {"importe": "0"}),
     ("movimiento", "ck_mov_importe", {"importe": "-1"}),
     ("movimiento", "ck_mov_componente", {"componente": "otro"}),

@@ -749,8 +749,8 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   por obligación y componente impago anterior al mes del cambio (imputado entero a su destino, con
   `fecha_valor` el vencimiento de la obligación, que es lo que congela el interés) y su débito enlazado en la
   cuenta del vendedor, sobre una obligación "contenedora" sin capital del mismo período. La cuenta de persona
-  se crea o se reutiliza. Migración `0051`: `ck_obligacion_importes` admite capital cero sólo si la obligación
-  no viene de una emisión (`emision_id IS NULL AND operacion_id IS NOT NULL`), `ck_mov_traslado` (obligación y
+  se crea o se reutiliza. Migración `0051`: `obligacion.de_traslado` (sólo ella admite capital cero en `ck_obligacion_importes`, y sólo si no viene
+  de una emisión, `ck_obligacion_de_traslado`), `ck_mov_traslado` (obligación y
   componente siempre, el débito enlazado) y `cambio_de_titular.vendedor_deudor_id`; declara
   `PRESTA_PROPIEDAD` de `obligacion`, `movimiento` y `cambio_de_titular`. `registrar_emision` y las lecturas de
   morosidad y situación no se tocaron: ya ignoraban las cuentas sin unidad. Sigue en H-032 el prorrateo.

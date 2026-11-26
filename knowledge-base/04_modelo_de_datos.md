@@ -911,7 +911,7 @@ una obligación y un componente; el crédito de la cuenta de la unidad se imputa
 débito de la cuenta de persona del vendedor se enlaza (`enlazado_a`, de otra cuenta, E14) al crédito. La
 cuenta de persona recibe una `obligacion` "contenedora" por cada obligación trasladada (mismo período y
 vencimiento, `operacion_id` derivado del cambio y capital en cero): por eso `ck_obligacion_importes` admite
-capital cero cuando la obligación no viene de una emisión; su deuda son los débitos `traslado`. Esas cuentas
+capital cero (columna `de_traslado`, sólo si no viene de una emisión); su deuda son los débitos `traslado`. Esas cuentas
 no tienen unidad, así que `registrar_emision` no les calcula interés y la morosidad (por unidad) no las lee.
 La `0051` se niega a bajar si hay movimientos `traslado` o un `vendedor_deudor_id`.
 
