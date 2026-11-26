@@ -45,7 +45,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
-| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
+| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | En proceso |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2174,7 +2174,10 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - **K01**: la ficha 4d con H-034 y las pantallas en `06_funcionalidades.md` si cambian una HU.
 - Demo: en navegador real (Chrome), registrar una venta con deuda a nombre del vendedor y prorrateo, ver el
   resultado y el historial, abrir la cuenta del vendedor y cobrarle hasta cero.
-- Estado: Pendiente.
+- Aceptación: `aceptacion/H-034/` (Playwright con la API falsa de e2e, `web/e2e/escenarios-cambio-de-titular.ts`),
+  15 e2e vistos fallar por aserción (0 errores), congelada en `dc4ef16` bajo D-168. Rutas `/unidades/{u}/cambio-de-titular`
+  (formulario, resultado e historial), `/cuentas-de-vendedores` y su detalle; textos y mensajes por campo en `CONTRATO.md`.
+- Estado: En proceso.
 
 ## Plantilla de historia
 
