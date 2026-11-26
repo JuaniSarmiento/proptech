@@ -2286,8 +2286,9 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
 - Incluye: la tarea que llama a la IA después de subir la factura, por el mismo puerto y adaptador de OpenRouter del 8
   (H-019), con un adaptador falso en los tests. No incluye: la pantalla (6c), la llamada real a OpenRouter.
 - Nivel: **L** (datos fiscales a un servicio externo; texto de la factura que puede traer instrucciones).
-- Decisiones del orquestador (D-169): R23 compara contra el promedio de los gastos aprobados de ese proveedor en el
-  edificio, con al menos tres (D-109: atípico si es más del doble o menos de la mitad); con menos de tres no marca.
+- R23 como está vigente (D-109): promedio de los gastos aprobados del proveedor en el edificio en los últimos 6
+  períodos; sin historial no marca; atípico si es más del doble o menos de la mitad. (Corregido: el orquestador había
+  puesto "al menos tres", que contradecía la regla.) **Deuda**: el umbral configurable por edificio con vigencia.
 - **C01**: después de subir una factura, la IA completa en el borrador concepto, período, categoría y grupo; el importe
   sólo si el QR no lo trajo. El gasto queda en borrador con `datos_de: "ia"` por campo y nunca aprobado.
 - **C02**: categoría y grupo propuestos sólo se aplican si existen y están activos en el edificio; si no, quedan
