@@ -200,6 +200,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 11 `portal-del-vecino` (H-038): por unidad, 404 sin vínculo vecino ---
     ("/api/mis-unidades/{unidad_id}/pagos", "GET"),
     ("/api/mis-unidades/{unidad_id}/documentos", "GET"),
+    ("/api/mis-unidades/{unidad_id}/liquidaciones", "GET"),
+    ("/api/mis-unidades/{unidad_id}/liquidaciones/{liquidacion_id}", "GET"),
     ("/api/mis-unidades/{unidad_id}/cargos-particulares/{cargo_id}", "GET"),
 }
 
