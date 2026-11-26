@@ -20,6 +20,9 @@ dependencies = [
   "openpyxl==3.1.5",
   "python-multipart==0.0.32",
   "weasyprint==70.0",
+  "zxing-cpp==3.0.0",
+  "pypdfium2==5.9.0",
+  "pillow==13.0.0",
 ]
 
 [dependency-groups]
@@ -59,6 +62,11 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends", "fastapi.
 strict = true
 files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
+
+# `zxing-cpp` (extensión compilada) y `pypdfium2` no traen tipos: sólo las usa `gastos/adaptadores/qr.py`.
+[[tool.mypy.overrides]]
+module = ["zxingcpp", "pypdfium2"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
