@@ -2133,8 +2133,30 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 ### H-034 · Pantallas del cambio de titular
 
 - Objetivo: desde el padrón, "Cambiar titular" con las dos opciones, el aviso de deuda, el historial de
-  cambios y la cuenta del vendedor con su cobro, con impeccable. Criterios: se escriben antes de
-  construir.
+  cambios y la cuenta del vendedor con su cobro, con impeccable.
+- Incluye: el formulario y el resultado del cambio, el historial por unidad, "Cuentas de vendedores" en el
+  menú del edificio con su detalle y el cobro, e2e con la API falsa como los anteriores. No incluye: cambios de
+  backend salvo lo que la pantalla necesite para leer.
+- Nivel: **M** (pantallas sobre una API ya probada; lo riesgoso quedó en H-030 a H-033).
+- **C01**: en el padrón, quien tiene `registrar_cambio_de_titular` ve "Cambiar titular" en cada unidad; abre un
+  formulario con fecha, los propietarios actuales para marcar como vendedores, uno o más compradores (nombre y
+  email opcional), la expensa del mes (entera o prorrateo por días) y la deuda previa (en la unidad o a nombre
+  del vendedor, con el vendedor elegido si hay más de uno), cada opción con una línea que explica qué pasa.
+- **C02**: al confirmar, la pantalla muestra el resultado: el aviso de deuda con su monto si lo hay, lo
+  trasladado al vendedor y el estado del prorrateo (pendiente o aplicado con su parte), y el padrón ya muestra
+  a los compradores.
+- **C03**: cada unidad muestra su historial de cambios de titular, el más nuevo primero.
+- **C04**: "Cuentas de vendedores" aparece en el menú del edificio para quien tiene `ver_morosidad`: lista con
+  persona, deuda y unidades, y el detalle por período con sus movimientos; "Registrar cobro" (importe y fecha)
+  sólo para quien tiene `confirmar_pago_informado`, y después del cobro se ve la deuda nueva.
+- **C05**: un 422 se muestra en su campo con un mensaje propio de la pantalla por campo (la API hoy dice
+  "valor inválido").
+- **N01**: sin los permisos no aparecen ni el botón, ni el menú, ni el cobro.
+- **N02**: el frontend no calcula montos: muestra los que devuelve la API, con formato argentino.
+- **N03**: en 320 px sin scroll horizontal, usable con teclado y sin violaciones de axe.
+- **K01**: la ficha 4d con H-034 y las pantallas en `06_funcionalidades.md` si cambian una HU.
+- Demo: en navegador real (Chrome), registrar una venta con deuda a nombre del vendedor y prorrateo, ver el
+  resultado y el historial, abrir la cuenta del vendedor y cobrarle hasta cero.
 - Estado: Pendiente.
 
 ## Plantilla de historia
