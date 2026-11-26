@@ -1998,8 +1998,8 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   componente de capital y el interés registrado) queda en cero en la cuenta de la unidad y la cuenta de
   persona del vendedor debe exactamente lo mismo, al centavo; la suma de las dos cuentas no cambia.
 - **C03**: en el libro quedan movimientos `traslado`: un crédito en la unidad por cada obligación
-  trasladada y su contraparte en la cuenta del vendedor, enlazados entre sí (`enlazado_a`), con el
-  `operacion_id` del cambio.
+  trasladada y su contraparte en la cuenta del vendedor, enlazados entre sí (`enlazado_a`), cada uno con
+  un `operacion_id` derivado del cambio (el libro lo exige único por movimiento).
 - **C04**: la deuda del mes del cambio y de los posteriores queda en la unidad; lo ya pagado no se mueve.
 - **C05**: emitir el período siguiente no genera interés sobre la cuenta del vendedor; la unidad sólo
   genera interés sobre lo que le quedó.
