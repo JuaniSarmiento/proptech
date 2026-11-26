@@ -89,6 +89,10 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # cuerpo; el pago sale de la ruta.
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
+    # Cambio 14 `lectura-de-facturas` (H-036): la factura es multipart (el gasto y sus ids los
+    # genera el servidor) y el enlace nuevo no lleva cuerpo; el gasto sale de la ruta.
+    ("/api/complejos/{complejo_id}/facturas", "POST"),
+    ("/api/gastos/{gasto_id}/factura/enlace", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva

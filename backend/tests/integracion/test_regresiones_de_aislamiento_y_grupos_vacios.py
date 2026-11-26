@@ -214,6 +214,9 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
                 params={"periodo": "2026-10-01"},
                 files={"archivo": ("x.xlsx", b"x", "application/octet-stream")},
             )
+        elif ruta == "/api/complejos/{complejo_id}/facturas":
+            # Change 14: multipart (la factura), no JSON — el 404 va antes de leer el archivo.
+            respuesta = api.cliente.post(resuelta, files={"archivo": ("f.png", b"x", "image/png")})
         elif ruta == "/api/complejos/{complejo_id}/pagos/lectura":
             # Change 8: multipart (el comprobante), no JSON — el 404 va antes de leer el archivo.
             respuesta = api.cliente.post(resuelta, files={"archivo": ("c.png", b"x", "image/png")})

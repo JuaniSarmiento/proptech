@@ -185,6 +185,7 @@ def crear_app() -> FastAPI:
     app.include_router(liquidaciones.router_de_descarga)
     app.include_router(morosidad.router)
     app.include_router(pagos.router_de_descarga)
+    app.include_router(gastos.router_de_descarga)
     app.include_router(pagos.router)
     app.include_router(titularidad.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)

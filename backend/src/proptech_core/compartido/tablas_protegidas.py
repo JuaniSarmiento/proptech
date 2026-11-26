@@ -173,6 +173,8 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 "cbu_de_unidad",
             )
         },
+        # 14, H-036 (`0054`): la factura subida, tal como llegó (nunca se reescribe).
+        "factura_de_gasto": _con_tres_triggers("factura_de_gasto"),
         # 4d, H-030 (`0050`): el cambio de titular de una unidad y las personas de cada lado; H-032
         # (`0052`): su prorrateo y lo que ya movió en el libro.
         **{

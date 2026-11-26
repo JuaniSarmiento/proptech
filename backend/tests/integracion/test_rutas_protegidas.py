@@ -65,6 +65,9 @@ _RUTAS_PUBLICAS = {
     # 8, H-024 (E11): el comprobante de un pago, con el mismo diseño: el token firmado (tipo
     # `comprobante`, 15 minutos) es la autorización. Lo prueba la aceptación de H-024.
     ("/api/comprobantes/descarga", "GET"),
+    # 14, H-036 (D-070): la factura de un gasto, con el mismo diseño: el token firmado (tipo
+    # `factura`, 15 minutos) es la autorización. Lo prueba la aceptación de H-036.
+    ("/api/facturas/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -181,6 +184,9 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
+    # --- Cambio 14 `lectura-de-facturas` (H-036) ---
+    ("/api/complejos/{complejo_id}/facturas", "POST"),
+    ("/api/gastos/{gasto_id}/factura/enlace", "POST"),
     # --- Cambio 8 `pagos-informados` (H-025) ---
     ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
     # --- Cambio 10a `morosidad` (H-027) ---
@@ -529,6 +535,11 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     if ruta.endswith("/enlace"):
         # Cambio 7 (H-015): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
         return cliente.post(ruta_resuelta, json={"variante": "completa"})
+    if ruta.endswith("/facturas"):
+        # Cambio 14 (H-036): multipart; el 404 y el 403 van antes de leer el archivo.
+        return cliente.post(
+            ruta_resuelta, files={"archivo": ("f.png", b"contenido-de-prueba", "image/png")}
+        )
     if ruta.endswith("/pagos/lectura"):
         # Cambio 8 (H-018): multipart; el 404 y el 403 van antes de leer el archivo.
         return cliente.post(
@@ -846,6 +857,7 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         ("/api/salud", "GET"),
         ("/api/documentos/descarga", "GET"),
         ("/api/comprobantes/descarga", "GET"),
+        ("/api/facturas/descarga", "GET"),
     }
 
 

@@ -8,12 +8,12 @@ alcanza al contador, al auxiliar y al consejo); la escritura usa
 Ninguna acción nueva se agrega a la matriz de D-106.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 from pydantic import Field
 from sqlalchemy.orm import Session
 
@@ -23,12 +23,18 @@ from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_core.acceso.aplicacion.autorizacion import cargar_asignaciones
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion, Asignacion, alcanza, puede
+from proptech_core.compartido.base_de_datos import abrir_sesion
+from proptech_core.compartido.configuracion import ConfiguracionInvalida
 from proptech_core.compartido.dinero import Dinero
+from proptech_core.compartido.enlaces import EnlaceVencido
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.gastos.adaptadores.excel import LectorDePlanillaExcel, PlanillaInvalida
+from proptech_core.gastos.adaptadores.qr import LectorDeQrConZxing
 from proptech_core.gastos.aplicacion import (
     cargos_particulares,
+    enlaces,
+    facturas,
     gastos,
     notas_de_credito,
     proveedores,
@@ -39,9 +45,16 @@ from proptech_core.gastos.aplicacion.errores import (
     ImportacionInvalida,
     NoEncontrado,
 )
+from proptech_core.gastos.dominio.archivo_de_factura import TAMANO_MAXIMO, TIPOS_MIME
+from proptech_core.gastos.puertos import LectorDeQr
 from proptech_core.liquidacion.aplicacion.periodos import es_periodo_emitido
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
+#: La descarga de la factura (H-036): pública por diseño. El token firmado ES la autorización
+#: (D-070), así que no pasa por identidad ni por tenant: el tenant sale del token verificado.
+router_de_descarga = APIRouter(prefix="/api")
+#: Cuánto dura un enlace de descarga de la factura (D-070).
+VIGENCIA_DEL_ENLACE = timedelta(minutes=15)
 
 
 def _no_encontrado() -> HTTPException:
@@ -276,6 +289,119 @@ def alta_gasto(
     if aviso is not None:
         return {"id": str(id_), "aviso": aviso}
     return {"id": str(id_)}
+
+
+# --- H-036: la factura con QR de ARCA (R12, D-169) ---
+
+
+def lector_de_qr() -> LectorDeQr:
+    """El lector del QR de las facturas. Es una dependencia para que la aceptación ponga uno
+    falso."""
+    return LectorDeQrConZxing()
+
+
+def _clave_de_enlaces(request: Request) -> str:
+    try:
+        return str(request.app.state.configuracion.clave_de_enlaces())
+    except ConfiguracionInvalida:
+        raise HTTPException(status_code=503, detail="enlaces_no_configurados") from None
+
+
+def _enlace_de_la_factura(
+    request: Request, administracion_id: UUID, gasto_id: UUID
+) -> dict[str, str]:
+    vence_en = (datetime.now(UTC) + VIGENCIA_DEL_ENLACE).replace(microsecond=0)
+    token = enlaces.firmar_enlace_de_la_factura(
+        administracion_id=administracion_id,
+        gasto_id=gasto_id,
+        vence_en=vence_en,
+        clave=_clave_de_enlaces(request),
+    )
+    return {"url": f"/api/facturas/descarga?token={token}", "vence_en": vence_en.isoformat()}
+
+
+@router.post("/complejos/{complejo_id}/facturas", status_code=201)
+def subir_factura(
+    complejo_id: UUID,
+    request: Request,
+    archivo: Annotated[UploadFile, File()],
+    el_lector: LectorDeQr = Depends(lector_de_qr),
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """Sube una factura (JPEG, PNG o PDF de hasta 10 MB, por sus primeros bytes) y deja el gasto en
+    borrador con lo que trae su QR de ARCA, o `sin_qr` con su motivo. 404 si el edificio no alcanza,
+    403 sin `cargar_gastos_y_preparar_liquidacion`, 422 si el archivo no sirve, 409 si la factura ya
+    está cargada. Se lee un byte de más del tope para saber que se pasó sin cargar un archivo
+    enorme."""
+    _edificio_autorizado(
+        sesion, identidad, complejo_id, Accion.CARGAR_GASTOS_Y_PREPARAR_LIQUIDACION
+    )
+    _clave_de_enlaces(request)
+    contenido = archivo.file.read(TAMANO_MAXIMO + 1)
+    gasto, aviso = facturas.subir_factura(
+        sesion,
+        identidad,
+        complejo_id=complejo_id,
+        contenido=contenido,
+        lector=el_lector,
+        request_id=UUID(request_id_actual.get() or ""),
+    )
+    sesion.commit()
+    return {
+        **gasto,
+        "aviso": aviso,
+        "factura": _enlace_de_la_factura(request, identidad.administracion_id, gasto["id"]),
+    }
+
+
+@router.post("/gastos/{gasto_id}/factura/enlace", status_code=201)
+def enlace_de_la_factura(
+    gasto_id: UUID,
+    request: Request,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, str]:
+    """Un enlace firmado nuevo que vence a los 15 minutos. Lo pide quien puede leer el gasto (la
+    regla de `GET /gastos/{id}`); 404 también si el gasto no tiene factura (se cargó a mano)."""
+    gasto = gastos.cargar_gasto(sesion, gasto_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if gasto is None:
+        raise _no_encontrado()
+    _lectura_autorizada(asignaciones, gasto["complejo_id"])
+    if facturas.factura_del_gasto(sesion, gasto_id=gasto_id) is None:
+        raise _no_encontrado()
+    return _enlace_de_la_factura(request, identidad.administracion_id, gasto_id)
+
+
+@router_de_descarga.get("/facturas/descarga")
+def descargar_la_factura(request: Request, token: Annotated[str, Query()]) -> Response:
+    """Sin sesión: el token firmado es la autorización. 200 con los bytes subidos y su tipo; 410
+    vencido; 403 alterado, de otro tipo, de un gasto que no existe o de otra administración. Nunca
+    se
+    abre una sesión de base antes de verificar la firma, y el tenant sale del token verificado."""
+    try:
+        enlace = enlaces.verificar_enlace_de_la_factura(
+            token, clave=_clave_de_enlaces(request), ahora=datetime.now(UTC)
+        )
+    except EnlaceVencido:
+        raise HTTPException(status_code=410, detail="enlace_vencido") from None
+    except enlaces.EnlaceAlterado:
+        raise HTTPException(status_code=403, detail="enlace_invalido") from None
+    sesion = abrir_sesion(request.app.state.fabrica_de_sesiones, enlace.administracion_id)
+    try:
+        archivada = facturas.factura_del_gasto(sesion, gasto_id=enlace.gasto_id)
+        sesion.rollback()
+    finally:
+        sesion.close()
+    if archivada is None:
+        raise HTTPException(status_code=403, detail="enlace_invalido")
+    contenido, tipo = archivada
+    return Response(
+        content=contenido,
+        media_type=TIPOS_MIME[tipo],
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/gastos/{gasto_id}")

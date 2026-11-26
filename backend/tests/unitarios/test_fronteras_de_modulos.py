@@ -542,7 +542,7 @@ _DUENO_DE_TABLA = {
         "titularidad",
     ),
     **dict.fromkeys(
-        ("proveedor", "gasto", "nota_de_credito", "cargo_particular"),
+        ("proveedor", "gasto", "nota_de_credito", "cargo_particular", "factura_de_gasto"),
         "gastos",
     ),
     **dict.fromkeys(
