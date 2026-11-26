@@ -45,6 +45,7 @@ POSTERIORES_AL_LIBRO = (
     "prorrateo_aplicado",
     "factura_de_gasto",
     "llamada_de_ia",
+    "certificado_de_libre_deuda",
 )
 
 

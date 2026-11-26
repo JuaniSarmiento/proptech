@@ -98,6 +98,10 @@ _CUERPOS = {
         "vendedores": [str(uuid4())],
         "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
     },
+    # H-041 (10b): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
+    "/api/complejos/{complejo_id}/unidades/{unidad_id}/libre-deuda": {
+        "fecha_de_corte": "2026-11-05"
+    },
     # H-013 (7): un cuerpo válido, para que el 404 de aislamiento no quede tapado por un 422.
     "/api/complejos/{complejo_id}/periodos/{periodo}/emision": {
         "emision_id": str(uuid4()),

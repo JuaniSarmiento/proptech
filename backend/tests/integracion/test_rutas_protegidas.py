@@ -68,6 +68,9 @@ _RUTAS_PUBLICAS = {
     # 14, H-036 (D-070): la factura de un gasto, con el mismo diseño: el token firmado (tipo
     # `factura`, 15 minutos) es la autorización. Lo prueba la aceptación de H-036.
     ("/api/facturas/descarga", "GET"),
+    # 10b, H-041 (D-070): el PDF de un certificado de libre deuda, con el mismo diseño: el token
+    # firmado (tipo `libre_deuda`, 15 minutos) es la autorización. Lo prueba la aceptación de H-041.
+    ("/api/libre-deuda/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -105,6 +108,9 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 4d `cambio-de-titular` (H-030) ---
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "GET"),
+    # --- Cambio 10b `condonacion-judicial-y-libre-deuda` (H-041) ---
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/libre-deuda", "POST"),
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/libre-deuda", "GET"),
     # --- Cambio 4d `cambio-de-titular` (H-035) ---
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/propietarios", "GET"),
     # --- Cambio 4d `cambio-de-titular` (H-033) ---
@@ -607,6 +613,8 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
                 "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
             },
         )
+    if ruta.endswith("/libre-deuda") and metodo == "POST":
+        return cliente.post(ruta_resuelta, json={"fecha_de_corte": "2026-11-05"})
     if ruta.endswith("/ajustes-de-saldo-inicial"):
         return cliente.post(
             ruta_resuelta,
@@ -868,6 +876,7 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         ("/api/documentos/descarga", "GET"),
         ("/api/comprobantes/descarga", "GET"),
         ("/api/facturas/descarga", "GET"),
+        ("/api/libre-deuda/descarga", "GET"),
     }
 
 

@@ -541,6 +541,8 @@ _DUENO_DE_TABLA = {
         ),
         "titularidad",
     ),
+    # 10b, H-041: el certificado de libre deuda lo escribe `libre_deuda`.
+    "certificado_de_libre_deuda": "libre_deuda",
     **dict.fromkeys(
         (
             "proveedor",

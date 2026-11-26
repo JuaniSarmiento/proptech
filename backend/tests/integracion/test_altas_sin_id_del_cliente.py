@@ -229,6 +229,11 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros",
         "POST",
     ): lambda mundo: {"importe": "10.00", "fecha": "2026-11-10"},
+    # Cambio 10b (H-041): el libre deuda lleva sólo `fecha_de_corte`; `id` es 422.
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/libre-deuda",
+        "POST",
+    ): lambda mundo: {"fecha_de_corte": "2026-11-05"},
     # Cambio 7 (H-013): emitir lleva el `emision_id` del cliente (idempotencia) y la huella
     # revisada; cualquier otro campo, `id` incluido, es 422.
     (

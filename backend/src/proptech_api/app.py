@@ -16,6 +16,7 @@ from proptech_api import (
     georef,
     importaciones,
     invitaciones,
+    libre_deuda,
     liquidaciones,
     morosidad,
     pagos,
@@ -52,6 +53,7 @@ from proptech_core.gastos.aplicacion import errores as errores_de_gastos
 from proptech_core.importacion.aplicacion.errores import ArchivoYaImportado, SinPermiso
 from proptech_core.importacion.dominio.padron import PadronInvalido
 from proptech_core.importacion.dominio.plantilla import ArchivoInvalido
+from proptech_core.libre_deuda.aplicacion.errores import SinPermiso as SinPermisoDeLibreDeuda
 from proptech_core.liquidacion.aplicacion import errores as errores_de_liquidacion
 from proptech_core.pagos.aplicacion import errores as errores_de_pagos
 from proptech_core.titularidad.aplicacion.errores import SinPermiso as SinPermisoDeTitularidad
@@ -189,6 +191,8 @@ def crear_app() -> FastAPI:
     app.include_router(gastos.router_de_descarga)
     app.include_router(pagos.router)
     app.include_router(titularidad.router)
+    app.include_router(libre_deuda.router_de_descarga)
+    app.include_router(libre_deuda.router)
     app.include_router(vecino.router)
     app.add_exception_handler(ConflictoDeAcceso, personal.manejar_conflicto)
     # R11 (D7, E8): el 422 nunca repite el valor rechazado (L-007), ni el
@@ -228,4 +232,5 @@ def crear_app() -> FastAPI:
     for tipo_de_importacion in (SinPermiso, ArchivoYaImportado, ArchivoInvalido, PadronInvalido):
         app.add_exception_handler(tipo_de_importacion, importaciones.manejar_error_de_importacion)
     app.add_exception_handler(SinPermisoDeTitularidad, titularidad.manejar_sin_permiso)
+    app.add_exception_handler(SinPermisoDeLibreDeuda, libre_deuda.manejar_sin_permiso)
     return app

@@ -283,6 +283,12 @@ class _DetalleCobroDeVendedor(_DetalleBase):
     fecha: date
 
 
+class _DetalleEmitirLibreDeuda(_DetalleBase):
+    #: La `entidad_id` de la fila es el certificado.
+    unidad_id: UUID
+    fecha_de_corte: date
+
+
 #: Un modelo por Accion que se audita CON detalle (D9). Una Accion sin
 #: entrada acá usa `_DetalleBase` (ningún campo, ningún detalle permitido).
 _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
@@ -311,6 +317,7 @@ _MODELOS_DE_DETALLE: dict[_Accionable, type[_DetalleBase]] = {
     Accion.ANULAR_LIQUIDACION: _DetalleAnularLiquidacion,
     Accion.CONFIRMAR_PAGO_INFORMADO: _DetalleConfirmarPago,
     Accion.REGISTRAR_CAMBIO_DE_TITULAR: _DetalleRegistrarCambioDeTitular,
+    Accion.EMITIR_LIBRE_DEUDA: _DetalleEmitirLibreDeuda,
     EventoDelPago.RECHAZAR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelPago.REVERTIR_PAGO_INFORMADO: _DetalleAsignarEdificio,
     EventoDelPago.REIMPUTAR_PAGO_INFORMADO: _DetalleAsignarEdificio,

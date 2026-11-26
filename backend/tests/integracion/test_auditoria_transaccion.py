@@ -53,6 +53,7 @@ from proptech_core.importacion.aplicacion.aceptar import aceptar_diferencias
 from proptech_core.importacion.aplicacion.ajuste import ajustar_saldo_inicial
 from proptech_core.importacion.aplicacion.confirmar import confirmar
 from proptech_core.importacion.aplicacion.importar import importar
+from proptech_core.libre_deuda.aplicacion.emitir import emitir_libre_deuda
 from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import registrar_cobro_de_vendedor
 from proptech_core.titularidad.aplicacion.registrar import (
     CompradorPedido,
@@ -740,10 +741,35 @@ def test_todos_los_casos_marcados_dejan_exactamente_una_fila_de_auditoria(
         )
         return cambio.cuenta_del_vendedor
 
+    def invocar_libre_deuda(sesion: Session) -> UUID:
+        """10b, H-041: una unidad sin cuenta (no debe nada), con un PDF falso para no depender de
+        WeasyPrint."""
+        complejo_id: UUID = datos["complejo_id"]
+        unidad_id = uuid.uuid4()
+        sesion.execute(
+            text(
+                "INSERT INTO unidad (id, administracion_id, complejo_id, identificador, tipo, "
+                "piso, coeficiente, superficie_m2) VALUES (:id, :admin, :complejo, 'LD', "
+                "'departamento', '1', '1.0', '50')"
+            ),
+            {"id": unidad_id, "admin": datos["administracion_id"], "complejo": complejo_id},
+        )
+        return emitir_libre_deuda(
+            sesion,
+            identidad,
+            complejo_id=complejo_id,
+            unidad_id=unidad_id,
+            fecha_de_corte="2026-11-05",
+            hoy=date(2026, 11, 18),
+            request_id=uuid.uuid4(),
+            renderizar=lambda _html: b"%PDF-falso",
+        ).id
+
     _INVOCADORES: dict[
         Accion | EventoDelPadron | EventoDelGasto | EventoDelPago, Callable[[Session], UUID]
     ] = {
         Accion.REGISTRAR_CAMBIO_DE_TITULAR: invocar_cambio_de_titular,
+        Accion.EMITIR_LIBRE_DEUDA: invocar_libre_deuda,
         EventoDelPago.REGISTRAR_COBRO_DE_VENDEDOR: invocar_cobro_de_vendedor,
         Accion.CREAR_VERSION_DE_CONFIGURACION: lambda sesion: (
             escritura.crear_version_de_configuracion(

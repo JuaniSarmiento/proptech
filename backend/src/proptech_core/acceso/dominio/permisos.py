@@ -94,6 +94,11 @@ class Accion(StrEnum):
     #: dueño. Quien administra; el administrador por edificio también. Es a la vez el permiso y el
     #: evento de auditoría (D-096). Leer los cambios usa el mismo permiso.
     REGISTRAR_CAMBIO_DE_TITULAR = "registrar_cambio_de_titular"
+    #: condonacion-judicial-y-libre-deuda (10b, H-041, D-172, migración `0056`): emitir el
+    #: certificado de libre deuda de una unidad y leer los emitidos. Sólo el super admin (que lo
+    #: emita también el administrador principal es la P72). Es a la vez el permiso y el evento de
+    #: auditoría (D-096).
+    EMITIR_LIBRE_DEUDA = "emitir_libre_deuda"
 
 
 @dataclass(frozen=True)
@@ -177,6 +182,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.VER_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
     Accion.EXPORTAR_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE}),
     Accion.REGISTRAR_CAMBIO_DE_TITULAR: frozenset({_SA, _AP, _AE}),
+    Accion.EMITIR_LIBRE_DEUDA: frozenset({_SA}),
 }
 
 

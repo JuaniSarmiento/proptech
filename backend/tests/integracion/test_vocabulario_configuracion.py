@@ -99,6 +99,7 @@ def test_migraciones_de_vocabulario_no_importan_accion() -> None:
         "0053_cobro_de_vendedor.py",
         "0054_factura_con_qr.py",
         "0055_llamada_de_ia.py",
+        "0056_libre_deuda.py",
     ):
         arbol = ast.parse((versiones / nombre).read_text())
         assert not any(
@@ -127,6 +128,7 @@ def test_downgrade_y_upgrade_con_listas_separadas(base_del_edificio: BaseDeEdifi
                 "ver_morosidad",
                 "exportar_morosidad",
                 "registrar_cambio_de_titular",
+                "emitir_libre_deuda",
             }
     finally:
         base_del_edificio.migrar("upgrade", "head")
