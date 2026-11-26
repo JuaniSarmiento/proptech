@@ -339,8 +339,8 @@ def test_n03_la_cuenta_del_vendedor_no_aparece_en_la_morosidad_ni_en_la_situacio
         situaciones = cobranza.situacion_del_edificio(s, complejo_id=mundo.edificio, fecha=HOY)
     cuentas = {UUID(str(x.cuenta_id)) for x in situaciones}
     assert vendedor not in cuentas, "la cuenta de persona no tiene situación de cobranza"
-    assert cuenta_de(mundo, "1A") in cuentas and cuentas == {cuenta_de(mundo, u) for u in
-                                                              ("1A", "1B", "2A", "2B")}, cuentas
+    # Recongelada (25/11/2026): sólo 1A tiene cuenta en este mundo; antes pedía las cuatro (IndexError).
+    assert cuentas == {cuenta_de(mundo, "1A")}, cuentas
 
 
 # --- N04: un pago posterior no toca lo trasladado ------------------------------------------------------
