@@ -46,7 +46,7 @@ gates están en el árbol de abajo.
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
    ✅ 4b libro de movimientos (deudas y pagos) (27/10/2026)
    ✅ 4c intereses, saldo inicial y moroso (archivado 11/11/2026, D-152 a D-154, PR #20)
-   ⏳ 4d cambio de titular (va después del 7)
+   🔶 4d cambio de titular (construido 26/11/2026, D-168: H-030 a H-035 en Lista, esperan la aceptación de Juani)
 
 5. CARGAR Y LIQUIDAR
    ✅ 5 importar desde Excel (archivado 12/11/2026, D-155/D-156, PR #21)       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
@@ -600,7 +600,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-07d] `cambio-de-titular` · 4d
-- **Estado**: `[ ]` pendiente (CRITICAL; puede ir después del 7, no bloquea M1)
+- **Estado**: `[~]` construido, H-030 a H-035 en Lista (CRITICAL, D-168, 26/11/2026; migraciones `0050` a `0053`, rama
+  `change/cambio-de-titular`); se archiva cuando Juani las pase a Terminada
 - **Scope**: R32 y D-109.2: registro del cambio de titular, las dos opciones configurables, traspaso a
   la cuenta de persona y aviso sin bloqueo. `cuenta` ya nace polimórfica en el 4b, así que esperar no
   cuesta una migración
