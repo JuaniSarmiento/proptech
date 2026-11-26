@@ -15,6 +15,11 @@ from .test_rutas_protegidas import _RUTAS_CUBIERTAS, _RUTAS_SIN_ALCANCE
 pytestmark = pytest.mark.integracion
 
 _CUERPOS = {
+    # Cambio 4d (H-034): el 404 llega tras validar la forma, así que el cuerpo va completo.
+    "/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros": {
+        "importe": "100.00",
+        "fecha": "2026-10-15",
+    },
     "/api/complejos/{complejo_id}/correcciones": {
         "forma": "contra_asiento",
         "operacion_id": str(uuid4()),
@@ -195,6 +200,7 @@ def test_super_admin_de_otra_administracion_no_alcanza_nada_de_a(api_edificio: A
             documento_id=uuid4(),
             pago_id=uuid4(),
             periodo="2026-10-01",
+            cuenta_id=uuid4(),
         )
         cuerpo = _CUERPOS.get(ruta, {"persona_id": str(persona_b), "rol": "consejo"})
         if ruta == "/api/personal/invitaciones":
