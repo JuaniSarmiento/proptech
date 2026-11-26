@@ -2486,6 +2486,9 @@ serie; demo única al cerrar.
   `GET` lista los certificados de la unidad.
 - **C06**: una unidad en gestión judicial recibe el certificado con la leyenda (cuando exista la marca, H-042).
 - **C07**: la emisión queda auditada con quién, cuándo, la unidad y el corte.
+- **C08**: con un corte posterior a un vencimiento impago, una línea aparte con el interés corrido hasta el corte (R21,
+  D-081), calculado con R03 y sin registrarlo en el libro ni sumarlo al saldo. (Agregado al escribir la aceptación: el
+  borrador lo dejaba afuera.)
 - **N01**: fuera del super admin, 403; unidad de otro edificio o administración, 404.
 - **N02**: una fecha de corte futura da 422.
 - **N03**: emitir dos veces con el mismo corte y el libro sin cambios da el mismo saldo y la misma huella; emitir no
