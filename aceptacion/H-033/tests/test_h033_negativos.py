@@ -89,7 +89,8 @@ def test_n01_una_cuenta_de_otro_edificio_de_otra_administracion_o_de_unidad_da_4
     ok(detalle(mundo, cuenta))
     del_otro = cuenta_aparte(mundo, mundo.admin, mundo.otro, mundo.personas["ana"])
     de_otra_administracion = cuenta_aparte(mundo, mundo.admin_b, mundo.edificio_b, mundo.persona_b)
-    ajenas: list[UUID] = [cuenta_de(mundo, "1A"), cuenta_de(mundo, "1B"), del_otro, de_otra_administracion, uuid4()]
+    # Recongelada (25/11/2026): sólo 1A tiene cuenta en este mundo; antes pedía también la de 1B (IndexError).
+    ajenas: list[UUID] = [cuenta_de(mundo, "1A"), del_otro, de_otra_administracion, uuid4()]
     antes = todo_h033(mundo)
     unidades = del_libro_de_unidades(mundo)
     for ajena in ajenas:
@@ -141,7 +142,10 @@ def test_n03_el_cobro_no_toca_unidades_ni_pagos_informados_ni_morosidad(mundo: M
     unidades = del_libro_de_unidades(mundo)
     informados = superusuario(mundo, "SELECT count(*) FROM pago_informado WHERE administracion_id = %s",
                               (mundo.admin,))[0][0]
-    bandeja = ok(mundo.cliente.get(f"/api/complejos/{mundo.edificio}/pagos"))
+    # Recongelada (25/11/2026): la bandeja es una lista; `ok` la volvía un dict y comparaba [] con {}.
+    r_bandeja = mundo.cliente.get(f"/api/complejos/{mundo.edificio}/pagos")
+    assert r_bandeja.status_code == 200, r_bandeja.text[:300]
+    bandeja = r_bandeja.json()
     morosidad = mundo.cliente.get(f"/api/complejos/{mundo.edificio}/morosidad")
     ok_morosidad = ok(morosidad)
     assert str(cuenta) not in morosidad.text
