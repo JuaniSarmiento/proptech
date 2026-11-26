@@ -904,6 +904,17 @@ arranque con `roles despues`); la acción `registrar_cambio_de_titular` entra al
 por cambio y persona (la misma persona no está dos veces ni de los dos lados).
 - **Bajada**: la `0050` se niega si alguna tabla tiene filas.
 
+#### El prorrateo de la expensa del mes (migración `0052`, H-032)
+
+Dos tablas más de sólo agregar (mismas protecciones), sin tocar ninguna tabla protegida existente:
+**`prorrateo_de_cambio`** (`cambio_id` único, `unidad_id`, `periodo` primer día del mes, `dias_del_vendedor`,
+`dias_del_mes`; **única por unidad y período**, `uq_prorrateo_unidad_periodo`; FK compuestas al cambio y a la
+unidad del mismo edificio) y **`prorrateo_aplicado`** (`prorrateo_id` único, `parte_del_vendedor`
+`NUMERIC(14,2)` no negativo: lo que se trasladó). Como la tabla no admite `UPDATE`, un prorrateo está
+pendiente mientras no tenga fila en `prorrateo_aplicado`. El vendedor que recibe la parte es
+`cambio_de_titular.vendedor_deudor_id` (que desde H-032 también se llena con la deuda en la unidad cuando hay
+prorrateo). La `0052` se niega a bajar si hay prorrateos.
+
 #### El traslado de la deuda previa (migración `0051`, H-031)
 
 `traslado` (sembrado desde la `0023`) toma su forma real en `movimiento` (`ck_mov_traslado`): siempre sobre

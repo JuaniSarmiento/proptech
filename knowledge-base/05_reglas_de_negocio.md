@@ -1120,8 +1120,30 @@ número no se marcan duplicadas entre sí.
 
 > **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
 > default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
-> auditoría y el aviso de deuda. **H-031 construye la deuda previa a nombre del vendedor** (abajo);
-> H-032 construye el prorrateo por días. Hasta H-032 la API da 422 a `expensa_del_mes: "prorrateo"`.
+> auditoría y el aviso de deuda. **H-031 construye la deuda previa a nombre del vendedor** y **H-032 el
+> prorrateo por días de la expensa del mes** (los dos abajo).
+
+- **Prorrateo por días** (H-032, D-168.5): con `expensa_del_mes: "prorrateo"`, el vendedor responde por los
+  días del mes **anteriores** a la fecha del cambio (vendió el 11 de noviembre: 10 de 30; el día del cambio es
+  del comprador; el día 1 son 0). Por cada componente de la obligación del mes (ordinaria, fondo de reserva y
+  extraordinaria; **nunca el interés**) la parte del vendedor es `componente x días del vendedor / días del
+  mes` redondeada medio hacia arriba al centavo y la unidad conserva el resto, así que la suma es exacta
+  (`parte_del_vendedor`, en `titularidad/dominio/prorrateo.py`, en enteros de centavos). Lo que la unidad ya
+  pagó de la obligación se entiende imputado primero a los días del vendedor: por componente se traslada
+  `max(parte - ya pagado, 0)`, y `parte_del_vendedor` de la respuesta es lo efectivamente trasladado. La
+  parte va a la cuenta de persona del `vendedor_deudor` (mismo campo y misma regla que la deuda previa: se
+  puede omitir con un solo vendedor, 422 con dos; también se acepta con la deuda en la unidad), con los
+  mismos traslados enlazados y el mismo crédito fechado al vencimiento (sin interés nuevo sobre lo
+  trasladado). **Si el período del mes ya está emitido** se aplica en la misma transacción del registro
+  (`prorrateo.estado: "aplicado"`); **si no, queda `"pendiente"`** y `emitir_liquidacion` lo aplica en la
+  misma transacción de la emisión, después de registrar las obligaciones (si el traslado falla, no hay
+  emisión; repetir el mismo pedido de emisión no escribe nada). Con deuda previa a nombre del vendedor y
+  prorrateo en el mismo cambio, `trasladado` es sólo la deuda previa y el prorrateo va aparte en
+  `prorrateo.parte_del_vendedor`, a la misma cuenta. Un segundo prorrateo de la misma unidad y período es 422
+  (único en la base). **Anular la emisión de un período con un prorrateo que movió plata da 409**
+  (`prorrateo_aplicado`) hasta que una historia posterior resuelva cómo deshacerlo (deuda de la ficha 4d).
+  Los cargos particulares entran sumados a la ordinaria de la obligación (E15 de H-013), así que hoy se
+  prorratean con ella (deuda de la ficha 4d).
 
 - **Deuda previa a nombre del vendedor** (H-031, D-168.2): con `deuda_previa: "a_nombre_del_vendedor"`
   y `vendedor_deudor` (uno de los vendedores; se puede omitir con uno solo), todo lo impago de las
@@ -1159,7 +1181,10 @@ número no se marcan duplicadas entre sí.
   persona y la unidad queda en cero por ese concepto (H-031: un crédito `traslado` por obligación y
   componente en la unidad, su débito enlazado en la cuenta del vendedor, sin interés nuevo sobre lo
   trasladado, la cuenta del vendedor fuera de la morosidad y un pago posterior sobre la unidad que no se
-  imputa a lo trasladado); todo cambio de titular deja un registro con
+  imputa a lo trasladado); con prorrateo (H-032), la parte del vendedor al centavo por componente con
+  redondeo medio hacia arriba, los días anteriores a la fecha, lo pendiente que se aplica al emitir, lo ya
+  pagado que no se traslada, el interés que nunca se prorratea, la parte trasladada sin interés y el 409 de
+  anular; todo cambio de titular deja un registro con
   fecha, elección y responsable; una unidad con deuda que cambia de titular genera un aviso, nunca un
   bloqueo.
 

@@ -3,9 +3,9 @@
 Un cambio con `expensa_del_mes = "prorrateo"` deja una fila en `prorrateo_de_cambio` (única por
 unidad y período). Si el período del mes ya está emitido, se aplica en el acto, en la transacción
 del cambio; si no, queda pendiente y lo aplica `aplicar_prorrateos_pendientes` en la transacción
-de la emisión de ese período (la llama `liquidacion`, que ya tiene el candado del edificio). Aplicar es
-trasladar a la cuenta del vendedor deudor, por componente, `max(parte por días - ya pagado, 0)`
-(`dominio/prorrateo.py`) con las piezas del traslado de H-031, y dejar una fila en
+de la emisión de ese período (la llama `liquidacion`, que ya tiene el candado del edificio).
+Aplicar es trasladar a la cuenta del vendedor deudor, por componente, `max(parte por días - ya
+pagado, 0)` (`dominio/prorrateo.py`) con las piezas del traslado de H-031, y dejar una fila en
 `prorrateo_aplicado` con lo trasladado: la tabla no admite `UPDATE`, así que pendiente es no tener
 esa fila. Nunca toca el interés. No commitea: lo hace el llamador.
 """
@@ -22,7 +22,10 @@ from sqlalchemy.orm import Session
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.cuenta_corriente.aplicacion.liquidar import periodos_emitidos
-from proptech_core.cuenta_corriente.aplicacion.traslado_de_deuda import trasladar_parte_del_mes
+from proptech_core.cuenta_corriente.aplicacion.traslado_de_deuda import (
+    asegurar_cuenta_de_persona,
+    trasladar_parte_del_mes,
+)
 from proptech_core.titularidad.dominio.prorrateo import (
     dias_del_mes,
     dias_del_vendedor,
@@ -101,12 +104,7 @@ def pedir_prorrateo(
     )
 
 
-def aplicar_prorrateos_pendientes(
-    sesion: Session, identidad: Identidad, *, complejo_id: UUID, periodo: date, request_id: UUID
-) -> list[UUID]:
-    """Aplica los prorrateos pendientes del período, del cambio más viejo al más nuevo. La emisión
-    ya tiene el candado del edificio: un cambio que se registra en el medio espera o ve el período
-    emitido. Idempotente: lo aplicado deja de ser pendiente. Devuelve los cambios aplicados."""
+def _pendientes(sesion: Session, complejo_id: UUID, periodo: date) -> list[_Pendiente]:
     filas = sesion.execute(
         text(
             "SELECT p.id, p.cambio_id, p.unidad_id, c.fecha, c.vendedor_deudor_id, "
@@ -119,24 +117,45 @@ def aplicar_prorrateos_pendientes(
         ),
         {"complejo": complejo_id, "periodo": periodo.replace(day=1)},
     ).all()
-    aplicados: list[UUID] = []
-    for f in filas:
-        _aplicar(
-            sesion,
-            identidad,
-            _Pendiente(
-                f.id,
-                f.cambio_id,
-                f.unidad_id,
-                complejo_id,
-                f.fecha,
-                f.vendedor_deudor_id,
-                f.dias_del_vendedor,
-                f.dias_del_mes,
-            ),
-            request_id,
+    return [
+        _Pendiente(
+            f.id,
+            f.cambio_id,
+            f.unidad_id,
+            complejo_id,
+            f.fecha,
+            f.vendedor_deudor_id,
+            f.dias_del_vendedor,
+            f.dias_del_mes,
         )
-        aplicados.append(f.cambio_id)
+        for f in filas
+    ]
+
+
+def preparar_cuentas_de_prorrateos_pendientes(
+    sesion: Session, *, complejo_id: UUID, periodo: date
+) -> list[UUID]:
+    """Crea (si faltan) y devuelve las cuentas de los vendedores que van a recibir una parte, para
+    que la emisión las bloquee en el mismo pedido ordenado que las del edificio (el libro exige
+    tomar una cuenta nueva antes que las ya bloqueadas). Sólo las de quien tiene días propios: con
+    el día 1 no hay nada que trasladar."""
+    return [
+        asegurar_cuenta_de_persona(sesion, complejo_id=complejo_id, persona_id=pendiente.deudor_id)
+        for pendiente in _pendientes(sesion, complejo_id, periodo)
+        if pendiente.dias_del_vendedor > 0
+    ]
+
+
+def aplicar_prorrateos_pendientes(
+    sesion: Session, identidad: Identidad, *, complejo_id: UUID, periodo: date, request_id: UUID
+) -> list[UUID]:
+    """Aplica los prorrateos pendientes del período, del cambio más viejo al más nuevo. La emisión
+    ya tiene el candado del edificio: un cambio que se registra en el medio espera o ve el período
+    emitido. Idempotente: lo aplicado deja de ser pendiente. Devuelve los cambios aplicados."""
+    aplicados: list[UUID] = []
+    for pendiente in _pendientes(sesion, complejo_id, periodo):
+        _aplicar(sesion, identidad, pendiente, request_id)
+        aplicados.append(pendiente.cambio_id)
     return aplicados
 
 

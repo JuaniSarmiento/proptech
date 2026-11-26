@@ -154,6 +154,18 @@ def _crear_cuenta_de_persona(
     return cuenta
 
 
+def asegurar_cuenta_de_persona(
+    sesion: Session, *, complejo_id: UUID, persona_id: UUID, reloj: Reloj = ahora_utc
+) -> UUID:
+    """La cuenta de persona del edificio, creada si falta. Una emisión la pide **antes** de que el
+    libro tome los candados de las cuentas del edificio: bloquear una cuenta nueva después de otras
+    ya bloqueadas rompe el orden de los candados (`BloqueoFueraDeOrden`). No commitea."""
+    exigir_transaccion(sesion)
+    return _cuenta_de_persona(sesion, complejo_id, persona_id) or _crear_cuenta_de_persona(
+        sesion, complejo_id, persona_id, reloj()
+    )
+
+
 def _contenedora(
     sesion: Session,
     destino: FotoDeCuenta,

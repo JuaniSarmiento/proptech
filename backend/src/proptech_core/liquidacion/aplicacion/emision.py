@@ -66,7 +66,10 @@ from proptech_core.liquidacion.dominio.emision import (
 )
 from proptech_core.liquidacion.dominio.preliquidacion import DatosDeLaPreliquidacion
 from proptech_core.liquidacion.dominio.reparto import pesos_del_grupo
-from proptech_core.titularidad.aplicacion.prorrateo import aplicar_prorrateos_pendientes
+from proptech_core.titularidad.aplicacion.prorrateo import (
+    aplicar_prorrateos_pendientes,
+    preparar_cuentas_de_prorrateos_pendientes,
+)
 
 _CERO = Dinero("0.00")
 
@@ -346,6 +349,11 @@ def emitir_liquidacion(
         vencimiento = original if corrida is None else corrida.fecha
         unidades = cuerpo_revisado["unidades"]
         instante = reloj()
+        # H-032: las cuentas de los vendedores con un prorrateo pendiente se crean y se bloquean
+        # junto con las del edificio, en el pedido ordenado del libro.
+        de_los_vendedores = preparar_cuentas_de_prorrateos_pendientes(
+            sesion, complejo_id=complejo_id, periodo=periodo
+        )
         registrada = registrar_emision(
             sesion,
             identidad,
@@ -367,6 +375,7 @@ def emitir_liquidacion(
             ],
             request_id=request_id,
             reloj=lambda: instante,
+            tambien_bloquear=de_los_vendedores,
         )
         # Bajo los candados de todas las cuentas del edificio (los toma el libro): la foto del
         # saldo anterior de cada unidad y el interés que el libro registró de verdad.

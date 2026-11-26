@@ -753,7 +753,25 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   de una emisión, `ck_obligacion_de_traslado`), `ck_mov_traslado` (obligación y
   componente siempre, el débito enlazado) y `cambio_de_titular.vendedor_deudor_id`; declara
   `PRESTA_PROPIEDAD` de `obligacion`, `movimiento` y `cambio_de_titular`. `registrar_emision` y las lecturas de
-  morosidad y situación no se tocaron: ya ignoraban las cuentas sin unidad. Sigue en H-032 el prorrateo.
+  morosidad y situación no se tocaron: ya ignoraban las cuentas sin unidad.
+- **4d · H-032 construida** (prorrateo por días de la expensa del mes): cálculo puro en
+  `titularidad/dominio/prorrateo.py` (días del vendedor y del mes, parte por componente en enteros de
+  centavos con redondeo medio hacia arriba, `parte_a_trasladar` con lo ya pagado); `trasladar_parte_del_mes`
+  en `cuenta_corriente/aplicacion/traslado_de_deuda.py` comparte con `trasladar_deuda` todo el movimiento
+  (`_trasladar`) y sólo cambia qué partes elige (la obligación del mes, tres componentes, con la regla que le
+  pasa `titularidad`, porque `cuenta_corriente` no importa a `titularidad`);
+  `titularidad/aplicacion/prorrateo.py` pide el prorrateo, lo aplica y lo busca pendiente. Migración `0052`:
+  `prorrateo_de_cambio` (único por unidad y período) y `prorrateo_aplicado` (sólo agregar: pendiente es no
+  tener fila), sin `ALTER` sobre tablas protegidas. `emitir_liquidacion` llama a
+  `aplicar_prorrateos_pendientes` después de `registrar_emision` en la misma transacción y el registro de un
+  cambio que traslada toma el candado del edificio (el de la emisión). `anular_liquidacion` da 409
+  (`prorrateo_aplicado`) si el período tiene un prorrateo con parte mayor que cero.
+  **Deuda de H-032**: (1) anular la emisión de un período con prorrateo aplicado se rechaza con 409; falta
+  decidir y construir cómo se deshace (contra-asientos en la cuenta del vendedor y en la unidad); (2) los
+  cargos particulares entran sumados a la ordinaria de la obligación (E15 de H-013) y se prorratean con
+  ella; separarlos toca la emisión; (3) lo que se aplica al emitir no deja una acción de auditoría propia:
+  queda la de la emisión y el cambio registrado; (4) un prorrateo cuyo período se emitió sin obligación para
+  la unidad queda "aplicado" con `"0.00"`. Siguen H-033 (la cuenta del vendedor) y H-034 (las pantallas).
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la
