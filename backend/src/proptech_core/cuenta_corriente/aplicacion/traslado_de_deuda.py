@@ -234,4 +234,3 @@ def trasladar_deuda(
         )
         total = total + parte.importe
     return TrasladoDeDeuda(total, cuenta_persona)
-

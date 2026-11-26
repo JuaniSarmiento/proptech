@@ -1529,3 +1529,20 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   fallaron una vez cada uno `test_tenant_que_no_es_uuid_levanta_antes_de_ejecutar_sql` (contraseña de `proptech_app`
   rechazada: los roles son del cluster y otro worker los recrea) y `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto`;
   quedan como deuda del C-25/C-28 en la ficha 10a.
+
+## L-105 · Una deuda que cambia de cuenta es un par enlazado, y su fecha decide si el interés la sigue
+
+- **Origen**: H-031 del 4d (`cambio-de-titular`, `0051`), 25/11/2026.
+- **Qué pasó**: el vocabulario de la `0023` ya tenía `traslado` en los dos sentidos, pero el esquema no alcanzaba:
+  la cuenta de persona del vendedor no tiene obligaciones y `ck_mov_debito_destino` exige que todo débito caiga en
+  una obligación y un componente de su propia cuenta, mientras `ck_obligacion_importes` exigía capital positivo.
+  Se resolvió con una obligación "contenedora" sin capital (permitida sólo si no viene de una emisión) y un débito
+  `traslado` por componente enlazado al crédito de la unidad. Y para que la deuda trasladada no genere interés, el
+  crédito de la unidad se fecha al **vencimiento** de la obligación: `_base_del_dia` baja la base de capital desde el
+  día siguiente a la `fecha_valor` de cada imputación, así que fechar el crédito en la fecha del cambio habría
+  seguido cobrando los días del mes del cambio.
+- **Regla**: antes de prometer un movimiento entre cuentas, probar un INSERT con su forma real contra los `CHECK`
+  de las dos cuentas (L-096), no sólo contra el vocabulario; lo que se traslada se imputa entero a su destino
+  (nunca por R04, o el próximo pago de la unidad se lo come); y la `fecha_valor` de un crédito que congela interés
+  es la que corta la base, no la del hecho que lo motivó. Un test del traslado toma el candado de las dos cuentas
+  en una sola llamada (espía sobre `bloquear_cuentas`) y se prueba haciendo fallar el último paso.

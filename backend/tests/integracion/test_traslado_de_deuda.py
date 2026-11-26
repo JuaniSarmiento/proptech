@@ -234,18 +234,17 @@ def test_toma_el_candado_de_las_dos_cuentas_en_una_llamada(
 ) -> None:
     unidad = _con_deuda(base_del_edificio, mundo)
     llamadas: list[list[UUID]] = []
-    original = traslado_de_deuda.bloquear_cuentas
+    original = cuentas.bloquear_cuentas
 
     def espia(sesion: Session, ids: list[UUID]) -> None:
         llamadas.append(list(ids))
         original(sesion, ids)
 
-    monkeypatch.setattr(traslado_de_deuda, "bloquear_cuentas", espia)
+    monkeypatch.setattr(f"{traslado_de_deuda.__name__}.bloquear_cuentas", espia)
     resultado = _trasladar(base_del_edificio, mundo)
     assert llamadas == [[unidad, resultado.cuenta_destino]] or llamadas == [
         [resultado.cuenta_destino, unidad]
     ], llamadas
-    assert cuentas  # el módulo del candado es el mismo que usa el libro
 
 
 def test_una_falla_a_mitad_de_camino_no_deja_nada(
@@ -254,7 +253,7 @@ def test_una_falla_a_mitad_de_camino_no_deja_nada(
     unidad = _con_deuda(base_del_edificio, mundo)
     antes = _deuda(base_del_edificio, mundo, unidad)
     llamadas = {"n": 0}
-    original = traslado_de_deuda.insertar_imputaciones
+    original = creditos.insertar_imputaciones
 
     def falla_en_la_tercera(*args: object, **kwargs: object) -> None:
         llamadas["n"] += 1
@@ -262,7 +261,7 @@ def test_una_falla_a_mitad_de_camino_no_deja_nada(
             raise RuntimeError("falla inyectada")
         original(*args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(traslado_de_deuda, "insertar_imputaciones", falla_en_la_tercera)
+    monkeypatch.setattr(f"{traslado_de_deuda.__name__}.insertar_imputaciones", falla_en_la_tercera)
     with sesion_app(base_del_edificio, mundo.admin) as s, pytest.raises(RuntimeError):
         trasladar_deuda(
             s,

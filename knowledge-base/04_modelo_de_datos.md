@@ -897,11 +897,23 @@ arranque con `roles despues`); la acción `registrar_cambio_de_titular` entra al
 - **`cambio_de_titular`**: `id`, `administracion_id`, `complejo_id`, `unidad_id` (FK compuesta a `unidad`
   del mismo edificio), `fecha`, `expensa_del_mes` (`entera` o `prorrateo`), `deuda_previa` (`en_la_unidad`
   o `a_nombre_del_vendedor`; H-030 sólo escribe los primeros de cada par), `registrado_por` y
-  `registrado_en`.
+  `registrado_en`. La `0051` (H-031) suma `vendedor_deudor_id` (FK compuesta a `persona`, nulo si la deuda
+  quedó en la unidad): a nombre de cuál vendedor quedó la deuda previa.
 - **`parte_de_cambio_de_titular`**: una fila por persona de cada lado (`cambio_id`, `persona_id`, `rol`
   `vendedor` o `comprador`, `orden`); del comprador guarda también el `nombre` y el `email` informados. Única
 por cambio y persona (la misma persona no está dos veces ni de los dos lados).
 - **Bajada**: la `0050` se niega si alguna tabla tiene filas.
+
+#### El traslado de la deuda previa (migración `0051`, H-031)
+
+`traslado` (sembrado desde la `0023`) toma su forma real en `movimiento` (`ck_mov_traslado`): siempre sobre
+una obligación y un componente; el crédito de la cuenta de la unidad se imputa entero a ese destino y el
+débito de la cuenta de persona del vendedor se enlaza (`enlazado_a`, de otra cuenta, E14) al crédito. La
+cuenta de persona recibe una `obligacion` "contenedora" por cada obligación trasladada (mismo período y
+vencimiento, `operacion_id` derivado del cambio y capital en cero): por eso `ck_obligacion_importes` admite
+capital cero cuando la obligación no viene de una emisión; su deuda son los débitos `traslado`. Esas cuentas
+no tienen unidad, así que `registrar_emision` no les calcula interés y la morosidad (por unidad) no las lee.
+La `0051` se niega a bajar si hay movimientos `traslado` o un `vendedor_deudor_id`.
 
 ### Planificado, dominio `pagos`
 

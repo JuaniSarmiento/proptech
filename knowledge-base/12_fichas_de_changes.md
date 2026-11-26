@@ -734,7 +734,8 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
 - **Lo que el 4d recibe hecho del 4b**: la `cuenta` ya nace polimórfica (de unidad o de persona, única
   por administración y edificio, P52) y el vocabulario `tipo_de_movimiento` ya tiene `traslado` (ambos
   sentidos) y `enlazado_a` sembrados (E14); el 4d usa ese traslado para mover el historial de deuda de
-  la cuenta de la unidad a la cuenta de la persona vendedora, sin ALTER.
+  la cuenta de la unidad a la cuenta de la persona vendedora (la `0051` de H-031 igual altera `obligacion`
+  y `movimiento`, ver abajo: el vocabulario alcanzaba, el esquema no).
 - **4d · H-030 construida** (registro con los defaults): módulo `titularidad`, migración `0050` con
   `cambio_de_titular` y `parte_de_cambio_de_titular` (de sólo agregar, RLS forzada; el nombre corto de la
   tabla hija evita que Postgres trunque el trigger por sentencia a 63 caracteres), la acción
@@ -742,6 +743,17 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   reemplazo de los propietarios (`acceso.aplicacion.propietarios`) y el aviso de deuda con
   `estado_de_cuenta`. Con los defaults no escribe en el libro; H-031 y H-032 habilitan las alternativas
   (la API da 422 a cualquier otro valor mientras tanto).
+- **4d · H-031 construida** (deuda previa a nombre del vendedor): caso de uso `trasladar_deuda` en
+  `cuenta_corriente/aplicacion/traslado_de_deuda.py`, armado como la reimputación (`reversion_de_pago`):
+  candado de la unidad y de la cuenta de persona en UNA llamada a `bloquear_cuentas`, un crédito `traslado`
+  por obligación y componente impago anterior al mes del cambio (imputado entero a su destino, con
+  `fecha_valor` el vencimiento de la obligación, que es lo que congela el interés) y su débito enlazado en la
+  cuenta del vendedor, sobre una obligación "contenedora" sin capital del mismo período. La cuenta de persona
+  se crea o se reutiliza. Migración `0051`: `ck_obligacion_importes` admite capital cero sólo si la obligación
+  no viene de una emisión (`emision_id IS NULL AND operacion_id IS NOT NULL`), `ck_mov_traslado` (obligación y
+  componente siempre, el débito enlazado) y `cambio_de_titular.vendedor_deudor_id`; declara
+  `PRESTA_PROPIEDAD` de `obligacion`, `movimiento` y `cambio_de_titular`. `registrar_emision` y las lecturas de
+  morosidad y situación no se tocaron: ya ignoraban las cuentas sin unidad. Sigue en H-032 el prorrateo.
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la

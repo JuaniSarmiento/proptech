@@ -1120,8 +1120,24 @@ número no se marcan duplicadas entre sí.
 
 > **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
 > default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
-> auditoría y el aviso de deuda; H-031 y H-032 construyen las alternativas (deuda a nombre del vendedor,
-> prorrateo por días). Hasta entonces la API sólo acepta los valores por defecto.
+> auditoría y el aviso de deuda. **H-031 construye la deuda previa a nombre del vendedor** (abajo);
+> H-032 construye el prorrateo por días. Hasta H-032 la API da 422 a `expensa_del_mes: "prorrateo"`.
+
+- **Deuda previa a nombre del vendedor** (H-031, D-168.2): con `deuda_previa: "a_nombre_del_vendedor"`
+  y `vendedor_deudor` (uno de los vendedores; se puede omitir con uno solo), todo lo impago de las
+  obligaciones con período **anterior al mes de la fecha del cambio** (cada componente de capital y el
+  interés ya registrado, ya imputado) se traslada, en la misma transacción que el registro, de la cuenta
+  de la unidad a la **cuenta de persona** del vendedor deudor (única por administración, edificio y
+  persona; se crea si falta y se reutiliza si existe). Por cada obligación y componente impago hay un
+  crédito `traslado` en la unidad, imputado entero a ese destino, y un débito `traslado` del mismo
+  importe en la cuenta del vendedor, enlazados (`enlazado_a`), cada uno con su `operacion_id` derivado
+  del cambio. La unidad queda en cero por esos períodos, el vendedor debe exactamente lo mismo y la suma
+  de las dos cuentas no cambia; lo del mes del cambio y lo posterior, y lo ya pagado, no se mueven. La
+  deuda trasladada **no genera interés nuevo** (viaja con el capital y el interés ya registrados) y la
+  cuenta del vendedor no entra en la morosidad ni en la situación de cobranza, que son por unidad. Un
+  segundo cambio de la misma unidad traslada sólo lo que quedó impago desde entonces. La respuesta suma
+  `trasladado` y `cuenta_del_vendedor`, y el `aviso` es la deuda que le queda a la unidad después del
+  traslado. Sin deuda previa no se escribe nada ni se crea la cuenta (`trasladado` `"0.00"`).
 
 - **Qué resuelve**: una unidad que se vende o cambia de titular con un período en curso o con deuda
   anterior.
@@ -1140,7 +1156,10 @@ número no se marcan duplicadas entre sí.
 - **Tests mínimos**: con el default, la expensa del mes de la venta queda entera a cargo de la unidad
   y la deuda previa pasa al comprador; con prorrateo por días, vendedor y comprador se dividen la
   expensa del mes exacto; con "deuda a nombre del vendedor", la deuda previa se mueve a una cuenta de
-  persona y la unidad queda en cero por ese concepto; todo cambio de titular deja un registro con
+  persona y la unidad queda en cero por ese concepto (H-031: un crédito `traslado` por obligación y
+  componente en la unidad, su débito enlazado en la cuenta del vendedor, sin interés nuevo sobre lo
+  trasladado, la cuenta del vendedor fuera de la morosidad y un pago posterior sobre la unidad que no se
+  imputa a lo trasladado); todo cambio de titular deja un registro con
   fecha, elección y responsable; una unidad con deuda que cambia de titular genera un aviso, nunca un
   bloqueo.
 
