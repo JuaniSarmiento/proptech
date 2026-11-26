@@ -2053,8 +2053,9 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - **N03**: la parte trasladada no genera interés en la cuenta del vendedor al emitir los períodos
   siguientes.
 - **N04**: si el traslado al emitir falla, la emisión entera no ocurre (todo o nada).
-- **N05**: nunca se trasladan los intereses del mes ni los cargos particulares como parte del prorrateo:
-  sólo ordinaria, fondo de reserva y extraordinaria.
+- **N05**: el interés registrado en la emisión del mes no se prorratea: sólo ordinaria, fondo de reserva y
+  extraordinaria. **Deuda**: los cargos particulares entran sumados a la ordinaria de la obligación, así que
+  hoy se prorratean con ella; separarlos toca la emisión y queda para otra historia.
 - **K01**: R32 con `prorrateo` en `05`, H-032 en la ficha del 4d y la deuda de N01 anotada.
 - Demo: vender el 11 de noviembre con prorrateo antes de emitir; emitir noviembre; ver el traslado de 10/30
   al vendedor al centavo y la suma exacta; intentar anular noviembre y ver el 409.
