@@ -1,6 +1,7 @@
-"""H-032 (4d): la `0052_prorrateo_de_cambio` crea las dos tablas de sólo agregar (el prorrateo es único
-por unidad y período), baja vacía y sube también sobre una base ya desplegada (L-089). Va en su propio
-módulo (su propia base). Prueba **su** migración (L-082).
+"""H-032 (4d): la `0052_prorrateo_de_cambio` crea las dos tablas de sólo agregar (el prorrateo es
+único por unidad y período), baja vacía y sube sobre una base ya desplegada: sus claves foráneas
+referencian `cambio_de_titular` y por eso declara `PRESTA_PROPIEDAD` (`roles antes`, D-115.3). Va en
+su propio módulo (su propia base). Prueba **su** migración (L-082).
 """
 
 from __future__ import annotations
@@ -58,8 +59,8 @@ def test_baja_vacia_sube_y_vuelve_a_subir_sobre_una_base_ya_desplegada(
             assert c.execute(
                 "SELECT to_regprocedure(%s)", (f"fn_{tabla}_bloqueada()",)
             ).fetchone() == (None,), "la función del trigger quedó"
-    # L-089: sube sin `roles antes`, con los roles ya devueltos como en una base desplegada.
-    base.roles("despues")
+    # Como en una base desplegada: `roles antes` presta `cambio_de_titular` para las FK.
+    base.roles("antes")
     base.migrar("upgrade", "0052")
     base.roles("despues")
     assert _version(base) == ("0052",)

@@ -100,7 +100,8 @@ def test_no_baja_con_una_obligacion_de_traslado(base_del_edificio: BaseDeEdifici
     base.devolver_tablas_protegidas()
     with pytest.raises(AssertionError, match="hay deuda trasladada"):
         base.migrar("downgrade", "0050")
-    assert _version(base) == ("0051",), "la bajada rechazada movió la versión"
+    # La bajada es una sola transacción: al rechazarla la 0051 vuelve también la 0052 ya bajada.
+    assert _version(base) == ("0052",), "la bajada rechazada movió la versión"
     base.roles("despues")
     with base.conectar_migrador() as c:
         forzadas = c.execute(

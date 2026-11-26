@@ -13,7 +13,9 @@ existente.
   si el cambio fue el día 1 o la unidad ya había pagado esa parte). Como la tabla no admite
   `UPDATE`, "pendiente" es la ausencia de esta fila: el estado nunca se reescribe.
 
-Sin `ALTER` sobre ninguna tabla protegida; no importa `Accion` (L-089).
+Sin `ALTER` sobre ninguna tabla protegida, pero sus claves foráneas referencian `cambio_de_titular`
+(del rol de arranque cuando corrió `roles despues`): lo declara en `PRESTA_PROPIEDAD` (D-115.3,
+L-088). No importa `Accion` (L-089).
 
 Revision ID: 0052
 Revises: 0051
@@ -29,6 +31,9 @@ revision: str = "0052"
 down_revision: str | None = "0051"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
+
+#: Las tablas protegidas que esta migración referencia (D-115.3): `roles antes` las presta.
+PRESTA_PROPIEDAD: tuple[str, ...] = ("cambio_de_titular",)
 
 _TABLAS = ("prorrateo_de_cambio", "prorrateo_aplicado")
 
@@ -50,6 +55,8 @@ ALTER TABLE prorrateo_de_cambio ADD CONSTRAINT uq_prorrateo_cambio UNIQUE
 (administracion_id,cambio_id);
 ALTER TABLE prorrateo_de_cambio ADD CONSTRAINT uq_prorrateo_unidad_periodo UNIQUE
 (administracion_id,unidad_id,periodo);
+ALTER TABLE prorrateo_de_cambio ADD CONSTRAINT fk_prorrateo_complejo FOREIGN KEY
+(administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
 ALTER TABLE prorrateo_de_cambio ADD CONSTRAINT fk_prorrateo_cambio FOREIGN KEY
 (administracion_id,complejo_id,cambio_id) REFERENCES cambio_de_titular
 (administracion_id,complejo_id,id);
@@ -67,6 +74,8 @@ ALTER TABLE prorrateo_aplicado ADD CONSTRAINT ck_prorrateo_aplicado_parte CHECK
 (parte_del_vendedor IS NOT NULL AND parte_del_vendedor >= 0);
 ALTER TABLE prorrateo_aplicado ADD CONSTRAINT uq_prorrateo_aplicado UNIQUE
 (administracion_id,prorrateo_id);
+ALTER TABLE prorrateo_aplicado ADD CONSTRAINT fk_prorrateo_aplicado_complejo FOREIGN KEY
+(administracion_id,complejo_id) REFERENCES complejo (administracion_id,id);
 ALTER TABLE prorrateo_aplicado ADD CONSTRAINT fk_prorrateo_aplicado FOREIGN KEY
 (administracion_id,complejo_id,prorrateo_id) REFERENCES prorrateo_de_cambio
 (administracion_id,complejo_id,id);
