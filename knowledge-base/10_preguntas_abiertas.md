@@ -99,7 +99,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   interés no es moroso crítico (etiqueta propia "deuda de intereses", aviso más suave); un saldo por
   debajo del umbral de R30 tampoco cuenta como vencido. En los dos casos la deuda sigue figurando en
   la cuenta y en el libre deuda.
-- [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
+- [x] **P32 · Libre deuda y pagos confirmados después** (resuelta en D-171: por la fecha de la transferencia): si el saldo a la fecha de corte se calcula por
   fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
 - [x] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
   edificio o cargado al emitir. Antes del cambio 3. Resuelta en D-100 (16/10/2026).
@@ -363,6 +363,8 @@ alguna no la sabés, ponelo así: también es una respuesta.
 
 #### P14 · El plazo para entregar el libre deuda
 
+**Resuelta en D-171 (26/11/2026)**: 5 días hábiles, configurable por edificio.
+
 - **Contexto**: ya está definido quién firma el certificado y qué incluye. Falta en cuántos días hay
   que entregarlo.
 - **Opciones**: lo que diga la normativa o la práctica en Mendoza.
@@ -386,6 +388,8 @@ alguna no la sabés, ponelo así: también es una respuesta.
 - **Cuándo**: antes del cambio 3.
 
 #### P20 · Quién aprueba una condonación de intereses
+
+**Resuelta en D-171 (26/11/2026)**: super admin y administrador principal, sin aprobación del consejo en el MVP.
 
 - **Contexto**: cuando un vecino discute un recargo y se lo perdonan.
 - **Opciones**: super admin o administrador principal, con registro; o aprobación adicional del
@@ -452,7 +456,7 @@ alguna no la sabés, ponelo así: también es una respuesta.
 | P22 · Editor de reglas | ☐ Dos niveles ☐ Otra | |
 | P42 · Charla con administrador o contador | ☐ Te presento a ☐ No | |
 | P9 · Extractos de muestra | ☐ Te los paso ☐ No | |
-| P14 · Plazo del libre deuda | Días: | |
+| P14 · Plazo del libre deuda | Días: 5 hábiles (D-171) | |
 | P15 · Ingresos mayores que gastos | ☐ Crédito ☐ Fondo ☐ Otra | |
 | P16 · Unidades del consorcio | ☐ Se reparte ☐ Gasto | |
 | P20 · Aprobación adicional de condonación | ☐ Sin aprobación adicional ☐ Consejo por umbral | |

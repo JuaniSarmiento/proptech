@@ -3556,3 +3556,17 @@ registrado como tal en su momento.)*
   le corresponden al inquilino (la práctica varía; hoy el PDF del 7 ya lo hace así).
 - **Quién**: el orquestador, por la delegación escrita de Juani (D-168). Riesgo **HIGH**: datos de plata de personas
   detrás de su vínculo; no escribe en el libro salvo la distribución ya construida en el 7.
+
+## D-171 · P14, P20 y P32 resueltas: plazo del libre deuda, quién condona y pagos confirmados después (26/11/2026)
+
+- **Contexto**: las tres bloqueaban el 10b `condonacion-judicial-y-libre-deuda`.
+- **Decisión** (Juani, en la sesión, sobre la recomendación del orquestador):
+  1. **P14**: el plazo para entregar el libre deuda es de **5 días hábiles**, configurable por edificio. El sistema genera
+     el certificado al instante; el plazo sólo alimenta un aviso al administrador si un pedido lleva más sin entregar.
+  2. **P20**: condonan intereses el **super admin y el administrador principal**, con el motivo registrado y visible para
+     el consejo; **sin aprobación adicional del consejo en el MVP** (el umbral queda para después).
+  3. **P32**: para el saldo a la fecha de corte del libre deuda, un pago confirmado cuenta **por la fecha de la
+     transferencia** (la misma regla de D-166); un pago informado y sin confirmar se lista aparte, sin descontar (R21).
+- **Supuesto**: no se verificó una norma de Mendoza sobre el plazo del libre deuda; confirmar con un administrador o un
+  abogado antes del piloto.
+- **Quién**: Juani, 26/11/2026.
