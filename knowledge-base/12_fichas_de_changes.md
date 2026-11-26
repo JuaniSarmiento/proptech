@@ -1555,6 +1555,22 @@ D-153).
   NOTHING`): el primero gana y las simultáneas dan 200 con un solo evento. Deuda: la distribución del portal no
   audita (no hay acción de auditoría para el vecino); una unidad que no figura en la liquidación (alta posterior) no
   la ve en la lista y da 404 en el detalle; las pantallas son de H-040.
+- **11 · H-040 construida** (26/11/2026, web, sin migraciones): las pantallas del portal y la app instalable.
+  `/inicio` (todas las unidades con total, vencimiento y los dos créditos, más el total del conjunto que da la API),
+  `/mis-liquidaciones[/{unidad}[/{liquidacion}]]` (la lista y la expensa por categoría, por grupo y concepto por
+  concepto, con la comparación con el mes anterior) y `/comprobantes` (PDFs por el enlace firmado, que baja de la ruta
+  `/documentos/descarga` de la web, y los pagos confirmados). El menú "Portal del vecino" suma Inicio, Mis
+  liquidaciones y Comprobantes junto a Mis pagos (el edificio de la primera unidad); dentro de un edificio, quien tiene
+  `informar_pago` ve las mismas tres en "Mi cuenta". Cliente `lib/api/vecino.ts` (valida la forma de cada respuesta y
+  el enlace firmado), pantallas en `app/inicio`, `app/mis-liquidaciones` y `app/comprobantes`, piezas comunes en
+  `app/_portal`. La pantalla no calcula: formatea lo que la API da (N02) y el inquilino no ve nada extraordinario
+  porque la API no se lo manda (N01). App instalable: `public/manifest.webmanifest`, cuatro íconos PNG, `public/sw.js`
+  (no abre cachés, no responde pedidos y borra las que hubiera; registrado desde las pantallas del portal), `worker-src
+  'self'` en la CSP de `proxy.ts`, `webmanifest` fuera del matcher del proxy, y el aviso de iPhone con `localStorage`
+  en `try/catch`. Deuda: la demo contra la API real y en un iPhone real (la instalación sólo se probó con el
+  navegador de prueba); el menú plegado de celular esconde los cuatro enlaces tras "Secciones"; el aviso no devuelve el
+  foco al cerrarse; un PDF con el enlace vencido (15 minutos) da 410 hasta recargar la página; los íconos son simples
+  y provisorios, sin marca; sin modo sin conexión a propósito.
 
 ### 12 · `vista-del-consejo` · HIGH (D-087)
 

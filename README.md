@@ -29,6 +29,12 @@ vecinos desde el padrón; y **`acceso-de-desarrollo`** (24/10/2026, D-110, firma
 la carga del edificio de ejemplo como `proptech_app`, sin `GRANT` nuevo ni acceso sin login, que sólo
 corre con `PROPTECH_ENTORNO=desarrollo`.
 
+El **portal del vecino** (cambio 11, en construcción) ya muestra desde el celular lo que se debe en
+cada unidad, la expensa explicada y los comprobantes (`/inicio`, `/mis-liquidaciones`, `/comprobantes`),
+y es una **app instalable**: trae `manifest.webmanifest`, íconos y un service worker mínimo que no guarda
+nada de la cuenta (no hay modo sin conexión). En Android el navegador ofrece instalarla; en iPhone se
+agrega desde Safari con "Compartir" y "Agregar a inicio", y el portal lo explica la primera vez.
+
 **Próximo: cambio 4 `motor-de-cuenta-corriente`** (CRITICAL, requiere su propuesta firmada, D-094,
 D-111).
 Todavía no hay liquidación ni cuenta corriente: llegan en los cambios 4 a 7 del roadmap
