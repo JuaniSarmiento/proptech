@@ -1127,6 +1127,17 @@ número no se marcan duplicadas entre sí.
   en una línea aparte el interés corrido hasta esa fecha según R03, calculado y sin registrarlo en la
   cuenta corriente (se registra con la emisión siguiente).
 - **Firma**: lo firma el super admin (antes, administrador titular).
+- **Construido en H-041** (10b, 26/11/2026, D-171, D-172, migración `0056`): `POST` y `GET
+  /api/complejos/{c}/unidades/{u}/libre-deuda`, sólo `emitir_libre_deuda` (super admin). El saldo es el capital
+  más los intereses registrados de las obligaciones con vencimiento hasta la fecha de corte, recalculados con
+  los movimientos de `fecha_valor` hasta el corte: un movimiento posterior no lo cambia y un pago confirmado hoy
+  con transferencia anterior sí resta (D-166). Los pagos informados sin resolver (transferidos hasta el corte)
+  van en `en_revision`, las cuotas que vencen después en `vencen_despues` y el interés corrido de R03 en
+  `interes_corrido` (el cálculo de la emisión, sin registrarlo ni sumarlo al saldo; entra en la huella). La
+  fecha de corte no puede ser posterior a hoy (422). Cada pedido guarda un certificado nuevo, de sólo agregar,
+  con su huella (SHA-256 del contenido, sin el identificador ni el instante) y su PDF (WeasyPrint), que se
+  guarda al emitir y se baja siempre igual por un enlace firmado de tipo `libre_deuda` (15 minutos). La
+  emisión se audita (`emitir_libre_deuda`). La marca de gestión judicial y su leyenda son de H-042.
 - **Tests mínimos**: una unidad sin saldo pendiente genera "libre de deuda" con saldo cero; una unidad
   con saldo lo muestra a la fecha de corte exacta; un pago informado no confirmado aparece aparte,
   sin restar del saldo; el certificado no cambia si se generan gastos nuevos después de la fecha de

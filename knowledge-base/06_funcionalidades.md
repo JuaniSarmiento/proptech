@@ -335,6 +335,11 @@ el escribano pueda escriturar sin esperar a que yo revise la cuenta a mano (R21,
 
 **Reglas relacionadas**: R21.
 
+**Construida en H-041** (10b, 26/11/2026, backend): la emite sólo el super admin (D-172) a una fecha de corte
+no posterior a hoy; el certificado queda guardado (de sólo agregar) con su huella y su PDF, que se baja por un
+enlace firmado que vence a los 15 minutos y es siempre el mismo archivo. Las pantallas y el aviso del plazo de
+5 días hábiles son de H-043.
+
 ### HU-A11 · Condonar intereses y marcar la gestión judicial *(propuesta, cambio 10b, D-078)*
 
 Como super admin o administrador principal, quiero condonar un recargo discutido y marcar las

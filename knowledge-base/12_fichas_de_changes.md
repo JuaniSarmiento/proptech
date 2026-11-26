@@ -1508,6 +1508,17 @@ D-153).
 - **Terminado cuando**: se cumplen los criterios de HU-A10 y los tests mínimos de R21, y HU-A11 con
   los de R29 y R31 si se validaron.
 
+- **10b · H-041 construida** (26/11/2026, backend, migración `0056`): el certificado de libre deuda. Módulo nuevo
+  `libre_deuda` (`proptech_api/libre_deuda.py`), `POST` y `GET /api/complejos/{c}/unidades/{u}/libre-deuda` y la
+  descarga pública `/api/libre-deuda/descarga` (token de tipo `libre_deuda`, 15 minutos). Acción
+  `emitir_libre_deuda` sólo del super admin, auditada. La deuda a la fecha de corte sale del libro
+  (`cuenta_corriente.aplicacion.deuda_a_la_fecha` recalcula `calcular_estado` con los movimientos de `fecha_valor`
+  hasta el corte), los pagos en revisión de `pagos.aplicacion.en_revision` y el interés corrido es el cálculo de la
+  emisión sin registrarlo. Tabla `certificado_de_libre_deuda` de sólo agregar con el PDF guardado al emitir. Deuda:
+  el interés corrido se calcula sobre el libro tal como está hoy (no sobre lo que sabía a un corte pasado); un
+  crédito imputado después a una obligación posterior al corte cuenta con la imputación vigente; la huella no
+  incluye todavía la marca judicial (H-042); las pantallas y el aviso del plazo son de H-043.
+
 ### 11 · `portal-del-vecino`
 
 - **Objetivo**: que el vecino entienda su expensa y pague desde el celular.

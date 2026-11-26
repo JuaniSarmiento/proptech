@@ -42,6 +42,7 @@ Los mismos módulos de `02_descripcion_general.md` §Arquitectura general (D-021
   global de tipos de movimiento. El 4c agrega el saldo inicial y el moroso crítico como funciones
   sobre este libro.
 - **pagos**: pagos informados, confirmados, rechazados y revertidos; CBU histórico; reimputaciones.
+- **libre_deuda**: los certificados de libre deuda emitidos (10b, `certificado_de_libre_deuda`); sólo lee el libro.
 - **avisos**: eventos de aviso por email, con su clave de idempotencia.
 - **politicas**: reglas del motor por edificio, versionadas (D-066).
 - **compartido**: tipo `Dinero` (R07, D-046), sesión de base con el tenant fijado (D-076), auditoría.
@@ -961,6 +962,20 @@ vencimiento, `operacion_id` derivado del cambio y capital en cero): por eso `ck_
 capital cero (columna `de_traslado`, sólo si no viene de una emisión); su deuda son los débitos `traslado`. Esas cuentas
 no tienen unidad, así que `registrar_emision` no les calcula interés y la morosidad (por unidad) no las lee.
 La `0051` se niega a bajar si hay movimientos `traslado` o un `vendedor_deudor_id`.
+
+### Existe hoy, dominio `libre_deuda` (cambio 10b, migración `0056`, H-041, R21, D-171, D-172)
+
+Una tabla de sólo agregar (tres triggers, RLS forzada por administración, a cargo del rol de arranque con
+`roles despues`); la acción `emitir_libre_deuda` entra al vocabulario de auditoría. El módulo no escribe en el
+libro: lo lee.
+
+- **`certificado_de_libre_deuda`**: `id`, `administracion_id`, `complejo_id`, `unidad_id` (FK compuesta a `unidad`
+  del mismo edificio), `fecha_de_corte`, `saldo`, `capital`, `intereses` e `interes_corrido` (`NUMERIC(14,2)`,
+  `saldo = capital + intereses`), `en_revision` y `vencen_despues` (JSONB, la foto de las dos listas),
+  `en_gestion_judicial` (falso hasta H-042), `huella` (SHA-256 hexadecimal), `pdf` (`BYTEA`, tal como se emitió),
+  `emitido_por` (FK compuesta a `persona`) y `emitido_en`. Varias filas por unidad y corte: cada emisión es otro
+  certificado.
+- **Bajada**: la `0056` se niega si hay certificados.
 
 ### Planificado, dominio `pagos`
 
