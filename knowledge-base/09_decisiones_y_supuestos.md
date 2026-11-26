@@ -3570,3 +3570,20 @@ registrado como tal en su momento.)*
 - **Supuesto**: no se verificó una norma de Mendoza sobre el plazo del libre deuda; confirmar con un administrador o un
   abogado antes del piloto.
 - **Quién**: Juani, 26/11/2026.
+
+## D-172 · El 10b: qué entra, el certificado guardado y qué cuenta como deuda (26/11/2026)
+
+- **Contexto**: con P14, P20 y P32 resueltas (D-171), quedaban abiertas las propuestas R29, R31 y R41, quién emite el
+  libre deuda, si el certificado se guarda, qué es "saldo" y los bordes de la condonación.
+- **Decisión**: (1) entran **R29** (condonación de interés con motivo) y **R31** (marca de gestión judicial, que el 13
+  necesita); **R41** (baja de deuda incobrable) queda fuera, como deuda del 10b. (2) El libre deuda lo emite **sólo el
+  super admin**, como dice R21 vigente; que lo emita también el administrador principal queda como pregunta para Juani
+  (P72). (3) El certificado **se guarda** con su foto (corte, saldo, pagos en revisión, huella) y siempre se sirve el
+  mismo PDF; emitir de nuevo crea otro certificado con otro identificador. (4) Es deuda el capital más los intereses
+  registrados **vencidos a la fecha de corte**; las cuotas liquidadas que vencen después del corte se muestran aparte y
+  no suman al saldo. (5) Una unidad en gestión judicial recibe el certificado con la leyenda "en gestión judicial".
+  (6) Una fecha de corte futura da 422; una pasada se acepta con lo que el libro sabía a esa fecha. (7) Sólo se condona
+  el interés pendiente; lo cobrado de más sigue por el ajuste de interés (H-021). (8) Tres historias: H-041 el
+  certificado, H-042 la condonación y la marca judicial, H-043 las pantallas del administrador.
+- **Quién**: el orquestador, por la delegación escrita de Juani (D-168). Riesgo **CRITICAL**: escribe en la cuenta
+  corriente (condonación) y emite un documento con peso legal.

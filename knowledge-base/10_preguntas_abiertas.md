@@ -148,6 +148,8 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P49 · Doble factor para el personal**: Clerk lo ofrece; activarlo es una decisión de producto,
   no técnica. Surge del design del 2b (`openspec/changes/archive/2026-10-22-login-y-usuarios/design.md`,
   Open Questions). Antes de ofrecerlo al piloto (15) o antes, si Alberto lo pide.
+- [ ] **P72 · Quién emite el libre deuda** (D-172): R21 dice sólo el super admin; en la práctica lo emite el
+  administrador principal. ¿Se suma el administrador principal? Hasta que Juani decida, sólo el super admin.
 - [ ] **P50 · Borrar el usuario de Clerk cuando se le quita la última asignación**: hoy sólo se corta el
   acceso (la próxima vez que pida algo da 401); el usuario sigue existiendo en el panel de Clerk. Surge
   del design del 2b. Antes del 15 o de una decisión de Juani.
