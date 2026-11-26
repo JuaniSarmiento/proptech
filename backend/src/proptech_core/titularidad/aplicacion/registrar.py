@@ -4,8 +4,10 @@ Orden de chequeo (D7 del 2a): alcance (404) -> permiso (403) -> la unidad es de 
 -> la entrada (422). Todo en una transacción: los vendedores pierden su asignación `vecino` /
 `propietario` de la unidad, los compradores la ganan (la persona se reutiliza por email, sin
 renombrarla y sin invitación), queda la fila de sólo agregar y la auditoría; si algo falla no queda
-nada. Con las opciones por defecto no escribe en el libro. Avisa, sin bloquear, si la cuenta de la
-unidad debe. No commitea: lo hace el llamador.
+nada. Con las opciones por defecto no escribe en el libro. Con `deuda_previa` a nombre del vendedor
+(H-031) traslada, en la misma transacción, lo impago de los períodos anteriores al mes del cambio a
+la cuenta de persona del vendedor deudor. Avisa, sin bloquear, si la cuenta de la unidad debe
+(después del traslado). No commitea: lo hace el llamador.
 """
 
 from __future__ import annotations
@@ -31,12 +33,14 @@ from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.complejos.aplicacion.errores import EntradaInvalida, transaccion
 from proptech_core.cuenta_corriente.aplicacion.lecturas import cuenta_de_unidad, estado_de_cuenta
+from proptech_core.cuenta_corriente.aplicacion.traslado_de_deuda import trasladar_deuda
 from proptech_core.titularidad.aplicacion.autorizacion import unidad_autorizada
 from proptech_core.titularidad.aplicacion.lectura import CambioDeTitular, CompradorDelCambio
 from proptech_core.titularidad.dominio.cambio import (
     CambioInvalido,
     validar_compradores,
     validar_pedido,
+    validar_vendedor_deudor,
 )
 
 _FECHA = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -71,6 +75,7 @@ def registrar_cambio_de_titular(
     compradores: Sequence[CompradorPedido],
     expensa_del_mes: str,
     deuda_previa: str,
+    vendedor_deudor: UUID | None = None,
     hoy: date,
     request_id: UUID,
 ) -> CambioDeTitular:
@@ -95,6 +100,9 @@ def registrar_cambio_de_titular(
                 compradores=[r.persona_id for r in resueltos],
                 con_vinculo_en_la_unidad=set(vecinos),
             )
+            deudor = validar_vendedor_deudor(
+                deuda_previa=deuda_previa, vendedor_deudor=vendedor_deudor, vendedores=vendedores
+            )
         except CambioInvalido as error:
             raise EntradaInvalida(error.campo) from None
         quitar_propietarios(sesion, personas=vendedores, unidad_id=unidad_id)
@@ -110,9 +118,9 @@ def registrar_cambio_de_titular(
         registrado_en = sesion.execute(
             text(
                 "INSERT INTO cambio_de_titular (id, administracion_id, complejo_id, unidad_id, "
-                "fecha, expensa_del_mes, deuda_previa, registrado_por) "
+                "fecha, expensa_del_mes, deuda_previa, vendedor_deudor_id, registrado_por) "
                 "VALUES (:id, :administracion, :complejo, :unidad, :fecha, :expensa, :deuda, "
-                ":persona) RETURNING registrado_en"
+                ":deudor, :persona) RETURNING registrado_en"
             ),
             {
                 "id": cambio_id,
@@ -122,6 +130,7 @@ def registrar_cambio_de_titular(
                 "fecha": el_dia,
                 "expensa": expensa_del_mes,
                 "deuda": deuda_previa,
+                "deudor": deudor,
                 "persona": identidad.persona_id,
             },
         ).scalar_one()
@@ -161,6 +170,19 @@ def registrar_cambio_de_titular(
                 "deuda_previa": deuda_previa,
             },
         )
+        traslado = (
+            None
+            if deudor is None
+            else trasladar_deuda(
+                sesion,
+                identidad,
+                cambio_id=cambio_id,
+                unidad_id=unidad_id,
+                persona_id=deudor,
+                fecha=el_dia,
+                request_id=request_id,
+            )
+        )
         aviso = _deuda_de_la_unidad(sesion, unidad_id)
     return CambioDeTitular(
         id=cambio_id,
@@ -176,6 +198,8 @@ def registrar_cambio_de_titular(
         registrado_por=identidad.persona_id,
         registrado_en=registrado_en,
         aviso=aviso,
+        trasladado=None if traslado is None else traslado.trasladado,
+        cuenta_del_vendedor=None if traslado is None else traslado.cuenta_destino,
     )
 
 

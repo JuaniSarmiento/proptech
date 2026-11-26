@@ -430,6 +430,8 @@ def test_tipos_anticipados(libro: Libro, tipo: str, sentido: str) -> None:
             campos.update(corrige_a=libro.pago, tipo_corregido="pago", motivo="Prueba")
         else:
             campos["enlazado_a"] = libro.interes
+    if tipo == "traslado" and sentido == "debito":  # H-031: la contraparte se enlaza (`0051`)
+        campos["enlazado_a"] = libro.interes
     f = None
     try:
         with libro.conexion.transaction():

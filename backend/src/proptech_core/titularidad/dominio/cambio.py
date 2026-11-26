@@ -46,3 +46,25 @@ def validar_compradores(
         raise CambioInvalido("compradores")
     if set(compradores) & set(vendedores) or set(compradores) & set(con_vinculo_en_la_unidad):
         raise CambioInvalido("compradores")
+
+
+def validar_vendedor_deudor(
+    *,
+    deuda_previa: str,
+    vendedor_deudor: UUID | None,
+    vendedores: Sequence[UUID],
+) -> UUID | None:
+    """El vendedor a cuyo nombre queda la deuda previa (D-168.2): con "a nombre del vendedor", el
+    pedido nombra a uno de los vendedores, o puede omitirlo si hay uno solo; con la deuda en la
+    unidad no hay deudor. Devuelve el deudor, o `None` si la deuda queda en la unidad."""
+    if deuda_previa != "a_nombre_del_vendedor":
+        if vendedor_deudor is not None:
+            raise CambioInvalido("vendedor_deudor")
+        return None
+    if vendedor_deudor is None:
+        if len(vendedores) != 1:
+            raise CambioInvalido("vendedor_deudor")
+        return vendedores[0]
+    if vendedor_deudor not in vendedores:
+        raise CambioInvalido("vendedor_deudor")
+    return vendedor_deudor

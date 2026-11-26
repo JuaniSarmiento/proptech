@@ -4,8 +4,8 @@ Los dos casos de uso autorizan solos, en el orden de D7: el edificio que no exis
 la unidad que no es de él, da 404; sin `registrar_cambio_de_titular` (que también cubre leer), 403;
 la entrada que no sirve, 422. `NoEncontrado` y `EntradaInvalida` los traduce el manejador de
 `complejos`.
-En H-030 sólo se aceptan las dos opciones de R32 en su valor por defecto; las otras las habilitan
-H-031 y H-032.
+De las dos opciones de R32, la deuda previa a nombre del vendedor (H-031) ya se acepta; el prorrateo
+de la expensa del mes lo habilita H-032.
 """
 
 from __future__ import annotations
@@ -67,9 +67,11 @@ class CuerpoCambioDeTitular(CuerpoDeAlta):
     fecha: str
     vendedores: list[Annotated[UUID, Field(strict=False)]]
     compradores: list[CuerpoComprador]
-    #: H-031 y H-032 habilitan los otros valores.
+    #: H-032 habilita el prorrateo.
     expensa_del_mes: Literal["entera"] = "entera"
-    deuda_previa: Literal["en_la_unidad"] = "en_la_unidad"
+    deuda_previa: Literal["en_la_unidad", "a_nombre_del_vendedor"] = "en_la_unidad"
+    #: Con la deuda a nombre del vendedor: cuál de los vendedores (puede omitirse con uno solo).
+    vendedor_deudor: Annotated[UUID, Field(strict=False)] | None = None
 
 
 def _como_json(cambio: CambioDeTitular, *, con_aviso: bool) -> dict[str, Any]:
@@ -89,6 +91,11 @@ def _como_json(cambio: CambioDeTitular, *, con_aviso: bool) -> dict[str, Any]:
     }
     if con_aviso:
         respuesta["aviso"] = None if cambio.aviso is None else {"deuda": cambio.aviso.a_texto()}
+    if cambio.trasladado is not None:
+        respuesta["trasladado"] = cambio.trasladado.a_texto()
+        respuesta["cuenta_del_vendedor"] = (
+            None if cambio.cuenta_del_vendedor is None else str(cambio.cuenta_del_vendedor)
+        )
     return respuesta
 
 
@@ -113,6 +120,7 @@ def registrar(
         compradores=[CompradorPedido(c.nombre, c.email) for c in cuerpo.compradores],
         expensa_del_mes=cuerpo.expensa_del_mes,
         deuda_previa=cuerpo.deuda_previa,
+        vendedor_deudor=cuerpo.vendedor_deudor,
         hoy=fecha_de_hoy,
         request_id=UUID(request_id_actual.get() or ""),
     )

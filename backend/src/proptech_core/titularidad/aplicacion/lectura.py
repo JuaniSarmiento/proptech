@@ -34,6 +34,10 @@ class CambioDeTitular:
     registrado_en: datetime
     #: Sólo en la respuesta del registro: la deuda de la unidad en ese momento, si había.
     aviso: Dinero | None = None
+    #: Sólo en la respuesta de un registro con la deuda a nombre del vendedor (H-031): lo trasladado
+    #: y la cuenta de persona que lo recibió (`None` si no había deuda previa que trasladar).
+    trasladado: Dinero | None = None
+    cuenta_del_vendedor: UUID | None = None
 
 
 def listar_cambios(
