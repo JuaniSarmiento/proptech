@@ -582,7 +582,8 @@ acotado al vocabulario en `0026`, cambio 3c, D3, D-128)
 
 ### Existe hoy, dominio `gastos`
 
-Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026): migraciones `0029` (`proveedor`,
+Las cuatro tablas del cambio 6 `gastos-y-cargos` (29/10/2026) y `factura_de_gasto` (cambio 14, H-036,
+`0054`): migraciones `0029` (`proveedor`,
 `gasto`), `0030` (los diez eventos de auditoría del dominio), `0031` (`complejo.cuit`, tarea 3.10),
 `0032` (`nota_de_credito`, `cargo_particular`) y `0033` (`categoria_de_gasto.obligatorio_mensual`,
 D7/D-141). RLS forzada en las cuatro, dueño `proptech_migrador` (D9 del design: ninguna es de sólo
@@ -617,8 +618,36 @@ agregar mientras no está aprobada).
 - **Constraints**: `uq_gasto_factura` sobre la clave completa de factura, por edificio (R12; los
   `NULL` de un gasto sin factura no chocan entre sí, D5 del design). Editar importe/categoría/grupo/
   período/tipo/datos de factura de un gasto `aprobado` se rechaza.
-- **No construido en este cambio**: lectura de QR ni IA (cambio 14); control de monto atípico R23
-  (cambio 7).
+- **Cambio 14, H-036 (migración `0054`, D-169)**: `concepto`, `categoria_id`, `grupo_id`, `periodo`,
+  `periodo_de_imputacion` e `importe` pasan a ser **anulables** (un borrador leído de un QR no trae lo que
+  el QR no dice; uno sin QR no trae nada); las restricciones de arriba valen sólo con datos presentes y
+  `ck_gasto_aprobado_completo` exige los seis en un gasto `aprobado`. Columnas nuevas: `fecha_de_factura`
+  · fecha; `origen` · `manual` (los del 6, default) / `qr` / `sin_qr`; `motivo_sin_qr` · `no_hay_qr`,
+  `dominio_ajeno`, `version_desconocida`, `json_invalido`, `importe_invalido` o `datos_invalidos`
+  (`ck_gasto_origen`: un `sin_qr` siempre lleva su motivo, los demás nunca, y uno `qr` siempre su fecha).
+- **Cambio 14, H-037 (migración `0055`, D-169)**: columna `lectura_ia` · `JSONB` anulable (`NULL` hasta que corre
+  la tarea del worker): `motivo` (`ia_no_configurada`, `ia_fallo`, `fuera_de_contrato`, `importe_atipico` o
+  `null`), `detalle` (`descartados` y, en `importe_atipico`, `promedio`, `muestras` e `importe`) y `campos`
+  (los que completó la IA). `estado` pasa a poblarse: `sin_ia` y `en_revision` (R23).
+
+#### `llamada_de_ia` · existe (migración `0055`, R12, H-037, D-169)
+
+- **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `gasto_id`; `clave` (la de la tarea);
+  `modelo`; `tokens_entrada`/`tokens_salida` · enteros >= 0; `costo_usd` · `NUMERIC(12,6)` >= 0 (en la API,
+  texto); `resultado` · `ok`/`fallida`; `creada_en`.
+- **Relaciones**: FK compuesta al gasto de su edificio. Una fila por cada llamada al lector, buena o no; sin
+  lector configurado no hay llamada ni fila.
+- **Constraints**: de sólo agregar (tres triggers, D-115) y RLS forzada por administración.
+
+#### `factura_de_gasto` · existe (migración `0054`, R12, H-036, D-169)
+
+- **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `gasto_id`; `contenido` · `BYTEA` (los
+  bytes tal como se subieron); `sha256`; `tipo` · `jpeg`/`png`/`pdf`; `tamano` (1 a 10 MiB); `subido_por`;
+  `subido_en`.
+- **Relaciones**: una por gasto (`uq_factura_gasto`), FK compuesto contra el edificio y la persona.
+- **Constraints**: de sólo agregar (tres triggers, D-115) y RLS forzada por administración, igual que
+  `comprobante_de_pago`. Sin `GET` autenticado: se baja sólo con el enlace firmado de tipo `factura`.
+  Los gastos cargados a mano del 6 no tienen fila acá.
 
 #### `nota_de_credito` · existe (migración `0032`, R22, D-061, D-082)
 
@@ -888,6 +917,50 @@ eventos, `informado`; `reimputado` sigue `confirmado`).
 - **Bajada**: la `0044` baja devolviendo antes las seis tablas al migrador (`devolver_tablas_protegidas`) y
   se niega si alguna tiene filas. La función del trigger del número nombra las tablas con `public.`: corre
   con el `search_path` de la sesión de la app, que no lo incluye.
+
+### Existe hoy, dominio `titularidad` (cambio 4d, migración `0050`, H-030)
+
+Dos tablas de sólo agregar (tres triggers cada una, RLS forzada por administración, a cargo del rol de
+arranque con `roles despues`); la acción `registrar_cambio_de_titular` entra al vocabulario de auditoría.
+
+- **`cambio_de_titular`**: `id`, `administracion_id`, `complejo_id`, `unidad_id` (FK compuesta a `unidad`
+  del mismo edificio), `fecha`, `expensa_del_mes` (`entera` o `prorrateo`), `deuda_previa` (`en_la_unidad`
+  o `a_nombre_del_vendedor`; H-030 sólo escribe los primeros de cada par), `registrado_por` y
+  `registrado_en`. La `0051` (H-031) suma `vendedor_deudor_id` (FK compuesta a `persona`, nulo si la deuda
+  quedó en la unidad): a nombre de cuál vendedor quedó la deuda previa.
+- **`parte_de_cambio_de_titular`**: una fila por persona de cada lado (`cambio_id`, `persona_id`, `rol`
+  `vendedor` o `comprador`, `orden`); del comprador guarda también el `nombre` y el `email` informados. Única
+por cambio y persona (la misma persona no está dos veces ni de los dos lados).
+- **Bajada**: la `0050` se niega si alguna tabla tiene filas.
+
+#### El prorrateo de la expensa del mes (migración `0052`, H-032)
+
+Dos tablas más de sólo agregar (mismas protecciones), sin tocar ninguna tabla protegida existente:
+**`prorrateo_de_cambio`** (`cambio_id` único, `unidad_id`, `periodo` primer día del mes, `dias_del_vendedor`,
+`dias_del_mes`; **única por unidad y período**, `uq_prorrateo_unidad_periodo`; FK compuestas al cambio y a la
+unidad del mismo edificio) y **`prorrateo_aplicado`** (`prorrateo_id` único, `parte_del_vendedor`
+`NUMERIC(14,2)` no negativo: lo que se trasladó). Como la tabla no admite `UPDATE`, un prorrateo está
+pendiente mientras no tenga fila en `prorrateo_aplicado`. El vendedor que recibe la parte es
+`cambio_de_titular.vendedor_deudor_id` (que desde H-032 también se llena con la deuda en la unidad cuando hay
+prorrateo). La `0052` se niega a bajar si hay prorrateos.
+
+#### La cobranza de la cuenta del vendedor (migración `0053`, H-033)
+
+Sin tablas nuevas: el cobro es un `pago` del libro sobre la cuenta de persona (`movimiento` e `imputacion`
+sobre las obligaciones contenedoras), con la imputación de R04. La `0053` sólo suma el nombre
+`registrar_cobro_de_vendedor` a `accion_de_auditoria`. Su bajada borra la fila de vocabulario y la FK de
+`auditoria` la frena si ya se usó (como `0048` y `0049`).
+
+#### El traslado de la deuda previa (migración `0051`, H-031)
+
+`traslado` (sembrado desde la `0023`) toma su forma real en `movimiento` (`ck_mov_traslado`): siempre sobre
+una obligación y un componente; el crédito de la cuenta de la unidad se imputa entero a ese destino y el
+débito de la cuenta de persona del vendedor se enlaza (`enlazado_a`, de otra cuenta, E14) al crédito. La
+cuenta de persona recibe una `obligacion` "contenedora" por cada obligación trasladada (mismo período y
+vencimiento, `operacion_id` derivado del cambio y capital en cero): por eso `ck_obligacion_importes` admite
+capital cero (columna `de_traslado`, sólo si no viene de una emisión); su deuda son los débitos `traslado`. Esas cuentas
+no tienen unidad, así que `registrar_emision` no les calcula interés y la morosidad (por unidad) no las lee.
+La `0051` se niega a bajar si hay movimientos `traslado` o un `vendedor_deudor_id`.
 
 ### Planificado, dominio `pagos`
 

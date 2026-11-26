@@ -3,7 +3,7 @@
  * tarea 4.2), agrupadas como pide la enmienda del 20/10/2026: "El edificio"
  * (Resumen, Unidades, Grupos), "Liquidación" (Liquidaciones, H-017: sólo con
  * `ver_liquidaciones`; Pagos y Mis pagos, H-025: sólo con `confirmar_pago_informado` o
- * `informar_pago`; Morosidad, H-029: sólo con `ver_morosidad`) y "Configuración" (Categorías, Intereses y
+ * `informar_pago`; Morosidad, H-029, y Cuentas de vendedores, H-034: sólo con `ver_morosidad`) y "Configuración" (Categorías, Intereses y
  * vencimiento). "Confirmar sin saldos previos" NO va acá (D11): se llega
  * desde el resumen, nunca desde el menú.
  *
@@ -19,6 +19,35 @@ import type { SeccionDelEdificio } from "../../../componentes/MenuDelEdificio";
 
 export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
   return [
+    // H-040: quien informa pagos en el edificio (la vecina) ve también las tres pantallas del portal,
+    // que no son del edificio: salen de acá a `/inicio`, `/mis-liquidaciones` y `/comprobantes`.
+    {
+      clave: "inicio",
+      etiqueta: "Inicio",
+      href: "/inicio",
+      grupo: "Mi cuenta",
+      icono: "inicio",
+      accion: "informar_pago",
+      complejoId: id,
+    },
+    {
+      clave: "mis-liquidaciones",
+      etiqueta: "Mis liquidaciones",
+      href: "/mis-liquidaciones",
+      grupo: "Mi cuenta",
+      icono: "mis_liquidaciones",
+      accion: "informar_pago",
+      complejoId: id,
+    },
+    {
+      clave: "comprobantes",
+      etiqueta: "Comprobantes",
+      href: "/comprobantes",
+      grupo: "Mi cuenta",
+      icono: "comprobantes",
+      accion: "informar_pago",
+      complejoId: id,
+    },
     {
       clave: "resumen",
       etiqueta: "Resumen",
@@ -79,6 +108,15 @@ export function seccionesDelEdificio(id: string): SeccionDelEdificio[] {
       href: `/edificios/${id}/morosidad`,
       grupo: "Liquidación",
       icono: "morosidad",
+      accion: "ver_morosidad",
+      complejoId: id,
+    },
+    {
+      clave: "cuentas-de-vendedores",
+      etiqueta: "Cuentas de vendedores",
+      href: `/edificios/${id}/cuentas-de-vendedores`,
+      grupo: "Liquidación",
+      icono: "cuentas_de_vendedores",
       accion: "ver_morosidad",
       complejoId: id,
     },

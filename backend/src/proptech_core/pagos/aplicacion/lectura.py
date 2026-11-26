@@ -16,6 +16,9 @@ from sqlalchemy.orm import Session
 from proptech_core.compartido.dinero import Dinero, sumar
 from proptech_core.complejos.aplicacion.lectura import identificadores_de_unidades
 from proptech_core.cuenta_corriente.aplicacion.ubicacion_de_pago import unidades_vigentes
+from proptech_core.cuenta_corriente.aplicacion.vision_del_vecino import (
+    importe_imputado_sin_extraordinaria,
+)
 from proptech_core.pagos.dominio.estado import estado_del_pago
 
 _CON_MOTIVO = frozenset({"rechazado", "revertido"})
@@ -191,3 +194,59 @@ def pagos_sin_confirmar(sesion: Session, *, complejo_id: UUID) -> tuple[int, Din
         {"c": complejo_id},
     ).all()
     return len(montos), sumar(Dinero(str(m.monto)) for m in montos)
+
+
+def pagos_confirmados_de_unidad(
+    sesion: Session, *, unidad_id: UUID, sin_extraordinaria: bool
+) -> list[dict[str, str]]:
+    """Los pagos confirmados con una parte en la unidad, del más nuevo al más viejo por fecha de
+    transferencia (H-038, N03: nunca los informados, rechazados o revertidos; el estado sale de los
+    eventos). `importe` es la parte de la unidad. Con `sin_extraordinaria` (el inquilino, D-170.2)
+    es sólo lo imputado a interés, ordinaria y fondo, y un pago que fue entero a la extraordinaria
+    no figura."""
+    filas = sesion.execute(
+        text(
+            "SELECT p.id, p.banco, p.numero_de_operacion, p.fecha_de_transferencia, "
+            "x.importe::text AS importe FROM parte_de_pago x JOIN pago_informado p "
+            "ON p.id = x.pago_id WHERE x.unidad_id = :u "
+            "ORDER BY p.fecha_de_transferencia DESC, p.informado_en DESC, p.id"
+        ),
+        {"u": unidad_id},
+    ).all()
+    if not filas:
+        return []
+    ids = [UUID(str(f.id)) for f in filas]
+    eventos = _eventos(sesion, ids)
+    movimientos: dict[UUID, set[UUID]] = defaultdict(set)
+    if sin_extraordinaria:
+        for fila in sesion.execute(
+            text(
+                "SELECT pago_id, movimiento_id FROM movimiento_de_pago "
+                "WHERE pago_id = ANY(CAST(:ids AS uuid[])) AND papel = 'pago'"
+            ),
+            {"ids": [str(i) for i in ids]},
+        ):
+            movimientos[UUID(str(fila.pago_id))].add(UUID(str(fila.movimiento_id)))
+    resultado = []
+    for fila in filas:
+        pago = UUID(str(fila.id))
+        if estado_del_pago([tipo for tipo, _ in eventos.get(pago, [])]) != "confirmado":
+            continue
+        importe = fila.importe
+        if sin_extraordinaria:
+            imputado = importe_imputado_sin_extraordinaria(
+                sesion, unidad_id=unidad_id, movimiento_ids=frozenset(movimientos[pago])
+            )
+            if imputado <= Dinero("0.00"):
+                continue
+            importe = imputado.a_texto()
+        resultado.append(
+            {
+                "pago_id": str(pago),
+                "fecha_de_transferencia": fila.fecha_de_transferencia.isoformat(),
+                "importe": importe,
+                "banco": fila.banco,
+                "numero_de_operacion": fila.numero_de_operacion,
+            }
+        )
+    return resultado

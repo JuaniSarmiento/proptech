@@ -539,6 +539,94 @@ async def generar_pdf_de_expensa(
     )
 
 
+# --- 14, H-037: la IA completa la factura (R12, R23, D-169) ---
+#
+# La lectura de una factura subida: llama al lector de IA (el puerto `LectorDeFacturaConIa`, que el
+# worker arma al arrancar con OpenRouter, o `None` sin configurar) y deja el resultado en el gasto y
+# su costo en `llamada_de_ia`, todo en una transacción a través de `ejecutar_con_corte`. Una falla
+# del lector no se reintenta a ciegas (cobraría de nuevo): deja el gasto `sin_ia` y la persona lo
+# completa. La `clave` lleva el origen del encolado (`lectura:<gasto>:<origen>`).
+
+NOMBRE_TAREA_DE_LA_LECTURA = "leer_factura_con_ia"
+
+#: Cota propia de la lectura: la llamada a OpenRouter tiene su propio plazo (30 s) y la transacción
+#: espera abierta mientras tanto, así que la cota la deja respirar. Menor que el `timeout` de la
+#: tarea (90 s en `AjustesDelWorker`).
+COTA_LEER_FACTURA_S = 60.0
+
+
+class _ArgumentosLeerFactura(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    administracion_id: UUID
+    gasto_id: UUID
+
+    _ids_desde_texto = field_validator("gasto_id", mode="before")(_uuid_desde_texto)
+
+
+def _leer_en_un_hilo(
+    fabrica: Any,
+    lector: Any,
+    *,
+    administracion_id: UUID,
+    gasto_id: UUID,
+    clave: str,
+    request_id: str,
+) -> bool:
+    from proptech_core.gastos.aplicacion.lectura_de_factura import leer_la_factura
+
+    return ejecutar_con_corte(
+        fabrica,
+        administracion_id=administracion_id,
+        cota_s=COTA_LEER_FACTURA_S,
+        clave=clave,
+        tarea=NOMBRE_TAREA_DE_LA_LECTURA,
+        request_id=request_id,
+        efecto=lambda sesion: leer_la_factura(
+            sesion,
+            administracion_id=administracion_id,
+            gasto_id=gasto_id,
+            clave=clave,
+            lector=lector,
+        ),
+    )
+
+
+@con_seguimiento_de_tarea
+@con_administracion_de_tarea
+@reintentable
+async def leer_factura_con_ia(
+    ctx: dict[str, Any],
+    *,
+    request_id: str,
+    clave: str,
+    administracion_id: UUID,
+    gasto_id: Any,
+    **datos: Any,
+) -> bool:
+    """`leer_factura_con_ia(administracion_id, gasto_id)`: completa el borrador de una factura con
+    la IA (`ctx["lector_de_facturas"]`, o `None` si no hay IA configurada). Devuelve `False` si esa
+    `clave` ya estaba hecha. Un corte de la base es pasajero y se reintenta; una falla de la IA deja
+    el gasto `sin_ia` con su motivo."""
+    try:
+        argumentos = _ArgumentosLeerFactura(administracion_id=administracion_id, gasto_id=gasto_id)
+    except ValidationError as error:
+        campo = error.errors()[0]["loc"][0]
+        raise ArgumentoDeTareaInvalido(f"leer_factura_con_ia: {campo}") from None
+    return await asyncio.wait_for(
+        asyncio.to_thread(
+            _leer_en_un_hilo,
+            ctx["fabrica_de_sesiones"],
+            ctx.get("lector_de_facturas"),
+            administracion_id=argumentos.administracion_id,
+            gasto_id=argumentos.gasto_id,
+            clave=clave,
+            request_id=request_id,
+        ),
+        timeout=COTA_LEER_FACTURA_S + MARGEN_DE_ESPERA_S,
+    )
+
+
 def _pendientes_de_todas_las_administraciones(fabrica: Any) -> dict[UUID, list[UUID]]:
     from proptech_core.compartido.base_de_datos import abrir_sesion_del_barrido_de_documentos
     from proptech_core.liquidacion.aplicacion.documentos import pendientes_del_barrido

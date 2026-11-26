@@ -34,10 +34,19 @@ _CONTROLES = {
 }
 
 
+#: El cambio de dueño de una unidad (4d, R32, D-168) y el módulo de su nombre: la palabra nombra una
+#: operación del dominio, no el perfil viejo. Se la quita antes de buscar el perfil anterior.
+_CAMBIO_DE_TITULAR = re.compile(
+    r"cambios?[ _-]?de[ _-]?" + _ANTERIORES[0] + r"(?:es)?|" + _ANTERIORES[0] + "idad", re.I
+)
+
+
 def _justificada(ruta: str, linea: str) -> bool:
     if ruta in _HISTORIA:
         return True  # Conversión y vuelta atrás sobre 0016, deliberadamente.
     texto = linea.strip()
+    if not _PATRON.search(_CAMBIO_DE_TITULAR.sub("", texto)):
+        return True
     if any(palabra in texto.lower() for palabra in _ANTERIORES):
         return (
             ruta == "backend/tests/unitarios/acceso/test_permisos.py"

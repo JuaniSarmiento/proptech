@@ -173,6 +173,21 @@ TABLAS_DE_SOLO_AGREGAR: Mapping[str, TablaProtegida] = MappingProxyType(
                 "cbu_de_unidad",
             )
         },
+        # 14, H-036 (`0054`): la factura subida, tal como llegó (nunca se reescribe).
+        "factura_de_gasto": _con_tres_triggers("factura_de_gasto"),
+        # 14, H-037 (`0055`): una fila por cada llamada al lector de IA, con su costo.
+        "llamada_de_ia": _con_tres_triggers("llamada_de_ia"),
+        # 4d, H-030 (`0050`): el cambio de titular de una unidad y las personas de cada lado; H-032
+        # (`0052`): su prorrateo y lo que ya movió en el libro.
+        **{
+            tabla: _con_tres_triggers(tabla)
+            for tabla in (
+                "cambio_de_titular",
+                "parte_de_cambio_de_titular",
+                "prorrateo_de_cambio",
+                "prorrateo_aplicado",
+            )
+        },
         "configuracion_versionada": TablaProtegida(
             "configuracion_versionada no admite",
             frozenset(

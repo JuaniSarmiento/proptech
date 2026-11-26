@@ -5,6 +5,7 @@ import {
   dinero,
   fecha,
   fechaYHora,
+  mesYAnio,
   montoArgentinoParaApi,
   periodoEnPalabras,
   porcentaje,
@@ -149,5 +150,16 @@ describe("montoArgentinoParaApi", () => {
     ]) {
       expect(montoArgentinoParaApi(texto)).toBe(texto);
     }
+  });
+});
+
+describe("mesYAnio", () => {
+  it("corta el período sin pasar por Date", () => {
+    expect(mesYAnio("2025-08-01")).toBe("08/2025");
+    expect(mesYAnio("2026-11")).toBe("11/2026");
+  });
+
+  it("lo que no es un período vuelve tal cual", () => {
+    expect(mesYAnio("agosto")).toBe("agosto");
   });
 });

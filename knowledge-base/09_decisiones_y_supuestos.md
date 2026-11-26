@@ -3477,3 +3477,96 @@ registrado como tal en su momento.)*
   día (la lista es de quien debe); (4) dar el Excel al consejo y al auxiliar (exporta quien administra la
   cobranza).
 - **Quién**: Juani, 24/11/2026.
+
+## D-168 · Delegación de esta noche, P51, P52 y el diseño del 4d `cambio-de-titular` (25/11/2026)
+
+- **Contexto**: Juani autorizó por escrito, en la sesión del 25/11/2026, que el orquestador firme los
+  changes CRITICAL y HIGH (lo que D-094 y D-111 reservan a Juani, Alberto o Emiliano), acuerde las
+  historias, apruebe sus criterios y decida las preguntas abiertas que las traben, dejando anotado qué
+  decidió; que pueda haber más de dos historias en Lista; y que las historias queden en **Lista** con su
+  demo hecha: **Terminada la sigue marcando Juani**. El 4d estaba bloqueado por P51 y P52.
+- **Decisión**:
+  1. **P51**: el 4d se construye **entero** (registro, las dos opciones de R32 y el aviso).
+  2. **P52 · deuda a nombre del vendedor**: (a) **no genera interés nuevo** después del traslado: viaja con
+     el capital y el interés ya registrados y queda congelada (`registrar_emision` sigue calculando sólo
+     sobre cuentas de unidad, como hoy); (b) el vendedor **no aparece en la morosidad** del edificio, que
+     es por unidad (D-167): su deuda se ve en la cuenta del vendedor; (c) **paga a través del
+     administrador**, que registra el cobro contra la cuenta de persona (el vendedor ya no es vecino y no
+     entra al portal).
+  3. **Registro**: tabla nueva de sólo agregar `cambio_de_titular` (unidad, fecha del cambio, vendedores,
+     compradores, las dos elecciones, quién y cuándo), auditada. Al registrarlo se reemplazan las
+     asignaciones de propietario de la unidad (los vendedores dejan de ser propietarios; los compradores
+     pasan a serlo sin invitación, como el importador). Los inquilinos no se tocan.
+  4. **Deuda previa**: todo lo impago (capital e interés registrado) de las obligaciones con período
+     anterior al mes del cambio. Con "a nombre del vendedor" se traslada a la cuenta de persona del
+     **primer vendedor** (la cuenta de persona es única por persona y edificio, P52 del 4b) con movimientos
+     `traslado` enlazados, como la reimputación; la unidad queda en cero por ese concepto. Con más de un
+     vendedor, el administrador elige a nombre de cuál queda.
+  5. **Prorrateo por días**: aplica sólo a la obligación del mes del cambio. El vendedor responde por los
+     días anteriores a la fecha del cambio; el comprador, desde ese día inclusive. Cada componente
+     (ordinaria, fondo de reserva, extraordinaria) se parte en dos con redondeo medio hacia arriba para el
+     vendedor y el resto para la unidad, de modo que la suma da exacta. Si el período ya está emitido al
+     registrar el cambio, la parte del vendedor se traslada en el momento; si no, se traslada en la misma
+     transacción que emite ese período.
+  6. **Aviso**: si la unidad tiene deuda al registrar el cambio, la respuesta y la pantalla lo dicen con el
+     monto; nunca bloquea.
+  7. **Permiso**: `registrar_cambio_de_titular` para super admin y administrador; registrar el cobro de la
+     cuenta del vendedor, quien hoy confirma pagos.
+- **Descartado**: que la deuda del vendedor siga devengando interés (obliga a emitir sobre cuentas sin
+  unidad y a sumarlas a la morosidad: mucho riesgo para un caso raro; se puede reabrir con una decisión
+  nueva); bloquear el prorrateo hasta que se emita el período (obliga al administrador a volver después);
+  partir la obligación dentro de `registrar_emision` (toca el núcleo de la emisión más de lo necesario).
+- **Supuesto**: SU-02 sigue sin verificar con abogado (el comprador hereda la deuda por defecto).
+- **Quién**: el orquestador, por delegación escrita de Juani del 25/11/2026. Juani la revisa en la demo.
+
+## D-169 · El 14 `lectura-de-facturas`: alcance, proveedor y lectura del QR (26/11/2026)
+
+- **Contexto**: el 14 figuraba bloqueado por P12, P21 y la elección del proveedor de IA. P12 frena el deploy y no
+  la construcción (D-163); P21 quedó resuelta en D-109 (gasto atípico: más del doble o menos de la mitad del
+  historial del proveedor); el proveedor del 8 es OpenRouter detrás de un puerto (D-164). Las pantallas de gastos
+  son del 6c (Juan Cruz) y no existen todavía.
+- **Decisión**: (1) el 14 es **sólo backend y API**, como el 6 (D-140); la pantalla de subir la factura entra con el
+  6c. (2) Dos historias: **H-036** sube una factura (imagen o PDF), lee el QR de ARCA (dominios `arca.gob.ar` y
+  `afip.gob.ar`, versión 1) y deja el gasto en borrador con esos datos, con el duplicado, el receptor y el link
+  firmado del 6 y el 7; **H-037** la IA completa concepto, período, categoría y grupo **sólo como propuesta**, con el
+  costo de cada llamada registrado y el control de monto atípico de R23, y el gasto queda `sin_ia` o `en_revision`
+  (D-075), nunca aprobado sin confirmación. (3) El QR se decodifica con `zxing-cpp` (wheel sin dependencias del
+  sistema, Apache 2.0) y un PDF se rasteriza con `pypdfium2` (Apache 2.0/BSD): sin licencias ni costo de uso (D-043).
+  (4) La IA reusa el puerto y el adaptador de OpenRouter del 8; lo que devuelve se valida contra el vocabulario del
+  edificio y nunca se ejecuta como instrucción.
+- **Descartado**: `pyzbar` (necesita `libzbar` en la imagen); leer el QR con la IA (no es confiable y cuesta por uso);
+  construir una pantalla propia antes del 6c (la pisaría).
+- **Quién**: el orquestador, por la delegación escrita de Juani del 25/11/2026 (D-168). Riesgo **HIGH**: facturas con
+  CUIT y montos que salen a un servicio externo de IA.
+
+## D-170 · El 11 `portal-del-vecino`: lo que ve cada vínculo, la comparación y la distribución (26/11/2026)
+
+- **Contexto**: el portal tiene que mostrar deuda, expensa y comprobantes de todas las unidades de una persona según su
+  vínculo (D-106). Quedaban abiertos D3 del 6, el detalle del inquilino, qué es "el mes anterior", la distribución al
+  abrir (D-074), el crédito retenido y el alcance de la app instalable.
+- **Decisión**: (1) el vecino ve su cargo particular de sólo lectura, acotado a su unidad (cierra D3 del 6). (2) El
+  inquilino ve lo mismo que la variante `sin_extraordinaria` del PDF del 7, en deuda, desglose y comprobantes; nunca
+  montos extraordinarios. (3) "El mes anterior" es la liquidación emitida inmediatamente anterior del mismo edificio,
+  rotulada con su período; sin anterior, no hay comparación. (4) La primera lectura de una liquidación emitida por un
+  vecino llama al puerto de distribución del 7 una sola vez (D-074). (5) Crédito aplicable y retenido en dos cifras
+  separadas; el retenido nunca descuenta la deuda. (6) App instalable con manifest e íconos y un service worker mínimo
+  que no guarda respuestas autenticadas ni montos; sin modo sin conexión. (7) Tres historias en serie: H-038 lecturas,
+  H-039 la expensa explicada, H-040 pantallas y app instalable.
+- **Supuesto a confirmar con Juani**: que el fondo de reserva y los intereses que muestra la variante `sin_extraordinaria`
+  le corresponden al inquilino (la práctica varía; hoy el PDF del 7 ya lo hace así).
+- **Quién**: el orquestador, por la delegación escrita de Juani (D-168). Riesgo **HIGH**: datos de plata de personas
+  detrás de su vínculo; no escribe en el libro salvo la distribución ya construida en el 7.
+
+## D-171 · P14, P20 y P32 resueltas: plazo del libre deuda, quién condona y pagos confirmados después (26/11/2026)
+
+- **Contexto**: las tres bloqueaban el 10b `condonacion-judicial-y-libre-deuda`.
+- **Decisión** (Juani, en la sesión, sobre la recomendación del orquestador):
+  1. **P14**: el plazo para entregar el libre deuda es de **5 días hábiles**, configurable por edificio. El sistema genera
+     el certificado al instante; el plazo sólo alimenta un aviso al administrador si un pedido lleva más sin entregar.
+  2. **P20**: condonan intereses el **super admin y el administrador principal**, con el motivo registrado y visible para
+     el consejo; **sin aprobación adicional del consejo en el MVP** (el umbral queda para después).
+  3. **P32**: para el saldo a la fecha de corte del libre deuda, un pago confirmado cuenta **por la fecha de la
+     transferencia** (la misma regla de D-166); un pago informado y sin confirmar se lista aparte, sin descontar (R21).
+- **Supuesto**: no se verificó una norma de Mendoza sobre el plazo del libre deuda; confirmar con un administrador o un
+  abogado antes del piloto.
+- **Quién**: Juani, 26/11/2026.

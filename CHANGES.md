@@ -46,7 +46,7 @@ gates están en el árbol de abajo.
    ✅ 4a cimientos: reparto al centavo, umbral de $500 (26/10/2026)
    ✅ 4b libro de movimientos (deudas y pagos) (27/10/2026)
    ✅ 4c intereses, saldo inicial y moroso (archivado 11/11/2026, D-152 a D-154, PR #20)
-   ⏳ 4d cambio de titular (va después del 7)
+   🔶 4d cambio de titular (construido 26/11/2026, D-168: H-030 a H-035 en Lista, esperan la aceptación de Juani)
 
 5. CARGAR Y LIQUIDAR
    ✅ 5 importar desde Excel (archivado 12/11/2026, D-155/D-156, PR #21)       ✅ 6 gastos y cargos (Emiliano, PR #4, 30/10/2026)
@@ -58,8 +58,8 @@ gates están en el árbol de abajo.
    ⏳ 9 extracto bancario · 6b motor de reglas
    ✅ 10a morosidad (archivado 24/11/2026, D-167, PR #28)
    ⏳ 10b condonación y libre deuda
-   ⏳ 11 portal del vecino · 12 vista del consejo · 13 avisos por email
-   ⏳ 14 lectura de facturas
+   🔶 11 portal del vecino (construido 26/11/2026, D-170: H-038 a H-040 en Lista) · ⏳ 12 vista del consejo · 13 avisos por email
+   🔶 14 lectura de facturas (construido 26/11/2026, D-169: H-036 y H-037 en Lista; sólo backend, la pantalla con el 6c)
 
 7. PILOTO
    ⏳ 15 un edificio real en paralelo  ← el final; bloqueado también por el contenido legal de
@@ -600,7 +600,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-07d] `cambio-de-titular` · 4d
-- **Estado**: `[ ]` pendiente (CRITICAL; puede ir después del 7, no bloquea M1)
+- **Estado**: `[~]` construido, H-030 a H-035 en Lista (CRITICAL, D-168, 26/11/2026; migraciones `0050` a `0053`, rama
+  `change/cambio-de-titular`); se archiva cuando Juani las pase a Terminada
 - **Scope**: R32 y D-109.2: registro del cambio de titular, las dos opciones configurables, traspaso a
   la cuenta de persona y aviso sin bloqueo. `cuenta` ya nace polimórfica en el 4b, así que esperar no
   cuesta una migración
@@ -764,7 +765,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ---
 
 ### [C-16] `portal-del-vecino` · 11
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` construido, H-038 a H-040 en Lista (HIGH, D-170, 26/11/2026; sin migraciones, rama
+  `change/portal-del-vecino` sobre el 14); se archiva cuando Juani las pase a Terminada
 - **Scope**: todas las unidades de la persona juntas, deuda y vencimiento, expensa por ordinaria y
   extraordinaria para propietarios y sólo ordinaria para inquilinos, comparación contra el mes
   anterior, descarga de PDFs según vínculo, app instalable (D-106)
@@ -807,7 +809,8 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)          │ 
 ## FASE 5 — M3 Piloto
 
 ### [C-19] `lectura-de-facturas` · 14
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` construido, H-036 y H-037 en Lista (HIGH, D-169, 26/11/2026; migraciones `0054` y `0055`, rama
+  `change/lectura-de-facturas` sobre el 4d); se archiva cuando Juani las pase a Terminada
 - **Scope**: lectura del QR de ARCA, IA completa concepto/período/categoría/grupo, factura
   duplicada frenada, control de monto atípico (propuesta)
 - **Dependencias**: C-09, C-10

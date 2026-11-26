@@ -349,6 +349,39 @@ unidades que están en juicio, para que el sistema las trate como corresponde.
 
 **Reglas relacionadas**: R29, R31 (ambas propuestas).
 
+### HU-A12 · Cambiar el titular de una unidad (cambio 4d, D-168)
+
+Como administrador, quiero registrar que una unidad cambió de dueño y elegir qué pasa con la expensa del
+mes y con la deuda de los meses anteriores, para que el padrón y la cuenta corriente sigan al día sin
+perder lo que el vendedor debe (R32).
+
+**Criterios de aceptación**:
+- Dado el padrón, cuando tengo `registrar_cambio_de_titular`, entonces cada unidad ofrece "Cambiar titular"
+  y "Ver historial"; sin el permiso no aparecen.
+- Dado el formulario, cuando marco a los vendedores entre los propietarios actuales, cargo a uno o más
+  compradores, elijo la expensa del mes (entera o prorrateo por días) y la deuda previa (queda en la unidad o
+  a nombre del vendedor, con el vendedor elegido si hay más de uno), entonces cada opción dice qué pasa y al
+  registrar veo el aviso de deuda, lo trasladado al vendedor y el prorrateo (pendiente o aplicado con su
+  parte); el padrón ya muestra a los compradores.
+- Dada la unidad, entonces su historial lista los cambios, el más nuevo primero.
+- Dado un 422 de la API, entonces se muestra en su campo con el mensaje de la pantalla (la API sólo dice
+  "valor inválido") y no se pierde lo cargado.
+
+**Construido** (H-030 a H-033 el backend, H-034 las pantallas): `/edificios/{id}/unidades/{unidadId}/cambio-de-titular`
+(formulario, resultado e historial en la misma pantalla, ancla `#historial`; lee `/api/personal` para los
+propietarios, así que hoy la usa quien puede listar el personal). La pantalla manda el cuerpo de H-030 a
+H-032 y no calcula nada.
+
+**Cuentas de vendedores** (D-168.2c): `/edificios/{id}/cuentas-de-vendedores`, la sección del grupo
+"Liquidación" del menú, que ve quien tiene `ver_morosidad` en el edificio (el consejo, el contador y el
+auxiliar la leen), lista a cada vendedor con su deuda y sus unidades en el orden de la API (también las
+cuentas en cero). `/edificios/{id}/cuentas-de-vendedores/{cuentaId}` muestra la deuda de la API (nunca la
+suma de los períodos), la deuda por período y componente y los movimientos. "Registrar cobro" (importe con
+coma decimal y fecha de la transferencia, con un diálogo de confirmación) sólo existe con
+`confirmar_pago_informado`; después del cobro se ve lo que devuelve la API.
+
+**Reglas relacionadas**: R32.
+
 ---
 
 ## Épica: Vecino
@@ -365,19 +398,24 @@ con Google, para ver lo de mis unidades (D-107, D-108).
 **Construido por el 2b `login-y-usuarios`** (archivado 22/10/2026): el ingreso, el selector de
 administración y la invitación. El estado de una cuenta de Clerk sin persona vinculada en ninguna
 administración lo construye el **2d `sesion-sin-persona`** (archivado 28/10/2026, D-131). Ver "lo de
-mis unidades" (el portal propiamente dicho) **lo construye el cambio 11**: hoy, al entrar, el vecino
-sólo ve el estado vacío del portal.
+mis unidades" (el portal propiamente dicho) **lo construye el cambio 11**: las lecturas, H-038 y H-039; las
+pantallas (`/inicio`, `/mis-liquidaciones`, `/comprobantes`), el menú del vecino y la app instalable,
+**H-040** (construida el 26/11/2026, a la espera de la demo).
 
 **Criterios de aceptación**:
 - Dado un vecino de alta desde el padrón, con vínculo e invitación por mail para una o varias
   unidades, cuando entra, entonces ve todas las suyas juntas (por ejemplo, su departamento y su
-  cochera), también en edificios distintos, y nunca unidades ajenas (R10, D-029, D-106). **Pendiente
-  de 11**: hoy no hay nada que mostrar todavía.
+  cochera), también en edificios distintos, y nunca unidades ajenas (R10, D-029, D-106). Construido
+  en H-040: `/inicio` lista cada unidad con su total, su vencimiento y sus créditos (aplicable y
+  retenido, por separado), más el total del conjunto que da la API; la pantalla no suma ni redondea.
 - Dado un vecino invitado, cuando acepta la invitación con contraseña, con el link del mail o con
   Google (el email verificado de Google tiene que coincidir con el invitado), entonces queda
   vinculado a esa persona y entra; con otro Gmail no entra (construido, 2b).
 - Dado un vecino con iPhone, cuando entra por primera vez, entonces el portal le ofrece instalarlo
-  en la pantalla de inicio. **Pendiente de 11**.
+  en la pantalla de inicio. Construido en H-040: en iPhone, la primera vez, un aviso en `/inicio`
+  explica "Compartir" y "Agregar a inicio" y se puede cerrar (no vuelve); el sitio es **instalable**
+  (`manifest.webmanifest` con íconos, un service worker mínimo que no guarda nada de `/api` ni páginas
+  con datos del vecino, sin modo sin conexión, D-170.6).
 - Dado una cuenta de Clerk autenticada sin ninguna persona vinculada (o vinculada sin ninguna
   asignación en ninguna administración), cuando entra, entonces ve la pantalla propia `/sin-acceso`
   con su email y las opciones "Cerrar sesión" y "Volver a intentar", nunca un error del navegador ni
@@ -430,6 +468,10 @@ Como vecino, quiero ver cuánto debo y cuándo vence.
   vencimiento, la deuda anterior y el crédito a favor si lo hay, y los números coinciden con los del
   administrador.
 
+**Construida (backend) en H-038** (`GET /api/mis-unidades`): total a pagar sin descontar el crédito, vencimiento,
+deuda anterior, intereses y crédito aplicable y retenido por unidad, y el conjunto; el inquilino ve la deuda sin lo
+extraordinario (D-170.2).
+
 **Reglas relacionadas**: R05, R06.
 
 ### HU-V3 · Entender mi expensa
@@ -443,6 +485,12 @@ Como vecino, quiero entender en qué se gastó la plata y por qué cambió mi ex
   subtotal y porcentaje, mi parte de cada grupo de reparto, fondo de reserva e intereses (R16).
 - Dadas dos liquidaciones seguidas, entonces veo cuánto cambió mi expensa y qué conceptos explican
   la diferencia.
+
+**Construida (backend) en H-039** (`GET /api/mis-unidades/{u}/liquidaciones` y `.../liquidaciones/{id}`): la lista
+de las emitidas y no anuladas del edificio con el total de mi unidad, y el detalle con los gastos por categoría, mi
+parte por grupo, fondo, intereses, total y la comparación con la emitida anterior (diferencia del total y por
+categoría). El inquilino no recibe nada extraordinario (D-170.2). La primera lectura del detalle de una emitida la
+distribuye con origen `portal` (D-074), una sola vez. Las pantallas son de H-040.
 
 **Reglas relacionadas**: R16.
 
@@ -478,6 +526,10 @@ Como vecino, quiero descargar el PDF de mis expensas y el detalle de mis pagos c
 - Dado un período todavía no emitido, entonces no aparece para descargar.
 - Dado que pido el detalle de pagos, entonces veo sólo los confirmados de mis unidades, nunca los de
   otra unidad ni los que siguen informados o fueron rechazados (R10, R11).
+
+**Construida (backend) en H-038** (`/api/mis-unidades/{unidad_id}/documentos` y `/pagos`): el PDF de la variante del
+vínculo con enlace firmado al listar, sólo de liquidaciones emitidas y no anuladas, y los pagos confirmados con su
+parte por unidad; el inquilino ve de cada pago sólo lo imputado a lo no extraordinario.
 
 **Reglas relacionadas**: R10, R11.
 

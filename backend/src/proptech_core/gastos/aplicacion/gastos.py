@@ -60,6 +60,7 @@ def _primer_periodo_no_emitido(
 
 
 _CONFLICTOS = {"uq_gasto_factura": "factura"}
+_DATOS_PARA_APROBAR = ("concepto", "categoria_id", "grupo_id", "periodo", "importe")
 _ESTADOS_EDITABLES = ("borrador", "sin_ia", "en_revision")
 _CAMPOS_BLOQUEADOS_SI_APROBADO = (
     "concepto",
@@ -72,6 +73,12 @@ _CAMPOS_BLOQUEADOS_SI_APROBADO = (
     *CAMPOS_DE_FACTURA,
     "documento_receptor",
 )
+
+
+def _importe_o_nada(valor: Any) -> Dinero | None:
+    """El importe de la fila, o `None` en un borrador leído de una factura que no lo trae
+    (H-036)."""
+    return None if valor is None else Dinero(str(valor))
 
 
 def _aviso_de_receptor_distinto(
@@ -113,7 +120,7 @@ _COLUMNAS_GASTO = (
     "id, complejo_id, proveedor_id, categoria_id, grupo_id, concepto, "
     "periodo, periodo_de_imputacion, tipo, importe::text AS importe, estado, "
     "cuit_emisor, punto_de_venta, tipo_de_comprobante, numero_de_comprobante, "
-    "documento_receptor"
+    "documento_receptor, fecha_de_factura, origen, motivo_sin_qr"
 )
 
 
@@ -232,7 +239,7 @@ def editar_gasto(
             "proveedor_id": fila["proveedor_id"],
             "periodo": fila["periodo"],
             "tipo": fila["tipo"],
-            "importe": Dinero(str(fila["importe"])),
+            "importe": _importe_o_nada(fila["importe"]),
             "cuit_emisor": fila["cuit_emisor"],
             "punto_de_venta": fila["punto_de_venta"],
             "tipo_de_comprobante": fila["tipo_de_comprobante"],
@@ -245,7 +252,10 @@ def editar_gasto(
         except ValidationError as error:
             raise error_de_validacion(error) from None
         _validar_pertenencia(sesion, entrada, fila["complejo_id"])
-        cambia_importe = entrada.importe.a_texto() != Dinero(str(fila["importe"])).a_texto()
+        importe_anterior = _importe_o_nada(fila["importe"])
+        cambia_importe = importe_anterior is None or (
+            entrada.importe.a_texto() != importe_anterior.a_texto()
+        )
         quita_factura = any(getattr(entrada, campo) is None for campo in CAMPOS_DE_FACTURA) and all(
             fila[campo] is not None for campo in CAMPOS_DE_FACTURA
         )
@@ -303,7 +313,7 @@ def editar_gasto(
             "periodo": fila["periodo"],
             "periodo_de_imputacion": fila["periodo_de_imputacion"],
             "tipo": fila["tipo"],
-            "importe": Dinero(str(fila["importe"])).a_texto(),
+            "importe": None if importe_anterior is None else importe_anterior.a_texto(),
             "cuit_emisor": fila["cuit_emisor"],
             "punto_de_venta": fila["punto_de_venta"],
             "tipo_de_comprobante": fila["tipo_de_comprobante"],
@@ -360,7 +370,10 @@ def aprobar_gasto(
             raise NoEncontrado()
         fila = (
             sesion.execute(
-                text("SELECT complejo_id, periodo, estado FROM gasto WHERE id=:id FOR UPDATE"),
+                text(
+                    "SELECT complejo_id, periodo, estado, concepto, categoria_id, grupo_id, "
+                    "importe FROM gasto WHERE id=:id FOR UPDATE"
+                ),
                 {"id": gasto_id},
             )
             .mappings()
@@ -373,6 +386,11 @@ def aprobar_gasto(
             #: ni se vuelve a mover `periodo_de_imputacion` (D8: se fija UNA
             #: sola vez, al aprobar).
             return
+        #: H-036: el borrador que salió de una factura (con o sin QR) no trae concepto, categoría,
+        #: grupo, período ni, a veces, importe: no se aprueba hasta completarlos.
+        faltan = [c for c in _DATOS_PARA_APROBAR if fila[c] is None]
+        if faltan:
+            raise EntradaInvalida("gasto", f"faltan datos para aprobar: {', '.join(faltan)}")
         #: D8: se fija acá, la única vez — nunca se recalcula después.
         periodo_de_imputacion = _primer_periodo_no_emitido(
             sesion, fila["complejo_id"], fila["periodo"], es_periodo_emitido

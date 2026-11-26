@@ -217,8 +217,25 @@ mercado de arranque es **Mendoza**.
   Excel con montos numéricos, con `exportar_morosidad` (super admin, administrador y contador). H-029: la pantalla
   desde el menú y el botón de exportar. Migraciones `0048` y `0049`. PR #28 con el CI verde. Deuda en la ficha 10a de
   `knowledge-base/12_fichas_de_changes.md`.
-- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico; el 9 `extracto-bancario` y el 4d
-  `cambio-de-titular` ya pueden ir; los de deuda adelantada en paralelo.
+- **Cambio 4d `cambio-de-titular` construido** (26/11/2026, CRITICAL, D-168, firmado por el orquestador por delegación
+  escrita de Juani): seis historias en **Lista**, a la espera de la aceptación de Juani. H-030: registrar el cambio
+  (`0050`). H-031: la deuda previa a nombre del vendedor, sin interés nuevo (`0051`). H-032: el prorrateo por días de
+  la expensa del mes, al registrar o al emitir (`0052`). H-033: la cuenta del vendedor y su cobro (`0053`). H-034: las
+  pantallas. H-035: los propietarios y los nombres por ruta propia (la demo de H-034 mostró que `/api/personal` no
+  trae vecinos al administrador principal, L-107). Deuda en la ficha 4 y en `HISTORIAS.md`, incluido el padrón que no
+  muestra vecinos al administrador principal.
+- **Cambio 14 `lectura-de-facturas` construido** (26/11/2026, HIGH, D-169, firmado por delegación): sólo backend y API
+  (la pantalla entra con el 6c). H-036: subir una factura, leer el QR de ARCA (`zxing-cpp`, `pypdfium2`) y dejar el gasto
+  en borrador con link firmado (`0054`). H-037: la IA (OpenRouter, D-164) propone concepto, período, categoría y grupo
+  desde el worker, con su costo en `llamada_de_ia` y el control de monto atípico de R23 (`0055`). Las dos en **Lista**.
+  La llamada real a OpenRouter nunca se probó. Deuda en la ficha 14 y en `HISTORIAS.md`.
+- **Cambio 11 `portal-del-vecino` construido** (26/11/2026, HIGH, D-170, firmado por delegación): H-038 las lecturas del
+  vecino por vínculo (`GET /api/mis-unidades` y por unidad pagos, documentos y cargos), H-039 la expensa explicada con la
+  comparación y la distribución al abrir (D-074), H-040 las pantallas `/inicio`, `/mis-liquidaciones`, `/comprobantes` y la
+  app instalable sin caché de datos. Las tres en **Lista**. Deuda en la ficha 11 y en `HISTORIAS.md` (el pago reimputado
+  que sigue en la unidad original, el iPhone real sin probar).
+- **Próximo**: el **10b** `condonacion-judicial-y-libre-deuda` en el camino crítico (P14, P20 y P32 resueltas en D-171);
+  el 12 `vista-del-consejo` (espera P41); el 9 `extracto-bancario` con un importador genérico de columnas.
   Antes de cada cambio, orquestador y constructor leen `knowledge-base/15_lecciones.md`.
 - Preguntas abiertas (la lista P, completa en `knowledge-base/10_preguntas_abiertas.md`): el edificio piloto (P1), el precio (P8), los
   extractos de Mendoza (P9), el modo de redondeo (P10), el cambio de titular (P11), la inscripción

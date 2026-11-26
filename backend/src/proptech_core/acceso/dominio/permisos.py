@@ -90,6 +90,10 @@ class Accion(StrEnum):
     #: morosidad (10a, H-028, E8, migración `0049`): bajar la morosidad en `.xlsx`. Quien administra
     #: o lleva la contabilidad; el auxiliar y el consejo ven pero no exportan. No se audita.
     EXPORTAR_MOROSIDAD = "exportar_morosidad"
+    #: cambio-de-titular (4d, H-030, D-168, migración `0050`): registrar que una unidad cambió de
+    #: dueño. Quien administra; el administrador por edificio también. Es a la vez el permiso y el
+    #: evento de auditoría (D-096). Leer los cambios usa el mismo permiso.
+    REGISTRAR_CAMBIO_DE_TITULAR = "registrar_cambio_de_titular"
 
 
 @dataclass(frozen=True)
@@ -172,6 +176,7 @@ _MATRIZ: dict[Accion, frozenset[tuple[Perfil, Alcance]]] = {
     Accion.VER_LIQUIDACIONES: frozenset({_SA, _AP, _AE, _CP, _CE, _CO}),
     Accion.VER_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE, _AX, _CO}),
     Accion.EXPORTAR_MOROSIDAD: frozenset({_SA, _AP, _AE, _CP, _CE}),
+    Accion.REGISTRAR_CAMBIO_DE_TITULAR: frozenset({_SA, _AP, _AE}),
 }
 
 

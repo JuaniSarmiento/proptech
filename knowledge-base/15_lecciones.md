@@ -1529,3 +1529,48 @@ Formato: **L-NNN · regla** · origen (cambio y vuelta) · qué pasó · a quié
   fallaron una vez cada uno `test_tenant_que_no_es_uuid_levanta_antes_de_ejecutar_sql` (contraseña de `proptech_app`
   rechazada: los roles son del cluster y otro worker los recrea) y `test_el_mismo_archivo_de_saldos_dos_veces_es_conflicto`;
   quedan como deuda del C-25/C-28 en la ficha 10a.
+
+## L-105 · Una deuda que cambia de cuenta es un par enlazado, y su fecha decide si el interés la sigue
+
+- **Origen**: H-031 del 4d (`cambio-de-titular`, `0051`), 25/11/2026.
+- **Qué pasó**: el vocabulario de la `0023` ya tenía `traslado` en los dos sentidos, pero el esquema no alcanzaba:
+  la cuenta de persona del vendedor no tiene obligaciones y `ck_mov_debito_destino` exige que todo débito caiga en
+  una obligación y un componente de su propia cuenta, mientras `ck_obligacion_importes` exigía capital positivo.
+  Se resolvió con una obligación "contenedora" sin capital (marcada con `de_traslado`; un `CHECK` que admitiera capital cero para cualquier obligación sin emisión rompía
+  el test del esquema y debilitaba al saldo inicial) y un débito
+  `traslado` por componente enlazado al crédito de la unidad. Y para que la deuda trasladada no genere interés, el
+  crédito de la unidad se fecha al **vencimiento** de la obligación: `_base_del_dia` baja la base de capital desde el
+  día siguiente a la `fecha_valor` de cada imputación, así que fechar el crédito en la fecha del cambio habría
+  seguido cobrando los días del mes del cambio.
+- **Regla**: antes de prometer un movimiento entre cuentas, probar un INSERT con su forma real contra los `CHECK`
+  de las dos cuentas (L-096), no sólo contra el vocabulario; lo que se traslada se imputa entero a su destino
+  (nunca por R04, o el próximo pago de la unidad se lo come); y la `fecha_valor` de un crédito que congela interés
+  es la que corta la base, no la del hecho que lo motivó. Un test del traslado toma el candado de las dos cuentas
+  en una sola llamada (espía sobre `bloquear_cuentas`) y se prueba haciendo fallar el último paso.
+
+## L-106 · Una aceptación escrita sin código sólo prueba su primera aserción (4d, 25/11/2026)
+
+- **Qué pasó**: en H-031 y H-033 la aceptación nació "fallando por aserción" y aun así traía aserciones imposibles
+  más abajo: pedía la cuenta de una unidad que el mundo del test nunca sembraba (`IndexError`) y comparaba una lista
+  con un dict porque el helper `ok()` hacía `dict(r.json())`. Hubo que recongelar dos veces; las frenó el
+  constructor con evidencia, sin tocar la aceptación.
+- **Por qué**: sin la ruta, todo test cae en el primer `assert status == 201`; nada de lo que viene después se
+  ejecuta antes de congelar.
+- **Cómo se aplica**: al escribir la aceptación, correr con el comportamiento por defecto (o con una ruta vieja
+  que ya responde) los helpers de siembra y de lectura que usan las aserciones posteriores, y que cada helper
+  devuelva el tipo real de la respuesta (lista o dict) sin convertirlo.
+
+## L-107 · Una API falsa que no imita los filtros de la real aprueba pantallas que no funcionan (4d, 26/11/2026)
+
+- **Qué pasó**: la pantalla del cambio de titular (H-034) leía los propietarios de `/api/personal`. La API falsa de e2e
+  devolvía ahí a todas las personas, vecinos incluidos, y los 15 e2e pasaron; la real, para el administrador
+  principal, filtra a quienes están por debajo de él (D13 del 2d) y nunca trae vecinos. En la demo con Chrome contra
+  la API real, "Cambiar titular" decía "Sin propietarios cargados". Hizo falta una historia nueva (H-035) con una ruta
+  propia de propietarios.
+- **Por qué**: la falsa se escribió desde el contrato de la ruta nueva y no desde lo que esa ruta responde a cada
+  perfil. Un e2e sólo prueba la pantalla contra lo que la falsa promete: si la falsa es más generosa que la real, el
+  e2e certifica una pantalla que la real no puede alimentar.
+- **Cómo se aplica**: al escribir la falsa, para cada ruta que la pantalla lee, anotar qué filtros, permisos y recortes
+  tiene la real según el perfil de la identidad del test (leer el caso de uso, no el contrato de la pantalla) y que la
+  falsa los repita; y que una ruta que la pantalla usa como fuente de datos de otro dominio (como `/api/personal` para
+  propietarios) se cuestione. La demo contra la API real sigue siendo el control final (L-082).

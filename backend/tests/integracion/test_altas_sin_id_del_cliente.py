@@ -89,6 +89,10 @@ _RUTAS_SIN_CUERPO: set[tuple[str, str]] = {
     # cuerpo; el pago sale de la ruta.
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
+    # Cambio 14 `lectura-de-facturas` (H-036): la factura es multipart (el gasto y sus ids los
+    # genera el servidor) y el enlace nuevo no lleva cuerpo; el gasto sale de la ruta.
+    ("/api/complejos/{complejo_id}/facturas", "POST"),
+    ("/api/gastos/{gasto_id}/factura/enlace", "POST"),
 }
 
 #: Cuerpo válido por ruta `POST` de dominio (D7, nota N8): una ruta nueva
@@ -211,6 +215,20 @@ _CUERPOS_DE_PRUEBA: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, A
         "componente": "ordinaria",
         "motivo": "Prueba ficticia del barrido de altas",
     },
+    # Cambio 4d (H-030): el cambio de titular no lleva ningún id propio; `id` es 422.
+    (
+        "/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular",
+        "POST",
+    ): lambda mundo: {
+        "fecha": "2026-11-10",
+        "vendedores": [str(uuid.uuid4())],
+        "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
+    },
+    # Cambio 4d (H-033): el cobro de la cuenta del vendedor lleva sólo importe y fecha; `id` es 422.
+    (
+        "/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros",
+        "POST",
+    ): lambda mundo: {"importe": "10.00", "fecha": "2026-11-10"},
     # Cambio 7 (H-013): emitir lleva el `emision_id` del cliente (idempotencia) y la huella
     # revisada; cualquier otro campo, `id` incluido, es 422.
     (
@@ -386,6 +404,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "destinatario": destinatario_id,
         "liquidacion_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }

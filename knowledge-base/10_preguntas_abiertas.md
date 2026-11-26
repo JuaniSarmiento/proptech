@@ -99,7 +99,7 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
   interés no es moroso crítico (etiqueta propia "deuda de intereses", aviso más suave); un saldo por
   debajo del umbral de R30 tampoco cuenta como vencido. En los dos casos la deuda sigue figurando en
   la cuenta y en el libre deuda.
-- [ ] **P32 · Libre deuda y pagos confirmados después**: si el saldo a la fecha de corte se calcula por
+- [x] **P32 · Libre deuda y pagos confirmados después** (resuelta en D-171: por la fecha de la transferencia): si el saldo a la fecha de corte se calcula por
   fecha de la transferencia o por fecha de registro. Antes del cambio 10b.
 - [x] **P33 · Cómo se fija el vencimiento de cada liquidación** (y el día límite de R37): un día fijo del
   edificio o cargado al emitir. Antes del cambio 3. Resuelta en D-100 (16/10/2026).
@@ -151,11 +151,11 @@ Se resuelven en este orden. Cada respuesta se convierte en una decisión nueva e
 - [ ] **P50 · Borrar el usuario de Clerk cuando se le quita la última asignación**: hoy sólo se corta el
   acceso (la próxima vez que pida algo da 401); el usuario sigue existiendo en el panel de Clerk. Surge
   del design del 2b. Antes del 15 o de una decisión de Juani.
-- [ ] **P51 · El cambio de titular, entero o después** (P-1 de la exploración del 4, H-01): ¿se
+- [x] **P51 · El cambio de titular, entero o después** (resuelta en D-168: entero) (P-1 de la exploración del 4, H-01): ¿se
   construye entero (registro, las dos opciones y el aviso) en un sub-change propio después de la
   liquidación (4d), o sólo queda lista la cuenta de persona y el cambio de titular espera? Bloquea el
   4d, no el 4a a 4c.
-- [ ] **P52 · La deuda que queda a nombre del vendedor** (P-2, H-02): si queda a su nombre, ¿sigue
+- [x] **P52 · La deuda que queda a nombre del vendedor** (resuelta en D-168: sin interés nuevo, fuera de la morosidad, paga por el administrador) (P-2, H-02): si queda a su nombre, ¿sigue
   sumando intereses? ¿Puede aparecer como moroso? ¿Cómo paga, si ya no tiene la unidad en el sistema?
   Bloquea el 4d. El 4b (E1, AR-6) construyó la cuenta personal única por **administración y edificio**
   (`uq_cuenta_persona`), distinto del explore; modificar ese único después de roles requiere préstamo
@@ -363,6 +363,8 @@ alguna no la sabés, ponelo así: también es una respuesta.
 
 #### P14 · El plazo para entregar el libre deuda
 
+**Resuelta en D-171 (26/11/2026)**: 5 días hábiles, configurable por edificio.
+
 - **Contexto**: ya está definido quién firma el certificado y qué incluye. Falta en cuántos días hay
   que entregarlo.
 - **Opciones**: lo que diga la normativa o la práctica en Mendoza.
@@ -386,6 +388,8 @@ alguna no la sabés, ponelo así: también es una respuesta.
 - **Cuándo**: antes del cambio 3.
 
 #### P20 · Quién aprueba una condonación de intereses
+
+**Resuelta en D-171 (26/11/2026)**: super admin y administrador principal, sin aprobación del consejo en el MVP.
 
 - **Contexto**: cuando un vecino discute un recargo y se lo perdonan.
 - **Opciones**: super admin o administrador principal, con registro; o aprobación adicional del
@@ -452,7 +456,7 @@ alguna no la sabés, ponelo así: también es una respuesta.
 | P22 · Editor de reglas | ☐ Dos niveles ☐ Otra | |
 | P42 · Charla con administrador o contador | ☐ Te presento a ☐ No | |
 | P9 · Extractos de muestra | ☐ Te los paso ☐ No | |
-| P14 · Plazo del libre deuda | Días: | |
+| P14 · Plazo del libre deuda | Días: 5 hábiles (D-171) | |
 | P15 · Ingresos mayores que gastos | ☐ Crédito ☐ Fondo ☐ Otra | |
 | P16 · Unidades del consorcio | ☐ Se reparte ☐ Gasto | |
 | P20 · Aprobación adicional de condonación | ☐ Sin aprobación adicional ☐ Consejo por umbral | |

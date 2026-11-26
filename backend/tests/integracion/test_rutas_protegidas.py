@@ -65,6 +65,9 @@ _RUTAS_PUBLICAS = {
     # 8, H-024 (E11): el comprobante de un pago, con el mismo diseño: el token firmado (tipo
     # `comprobante`, 15 minutos) es la autorización. Lo prueba la aceptación de H-024.
     ("/api/comprobantes/descarga", "GET"),
+    # 14, H-036 (D-070): la factura de un gasto, con el mismo diseño: el token firmado (tipo
+    # `factura`, 15 minutos) es la autorización. Lo prueba la aceptación de H-036.
+    ("/api/facturas/descarga", "GET"),
 }
 _RUTAS_DOCUMENTACION = {
     ("/docs", "GET"),
@@ -82,8 +85,10 @@ _RUTAS_CON_TOKEN = {("/api/sesion", "GET"), ("/api/invitaciones/aceptar", "POST"
 #: D1 (tarea 2.5): datos públicos del país, nunca del edificio ni del rol —
 #: cualquier identidad autenticada, aunque no tenga ninguna fila en
 #: `asignacion_rol`, tiene que poder leerlas (200), a diferencia del resto
-#: de `_RUTAS_CUBIERTAS`.
+#: de `_RUTAS_CUBIERTAS`. H-038: `mis-unidades` también, porque su alcance son las
+#: asignaciones `vecino` de la propia persona: sin ninguna, 200 con la lista vacía.
 _RUTAS_SIN_ALCANCE = {
+    ("/api/mis-unidades", "GET"),
     ("/api/georef/provincias", "GET"),
     ("/api/georef/provincias/{provincia_id}/departamentos", "GET"),
     ("/api/georef/departamentos/{departamento_id}/localidades", "GET"),
@@ -97,6 +102,15 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/importaciones/aceptacion-de-diferencias", "POST"),
     ("/api/complejos/{complejo_id}/importaciones/confirmacion", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/ajustes-de-saldo-inicial", "POST"),
+    # --- Cambio 4d `cambio-de-titular` (H-030) ---
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "POST"),
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "GET"),
+    # --- Cambio 4d `cambio-de-titular` (H-035) ---
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/propietarios", "GET"),
+    # --- Cambio 4d `cambio-de-titular` (H-033) ---
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores", "GET"),
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}", "GET"),
+    ("/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}/cobros", "POST"),
     ("/api/unidades/{unidad_id}/vecinos", "POST"),
     ("/api/personal/invitaciones", "POST"),
     ("/api/personal", "GET"),
@@ -172,12 +186,23 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reversion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/reimputacion", "POST"),
     ("/api/complejos/{complejo_id}/pagos/{pago_id}/comprobante/enlace", "POST"),
+    # --- Cambio 14 `lectura-de-facturas` (H-036) ---
+    ("/api/complejos/{complejo_id}/facturas", "POST"),
+    ("/api/gastos/{gasto_id}/factura/enlace", "POST"),
+    # H-037: de dónde sale cada dato del borrador y cómo terminó la lectura.
+    ("/api/gastos/{gasto_id}/lectura", "GET"),
     # --- Cambio 8 `pagos-informados` (H-025) ---
     ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
     # --- Cambio 10a `morosidad` (H-027) ---
     ("/api/complejos/{complejo_id}/morosidad", "GET"),
     # --- Cambio 10a `morosidad` (H-028) ---
     ("/api/complejos/{complejo_id}/morosidad/excel", "GET"),
+    # --- Cambio 11 `portal-del-vecino` (H-038): por unidad, 404 sin vínculo vecino ---
+    ("/api/mis-unidades/{unidad_id}/pagos", "GET"),
+    ("/api/mis-unidades/{unidad_id}/documentos", "GET"),
+    ("/api/mis-unidades/{unidad_id}/liquidaciones", "GET"),
+    ("/api/mis-unidades/{unidad_id}/liquidaciones/{liquidacion_id}", "GET"),
+    ("/api/mis-unidades/{unidad_id}/cargos-particulares/{cargo_id}", "GET"),
 }
 
 
@@ -337,6 +362,7 @@ def mundo(contenedor: PostgresContainer, esquema: None) -> dict[str, Any]:
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
 
@@ -519,6 +545,11 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
     if ruta.endswith("/enlace"):
         # Cambio 7 (H-015): un cuerpo válido, para que ningún 422 tape al 404 o al 403.
         return cliente.post(ruta_resuelta, json={"variante": "completa"})
+    if ruta.endswith("/facturas"):
+        # Cambio 14 (H-036): multipart; el 404 y el 403 van antes de leer el archivo.
+        return cliente.post(
+            ruta_resuelta, files={"archivo": ("f.png", b"contenido-de-prueba", "image/png")}
+        )
     if ruta.endswith("/pagos/lectura"):
         # Cambio 8 (H-018): multipart; el 404 y el 403 van antes de leer el archivo.
         return cliente.post(
@@ -563,6 +594,17 @@ def _pedido(cliente: TestClient, ruta: str, metodo: str, mundo: dict[str, Any]) 
                 "importe": "10.00",
                 "componente": "ordinaria",
                 "motivo": "Prueba del candado",
+            },
+        )
+    if ruta.endswith("/cobros"):
+        return cliente.post(ruta_resuelta, json={"importe": "10.00", "fecha": "2026-11-10"})
+    if ruta.endswith("/cambios-de-titular") and metodo == "POST":
+        return cliente.post(
+            ruta_resuelta,
+            json={
+                "fecha": "2026-11-10",
+                "vendedores": [str(uuid.uuid4())],
+                "compradores": [{"nombre": "Comprador Ficticio", "email": None}],
             },
         )
     if ruta.endswith("/ajustes-de-saldo-inicial"):
@@ -825,6 +867,7 @@ def test_excepciones_con_token_exactas(app_real: FastAPI) -> None:
         ("/api/salud", "GET"),
         ("/api/documentos/descarga", "GET"),
         ("/api/comprobantes/descarga", "GET"),
+        ("/api/facturas/descarga", "GET"),
     }
 
 
@@ -895,6 +938,7 @@ def test_barrido_403_con_alcance_y_sin_permiso(api_edificio: Any) -> None:
         "liquidacion_id": uuid.uuid4(),
         "documento_id": uuid.uuid4(),
         "pago_id": uuid.uuid4(),
+        "cuenta_id": uuid.uuid4(),
         "periodo": "2026-10-01",
     }
     cubiertas = []
