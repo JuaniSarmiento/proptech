@@ -772,6 +772,22 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   ella; separarlos toca la emisión; (3) lo que se aplica al emitir no deja una acción de auditoría propia:
   queda la de la emisión y el cambio registrado; (4) un prorrateo cuyo período se emitió sin obligación para
   la unidad queda "aplicado" con `"0.00"`. Siguen H-033 (la cuenta del vendedor) y H-034 (las pantallas).
+- **4d · H-033 construida** (la cuenta del vendedor): tres rutas nuevas en `proptech_api/titularidad.py`,
+  `GET` y `GET /{cuenta_id}` de `/complejos/{c}/cuentas-de-vendedores` (permiso `ver_morosidad`) y `POST
+  .../{cuenta_id}/cobros` (`confirmar_pago_informado`), con el orden 404 edificio, 403, 404 cuenta, 422. La
+  lectura vive en `cuenta_corriente/aplicacion/cuentas_de_persona.py` (las cuentas con `persona_id` del
+  edificio, con su foto del libro) y el armado por período y componente en `cuenta_corriente/dominio/vista_de_cuenta.py`
+  (puro: `debe` es lo debido, `cobrado` lo imputado, `pendiente` el residual, juntando las contenedoras del
+  mismo período); `titularidad/aplicacion/cuenta_del_vendedor.py` autoriza, arma persona, deuda y unidades de
+  origen (de `cambio_de_titular.vendedor_deudor_id`) y registra el cobro. El cobro es `registrar_pago` del
+  libro (el mismo camino de confirmar un pago informado, R04 a la fecha de la transferencia, con su candado)
+  más la auditoría `registrar_cobro_de_vendedor` (entidad `cuenta`, detalle cuenta, importe y fecha), en una
+  transacción; el tope contra la deuda se lee con el candado tomado (`titularidad/dominio/cobro.py`, puro).
+  Migración `0053` (sólo el vocabulario de auditoría, como `0048` y `0049`); el evento es de `EventoDelPago`.
+  No toca cuentas de unidad, la bandeja de pagos informados ni la morosidad. Sin idempotencia: dos pedidos
+  iguales son dos cobros. **Deuda de H-033**: (1) las unidades de origen salen de `vendedor_deudor_id`, así
+  que un cambio con prorrateo todavía pendiente ya la lista aunque no haya trasladado nada; (2) el detalle
+  lee la foto de la cuenta entera (todos sus movimientos), sin paginar. Sigue H-034 (las pantallas).
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la

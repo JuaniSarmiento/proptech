@@ -1121,7 +1121,18 @@ número no se marcan duplicadas entre sí.
 > **Estado** (cambio 4d `cambio-de-titular`): H-030 construye el registro con las dos decisiones en su
 > default (expensa del mes entera, deuda previa en la unidad), el reemplazo de los propietarios, la
 > auditoría y el aviso de deuda. **H-031 construye la deuda previa a nombre del vendedor** y **H-032 el
-> prorrateo por días de la expensa del mes** (los dos abajo).
+> prorrateo por días de la expensa del mes** (los dos abajo). **H-033 construye la cuenta del vendedor**:
+> verla y cobrarle (`cuentas-de-vendedores`, abajo).
+
+- **La cuenta del vendedor** (H-033, D-168.2c): `GET /api/complejos/{c}/cuentas-de-vendedores` lista las
+  cuentas de persona del edificio (persona, deuda, unidades de origen), también las que quedaron en cero, la
+  de más deuda primero; `GET .../{cuenta_id}` da el estado por período y componente (`debe`, `cobrado`,
+  `pendiente`) y los movimientos en el orden del libro; `POST .../{cuenta_id}/cobros` con `importe` (texto,
+  más de cero, a lo sumo dos decimales) y `fecha` (la de la transferencia, no futura) registra un `pago` del
+  libro imputado con R04 a esa fecha. **Un cobro mayor que la deuda da 422**: el vendedor no tiene expensas
+  futuras donde aplicar un crédito a favor, así que no hay crédito a favor; uno igual la deja en cero. Cada
+  cobro deja `registrar_cobro_de_vendedor`. El cobro no toca cuentas de unidad, la bandeja de pagos
+  informados ni la morosidad, y emitir el período siguiente no le suma interés (D-168.2a).
 
 - **Prorrateo por días** (H-032, D-168.5): con `expensa_del_mes: "prorrateo"`, el vendedor responde por los
   días del mes **anteriores** a la fecha del cambio (vendió el 11 de noviembre: 10 de 30; el día del cambio es

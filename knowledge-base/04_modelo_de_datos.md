@@ -915,6 +915,13 @@ pendiente mientras no tenga fila en `prorrateo_aplicado`. El vendedor que recibe
 `cambio_de_titular.vendedor_deudor_id` (que desde H-032 también se llena con la deuda en la unidad cuando hay
 prorrateo). La `0052` se niega a bajar si hay prorrateos.
 
+#### La cobranza de la cuenta del vendedor (migración `0053`, H-033)
+
+Sin tablas nuevas: el cobro es un `pago` del libro sobre la cuenta de persona (`movimiento` e `imputacion`
+sobre las obligaciones contenedoras), con la imputación de R04. La `0053` sólo suma el nombre
+`registrar_cobro_de_vendedor` a `accion_de_auditoria`. Su bajada borra la fila de vocabulario y la FK de
+`auditoria` la frena si ya se usó (como `0048` y `0049`).
+
 #### El traslado de la deuda previa (migración `0051`, H-031)
 
 `traslado` (sembrado desde la `0023`) toma su forma real en `movimiento` (`ck_mov_traslado`): siempre sobre

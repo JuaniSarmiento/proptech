@@ -111,6 +111,14 @@ consejo y vecinos no (403). Un edificio fuera del alcance o una unidad que no es
 `registrar_cambio_de_titular` con la unidad, la fecha y las dos elecciones, sin nombres ni emails. Leer los
 cambios de una unidad usa el mismo permiso.
 
+**La cuenta del vendedor** (4d, H-033, D-168.2c): ver la lista y el detalle de las cuentas de persona del
+edificio usa `ver_morosidad` (super admin, administradores, contador, auxiliar y consejo en su alcance; los
+vecinos no) y cobrarle al vendedor, `confirmar_pago_informado` (sólo super admin y administrador): el contador,
+el auxiliar y el consejo leen y reciben 403 al cobrar. Mismo orden: 404 fuera del alcance, 403 sin el permiso,
+404 si la cuenta no es de persona de ese edificio, 422 en el cuerpo. Cada cobro deja la acción de auditoría
+`registrar_cobro_de_vendedor` (migración `0053`; es un evento, no un permiso) con entidad `cuenta` y, en el
+detalle, la cuenta, el importe y la fecha. Leer no se audita.
+
 **Emitir y leer lo emitido** (7, H-013): emitir una liquidación es `emitir_y_distribuir_liquidacion`
 (super admin, administrador principal y administrador del edificio); si al emitir se acepta un bloqueante,
 además hace falta `aceptar_alertas_bloqueantes` (sólo super admin y administrador principal: el
