@@ -2256,6 +2256,13 @@ Sólo backend y API (la pantalla entra con el 6c). Rama `change/lectura-de-factu
 - **N03**: un archivo que no es imagen ni PDF, o más grande que el límite de los comprobantes del 8, da 422.
 - **N04**: sin el permiso, 403; edificio de otra administración, 404; nunca se escribe en el libro.
 - **K01**: R12 con el QR construido y la ficha 14 con H-036.
+- Aceptación: `aceptacion/H-036/`, 78 casos vistos fallar por aserción (0 errores), congelada en `6392f13` bajo D-169.
+  Contrato: 201 con el gasto del 6 más `fecha_de_factura`, `origen`, `motivo_sin_qr` (`no_hay_qr`, `dominio_ajeno`,
+  `version_desconocida`, `json_invalido`, `importe_invalido`, `datos_invalidos`), `aviso` y `factura` (link de 15
+  minutos); un archivo roto da 201 `sin_qr`; concepto, categoría, grupo, período e importe quedan nulos en el borrador
+  (migración) y aprobarlo así da 422; proveedor nuevo como "CUIT …". Los fixtures llevan un codificador de QR propio.
+  **Deuda**: el "ejemplo oficial" de ARCA se armó de memoria (12.100 DOL, cotización 65): cotejarlo con el PDF de la
+  especificación v1.
 - Estado: En proceso.
 
 ### H-037 · La IA completa la factura
