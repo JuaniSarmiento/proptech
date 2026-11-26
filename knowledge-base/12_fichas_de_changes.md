@@ -1619,6 +1619,29 @@ D-153).
   `gastos` (las fronteras impiden importarlos) y podrían subir a `compartido`; el decodificado no tiene
   tope de tiempo.
 
+#### 14 · H-037 construida (la IA completa la factura, D-169, D-164)
+
+- **Qué quedó**: la tarea del worker `leer_factura_con_ia` (encolada después del commit de la subida,
+  idempotente por `clave`), el puerto `LectorDeFacturaConIa` con su adaptador de OpenRouter, la validación de
+  la propuesta contra el vocabulario activo del edificio, los estados `sin_ia`/`en_revision` con sus motivos,
+  `GET /api/gastos/{id}/lectura` y la tabla de sólo agregar `llamada_de_ia` con el costo de cada llamada
+  (migración `0055`, `04_modelo_de_datos.md`). R12 en `05_reglas_de_negocio.md`.
+- **R23 construida**: el importe atípico (más del doble o menos de la mitad, estrictamente, del promedio de los
+  aprobados de ese proveedor en ese edificio en los 6 períodos anteriores al del gasto, con al menos uno)
+  deja el gasto `en_revision` con `promedio`, `muestras` e `importe`. Sin historial, sin proveedor (`sin_qr`)
+  o sin período no se marca. **Deuda**: el umbral y la ventana son fijos (R23 dice "configurable por
+  edificio, con vigencia"); el promedio no descuenta notas de crédito.
+- **Dónde vive**: dominio puro en `gastos/dominio/lectura_de_factura.py` (validación y R23); el caso de uso en
+  `gastos/aplicacion/lectura_de_factura.py`; el adaptador en `gastos/adaptadores/openrouter.py`; la tarea en
+  `proptech_worker/tareas.py`, armada en `ajustes.py` con `PROPTECH_OPENROUTER_API_KEY` y
+  `PROPTECH_OPENROUTER_MODELO`.
+- **Deuda**: la llamada real a OpenRouter nunca se probó (sólo el falso); la lectura no tiene evento de
+  auditoría propio (el registro es `llamada_de_ia`; un evento nuevo pide migrar el vocabulario); una falla
+  pasajera del proveedor (un 503) deja el gasto `sin_ia` sin reintentar, para no cobrar dos veces, y no hay
+  forma de reprocesar desde la API; `datos_de` no refleja una edición posterior de la persona; la
+  transacción queda abierta durante la llamada (cota de 60 s, llamada de 30 s); el precio del modelo y su
+  `cost` salen de `usage` de OpenRouter sin cotejar contra su factura.
+
 ### 15 · `piloto-en-paralelo`
 
 - **Objetivo**: demostrar que PropTech reemplaza el método actual del edificio piloto.

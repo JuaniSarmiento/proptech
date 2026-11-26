@@ -83,6 +83,7 @@ _SONDA_SIN_FILA = {
     "prorrateo_de_cambio",
     "prorrateo_aplicado",
     "factura_de_gasto",
+    "llamada_de_ia",
 }
 #: D5/D6: sólo `asignacion_rol` admite complejo nulo para el alcance principal.
 _EXCEPCIONES_COMPLEJO_ID_NULO = {"asignacion_rol"}

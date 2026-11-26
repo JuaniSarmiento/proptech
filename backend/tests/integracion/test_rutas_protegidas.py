@@ -187,6 +187,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 14 `lectura-de-facturas` (H-036) ---
     ("/api/complejos/{complejo_id}/facturas", "POST"),
     ("/api/gastos/{gasto_id}/factura/enlace", "POST"),
+    # H-037: de dónde sale cada dato del borrador y cómo terminó la lectura.
+    ("/api/gastos/{gasto_id}/lectura", "GET"),
     # --- Cambio 8 `pagos-informados` (H-025) ---
     ("/api/complejos/{complejo_id}/pagos/unidades", "GET"),
     # --- Cambio 10a `morosidad` (H-027) ---

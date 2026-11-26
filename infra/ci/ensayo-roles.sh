@@ -62,7 +62,7 @@ devolver_al_migrador() {
     -v migrador="$MIGRADOR" <<'SQL'
 -- Paso 1 del rollback: el arranque ve todas las filas, sin filtrado por RLS.
 DO $$ DECLARE tabla text; tiene_filas boolean; BEGIN
-    FOREACH tabla IN ARRAY ARRAY['cuenta','emision','evento_de_emision','obligacion','movimiento','imputacion','tramo_de_interes','carga_de_saldo_inicial','origen_de_saldo_inicial','aceptacion_de_diferencias','ajuste_de_saldo_inicial','liquidacion','categoria_de_liquidacion','grupo_de_liquidacion','composicion_de_grupo','linea_de_liquidacion','alerta_aceptada','cargo_cobrado_de_menos','pdf_de_expensa','comprobante_de_pago','pago_informado','parte_de_pago','evento_de_pago','movimiento_de_pago','cbu_de_unidad','cambio_de_titular','parte_de_cambio_de_titular','prorrateo_de_cambio','prorrateo_aplicado','factura_de_gasto'] LOOP
+    FOREACH tabla IN ARRAY ARRAY['cuenta','emision','evento_de_emision','obligacion','movimiento','imputacion','tramo_de_interes','carga_de_saldo_inicial','origen_de_saldo_inicial','aceptacion_de_diferencias','ajuste_de_saldo_inicial','liquidacion','categoria_de_liquidacion','grupo_de_liquidacion','composicion_de_grupo','linea_de_liquidacion','alerta_aceptada','cargo_cobrado_de_menos','pdf_de_expensa','comprobante_de_pago','pago_informado','parte_de_pago','evento_de_pago','movimiento_de_pago','cbu_de_unidad','cambio_de_titular','parte_de_cambio_de_titular','prorrateo_de_cambio','prorrateo_aplicado','factura_de_gasto','llamada_de_ia'] LOOP
         IF to_regclass(format('public.%I',tabla)) IS NOT NULL THEN
             EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I)',tabla) INTO tiene_filas;
             IF tiene_filas THEN RAISE EXCEPTION 'el libro tiene filas en %',tabla; END IF;
@@ -219,6 +219,11 @@ SELECT to_regclass('public.factura_de_gasto') IS NOT NULL AS existe \gset
 \if :existe
 ALTER TABLE factura_de_gasto OWNER TO :"migrador";
 ALTER FUNCTION fn_factura_de_gasto_bloqueada() OWNER TO :"migrador";
+\endif
+SELECT to_regclass('public.llamada_de_ia') IS NOT NULL AS existe \gset
+\if :existe
+ALTER TABLE llamada_de_ia OWNER TO :"migrador";
+ALTER FUNCTION fn_llamada_de_ia_bloqueada() OWNER TO :"migrador";
 \endif
 SELECT to_regclass('public.configuracion_versionada') IS NOT NULL AS existe \gset
 \if :existe

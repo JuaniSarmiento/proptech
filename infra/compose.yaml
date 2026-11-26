@@ -198,8 +198,8 @@ services:
       # omite y la API no firma enlaces (503); el worker no la necesita.
       PROPTECH_CLAVE_DE_ENLACES:
       # 8, H-019 (D-164): la lectura del comprobante con IA (OpenRouter, sólo proveedores sin
-      # retención). Sin la clave o sin el modelo se omite y la lectura queda `sin_ia`; el worker no
-      # las necesita.
+      # retención). Sin la clave o sin el modelo se omite y la lectura queda `sin_ia`. La factura
+      # (14, H-037) la lee el worker con las mismas variables.
       PROPTECH_OPENROUTER_API_KEY:
       PROPTECH_OPENROUTER_MODELO:
       # D18/M14, tarea 7.1: opcionales con default en `Configuracion`
@@ -253,6 +253,10 @@ services:
       # D7: la clave secreta de Clerk vive en worker/web, nunca en la API.
       CLERK_SECRET_KEY:
       PROPTECH_URL_PUBLICA:
+      # 14, H-037 (D-164, D-169): la lectura de la factura con IA corre en el worker. Sin la clave o
+      # sin el modelo se omite y el gasto queda `sin_ia` (`ia_no_configurada`).
+      PROPTECH_OPENROUTER_API_KEY:
+      PROPTECH_OPENROUTER_MODELO:
       # D18/M14, tarea 7.1: gemelo de la API (L-009), mismos defaults.
       DB_POOL_PRE_PING: "${DB_POOL_PRE_PING:-true}"
       DB_POOL_SIZE: "${DB_POOL_SIZE:-5}"

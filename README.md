@@ -282,8 +282,8 @@ repositorio es público (`.env` y la carpeta de respaldos están en `.gitignore`
 | `CLERK_SECRET_KEY` | Worker, web | Necesaria para enviar invitaciones y para el SDK de Next; nunca en la API | sin valor | Secreto de Clerk, protegido con `SecretStr` en el backend |
 | `INVITACIONES_CLAVE_CIFRADO` | Sólo API | Obligatoria al invitar | sin valor | Clave propia de 32 bytes en base64, `SecretStr`; nunca worker ni web |
 | `PROPTECH_CLAVE_DE_ENLACES` | Sólo API | Obligatoria para descargar los PDF de las expensas | sin valor | Clave propia de 32 caracteres o más (`SecretStr`) con la que la API firma, con HMAC-SHA256, los enlaces de descarga que vencen a los 15 minutos (D-070); sin ella la API arranca igual y no firma enlaces (503); nunca worker ni web |
-| `PROPTECH_OPENROUTER_API_KEY` | Sólo API | Opcional | sin valor | Clave de OpenRouter (`SecretStr`) para leer con IA el comprobante de un pago (change 8, D-164); sin ella, o sin el modelo, la lectura queda `sin_ia` y no se sale a la red; nunca worker ni web |
-| `PROPTECH_OPENROUTER_MODELO` | Sólo API | Opcional | sin valor | Modelo con visión de OpenRouter (por ejemplo `proveedor/modelo`); el pedido exige proveedores con retención cero (ZDR) |
+| `PROPTECH_OPENROUTER_API_KEY` | API, worker | Opcional | sin valor | Clave de OpenRouter (`SecretStr`) para leer con IA el comprobante de un pago en la API (change 8, D-164) y la factura de un gasto en el worker (change 14, H-037, D-169); sin ella, o sin el modelo, la lectura queda `sin_ia` y no se sale a la red; nunca la web |
+| `PROPTECH_OPENROUTER_MODELO` | API, worker | Opcional | sin valor | Modelo con visión de OpenRouter (por ejemplo `proveedor/modelo`); el pedido exige proveedores con retención cero (ZDR) |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Web al construir | Necesaria para configurar Clerk en la web | sin valor | Clave publicable; Juani carga la de su instancia |
 | `PROPTECH_URL_PUBLICA` | Worker, web | Necesaria para los enlaces de invitación | sin valor | Base pública de la dirección de regreso |
 

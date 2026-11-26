@@ -8,10 +8,12 @@ alcanza al contador, al auxiliar y al consejo); la escritura usa
 Ninguna acción nueva se agrega a la matriz de D-106.
 """
 
+import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
+import anyio.from_thread
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import Field
@@ -36,6 +38,7 @@ from proptech_core.gastos.aplicacion import (
     enlaces,
     facturas,
     gastos,
+    lectura_de_factura,
     notas_de_credito,
     proveedores,
 )
@@ -48,6 +51,8 @@ from proptech_core.gastos.aplicacion.errores import (
 from proptech_core.gastos.dominio.archivo_de_factura import TAMANO_MAXIMO, TIPOS_MIME
 from proptech_core.gastos.puertos import LectorDeQr
 from proptech_core.liquidacion.aplicacion.periodos import es_periodo_emitido
+
+_logger = logging.getLogger("proptech_api.gastos")
 
 router = APIRouter(prefix="/api", route_class=RutaConIdentidad)
 #: La descarga de la factura (H-036): pública por diseño. El token firmado ES la autorización
@@ -320,6 +325,22 @@ def _enlace_de_la_factura(
     return {"url": f"/api/facturas/descarga?token={token}", "vence_en": vence_en.isoformat()}
 
 
+def _encolar_la_lectura(request: Request, identidad: Identidad, gasto_id: UUID) -> None:
+    """H-037, después del commit: si la cola falla, el gasto ya está confirmado y el 201 sale igual;
+    queda en `borrador` y la persona lo completa (o se reprocesa)."""
+    try:
+        anyio.from_thread.run(
+            lambda: lectura_de_factura.encolar_lectura(
+                request.app.state.cola,
+                administracion_id=identidad.administracion_id,
+                gasto_id=gasto_id,
+                request_id=UUID(request_id_actual.get() or ""),
+            )
+        )
+    except Exception as error:  # nada de la cola puede tumbar una subida ya confirmada
+        _logger.warning("lectura_sin_encolar", extra={"tipo_error": type(error).__name__})
+
+
 @router.post("/complejos/{complejo_id}/facturas", status_code=201)
 def subir_factura(
     complejo_id: UUID,
@@ -348,6 +369,7 @@ def subir_factura(
         request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
+    _encolar_la_lectura(request, identidad, gasto["id"])
     return {
         **gasto,
         "aviso": aviso,
@@ -402,6 +424,23 @@ def descargar_la_factura(request: Request, token: Annotated[str, Query()]) -> Re
         media_type=TIPOS_MIME[tipo],
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )
+
+
+@router.get("/gastos/{gasto_id}/lectura")
+def lectura_del_gasto(
+    gasto_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """H-037: de dónde sale cada dato del borrador (`qr`, `ia` o `null`), el estado de la lectura
+    con su motivo y su detalle. La regla de acceso es la de `GET /gastos/{id}`: 404 si no existe
+    o no alcanza."""
+    lectura = lectura_de_factura.lectura_del_gasto(sesion, gasto_id)
+    asignaciones = cargar_asignaciones(sesion, identidad.persona_id)
+    if lectura is None:
+        raise _no_encontrado()
+    _lectura_autorizada(asignaciones, lectura.pop("complejo_id"))
+    return lectura
 
 
 @router.get("/gastos/{gasto_id}")

@@ -518,8 +518,21 @@ La factura duplicada (la clave de arriba, también contra un gasto cargado a man
 crea nada; un receptor distinto lleva el aviso del 6 y no bloquea. El archivo queda guardado
 (`factura_de_gasto`, de sólo agregar) y se baja sólo con un enlace firmado de 15 minutos (tipo `factura`,
 D-070): `GET /api/facturas/descarga?token=...` pública, `POST /api/gastos/{id}/factura/enlace` para uno
-nuevo. **Pendiente (H-037)**: la lectura por IA — los estados `sin_ia`/`en_revision` siguen sin
-poblarse (la columna existe, D-075).
+nuevo.
+
+**Construido (cambio 14, H-037, D-169, D-164)**: la lectura por IA. Después del commit de la subida, el POST
+encola la tarea `leer_factura_con_ia` (si la cola falla, el 201 sale igual y el gasto queda `borrador`); el
+worker llama al puerto `LectorDeFacturaConIa` (OpenRouter con las variables del 8, ZDR, salida estructurada,
+sin herramientas; sin clave o sin modelo, no hay IA). Al proveedor sólo le llegan el archivo y el `id` y el
+`nombre` de las categorías y los grupos **activos** del edificio. La IA sólo propone `concepto`, `periodo`,
+`categoria_id`, `grupo_id` e `importe` (éste sólo si el QR no lo trajo); cada campo se valida solo y el que no
+sirve queda vacío con su motivo (`invalido` o `fuera_del_vocabulario`). Nunca aprueba, no toca lo del QR ni lo
+que cargó una persona, ni el libro; el texto de la factura es un dato. Deja el gasto en `borrador` (lectura
+buena), `en_revision` (importe atípico, R23) o `sin_ia` con su motivo (`ia_no_configurada`, `ia_fallo`,
+`fuera_de_contrato`); en `sin_ia` no se aplica nada. Cada llamada deja una fila en `llamada_de_ia` (modelo,
+tokens y costo en dólares, de sólo agregar). `GET /api/gastos/{id}/lectura` dice de dónde sale cada dato
+(`qr`, `ia` o `null`), el estado, el motivo y el detalle. Un gasto aprobado, sin factura o ya leído no se lee
+de nuevo; la misma `clave` de la tarea no vuelve a llamar ni a cobrar.
 
 - **IVA** *(propuesta, D-071, P17)*: el gasto se registra por el **total de la factura, con el IVA
   incluido**, porque el consorcio en general no lo descuenta: para él es parte del costo. Si algún

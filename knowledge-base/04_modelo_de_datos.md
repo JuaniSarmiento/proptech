@@ -625,7 +625,19 @@ agregar mientras no está aprobada).
   · fecha; `origen` · `manual` (los del 6, default) / `qr` / `sin_qr`; `motivo_sin_qr` · `no_hay_qr`,
   `dominio_ajeno`, `version_desconocida`, `json_invalido`, `importe_invalido` o `datos_invalidos`
   (`ck_gasto_origen`: un `sin_qr` siempre lleva su motivo, los demás nunca, y uno `qr` siempre su fecha).
-- **No construido en este cambio**: la lectura por IA (H-037); control de monto atípico R23 (cambio 7).
+- **Cambio 14, H-037 (migración `0055`, D-169)**: columna `lectura_ia` · `JSONB` anulable (`NULL` hasta que corre
+  la tarea del worker): `motivo` (`ia_no_configurada`, `ia_fallo`, `fuera_de_contrato`, `importe_atipico` o
+  `null`), `detalle` (`descartados` y, en `importe_atipico`, `promedio`, `muestras` e `importe`) y `campos`
+  (los que completó la IA). `estado` pasa a poblarse: `sin_ia` y `en_revision` (R23).
+
+#### `llamada_de_ia` · existe (migración `0055`, R12, H-037, D-169)
+
+- **Atributos**: `id` · UUID PK; `administracion_id`/`complejo_id`; `gasto_id`; `clave` (la de la tarea);
+  `modelo`; `tokens_entrada`/`tokens_salida` · enteros >= 0; `costo_usd` · `NUMERIC(12,6)` >= 0 (en la API,
+  texto); `resultado` · `ok`/`fallida`; `creada_en`.
+- **Relaciones**: FK compuesta al gasto de su edificio. Una fila por cada llamada al lector, buena o no; sin
+  lector configurado no hay llamada ni fila.
+- **Constraints**: de sólo agregar (tres triggers, D-115) y RLS forzada por administración.
 
 #### `factura_de_gasto` · existe (migración `0054`, R12, H-036, D-169)
 

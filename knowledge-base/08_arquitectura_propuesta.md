@@ -158,7 +158,8 @@ El **reparto por mayor resto** vive en `compartido/reparto.py` y no en `cuenta_c
   exige proveedores sin retención (`provider: {zdr: true, data_collection: "deny", require_parameters: true}`),
   salida `json_schema` estricta con cinco campos, sin herramientas, y sólo lleva el comprobante como URL de datos
   y una instrucción fija (nunca la persona, la unidad ni el edificio). Se configura con
-  **`PROPTECH_OPENROUTER_API_KEY`** (`SecretStr`, sólo la API) y **`PROPTECH_OPENROUTER_MODELO`**, ambas
+  **`PROPTECH_OPENROUTER_API_KEY`** (`SecretStr`, la API y, desde H-037, el worker, que con las mismas
+  variables lee la factura de un gasto) y **`PROPTECH_OPENROUTER_MODELO`**, ambas
   opcionales: sin ellas la lectura queda `sin_ia`, sin red. La llamada tiene un tope (20 s); si falla o se pasa,
   la lectura es `fallida` y responde 201 igual. La propuesta se valida campo por campo (`dominio/propuesta.py`) y
   la imagen nunca crea un pago.
