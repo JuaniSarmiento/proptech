@@ -23,3 +23,11 @@ class FilaCargoImportada:
 
 class LectorDePlanillaDeCargos(Protocol):
     def leer(self, contenido: bytes) -> list[FilaCargoImportada]: ...
+
+
+class LectorDeQr(Protocol):
+    """H-036 (D-169): los textos de los QR de una factura, imagen (`jpeg`, `png`) o PDF (`pdf`, sólo
+    su primera página). Una lista vacía si no hay ninguno o el archivo no se puede abrir: nunca
+    levanta."""
+
+    def leer(self, contenido: bytes, tipo: str) -> list[str]: ...
