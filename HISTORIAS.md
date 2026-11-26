@@ -2164,6 +2164,9 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - **N01**: sin el permiso, 403; unidad de otro edificio o administración, 404.
 - **N02**: la respuesta no trae email, teléfono ni documento: sólo id y nombre.
 - **K01**: lección sobre la API falsa de e2e que no imita los filtros reales de la API.
+- Aceptación: `aceptacion/H-035/`, 14 casos vistos fallar por aserción (0 errores), congelada en `4e864f8` bajo D-168,
+  junto con L-107. Contrato: los nombres de los vendedores salen con `?con_nombres=true` en `vendedores_detalle`
+  (sumarlos siempre rompería las aceptaciones congeladas de H-030 a H-032); los compradores ya traían `nombre`.
 - Estado: En proceso.
 
 ### H-034 · Pantallas del cambio de titular
@@ -2204,6 +2207,13 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
   super admin la podría usar. La API falsa de e2e devolvía los propietarios por esa ruta, por eso los 15 e2e
   pasaron. Vuelve a **En proceso**: espera H-035 (una ruta propia de propietarios y los nombres en el historial)
   y se recongela con la API falsa corregida.
+- **Recongelada** en `4e864f8` (26/11/2026): la API falsa devuelve `/api/personal` sin vecinos al administrador, como
+  la real, y suma la ruta de propietarios y `vendedores_detalle`. Con la web actual fallan 8 de 15 (3 por `expect` y 5
+  por el tiempo de espera de las casillas de vendedores, que hoy no aparecen: falta la conducta, no es error de
+  setup); pasan los 7 que no dependen de propietarios. **C02 recortado**: se quitó "el padrón ya muestra a los
+  compradores", porque el panel de vecinos del padrón también lee `/api/personal`.
+- **Deuda grande** (anterior al 4d, viene del 2d): el padrón no le muestra los vecinos al administrador principal
+  (en la demo, "Vecinos 0" en unidades con dos propietarias). Va a otra historia.
 - Estado: En proceso.
 
 ## Plantilla de historia
