@@ -90,7 +90,8 @@ def test_el_concepto_se_recorta() -> None:
     assert validar(buena(concepto="  Limpieza  ")).concepto == "Limpieza"
 
 
-@pytest.mark.parametrize("valor", [str(uuid4()), "no-es-un-uuid", ""])
+#: Fijo: un `uuid4()` en la recolección cambia el id del test entre workers de xdist.
+@pytest.mark.parametrize("valor", ["7d1c6f9e-3b0a-4c1e-9a52-0f6c2b8e4d11", "no-es-un-uuid", ""])
 def test_un_texto_que_no_es_del_edificio_es_fuera_del_vocabulario(valor: str) -> None:
     r = validar(buena(categoria_id=valor, grupo_id=valor))
     assert r.categoria_id is None and r.grupo_id is None
