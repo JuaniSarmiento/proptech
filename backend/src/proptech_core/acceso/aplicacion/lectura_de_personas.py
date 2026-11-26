@@ -44,10 +44,7 @@ def nombres_de_personas(
     if not ids:
         return {}
     filas = sesion.execute(
-        text(
-            "SELECT id, nombre FROM persona "
-            "WHERE administracion_id = :admin AND id = ANY(:ids)"
-        ),
+        text("SELECT id, nombre FROM persona WHERE administracion_id = :admin AND id = ANY(:ids)"),
         {"admin": identidad.administracion_id, "ids": ids},
     ).all()
     return {f.id: f.nombre for f in filas}

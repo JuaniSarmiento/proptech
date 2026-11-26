@@ -30,6 +30,7 @@ from proptech_core.acceso.aplicacion.lectura_de_personas import (
 )
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.seguimiento import request_id_actual
+from proptech_core.titularidad.aplicacion.autorizacion import unidad_autorizada
 from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import (
     CuentaDelVendedor,
     DetalleDeLaCuenta,
@@ -37,7 +38,6 @@ from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import (
     listar_cuentas_de_vendedores,
     registrar_cobro_de_vendedor,
 )
-from proptech_core.titularidad.aplicacion.autorizacion import unidad_autorizada
 from proptech_core.titularidad.aplicacion.errores import SinPermiso
 from proptech_core.titularidad.aplicacion.lectura import CambioDeTitular, listar_cambios
 from proptech_core.titularidad.aplicacion.registrar import (
