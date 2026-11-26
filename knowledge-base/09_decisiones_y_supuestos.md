@@ -3477,3 +3477,44 @@ registrado como tal en su momento.)*
   día (la lista es de quien debe); (4) dar el Excel al consejo y al auxiliar (exporta quien administra la
   cobranza).
 - **Quién**: Juani, 24/11/2026.
+
+## D-168 · Delegación de esta noche, P51, P52 y el diseño del 4d `cambio-de-titular` (25/11/2026)
+
+- **Contexto**: Juani autorizó por escrito, en la sesión del 25/11/2026, que el orquestador firme los
+  changes CRITICAL y HIGH (lo que D-094 y D-111 reservan a Juani, Alberto o Emiliano), acuerde las
+  historias, apruebe sus criterios y decida las preguntas abiertas que las traben, dejando anotado qué
+  decidió; que pueda haber más de dos historias en Lista; y que las historias queden en **Lista** con su
+  demo hecha: **Terminada la sigue marcando Juani**. El 4d estaba bloqueado por P51 y P52.
+- **Decisión**:
+  1. **P51**: el 4d se construye **entero** (registro, las dos opciones de R32 y el aviso).
+  2. **P52 · deuda a nombre del vendedor**: (a) **no genera interés nuevo** después del traslado: viaja con
+     el capital y el interés ya registrados y queda congelada (`registrar_emision` sigue calculando sólo
+     sobre cuentas de unidad, como hoy); (b) el vendedor **no aparece en la morosidad** del edificio, que
+     es por unidad (D-167): su deuda se ve en la cuenta del vendedor; (c) **paga a través del
+     administrador**, que registra el cobro contra la cuenta de persona (el vendedor ya no es vecino y no
+     entra al portal).
+  3. **Registro**: tabla nueva de sólo agregar `cambio_de_titular` (unidad, fecha del cambio, vendedores,
+     compradores, las dos elecciones, quién y cuándo), auditada. Al registrarlo se reemplazan las
+     asignaciones de propietario de la unidad (los vendedores dejan de ser propietarios; los compradores
+     pasan a serlo sin invitación, como el importador). Los inquilinos no se tocan.
+  4. **Deuda previa**: todo lo impago (capital e interés registrado) de las obligaciones con período
+     anterior al mes del cambio. Con "a nombre del vendedor" se traslada a la cuenta de persona del
+     **primer vendedor** (la cuenta de persona es única por persona y edificio, P52 del 4b) con movimientos
+     `traslado` enlazados, como la reimputación; la unidad queda en cero por ese concepto. Con más de un
+     vendedor, el administrador elige a nombre de cuál queda.
+  5. **Prorrateo por días**: aplica sólo a la obligación del mes del cambio. El vendedor responde por los
+     días anteriores a la fecha del cambio; el comprador, desde ese día inclusive. Cada componente
+     (ordinaria, fondo de reserva, extraordinaria) se parte en dos con redondeo medio hacia arriba para el
+     vendedor y el resto para la unidad, de modo que la suma da exacta. Si el período ya está emitido al
+     registrar el cambio, la parte del vendedor se traslada en el momento; si no, se traslada en la misma
+     transacción que emite ese período.
+  6. **Aviso**: si la unidad tiene deuda al registrar el cambio, la respuesta y la pantalla lo dicen con el
+     monto; nunca bloquea.
+  7. **Permiso**: `registrar_cambio_de_titular` para super admin y administrador; registrar el cobro de la
+     cuenta del vendedor, quien hoy confirma pagos.
+- **Descartado**: que la deuda del vendedor siga devengando interés (obliga a emitir sobre cuentas sin
+  unidad y a sumarlas a la morosidad: mucho riesgo para un caso raro; se puede reabrir con una decisión
+  nueva); bloquear el prorrateo hasta que se emita el período (obliga al administrador a volver después);
+  partir la obligación dentro de `registrar_emision` (toca el núcleo de la emisión más de lo necesario).
+- **Supuesto**: SU-02 sigue sin verificar con abogado (el comprador hereda la deuda por defecto).
+- **Quién**: el orquestador, por delegación escrita de Juani del 25/11/2026. Juani la revisa en la demo.

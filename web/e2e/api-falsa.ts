@@ -15,6 +15,12 @@ import { createServer, type Server } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { escenarioPorId } from "./escenarios";
+import {
+  ACCIONES_DEL_LECTOR,
+  esEdificioDeTitularidad,
+  IDENTIDADES_DE_TITULARIDAD,
+  responderTitularidad,
+} from "./escenarios-cambio-de-titular";
 import { ESCRITURAS_UNIDADES } from "./escenarios-escritura";
 import {
   esEdificioConfirmado,
@@ -119,6 +125,24 @@ const _ACCIONES_DEL_CONSEJO = {
   administracion: [],
   todos_los_edificios: [],
   por_edificio: ACCIONES_DEL_CONSEJO,
+};
+
+/**
+ * H-034: `user_titular` es el administrador de siempre más `registrar_cambio_de_titular`; `user_lector`
+ * (contador, auxiliar o consejo) trae en los seis edificios sólo `ver_configuracion_del_edificio` y
+ * `ver_morosidad`: lee y no escribe.
+ */
+const _ACCIONES_DEL_TITULAR = {
+  ..._ACCIONES_DE_SUPER_ADMIN,
+  todos_los_edificios: [
+    ..._ACCIONES_DE_SUPER_ADMIN.todos_los_edificios,
+    "registrar_cambio_de_titular",
+  ],
+};
+const _ACCIONES_DEL_LECTOR = {
+  administracion: [],
+  todos_los_edificios: [],
+  por_edificio: ACCIONES_DEL_LECTOR,
 };
 
 const _PNG_DE_UN_PIXEL = Buffer.from(
@@ -580,6 +604,8 @@ export function crearServidor(
             "user_personal_vacio",
             "user_personal_error",
             "user_personal_lento",
+            // H-034: el cambio de titular y las cuentas de vendedores.
+            ...IDENTIDADES_DE_TITULARIDAD,
           ].includes(claims.sub);
       }
     } catch {
@@ -644,7 +670,11 @@ export function crearServidor(
                   ? _ACCIONES_DE_LA_VECINA
                   : identidad === "user_consejo"
                     ? _ACCIONES_DEL_CONSEJO
-                    : _ACCIONES_DE_SUPER_ADMIN,
+                    : identidad === "user_titular"
+                      ? _ACCIONES_DEL_TITULAR
+                      : identidad === "user_lector"
+                        ? _ACCIONES_DEL_LECTOR
+                        : _ACCIONES_DE_SUPER_ADMIN,
             },
             ...(identidad === "user_varias"
               ? [
@@ -734,9 +764,16 @@ export function crearServidor(
         return;
       }
       const responder = () => {
-        respuesta
-          .writeHead(200, { "content-type": "application/json" })
-          .end(JSON.stringify(identidad === "user_personal_vacio" ? [] : _PERSONAL_DE_PRUEBA));
+        respuesta.writeHead(200, { "content-type": "application/json" }).end(
+          JSON.stringify(
+            identidad === "user_personal_vacio"
+              ? []
+              : IDENTIDADES_DE_TITULARIDAD.includes(identidad)
+                ? // Como la real para el administrador principal (D13 del 2d): sin vecinos.
+                  _PERSONAL_DE_PRUEBA.filter((p) => p.asignaciones.every((a) => a.rol !== "vecino"))
+                : _PERSONAL_DE_PRUEBA,
+          ),
+        );
       };
       if (identidad === "user_personal_lento") {
         setTimeout(responder, 3000);
@@ -1044,6 +1081,15 @@ export function crearServidor(
           return false;
       }
     };
+
+    // change 4d (H-034): el cambio de titular y las cuentas de vendedores, en los seis edificios de su
+    // contrato (3401 a 3406).
+    if (
+      esEdificioDeTitularidad(id) &&
+      responderTitularidad(pedido, respuesta, id, resto, identidad)
+    ) {
+      return;
+    }
 
     // change 10a (H-029): la morosidad y su Excel, en los dos edificios de su contrato (2701 y 2702).
     if (esEdificioDeMorosidad(id) && responderMorosidad(pedido, respuesta, id, resto, identidad)) {

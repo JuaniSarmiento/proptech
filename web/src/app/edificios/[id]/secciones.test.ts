@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seccionesDelEdificio } from "./secciones";
 
 describe("seccionesDelEdificio", () => {
-  it("arma las nueve secciones del menú con el id del edificio en cada href", () => {
+  it("arma las diez secciones del menú con el id del edificio en cada href", () => {
     const secciones = seccionesDelEdificio("abc");
     expect(secciones.map((s) => s.clave)).toEqual([
       "resumen",
@@ -12,6 +12,7 @@ describe("seccionesDelEdificio", () => {
       "pagos",
       "mis-pagos",
       "morosidad",
+      "cuentas-de-vendedores",
       "categorias",
       "configuracion",
     ]);
@@ -29,10 +30,11 @@ describe("seccionesDelEdificio", () => {
       ["pagos", "Liquidación"],
       ["mis-pagos", "Liquidación"],
       ["morosidad", "Liquidación"],
+      ["cuentas-de-vendedores", "Liquidación"],
       ["categorias", "Configuración"],
       ["configuracion", "Configuración"],
     ]);
-    expect(new Set(secciones.map((s) => s.icono)).size).toBe(9);
+    expect(new Set(secciones.map((s) => s.icono)).size).toBe(10);
   });
 
   it("Liquidaciones lleva a la lista y sólo se pide con ver_liquidaciones, en ese edificio (H-017)", () => {
@@ -67,6 +69,19 @@ describe("seccionesDelEdificio, Morosidad (H-029)", () => {
     expect(morosidad).toMatchObject({
       etiqueta: "Morosidad",
       href: "/edificios/abc/morosidad",
+      grupo: "Liquidación",
+      accion: "ver_morosidad",
+      complejoId: "abc",
+    });
+  });
+});
+
+describe("seccionesDelEdificio, Cuentas de vendedores (H-034)", () => {
+  it("lleva a la pantalla y sólo se pide con ver_morosidad, en ese edificio", () => {
+    const cuentas = seccionesDelEdificio("abc").find((s) => s.clave === "cuentas-de-vendedores");
+    expect(cuentas).toMatchObject({
+      etiqueta: "Cuentas de vendedores",
+      href: "/edificios/abc/cuentas-de-vendedores",
       grupo: "Liquidación",
       accion: "ver_morosidad",
       complejoId: "abc",

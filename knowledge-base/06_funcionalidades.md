@@ -349,6 +349,39 @@ unidades que están en juicio, para que el sistema las trate como corresponde.
 
 **Reglas relacionadas**: R29, R31 (ambas propuestas).
 
+### HU-A12 · Cambiar el titular de una unidad (cambio 4d, D-168)
+
+Como administrador, quiero registrar que una unidad cambió de dueño y elegir qué pasa con la expensa del
+mes y con la deuda de los meses anteriores, para que el padrón y la cuenta corriente sigan al día sin
+perder lo que el vendedor debe (R32).
+
+**Criterios de aceptación**:
+- Dado el padrón, cuando tengo `registrar_cambio_de_titular`, entonces cada unidad ofrece "Cambiar titular"
+  y "Ver historial"; sin el permiso no aparecen.
+- Dado el formulario, cuando marco a los vendedores entre los propietarios actuales, cargo a uno o más
+  compradores, elijo la expensa del mes (entera o prorrateo por días) y la deuda previa (queda en la unidad o
+  a nombre del vendedor, con el vendedor elegido si hay más de uno), entonces cada opción dice qué pasa y al
+  registrar veo el aviso de deuda, lo trasladado al vendedor y el prorrateo (pendiente o aplicado con su
+  parte); el padrón ya muestra a los compradores.
+- Dada la unidad, entonces su historial lista los cambios, el más nuevo primero.
+- Dado un 422 de la API, entonces se muestra en su campo con el mensaje de la pantalla (la API sólo dice
+  "valor inválido") y no se pierde lo cargado.
+
+**Construido** (H-030 a H-033 el backend, H-034 las pantallas): `/edificios/{id}/unidades/{unidadId}/cambio-de-titular`
+(formulario, resultado e historial en la misma pantalla, ancla `#historial`; lee `/api/personal` para los
+propietarios, así que hoy la usa quien puede listar el personal). La pantalla manda el cuerpo de H-030 a
+H-032 y no calcula nada.
+
+**Cuentas de vendedores** (D-168.2c): `/edificios/{id}/cuentas-de-vendedores`, la sección del grupo
+"Liquidación" del menú, que ve quien tiene `ver_morosidad` en el edificio (el consejo, el contador y el
+auxiliar la leen), lista a cada vendedor con su deuda y sus unidades en el orden de la API (también las
+cuentas en cero). `/edificios/{id}/cuentas-de-vendedores/{cuentaId}` muestra la deuda de la API (nunca la
+suma de los períodos), la deuda por período y componente y los movimientos. "Registrar cobro" (importe con
+coma decimal y fecha de la transferencia, con un diálogo de confirmación) sólo existe con
+`confirmar_pago_informado`; después del cobro se ve lo que devuelve la API.
+
+**Reglas relacionadas**: R32.
+
 ---
 
 ## Épica: Vecino

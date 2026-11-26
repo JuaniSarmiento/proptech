@@ -40,6 +40,7 @@ def _resolver(api: ApiEdificio, ruta: str) -> str:
         documento_id=uuid.uuid4(),
         pago_id=uuid.uuid4(),
         periodo="2026-10-01",
+        cuenta_id=uuid.uuid4(),
     )
 
 

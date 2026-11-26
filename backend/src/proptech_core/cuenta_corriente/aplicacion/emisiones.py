@@ -346,7 +346,11 @@ def registrar_emision(
     obligaciones: Sequence[ObligacionAEmitir],
     request_id: UUID,
     reloj: Reloj = ahora_utc,
+    tambien_bloquear: Sequence[UUID] = (),
 ) -> EmisionRegistrada:
+    """`tambien_bloquear`: cuentas (de persona) que el llamador va a tocar después, bajo el candado
+    de esta emisión (H-032): se toman en el mismo pedido ordenado que las del edificio, porque una
+    cuenta nueva pedida después de las ya bloqueadas rompe el orden. No reciben interés."""
     exigir_transaccion(sesion)
     administracion = exigir_identidad(sesion, identidad)
     _validar(periodo, obligaciones)
@@ -412,7 +416,7 @@ def registrar_emision(
             {"c": complejo_id},
         ).scalars()
         edificio = {UUID(str(c)) for c in de_unidad} | set(cuentas.values())
-        bloquear_cuentas(sesion, sorted(edificio))
+        bloquear_cuentas(sesion, sorted(edificio | set(tambien_bloquear)))
         for o in sorted(obligaciones, key=lambda x: x.unidad_id):
             sesion.execute(
                 text(

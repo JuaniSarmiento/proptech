@@ -38,6 +38,15 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-024 | C-11 8, parte 7 | El comprobante sólo baja con link firmado y la emisión avisa los pagos sin confirmar | Media / CRITICAL | Terminada |
 | H-025 | C-11 8, parte 8 | El vecino informa y sigue sus pagos, y el administrador los maneja desde su bandeja | Media / CRITICAL | Terminada |
 | H-026 | C-11 8, parte 9 | Los hallazgos de la demo del 8: menú del vecino, montos naturales, unidad vigente y el administrador informa | Media / MEDIUM | Terminada |
+| H-027 | C-14 10a, parte 1 | La lectura de la morosidad por unidad | Media / HIGH | Terminada |
+| H-028 | C-14 10a, parte 2 | El Excel de la morosidad | Baja / HIGH | Terminada |
+| H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
+| H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
+| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Lista |
+| H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Lista |
+| H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Lista |
+| H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Lista |
+| H-035 | C-07d 4d, parte 6 | El cambio de titular lee los propietarios de la unidad y los nombres del historial por su propia ruta | Baja / HIGH (M) | Lista |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -1914,6 +1923,310 @@ orden con xdist (L-104, `8c5b278`); la tercera, **verde 6/6 sobre `8c5b278`**. D
   403 en la ruta del Excel; 320 px sin scroll horizontal (Playwright: Chrome no baja de 534 px). Hallazgo anotado
   como deuda en la ficha 10a. **Terminada por Juani el 24/11/2026** ("anotalo como deuda y pasa a terminado").
 - Estado: **Terminada** (24/11/2026).
+
+## Cambio de titular (4d, C-07d)
+
+Firmado por el orquestador por delegación escrita de Juani (25/11/2026, D-168), que decide P51 y P52 y el
+diseño. Las historias quedan en **Lista** con su demo hecha; Terminada la marca Juani. Rama
+`change/cambio-de-titular`. Orden: H-030 → H-031 → H-032 → H-033 → H-034 (cada una usa el registro de la
+anterior). En el tablero de Jarvis van como `HU-H030`…
+
+### H-030 · Registrar el cambio de titular
+
+- Objetivo observable: el administrador registra que una unidad cambió de dueño, con fecha, vendedores y
+  compradores; los propietarios de la unidad se reemplazan, queda el registro auditado y, si la unidad
+  debe, se avisa sin bloquear. Las dos opciones de R32 quedan en su valor por defecto (expensa del mes
+  entera, deuda previa en la unidad); las alternativas son H-031 y H-032.
+- Incluye: tabla de sólo agregar `cambio_de_titular`, permiso y evento de auditoría
+  `registrar_cambio_de_titular`, `POST` y `GET` de los cambios de una unidad, reemplazo de las
+  asignaciones de propietario. No incluye: pantallas (H-034), traslados en el libro (H-031, H-032).
+- Nivel: **L** (cobros y cuenta corriente, datos de personas).
+- **C01**: `POST /complejos/{c}/unidades/{u}/cambios-de-titular` con `fecha`, `vendedores` (ids de persona
+  de los propietarios actuales) y `compradores` (nombre y email opcional) responde 201 con el registro:
+  id, fecha, vendedores, compradores, `expensa_del_mes: "entera"`, `deuda_previa: "en_la_unidad"`, quién
+  lo registró y cuándo.
+- **C02**: después, los vendedores ya no son propietarios de la unidad y los compradores sí; los inquilinos
+  siguen igual. Un comprador que ya existe como persona en la administración (mismo email) se reutiliza.
+- **C03**: queda una fila en `cambio_de_titular` y una auditoría `registrar_cambio_de_titular` con la
+  unidad, la fecha y las dos elecciones.
+- **C04**: si la unidad tiene deuda, la respuesta trae `aviso` con el monto adeudado como texto y el
+  cambio se registra igual; sin deuda, `aviso` es nulo.
+- **C05**: con las opciones por defecto el libro no cambia: el estado de cuenta de la unidad es idéntico
+  antes y después.
+- **C06**: `GET` de la misma ruta lista los cambios de la unidad, el más nuevo primero.
+- **N01**: contador, auxiliar, consejo y vecino reciben 403; una unidad de otra administración o fuera de
+  alcance, 404.
+- **N02**: 422 si un vendedor no es propietario actual de la unidad, si falta vendedor o comprador, si una
+  persona está de los dos lados o si la fecha es futura.
+- **N03**: un pedido que falla no deja nada: ni fila, ni asignaciones cambiadas, ni auditoría.
+- **N04**: `cambio_de_titular` no acepta `UPDATE` ni `DELETE`, y RLS impide verla desde otra administración.
+- **K01**: D-168 entra a la base; R32 pasa a "en construcción" en `05_reglas_de_negocio.md`.
+- Demo: con el edificio de ejemplo, registrar la venta de una unidad con deuda por API, ver el aviso, el
+  padrón con el comprador y el registro en la lista.
+- Aceptación: `aceptacion/H-030/`, 40 casos vistos fallar por aserción (0 errores de setup), congelada en
+  `abbc1e2` por el orquestador bajo D-168. El `GET` lo usan los mismos roles que registran.
+- Construcción (Sonnet): `b2ef21a`, `2fbd97d`, `8526a80`, `b61bd10`. Módulo nuevo `titularidad`, migración `0050`
+  con `cambio_de_titular` y `parte_de_cambio_de_titular` (una fila por persona y lado), la acción
+  `registrar_cambio_de_titular` es permiso y evento a la vez (como `ajustar_saldo_inicial`). Un comprador que ya
+  tiene otra asignación en la unidad da 422.
+- Evidencia (25/11/2026, orquestador): `python3 aceptacion/H-030/aceptar.py --sin-regresion` sobre `b61bd10` desde
+  `abbc1e2`: 40 esperados, 40 pasados, 0 fallas, 0 errores, 0 skips; C01 a N04 PASA; K01 sin regresión (se corre al
+  cerrar el change, D-154). `git diff abbc1e2 HEAD -- aceptacion/` sólo cambia la línea del SHA.
+- Demo (25/11/2026, por API, sin Juani): PostgreSQL efímero con roles y migraciones reales hasta `0050`, uvicorn
+  real con la identidad inyectada (no hay modo de desarrollo sin Clerk). Venta de la copropietaria de A: 201 con
+  `aviso.deuda` `"20200.00"` (igual a `/morosidad`); padrón con la otra propietaria, la compradora y el inquilino
+  intactos; huella del libro idéntica antes y después; B con `aviso` nulo; contador 403; fecha futura y vendedor
+  inquilino 422 sin cambiar nada; auditoría por cambio; `UPDATE`/`DELETE` negados a `proptech_app`.
+- **Deuda** (para otra historia): sin test de dos cambios simultáneos sobre la misma unidad (`FOR UPDATE`); los
+  tests de `0050` no se vieron fallar por aserción antes de la tabla; un vendedor con invitación abierta no la
+  pierde (sin revisar); los 422 dicen `"valor inválido"` sin motivo legible (lo necesita H-034); no hay ruta HTTP
+  del estado de cuenta de una unidad para el personal.
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
+
+### H-031 · Deuda previa a nombre del vendedor
+
+- Objetivo: con `deuda_previa: "a_nombre_del_vendedor"`, lo impago de los períodos anteriores al mes del
+  cambio (capital e interés registrado) pasa a la cuenta de persona del vendedor elegido, con traslados
+  enlazados; la unidad queda en cero por ese concepto y esa deuda no genera interés nuevo (D-168.2).
+- Incluye: el traslado en el libro (caso de uso en `cuenta_corriente`, como la reimputación), la cuenta de
+  persona creada si no existe, la elección del vendedor deudor. No incluye: el cobro y la lectura de la
+  cuenta del vendedor (H-033), pantallas (H-034).
+- Nivel: **L**.
+- **C01**: el `POST` de H-030 acepta `deuda_previa: "a_nombre_del_vendedor"` y `vendedor_deudor` (id de uno
+  de los vendedores; si hay un solo vendedor puede omitirse) y responde 201 con `trasladado` (monto en
+  texto) y `cuenta_del_vendedor` (id de la cuenta de persona).
+- **C02**: lo impago de las obligaciones de períodos anteriores al mes de la fecha del cambio (cada
+  componente de capital y el interés registrado) queda en cero en la cuenta de la unidad y la cuenta de
+  persona del vendedor debe exactamente lo mismo, al centavo; la suma de las dos cuentas no cambia.
+- **C03**: en el libro quedan movimientos `traslado`: un crédito en la unidad por cada obligación
+  trasladada y su contraparte en la cuenta del vendedor, enlazados entre sí (`enlazado_a`), cada uno con
+  un `operacion_id` derivado del cambio (el libro lo exige único por movimiento).
+- **C04**: la deuda del mes del cambio y de los posteriores queda en la unidad; lo ya pagado no se mueve.
+- **C05**: emitir el período siguiente no genera interés sobre la cuenta del vendedor; la unidad sólo
+  genera interés sobre lo que le quedó.
+- **C06**: si la cuenta de persona del vendedor ya existía en el edificio, se reutiliza.
+- **C07**: sin deuda previa, el cambio se registra igual, sin movimientos y con `trasladado` `"0.00"`.
+- **N01**: 422 si `vendedor_deudor` no está entre los vendedores, o si falta con más de un vendedor; nada
+  cambia.
+- **N02**: un pedido que falla no deja ni movimientos, ni cuenta nueva, ni fila, ni auditoría.
+- **N03**: la cuenta del vendedor no aparece en la morosidad ni en la situación del edificio (D-168.2b).
+- **N04**: un pago confirmado después sobre la unidad no se imputa a la deuda trasladada.
+- **N05**: un segundo cambio de la misma unidad no vuelve a trasladar lo que ya se trasladó.
+- **K01**: lección en `15_lecciones.md` sobre el traslado entre cuentas, o "nada, porque…".
+- Demo: unidad con dos meses vencidos e interés; cambio con deuda a nombre del vendedor; la unidad en cero
+  por esos meses, el vendedor debiendo lo mismo; emitir el mes siguiente y ver que el vendedor no suma
+  interés.
+- Aceptación: `aceptacion/H-031/`, 27 casos vistos fallar por aserción (0 errores), congelada en `d4804ac`
+  bajo D-168. Contrato: el `aviso` es lo que le queda a la unidad después del traslado; sin deuda previa,
+  `trasladado` `"0.00"` y `cuenta_del_vendedor` nulo. Sólo se vio fallar la primera aserción de cada test.
+- **Recongelada** en `8601a7a` (25/11/2026): N03 pedía la situación de cuatro cuentas en un mundo que sólo crea la
+  de 1A (`IndexError`, error del orquestador, lo frenó el constructor con evidencia). Única diferencia en
+  `aceptacion/` desde `d4804ac`: esa aserción y la línea del SHA.
+- Construcción (Sonnet): `97dc6e3`, `329dd5a`, `8e16036`, `25feddd`. `trasladar_deuda` en
+  `cuenta_corriente/aplicacion/traslado_de_deuda.py`: un crédito `traslado` por obligación y componente en la
+  unidad, con `fecha_valor` en el vencimiento (si no, el interés del mes seguía corriendo), y su débito enlazado
+  en una obligación contenedora de la cuenta de persona; migración `0051` (`obligacion.de_traslado`, la única con
+  capital cero; `ck_mov_traslado`; `cambio_de_titular.vendedor_deudor_id`). L-105 en `15_lecciones.md`.
+- Evidencia (25/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `fd8d603` desde `8601a7a`: 27/27, 0
+  fallas, 0 errores, 0 skips; H-030 sigue 40/40.
+- Demo (25/11/2026, por API, sin Juani): A debía 27.689,20 (septiembre 7.200 + 279,20 tras un pago de 3.000 que
+  cubrió primero 200 de interés, octubre 10.000 + 210, noviembre 10.000). Cambio con deuda a nombre de Ana: 201,
+  `trasladado` `"17689.20"`, `aviso` `"10000.00"`; A con septiembre y octubre en cero y noviembre intacto; Ana debe
+  17.689,20; 8 traslados (4 y 4) que suman igual; `/morosidad` con A sólo en noviembre y sin Ana; al emitir
+  diciembre Ana no suma interés y A suma 200 sólo sobre noviembre (igual que la testigo B en ese mes); 422 con
+  deudor ajeno o inquilino sin cambiar nada.
+- **Deuda**: carrera de dos cambios que crean la misma cuenta de persona (puede quedar una cuenta sin
+  movimientos); de los tests propios del constructor sólo el primero se vio fallar; `vendedor_deudor` con
+  `en_la_unidad` da 422 (no estaba en el contrato).
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
+
+### H-032 · Prorrateo por días de la expensa del mes del cambio
+
+- Objetivo: con `expensa_del_mes: "prorrateo"`, la parte del vendedor de la obligación del mes del cambio
+  (días anteriores a la fecha) pasa a su cuenta de persona, al registrar si el período ya se emitió o al
+  emitirlo si no (D-168.5).
+- Incluye: el cálculo por días, el traslado con el mismo mecanismo de H-031, el prorrateo pendiente que se
+  aplica al emitir. No incluye: pantallas (H-034).
+- Nivel: **L**.
+- Decisiones del orquestador (D-168, al acordar): con varios vendedores, la parte va al `vendedor_deudor`
+  (mismo campo y misma regla que H-031); sólo se traslada lo impago de la parte del vendedor (lo que la
+  unidad ya pagó de esa obligación no se mueve); anular la emisión de un período con prorrateo aplicado se
+  rechaza con 409 hasta que una historia posterior resuelva cómo deshacerlo (deuda anotada).
+- **C01**: el `POST` acepta `expensa_del_mes: "prorrateo"` y responde 201 con `prorrateo`: `estado`
+  (`"aplicado"` o `"pendiente"`), `periodo`, `dias_del_vendedor`, `dias_del_mes` y `parte_del_vendedor` (texto,
+  nula si está pendiente).
+- **C02**: si el período del mes del cambio ya está emitido, cada componente de esa obligación (ordinaria,
+  fondo de reserva, extraordinaria) se parte: el vendedor responde por `componente × días_del_vendedor ÷
+  días_del_mes` redondeado medio hacia arriba al centavo, la unidad por el resto; la suma da exacta y la
+  parte del vendedor pasa a su cuenta de persona con traslados enlazados.
+- **C03**: los días del vendedor son los anteriores a la fecha del cambio (vendió el 11 de noviembre: 10 de
+  30); el día del cambio es del comprador. Con fecha el día 1, la parte es `"0.00"` y no hay movimientos.
+  Febrero bisiesto cuenta 29 días.
+- **C04**: si el período no está emitido, queda `"pendiente"`; al emitir ese período se aplica en la misma
+  transacción de la emisión, y el `GET` lo muestra `"aplicado"` con su parte.
+- **C05**: prorrateo y deuda a nombre del vendedor juntos en un mismo cambio dan las dos cosas, sin contar
+  nada dos veces.
+- **C06**: si la unidad ya pagó parte de la obligación del mes, sólo se traslada lo impago de la parte del
+  vendedor.
+- **N01**: anular la emisión de un período con prorrateo aplicado da 409 y no cambia nada.
+- **N02**: un segundo cambio con prorrateo en la misma unidad y el mismo período da 422.
+- **N03**: la parte trasladada no genera interés en la cuenta del vendedor al emitir los períodos
+  siguientes.
+- **N04**: si el traslado al emitir falla, la emisión entera no ocurre (todo o nada).
+- **N05**: el interés registrado en la emisión del mes no se prorratea: sólo ordinaria, fondo de reserva y
+  extraordinaria. **Deuda**: los cargos particulares entran sumados a la ordinaria de la obligación, así que
+  hoy se prorratean con ella; separarlos toca la emisión y queda para otra historia.
+- **K01**: R32 con `prorrateo` en `05`, H-032 en la ficha del 4d y la deuda de N01 anotada.
+- Demo: vender el 11 de noviembre con prorrateo antes de emitir; emitir noviembre; ver el traslado de 10/30
+  al vendedor al centavo y la suma exacta; intentar anular noviembre y ver el 409.
+- Aceptación: `aceptacion/H-032/`, 23 casos vistos fallar por aserción (0 errores), congelada en `e451c6c` bajo
+  D-168. Contrato: C06 imputa lo ya pagado primero a los días del vendedor (`max(parte - pagado, 0)` por
+  componente); `parte_del_vendedor` es lo trasladado; N03 compara con una testigo con tolerancia de $0,05.
+- Construcción (Sonnet): `fb6781c`, `a907887`, `1697465`. Dominio puro `titularidad/dominio/prorrateo.py`;
+  `trasladar_parte_del_mes` comparte el traslado de H-031; la emisión crea y bloquea las cuentas de los vendedores
+  junto con las del edificio (`tambien_bloquear`: bloquear una cuenta nueva después da `BloqueoFueraDeOrden`) y
+  aplica los pendientes en la misma transacción; migración `0052` (`prorrateo_de_cambio` único por unidad y
+  período, `prorrateo_aplicado`); anular da 409 sólo si el prorrateo trasladó más de cero.
+- Evidencia (25/11/2026, orquestador): sobre `1697465`, H-032 23/23 desde `e451c6c`, H-031 27/27 desde `8601a7a`,
+  H-030 40/40 desde `abbc1e2`; 0 fallas, 0 errores, 0 skips; en `aceptacion/` sólo cambió la línea del SHA.
+- Demo (25/11/2026, por API, sin Juani; noviembre emitido por `GET preliquidacion` + `POST emision` reales): 1A
+  vendida el 11/11 antes de emitir → `pendiente`, 10 de 30; al emitir, `aplicado` con `"15500.11"` (10.000,10 +
+  500,01 + 5.000,00 sobre 30.000,31 / 1.500,02 / 15.000,01; la unidad con el resto; 3 y 3 traslados enlazados; la
+  vendedora sin interés); 1B vendida el 16/11 con noviembre emitido → `aplicado` al momento, 15 de 30,
+  `"23250.17"`; anular noviembre → 409 `prorrateo_aplicado` con el libro idéntico; segundo prorrateo → 422.
+- **Deuda** (en la ficha 4d): anular con prorrateo aplicado da 409 hasta que una historia resuelva deshacerlo;
+  cargos particulares prorrateados con la ordinaria; lo aplicado al emitir no tiene acción de auditoría propia; un
+  período emitido sin obligación para la unidad queda `aplicado` en `"0.00"`; posible cuenta de persona vacía si un
+  crédito cubre toda la parte; el 422 del segundo prorrateo no dice el motivo; `ensayo-roles.sh` actualizado sin
+  ejecutar (corre en el CI de cierre).
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
+
+### H-033 · La cuenta del vendedor
+
+- Objetivo: el administrador ve el estado de la cuenta de persona del vendedor y registra su cobro, que se
+  imputa con R04 (D-168.2c).
+- Incluye: lista y detalle de las cuentas de vendedores del edificio, registrar un cobro. No incluye: pantallas
+  (H-034), que el vendedor informe su pago desde el portal (no entra, D-168.2c).
+- Nivel: **L**.
+- Decisiones del orquestador (D-168, al acordar): ver usa el permiso existente `ver_morosidad`; cobrar, el
+  existente `confirmar_pago_informado`; un cobro mayor que la deuda se rechaza (el vendedor no tiene expensas
+  futuras donde aplicar un crédito a favor).
+- **C01**: `GET /api/complejos/{c}/cuentas-de-vendedores` lista las cuentas de persona del edificio con su
+  persona (nombre), deuda (texto) y las unidades de los cambios que la originaron, de mayor a menor deuda.
+- **C02**: `GET /api/complejos/{c}/cuentas-de-vendedores/{cuenta_id}` da el estado por período y componente,
+  el total y los movimientos (traslados y cobros) en orden.
+- **C03**: `POST .../cuentas-de-vendedores/{cuenta_id}/cobros` con `importe` (texto) y `fecha` (de la
+  transferencia) responde 201; el cobro se imputa con R04 (interés y lo más viejo primero) y la deuda baja
+  exactamente el importe.
+- **C04**: un cobro igual a la deuda deja la cuenta en cero; uno mayor da 422 sin cambiar nada.
+- **C05**: cada cobro queda auditado (`registrar_cobro_de_vendedor`, con cuenta, importe y fecha).
+- **N01**: sin el permiso, 403; una cuenta de otro edificio o administración, o una cuenta de unidad, 404.
+- **N02**: importe cero, negativo o con más de dos decimales, o fecha futura: 422 sin cambios.
+- **N03**: el cobro no toca ninguna cuenta de unidad, no aparece en la bandeja de pagos informados ni en la
+  morosidad, y no genera interés al emitir el período siguiente.
+- **K01**: R32 y la ficha 4d con H-033; la acción nueva de auditoría en `03_actores_y_roles.md`.
+- Demo: después de H-031, ver la cuenta de la vendedora, cobrarle una parte y después el resto hasta cero.
+- Aceptación: `aceptacion/H-033/`, 40 casos vistos fallar por aserción (0 errores), congelada en `c309f01` bajo
+  D-168. Contrato: leen quienes tienen `ver_morosidad` (contador, auxiliar y consejo incluidos), cobran super admin
+  y administrador; el 201 del cobro devuelve el detalle; dos cobros iguales son dos cobros (sin idempotencia).
+- **Recongelada** en `0167797` (25/11/2026): N01 pedía la cuenta de 1B, que el mundo no siembra (`IndexError`), y N03
+  comparaba la bandeja (una lista) pasada por `ok()`, que la volvía dict. Errores del orquestador, frenados por el
+  constructor con evidencia; lección L-106. Única diferencia en `aceptacion/` desde `c309f01`: esas dos aserciones y
+  el SHA.
+- Construcción (Sonnet): `bfffca4`, `6c2e99f`, `6df60ad`. Rutas `cuentas-de-vendedores` (lista, detalle, cobros);
+  lecturas del libro en `cuenta_corriente/aplicacion/cuentas_de_persona.py`; el cobro usa `registrar_pago` con
+  candado y tope leído con el candado tomado; evento `registrar_cobro_de_vendedor` en `EventoDelPago`, migración
+  `0053`.
+- Evidencia (25/11/2026, orquestador): sobre `87b0f04`, H-033 40/40 desde `0167797`, H-032 23/23, H-031 27/27 y H-030
+  40/40 desde sus SHA; 0 fallas, 0 errores, 0 skips.
+- Demo (25/11/2026, por API, sin Juani): Ana con 17.689,20 trasladados; lista y detalle por período; cobro de 5.000
+  → 12.689,20 (imputado 279,20 al interés de septiembre y 4.720,80 a su ordinaria, R04); cobro de 20.000 → 422 sin
+  cambios; cobro de 12.689,20 → 0,00; contador lee (200) y no cobra (403); una auditoría por cobro; `/morosidad` y
+  `/pagos` idénticos byte a byte.
+- **Deuda**: el 422 por superar la deuda dice "valor inválido" sin el motivo (H-034 lo traduce en pantalla); las
+  unidades de origen salen de `vendedor_deudor_id`, así que un prorrateo todavía pendiente ya lista la unidad; el
+  detalle no pagina.
+- Estado: **Lista** (25/11/2026). Terminada la marca Juani.
+
+### H-035 · Los propietarios y los nombres del cambio de titular
+
+- Origen: la demo rechazada de H-034 (26/11/2026): `/api/personal` no trae vecinos al administrador principal.
+- Objetivo: quien puede registrar un cambio de titular lee los propietarios actuales de la unidad y los nombres de
+  vendedores y compradores del historial, sin depender de `/api/personal`.
+- Nivel: **M** (lectura de datos personales detrás de un permiso, sin escribir).
+- **C01**: `GET /api/complejos/{c}/unidades/{u}/propietarios` con `registrar_cambio_de_titular` responde 200 con
+  `propietarios`: `persona_id` y `nombre` de cada propietario actual de la unidad, ordenados por nombre; lo usan el
+  super admin, el administrador principal y el administrador del edificio.
+- **C02**: no trae inquilinos ni propietarios de otras unidades; después de un cambio, trae a los compradores y ya
+  no a los vendedores.
+- **C03**: la respuesta del `POST` y del `GET` de `cambios-de-titular` suma `nombre` a cada vendedor y comprador,
+  aunque ya no sean propietarios.
+- **N01**: sin el permiso, 403; unidad de otro edificio o administración, 404.
+- **N02**: la respuesta no trae email, teléfono ni documento: sólo id y nombre.
+- **K01**: lección sobre la API falsa de e2e que no imita los filtros reales de la API.
+- Aceptación: `aceptacion/H-035/`, 14 casos vistos fallar por aserción (0 errores), congelada en `4e864f8` bajo D-168,
+  junto con L-107. Contrato: los nombres de los vendedores salen con `?con_nombres=true` en `vendedores_detalle`
+  (sumarlos siempre rompería las aceptaciones congeladas de H-030 a H-032); los compradores ya traían `nombre`.
+- Construcción (Sonnet): `d249cac`, `fb7c86e`; lectura `acceso/aplicacion/lectura_de_personas.py` (sólo id y nombre).
+- Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `fb7c86e` desde `4e864f8`: 14/14, 0 skips.
+- Demo: la de H-034 (abajo), que usa esta ruta como administrador principal.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
+
+### H-034 · Pantallas del cambio de titular
+
+- Objetivo: desde el padrón, "Cambiar titular" con las dos opciones, el aviso de deuda, el historial de
+  cambios y la cuenta del vendedor con su cobro, con impeccable.
+- Incluye: el formulario y el resultado del cambio, el historial por unidad, "Cuentas de vendedores" en el
+  menú del edificio con su detalle y el cobro, e2e con la API falsa como los anteriores. No incluye: cambios de
+  backend salvo lo que la pantalla necesite para leer.
+- Nivel: **M** (pantallas sobre una API ya probada; lo riesgoso quedó en H-030 a H-033).
+- **C01**: en el padrón, quien tiene `registrar_cambio_de_titular` ve "Cambiar titular" en cada unidad; abre un
+  formulario con fecha, los propietarios actuales para marcar como vendedores, uno o más compradores (nombre y
+  email opcional), la expensa del mes (entera o prorrateo por días) y la deuda previa (en la unidad o a nombre
+  del vendedor, con el vendedor elegido si hay más de uno), cada opción con una línea que explica qué pasa.
+- **C02**: al confirmar, la pantalla muestra el resultado: el aviso de deuda con su monto si lo hay, lo
+  trasladado al vendedor y el estado del prorrateo (pendiente o aplicado con su parte), y el padrón ya muestra
+  a los compradores.
+- **C03**: cada unidad muestra su historial de cambios de titular, el más nuevo primero.
+- **C04**: "Cuentas de vendedores" aparece en el menú del edificio para quien tiene `ver_morosidad`: lista con
+  persona, deuda y unidades, y el detalle por período con sus movimientos; "Registrar cobro" (importe y fecha)
+  sólo para quien tiene `confirmar_pago_informado`, y después del cobro se ve la deuda nueva.
+- **C05**: un 422 se muestra en su campo con un mensaje propio de la pantalla por campo (la API hoy dice
+  "valor inválido").
+- **N01**: sin los permisos no aparecen ni el botón, ni el menú, ni el cobro.
+- **N02**: el frontend no calcula montos: muestra los que devuelve la API, con formato argentino.
+- **N03**: en 320 px sin scroll horizontal, usable con teclado y sin violaciones de axe.
+- **K01**: la ficha 4d con H-034 y las pantallas en `06_funcionalidades.md` si cambian una HU.
+- Demo: en navegador real (Chrome), registrar una venta con deuda a nombre del vendedor y prorrateo, ver el
+  resultado y el historial, abrir la cuenta del vendedor y cobrarle hasta cero.
+- Aceptación: `aceptacion/H-034/` (Playwright con la API falsa de e2e, `web/e2e/escenarios-cambio-de-titular.ts`),
+  15 e2e vistos fallar por aserción (0 errores), congelada en `dc4ef16` bajo D-168. Rutas `/unidades/{u}/cambio-de-titular`
+  (formulario, resultado e historial), `/cuentas-de-vendedores` y su detalle; textos y mensajes por campo en `CONTRATO.md`.
+- Construcción (Sonnet): `6445d3b`. Evidencia: 15/15 e2e desde `dc4ef16` sobre `6445d3b`.
+- **Demo rechazada** (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales con Clerk en modo de
+  verificación local): entrando como administrador principal, "Cambiar titular de A" dice "Sin propietarios
+  cargados" aunque A tiene dos propietarias. La pantalla saca los propietarios de `/api/personal`, que para el
+  administrador principal filtra a quienes están por debajo de él (D13 del 2d) y nunca trae vecinos; sólo el
+  super admin la podría usar. La API falsa de e2e devolvía los propietarios por esa ruta, por eso los 15 e2e
+  pasaron. Vuelve a **En proceso**: espera H-035 (una ruta propia de propietarios y los nombres en el historial)
+  y se recongela con la API falsa corregida.
+- **Recongelada** en `4e864f8` (26/11/2026): la API falsa devuelve `/api/personal` sin vecinos al administrador, como
+  la real, y suma la ruta de propietarios y `vendedores_detalle`. Con la web actual fallan 8 de 15 (3 por `expect` y 5
+  por el tiempo de espera de las casillas de vendedores, que hoy no aparecen: falta la conducta, no es error de
+  setup); pasan los 7 que no dependen de propietarios. **C02 recortado**: se quitó "el padrón ya muestra a los
+  compradores", porque el panel de vecinos del padrón también lee `/api/personal`.
+- **Deuda grande** (anterior al 4d, viene del 2d): el padrón no le muestra los vecinos al administrador principal
+  (en la demo, "Vecinos 0" en unidades con dos propietarias). Va a otra historia.
+- Corrección (Sonnet): `305f4b0`, `deee10a`: los vendedores salen de la ruta de propietarios y los nombres de
+  `vendedores_detalle`; la pantalla ya no usa `/api/personal`.
+- Evidencia (26/11/2026, orquestador): `aceptar.py --sin-regresion` sobre `deee10a` desde `4e864f8`: 15/15 e2e, 0 skips.
+- Demo (26/11/2026, orquestador, Chrome contra web, API y PostgreSQL reales, Clerk en modo de verificación local,
+  como administrador principal): "Cambiar titular de A" lista a Ana y Dora; venta de Ana el 11/11 a Marta con
+  prorrateo y deuda a nombre de la vendedora → "Aplicado · parte del vendedor 3.333,33 · 10 de 30 días", deuda
+  pasada 17.689,20, aviso "la unidad queda con 6.666,67" (noviembre 10.000 − 3.333,33); historial con los nombres;
+  "Cuentas de vendedores" con Ana en 21.022,53 (17.689,20 + 3.333,33); cobro de 5.000 con confirmación → 16.022,53,
+  imputado 279,20 al interés de septiembre y 4.720,80 a su ordinaria (R04), y los movimientos en orden.
+- Estado: **Lista** (26/11/2026). Terminada la marca Juani.
 
 ## Plantilla de historia
 

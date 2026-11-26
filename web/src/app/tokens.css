@@ -2031,3 +2031,125 @@ a.boton-secundario:hover {
 .morosidad__fila > p:last-child {
   margin-top: 0.75rem;
 }
+
+/* Cambio de titular y cuentas de vendedores (change 4d, H-034): cada dato de un cambio o de una cuenta con
+   su rótulo arriba, acomodados solos (a 320 px bajan a una columna); las tablas largas se desplazan en
+   su propio contenedor, enfocable con teclado, nunca empujando el ancho de la página. */
+.titularidad__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.titularidad__dato {
+  min-width: 0;
+}
+
+.titularidad__dato dt {
+  font-size: var(--tipo-label);
+  color: var(--color-grafito);
+}
+
+.titularidad__dato dd {
+  margin: 0.125rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.titularidad__dato dd .boton-enlace {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.titularidad__fecha {
+  font-size: var(--tipo-titulo);
+}
+
+.titularidad__resultado {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.titularidad__comprador {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.titularidad__comprador > .boton-enlace {
+  justify-self: start;
+}
+
+.formulario fieldset > button {
+  margin-top: 0.25rem;
+}
+
+.formulario fieldset > .campo,
+.formulario fieldset > .opcion {
+  margin-bottom: 0.75rem;
+}
+
+.formulario fieldset > .campo__error {
+  margin: 0.5rem 0 0;
+}
+
+/* Un radio con su línea explicativa debajo del nombre (nunca dentro de él). */
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.opcion > input {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.125rem 0 0;
+  accent-color: var(--color-terracota);
+}
+
+.opcion__texto {
+  min-width: 0;
+}
+
+.opcion__texto label {
+  font-weight: 600;
+}
+
+.opcion__texto p {
+  margin: 0.125rem 0 0;
+}
+
+.titularidad__cuenta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+}
+
+.titularidad__persona {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.titularidad__deuda {
+  font-weight: 600;
+  text-align: right;
+}
+
+.titularidad__unidades {
+  grid-column: 1 / -1;
+}
+
+.titularidad__total {
+  margin: 0;
+  font-size: var(--tipo-titular);
+  font-weight: 700;
+}
+
+.titularidad__tabla {
+  overflow-x: auto;
+  max-width: 100%;
+}

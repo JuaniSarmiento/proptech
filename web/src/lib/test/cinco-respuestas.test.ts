@@ -33,6 +33,18 @@ const _EXCEPCIONES: Record<string, { faltan: string[]; motivo: string }> = {
       "mismo patrón boolean/redirect que elegir-administracion; aceptar una invitación no " +
       "distingue motivos de rechazo por seguridad (no confirmar qué parte del enlace falló).",
   },
+  "edificios/[id]/unidades/[unidadId]/cambio-de-titular/acciones.ts": {
+    faltan: ["conflicto"],
+    motivo:
+      "la API del cambio de titular (H-030 a H-032) contesta 404, 403 y 422; no tiene un 409 que " +
+      "explicar (dos pedidos iguales no chocan: el segundo da 422 porque el vendedor ya no es propietario).",
+  },
+  "edificios/[id]/cuentas-de-vendedores/[cuentaId]/acciones.ts": {
+    faltan: ["conflicto"],
+    motivo:
+      "el cobro al vendedor (H-033) contesta 404, 403 y 422; sin idempotencia ni estado que choque, " +
+      "no hay 409.",
+  },
   "edificios/[id]/saldos-previos/acciones.ts": {
     faltan: ["invalido"],
     motivo:
