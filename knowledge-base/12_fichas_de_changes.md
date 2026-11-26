@@ -803,6 +803,14 @@ Lista del auditor (`informes/verify-2-auditor.md`, "DEUDA", sobre la del intento
   hasta que haya una lectura de propietarios por unidad; (2) el historial resuelve a los vendedores por nombre
   desde `/api/personal` y, si una persona ya no está, dice "Propietario anterior"; (3) no hay confirmación
   aparte del cambio de titular (un solo paso, como pide el contrato) ni forma de deshacerlo desde la pantalla.
+- **4d · H-035 construida** (los propietarios y los nombres del cambio de titular, backend): ruta nueva
+  `GET /api/complejos/{c}/unidades/{u}/propietarios` (`registrar_cambio_de_titular`, 404 antes que 403) con
+  `{"propietarios": [{persona_id, nombre}]}` por nombre, sin email ni asignaciones; el `POST` y el `GET` de
+  `cambios-de-titular` aceptan `?con_nombres=true` y suman `vendedores_detalle` en el orden de `vendedores`
+  (sin el parámetro, respuestas idénticas). Lecturas nuevas en
+  `acceso/aplicacion/lectura_de_personas.py` (`propietarios_de_unidad`, `nombres_de_personas`); la ruta se
+  suma a `test_rutas_protegidas.py`. Cierra la deuda 1 y 2 de H-034 del lado del backend; la pantalla pasa a
+  usarla en la historia que sigue. Lección L-107.
 - **Lo que el 4b recibía hecho del 4a** (histórico): sus seis tablas se declaraban en
   `compartido/tablas_protegidas.py` y nacían con trigger por fila de `UPDATE` y `DELETE`, `BEFORE
   TRUNCATE` y el trigger `BEFORE UPDATE OR DELETE ... FOR EACH STATEMENT` (D-114.4), los tres con la

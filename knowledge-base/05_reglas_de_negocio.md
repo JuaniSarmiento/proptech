@@ -1124,6 +1124,12 @@ número no se marcan duplicadas entre sí.
 > prorrateo por días de la expensa del mes** (los dos abajo). **H-033 construye la cuenta del vendedor**:
 > verla y cobrarle (`cuentas-de-vendedores`, abajo).
 
+- **Los propietarios y los nombres** (H-035): `GET /api/complejos/{c}/unidades/{u}/propietarios` devuelve los
+  `propietarios` actuales de la unidad (`persona_id` y `nombre`, por nombre) con el permiso
+  `registrar_cambio_de_titular`; es la lectura que usa la pantalla para elegir al vendedor, sin depender de
+  `/api/personal`. `?con_nombres=true` en el `POST` y el `GET` de `cambios-de-titular` suma
+  `vendedores_detalle` (`persona_id`, `nombre`), también de quien ya no es propietario.
+
 - **La cuenta del vendedor** (H-033, D-168.2c): `GET /api/complejos/{c}/cuentas-de-vendedores` lista las
   cuentas de persona del edificio (persona, deuda, unidades de origen), también las que quedaron en cero, la
   de más deuda primero; `GET .../{cuenta_id}` da el estado por período y componente (`debe`, `cobrado`,

@@ -24,6 +24,10 @@ from proptech_api.acceso import RutaConIdentidad, identidad_actual, sesion_con_t
 from proptech_api.cuerpos import CuerpoDeAlta
 from proptech_api.morosidad import hoy
 from proptech_core.acceso.aplicacion.datos_de_usuario import email_valido, nombre_valido
+from proptech_core.acceso.aplicacion.lectura_de_personas import (
+    nombres_de_personas,
+    propietarios_de_unidad,
+)
 from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import (
@@ -33,6 +37,7 @@ from proptech_core.titularidad.aplicacion.cuenta_del_vendedor import (
     listar_cuentas_de_vendedores,
     registrar_cobro_de_vendedor,
 )
+from proptech_core.titularidad.aplicacion.autorizacion import unidad_autorizada
 from proptech_core.titularidad.aplicacion.errores import SinPermiso
 from proptech_core.titularidad.aplicacion.lectura import CambioDeTitular, listar_cambios
 from proptech_core.titularidad.aplicacion.registrar import (
@@ -115,11 +120,46 @@ def _como_json(cambio: CambioDeTitular, *, con_aviso: bool) -> dict[str, Any]:
     return respuesta
 
 
+def _con_nombres_de_vendedores(
+    sesion: Session,
+    identidad: Identidad,
+    cambios: list[CambioDeTitular],
+    respuestas: list[dict[str, Any]],
+) -> None:
+    """`?con_nombres=true` (H-035): suma `vendedores_detalle` en el orden de `vendedores`."""
+    nombres = nombres_de_personas(
+        sesion, identidad, persona_ids=[v for c in cambios for v in c.vendedores]
+    )
+    for cambio, respuesta in zip(cambios, respuestas, strict=True):
+        respuesta["vendedores_detalle"] = [
+            {"persona_id": str(v), "nombre": nombres.get(v, "")} for v in cambio.vendedores
+        ]
+
+
+@router.get("/complejos/{complejo_id}/unidades/{unidad_id}/propietarios")
+def propietarios(
+    complejo_id: UUID,
+    unidad_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """Los propietarios actuales de la unidad (id y nombre, por nombre), para elegir al vendedor.
+    Mismo permiso que el cambio de titular; es una lectura: no se audita."""
+    unidad_autorizada(sesion, identidad, complejo_id, unidad_id)
+    return {
+        "propietarios": [
+            {"persona_id": str(p.persona_id), "nombre": p.nombre}
+            for p in propietarios_de_unidad(sesion, identidad, unidad_id=unidad_id)
+        ]
+    }
+
+
 @router.post("/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", status_code=201)
 def registrar(
     complejo_id: UUID,
     unidad_id: UUID,
     cuerpo: CuerpoCambioDeTitular,
+    con_nombres: bool = False,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
     fecha_de_hoy: date = Depends(hoy),
@@ -141,18 +181,25 @@ def registrar(
         request_id=UUID(request_id_actual.get() or ""),
     )
     sesion.commit()
-    return _como_json(cambio, con_aviso=True)
+    respuesta = _como_json(cambio, con_aviso=True)
+    if con_nombres:
+        _con_nombres_de_vendedores(sesion, identidad, [cambio], [respuesta])
+    return respuesta
 
 
 @router.get("/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular")
 def listar(
     complejo_id: UUID,
     unidad_id: UUID,
+    con_nombres: bool = False,
     identidad: Identidad = Depends(identidad_actual),
     sesion: Session = Depends(sesion_con_tenant),
 ) -> list[dict[str, Any]]:
     cambios = listar_cambios(sesion, identidad, complejo_id=complejo_id, unidad_id=unidad_id)
-    return [_como_json(c, con_aviso=False) for c in cambios]
+    respuestas = [_como_json(c, con_aviso=False) for c in cambios]
+    if con_nombres:
+        _con_nombres_de_vendedores(sesion, identidad, cambios, respuestas)
+    return respuestas
 
 
 class CuerpoCobro(CuerpoDeAlta):

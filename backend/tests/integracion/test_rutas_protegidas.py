@@ -100,6 +100,8 @@ _RUTAS_CUBIERTAS = _RUTAS_SIN_ALCANCE | {
     # --- Cambio 4d `cambio-de-titular` (H-030) ---
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "POST"),
     ("/api/complejos/{complejo_id}/unidades/{unidad_id}/cambios-de-titular", "GET"),
+    # --- Cambio 4d `cambio-de-titular` (H-035) ---
+    ("/api/complejos/{complejo_id}/unidades/{unidad_id}/propietarios", "GET"),
     # --- Cambio 4d `cambio-de-titular` (H-033) ---
     ("/api/complejos/{complejo_id}/cuentas-de-vendedores", "GET"),
     ("/api/complejos/{complejo_id}/cuentas-de-vendedores/{cuenta_id}", "GET"),
