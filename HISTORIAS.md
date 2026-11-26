@@ -52,6 +52,9 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-038 | C-16 11, parte 1 | El vecino lee sus unidades, lo que debe, lo que pagó y sus comprobantes, según su vínculo | Alta / HIGH (L) | Lista |
 | H-039 | C-16 11, parte 2 | La expensa explicada por categoría y comparada con la anterior, con la distribución al abrir | Alta / HIGH (L) | Lista |
 | H-040 | C-16 11, parte 3 | Las pantallas del portal y la app instalable | Media / HIGH (M) | Lista |
+| H-041 | C-15 10b, parte 1 | El certificado de libre deuda a una fecha de corte, guardado, con PDF y enlace firmado | Alta / CRITICAL (L) | En proceso |
+| H-042 | C-15 10b, parte 2 | Condonar interés con motivo y marcar la gestión judicial, que saca del moroso crítico | Alta / CRITICAL (L) | Pendiente |
+| H-043 | C-15 10b, parte 3 | Las pantallas del libre deuda, la condonación y la marca judicial | Media / HIGH (M) | Pendiente |
 
 Orden: H-001 → H-002 → H-003. El #7 es el más chico y ya viene archivado; el #5 cambia el CI y el humo,
 así que conviene que el #6 se rebase después sobre ese CI y corra con él.
@@ -2455,6 +2458,48 @@ Firmado por el orquestador por delegación escrita de Juani (D-170, D-168), prop
   bloque, monto ni categoría extraordinaria, comparación +10.657,50; Beto en la unidad de Ana → 404. **Deuda**: la 404
   es la genérica de Next, en inglés y sin estilo.
 - Estado: **Lista** (26/11/2026). Terminada la marca Juani.
+
+## Condonación, gestión judicial y libre deuda (10b, C-15)
+
+Firmado por el orquestador por delegación escrita de Juani (D-172, D-168), con P14, P20 y P32 respondidas por Juani
+(D-171); propuesta antes de construir. Rama `change/condonacion-judicial-y-libre-deuda` sobre el 11. Tres historias en
+serie; demo única al cerrar.
+
+### H-041 · El certificado de libre deuda
+
+- Objetivo: el super admin emite el certificado de libre deuda de una unidad a una fecha de corte (R21, D-171, D-172).
+- Nivel: **L** (peso legal, CRITICAL).
+- **C01**: `POST /api/complejos/{c}/unidades/{u}/libre-deuda` con `fecha_de_corte` responde 201 con el certificado
+  guardado: identificador único, corte, saldo, pagos en revisión, cuotas que vencen después del corte y huella; sin saldo,
+  dice "libre de deuda" con `0.00`.
+- **C02**: el saldo es el capital más los intereses registrados vencidos a la fecha de corte, desde el libro; un
+  movimiento posterior al corte no lo cambia.
+- **C03**: un pago confirmado cuenta por la fecha de la transferencia; un pago informado sin confirmar se lista aparte y
+  no resta.
+- **C04**: las cuotas liquidadas con vencimiento posterior al corte se listan aparte y no suman al saldo.
+- **C05**: el PDF (WeasyPrint) se descarga por enlace firmado que vence (D-070), siempre el mismo para ese certificado;
+  `GET` lista los certificados de la unidad.
+- **C06**: una unidad en gestión judicial recibe el certificado con la leyenda (cuando exista la marca, H-042).
+- **C07**: la emisión queda auditada con quién, cuándo, la unidad y el corte.
+- **N01**: fuera del super admin, 403; unidad de otro edificio o administración, 404.
+- **N02**: una fecha de corte futura da 422.
+- **N03**: emitir dos veces con el mismo corte y el libro sin cambios da el mismo saldo y la misma huella; emitir no
+  escribe en el libro.
+- **N04**: el certificado nunca incluye estimaciones del período en curso ni gastos sin liquidar.
+- **K01**: R21 en `05`, HU-A10 en `06`, `04` con la tabla nueva y la ficha 10b con H-041.
+- Estado: En proceso.
+
+### H-042 · Condonación y gestión judicial
+
+- Objetivo: condonar interés pendiente con motivo (R29) y marcar la gestión judicial por unidad, que la saca del moroso
+  crítico y la expone al 13 (R31). Criterios al terminar H-041.
+- Estado: Pendiente.
+
+### H-043 · Pantallas del 10b
+
+- Objetivo: el libre deuda, la condonación y la marca judicial desde la web del administrador, con el aviso del plazo de
+  5 días hábiles (D-171). Criterios al terminar H-042.
+- Estado: Pendiente.
 
 ## Plantilla de historia
 
