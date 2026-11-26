@@ -42,7 +42,7 @@ vive en `aceptacion/<H-xxx>/`. En el tablero de Jarvis, que exige el formato `HU
 | H-028 | C-14 10a, parte 2 | El Excel de la morosidad | Baja / HIGH | Terminada |
 | H-029 | C-14 10a, parte 3 | La pantalla de la morosidad | Baja / HIGH | Terminada |
 | H-030 | C-07d 4d, parte 1 | Registrar un cambio de titular con las opciones por defecto, auditado y con aviso de deuda | Media / CRITICAL (L) | Lista |
-| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | Pendiente |
+| H-031 | C-07d 4d, parte 2 | La deuda previa pasa a nombre del vendedor y la unidad queda en cero por ese concepto | Alta / CRITICAL (L) | En proceso |
 | H-032 | C-07d 4d, parte 3 | La expensa del mes del cambio se prorratea por días entre vendedor y comprador | Alta / CRITICAL (L) | Pendiente |
 | H-033 | C-07d 4d, parte 4 | La cuenta del vendedor: ver su saldo y registrar su cobro | Media / CRITICAL (L) | Pendiente |
 | H-034 | C-07d 4d, parte 5 | Las pantallas del cambio de titular y de la cuenta del vendedor | Media / HIGH (M) | Pendiente |
@@ -2015,7 +2015,10 @@ anterior). En el tablero de Jarvis van como `HU-H030`…
 - Demo: unidad con dos meses vencidos e interés; cambio con deuda a nombre del vendedor; la unidad en cero
   por esos meses, el vendedor debiendo lo mismo; emitir el mes siguiente y ver que el vendedor no suma
   interés.
-- Estado: Pendiente.
+- Aceptación: `aceptacion/H-031/`, 27 casos vistos fallar por aserción (0 errores), congelada en `d4804ac`
+  bajo D-168. Contrato: el `aviso` es lo que le queda a la unidad después del traslado; sin deuda previa,
+  `trasladado` `"0.00"` y `cuenta_del_vendedor` nulo. Sólo se vio fallar la primera aserción de cada test.
+- Estado: En proceso.
 
 ### H-032 · Prorrateo por días de la expensa del mes del cambio
 
