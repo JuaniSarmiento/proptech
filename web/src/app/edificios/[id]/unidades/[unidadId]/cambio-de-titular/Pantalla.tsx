@@ -35,7 +35,6 @@ type Props = {
   nombreEdificio: string;
   identificadorDeUnidad: string;
   propietarios: Propietario[];
-  nombres: Record<string, string>;
   historial: CambioDeTitular[];
   accionRegistrar: (
     estadoPrevio: EstadoDelCambio,
@@ -151,7 +150,6 @@ export function PantallaCambioDeTitular({
   nombreEdificio,
   identificadorDeUnidad,
   propietarios,
-  nombres,
   historial,
   accionRegistrar,
 }: Props) {
@@ -332,7 +330,8 @@ export function PantallaCambioDeTitular({
                   <option value="">Elegí un vendedor</option>
                   {borrador.vendedores.map((personaId) => (
                     <option key={personaId} value={personaId}>
-                      {nombres[personaId] ?? "Propietario"}
+                      {propietarios.find((p) => p.persona_id === personaId)?.nombre ??
+                        "Propietario"}
                     </option>
                   ))}
                 </select>
@@ -486,9 +485,7 @@ export function PantallaCambioDeTitular({
                   <strong className="titularidad__fecha">{fecha(cambio.fecha)}</strong>
                   <dl className="titularidad__datos">
                     <Dato rotulo="Vendedores">
-                      {cambio.vendedores
-                        .map((v) => nombres[v] ?? "Propietario anterior")
-                        .join(", ")}
+                      {(cambio.vendedores_detalle ?? []).map((v) => v.nombre).join(", ")}
                     </Dato>
                     <Dato rotulo="Compradores">
                       {cambio.compradores.map((c) => c.nombre).join(", ")}

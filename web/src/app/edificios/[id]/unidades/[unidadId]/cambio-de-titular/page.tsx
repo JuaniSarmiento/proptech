@@ -1,15 +1,14 @@
 /**
  * Cambiar titular de una unidad (change 4d, H-034): lee los cambios anteriores (que además decide el
- * permiso `registrar_cambio_de_titular`), el padrón (para saber qué unidad es) y `/api/personal` (los
- * propietarios actuales y los nombres de los vendedores del historial). La acción se liga al edificio y a
+ * permiso `registrar_cambio_de_titular`), el padrón (para saber qué unidad es) y la ruta de propietarios de la
+ * unidad (H-035; los nombres de los vendedores del historial vienen con `con_nombres=true`). La acción se liga al edificio y a
  * la unidad acá.
  */
 
 import { ErrorDePantalla } from "../../../../../../componentes/ErrorDePantalla";
 import { Estados } from "../../../../../../componentes/Estados";
 import { edificioPorId } from "../../../../../../lib/api/edificios";
-import { listarPersonal } from "../../../../../../lib/api/personal";
-import { cambiosDeUnaUnidad } from "../../../../../../lib/api/titularidad";
+import { cambiosDeUnaUnidad, propietariosDeUnaUnidad } from "../../../../../../lib/api/titularidad";
 import { padronDelEdificio } from "../../../../../../lib/api/unidades";
 import { registrarCambioAction } from "./acciones";
 import { PantallaCambioDeTitular } from "./Pantalla";
@@ -20,17 +19,25 @@ type Props = {
 
 export default async function PaginaCambioDeTitular({ params }: Props) {
   const { id, unidadId } = await params;
-  const [edificio, cambios, padron, personal] = await Promise.all([
+  const [edificio, cambios, padron, propietarios] = await Promise.all([
     edificioPorId(id),
     cambiosDeUnaUnidad(id, unidadId),
     padronDelEdificio(id),
-    listarPersonal(),
+    propietariosDeUnaUnidad(id, unidadId),
   ]);
 
-  if (cambios.estado === "sin_sesion" || padron.estado === "sin_sesion") {
+  if (
+    cambios.estado === "sin_sesion" ||
+    padron.estado === "sin_sesion" ||
+    propietarios.estado === "sin_sesion"
+  ) {
     return <Estados tipo="sinSesion" />;
   }
-  if (cambios.estado === "no_existe" || padron.estado === "no_existe") {
+  if (
+    cambios.estado === "no_existe" ||
+    padron.estado === "no_existe" ||
+    propietarios.estado === "no_existe"
+  ) {
     return <Estados tipo="noExiste" />;
   }
   if (cambios.estado === "sin_permiso") {
@@ -51,16 +58,16 @@ export default async function PaginaCambioDeTitular({ params }: Props) {
       />
     );
   }
-  if (personal.estado === "sin_permiso") {
+  if (propietarios.estado === "sin_permiso") {
     return (
       <Estados
         tipo="sinPermiso"
         queNoPuede="ver a los propietarios de la unidad"
-        permisoFaltante={personal.permiso}
+        permisoFaltante={propietarios.permiso}
       />
     );
   }
-  if (cambios.estado !== "ok" || padron.estado !== "ok" || personal.estado !== "ok") {
+  if (cambios.estado !== "ok" || padron.estado !== "ok" || propietarios.estado !== "ok") {
     return <ErrorDePantalla mensaje="No pudimos cargar la unidad." />;
   }
 
@@ -69,28 +76,12 @@ export default async function PaginaCambioDeTitular({ params }: Props) {
     return <Estados tipo="noExiste" />;
   }
 
-  const propietarios: { persona_id: string; nombre: string }[] = [];
-  for (const persona of personal.datos) {
-    const esPropietario = persona.asignaciones.some(
-      (a) =>
-        a.rol === "vecino" &&
-        a.unidad_id === unidadId &&
-        (a.vinculo ?? "propietario") === "propietario",
-    );
-    if (esPropietario)
-      propietarios.push({ persona_id: persona.persona_id, nombre: persona.nombre });
-  }
-  const nombres: Record<string, string> = Object.fromEntries(
-    personal.datos.map((persona) => [persona.persona_id, persona.nombre]),
-  );
-
   return (
     <PantallaCambioDeTitular
       id={id}
       nombreEdificio={edificio.estado === "ok" ? edificio.datos.nombre : "Edificio"}
       identificadorDeUnidad={unidad.identificador}
-      propietarios={propietarios}
-      nombres={nombres}
+      propietarios={propietarios.datos}
       historial={cambios.datos}
       accionRegistrar={registrarCambioAction.bind(null, id, unidadId)}
     />

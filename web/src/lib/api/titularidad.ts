@@ -22,6 +22,8 @@ export type CambioDeTitular = {
   unidad_id: string;
   fecha: string;
   vendedores: string[];
+  /** Con `con_nombres=true` (H-035): los vendedores con su nombre, en el orden de `vendedores`. */
+  vendedores_detalle?: { persona_id: string; nombre: string }[];
   compradores: CompradorDelCambio[];
   expensa_del_mes: "entera" | "prorrateo";
   deuda_previa: "en_la_unidad" | "a_nombre_del_vendedor";
@@ -97,6 +99,11 @@ function cambioValido(valor: unknown): valor is CambioDeTitular {
     valor.compradores.every((c) => esRegistro(c) && typeof c.nombre === "string") &&
     (valor.expensa_del_mes === "entera" || valor.expensa_del_mes === "prorrateo") &&
     (valor.deuda_previa === "en_la_unidad" || valor.deuda_previa === "a_nombre_del_vendedor") &&
+    (valor.vendedores_detalle === undefined ||
+      (Array.isArray(valor.vendedores_detalle) &&
+        valor.vendedores_detalle.every(
+          (v) => esRegistro(v) && typeof v.persona_id === "string" && typeof v.nombre === "string",
+        ))) &&
     (valor.trasladado === undefined || esMonto(valor.trasladado)) &&
     (valor.prorrateo === undefined || prorrateoValido(valor.prorrateo))
   );
@@ -145,10 +152,33 @@ export async function cambiosDeUnaUnidad(
   unidadId: string,
 ): Promise<ResultadoApi<CambioDeTitular[]>> {
   if (!esIdValido(id) || !esIdValido(unidadId)) return { estado: "no_existe" };
-  const resultado = await pedirApi<CambioDeTitular[]>(rutaDeCambios(id, unidadId));
+  const resultado = await pedirApi<CambioDeTitular[]>(
+    `${rutaDeCambios(id, unidadId)}?con_nombres=true`,
+  );
   if (resultado.estado !== "ok") return resultado;
   return Array.isArray(resultado.datos) && resultado.datos.every(cambioValido)
     ? resultado
+    : { estado: "fallo" };
+}
+
+export type PropietarioDeUnidad = { persona_id: string; nombre: string };
+
+/** Los propietarios actuales de la unidad, por nombre (H-035); no pasa por `/api/personal`. */
+export async function propietariosDeUnaUnidad(
+  id: string,
+  unidadId: string,
+): Promise<ResultadoApi<PropietarioDeUnidad[]>> {
+  if (!esIdValido(id) || !esIdValido(unidadId)) return { estado: "no_existe" };
+  const resultado = await pedirApi<{ propietarios: PropietarioDeUnidad[] }>(
+    `/api/complejos/${encodeURIComponent(id)}/unidades/${encodeURIComponent(unidadId)}/propietarios`,
+  );
+  if (resultado.estado !== "ok") return resultado;
+  const lista = resultado.datos?.propietarios;
+  return Array.isArray(lista) &&
+    lista.every(
+      (p) => esRegistro(p) && typeof p.persona_id === "string" && typeof p.nombre === "string",
+    )
+    ? { estado: "ok", datos: lista }
     : { estado: "fallo" };
 }
 
