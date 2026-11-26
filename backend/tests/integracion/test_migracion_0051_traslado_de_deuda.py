@@ -1,8 +1,8 @@
 """H-031 (4d): la `0051_traslado_de_deuda` suma `obligacion.de_traslado` (la única que admite
 capital cero), `ck_mov_traslado` y `cambio_de_titular.vendedor_deudor_id`; sube también sobre una
-base ya desplegada, con `roles antes` que le presta las tres tablas protegidas (L-089), y no baja con
-deuda trasladada. Va en su propio módulo (su propia base). Prueba **su** migración (L-082); los casos
-de `CHECK` del libro están en `test_libro_esquema.py`.
+base ya desplegada, con `roles antes` que le presta las tres tablas protegidas (L-089), y no baja
+con deuda trasladada. Va en su propio módulo (su propia base). Prueba **su** migración (L-082); los
+casos de `CHECK` del libro están en `test_libro_esquema.py`.
 """
 
 from __future__ import annotations
