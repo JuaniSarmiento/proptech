@@ -142,7 +142,12 @@ export function PantallaExpensa({ expensa, unidad, unidades }: Props) {
               { rotulo: "Diferencia", valor: dinero(comparacion.diferencia_total) },
             ]}
           />
-          <div className="tabla-con-scroll">
+          <section
+            className="tabla-con-scroll"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: una región que se desplaza tiene que poder enfocarse para usarla con teclado
+            tabIndex={0}
+            aria-label="Cuadro de comparación por categoría"
+          >
             <table
               className="tabla-de-importes tabla-de-importes--comparacion"
               aria-label="Comparación por categoría"
@@ -166,7 +171,7 @@ export function PantallaExpensa({ expensa, unidad, unidades }: Props) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </section>
         </Panel>
       )}
     </ArmazonDelPortal>
