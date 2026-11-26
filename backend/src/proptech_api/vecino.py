@@ -21,6 +21,7 @@ from proptech_core.acceso.dominio.permisos import Rol
 from proptech_core.compartido.configuracion import ConfiguracionInvalida
 from proptech_core.compartido.dinero import sumar
 from proptech_core.compartido.reparto import clave_de_orden_natural
+from proptech_core.compartido.seguimiento import request_id_actual
 from proptech_core.complejos.aplicacion.escritura import hoy_en_mendoza
 from proptech_core.complejos.aplicacion.lectura import (
     cargar_complejo,
@@ -28,7 +29,8 @@ from proptech_core.complejos.aplicacion.lectura import (
 )
 from proptech_core.cuenta_corriente.aplicacion.vision_del_vecino import cifras_de_unidad
 from proptech_core.gastos.aplicacion import cargos_particulares
-from proptech_core.liquidacion.aplicacion import documentos, enlaces
+from proptech_core.liquidacion.aplicacion import documentos, enlaces, expensa_del_vecino
+from proptech_core.liquidacion.aplicacion.errores import NoEncontrado
 from proptech_core.liquidacion.aplicacion.lectura import ultima_emision_vigente
 from proptech_core.pagos.aplicacion.lectura import pagos_confirmados_de_unidad
 
@@ -176,3 +178,44 @@ def cargo_de_mi_unidad(
     if cargo is None or cargo["unidad_id"] != unidad_id or cargo["estado"] != "aprobado":
         raise _no_encontrado()
     return cargo
+
+
+@router.get("/mis-unidades/{unidad_id}/liquidaciones")
+def liquidaciones_de_mi_unidad(
+    unidad_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> list[dict[str, str]]:
+    """Las expensas emitidas y no anuladas del edificio, con el total de mi unidad. No distribuye
+    ni escribe nada."""
+    complejo_id, vinculo = _mi_unidad(sesion, identidad, unidad_id)
+    return expensa_del_vecino.listar_de_la_unidad(
+        sesion, complejo_id=complejo_id, unidad_id=unidad_id, vinculo=vinculo
+    )
+
+
+@router.get("/mis-unidades/{unidad_id}/liquidaciones/{liquidacion_id}")
+def liquidacion_de_mi_unidad(
+    unidad_id: UUID,
+    liquidacion_id: UUID,
+    identidad: Identidad = Depends(identidad_actual),
+    sesion: Session = Depends(sesion_con_tenant),
+) -> dict[str, Any]:
+    """La expensa explicada (R16), comparada con la anterior. La primera lectura de una emitida la
+    distribuye con origen `portal` (D-074); es lo único que escribe, y es idempotente."""
+    complejo_id, vinculo = _mi_unidad(sesion, identidad, unidad_id)
+    try:
+        detalle = expensa_del_vecino.detalle_de_la_unidad(
+            sesion,
+            complejo_id=complejo_id,
+            unidad_id=unidad_id,
+            liquidacion_id=liquidacion_id,
+            vinculo=vinculo,
+            identidad_persona_id=identidad.persona_id,
+            request_id=UUID(request_id_actual.get() or ""),
+        )
+    except NoEncontrado:
+        sesion.rollback()
+        raise _no_encontrado() from None
+    sesion.commit()
+    return detalle

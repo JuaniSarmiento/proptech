@@ -481,6 +481,12 @@ Como vecino, quiero entender en qué se gastó la plata y por qué cambió mi ex
 - Dadas dos liquidaciones seguidas, entonces veo cuánto cambió mi expensa y qué conceptos explican
   la diferencia.
 
+**Construida (backend) en H-039** (`GET /api/mis-unidades/{u}/liquidaciones` y `.../liquidaciones/{id}`): la lista
+de las emitidas y no anuladas del edificio con el total de mi unidad, y el detalle con los gastos por categoría, mi
+parte por grupo, fondo, intereses, total y la comparación con la emitida anterior (diferencia del total y por
+categoría). El inquilino no recibe nada extraordinario (D-170.2). La primera lectura del detalle de una emitida la
+distribuye con origen `portal` (D-074), una sola vez. Las pantallas son de H-040.
+
 **Reglas relacionadas**: R16.
 
 ### HU-V4 · Informar un pago

@@ -136,6 +136,11 @@ del 3c, D-128)
   (tarea 3.4), y un gasto ya aprobado contra una categoría o un grupo desactivado sigue entrando en el
   cálculo (R16 no reabre nada retroactivamente). "Nunca tuvo gastos" sigue sin distinguir nada: no hay
   un segundo mecanismo de borrado real para ninguno de los dos.
+- **El vecino ve la expensa explicada por esas categorías (11, H-039, D-170)**: el detalle por unidad lee lo
+  guardado al emitir (nunca recalcula), con el nombre de la categoría tal como estaba al emitir aunque
+  después se renombre o se desactive. La comparación con la emitida anterior del edificio (la más reciente de
+  período anterior que no está anulada) cruza las categorías por id y no reabre nada; una categoría que sólo
+  estaba en una de las dos figura con `0.00` en la otra. El inquilino nunca recibe una categoría extraordinaria.
 - **La clave de un grupo o una categoría se autogenera desde el nombre** (3c, D4, D-128): el
   administrador deja de escribirla en el formulario; una función pura la calcula (minúsculas, sin
   tildes, lo que no sea `[a-z0-9]` colapsa a `_`, prefijo garantizado por letra, recorte a 40,

@@ -1545,6 +1545,16 @@ D-153).
   `liquidacion.aplicacion.documentos.documentos_de_unidad` y `lectura.ultima_emision_vigente`. Deuda: un pago
   reimputado a otra unidad sigue figurando en la unidad de su parte original; la comparación con el mes anterior, el
   detalle por categoría y la distribución al abrir son de H-039, y las pantallas, de H-040.
+- **11 · H-039 construida** (26/11/2026, backend, sin migraciones): entender mi expensa. Dos rutas más en
+  `proptech_api/vecino.py`, sobre `liquidacion.aplicacion.expensa_del_vecino`: la lista de las expensas emitidas y no
+  anuladas del edificio con el total de la unidad, y el detalle (lo guardado al emitir, nunca recalculado) con
+  `bloques` iguales a los del 7, mi parte por grupo, cargos, fondo, extraordinaria, intereses, total y `comparacion`
+  contra la emitida anterior no anulada. El inquilino queda sin la clave `extraordinaria` ni categorías
+  extraordinarias, tampoco en la comparación (D-170.2). La primera lectura del detalle de una emitida llama a
+  `registrar_distribucion(origen="portal")` en su misma transacción (candado de período del 7 + `ON CONFLICT DO
+  NOTHING`): el primero gana y las simultáneas dan 200 con un solo evento. Deuda: la distribución del portal no
+  audita (no hay acción de auditoría para el vecino); una unidad que no figura en la liquidación (alta posterior) no
+  la ve en la lista y da 404 en el detalle; las pantallas son de H-040.
 
 ### 12 · `vista-del-consejo` · HIGH (D-087)
 
