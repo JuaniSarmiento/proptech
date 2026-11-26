@@ -39,6 +39,7 @@ from proptech_core.liquidacion.dominio.ciclo import (
     conflicto_al_distribuir,
     pedido_de_anulacion,
 )
+from proptech_core.titularidad.aplicacion.prorrateo import hay_prorrateo_aplicado
 
 
 def distribuir_liquidacion(
@@ -122,6 +123,10 @@ def anular_liquidacion(
         )
         if choque is not None:
             raise Conflicto(*choque)
+        # H-032 (deuda anotada en la ficha 4d): lo que un prorrateo de cambio de titular movió a la
+        # cuenta del vendedor no se deshace todavía; hasta que se resuelva, la emisión no se anula.
+        if hay_prorrateo_aplicado(sesion, complejo_id=complejo_id, periodo=periodo):
+            raise Conflicto("periodo", "prorrateo_aplicado")
         anular_emision(
             sesion,
             identidad,

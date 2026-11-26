@@ -19,8 +19,15 @@ calcula sobre cuentas de unidad. Viaja con el capital y el interés ya registrad
 persona queda fuera de la morosidad y de la situación de cobranza, que son por unidad (D-167).
 
 Dos cambios sobre la misma unidad no repiten: lo ya trasladado quedó imputado y no es residual.
+
+`trasladar_parte_del_mes` (H-032, R32) usa las mismas piezas para la parte del vendedor de la
+obligación del mes del cambio: la parte de cada componente (ordinaria, fondo de reserva,
+extraordinaria; nunca el interés) la decide el llamador con la regla de `titularidad`, porque este
+módulo no la conoce; acá sólo se mueve, con el crédito fechado al vencimiento (sin interés sobre lo
+trasladado).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import UUID, uuid4, uuid5
@@ -84,6 +91,32 @@ def _partes(actual: FotoDeCuenta, limite: date) -> list[_Parte]:
     partes.sort(
         key=lambda p: (p.obligacion.periodo, orden.index(p.componente), str(p.obligacion.id))
     )
+    return partes
+
+
+#: Dado lo emitido y lo impago de un componente de la obligación del mes, cuánto se traslada.
+ReglaDeLaParte = Callable[[Dinero, Dinero], Dinero]
+_COMPONENTES_DEL_MES = (
+    Componente.ORDINARIA,
+    Componente.FONDO_DE_RESERVA,
+    Componente.EXTRAORDINARIA,
+)
+
+
+def _partes_del_mes(actual: FotoDeCuenta, mes: date, regla: ReglaDeLaParte) -> list[_Parte]:
+    """Por componente de la obligación vigente del período de `mes`, lo que la regla manda trasladar
+    (si es más que cero), en el orden de R04."""
+    partes: list[_Parte] = []
+    for obligacion in actual.estado.obligaciones:
+        if obligacion.periodo != mes.replace(day=1) or obligacion.emision_id in actual.anuladas:
+            continue
+        capital = obligacion.capital()
+        for componente in _COMPONENTES_DEL_MES:
+            impago = actual.estado.residual.get((obligacion.id, componente), _CERO)
+            importe = regla(capital[componente], impago)
+            if importe > _CERO:
+                partes.append(_Parte(obligacion, componente, importe))
+    partes.sort(key=lambda p: (p.obligacion.periodo, str(p.obligacion.id)))
     return partes
 
 
@@ -166,11 +199,65 @@ def trasladar_deuda(
     """Traslada lo impago de los períodos anteriores al mes de `fecha` de la cuenta de `unidad_id` a
     la de `persona_id` (la crea si falta). Sin cuenta de unidad o sin nada impago anterior no
     escribe nada ni crea la cuenta de persona. No commitea: lo hace el llamador."""
+    limite = fecha.replace(day=1)
+    return _trasladar(
+        sesion,
+        identidad,
+        cambio_id=cambio_id,
+        unidad_id=unidad_id,
+        persona_id=persona_id,
+        fecha=fecha,
+        request_id=request_id,
+        reloj=reloj,
+        partes_de=lambda actual: _partes(actual, limite),
+    )
+
+
+def trasladar_parte_del_mes(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    cambio_id: UUID,
+    unidad_id: UUID,
+    persona_id: UUID,
+    fecha: date,
+    regla: ReglaDeLaParte,
+    request_id: UUID,
+    reloj: Reloj = ahora_utc,
+) -> TrasladoDeDeuda:
+    """Traslada a la cuenta de `persona_id` la parte del vendedor de la obligación del mes de
+    `fecha` (H-032): por componente, lo que `regla(emitido, impago)` devuelva. Sin obligación del
+    mes en la cuenta de la unidad, o con nada que trasladar, no escribe nada ni crea la cuenta de
+    persona. No commitea: lo hace el llamador."""
+    return _trasladar(
+        sesion,
+        identidad,
+        cambio_id=cambio_id,
+        unidad_id=unidad_id,
+        persona_id=persona_id,
+        fecha=fecha,
+        request_id=request_id,
+        reloj=reloj,
+        partes_de=lambda actual: _partes_del_mes(actual, fecha, regla),
+    )
+
+
+def _trasladar(
+    sesion: Session,
+    identidad: Identidad,
+    *,
+    cambio_id: UUID,
+    unidad_id: UUID,
+    persona_id: UUID,
+    fecha: date,
+    request_id: UUID,
+    reloj: Reloj,
+    partes_de: Callable[[FotoDeCuenta], list[_Parte]],
+) -> TrasladoDeDeuda:
     exigir_transaccion(sesion)
     exigir_identidad(sesion, identidad)
-    limite = fecha.replace(day=1)
     cuenta_unidad = cuenta_de_unidad(sesion, unidad_id=unidad_id)
-    if cuenta_unidad is None or not _partes(foto(sesion, cuenta_unidad), limite):
+    if cuenta_unidad is None or not partes_de(foto(sesion, cuenta_unidad)):
         return TrasladoDeDeuda(_CERO, None)
     instante = reloj()
     complejo_id = foto(sesion, cuenta_unidad).complejo_id
@@ -180,7 +267,7 @@ def trasladar_deuda(
     bloquear_cuentas(sesion, [cuenta_unidad, cuenta_persona])  # las dos, juntas y en orden
     imputar_pendientes(sesion, cuenta_unidad, uuid4(), instante)  # R04 primero: lo a favor paga
     origen = foto(sesion, cuenta_unidad)
-    partes = _partes(origen, limite)  # con el candado tomado: lo que decide la escritura
+    partes = partes_de(origen)  # con el candado tomado: lo que decide la escritura
     if not partes:
         return TrasladoDeDeuda(_CERO, None)
     destino = foto(sesion, cuenta_persona)

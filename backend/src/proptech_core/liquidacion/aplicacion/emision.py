@@ -6,7 +6,9 @@ pedido (422) -> el candado del período, `FOR UPDATE` sobre la fila de `complejo
 candados de cuentas (E5) -> el replay por `emision_id` -> el orden de períodos (409) -> la
 preliquidación recalculada bajo el candado y su huella (409) -> controles duros (422) -> alertas
 aceptadas (409) -> permiso de aceptar bloqueantes (403) -> recién ahí las escrituras. Un rechazo no
-escribe nada: todo corre dentro de un SAVEPOINT. No commitea: lo hace el llamador.
+escribe nada: todo corre dentro de un SAVEPOINT. Después de registrar la emisión se aplican en la
+misma transacción los prorrateos de cambio de titular pendientes del período (H-032). No commitea:
+lo hace el llamador.
 """
 
 from __future__ import annotations
@@ -64,6 +66,7 @@ from proptech_core.liquidacion.dominio.emision import (
 )
 from proptech_core.liquidacion.dominio.preliquidacion import DatosDeLaPreliquidacion
 from proptech_core.liquidacion.dominio.reparto import pesos_del_grupo
+from proptech_core.titularidad.aplicacion.prorrateo import aplicar_prorrateos_pendientes
 
 _CERO = Dinero("0.00")
 
@@ -392,6 +395,11 @@ def emitir_liquidacion(
         }
         if emitidos != previstos:
             raise Conflicto("huella", "preliquidacion_cambio")
+        # H-032: los prorrateos de cambio de titular que esperaban este período se aplican en esta
+        # misma transacción: si el traslado falla, la emisión entera vuelve con el SAVEPOINT.
+        aplicar_prorrateos_pendientes(
+            sesion, identidad, complejo_id=complejo_id, periodo=periodo, request_id=request_id
+        )
 
         liquidacion_id = uuid4()
         _guardar(

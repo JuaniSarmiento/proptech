@@ -53,11 +53,13 @@ def validar_vendedor_deudor(
     deuda_previa: str,
     vendedor_deudor: UUID | None,
     vendedores: Sequence[UUID],
+    con_prorrateo: bool = False,
 ) -> UUID | None:
-    """El vendedor a cuyo nombre queda la deuda previa (D-168.2): con "a nombre del vendedor", el
-    pedido nombra a uno de los vendedores, o puede omitirlo si hay uno solo; con la deuda en la
-    unidad no hay deudor. Devuelve el deudor, o `None` si la deuda queda en la unidad."""
-    if deuda_previa != "a_nombre_del_vendedor":
+    """El vendedor a cuyo nombre queda lo que se traslada (D-168.2, H-032): con "a nombre del
+    vendedor" o con el prorrateo de la expensa del mes, el pedido nombra a uno de los vendedores, o
+    puede omitirlo si hay uno solo; con la deuda en la unidad y la expensa entera no hay deudor.
+    Devuelve el deudor, o `None` si no hay nada que trasladar."""
+    if deuda_previa != "a_nombre_del_vendedor" and not con_prorrateo:
         if vendedor_deudor is not None:
             raise CambioInvalido("vendedor_deudor")
         return None

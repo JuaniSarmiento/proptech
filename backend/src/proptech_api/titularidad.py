@@ -4,8 +4,8 @@ Los dos casos de uso autorizan solos, en el orden de D7: el edificio que no exis
 la unidad que no es de él, da 404; sin `registrar_cambio_de_titular` (que también cubre leer), 403;
 la entrada que no sirve, 422. `NoEncontrado` y `EntradaInvalida` los traduce el manejador de
 `complejos`.
-De las dos opciones de R32, la deuda previa a nombre del vendedor (H-031) ya se acepta; el prorrateo
-de la expensa del mes lo habilita H-032.
+Las dos opciones de R32 se aceptan: la deuda previa a nombre del vendedor (H-031) y el prorrateo por
+días de la expensa del mes (H-032), que agrega `prorrateo` a la respuesta y al listado.
 """
 
 from __future__ import annotations
@@ -67,8 +67,7 @@ class CuerpoCambioDeTitular(CuerpoDeAlta):
     fecha: str
     vendedores: list[Annotated[UUID, Field(strict=False)]]
     compradores: list[CuerpoComprador]
-    #: H-032 habilita el prorrateo.
-    expensa_del_mes: Literal["entera"] = "entera"
+    expensa_del_mes: Literal["entera", "prorrateo"] = "entera"
     deuda_previa: Literal["en_la_unidad", "a_nombre_del_vendedor"] = "en_la_unidad"
     #: Con la deuda a nombre del vendedor: cuál de los vendedores (puede omitirse con uno solo).
     vendedor_deudor: Annotated[UUID, Field(strict=False)] | None = None
@@ -96,6 +95,15 @@ def _como_json(cambio: CambioDeTitular, *, con_aviso: bool) -> dict[str, Any]:
         respuesta["cuenta_del_vendedor"] = (
             None if cambio.cuenta_del_vendedor is None else str(cambio.cuenta_del_vendedor)
         )
+    if cambio.prorrateo is not None:
+        parte = cambio.prorrateo.parte_del_vendedor
+        respuesta["prorrateo"] = {
+            "estado": cambio.prorrateo.estado,
+            "periodo": cambio.prorrateo.periodo.isoformat(),
+            "dias_del_vendedor": cambio.prorrateo.dias_del_vendedor,
+            "dias_del_mes": cambio.prorrateo.dias_del_mes,
+            "parte_del_vendedor": None if parte is None else parte.a_texto(),
+        }
     return respuesta
 
 

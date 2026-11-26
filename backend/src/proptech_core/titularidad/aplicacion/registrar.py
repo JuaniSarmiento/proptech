@@ -7,7 +7,9 @@ renombrarla y sin invitación), queda la fila de sólo agregar y la auditoría; 
 nada. Con las opciones por defecto no escribe en el libro. Con `deuda_previa` a nombre del vendedor
 (H-031) traslada, en la misma transacción, lo impago de los períodos anteriores al mes del cambio a
 la cuenta de persona del vendedor deudor. Avisa, sin bloquear, si la cuenta de la unidad debe
-(después del traslado). No commitea: lo hace el llamador.
+(después del traslado). Con `expensa_del_mes = "prorrateo"` (H-032) guarda el prorrateo de los días
+del vendedor y, si el período del mes ya está emitido, lo traslada en la misma transacción; si no,
+queda pendiente y lo aplica la emisión de ese período. No commitea: lo hace el llamador.
 """
 
 from __future__ import annotations
@@ -32,16 +34,23 @@ from proptech_core.acceso.dominio.identidad import Identidad
 from proptech_core.acceso.dominio.permisos import Accion
 from proptech_core.compartido.dinero import Dinero
 from proptech_core.complejos.aplicacion.errores import EntradaInvalida, transaccion
+from proptech_core.complejos.aplicacion.lectura import cargar_complejo
 from proptech_core.cuenta_corriente.aplicacion.lecturas import cuenta_de_unidad, estado_de_cuenta
 from proptech_core.cuenta_corriente.aplicacion.traslado_de_deuda import trasladar_deuda
 from proptech_core.titularidad.aplicacion.autorizacion import unidad_autorizada
-from proptech_core.titularidad.aplicacion.lectura import CambioDeTitular, CompradorDelCambio
+from proptech_core.titularidad.aplicacion.lectura import (
+    CambioDeTitular,
+    CompradorDelCambio,
+    Prorrateo,
+)
+from proptech_core.titularidad.aplicacion.prorrateo import pedir_prorrateo, prorrateo_ya_pedido
 from proptech_core.titularidad.dominio.cambio import (
     CambioInvalido,
     validar_compradores,
     validar_pedido,
     validar_vendedor_deudor,
 )
+from proptech_core.titularidad.dominio.prorrateo import dias_del_mes, dias_del_vendedor
 
 _FECHA = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -82,6 +91,12 @@ def registrar_cambio_de_titular(
     with transaccion(sesion, {}):
         unidad_autorizada(sesion, identidad, complejo_id, unidad_id)
         el_dia = _fecha(fecha)
+        con_prorrateo = expensa_del_mes == "prorrateo"
+        a_nombre = deuda_previa == "a_nombre_del_vendedor"
+        if con_prorrateo or a_nombre:
+            # Todo lo que traslada toma el candado del período (el de la emisión, E5) antes que
+            # los de las cuentas: un prorrateo no se pierde entre un registro y una emisión.
+            cargar_complejo(sesion, complejo_id, bloquear=True)
         vecinos = vecinos_de_unidad_bloqueados(sesion, unidad_id=unidad_id)
         try:
             validar_pedido(
@@ -101,8 +116,13 @@ def registrar_cambio_de_titular(
                 con_vinculo_en_la_unidad=set(vecinos),
             )
             deudor = validar_vendedor_deudor(
-                deuda_previa=deuda_previa, vendedor_deudor=vendedor_deudor, vendedores=vendedores
+                deuda_previa=deuda_previa,
+                vendedor_deudor=vendedor_deudor,
+                vendedores=vendedores,
+                con_prorrateo=con_prorrateo,
             )
+            if con_prorrateo and prorrateo_ya_pedido(sesion, unidad_id=unidad_id, fecha=el_dia):
+                raise CambioInvalido("expensa_del_mes")
         except CambioInvalido as error:
             raise EntradaInvalida(error.campo) from None
         quitar_propietarios(sesion, personas=vendedores, unidad_id=unidad_id)
@@ -172,7 +192,7 @@ def registrar_cambio_de_titular(
         )
         traslado = (
             None
-            if deudor is None
+            if deudor is None or not a_nombre
             else trasladar_deuda(
                 sesion,
                 identidad,
@@ -183,6 +203,21 @@ def registrar_cambio_de_titular(
                 request_id=request_id,
             )
         )
+        prorrateo = None
+        if con_prorrateo and deudor is not None:
+            parte = pedir_prorrateo(
+                sesion,
+                identidad,
+                complejo_id=complejo_id,
+                cambio_id=cambio_id,
+                unidad_id=unidad_id,
+                fecha=el_dia,
+                deudor_id=deudor,
+                request_id=request_id,
+            )
+            prorrateo = Prorrateo(
+                el_dia.replace(day=1), dias_del_vendedor(el_dia), dias_del_mes(el_dia), parte
+            )
         aviso = _deuda_de_la_unidad(sesion, unidad_id)
     return CambioDeTitular(
         id=cambio_id,
@@ -200,6 +235,7 @@ def registrar_cambio_de_titular(
         aviso=aviso,
         trasladado=None if traslado is None else traslado.trasladado,
         cuenta_del_vendedor=None if traslado is None else traslado.cuenta_destino,
+        prorrateo=prorrateo,
     )
 
 

@@ -22,6 +22,21 @@ class CompradorDelCambio:
 
 
 @dataclass(frozen=True)
+class Prorrateo:
+    """La expensa del mes del cambio por días (H-032). `parte_del_vendedor` es lo efectivamente
+    trasladado; `None` mientras el período no está emitido (pendiente)."""
+
+    periodo: date
+    dias_del_vendedor: int
+    dias_del_mes: int
+    parte_del_vendedor: Dinero | None
+
+    @property
+    def estado(self) -> str:
+        return "pendiente" if self.parte_del_vendedor is None else "aplicado"
+
+
+@dataclass(frozen=True)
 class CambioDeTitular:
     id: UUID
     unidad_id: UUID
@@ -38,6 +53,8 @@ class CambioDeTitular:
     #: y la cuenta de persona que lo recibió (`None` si no había deuda previa que trasladar).
     trasladado: Dinero | None = None
     cuenta_del_vendedor: UUID | None = None
+    #: Sólo con `expensa_del_mes = "prorrateo"` (H-032).
+    prorrateo: Prorrateo | None = None
 
 
 def listar_cambios(
@@ -62,6 +79,23 @@ def listar_cambios(
         ),
         {"unidad": unidad_id},
     ).all()
+    prorrateos = {
+        fila.cambio_id: Prorrateo(
+            fila.periodo,
+            fila.dias_del_vendedor,
+            fila.dias_del_mes,
+            None if fila.parte is None else Dinero.desde_decimal(fila.parte),
+        )
+        for fila in sesion.execute(
+            text(
+                "SELECT p.cambio_id, p.periodo, p.dias_del_vendedor, p.dias_del_mes, "
+                "a.parte_del_vendedor AS parte FROM prorrateo_de_cambio p "
+                "LEFT JOIN prorrateo_aplicado a ON a.administracion_id = p.administracion_id "
+                "AND a.prorrateo_id = p.id WHERE p.unidad_id = :unidad"
+            ),
+            {"unidad": unidad_id},
+        )
+    }
     vendedores: dict[UUID, list[UUID]] = {}
     compradores: dict[UUID, list[CompradorDelCambio]] = {}
     for fila in personas:
@@ -82,6 +116,7 @@ def listar_cambios(
             deuda_previa=c.deuda_previa,
             registrado_por=c.registrado_por,
             registrado_en=c.registrado_en,
+            prorrateo=prorrateos.get(c.id),
         )
         for c in cambios
     ]
