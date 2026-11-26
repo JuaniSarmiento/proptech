@@ -1933,6 +1933,12 @@ diseño. Las historias quedan en **Lista** con su demo hecha; Terminada la marca
 `change/cambio-de-titular`. Orden: H-030 → H-031 → H-032 → H-033 → H-034 (cada una usa el registro de la
 anterior). En el tablero de Jarvis van como `HU-H030`…
 
+**CI de cierre del 4d** (26/11/2026, D-154): PR #32. La primera vuelta falló por formato (vocabulario y biome) y la
+segunda por la suite completa (barridos de rutas sin `cuenta_id` ni cuerpo del cobro, cabeza `0052` fija en
+`test_libro_rollback.py`, el menú con 8 enlaces en `pulido.spec.ts`): todo arreglado en tests, ningún bug del
+producto. Tercera vuelta **verde** en los seis jobs (run 45822876108). Falta que Juani pase H-030 a H-035 a Terminada;
+después se archiva y se mergea.
+
 ### H-030 · Registrar el cambio de titular
 
 - Objetivo observable: el administrador registra que una unidad cambió de dueño, con fecha, vendedores y
